@@ -24,14 +24,18 @@ drawn here at the floor's edge, the verdicts are the runs' own.
 >    ([live page](https://expectrail.com/review/sinking-fix/)); a real fix from a live overnight run,
 >    failing before and passing after: [report-first-run-1](docs/review/report-first-run-1/).
 > 2. **The same question, asked fifteen times.** Seven fixes that only look right and eight correct
->    ones, each given to three judges, in three runs. Expectrail with SAM accepted 0 of the 7 and all
->    8 of the 8, every run. The position log alone let 3 of the 7 through; Muse Code from screenshots
->    let 2 through and turned down correct ones. [The table](#who-catches-a-fix-that-only-looks-right).
+>    ones, in three runs. **Expectrail with SAM accepted all 8 correct fixes and none of the 7, every
+>    run.** Claude Fable 5.1 and GPT-6 Astra, judging the same screenshots Muse sees, accepted none of
+>    the 7 either, but turned down correct fixes, 5 and 1 times in 24. Muse Code from screenshots let
+>    2 of the 7 through; the position log alone let 3 through.
+>    [The table](#who-catches-a-fix-that-only-looks-right).
 > 3. **Where it is weak, measured.** On single edits nobody wrote, the checks caught 10 of 77; there
 >    is no blind catch on a real-world bug yet; it replays fixed routes and does not explore. Every
 >    number has the CI run behind it. [Results](#results) ·
 >    [What Expectrail cannot do yet](#what-expectrail-cannot-do-yet).
-> 4. **Run it with no keys, in seconds:** `python3 -m pip install -r requirements-dev.txt`, then
+> 4. **Try it in your browser, no keys:** [the interactive demo](https://expectrail.com/demo/), twelve
+>    cases from the benchmark, each with its captured clip, its checks and the verdict. Or run the
+>    loop yourself in seconds: `python3 -m pip install -r requirements-dev.txt`, then
 >    `python3 -m agents.loop --out runs/loop --mode offline --runs 1` (fixtures, labelled as such;
 >    a real replay needs Linux and Godot: [Try it](#try-it)).
 > 5. **Which Meta model does what:** [Meta models](#meta-models). Seven are used; none of them
