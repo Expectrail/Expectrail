@@ -58,6 +58,9 @@ p { margin:0 0 1em; max-width:66ch; }
 .top nav { display:flex; gap:clamp(14px, 2.4vw, 32px); font:700 0.95rem/1 var(--sans); }
 .top nav a { text-decoration:none; padding:6px 0; border-bottom:3px solid transparent; }
 .top nav a:hover { border-bottom-color:var(--rail); }
+.top nav a.try { display:inline-flex; align-items:center; align-self:center; height:34px; padding:2px 12px 0; margin:0; border:2px solid var(--ink); border-radius:4px; white-space:nowrap; }
+.top nav a.try:hover { background:var(--mist); border-color:var(--ink); }
+.try-note { margin:14px 0 0; font-size:1rem; color:var(--stone); }
 .logo img { height:36px; width:auto; }
 
 /* hero */
@@ -108,6 +111,19 @@ section + section { border-top:1px solid var(--mist); }
 .judges td q { font-style:italic; }
 .judges tr.ours th, .judges tr.ours td { border-bottom:3px solid var(--rail); }
 .src { font-size:0.92rem; color:var(--stone); margin-top:16px; }
+
+/* fifteen fixes, four judges */
+.score { width:100%; border-collapse:collapse; margin-top:28px; }
+.score th, .score td { text-align:left; vertical-align:top; padding:16px 20px 16px 0; border-bottom:1px solid var(--mist); }
+.score thead th { font:700 0.95rem/1.3 var(--sans); color:var(--stone); border-bottom:2px solid var(--ink); padding-top:0; }
+.score tbody th { font:700 1.05rem/1.3 var(--sans); width:34%; }
+.score .n { display:block; font:700 2.1rem/1 var(--sans); letter-spacing:-0.02em; white-space:nowrap; }
+.score .n small { font-size:0.95rem; font-weight:400; color:var(--stone); letter-spacing:0; }
+.score .n.miss { color:var(--fail); }
+.score .runs { display:block; font-size:0.92rem; line-height:1.45; color:var(--stone); margin-top:6px; }
+.score tr.ours th, .score tr.ours td { border-bottom:3px solid var(--rail); }
+.closeup { margin-top:64px; }
+.closeup h3 { font-size:1.3rem; }
 
 /* how it works */
 .steps { list-style:none; margin:32px 0 0; padding:0; display:grid; grid-template-columns:repeat(5, 1fr); gap:0; counter-reset:step; }
@@ -206,7 +222,7 @@ footer a { color:var(--on-ink); }
 }
 @media (max-width:640px) {
   .lede { font-size:1.125rem; }
-  .top nav a:not(.gh) { display:none; }
+  .top nav a:not(.gh):not(.try) { display:none; }
   .shots { grid-template-columns:1fr; gap:32px; }
   .frame .rail, .shot:last-child .frame .rail { left:-6px; right:-6px; }
   .shot:last-child .frame .rail { animation-delay:0.3s; }
@@ -215,6 +231,12 @@ footer a { color:var(--on-ink); }
   .judges tr.ours { border-bottom:3px solid var(--rail); }
   .judges th, .judges td { border:0 !important; padding:0 0 6px; }
   .judges td.why { grid-column:1 / -1; }
+  .score thead { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+  .score tr { display:grid; grid-template-columns:1fr 1fr; gap:6px 16px; padding:16px 0; border-bottom:1px solid var(--mist); }
+  .score tr.ours { border-bottom:3px solid var(--rail); }
+  .score th, .score td { border:0 !important; padding:0; width:auto; }
+  .score tbody th { grid-column:1 / -1; width:auto; }
+  .score td::before { content:attr(data-label); display:block; font:700 0.85rem/1.3 var(--sans); color:var(--stone); margin-bottom:6px; }
 }
 </style>
 </head>
@@ -228,7 +250,7 @@ footer a { color:var(--on-ink); }
       <a href="#how">How it works</a>
       <a href="#results">Results</a>
       <a href="#models">Meta models</a>
-      <a href="demo/">Demo</a>
+      <a class="try" href="demo/">Try the demo</a>
       <a class="gh" href="https://github.com/seanudeke/Expectrail">GitHub</a>
     </nav>
   </header>
@@ -239,10 +261,11 @@ footer a { color:var(--on-ink); }
     <h1><span>An AI coding agent says it fixed the bug.</span> <span>Expectrail plays the game and watches to find out.</span></h1>
     <p class="lede">"The tests pass" proves only what someone wrote a test for, and the agent's own word proves less. Expectrail replays the changed game, has Meta's vision models find what each plain-English check names in the frames, and measures that against the engine's own record. The change is accepted only if every check passes, and the agent can't reach the checks.</p>
     <div class="actions">
-      <a class="btn primary" href="review/sinking-fix/">See a rejected fix, frame by frame</a>
-      <a class="btn" href="demo/">Open the interactive demo</a>
+      <a class="btn primary" href="demo/">Try the interactive demo</a>
+      <a class="btn" href="review/sinking-fix/">See a rejected fix, frame by frame</a>
       <a class="btn" href="https://github.com/seanudeke/Expectrail">View the code on GitHub</a>
     </div>
+    <p class="try-note">In your browser, with no keys: pick any of twelve cases from the benchmark and see its captured clip, its checks and the verdict.</p>
 
     <div class="evidence" aria-labelledby="ev-title">
       <h2 id="ev-title" class="sr">Two fixes that both stop the fall</h2>
@@ -274,8 +297,40 @@ footer a { color:var(--on-ink); }
 
   <section aria-labelledby="judges-title">
     <div class="wrap">
-      <h2 id="judges-title">The same fix, three judges</h2>
-      <p class="lede">Each of these saw the fix that sinks the robot. Two of them said it worked.</p>
+      <h2 id="judges-title">Every correct fix accepted. No fake fix accepted.</h2>
+      <p class="lede">Fifteen fixes with known answers: seven that only look right, eight correct. Expectrail accepted all eight correct ones and none of the seven, in every run. Claude and GPT, the strongest models two other vendors sell, judged the same fixes from the screenshots Muse sees. They accepted none of the seven either, but turned down correct fixes.</p>
+      <table class="score">
+        <thead>
+          <tr><th scope="col">Judge</th><th scope="col">Fake fixes accepted</th><th scope="col">Correct fixes turned down</th></tr>
+        </thead>
+        <tbody>
+          <tr class="ours">
+            <th scope="row">Expectrail, with SAM 3.1</th>
+            <td data-label="Fake fixes accepted"><span class="n">0 <small>of 21</small></span><span class="runs">0, 0 and 0 of 7, in three runs</span></td>
+            <td data-label="Correct fixes turned down"><span class="n">0 <small>of 24</small></span><span class="runs">0, 0 and 0 of 8</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Claude Fable 5.1, from screenshots</th>
+            <td data-label="Fake fixes accepted"><span class="n">0 <small>of 21</small></span><span class="runs">0, 0 and 0 of 7, in three passes</span></td>
+            <td data-label="Correct fixes turned down"><span class="n miss">5 <small>of 24</small></span><span class="runs">2, 2 and 1 of 8: it read both sinking fixes as a robot floating</span></td>
+          </tr>
+          <tr>
+            <th scope="row">GPT-6 Astra, from screenshots</th>
+            <td data-label="Fake fixes accepted"><span class="n">0 <small>of 21</small></span><span class="runs">0, 0 and 0 of 7, in three passes</span></td>
+            <td data-label="Correct fixes turned down"><span class="n miss">1 <small>of 24</small></span><span class="runs">0, 1 and 0 of 8</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Muse Code, from screenshots</th>
+            <td data-label="Fake fixes accepted"><span class="n miss">6 <small>of 21</small></span><span class="runs">2, 2 and 2 of 7, in three runs</span></td>
+            <td data-label="Correct fixes turned down"><span class="n miss">5 <small>of 24</small></span><span class="runs">2, 1 and 2 of 8</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="src">Expectrail and Muse Code: three runs of the <a href="https://github.com/seanudeke/Expectrail/blob/main/bench/judge/README.md">judge benchmark</a>. Claude and GPT: three passes in <a href="https://github.com/seanudeke/Expectrail/blob/main/bench/judge/outside-models/README.md">one run</a>, given Muse's prompt and frames byte for byte. We wrote the fake fixes, and each judge decides from its own evidence: Expectrail from the engine's record and SAM's boxes on public and private routes, the others from ten screenshots and the bug report. On fifteen cases, the gap from GPT is one judgment.</p>
+
+      <div class="closeup">
+      <h3>One of the seven, up close</h3>
+      <p>Three judges saw the fix that sinks the robot. Two of them said it worked.</p>
       <table class="judges">
         <tbody>
           <tr>
@@ -296,6 +351,7 @@ footer a { color:var(--on-ink); }
         </tbody>
       </table>
       <p class="src">The same decisions in all three runs of the <a href="https://github.com/seanudeke/Expectrail/blob/main/bench/judge/README.md">judge benchmark</a>.</p>
+      </div>
     </div>
   </section>
 
