@@ -147,6 +147,19 @@ section + section { border-top:1px solid var(--mist); }
 .bar { display:block; position:relative; height:15px; border:2px solid rgba(189, 184, 224, 0.55); margin-bottom:7px; }
 .bar b { display:block; height:100%; background:var(--on-ink); }
 .row.ours .bar b { background:var(--rail); }
+.headline { display:grid; grid-template-columns:repeat(3, 1fr); gap:0 40px; margin-top:36px; }
+.stat { border-top:3px solid var(--rail); padding-top:18px; }
+.stat .big { display:block; font:700 3.4rem/1 var(--sans); letter-spacing:-0.03em; color:var(--rail); margin-bottom:10px; }
+.stat .big small { font-size:1.2rem; font-weight:400; color:var(--on-ink-2); letter-spacing:0; }
+.stat h3 { color:var(--on-ink); font-size:1.15rem; }
+.stat p { font-size:1rem; color:var(--on-ink-2); margin:0; }
+details.all { margin-top:48px; border-top:1px solid rgba(189, 184, 224, 0.28); }
+details.all > summary { cursor:pointer; list-style:none; padding:20px 0; font:700 1.1rem/1.3 var(--sans); color:var(--on-ink); }
+details.all > summary::-webkit-details-marker { display:none; }
+details.all > summary::before { content:"+"; display:inline-block; width:22px; color:var(--rail); }
+details.all[open] > summary::before { content:"\2212"; }
+details.all > summary:hover { color:var(--rail); }
+details.all > .group:first-of-type { margin-top:12px; }
 .note-ink { margin-top:36px; padding:18px 22px; border:2px solid rgba(189, 184, 224, 0.4); color:var(--on-ink-2); font-size:1rem; max-width:none; }
 .note-ink strong { color:var(--on-ink); font-family:var(--sans); }
 
@@ -185,7 +198,8 @@ footer a { color:var(--on-ink); }
   .steps li::before { position:absolute; left:0; top:0; margin:0; }
   .steps li::after { left:15px; top:34px; bottom:-22px; right:auto; width:4px; height:auto; }
   .steps li:last-child::after { display:none; }
-  .boundary, .models, .limits, .reasons, footer .cols { grid-template-columns:1fr; }
+  .boundary, .models, .limits, .reasons, .headline, footer .cols { grid-template-columns:1fr; }
+  .stat { margin-bottom:28px; }
   .row { grid-template-columns:1fr auto; }
   .row .units, .row .bar { grid-column:1 / -1; grid-row:2; }
   .row .run { grid-column:1 / -1; }
@@ -336,7 +350,28 @@ footer a { color:var(--on-ink); }
   <section id="results" aria-labelledby="results-title">
     <div class="wrap">
       <h2 id="results-title">Measured, with the run behind every number</h2>
-      <p class="lede">Every number comes from a CI run's own output, recorded in the repository with the command that reruns it.</p>
+      <p class="lede">Three numbers to remember. Each comes from a CI run's own output, recorded in the repository with the command that reruns it.</p>
+
+      <div class="headline">
+        <div class="stat">
+          <span class="big">8 <small>of 8</small></span>
+          <h3>Held-out bugs caught</h3>
+          <p>Eight bugs kept from the fixer, across four families, judged with SAM 3.1. No false alarm on the clean game. Run <a href="https://github.com/seanudeke/Expectrail/actions/runs/41003749744">41003749744</a></p>
+        </div>
+        <div class="stat">
+          <span class="big">0 <small>of 7</small></span>
+          <h3>Fixes that only look right, accepted</h3>
+          <p>Seven bad fixes, three runs, the same answer every time. The position log alone let 3 through; Muse Code judging from screenshots let 2 through. <a href="https://github.com/seanudeke/Expectrail/blob/main/bench/judge/README.md">Judge benchmark</a></p>
+        </div>
+        <div class="stat">
+          <span class="big">8 <small>of 8</small></span>
+          <h3>Correct fixes accepted, every run</h3>
+          <p>No correct fix turned down. Claude Fable 5.1 and GPT-6 Astra, judging the same screenshots, turned down correct fixes 5 and 1 times in 24. <a href="https://github.com/seanudeke/Expectrail/blob/main/bench/judge/outside-models/README.md">Outside models</a></p>
+        </div>
+      </div>
+
+      <details class="all">
+      <summary>All results, with the run behind every number</summary>
 
       <div class="group">
         <h3>Held-out bugs caught</h3>
@@ -358,9 +393,8 @@ footer a { color:var(--on-ink); }
 
       <div class="group">
         <h3>A mutation bench, registered first</h3>
-        <p>The sample, the oracle (any difference from the clean game, in positions or in frames) and its thresholds were committed before any case in the study was judged, and only public checks decide. Bugs nobody wrote are where Expectrail is weakest. <a href="https://github.com/seanudeke/Expectrail/blob/main/bench/mutation/README.md#results">The bench and its limits</a></p>
+        <p>The sample, the oracle (any difference from the clean game, in positions or in frames) and its thresholds were committed before any case in the study was judged, and only public checks decide. Bugs nobody wrote are where Expectrail is weakest (<a href="#limits">what it can't do yet</a>). <a href="https://github.com/seanudeke/Expectrail/blob/main/bench/mutation/README.md#results">The bench and its limits</a></p>
         <div class="row ours"><span class="who">Wrong fixes caught</span><span class="bar" aria-hidden="true"><b style="width:79.5%"></b></span><span class="n">31 <small>of 39</small></span><span class="run">Made by five operators, 24 caught only with SAM. The 8 misses are one operator that changed nothing in the running game. A sixth made 8 right fixes, a correct fix plus a comment, and all 8 were accepted. Run <a href="https://github.com/seanudeke/Expectrail/actions/runs/41268021760">41268021760</a></span></div>
-        <div class="row ours"><span class="who">Generated bugs caught, weighted by how common each kind of edit is</span><span class="bar" aria-hidden="true"><b style="width:0.9%"></b></span><span class="n">0.9<small>%</small></span><span class="run">Single edits drawn at random that differ from the clean game at all. None of the 45 that move, resize or re-layer something was caught, 44 of them scenery no check covers. Over the sample as drawn, a figure about the sample: 10 of 77. Runs <a href="https://github.com/seanudeke/Expectrail/actions/runs/41268023631">41268023631</a>, <a href="https://github.com/seanudeke/Expectrail/actions/runs/41323827584">41323827584</a>, <a href="https://github.com/seanudeke/Expectrail/actions/runs/41323829361">41323829361</a></span></div>
         <div class="row ours"><span class="who">Muse Code's fixes for those bugs, accepted</span><span class="units" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="n">10 <small>of 10</small></span><span class="run">Bugs the checks had already caught, reported in the catching check's words. Each was fixed on the first attempt and each fix was correct on six routes, five of which the judge never sees, so there was nothing to catch. Muse from screenshots rejected 5 of the same 10. Run <a href="https://github.com/seanudeke/Expectrail/actions/runs/41330361829">41330361829</a></span></div>
       </div>
 
@@ -391,6 +425,7 @@ footer a { color:var(--on-ink); }
       </div>
 
       <p class="note-ink"><strong>What we have not shown yet.</strong> We gave Muse Code four bugs that other people reported in Godot games, in the reporters' own words, five times each. Expectrail accepted all 20, each bug's own check passed, and no guard fired; Muse from screenshots rejected one that we have not yet judged ourselves. Given 10 generated bugs the checks had already caught, Muse Code fixed all 10 correctly, so there was nothing to catch there either. There is no blind catch on a real-world bug yet. One of the eight held-out catches came from a check built after that bug was first missed. Discovery's blind tests are sixteen defects in two sets, a small sample, written by AI agents from a prompt we wrote, and its Muse Spark planner has one blind run. <a href="https://github.com/seanudeke/Expectrail#results">All results and their limits</a></p>
+      </details>
     </div>
   </section>
 
@@ -411,11 +446,11 @@ footer a { color:var(--on-ink); }
     </div>
   </section>
 
-  <section aria-labelledby="limits-title">
+  <section id="limits" aria-labelledby="limits-title">
     <div class="wrap">
       <h2 id="limits-title">What it can't do yet</h2>
       <ul class="limits">
-        <li><b>It checks a change; it doesn't explore.</b> It replays fixed routes and 22 fixed discovery probes, so a bug where none of them goes is invisible to it. Of 77 generated edits that differ from the clean game, its checks caught 10, and none that move scenery.</li>
+        <li><b>It checks a change; it doesn't explore.</b> It replays fixed routes and 22 fixed discovery probes, so a bug where none of them goes is invisible to it. Of 77 generated single edits that differ from the clean game, its checks caught 10, and none that move, resize or re-layer scenery; weighted by how common each kind of edit is, that is 0.9%. Bugs nobody wrote are where it is weakest, and we measured it on purpose (<a href="https://github.com/seanudeke/Expectrail/blob/main/bench/mutation/README.md#results">the mutation bench</a>).</li>
         <li><b>Only checks people wrote can reject a change.</b> Three approved checks guard the game. Discovered checks only report, reach just the four mechanics their profile describes, and flagged 7 of 16 fresh defects blind.</li>
         <li><b>One game and one web page.</b> Mostly with bugs we seeded. A teammate wrote the game's held-out bugs; the page's private bugs came from an AI agent of the same model family that tuned its checks.</li>
         <li><b>The sandbox isn't a hard boundary.</b> The fixer reaches Meta's API through the key gateway and shares the host's kernel.</li>
