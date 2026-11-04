@@ -2,7 +2,8 @@
 
 **An AI coding agent says it fixed the bug. Expectrail plays the game and watches to find out.**
 
-[expectrail.com](https://expectrail.com) · [Interactive demo](https://expectrail.com/demo/) ·
+[Demo video](https://youtu.be/BlWOiweL8Lc) · [expectrail.com](https://expectrail.com) ·
+[Interactive demo](https://expectrail.com/demo/) ·
 [A rejected fix, frame by frame](https://expectrail.com/review/sinking-fix/)
 
 ![Two fixes for the same bug, frame 5 of each replay. Left: Muse Code's fix, the robot standing on the floor's edge, accepted. Right: a fix that only looks right, the robot drawn with its legs inside the floor, rejected.](docs/assets/frames/fix-pair.png)
@@ -13,8 +14,9 @@ log and Muse Code's own screenshot review accept both. Real frames from the reco
 ([left](docs/review/report-first-run-1/), [right](docs/review/sinking-fix/)); the yellow line is
 drawn here at the floor's edge, the verdicts are the runs' own.
 
-<!-- The demo video's link goes first in the box below once it is uploaded. -->
 > **For judges: the whole project in three minutes**
+>
+> **Start with the demo video: [https://youtu.be/BlWOiweL8Lc](https://youtu.be/BlWOiweL8Lc)**
 >
 > 1. **Two fixes for the same bug.** Both stop the robot falling through the floor. One of them does
 >    it by drawing the robot inside the floor. The engine's position log accepts both. Muse Code,
