@@ -1,6 +1,7 @@
 # Evaluation plan
 
-What we measure, on which cases, so the numbers in the video and the README can be rerun by anyone.
+This plan identifies the cases and measurements behind the numbers in the video and README,
+so someone else can rerun them.
 Owner: Sean. Status: draft for the team to review by noon on Tuesday, October 27.
 
 ## The question the benchmark answers

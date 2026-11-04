@@ -1,9 +1,9 @@
 # Report first, verify always
 
-Decided October 30, 2026, after the natural-catch trial; amended October 31 after the first Fix
-matrix run that measured it. In one line: **let the fixer work from a plain bug report, and make
-Expectrail the gate every fix has to pass.** Expectrail's detailed evidence goes to the fixer after
-any failed attempt.
+The decision followed the natural-catch trial on October 30, 2026, and was amended after the first
+Fix matrix run on October 31. The fixer starts with a plain bug report. Expectrail checks every
+candidate and accepts it only when every check passes; after a failed attempt, the fixer receives
+its detailed evidence.
 
 > **October 31 amendment.** The first claim behind this decision, that the fixer does not need
 > our evidence, did not hold for the sinking bugs. In Fix matrix run 41223754703, report-only

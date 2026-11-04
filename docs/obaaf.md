@@ -1,11 +1,11 @@
-# OBAAF in Expectrail (Expectrail)
+# OBAAF in Expectrail
 
 OBAAF (the Open Build and Agent Assurance Framework, https://github.com/Obaaf/OBAAF) is a
-dependency here, pinned to commit `ef34304214923953cf7d67343b912385d4ce5906`. It answers a question
-Expectrail does not: may this change cause an effect (a pull request, a release), given where it
-came from and who approved it. Expectrail answers whether the change does what the player needs.
-Both are needed; neither replaces the other. OBAAF does not make a fix more likely to be right, and
-a passing Expectrail verdict grants no write access by itself.
+dependency pinned to commit `ef34304214923953cf7d67343b912385d4ce5906`. It checks whether a
+change may cause an effect, such as a pull request or release, given its origin and approvals.
+Expectrail checks whether the change does what the player needs. These are separate decisions:
+an OBAAF check does not establish that the fix is correct, and a passing Expectrail verdict
+does not grant write access.
 
 **Status: Phase A, reporting only (Oct 30).** Nothing is enforced and no protected effect is
 enabled. What runs, in the `obaaf-audit` CI job on every push and pull request:
