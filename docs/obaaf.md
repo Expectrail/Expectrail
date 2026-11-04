@@ -3,9 +3,9 @@
 OBAAF (the Open Build and Agent Assurance Framework, https://github.com/Obaaf/OBAAF) is a
 dependency pinned to commit `ef34304214923953cf7d67343b912385d4ce5906`. It checks whether a
 change may cause an effect, such as a pull request or release, given its origin and approvals.
-Expectrail checks whether the change does what the player needs. These are separate decisions:
-an OBAAF check does not establish that the fix is correct, and a passing Expectrail verdict
-does not grant write access.
+Expectrail checks whether the change does what the player needs. These are separate decisions,
+and both are needed: an OBAAF check does not establish that the fix is correct, and a passing
+Expectrail verdict does not grant write access by itself.
 
 **Status: Phase A, reporting only (Oct 30).** Nothing is enforced and no protected effect is
 enabled. What runs, in the `obaaf-audit` CI job on every push and pull request:
