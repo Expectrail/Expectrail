@@ -48,7 +48,7 @@ drawn here at the floor's edge, the verdicts are the runs' own.
 Coding agents can change code faster than people can review it. A passing test suite covers cases
 someone thought to test; it cannot prove there are no failures outside those cases. Nor can the
 fixer give an independent verdict on its own work. When shown before-and-after screenshots of a
-fix that drew the robot inside the ground, Muse Code said the fall was fixed.
+fix that draws the robot inside the ground, Muse Code said the fall was fixed.
 
 Games show the gap most plainly. A change can pass every test and still be visibly broken: a robot
 falling through the floor, coins that are not drawn, a character hidden behind trees. The demo game
