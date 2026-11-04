@@ -1,11 +1,10 @@
 # Future work: known limits and what comes next
 
-Expectrail is meant to be an independent verification layer for changes made by AI coding agents:
-the agent that writes a change never certifies it. This is a ten-day hackathon build of that idea on
-one Godot demo game, along scripted routes, with bugs we seeded ourselves and four reproductions of
-publicly reported Godot bugs. This page says plainly
-what it does not do yet and what we would build next, so anyone judging or extending it knows where
-the edges are. The last section says which parts would carry over beyond games.
+Expectrail independently checks changes made by AI coding agents: the agent that writes a change
+cannot certify it. This ten-day hackathon build runs scripted routes through one Godot demo game,
+using bugs we seeded and four reproductions of publicly reported Godot bugs. The limits below
+describe what it cannot do today, what we would build next, and which parts could carry over
+beyond games.
 
 ## What it is today
 

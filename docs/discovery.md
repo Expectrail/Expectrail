@@ -1,8 +1,9 @@
 # Advisory discovery: checks nobody wrote
 
-Built October 31, 2026. In one line: **replay generic probes on a build, judge every replay with
-contracts read from the game's own code, and report a finding only when it fails three times out of
-three.** Nothing here accepts or rejects a fix. The verifier and its checks are unchanged.
+Built October 31, 2026. Expectrail replays generic probes on a build and judges each replay against
+contracts read from the game's own code. It reports a finding only when the same failure occurs
+three times out of three. Discovery cannot accept or reject a fix; the verifier and its checks
+are unchanged.
 
 ## Two kinds of checks
 

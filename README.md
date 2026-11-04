@@ -45,12 +45,10 @@ drawn here at the floor's edge, the verdicts are the runs' own.
 
 ## The problem
 
-Coding agents now change code faster than anyone can review it. The gate everyone relies on, "the
-tests pass", checks only what someone already wrote a test for, and the bugs that matter most are
-the ones nobody anticipated. Ask the agent whether its own fix worked and it grades its own
-homework. It believes in exactly the fixes that matter most, the ones that only look right: shown
-before-and-after screenshots of a fix that draws the robot inside the ground, Muse Code said the
-fall was fixed.
+Coding agents can change code faster than people can review it. A passing test suite covers cases
+someone thought to test; it cannot prove there are no failures outside those cases. Nor can the
+fixer give an independent verdict on its own work. When shown before-and-after screenshots of a
+fix that drew the robot inside the ground, Muse Code said the fall was fixed.
 
 Games show the gap most plainly. A change can pass every test and still be visibly broken: a robot
 falling through the floor, coins that are not drawn, a character hidden behind trees. The demo game

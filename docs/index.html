@@ -298,7 +298,7 @@ footer a { color:var(--on-ink); }
   <section aria-labelledby="judges-title">
     <div class="wrap">
       <h2 id="judges-title">Every correct fix accepted. No fake fix accepted.</h2>
-      <p class="lede">Fifteen fixes with known answers: seven that only look right, eight correct. Expectrail accepted all eight correct ones and none of the seven, in every run. Claude and GPT, the strongest models two other vendors sell, judged the same fixes from the screenshots Muse sees. They accepted none of the seven either, but turned down correct fixes.</p>
+      <p class="lede">Fifteen fixes with known answers: seven that only look right, eight correct. Expectrail accepted all eight correct ones and none of the seven, in every run. Claude and GPT judged those fixes from the same screenshots Muse Code saw. They accepted none of the seven either, but turned down correct fixes.</p>
       <table class="score">
         <thead>
           <tr><th scope="col">Judge</th><th scope="col">Fake fixes accepted</th><th scope="col">Correct fixes turned down</th></tr>
@@ -358,20 +358,20 @@ footer a { color:var(--on-ink); }
   <section id="why" aria-labelledby="why-title">
     <div class="wrap">
       <h2 id="why-title">Why a second opinion</h2>
-      <p class="lede">Coding agents now change code faster than anyone can review it. The gates a team already has were built for a slower world.</p>
+      <p class="lede">Coding agents now change code faster than anyone can review it. Existing checks still matter, but they cannot cover failures nobody thought to look for.</p>
       <ol class="reasons">
         <li><h3>"The tests pass" is not proof</h3><p>A test checks what someone already thought to write a test for. The bugs that matter most are the ones nobody anticipated, and a game's worst ones show only on screen: a robot through the floor, coins that are not drawn, a character hidden behind trees. The demo game we use ships with no tests at all.</p></li>
-        <li><h3>The agent grades its own homework</h3><p>Ask the fixer whether its fix worked and it believes in exactly the fixes that matter most, the ones that only look right. Shown before-and-after screenshots of a fix that draws the robot inside the ground, Muse Code said the fall was fixed.</p></li>
+        <li><h3>The agent grades its own homework</h3><p>Ask a fixer to judge its own patch, and it may approve a change that looks convincing but is still wrong. Shown before-and-after screenshots of a fix that draws the robot inside the ground, Muse Code said the fall was fixed.</p></li>
         <li><h3>So the judge has to be independent</h3><p>Expectrail verifies by observation, not by trust. Evidence comes from running the changed game and watching it. Models observe; plain code decides. And the agent that wrote the change cannot reach the checks, the held-out routes or the key that signs a release.</p></li>
       </ol>
-      <p class="src">We built and measured it on a game first because a game shows the gap plainly, then pointed the same verifier at a web checkout page to see whether the engineering carries. It is one more gate in the pipeline a team already has, not a replacement for their CI, tests or QA.</p>
+      <p class="src">We built and measured it on a game first because a game shows the gap plainly, then pointed the same verifier at a web checkout page to see whether the engineering carries. It adds a verification step alongside CI, tests and QA; it does not replace them.</p>
     </div>
   </section>
 
   <section id="how" aria-labelledby="how-title">
     <div class="wrap">
       <h2 id="how-title">How it works</h2>
-      <p class="lede">People write the checks that decide: a person approves, in one sentence, what the player should see, and plain code, not a model, decides whether each check passes. Advisory discovery adds checks nobody wrote, read from the game's own code; for now they report, they don't reject.</p>
+      <p class="lede">A person approves each check as a sentence describing what the player should see. Code, not a model, decides whether the check passes. Advisory discovery adds checks nobody wrote, read from the game's own code; for now they report, they don't reject.</p>
       <ol class="steps">
         <li><h3>Play</h3><p>A harness replays a fixed route through the changed game and captures every frame, the same way every time.</p></li>
         <li><h3>See</h3><p>SAM 3.1, or the open-weight Muse Glimmer, finds what the check names. The engine logs where things really are.</p></li>
@@ -406,7 +406,7 @@ footer a { color:var(--on-ink); }
   <section id="results" aria-labelledby="results-title">
     <div class="wrap">
       <h2 id="results-title">Measured, with the run behind every number</h2>
-      <p class="lede">Three numbers to remember. Each comes from a CI run's own output, recorded in the repository with the command that reruns it.</p>
+      <p class="lede">The three headline results come from CI output recorded in the repository, with the commands needed to rerun each one.</p>
 
       <div class="headline">
         <div class="stat">

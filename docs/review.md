@@ -1,11 +1,11 @@
 # Reviewing a fix against its failing base
 
-The verifier says whether a candidate passes Expectrail's checks. A review asks the question a
-person reviewing the fix asks next: **did the requested behavior fail before this change and pass
-after it?** It runs the repair request's public checks twice, on the failing base (the request's
-seeded bug, no fix) and on the candidate (the same game plus the patch), with the same code, the same
-route and the same observer, and pairs the results claim by claim. A clean game passing a check
-does not show the bug happened before this patch; the failing base does.
+The verifier checks whether a candidate passes Expectrail's checks. The review asks a different
+question: **was the requested behavior broken before this patch, and did the patch fix it?** It
+runs the repair request's public checks on the failing base (the seeded bug, without a fix) and on
+the candidate (the same game with the patch), using the same code, route and observer. It compares
+each claim before and after. A pass on the clean game does not show that the patch repaired
+anything; only the failing base can show what was broken.
 
 A review describes evidence for these checks on this route. It is not proof that the game is
 correct, and no status authorizes a merge or a release.
