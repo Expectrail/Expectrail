@@ -1986,7 +1986,10 @@ class CleanPromptEnvHonestyTest(unittest.TestCase):
     def test_env_example_and_gitignore(self):
         example = (REPO / ".env.example").read_text()
         self.assertIn("META_API_KEY=", example)
-        self.assertNotRegex(example, r"LLM_[A-Za-z0-9]")
+        # No Meta key (they start LLM_) pasted as a value; EXPECTRAIL_LLM_* variable names are fine.
+        self.assertNotRegex(example, r"(?<![A-Za-z_])LLM_[A-Za-z0-9]")
+        self.assertNotRegex("EXPECTRAIL_LLM_PROVIDER=anthropic", r"(?<![A-Za-z_])LLM_[A-Za-z0-9]")
+        self.assertRegex("META_API_KEY=LLM_abc123", r"(?<![A-Za-z_])LLM_[A-Za-z0-9]")
         gitignore = (REPO / ".gitignore").read_text()
         self.assertIn(".env", gitignore)
         tracked = subprocess.check_output(

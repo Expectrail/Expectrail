@@ -5,7 +5,9 @@
 
 Without META_API_KEY (or with --candidate-patch), uses the fixture patch so CI can
 verify the loop without calling Muse. With a key, runs `muse exec` against a copy
-that already has the seeded bug applied.
+that already has the seeded bug applied. With --agent (or EXPECTRAIL_FIXER_AGENT) set to
+claude-code, codex, aider, llm-patch or custom-cmd, runs that agent on the same copy instead
+(agents.byo_fixer); the candidate is diffed and checked the same way.
 
 The Muse prompt is clean-v1: failing check + evidence + editable globs only — no
 solution hints. Fixer-work does not mount verifier secrets (deny-by-absence); this
@@ -27,6 +29,7 @@ from pathlib import Path
 
 from agents.keys import (
     PROMPT_POLICY,
+    byo_fixer_agent,
     load_dotenv,
     muse_code_ready,
     muse_subprocess_env,
@@ -183,6 +186,8 @@ def run_fixer(
     plant_poison: bool = False,
     briefing: dict | None = None,
     adapter: str | Adapter = "godot",
+    agent: str | None = None,
+    model: str | None = None,
 ) -> dict:
     """Produce a candidate patch under ``out``.
 
@@ -201,7 +206,17 @@ def run_fixer(
     condition without structured checks never sees the spec or the verdict.
 
     ``adapter`` names the engine (default ``godot``): ``game`` defaults to its project.
+
+    ``agent`` picks the coding agent (default: EXPECTRAIL_FIXER_AGENT, else Muse Code; "auto" picks
+    the first installed of claude, codex, aider, muse, else llm-patch). ``model`` is passed to it.
     """
+    from agents.byo_fixer import SUPPORTED_AGENTS, resolve_fixer_agent
+
+    if agent == "auto":
+        agent = resolve_fixer_agent("auto")
+    byo = agent if agent not in (None, "muse-code") else (byo_fixer_agent() if agent is None else None)
+    if byo is not None and byo not in SUPPORTED_AGENTS:
+        raise SystemExit(f"unknown fixer agent {byo!r} (want {'|'.join(SUPPORTED_AGENTS)})")
     adapter = adapters.resolve(adapter)
     validate(request, "repair-request")
     out.mkdir(parents=True, exist_ok=True)
@@ -235,7 +250,7 @@ def run_fixer(
         patch_path.write_text(text, encoding="utf-8")
         apply_patches(work, [patch_path])
         source = "fixture"
-    elif muse_code_ready():
+    elif byo is not None or muse_code_ready():
         rr_work = work / "repair-request.json"
         rr_doc = dict(request)
         if prior_reject:
@@ -265,28 +280,40 @@ def run_fixer(
             "promptSha256": prompt_sha256(prompt),
         }
         (out / "muse-prompt.txt").write_text(prompt, encoding="utf-8")
-        env = muse_subprocess_env()
+        if byo is not None:
+            from agents.keys import byo_agent_env
+            env = byo_agent_env(byo)
+        else:
+            env = muse_subprocess_env()
         (out / "muse-env-names.json").write_text(
             json.dumps(sorted(env.keys()), indent=2) + "\n", encoding="utf-8"
         )
         timeout = int(request["budget"].get("minutesPerAttempt", 15) * 60)
         detected = detect_sandbox()
         guard_installed = None
-        if guard_enabled():
+        if guard_enabled() and byo is None:
             # Muse Code PreToolUse hook: blocks writes outside the editable globs and logs every call.
             guard_installed = install_guard(
                 work, request["editable"],
                 root_as_muse_sees_it=muse_workspace_root(work, muse_kind_for(detected)),
             )
         try:
-            proc, sandbox_meta = run_muse_sandboxed(
-                prompt,
-                work=work,
-                env=env,
-                timeout=timeout,
-                require_sandbox=require_sandbox,
-                detected=detected,
-            )
+            if byo is not None:
+                from agents.byo_fixer import run_byo_agent
+
+                proc, sandbox_meta = run_byo_agent(
+                    prompt, work, out, agent=byo, model=model, timeout=timeout,
+                    require_sandbox=require_sandbox, detected=detected,
+                )
+            else:
+                proc, sandbox_meta = run_muse_sandboxed(
+                    prompt,
+                    work=work,
+                    env=env,
+                    timeout=timeout,
+                    require_sandbox=require_sandbox,
+                    detected=detected,
+                )
         except subprocess.TimeoutExpired as exc:
             # The attempt's time is up. Whatever Muse already changed is still diffed below and
             # verified like any candidate; the caller counts the attempt either way.
@@ -307,12 +334,12 @@ def run_fixer(
             patch_path.write_text("", encoding="utf-8")
             if not allow_empty:
                 raise SystemExit(
-                    f"muse produced an empty game patch (exit {proc.returncode}); "
+                    f"{byo or 'muse'} produced an empty game patch (exit {proc.returncode}); "
                     f"see {out / 'muse.log'}"
                 )
         else:
             patch_path.write_text(text, encoding="utf-8")
-        source = "muse"
+        source = byo or "muse"
     else:
         raise SystemExit(
             "muse on PATH and META_API_KEY are required for Muse Code, "
@@ -358,7 +385,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--attempt", type=int, default=1)
     p.add_argument("--game", type=Path)
     p.add_argument("--require-sandbox", action="store_true",
-                   help="fail closed unless Muse runs under bubblewrap")
+                   help="fail closed unless the fixer runs under bubblewrap")
+    p.add_argument("--agent", choices=("auto", "muse-code", "claude-code", "codex", "aider", "llm-patch",
+                                       "custom-cmd"),
+                   help="coding agent (default: EXPECTRAIL_FIXER_AGENT, else Muse Code)")
+    p.add_argument("--model", help="model id passed to the agent")
     args = p.parse_args(argv)
     request = load(args.request, "repair-request")
     meta = run_fixer(
@@ -367,6 +398,8 @@ def main(argv: list[str] | None = None) -> int:
         game=args.game,
         attempt=args.attempt,
         require_sandbox=args.require_sandbox,
+        agent=args.agent,
+        model=args.model,
     )
     print(f"candidate {meta.get('patchSha256', '')[:12]}… from {meta['source']}: "
           f"{args.out / 'candidate.patch'}")

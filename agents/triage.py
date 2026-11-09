@@ -3,8 +3,10 @@
     python3 -m agents.triage --verdict ... --spec ... --route ... --out runs/triage \\
         [--log godot.log] [--frames-dir runs/fall/frames] [--offline]
 
-With MODEL_API_KEY, calls muse-wonder-1.0 over Meta Model API. With --offline (or no key),
-writes a deterministic bug report from the verdict reason and still emits a repair-request.
+With MODEL_API_KEY, calls muse-wonder-1.0 over Meta Model API. With a BYO provider
+(EXPECTRAIL_TRIAGE_PROVIDER or EXPECTRAIL_LLM_PROVIDER and its key, or --provider), calls that model
+through expectrail.providers instead. With --offline (or no key), writes a deterministic bug report
+from the verdict reason and still emits a repair-request.
 """
 from __future__ import annotations
 
@@ -16,7 +18,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from agents.keys import load_dotenv, wonder_key
+from agents.keys import load_dotenv, triage_ready, wonder_key
 from agents.orchestrator import build_repair_request
 from harness.run import REPO
 from expectrail.contracts import load
@@ -65,6 +67,20 @@ def call_wonder(prompt: str, api_key: str, *, api_base: str | None = None) -> st
     return data["choices"][0]["message"]["content"]
 
 
+TRIAGE_SYSTEM = "You triage game bugs for Expectrail. Be concise."
+
+
+def call_byo(prompt: str, *, provider: str | None = None, model: str | None = None) -> tuple[str, str]:
+    """Triage through any provider expectrail.providers knows. Returns (report, "provider/model")."""
+    from expectrail.providers import chat_completion, extract_message_text, resolve_provider
+
+    cfg = resolve_provider("TRIAGE", provider=provider, model=model,
+                           legacy_default_model=WONDER_MODEL, legacy_key_envs=("MODEL_API_KEY", "META_API_KEY"))
+    messages = [{"role": "system", "content": TRIAGE_SYSTEM}, {"role": "user", "content": prompt}]
+    raw = chat_completion(messages, role="TRIAGE", config=cfg, max_tokens=2048, temperature=0.0)
+    return extract_message_text(cfg, raw), f"{cfg.provider}/{cfg.model}"
+
+
 def triage(
     *,
     spec: dict,
@@ -75,14 +91,33 @@ def triage(
     log_text: str = "",
     key_frames: list[str] | None = None,
     offline: bool = False,
+    provider: str | None = None,
+    model: str | None = None,
 ) -> dict:
+    from expectrail.providers import byo_requested
+
     out.mkdir(parents=True, exist_ok=True)
     prompt = _bug_report_offline(spec, verdict, route, log_text)
     api_base = os.environ.get("META_API_BASE", "https://api.meta.ai/v1")
     api_key = wonder_key()
-    if offline or not api_key:
+    if provider is not None:
+        byo = provider != "meta"
+    else:
+        byo = byo_requested("TRIAGE")
+    triage_model = WONDER_MODEL
+    if offline or (not byo and not api_key) or (byo and provider is None and not triage_ready()):
         report = prompt
         source = "offline"
+    elif byo:
+        try:
+            report, triage_model = call_byo(
+                prompt + "\n\nWrite a short actionable bug report for the coding agent.",
+                provider=provider, model=model,
+            )
+            source = triage_model
+        except (RuntimeError, urllib.error.URLError, KeyError, TimeoutError) as exc:
+            report = prompt + f"\n\n(BYO triage call failed: {exc}; using offline report.)"
+            source = "offline-fallback"
     else:
         try:
             report = call_wonder(
@@ -96,7 +131,7 @@ def triage(
             source = "offline-fallback"
 
     (out / "bug-report.md").write_text(report + "\n", encoding="utf-8")
-    triage_meta = {"source": source, "model": WONDER_MODEL}
+    triage_meta = {"source": source, "model": triage_model}
     request = build_repair_request(
         request_id=f"rr-triage-{spec.get('id', 'bug')}",
         spec=spec,
@@ -123,6 +158,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--key-frame", action="append", default=[])
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--offline", action="store_true")
+    p.add_argument("--provider", help="BYO triage provider (anthropic, openai, gemini, openrouter, ollama, "
+                                      "vllm, meta, ...); default: EXPECTRAIL_TRIAGE_PROVIDER / LLM_PROVIDER")
+    p.add_argument("--model", help="model id for --provider (default: the provider's default)")
     args = p.parse_args(argv)
     log_text = args.log.read_text(encoding="utf-8") if args.log and args.log.exists() else ""
     triage(
@@ -134,6 +172,8 @@ def main(argv: list[str] | None = None) -> int:
         log_text=log_text,
         key_frames=args.key_frame or ["frames/f00000008.png", "frames/f00000016.png"],
         offline=args.offline,
+        provider=args.provider,
+        model=args.model,
     )
     print(f"wrote {args.out / 'repair-request.json'} and bug-report.md")
     return 0

@@ -31,7 +31,45 @@ DOTENV_KEYS = frozenset({
     "EXPECTRAIL_GLIMMER_API_BASE",
     "EXPECTRAIL_GLIMMER_MODEL",
     "EXPECTRAIL_GLIMMER_COORDS",
+    # Bring your own model, coding agent and vision backend (expectrail.providers, agents.byo_*)
+    "EXPECTRAIL_LLM_PROVIDER",
+    "EXPECTRAIL_LLM_MODEL",
+    "EXPECTRAIL_LLM_API_BASE",
+    "EXPECTRAIL_LLM_API_KEY",
+    "EXPECTRAIL_SPEC_PROVIDER",
+    "EXPECTRAIL_TRIAGE_PROVIDER",
+    "EXPECTRAIL_TRIAGE_MODEL",
+    "EXPECTRAIL_FIXER_PROVIDER",
+    "EXPECTRAIL_FIXER_MODEL",
+    "EXPECTRAIL_FIXER_AGENT",
+    "EXPECTRAIL_FIXER_CMD",
+    "EXPECTRAIL_FIXER_RO_BINDS",
+    "EXPECTRAIL_VLM_PROVIDER",
+    "EXPECTRAIL_VLM_MODEL",
+    "EXPECTRAIL_VLM_API_BASE",
+    "EXPECTRAIL_VLM_API_KEY",
+    "EXPECTRAIL_VLM_COORDS",
+    "EXPECTRAIL_LOCAL_VISION_URL",
+    "EXPECTRAIL_KEYFRAMES_ONLY",
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
+    "OPENROUTER_API_KEY",
+    "OLLAMA_HOST",
 })
+
+# Keys a BYO coding agent may receive inside its sandbox, by agent. Only its own provider's key:
+# never MODEL_API_KEY, the vision key, or anything else the verifier holds.
+BYO_AGENT_KEY_ENVS = {
+    "claude-code": ("ANTHROPIC_API_KEY",),
+    "codex": ("OPENAI_API_KEY",),
+    "aider": ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"),
+    "custom-cmd": ("EXPECTRAIL_FIXER_API_KEY",),
+    "llm-patch": (),  # runs in Expectrail's own process; nothing enters a sandbox
+    "muse-code": ("META_API_KEY",),
+}
+BYO_AGENT_BINARIES = {"claude-code": "claude", "codex": "codex", "aider": "aider", "muse-code": "muse"}
 
 # Muse Code subprocess: model key + runtime/TLS/temp/proxy hygiene — not a sandbox.
 MUSE_ENV_ALLOWLIST = frozenset({
@@ -130,6 +168,58 @@ def muse_code_ready() -> bool:
     return shutil.which("muse") is not None and bool(os.environ.get("META_API_KEY"))
 
 
+def triage_ready() -> bool:
+    """A live triage model is available: the legacy Wonder key, or a BYO provider for TRIAGE."""
+    if wonder_key() and not _byo("TRIAGE"):
+        return True
+    if _byo("TRIAGE"):
+        from expectrail.providers import provider_ready
+
+        return provider_ready("TRIAGE")
+    return False
+
+
+def _byo(role: str) -> bool:
+    from expectrail.providers import byo_requested
+
+    return byo_requested(role)
+
+
+def byo_fixer_agent() -> str | None:
+    """The coding agent named by EXPECTRAIL_FIXER_AGENT, when it is not Muse Code.
+
+    Only an explicit choice counts: an installed `claude` or `codex` never silently replaces Muse.
+    """
+    agent = os.environ.get("EXPECTRAIL_FIXER_AGENT", "").strip().lower()
+    return agent if agent and agent not in ("muse-code", "auto") else None
+
+
+def byo_fixer_ready(agent: str | None = None) -> bool:
+    agent = agent or byo_fixer_agent()
+    if not agent:
+        return False
+    if agent == "llm-patch":
+        from expectrail.providers import provider_ready
+
+        return provider_ready("FIXER")
+    if agent == "custom-cmd":
+        return bool(os.environ.get("EXPECTRAIL_FIXER_CMD", "").strip())
+    binary = BYO_AGENT_BINARIES.get(agent)
+    return bool(binary and shutil.which(binary))
+
+
+def fixer_ready() -> bool:
+    """A live fixer is available: the BYO agent named by EXPECTRAIL_FIXER_AGENT, else Muse Code."""
+    return byo_fixer_ready() if byo_fixer_agent() else muse_code_ready()
+
+
+def byo_agent_env(agent: str, base: Mapping[str, str] | None = None) -> dict[str, str]:
+    """Allowlisted env for a BYO coding agent: runtime hygiene plus its own provider key only."""
+    src = dict(base) if base is not None else dict(os.environ)
+    names = (MUSE_ENV_ALLOWLIST - {"META_API_KEY"}) | set(BYO_AGENT_KEY_ENVS.get(agent, ()))
+    return {k: v for k, v in src.items() if k in names and v != ""}
+
+
 def resolve_mode(requested: str) -> ModeResolution:
     """Map auto|offline|live to concrete triage/fixer flags.
 
@@ -149,13 +239,15 @@ def resolve_mode(requested: str) -> ModeResolution:
             "verification_default": "fixture",
         }
     if requested == "live":
-        if not wonder_key():
+        if not triage_ready():
             raise SystemExit(
-                "live mode needs MODEL_API_KEY or META_API_KEY for Wonder triage"
+                "live mode needs MODEL_API_KEY or META_API_KEY for Wonder triage "
+                "(or a BYO triage provider: EXPECTRAIL_LLM_PROVIDER and its key)"
             ) from None
-        if not muse_code_ready():
+        if not fixer_ready():
             raise SystemExit(
-                "live mode needs muse on PATH and META_API_KEY for Muse Code"
+                "live mode needs muse on PATH and META_API_KEY for Muse Code "
+                "(or EXPECTRAIL_FIXER_AGENT set to an installed agent)"
             ) from None
         return {
             "mode": "live",
@@ -168,10 +260,10 @@ def resolve_mode(requested: str) -> ModeResolution:
     # auto
     return {
         "mode": "auto",
-        "offline_triage": wonder_key() is None,
-        "use_muse": muse_code_ready(),
-        "wonder_key_present": wonder_key() is not None,
-        "muse_ready": muse_code_ready(),
+        "offline_triage": not triage_ready(),
+        "use_muse": fixer_ready(),
+        "wonder_key_present": triage_ready(),
+        "muse_ready": fixer_ready(),
         "verification_default": "fixture",
     }
 
@@ -201,22 +293,24 @@ def seal_mode_flags(
     if force_online_triage:
         if mode == "offline":
             raise SystemExit("--online-triage conflicts with --mode offline") from None
-        if not wonder_key():
-            raise SystemExit("--online-triage needs MODEL_API_KEY or META_API_KEY") from None
+        if not triage_ready():
+            raise SystemExit("--online-triage needs MODEL_API_KEY or META_API_KEY "
+                             "(or a BYO triage provider)") from None
         offline_triage = False
     if force_muse:
         if mode == "offline":
             raise SystemExit("--use-muse conflicts with --mode offline") from None
-        if not muse_code_ready():
-            raise SystemExit("--use-muse needs muse on PATH and META_API_KEY") from None
+        if not fixer_ready():
+            raise SystemExit("--use-muse needs muse on PATH and META_API_KEY "
+                             "(or EXPECTRAIL_FIXER_AGENT set to an installed agent)") from None
         use_muse = True
 
     out: ModeResolution = {
         "mode": mode,
         "offline_triage": offline_triage,
         "use_muse": use_muse,
-        "wonder_key_present": resolved.get("wonder_key_present", wonder_key() is not None),
-        "muse_ready": resolved.get("muse_ready", muse_code_ready()),
+        "wonder_key_present": resolved.get("wonder_key_present", triage_ready()),
+        "muse_ready": resolved.get("muse_ready", fixer_ready()),
         "verification_default": resolved.get("verification_default", "fixture"),
     }
     return out
@@ -241,6 +335,18 @@ def require_separate_sam_key() -> None:
         backend = vision_backend()
     except SamError as exc:
         raise SystemExit(str(exc)) from None
+    if backend == "local-http":
+        return  # a local detector holds no key
+    if backend in ("byo-vlm", "byo-vlm-engine"):
+        from expectrail.providers import provider_ready, resolve_provider
+
+        if not provider_ready("VLM"):
+            raise SystemExit(f"EXPECTRAIL_VISION_BACKEND={backend} needs a VLM provider and its key "
+                             "(EXPECTRAIL_VLM_PROVIDER / EXPECTRAIL_VLM_API_KEY, or a provider key)")
+        if muse_key and resolve_provider("VLM").api_key == muse_key:
+            raise SystemExit("the vision model's key is the same as META_API_KEY, which Muse Code (the fixer) "
+                             "receives; the verifier's vision key must be its own")
+        return
     if backend in ("glimmer", "both", "glimmer-engine"):
         from agents.glimmer_client import KEY_ENVS, api_key
 
@@ -259,3 +365,40 @@ def require_separate_sam_key() -> None:
         raise SystemExit("MODEL_API_KEY is the same key as META_API_KEY, which Muse Code (the fixer) "
                          "receives. Create a second key on dev.meta.ai for SAM and set it as "
                          "MODEL_API_KEY, so the fixer never holds the verifier's key.")
+
+
+def require_separate_byo_keys(agent: str | None = None) -> None:
+    """The BYO counterpart of require_separate_sam_key: the fixer never holds the verifier's key.
+
+    Refuses when the key a BYO coding agent receives is also a key the verifier uses: SAM's
+    (MODEL_API_KEY), Glimmer's, or a BYO vision model's (EXPECTRAIL_VISION_BACKEND=byo-vlm*). Same
+    provider for both is fine; the same key is not. Create a second key for the verifier.
+    """
+    agent = agent or byo_fixer_agent()
+    if not agent:
+        return
+    fixer_keys = {os.environ.get(n, "").strip() for n in BYO_AGENT_KEY_ENVS.get(agent, ())} - {""}
+    if agent == "llm-patch":
+        from expectrail.providers import provider_ready, resolve_provider
+
+        if provider_ready("FIXER"):
+            fixer_keys = {resolve_provider("FIXER").api_key} - {"local-no-key"}
+    if not fixer_keys:
+        return
+    verifier: dict[str, str] = {}
+    for name in ("MODEL_API_KEY", "FIREWORKS_API_KEY", "EXPECTRAIL_GLIMMER_API_KEY"):
+        value = os.environ.get(name, "").strip()
+        if value:
+            verifier[name] = value
+    backend = os.environ.get("EXPECTRAIL_VISION_BACKEND", "").strip().lower()
+    if backend.startswith("byo-vlm"):
+        from expectrail.providers import provider_ready, resolve_provider
+
+        if provider_ready("VLM"):
+            vlm = resolve_provider("VLM")
+            if vlm.api_key != "local-no-key":
+                verifier[f"the {vlm.provider} key the vision model (EXPECTRAIL_VLM_*) uses"] = vlm.api_key
+    for name, value in verifier.items():
+        if value in fixer_keys:
+            raise SystemExit(f"{name} is the same key the {agent} fixer receives; the verifier's key must be "
+                             "its own (set EXPECTRAIL_VLM_API_KEY or MODEL_API_KEY to a second key)")

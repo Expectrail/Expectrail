@@ -88,10 +88,16 @@ WORKERS_ENV = "EXPECTRAIL_SAM_WORKERS"
 # Which model looks at the frames: sam (SAM 3.1, Meta Model API) or glimmer (Muse Glimmer, open
 # weights, agents.glimmer_client). Everything else in this module is the same for both.
 BACKEND_ENV = "EXPECTRAIL_VISION_BACKEND"
-BACKENDS = ("sam", "glimmer", "both", "glimmer-engine")
+BACKENDS = ("sam", "glimmer", "both", "glimmer-engine", "local-http", "byo-vlm", "byo-vlm-engine")
 GLIMMER_ALONE_ENV = "EXPECTRAIL_GLIMMER_ALONE"
 VISION_LABELS = {"sam": "SAM 3.1", "glimmer": "Muse Glimmer", "both": "SAM 3.1 with Muse Glimmer",
-                 "glimmer-engine": "Muse Glimmer checked against the engine"}
+                 "glimmer-engine": "Muse Glimmer checked against the engine",
+                 "local-http": "a local open-vocabulary detector",
+                 "byo-vlm": "a BYO vision-language model",
+                 "byo-vlm-engine": "a BYO vision-language model checked against the engine"}
+BYO_VLM_ALONE_ENV = "EXPECTRAIL_BYO_VLM_ALONE"
+# Event keyframes (agents.byo_vision.select_event_keyframes) as the first sample instead of a stride.
+KEYFRAMES_ENV = "EXPECTRAIL_KEYFRAMES_ONLY"
 DEFAULT_EVERY = 4
 DEFAULT_WORKERS = 4
 # Bump when the request or the parsing changes, so older cache entries are never reused.
@@ -410,6 +416,8 @@ def default_client(verdict: bool = False):
     backend = vision_backend()
     if backend == "sam":
         return MetaSamClient()
+    if backend in ("local-http", "byo-vlm", "byo-vlm-engine"):
+        return _byo_client(backend, verdict)
     from agents.glimmer_client import BothClient, EngineCheckedGlimmer, GlimmerClient
 
     if backend == "both":
@@ -423,6 +431,48 @@ def default_client(verdict: bool = False):
                        f"or glimmer-engine, "
                        f"or set {GLIMMER_ALONE_ENV}=1 to measure Glimmer on known fixtures")
     return GlimmerClient()
+
+
+def _byo_client(backend: str, verdict: bool):
+    """local-http (a detector), byo-vlm (any VLM), byo-vlm-engine (a VLM checked against the engine).
+
+    A VLM alone follows Glimmer's rule: refused for a verdict unless EXPECTRAIL_BYO_VLM_ALONE=1.
+    """
+    from agents import byo_vision
+
+    try:
+        if backend == "local-http":
+            return byo_vision.LocalHTTPDetectorClient()
+        if backend == "byo-vlm-engine":
+            return byo_vision.EngineCheckedBYOVLM()
+        alone = os.environ.get(BYO_VLM_ALONE_ENV, "").strip().lower() in ("1", "true", "yes")
+        if verdict and not alone:
+            raise SamError("a vision-language model alone does not decide a verdict: the fixer controls the "
+                           "frames, and text drawn into the game could talk it into a pass. Use "
+                           f"{BACKEND_ENV}=byo-vlm-engine or local-http, or set {BYO_VLM_ALONE_ENV}=1 to measure "
+                           "it on known fixtures")
+        return byo_vision.BYOVLMObserverClient()
+    except (RuntimeError, ValueError) as exc:
+        if isinstance(exc, SamError):
+            raise
+        raise SamError(f"{BACKEND_ENV}={backend}: {exc}") from exc
+
+
+def first_sample(indices: list[int], rate: int, trace: dict | None) -> list[int]:
+    """The frames looked at first: every ``rate``-th frame, or with EXPECTRAIL_KEYFRAMES_ONLY=1 and a
+    trace, the frames where the engine says something happened (plus a coarser stride and both ends).
+
+    Only the first look changes: refinement and the every-frame confirmation of a pass still run, so
+    choosing keyframes can never turn a failure into a pass.
+    """
+    keyframes = os.environ.get(KEYFRAMES_ENV, "").strip().lower() in ("1", "true", "yes")
+    if not keyframes or rate <= 1 or not indices or not (trace or {}).get("rows"):
+        return sample(indices, rate)
+    from agents.byo_vision import select_event_keyframes, trace_keyframe_rows
+
+    picked = set(select_event_keyframes(trace_keyframe_rows(trace), indices[-1] + 1, base_stride=rate * 2))
+    chosen = sorted(picked.intersection(indices) | {indices[0], indices[-1]})
+    return chosen
 
 
 # ---------------------------------------------------------------------------------------------
@@ -726,7 +776,7 @@ def _from_replay(frames_dir, replay_sha256, *, spec, prompts, every, refine, con
         got = check(got) if check is not None else got
         return keep(got) if keep is not None else got
 
-    observed = look(sample(indices, rate))
+    observed = look(first_sample(indices, rate, trace))
 
     def doc_of(refined_frames, confirmed_count=0):
         return _document(observed, names, client.model, replay_sha256, len(frames), len(indices), rate,
