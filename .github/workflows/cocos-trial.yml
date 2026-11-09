@@ -34,14 +34,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: "Trial A: cocos create --type 2d, then build web-mobile"
-        id: trial_a
-        if: ${{ !cancelled() && steps.cli.outcome == 'success' }}
-        run: echo ok
-      - name: "Trial B: the CLI's own 2D fixture project, build web-mobile"
-        id: trial_b
-        if: ${{ !cancelled() && steps.cli.outcome == 'success' }}
-        run: echo ok
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         if: ${{ !cancelled() && (env.OUT_EMPTY != '' || env.OUT_FIXTURE != '') }}
         with:
