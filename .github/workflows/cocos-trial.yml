@@ -20,7 +20,6 @@ jobs:
     timeout-minutes: 120
     env:
       CLI_TAG: 0.2.0-beta.1
-      NODE_VERSION: 22.17.0
       # The COCOS CLI's CI sets this heap limit; its E2E builds run out of memory without it.
       NODE_OPTIONS: --max-old-space-size=8192
       # The CLI's .npmrc turns TLS verification off for its registry mirror; this turns it back on.
@@ -86,10 +85,21 @@ jobs:
             "$(free_gb) free on /, DISPLAY='${DISPLAY:-}', WAYLAND_DISPLAY='${WAYLAND_DISPLAY:-}'," \
             "X server process: ${xs:-none}, preinstalled node $(node --version 2>/dev/null || echo none)"
 
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          package-manager-cache: false
+      # No setup action: the COCOS CLI's quick start asks for "Node.js 22.17.0 or higher", and the
+      # runner image keeps Node 22 in its tool cache. Only if it does not, the official tarball.
+      - name: Node.js 22 from the runner's tool cache
+        run: |
+          . "$RUNNER_TEMP/steps.sh"
+          n22=$(ls -d /opt/hostedtoolcache/node/22.*/x64 2>/dev/null | sort -V | tail -1 || true)
+          if [ -z "$n22" ]; then
+            v=v22.17.0; d="$RUNNER_TEMP/node"; mkdir -p "$d"; cd "$d"
+            curl -fsSLO "https://nodejs.org/dist/$v/node-$v-linux-x64.tar.xz"
+            curl -fsSLO "https://nodejs.org/dist/$v/SHASUMS256.txt"
+            grep " node-$v-linux-x64.tar.xz\$" SHASUMS256.txt | sha256sum -c -
+            tar -xJf "node-$v-linux-x64.tar.xz"; n22="$d/node-$v-linux-x64"
+          fi
+          echo "$n22/bin" >> "$GITHUB_PATH"
+          ann notice "Node.js" "$("$n22/bin/node" --version) from $n22 (tool cache has: $(ls /opt/hostedtoolcache/node 2>/dev/null | tr '\n' ' '))"
 
       - name: Clone the COCOS CLI at its release tag
         run: |
