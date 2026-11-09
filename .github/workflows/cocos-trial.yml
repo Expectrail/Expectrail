@@ -16,7 +16,6 @@ permissions:
 
 jobs:
   trial:
-    if: ${{ false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
@@ -29,7 +28,8 @@ jobs:
       FORCE_COLOR: '0'
     defaults:
       run:
-        shell: bash --noprofile --norc -eo pipefail {0}
+        # shell: bash runs every step as bash --noprofile --norc -eo pipefail {0}.
+        shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
