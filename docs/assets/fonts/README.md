@@ -1,4 +1,4 @@
-# Fonts for expectrail.com
+# Fonts for expectrail.tech
 
 Unmodified fonts, repackaged as WOFF by compression only. Every table is byte for byte the same as in
 the source font; for TeX Gyre Adventor the one exception is the `head` table's whole-file checksum,
