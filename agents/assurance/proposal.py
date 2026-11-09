@@ -26,6 +26,9 @@ bundle, and evidence must not travel inside the thing it is evidence about.
         --candidate agents/fixtures/fix-collision-mask.patch --out runs/proposal
 
 needs ``obaaf`` on PATH (or ``OBAAF_BIN``), installed from the reviewed revision in ``OBAAF_REVISION``.
+
+The game root and the default editable files come from an engine adapter (harness/adapters.py,
+default ``godot``); the root must sit inside the repository, since the base is a clone of it.
 """
 from __future__ import annotations
 
@@ -39,15 +42,25 @@ import sys
 from pathlib import Path
 
 from agents.patchutil import apply_patches, path_allowed, sha256_file
+from harness import adapters
+from harness.adapters import Adapter
 from harness.run import REPO
 
-GAME_ROOT = "game/platformer"
+
+def game_root(adapter: str | Adapter = "godot") -> str:
+    """The adapter's game root, relative to the repository (Godot: ``game/platformer``)."""
+    root = adapters.resolve(adapter).game_root
+    if not root.is_relative_to(REPO):
+        raise ProposalError(f"the game root {root} is outside the repository, so no proposal can change it")
+    return root.relative_to(REPO).as_posix()
+
+
 # The OBAAF commit this integration was reviewed against (integration spec, section 10).
 OBAAF_REVISION = "ef34304214923953cf7d67343b912385d4ce5906"
 # Expectrail's trust boundary, added to OBAAF's protected paths: a fix may never change what judges it.
 PROTECT = ["agents/**", "harness/**", "expectrail/**", "contracts/**", "specs/**", "tests/**", "bench/**",
            "bugs/**", "requirements*.txt"]
-DEFAULT_EDITABLE = ["player/**", "level/**", "game_singleplayer.tscn"]  # game-relative, as agents/matrix.py
+DEFAULT_EDITABLE = list(adapters.get("godot").editable)  # game-relative, as agents/matrix.py
 # Fixed identity and dates, so the same inputs always give the same commits and trees.
 _GIT_ENV = {"GIT_AUTHOR_NAME": "expectrail", "GIT_AUTHOR_EMAIL": "expectrail@invalid",
             "GIT_COMMITTER_NAME": "expectrail", "GIT_COMMITTER_EMAIL": "expectrail@invalid",
@@ -59,6 +72,9 @@ class ProposalError(Exception):
     """The candidate could not be turned into a proposal (it does not apply, or changes nothing)."""
 
 
+GAME_ROOT = game_root("godot")
+
+
 def _git(args: list[str], cwd: Path) -> str:
     env = dict(os.environ, **_GIT_ENV, HOME=str(cwd))  # no user config, hooks or credentials
     proc = subprocess.run(["git", "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", *args],
@@ -68,7 +84,7 @@ def _git(args: list[str], cwd: Path) -> str:
     return proc.stdout
 
 
-def materialize_base(work: Path, seeds: list[Path], source: Path = REPO) -> dict:
+def materialize_base(work: Path, seeds: list[Path], source: Path = REPO, adapter: str | Adapter = "godot") -> dict:
     """A disposable repository: ``source``'s committed HEAD, with the seeded defect committed on top.
 
     Benchmark lineage only: the base is a fixture, never the clean main branch, and nothing here is
@@ -81,7 +97,7 @@ def materialize_base(work: Path, seeds: list[Path], source: Path = REPO) -> dict
     _git(["clone", "--quiet", "--depth", "1", "--no-hardlinks", f"file://{source.resolve()}", str(base)], work)
     head = _git(["rev-parse", "HEAD"], base).strip()
     if seeds:
-        apply_patches(base / GAME_ROOT, seeds)
+        apply_patches(base / game_root(adapter), seeds)
         _git(["add", "--all"], base)
         _git(["commit", "--quiet", "--no-verify", "-m", "seeded defect (benchmark fixture)"], base)
     return {"path": str(base), "sourceCommit": head, "commit": _git(["rev-parse", "HEAD"], base).strip(),
@@ -89,24 +105,26 @@ def materialize_base(work: Path, seeds: list[Path], source: Path = REPO) -> dict
             "seedPatchSha256": [sha256_file(p) for p in seeds]}
 
 
-def normalize(candidate: Path, seeds: list[Path], out: Path, source: Path = REPO) -> dict:
+def normalize(candidate: Path, seeds: list[Path], out: Path, source: Path = REPO,
+              adapter: str | Adapter = "godot") -> dict:
     """Write ``out/proposal/`` (patch.diff, meta.json) for a game-relative candidate; return its record."""
     out = Path(out).resolve()
     candidate = Path(candidate).resolve()
     out.mkdir(parents=True, exist_ok=True)
-    base = materialize_base(out, seeds, source)
+    base = materialize_base(out, seeds, source, adapter)
     cand = out / "candidate-tree"
     if cand.exists():
         shutil.rmtree(cand)
     _git(["clone", "--quiet", "--no-hardlinks", base["path"], str(cand)], out)
     try:
-        apply_patches(cand / GAME_ROOT, [candidate])
+        apply_patches(cand / game_root(adapter), [candidate])
     except (subprocess.CalledProcessError, OSError) as exc:
         raise ProposalError(f"the candidate does not apply to the seeded game: {exc}") from exc
-    return bundle_from_tree(cand, base, out, {"candidatePatchSha256": sha256_file(candidate)})
+    return bundle_from_tree(cand, base, out, {"candidatePatchSha256": sha256_file(candidate)}, adapter)
 
 
-def bundle_from_tree(cand: Path, base: dict, out: Path, extra: dict | None = None) -> dict:
+def bundle_from_tree(cand: Path, base: dict, out: Path, extra: dict | None = None,
+                     adapter: str | Adapter = "godot") -> dict:
     """The proposal for whatever changed in ``cand`` (a clone of the base) since the base commit."""
     _git(["add", "--all"], cand)
     diff = _git(["diff", "--cached", "--no-renames", "--full-index", "--binary", base["commit"]], cand)
@@ -126,7 +144,7 @@ def bundle_from_tree(cand: Path, base: dict, out: Path, extra: dict | None = Non
         "format": "expectrail.proposal-normalization/v0",
         "mode": "audit",  # Phase A: reporting only, authorizes nothing
         "lineage": "benchmark",
-        "gameRoot": GAME_ROOT,
+        "gameRoot": game_root(adapter),
         "base": {k: v for k, v in base.items() if k != "path"},
         "candidateTree": tree,
         "patchFileSha256": sha256_file(proposal / "patch.diff"),
@@ -160,13 +178,13 @@ def changed_paths(diff: str) -> list[str]:
     return sorted(paths)
 
 
-def editable_problems(paths: list[str], editable: list[str]) -> list[str]:
+def editable_problems(paths: list[str], editable: list[str], root: str = GAME_ROOT) -> list[str]:
     """Expectrail's own rule: every changed path under the game root, matching an editable glob."""
     problems = []
-    prefix = GAME_ROOT + "/"
+    prefix = root + "/"
     for path in paths:
         if not path.startswith(prefix):
-            problems.append(f"{path} is outside the game root {GAME_ROOT}/")
+            problems.append(f"{path} is outside the game root {root}/")
         elif not path_allowed(path[len(prefix):], editable):
             problems.append(f"{path} is not in the editable files ({', '.join(editable)})")
     return problems
@@ -196,11 +214,15 @@ def obaaf_check(bundle: Path, base: Path, protect: list[str] | None = None, dige
     return report
 
 
-def check(out: Path, record: dict, editable: list[str] | None = None) -> dict:
-    """Both rule sets over the bundle in ``out``; writes and returns ``out/proposal-check.json``."""
+def check(out: Path, record: dict, editable: list[str] | None = None, adapter: str | Adapter = "godot") -> dict:
+    """Both rule sets over the bundle in ``out``; writes and returns ``out/proposal-check.json``.
+
+    The game root is the one the record was normalized against; ``editable`` defaults to the
+    adapter's default editable files."""
     out = Path(out).resolve()
     obaaf = obaaf_check(out / "proposal", out / "base", digest=record["bundleDigest"])
-    own = editable_problems(record["changedPaths"], editable or DEFAULT_EDITABLE)
+    own = editable_problems(record["changedPaths"], editable or list(adapters.resolve(adapter).editable),
+                            record.get("gameRoot") or game_root(adapter))
     result = {
         "format": "expectrail.proposal-check/v0",
         "mode": "audit",

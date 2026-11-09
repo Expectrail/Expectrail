@@ -14,6 +14,16 @@ class ContractsTest(unittest.TestCase):
                 doc = json.loads((EXAMPLES / f"{kind}.json").read_text())
                 self.assertEqual(validate(doc), kind)
 
+    def test_a_replay_names_one_of_the_engines_an_adapter_can_write(self):
+        replay = json.loads((EXAMPLES / "replay.json").read_text())
+        for name in ("godot", "unity", "web", "chromium"):
+            with self.subTest(engine=name):
+                replay["engine"]["name"] = name
+                self.assertEqual(validate(replay), "replay")
+        replay["engine"]["name"] = "unreal"
+        with self.assertRaises(ContractError):
+            validate(replay)
+
     def test_invalid_documents_are_rejected(self):
         spec = json.loads((EXAMPLES / "test-spec.json").read_text())
         spec["assertion"] = {"type": "looks-fine", "object": "player"}
