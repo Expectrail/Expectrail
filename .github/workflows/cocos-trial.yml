@@ -147,15 +147,43 @@ jobs:
           ann notice "cocos --version" "$(node dist/cli.js --version 2>&1 | tail -3 | tr '\n' ' ')"
           ann notice "cocos --help" "$(node dist/cli.js --help 2>&1 | grep -E '^\s+[a-z-]+ ' | head -14 | sed 's/  */ /g' | cut -c1-60 | tr '\n' ';')"
 
+      # Run 42676936206: with no X server both builds failed while loading the shader compiler
+      # (src/core/assets/effect-compiler/shdc-lib.js creates a headless-gl context on require; ANGLE
+      # said "Could not open the default X display"). Approach 3, on fresh projects before anything
+      # runs under Xvfb: ask ANGLE for a backend that needs no display.
+      - name: Probe C display-free ANGLE backends
+        id: probe_c
+        if: ${{ !cancelled() && steps.cli.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          . "$RUNNER_TEMP/steps.sh"
+          rc=0
+          for plat in swiftshader vulkan; do
+            P="$RUNNER_TEMP/projects/probe-$plat"
+            node "$CLI/dist/cli.js" --no-interactive create --project "$P" --type 2d > /dev/null 2>&1 < /dev/null
+            step "display-free build ANGLE_DEFAULT_PLATFORM=$plat" "probe-$plat.log" env -u DISPLAY ANGLE_DEFAULT_PLATFORM=$plat node "$CLI/dist/cli.js" --no-interactive build --project "$P" --platform web-mobile || rc=1
+          done
+          exit $rc
+
+      # Approach 2: the same builds under Xvfb, a virtual X server with no desktop (the game
+      # harness already runs Godot this way).
+      - name: Xvfb and Mesa
+        id: xvfb
+        if: ${{ !cancelled() && steps.cli.outcome == 'success' }}
+        run: |
+          . "$RUNNER_TEMP/steps.sh"
+          step "apt-get install xvfb xauth libgl1-mesa-dri" apt.log bash -c 'sudo apt-get update -q && sudo apt-get install -y -q xvfb xauth libgl1-mesa-dri'
+          ann notice "Xvfb and Mesa" "$(dpkg-query -W -f '${Package} ${Version}; ' xvfb libgl1-mesa-dri libglx-mesa0 2>/dev/null)"
+
       - name: Trial A empty 2D project
         id: trial_a
-        if: ${{ !cancelled() && steps.cli.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.xvfb.outcome == 'success' }}
         run: |
           . "$RUNNER_TEMP/steps.sh"
           P="$RUNNER_TEMP/projects/empty-2d"
           step "cocos create --type 2d" create.log node "$CLI/dist/cli.js" --no-interactive create --project "$P" --type 2d
           ann notice "Created project files" "$(cd "$P" && find . -type f | sort | head -20 | tr '\n' ' ')"
-          step "build empty-2d web-mobile" build-empty.log node "$CLI/dist/cli.js" --no-interactive build --project "$P" --platform web-mobile
+          step "build empty-2d web-mobile under Xvfb" build-empty.log xvfb-run -a -s "-screen 0 1280x720x24" node "$CLI/dist/cli.js" --no-interactive build --project "$P" --platform web-mobile
           idx=$(find "$P/build" -name index.html | head -1)
           [ -n "$idx" ] || { ann error "empty-2d output" "no index.html under $P/build: $(find "$P/build" -maxdepth 2 | head -20 | tr '\n' ' ')"; exit 1; }
           out=$(dirname "$idx")
@@ -164,14 +192,14 @@ jobs:
 
       - name: Trial B fixture 2D project
         id: trial_b
-        if: ${{ !cancelled() && steps.cli.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.xvfb.outcome == 'success' }}
         run: |
           . "$RUNNER_TEMP/steps.sh"
           P="$RUNNER_TEMP/projects/fixture-2d"
           # tests/fixtures/projects/asset-operation: the project the CLI's build E2E test uses, with a 2D scene.
           cp -r "$CLI/tests/fixtures/projects/asset-operation" "$P"
           ann notice "Fixture project" "$(cd "$P" && find . -type f -not -name '*.meta' | sort | head -20 | tr '\n' ' ')"
-          step "build fixture-2d web-mobile" build-fixture.log node "$CLI/dist/cli.js" --no-interactive build --project "$P" --platform web-mobile
+          step "build fixture-2d web-mobile under Xvfb" build-fixture.log xvfb-run -a -s "-screen 0 1280x720x24" node "$CLI/dist/cli.js" --no-interactive build --project "$P" --platform web-mobile
           idx=$(find "$P/build" -name index.html | head -1)
           [ -n "$idx" ] || { ann error "fixture-2d output" "no index.html under $P/build: $(find "$P/build" -maxdepth 2 | head -20 | tr '\n' ' ')"; exit 1; }
           out=$(dirname "$idx")
@@ -198,6 +226,7 @@ jobs:
           from PIL import Image
           from playwright.sync_api import sync_playwright
           root, name, shot = sys.argv[1], sys.argv[2], sys.argv[3]
+          extra = sys.argv[4:]
           class Quiet(http.server.SimpleHTTPRequestHandler):
               def log_message(self, *args): pass
           srv = http.server.ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(Quiet, directory=root))
@@ -205,7 +234,7 @@ jobs:
           url = f'http://127.0.0.1:{srv.server_port}/index.html'
           console, errors, failed = [], [], []
           with sync_playwright() as p:
-              browser = p.chromium.launch(args=CHROMIUM_ARGS)
+              browser = p.chromium.launch(args=CHROMIUM_ARGS + extra)
               page = browser.new_page(viewport={'width': 960, 'height': 640})
               page.on('console', lambda m: console.append(f'{m.type}: {m.text}'))
               page.on('pageerror', lambda e: errors.append(str(e)))
@@ -228,7 +257,7 @@ jobs:
           img = Image.open(BytesIO(png)).convert('RGB')
           colors = img.getcolors(1 << 24)
           top = max(colors)[0]
-          state.update(load_s=load_s, colours=len(colors), non_background=round(1 - top / (img.width * img.height), 4),
+          state.update(args='harness' + (' + ' + ' '.join(extra) if extra else ''), load_s=load_s, colours=len(colors), non_background=round(1 - top / (img.width * img.height), 4),
                        console_errors=sum(1 for c in console if c.startswith('error')), page_errors=len(errors), failed_requests=failed[:5])
           print(json.dumps(state))
           ann = lambda kind, title, msg: print(f'::{kind} title={title}::' + msg.replace('%', '%25').replace('\r', '').replace('\n', '%0A')[:3000])
@@ -245,7 +274,10 @@ jobs:
           for pair in "empty-2d:${OUT_EMPTY:-}" "fixture-2d:${OUT_FIXTURE:-}"; do
             name=${pair%%:*}; dir=${pair#*:}
             [ -n "$dir" ] || continue
-            step "Chromium load $name" "smoke-$name.log" python "$RUNNER_TEMP/smoke.py" "$dir" "$name" "$RUNNER_TEMP/$name.png" || rc=1
+            if ! step "Chromium load $name" "smoke-$name.log" python "$RUNNER_TEMP/smoke.py" "$dir" "$name" "$RUNNER_TEMP/$name.png"; then
+              # The harness passes --disable-gpu; recent Chromium gives WebGL on SwiftShader only when asked.
+              step "Chromium load $name with SwiftShader" "smoke-$name-ss.log" python "$RUNNER_TEMP/smoke.py" "$dir" "$name-swiftshader" "$RUNNER_TEMP/$name-ss.png" --use-angle=swiftshader --enable-unsafe-swiftshader || rc=1
+            fi
           done
           exit $rc
 
