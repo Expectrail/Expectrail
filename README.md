@@ -2,9 +2,9 @@
 
 **An AI coding agent says it fixed the bug. Expectrail plays the game and watches to find out.**
 
-[Demo video](https://youtu.be/BlWOiweL8Lc) · [expectrail.com](https://expectrail.com) ·
-[Interactive demo](https://expectrail.com/demo/) ·
-[A rejected fix, frame by frame](https://expectrail.com/review/sinking-fix/)
+[Demo video](https://youtu.be/BlWOiweL8Lc) · [expectrail.tech](https://expectrail.tech) ·
+[Interactive demo](https://expectrail.tech/demo/) ·
+[A rejected fix, frame by frame](https://expectrail.tech/review/sinking-fix/)
 
 ![Two fixes for the same bug, frame 5 of each replay. Left: Muse Code's fix, the robot standing on the floor's edge, accepted. Right: a fix that only looks right, the robot drawn with its legs inside the floor, rejected.](docs/assets/frames/fix-pair.png)
 
@@ -23,7 +23,7 @@ drawn here at the floor's edge, the verdicts are the runs' own.
 >    shown the before-and-after screenshots, accepts both. Expectrail rejects the fake one, because
 >    SAM 3.1 sees the robot's feet below the floor's edge.
 >    [Real frames, before and after](docs/review/sinking-fix/)
->    ([live page](https://expectrail.com/review/sinking-fix/)); a real fix from a live overnight run,
+>    ([live page](https://expectrail.tech/review/sinking-fix/)); a real fix from a live overnight run,
 >    failing before and passing after: [report-first-run-1](docs/review/report-first-run-1/).
 > 2. **The same question, asked fifteen times.** Seven fixes that only look right and eight correct
 >    ones, in three runs. **Expectrail with SAM accepted all 8 correct fixes and none of the 7, every
@@ -35,7 +35,7 @@ drawn here at the floor's edge, the verdicts are the runs' own.
 >    is no blind catch on a real-world bug yet; it replays fixed routes and does not explore. Every
 >    number has the CI run behind it. [Results](#results) ·
 >    [What Expectrail cannot do yet](#what-expectrail-cannot-do-yet).
-> 4. **Try it in your browser, no keys:** [the interactive demo](https://expectrail.com/demo/), twelve
+> 4. **Try it in your browser, no keys:** [the interactive demo](https://expectrail.tech/demo/), twelve
 >    cases from the benchmark, each with its captured clip, its checks and the verdict. Or run the
 >    loop yourself in seconds: `python3 -m pip install -r requirements-dev.txt`, then
 >    `python3 -m agents.loop --out runs/loop --mode offline --runs 1` (fixtures, labelled as such;
@@ -570,7 +570,7 @@ Known limits in more detail, and what we would build next: [docs/future-work.md]
 
 ## Interactive demo
 
-The case explorer and audit vault, at [expectrail.com/demo/](https://expectrail.com/demo/) (source:
+The case explorer and audit vault, at [expectrail.tech/demo/](https://expectrail.tech/demo/) (source:
 [`docs/demo/index.html`](docs/demo/index.html)). Pick a seeded bug or a rejected fix, replay the
 captured clip with the clean floor drawn over it, and read the checks, the patch and the verdict
 beside it. Viewing it calls no API; the page is self-contained and needs no CDN.
