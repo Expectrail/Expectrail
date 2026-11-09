@@ -1,6 +1,7 @@
 """The engine-adapter boundary (harness/adapters.py): one run signature, the Godot digest unchanged."""
 from __future__ import annotations
 
+import json
 import subprocess
 import tempfile
 import unittest
@@ -179,6 +180,61 @@ class WebReplayTest(unittest.TestCase):
                              (Path(tmp) / "adapter" / "trace.json").read_bytes())
         self.assertEqual(through, direct)
         self.assertEqual(through["engine"]["name"], adapters.get("web").engine)
+
+
+def fake_godot(route, out, patch=None, game=None, fps=60, godot=None, patches=None, force_import=False,
+               capture_frames=True):
+    """harness.run.run's signature and outputs (frames, trace.json, replay.json), with no Godot: the
+    robot stands 10 px lower for each patch applied."""
+    out = Path(out)
+    (out / "frames").mkdir(parents=True, exist_ok=True)
+    y = 452 + 10 * len(patches or [])
+    rows = [{"tick": t, "player": [210.0, float(y)], "view": [1, 0, 0, 1, t, 0]} for t in range(4)]
+    for n in range(2):
+        (out / "frames" / f"f{n:08d}.png").write_text(f"frame {n} y {y}")
+    (out / "trace.json").write_text(json.dumps({"format": "expectrail.trace/v0", "rows": rows}))
+    replay = {"frameSha256": [adapters.sha256_file(f) for f in sorted((out / "frames").glob("f*.png"))],
+              "trace": {"sha256": adapters.sha256_file(out / "trace.json")}, "fps": fps}
+    (out / "replay.json").write_text(json.dumps(replay))
+    return replay
+
+
+class HarnessToolDefaultsTest(unittest.TestCase):
+    """Without --adapter, replay_check and check_seeded replay the Godot game as they did."""
+
+    def test_replay_check_defaults_to_godot(self):
+        import io
+        from contextlib import redirect_stdout
+
+        from harness import replay_check
+
+        with tempfile.TemporaryDirectory() as tmp, redirect_stdout(io.StringIO()) as printed, \
+                mock.patch.object(godot_harness, "run", side_effect=fake_godot) as run:
+            code = replay_check.main(["--route", "harness/routes/smoke.json", "--runs", "2", "--out", tmp])
+            summary = json.loads((Path(tmp) / "summary.json").read_text())
+        self.assertEqual(code, 0)
+        self.assertEqual(printed.getvalue().splitlines(), ["run 0: reference (2 frames)", "run 1: identical",
+                                                           "2 of 2 runs identical to the first"])
+        self.assertEqual(summary, {"route": "harness/routes/smoke.json", "patches": None, "runs": 2, "identical": 2})
+        self.assertEqual(run.call_args.kwargs, {"patches": None, "game": None, "fps": 60, "capture_frames": True})
+
+    def test_check_seeded_defaults_to_the_godot_bugs_and_the_smoke_route(self):
+        import io
+        from contextlib import redirect_stdout
+
+        from harness import check_seeded
+
+        with tempfile.TemporaryDirectory() as tmp, redirect_stdout(io.StringIO()), \
+                mock.patch.object(godot_harness, "run", side_effect=fake_godot) as run:
+            code = check_seeded.main(["--out", tmp, "--only", "layering/v1", "sinking/v2"])
+            summary = json.loads((Path(tmp) / "summary.json").read_text())
+        self.assertEqual(code, 0)
+        self.assertEqual(run.call_args_list[0].args[0], REPO / "harness" / "routes" / "smoke.json")
+        self.assertEqual(summary, {"format": "expectrail.seeded-check/v0", "route": "smoke.json", "ok": True, "variants": [
+            {"variant": "layering/v1", "patch": "bugs/layering/v1.patch", "frames": 2, "framesDifferingFromClean": 2,
+             "traceDiffersFromClean": True, "visible": True},
+            {"variant": "sinking/v2", "patch": "bugs/sinking/v2.patch", "frames": 2, "framesDifferingFromClean": 2,
+             "traceDiffersFromClean": True, "visible": True}]})
 
 
 def unity_shaped(root: Path) -> adapters.Adapter:

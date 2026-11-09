@@ -134,6 +134,48 @@ class SharedVerifierTest(unittest.TestCase):
                                           adapter=toy.NAME).startswith("You are fixing a lamp bug."))
 
 
+class HarnessToolsTest(unittest.TestCase):
+    """harness.replay_check and harness.check_seeded take the new adapter with --adapter."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        adapters.register(toy.make(self.root))
+
+    def tearDown(self):
+        adapters.unregister(toy.NAME)
+        self.tmp.cleanup()
+
+    def test_replay_check(self):
+        import io
+        from contextlib import redirect_stdout
+
+        from harness import replay_check
+
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = replay_check.main(["--adapter", toy.NAME, "--route", str(self.root / "routes" / "evening.json"),
+                                      "--runs", "3", "--patch", str(self.root / "bugs" / "dark" / "v1.patch"),
+                                      "--out", str(self.root / "replays")])
+        self.assertEqual(code, 0, out.getvalue())
+        self.assertIn("3 of 3 runs identical to the first", out.getvalue())
+        self.assertEqual(json.loads((self.root / "replays" / "summary.json").read_text())["identical"], 3)
+
+    def test_check_seeded_finds_the_adapter_s_bugs_and_its_default_route(self):
+        import io
+        from contextlib import redirect_stdout
+
+        from harness import check_seeded
+
+        with redirect_stdout(io.StringIO()):
+            code = check_seeded.main(["--adapter", toy.NAME, "--out", str(self.root / "seeded")])
+        self.assertEqual(code, 0)
+        summary = json.loads((self.root / "seeded" / "summary.json").read_text())
+        self.assertEqual(summary["route"], "evening.json")
+        self.assertEqual([(v["variant"], v["frames"], v["framesDifferingFromClean"], v["visible"])
+                          for v in summary["variants"]], [("dark/v1", 4, 4, True)])
+
+
 class WebOnTheSharedVerifierTest(unittest.TestCase):
     def test_the_web_bench_judges_with_the_shared_judge_and_the_page_s_pieces(self):
         from agents import web_bench
@@ -147,6 +189,18 @@ class WebOnTheSharedVerifierTest(unittest.TestCase):
                                       layout.behaviour))
         self.assertEqual(first.kwargs, {"label": "layout", "vision": None})
         self.assertIs(second.kwargs["vision"], web_bench.SAM)
+
+    def test_the_web_tools_take_only_adapters_that_write_the_web_trace(self):
+        import io
+        from contextlib import redirect_stderr
+
+        from agents import web_bench, web_fix
+
+        self.assertEqual(web_bench.web_adapters(), ["web"])
+        for main in (web_bench.main, web_fix.main):
+            with self.subTest(tool=main.__module__), redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
+                main(["--list", "--adapter", "godot"])
+            self.assertEqual(caught.exception.code, 2)
 
 
 if __name__ == "__main__":

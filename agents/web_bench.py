@@ -18,7 +18,11 @@ from ``$EXPECTRAIL_HELDOUT_DIR/web/manifest.json`` (patches only, ids and counts
 else).
 
     python3 -m agents.web_bench --list --set dev
-    python3 -m agents.web_bench --variant dev/layering/v1 --out runs/web-bench
+    python3 -m agents.web_bench --variant dev/layering/v1 --out runs/web-bench [--adapter web]
+
+``--adapter`` names the engine that replays the page (harness/adapters.py). It takes any registered
+adapter whose replays write the web trace (``expectrail.web-trace/v0``), since every check here reads
+that trace; today that is ``web``, Chromium through Playwright.
 """
 from __future__ import annotations
 
@@ -34,8 +38,10 @@ from agents.domain_verifier import Vision, worst
 from agents.heldout_bench import CLEAN, DEV_PREFIX, RESULTS, annotation, caught, public_error
 from expectrail.contracts import load
 from expectrail.evaluator import evaluate
+from harness import adapters
 from harness.run import REPO
 from harness.web import layout
+from harness.web.run import TRACE_FORMAT
 
 APP = REPO / "apps" / "checkout"
 ROUTES = sorted((REPO / "harness" / "web" / "routes").glob("*.json"))
@@ -71,6 +77,11 @@ def held_out_variants() -> dict[str, Path]:
 
 def set_ids(which: str) -> list[str]:
     return [CLEAN] + sorted(dev_variants() if which == "dev" else held_out_variants())
+
+
+def web_adapters() -> list[str]:
+    """The registered adapters whose replays write the web trace these checks read."""
+    return [n for n in adapters.names() if adapters.get(n).trace_format == TRACE_FORMAT]
 
 
 def sam_on() -> bool:
@@ -117,14 +128,15 @@ def _sam_judge(trace: dict, replay_sha: str, run_dir: Path, specs: list[dict]) -
 SAM = Vision(label="sam", judge=_sam_judge, names=_sam_names)
 
 
-def judge_route(route: Path, patches: list[Path], run_dir: Path, specs: list[dict], use_sam: bool) -> dict[str, str]:
+def judge_route(route: Path, patches: list[Path], run_dir: Path, specs: list[dict], use_sam: bool,
+                adapter: str = "web") -> dict[str, str]:
     """One route on the page, judged by the shared verifier's judge: every spec on the layout log
     (``layout``), the order (``behaviour``) and, with SAM on, SAM's checks."""
-    return domain_verifier.judge_route("web", route, patches, run_dir, specs, layout.layout_observations,
+    return domain_verifier.judge_route(adapter, route, patches, run_dir, specs, layout.layout_observations,
                                        layout.behaviour, label="layout", vision=SAM if use_sam else None)
 
 
-def bench(key: str, out: Path) -> dict:
+def bench(key: str, out: Path, adapter: str = "web") -> dict:
     dev, held = dev_variants(), held_out_variants()
     if key == CLEAN:
         patches: list[Path] = []
@@ -140,7 +152,8 @@ def bench(key: str, out: Path) -> dict:
 
     before = sam_usage()
     work = out / key.replace("/", "_")
-    per_route = [{"route": r.stem, "checks": judge_route(r, patches, work / r.stem, specs, use_sam)} for r in ROUTES]
+    per_route = [{"route": r.stem, "checks": judge_route(r, patches, work / r.stem, specs, use_sam, adapter=adapter)}
+                 for r in ROUTES]
     errors: list[str] = []
     for row in per_route:
         path = work / row["route"] / ERRORS_FILE
@@ -258,6 +271,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--set", choices=("dev", "held-out"), default="dev")
     p.add_argument("--variant", help="clean, dev/<family>/vN or a held-out <family>/<id>")
     p.add_argument("--out", type=Path, default=REPO / "runs" / "web-bench")
+    p.add_argument("--adapter", choices=web_adapters(), default="web",
+                   help="the engine that replays the page (default web: Chromium through Playwright)")
     args = p.parse_args(argv)
     if args.list:
         print(json.dumps(set_ids(args.set)))
@@ -265,7 +280,7 @@ def main(argv: list[str] | None = None) -> int:
     if not args.variant:
         p.error("--variant or --list")
     start = time.monotonic()
-    doc = bench(args.variant, args.out)
+    doc = bench(args.variant, args.out, args.adapter)
     print(annotation(doc))
     if args.variant == CLEAN or args.variant.startswith(DEV_PREFIX):
         for line in detail_lines(doc, args.out):
