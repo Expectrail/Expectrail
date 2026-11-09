@@ -24,7 +24,7 @@ until the pins are set again, which is a change to the registration and has to b
 
 ### Reproducing the bench
 
-Since November 9, 2026, the registration describes commit `c169a5e`, the hackathon submission, and
+Since November 9, 2026, the registration describes commit `c169a5e`, the baseline, and
 main may change the files it pins. Judged runs of the **Mutation bench**, **Mutation fix** and
 **Mutation record** workflows still start from main, but check out that commit, so the code they run
 is the code the pins describe. On main itself, `agents/mutate_game.py` refuses a judged run and names

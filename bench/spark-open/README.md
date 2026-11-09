@@ -13,7 +13,7 @@ the same checks in the same runs, for comparison. Each run's folder is written b
 
 **What served it.** `meta-models/muse-spark-open` on inference.baseten.co, 6 calls a run, no errors,
 reported as served by that id. The key lists 20 models, and that is the only Muse or Spark one; the
-id the hackathon named (`meta-models/muse-spark-open-1026`) is not listed, so the code's default is
+id an earlier guide named (`meta-models/muse-spark-open-1026`) is not listed, so the code's default is
 now the listed id.
 
 **The first run, and the prompt change.** Spark Open's ground draft said the robot never crosses the

@@ -2,7 +2,7 @@
 
 Its pins are the sha256 of the code that judged the runs (bench/mutation/preregistration.json). The
 bench is recorded, so main may change those files; the registration now describes commit c169a5e,
-the hackathon submission, which judged runs check out. These tests make sure the record itself is
+the baseline, which judged runs check out. These tests make sure the record itself is
 untouched and still matches the code at that commit, and that main refuses with a message naming the
 commit rather than judging anything with changed code.
 """

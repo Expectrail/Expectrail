@@ -5,7 +5,7 @@ evidence (the sinking bugs are the exception: docs/report-first.md). What Expect
 is the other half: telling a real fix from one that only looks right. This puts candidate fixes with a known answer in front of three judges and
 counts their mistakes:
 
-  - Expectrail's verifier with SAM on (the submission's setting);
+  - Expectrail's verifier with SAM on (the baseline's setting);
   - the same verifier with SAM off (position log and gameplay only);
   - Muse Code judging from screenshots alone (agents.muse_judge): five frames of the bugged run
     and five of the candidate's, on the same route, and a one-line bug report in plain English;

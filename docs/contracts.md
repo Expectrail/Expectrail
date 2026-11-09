@@ -8,7 +8,7 @@ schema in [`contracts/`](../contracts) and a worked example in
 Agree changes in the team channel first, then change the schema, the example and the code in one
 pull request. Every document starts with `"format": "expectrail.<kind>/v0"`, and only the current
 IDs are accepted. The route format ID from before the October 30 rename was dropped on November 9,
-once the discovery freeze and the mutation bench's registration were retired to the submission
+once the discovery freeze and the mutation bench's registration were retired to the baseline
 commit (`c169a5e`), where it is still accepted.
 
 ```
