@@ -83,8 +83,12 @@ def missing_decisions(doc: dict) -> list[str]:
     return [f for f in HUMAN_FIELDS if _get(doc, f) is None or str(_get(doc, f)).strip() == ""]
 
 
-def load_preregistration(path: Path | None = None) -> dict:
-    """The pre-registration, refused while a person's decision is missing or a pin has moved."""
+def load_preregistration(path: Path | None = None, root: Path = REPO) -> dict:
+    """The pre-registration, refused while a person's decision is missing or a pin has moved.
+
+    The registration is held at the tag `submission` (c169a5e): judged runs check that tag out, so their
+    pins match. On main the pinned files may change, and then this refuses, naming the tag. `root` is the
+    checkout whose files are compared with the pins (tests pass an extract of the tag)."""
     path = path or PREREGISTRATION
     doc = json.loads(Path(path).read_text(encoding="utf-8"))
     missing = missing_decisions(doc)
@@ -100,15 +104,23 @@ def load_preregistration(path: Path | None = None) -> dict:
         raise PreregistrationError(f"{path}: {problem}")
     if not _whole(doc["agreement"]["minimum"]) or doc["agreement"]["minimum"] < MIN_AGREEMENT:
         raise PreregistrationError(f"{path}: agreement.minimum must be at least {MIN_AGREEMENT} (#127)")
-    moved = sorted(k for k, v in current_pins().items() if doc["pins"].get(k) != v)
+    moved = sorted(k for k, v in current_pins(root).items() if doc["pins"].get(k) != v)
     if moved:
-        raise PreregistrationError(f"{path}: pinned material changed since registration: {', '.join(moved)}")
+        raise PreregistrationError(
+            f"{path}: pinned material changed since registration: {', '.join(moved)}. The mutation bench is "
+            f"registered against the tag {REGISTERED_TAG} ({REGISTERED_COMMIT}); judged runs check it out "
+            "(bench/mutation/README.md, Reproducing the bench).")
     doc["sha256"] = hashlib.sha256(Path(path).read_bytes()).hexdigest()
     return doc
 
 
-def _sha(rel: str) -> str:
-    return hashlib.sha256((REPO / rel).read_bytes()).hexdigest()
+def _sha(rel: str, root: Path = REPO) -> str:
+    return hashlib.sha256((root / rel).read_bytes()).hexdigest()
+
+
+# The commit the registration's pins describe. Main moves on; the bench reruns here.
+REGISTERED_TAG = "submission"
+REGISTERED_COMMIT = "c169a5e0da304773587304ed47bc8aabcec80da7"
 
 
 # What a judged result depends on. If one of these moves after registration, the run refuses.
@@ -123,9 +135,9 @@ PINNED_TREES = ("agents/fixtures/operators", "bugs/physics-fall-through", "bugs/
                 "bugs/layering")
 
 
-def current_pins() -> dict:
-    return {"gameTree": tree_digest(GAME), **{rel: _sha(rel) for rel in PINNED},
-            **{rel: tree_digest(REPO / rel) for rel in PINNED_TREES}}
+def current_pins(root: Path = REPO) -> dict:
+    return {"gameTree": tree_digest(root / GAME.relative_to(REPO)), **{rel: _sha(rel, root) for rel in PINNED},
+            **{rel: tree_digest(root / rel) for rel in PINNED_TREES}}
 
 
 def _fmt(value: float) -> str:

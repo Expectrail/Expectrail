@@ -1,7 +1,7 @@
 {
   "format": "expectrail.route/v0",
   "name": "traversal",
-  "description": "Ascend onto elevated platforms, cross upper terrain with layering checks, and stop. Six seconds at 60 ticks per second.",
+  "description": "Ascend onto elevated platforms, cross upper terrain with layering checks, and stop. Three seconds at 120 ticks per second.",
   "ticks": 360,
   "seed": 1,
   "events": [
