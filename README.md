@@ -265,15 +265,15 @@ bench generates its own ([`bench/mutation/`](bench/mutation/README.md)).
 
 ### Reproducing these results
 
-The hackathon submission is commit `c169a5e`, tagged `submission`. Each result above links the CI
-run that produced it, or the bench record that lists its runs, and every run page shows the commit
-it ran at. To rerun a result on the code that produced it, check out that commit or the tag. The
-mutation bench's workflows check out the tag themselves for judged runs. Runs that call Muse or SAM
+The hackathon submission is commit `c169a5e`. Each result above links the CI run that produced it,
+or the bench record that lists its runs, and every run page shows the commit it ran at. To rerun a
+result on the code that produced it, check out that commit. The mutation bench's workflows check out
+the submission commit themselves for judged runs. Runs that call Muse or SAM
 live do not reproduce bit for bit, and the spend figure comes from the team's usage export, not from
 a run.
 
 Main is no longer frozen. Since November 9, 2026, discovery's freeze 2 and the mutation bench's
-pre-registration are kept as records and checked against the tag, so the files they once pinned
+pre-registration are kept as records and checked against the submission commit, so the files they once pinned
 can change on main.
 
 ### Who catches a fix that only looks right

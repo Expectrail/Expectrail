@@ -24,12 +24,12 @@ until the pins are set again, which is a change to the registration and has to b
 
 ### Reproducing the bench
 
-Since November 9, 2026, the registration is held at the tag `submission` (commit `c169a5e`), and main
-may change the files it pins. Judged runs of the **Mutation bench**, **Mutation fix** and **Mutation
-record** workflows still start from main, but check out the tag, so the code they run is the code the
-pins describe. On main itself, `agents/mutate_game.py` refuses a judged run and names the tag.
-`tests/test_mutation_registration.py` checks that the registration file is unchanged and that it still
-loads against an extract of the tag. Rehearsals are unchanged: they run the branch they start from.
+Since November 9, 2026, the registration describes commit `c169a5e`, the hackathon submission, and
+main may change the files it pins. Judged runs of the **Mutation bench**, **Mutation fix** and
+**Mutation record** workflows still start from main, but check out that commit, so the code they run
+is the code the pins describe. On main itself, `agents/mutate_game.py` refuses a judged run and names
+the commit. `tests/test_mutation_registration.py` checks that the registration file is unchanged and
+that it still loads against an extract of the commit. Rehearsals are unchanged: they run the branch they start from.
 
 ## Results
 

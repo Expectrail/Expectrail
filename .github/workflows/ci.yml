@@ -26,8 +26,8 @@ jobs:
         with:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt
-      - name: Fetch the submission tag (the discovery freeze and the mutation registration are checked against it)
-        run: git fetch --no-tags --depth=1 origin +refs/tags/submission:refs/tags/submission
+      - name: Fetch the submission commit (the discovery freeze and the mutation registration are checked against it)
+        run: git fetch --no-tags --depth=1 origin c169a5e0da304773587304ed47bc8aabcec80da7
       - run: python -m unittest discover -s tests -t . -v
       - name: Export scan of the public repository (keys and signing keys; private names are checked by private-scan.yml and on main)
         run: python -m agents.export_scan bench docs README.md apps --paths error

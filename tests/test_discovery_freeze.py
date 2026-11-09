@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from expectrail.discovery import freeze
-from tests import tagtree
+from tests import submission_commit
 
 REPO = Path(__file__).resolve().parents[1]
 FREEZE_TWO = "9af1f621c33ce4668eb8ad356a3220ea352d106595b0bc1b4cf877eead5e3053"
@@ -14,19 +14,19 @@ FREEZE_TWO = "9af1f621c33ce4668eb8ad356a3220ea352d106595b0bc1b4cf877eead5e3053"
 class FreezeTwoRecord(unittest.TestCase):
     """Freeze 2 was retired on November 9, 2026, after set 2's blind runs were recorded
     (docs/discovery.md, Set 2: blind runs 3 and 4). Discovery may change on main again; the record
-    stays, and must still describe the code at the tag `submission`, where those runs can be
-    reproduced. A new blind claim needs a new freeze and a new fresh set first."""
+    stays, and must still describe the code at commit c169a5e, the hackathon submission, where those
+    runs can be reproduced. A new blind claim needs a new freeze and a new fresh set first."""
 
     def test_the_record_is_kept(self):
         import json
         record = json.loads((REPO / freeze.FREEZE).read_text())
         self.assertEqual(record["sha256"], FREEZE_TWO)
 
-    @unittest.skipUnless(tagtree.tag_available(), "the submission tag is not fetched (CI fetches it)")
-    def test_the_record_holds_at_the_tag(self):
-        root = tagtree.extract([*freeze.FROZEN, freeze.GAME, freeze.FREEZE.as_posix()])
+    @unittest.skipUnless(submission_commit.available(), "the submission commit is not fetched (CI fetches it)")
+    def test_the_record_holds_at_the_submission(self):
+        root = submission_commit.extract([*freeze.FROZEN, freeze.GAME, freeze.FREEZE.as_posix()])
         ok, problems, digest = freeze.verify(root)
-        self.assertTrue(ok, f"freeze 2 no longer describes the code at the tag: {problems}")
+        self.assertTrue(ok, f"freeze 2 no longer describes the code at the submission commit: {problems}")
         self.assertEqual(digest, FREEZE_TWO)
 
 

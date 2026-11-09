@@ -253,9 +253,9 @@ new freeze (next).
   measurement.
 - **Freeze 2 retired, November 9, 2026.** Both runs on set 2 are recorded (below), so discovery's
   files may change again. `discovery/freeze.json` is kept as the record of what set 2 ran against,
-  and `tests/test_discovery_freeze.py` now checks it against the tag `submission` (c169a5e) instead
-  of main. `python -m expectrail.discovery.freeze verify` fails on main once a frozen file changes;
-  run it on the tag to check the record. The blind workflow verifies the freeze first, so it refuses
+  and `tests/test_discovery_freeze.py` now checks it against commit c169a5e, the hackathon
+  submission, instead of main. `python -m expectrail.discovery.freeze verify` fails on main once a
+  frozen file changes; run it on that commit to check the record. The blind workflow verifies the freeze first, so it refuses
   as soon as a frozen file changes, and set 2 has been seen, so a new blind claim needs a new freeze
   and a new fresh set.
 

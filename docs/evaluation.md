@@ -307,9 +307,9 @@ bugs separately from seeded ones, and discovery's advisory findings separately f
 decisions; every number on
 screen comes from `bench/` and reruns with one command.
 
-Rerun a result on the code that produced it: the hackathon submission is commit `c169a5e`, tagged
-`submission`, and each run page shows the commit that run used. The mutation bench's workflows
-check out the tag for judged runs, because its pre-registration describes the code there. Live
+Rerun a result on the code that produced it: the hackathon submission is commit `c169a5e`, and each
+run page shows the commit that run used. The mutation bench's workflows check out the submission
+commit for judged runs, because its pre-registration describes the code there. Live
 Muse and SAM calls do not reproduce bit for bit.
 
 ## Budget
