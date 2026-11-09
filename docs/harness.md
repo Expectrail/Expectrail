@@ -68,6 +68,43 @@ On a 2-core cloud container with no GPU (Mesa llvmpipe, LLVM 20), Godot 4.7.2:
 Not settled yet: the input driver for gamepad-style analog input (routes only press actions), and
 resetting mid-run (each run starts the game fresh, which takes a few seconds).
 
+## Flaky routes and baselines (November 9)
+
+Determinism was measured on one machine, so a failure seen once may not be a failure.
+`agents/stability.py` replays a route several times before a failure counts:
+
+```sh
+python3 -m agents.stability --route harness/routes/smoke.json \
+  --patch bugs/physics-fall-through/v1.patch --out runs/stability [--runs 3] [--record-baseline]
+```
+
+- It replays the route 3 times by default, the same three-of-three rule advisory discovery uses,
+  and compares the replays by the `frameSha256` list and the trace sha256 in `replay.json`. Each
+  replay is judged; the command line uses the verifier's ground check on the position log, with no
+  SAM images.
+- `stable-fail` (every replay identical, every one failed) stays a failure, and `stable-pass` stays
+  a pass. `flaky` means the replays differ, the judged results differ, some replays did not run, or
+  identical replays differ from this machine's baseline: it is needs-review, never a pass and never
+  a fail. `undecided` (nothing ran, or the judge could not decide) is needs-review too.
+- The report, `stability.json` (`expectrail.stability/v0`), records a machine fingerprint: the CPU
+  model from `/proc/cpuinfo`, the Mesa version Godot printed in `godot.log`, and the engine version,
+  renderer and device from `replay.json`. `replay.json` is unchanged, because `harness/run.py` is
+  pinned.
+- Hash-only baselines, one file per fingerprint, live in [`bench/baselines/`](../bench/baselines/README.md).
+  Only `--record-baseline` writes them.
+
+`python3 -m agents.loop --stability` replays the failing route on the failing base before the fixer
+starts, and sends only a stable failure to the fixer; anything else stops the run as needs-review
+before Muse Code is called. `python3 -m agents.heldout_bench --stability` replays every route where a
+check failed and keeps a check's result only when it held on every identical replay. Both flags are
+off by default, so recorded results stay as they were: with them on, every failing route costs two
+more replays, the bench sends SAM those replays' frames when SAM is on, and the loop needs Godot even
+when it verifies from fixtures. The verifier still replays each route once.
+
+On November 9, on a 2-core cloud container with no GPU (Intel Xeon @ 2.10GHz, Mesa 25.2.8 llvmpipe,
+Godot 4.7.2), the smoke route with `bugs/physics-fall-through/v1.patch` was a stable fail in three
+separate runs of three replays, all nine identical, and the clean smoke route was a stable pass.
+
 ## Seeded bugs must be visible
 
 ```sh
@@ -98,3 +135,158 @@ The reported bugs bring their own routes, in `bugs/reported/routes/` (listed in 
 | `wait-for-patrol` | 1100 | Stand still for nine seconds while the enemy on the upper ledge patrols (`enemy-ledge`). |
 | `walk-left` | 360 | Walk left to the lower moving platform (the platform draw-order finding). |
 
+
+## Adapters
+
+`harness/adapters.py` is the one boundary between Expectrail and the engine that replays a route.
+Each adapter wraps a runner that already exists behind one signature:
+
+```python
+from harness import adapters
+replay = adapters.get("godot").run(route, out, patches=[seed, candidate])
+# run(route, out, patches=None, *, game=None, fps=None, capture_frames=True) -> replay document
+```
+
+A replay that fails raises `SystemExit`, as `harness.run.run` always has; the web adapter turns the
+web harness's `WebHarnessError` into one. Besides `run`, an adapter records what other code used to
+hard-code about its engine: the clean project, the folders the engine writes for itself (left out of
+the tree digest and of the fixer's copies), where frames are, the log file, the files a fix may edit
+by default, how a prompt names the project, which suffixes are text, the capture rate, the physics
+rate, the trace format, a default route and the seeded bugs.
+
+| Adapter | Runner | `engine.name` | Project | Ignored | Log | Capture |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `godot` | `harness/run.py` | `godot` | `game/platformer` | `.godot` | `godot.log` | 60 fps, 120 physics ticks a second |
+| `web` | `harness/web/run.py` | `chromium` | `apps/checkout/site` | nothing | none | one frame after each step |
+| `unity` | `harness/unity/run.py` | `unity` | `game/unity-platformer` | `Library`, `Temp`, `Logs`, `obj`, `UserSettings` | `unity.log` | 50 fps, 50 physics ticks a second |
+
+The Godot adapter's tree digest is byte-identical to `harness.run.tree_digest` on the game.
+
+What takes an adapter:
+
+- `agents/fixer.py`, `agents/escalation.py`, `agents/assurance/proposal.py` and
+  `agents/export_scan.py` take `adapter=` and default to `godot`.
+- `agents/domain_verifier.py` is the shared verifier. It takes an adapter, the domain's specs, an
+  engine-observations builder, a behaviour check, the public routes and the folder of private routes,
+  and returns the decision and an `expectrail.verification/v0` document. The checkout page's verifier
+  (`agents.web_fix.verify`) runs on it.
+- `--adapter` on `harness.replay_check` and `harness.check_seeded` (default `godot`; both also run
+  `--adapter web`), and on `agents.web_bench` and `agents.web_fix` (default `web`; they accept any
+  adapter whose replays write the web trace).
+- Not yet: `agents/verifier.py`, the Godot verifier, still calls `harness.run` itself, and so does
+  everything built on it (`agents/loop.py`, `agents/heldout_bench.py`, `agents/matrix.py`,
+  `agents/judge_bench.py`). An `--adapter` on those would switch some of their replays and not others.
+  `harness/demo_clips.py` records the Godot demo's clips and reads the robot from the Godot trace.
+
+A new engine is one module: build an `Adapter`, call `adapters.register(adapter)`, and give the shared
+verifier its specs, its engine observations and its behaviour check. `tests/toy_domain.py` does that
+for a stand-in engine, and `tests/test_domain_verifier.py` verifies fixes to it with nothing edited
+elsewhere. The Unity adapter is registered beside the other two; its runner needs a player built
+beforehand, which it takes from `$EXPECTRAIL_UNITY_PLAYER` (see Unity harness, below).
+
+## Unity builds in CI
+
+`.github/workflows/unity.yml` builds the Unity game, `game/unity-platformer` (Platformio on Unity
+6000.3.21f1), with GameCI's `game-ci/unity-builder` v4.8.2, pinned by commit. No run of it has built
+anything yet: the Unity licence secrets do not exist.
+
+- **When it runs.** On `workflow_dispatch`, and on pull requests that touch `game/unity-platformer/`,
+  `harness/unity/`, a `harness/routes/unity-*.json` route or the workflow itself. A change to
+  `harness/run.py` or `harness/adapters.py`, which the Unity runner imports, does not start it. Every run waits for a person's approval (below), so it is
+  kept off every other pull request.
+- **The licence.** The build job runs in the `unity` GitHub Environment and reads `UNITY_LICENSE`
+  (the contents of a Unity Personal `.ulf` file), `UNITY_EMAIL` and `UNITY_PASSWORD` from it; no
+  other secret. Unity Personal is activated online by GameCI's v4 flow from those three; no other
+  activation route is tried. With none of the three set, the job prints a notice, builds nothing and
+  succeeds, and the replay job is skipped. With one or two set it fails.
+- **Approving a run.** The build runs the pull request's own code in a process that holds the Unity
+  password: the Editor runs a project's editor scripts while it builds. Approve a run only after
+  reading what the pull request changes.
+- **One Editor at a time.** Unity's terms allow one running Editor per seat, so the build job is in
+  one concurrency group for the whole repository (`unity-editor-seat`). GitHub keeps one run waiting
+  in a group; a third run cancels the one already waiting.
+- **What it builds**, in this order: the clean game, with GameCI's own build method and no harness,
+  to prove the build works; the clean game with the harness package, the player the replays use;
+  and the clean game with the harness and the environment canary
+  (`harness/unity/fixtures/canary-env.patch`). The harness and canary projects are laid out
+  (`--prepare-build`) before any build touches the workspace, and each build starts from a copy of
+  the clean build's `Library/`. No Unity seeded bug exists yet, and a candidate fix from the fixer
+  is never built.
+- **The canary** runs in the build job, like `capture-smoke`'s: the patched game prints
+  `EXPECTRAIL_CANARY` and `EXPECTRAIL_HELDOUT_DIR` from `PlayerController.Awake`, and the job fails
+  if either is not empty. Its player is never uploaded. Only the clean player and the clean harness
+  player are uploaded.
+- **The Library cache** is keyed on the hash of the game's `Assets/`, `Packages/` and
+  `ProjectSettings/`, restored for the clean build, and saved only from it, on `main`.
+- **The replay job** needs no licence. It runs in `ubuntu:noble-20261024.1` pinned by digest, with
+  Xvfb and Mesa's llvmpipe (`LP_NATIVE_VECTOR_WIDTH=128`, `LP_NUM_THREADS=4`), downloads the
+  harness player, records the CPU model and Mesa version, replays `harness/routes/unity-smoke.json`
+  twice, and fails unless the two match in every frame's hash and in the trace's hash. It also reports
+  the level it found, whether the ground line from the tile cells agrees with the collider paths, the
+  settle, the hazards and the errors the game logged. The apt packages in that container are not
+  pinned by version; the job records Mesa's. It starts once the harness player is uploaded, so a
+  failed canary does not hide the replays.
+- **Times** (each build, cold or warm, and each replay) are published as notices.
+
+The `unity` environment has to be set up once, by hand, before the first build: add the three
+secrets to it, add required reviewers, and leave "Prevent self-review" off if the reviewer also
+triggers the runs. Until then, GitHub creates the environment the first time the workflow runs,
+with no protection rules and no secrets, and the build job skips.
+
+## Unity harness
+
+`harness/unity/` replays a route on the Unity game and writes what `harness/run.py` writes for
+Godot: `frames/f%08d.png` from 0, `trace.json`, `replay.json`, and the player's log, `unity.log`.
+None of it has run in Unity yet: no licence, and no Editor on the machines it was written on. The
+Python side is tested with a stand-in player (`tests/unity_fake_player.py`).
+
+```sh
+python3 -m harness.unity.run --prepare-build --out runs/unity/harness             # lay out a project
+python3 -m harness.unity.run --build --unity /path/to/Unity --out runs/unity/harness  # an activated Editor
+python3 -m harness.unity.run --route harness/routes/unity-smoke.json --out runs/unity-smoke \
+  --player runs/unity/harness [--patch ...]
+python3 -m harness.unity.run --out runs/unity-smoke --compare runs/unity-smoke-2  # frames and trace hash
+EXPECTRAIL_UNITY_PLAYER=runs/unity/harness python3 -m harness.replay_check --adapter unity \
+  --route harness/routes/unity-smoke.json --runs 10
+```
+
+- **Build.** A Unity game runs only as a built player, and building needs a licensed Editor (CI, or
+  one a person has already activated; the harness never activates Unity). `--prepare-build` copies
+  the game, applies the patches, adds the package (`com.expectrail.harness`) to the copy's
+  `Packages/manifest.json` as a relative `file:` dependency, and writes a `link.xml` under the copy's
+  `Assets/` (Unity reads `link.xml` only there, not in packages). The Editor then runs
+  `Expectrail.Harness.Editor.HarnessBuild.Build`: Mono, minimal stripping, StandaloneLinux64, OpenGL
+  Core, a 1600 x 960 window, the game's start scene first, and the `EXPECTRAIL_HARNESS` define without
+  which the package's runtime assembly is not compiled; it fails if that assembly is not in the
+  player. No scene or script is edited.
+- **Which player.** `build.json` beside the player holds a key: the digest of the game tree, the
+  patches in order, the package, the start scene and the Unity version. `run` refuses a player whose
+  key differs from the run it is asked for.
+- **Time.** The harness sets `Time.captureDeltaTime` to `Time.fixedDeltaTime`, so a rendered frame is
+  one physics tick (50 a second here). The player counts the physics steps in every captured frame
+  and the runner fails the run if any frame held zero or two.
+- **Before tick 0.** `Time.captureDeltaTime` does not lock `Time.unscaledTime` (Unity's reference for
+  it says so), and Platformio fades its screen and its level banner on `Time.unscaledDeltaTime`. So the
+  harness waits for the banner to come and go and the screen to fade in, holding `Time.timeScale` at
+  0 while a fade is part-way, so the fade takes no game time. `replay.json` records the ticks this
+  took (`settle.ticks`) and the frames it held (`settle.frozenFrames`, which depends on the machine's
+  speed). A fade during the route, after a death or at the level's exit, is recorded as a hazard.
+- **Input.** The harness removes every device the machine reports, adds a virtual keyboard and mouse
+  (the game's control scheme needs both), ignores window focus, and queues each tick's key states
+  before the tick's fixed update. The game's Player actions have no Hold or Tap interactions, so no
+  input timing depends on real time.
+- **Recording.** One trace row after LateUpdate on every tick, in world pixels (Unity units times
+  128, y down): the player, `onFloor` (the game's own feet test), `facing`, the coins, enemies and
+  projectiles, the camera (`view`), the ground line under the player from the tile cells, and
+  `objects`. The header has `levelSurfaces` (the ground tilemap's collider paths) and `levelArt`
+  (where its tiles are drawn, from cell and sprite bounds, not rendered pixels). Frames are read with
+  `ScreenCapture.CaptureScreenshotAsTexture` at the end of every tick's frame.
+- **Environment.** The player gets `harness/run.py`'s allowlisted environment, llvmpipe's settings, and
+  an empty home of its own, so PlayerPrefs start empty. Any failure raises `SystemExit`.
+
+The checks in `agents/observations.py` and `agents/gameplay.py` read these fields, but their constants
+(the robot's feet 13.25 px below its origin, its 60 px height, the coin's size, the drawn floor's
+8 px offset) were measured on the Godot game. Platformio's player has its feet 128 px below its
+origin (both its colliders end 1 unit below it), so the ground spec on a Unity trace would run but
+would not see a player sunk by less than about 115 px (128 - 13.25) until those constants come from
+the game.

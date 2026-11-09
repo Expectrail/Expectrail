@@ -14,3 +14,29 @@ https://github.com/twbs/bootstrap/releases/tag/v5.3.8 (sha256 of the zip:
 b851efe3b1589a4487c44a6b55671bbba54abb7740673be9c47a1e271ead1782). Bootstrap's code is licensed under
 the MIT license and its documentation under CC BY 3.0. Copyright (c) 2011-2025 The Bootstrap Authors.
 The bugs we seed into it are patches in apps/checkout/bugs, listed in docs/new-work.md.
+
+This product includes Platformio (game/unity-platformer), a Unity game taken from
+https://github.com/Javernaut/Platformio at commit 941a3add6b13404e672e05e17cadd85bceac5190 and licensed
+under the MIT license (game/unity-platformer/LICENSE). Copyright (c) 2023 Oleksandr Berezhnyi. What we
+left out and changed when importing it is listed in game/README.md. It contains:
+
+- Art, music and sound effects by Kenney (www.kenney.nl), released under CC0 1.0
+  (game/unity-platformer/README.md and the two License.txt files under Assets/_Project).
+- The Kenney Future font, Copyright Kenney 2013 (Assets/_Project/UI/Components/Text/Kenney Future.ttf),
+  and the TextMesh Pro font asset made from it (Kenney Future SDF.asset, same folder). The font file's
+  own metadata licenses it under Creative Commons Attribution-ShareAlike 3.0
+  (http://creativecommons.org/licenses/by-sa/3.0/). Both files are redistributed unmodified under
+  that license.
+- Extenject 9.2.0 (Assets/Plugins/Zenject), licensed under the MIT license (LICENSE.txt in that
+  folder). Copyright (c) 2010-2015 Modest Tree Media. Its code matches the 9.2.0 tag of
+  https://github.com/Mathijs-Bakker/Extenject (commit c2e33500a84f9408a809deca2af2c55494ab2482).
+- TextMesh Pro essential resources (Assets/TextMesh Pro, except the Liberation Sans font), copied into
+  the project by the Unity Editor from Unity's com.unity.ugui package. (c) Unity Technologies.
+  Licensed under the Unity Companion License for Unity-dependent projects (see
+  https://unity.com/legal/licenses/unity-companion-license). Unless expressly provided otherwise, the
+  Software under this license is made available strictly on an "AS IS" BASIS WITHOUT WARRANTY OF ANY
+  KIND, EXPRESS OR IMPLIED. Please review the license for details on these and other terms and
+  conditions.
+- Liberation Sans (Assets/TextMesh Pro/Fonts), licensed under the SIL Open Font License, Version 1.1
+  (LiberationSans - OFL.txt in that folder). Digitized data copyright (c) 2010 Google Corporation.
+  Copyright (c) 2012 Red Hat, Inc.

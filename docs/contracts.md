@@ -1,16 +1,15 @@
 # Lane contracts
 
-Eleven JSON documents carry everything between the four lanes (seven lane hand-offs plus the
-agents adjuncts `gameplay-verdict`, `release-candidate`, `overnight-summary` and
-`feedback-intake`). Each has a
+Twelve JSON documents carry everything between the four lanes (seven lane hand-offs plus the
+agents adjuncts `gameplay-verdict`, `release-candidate`, `overnight-summary`, `feedback-intake`
+and `stability`). Each has a
 schema in [`contracts/`](../contracts) and a worked example in
 [`contracts/examples/`](../contracts/examples).
 Agree changes in the team channel first, then change the schema, the example and the code in one
-pull request. Every document starts with `"format": "expectrail.<kind>/v0"`. The route schema and
-the Godot harness still accept one earlier route format ID from before the October 30 rename, and
-two comments in `expectrail/contracts.py` still name it: the discovery freeze covers those three
-files byte for byte, and the mutation bench's registration pins the harness, so they stay as they
-were until both are re-registered. `expectrail.contracts` reads only the current IDs.
+pull request. Every document starts with `"format": "expectrail.<kind>/v0"`, and only the current
+IDs are accepted. The route format ID from before the October 30 rename was dropped on November 9,
+once the discovery freeze and the mutation bench's registration were retired to the submission
+commit (`c169a5e`), where it is still accepted.
 
 ```
 route ──► harness ──► replay + frames ──► SAM 3.1 ──► observations ─┐
@@ -33,6 +32,14 @@ verification ◄── verifier (rebuild, replay, all checks) ◄── candidat
 | `release-candidate` | morning report (`agents.report`) | demo / human sign-off | Taofeek |
 | `overnight-summary` | overnight loop (`agents.loop`) | rollup / bench stub | Taofeek |
 | `feedback-intake` | voice feedback intake (`agents.feedback`) | morning report, a person | Sean |
+| `stability` | flaky-route detector (`agents.stability`) | overnight loop and held-out bench with `--stability`, a person | Sean |
+
+`stability` (added November 9) is not in `expectrail.contracts.KINDS`: the discovery freeze covers
+`expectrail/contracts.py` byte for byte, so `kind_of` does not recognise its format, and
+`agents.stability` validates it with the kind named, `validate(doc, "stability")`. The loop's run
+records carry its summary in `overnight-summary` (`results[].stability`). The baselines it compares
+with (`bench/baselines/`, `expectrail.stability-baseline/v0`) have no schema: only
+`agents.stability` writes and reads them ([README](../bench/baselines/README.md)).
 
 ## Discovery records (v1, added October 31)
 
@@ -103,6 +110,21 @@ routes appear as counts only; the schema has no field for anything else about th
   becomes a draft test spec with no approval, and a request to weaken a check goes to a person
   (`category: weaken-check` must have `route: human-queue` and no draft). Audio sources must
   record `consent: true`.
+- **Every replay names its engine.** `engine.name` in a replay is `godot`, `unity`, `web` or
+  `chromium`. Each adapter in `harness/adapters.py` says which one its replays record: the Godot
+  harness writes `godot`, and the web harness writes `chromium` in its own
+  `expectrail.web-replay/v0` document. The Unity harness (`harness/unity/run.py`) writes `unity`,
+  and adds `seed`, `build` (the key of the player it replayed), `settle`, `hazards` and
+  `integrity` (the exceptions and errors the game logged); an example is
+  `contracts/examples/replay-unity.json`.
+- **The trace has a schema.** `contracts/trace.schema.json` describes `trace.json`, which both
+  harnesses write and the verifier reads but never shows the fixer. It is not in
+  `expectrail.contracts.KINDS`; check a trace with `validate(doc, "trace")`. Every field but the
+  header's `format`, `ticks`, `physicsTicksPerSecond` and `rows`, and each row's `tick`, is
+  optional, because readers skip what they do not know. The Unity harness adds `objects` to every
+  row: each tracked object's hierarchy path, role, box in frame pixels, and whether it is active and
+  visible, in that row's own frame (`view` keeps the Godot convention, the camera of the frame
+  before). The example, `contracts/examples/trace.json`, is hand-written.
 - **Accept only if every check passes.** `verification.decision` is `accept` only when every
   regression, gameplay, held-out and clean check passes; any failure rejects; anything unclear
   needs review. An incomplete check set (missing a required kind) is `needs-review`, never
@@ -110,9 +132,15 @@ routes appear as counts only; the schema has no field for anything else about th
 
 ## Frames and ticks
 
-The demo runs physics at 120 ticks per second and the harness captures at 60 frames per second, so
+The Godot demo runs physics at 120 ticks per second and the harness captures at 60 frames per second, so
 frame `n` shows the state after tick `2n + 1`. Routes count ticks; observations and verdicts count
 frames. Frames are 1600 by 960 pixels (the demo's window override); boxes are `[x0, y0, x1, y1]` in
 those pixels, y down. The camera follows the player but stops at the level's edges, so a player who
 falls through the ground is visible below the ground line for a few frames and then leaves the
 screen.
+
+The Unity game, Platformio, runs physics at 50 ticks per second (`TimeManager.asset`). The Unity
+harness sets `Time.captureDeltaTime` to the fixed step so that each rendered frame holds one tick,
+and fails a run in which any frame holds zero or two; frame `n` then shows the state after tick `n`,
+captured at 50 frames per second. No Unity player has run yet. Its world pixels are Unity units times 128 (the art's pixels per unit), with y
+negated so it points down as in the Godot traces.

@@ -22,6 +22,13 @@ When the judge itself cannot answer (SAM down or out of credit, so the verifier 
 needs-review), agents/judge_ladder.py judges the same candidate again instead of spending a fix
 attempt: the same judge once more, then Muse Glimmer checked against the engine, then stop for a
 person (docs/fallbacks.md). A rejection is never re-judged.
+
+``--stability`` (off by default; needs Godot) replays the request's failing route on the failing
+base three times (``--stability-runs``) before the fixer starts, and judges each replay with the
+regression check on the position log (agents/stability.py; no SAM image). Only a stable failure goes
+on to the fixer. A flaky or undecided route, or one that passes every time, stops the run as
+needs-review before Muse Code spends anything.
+
 Exit 0 only if every run ends with verification accept. Crashes never forge accept.
 """
 from __future__ import annotations
@@ -36,7 +43,7 @@ from contextlib import nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 
-from agents import escalation, judge_ladder, sam_health
+from agents import escalation, judge_ladder, sam_health, stability
 from agents.fixer import run_fixer
 from agents.keys import resolve_mode, seal_mode_flags
 from agents.report import build_report, gameplay_film_stub, write_loop_rollup, write_preflight_stop
@@ -152,17 +159,21 @@ def one_run(
     after_frames: list[Path] | None = None,
     require_sandbox: bool = False,
     feedback: Path | None = None,
+    stability_runs: int = 0,
 ) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     signing_key = out / "verifier-host" / ".expectrail-signing-key"
     trust = None
     t0 = time.perf_counter()
     attempt_films: list[dict] = []
+    confirmed: dict | None = None  # the stability check's summary, when --stability ran
 
     def _with_timing(payload: dict) -> dict:
         payload["timing"] = {"wallClockMs": round((time.perf_counter() - t0) * 1000, 3)}
         payload["attempts"] = attempt_films
         payload["attemptsConsumed"] = len(attempt_films)
+        if confirmed is not None:
+            payload.setdefault("stability", confirmed)
         return payload
 
     try:
@@ -192,6 +203,23 @@ def one_run(
             raise SystemExit(
                 f"live Wonder triage required; got source={triage_source!r}"
             )
+        if stability_runs:
+            # A failing route counts only when it fails the same way on every replay of the base.
+            report = stability.confirm_failing(request, out / "stability", runs=stability_runs, run=harness_run)
+            confirmed = stability.summary(report, out / "stability" / "stability.json")
+            if report["result"] != "fail":
+                reason = (f"the failing route did not fail the same way on {stability_runs} replays of the "
+                          f"failing base ({report['status']}: {report['reason']}), so no fix was attempted")
+                write_preflight_stop(out / "morning", reason)
+                return _with_timing({
+                    "decision": "needs-review",
+                    "error": reason,
+                    "trust": None,
+                    "morning": None,
+                    "gameplay": None,
+                    "triageSource": triage_source,
+                    "verificationProvenance": "none",  # stopped before anything was verified
+                })
 
         fix_out = out / "fix"
         max_attempts = 1 if not use_muse else int(request["budget"]["attempts"])
@@ -421,7 +449,14 @@ def main(argv: list[str] | None = None) -> int:
                    help="after frame(s) for morning report (default: fixture PNG)")
     p.add_argument("--feedback", type=Path,
                    help="feedback-intake.json from agents.feedback, shown in each morning report")
+    p.add_argument("--stability", action="store_true",
+                   help="replay the failing route on the failing base before the fixer starts; only a "
+                        "stable failure is fixed (off by default; needs Godot)")
+    p.add_argument("--stability-runs", type=int, default=stability.STABILITY_RUNS,
+                   help="with --stability: replays of the failing base (default 3)")
     args = p.parse_args(argv)
+    if args.stability and args.stability_runs < 2:
+        p.error("--stability-runs must be at least 2")
     # A mistyped EXPECTRAIL_OBS_PROVIDER is a configuration error: stop here, before the fixer
     # runs, rather than let verify fail later and be recorded as a rejected candidate.
     from agents.observations import resolve_provider
@@ -468,6 +503,7 @@ def main(argv: list[str] | None = None) -> int:
             after_frames=after_frames,
             require_sandbox=args.require_sandbox,
             feedback=args.feedback,
+            stability_runs=args.stability_runs if args.stability else 0,
         ))
         print(f"run {i}: {results[-1]['decision']}"
               + (f" ({results[-1].get('error')})" if results[-1].get("error") else ""))
