@@ -98,3 +98,50 @@ The reported bugs bring their own routes, in `bugs/reported/routes/` (listed in 
 | `wait-for-patrol` | 1100 | Stand still for nine seconds while the enemy on the upper ledge patrols (`enemy-ledge`). |
 | `walk-left` | 360 | Walk left to the lower moving platform (the platform draw-order finding). |
 
+
+## Adapters
+
+`harness/adapters.py` is the one boundary between Expectrail and the engine that replays a route.
+Each adapter wraps a runner that already exists behind one signature:
+
+```python
+from harness import adapters
+replay = adapters.get("godot").run(route, out, patches=[seed, candidate])
+# run(route, out, patches=None, *, game=None, fps=None, capture_frames=True) -> replay document
+```
+
+A replay that fails raises `SystemExit`, as `harness.run.run` always has; the web adapter turns the
+web harness's `WebHarnessError` into one. Besides `run`, an adapter records what other code used to
+hard-code about its engine: the clean project, the folders the engine writes for itself (left out of
+the tree digest and of the fixer's copies), where frames are, the log file, the files a fix may edit
+by default, how a prompt names the project, which suffixes are text, the capture rate, the physics
+rate, the trace format, a default route and the seeded bugs.
+
+| Adapter | Runner | `engine.name` | Project | Ignored | Log | Capture |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `godot` | `harness/run.py` | `godot` | `game/platformer` | `.godot` | `godot.log` | 60 fps, 120 physics ticks a second |
+| `web` | `harness/web/run.py` | `chromium` | `apps/checkout/site` | nothing | none | one frame after each step |
+
+The Godot adapter's tree digest is byte-identical to `harness.run.tree_digest` on the game.
+
+What takes an adapter:
+
+- `agents/fixer.py`, `agents/escalation.py`, `agents/assurance/proposal.py` and
+  `agents/export_scan.py` take `adapter=` and default to `godot`.
+- `agents/domain_verifier.py` is the shared verifier. It takes an adapter, the domain's specs, an
+  engine-observations builder, a behaviour check, the public routes and the folder of private routes,
+  and returns the decision and an `expectrail.verification/v0` document. The checkout page's verifier
+  (`agents.web_fix.verify`) runs on it.
+- `--adapter` on `harness.replay_check` and `harness.check_seeded` (default `godot`; both also run
+  `--adapter web`), and on `agents.web_bench` and `agents.web_fix` (default `web`; they accept any
+  adapter whose replays write the web trace).
+- Not yet: `agents/verifier.py`, the Godot verifier, still calls `harness.run` itself, and so does
+  everything built on it (`agents/loop.py`, `agents/heldout_bench.py`, `agents/matrix.py`,
+  `agents/judge_bench.py`). An `--adapter` on those would switch some of their replays and not others.
+  `harness/demo_clips.py` records the Godot demo's clips and reads the robot from the Godot trace.
+
+A new engine is one module: build an `Adapter`, call `adapters.register(adapter)`, and give the shared
+verifier its specs, its engine observations and its behaviour check. `tests/toy_domain.py` does that
+for a stand-in engine, and `tests/test_domain_verifier.py` verifies fixes to it with nothing edited
+elsewhere. Unity's ignored folders and text suffixes are in `harness/adapters.py` (`UNITY_IGNORE`,
+`UNITY_TEXT_SUFFIXES`); Unity is registered when it has a runner.
