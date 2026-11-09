@@ -30,7 +30,8 @@ from expectrail.contracts import ContractError, schema, validate
 API_BASE = os.environ.get("EXPECTRAIL_MODEL_API_BASE", "https://api.meta.ai/v1")
 DEFAULT_MODEL = os.environ.get("EXPECTRAIL_SPEC_MODEL", "muse-spark-1.3")
 # Open weights: Muse Spark Open on a partner's OpenAI-compatible endpoint (draft --endpoint open).
-# Baseten by default, with the model id an earlier guide gives for it.
+# Baseten by default, with the model id Baseten lists (the id an earlier guide gave,
+# meta-models/muse-spark-open-1026, is not listed; bench/spark-open/README.md).
 OPEN_API_BASE = os.environ.get("EXPECTRAIL_OPEN_API_BASE", "https://inference.baseten.co/v1")
 OPEN_MODEL = os.environ.get("EXPECTRAIL_OPEN_MODEL", "meta-models/muse-spark-open")
 OPEN_KEY_ENVS = ("EXPECTRAIL_OPEN_API_KEY", "BASETEN_API_KEY")
