@@ -85,6 +85,7 @@ def judge_route(adapter: str | Adapter, route: Path, patches: list[Path], run_di
         replay_sha = sha256_file(run_dir / "replay.json")
     except (SystemExit, subprocess.CalledProcessError, OSError, ValueError) as exc:
         cause = exc.__cause__ if isinstance(exc, SystemExit) and isinstance(exc.__cause__, Exception) else exc
+        run_dir.mkdir(parents=True, exist_ok=True)
         (run_dir / "bench-error.txt").write_text(f"{type(cause).__name__}: {cause}\n", encoding="utf-8")
         return {n: "needs-review" for n in names}
     verdicts = {spec["id"]: evaluate(spec, observe(trace, spec, replay_sha)) for spec in specs}
