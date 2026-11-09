@@ -647,6 +647,64 @@ To run Expectrail on a Godot repository's pull requests, add the CI gate: two wo
 that verifies the change and one trusted job that posts the verdict as one comment
 ([docs/ci-gate.md](docs/ci-gate.md)).
 
+### Bring your own model, coding agent and vision backend (quickstart)
+
+Expectrail runs on Meta's models by default and nothing changes until you ask: with a Meta key set
+and no `EXPECTRAIL_LLM_PROVIDER`, every call goes where it always did. Everything below lives in
+`.env` (copy [`.env.example`](.env.example)). The rules do not change with the model: plain code
+still decides, the fixer still never sees the checks, the held-out routes or the signing key, and
+the fixer may not hold the key the verifier uses.
+
+```sh
+# Spec drafting and triage with Claude, OpenAI, Gemini or OpenRouter
+export EXPECTRAIL_LLM_PROVIDER=anthropic ANTHROPIC_API_KEY=...      # or openai / gemini / openrouter
+python3 -m expectrail.spec_writer draft "The player never falls through the ground" --out /tmp/spec.json
+python3 -m agents.triage --out runs/triage                          # --provider / --model override per run
+
+# The fixer: Claude Code, Codex, aider, any CLI, or a direct model diff
+export EXPECTRAIL_FIXER_AGENT=claude-code                           # codex | aider | custom-cmd | llm-patch
+python3 -m agents.loop --out runs/loop --mode live
+
+# Fully local, no key: Ollama for text, a local detector for frames
+export EXPECTRAIL_LLM_PROVIDER=ollama EXPECTRAIL_LLM_MODEL=qwen2.5-coder:32b
+export EXPECTRAIL_FIXER_AGENT=llm-patch
+export EXPECTRAIL_VISION_BACKEND=local-http EXPECTRAIL_LOCAL_VISION_URL=http://localhost:8090/detect
+```
+
+- **Per role.** `EXPECTRAIL_SPEC_*`, `EXPECTRAIL_TRIAGE_*`, `EXPECTRAIL_FIXER_*` and
+  `EXPECTRAIL_VLM_*` (`_PROVIDER`, `_MODEL`, `_API_BASE`, `_API_KEY`) override the global
+  `EXPECTRAIL_LLM_*` for one role ([`expectrail/providers.py`](expectrail/providers.py)).
+- **The fixer** runs in the same workspace as Muse Code, under bubblewrap when it is available, with
+  only its own provider's key; the candidate is diffed and held to the editable files the same way
+  ([`agents/byo_fixer.py`](agents/byo_fixer.py)). One difference, recorded in each attempt's
+  `sandbox.json`: Muse Code can run behind the key gateway with no network of its own; a BYO agent
+  uses the host's network, because the gateway only speaks to Meta's API. An agent installed under
+  `$HOME` needs `EXPECTRAIL_FIXER_RO_BINDS` pointing at its install.
+- **Vision.** `local-http` is any open-vocabulary detector behind one HTTP endpoint (Grounding DINO
+  with SAM 2.1, Florence-2, YOLO-World); `byo-vlm-engine` is any vision-language model whose boxes
+  count only where the engine agrees. A vision-language model alone (`byo-vlm`) does not decide a
+  verdict, for the same reason Muse Glimmer alone does not: the fixer controls the pixels, and text
+  drawn into the game could talk it into a pass. `EXPECTRAIL_KEYFRAMES_ONLY=1` looks first at the
+  frames where the engine says something happened; refinement and the every-frame confirmation of
+  a pass still run, so it saves calls on failures and never turns one into a pass.
+- **Key separation.** If the fixer and the vision model share a provider, give the vision model its
+  own key (`EXPECTRAIL_VLM_API_KEY`); the loop refuses to start otherwise.
+
+Expectrail also ships a stdio MCP server, so Claude Code, Cursor or any MCP client can draft a spec
+(validated, unapproved until a person approves it), run the loop once, or run the trust probe.
+Add it to `.mcp.json` (Claude Code) or `.cursor/mcp.json`, from the repository root:
+
+```json
+{
+  "mcpServers": {
+    "expectrail": { "command": "python3", "args": ["-m", "agents.mcp_server"] }
+  }
+}
+```
+
+Not measured yet: every number in this README was produced with Meta's models. The BYO paths are
+tested with recorded responses, not benchmarked; treat a run on another model as a new experiment.
+
 ## Layout and lanes
 
 | Path | What | Lane |

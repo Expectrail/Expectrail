@@ -48,7 +48,7 @@ from agents.fixer import run_fixer
 from agents.keys import resolve_mode, seal_mode_flags
 from agents.report import build_report, gameplay_film_stub, write_loop_rollup, write_preflight_stop
 from agents.signing import generate_run_keys
-from agents.triage import WONDER_MODEL, triage
+from agents.triage import triage
 from agents.trust import run_trust_check
 from agents.verifier import _resolve, verify
 from harness.run import REPO, run as harness_run
@@ -199,9 +199,12 @@ def one_run(
         )
         triage_meta = json.loads((out / "triage" / "triage.json").read_text(encoding="utf-8"))
         triage_source = triage_meta.get("source")
-        if not offline_triage and triage_source != WONDER_MODEL:
+        # Live triage means a model answered: Wonder, or the BYO provider (agents.triage.call_byo).
+        if not offline_triage and triage_source in (None, "offline", "offline-fallback"):
+            from expectrail.providers import byo_requested
+            which = "BYO" if byo_requested("TRIAGE") else "Wonder"
             raise SystemExit(
-                f"live Wonder triage required; got source={triage_source!r}"
+                f"live {which} triage required; got source={triage_source!r}"
             )
         if stability_runs:
             # A failing route counts only when it fails the same way on every replay of the base.
@@ -473,17 +476,22 @@ def main(argv: list[str] | None = None) -> int:
     offline_triage = resolved["offline_triage"]
     use_muse = resolved["use_muse"]
     if use_muse:
-        from agents.keys import require_separate_sam_key
+        from agents.keys import require_separate_byo_keys, require_separate_sam_key
         require_separate_sam_key()
+        require_separate_byo_keys()
     skip_harness = False if args.no_skip_harness else args.skip_harness
     observations = None if args.no_skip_harness else args.observations
     provenance = "harness" if not skip_harness else "fixture"
     before_frames = args.before or None
     after_frames = args.after or None
 
+    from agents.keys import byo_fixer_agent
+    from expectrail.providers import byo_requested
+    live_triage = "byo" if byo_requested("TRIAGE") else "wonder"
+    live_fixer = byo_fixer_agent() or "muse"
     print(
-        f"mode={resolved['mode']} triage={'offline' if offline_triage else 'wonder'} "
-        f"fixer={'muse' if use_muse else 'fixture'} harness={provenance}"
+        f"mode={resolved['mode']} triage={'offline' if offline_triage else live_triage} "
+        f"fixer={live_fixer if use_muse else 'fixture'} harness={provenance}"
     )
 
     started = datetime.now(timezone.utc)

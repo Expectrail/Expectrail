@@ -1,0 +1,164 @@
+"""Unit and contract tests for Expectrail's BYO-LLM, BYO-Fixer, BYO-Vision, and MCP layers."""
+
+from __future__ import annotations
+
+import json
+import os
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from agents.byo_fixer import build_agent_cli_command, extract_unified_diff, resolve_fixer_agent
+from agents.byo_vision import (
+    BYOVLMObserverClient,
+    normalize_box_to_pixels,
+    png_dimensions,
+    select_event_keyframes,
+)
+from agents.mcp_server import handle_jsonrpc_message
+from expectrail.providers import (
+    build_http_payload,
+    chat_completion,
+    detect_default_provider,
+    resolve_provider,
+    strip_json_fences,
+)
+
+# Minimal valid 1600x960 PNG header bytes for vision tests
+FAKE_PNG_1600x960 = (
+    b"\x89PNG\r\n\x1a\n"
+    b"\x00\x00\x00\rIHDR"
+    b"\x00\x00\x06@\x00\x00\x03\xc0"
+    b"\x08\x02\x00\x00\x00\x00\x00\x00\x00"
+)
+
+
+class TestBYOProviders(unittest.TestCase):
+    def test_auto_detect_anthropic_and_openai(self) -> None:
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-test"}, clear=True):
+            self.assertEqual(detect_default_provider(), "anthropic")
+            cfg = resolve_provider(role="SPEC")
+            self.assertEqual(cfg.provider, "anthropic")
+            self.assertEqual(cfg.protocol, "anthropic")
+            self.assertEqual(cfg.api_key, "sk-ant-test")
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-proj-test"}, clear=True):
+            self.assertEqual(detect_default_provider(), "openai")
+            cfg = resolve_provider(role="TRIAGE")
+            self.assertEqual(cfg.provider, "openai")
+            self.assertEqual(cfg.model, "gpt-4o")
+
+    def test_ollama_requires_no_api_key(self) -> None:
+        with patch.dict(os.environ, {"EXPECTRAIL_LLM_PROVIDER": "ollama"}, clear=True):
+            cfg = resolve_provider(role="SPEC")
+            self.assertEqual(cfg.provider, "ollama")
+            self.assertEqual(cfg.api_base, "http://localhost:11434/v1")
+            self.assertEqual(cfg.api_key, "local-no-key")
+
+    def test_legacy_meta_fallback_preserved(self) -> None:
+        with patch.dict(os.environ, {"MODEL_API_KEY": "meta-test-key"}, clear=True):
+            cfg = resolve_provider(
+                role="TRIAGE",
+                legacy_default_model="muse-wonder-1.0",
+                legacy_key_envs=("MODEL_API_KEY",),
+            )
+            self.assertEqual(cfg.provider, "meta")
+            self.assertEqual(cfg.model, "muse-wonder-1.0")
+            self.assertEqual(cfg.api_key, "meta-test-key")
+
+    def test_anthropic_payload_and_image_translation(self) -> None:
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-123"}, clear=True):
+            cfg = resolve_provider(role="VLM")
+            messages = [
+                {"role": "system", "content": "Be strict."},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}},
+                        {"type": "text", "text": "Find the robot."},
+                    ],
+                },
+            ]
+            url, headers, payload = build_http_payload(cfg, messages, json_schema={"type": "object"})
+            self.assertEqual(url, "https://api.anthropic.com/v1/messages")
+            self.assertEqual(headers["x-api-key"], "sk-ant-123")
+            self.assertIn("JSON Schema", payload["system"])
+            user_blocks = payload["messages"][0]["content"]
+            self.assertEqual(user_blocks[0]["type"], "image")
+            self.assertEqual(user_blocks[0]["source"]["data"], "AAAA")
+            self.assertEqual(user_blocks[1]["text"], "Find the robot.")
+
+    def test_chat_completion_normalizes_anthropic_response(self) -> None:
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-123"}, clear=True):
+            cfg = resolve_provider(role="SPEC")
+            fake_transport = lambda u, h, p: {
+                "model": "claude-3-7-sonnet-latest",
+                "content": [{"type": "text", "text": '```json\n{"ok": true}\n```'}],
+            }
+            res = chat_completion(
+                [{"role": "user", "content": "hi"}],
+                config=cfg,
+                transport=fake_transport,
+            )
+            content = strip_json_fences(res["choices"][0]["message"]["content"])
+            self.assertEqual(json.loads(content), {"ok": True})
+
+
+class TestBYOFixerAndVision(unittest.TestCase):
+    def test_build_agent_cli_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            wt = Path(tmp)
+            cmd_claude = build_agent_cli_command("claude-code", "Fix player mask", wt, model="claude-3-7-sonnet")
+            self.assertEqual(cmd_claude[0], "claude")
+            self.assertIn("--allowedTools", cmd_claude)
+
+            cmd_codex = build_agent_cli_command("codex", "Fix player mask", wt)
+            self.assertEqual(cmd_codex[0], "codex")
+            self.assertIn("full-auto", cmd_codex)
+
+    def test_extract_unified_diff(self) -> None:
+        sample = (
+            "Here is the fix:\n```diff\n--- a/player/player.tscn\n+++ b/player/player.tscn\n"
+            "@@ -10,1 +10,1 @@\n-collision_mask = 14\n+collision_mask = 30\n```\n"
+        )
+        diff = extract_unified_diff(sample)
+        self.assertTrue(diff.startswith("--- a/player/player.tscn"))
+        self.assertIn("+collision_mask = 30", diff)
+
+    def test_coordinate_normalization_and_out_of_frame_guard(self) -> None:
+        px = normalize_box_to_pixels([500, 500, 600, 750], (1600, 960), coords="norm1000")
+        self.assertEqual(px, [800.0, 480.0, 960.0, 720.0])
+
+        with self.assertRaises(ValueError):
+            # Box way outside image bounds (>2% tolerance) must be rejected, never clipped
+            normalize_box_to_pixels([500, 500, 1400, 750], (1600, 960), coords="norm1000")
+
+    def test_event_keyframe_sampling(self) -> None:
+        trace = [
+            {"frame": i, "on_floor": i >= 15, "vy": 10.0 if i < 15 else 0.0, "y": 500 + i * 2}
+            for i in range(30)
+        ]
+        frames = select_event_keyframes(trace, 30, base_stride=10)
+        # Frame 15 is where on_floor flips False -> True; frames 14, 15, 16 must be included
+        self.assertIn(0, frames)
+        self.assertIn(14, frames)
+        self.assertIn(15, frames)
+        self.assertIn(16, frames)
+        self.assertIn(29, frames)
+        self.assertLess(len(frames), 15)
+
+    def test_mcp_server_initialize_and_tools_list(self) -> None:
+        init_resp = handle_jsonrpc_message({"jsonrpc": "2.0", "id": 1, "method": "initialize"})
+        self.assertIsNotNone(init_resp)
+        self.assertEqual(init_resp["result"]["serverInfo"]["name"], "expectrail-mcp")
+
+        list_resp = handle_jsonrpc_message({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+        tool_names = [t["name"] for t in list_resp["result"]["tools"]]
+        self.assertIn("expectrail_draft_spec", tool_names)
+        self.assertIn("expectrail_verify_build", tool_names)
+        self.assertIn("expectrail_trust_check", tool_names)
+
+
+if __name__ == "__main__":
+    unittest.main()

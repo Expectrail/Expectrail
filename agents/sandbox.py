@@ -108,7 +108,8 @@ def warm_muse() -> None:
         pass
 
 
-def _bwrap_cmd(work: Path, argv: list[str], *, network: bool, gateway=None) -> list[str]:
+def _bwrap_cmd(work: Path, argv: list[str], *, network: bool, gateway=None,
+               extra_ro: list[Path] | None = None) -> list[str]:
     """Bind only fixer-work as /fixer; ro system paths for a usable userspace.
 
     With ``gateway`` (agents.gateway.Gateway) the sandbox has no network at all: its directory is
@@ -162,6 +163,11 @@ def _bwrap_cmd(work: Path, argv: list[str], *, network: bool, gateway=None) -> l
         cmd.extend(["--dir", str(files[0].parent)])
         for path in files:
             cmd.extend(["--ro-bind", str(path), str(path)])
+    # A BYO coding agent's install (agents.byo_fixer): read-only, after the empty $HOME so an agent
+    # installed under it is still visible. Never the verifier's files: callers pass only the agent's.
+    for path in extra_ro or ():
+        if Path(path).exists():
+            cmd.extend(["--ro-bind", str(path), str(path)])
     cmd.extend(["--"] + argv)
     return cmd
 
@@ -192,6 +198,7 @@ def run_sandboxed(
     kind: str | None = None,
     timeout: int | None = None,
     gateway=None,
+    extra_ro: list[Path] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run argv confined to fixer-work when a sandbox tool exists.
 
@@ -205,7 +212,7 @@ def run_sandboxed(
         raise ValueError(f"unknown sandbox kind: {resolved}")
     run_env = dict(env) if env is not None else muse_subprocess_env()
     if resolved == "bwrap":
-        cmd = _bwrap_cmd(work, argv, network=network, gateway=gateway)
+        cmd = _bwrap_cmd(work, argv, network=network, gateway=gateway, extra_ro=extra_ro)
         return subprocess.run(
             cmd, capture_output=True, text=True, env=run_env, timeout=timeout,
         )

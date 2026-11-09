@@ -5,6 +5,10 @@
         --id player-stays-above-ground --out specs/player-stays-above-ground.json
     python3 -m expectrail.spec_writer approve specs/player-stays-above-ground.json --by sean
 
+    # Any other model (expectrail.providers): anthropic, openai, gemini, openrouter, ollama, vllm, ...
+    export ANTHROPIC_API_KEY=...
+    python3 -m expectrail.spec_writer draft "The player never falls through the ground" --provider anthropic
+
 Muse Spark only drafts. A draft is checked against contracts/test-spec.schema.json, and against
 Meta's advice to keep positions out of SAM prompts, and it has no approval until a person adds one.
 The evaluator, not the model, decides pass or fail later.
@@ -126,6 +130,37 @@ def open_transport(base: str | None = None, key: str | None = None):
     return transport
 
 
+def provider_transport(provider: str | None = None, model: str | None = None):
+    """Draft through expectrail.providers: any provider it knows, chosen by ``provider`` or
+    EXPECTRAIL_SPEC_PROVIDER / EXPECTRAIL_LLM_PROVIDER. Returns (transport, resolved config).
+
+    The transport takes the same request body as http_transport, so draft() and its fallback from
+    schema-constrained output to plain JSON work unchanged.
+    """
+    from expectrail.providers import chat_completion, resolve_provider
+
+    try:
+        cfg = resolve_provider("SPEC", provider=provider, model=model, legacy_default_model=DEFAULT_MODEL,
+                               legacy_key_envs=("MODEL_API_KEY",))
+    except RuntimeError as err:
+        raise SpecDraftError(str(err)) from err
+
+    def transport(body: dict) -> dict:
+        fmt = body.get("response_format") or {}
+        schema_doc = (fmt.get("json_schema") or {}).get("schema") if fmt.get("type") == "json_schema" else None
+        messages = list(body["messages"])
+        if schema_doc is None and fmt.get("type") == "json_object":
+            messages[0] = {**messages[0], "content": messages[0]["content"] + "\nAnswer with one JSON object."}
+        try:
+            return chat_completion(messages, role="SPEC", config=cfg, max_tokens=4096,
+                                   temperature=body.get("temperature", 0), json_schema=schema_doc,
+                                   schema_name="expectrail_test_spec", strict=False)
+        except RuntimeError as err:
+            raise SpecDraftError(str(err)) from err
+
+    return transport, cfg
+
+
 def lint(spec: dict) -> list[str]:
     """Problems the schema cannot see."""
     problems = []
@@ -218,7 +253,11 @@ def main(argv=None) -> int:
     d.add_argument("--endpoint", choices=("meta", "open"), default="meta",
                    help="meta: Muse Spark on Meta's Model API; open: Muse Spark Open (open weights) on "
                         "EXPECTRAIL_OPEN_API_BASE (default Baseten) with BASETEN_API_KEY")
-    d.add_argument("--model", help=f"default {DEFAULT_MODEL}, or {OPEN_MODEL} with --endpoint open")
+    d.add_argument("--model", help=f"default {DEFAULT_MODEL}, or {OPEN_MODEL} with --endpoint open, or the "
+                                   "provider's default with --provider")
+    d.add_argument("--provider", help="any expectrail.providers provider (anthropic, openai, gemini, openrouter, "
+                                      "ollama, vllm, meta, baseten, fireworks); overrides --endpoint. Default: "
+                                      "EXPECTRAIL_SPEC_PROVIDER / EXPECTRAIL_LLM_PROVIDER when set")
     d.add_argument("--allow-training", action="store_true", help="allow a contributor-tier model")
     a = sub.add_parser("approve", help="a person approves a draft")
     a.add_argument("path", type=Path)
@@ -226,14 +265,20 @@ def main(argv=None) -> int:
     args = p.parse_args(argv)
     try:
         if args.cmd == "draft":
-            if args.endpoint == "open":
+            from expectrail.providers import byo_requested
+
+            if args.provider or (args.endpoint == "meta" and byo_requested("SPEC")):
+                transport, cfg = provider_transport(args.provider, args.model)
+                model, where = cfg.model, f"{cfg.provider}, {cfg.api_base}"
+            elif args.endpoint == "open":
                 model, transport = args.model or OPEN_MODEL, open_transport()
+                where = "open weights, " + OPEN_API_BASE
             else:
                 model, transport = args.model or DEFAULT_MODEL, http_transport
+                where = API_BASE
             spec, problems = draft(args.instruction, args.id, model, transport=transport,
                                    allow_training=args.allow_training)
-            print(f"drafted by {model} ({'open weights, ' + OPEN_API_BASE if args.endpoint == 'open' else API_BASE})",
-                  file=sys.stderr)
+            print(f"drafted by {model} ({where})", file=sys.stderr)
             if spec is None:
                 print("needs review: " + "; ".join(problems), file=sys.stderr)
                 return 2
