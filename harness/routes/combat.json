@@ -1,7 +1,7 @@
 {
   "format": "expectrail.route/v0",
   "name": "combat",
-  "description": "Walk right, fire three shots at the enemy patrol, jump over the encounter point, and stop. Three seconds at 60 ticks per second.",
+  "description": "Walk right, fire three shots at the enemy patrol, jump over the encounter point, and stop. One and a half seconds at 120 ticks per second.",
   "ticks": 180,
   "seed": 1,
   "events": [
