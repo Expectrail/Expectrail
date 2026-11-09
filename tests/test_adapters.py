@@ -152,5 +152,122 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual([p.name for p in got], ["f00000000.png", "f00000001.png", "f00000002.png", "f00000010.png"])
 
 
+def unity_shaped(root: Path) -> adapters.Adapter:
+    """A project laid out as Unity lays one out, with its own caches; there is no Unity runner here,
+    so this adapter is only for the parts that never replay: the fixer, the briefing and the scan."""
+    (root / "Assets" / "Scripts").mkdir(parents=True)
+    (root / "Assets" / "Scripts" / "Player.cs").write_text("public class Player {\n    float speed = 4f;\n}\n")
+    (root / "Library").mkdir()
+    (root / "Library" / "ArtifactDB").write_text("cached import, never part of a fix\n")
+    return adapters.Adapter(**{**adapters.GODOT.__dict__, "name": "unity-shaped", "engine": "unity",
+                               "game_root": root, "ignore": adapters.UNITY_IGNORE, "editable": ("Assets/Scripts/**",),
+                               "prompt_subject": "a Unity 6 2D game", "text_suffixes": adapters.UNITY_TEXT_SUFFIXES,
+                               "log_name": "Player.log", "ticks_per_second": 50})
+
+
+def unity_request(adapter: adapters.Adapter) -> dict:
+    return {"format": "expectrail.repair-request/v0", "id": "rr-unity-shaped",
+            "base": {"tree": adapter.tree_digest(), "patch": None}, "editable": list(adapter.editable),
+            "failing": [{"spec": {"id": "player-moves", "instruction": "The player moves."},
+                         "verdict": {"result": "fail", "reason": "it did not"}, "route": {"name": "walk", "ticks": 50}}],
+            "budget": {"attempts": 1, "minutesPerAttempt": 1}}
+
+
+class EngineParametersTest(unittest.TestCase):
+    """The fixer, the briefing, the proposal and the export scan take the engine from its adapter;
+    called without one they are the Godot code they were."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.unity = unity_shaped(self.root / "project")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_unity_s_text_suffixes_are_ready(self):
+        self.assertEqual(adapters.UNITY_TEXT_SUFFIXES, {".cs", ".unity", ".prefab", ".asset", ".meta", ".asmdef",
+                                                        ".inputactions", ".shader"})
+
+    def test_the_fixer_copies_digests_and_diffs_the_adapter_s_project(self):
+        from agents.fixer import _diff_worktree, build_muse_prompt, prepare_fixer_workspace, run_fixer
+
+        request = unity_request(self.unity)
+        fix = self.root / "fix.patch"
+        fix.write_text("--- a/Assets/Scripts/Player.cs\n+++ b/Assets/Scripts/Player.cs\n@@ -1,3 +1,3 @@\n"
+                       " public class Player {\n-    float speed = 4f;\n+    float speed = 5f;\n }\n")
+        meta = run_fixer(request, self.root / "out", candidate_patch=fix, adapter=self.unity)
+        self.assertEqual(meta["source"], "fixture")
+        self.assertFalse((self.root / "out" / "fixer-work" / "Library").exists())
+        self.assertIn("speed = 5f", (self.root / "out" / "fixer-work" / "Assets" / "Scripts" / "Player.cs").read_text())
+
+        work = self.root / "work"
+        prepare_fixer_workspace(request, work, adapter=self.unity)
+        base = self.root / "base"
+        prepare_fixer_workspace(request, base, adapter=self.unity)
+        (work / "Library").mkdir()
+        (work / "Library" / "ArtifactDB").write_text("rebuilt by the editor\n")
+        (work / "Assets" / "Scripts" / "Player.cs").write_text("public class Player {\n    float speed = 6f;\n}\n")
+        text = _diff_worktree(base, work, editable=["**"], ignore=self.unity.ignore)
+        self.assertIn("Assets/Scripts/Player.cs", text)
+        self.assertNotIn("Library", text)
+        self.assertIn("Library/ArtifactDB", _diff_worktree(base, work, editable=["**"], ignore=()))
+
+        with self.assertRaises(SystemExit):  # the base tree names the project as its adapter digests it
+            prepare_fixer_workspace(request, self.root / "w2", game=REPO / "game" / "platformer", adapter=self.unity)
+        prompt = build_muse_prompt(request, rr_relpath="repair-request.json", attempt=1, adapter=self.unity)
+        self.assertTrue(prompt.startswith("You are fixing a Unity 6 2D game bug.\n"), prompt[:80])
+
+    def test_the_briefing_names_the_project_its_physics_rate_and_its_log(self):
+        from agents import escalation
+
+        run = self.root / "run"
+        (run / "frames").mkdir(parents=True)
+        (run / "frames" / "f00000000.png").write_bytes(b"")
+        (run / "godot.log").write_text("")
+        (run / "Player.log").write_text("")
+        route = self.root / "route.json"
+        route.write_text("{}")
+        request = unity_request(self.unity)
+        files = escalation.report_files(run, route, self.unity)
+        self.assertIn("bug-report/Player.log", files)
+        self.assertNotIn("bug-report/godot.log", files)
+        self.assertIn("bug-report/godot.log", escalation.report_files(run, route))
+        prompt = escalation.report_prompt(request, files, 1, adapter=self.unity)
+        self.assertIn("You are fixing a bug in a Unity 6 2D game.", prompt)
+        self.assertIn("physics ticks, 50 a second", prompt)
+        self.assertIn("The game's log from that run is bug-report/Player.log.", prompt)
+        web = escalation.report_prompt(request, escalation.report_files(run, route, "web"), 1, adapter="web")
+        self.assertIn("You are fixing a bug in a web checkout page.", web)
+        self.assertNotIn("physics ticks", web)
+        self.assertNotIn(".log", web)
+        brief, stage = escalation.briefing(request, files, 2, True, adapter=self.unity)
+        self.assertEqual(stage, "evidence")
+        self.assertTrue(brief["prompt"].startswith("You are fixing a Unity 6 2D game bug."))
+
+    def test_the_proposal_takes_the_game_root_and_editable_files_from_the_adapter(self):
+        from agents.assurance import proposal as ap
+
+        self.assertEqual(ap.GAME_ROOT, "game/platformer")
+        self.assertEqual(ap.game_root("web"), "apps/checkout/site")
+        with self.assertRaises(ap.ProposalError):  # outside the repository: no pull request could change it
+            ap.game_root(self.unity)
+        problems = ap.editable_problems(["apps/checkout/site/checkout/index.html", "apps/checkout/site/assets/x.svg",
+                                         "README.md"], list(adapters.get("web").editable), "apps/checkout/site")
+        self.assertEqual(len(problems), 2)
+        self.assertIn("README.md is outside the game root apps/checkout/site/", problems)
+
+    def test_the_export_scan_reads_each_project_s_text_files(self):
+        from agents import export_scan
+
+        self.assertEqual(export_scan.GAME_TEXT, {".tscn", ".tres", ".gd", ".godot", ".cfg", ".import"})
+        page = export_scan._clean_page_lines()
+        self.assertEqual(page, export_scan._clean_game_lines("web"))
+        self.assertTrue(any("checkout" in line for line in page))
+        unity = export_scan._clean_game_lines(self.unity)
+        self.assertIn("float speed = 4f;", unity)
+        self.assertNotIn("cached import, never part of a fix", unity)  # no text suffix
+
+
 if __name__ == "__main__":
     unittest.main()

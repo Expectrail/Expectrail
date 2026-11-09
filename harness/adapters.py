@@ -40,6 +40,9 @@ REPO = _godot.REPO
 # Unity, for the adapter that comes next. Not registered: there is no Unity runner yet. These are the
 # Unity project folders the editor rebuilds on its own (never part of a game's digest or a fixer's copy).
 UNITY_IGNORE = ("Library", "Temp", "Logs", "obj", "UserSettings")
+# Unity's text files, with the editor's asset serialization set to Force Text: scripts, scenes,
+# prefabs, assets, their .meta files, assembly definitions, input actions and shaders.
+UNITY_TEXT_SUFFIXES = frozenset({".cs", ".unity", ".prefab", ".asset", ".meta", ".asmdef", ".inputactions", ".shader"})
 
 
 def sha256_file(path: Path) -> str:
