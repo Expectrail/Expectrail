@@ -124,3 +124,11 @@ something; keep prior work out of it.
 | Nov 1 | Final pass before the numbers freeze: the mutation bench written into the README's opening, the landing page's results and limits, the evaluation plan, future work and the bench index; the stress-test candidate log pointed to from the README and future work; the lanes table gains `bench/` and `apps/checkout/`; this log brought up to date | `README.md`, `docs/index.html`, `docs/evaluation.md`, `docs/future-work.md`, `bench/README.md`, `docs/new-work.md` |
 | Nov 1 | The working name removed from the repository and the private held-out set: the reading of earlier format IDs, settings, key name and fix-matrix condition dropped; the private repository renamed to `Expectrail-heldout`, its manifest and routes on the current format IDs; the names in seven run records updated, each record noting the commit with its original bytes; the planning tool's per-machine render cache removed and ignored. Three files keep a mention of the earlier name, because the discovery freeze and the mutation bench's registration cover them byte for byte | `expectrail/legacy.py`, `expectrail/__init__.py`, `agents/keys.py`, `agents/isolation.py`, `agents/bench_collect.py`, `contracts/`, `.github/workflows/`, `bench/live-muse-clean-v1/`, `bench/spark-open/`, `bench/spec-writer-live/`, `docs/contracts.md`, `README.md`, `.gitignore` |
 | Nov 4 | The demo video, published at https://youtu.be/BlWOiweL8Lc, linked first from the README and from the landing page's hero and footer | `README.md`, `docs/index.html` |
+
+## After the event
+
+Work after the event, kept apart from the record above.
+
+| Date | What | Where |
+| --- | --- | --- |
+| Nov 9 | First Unity game chosen: Platformio (MIT code, CC0 Kenney art, Unity 6.3, Input System only, text assets, seedable `UnityEngine.Random`), with licence and determinism evidence for it, RedRunner and the multiplayer template; no game imported | `docs/unity-game-choice.md` |
