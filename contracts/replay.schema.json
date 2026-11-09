@@ -68,7 +68,8 @@
       ],
       "properties": {
         "name": {
-          "const": "godot"
+          "description": "The engine that replayed the route. godot and unity are game engines; a web page names its browser engine (harness/web/run.py writes chromium) or web when it does not record one. Each adapter in harness/adapters.py records which it writes.",
+          "enum": ["godot", "unity", "web", "chromium"]
         },
         "version": {
           "type": "string"

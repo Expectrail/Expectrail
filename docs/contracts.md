@@ -83,6 +83,10 @@ approval, a pinned contract set), which is not built.
   becomes a draft test spec with no approval, and a request to weaken a check goes to a person
   (`category: weaken-check` must have `route: human-queue` and no draft). Audio sources must
   record `consent: true`.
+- **Every replay names its engine.** `engine.name` in a replay is `godot`, `unity`, `web` or
+  `chromium`. Each adapter in `harness/adapters.py` says which one its replays record: the Godot
+  harness writes `godot`, and the web harness writes `chromium` in its own
+  `expectrail.web-replay/v0` document. No Unity runner exists yet; `unity` is there for it.
 - **Accept only if every check passes.** `verification.decision` is `accept` only when every
   regression, gameplay, held-out and clean check passes; any failure rejects; anything unclear
   needs review. An incomplete check set (missing a required kind) is `needs-review`, never

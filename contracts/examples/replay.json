@@ -2,7 +2,7 @@
   "format": "expectrail.replay/v0",
   "route": {
     "name": "smoke",
-    "sha256": "c3171430823e03410f66820ed58853666f53b48cf6f380b965599f421794e3c6"
+    "sha256": "0db750ef7ab79124ccd80c63c03f117d84c579281f7ca487f0877f829660f02d"
   },
   "game": {
     "tree": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280",
@@ -145,6 +145,6 @@
   ],
   "trace": {
     "path": "trace.json",
-    "sha256": "316a22274ec0541c2877109aeea9b15782c8a2770e117c2b0b7a4d5ba221c9a5"
+    "sha256": "9e15302e3647dc19155083dc9708ef5180309ea916fd53a532b89cffde1336fd"
   }
 }

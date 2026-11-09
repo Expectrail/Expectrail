@@ -141,6 +141,14 @@ class RegistryTest(unittest.TestCase):
             self.assertTrue(sorted(adapter.bugs.glob("*/v*.patch")), adapter.name)
         self.assertEqual(godot.trace_state({"player": [1, 2], "view": [0] * 6}), [1, 2])
 
+    def test_every_adapter_s_engine_is_one_the_replay_contract_accepts(self):
+        from expectrail.contracts import schema
+
+        allowed = schema("replay")["properties"]["engine"]["properties"]["name"]["enum"]
+        for name in adapters.names():
+            self.assertIn(adapters.get(name).engine, allowed, name)
+        self.assertIn("unity", allowed)
+
     def test_frames_are_found_by_the_pattern_in_order(self):
         with tempfile.TemporaryDirectory() as tmp:
             frames = Path(tmp) / "frames"
@@ -150,6 +158,27 @@ class RegistryTest(unittest.TestCase):
             (frames / "notes.txt").write_text("")
             got = adapters.get("godot").frames(Path(tmp))
         self.assertEqual([p.name for p in got], ["f00000000.png", "f00000001.png", "f00000002.png", "f00000010.png"])
+
+
+@unittest.skipUnless(__import__("importlib").util.find_spec("playwright"), "playwright is not installed")
+class WebReplayTest(unittest.TestCase):
+    def test_the_web_adapter_writes_the_document_the_web_harness_writes(self):
+        from harness.web import run as web
+
+        route = adapters.get("web").default_route
+        bug = sorted(adapters.get("web").bugs.glob("layering/v1.patch"))
+        with tempfile.TemporaryDirectory() as tmp:
+            try:
+                direct = web.run(route, Path(tmp) / "direct", bug)
+            except Exception as exc:  # noqa: BLE001 - no browser on this machine
+                self.skipTest(f"chromium unavailable: {exc}")
+            through = adapters.get("web").run(route, Path(tmp) / "adapter", bug)
+            self.assertEqual((Path(tmp) / "direct" / "replay.json").read_bytes(),
+                             (Path(tmp) / "adapter" / "replay.json").read_bytes())
+            self.assertEqual((Path(tmp) / "direct" / "trace.json").read_bytes(),
+                             (Path(tmp) / "adapter" / "trace.json").read_bytes())
+        self.assertEqual(through, direct)
+        self.assertEqual(through["engine"]["name"], adapters.get("web").engine)
 
 
 def unity_shaped(root: Path) -> adapters.Adapter:
