@@ -3,9 +3,12 @@
 # ci.yml), and fails when this lane inventory and the checker's classification disagree.
 #
 # The checker does not recognise our model entry points (python -m agents.*), so every job that
-# hands a Meta model untrusted input and acts on what it says is declared here as an agent lane.
-# A new model entry point needs a line here and review (agents/assurance/audit.py holds the same
-# list). Jobs that only send frames to a perception model (SAM 3.1, Muse Glimmer: sam-probe.yml,
+# hands a model untrusted input and acts on what it says is declared here as an agent lane, whether
+# the model is Meta's or a bring-your-own provider's.
+# A new model entry point needs a line here and review; agents/assurance/audit.py takes the keys
+# that count from the provider and BYO-agent registries, so it sees a new provider's key without
+# being edited, and fails here until the job holding it is declared or declared perception-only.
+# Jobs that only send frames to a perception model (SAM 3.1, Muse Glimmer: sam-probe.yml,
 # glimmer-probe.yml, fix-matrix.yml#sam-warm) are not agents; they still hold model keys, and the
 # credential findings for them are reported, not suppressed.
 lanes:
@@ -23,3 +26,4 @@ lanes:
   ".github/workflows/case-spend.yml#run": agent                   # Muse/SAM spend counters for fix-matrix and judge
   ".github/workflows/discovery.yml#discovery": agent             # Muse Spark plans discovery probes and contracts
   ".github/workflows/discovery-blind.yml#blind": agent           # the same, on the private fresh set (counts only)
+  ".github/workflows/byo-live.yml#byo-live": agent               # Claude triages, Claude Code fixes (BYO, manual)

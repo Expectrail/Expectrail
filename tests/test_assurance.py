@@ -175,9 +175,15 @@ class LaneInventoryTest(unittest.TestCase):
 
     def test_every_job_with_a_model_key_is_a_declared_agent_or_perception_only(self):
         self.assertEqual(self.audit.inventory_problems(self.lanes(), self.declared, self.models), [])
-        self.assertEqual(len(self.declared), 14)
+        self.assertEqual(len(self.declared), 15)
         for job in self.audit.PERCEPTION:
             self.assertIn(job, self.models, f"{job} no longer holds a model key; drop it from PERCEPTION")
+
+    def test_the_byo_fixer_job_holds_its_providers_key_and_is_a_declared_agent(self):
+        """byo-live runs Claude Code on the change under review, so it is an agent lane like any other."""
+        job = ".github/workflows/byo-live.yml#byo-live"
+        self.assertEqual(self.models.get(job), {"ANTHROPIC_API_KEY"})
+        self.assertIn(job, self.declared)
 
     def test_a_new_model_job_that_nobody_declared_fails_the_audit(self):
         models = dict(self.models, **{".github/workflows/new.yml#fix-it": {"META_API_KEY"}})
@@ -209,3 +215,41 @@ class LaneInventoryTest(unittest.TestCase):
         self.assertEqual(lines[1], "::notice title=OBAAF high OBAAF-GHA-005 x2::Secret available to an agent job: "
                                    "run, demo-run")
         self.assertEqual(len(lines), 2)  # a suppressed finding is not counted
+
+
+class ModelKeyCoverageTest(unittest.TestCase):
+    """audit.MODEL_KEYS comes from the provider and BYO-agent registries, so a provider added there
+    cannot hand a job a key this audit does not recognise (which would pass the lane inventory by
+    being invisible to it, not by being declared)."""
+
+    def setUp(self):
+        from agents.assurance import audit
+        self.audit = audit
+
+    def test_every_provider_key_env_is_a_model_key(self):
+        from expectrail.providers import PROVIDER_DEFAULTS
+        for provider, defaults in PROVIDER_DEFAULTS.items():
+            for env in defaults["key_envs"]:
+                self.assertTrue(self.audit.is_model_key(env),
+                                f"{provider}'s {env} is not a model key: the OBAAF audit cannot see it")
+
+    def test_every_byo_coding_agents_key_env_is_a_model_key(self):
+        from agents.keys import BYO_AGENT_KEY_ENVS
+        for agent, envs in BYO_AGENT_KEY_ENVS.items():
+            for env in envs:
+                self.assertTrue(self.audit.is_model_key(env),
+                                f"{agent}'s {env} is not a model key: the OBAAF audit cannot see it")
+
+    def test_the_legacy_meta_keys_are_still_model_keys(self):
+        for env in ("META_API_KEY", "MODEL_API_KEY", "BASETEN_API_KEY", "FIREWORKS_API_KEY", "GLIMMER_API_KEY"):
+            self.assertTrue(self.audit.is_model_key(env))
+
+    def test_a_roles_own_key_is_a_model_key_without_being_listed(self):
+        for env in ("EXPECTRAIL_SPEC_API_KEY", "EXPECTRAIL_TRIAGE_API_KEY", "EXPECTRAIL_FIXER_API_KEY",
+                    "EXPECTRAIL_VLM_API_KEY", "EXPECTRAIL_JUDGE_API_KEY"):
+            self.assertTrue(self.audit.is_model_key(env), env)
+
+    def test_a_secret_that_is_not_a_model_key_is_not_matched(self):
+        for env in ("HELDOUT_TOKEN", "GITHUB_TOKEN", "UNITY_EMAIL", "UNITY_LICENSE", "UNITY_PASSWORD",
+                    "EXPECTRAIL_LLM_API_BASE", "EXPECTRAIL_FIXER_CMD", "OLLAMA_HOST"):
+            self.assertFalse(self.audit.is_model_key(env), env)
