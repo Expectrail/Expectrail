@@ -140,8 +140,12 @@ jobs:
           cd "$CLI"
           step "npm run build" build-cli.log npm run build
           step "npm link" link.log npm link
-          ann notice "cocos --version" "$(cocos --version 2>&1 | tail -3 | tr '\n' ' ')"
-          ann notice "cocos --help" "$(cocos --help 2>&1 | grep -E '^\s+[a-z-]+ ' | head -14 | sed 's/  */ /g' | cut -c1-60 | tr '\n' ';')"
+          # Run 42675277015: the linked cocos command failed with "Permission denied" (exit 126).
+          bin=$(command -v cocos || true)
+          ann notice "Linked cocos command" "${bin:-not on PATH} -> $(readlink -f "$bin" 2>/dev/null); mode $(stat -c '%A' "$(readlink -f "$bin" 2>/dev/null)" 2>/dev/null); first line: $(head -1 dist/cli.js)"
+          # So the CLI runs as its own E2E runner runs it (e2e/helpers/cli-runner.ts): node dist/cli.js.
+          ann notice "cocos --version" "$(node dist/cli.js --version 2>&1 | tail -3 | tr '\n' ' ')"
+          ann notice "cocos --help" "$(node dist/cli.js --help 2>&1 | grep -E '^\s+[a-z-]+ ' | head -14 | sed 's/  */ /g' | cut -c1-60 | tr '\n' ';')"
 
       - name: Trial A empty 2D project
         id: trial_a
@@ -149,9 +153,9 @@ jobs:
         run: |
           . "$RUNNER_TEMP/steps.sh"
           P="$RUNNER_TEMP/projects/empty-2d"
-          step "cocos create --type 2d" create.log cocos --no-interactive create --project "$P" --type 2d
+          step "cocos create --type 2d" create.log node "$CLI/dist/cli.js" --no-interactive create --project "$P" --type 2d
           ann notice "Created project files" "$(cd "$P" && find . -type f | sort | head -20 | tr '\n' ' ')"
-          step "build empty-2d web-mobile" build-empty.log cocos --no-interactive build --project "$P" --platform web-mobile
+          step "build empty-2d web-mobile" build-empty.log node "$CLI/dist/cli.js" --no-interactive build --project "$P" --platform web-mobile
           idx=$(find "$P/build" -name index.html | head -1)
           [ -n "$idx" ] || { ann error "empty-2d output" "no index.html under $P/build: $(find "$P/build" -maxdepth 2 | head -20 | tr '\n' ' ')"; exit 1; }
           out=$(dirname "$idx")
@@ -167,7 +171,7 @@ jobs:
           # tests/fixtures/projects/asset-operation: the project the CLI's build E2E test uses, with a 2D scene.
           cp -r "$CLI/tests/fixtures/projects/asset-operation" "$P"
           ann notice "Fixture project" "$(cd "$P" && find . -type f -not -name '*.meta' | sort | head -20 | tr '\n' ' ')"
-          step "build fixture-2d web-mobile" build-fixture.log cocos --no-interactive build --project "$P" --platform web-mobile
+          step "build fixture-2d web-mobile" build-fixture.log node "$CLI/dist/cli.js" --no-interactive build --project "$P" --platform web-mobile
           idx=$(find "$P/build" -name index.html | head -1)
           [ -n "$idx" ] || { ann error "fixture-2d output" "no index.html under $P/build: $(find "$P/build" -maxdepth 2 | head -20 | tr '\n' ' ')"; exit 1; }
           out=$(dirname "$idx")
