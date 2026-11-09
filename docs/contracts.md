@@ -1,8 +1,8 @@
 # Lane contracts
 
-Eleven JSON documents carry everything between the four lanes (seven lane hand-offs plus the
-agents adjuncts `gameplay-verdict`, `release-candidate`, `overnight-summary` and
-`feedback-intake`). Each has a
+Twelve JSON documents carry everything between the four lanes (seven lane hand-offs plus the
+agents adjuncts `gameplay-verdict`, `release-candidate`, `overnight-summary`, `feedback-intake`
+and `stability`). Each has a
 schema in [`contracts/`](../contracts) and a worked example in
 [`contracts/examples/`](../contracts/examples).
 Agree changes in the team channel first, then change the schema, the example and the code in one
@@ -33,6 +33,14 @@ verification ◄── verifier (rebuild, replay, all checks) ◄── candidat
 | `release-candidate` | morning report (`agents.report`) | demo / human sign-off | Taofeek |
 | `overnight-summary` | overnight loop (`agents.loop`) | rollup / bench stub | Taofeek |
 | `feedback-intake` | voice feedback intake (`agents.feedback`) | morning report, a person | Sean |
+| `stability` | flaky-route detector (`agents.stability`) | overnight loop and held-out bench with `--stability`, a person | Sean |
+
+`stability` (added November 9) is not in `expectrail.contracts.KINDS`: the discovery freeze covers
+`expectrail/contracts.py` byte for byte, so `kind_of` does not recognise its format, and
+`agents.stability` validates it with the kind named, `validate(doc, "stability")`. The loop's run
+records carry its summary in `overnight-summary` (`results[].stability`). The baselines it compares
+with (`bench/baselines/`, `expectrail.stability-baseline/v0`) have no schema: only
+`agents.stability` writes and reads them ([README](../bench/baselines/README.md)).
 
 ## Discovery records (v1, added October 31)
 

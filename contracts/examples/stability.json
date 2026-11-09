@@ -1,0 +1,77 @@
+{
+  "format": "expectrail.stability/v0",
+  "route": {
+    "name": "smoke",
+    "sha256": "0db750ef7ab79124ccd80c63c03f117d84c579281f7ca487f0877f829660f02d"
+  },
+  "case": {
+    "key": "e326b8e15caf015877d00c6a2a85e98ed0cd56ad7df5564175988461e5de0e7f",
+    "route": "0db750ef7ab79124ccd80c63c03f117d84c579281f7ca487f0877f829660f02d",
+    "gameTree": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280",
+    "patchSha256": "6514ad59f1311fc109b56c06366871c0aeab316179d80a9921a43a41e7667740",
+    "fps": 60,
+    "captured": true
+  },
+  "runs": 3,
+  "status": "stable-fail",
+  "result": "fail",
+  "reason": "failed 3 of 3 replays, all identical",
+  "counts": {
+    "fail": 3,
+    "needs-review": 0,
+    "pass": 0,
+    "crashed": 0
+  },
+  "distinctReplays": 1,
+  "replaysIdentical": true,
+  "resultsAgree": true,
+  "checks": null,
+  "replays": [
+    {
+      "run": 1,
+      "dir": "replay-01",
+      "result": "fail",
+      "checks": null,
+      "frames": 120,
+      "frameListSha256": "b762b32ba562b24a7ae23c687dc5ffca12677e28d386273e25fd63b1eb3fbf50",
+      "traceSha256": "2e4a64552a7a6de8122b144cf39f663c173891cc375b914709c5953032eeadb3",
+      "framesDifferFromFirst": 0,
+      "error": null
+    },
+    {
+      "run": 2,
+      "dir": "replay-02",
+      "result": "fail",
+      "checks": null,
+      "frames": 120,
+      "frameListSha256": "b762b32ba562b24a7ae23c687dc5ffca12677e28d386273e25fd63b1eb3fbf50",
+      "traceSha256": "2e4a64552a7a6de8122b144cf39f663c173891cc375b914709c5953032eeadb3",
+      "framesDifferFromFirst": 0,
+      "error": null
+    },
+    {
+      "run": 3,
+      "dir": "replay-03",
+      "result": "fail",
+      "checks": null,
+      "frames": 120,
+      "frameListSha256": "b762b32ba562b24a7ae23c687dc5ffca12677e28d386273e25fd63b1eb3fbf50",
+      "traceSha256": "2e4a64552a7a6de8122b144cf39f663c173891cc375b914709c5953032eeadb3",
+      "framesDifferFromFirst": 0,
+      "error": null
+    }
+  ],
+  "fingerprint": {
+    "id": "ad62ebe3e044dcd8",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "arch": "x86_64",
+    "mesa": "25.2.8-0ubuntu0.24.04.4",
+    "engine": "4.7.2.stable.official.ed1daf0bf",
+    "renderer": "opengl3",
+    "device": "Mesa - llvmpipe (LLVM 20.1.2, 256 bits)"
+  },
+  "baseline": {
+    "status": "missing",
+    "file": "bench/baselines/ad62ebe3e044dcd8.json"
+  }
+}
