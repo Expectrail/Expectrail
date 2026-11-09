@@ -1,0 +1,55 @@
+{
+  "_comment": "Hand-written example of a replay from harness/unity/run.py; not from a run, and every digest is a placeholder.",
+  "format": "expectrail.replay/v0",
+  "route": {
+    "name": "unity-smoke",
+    "sha256": "8a84e406c08ac9594f47222406598f7598e15c55f8044b04813e28c9dee70976"
+  },
+  "game": {
+    "tree": "6ca5cab77e702c787b4c14b3d3bf26bad43da606be6eed04ab0b9720120ae081",
+    "patch": null,
+    "patchSha256": null
+  },
+  "engine": {
+    "name": "unity",
+    "version": "6000.3.21f1",
+    "renderer": "OpenGLCore OpenGL 4.5 (Core Profile) Mesa",
+    "device": "(the CPU model, from /proc/cpuinfo)"
+  },
+  "capture": {
+    "fps": 50,
+    "physicsTicksPerSecond": 50,
+    "frames": 3,
+    "pattern": "frames/f%08d.png"
+  },
+  "frameSha256": [
+    "40db78ae029df9f395c8fcd445f1625e2e7bf22e0bc0dc6182ae62fee82319f0",
+    "56f5a971b3594642a6a1c07ed7b8a1467240b578ecdbc8bf8f9189e7a1b219bf",
+    "6ad5018336b83bb247f98cbb2e13cec929abfcbff92d1b3816a319a22fb112b7"
+  ],
+  "trace": {
+    "path": "trace.json",
+    "sha256": "eafe895eb8119e6e5d06463590b2ef81b3651c157d5c8e18f1889186c7fd0ac0"
+  },
+  "seed": 1,
+  "build": {
+    "key": "44575cf5b28512d75644bf54a517dcef304ff809fd511747621b4d64f19aac66",
+    "unityVersion": "6000.3.21f1"
+  },
+  "settle": {
+    "ticks": 77,
+    "frozenFrames": 31
+  },
+  "hazards": [
+    {
+      "kind": "real-time-fade",
+      "detail": "Platformio.UI.Fader fades on Time.unscaledDeltaTime; before tick 0 the harness holds game time while it fades",
+      "tick": null
+    }
+  ],
+  "integrity": {
+    "exceptions": 0,
+    "errors": 0,
+    "messages": []
+  }
+}

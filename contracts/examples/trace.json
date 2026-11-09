@@ -1,0 +1,267 @@
+{
+  "_comment": "Hand-written example of a trace from the Unity harness, in the shape harness/unity/package writes; not from a run. World pixels are Unity units times 128, y negated. The Godot harness writes the same fields without objects.",
+  "format": "expectrail.trace/v0",
+  "ticks": 3,
+  "physicsTicksPerSecond": 50,
+  "capabilities": {
+    "enemies": "complete",
+    "projectiles": "complete",
+    "facing": true,
+    "onFloor": true
+  },
+  "levelSurfaces": [
+    [
+      [
+        1280.0,
+        -896.0
+      ],
+      [
+        3840.0,
+        -896.0
+      ],
+      [
+        3840.0,
+        -768.0
+      ],
+      [
+        1280.0,
+        -768.0
+      ]
+    ]
+  ],
+  "levelArt": {
+    "x0": 1280,
+    "y0": -896,
+    "width": 2,
+    "height": 128,
+    "columns": [
+      [
+        [
+          -896,
+          -768
+        ]
+      ],
+      [
+        [
+          -896,
+          -768
+        ]
+      ]
+    ]
+  },
+  "rows": [
+    {
+      "tick": 0,
+      "frame": 0,
+      "player": [
+        1536.0,
+        -1024.0
+      ],
+      "onFloor": true,
+      "facing": 1,
+      "ground": -896.0,
+      "coins": [
+        [
+          2240.0,
+          -1152.0
+        ]
+      ],
+      "enemies": [
+        [
+          0,
+          3200.0,
+          -896.0
+        ]
+      ],
+      "projectiles": [],
+      "view": [
+        0.625,
+        0.0,
+        0.0,
+        0.625,
+        -160.0,
+        1120.0
+      ],
+      "objects": [
+        {
+          "id": "Player",
+          "role": "player",
+          "box": [
+            758.0,
+            420.0,
+            838.0,
+            580.0
+          ],
+          "active": true,
+          "visible": true
+        },
+        {
+          "id": "LevelRoot/Level1(Clone)/Coins/GoldCoin",
+          "role": "coin",
+          "box": [
+            1200.0,
+            380.0,
+            1240.0,
+            420.0
+          ],
+          "active": true,
+          "visible": true
+        },
+        {
+          "id": "LevelRoot/Level1(Clone)/Enemies/Enemy",
+          "role": "enemy",
+          "box": [
+            1860.0,
+            520.0,
+            1940.0,
+            580.0
+          ],
+          "active": true,
+          "visible": false
+        }
+      ]
+    },
+    {
+      "tick": 1,
+      "frame": 1,
+      "player": [
+        1541.12,
+        -1024.0
+      ],
+      "onFloor": true,
+      "facing": 1,
+      "ground": -896.0,
+      "coins": [
+        [
+          2240.0,
+          -1152.0
+        ]
+      ],
+      "enemies": [
+        [
+          0,
+          3197.44,
+          -896.0
+        ]
+      ],
+      "projectiles": [],
+      "view": [
+        0.625,
+        0.0,
+        0.0,
+        0.625,
+        -163.2,
+        1120.0
+      ],
+      "objects": [
+        {
+          "id": "Player",
+          "role": "player",
+          "box": [
+            761.2,
+            420.0,
+            841.2,
+            580.0
+          ],
+          "active": true,
+          "visible": true
+        },
+        {
+          "id": "LevelRoot/Level1(Clone)/Coins/GoldCoin",
+          "role": "coin",
+          "box": [
+            1200.0,
+            380.0,
+            1240.0,
+            420.0
+          ],
+          "active": true,
+          "visible": true
+        },
+        {
+          "id": "LevelRoot/Level1(Clone)/Enemies/Enemy",
+          "role": "enemy",
+          "box": [
+            1860.0,
+            520.0,
+            1940.0,
+            580.0
+          ],
+          "active": true,
+          "visible": false
+        }
+      ]
+    },
+    {
+      "tick": 2,
+      "frame": 2,
+      "player": [
+        1546.24,
+        -1024.0
+      ],
+      "onFloor": true,
+      "facing": 1,
+      "ground": -896.0,
+      "coins": [
+        [
+          2240.0,
+          -1152.0
+        ]
+      ],
+      "enemies": [
+        [
+          0,
+          3194.88,
+          -896.0
+        ]
+      ],
+      "projectiles": [],
+      "view": [
+        0.625,
+        0.0,
+        0.0,
+        0.625,
+        -166.4,
+        1120.0
+      ],
+      "objects": [
+        {
+          "id": "Player",
+          "role": "player",
+          "box": [
+            764.4,
+            420.0,
+            844.4,
+            580.0
+          ],
+          "active": true,
+          "visible": true
+        },
+        {
+          "id": "LevelRoot/Level1(Clone)/Coins/GoldCoin",
+          "role": "coin",
+          "box": [
+            1200.0,
+            380.0,
+            1240.0,
+            420.0
+          ],
+          "active": true,
+          "visible": true
+        },
+        {
+          "id": "LevelRoot/Level1(Clone)/Enemies/Enemy",
+          "role": "enemy",
+          "box": [
+            1860.0,
+            520.0,
+            1940.0,
+            580.0
+          ],
+          "active": true,
+          "visible": false
+        }
+      ]
+    }
+  ]
+}

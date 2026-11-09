@@ -37,8 +37,8 @@ from harness import run as _godot
 
 REPO = _godot.REPO
 
-# Unity, for the adapter that comes next. Not registered: there is no Unity runner yet. These are the
-# Unity project folders the editor rebuilds on its own (never part of a game's digest or a fixer's copy).
+# Unity (the adapter is below, its runner harness/unity/run.py). These are the Unity project folders
+# the editor rebuilds on its own (never part of a game's digest or a fixer's copy).
 UNITY_IGNORE = ("Library", "Temp", "Logs", "obj", "UserSettings")
 # Unity's text files, with the editor's asset serialization set to Force Text: scripts, scenes,
 # prefabs, assets, their .meta files, assembly definitions, input actions and shaders.
@@ -189,6 +189,47 @@ WEB = Adapter(
 )
 
 
+# Unity: Platformio in a player built with the Expectrail harness ------------------------------------
+
+UNITY_TICKS_PER_SECOND = 50  # Platformio's Fixed Timestep, 0.02 s; one captured frame per tick
+
+
+def _unity_run(route: Path, out: Path, patches: list[Path] | None = None, *, game: Path | None = None,
+               fps: int | None = None, capture_frames: bool = True) -> dict:
+    # The player comes from $EXPECTRAIL_UNITY_PLAYER (a build folder, or a folder of them): a Unity
+    # game is built before it runs, and run() refuses a player built from other files.
+    from harness.unity import run as unity  # looked up at call time, so a test can replace it
+
+    return unity.run(Path(route), Path(out), None if patches is None else list(patches), game=game, fps=fps,
+                     capture_frames=capture_frames)
+
+
+def _unity_state(row: dict) -> object:
+    return row
+
+
+UNITY = Adapter(
+    name="unity",
+    engine="unity",
+    run=_unity_run,
+    game_root=REPO / "game" / "unity-platformer",
+    ignore=UNITY_IGNORE,
+    frame_pattern="frames/f%08d.png",
+    log_name="unity.log",
+    # A default until a patch policy for Unity fixes is agreed: the game's own assets and scripts, and
+    # the 2D physics settings one seeded-bug family edits.
+    editable=("Assets/_Project/**", "ProjectSettings/Physics2DSettings.asset"),
+    prompt_subject="a Unity 6 2D platformer",
+    text_suffixes=UNITY_TEXT_SUFFIXES,
+    capture_fps=UNITY_TICKS_PER_SECOND,
+    ticks_per_second=UNITY_TICKS_PER_SECOND,
+    trace_format="expectrail.trace/v0",
+    default_route=REPO / "harness" / "routes" / "unity-smoke.json",
+    bugs=REPO / "bugs" / "unity-platformer",
+    trace_state=_unity_state,
+)
+
+
 # Registry -------------------------------------------------------------------------------------------
 
 _REGISTRY: dict[str, Adapter] = {}
@@ -225,3 +266,4 @@ def resolve(adapter: str | Adapter) -> Adapter:
 
 register(GODOT)
 register(WEB)
+register(UNITY)

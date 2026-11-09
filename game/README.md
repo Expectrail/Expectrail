@@ -30,8 +30,10 @@ is the first Unity game Expectrail will test. Why we chose it over the other can
 | Engine | Unity 6000.3.21f1 (Unity 6.3 LTS), Input System as the only input handler |
 | License | MIT for the code (`unity-platformer/LICENSE`), CC0 for Kenney's art and audio; the rest is in `NOTICE` |
 
-Nothing in it is wired into the harness yet, and no bugs are seeded into it. As with the Godot game,
-seeded bugs will be patches applied to a copy, never commits to this directory.
+The Unity harness (`harness/unity/`, see `docs/harness.md`) builds it into a player and replays routes
+on it; how it reads the game is in `harness/unity/maps/unity-platformer.json`. No bugs are seeded
+into it yet. As with the Godot game, seeded bugs will be patches applied to a copy, never commits to
+this directory.
 
 ### How it was imported
 

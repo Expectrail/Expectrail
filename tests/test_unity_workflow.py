@@ -45,7 +45,8 @@ class UnityWorkflowTest(unittest.TestCase):
     def test_it_runs_when_dispatched_or_on_pull_requests_that_touch_unity(self):
         self.assertEqual(set(self.doc[True]), {"pull_request", "workflow_dispatch"})
         self.assertEqual(self.doc[True]["pull_request"]["paths"],
-                         ["game/unity-platformer/**", "harness/unity/**", ".github/workflows/unity.yml"])
+                         ["game/unity-platformer/**", "harness/unity/**", "harness/routes/unity-*.json",
+                          ".github/workflows/unity.yml"])
 
     def test_permissions_are_read_only(self):
         self.assertEqual(self.doc["permissions"], {"contents": "read"})
@@ -64,7 +65,7 @@ class UnityWorkflowTest(unittest.TestCase):
         for ref in uses:
             with self.subTest(uses=ref):
                 self.assertRegex(ref, r"^[\w.-]+/[\w./-]+@[0-9a-f]{40}$")
-        self.assertEqual(len(self.steps(self.build, uses=UNITY_BUILDER)), 1)
+        self.assertEqual(len(self.steps(self.build, uses=UNITY_BUILDER)), 3)
         self.assertIn(f"uses: {UNITY_BUILDER} # v4.8.2", self.text)
 
     def test_the_build_runs_in_the_unity_environment_one_editor_at_a_time(self):
@@ -77,8 +78,12 @@ class UnityWorkflowTest(unittest.TestCase):
     def test_only_the_three_unity_secrets_appear_and_only_in_the_build_job(self):
         self.assertEqual(set(re.findall(r"secrets\.([A-Z0-9_]+)", self.text)), UNITY_SECRETS)
         self.assertNotIn("secrets.", yaml.safe_dump(self.replay))
-        self.assertNotIn("HELDOUT", self.text)
+        # Nothing private is fetched; the held-out directory's variable appears only as the canary's bait.
         self.assertNotIn("Expectrail-heldout", self.text)
+        self.assertNotIn("HELDOUT_TOKEN", self.text)
+        others = "".join(yaml.safe_dump(s) for job in self.jobs.values() for s in job["steps"]
+                         if s.get("name") != "A candidate's game code cannot read the verifier's environment")
+        self.assertNotIn("HELDOUT", others)
 
     def test_secret_values_reach_only_the_builder(self):
         for i, step in enumerate(self.build["steps"]):
@@ -128,9 +133,13 @@ class UnityWorkflowTest(unittest.TestCase):
             with self.subTest(step=step.get("name") or step.get("uses")):
                 self.assertTrue(str(step.get("if", "")).startswith(PRESENT), step.get("if"))
         self.assertEqual(self.build["outputs"]["built"], "${{ steps.done.outputs.built }}")
-        self.assertEqual(steps[-1]["id"], "done")
         self.assertEqual(self.replay["needs"], "build")
-        self.assertEqual(self.replay["if"], "needs.build.outputs.built == 'true'")
+        # The replay starts once the harness player is uploaded, so a failed canary after it cannot hide it.
+        self.assertEqual(self.replay["if"], "always() && needs.build.outputs.built == 'true'")
+        done = steps.index(next(s for s in steps if s.get("id") == "done"))
+        upload = steps.index(next(s for s in self.steps(self.build, uses="actions/upload-artifact@")
+                                  if s["with"]["name"] == "unity-player-clean-harness"))
+        self.assertEqual(done, upload + 1)
 
     def test_it_builds_with_the_projects_editor_for_linux(self):
         version = re.search(r"^m_EditorVersion: (\S+)$", PROJECT_VERSION.read_text(), re.M).group(1)
@@ -181,7 +190,11 @@ class UnityWorkflowTest(unittest.TestCase):
     def test_only_clean_or_public_players_are_uploaded(self):
         names = [s["with"]["name"] for job in self.jobs.values() for s in self.steps(job, uses="actions/upload-artifact@")]
         players = [n for n in names if n.startswith("unity-player-")]
-        self.assertEqual(players, ["unity-player-clean"])
+        # The canary's player stays in the build job; nothing held out is built here at all.
+        self.assertEqual(players, ["unity-player-clean", "unity-player-clean-harness"])
+        self.assertEqual(sorted(set(names) - set(players)), ["unity-smoke-replay"])
+        self.assertNotIn("canary", " ".join(str(s["with"]["path"]) for job in self.jobs.values()
+                                             for s in self.steps(job, uses="actions/upload-artifact@")))
 
     def test_the_replay_job_needs_no_licence_and_runs_in_a_pinned_container(self):
         self.assertRegex(self.replay["container"]["image"], r"^ubuntu:[\w.-]+@sha256:[0-9a-f]{64}$")
@@ -196,6 +209,44 @@ class UnityWorkflowTest(unittest.TestCase):
     def test_times_are_published_as_notices(self):
         self.assertIn("::notice title=Unity build time::", self.text)
         self.assertIn("::notice title=Unity times::", self.text)
+
+    def test_the_harness_projects_are_laid_out_before_any_build(self):
+        order = self.build["steps"]
+        prepare = self.steps(self.build, name="Lay out the harness and canary projects (before any build touches the workspace)")[0]
+        builders = self.steps(self.build, uses="game-ci/unity-builder@")
+        self.assertLess(order.index(prepare), order.index(builders[0]))
+        self.assertIn("python -m harness.unity.run --prepare-build --out runs/unity/harness\n", prepare["run"])
+        self.assertIn("--prepare-build --out runs/unity/canary --patch harness/unity/fixtures/canary-env.patch", prepare["run"])
+        self.assertTrue((REPO / "harness" / "unity" / "fixtures" / "canary-env.patch").is_file())
+
+    def test_the_harness_and_canary_builds_use_the_harness_build_method(self):
+        from harness.unity.run import BUILD_METHOD
+
+        harness, canary = self.steps(self.build, uses="game-ci/unity-builder@")[1:]
+        self.assertEqual((harness["with"]["projectPath"], canary["with"]["projectPath"]),
+                         ("runs/unity/harness/project", "runs/unity/canary/project"))
+        self.assertEqual({harness["with"]["buildMethod"], canary["with"]["buildMethod"]}, {BUILD_METHOD})
+        check = self.steps(self.build, name="Harness build time, and the harness is in the player")[0]["run"]
+        self.assertIn("test -f runs/unity/harness/player/game_Data/Managed/Expectrail.Harness.dll", check)
+
+    def test_the_canary_runs_in_the_build_job_with_the_verifiers_variables(self):
+        step = self.steps(self.build, name="A candidate's game code cannot read the verifier's environment")[0]
+        self.assertEqual(set(step["env"]) & {"EXPECTRAIL_CANARY", "EXPECTRAIL_HELDOUT_DIR"},
+                         {"EXPECTRAIL_CANARY", "EXPECTRAIL_HELDOUT_DIR"})
+        self.assertIn("--player runs/unity/canary --patch harness/unity/fixtures/canary-env.patch", step["run"])
+        self.assertIn('grep -qx "CANARY_ENV=" runs/unity/canary-run/unity.log', step["run"])
+        self.assertIn('grep -qx "CANARY_HELDOUT=" runs/unity/canary-run/unity.log', step["run"])
+        self.assertNotRegex(yaml.safe_dump(step), r"\bsecrets\.[A-Z]")
+
+    def test_the_replay_job_replays_twice_and_compares_frames_and_trace(self):
+        replays = self.steps(self.replay, name="Replay the smoke route twice")[0]["run"]
+        self.assertIn("for i in 0 1; do", replays)
+        self.assertIn("python3 -m harness.unity.run --route harness/routes/unity-smoke.json", replays)
+        self.assertTrue((REPO / "harness" / "routes" / "unity-smoke.json").is_file())
+        compare = self.steps(self.replay, name="The two replays match frame for frame and in the trace")[0]["run"]
+        self.assertIn("--out runs/unity/replay/run-00 --compare runs/unity/replay/run-01", compare)
+        download = self.steps(self.replay, uses="actions/download-artifact@")[0]
+        self.assertEqual(download["with"]["name"], "unity-player-clean-harness")
 
     def test_the_shell_steps_parse(self):
         for name, job in self.jobs.items():
