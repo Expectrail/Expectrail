@@ -29,9 +29,7 @@ extends Node
 ## verifier can see a floor drawn somewhere its collision is not (see _render_level_art).
 
 const TRACE_FORMAT := "expectrail.trace/v0"
-# Route files written before the October 30 rename (Nightshift -> Expectrail) are still accepted,
-# so the private held-out set replays unchanged.
-const ROUTE_FORMATS := ["expectrail.route/v0", "nightshift.route/v0"]
+const ROUTE_FORMATS := ["expectrail.route/v0"]
 
 var _events: Dictionary = {}   # tick -> Array of {action, pressed}
 var _ticks: int = 0

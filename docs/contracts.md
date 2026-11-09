@@ -6,11 +6,10 @@ and `stability`). Each has a
 schema in [`contracts/`](../contracts) and a worked example in
 [`contracts/examples/`](../contracts/examples).
 Agree changes in the team channel first, then change the schema, the example and the code in one
-pull request. Every document starts with `"format": "expectrail.<kind>/v0"`. The route schema and
-the Godot harness still accept one earlier route format ID from before the October 30 rename, and
-two comments in `expectrail/contracts.py` still name it: the discovery freeze covers those three
-files byte for byte, and the mutation bench's registration pins the harness, so they stay as they
-were until both are re-registered. `expectrail.contracts` reads only the current IDs.
+pull request. Every document starts with `"format": "expectrail.<kind>/v0"`, and only the current
+IDs are accepted. The route format ID from before the October 30 rename was dropped on November 9,
+once the discovery freeze and the mutation bench's registration were retired to the submission
+commit (`c169a5e`), where it is still accepted.
 
 ```
 route ──► harness ──► replay + frames ──► SAM 3.1 ──► observations ─┐

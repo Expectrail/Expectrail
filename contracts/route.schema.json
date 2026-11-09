@@ -12,7 +12,7 @@
   "additionalProperties": false,
   "properties": {
     "format": {
-      "enum": ["expectrail.route/v0", "nightshift.route/v0"]
+      "const": "expectrail.route/v0"
     },
     "name": {
       "type": "string",
