@@ -147,24 +147,6 @@ jobs:
           ann notice "cocos --version" "$(node dist/cli.js --version 2>&1 | tail -3 | tr '\n' ' ')"
           ann notice "cocos --help" "$(node dist/cli.js --help 2>&1 | grep -E '^\s+[a-z-]+ ' | head -14 | sed 's/  */ /g' | cut -c1-60 | tr '\n' ';')"
 
-      # Run 42676936206: with no X server both builds failed while loading the shader compiler
-      # (src/core/assets/effect-compiler/shdc-lib.js creates a headless-gl context on require; ANGLE
-      # said "Could not open the default X display"). Approach 3, on fresh projects before anything
-      # runs under Xvfb: ask ANGLE for a backend that needs no display.
-      - name: Probe C display-free ANGLE backends
-        id: probe_c
-        if: ${{ !cancelled() && steps.cli.outcome == 'success' }}
-        continue-on-error: true
-        run: |
-          . "$RUNNER_TEMP/steps.sh"
-          rc=0
-          for plat in swiftshader vulkan; do
-            P="$RUNNER_TEMP/projects/probe-$plat"
-            node "$CLI/dist/cli.js" --no-interactive create --project "$P" --type 2d > /dev/null 2>&1 < /dev/null
-            step "display-free build ANGLE_DEFAULT_PLATFORM=$plat" "probe-$plat.log" env -u DISPLAY ANGLE_DEFAULT_PLATFORM=$plat node "$CLI/dist/cli.js" --no-interactive build --project "$P" --platform web-mobile || rc=1
-          done
-          exit $rc
-
       # Approach 2: the same builds under Xvfb, a virtual X server with no desktop (the game
       # harness already runs Godot this way).
       - name: Xvfb and Mesa
@@ -174,6 +156,10 @@ jobs:
           . "$RUNNER_TEMP/steps.sh"
           step "apt-get install xvfb xauth libgl1-mesa-dri" apt.log bash -c 'sudo apt-get update -q && sudo apt-get install -y -q xvfb xauth libgl1-mesa-dri'
           ann notice "Xvfb and Mesa" "$(dpkg-query -W -f '${Package} ${Version}; ' xvfb libgl1-mesa-dri libglx-mesa0 2>/dev/null)"
+          # Run 42678902546: under Xvfb the fixture failed at the static compile check, which runs a bare
+          # tsc from PATH on macOS and Linux (static-compile-check.ts), with TS5108. Which tsc is that?
+          g=$(command -v tsc || true)
+          ann notice "tsc on PATH" "global: ${g:-none} $( [ -n "$g" ] && tsc --version ); the CLI's own: $("$CLI/node_modules/.bin/tsc" --version)"
 
       - name: Trial A empty 2D project
         id: trial_a
@@ -183,7 +169,7 @@ jobs:
           P="$RUNNER_TEMP/projects/empty-2d"
           step "cocos create --type 2d" create.log node "$CLI/dist/cli.js" --no-interactive create --project "$P" --type 2d
           ann notice "Created project files" "$(cd "$P" && find . -type f | sort | head -20 | tr '\n' ' ')"
-          step "build empty-2d web-mobile under Xvfb" build-empty.log xvfb-run -a -s "-screen 0 1280x720x24" node "$CLI/dist/cli.js" --no-interactive build --project "$P" --platform web-mobile
+          step "build empty-2d web-mobile under Xvfb" build-empty.log env PATH="$CLI/node_modules/.bin:$PATH" xvfb-run -a -s "-screen 0 1280x720x24" node "$CLI/dist/cli.js" --no-interactive build --project "$P" --platform web-mobile
           idx=$(find "$P/build" -name index.html | head -1)
           [ -n "$idx" ] || { ann error "empty-2d output" "no index.html under $P/build: $(find "$P/build" -maxdepth 2 | head -20 | tr '\n' ' ')"; exit 1; }
           out=$(dirname "$idx")
@@ -199,7 +185,7 @@ jobs:
           # tests/fixtures/projects/asset-operation: the project the CLI's build E2E test uses, with a 2D scene.
           cp -r "$CLI/tests/fixtures/projects/asset-operation" "$P"
           ann notice "Fixture project" "$(cd "$P" && find . -type f -not -name '*.meta' | sort | head -20 | tr '\n' ' ')"
-          step "build fixture-2d web-mobile under Xvfb" build-fixture.log xvfb-run -a -s "-screen 0 1280x720x24" node "$CLI/dist/cli.js" --no-interactive build --project "$P" --platform web-mobile
+          step "build fixture-2d web-mobile under Xvfb" build-fixture.log env PATH="$CLI/node_modules/.bin:$PATH" xvfb-run -a -s "-screen 0 1280x720x24" node "$CLI/dist/cli.js" --no-interactive build --project "$P" --platform web-mobile
           idx=$(find "$P/build" -name index.html | head -1)
           [ -n "$idx" ] || { ann error "fixture-2d output" "no index.html under $P/build: $(find "$P/build" -maxdepth 2 | head -20 | tr '\n' ' ')"; exit 1; }
           out=$(dirname "$idx")
