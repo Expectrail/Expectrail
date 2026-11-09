@@ -112,7 +112,7 @@ jobs:
         if: env.HELDOUT_TOKEN_SET == 'true' && inputs.mode == 'verify'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: seanudeke/Expectrail-heldout
+          repository: Expectrail/Expectrail-heldout
           token: ${{ secrets.HELDOUT_TOKEN }}
           path: heldout-set
           persist-credentials: false

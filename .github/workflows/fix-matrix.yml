@@ -113,7 +113,7 @@ jobs:
         if: inputs.sam_cache == 'shared'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: seanudeke/Expectrail-heldout
+          repository: Expectrail/Expectrail-heldout
           token: ${{ secrets.HELDOUT_TOKEN }}
           path: heldout-set
           persist-credentials: false
@@ -230,7 +230,7 @@ jobs:
         if: inputs.set == 'held-out'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: seanudeke/Expectrail-heldout
+          repository: Expectrail/Expectrail-heldout
           token: ${{ secrets.HELDOUT_TOKEN }}
           path: heldout-set
           persist-credentials: false
@@ -312,7 +312,7 @@ jobs:
       - name: Fetch the private held-out set (verifier side only)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: seanudeke/Expectrail-heldout
+          repository: Expectrail/Expectrail-heldout
           token: ${{ secrets.HELDOUT_TOKEN }}
           path: heldout-set
           persist-credentials: false
@@ -572,7 +572,7 @@ jobs:
       - name: Fetch the private held-out set (verifier side only)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: seanudeke/Expectrail-heldout
+          repository: Expectrail/Expectrail-heldout
           token: ${{ secrets.HELDOUT_TOKEN }}
           path: heldout-set
           persist-credentials: false
@@ -794,7 +794,7 @@ jobs:
       - name: Fetch the private held-out set (verifier side only)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: seanudeke/Expectrail-heldout
+          repository: Expectrail/Expectrail-heldout
           token: ${{ secrets.HELDOUT_TOKEN }}
           path: heldout-set
           persist-credentials: false
