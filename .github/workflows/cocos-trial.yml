@@ -35,11 +35,11 @@ jobs:
         with:
           persist-credentials: false
       - name: "Trial A: cocos create --type 2d, then build web-mobile"
-        id: empty
+        id: trial_a
         if: ${{ !cancelled() && steps.cli.outcome == 'success' }}
         run: echo ok
       - name: "Trial B: the CLI's own 2D fixture project, build web-mobile"
-        id: fixture
+        id: trial_b
         if: ${{ !cancelled() && steps.cli.outcome == 'success' }}
         run: echo ok
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
