@@ -24,6 +24,18 @@ class ContractsTest(unittest.TestCase):
         with self.assertRaises(ContractError):
             validate(replay)
 
+    def test_a_route_carries_only_the_current_format_id(self):
+        # The ID from before the October 30 rename was dropped once the pins were retired (Nov 9).
+        schema = json.loads((EXAMPLES.parent / "route.schema.json").read_text())
+        self.assertEqual(schema["properties"]["format"], {"const": "expectrail.route/v0"})
+        route = json.loads((EXAMPLES / "route.json").read_text())
+        self.assertEqual(validate(route, "route"), "route")
+        route["format"] = "earlier.route/v0"
+        with self.assertRaises(ContractError):
+            validate(route, "route")
+        harness = (EXAMPLES.parent.parent / "harness" / "godot" / "expectrail_harness.gd").read_text()
+        self.assertIn('const ROUTE_FORMATS := ["expectrail.route/v0"]', harness)
+
     def test_invalid_documents_are_rejected(self):
         spec = json.loads((EXAMPLES / "test-spec.json").read_text())
         spec["assertion"] = {"type": "looks-fine", "object": "player"}

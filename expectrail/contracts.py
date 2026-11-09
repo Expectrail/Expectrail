@@ -38,7 +38,7 @@ def digest(doc) -> str:
 
 
 def kind_of(doc) -> str:
-    """The document kind; nightshift.<kind>/v0 IDs from before the rename read the same way."""
+    """The document kind, from its format ID."""
     fmt = doc.get("format", "") if isinstance(doc, dict) else ""
     for kind in KINDS:
         if fmt in format_ids(kind):
@@ -92,8 +92,8 @@ def load(path: Path, kind: str | None = None) -> dict:
 
 
 # --- v1 records (docs/discovery.md) --------------------------------------------------------------
-# An exact format registry: each v1 format ID maps to its kind and schema file. v1 formats have no
-# Nightshift aliases, and the v0 helpers above (kind_of, schema, validate, load) are unchanged.
+# An exact format registry: each v1 format ID maps to its kind and schema file. The v0 helpers above
+# (kind_of, schema, validate, load) are unchanged.
 V1_FORMATS = {
     "expectrail.episode/v1": ("episode", "episode.v1.schema.json"),
     "expectrail.trace-spec/v1": ("trace-spec", "trace-spec.v1.schema.json"),

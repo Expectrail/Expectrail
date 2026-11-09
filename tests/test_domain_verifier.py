@@ -106,6 +106,19 @@ class SharedVerifierTest(unittest.TestCase):
         self.assertEqual((self.root / "no-apply" / "candidate" / "evening" / "bench-error.txt").read_text(),
                          "SystemExit: fix.patch does not apply to the lamp\n")
 
+    def test_a_replay_that_fails_before_making_its_folder_is_still_needs_review(self):
+        # A route that cannot be loaded fails before the runner creates the run folder (the web
+        # harness does this). That must be needs-review with its cause on disk, not a crash.
+        def unloadable(route, out, patches=None, **_):
+            raise SystemExit(f"cannot read route {Path(route).name}")
+
+        broken_adapter = adapters.Adapter(**{**self.adapter.__dict__, "run": unloadable})
+        run_dir = self.root / "never-made" / "r0"
+        got = domain_verifier.judge_route(broken_adapter, self.adapter.default_route, [], run_dir, [toy.SPEC],
+                                          toy.observe, toy.behaviour)
+        self.assertEqual(got, {"engine": "needs-review", "behaviour": "needs-review"})
+        self.assertEqual((run_dir / "bench-error.txt").read_text(), "SystemExit: cannot read route evening.json\n")
+
     def test_a_vision_judge_decides_each_spec_when_it_is_on(self):
         def judge(trace, replay_sha, run_dir, specs):
             for spec in specs:
