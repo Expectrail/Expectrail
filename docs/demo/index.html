@@ -245,7 +245,7 @@ footer a { text-decoration:none; } footer a:hover { text-decoration:underline; }
       <button onclick="switchTab('trust')" id="tab-btn-trust" class="tab-btn" role="tab" aria-selected="false">Trust boundary</button>
       <button onclick="switchTab('report')" id="tab-btn-report" class="tab-btn" role="tab" aria-selected="false">Morning report</button>
     </nav>
-    <a class="gh" href="https://github.com/seanudeke/Expectrail">GitHub</a>
+    <a class="gh" href="https://github.com/Expectrail/Expectrail">GitHub</a>
   </header>
 
   <section class="intro" aria-labelledby="intro-title">
@@ -406,7 +406,7 @@ Fix: in player.tscn, collision_mask = 14 → 30, adding the ground layer while p
     <div class="card">
       <h2>The eight development bugs: caught, then fixed</h2>
       <p>Each bug replayed on the smoke route and judged with and without SAM 3.1, then handed to Muse Code twice: once with Expectrail's evidence, once with screenshots alone. Both briefings fixed all eight; what differs is who can judge the result.</p>
-      <p class="small">Sources: development fix matrix (<a href="https://github.com/seanudeke/Expectrail/blob/main/bench/fix-matrix/README.md">bench/fix-matrix</a>); detection bench (<a href="https://github.com/seanudeke/Expectrail/blob/main/bench/detection/README.md">bench/detection</a>, run 40841977642); held-out runs 1 and 2 (<a href="https://github.com/seanudeke/Expectrail/blob/main/bench/fix-matrix/held-out/README.md">run 41099054641</a>, <a href="https://github.com/seanudeke/Expectrail/blob/main/bench/fix-matrix/held-out-run-2/README.md">run 41199992529</a>); the three-briefings run (<a href="https://github.com/seanudeke/Expectrail/blob/main/bench/fix-matrix/report-first/README.md">run 41223754703</a>); mutation bench (<a href="https://github.com/seanudeke/Expectrail/blob/main/bench/mutation/wrong-fix/README.md">wrong-fix run 41268021760</a>).</p>
+      <p class="small">Sources: development fix matrix (<a href="https://github.com/Expectrail/Expectrail/blob/main/bench/fix-matrix/README.md">bench/fix-matrix</a>); detection bench (<a href="https://github.com/Expectrail/Expectrail/blob/main/bench/detection/README.md">bench/detection</a>, run 40841977642); held-out runs 1 and 2 (<a href="https://github.com/Expectrail/Expectrail/blob/main/bench/fix-matrix/held-out/README.md">run 41099054641</a>, <a href="https://github.com/Expectrail/Expectrail/blob/main/bench/fix-matrix/held-out-run-2/README.md">run 41199992529</a>); the three-briefings run (<a href="https://github.com/Expectrail/Expectrail/blob/main/bench/fix-matrix/report-first/README.md">run 41223754703</a>); mutation bench (<a href="https://github.com/Expectrail/Expectrail/blob/main/bench/mutation/wrong-fix/README.md">wrong-fix run 41268021760</a>).</p>
       <div class="stats">
         <div class="stat">Development bugs fixed with Expectrail's evidence: <b>8 of 8</b></div>
         <div class="stat">Held-out bugs fixed, two runs: <b>8 of 8</b> with the evidence, 7 of 8 from screenshots</div>
@@ -442,33 +442,33 @@ Fix: in player.tscn, collision_mask = 14 → 30, adding the ground layer while p
     <div class="cards">
       <div class="card">
         <div class="row1"><h3>Held-out bugs fixed</h3><span class="num good">8 of 8</span></div>
-        <p>Run <a href="https://github.com/seanudeke/Expectrail/actions/runs/41199992529">41199992529</a> (commit e216fb7): with Expectrail's evidence Muse Code fixed <strong>8 of 8</strong>; from screenshots, <strong>7 of 8</strong> (sinking/v4 timed out three times). The first held-out run, <a href="https://github.com/seanudeke/Expectrail/actions/runs/41099054641">41099054641</a>, ended the same: 8 of 8 and 7 of 8.</p>
+        <p>Run <a href="https://github.com/Expectrail/Expectrail/actions/runs/41199992529">41199992529</a> (commit e216fb7): with Expectrail's evidence Muse Code fixed <strong>8 of 8</strong>; from screenshots, <strong>7 of 8</strong> (sinking/v4 timed out three times). The first held-out run, <a href="https://github.com/Expectrail/Expectrail/actions/runs/41099054641">41099054641</a>, ended the same: 8 of 8 and 7 of 8.</p>
       </div>
       <div class="card">
         <div class="row1"><h3>Three briefings, October 31</h3><span class="num">8 · 7 · 6</span></div>
-        <p>Run <a href="https://github.com/seanudeke/Expectrail/actions/runs/41223754703">41223754703</a>, development bugs: the evidence first, <strong>8 of 8</strong>, each on the first attempt; the report first with the evidence after a failed attempt, 7 of 8; the report only, 6 of 8. Every miss was a sinking bug where the report-only attempts timed out (<a href="https://github.com/seanudeke/Expectrail/blob/main/docs/report-first.md">report-first.md</a>).</p>
+        <p>Run <a href="https://github.com/Expectrail/Expectrail/actions/runs/41223754703">41223754703</a>, development bugs: the evidence first, <strong>8 of 8</strong>, each on the first attempt; the report first with the evidence after a failed attempt, 7 of 8; the report only, 6 of 8. Every miss was a sinking bug where the report-only attempts timed out (<a href="https://github.com/Expectrail/Expectrail/blob/main/docs/report-first.md">report-first.md</a>).</p>
       </div>
       <div class="card">
         <div class="row1"><h3>Mutation bench: wrong fixes</h3><span class="num good">31 of 39</span></div>
-        <p>Run <a href="https://github.com/seanudeke/Expectrail/actions/runs/41268021760">41268021760</a>: 47 candidates from six operators the team wrote, registered before judging, public checks only. The tiered judge caught <strong>31 of 39 bad fixes</strong> (79.5%), 24 of them only with SAM, and accepted the 8 good ones. The 8 misses are one operator that changed nothing in the running game.</p>
+        <p>Run <a href="https://github.com/Expectrail/Expectrail/actions/runs/41268021760">41268021760</a>: 47 candidates from six operators the team wrote, registered before judging, public checks only. The tiered judge caught <strong>31 of 39 bad fixes</strong> (79.5%), 24 of them only with SAM, and accepted the 8 good ones. The 8 misses are one operator that changed nothing in the running game.</p>
       </div>
       <div class="card">
         <div class="row1"><h3>Fixes that only look right</h3><span class="num good">0 of 7 accepted</span></div>
-        <p><a href="https://github.com/seanudeke/Expectrail/blob/main/bench/judge/README.md">Judge benchmark</a>, 7 bad fixes, 3 runs: Expectrail with SAM accepted <strong>0 of 7</strong>; without SAM, 3 of 7; Muse Code judging from screenshots, 2 of 7. Good fixes: Expectrail accepted 8 of 8 every run. The four rejected fixes in the Cases tab are four of the seven.</p>
+        <p><a href="https://github.com/Expectrail/Expectrail/blob/main/bench/judge/README.md">Judge benchmark</a>, 7 bad fixes, 3 runs: Expectrail with SAM accepted <strong>0 of 7</strong>; without SAM, 3 of 7; Muse Code judging from screenshots, 2 of 7. Good fixes: Expectrail accepted 8 of 8 every run. The four rejected fixes in the Cases tab are four of the seven.</p>
       </div>
       <div class="card">
         <div class="row1"><h3>The whole loop, live</h3><span class="num good">10 of 10</span></div>
-        <p>Run <a href="https://github.com/seanudeke/Expectrail/actions/runs/40990485265">40990485265</a>: the loop end to end, 10 independent runs, each accepted on the first attempt; 12 to 22 minutes a run (median 14.5). After the report-first change, run <a href="https://github.com/seanudeke/Expectrail/actions/runs/41223748922">41223748922</a>: <strong>3 of 3</strong> accepted, each on the first attempt from the plain report.</p>
+        <p>Run <a href="https://github.com/Expectrail/Expectrail/actions/runs/40990485265">40990485265</a>: the loop end to end, 10 independent runs, each accepted on the first attempt; 12 to 22 minutes a run (median 14.5). After the report-first change, run <a href="https://github.com/Expectrail/Expectrail/actions/runs/41223748922">41223748922</a>: <strong>3 of 3</strong> accepted, each on the first attempt from the plain report.</p>
       </div>
       <div class="card">
         <div class="row1"><h3>Held-out bugs caught</h3><span class="num good">8 of 8 with SAM</span></div>
-        <p>Run <a href="https://github.com/seanudeke/Expectrail/actions/runs/41003749744">41003749744</a>, SAM 3.1 on: <strong>8 of 8</strong> held-out bugs caught, no false alarm on the clean game. With no vision model (engine and gameplay checks only), 4 of 8.</p>
+        <p>Run <a href="https://github.com/Expectrail/Expectrail/actions/runs/41003749744">41003749744</a>, SAM 3.1 on: <strong>8 of 8</strong> held-out bugs caught, no false alarm on the clean game. With no vision model (engine and gameplay checks only), 4 of 8.</p>
       </div>
     </div>
 
     <div class="callout">
       <h3>Why the vision model is not optional</h3>
-      <p>Without it, <strong>5 of the 8 development bugs pass every engine and gameplay check</strong>: missing textures, a robot drawn behind the tiles, and a sprite drawn off its body all leave the physics coordinates valid. SAM 3.1, or the open-weight Muse Glimmer checked against the engine (also 8 of 8 on the held-out bugs), sees what the player sees. The full results, with every limit, are in the <a href="https://github.com/seanudeke/Expectrail#results">README</a>.</p>
+      <p>Without it, <strong>5 of the 8 development bugs pass every engine and gameplay check</strong>: missing textures, a robot drawn behind the tiles, and a sprite drawn off its body all leave the physics coordinates valid. SAM 3.1, or the open-weight Muse Glimmer checked against the engine (also 8 of 8 on the held-out bugs), sees what the player sees. The full results, with every limit, are in the <a href="https://github.com/Expectrail/Expectrail#results">README</a>.</p>
     </div>
   </div>
 
@@ -602,7 +602,7 @@ Fix: in player.tscn, collision_mask = 14 → 30, adding the ground layer while p
 </main>
 
 <footer>
-  <div class="wrap">Expectrail · Apache-2.0 · <a href="../">Home</a> · <a href="https://github.com/seanudeke/Expectrail">Source</a></div>
+  <div class="wrap">Expectrail · Apache-2.0 · <a href="../">Home</a> · <a href="https://github.com/Expectrail/Expectrail">Source</a></div>
 </footer>
 
   <!-- Interactive Demo Logic -->
@@ -613,7 +613,7 @@ Fix: in player.tscn, collision_mask = 14 → 30, adding the ground layer while p
     const VISIBLE_SPEC = {specId: 'specs/player-always-visible.json', instruction: '"The player is visible in every frame."', type: 'visible', object: '"blue robot"'};
     const COINS_SPEC = {specId: 'specs/coins-visible.json', instruction: '"The coins are visible."', type: 'visible', object: '"gold coin"'};
     const ALL_PASS = {checkRegression: 'PASS', checkGameplay: 'PASS', checkClean: 'PASS', checkHeldout: 'PASS'};
-    const JUDGE_RUN = 'https://github.com/seanudeke/Expectrail/actions/runs/40943391994';
+    const JUDGE_RUN = 'https://github.com/Expectrail/Expectrail/actions/runs/40943391994';
 
     // The diff lines are copied from the public patch named in `diff.source` (tests/test_demo_page.py checks
     // each one). A bug's lines are its patch reversed: what a correct fix undoes. An exploit's are the

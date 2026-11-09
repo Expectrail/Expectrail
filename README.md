@@ -77,7 +77,7 @@ writes a change never certifies it. Three rules carry that:
    release. The fixer sees a failing check's spec only after a failed attempt, and never sees the
    held-out ones.
 
-Expectrail was built between October 26 and November 4, 2026, and is maintained by Sean Keluo-Udeke and Timothy Itodo. Taofeek F. Obafemi-Babatunde and Zayyad Atekoja built parts of the first version.
+Expectrail's first version was built between October 26 and November 4, 2026. It is maintained by Sean Keluo-Udeke and Timothy Itodo. Taofeek F. Obafemi-Babatunde and Zayyad Atekoja built parts of the first version.
 
 ## What it shows
 
@@ -204,7 +204,7 @@ passes: plain code does, from what they observe.
 | Model | Its job | Shown by |
 | --- | --- | --- |
 | SAM 3.1 | Finds what a check names in each frame it judges: the robot, the coins, a checkout button | With SAM, 0 of 7 fake fixes accepted, against 3 of 7 without it; 24 of the 31 machine-made wrong fixes caught were caught only with SAM ([Results](#results)) |
-| Muse Code | The fixer, in a sandbox where it cannot change the checks and never sees the hidden ones | Fixed the bug from a plain report on the first attempt in 3 of 3 live runs ([41223748922](https://github.com/seanudeke/Expectrail/actions/runs/41223748922)) |
+| Muse Code | The fixer, in a sandbox where it cannot change the checks and never sees the hidden ones | Fixed the bug from a plain report on the first attempt in 3 of 3 live runs ([41223748922](https://github.com/Expectrail/Expectrail/actions/runs/41223748922)) |
 | Muse Wonder | Triage: turns failure evidence into a bug report and a repair request | Every overnight-loop run ([bench/demo-loop](bench/demo-loop/README.md)) |
 | Muse Spark | Drafts a check from one sentence for a person to tighten and approve; sorts playtest remarks; proposes discovery probes | The ground check started from its draft ([bench/spec-writer-live](bench/spec-writer-live)); blind, the discovery planner added one defect to the templates' three on a set of eight |
 | Muse Glimmer 30B, open weights | Judges the vision checks with no SAM key, checked against the engine; the fallback when SAM does not answer | 8 of 8 held-out bugs caught with Glimmer in place of SAM; the four that need vision were caught by its checks ([docs/open-weights.md](docs/open-weights.md)) |
@@ -242,30 +242,30 @@ bench generates its own ([`bench/mutation/`](bench/mutation/README.md)).
 
 | What we measured | Result | Run |
 | --- | --- | --- |
-| Held-out bugs caught, SAM 3.1 on | **8 of 8**, no false alarm on the clean game | [41003749744](https://github.com/seanudeke/Expectrail/actions/runs/41003749744) |
-| Held-out bugs caught, Muse Glimmer checked against the engine, no SAM | **8 of 8**, no false alarm | [41003751876](https://github.com/seanudeke/Expectrail/actions/runs/41003751876) |
+| Held-out bugs caught, SAM 3.1 on | **8 of 8**, no false alarm on the clean game | [41003749744](https://github.com/Expectrail/Expectrail/actions/runs/41003749744) |
+| Held-out bugs caught, Muse Glimmer checked against the engine, no SAM | **8 of 8**, no false alarm | [41003751876](https://github.com/Expectrail/Expectrail/actions/runs/41003751876) |
 | Held-out bugs caught with no vision model (engine and gameplay checks only) | 4 of 8 | the same two runs |
-| Development bugs caught: SAM on / Glimmer, no SAM / no vision | 8 of 8 / 8 of 8 / 3 of 8 | [40841977642](https://github.com/seanudeke/Expectrail/actions/runs/40841977642), [41001182605](https://github.com/seanudeke/Expectrail/actions/runs/41001182605) |
-| Publicly reported Godot bugs, reproduced (not written by us), caught: today's checks with SAM off / engine-record checks | 0 of 4 / **4 of 4**, no false alarm on the clean game; the engine-record checks were written after the bugs were reproduced | [41116202685](https://github.com/seanudeke/Expectrail/actions/runs/41116202685) |
-| Advisory discovery (checks nobody wrote), one job per build, no reference build: the clean game, the four reported bugs, and the eight development bugs it was not written for | Reported bugs **4 of 4** found, each 3 times out of 3, no false alarm on the clean game; development bugs 2 of 8. Development reproduction: its rules were written after reading the four reports | [41238187197](https://github.com/seanudeke/Expectrail/actions/runs/41238187197) |
-| Advisory discovery, blind: the frozen discoverer on two fresh sets written after its freezes (8 defects and 2 intentional changes each) and the clean game, planner off | **7 of 16** defects flagged (4 of 8, then 3 of 8), each finding 3 times out of 3; **no** intentional change or clean game flagged; no job incomplete | [41248745687](https://github.com/seanudeke/Expectrail/actions/runs/41248745687), [41319184209](https://github.com/seanudeke/Expectrail/actions/runs/41319184209) |
-| The same, set 2, with the Muse Spark planner on (the clean game as each job's reference) | **4 of 8** defects flagged, one more than without it; **0 of 3** healthy builds flagged | [41319197682](https://github.com/seanudeke/Expectrail/actions/runs/41319197682) |
-| Natural-catch trial: Muse Code given each reported bug in the reporter's words, 5 times each (20 cases) | 20 of 20 fixed on the first attempt; Expectrail accepted 20, the bug's own check passed 20, Muse from screenshots accepted 19; **0 natural catches** | [41129722699](https://github.com/seanudeke/Expectrail/actions/runs/41129722699) |
+| Development bugs caught: SAM on / Glimmer, no SAM / no vision | 8 of 8 / 8 of 8 / 3 of 8 | [40841977642](https://github.com/Expectrail/Expectrail/actions/runs/40841977642), [41001182605](https://github.com/Expectrail/Expectrail/actions/runs/41001182605) |
+| Publicly reported Godot bugs, reproduced (not written by us), caught: today's checks with SAM off / engine-record checks | 0 of 4 / **4 of 4**, no false alarm on the clean game; the engine-record checks were written after the bugs were reproduced | [41116202685](https://github.com/Expectrail/Expectrail/actions/runs/41116202685) |
+| Advisory discovery (checks nobody wrote), one job per build, no reference build: the clean game, the four reported bugs, and the eight development bugs it was not written for | Reported bugs **4 of 4** found, each 3 times out of 3, no false alarm on the clean game; development bugs 2 of 8. Development reproduction: its rules were written after reading the four reports | [41238187197](https://github.com/Expectrail/Expectrail/actions/runs/41238187197) |
+| Advisory discovery, blind: the frozen discoverer on two fresh sets written after its freezes (8 defects and 2 intentional changes each) and the clean game, planner off | **7 of 16** defects flagged (4 of 8, then 3 of 8), each finding 3 times out of 3; **no** intentional change or clean game flagged; no job incomplete | [41248745687](https://github.com/Expectrail/Expectrail/actions/runs/41248745687), [41319184209](https://github.com/Expectrail/Expectrail/actions/runs/41319184209) |
+| The same, set 2, with the Muse Spark planner on (the clean game as each job's reference) | **4 of 8** defects flagged, one more than without it; **0 of 3** healthy builds flagged | [41319197682](https://github.com/Expectrail/Expectrail/actions/runs/41319197682) |
+| Natural-catch trial: Muse Code given each reported bug in the reporter's words, 5 times each (20 cases) | 20 of 20 fixed on the first attempt; Expectrail accepted 20, the bug's own check passed 20, Muse from screenshots accepted 19; **0 natural catches** | [41129722699](https://github.com/Expectrail/Expectrail/actions/runs/41129722699) |
 | Bad fixes that only look right, accepted by the judge (7 cases, 3 runs) | Expectrail with SAM **0 of 7**; Expectrail without SAM 3 of 7; Muse from screenshots 2 of 7; Expectrail with Muse Glimmer checked against the engine, no SAM (1 run) 0 of 7, one of them stopped only on a held-out route | [judge](bench/judge/README.md), [with Glimmer](bench/judge/glimmer/README.md) |
 | Good fixes accepted by the judge (8 cases, 3 runs) | Expectrail 8 of 8 every run, with Glimmer too; Muse from screenshots 6, 7 and 6 of 8 | [judge](bench/judge/README.md), [with Glimmer](bench/judge/glimmer/README.md) |
 | The same 15 fixes judged from screenshots by the strongest outside models, Claude Fable 5.1 and GPT-6 Astra (1 run, 3 passes each, the same frames and prompt as Muse) | Bad fixes accepted: **0 of 7** in every pass, both. Good fixes accepted: Claude 6, 6 and 7 of 8; GPT 8, 7 and 8 of 8 | [outside models](bench/judge/outside-models/README.md) |
-| Mutation bench, wrong fixes: 47 candidates made by six operators the team wrote, registered before judging, public checks only | Tiered judge **31 of 39** bad fixes caught (79.5%), 24 of them only with SAM; 8 good cases accepted. The 8 misses are one operator that changed nothing in the running game | [41268021760](https://github.com/seanudeke/Expectrail/actions/runs/41268021760), [record](bench/mutation/README.md#results) |
-| Mutation bench, bugs nobody wrote: 150 sampled single edits to the game, 77 of them different from the clean game in positions or frames, registered before judging, public checks only | Weighted score **0.9%**, set by the numeric class, 0 of 45 caught: 44 edits to scenery no check covers, and one that draws the player's sprite 26 px off its body. Over the sample as drawn, a figure about the sample: 10 of 77 caught (13.0%), 5 only with SAM | [41268023631](https://github.com/seanudeke/Expectrail/actions/runs/41268023631), [41323827584](https://github.com/seanudeke/Expectrail/actions/runs/41323827584), [41323829361](https://github.com/seanudeke/Expectrail/actions/runs/41323829361), [record](bench/mutation/README.md#results) |
-| Mutation bench, AI-written fixes: Muse Code on the 10 generated bugs the checks caught, from a report built mechanically from the failing check, with the route and screenshots | 10 of 10 fixed on the first attempt; Expectrail accepted 10, all 10 correct on 6 routes, 5 of which the judge does not use; Muse from screenshots rejected 5 of the same 10; **0 natural catches** | [41330361829](https://github.com/seanudeke/Expectrail/actions/runs/41330361829), [record](bench/mutation/README.md#results) |
+| Mutation bench, wrong fixes: 47 candidates made by six operators the team wrote, registered before judging, public checks only | Tiered judge **31 of 39** bad fixes caught (79.5%), 24 of them only with SAM; 8 good cases accepted. The 8 misses are one operator that changed nothing in the running game | [41268021760](https://github.com/Expectrail/Expectrail/actions/runs/41268021760), [record](bench/mutation/README.md#results) |
+| Mutation bench, bugs nobody wrote: 150 sampled single edits to the game, 77 of them different from the clean game in positions or frames, registered before judging, public checks only | Weighted score **0.9%**, set by the numeric class, 0 of 45 caught: 44 edits to scenery no check covers, and one that draws the player's sprite 26 px off its body. Over the sample as drawn, a figure about the sample: 10 of 77 caught (13.0%), 5 only with SAM | [41268023631](https://github.com/Expectrail/Expectrail/actions/runs/41268023631), [41323827584](https://github.com/Expectrail/Expectrail/actions/runs/41323827584), [41323829361](https://github.com/Expectrail/Expectrail/actions/runs/41323829361), [record](bench/mutation/README.md#results) |
+| Mutation bench, AI-written fixes: Muse Code on the 10 generated bugs the checks caught, from a report built mechanically from the failing check, with the route and screenshots | 10 of 10 fixed on the first attempt; Expectrail accepted 10, all 10 correct on 6 routes, 5 of which the judge does not use; Muse from screenshots rejected 5 of the same 10; **0 natural catches** | [41330361829](https://github.com/Expectrail/Expectrail/actions/runs/41330361829), [record](bench/mutation/README.md#results) |
 | Development bugs fixed by Muse Code, October 29 | 8 of 8 with Expectrail's evidence; 8 of 8 from screenshots alone | [fix matrix](bench/fix-matrix/README.md) |
-| Development bugs fixed by Muse Code, October 31, all three briefings | Evidence first **8 of 8**; report first, evidence after a failed attempt 7 of 8; report only 6 of 8. Every miss was a sinking bug where the report-only attempts timed out | [41223754703](https://github.com/seanudeke/Expectrail/actions/runs/41223754703) |
-| Demo path, live, end to end, 10 independent runs | **10 of 10 accepted**, each on the first attempt; 12 to 22 minutes a run (median 14.5) and 1,164 SAM images ($2.91) a run; Muse Code's share is not reported per run | [40990485265](https://github.com/seanudeke/Expectrail/actions/runs/40990485265) |
-| Demo path, live, after the report-first change (Muse gets the plain report first), 3 runs | **3 of 3 accepted**, each on the first attempt from the report; each fix's review: repair demonstrated; 7 to 12 minutes and 157 SAM images ($0.39) a run, with the clean game's SAM answers shared | [41223748922](https://github.com/seanudeke/Expectrail/actions/runs/41223748922) |
+| Development bugs fixed by Muse Code, October 31, all three briefings | Evidence first **8 of 8**; report first, evidence after a failed attempt 7 of 8; report only 6 of 8. Every miss was a sinking bug where the report-only attempts timed out | [41223754703](https://github.com/Expectrail/Expectrail/actions/runs/41223754703) |
+| Demo path, live, end to end, 10 independent runs | **10 of 10 accepted**, each on the first attempt; 12 to 22 minutes a run (median 14.5) and 1,164 SAM images ($2.91) a run; Muse Code's share is not reported per run | [40990485265](https://github.com/Expectrail/Expectrail/actions/runs/40990485265) |
+| Demo path, live, after the report-first change (Muse gets the plain report first), 3 runs | **3 of 3 accepted**, each on the first attempt from the report; each fix's review: repair demonstrated; 7 to 12 minutes and 157 SAM images ($0.39) a run, with the clean game's SAM answers shared | [41223748922](https://github.com/Expectrail/Expectrail/actions/runs/41223748922) |
 | Meta Model API spend, whole team, through October 29 | $204 (SAM images at list price are almost all of it) | [cost](bench/cost/README.md) |
 
 ### Reproducing these results
 
-The baseline for every result below is commit `c169a5e` (November 4, 2026). Each result above links the CI run that produced it,
+The baseline for every result in this README is commit `c169a5e` (November 4, 2026). Each result above links the CI run that produced it,
 or the bench record that lists its runs, and every run page shows the commit it ran at. To rerun a
 result on the code that produced it, check out that commit. The mutation bench's workflows check out
 the baseline commit themselves for judged runs. Runs that call Muse or SAM
@@ -402,7 +402,7 @@ templates build from four claims read from the game's code (the double jump, the
 the sprite's facing, the enemies' patrol) judge every replay. A failure counts only if it repeats
 three times out of three from a fresh process. One job per build, no healthy reference build, the
 clean game as the false-alarm control ([`bench/discovery/`](bench/discovery/README.md), run
-[41238187197](https://github.com/seanudeke/Expectrail/actions/runs/41238187197)):
+[41238187197](https://github.com/Expectrail/Expectrail/actions/runs/41238187197)):
 
 | Build | Profile written for it? | Result |
 | --- | --- | --- |
@@ -432,7 +432,7 @@ clean game as the false-alarm control ([`bench/discovery/`](bench/discovery/READ
 - **Its guards flag a fix that disables the feature.** Four "fixes" that make a symptom go away by
   switching the feature off (no air jump, a gun that never fires, a sprite that never turns, enemies
   that stand still) were all flagged; two deliberate retunes were not
-  ([run 41326269491](https://github.com/seanudeke/Expectrail/actions/runs/41326269491)). We wrote
+  ([run 41326269491](https://github.com/Expectrail/Expectrail/actions/runs/41326269491)). We wrote
   these knowing the guards, so they are not blind.
 - **The Muse Spark planner, blind once: one more defect, no false alarm.** Its first live calls
   (set 1) returned no content, because its reasoning used up the token limit we set. Fixed under a
@@ -469,8 +469,8 @@ checks, described below: a SAM box counts only where the page drew the element.
 
 | What we measured | Result | Run |
 | --- | --- | --- |
-| Development bugs caught: SAM on / SAM off | **8 of 8** / 4 of 8, no false alarm on the clean page | [41109233666](https://github.com/seanudeke/Expectrail/actions/runs/41109233666) |
-| Private bugs caught (4, written by a separate agent that never saw the checks): SAM on / SAM off | **4 of 4** / 2 of 4, no false alarm | [41130091655](https://github.com/seanudeke/Expectrail/actions/runs/41130091655) |
+| Development bugs caught: SAM on / SAM off | **8 of 8** / 4 of 8, no false alarm on the clean page | [41109233666](https://github.com/Expectrail/Expectrail/actions/runs/41109233666) |
+| Private bugs caught (4, written by a separate agent that never saw the checks): SAM on / SAM off | **4 of 4** / 2 of 4, no false alarm | [41130091655](https://github.com/Expectrail/Expectrail/actions/runs/41130091655) |
 | Changes that only look right, accepted (5 cases) | Expectrail with SAM **0 of 5**; without SAM 3 of 5; a pixel diff against the clean page 0 of 5 | [judge](bench/web/judge.md) |
 | Good changes, accepted (the correct fix, 3 intended changes, Muse Code's live fix) | Expectrail **5 of 5**, with or without SAM; the pixel diff 1 of 5 | [judge](bench/web/judge.md) |
 | Live repair matrix: 8 bugs, with Expectrail's evidence and from screenshots alone | **16 of 16 fixed**, each accepted on the first attempt with SAM on, on the public and the private sessions; 2,209 SAM images ($5.52), 46 job minutes | [fix matrix](bench/web/fix-matrix/README.md) |

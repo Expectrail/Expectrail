@@ -49,8 +49,8 @@ from expectrail.contracts import ContractError, validate
 
 TRANSCRIBE_MODEL = os.environ.get("EXPECTRAIL_TRANSCRIBE_MODEL", "muse-voice-transcribe-1.0")
 CLASSIFY_MODEL = os.environ.get("EXPECTRAIL_FEEDBACK_MODEL", spec_writer.DEFAULT_MODEL)
-# Open weights: Muse Spark Open through a partner's OpenAI-compatible endpoint (Baseten by default;
-# an earlier guide names this model id). Used with --sorter open; transcription stays on Meta's API.
+# Open weights: Muse Spark Open through a partner's OpenAI-compatible endpoint (Baseten by default,
+# with the model id Baseten lists; bench/spark-open/README.md). Used with --sorter open; transcription stays on Meta's API.
 OPEN_API_BASE = os.environ.get("EXPECTRAIL_OPEN_API_BASE", "https://inference.baseten.co/v1")
 OPEN_MODEL = os.environ.get("EXPECTRAIL_OPEN_MODEL", "meta-models/muse-spark-open")
 OPEN_KEY_ENVS = ("EXPECTRAIL_OPEN_API_KEY", "BASETEN_API_KEY")
