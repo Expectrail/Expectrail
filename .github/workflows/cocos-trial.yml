@@ -1,4 +1,9 @@
-# Validation probe for the P12 trial (scratch only): the smallest workflow on this trigger.
+# Throwaway trial for workstream P12, kept only on the scratch/cocos-trial branch and never merged.
+# Question: can COCOS 4 (the MIT-licensed engine, github.com/cocos/cocos4) build a web target
+# headlessly on a Linux CI runner? It follows the COCOS CLI's own instructions (cocos/cocos-cli
+# readme.md, docs/en/quick-start.md and the setup-env action its CI uses) with no X server, then
+# loads each build in Chromium with the web harness's switches (harness/web/run.py).
+# Every result goes out as an annotation, because the machine that reads them cannot download logs.
 name: Cocos trial
 
 on:
@@ -12,5 +17,21 @@ permissions:
 jobs:
   trial:
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      CLI_TAG: 0.2.0-beta.1
+      # The COCOS CLI's CI sets this heap limit; its E2E builds run out of memory without it.
+      NODE_OPTIONS: --max-old-space-size=8192
+      # The CLI's .npmrc turns TLS verification off for its registry mirror; this turns it back on.
+      npm_config_strict_ssl: 'true'
+      NO_COLOR: '1'
+      FORCE_COLOR: '0'
+    defaults:
+      run:
+        # shell: bash runs every step as bash --noprofile --norc -eo pipefail {0}.
+        shell: bash
     steps:
-      - run: echo "::notice title=probe::minimal job ran"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: echo "::notice title=probe::header and checkout ran"
