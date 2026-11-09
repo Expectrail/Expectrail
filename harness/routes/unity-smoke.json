@@ -1,0 +1,15 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "unity-smoke",
+  "description": "Platformio (game/unity-platformer): walk right, jump twice, stop. Four seconds at the game's 50 ticks per second, counted from the end of the level's opening fade and banner.",
+  "ticks": 200,
+  "seed": 1,
+  "events": [
+    {"tick": 10, "action": "move_right", "pressed": true},
+    {"tick": 50, "action": "jump", "pressed": true},
+    {"tick": 60, "action": "jump", "pressed": false},
+    {"tick": 110, "action": "jump", "pressed": true},
+    {"tick": 120, "action": "jump", "pressed": false},
+    {"tick": 170, "action": "move_right", "pressed": false}
+  ]
+}

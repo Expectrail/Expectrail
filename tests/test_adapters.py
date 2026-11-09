@@ -112,12 +112,13 @@ class WebWrapperTest(unittest.TestCase):
 
 
 class RegistryTest(unittest.TestCase):
-    def test_godot_and_web_are_registered(self):
-        self.assertEqual(adapters.names(), ("godot", "web"))
+    def test_godot_unity_and_web_are_registered(self):
+        self.assertEqual(adapters.names(), ("godot", "unity", "web"))
         self.assertIs(adapters.resolve("web"), adapters.get("web"))
         self.assertIs(adapters.resolve(adapters.GODOT), adapters.GODOT)
+        self.assertIs(adapters.get("unity"), adapters.UNITY)  # registered with its runner, harness/unity/run.py
         with self.assertRaises(KeyError):
-            adapters.get("unity")  # its data is ready (UNITY_IGNORE); it registers with its runner
+            adapters.get("unreal")
 
     def test_a_taken_name_is_refused_unless_replaced(self):
         other = adapters.Adapter(**{**adapters.GODOT.__dict__, "prompt_subject": "something else"})

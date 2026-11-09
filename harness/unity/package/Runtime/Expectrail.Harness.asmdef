@@ -1,0 +1,18 @@
+{
+    "name": "Expectrail.Harness",
+    "rootNamespace": "Expectrail.Harness",
+    "references": [
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "EXPECTRAIL_HARNESS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

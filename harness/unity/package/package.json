@@ -1,0 +1,18 @@
+{
+  "name": "com.expectrail.harness",
+  "version": "0.1.0",
+  "displayName": "Expectrail harness",
+  "description": "Replays an Expectrail route in a built player and records frames and a trace. Compiled only with the EXPECTRAIL_HARNESS define, and active only when the player is started with -expectrail-route.",
+  "unity": "6000.3",
+  "license": "MIT",
+  "dependencies": {
+    "com.unity.inputsystem": "1.7.0",
+    "com.unity.modules.animation": "1.0.0",
+    "com.unity.modules.imageconversion": "1.0.0",
+    "com.unity.modules.particlesystem": "1.0.0",
+    "com.unity.modules.physics2d": "1.0.0",
+    "com.unity.modules.screencapture": "1.0.0",
+    "com.unity.modules.tilemap": "1.0.0",
+    "com.unity.modules.ui": "1.0.0"
+  }
+}

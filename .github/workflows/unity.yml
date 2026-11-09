@@ -8,12 +8,16 @@
 # flow (the licence file plus the account's email and password) and no other activation route.
 #
 # Because every run waits for that approval, this workflow runs only when dispatched, or on a pull
-# request that touches the Unity game, the Unity harness or this file.
+# request that touches the Unity game, the Unity harness, a Unity route or this file.
 #
-# Builds:
-#   - the clean game, with GameCI's own build method and no harness (this proves the build works).
+# Builds, one Editor at a time, in this order:
+#   1. the clean game, with GameCI's own build method and no harness (this proves the build works);
+#   2. the clean game with the harness package (harness/unity/package), the player the replays use;
+#   3. the clean game with the harness and the environment canary (harness/unity/fixtures), run here
+#      once and never uploaded.
 #   No seeded Unity bug exists yet, and a candidate fix from the fixer is never built here.
-# The Library cache is restored for every build and saved only from the clean build on main.
+# The Library cache is restored for the clean build and saved only from it, on main; builds 2 and 3
+# start from a copy of build 1's Library and never write the cache.
 name: Unity
 
 on:
@@ -21,6 +25,7 @@ on:
     paths:
       - 'game/unity-platformer/**'
       - 'harness/unity/**'
+      - 'harness/routes/unity-*.json'
       - '.github/workflows/unity.yml'
   workflow_dispatch:
 
@@ -30,7 +35,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 150
     environment: unity
     # Unity's terms allow one running Editor per seat, so one build at a time across the repository.
     # GitHub keeps one run waiting in a group: a third run cancels the one already waiting.
@@ -42,6 +47,8 @@ jobs:
     outputs:
       built: ${{ steps.done.outputs.built }}
       clean-build: ${{ steps.clean-time.outputs.summary }}
+      harness-build: ${{ steps.harness-time.outputs.summary }}
+      canary-build: ${{ steps.canary-time.outputs.summary }}
     env:
       UNITY_LICENSE_SET: ${{ secrets.UNITY_LICENSE != '' }}
       UNITY_EMAIL_SET: ${{ secrets.UNITY_EMAIL != '' }}
@@ -70,6 +77,12 @@ jobs:
         if: steps.secrets.outputs.present == 'true'
         with:
           persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        if: steps.secrets.outputs.present == 'true'
+        with:
+          python-version: '3.13'
+      - if: steps.secrets.outputs.present == 'true'
+        run: python -m pip install -r requirements-dev.txt
       - name: The job builds with the project's own editor version
         if: steps.secrets.outputs.present == 'true'
         run: |
@@ -89,8 +102,13 @@ jobs:
           docker pull --quiet "$UNITY_IMAGE"
           digest=$(docker image inspect --format '{{join .RepoDigests ","}}' "$UNITY_IMAGE")
           echo "::notice title=Unity editor image::$UNITY_IMAGE ($digest)"
-      # Built from a copy, so the checkout stays as committed: GameCI adds its build script and the
-      # Editor writes Library/ into the project it builds.
+      # Every project is a copy, so the checkout stays as committed: GameCI adds its build script to
+      # the project it builds, the Editor writes Library/ there, and the build keys hash the checkout.
+      - name: Lay out the harness and canary projects (before any build touches the workspace)
+        if: steps.secrets.outputs.present == 'true'
+        run: |
+          python -m harness.unity.run --prepare-build --out runs/unity/harness
+          python -m harness.unity.run --prepare-build --out runs/unity/canary --patch harness/unity/fixtures/canary-env.patch
       - name: Copy the clean game to build it
         if: steps.secrets.outputs.present == 'true'
         run: |
@@ -160,20 +178,114 @@ jobs:
           path: runs/unity/builds/StandaloneLinux64/
           if-no-files-found: error
           retention-days: 7
+      - name: Start the harness build from the clean build's Library
+        if: steps.secrets.outputs.present == 'true'
+        run: |
+          cp -a runs/unity/clean/project/Library runs/unity/harness/project/Library
+          echo "BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
+      - name: Build the clean game with the harness
+        if: steps.secrets.outputs.present == 'true'
+        uses: game-ci/unity-builder@4423ee75828dff56037d1d1cfdac6b68e3a6ba00 # v4.8.2
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: runs/unity/harness/project
+          targetPlatform: StandaloneLinux64
+          unityVersion: 6000.3.21f1
+          customImage: unityci/editor:ubuntu-6000.3.21f1-linux-il2cpp-3
+          buildMethod: Expectrail.Harness.Editor.HarnessBuild.Build
+          buildsPath: runs/unity/builds-unused
+          versioning: None
+      - name: Harness build time, and the harness is in the player
+        if: steps.secrets.outputs.present == 'true'
+        id: harness-time
+        run: |
+          seconds=$(( $(date +%s) - BUILD_START ))
+          sudo chown -R "$(id -u):$(id -g)" runs/unity
+          test -f runs/unity/harness/player/game_Data/Managed/Expectrail.Harness.dll
+          echo "summary=clean game with the harness $seconds s (warm: the clean build's Library)" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Unity build time::clean game with the harness, $seconds s (warm: the clean build's Library)"
+      - name: Keep the harness player and its build key
+        if: steps.secrets.outputs.present == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unity-player-clean-harness
+          path: |
+            runs/unity/harness/build.json
+            runs/unity/harness/player/
+          if-no-files-found: error
+          retention-days: 7
+      # The replay job starts from here: the canary below can fail the job without hiding the replays.
       - name: Built
         if: steps.secrets.outputs.present == 'true'
         id: done
         run: echo "built=true" >> "$GITHUB_OUTPUT"
+      - name: Start the canary build from the clean build's Library
+        if: steps.secrets.outputs.present == 'true'
+        run: |
+          cp -a runs/unity/clean/project/Library runs/unity/canary/project/Library
+          echo "BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
+      - name: Build the environment canary (the harness and harness/unity/fixtures/canary-env.patch)
+        if: steps.secrets.outputs.present == 'true'
+        uses: game-ci/unity-builder@4423ee75828dff56037d1d1cfdac6b68e3a6ba00 # v4.8.2
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: runs/unity/canary/project
+          targetPlatform: StandaloneLinux64
+          unityVersion: 6000.3.21f1
+          customImage: unityci/editor:ubuntu-6000.3.21f1-linux-il2cpp-3
+          buildMethod: Expectrail.Harness.Editor.HarnessBuild.Build
+          buildsPath: runs/unity/builds-unused
+          versioning: None
+      - name: Canary build time
+        if: steps.secrets.outputs.present == 'true'
+        id: canary-time
+        run: |
+          seconds=$(( $(date +%s) - BUILD_START ))
+          sudo chown -R "$(id -u):$(id -g)" runs/unity
+          echo "summary=canary $seconds s (warm: the clean build's Library)" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Unity build time::environment canary, $seconds s (warm: the clean build's Library)"
+      - name: Install a virtual display and software OpenGL for the canary
+        if: steps.secrets.outputs.present == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb xauth libgl1-mesa-dri libglx-mesa0 libgtk-3-0t64 patch
+      # Like ci.yml's capture-smoke canary: the patch prints both variables from the game's own C#
+      # (PlayerController.Awake). The player is never uploaded.
+      - name: A candidate's game code cannot read the verifier's environment
+        if: steps.secrets.outputs.present == 'true'
+        env:
+          EXPECTRAIL_CANARY: canary-${{ github.run_id }}
+          EXPECTRAIL_HELDOUT_DIR: /canary/private/path
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          GALLIUM_DRIVER: llvmpipe
+          LP_NATIVE_VECTOR_WIDTH: '128'
+          LP_NUM_THREADS: '4'
+        run: |
+          chmod +x runs/unity/canary/player/game.x86_64
+          python -m harness.unity.run --route harness/routes/unity-smoke.json --out runs/unity/canary-run \
+            --player runs/unity/canary --patch harness/unity/fixtures/canary-env.patch --no-frames
+          grep -qx "CANARY_ENV=" runs/unity/canary-run/unity.log
+          grep -qx "CANARY_HELDOUT=" runs/unity/canary-run/unity.log
+          if grep -q -e "$EXPECTRAIL_CANARY" -e "/canary/private/path" runs/unity/canary-run/unity.log; then
+            echo "::error::the patched game read the verifier's environment"; exit 1
+          fi
+          echo "::notice title=Unity environment canary::the patched game printed both variables empty"
 
-  # No Unity licence here: the player runs in a pinned Ubuntu container on Mesa's llvmpipe, as the
-  # Godot harness does (Dockerfile.harness), with llvmpipe's vector width and thread count fixed.
-  # The Unity harness (harness/unity/run.py) does not exist yet; until it does, this job checks that
-  # the clean player starts here and records the machine.
+  # No Unity licence here: the harness player runs in a pinned Ubuntu container on Mesa's llvmpipe, as
+  # the Godot harness does (Dockerfile.harness), with llvmpipe's vector width and thread count fixed.
+  # It replays the smoke route twice and requires the two to match frame for frame and in the trace.
   replay:
     needs: build
-    if: needs.build.outputs.built == 'true'
+    # Once the harness player is uploaded, even if the canary after it failed the build job.
+    if: always() && needs.build.outputs.built == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     permissions:
       contents: read
     container:
@@ -197,45 +309,90 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          name: unity-player-clean
-          path: runs/unity/players/clean
+          name: unity-player-clean-harness
+          path: runs/unity/players/harness
       - name: Record the machine
         run: |
           cpu=$(grep -m 1 '^model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')
           mesa=$(dpkg-query -W -f '${Version}' libgl1-mesa-dri)
           echo "::notice title=Unity replay machine::CPU $cpu; $(nproc) CPUs; Mesa $mesa; LP_NUM_THREADS=$LP_NUM_THREADS, LP_NATIVE_VECTOR_WIDTH=$LP_NATIVE_VECTOR_WIDTH"
-      - name: The clean player starts under Xvfb on llvmpipe
+      - name: The player has its libraries
         run: |
-          dir=runs/unity/players/clean
-          chmod +x "$dir/clean"   # artifacts do not keep the executable bit
+          dir=runs/unity/players/harness/player
+          chmod +x "$dir/game.x86_64"   # artifacts do not keep the executable bit
           if ldd "$dir/UnityPlayer.so" | grep 'not found'; then
             echo "::error title=Unity player libraries::UnityPlayer.so needs libraries this container lacks (above)"
             exit 1
           fi
-          start=$(date +%s)
-          code=0
-          timeout 60 xvfb-run -a -s "-screen 0 1920x1080x24" "$dir/clean" -force-glcore \
-            -screen-width 1600 -screen-height 960 -screen-fullscreen 0 -logFile - > runs/unity/clean-start.log 2>&1 || code=$?
-          seconds=$(( $(date +%s) - start ))
-          grep -A 3 '^OpenGL' runs/unity/clean-start.log || true
-          # 124: the player was still running when timeout stopped it after 60 s, which is a start.
-          if [ "$code" -ne 124 ]; then
-            tail -n 40 runs/unity/clean-start.log
-            echo "::error title=Unity player start::the clean player exited with $code after $seconds s instead of running for 60 s"
-            exit 1
-          fi
-          renderer=$(grep -m 1 -i 'renderer:' runs/unity/clean-start.log | sed 's/^[[:space:]]*//' || true)
-          echo "::notice title=Unity player start::the clean player ran for 60 s under Xvfb (${renderer:-no renderer line in its log})"
+      - name: Replay the smoke route twice
+        id: replays
+        run: |
+          times=""
+          for i in 0 1; do
+            start=$(date +%s)
+            python3 -m harness.unity.run --route harness/routes/unity-smoke.json --out "runs/unity/replay/run-0$i" \
+              --player runs/unity/players/harness
+            times="$times $(( $(date +%s) - start ))"
+          done
+          echo "seconds=${times# }" >> "$GITHUB_OUTPUT"
+      - name: The two replays match frame for frame and in the trace
+        run: |
+          python3 -m harness.unity.run --out runs/unity/replay/run-00 --compare runs/unity/replay/run-01 \
+            | tee runs/unity/replay/compare.json
+          python3 - <<'PY'
+          import json
+          r = json.load(open("runs/unity/replay/run-00/replay.json"))
+          print(f"::notice title=Unity determinism::2 of 2 replays identical: {r['capture']['frames']} frames "
+                f"(frameSha256) and the trace (sha256 {r['trace']['sha256'][:12]}); {r['engine']['renderer']}")
+          PY
+      - name: What the trace says about the level and the run
+        if: always() && steps.replays.outcome == 'success'
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from agents.observations import surface_under
+          from harness.unity.run import visible_boxes
+          root = Path("runs/unity/replay/run-00")
+          trace, run, replay = (json.loads((root / n).read_text()) for n in ("trace.json", "run.json", "replay.json"))
+          rows = [r for r in trace["rows"] if r.get("player")]
+          surfaces = trace.get("levelSurfaces") or []
+          # ground comes from the tile cells; the verifier's search reads the collider paths instead.
+          pairs = [(r["ground"], surface_under(surfaces, *r["player"])) for r in rows if "ground" in r]
+          agree = sum(1 for a, b in pairs if b is not None and abs(a - b) <= 1.0)
+          player = visible_boxes(trace, "player")
+          print(f"::notice title=Unity level::{', '.join(run.get('groundTilemaps') or []) or 'no ground tilemap'}; "
+                f"{len(surfaces)} surface polygons; ground on {len(pairs)} of {len(rows)} rows, "
+                f"within 1 px of the collider paths on {agree}; player visible in "
+                f"{sum(1 for b in player.values() if b)} of {len(player)} frames")
+          print(f"::notice title=Unity run::settled after {replay['settle']['ticks']} ticks "
+                f"({replay['settle']['frozenFrames']} held frames); {len(replay['hazards'])} hazards "
+                f"({', '.join(sorted({h['kind'] for h in replay['hazards']}))}); "
+                f"{replay['integrity']['exceptions']} exceptions and {replay['integrity']['errors']} errors logged")
+          if not surfaces or not pairs:
+              print("::error title=Unity level::the trace has no level surfaces or no ground line, so the ground spec would be needs-review")
+              raise SystemExit(1)
+          PY
       - name: Times
+        if: always()
         env:
           CLEAN_BUILD: ${{ needs.build.outputs.clean-build }}
+          HARNESS_BUILD: ${{ needs.build.outputs.harness-build }}
+          CANARY_BUILD: ${{ needs.build.outputs.canary-build }}
+          REPLAY_SECONDS: ${{ steps.replays.outputs.seconds }}
         run: |
-          echo "::notice title=Unity times::build: $CLEAN_BUILD; replay: none yet (the Unity harness is not built), only a 60 s start of the clean player"
-      - name: Keep the start log
+          echo "::notice title=Unity times::build: $CLEAN_BUILD; $HARNESS_BUILD; $CANARY_BUILD. replay of the 200-tick smoke route: ${REPLAY_SECONDS:-not run} s"
+      - name: Keep the first replay and both replays' records
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: unity-clean-start-log
-          path: runs/unity/clean-start.log
+          name: unity-smoke-replay
+          path: |
+            runs/unity/replay/run-00/frames/
+            runs/unity/replay/run-00/trace.json
+            runs/unity/replay/*/replay.json
+            runs/unity/replay/*/run.json
+            runs/unity/replay/*/unity.log
+            runs/unity/replay/compare.json
           if-no-files-found: ignore
           retention-days: 7

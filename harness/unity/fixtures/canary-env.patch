@@ -1,0 +1,11 @@
+--- a/Assets/_Project/Scripts/Platformio/Character/PlayerController.cs
++++ b/Assets/_Project/Scripts/Platformio/Character/PlayerController.cs
+@@ -39,6 +39,8 @@
+ 
+         private void Awake()
+         {
++            Debug.Log("CANARY_ENV=" + System.Environment.GetEnvironmentVariable("EXPECTRAIL_CANARY"));
++            Debug.Log("CANARY_HELDOUT=" + System.Environment.GetEnvironmentVariable("EXPECTRAIL_HELDOUT_DIR"));
+             _myRigidbody = GetComponent<Rigidbody2D>();
+             _myRigidbody = GetComponent<Rigidbody2D>();
+             _myAnimator = GetComponent<Animator>();

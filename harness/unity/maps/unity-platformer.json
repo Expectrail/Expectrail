@@ -1,0 +1,55 @@
+{
+  "format": "expectrail.unity-map/v0",
+  "game": "game/unity-platformer",
+  "notes": [
+    "How the Unity harness (harness/unity/package) reads Platformio. Every value is taken from the game's own files, and tests/test_unity_harness.py checks each against them.",
+    "scene: the harness player is built with GameLoopScene first (EditorBuildSettings lists MainMenu first), so a run starts in the level with the default character (DI/GameLoopSceneInstaller.cs binds a fallback appearance). The game's SceneManager.LoadScene(0) after the last life then reloads GameLoopScene instead of the menu; routes stay inside one life.",
+    "pixelsPerUnit: the ground tiles and the characters are imported at 128 pixels per unit (spritesheet_ground.png.meta, spritesheet_players.png.meta), so a world pixel in the trace is a pixel of that art. Unity's y points up; the trace's y is negated so it points down.",
+    "physicsTicksPerSecond: TimeManager.asset Fixed Timestep 0.02. The harness sets Time.captureDeltaTime to Time.fixedDeltaTime, so one rendered frame is one physics tick and the capture rate is 50 frames a second.",
+    "devices: the Player map's Keyboard&Mouse scheme requires both a <Keyboard> and a <Mouse> (GlobalInputActions.inputactions), so both are added; the route drives the keyboard only.",
+    "actions: Move is WASD or the arrows, Fire is F, Jump is Space (GlobalInputActions.inputactions). No Player action has a Hold, Tap or other interaction, so nothing here depends on how the Input System times them.",
+    "roles: the player is the PlayerController (tag Player, Player.prefab); coins are ScorePickup components (Bronze, Silver and Gold coins); enemies are EnemyMovement components (tag Enemy); projectiles are LaserProjectile components, created by a Zenject factory when the player fires.",
+    "onFloor: the game's own test for a jump, the feet BoxCollider2D touching the Ground layer (PlayerController.OnJump).",
+    "ground: PlatformsTilemap is the Ground-layer tilemap of BaseLevel.prefab, the prefab all three levels vary. ground is the top of the highest occupied tile cell under the player, read from the tile grid, never from the player's colliders. levelSurfaces are that tilemap's CompositeCollider2D paths; levelArt is where its tiles are drawn (cell centres and sprite bounds), not rendered pixels. sinkWindowPx and bodyHalfWidthPx are the verifier's own constants (agents/observations.py, SINK_WINDOW and BODY_HALF_WIDTH), so the harness's ground search and the verifier's agree on the same surfaces.",
+    "settle: Fader.cs:56 fades the screen with Time.unscaledDeltaTime, which Time.captureDeltaTime does not lock (Unity's captureDeltaTime reference: it has no effect on Time.unscaledTime), and LevelAnnouncement fades its banner the same way after 1.5 s of game time. Before tick 0 the harness holds Time.timeScale at 0 whenever one of these is part-way through a fade, so the real-time part takes no game time, and starts the route once the banner has come and gone and the screen has faded in. A fade during the route (after a death, or at the level's exit) is not held; it is recorded as a hazard."
+  ],
+  "scene": "Assets/_Project/GameLoop/GameLoopScene.unity",
+  "pixelsPerUnit": 128,
+  "physicsTicksPerSecond": 50,
+  "frameWidth": 1600,
+  "frameHeight": 960,
+  "devices": ["Keyboard", "Mouse"],
+  "actions": [
+    {"name": "move_left", "inputAction": "Player/Move", "device": "Keyboard", "key": "LeftArrow"},
+    {"name": "move_right", "inputAction": "Player/Move", "device": "Keyboard", "key": "RightArrow"},
+    {"name": "move_up", "inputAction": "Player/Move", "device": "Keyboard", "key": "UpArrow"},
+    {"name": "move_down", "inputAction": "Player/Move", "device": "Keyboard", "key": "DownArrow"},
+    {"name": "jump", "inputAction": "Player/Jump", "device": "Keyboard", "key": "Space"},
+    {"name": "fire", "inputAction": "Player/Fire", "device": "Keyboard", "key": "F"}
+  ],
+  "roles": [
+    {"role": "player", "component": "Platformio.Character.PlayerController", "tag": "Player"},
+    {"role": "coin", "component": "Platformio.Score.ScorePickup", "tag": ""},
+    {"role": "enemy", "component": "Platformio.Character.EnemyMovement", "tag": "Enemy"},
+    {"role": "projectile", "component": "Platformio.Character.LaserProjectile", "tag": ""}
+  ],
+  "player": {
+    "onFloorCollider": "UnityEngine.BoxCollider2D",
+    "onFloorLayers": ["Ground"]
+  },
+  "ground": {
+    "tilemaps": ["PlatformsTilemap"],
+    "sinkWindowPx": 64,
+    "bodyHalfWidthPx": 20,
+    "searchCells": 16
+  },
+  "settle": {
+    "fades": [
+      {"component": "Platformio.UI.Fader", "restAlpha": 0},
+      {"component": "Platformio.Level.LevelAnnouncement", "restAlpha": -1}
+    ],
+    "seenThenGone": ["Platformio.Level.LevelAnnouncement"],
+    "maxTicks": 500,
+    "maxRealSeconds": 120
+  }
+}
