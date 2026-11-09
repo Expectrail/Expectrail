@@ -98,3 +98,36 @@ The reported bugs bring their own routes, in `bugs/reported/routes/` (listed in 
 | `wait-for-patrol` | 1100 | Stand still for nine seconds while the enemy on the upper ledge patrols (`enemy-ledge`). |
 | `walk-left` | 360 | Walk left to the lower moving platform (the platform draw-order finding). |
 
+
+## Unity builds in CI
+
+`.github/workflows/unity.yml` builds the Unity game, `game/unity-platformer` (Platformio on Unity
+6000.3.21f1), with GameCI's `game-ci/unity-builder` v4.8.2, pinned by commit. No run of it has built
+anything yet: the Unity licence secrets do not exist.
+
+- **When it runs.** On `workflow_dispatch`, and on pull requests that touch `game/unity-platformer/`,
+  `harness/unity/` or the workflow itself. Every run waits for a person's approval (below), so it is
+  kept off every other pull request.
+- **The licence.** The build job runs in the `unity` GitHub Environment and reads `UNITY_LICENSE`
+  (the contents of a Unity Personal `.ulf` file), `UNITY_EMAIL` and `UNITY_PASSWORD` from it; no
+  other secret. Unity Personal is activated online by GameCI's v4 flow from those three; no other
+  activation route is tried. With none of the three set, the job prints a notice, builds nothing and
+  succeeds, and the replay job is skipped. With one or two set it fails.
+- **One Editor at a time.** Unity's terms allow one running Editor per seat, so the build job is in
+  one concurrency group for the whole repository (`unity-editor-seat`). GitHub keeps one run waiting
+  in a group; a third run cancels the one already waiting.
+- **What it builds.** The clean game, with GameCI's own build method and no harness, to prove the
+  build works. No Unity seeded bug exists yet, and a candidate fix from the fixer is never built.
+- **The Library cache** is keyed on the hash of the game's `Assets/`, `Packages/` and
+  `ProjectSettings/`, restored for every build, and saved only from the clean build on `main`.
+- **The replay job** needs no licence. It runs in `ubuntu:noble-20261024.1` pinned by digest, with
+  Xvfb and Mesa's llvmpipe (`LP_NATIVE_VECTOR_WIDTH=128`, `LP_NUM_THREADS=4`), downloads the clean
+  player, records the CPU model and Mesa version, and checks that the player starts and keeps running
+  for 60 seconds. The Unity harness that will replay routes there (`harness/unity/run.py`) is not
+  written yet. The apt packages in that container are not pinned by version; the job records Mesa's.
+- **Times** (the build, and the start check) are published as notices.
+
+The `unity` environment has to be set up once, by hand, before the first build: add the three
+secrets to it, add required reviewers, and leave "Prevent self-review" off if the reviewer also
+triggers the runs. Until then, GitHub creates the environment the first time the workflow runs,
+with no protection rules and no secrets, and the build job skips.

@@ -1,0 +1,241 @@
+# Unity: build Platformio (game/unity-platformer) with a Unity licence, then replay the player on a
+# machine that has none. Modelled on ci.yml's capture-smoke job.
+#
+# The build job runs in the `unity` GitHub Environment, which holds the only secrets this workflow
+# uses (UNITY_LICENSE, UNITY_EMAIL, UNITY_PASSWORD) and which Sean sets up to need his approval for
+# every run. Without those secrets the job prints a notice, builds nothing and succeeds; the replay
+# job is then skipped. Unity Personal can only be activated online, so the builder uses GameCI's v4
+# flow (the licence file plus the account's email and password) and no other activation route.
+#
+# Because every run waits for that approval, this workflow runs only when dispatched, or on a pull
+# request that touches the Unity game, the Unity harness or this file.
+#
+# Builds:
+#   - the clean game, with GameCI's own build method and no harness (this proves the build works).
+#   No seeded Unity bug exists yet, and a candidate fix from the fixer is never built here.
+# The Library cache is restored for every build and saved only from the clean build on main.
+name: Unity
+
+on:
+  pull_request:
+    paths:
+      - 'game/unity-platformer/**'
+      - 'harness/unity/**'
+      - '.github/workflows/unity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: unity
+    # Unity's terms allow one running Editor per seat, so one build at a time across the repository.
+    # GitHub keeps one run waiting in a group: a third run cancels the one already waiting.
+    concurrency:
+      group: unity-editor-seat
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    outputs:
+      built: ${{ steps.done.outputs.built }}
+      clean-build: ${{ steps.clean-time.outputs.summary }}
+    env:
+      UNITY_LICENSE_SET: ${{ secrets.UNITY_LICENSE != '' }}
+      UNITY_EMAIL_SET: ${{ secrets.UNITY_EMAIL != '' }}
+      UNITY_PASSWORD_SET: ${{ secrets.UNITY_PASSWORD != '' }}
+      # The project's editor (ProjectSettings/ProjectVersion.txt) and GameCI's image for it.
+      UNITY_VERSION: 6000.3.21f1
+      UNITY_IMAGE: unityci/editor:ubuntu-6000.3.21f1-linux-il2cpp-3
+    steps:
+      - name: Skip without the Unity licence secrets
+        id: secrets
+        run: |
+          present=0
+          for set in "$UNITY_LICENSE_SET" "$UNITY_EMAIL_SET" "$UNITY_PASSWORD_SET"; do
+            if [ "$set" = "true" ]; then present=$((present + 1)); fi
+          done
+          if [ "$present" -eq 3 ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          elif [ "$present" -eq 0 ]; then
+            echo "::notice title=Unity build skipped::The unity environment has no UNITY_LICENSE, UNITY_EMAIL or UNITY_PASSWORD secret, so no Unity player was built or replayed and nothing was checked."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error title=Unity licence secrets::$present of the 3 secrets (UNITY_LICENSE, UNITY_EMAIL, UNITY_PASSWORD) are set in the unity environment; set all three or none."
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.secrets.outputs.present == 'true'
+        with:
+          persist-credentials: false
+      - name: The job builds with the project's own editor version
+        if: steps.secrets.outputs.present == 'true'
+        run: |
+          if ! grep -qx "m_EditorVersion: $UNITY_VERSION" game/unity-platformer/ProjectSettings/ProjectVersion.txt; then
+            echo "::error title=Unity version::the project is not on $UNITY_VERSION: $(head -n 1 game/unity-platformer/ProjectSettings/ProjectVersion.txt)"
+            exit 1
+          fi
+      - name: Free disk space for the editor image
+        if: steps.secrets.outputs.present == 'true'
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+      - name: Pull the editor image before activating, and record its digest
+        if: steps.secrets.outputs.present == 'true'
+        run: |
+          docker pull --quiet "$UNITY_IMAGE"
+          digest=$(docker image inspect --format '{{join .RepoDigests ","}}' "$UNITY_IMAGE")
+          echo "::notice title=Unity editor image::$UNITY_IMAGE ($digest)"
+      # Built from a copy, so the checkout stays as committed: GameCI adds its build script and the
+      # Editor writes Library/ into the project it builds.
+      - name: Copy the clean game to build it
+        if: steps.secrets.outputs.present == 'true'
+        run: |
+          mkdir -p runs/unity/clean
+          cp -a game/unity-platformer runs/unity/clean/project
+      - name: Library cache key (the clean game's Assets, Packages and ProjectSettings)
+        if: steps.secrets.outputs.present == 'true'
+        id: key
+        env:
+          KEY: unity-library-StandaloneLinux64-${{ hashFiles('game/unity-platformer/Assets/**', 'game/unity-platformer/Packages/**', 'game/unity-platformer/ProjectSettings/**') }}
+        run: echo "key=$KEY" >> "$GITHUB_OUTPUT"
+      - name: Restore the Library cache
+        if: steps.secrets.outputs.present == 'true'
+        id: cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: runs/unity/clean/project/Library
+          key: ${{ steps.key.outputs.key }}
+          restore-keys: unity-library-StandaloneLinux64-
+      - name: Start the build clock
+        if: steps.secrets.outputs.present == 'true'
+        run: echo "BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
+      - name: Build the clean game (GameCI's build method, no harness)
+        if: steps.secrets.outputs.present == 'true'
+        uses: game-ci/unity-builder@4423ee75828dff56037d1d1cfdac6b68e3a6ba00 # v4.8.2
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: runs/unity/clean/project
+          targetPlatform: StandaloneLinux64
+          unityVersion: 6000.3.21f1
+          customImage: unityci/editor:ubuntu-6000.3.21f1-linux-il2cpp-3
+          buildsPath: runs/unity/builds
+          buildName: clean
+          versioning: None
+      - name: Clean build time
+        if: steps.secrets.outputs.present == 'true'
+        id: clean-time
+        env:
+          CACHE_HIT: ${{ steps.cache.outputs.cache-hit }}
+          CACHE_MATCHED: ${{ steps.cache.outputs.cache-matched-key }}
+        run: |
+          seconds=$(( $(date +%s) - BUILD_START ))
+          if [ "$CACHE_HIT" = "true" ]; then kind="warm: Library restored from this exact key"
+          elif [ -n "$CACHE_MATCHED" ]; then kind="warm: Library restored from an older key"
+          else kind="cold: no Library cache"; fi
+          echo "summary=clean game $seconds s ($kind)" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Unity build time::clean game, $seconds s ($kind)"
+      - name: Own the build output (the builder's container runs as root)
+        if: steps.secrets.outputs.present == 'true'
+        run: sudo chown -R "$(id -u):$(id -g)" runs/unity
+      # Only the clean build on main writes the cache, so no pull request and no patched build can
+      # put a Library in front of a later build.
+      - name: Save the Library cache (clean build on main only)
+        if: steps.secrets.outputs.present == 'true' && github.ref == 'refs/heads/main' && steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: runs/unity/clean/project/Library
+          key: ${{ steps.key.outputs.key }}
+      - name: Keep the clean player
+        if: steps.secrets.outputs.present == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unity-player-clean
+          path: runs/unity/builds/StandaloneLinux64/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Built
+        if: steps.secrets.outputs.present == 'true'
+        id: done
+        run: echo "built=true" >> "$GITHUB_OUTPUT"
+
+  # No Unity licence here: the player runs in a pinned Ubuntu container on Mesa's llvmpipe, as the
+  # Godot harness does (Dockerfile.harness), with llvmpipe's vector width and thread count fixed.
+  # The Unity harness (harness/unity/run.py) does not exist yet; until it does, this job checks that
+  # the clean player starts here and records the machine.
+  replay:
+    needs: build
+    if: needs.build.outputs.built == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    container:
+      # ubuntu:noble-20261024.1, by digest (docker-library/repo-info, Nov 9, 2026)
+      image: ubuntu:noble-20261024.1@sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      LIBGL_ALWAYS_SOFTWARE: '1'
+      GALLIUM_DRIVER: llvmpipe
+      LP_NATIVE_VECTOR_WIDTH: '128'
+      LP_NUM_THREADS: '4'
+    steps:
+      - name: Install a virtual display, software OpenGL and the player's libraries
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git python3 python3-jsonschema patch \
+            xvfb xauth libgl1 libgl1-mesa-dri libglx-mesa0 libegl1 libx11-6 libxcursor1 libxrandr2 libxi6 \
+            libxinerama1 libxext6 libxrender1 libxss1 libgtk-3-0t64 libasound2t64 libfontconfig1 libfreetype6 libudev1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: unity-player-clean
+          path: runs/unity/players/clean
+      - name: Record the machine
+        run: |
+          cpu=$(grep -m 1 '^model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')
+          mesa=$(dpkg-query -W -f '${Version}' libgl1-mesa-dri)
+          echo "::notice title=Unity replay machine::CPU $cpu; $(nproc) CPUs; Mesa $mesa; LP_NUM_THREADS=$LP_NUM_THREADS, LP_NATIVE_VECTOR_WIDTH=$LP_NATIVE_VECTOR_WIDTH"
+      - name: The clean player starts under Xvfb on llvmpipe
+        run: |
+          dir=runs/unity/players/clean
+          chmod +x "$dir/clean"   # artifacts do not keep the executable bit
+          if ldd "$dir/UnityPlayer.so" | grep 'not found'; then
+            echo "::error title=Unity player libraries::UnityPlayer.so needs libraries this container lacks (above)"
+            exit 1
+          fi
+          start=$(date +%s)
+          code=0
+          timeout 60 xvfb-run -a -s "-screen 0 1920x1080x24" "$dir/clean" -force-glcore \
+            -screen-width 1600 -screen-height 960 -screen-fullscreen 0 -logFile - > runs/unity/clean-start.log 2>&1 || code=$?
+          seconds=$(( $(date +%s) - start ))
+          grep -A 3 '^OpenGL' runs/unity/clean-start.log || true
+          # 124: the player was still running when timeout stopped it after 60 s, which is a start.
+          if [ "$code" -ne 124 ]; then
+            tail -n 40 runs/unity/clean-start.log
+            echo "::error title=Unity player start::the clean player exited with $code after $seconds s instead of running for 60 s"
+            exit 1
+          fi
+          renderer=$(grep -m 1 -i 'renderer:' runs/unity/clean-start.log | sed 's/^[[:space:]]*//' || true)
+          echo "::notice title=Unity player start::the clean player ran for 60 s under Xvfb (${renderer:-no renderer line in its log})"
+      - name: Times
+        env:
+          CLEAN_BUILD: ${{ needs.build.outputs.clean-build }}
+        run: |
+          echo "::notice title=Unity times::build: $CLEAN_BUILD; replay: none yet (the Unity harness is not built), only a 60 s start of the clean player"
+      - name: Keep the start log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unity-clean-start-log
+          path: runs/unity/clean-start.log
+          if-no-files-found: ignore
+          retention-days: 7
