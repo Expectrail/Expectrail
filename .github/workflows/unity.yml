@@ -360,6 +360,12 @@ jobs:
           # ground comes from the tile cells; the verifier's search reads the collider paths instead.
           pairs = [(r["ground"], surface_under(surfaces, *r["player"])) for r in rows if "ground" in r]
           agree = sum(1 for a, b in pairs if b is not None and abs(a - b) <= 1.0)
+          # Where they disagree: the Godot-tuned search found no surface, or found one at another height.
+          missing = sum(1 for a, b in pairs if b is None)
+          off = sorted(round(b - a, 1) for a, b in pairs if b is not None and abs(a - b) > 1.0)
+          spread = f"collider minus tiles {off[0]} to {off[-1]} px, median {off[len(off) // 2]}" if off else "none"
+          print(f"::notice title=Unity ground disagreement::{missing} rows with no collider surface found under the "
+                f"player; {len(off)} rows at another height ({spread})")
           player = visible_boxes(trace, "player")
           print(f"::notice title=Unity level::{', '.join(run.get('groundTilemaps') or []) or 'no ground tilemap'}; "
                 f"{len(surfaces)} surface polygons; ground on {len(pairs)} of {len(rows)} rows, "
