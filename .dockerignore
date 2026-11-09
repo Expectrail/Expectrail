@@ -9,3 +9,5 @@ __pycache__
 # Never bake the host's Godot binary or any import cache (possibly made on macOS) into the image
 /tools
 **/.godot
+# The Unity game: the Godot harness image never runs it
+/game/unity-platformer
