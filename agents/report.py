@@ -586,6 +586,12 @@ def write_loop_rollup(out: Path, *, summary: dict) -> Path:
             line += f" fixer=`{fixer_source}`"
         if gameplay:
             line += f" gameplay=`{gameplay.get('result')}` reason={gameplay.get('reason')}"
+        confirmed = result.get("stability")
+        if isinstance(confirmed, dict):
+            counts = confirmed.get("counts") or {}
+            line += (f" stability=`{confirmed.get('status')}` ({counts.get('fail', 0)} fail, "
+                     f"{counts.get('pass', 0)} pass, {counts.get('needs-review', 0)} undecided, "
+                     f"{counts.get('crashed', 0)} did not run, of {confirmed.get('runs')})")
         if run_ms is not None:
             line += f" ({run_ms}ms)"
         if isinstance(trust, dict):

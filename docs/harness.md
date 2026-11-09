@@ -68,6 +68,43 @@ On a 2-core cloud container with no GPU (Mesa llvmpipe, LLVM 20), Godot 4.7.2:
 Not settled yet: the input driver for gamepad-style analog input (routes only press actions), and
 resetting mid-run (each run starts the game fresh, which takes a few seconds).
 
+## Flaky routes and baselines (November 9)
+
+Determinism was measured on one machine, so a failure seen once may not be a failure.
+`agents/stability.py` replays a route several times before a failure counts:
+
+```sh
+python3 -m agents.stability --route harness/routes/smoke.json \
+  --patch bugs/physics-fall-through/v1.patch --out runs/stability [--runs 3] [--record-baseline]
+```
+
+- It replays the route 3 times by default, the same three-of-three rule advisory discovery uses,
+  and compares the replays by the `frameSha256` list and the trace sha256 in `replay.json`. Each
+  replay is judged; the command line uses the verifier's ground check on the position log, with no
+  SAM images.
+- `stable-fail` (every replay identical, every one failed) stays a failure, and `stable-pass` stays
+  a pass. `flaky` means the replays differ, the judged results differ, some replays did not run, or
+  identical replays differ from this machine's baseline: it is needs-review, never a pass and never
+  a fail. `undecided` (nothing ran, or the judge could not decide) is needs-review too.
+- The report, `stability.json` (`expectrail.stability/v0`), records a machine fingerprint: the CPU
+  model from `/proc/cpuinfo`, the Mesa version Godot printed in `godot.log`, and the engine version,
+  renderer and device from `replay.json`. `replay.json` is unchanged, because `harness/run.py` is
+  pinned.
+- Hash-only baselines, one file per fingerprint, live in [`bench/baselines/`](../bench/baselines/README.md).
+  Only `--record-baseline` writes them.
+
+`python3 -m agents.loop --stability` replays the failing route on the failing base before the fixer
+starts, and sends only a stable failure to the fixer; anything else stops the run as needs-review
+before Muse Code is called. `python3 -m agents.heldout_bench --stability` replays every route where a
+check failed and keeps a check's result only when it held on every identical replay. Both flags are
+off by default, so recorded results stay as they were: with them on, every failing route costs two
+more replays, the bench sends SAM those replays' frames when SAM is on, and the loop needs Godot even
+when it verifies from fixtures. The verifier still replays each route once.
+
+On November 9, on a 2-core cloud container with no GPU (Intel Xeon @ 2.10GHz, Mesa 25.2.8 llvmpipe,
+Godot 4.7.2), the smoke route with `bugs/physics-fall-through/v1.patch` was a stable fail in three
+separate runs of three replays, all nine identical, and the clean smoke route was a stable pass.
+
 ## Seeded bugs must be visible
 
 ```sh
