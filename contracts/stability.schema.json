@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/seanudeke/expectrail/contracts/stability.schema.json",
+  "title": "Stability: one route replayed k times, compared and judged on one machine",
+  "description": "Written by agents.stability. A failing route counts as a failure only when every replay is identical (frameSha256 list and trace sha256) and every replay fails. Flaky and undecided routes are needs-review, never pass or fail. The machine fingerprint lives here, not in replay.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "route",
+    "case",
+    "runs",
+    "status",
+    "result",
+    "reason",
+    "counts",
+    "distinctReplays",
+    "replaysIdentical",
+    "resultsAgree",
+    "checks",
+    "replays",
+    "fingerprint",
+    "baseline"
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "result": { "enum": ["fail", "needs-review", "pass"] },
+    "checks": {
+      "type": ["object", "null"],
+      "additionalProperties": { "$ref": "#/$defs/result" }
+    }
+  },
+  "properties": {
+    "format": { "enum": ["expectrail.stability/v0"] },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "sha256"],
+      "properties": {
+        "name": { "type": "string" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "case": {
+      "description": "What was replayed, by digest only: the key a baseline entry is stored under.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "route", "gameTree", "patchSha256", "fps", "captured"],
+      "properties": {
+        "key": { "$ref": "#/$defs/sha256" },
+        "route": { "$ref": "#/$defs/sha256" },
+        "gameTree": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+        "patchSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+        "fps": { "type": ["integer", "null"] },
+        "captured": { "type": "boolean" }
+      }
+    },
+    "runs": { "type": "integer", "minimum": 1 },
+    "status": { "enum": ["stable-fail", "stable-pass", "flaky", "undecided"] },
+    "result": { "$ref": "#/$defs/result" },
+    "reason": { "type": "string" },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fail", "needs-review", "pass", "crashed"],
+      "properties": {
+        "fail": { "type": "integer", "minimum": 0 },
+        "needs-review": { "type": "integer", "minimum": 0 },
+        "pass": { "type": "integer", "minimum": 0 },
+        "crashed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "distinctReplays": { "type": "integer", "minimum": 0 },
+    "replaysIdentical": { "type": "boolean" },
+    "resultsAgree": { "type": "boolean" },
+    "checks": { "$ref": "#/$defs/checks" },
+    "replays": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["run", "dir", "result", "checks", "frames", "frameListSha256", "traceSha256",
+                     "framesDifferFromFirst", "error"],
+        "properties": {
+          "run": { "type": "integer", "minimum": 1 },
+          "dir": { "type": "string" },
+          "result": { "$ref": "#/$defs/result" },
+          "checks": { "$ref": "#/$defs/checks" },
+          "frames": { "type": ["integer", "null"], "minimum": 0 },
+          "frameListSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+          "traceSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+          "framesDifferFromFirst": { "type": ["integer", "null"], "minimum": 0 },
+          "error": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "fingerprint": {
+      "description": "The machine type the replays ran on. Its id names the baseline file.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "cpu", "arch", "mesa", "engine", "renderer", "device"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+        "cpu": { "type": ["string", "null"] },
+        "arch": { "type": ["string", "null"] },
+        "mesa": { "type": ["string", "null"] },
+        "engine": { "type": ["string", "null"] },
+        "renderer": { "type": ["string", "null"] },
+        "device": { "type": ["string", "null"] }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "file"],
+      "properties": {
+        "status": { "enum": ["off", "missing", "match", "differs", "not-compared"] },
+        "file": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

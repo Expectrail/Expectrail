@@ -35,7 +35,18 @@
       "morning": null,
       "trust": { "ok": true },
       "timing": { "wallClockMs": 20.0 },
-      "verificationProvenance": "fixture"
+      "verificationProvenance": "fixture",
+      "stability": {
+        "status": "stable-fail",
+        "result": "fail",
+        "runs": 3,
+        "reason": "failed 3 of 3 replays, all identical",
+        "counts": { "fail": 3, "needs-review": 0, "pass": 0, "crashed": 0 },
+        "distinctReplays": 1,
+        "fingerprint": "ad62ebe3e044dcd8",
+        "baseline": "missing",
+        "path": "runs/loop/run-00/stability/stability.json"
+      }
     },
     {
       "decision": "accept",

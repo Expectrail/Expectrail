@@ -102,7 +102,10 @@ and software rendering. Still untested: GPU rendering, multithreaded physics, ne
 randomness the game does not seed.
 
 Next: replay every failing route several times before reporting it, flag routes whose results
-change between runs, and keep a baseline per platform.
+change between runs, and keep a baseline per platform. Since November 9 `agents/stability.py` does
+this in the overnight loop and the held-out bench behind `--stability`, off by default
+([harness.md](harness.md#flaky-routes-and-baselines-november-9)); the verifier still replays each
+route once, and the only baseline is from the machine it was built on.
 
 ## Fixing
 

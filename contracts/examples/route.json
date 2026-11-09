@@ -1,7 +1,7 @@
 {
   "format": "expectrail.route/v0",
   "name": "smoke",
-  "description": "Walk right, jump twice, stop. Four seconds at 60 ticks per second.",
+  "description": "Walk right, jump twice, stop. Two seconds at 120 ticks per second.",
   "ticks": 240,
   "seed": 1,
   "events": [

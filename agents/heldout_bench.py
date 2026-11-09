@@ -22,6 +22,11 @@ Only the variant id, counts and verdicts are printed. The manifest's description
 frames and traces stay in the output directory, which callers must not publish. Exit is 1 when the
 run decided nothing, so a green job always means the checks ran.
 
+``--stability`` (off by default) replays every route where a check failed until it has run three
+times (``--stability-runs``) and keeps a check's result only when every replay is identical and the
+check said the same each time; anything else is needs-review (agents/stability.py). With SAM on,
+each extra replay sends SAM its frames again.
+
     EXPECTRAIL_HELDOUT_DIR=../Expectrail-heldout python3 -m agents.heldout_bench --list
     EXPECTRAIL_HELDOUT_DIR=... python3 -m agents.heldout_bench --list --set dev
     EXPECTRAIL_HELDOUT_DIR=... EXPECTRAIL_OBS_PROVIDER=sam MODEL_API_KEY=... \\
@@ -38,6 +43,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from agents import stability
 from agents.gameplay import MIN_DELTA_X_HARNESS, judge_trace
 from agents.patchutil import sha256_file
 from agents.sam_observations import sam_images_since, sam_usage
@@ -101,12 +107,12 @@ def _routes(root: Path, manifest: dict) -> list[tuple[str, Path, float]]:
     return rows
 
 
-def _render(route: Path, run_dir: Path, patches: list[Path]) -> None:
+def _render(route: Path, run_dir: Path, patches: list[Path]) -> dict:
     # Godot has aborted on back-to-back imports in CI; one retry, as the verifier does.
     try:
-        harness_run(route, run_dir, patches=patches)
+        return harness_run(route, run_dir, patches=patches)
     except (subprocess.CalledProcessError, OSError, TimeoutError):
-        harness_run(route, run_dir, patches=patches)
+        return harness_run(route, run_dir, patches=patches)
 
 
 def judge_route(route: Path, min_dx: float, patches: list[Path], run_dir: Path, ground_spec: dict,
@@ -127,6 +133,13 @@ def judge_route(route: Path, min_dx: float, patches: list[Path], run_dir: Path, 
     except (subprocess.CalledProcessError, OSError, TimeoutError, ValueError) as exc:
         (run_dir / "bench-error.txt").write_text(f"{type(exc).__name__}: {exc}\n", encoding="utf-8")
         return {n: "needs-review" for n in names}
+    return _judge_replay(trace, replay_sha, run_dir, min_dx, ground_spec, sam_spec_docs, reference, use_sam,
+                         hybrid)
+
+
+def _judge_replay(trace: dict, replay_sha: str, run_dir: Path, min_dx: float, ground_spec: dict,
+                  sam_spec_docs: list[dict], reference: list | None, use_sam: bool, hybrid: bool) -> dict[str, str]:
+    """Every check's result on a replay already in ``run_dir`` (``hybrid`` already requires SAM)."""
     frames = run_dir / "frames"
     results: dict[str, str] = {}
     errors: list[str] = []
@@ -156,6 +169,28 @@ def judge_route(route: Path, min_dx: float, patches: list[Path], run_dir: Path, 
     return results
 
 
+def confirm_route(route: Path, min_dx: float, patches: list[Path], run_dir: Path, first: dict[str, str],
+                  ground_spec: dict, sam_spec_docs: list[dict], reference: list | None, use_sam: bool,
+                  hybrid: bool, runs: int) -> dict:
+    """Replay a route where a check failed until it has run ``runs`` times (the first replay, in
+    ``run_dir``, counts) and judge every replay with the same checks. Returns the stability report;
+    its ``checks`` are the results that held on every identical replay, needs-review otherwise."""
+    hybrid = hybrid and use_sam
+
+    def judge(_replay: dict, replay_dir: Path) -> dict[str, str]:
+        trace = json.loads((replay_dir / "trace.json").read_text(encoding="utf-8"))
+        return _judge_replay(trace, sha256_file(replay_dir / "replay.json"), replay_dir, min_dx, ground_spec,
+                             sam_spec_docs, reference, use_sam, hybrid)
+
+    try:
+        replay = json.loads((run_dir / "replay.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        replay = None  # the first replay left no document: replay it again as well
+    return stability.check(_render, route, run_dir / "stability", judge=judge, patches=patches, runs=runs,
+                           first=(replay, run_dir, first) if replay is not None else None,
+                           baselines=stability.BASELINES)
+
+
 def caught(per_check: dict[str, dict[str, int]], checks: list[str]) -> str:
     """'yes' when any of these checks failed on a route, 'needs-review' when none failed but one
     could not decide, else 'no'."""
@@ -167,7 +202,7 @@ def caught(per_check: dict[str, dict[str, int]], checks: list[str]) -> str:
     return "no"
 
 
-def bench(key: str, out: Path) -> dict:
+def bench(key: str, out: Path, stability_runs: int = 0) -> dict:
     root, manifest, problem = held_out_set()
     if manifest is None:
         raise SystemExit(f"held-out set unavailable: {problem or 'EXPECTRAIL_HELDOUT_DIR is not set'}")
@@ -201,13 +236,21 @@ def bench(key: str, out: Path) -> dict:
     reference = reference_surfaces(work)
     per_route = []
     for name, route, min_dx in _routes(root, manifest):
-        per_route.append({"route": name, "checks": judge_route(route, min_dx, patches, work / name, ground_spec,
-                                                               sam_spec_docs, reference, use_sam,
-                                                               hybrid=not glimmer_engine)})
+        checks = judge_route(route, min_dx, patches, work / name, ground_spec, sam_spec_docs, reference, use_sam,
+                             hybrid=not glimmer_engine)
+        row = {"route": name, "checks": checks}
+        if stability_runs and "fail" in checks.values():
+            report = confirm_route(route, min_dx, patches, work / name, checks, ground_spec, sam_spec_docs,
+                                   reference, use_sam, not glimmer_engine, stability_runs)
+            row["checks"] = {c: (report["checks"] or {}).get(c, "needs-review") for c in checks}
+            row["stability"] = {"status": report["status"], "counts": report["counts"],
+                                "distinctReplays": report["distinctReplays"], "firstReplay": checks}
+        per_route.append(row)
     errors: list[str] = []
     for row in per_route:
-        path = work / row["route"] / ERRORS_FILE
-        if path.is_file():
+        paths = [work / row["route"] / ERRORS_FILE] + sorted(
+            (work / row["route"] / "stability").glob(f"replay-*/{ERRORS_FILE}"))
+        for path in (p for p in paths if p.is_file()):
             for message in json.loads(path.read_text(encoding="utf-8")):
                 if glimmer_engine:
                     # The kind only: Glimmer's error text can quote its answer about a held-out frame.
@@ -236,6 +279,10 @@ def bench(key: str, out: Path) -> dict:
         "samImages": sam_images_since(sam_before),  # a count only, for the run's cost
         "perRoute": per_route,  # route names: private, never printed
     }
+    if stability_runs:
+        replayed = [row["stability"]["status"] for row in per_route if "stability" in row]
+        doc["stability"] = {"runs": stability_runs, "routesReplayed": len(replayed),
+                            **{s: replayed.count(s) for s in ("stable-fail", "stable-pass", "flaky", "undecided")}}
     (work / "bench.json").write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
     return doc
 
@@ -255,6 +302,11 @@ def annotation(doc: dict) -> str:
     title = f"{'Dev' if doc['variant'].startswith(DEV_PREFIX) else 'Held-out'} bench {doc['variant']}"
     lines = [f"::notice title={title}::{head}; over {n} routes: " + "; ".join(parts)]
     lines += [f"::error title={title} error::{public_error(e)}" for e in doc.get("errors") or []]
+    st = doc.get("stability")
+    if st:
+        lines.append(f"::notice title=Bench stability {doc['variant']}::{st['routesReplayed']} routes with a "
+                     f"failing check replayed until {st['runs']} runs: {st['stable-fail']} stable fail, "
+                     f"{st['flaky']} flaky, {st['undecided']} undecided, {st['stable-pass']} stable pass")
     if doc.get("samImages") is not None:
         lines.append(f"::notice title=Bench SAM images {doc['variant']}::{doc['samImages']}")
     return "\n".join(lines)
@@ -271,7 +323,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--set", choices=SETS, default="held-out", dest="which",
                    help="with --list: the private held-out variants or the public development ones")
     p.add_argument("--out", type=Path, default=REPO / "runs" / "held-out-bench")
+    p.add_argument("--stability", action="store_true",
+                   help="replay every route with a failing check before it counts (off by default)")
+    p.add_argument("--stability-runs", type=int, default=stability.STABILITY_RUNS,
+                   help="with --stability: replays per failing route, the first included (default 3)")
     args = p.parse_args(argv)
+    if args.stability and args.stability_runs < 2:
+        p.error("--stability-runs must be at least 2")
     if args.annotate:
         print(annotation(json.loads(args.annotate.read_text(encoding="utf-8"))))
         return 0
@@ -286,7 +344,8 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit(f"--only: no active variant {unknown}")
         print(json.dumps([i for i in ids if not wanted or i in wanted]))
         return 0
-    doc = bench(CLEAN if args.clean else args.variant, args.out)
+    doc = bench(CLEAN if args.clean else args.variant, args.out,
+                stability_runs=args.stability_runs if args.stability else 0)
     print(annotation(doc))
     # A run that decided nothing is not a result: fail, so a green job means the checks ran.
     decided = (doc.get("caughtWithGlimmerEngine") or (doc["caughtWithSamOn"] if doc["sam"] else None)
