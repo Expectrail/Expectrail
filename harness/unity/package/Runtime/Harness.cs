@@ -217,6 +217,9 @@ namespace Expectrail.Harness
         // EarlyUpdate: before this frame's fixed update and its input update.
         void BeginFrame()
         {
+            // Unity run 7 (42713673108): the player ran 2 and 6 physics steps in a frame, so the lock set in
+            // Start did not hold. Set it again every frame; it applies from the next frame's time update.
+            if (Time.captureDeltaTime != Time.fixedDeltaTime) Time.captureDeltaTime = Time.fixedDeltaTime;
             _stepsThisFrame = 0;
             _rowThisFrame = false;
             _input.RemoveStrays();
@@ -233,7 +236,9 @@ namespace Expectrail.Harness
             if (_phase != Phase.Route) return;
             _steps.Add(_stepsThisFrame);
             if (_stepsThisFrame != 1)
-                Debug.LogWarning($"expectrail: tick {_tick} (frame {Time.frameCount}) ran {_stepsThisFrame} physics steps");
+                Debug.LogWarning($"expectrail: tick {_tick} (frame {Time.frameCount}) ran {_stepsThisFrame} physics steps; " +
+                    $"deltaTime {Time.deltaTime}, captureDeltaTime {Time.captureDeltaTime}, fixedDeltaTime {Time.fixedDeltaTime}, " +
+                    $"timeScale {Time.timeScale}, maximumDeltaTime {Time.maximumDeltaTime}");
             _rows.Add(_recorder.Row(_tick, view));
             if (_firstFrameCount < 0) { _firstFrameCount = Time.frameCount; _firstFixedTime = Time.fixedTimeAsDouble; }
             _lastFrameCount = Time.frameCount;

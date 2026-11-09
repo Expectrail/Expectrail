@@ -334,7 +334,17 @@ def run(route: Path, out: Path, patches: list[Path] | None = None, *, game: Path
     if proc.returncode != 0 or run_doc is None or not trace_path.is_file():
         raise SystemExit(f"the Unity player failed ({proc.returncode}) without a trace; see {log}")
     trace = json.loads(trace_path.read_text(encoding="utf-8"))
-    pngs = check_outputs(route_doc, m, trace, run_doc, frames, capture_frames)
+    try:
+        pngs = check_outputs(route_doc, m, trace, run_doc, frames, capture_frames)
+    except SystemExit:
+        # The player's own account of a frame that did not hold one tick (timing values included), so
+        # the job log shows it without downloading the artifact.
+        warned = [line for line in log.read_text(encoding="utf-8").splitlines() if "physics steps;" in line]
+        for line in warned[:5]:
+            print(line, file=sys.stderr)
+        if len(warned) > 5:
+            print(f"... and {len(warned) - 5} more such frames; see {log}", file=sys.stderr)
+        raise
 
     primary = ordered[0] if ordered else None
     graphics = run_doc.get("graphics") or {}
