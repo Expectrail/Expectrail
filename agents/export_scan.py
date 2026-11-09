@@ -25,6 +25,8 @@ import re
 import sys
 from pathlib import Path
 
+from harness import adapters
+from harness.adapters import Adapter
 from harness.run import REPO
 
 SECRETS = re.compile(
@@ -34,26 +36,24 @@ SECRETS = re.compile(
     r"|-----BEGIN [A-Z ]*PRIVATE KEY-----")
 MACHINE_PATH = re.compile(r"(?:/Users/|/home/(?!runner/))[A-Za-z0-9._-]+/|[A-Z]:\\Users\\[^\\\s]+\\")
 IMAGES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".webm"}
-GAME_TEXT = {".tscn", ".tres", ".gd", ".godot", ".cfg", ".import"}
+GAME_TEXT = set(adapters.get("godot").text_suffixes)  # .tscn .tres .gd .godot .cfg .import
 MAX_BYTES = 8 * 1024 * 1024
 MIN_LINE = 12  # shorter patch lines ("}", "z_index = 1") say little and match too much
 
 
-def _clean_game_lines() -> set[str]:
+def _clean_game_lines(adapter: str | Adapter = "godot") -> set[str]:
+    """Every line of the adapter's clean project, read from the files with its text suffixes."""
+    adapter = adapters.resolve(adapter)
     lines: set[str] = set()
-    for path in (REPO / "game" / "platformer").rglob("*"):
-        if path.suffix in GAME_TEXT and path.is_file():
+    for path in adapter.game_root.rglob("*"):
+        if path.suffix in adapter.text_suffixes and path.is_file():
             lines.update(l.strip() for l in path.read_text(encoding="utf-8", errors="replace").splitlines())
     return lines
 
 
 def _clean_page_lines() -> set[str]:
     """The second domain's clean page (apps/checkout/site): its own lines are public."""
-    lines: set[str] = set()
-    for path in (REPO / "apps" / "checkout" / "site").rglob("*"):
-        if path.suffix in {".html", ".css", ".js"} and path.is_file():
-            lines.update(l.strip() for l in path.read_text(encoding="utf-8", errors="replace").splitlines())
-    return lines
+    return _clean_game_lines("web")
 
 
 PUBLIC_PATCHES = ("bugs", "agents/fixtures", "apps/checkout/bugs", "apps/checkout/candidates")
