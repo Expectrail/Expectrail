@@ -1,0 +1,99 @@
+# The live loop on a non-Meta model: Claude triages, Claude Code fixes, and the verifier replays the
+# candidate in Godot and judges it from the engine's own trace. Manual only: it spends Anthropic credit.
+# Needs the ANTHROPIC_API_KEY repository secret. No Meta key is read.
+name: BYO live (Claude)
+
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: "independent loop runs (each is triage, up to the budget's fix attempts, verify)"
+        default: "1"
+        required: true
+      require_sandbox:
+        description: "fail unless Claude Code runs under bubblewrap"
+        type: choice
+        options: ["on", "off"]
+        default: "on"
+
+permissions:
+  contents: read
+
+jobs:
+  byo-live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - name: Require the ANTHROPIC_API_KEY secret
+        env:
+          KEY_SET: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        run: |
+          if [ "$KEY_SET" != "true" ]; then
+            echo "::error::Set the ANTHROPIC_API_KEY repository secret first."; exit 1
+          fi
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Install bubblewrap, xvfb, software OpenGL
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bubblewrap xvfb libgl1-mesa-dri libglx-mesa0 patch
+      - name: Allow unprivileged user namespaces for bubblewrap
+        run: |
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          fi
+          if [ -f /proc/sys/kernel/unprivileged_userns_clone ]; then
+            echo 1 | sudo tee /proc/sys/kernel/unprivileged_userns_clone
+          fi
+          bwrap --die-with-parent --unshare-pid --dev /dev --tmpfs /tmp \
+            --ro-bind /usr /usr --ro-bind /bin /bin --ro-bind /lib /lib \
+            --ro-bind /lib64 /lib64 -- true
+      - name: Install Claude Code (under /usr/local, which the sandbox already binds read-only)
+        run: |
+          sudo npm install -g @anthropic-ai/claude-code
+          claude --version
+      - name: Download Godot
+        run: ./harness/get_godot.sh
+      - name: Run the loop live, on Claude, verified by a real Godot replay
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          EXPECTRAIL_LLM_PROVIDER: anthropic
+          EXPECTRAIL_FIXER_AGENT: claude-code
+          EXPECTRAIL_OBS_PROVIDER: trace
+          RUNS: ${{ inputs.runs }}
+          REQUIRE_SANDBOX: ${{ inputs.require_sandbox }}
+        run: |
+          extra=""
+          if [ "$REQUIRE_SANDBOX" = "on" ]; then extra="--require-sandbox"; fi
+          python -m agents.loop --out runs/byo-live --mode live --runs "$RUNS" --no-skip-harness $extra
+      - name: Summary
+        if: always()
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          root = Path("runs/byo-live")
+          print("## BYO live: Claude triage + Claude Code fixer, Godot replay verdict\n")
+          for c in sorted(root.rglob("candidate.json")):
+              d = json.loads(c.read_text())
+              s = d.get("sandbox", {})
+              print(f"- `{c.parent.relative_to(root)}`: source={d.get('source')} ok={d.get('ok')} "
+                    f"sandbox={s.get('kind')} network={s.get('network')}")
+          for t in sorted(root.rglob("triage.json")):
+              print(f"- triage `{t.parent.relative_to(root)}`: {t.read_text().strip()}")
+          report = root / "morning-report.md"
+          if report.is_file():
+              print("\n" + report.read_text())
+          PY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: byo-live
+          path: |
+            runs/byo-live/
+            !runs/byo-live/**/fixer-work/
+            !runs/byo-live/**/fixer-baseline/
+          retention-days: 30

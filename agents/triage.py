@@ -109,6 +109,7 @@ def triage(
         report = prompt
         source = "offline"
     elif byo:
+        triage_model = f"byo:{provider or 'configured'}"  # what was attempted, if the call fails
         try:
             report, triage_model = call_byo(
                 prompt + "\n\nWrite a short actionable bug report for the coding agent.",
