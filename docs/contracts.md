@@ -94,7 +94,18 @@ approval, a pinned contract set), which is not built.
 - **Every replay names its engine.** `engine.name` in a replay is `godot`, `unity`, `web` or
   `chromium`. Each adapter in `harness/adapters.py` says which one its replays record: the Godot
   harness writes `godot`, and the web harness writes `chromium` in its own
-  `expectrail.web-replay/v0` document. No Unity runner exists yet; `unity` is there for it.
+  `expectrail.web-replay/v0` document. The Unity harness (`harness/unity/run.py`) writes `unity`,
+  and adds `seed`, `build` (the key of the player it replayed), `settle`, `hazards` and
+  `integrity` (the exceptions and errors the game logged); an example is
+  `contracts/examples/replay-unity.json`.
+- **The trace has a schema.** `contracts/trace.schema.json` describes `trace.json`, which both
+  harnesses write and the verifier reads but never shows the fixer. It is not in
+  `expectrail.contracts.KINDS`; check a trace with `validate(doc, "trace")`. Every field but the
+  header's `format`, `ticks`, `physicsTicksPerSecond` and `rows`, and each row's `tick`, is
+  optional, because readers skip what they do not know. The Unity harness adds `objects` to every
+  row: each tracked object's hierarchy path, role, box in frame pixels, and whether it is active and
+  visible, in that row's own frame (`view` keeps the Godot convention, the camera of the frame
+  before). The example, `contracts/examples/trace.json`, is hand-written.
 - **Accept only if every check passes.** `verification.decision` is `accept` only when every
   regression, gameplay, held-out and clean check passes; any failure rejects; anything unclear
   needs review. An incomplete check set (missing a required kind) is `needs-review`, never
@@ -102,9 +113,15 @@ approval, a pinned contract set), which is not built.
 
 ## Frames and ticks
 
-The demo runs physics at 120 ticks per second and the harness captures at 60 frames per second, so
+The Godot demo runs physics at 120 ticks per second and the harness captures at 60 frames per second, so
 frame `n` shows the state after tick `2n + 1`. Routes count ticks; observations and verdicts count
 frames. Frames are 1600 by 960 pixels (the demo's window override); boxes are `[x0, y0, x1, y1]` in
 those pixels, y down. The camera follows the player but stops at the level's edges, so a player who
 falls through the ground is visible below the ground line for a few frames and then leaves the
 screen.
+
+The Unity game, Platformio, runs physics at 50 ticks per second (`TimeManager.asset`). The Unity
+harness sets `Time.captureDeltaTime` to the fixed step so that each rendered frame holds one tick,
+and fails a run in which any frame holds zero or two; frame `n` then shows the state after tick `n`,
+captured at 50 frames per second. No Unity player has run yet. Its world pixels are Unity units times 128 (the art's pixels per unit), with y
+negated so it points down as in the Godot traces.

@@ -128,6 +128,62 @@
           "pattern": "^[0-9a-f]{64}$"
         }
       }
+    },
+    "seed": {
+      "description": "The seed the game's random stream was given (the route's). Unity only.",
+      "type": "integer"
+    },
+    "build": {
+      "description": "Unity only: the player that was replayed, named by the digest of what it was built from (harness/unity/run.py, build_key).",
+      "type": "object",
+      "required": ["key", "unityVersion"],
+      "properties": {
+        "key": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "unityVersion": {"type": "string"}
+      }
+    },
+    "settle": {
+      "description": "Unity only: what ran before tick 0. ticks counts the physics ticks the game ran (the same on every run); frozenFrames counts frames held with Time.timeScale at 0 while a fade that runs on real time finished (it varies with the machine's speed, and no frame of it is captured).",
+      "type": "object",
+      "required": ["ticks", "frozenFrames"],
+      "properties": {
+        "ticks": {"type": "integer", "minimum": 0},
+        "frozenFrames": {"type": "integer", "minimum": 0}
+      }
+    },
+    "hazards": {
+      "description": "Unity only: things the harness found that can make two replays differ.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "detail"],
+        "properties": {
+          "kind": {"type": "string"},
+          "detail": {"type": "string"},
+          "tick": {"type": ["integer", "null"]}
+        }
+      }
+    },
+    "integrity": {
+      "description": "Unity only: the exceptions and errors the game logged during the run (Application.logMessageReceived), counted, the first 50 listed.",
+      "type": "object",
+      "required": ["exceptions", "errors", "messages"],
+      "properties": {
+        "exceptions": {"type": "integer", "minimum": 0},
+        "errors": {"type": "integer", "minimum": 0},
+        "messages": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "required": ["type", "message"],
+            "properties": {
+              "type": {"enum": ["Exception", "Error", "Assert"]},
+              "message": {"type": "string"}
+            }
+          }
+        }
+      }
     }
   }
 }

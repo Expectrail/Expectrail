@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/seanudeke/expectrail/contracts/trace.schema.json",
+  "title": "Trace: what the engine recorded on every physics tick of one replay (never shown to the fixer)",
+  "description": "Written by the Godot harness (harness/godot/expectrail_harness.gd) and the Unity harness (harness/unity/package). World coordinates are pixels with y pointing down. Readers ignore fields they do not know, so a field added here must stay optional. Not listed in expectrail.contracts.KINDS (that file is frozen by discovery/freeze.json); validate with expectrail.contracts.validate(doc, 'trace').",
+  "type": "object",
+  "required": ["format", "ticks", "physicsTicksPerSecond", "rows"],
+  "properties": {
+    "format": {"const": "expectrail.trace/v0"},
+    "ticks": {"type": "integer", "minimum": 0},
+    "physicsTicksPerSecond": {"type": "integer", "minimum": 1},
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "enemies": {"enum": ["complete", "initial-instances", "absent"]},
+        "projectiles": {"enum": ["complete", "initial-instances", "absent"]},
+        "facing": {"type": "boolean"},
+        "onFloor": {"type": "boolean"}
+      }
+    },
+    "levelSurfaces": {
+      "description": "Every solid surface of the level as a polygon of [x, y] world points.",
+      "type": "array",
+      "items": {"type": "array", "items": {"$ref": "#/$defs/point"}}
+    },
+    "levelArt": {
+      "description": "Where the level's floor is drawn: per world column from x0, the [top, bottom] runs that are drawn.",
+      "type": "object",
+      "required": ["x0", "y0", "width", "height", "columns"],
+      "properties": {
+        "x0": {"type": "integer"},
+        "y0": {"type": "integer"},
+        "width": {"type": "integer", "minimum": 0},
+        "height": {"type": "integer", "minimum": 0},
+        "columns": {"type": "array", "items": {"type": "array", "items": {
+          "type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2}}}
+      }
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tick"],
+        "properties": {
+          "tick": {"type": "integer", "minimum": 0},
+          "frame": {"type": "integer", "minimum": 0},
+          "player": {"$ref": "#/$defs/point"},
+          "onFloor": {"type": "boolean"},
+          "facing": {"enum": [-1, 1]},
+          "ground": {"type": "number", "description": "World y of the level surface under the player, from the level's geometry, never from the player's own collider."},
+          "coins": {"type": "array", "items": {"$ref": "#/$defs/point"}},
+          "enemies": {"type": "array", "items": {"$ref": "#/$defs/tracked"}},
+          "projectiles": {"type": "array", "items": {"$ref": "#/$defs/tracked"}},
+          "view": {
+            "description": "[xx, xy, yx, yy, ox, oy]: a world point (x, y) lands at (xx*x + yx*y + ox, xy*x + yy*y + oy) in frame pixels. It is the camera of the frame drawn before this row's tick; readers take the next row's view for this tick's frame (agents/observations.py, _view_at).",
+            "type": "array", "items": {"type": "number"}, "minItems": 6, "maxItems": 6
+          },
+          "objects": {
+            "description": "Added Nov 9 for the Unity harness (the Godot harness does not write it): every tracked object as the engine placed it in this row's own frame (the frame of this tick, not the view convention above).",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "role", "box", "active", "visible"],
+              "additionalProperties": false,
+              "properties": {
+                "id": {"type": "string", "minLength": 1, "description": "The object's hierarchy path; a later object on a path already used gets #2, #3 ... in the order the recorder first saw them."},
+                "role": {"enum": ["player", "coin", "enemy", "projectile"]},
+                "box": {
+                  "description": "[x0, y0, x1, y1] in frame pixels, y down, from the renderer's bounds; null when the object has no renderer.",
+                  "oneOf": [
+                    {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4},
+                    {"type": "null"}
+                  ]
+                },
+                "active": {"type": "boolean", "description": "Active in the hierarchy."},
+                "visible": {"type": "boolean", "description": "Active, its renderer enabled, a sprite to draw, alpha above 0 and its bounds inside the camera's frustum."}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "point": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+    "tracked": {"type": "array", "prefixItems": [{"type": "integer"}, {"type": "number"}, {"type": "number"}], "minItems": 3, "maxItems": 3}
+  }
+}
