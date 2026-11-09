@@ -1,0 +1,38 @@
+{
+  "cases": {
+    "53a7e6e942d45f60ed022500a69e214434d2f31c3a70ba7a9bf8cc2b0574700e": {
+      "captured": true,
+      "fps": 60,
+      "frameListSha256": "bb56205ecaf5cf77bf47578f39ed3499fcc8fb2885ad26edf683ea997c9f4df7",
+      "frames": 120,
+      "gameTree": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280",
+      "patchSha256": null,
+      "recorded": "2026-11-09",
+      "route": "0db750ef7ab79124ccd80c63c03f117d84c579281f7ca487f0877f829660f02d",
+      "runs": 3,
+      "traceSha256": "9e15302e3647dc19155083dc9708ef5180309ea916fd53a532b89cffde1336fd"
+    },
+    "e326b8e15caf015877d00c6a2a85e98ed0cd56ad7df5564175988461e5de0e7f": {
+      "captured": true,
+      "fps": 60,
+      "frameListSha256": "b762b32ba562b24a7ae23c687dc5ffca12677e28d386273e25fd63b1eb3fbf50",
+      "frames": 120,
+      "gameTree": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280",
+      "patchSha256": "6514ad59f1311fc109b56c06366871c0aeab316179d80a9921a43a41e7667740",
+      "recorded": "2026-11-09",
+      "route": "0db750ef7ab79124ccd80c63c03f117d84c579281f7ca487f0877f829660f02d",
+      "runs": 3,
+      "traceSha256": "2e4a64552a7a6de8122b144cf39f663c173891cc375b914709c5953032eeadb3"
+    }
+  },
+  "fingerprint": {
+    "arch": "x86_64",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "device": "Mesa - llvmpipe (LLVM 20.1.2, 256 bits)",
+    "engine": "4.7.2.stable.official.ed1daf0bf",
+    "id": "ad62ebe3e044dcd8",
+    "mesa": "25.2.8-0ubuntu0.24.04.4",
+    "renderer": "opengl3"
+  },
+  "format": "expectrail.stability-baseline/v0"
+}

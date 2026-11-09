@@ -79,7 +79,34 @@
           },
           "triageSource": { "type": "string" },
           "fixerSource": { "type": "string" },
-          "verificationProvenance": { "type": "string" }
+          "verificationProvenance": { "type": "string" },
+          "stability": {
+            "description": "agents.loop --stability: the failing route replayed on the failing base before the fixer started (agents.stability.summary). Absent when the check was off. Only a stable-fail goes on to the fixer.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "result", "runs", "reason", "counts", "distinctReplays", "fingerprint", "baseline"],
+            "properties": {
+              "status": { "enum": ["stable-fail", "stable-pass", "flaky", "undecided"] },
+              "result": { "enum": ["fail", "needs-review", "pass"] },
+              "runs": { "type": "integer", "minimum": 1 },
+              "reason": { "type": "string" },
+              "counts": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["fail", "needs-review", "pass", "crashed"],
+                "properties": {
+                  "fail": { "type": "integer", "minimum": 0 },
+                  "needs-review": { "type": "integer", "minimum": 0 },
+                  "pass": { "type": "integer", "minimum": 0 },
+                  "crashed": { "type": "integer", "minimum": 0 }
+                }
+              },
+              "distinctReplays": { "type": "integer", "minimum": 0 },
+              "fingerprint": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+              "baseline": { "enum": ["off", "missing", "match", "differs", "not-compared"] },
+              "path": { "type": "string" }
+            }
+          }
         },
         "additionalProperties": true
       }
