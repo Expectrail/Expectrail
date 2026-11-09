@@ -29,12 +29,13 @@ import sys
 import time
 from pathlib import Path
 
+from agents import domain_verifier
+from agents.domain_verifier import Vision, worst
 from agents.heldout_bench import CLEAN, DEV_PREFIX, RESULTS, annotation, caught, public_error
 from expectrail.contracts import load
 from expectrail.evaluator import evaluate
 from harness.run import REPO
 from harness.web import layout
-from harness.web.run import WebHarnessError, run as web_run
 
 APP = REPO / "apps" / "checkout"
 ROUTES = sorted((REPO / "harness" / "web" / "routes").glob("*.json"))
@@ -76,56 +77,51 @@ def sam_on() -> bool:
     return os.environ.get("EXPECTRAIL_OBS_PROVIDER", "trace").strip().lower() == "sam"
 
 
-def worst(results: list[str]) -> str:
-    return "fail" if "fail" in results else "needs-review" if "needs-review" in results else "pass"
-
-
 def sam_visible(spec: dict) -> bool:
     """A spec SAM judges on its own: every object it names is one SAM is asked to find."""
     return spec["id"] != HYBRID_SPEC
 
 
-def judge_route(route: Path, patches: list[Path], run_dir: Path, specs: list[dict], use_sam: bool) -> dict[str, str]:
-    names = ["layout", "behaviour"] + (["hybrid"] + [s["id"] for s in specs if sam_visible(s)] if use_sam else [])
-    try:
-        web_run(route, run_dir, patches)
-        trace = json.loads((run_dir / "trace.json").read_text(encoding="utf-8"))
-        replay_sha = __import__("hashlib").sha256((run_dir / "replay.json").read_bytes()).hexdigest()
-    except (WebHarnessError, OSError, ValueError) as exc:
-        (run_dir / "bench-error.txt").write_text(f"{type(exc).__name__}: {exc}\n", encoding="utf-8")
-        return {n: "needs-review" for n in names}
+def _sam_names(specs: list[dict]) -> list[str]:
+    return ["hybrid"] + [s["id"] for s in specs if sam_visible(s)]
+
+
+def _sam_judge(trace: dict, replay_sha: str, run_dir: Path, specs: list[dict]) -> tuple[dict[str, str], list[str]]:
+    """SAM 3.1 on one replay's frames: each spec SAM can see on its own, and the hybrid inside-the-form
+    spec (SAM's box for the button against the form's layout box). A SAM box counts only on the page's
+    paint box for that element (layout.agreeing)."""
+    from agents.sam_observations import SamError, from_replay
+
     results: dict[str, str] = {}
     errors: list[str] = []
-    verdicts = {}
     for spec in specs:
-        verdicts[spec["id"]] = evaluate(spec, layout.layout_observations(trace, spec, replay_sha))
-    results["layout"] = worst([v["result"] for v in verdicts.values()])
-    results["behaviour"] = layout.behaviour(trace)["result"]
-    if use_sam:
-        from agents.sam_observations import SamError, from_replay
+        key = "hybrid" if not sam_visible(spec) else spec["id"]
+        engine = {n for n, o in spec["objects"].items() if n == "form"}
+        try:
+            seen = [n for n in spec["objects"] if n not in engine]
+            obs = from_replay(trace, replay_sha, frames_dir=run_dir / "frames", spec=spec,
+                              engine_objects=layout.engine_objects(trace, sorted(engine)) if engine else None,
+                              keep=layout.agreeing(trace, seen))
+            obs["model"]["pageCheck"] = layout.PAGE_CHECK
+            verdict = evaluate(spec, obs)
+            results[key] = verdict["result"]
+            (run_dir / f"sam-{spec['id']}.json").write_text(json.dumps(obs, indent=1) + "\n", encoding="utf-8")
+            (run_dir / f"verdict-sam-{spec['id']}.json").write_text(json.dumps(verdict, indent=1) + "\n",
+                                                                    encoding="utf-8")
+        except SamError as exc:
+            results[key] = "needs-review"
+            errors.append(f"{key}: {exc}")
+    return results, errors
 
-        for spec in specs:
-            key = "hybrid" if not sam_visible(spec) else spec["id"]
-            engine = {n for n, o in spec["objects"].items() if n == "form"}
-            try:
-                seen = [n for n in spec["objects"] if n not in engine]
-                obs = from_replay(trace, replay_sha, frames_dir=run_dir / "frames", spec=spec,
-                                  engine_objects=layout.engine_objects(trace, sorted(engine)) if engine else None,
-                                  keep=layout.agreeing(trace, seen))
-                obs["model"]["pageCheck"] = layout.PAGE_CHECK
-                verdict = evaluate(spec, obs)
-                results[key] = verdict["result"]
-                (run_dir / f"sam-{spec['id']}.json").write_text(json.dumps(obs, indent=1) + "\n", encoding="utf-8")
-                (run_dir / f"verdict-sam-{spec['id']}.json").write_text(json.dumps(verdict, indent=1) + "\n",
-                                                                        encoding="utf-8")
-            except SamError as exc:
-                results[key] = "needs-review"
-                errors.append(f"{key}: {exc}")
-    for spec_id, verdict in verdicts.items():
-        (run_dir / f"verdict-layout-{spec_id}.json").write_text(json.dumps(verdict, indent=1) + "\n", encoding="utf-8")
-    if errors:
-        (run_dir / ERRORS_FILE).write_text(json.dumps(errors, indent=2) + "\n", encoding="utf-8")
-    return results
+
+SAM = Vision(label="sam", judge=_sam_judge, names=_sam_names)
+
+
+def judge_route(route: Path, patches: list[Path], run_dir: Path, specs: list[dict], use_sam: bool) -> dict[str, str]:
+    """One route on the page, judged by the shared verifier's judge: every spec on the layout log
+    (``layout``), the order (``behaviour``) and, with SAM on, SAM's checks."""
+    return domain_verifier.judge_route("web", route, patches, run_dir, specs, layout.layout_observations,
+                                       layout.behaviour, label="layout", vision=SAM if use_sam else None)
 
 
 def bench(key: str, out: Path) -> dict:

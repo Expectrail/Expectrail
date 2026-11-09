@@ -12,8 +12,10 @@ Conditions, as in the game:
     evaluator's verdicts with their evidence) and the verifier's reasons after a rejected attempt.
     Expectrail opens a repair only when its own checks caught the bug.
 
-The verifier (``verify``) writes the game's verification contract with the same check kinds and the
-same decision rule (``expectrail.evaluator.decide``): ``regression`` (every spec on both public
+The verifier (``verify``) is the shared one, ``agents.domain_verifier``, given the page's specs, its
+layout log as engine observations, the order going through as the behaviour check, both public
+sessions and the private ones. It writes the game's verification contract with the same check kinds
+and the same decision rule (``expectrail.evaluator.decide``): ``regression`` (every spec on both public
 sessions, judged by SAM with SAM on, by the layout log without), ``gameplay`` (the order goes
 through), ``clean`` (the same specs pass on the clean page, so a broken checker cannot accept), and
 ``held-out`` (private sessions from ``$EXPECTRAIL_HELDOUT_DIR/web/routes``, never in the fixer's
@@ -36,13 +38,10 @@ import time
 import traceback
 from pathlib import Path
 
-from agents import web_bench
+from agents import domain_verifier, web_bench
 from agents.fixer import run_fixer
-from agents.patchutil import sha256_file
 from agents.sam_observations import sam_images_since, sam_usage
-from expectrail import __version__ as eval_version
-from expectrail.contracts import digest, load, validate
-from expectrail.evaluator import decide, evaluate
+from expectrail.contracts import load, validate
 from harness.run import REPO, tree_digest
 from harness.web import layout
 from harness.web.run import WebHarnessError, load_route
@@ -73,73 +72,23 @@ def _specs() -> list[dict]:
     return [load(p, "test-spec") for p in web_bench.SPECS]
 
 
-def _held_out_routes() -> tuple[list[Path] | None, str | None]:
+def _held_out_dir() -> Path | None:
+    """The page's private sessions, ``$EXPECTRAIL_HELDOUT_DIR/web/routes``; None when the set is not mounted."""
     raw = os.environ.get("EXPECTRAIL_HELDOUT_DIR", "").strip()
-    if not raw:
-        return None, "the private held-out set is not mounted"
-    routes = sorted((Path(raw) / "web" / "routes").glob("*.json"))
-    return (routes, None) if routes else (None, "the private set has no web routes")
+    return Path(raw) / "web" / "routes" if raw else None
 
 
-def _spec_checks(kind: str, route_name: str, run_dir: Path, specs: list[dict], use_sam: bool) -> list[dict]:
-    """One check per spec, from the verdict files web_bench.judge_route wrote for that replay."""
-    checks = []
-    for spec in specs:
-        path = run_dir / (f"verdict-sam-{spec['id']}.json" if use_sam else f"verdict-layout-{spec['id']}.json")
-        if path.is_file():
-            verdict = json.loads(path.read_text(encoding="utf-8"))
-            checks.append({"spec": spec["id"], "kind": kind, "route": route_name, "result": verdict["result"],
-                           "verdictSha256": digest(verdict)})
-        else:
-            checks.append({"spec": spec["id"], "kind": kind, "route": route_name, "result": "needs-review",
-                           "verdictSha256": "0" * 64})
-    return checks
-
-
-def _behaviour_check(kind: str, route_name: str, run_dir: Path) -> dict:
-    path = run_dir / "trace.json"
-    result = layout.behaviour(json.loads(path.read_text(encoding="utf-8")))["result"] if path.is_file() else "needs-review"
-    return {"spec": BEHAVIOUR_SPEC, "kind": kind, "route": route_name, "result": result}
+def _held_out_routes() -> tuple[list[Path] | None, str | None]:
+    return domain_verifier.held_out_routes(_held_out_dir())
 
 
 def verify(request: dict, candidate: Path, out: Path, attempt: int = 1) -> dict:
-    """The verifier for the checkout page: the game's contract, check kinds and decision rule."""
-    out.mkdir(parents=True, exist_ok=True)
-    use_sam = web_bench.sam_on()
-    specs = _specs()
-    base = request["base"].get("patch")
-    patches = ([REPO / base] if base else []) + ([candidate] if candidate.read_text(encoding="utf-8").strip() else [])
-    checks: list[dict] = []
-    for route in web_bench.ROUTES:
-        run_dir = out / "candidate" / route.stem
-        web_bench.judge_route(route, patches, run_dir, specs, use_sam)
-        checks += _spec_checks("regression", route.stem, run_dir, specs, use_sam)
-        checks.append(_behaviour_check("gameplay", route.stem, run_dir))
-    clean_route = web_bench.ROUTES[0]
-    clean_dir = out / "clean" / clean_route.stem
-    web_bench.judge_route(clean_route, [], clean_dir, specs, use_sam)
-    checks += _spec_checks("clean", clean_route.stem, clean_dir, specs, use_sam)
-    held, problem = _held_out_routes()
-    if held is None:
-        checks.append({"spec": "held-out-unavailable", "kind": "held-out", "route": "held-out-routes",
-                       "result": "needs-review", "verdictSha256": "0" * 64})
-    else:
-        # Private sessions: judged like the public ones; only the aggregate route name leaves here.
-        for n, route in enumerate(held):
-            run_dir = out / "held-out" / f"r{n}"
-            web_bench.judge_route(route, patches, run_dir, specs, use_sam)
-            checks += _spec_checks("held-out", "held-out-routes", run_dir, specs, use_sam)
-            checks.append(_behaviour_check("held-out", "held-out-routes", run_dir))
-    decision, reasons = decide(checks)
-    doc = {"format": "expectrail.verification/v0",
-           "candidate": {"patchSha256": sha256_file(candidate), "baseTree": request["base"]["tree"],
-                         "attempt": attempt, "request": request["id"], "requestSha256": digest(request)},
-           "evaluator": {"name": "expectrail.evaluator", "version": eval_version},
-           "checks": checks, "decision": decision, "reasons": reasons}
-    validate(doc, "verification")
-    (out / "verification.json").write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
-    if problem:
-        (out / "held-out-note.txt").write_text(problem + "\n", encoding="utf-8")
+    """The verifier for the checkout page: the shared verifier with the page's checks."""
+    _decision, doc = domain_verifier.verify(
+        "web", request, candidate, out, specs=_specs(), observe=layout.layout_observations,
+        behaviour=layout.behaviour, behaviour_spec=BEHAVIOUR_SPEC, routes=web_bench.ROUTES,
+        held_out=_held_out_dir(), label="layout", vision=web_bench.SAM if web_bench.sam_on() else None,
+        attempt=attempt)
     return doc
 
 
