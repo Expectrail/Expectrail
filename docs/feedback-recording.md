@@ -84,14 +84,14 @@ python3 -m agents.feedback --offline --transcript agents/fixtures/feedback/playt
 
 ## Open weights: sorting on Muse Spark Open
 
-The hackathon's open-weights prize counts only Muse Glimmer or Muse Spark Open, served on our own
+The open-weights path uses only Muse Glimmer or Muse Spark Open, served on our own
 hardware or through partner inference; SAM 3.1 through Meta's API does not count. `--sorter open`
 sends the sorting and the spec drafting to Muse Spark Open on Baseten's OpenAI-compatible endpoint
-(`meta-models/muse-spark-open`, the id Baseten lists; the hackathon named `meta-models/muse-spark-open-1026`, which it does not). Transcription stays on Muse Voice
+(`meta-models/muse-spark-open`, the id Baseten lists; an earlier guide named `meta-models/muse-spark-open-1026`, which it does not). Transcription stays on Muse Voice
 Transcribe.
 
 ```sh
-export BASETEN_API_KEY=...        # Baseten's hackathon credit; never commit it
+export BASETEN_API_KEY=...        # Baseten key; never commit it
 python3 -m agents.feedback --audio playtest-1.wav --consent --sorter open --out runs/feedback
 ```
 

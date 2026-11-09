@@ -14,7 +14,7 @@ FREEZE_TWO = "9af1f621c33ce4668eb8ad356a3220ea352d106595b0bc1b4cf877eead5e3053"
 class FreezeTwoRecord(unittest.TestCase):
     """Freeze 2 was retired on November 9, 2026, after set 2's blind runs were recorded
     (docs/discovery.md, Set 2: blind runs 3 and 4). Discovery may change on main again; the record
-    stays, and must still describe the code at commit c169a5e, the hackathon submission, where those
+    stays, and must still describe the code at commit c169a5e, the baseline, where those
     runs can be reproduced. A new blind claim needs a new freeze and a new fresh set first."""
 
     def test_the_record_is_kept(self):

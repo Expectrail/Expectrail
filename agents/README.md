@@ -4,7 +4,7 @@ Orchestrator, Muse Code fixer, protected verifier, Muse Wonder triage, and morni
 
 ## Muse credentials (Phase 0)
 
-1. Claim hackathon credit and create a key at [dev.meta.ai](https://dev.meta.ai) (`LLM_…`).
+1. Create a key at [dev.meta.ai](https://dev.meta.ai) (`LLM_…`).
 2. Copy `.env.example` → `.env` (gitignored) and set `META_API_KEY=LLM_…` (optionally also `MODEL_API_KEY`).
    Agent CLIs call `load_dotenv()` once at entry; process env always wins over `.env`.
 3. **Chat on Wonder (optional):** Settings → Models → API key = Meta key, base URL `https://api.meta.ai/v1`, model `muse-wonder-1.0`.

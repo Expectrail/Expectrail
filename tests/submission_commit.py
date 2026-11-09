@@ -1,7 +1,7 @@
 """Extract files from the commit the published results were recorded against.
 
 The discovery freeze and the mutation bench's registration describe the code at commit c169a5e, the
-hackathon submission. Main moves on, so their tests check the records against an extract of that
+baseline commit. Main moves on, so their tests check the records against an extract of that
 commit instead of the working tree. A checkout without the commit (a shallow clone) skips those tests;
 CI fetches it.
 """

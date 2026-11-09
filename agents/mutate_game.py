@@ -86,7 +86,7 @@ def missing_decisions(doc: dict) -> list[str]:
 def load_preregistration(path: Path | None = None, root: Path = REPO) -> dict:
     """The pre-registration, refused while a person's decision is missing or a pin has moved.
 
-    The registration describes the code at commit c169a5e, the hackathon submission: judged runs check
+    The registration describes the code at commit c169a5e, the baseline: judged runs check
     that commit out, so their pins match. On main the pinned files may change, and then this refuses,
     naming the commit. `root` is the checkout whose files are compared with the pins (tests pass an
     extract of the commit)."""
@@ -109,7 +109,7 @@ def load_preregistration(path: Path | None = None, root: Path = REPO) -> dict:
     if moved:
         raise PreregistrationError(
             f"{path}: pinned material changed since registration: {', '.join(moved)}. The mutation bench is "
-            f"registered against commit {REGISTERED_COMMIT}, the hackathon submission; judged runs check it out "
+            f"registered against commit {REGISTERED_COMMIT}, the baseline; judged runs check it out "
             "(bench/mutation/README.md, Reproducing the bench).")
     doc["sha256"] = hashlib.sha256(Path(path).read_bytes()).hexdigest()
     return doc
@@ -119,7 +119,7 @@ def _sha(rel: str, root: Path = REPO) -> str:
     return hashlib.sha256((root / rel).read_bytes()).hexdigest()
 
 
-# The commit the registration's pins describe: the hackathon submission. Main moves on; the bench reruns here.
+# The commit the registration's pins describe: the baseline. Main moves on; the bench reruns here.
 REGISTERED_COMMIT = "c169a5e0da304773587304ed47bc8aabcec80da7"
 
 

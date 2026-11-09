@@ -14,7 +14,7 @@ log and Muse Code's own screenshot review accept both. Real frames from the reco
 ([left](docs/review/report-first-run-1/), [right](docs/review/sinking-fix/)); the yellow line is
 drawn here at the floor's edge, the verdicts are the runs' own.
 
-> **For judges: the whole project in three minutes**
+> **The whole project in three minutes**
 >
 > **Start with the demo video: [https://youtu.be/BlWOiweL8Lc](https://youtu.be/BlWOiweL8Lc)**
 >
@@ -77,7 +77,7 @@ writes a change never certifies it. Three rules carry that:
    release. The fixer sees a failing check's spec only after a failed attempt, and never sees the
    held-out ones.
 
-Built for the Meta Global AI Developer Hackathon (Indie track), October 26 to November 4, 2026.
+Expectrail was built between October 26 and November 4, 2026, and is maintained by Sean Keluo-Udeke and Timothy Itodo. Taofeek F. Obafemi-Babatunde and Zayyad Atekoja built parts of the first version.
 
 ## What it shows
 
@@ -265,15 +265,15 @@ bench generates its own ([`bench/mutation/`](bench/mutation/README.md)).
 
 ### Reproducing these results
 
-The hackathon submission is commit `c169a5e`. Each result above links the CI run that produced it,
+The baseline for every result below is commit `c169a5e` (November 4, 2026). Each result above links the CI run that produced it,
 or the bench record that lists its runs, and every run page shows the commit it ran at. To rerun a
 result on the code that produced it, check out that commit. The mutation bench's workflows check out
-the submission commit themselves for judged runs. Runs that call Muse or SAM
+the baseline commit themselves for judged runs. Runs that call Muse or SAM
 live do not reproduce bit for bit, and the spend figure comes from the team's usage export, not from
 a run.
 
 Main is no longer frozen. Since November 9, 2026, discovery's freeze 2 and the mutation bench's
-pre-registration are kept as records and checked against the submission commit, so the files they once pinned
+pre-registration are kept as records and checked against the baseline commit, so the files they once pinned
 can change on main.
 
 ### Who catches a fix that only looks right

@@ -1,7 +1,7 @@
 # Future work: known limits and what comes next
 
 Expectrail independently checks changes made by AI coding agents: the agent that writes a change
-cannot certify it. This ten-day hackathon build runs scripted routes through one Godot demo game,
+cannot certify it. This first build runs scripted routes through one Godot demo game,
 using bugs we seeded and four reproductions of publicly reported Godot bugs. The limits below
 describe what it cannot do today, what we would build next, and which parts could carry over
 beyond games.
