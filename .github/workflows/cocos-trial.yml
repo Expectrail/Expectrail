@@ -34,15 +34,224 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: "Trial A: cocos create --type 2d, then build web-mobile"
-        run: echo ok
-      - name: S2
-        run: echo ok
-      - name: S3
-        run: echo ok
-      - name: S4
-        run: echo ok
-      - name: S5
-        run: echo ok
-      - name: S6
-        run: echo ok
+
+      - name: Helpers and runner facts
+        run: |
+          mkdir -p "$RUNNER_TEMP/logs" "$RUNNER_TEMP/projects"
+          echo "T0=$(date +%s)" >> "$GITHUB_ENV"
+          # ann.py KIND TITLE MESSAGE... | ann.py KIND TITLE --log FILE: one annotation, or the
+          # matching and last lines of a log as two annotations, each line cut to 200 characters.
+          cat > "$RUNNER_TEMP/ann.py" <<'EOF'
+          import re, sys
+          ANSI = re.compile(r'\x1b\[[0-9;?]*[A-Za-z]')
+          def esc(s): return s.replace('%', '%25').replace('\r', '').replace('\n', '%0A')
+          def esct(s): return esc(s).replace(':', '%3A').replace(',', '%2C')
+          kind, title = sys.argv[1], sys.argv[2]
+          if len(sys.argv) > 4 and sys.argv[3] == '--log':
+              lines = [ANSI.sub('', l).rstrip() for l in open(sys.argv[4], errors='replace')]
+              lines = [l for l in lines if l.strip()]
+              pat = re.compile(r'error|err!|fail|cannot|not found|unsupported|enoent|eacces|exception|denied|refused|timed? ?out', re.I)
+              hits = [l for l in lines if pat.search(l) and not l.lower().startswith('npm warn')][:14]
+              for label, part in (('matching lines', hits), ('last lines', lines[-16:])):
+                  if part:
+                      print(f'::{kind} title={esct(title + " " + label)}::' + esc('\n'.join(l[:200] for l in part)))
+          else:
+              print(f'::{kind} title={esct(title)}::' + esc(' '.join(sys.argv[3:]))[:4000])
+          EOF
+          # step NAME LOG CMD...: runs CMD with stdin closed, tees it to LOG, then a notice with the
+          # time, or the log's matching and last lines as errors; returns CMD's exit code.
+          cat > "$RUNNER_TEMP/steps.sh" <<'EOF'
+          ann() { python3 "$RUNNER_TEMP/ann.py" "$@"; }
+          step() {
+            local name="$1" log="$RUNNER_TEMP/logs/$2"; shift 2
+            local s=$SECONDS rc
+            set +e
+            "$@" < /dev/null 2>&1 | tee "$log"
+            rc=${PIPESTATUS[0]}
+            set -e
+            local dt=$((SECONDS - s))
+            if [ "$rc" -eq 0 ]; then
+              ann notice "$name" "exit 0 in ${dt}s ($(wc -l < "$log") log lines)"
+            else
+              ann error "$name exit $rc after ${dt}s" --log "$log"
+            fi
+            return "$rc"
+          }
+          free_gb() { df -BG --output=avail / | tail -1 | tr -d ' '; }
+          EOF
+          . "$RUNNER_TEMP/steps.sh"
+          . /etc/os-release
+          xs=$(pgrep -a 'Xvfb|Xorg|Xwayland' || true)
+          ann notice "Runner" "$PRETTY_NAME, kernel $(uname -r), $(nproc) CPUs, $(free -g | awk '/Mem:/{print $2}') GB RAM," \
+            "$(free_gb) free on /, DISPLAY='${DISPLAY:-}', WAYLAND_DISPLAY='${WAYLAND_DISPLAY:-}'," \
+            "X server process: ${xs:-none}, preinstalled node $(node --version 2>/dev/null || echo none)"
+
+      # No setup action: the COCOS CLI's quick start asks for "Node.js 22.17.0 or higher", and the
+      # runner image keeps Node 22 in its tool cache. Only if it does not, the official tarball.
+      - name: Node 22 from the tool cache
+        run: |
+          . "$RUNNER_TEMP/steps.sh"
+          n22=$(ls -d /opt/hostedtoolcache/node/22.*/x64 2>/dev/null | sort -V | tail -1 || true)
+          if [ -z "$n22" ]; then
+            v=v22.17.0; d="$RUNNER_TEMP/node"; mkdir -p "$d"; cd "$d"
+            curl -fsSLO "https://nodejs.org/dist/$v/node-$v-linux-x64.tar.xz"
+            curl -fsSLO "https://nodejs.org/dist/$v/SHASUMS256.txt"
+            grep " node-$v-linux-x64.tar.xz\$" SHASUMS256.txt | sha256sum -c -
+            tar -xJf "node-$v-linux-x64.tar.xz"; n22="$d/node-$v-linux-x64"
+          fi
+          echo "$n22/bin" >> "$GITHUB_PATH"
+          ann notice "Node.js" "$("$n22/bin/node" --version) from $n22 (tool cache has: $(ls /opt/hostedtoolcache/node 2>/dev/null | tr '\n' ' '))"
+
+      - name: Clone the COCOS CLI
+        run: |
+          . "$RUNNER_TEMP/steps.sh"
+          CLI="$RUNNER_TEMP/cocos-cli"
+          echo "CLI=$CLI" >> "$GITHUB_ENV"
+          step "git clone cocos-cli $CLI_TAG" clone.log git clone --depth 1 -b "$CLI_TAG" https://github.com/cocos/cocos-cli "$CLI"
+          cd "$CLI"
+          ann notice "COCOS CLI source" "cocos/cocos-cli $CLI_TAG = $(git rev-parse HEAD)," \
+            "package.json version $(node -p 'require("./package.json").version') licence field $(node -p 'require("./package.json").license')," \
+            "LICENSE first line: $(head -1 LICENSE); repo.json: $(tr -d ' \n' < repo.json); .npmrc: $(grep -v '^email' .npmrc | tr '\n' ' ')"
+          ann notice "Tool versions" "node $(node --version), npm $(npm --version), git $(git --version | cut -d' ' -f3), python3 $(python3 --version | cut -d' ' -f2), unzip $(unzip -v | head -1 | cut -d' ' -f2)"
+
+      - name: Install 1 node-gyp and init
+        run: |
+          . "$RUNNER_TEMP/steps.sh"
+          cd "$CLI"
+          step "npm install -g node-gyp" node-gyp.log npm install -g node-gyp
+          step "npm run init (clones engine and external)" init.log npm run init
+          ann notice "After init" "engine $(git -C packages/engine rev-parse HEAD) version $(node -p 'require("./packages/engine/package.json").version');" \
+            "packages/engine $(du -sh packages/engine | cut -f1), of which native/external $(du -sh packages/engine/native/external | cut -f1); $(free_gb) free on /"
+
+      - name: Install 2 npm ci
+        run: |
+          . "$RUNNER_TEMP/steps.sh"
+          cd "$CLI"
+          # As the CLI's own CI does (.github/actions/setup-env): postinstall still compiles the
+          # engine and cc modules and downloads tools; the CLI is built once, in the next step.
+          step "npm ci" npm-ci.log env COCOS_SKIP_POSTINSTALL_BUILD=true npm ci
+          ann notice "After npm ci" "node_modules $(du -sh node_modules | cut -f1), static/tools $(du -sh static/tools 2>/dev/null | cut -f1)" \
+            "($(ls static/tools 2>/dev/null | tr '\n' ' ')), $(free_gb) free on /"
+
+      - name: Install 3 build and link
+        id: cli
+        run: |
+          . "$RUNNER_TEMP/steps.sh"
+          cd "$CLI"
+          step "npm run build" build-cli.log npm run build
+          step "npm link" link.log npm link
+          ann notice "cocos --version" "$(cocos --version 2>&1 | tail -3 | tr '\n' ' ')"
+          ann notice "cocos --help" "$(cocos --help 2>&1 | grep -E '^\s+[a-z-]+ ' | head -14 | sed 's/  */ /g' | cut -c1-60 | tr '\n' ';')"
+
+      - name: Trial A empty 2D project
+        id: trial_a
+        if: ${{ !cancelled() && steps.cli.outcome == 'success' }}
+        run: |
+          . "$RUNNER_TEMP/steps.sh"
+          P="$RUNNER_TEMP/projects/empty-2d"
+          step "cocos create --type 2d" create.log cocos --no-interactive create --project "$P" --type 2d
+          ann notice "Created project files" "$(cd "$P" && find . -type f | sort | head -20 | tr '\n' ' ')"
+          step "build empty-2d web-mobile" build-empty.log cocos --no-interactive build --project "$P" --platform web-mobile
+          idx=$(find "$P/build" -name index.html | head -1)
+          [ -n "$idx" ] || { ann error "empty-2d output" "no index.html under $P/build: $(find "$P/build" -maxdepth 2 | head -20 | tr '\n' ' ')"; exit 1; }
+          out=$(dirname "$idx")
+          echo "OUT_EMPTY=$out" >> "$GITHUB_ENV"
+          ann notice "empty-2d output" "${out#$RUNNER_TEMP/}: $(find "$out" -type f | wc -l) files, $(du -sh "$out" | cut -f1); top level: $(ls "$out" | tr '\n' ' ')"
+
+      - name: Trial B fixture 2D project
+        id: trial_b
+        if: ${{ !cancelled() && steps.cli.outcome == 'success' }}
+        run: |
+          . "$RUNNER_TEMP/steps.sh"
+          P="$RUNNER_TEMP/projects/fixture-2d"
+          # tests/fixtures/projects/asset-operation: the project the CLI's build E2E test uses, with a 2D scene.
+          cp -r "$CLI/tests/fixtures/projects/asset-operation" "$P"
+          ann notice "Fixture project" "$(cd "$P" && find . -type f -not -name '*.meta' | sort | head -20 | tr '\n' ' ')"
+          step "build fixture-2d web-mobile" build-fixture.log cocos --no-interactive build --project "$P" --platform web-mobile
+          idx=$(find "$P/build" -name index.html | head -1)
+          [ -n "$idx" ] || { ann error "fixture-2d output" "no index.html under $P/build: $(find "$P/build" -maxdepth 2 | head -20 | tr '\n' ' ')"; exit 1; }
+          out=$(dirname "$idx")
+          echo "OUT_FIXTURE=$out" >> "$GITHUB_ENV"
+          ann notice "fixture-2d output" "${out#$RUNNER_TEMP/}: $(find "$out" -type f | wc -l) files, $(du -sh "$out" | cut -f1); top level: $(ls "$out" | tr '\n' ' ')"
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        if: ${{ !cancelled() && (env.OUT_EMPTY != '' || env.OUT_FIXTURE != '') }}
+        with:
+          python-version: '3.13'
+
+      - name: Load the builds in Chromium
+        if: ${{ !cancelled() && (env.OUT_EMPTY != '' || env.OUT_FIXTURE != '') }}
+        run: |
+          . "$RUNNER_TEMP/steps.sh"
+          step "pip install playwright and pillow" pip.log python -m pip install -r requirements-web.txt pillow==11.3.0
+          step "playwright install chromium" pw.log python -m playwright install --with-deps chromium
+          cat > "$RUNNER_TEMP/smoke.py" <<'EOF'
+          """Serve a build, open it in Chromium with harness/web's switches, report what ran."""
+          import functools, http.server, json, sys, threading, time
+          from io import BytesIO
+          sys.path.insert(0, '.')
+          from harness.web.run import CHROMIUM_ARGS
+          from PIL import Image
+          from playwright.sync_api import sync_playwright
+          root, name, shot = sys.argv[1], sys.argv[2], sys.argv[3]
+          class Quiet(http.server.SimpleHTTPRequestHandler):
+              def log_message(self, *args): pass
+          srv = http.server.ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(Quiet, directory=root))
+          threading.Thread(target=srv.serve_forever, daemon=True).start()
+          url = f'http://127.0.0.1:{srv.server_port}/index.html'
+          console, errors, failed = [], [], []
+          with sync_playwright() as p:
+              browser = p.chromium.launch(args=CHROMIUM_ARGS)
+              page = browser.new_page(viewport={'width': 960, 'height': 640})
+              page.on('console', lambda m: console.append(f'{m.type}: {m.text}'))
+              page.on('pageerror', lambda e: errors.append(str(e)))
+              page.on('requestfailed', lambda r: failed.append(r.url.rsplit('/', 1)[-1]))
+              t = time.time()
+              page.goto(url, wait_until='load', timeout=60000)
+              load_s = round(time.time() - t, 1)
+              page.wait_for_timeout(10000)
+              state = page.evaluate("""() => {
+                const c = document.querySelector('canvas'); const out = {canvases: document.querySelectorAll('canvas').length,
+                  canvas: c ? [c.width, c.height] : null, cc: typeof window.cc};
+                try { out.version = window.cc ? (cc.ENGINE_VERSION || null) : null; } catch (e) {}
+                try { out.frames = window.cc && cc.director ? cc.director.getTotalFrames() : null; } catch (e) { out.frames = 'error ' + e; }
+                try { const s = window.cc && cc.director ? cc.director.getScene() : null; out.scene = s ? s.name : null; } catch (e) {}
+                try { const gl = c && (c.getContext('webgl2') || c.getContext('webgl')); out.gl = gl ? gl.getParameter(gl.VERSION) : null; } catch (e) {}
+                return out; }""")
+              png = page.screenshot()
+              browser.close()
+          open(shot, 'wb').write(png)
+          img = Image.open(BytesIO(png)).convert('RGB')
+          colors = img.getcolors(1 << 24)
+          top = max(colors)[0]
+          state.update(load_s=load_s, colours=len(colors), non_background=round(1 - top / (img.width * img.height), 4),
+                       console_errors=sum(1 for c in console if c.startswith('error')), page_errors=len(errors), failed_requests=failed[:5])
+          print(json.dumps(state))
+          ann = lambda kind, title, msg: print(f'::{kind} title={title}::' + msg.replace('%', '%25').replace('\r', '').replace('\n', '%0A')[:3000])
+          ann('notice', f'Chromium {name}', json.dumps(state))
+          bad = [c for c in console if c.startswith('error')] + errors
+          if bad:
+              ann('error', f'Chromium {name} errors', '\n'.join(b[:200] for b in bad[:10]))
+          if console:
+              ann('notice', f'Chromium {name} console', '\n'.join(c[:200] for c in console[:12]))
+          ok = state['canvases'] > 0 and state['cc'] != 'undefined' and isinstance(state.get('frames'), int) and state['frames'] > 0
+          sys.exit(0 if ok and not errors else 1)
+          EOF
+          rc=0
+          for pair in "empty-2d:${OUT_EMPTY:-}" "fixture-2d:${OUT_FIXTURE:-}"; do
+            name=${pair%%:*}; dir=${pair#*:}
+            [ -n "$dir" ] || continue
+            step "Chromium load $name" "smoke-$name.log" python "$RUNNER_TEMP/smoke.py" "$dir" "$name" "$RUNNER_TEMP/$name.png" || rc=1
+          done
+          exit $rc
+
+      - name: Totals
+        if: always()
+        run: |
+          . "$RUNNER_TEMP/steps.sh"
+          total=$(( $(date +%s) - T0 ))
+          sizes=""
+          if [ -d "${CLI:-/nonexistent}" ]; then
+            sizes="cocos-cli tree $(du -sh "$CLI" | cut -f1) (node_modules $(du -sh "$CLI/node_modules" 2>/dev/null | cut -f1), packages/engine $(du -sh "$CLI/packages/engine" 2>/dev/null | cut -f1)),"
+          fi
+          ann notice "Totals" "job wall time ${total}s; $sizes npm cache $(du -sh "$(npm config get cache)" 2>/dev/null | cut -f1); $(free_gb) free on / at the end"
