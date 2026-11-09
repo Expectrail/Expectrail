@@ -29,7 +29,7 @@ Clean uses a no-patch harness replay when available; if Godot
 aborts on that second import (seen on CI), it falls back to `agents/fixtures/obs-clean.json`
 and still decides (`suite.clean.source=fixture-fallback`). Held-out replays the
 seed + candidate on the private held-out routes when `EXPECTRAIL_HELDOUT_DIR` points at a checkout
-of `seanudeke/Expectrail-heldout` (suite source `harness`; visual spec and gameplay must both pass;
+of `Expectrail/Expectrail-heldout` (suite source `harness`; visual spec and gameplay must both pass;
 an unusable set is `needs-review`, never a pass). Offline and fixture runs keep
 `agents/fixtures/obs-held-out.json` as a labeled `interim-fixture` control. Keep the held-out
 checkout off any machine where Muse Code runs. Optional `suite` on `verification.json`

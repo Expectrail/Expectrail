@@ -38,7 +38,7 @@ The playbook's original layering bug (the HUD drawn behind the background) does 
 its only HUD, the coin counter, is inside the pause menu and is not on screen during play. Text
 overflow, softlock and motion jitter wait until after Gate 2.
 
-**Held out** means two things, both kept in the private repository `seanudeke/Expectrail-heldout`
+**Held out** means two things, both kept in the private repository `Expectrail/Expectrail-heldout`
 and never in this one:
 
 - **Held-out variants** (the two active variants of each family in the table) are a
