@@ -1,0 +1,170 @@
+# The untrusted half of the Expectrail gate (docs/ci-gate.md). It runs the pull request's game, so
+# use it in a job triggered by pull_request with read-only permissions and no secrets except,
+# optionally, the held-out token on events from this repository. It refuses pull_request_target,
+# workflow_run and issue_comment, where it would run the pull request's code next to a write token.
+#
+# Every input reaches a script through env, never by ${{ }} expansion inside a script. The held-out
+# token is passed only to actions/checkout and is never printed.
+name: Expectrail verify
+description: Replay a pull request's Godot game on scripted routes, judge the approved specs, and upload the verdict, findings and review page as an artifact.
+author: Expectrail
+inputs:
+  game-path:
+    description: The Godot project folder (the one holding project.godot), relative to the repository root.
+    required: true
+  routes:
+    description: Route files (expectrail.route/v0), one path or glob per line, relative to the repository root.
+    required: true
+  specs:
+    description: The folder of test specs (expectrail.test-spec/v0), relative to the repository root. Only specs with a person's approval judge a change.
+    required: true
+  compare-base:
+    description: On a pull request, also replay the base commit, and read the specs and routes from it so the change cannot edit the checks that judge it ('true' or 'false').
+    default: 'true'
+  heldout-repository:
+    description: owner/name of a private repository of held-out routes (a manifest.json listing routes[].file). Optional.
+    default: ''
+  heldout-ref:
+    description: The branch, tag or commit of heldout-repository to use; empty means its default branch.
+    default: ''
+  heldout-token:
+    description: >
+      A token that can read heldout-repository. Pass a secret, and only on events from this
+      repository, never a fork's. The pull request's game runs in this job, so it can read the
+      held-out routes while it runs: see docs/ci-gate.md before you pass one.
+    default: ''
+  fail-on:
+    description: Fail the job on reject (default), on needs-review (or reject), or never.
+    default: reject
+  artifact-name:
+    description: The name of the evidence artifact; the comment action must use the same name.
+    default: expectrail-gate
+outputs:
+  decision:
+    description: accept, reject or needs-review
+    value: ${{ steps.verify.outputs.decision }}
+runs:
+  using: composite
+  steps:
+    - name: Check the event and the inputs
+      shell: bash
+      env:
+        EVENT: ${{ github.event_name }}
+        FAIL_ON: ${{ inputs.fail-on }}
+        COMPARE_BASE: ${{ inputs.compare-base }}
+        ARTIFACT: ${{ inputs.artifact-name }}
+        HELDOUT_REPOSITORY: ${{ inputs.heldout-repository }}
+      run: |
+        case "$EVENT" in
+          pull_request_target|workflow_run|issue_comment)
+            echo "::error title=Expectrail verify::do not run this action on $EVENT: it runs the pull request's code, and that event gives the job a write token and secrets"
+            exit 1 ;;
+        esac
+        case "$FAIL_ON" in reject|needs-review|never) ;; *) echo "::error title=Expectrail verify::fail-on must be reject, needs-review or never"; exit 1 ;; esac
+        case "$COMPARE_BASE" in true|false) ;; *) echo "::error title=Expectrail verify::compare-base must be true or false"; exit 1 ;; esac
+        [[ "$ARTIFACT" =~ ^[A-Za-z0-9._-]{1,64}$ ]] || { echo "::error title=Expectrail verify::artifact-name may use letters, digits and . _ - only"; exit 1; }
+        if [ -n "$HELDOUT_REPOSITORY" ] && ! [[ "$HELDOUT_REPOSITORY" =~ ^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$ ]]; then
+          echo "::error title=Expectrail verify::heldout-repository must be owner/name"; exit 1
+        fi
+    - name: Check out the base commit (the checks are read from here)
+      if: inputs.compare-base == 'true' && github.event_name == 'pull_request'
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: ${{ github.event.pull_request.base.sha }}
+        path: .expectrail/base
+        persist-credentials: false
+    - name: Check out the held-out routes (on events from this repository only)
+      id: heldout
+      if: inputs.heldout-token != '' && inputs.heldout-repository != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        repository: ${{ inputs.heldout-repository }}
+        ref: ${{ inputs.heldout-ref }}
+        token: ${{ inputs.heldout-token }}
+        path: .expectrail/heldout
+        persist-credentials: false
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: '3.13'
+    - name: Install a virtual display and software OpenGL
+      shell: bash
+      run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 patch
+    - name: Download Godot 4.7.2 and check its SHA-512
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/../../../harness/get_godot.sh"
+    - name: Replay the routes and judge the specs
+      id: verify
+      shell: bash
+      env:
+        GAME: ${{ inputs.game-path }}
+        ROUTES: ${{ inputs.routes }}
+        SPECS: ${{ inputs.specs }}
+        COMPARE_BASE: ${{ inputs.compare-base }}
+        EVENT: ${{ github.event_name }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        EXPECTRAIL_REF: ${{ github.action_ref }}
+        HELDOUT_FETCHED: ${{ steps.heldout.outcome == 'success' }}
+      run: |
+        root="$(cd "$GITHUB_ACTION_PATH/../../.." && pwd)"
+        out="$RUNNER_TEMP/expectrail-gate"
+        args=(--repo "$GITHUB_WORKSPACE" --game "$GAME" --routes "$ROUTES" --specs "$SPECS"
+              --out "$out" --work "$RUNNER_TEMP/expectrail-work" --expectrail-commit "$EXPECTRAIL_REF")
+        # The base and the held-out routes move out of the workspace, so the head's game tree is the
+        # pull request's checkout alone and no later step that uploads the workspace can take them.
+        if [ "$EVENT" = "pull_request" ]; then
+          args+=(--pr "$PR_NUMBER" --head-sha "$HEAD_SHA")
+          if [ "$COMPARE_BASE" = "true" ]; then
+            mv "$GITHUB_WORKSPACE/.expectrail/base" "$RUNNER_TEMP/expectrail-base"
+            args+=(--base "$RUNNER_TEMP/expectrail-base" --base-sha "$BASE_SHA")
+          fi
+        fi
+        if [ "$HELDOUT_FETCHED" = "true" ]; then
+          mv "$GITHUB_WORKSPACE/.expectrail/heldout" "$RUNNER_TEMP/expectrail-heldout"
+          args+=(--heldout "$RUNNER_TEMP/expectrail-heldout")
+        fi
+        rmdir "$GITHUB_WORKSPACE/.expectrail" 2> /dev/null || true
+        # The binary the previous step downloaded and checked (already there, so this only prints it).
+        EXPECTRAIL_GODOT="$(bash "$root/harness/get_godot.sh" | tail -n 1)"
+        export EXPECTRAIL_GODOT
+        # Python runs from this action's folder, never the workspace, so nothing in the pull request
+        # can stand in for an Expectrail module.
+        cd "$root"
+        code=0
+        python -m expectrail.gate.verify "${args[@]}" || code=$?
+        if [ "$code" -gt 2 ]; then exit "$code"; fi
+        decision=$(python -c "import json,sys; print(json.load(open(sys.argv[1]))['decision'])" "$out/findings.json")
+        echo "decision=$decision" >> "$GITHUB_OUTPUT"
+    - name: Export scan of the evidence (key-like strings; with the held-out set, its names and lines)
+      id: scan
+      shell: bash
+      run: |
+        cd "$GITHUB_ACTION_PATH/../../.."
+        private=()
+        if [ -d "$RUNNER_TEMP/expectrail-heldout" ]; then private=(--private "$RUNNER_TEMP/expectrail-heldout"); fi
+        python -m agents.export_scan "$RUNNER_TEMP/expectrail-gate" "${private[@]}"
+    - name: Remove the held-out routes and the replays
+      if: always()
+      shell: bash
+      run: rm -rf "$RUNNER_TEMP/expectrail-heldout" "$RUNNER_TEMP/expectrail-work" "$RUNNER_TEMP/expectrail-base" "$GITHUB_WORKSPACE/.expectrail"
+    - name: Upload the evidence for the comment job
+      if: always() && steps.scan.outcome == 'success'
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ runner.temp }}/expectrail-gate/
+        if-no-files-found: error
+        retention-days: 14
+    - name: Gate on the decision
+      shell: bash
+      env:
+        FAIL_ON: ${{ inputs.fail-on }}
+        DECISION: ${{ steps.verify.outputs.decision }}
+      run: |
+        echo "Expectrail decision: $DECISION"
+        case "$FAIL_ON:$DECISION" in
+          *:accept|never:*) exit 0 ;;
+          reject:needs-review) echo "::warning title=Expectrail verify::needs review; fail-on is reject, so the job passes" ;;
+          *) echo "::error title=Expectrail verify::$DECISION"; exit 1 ;;
+        esac

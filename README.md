@@ -643,6 +643,10 @@ python3 -m agents.film_feedback --out runs/film-feedback   # hostile-feedback be
 
 See [agents/README.md](agents/README.md) for Muse API / Muse Code setup (`.env`, `META_API_KEY`).
 
+To run Expectrail on a Godot repository's pull requests, add the CI gate: two workflow files, one
+that verifies the change and one trusted job that posts the verdict as one comment
+([docs/ci-gate.md](docs/ci-gate.md)).
+
 ## Layout and lanes
 
 | Path | What | Lane |

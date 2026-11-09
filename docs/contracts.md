@@ -58,6 +58,26 @@ The difference from a `test-spec`: a person approves every test spec before it c
 `trace-spec` from discovery is advisory until the promotion stage exists (validation, a person's
 approval, a pinned contract set), which is not built.
 
+## The CI gate's record (added November 9)
+
+`findings` (`expectrail.findings/v0`, [`contracts/findings.schema.json`](../contracts/findings.schema.json))
+carries the CI gate's verdict from the job that runs a pull request's code to the job that posts the
+comment ([ci-gate.md](ci-gate.md)). The example is a real local run: the clean game as the base, the
+game with `bugs/physics-fall-through/v1.patch` as the head, and a stand-in held-out set. Its pull
+request number and head commit are placeholders.
+
+| Record | Written by | Read by |
+| --- | --- | --- |
+| `findings` | the gate's verify step (`expectrail.gate.verify`), untrusted | the gate's comment step (`expectrail.gate.comment`), which treats it as data |
+
+It is not in `expectrail.contracts.KINDS` and is not read with `jsonschema`: the comment step
+installs nothing and imports only `expectrail.gate.record` and `expectrail.gate.comment`.
+`expectrail.gate.record` reads it with a size cap, strict JSON and a small standard-library
+validator that refuses schema keywords it does not implement. A test holds that
+validator equal to `jsonschema`. The reader then recomputes every derived value. Each finding id is
+the first 12 hex digits of sha256(spec, route, kind), so a failure keeps its id across pushes. Held-out
+routes appear as counts only; the schema has no field for anything else about them.
+
 ## Rules the contracts encode
 
 - **A missing object is never a pass.** In `observations`, an object with an empty list in a frame

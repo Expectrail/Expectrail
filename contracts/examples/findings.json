@@ -1,0 +1,104 @@
+{
+  "format": "expectrail.findings/v0",
+  "decision": "reject",
+  "reasons": [
+    "2 of 2 public checks fail after the change",
+    "2 held-out checks fail after the change"
+  ],
+  "adapter": "godot",
+  "pullRequest": {
+    "number": 7,
+    "headSha": "1111111111111111111111111111111111111111",
+    "baseSha": "618ad50a219f5fa565d1c046835fe2da75970177"
+  },
+  "game": {
+    "path": "game/platformer",
+    "headTree": "324ff38667195158a6cd9676a53e591b8686a22c959e3a8565feb9bedcbdc25b",
+    "baseTree": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280"
+  },
+  "checksFrom": "base",
+  "checksChanged": {
+    "specs": 0,
+    "routes": 0
+  },
+  "specs": [
+    {
+      "id": "player-stays-above-ground",
+      "sha256": "4829b493e18b84208fcf9790004d822b775d12c3cb3505b4063b3ba2a6585d55",
+      "instruction": "The player never falls through the ground."
+    }
+  ],
+  "drafts": 0,
+  "routes": [
+    {
+      "name": "combat",
+      "sha256": "2183a646295437eda61b2978a12451a7cebdb4eee3c2fb97d6f4db5fb1ce8afa"
+    },
+    {
+      "name": "smoke",
+      "sha256": "0db750ef7ab79124ccd80c63c03f117d84c579281f7ca487f0877f829660f02d"
+    }
+  ],
+  "counts": {
+    "checks": 2,
+    "passed": 0,
+    "failed": 2,
+    "needsReview": 0
+  },
+  "checks": [
+    {
+      "spec": "player-stays-above-ground",
+      "route": "combat",
+      "before": "pass",
+      "after": "fail",
+      "comparison": "REGRESSION",
+      "findingId": "35745b6a03ca"
+    },
+    {
+      "spec": "player-stays-above-ground",
+      "route": "smoke",
+      "before": "pass",
+      "after": "fail",
+      "comparison": "REGRESSION",
+      "findingId": "d53dfb482f64"
+    }
+  ],
+  "findings": [
+    {
+      "id": "35745b6a03ca",
+      "spec": "player-stays-above-ground",
+      "route": "combat",
+      "kind": "fail",
+      "before": "pass",
+      "after": "fail",
+      "comparison": "REGRESSION",
+      "reason": "player is 22.25px past the boundary (above 780, tolerance 20) (first at frame 5, 21 frames)",
+      "frame": 5
+    },
+    {
+      "id": "d53dfb482f64",
+      "spec": "player-stays-above-ground",
+      "route": "smoke",
+      "kind": "fail",
+      "before": "pass",
+      "after": "fail",
+      "comparison": "REGRESSION",
+      "reason": "player is 22.25px past the boundary (above 780, tolerance 20) (first at frame 5, 21 frames)",
+      "frame": 5
+    }
+  ],
+  "heldOut": {
+    "status": "judged",
+    "routes": 2,
+    "checks": 2,
+    "passed": 0,
+    "failed": 2,
+    "needsReview": 0
+  },
+  "reviewPage": "review/index.html",
+  "expectrail": {
+    "version": "0.1.0",
+    "commit": null
+  },
+  "createdAt": "2026-11-09T18:47:12Z"
+}
