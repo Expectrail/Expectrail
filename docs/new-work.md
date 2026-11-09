@@ -124,3 +124,11 @@ something; keep prior work out of it.
 | Nov 1 | Final pass before the numbers freeze: the mutation bench written into the README's opening, the landing page's results and limits, the evaluation plan, future work and the bench index; the stress-test candidate log pointed to from the README and future work; the lanes table gains `bench/` and `apps/checkout/`; this log brought up to date | `README.md`, `docs/index.html`, `docs/evaluation.md`, `docs/future-work.md`, `bench/README.md`, `docs/new-work.md` |
 | Nov 1 | The working name removed from the repository and the private held-out set: the reading of earlier format IDs, settings, key name and fix-matrix condition dropped; the private repository renamed to `Expectrail-heldout`, its manifest and routes on the current format IDs; the names in seven run records updated, each record noting the commit with its original bytes; the planning tool's per-machine render cache removed and ignored. Three files keep a mention of the earlier name, because the discovery freeze and the mutation bench's registration cover them byte for byte | `expectrail/legacy.py`, `expectrail/__init__.py`, `agents/keys.py`, `agents/isolation.py`, `agents/bench_collect.py`, `contracts/`, `.github/workflows/`, `bench/live-muse-clean-v1/`, `bench/spark-open/`, `bench/spec-writer-live/`, `docs/contracts.md`, `README.md`, `.gitignore` |
 | Nov 4 | The demo video, published at https://youtu.be/BlWOiweL8Lc, linked first from the README and from the landing page's hero and footer | `README.md`, `docs/index.html` |
+
+## After the event
+
+Work after the event, kept apart from the record above.
+
+| Date | What | Where |
+| --- | --- | --- |
+| Nov 9 | First Unity game imported: Platformio at upstream commit 941a3ad (prior work by Oleksandr Berezhnyi, MIT; Kenney art and audio, CC0), copied without its CI and editor files, an unlicensed editor script and TextMesh Pro's EmojiOne sprites; the author's cloud IDs blanked and the Unity Version Control package removed; Extenject shown to match its MIT 9.2.0 tag; the Kenney Future font treated as CC BY-SA 3.0, as its own metadata says; not yet run by the harness | `game/unity-platformer/`, `game/README.md`, `NOTICE`, `.dockerignore` |
