@@ -161,9 +161,14 @@ one, and skip routes a change cannot affect.
 
 **It runs from GitHub Actions workflows and the command line, on our repository.**
 
-Next: a CI gate any repository can add, the verdict and evidence as a pull request comment with
-finding ids that stay stable across pushes (the Greptile adoption's G04), export to issue trackers,
-and release pipelines that check a release candidate's signature before shipping it.
+Started after the event: a CI gate a Godot repository can add ([ci-gate.md](ci-gate.md)), the Greptile
+adoption's G04. One job runs the pull request's game. A separate trusted job posts the verdict and
+evidence as one pull request comment, whose finding ids stay the same across pushes. Its comment half
+runs only from the default branch, so it has not run end to end yet.
+
+Next: run the game inside a sandbox in the gate's verify job, so a pull request's code cannot rewrite
+the evidence; export to issue trackers; and release pipelines that check a release candidate's
+signature before shipping it.
 
 **The trust test is one planted instruction plus a canary probe.**
 

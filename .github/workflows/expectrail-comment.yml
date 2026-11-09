@@ -1,0 +1,60 @@
+# The Expectrail gate on this repository's own pull requests, trusted half (docs/ci-gate.md).
+#
+# GitHub runs this from the default branch's copy of the file whenever "Expectrail verify" finishes
+# (workflow_run), so a pull request cannot change it. It downloads that run's evidence artifact as
+# data and posts or updates one comment on the pull request.
+#
+# It never checks out or runs the pull request's code. The one checkout is this repository's default
+# branch (the commit this file comes from), sparse, only to use main's copy of the comment action,
+# which runs standard-library Python in isolated mode and reads one JSON file from the artifact. It
+# installs nothing and holds no secret beyond the run's token, whose permissions are listed below.
+name: Expectrail comment
+
+on:
+  workflow_run:
+    workflows: [Expectrail verify]
+    types: [completed]
+
+permissions: {}
+
+concurrency:
+  group: expectrail-comment-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  comment:
+    # Only the verify workflow at its own path (a pull request can add another workflow with the same
+    # name), only for pull requests, and not for a run a newer push cancelled.
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.path == '.github/workflows/expectrail-verify.yml' &&
+      github.event.workflow_run.conclusion != 'cancelled' &&
+      github.event.workflow_run.conclusion != 'skipped'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Check out the default branch's comment action (never the pull request)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: |
+            .github/actions/expectrail-comment
+            expectrail
+            contracts
+      - name: Post or update the one comment
+        uses: ./.github/actions/expectrail-comment
+        with:
+          # Paths the verdict depends on here: the verify workflow runs this repository's own copy of
+          # the action and the gate's code, so a pull request that edits them is flagged.
+          watch: |
+            .github/actions/
+            expectrail/
+            harness/
+            agents/observations.py
+            agents/export_scan.py
+            contracts/findings.schema.json

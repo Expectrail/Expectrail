@@ -1,0 +1,77 @@
+# The trusted half of the Expectrail gate (docs/ci-gate.md). Use it in a job triggered by
+# workflow_run after the verify workflow. It downloads that run's evidence artifact into the
+# runner's temp folder and posts or updates one pull request comment.
+#
+# It never checks out, imports or runs the pull request's code and installs nothing: the downloaded
+# files are read as data by expectrail/gate/comment.py, standard library only, run in Python's
+# isolated mode from this action's own pinned commit. Every value from the event reaches the script
+# through env, never by ${{ }} expansion inside a script.
+name: Expectrail comment
+description: Post the Expectrail gate's verdict and evidence as one pull request comment, from a trusted workflow_run job.
+author: Expectrail
+inputs:
+  github-token:
+    description: A token that can read the verify run's artifacts and write pull request comments (actions read, pull-requests write).
+    default: ${{ github.token }}
+  artifact-name:
+    description: The verify action's artifact name.
+    default: expectrail-gate
+  watch:
+    description: >
+      More repository paths the verdict depends on, one per line (end a folder with /). The comment
+      warns when the pull request changes any of them. The workflow that produced the verdict is
+      always watched.
+    default: ''
+  bot-login:
+    description: The login that writes the comment (github-actions[bot] for the default token). Only a comment by this login is ever updated.
+    default: github-actions[bot]
+outputs:
+  action:
+    description: created, updated or skipped
+    value: ${{ steps.post.outputs.action }}
+  comment-url:
+    description: The comment's URL, when one was written
+    value: ${{ steps.post.outputs.comment-url }}
+runs:
+  using: composite
+  steps:
+    - name: Refuse anything but a workflow_run event
+      shell: bash
+      env:
+        EVENT: ${{ github.event_name }}
+      run: |
+        if [ "$EVENT" != "workflow_run" ]; then
+          echo "::error title=Expectrail comment::use this action only in a job triggered by workflow_run (this is $EVENT)"
+          exit 1
+        fi
+    - name: Download the verify run's evidence (data only, outside the workspace)
+      id: download
+      if: github.event.workflow_run.event == 'pull_request'
+      continue-on-error: true
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      with:
+        name: ${{ inputs.artifact-name }}
+        run-id: ${{ github.event.workflow_run.id }}
+        github-token: ${{ inputs.github-token }}
+        path: ${{ runner.temp }}/expectrail-evidence
+    - name: Post or update the comment
+      id: post
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        REPO: ${{ github.repository }}
+        RUN_ID: ${{ github.event.workflow_run.id }}
+        RUN_EVENT: ${{ github.event.workflow_run.event }}
+        HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
+        HEAD_OWNER: ${{ github.event.workflow_run.head_repository.owner.login }}
+        HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        WORKFLOW_PATH: ${{ github.event.workflow_run.path }}
+        ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        BOT_LOGIN: ${{ inputs.bot-login }}
+        WATCH: ${{ inputs.watch }}
+        DOWNLOADED: ${{ steps.download.outcome }}
+      run: |
+        evidence=()
+        if [ "$DOWNLOADED" = "success" ]; then evidence=(--evidence "$RUNNER_TEMP/expectrail-evidence"); fi
+        python3 -I "$GITHUB_ACTION_PATH/post.py" "${evidence[@]}" --watch "$WATCH"

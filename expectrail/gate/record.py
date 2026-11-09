@@ -1,0 +1,359 @@
+"""The CI gate's findings record (contracts/findings.schema.json): finding ids, the decision rule, and
+reading a record as data.
+
+Standard library only, on purpose. The comment step runs this in a job that can write pull request
+comments, on a file that came out of a job that ran the pull request's code. So a record is read the
+way untrusted input should be: a size cap before parsing, a regular file only (no symlink), JSON with
+duplicate keys and NaN or Infinity refused, the closed schema checked by the small validator below
+(it refuses any schema keyword it does not implement, so it cannot pass something by ignoring it),
+and then every derived value recomputed: each finding id from its spec, route and kind, each
+comparison from its two results, the counts from the rows and the decision from the counts. Nothing
+in a record is ever run, imported or passed to a shell.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import re
+import stat
+from pathlib import Path
+
+FORMAT = "expectrail.findings/v0"
+SCHEMA_PATH = Path(__file__).resolve().parent.parent.parent / "contracts" / "findings.schema.json"
+RESULTS = ("pass", "fail", "needs-review", "replay-error")
+KINDS = ("fail", "needs-review", "replay-error")
+DECISIONS = ("accept", "reject", "needs-review")
+MAX_RECORD_BYTES = 4 * 1024 * 1024
+MAX_DEPTH = 32
+FINDING_ID = re.compile(r"[0-9a-f]{12}")
+
+
+# The review's comparison table (expectrail.change_evidence.compare, docs/review.md), repeated here so
+# the trusted side imports nothing but this file; a test holds the two equal.
+_COMPARE = {("fail", "pass"): "REPAIRED", ("pass", "pass"): "PRESERVED",
+            ("pass", "fail"): "REGRESSION", ("fail", "fail"): "UNRESOLVED"}
+
+
+def compare(before: str | None, after: str | None) -> str:
+    """One check before and after the change. Anything but pass or fail on either side (not run,
+    needs review, a replay that did not finish) is INCONCLUSIVE: never read as a pass or a failure."""
+    return _COMPARE.get((before, after), "INCONCLUSIVE")
+
+
+class RecordError(ValueError):
+    """The record cannot be used: too big, not JSON, not the schema, or not consistent."""
+
+
+def finding_id(spec: str, route: str, kind: str) -> str:
+    """The first 12 hex digits of sha256(spec LF route LF kind).
+
+    It depends on nothing that changes from push to push (no commit, frame, reason or time), so the
+    same failure keeps its id. Reproduce one by hand with
+    ``printf '%s\\n%s\\n%s' SPEC ROUTE KIND | sha256sum | cut -c1-12``.
+    """
+    for name, value in (("spec", spec), ("route", route), ("kind", kind)):
+        if not isinstance(value, str) or not value or "\n" in value:
+            raise ValueError(f"finding {name} must be a non-empty single-line string")
+    return hashlib.sha256(f"{spec}\n{route}\n{kind}".encode("utf-8")).hexdigest()[:12]
+
+
+def kind_of(after: str) -> str | None:
+    """The finding kind for a check's result after the change; None when it passes."""
+    if after not in RESULTS:
+        raise ValueError(f"unknown result {after!r}")
+    return None if after == "pass" else after
+
+
+def decide(counts: dict, held: dict) -> tuple[str, list[str]]:
+    """accept, reject or needs-review, and why.
+
+    Accept only when at least one check ran and every public and held-out check passed. Any failure
+    rejects. Anything unclear (a check that needs review, a replay that did not finish, held-out
+    routes that could not be read) needs review: it is never read as a pass.
+    """
+    reasons = []
+    if counts["failed"]:
+        reasons.append(f"{counts['failed']} of {counts['checks']} public checks fail after the change")
+    if held["failed"]:
+        reasons.append(f"{held['failed']} held-out checks fail after the change")
+    if reasons:
+        return "reject", reasons
+    if not counts["checks"]:
+        return "needs-review", ["no checks ran"]
+    if counts["needsReview"]:
+        reasons.append(f"{counts['needsReview']} of {counts['checks']} public checks could not be decided")
+    if held["status"] == "unavailable":
+        reasons.append("the held-out routes could not be judged")
+    elif held["needsReview"]:
+        reasons.append(f"{held['needsReview']} held-out checks could not be decided")
+    if reasons:
+        return "needs-review", reasons
+    total = counts["checks"] + held["checks"]
+    return "accept", [f"all {total} checks pass"]
+
+
+# --- reading a record as data ---------------------------------------------------------------------
+
+def _no_duplicate_keys(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise RecordError(f"duplicate key {key[:40]!r}")
+        out[key] = value
+    return out
+
+
+def _no_constants(name):
+    raise RecordError(f"non-finite number {name} is not allowed")
+
+
+def strict_loads(text: str):
+    """JSON with duplicate keys, NaN and Infinity refused, and nesting capped."""
+    try:
+        doc = json.loads(text, object_pairs_hook=_no_duplicate_keys, parse_constant=_no_constants)
+    except RecordError:
+        raise
+    except (ValueError, RecursionError) as exc:
+        raise RecordError(f"not valid JSON: {type(exc).__name__}") from None
+    if _depth(doc) > MAX_DEPTH:
+        raise RecordError(f"nested deeper than {MAX_DEPTH} levels")
+    return doc
+
+
+def _depth(value, level: int = 1) -> int:
+    if level > MAX_DEPTH:
+        return level
+    if isinstance(value, dict):
+        return max([_depth(v, level + 1) for v in value.values()] or [level])
+    if isinstance(value, list):
+        return max([_depth(v, level + 1) for v in value] or [level])
+    return level
+
+
+def read_bytes_capped(path: Path, cap: int = MAX_RECORD_BYTES, label: str = "findings.json") -> bytes:
+    """A regular file's bytes, refusing a symlink, a non-file or anything over ``cap``."""
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(path, flags)
+    except FileNotFoundError:
+        raise RecordError(f"no {label}") from None
+    except OSError as exc:
+        raise RecordError(f"{label} cannot be opened ({type(exc).__name__}; a symlink is refused)") from None
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode):
+            raise RecordError(f"{label} is not a regular file")
+        if info.st_size > cap:
+            raise RecordError(f"{label} is {info.st_size} bytes, over the {cap} byte cap")
+        with os.fdopen(fd, "rb", closefd=False) as handle:
+            data = handle.read(cap + 1)
+    finally:
+        os.close(fd)
+    if len(data) > cap:
+        raise RecordError(f"{label} is over the {cap} byte cap")
+    return data
+
+
+def schema() -> dict:
+    return json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+
+
+def read_json(path: Path, cap: int = MAX_RECORD_BYTES, label: str = "findings.json"):
+    """A capped, regular, UTF-8, strict JSON file, parsed (not validated)."""
+    data = read_bytes_capped(Path(path), cap, label)
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        raise RecordError(f"{label} is not UTF-8") from None
+    return strict_loads(text)
+
+
+def read_record(path: Path) -> dict:
+    """Load, validate and check a findings record. Raises RecordError with a short reason."""
+    doc = read_json(path)
+    check_record(doc)
+    return doc
+
+
+def check_record(doc) -> None:
+    validate(doc, schema())
+    check_consistency(doc)
+
+
+# --- a small JSON Schema validator ----------------------------------------------------------------
+# The subset of draft 2020-12 that the contracts use. Annotation keywords are ignored; any other
+# keyword is refused, so a schema change this validator does not understand fails closed.
+
+ANNOTATIONS = frozenset({"$schema", "$id", "title", "description", "$comment", "default", "examples"})
+IMPLEMENTED = frozenset({
+    "type", "enum", "const", "required", "properties", "additionalProperties", "items", "minItems",
+    "maxItems", "minLength", "maxLength", "pattern", "minimum", "maximum", "minProperties",
+    "maxProperties", "propertyNames", "oneOf", "anyOf",
+})
+
+
+class SchemaError(Exception):
+    """The schema uses a keyword this validator does not implement."""
+
+
+def _is_type(value, name: str) -> bool:
+    if name == "null":
+        return value is None
+    if name == "boolean":
+        return isinstance(value, bool)
+    if name == "object":
+        return isinstance(value, dict)
+    if name == "array":
+        return isinstance(value, list)
+    if name == "string":
+        return isinstance(value, str)
+    if name == "integer":
+        return (isinstance(value, int) and not isinstance(value, bool)) or (
+            isinstance(value, float) and value.is_integer())
+    if name == "number":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    raise SchemaError(f"unknown type {name!r}")
+
+
+def _equal(a, b) -> bool:
+    """JSON equality: true is not 1, and 1 equals 1.0."""
+    if isinstance(a, bool) or isinstance(b, bool):
+        return isinstance(a, bool) and isinstance(b, bool) and a == b
+    if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+        return a == b
+    if isinstance(a, list) and isinstance(b, list):
+        return len(a) == len(b) and all(_equal(x, y) for x, y in zip(a, b))
+    if isinstance(a, dict) and isinstance(b, dict):
+        return a.keys() == b.keys() and all(_equal(a[k], b[k]) for k in a)
+    return type(a) is type(b) and a == b
+
+
+def errors(value, rule: dict, where: str = "") -> list[str]:
+    """Every way ``value`` breaks ``rule``, as 'path: problem' strings (empty when it conforms)."""
+    unknown = set(rule) - IMPLEMENTED - ANNOTATIONS
+    if unknown:
+        raise SchemaError(f"unsupported schema keyword(s) {sorted(unknown)} at {where or '(root)'}")
+    here = where or "(root)"
+    out: list[str] = []
+    if "type" in rule:
+        names = rule["type"] if isinstance(rule["type"], list) else [rule["type"]]
+        if not any(_is_type(value, n) for n in names):
+            return [f"{here}: expected {' or '.join(names)}"]
+    if "const" in rule and not _equal(value, rule["const"]):
+        out.append(f"{here}: not the required constant")
+    if "enum" in rule and not any(_equal(value, option) for option in rule["enum"]):
+        out.append(f"{here}: not one of the allowed values")
+    if isinstance(value, str):
+        if "minLength" in rule and len(value) < rule["minLength"]:
+            out.append(f"{here}: shorter than {rule['minLength']}")
+        if "maxLength" in rule and len(value) > rule["maxLength"]:
+            out.append(f"{here}: longer than {rule['maxLength']}")
+        if "pattern" in rule and re.search(rule["pattern"], value) is None:
+            out.append(f"{here}: does not match its pattern")
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if "minimum" in rule and value < rule["minimum"]:
+            out.append(f"{here}: below {rule['minimum']}")
+        if "maximum" in rule and value > rule["maximum"]:
+            out.append(f"{here}: above {rule['maximum']}")
+    if isinstance(value, list):
+        if "minItems" in rule and len(value) < rule["minItems"]:
+            out.append(f"{here}: fewer than {rule['minItems']} items")
+        if "maxItems" in rule and len(value) > rule["maxItems"]:
+            out.append(f"{here}: more than {rule['maxItems']} items")
+        if "items" in rule:
+            for n, item in enumerate(value):
+                out.extend(errors(item, rule["items"], f"{where}/{n}"))
+    if isinstance(value, dict):
+        if "minProperties" in rule and len(value) < rule["minProperties"]:
+            out.append(f"{here}: fewer than {rule['minProperties']} properties")
+        if "maxProperties" in rule and len(value) > rule["maxProperties"]:
+            out.append(f"{here}: more than {rule['maxProperties']} properties")
+        for key in rule.get("required", []):
+            if key not in value:
+                out.append(f"{here}: missing {key}")
+        props = rule.get("properties", {})
+        extra = rule.get("additionalProperties", True)
+        for key, item in value.items():
+            if "propertyNames" in rule and errors(key, rule["propertyNames"], f"{where}/(name)"):
+                out.append(f"{here}: a property name does not match its pattern")
+            if key in props:
+                out.extend(errors(item, props[key], f"{where}/{key}"))
+            elif extra is False:
+                out.append(f"{here}: a property is not allowed here")
+            elif isinstance(extra, dict):
+                out.extend(errors(item, extra, f"{where}/(additional)"))
+    if "oneOf" in rule:
+        matched = sum(1 for option in rule["oneOf"] if not errors(value, option, where))
+        if matched != 1:
+            out.append(f"{here}: matches {matched} of the oneOf options, not exactly one")
+    if "anyOf" in rule and not any(not errors(value, option, where) for option in rule["anyOf"]):
+        out.append(f"{here}: matches none of the anyOf options")
+    return out
+
+
+def validate(doc, rule: dict) -> None:
+    found = errors(doc, rule)
+    if found:
+        # Paths name schema properties and array indexes only; an unexpected key's own text is not
+        # repeated, since it came from the record.
+        raise RecordError(f"does not match the findings schema: {found[0]}"
+                          + (f" (and {len(found) - 1} more)" if len(found) > 1 else ""))
+
+
+# --- consistency ----------------------------------------------------------------------------------
+
+def check_consistency(doc: dict) -> None:
+    """Everything in a record that can be derived from the rest must agree with it."""
+    spec_ids = [s["id"] for s in doc["specs"]]
+    route_names = [r["name"] for r in doc["routes"]]
+    if len(set(spec_ids)) != len(spec_ids):
+        raise RecordError("a spec id is listed twice")
+    if len(set(route_names)) != len(route_names):
+        raise RecordError("a route name is listed twice")
+    seen = set()
+    expected: dict[str, dict] = {}
+    for n, check in enumerate(doc["checks"]):
+        key = (check["spec"], check["route"])
+        if key in seen:
+            raise RecordError(f"checks/{n}: the same spec and route are judged twice")
+        seen.add(key)
+        if check["spec"] not in spec_ids or check["route"] not in route_names:
+            raise RecordError(f"checks/{n}: names a spec or route the record does not list")
+        if check["comparison"] != compare(check["before"], check["after"]):
+            raise RecordError(f"checks/{n}: the comparison does not follow from before and after")
+        kind = kind_of(check["after"])
+        want = None if kind is None else finding_id(check["spec"], check["route"], kind)
+        if check["findingId"] != want:
+            raise RecordError(f"checks/{n}: the finding id is not sha256(spec, route, kind)")
+        if want is not None:
+            expected[want] = check
+    if len(seen) != len(spec_ids) * len(route_names):
+        raise RecordError("the checks are not every listed spec on every listed route")
+    ids = [f["id"] for f in doc["findings"]]
+    if len(set(ids)) != len(ids):
+        raise RecordError("a finding id is listed twice")
+    if set(ids) != set(expected):
+        raise RecordError("the findings are not exactly the checks that do not pass")
+    for n, finding in enumerate(doc["findings"]):
+        check = expected[finding["id"]]
+        same = all(finding[k] == check[k] for k in ("spec", "route", "before", "after", "comparison"))
+        if not same or finding["kind"] != kind_of(finding["after"]):
+            raise RecordError(f"findings/{n}: does not match its check")
+    counts = doc["counts"]
+    afters = [c["after"] for c in doc["checks"]]
+    recount = {"checks": len(afters), "passed": afters.count("pass"), "failed": afters.count("fail"),
+               "needsReview": afters.count("needs-review") + afters.count("replay-error")}
+    if counts != recount:
+        raise RecordError("the counts do not match the checks")
+    held = doc["heldOut"]
+    if held["passed"] + held["failed"] + held["needsReview"] != held["checks"]:
+        raise RecordError("the held-out counts do not add up")
+    if held["status"] == "not-used" and any(held[k] for k in ("routes", "checks", "passed", "failed", "needsReview")):
+        raise RecordError("held-out counts are given but the held-out routes were not used")
+    decision, _reasons = decide(counts, held)
+    if doc["decision"] != decision:
+        raise RecordError(f"the decision should be {decision} from these counts")
+    pr = doc["pullRequest"]
+    if pr is not None and doc["checksFrom"] == "base" and pr["baseSha"] is None:
+        raise RecordError("checks from the base need the base commit")
