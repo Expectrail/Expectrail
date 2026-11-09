@@ -22,6 +22,15 @@ The pins cover the game, the development bugs, the operators, the specs, the ver
 the generator, the bench and its workflow. Changing any of them after registration refuses every run
 until the pins are set again, which is a change to the registration and has to be reported as one.
 
+### Reproducing the bench
+
+Since November 9, 2026, the registration describes commit `c169a5e`, the hackathon submission, and
+main may change the files it pins. Judged runs of the **Mutation bench**, **Mutation fix** and
+**Mutation record** workflows still start from main, but check out that commit, so the code they run
+is the code the pins describe. On main itself, `agents/mutate_game.py` refuses a judged run and names
+the commit. `tests/test_mutation_registration.py` checks that the registration file is unchanged and
+that it still loads against an extract of the commit. Rehearsals are unchanged: they run the branch they start from.
+
 ## Results
 
 Registered in #164, commit [`a439e9b`](https://github.com/seanudeke/Expectrail/commit/a439e9b558f4cd5ebc742d97a5f4c349121d622b),
