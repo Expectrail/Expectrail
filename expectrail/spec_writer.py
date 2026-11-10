@@ -96,7 +96,7 @@ def request_body(instruction: str, model: str, structured: bool = True, problems
     return body
 
 
-def http_transport(body: dict) -> dict:
+def http_transport(body: dict, timeout: float = 120) -> dict:
     """POST to the Meta Model API's OpenAI-compatible chat completions endpoint."""
     key = os.environ.get("MODEL_API_KEY")
     if not key:
@@ -104,7 +104,7 @@ def http_transport(body: dict) -> dict:
     req = urllib.request.Request(f"{API_BASE}/chat/completions", data=json.dumps(body).encode(), method="POST",
                                  headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read())
     except urllib.error.HTTPError as err:
         detail = err.read().decode(errors="replace")[:500]
