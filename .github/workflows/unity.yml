@@ -29,6 +29,13 @@ on:
       - '.github/workflows/unity.yml'
   workflow_dispatch:
 
+env:
+  # Every apt step installs from Ubuntu's snapshot archive as it stood at this moment, not from the
+  # live archive: the same package versions (Mesa's among them) on every run, and no dependence on a
+  # mirror mid-sync. The live security mirror broke runs 17 and 18 (404s, then timeouts). Change it
+  # on purpose, in its own pull request, and say why.
+  UBUNTU_SNAPSHOT: 20261108T000000Z
+
 permissions:
   contents: read
 
@@ -257,7 +264,7 @@ jobs:
           # three attempts, a minute apart, each with a fresh index; a download that stalls 60 s fails (run 18:
           # a replay copy sat 23 min in this step on a stalled mirror).
           for attempt in 1 2 3; do
-            if sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update && sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y --no-install-recommends xvfb xauth libgl1-mesa-dri libglx-mesa0 libgtk-3-0t64 patch; then break; fi
+            if sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update --snapshot "$UBUNTU_SNAPSHOT" && sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --snapshot "$UBUNTU_SNAPSHOT" -y --no-install-recommends xvfb xauth libgl1-mesa-dri libglx-mesa0 libgtk-3-0t64 patch; then break; fi
             [ "$attempt" = 3 ] && exit 1
             echo "::warning title=apt::attempt $attempt failed; retrying in 60 s"
             sleep 60
@@ -321,7 +328,12 @@ jobs:
           # three attempts, a minute apart, each with a fresh index; a download that stalls 60 s fails (run 18:
           # a replay copy sat 23 min in this step on a stalled mirror).
           for attempt in 1 2 3; do
-            if apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update && apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y --no-install-recommends $packages; then break; fi
+            # The snapshot archive is HTTPS-only and the bare image has no CA certificates: those
+            # alone come from the live archive, then everything from the snapshot. No fallback to the
+            # live archive: the two replay copies must install the same versions.
+            if apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update && apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y --no-install-recommends ca-certificates \
+              && apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update --snapshot "$UBUNTU_SNAPSHOT" \
+              && apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --snapshot "$UBUNTU_SNAPSHOT" -y --no-install-recommends $packages; then break; fi
             [ "$attempt" = 3 ] && exit 1
             echo "::warning title=apt::attempt $attempt failed; retrying in 60 s"
             sleep 60
@@ -337,7 +349,7 @@ jobs:
         run: |
           cpu=$(grep -m 1 '^model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')
           mesa=$(dpkg-query -W -f '${Version}' libgl1-mesa-dri)
-          echo "::notice title=Unity replay machine::CPU $cpu; $(nproc) CPUs; Mesa $mesa; LP_NUM_THREADS=$LP_NUM_THREADS, LP_NATIVE_VECTOR_WIDTH=$LP_NATIVE_VECTOR_WIDTH, GALLIUM_OVERRIDE_CPU_CAPS=$GALLIUM_OVERRIDE_CPU_CAPS"
+          echo "::notice title=Unity replay machine::CPU $cpu; $(nproc) CPUs; Mesa $mesa; LP_NUM_THREADS=$LP_NUM_THREADS, LP_NATIVE_VECTOR_WIDTH=$LP_NATIVE_VECTOR_WIDTH, GALLIUM_OVERRIDE_CPU_CAPS=$GALLIUM_OVERRIDE_CPU_CAPS; apt snapshot $UBUNTU_SNAPSHOT"
           mkdir -p runs/unity/replay
           echo "copy ${{ matrix.copy }}: CPU $cpu; $(nproc) CPUs; Mesa $mesa" > runs/unity/replay/machine.txt
       - name: The player has its libraries
@@ -456,7 +468,7 @@ jobs:
           # three attempts, a minute apart, each with a fresh index; a download that stalls 60 s fails (run 18:
           # a replay copy sat 23 min in this step on a stalled mirror).
           for attempt in 1 2 3; do
-            if sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq && sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install -y -qq --no-install-recommends python3-pil; then break; fi
+            if sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 update -qq --snapshot "$UBUNTU_SNAPSHOT" && sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=60 install --snapshot "$UBUNTU_SNAPSHOT" -y -qq --no-install-recommends python3-pil; then break; fi
             [ "$attempt" = 3 ] && exit 1
             echo "::warning title=apt::attempt $attempt failed; retrying in 60 s"
             sleep 60
