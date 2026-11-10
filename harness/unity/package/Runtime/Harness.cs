@@ -92,9 +92,29 @@ namespace Expectrail.Harness
         double _firstFixedTime, _lastFixedTime;
 
         int _settleFrames, _settleTicks, _frozenFrames;
+        // Every hold, before tick 0 and during the route, lasts a whole number of HoldFrames frames: it
+        // waits for the fade to rest, then pads. Unity run 13 (42734687182): the camera did not move during
+        // the holds, but the same fade held 18 frames on one runner and 26 on another, and the view
+        // differed from 6 ticks after it. Something in the engine (Cinemachine's smart update watches a
+        // window of frames) counts frames, not time; a fixed count gives every runner the same frameCount
+        // at every tick. 120 is over twice the longest fade seen (53 frames, run 10).
+        const int HoldFrames = 120;
+        int _settleHold;
         // During the route: frames held while a real-time fade was part-way (no tick, row or frame).
         bool _holding;
         int _routeHeldFrames;
+        // The camera during each hold: Unity run 12 (42730554068) saw the view differ between runners from
+        // a few ticks after the respawn, with the world identical. Does the camera move while game time is held?
+        string _holdCameraFirst, _holdCameraLast;
+        int _holdCameraMoves, _holdFrames, _holdFromTick, _holdFadeFrames;
+
+        static string CameraState()
+        {
+            var cam = Camera.main;
+            if (cam == null) return "no main camera";
+            var p = cam.transform.position;
+            return $"({p.x:R}, {p.y:R}, {p.z:R}) size {cam.orthographicSize:R}";
+        }
         readonly HashSet<string> _seen = new HashSet<string>();
         readonly List<string> _hazards = new List<string>();
         readonly HashSet<string> _hazardKeys = new HashSet<string>();
@@ -247,9 +267,20 @@ namespace Expectrail.Harness
             if (_holding)
             {
                 _routeHeldFrames++;
+                _holdFrames++;
+                var camera = CameraState();
+                if (camera != _holdCameraLast) _holdCameraMoves++;
+                _holdCameraLast = camera;
                 if (_stepsThisFrame != 0)
                     throw new InvalidOperationException($"{_stepsThisFrame} physics steps ran in a frame held for a fade after tick {_tick - 1}: a tick with no row");
-                if (!fading) { _holding = false; Time.timeScale = 1f; }
+                if (fading) _holdFadeFrames = _holdFrames;
+                if (!fading && _holdFrames % HoldFrames == 0)
+                {
+                    _holding = false;
+                    Time.timeScale = 1f;
+                    Debug.Log($"expectrail: hold from tick {_holdFromTick}: {_holdFrames} frames (the fade rested after {_holdFadeFrames + 1}); camera changed on " +
+                              $"{_holdCameraMoves} of them; at the start {_holdCameraFirst}; at the end {_holdCameraLast}");
+                }
                 if (_routeHeldFrames > _map.settle.maxTicks * 10)
                     throw new TimeoutException($"a fade during the route did not come to rest in {_routeHeldFrames} held frames");
                 return;
@@ -268,7 +299,14 @@ namespace Expectrail.Harness
                 if (_recorder.Alphas(fade.component).Any(a => a > 0f && a < 1f))
                     Hazard("real-time-fade-during-route", $"{fade.component} began a real-time fade at tick {_tick}; game time is held until it rests, and only this tick's frame can differ between runs", _tick, fade.component + "@" + _tick);
             }
-            if (fading) { _holding = true; Time.timeScale = 0f; }
+            if (fading)
+            {
+                _holding = true;
+                Time.timeScale = 0f;
+                _holdFromTick = _tick;
+                _holdFrames = _holdCameraMoves = _holdFadeFrames = 0;
+                _holdCameraFirst = _holdCameraLast = CameraState();
+            }
             if (_recorder.LevelChange != null)
                 Hazard("level-changed", "the level was replaced during the route (" + _recorder.LevelChange + "); levelSurfaces describe the first level", _tick, "level");
             Debug.Log($"expectrail: tick {_tick} frameCount {Time.frameCount} fixedTime {Time.fixedTimeAsDouble:F4} steps {_stepsThisFrame}");
@@ -311,9 +349,10 @@ namespace Expectrail.Harness
                 if (_recorder.AnyPresent(name)) { _seen.Add(name); waiting = true; }
                 else if (!_seen.Contains(name)) waiting = true;
             }
-            if (fading) _frozenFrames++;
-            Time.timeScale = fading ? 0f : 1f;
-            if (!fading && resting && !waiting && _recorder.Player() != null)
+            var held = fading || (_settleHold > 0 && _settleHold % HoldFrames != 0);
+            if (held) { _frozenFrames++; _settleHold++; } else _settleHold = 0;
+            Time.timeScale = held ? 0f : 1f;
+            if (!held && resting && !waiting && _recorder.Player() != null)
             {
                 _phase = Phase.Route;
                 Debug.Log($"expectrail: settled after {_settleTicks} ticks and {_frozenFrames} held frames ({_settleFrames} frames)");

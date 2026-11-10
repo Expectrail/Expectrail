@@ -302,6 +302,8 @@ jobs:
       GALLIUM_DRIVER: llvmpipe
       LP_NATIVE_VECTOR_WIDTH: '128'
       LP_NUM_THREADS: '4'
+      # One instruction set for llvmpipe on every runner (harness/unity/run.py, RENDER_DEFAULTS).
+      GALLIUM_OVERRIDE_CPU_CAPS: sse4.1
     steps:
       - name: Install a virtual display, software OpenGL and the player's libraries
         run: |
@@ -320,7 +322,7 @@ jobs:
         run: |
           cpu=$(grep -m 1 '^model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')
           mesa=$(dpkg-query -W -f '${Version}' libgl1-mesa-dri)
-          echo "::notice title=Unity replay machine::CPU $cpu; $(nproc) CPUs; Mesa $mesa; LP_NUM_THREADS=$LP_NUM_THREADS, LP_NATIVE_VECTOR_WIDTH=$LP_NATIVE_VECTOR_WIDTH"
+          echo "::notice title=Unity replay machine::CPU $cpu; $(nproc) CPUs; Mesa $mesa; LP_NUM_THREADS=$LP_NUM_THREADS, LP_NATIVE_VECTOR_WIDTH=$LP_NATIVE_VECTOR_WIDTH, GALLIUM_OVERRIDE_CPU_CAPS=$GALLIUM_OVERRIDE_CPU_CAPS"
           mkdir -p runs/unity/replay
           echo "copy ${{ matrix.copy }}: CPU $cpu; $(nproc) CPUs; Mesa $mesa" > runs/unity/replay/machine.txt
       - name: The player has its libraries
@@ -436,10 +438,14 @@ jobs:
           set -e
           echo "$out"
           cat runs/unity/cross/unity-smoke-replay-*/machine.txt
+          for c in a b; do
+            grep -h "expectrail: hold from tick" "runs/unity/cross/unity-smoke-replay-$c/run-00/unity.log" \
+              | sed "s/^/copy $c: /" || echo "copy $c: no hold logged"
+          done
           if [ "$status" -eq 0 ]; then
             echo "::notice title=Unity cross-runner::$out"
           else
             echo "::error title=Unity cross-runner::$out"
-            python3 -c "import json; d = json.load(open('runs/unity/cross/diff.json')); [print(k, json.dumps(v['first'], default=str)[:600]) for k, v in d['rows']['fields'].items()]"
+            python3 -c "import json; d = json.load(open('runs/unity/cross/diff.json')); [print(k, json.dumps(v['first'], default=str)[:600]) for k, v in d['rows']['fields'].items()]; [print('frame', i, m['differ'], 'of', m['pixels'], 'pixels differ, largest gap', m['largest']) for i, m in sorted((d.get('pixels') or {}).get('frames', {}).items(), key=lambda kv: int(kv[0]))]"
             exit 1
           fi
