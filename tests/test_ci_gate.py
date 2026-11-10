@@ -489,7 +489,7 @@ class RenderTest(unittest.TestCase):
         self.assertIn(gc.REVIEW_DOC, body)
         self.assertIn("review/index.html", body)
         links = re.findall(r"\]\((https?://[^)]+)\)", body)
-        self.assertTrue(all(link.startswith(("https://github.com/owner/game/", "https://github.com/seanudeke/Expectrail/"))
+        self.assertTrue(all(link.startswith(("https://github.com/owner/game/", "https://github.com/Expectrail/Expectrail/"))
                             for link in links), links)
         ids = re.search(r"ids=([0-9a-f,]*)", body).group(1).split(",")
         self.assertEqual(ids, [f["id"] for f in doc["findings"]])

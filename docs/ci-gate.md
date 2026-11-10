@@ -26,7 +26,7 @@ You need a Godot project that runs in Godot 4.7.2 (the version the harness pins)
 project. A route presses the game's own input actions on exact physics ticks, and the position log
 follows the node named `Player`. Add two workflow files. Replace `COMMIT_SHA` with the full SHA of an Expectrail commit on
 `main` that contains `.github/actions/` (for example from
-`git ls-remote https://github.com/seanudeke/Expectrail refs/heads/main`). Pin both files to the same
+`git ls-remote https://github.com/Expectrail/Expectrail refs/heads/main`). Pin both files to the same
 SHA, as you would pin any third-party action.
 
 `.github/workflows/expectrail-verify.yml`, the untrusted job:
@@ -44,7 +44,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: seanudeke/Expectrail/.github/actions/expectrail-verify@COMMIT_SHA
+      - uses: Expectrail/Expectrail/.github/actions/expectrail-verify@COMMIT_SHA
         with:
           game-path: game              # the folder holding project.godot ("." for the root)
           routes: tests/routes/*.json  # one path or glob per line
@@ -73,7 +73,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: seanudeke/Expectrail/.github/actions/expectrail-comment@COMMIT_SHA
+      - uses: Expectrail/Expectrail/.github/actions/expectrail-comment@COMMIT_SHA
 ```
 
 The comment workflow takes effect once it is on your default branch: GitHub runs `workflow_run`

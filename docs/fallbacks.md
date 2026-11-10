@@ -92,7 +92,7 @@ Fix matrix's demo runs take it as the input `judge_drill`. A drill skips the job
 reports, on its own annotation lines, what the fixer was told on each attempt and every step the
 judge ladder took. A drill run is labelled as a drill and is never collected as a demo result.
 
-**First drill, October 30, before the pre-run check existed** ([run 41157496280](https://github.com/seanudeke/Expectrail/actions/runs/41157496280),
+**First drill, October 30, before the pre-run check existed** ([run 41157496280](https://github.com/Expectrail/Expectrail/actions/runs/41157496280),
 one live overnight run, SAM made unavailable, Glimmer left as it was):
 
 | Step | What happened |
@@ -106,10 +106,10 @@ one live overnight run, SAM made unavailable, Glimmer left as it was):
 The review against the failing base was INCONCLUSIVE, as it should be with no judge: it could not
 compare the two runs. The job is red, as every loop run that does not end in an accept is.
 
-**Second drill, October 31, also before the pre-run check existed; to repeat it now, use `sam-outage-mid-run`** ([run 41224918059](https://github.com/seanudeke/Expectrail/actions/runs/41224918059),
+**Second drill, October 31, also before the pre-run check existed; to repeat it now, use `sam-outage-mid-run`** ([run 41224918059](https://github.com/Expectrail/Expectrail/actions/runs/41224918059),
 one live overnight run, SAM made unavailable). Before it, Fireworks credit was added and the
 deployment's scaling restored (min 0, max 1, 15 minutes to scale to zero) by the Glimmer probe's
-restore step ([run 41224869758](https://github.com/seanudeke/Expectrail/actions/runs/41224869758),
+restore step ([run 41224869758](https://github.com/Expectrail/Expectrail/actions/runs/41224869758),
 cancelled once the deployment had woken, in 2.5 minutes). The whole ladder ran for the first time:
 
 | Step | What happened |
@@ -136,14 +136,14 @@ What it showed:
 - **It judged one correct fix.** The judge benchmark has since run Glimmer on fixes that only look
   right (see "Why Glimmer is the second judge" below).
 
-**Third drill, October 31: the pre-run check** ([run 41234190741](https://github.com/seanudeke/Expectrail/actions/runs/41234190741),
+**Third drill, October 31: the pre-run check** ([run 41234190741](https://github.com/Expectrail/Expectrail/actions/runs/41234190741),
 `sam-unavailable`, one live overnight run on the pull request that added the check). The run stopped
 0.1 s in, before triage. Wonder and Muse Code never started, 0 SAM images were used, nothing was
 signed, and the morning report gave the reason. A normal run beside it
-([41234197674](https://github.com/seanudeke/Expectrail/actions/runs/41234197674)) was accepted and
+([41234197674](https://github.com/Expectrail/Expectrail/actions/runs/41234197674)) was accepted and
 used 158 SAM images: the usual 157 plus the check's one.
 
-**Fourth drill, October 31, after #146, with `sam-outage-mid-run`** ([run 41244537695](https://github.com/seanudeke/Expectrail/actions/runs/41244537695),
+**Fourth drill, October 31, after #146, with `sam-outage-mid-run`** ([run 41244537695](https://github.com/Expectrail/Expectrail/actions/runs/41244537695),
 one live overnight run on main at 38559cc). The pre-run check passed for real, then every SAM request
 failed:
 

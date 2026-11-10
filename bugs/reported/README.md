@@ -230,7 +230,7 @@ so these notes, the checks and the guards do not reach it.
    route (`cleanRoute` in each result); a guard that fails the clean game would make its
    rejections meaningless.
 
-**First run (October 30, [41129722699](https://github.com/seanudeke/Expectrail/actions/runs/41129722699)):
+**First run (October 30, [41129722699](https://github.com/Expectrail/Expectrail/actions/runs/41129722699)):
 0 natural catches in 20 candidates.** Muse Code fixed every case on its first attempt; Expectrail
 accepted all 20, each bug's own check passed all 20, no guard fired, and Muse from screenshots
 accepted 19. It rejected `body-flip/r2`, which Expectrail accepted; that candidate patch is in the

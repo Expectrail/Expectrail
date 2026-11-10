@@ -271,7 +271,7 @@ with three jobs sharing one replica (2 h 45 min end to end).
 The judge benchmark ([docs/evaluation.md](evaluation.md)) with `glimmer-engine` as a fourth judge,
 beside the other three, on the same 15 candidates: 8 that undo a seeded bug exactly and 7, written
 by us, that only look right. One run, live (run
-[41230177124](https://github.com/seanudeke/Expectrail/actions/runs/41230177124), commit aa234b3;
+[41230177124](https://github.com/Expectrail/Expectrail/actions/runs/41230177124), commit aa234b3;
 `bench/judge/glimmer/`).
 
 | Judge | Good fixes accepted | Bad fixes accepted |

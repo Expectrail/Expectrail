@@ -39,8 +39,8 @@ from expectrail.gate import record as rec
 MARKER = "<!-- expectrail-gate:v0 -->"
 TRAILER = re.compile(r"<!-- expectrail-gate:v0 ids=([0-9a-f,]{0,65000}) -->")
 BOT = "github-actions[bot]"
-REVIEW_DOC = "https://github.com/seanudeke/Expectrail/blob/main/docs/review.md"
-GATE_DOC = "https://github.com/seanudeke/Expectrail/blob/main/docs/ci-gate.md"
+REVIEW_DOC = "https://github.com/Expectrail/Expectrail/blob/main/docs/review.md"
+GATE_DOC = "https://github.com/Expectrail/Expectrail/blob/main/docs/ci-gate.md"
 MAX_BODY = 60000  # GitHub refuses a comment over 65,536 characters
 MAX_FINDING_ROWS = 30
 MAX_CHECK_ROWS = 100

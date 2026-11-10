@@ -1,7 +1,7 @@
 # A rejected fix: the fall stops, but the robot is drawn inside the ground
 
 Open [`index.html`](index.html) (it needs no server). It is the review from SAM probe run
-[41123758768](https://github.com/seanudeke/Expectrail/actions/runs/41123758768) in verify mode
+[41123758768](https://github.com/Expectrail/Expectrail/actions/runs/41123758768) in verify mode
 (Oct 30, 2026, commit `71d5df1`): the verifier checked the candidate with SAM 3.1 and the private
 routes, and the review ran the same checks on the seeded fall-through bug and on the game with the
 candidate. The candidate is not a Muse Code patch. It is one of the fixes that only look right, written
@@ -23,7 +23,7 @@ robot is falling into the floor; after it, the robot has stopped with its legs i
 
 Compare the review of Muse Code's correct fix, [live-demo-run-1](../live-demo-run-1/), where the same
 four checks end in pass. An earlier run of this candidate,
-[41101881327](https://github.com/seanudeke/Expectrail/actions/runs/41101881327), gave the same rows
+[41101881327](https://github.com/Expectrail/Expectrail/actions/runs/41101881327), gave the same rows
 and status but kept annotations only, so it has no frames.
 
 ## Files
