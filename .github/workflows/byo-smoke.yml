@@ -36,7 +36,7 @@ on:
       provider:
         description: One provider, or empty for every provider whose key is set
         type: choice
-        options: ['', 'anthropic', 'openai', 'gemini', 'openrouter', 'baseten', 'fireworks', 'meta']
+        options: ['', 'anthropic', 'openai', 'gemini', 'openrouter', 'baseten', 'meta']
         default: ''
 
 permissions:
@@ -70,7 +70,8 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           BASETEN_API_KEY: ${{ secrets.BASETEN_API_KEY }}
-          FIREWORKS_API_KEY: ${{ secrets.FIREWORKS_API_KEY }}
+          # No FIREWORKS_API_KEY: Glimmer is a vision backend and is not probed here, so the job has
+          # no reason to hold its key (agents/byo_smoke.py, PROBED).
           META_API_KEY: ${{ secrets.META_API_KEY }}
           ONE: ${{ inputs.provider }}
         run: |

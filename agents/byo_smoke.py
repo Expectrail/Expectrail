@@ -32,13 +32,24 @@ from expectrail.providers import (
     resolve_provider,
 )
 
-# Hosted providers only. ollama and vllm default to a localhost server, so there is nothing for CI
-# to reach and a failure would say nothing about the provider layer.
-PROBED = ("anthropic", "openai", "gemini", "openrouter", "baseten", "fireworks", "meta")
-# Short, cheap, and answerable by any instruction-following model. The reply is not parsed: the
-# probe asserts that text came back, not what it says, so a model's wording can never fail CI.
+# Hosted text providers only.
+# - ollama and vllm default to a localhost server, so there is nothing for CI to reach and a failure
+#   would say nothing about the provider layer.
+# - fireworks is Muse Glimmer, a vision-language model Expectrail reaches through
+#   agents/byo_vision.py with frames, never as a text chat completion. Probing it here says nothing
+#   about the path that uses it: its first run answered HTTP 404 for a model id that the vision call
+#   site overrides anyway (EXPECTRAIL_GLIMMER_MODEL). A vision probe needs a frame and a detector
+#   comparison, which is a different job; until that exists, Glimmer is unprobed and not pretended
+#   otherwise.
+PROBED = ("anthropic", "openai", "gemini", "openrouter", "baseten", "meta")
+# Short and answerable by any instruction-following model. The reply is not parsed: the probe asserts
+# that text came back, not what it says, so a model's wording can never fail CI.
 PROMPT = "Reply with the single word: ok"
-MAX_TOKENS = 16
+# Generous on purpose. At 16 a model that spends tokens before it speaks returns no visible text and
+# the probe calls a healthy provider broken; its first run did exactly that to Spark Open and Muse
+# Spark. The cost of 256 is still a rounding error, and an empty answer now carries the stop reason
+# so truncation is never mistaken for a provider that said nothing.
+MAX_TOKENS = 256
 # The probe never holds the verifier's SAM key (MODEL_API_KEY): for meta it reads META_API_KEY only,
 # so a key the verifier owns is not spread into a job that does not need it.
 KEY_ENVS: dict[str, tuple[str, ...]] = {
@@ -57,6 +68,24 @@ def has_key(provider: str, env: dict[str, str] | None = None) -> bool:
 
     src = os.environ if env is None else env
     return any((src.get(name) or "").strip() for name in key_envs(provider))
+
+
+def stop_reason(raw: dict[str, Any]) -> str:
+    """Why the model stopped, as the provider reported it.
+
+    An empty answer has two very different causes — the model said nothing, or it ran out of tokens
+    before it said anything — and only the stop reason tells them apart. ``chat_completion``
+    normalises an Anthropic reply into the OpenAI shape and keeps the original under ``raw``, so both
+    spellings are looked for.
+    """
+    choices = raw.get("choices") or []
+    if choices and choices[0].get("finish_reason"):
+        return f"finish_reason={choices[0]['finish_reason']}"
+    inner = raw.get("raw") if isinstance(raw.get("raw"), dict) else {}
+    for source in (raw, inner):
+        if source.get("stop_reason"):
+            return f"stop_reason={source['stop_reason']}"
+    return "no stop reason reported"
 
 
 def probe(
@@ -81,7 +110,7 @@ def probe(
                 "detail": f"{type(exc).__name__}: {' '.join(str(exc).split())[:400]}"}
     if not text.strip():
         return {"provider": provider, "model": cfg.model, "result": "fail",
-                "detail": "the provider answered with no text"}
+                "detail": f"the provider answered with no text ({stop_reason(raw)})"}
     return {"provider": provider, "model": cfg.model, "result": "ok",
             "detail": f"answered {len(text.strip())} characters"}
 
