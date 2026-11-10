@@ -493,7 +493,7 @@ jobs:
   # on same-repository pull requests (private-scan.yml, main's scanner reading the branch's files),
   # and main-health.yml opens an issue whenever CI fails on main.
   agents-harness-private:
-    environment: heldout
+    environment: main-only
     if: ${{ github.event_name != 'pull_request' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -701,16 +701,17 @@ jobs:
 
   # Live Muse screenshot judge vs Expectrail (Gate 2). Manual — spends Meta credit.
   agents-bench-compare-live:
+    environment: main-only
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     if: ${{ github.event_name == 'workflow_dispatch' }}
     env:
       META_API_KEY_SET: ${{ secrets.META_API_KEY != '' }}
     steps:
-      - name: Require the META_API_KEY repo secret
+      - name: Require the META_API_KEY secret
         if: env.META_API_KEY_SET != 'true'
         run: |
-          echo "::error::Set the META_API_KEY repository secret before running the live bench-compare job."
+          echo "::error::Set META_API_KEY in the main-only environment before running the live bench-compare job."
           exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -752,7 +753,7 @@ jobs:
   # Oct 29 Fix+Trust film: Muse in bubblewrap + poison + Godot replay + held-out + Ed25519.
   # Manual only — each run spends Meta credit. Set META_API_KEY (+ HELDOUT_TOKEN for private set).
   agents-oct29-film:
-    environment: heldout
+    environment: main-only
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -760,15 +761,15 @@ jobs:
       META_API_KEY_SET: ${{ secrets.META_API_KEY != '' }}
       HELDOUT_TOKEN_SET: ${{ secrets.HELDOUT_TOKEN != '' }}
     steps:
-      - name: Require the META_API_KEY repo secret
+      - name: Require the META_API_KEY secret
         if: env.META_API_KEY_SET != 'true'
         run: |
-          echo "::error::Set the META_API_KEY repository secret before running the Oct29 film job."
+          echo "::error::Set META_API_KEY in the main-only environment before running the Oct29 film job."
           exit 1
-      - name: Require the HELDOUT_TOKEN repo secret
+      - name: Require the HELDOUT_TOKEN secret
         if: env.HELDOUT_TOKEN_SET != 'true'
         run: |
-          echo "::error::Set HELDOUT_TOKEN in the heldout environment (main only) so the verifier can mount the private held-out set."
+          echo "::error::Set HELDOUT_TOKEN in the main-only environment so the verifier can mount the private held-out set."
           exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -865,6 +866,7 @@ jobs:
   # Playbook item 1 (lighter film): live Muse Code → verifier accept. Manual only.
   # Prefer agents-oct29-film for the Fix+Trust camera run.
   agents-live-muse:
+    environment: main-only
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     # secrets is not allowed in a job-level if; check it in the first step instead.
@@ -872,10 +874,10 @@ jobs:
     env:
       META_API_KEY_SET: ${{ secrets.META_API_KEY != '' }}
     steps:
-      - name: Require the META_API_KEY repo secret
+      - name: Require the META_API_KEY secret
         if: env.META_API_KEY_SET != 'true'
         run: |
-          echo "::error::Set the META_API_KEY repository secret before running the live Muse job."
+          echo "::error::Set META_API_KEY in the main-only environment before running the live Muse job."
           exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -7,7 +7,7 @@
 # as data, never runs or imports them, and prints counts and file names, never the matched text.
 #
 # Same-repository pull requests only; a fork's pull request never runs it, so it cannot be used to
-# test guesses against the private set. HELDOUT_TOKEN lives in the heldout environment, which only
+# test guesses against the private set. HELDOUT_TOKEN lives in the main-only environment, which only
 # main may use: pull_request_target runs as main, so this job gets the token while the pull
 # request's own branch never can. A pull request that changes the scanner itself is scanned by main's
 # scanner until it merges.
@@ -31,7 +31,7 @@ concurrency:
 
 jobs:
   private-export-scan:
-    environment: heldout
+    environment: main-only
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10

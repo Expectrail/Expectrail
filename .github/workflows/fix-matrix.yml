@@ -89,7 +89,7 @@ jobs:
   # Judge the clean game once for the whole run (see sam_cache above). Runs beside the plan job; the
   # jobs that verify wait for it, and run without it if it fails or is skipped.
   sam-warm:
-    environment: heldout
+    environment: main-only
     if: ${{ inputs.sam_cache != 'off' && inputs.set != 'reported' && inputs.judge_drill == 'off' && inputs.judge_outside != 'on' && (inputs.live || inputs.bench == 'demo') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -164,6 +164,7 @@ jobs:
   # Three one-line prompts (a few cents): no proxy (must fail), on the host, inside bubblewrap.
   # Muse's logs here only ever saw the placeholder; they are kept for seven days.
   gateway-probe:
+    environment: main-only
     if: ${{ inputs.bench == 'gateway' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -213,7 +214,7 @@ jobs:
           retention-days: 7
 
   plan:
-    environment: heldout
+    environment: main-only
     if: ${{ inputs.bench == 'fix' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -264,7 +265,7 @@ jobs:
           PY
 
   run:
-    environment: heldout
+    environment: main-only
     needs: [plan, sam-warm]
     if: ${{ !cancelled() && needs.plan.result == 'success' }}
     runs-on: ubuntu-24.04
@@ -505,7 +506,7 @@ jobs:
           PY
 
   judge-run:
-    environment: heldout
+    environment: main-only
     needs: [judge-plan, sam-warm]
     if: ${{ !cancelled() && needs.judge-plan.result == 'success' }}
     runs-on: ubuntu-24.04
@@ -539,7 +540,7 @@ jobs:
       - name: Require the Glimmer key and deployment (judge_glimmer on)
         if: env.GLIMMER == 'on'
         run: |
-          [ "$FIREWORKS_KEY_SET" = "true" ] || { echo "::error::Set the FIREWORKS_API_KEY repository secret first."; exit 1; }
+          [ "$FIREWORKS_KEY_SET" = "true" ] || { echo "::error::Set FIREWORKS_API_KEY in the main-only environment first."; exit 1; }
           [[ "$GLIMMER_MODEL" =~ ^accounts/[A-Za-z0-9_-]+/deployments/[A-Za-z0-9_-]+$ ]] || { echo "::error::Set the GLIMMER_MODEL repo variable to accounts/<account>/deployments/<id>."; exit 1; }
       - name: Require the held-out token
         if: env.HELDOUT_TOKEN_SET != 'true'
@@ -756,7 +757,7 @@ jobs:
           echo "runs=$(python3 -c "import json,sys; print(json.dumps(list(range(1, int(sys.argv[1]) + 1))))" "$RUNS")" >> "$GITHUB_OUTPUT"
 
   demo-run:
-    environment: heldout
+    environment: main-only
     needs: [demo-plan, sam-warm]
     if: ${{ !cancelled() && needs.demo-plan.result == 'success' }}
     runs-on: ubuntu-24.04

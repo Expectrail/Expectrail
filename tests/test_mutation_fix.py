@@ -497,8 +497,12 @@ class WorkflowTest(unittest.TestCase):
 
     def test_a_pull_request_rehearses_and_nothing_else_runs_on_one(self):
         self.assertIn("pull_request", self.doc[True])
-        self.assertEqual(self.doc["jobs"]["plan"]["if"], "${{ inputs.mode == 'live' }}")
+        self.assertEqual(self.doc["jobs"]["plan"]["if"],
+                         "${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'live' }}")
         self.assertIn("needs.plan.result == 'success'", self.doc["jobs"]["run"]["if"])
+        self.assertIn("github.event_name == 'workflow_dispatch'", self.doc["jobs"]["run"]["if"])
+        for job in ("sam-warm", "run"):
+            self.assertEqual(self.doc["jobs"][job].get("environment"), "main-only")
 
     def test_a_live_run_starts_from_main_on_the_committed_list(self):
         steps = str(self.doc["jobs"]["plan"]["steps"])

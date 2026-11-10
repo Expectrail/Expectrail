@@ -73,9 +73,12 @@ class WorkflowTest(unittest.TestCase):
     def test_the_job_never_holds_the_verifiers_sam_key(self):
         self.assertNotIn("MODEL_API_KEY", self.env)
 
-    def test_a_fork_pull_request_cannot_run_it(self):
-        guard = self.doc["jobs"]["byo-smoke"]["if"]
-        self.assertIn("head.repo.full_name == github.repository", guard)
+    def test_no_pull_request_ever_holds_a_key(self):
+        # The keys live in the main-only environment; the live calls run on the schedule and on a
+        # dispatch from main, never on a pull request's code.
+        self.assertNotIn("pull_request", self.triggers)
+        self.assertNotIn("pull_request_target", self.triggers)
+        self.assertEqual(self.doc["jobs"]["byo-smoke"].get("environment"), "main-only")
 
 
 class ProbeTest(unittest.TestCase):

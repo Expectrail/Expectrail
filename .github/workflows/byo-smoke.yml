@@ -11,26 +11,17 @@
 # It asserts that text came back. `.github/obaaf.yml` declares it a probe lane for exactly that
 # reason — agent would overclaim it, perception would be wrong about what it talks to.
 #
-# Secrets on a pull request: same-repository pull requests only, the same rule and reasoning as
-# private-scan.yml — their authors can already reach the repository's secrets, so this adds no
-# exposure, and a fork's pull request gets no secrets and cleanly skips every provider. The paths
-# filter keeps it to changes that can break the provider layer.
+# Not on pull requests. It used to run on same-repository pull requests that touched the provider
+# layer, with every provider key, on the reasoning that their authors could reach the repository's
+# secrets anyway. That is no longer true: the keys live in the main-only environment, so a branch's
+# code, a person's or a coding agent's, never holds one. The daily schedule and a dispatch from main
+# make the live calls; the offline provider tests run on every pull request.
 name: BYO smoke (live provider calls)
 
 on:
   schedule:
     # Daily, off the hour: provider-side deprecations arrive without a commit of ours.
     - cron: '23 7 * * *'
-  pull_request:
-    paths:
-      - 'expectrail/providers.py'
-      - 'expectrail/spec_writer.py'
-      - 'agents/byo_smoke.py'
-      - 'agents/byo_fixer.py'
-      - 'agents/byo_vision.py'
-      - 'agents/triage.py'
-      - 'agents/keys.py'
-      - '.github/workflows/byo-smoke.yml'
   workflow_dispatch:
     inputs:
       provider:
@@ -43,12 +34,16 @@ permissions:
   contents: read
 
 concurrency:
-  group: byo-smoke-${{ github.event.pull_request.number || github.ref }}
+  group: byo-smoke-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   byo-smoke:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    # The provider keys live in the main-only environment, so only main's copy of this workflow (the
+    # schedule, or a dispatch from main) can make live calls. It no longer runs on pull requests: a
+    # pull request's code never gets a key. The probe's logic is tested offline in CI
+    # (tests/test_byo_smoke.py) on every pull request.
+    environment: main-only
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

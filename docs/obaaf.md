@@ -16,6 +16,32 @@ enabled. What runs, in the `obaaf-audit` CI job on every push and pull request:
 | Pipeline findings | `obaaf check . --format json --fail-on never`; one notice per rule | No, reported |
 | Proposals | `agents/assurance/proposal.py` turns a candidate fix into an OBAAF proposal bundle and checks it with `obaaf proposal check --repo` plus Expectrail's own allowlist | Tests only, see below |
 
+## Where the secrets live (Nov 9)
+
+Anyone with write access, or a coding agent acting for them, could read any repository secret by
+pushing a branch with a workflow that prints it; branch protection does not apply to a workflow
+running from its own branch. So no secret is a repository secret any more:
+
+| Environment | Holds | Who can use it |
+| --- | --- | --- |
+| `main-only` | `HELDOUT_TOKEN` and every model key (`MODEL_API_KEY`, `META_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `FIREWORKS_API_KEY`, `BASETEN_API_KEY`) | Workflows on `main` only (deployment branch rule) |
+| `unity` | The Unity licence | Any branch, after Sean approves each run (required reviewer) |
+
+- Every job that uses one of these secrets declares the environment; `tests/test_main_only_environment.py`
+  fails if one does not, or if a job in `main-only` can be started by a pull request.
+- Pull requests run keyless: `discovery` (planner off) and `reported-bench` (traces only) hold no key,
+  and their keyed twins `discovery-planner` and `reported-bench-sam` run only on a dispatch from main.
+  `mutation-fix` rehearses keyless on a pull request; its live jobs are dispatch-only. `byo-smoke`
+  no longer runs on pull requests at all: its live provider calls run daily and on dispatch, and its
+  logic is tested offline on every pull request.
+- A held-out or live bench can only be dispatched from `main`.
+- `private-scan.yml` is the exception: `pull_request_target` runs as main, so the branch rule does not
+  stop it. It reads a same-repository pull request's files as data and prints counts only. The
+  residual risk is that counts are an oracle a writer could probe; it is recorded, with an expiry,
+  as a reviewed finding in `.github/obaaf.yml`.
+- What the checker cannot see, check in the settings: no repository or organization copy of these
+  secrets, and `main-only` limited to `main`.
+
 ## Findings (Oct 30, main at e19b378 plus this change)
 
 | Rule | Before | Now | What it means |

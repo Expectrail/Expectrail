@@ -34,7 +34,7 @@ permissions:
 
 jobs:
   web-list:
-    environment: heldout
+    environment: main-only
     if: inputs.bench == 'detection'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -72,7 +72,7 @@ jobs:
 
   # Named heldout-bench so agents.bench_collect reads its annotations as it reads the game's.
   heldout-bench:
-    environment: heldout
+    environment: main-only
     needs: web-list
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -88,7 +88,7 @@ jobs:
       - name: Require the SAM key when SAM judges
         if: inputs.judge == 'sam' && env.SAM_KEY_SET != 'true'
         run: |
-          echo "::error::Set the MODEL_API_KEY (or META_API_KEY) repository secret first."
+          echo "::error::Set MODEL_API_KEY (or META_API_KEY) in the main-only environment first."
           exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -159,6 +159,7 @@ jobs:
           echo "cases=$cases" >> "$GITHUB_OUTPUT"
 
   web-judge:
+    environment: main-only
     needs: web-judge-list
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -173,7 +174,7 @@ jobs:
       - name: Require the SAM key when SAM judges
         if: inputs.judge == 'sam' && env.SAM_KEY_SET != 'true'
         run: |
-          echo "::error::Set the MODEL_API_KEY (or META_API_KEY) repository secret first."
+          echo "::error::Set MODEL_API_KEY (or META_API_KEY) in the main-only environment first."
           exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -204,6 +205,7 @@ jobs:
   # Prompt calibration: SAM on each public session's last frame, every candidate prompt scored
   # against where the page drew the element. Public patches only; nothing here edits a spec.
   web-probe:
+    environment: main-only
     if: inputs.bench == 'probe'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -213,7 +215,7 @@ jobs:
       - name: Require the SAM key
         if: env.SAM_KEY_SET != 'true'
         run: |
-          echo "::error::Set the MODEL_API_KEY (or META_API_KEY) repository secret first."
+          echo "::error::Set MODEL_API_KEY (or META_API_KEY) in the main-only environment first."
           exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
