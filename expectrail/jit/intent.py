@@ -82,11 +82,23 @@ Answer with one JSON object and nothing else:
 """ + discovery_planner.SYSTEM.split("\n\n", 1)[1] + "\nThe SIGNAL names are: " + ", ".join(sorted(SIGNALS)) + "."
 
 
+REVISE_SYSTEM = """
+
+This is your second and last attempt. "previousAttempt" lists the checks you proposed before and what \
+replaying them showed: "kept" checks passed on the clean game every time and failed on the bug build \
+every time, and stay as they are. Each "rejected" check either did not pass on the clean game every \
+time ("did-not-pass-on-clean", with its outcomes) or did not fail on the bug build every time \
+("did-not-fail-on-bug-build"). Propose new checks to replace the rejected ones, at most one per \
+rejected check, using the measurements to choose probes and signals that separate the two builds. \
+Do not repeat a kept or rejected check. Answer in the same JSON format, with only the new checks."""
+
+
 class IntentUnavailable(RuntimeError):
     """No usable answer: the model was unavailable, out of budget, or returned nothing valid."""
 
 
-def prompt(report: str, patch_text: str, dmap: dict, profile: dict, probes: list[dict]) -> str:
+def prompt(report: str, patch_text: str, dmap: dict, profile: dict, probes: list[dict],
+           revision: dict | None = None) -> str:
     claims = [{"claimId": c["claimId"], "statement": c["statement"],
                "parameters": {k: f"{v['value']} {v['unit']}" for k, v in c["parameters"].items()},
                "exceptions": c["exceptions"]} for c in profile["claims"]]
@@ -99,6 +111,7 @@ def prompt(report: str, patch_text: str, dmap: dict, profile: dict, probes: list
         "actions": profile["actions"],
         "claims": claims,
         "probesAvailable": [_probe_entry(p) for p in probes if p["id"] in set(dmap["probeIds"])],
+        **({"previousAttempt": revision} if revision is not None else {}),
     }, indent=1)
 
 
@@ -173,13 +186,15 @@ def spark_intent(transport=None, model: str = MODEL):
         def transport(body: dict) -> dict:
             return http_transport(body, timeout=SPARK_TIMEOUT_S)
 
-    def propose(report: str, patch_text: str, dmap: dict, profile: dict, probes: list[dict]) -> dict:
-        user = prompt(report, patch_text, dmap, profile, probes)
+    def propose(report: str, patch_text: str, dmap: dict, profile: dict, probes: list[dict],
+                revision: dict | None = None) -> dict:
+        user = prompt(report, patch_text, dmap, profile, probes, revision)
+        system = SYSTEM + REVISE_SYSTEM if revision is not None else SYSTEM
         # max_tokens is the completion the budget reserves (run.generate, propose_to_file), so the
         # answer can never cost more than was reserved for it.
         body = {"model": model, "temperature": 0, "response_format": {"type": "json_object"},
                 "max_tokens": RESERVED_COMPLETION_TOKENS,
-                "messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}]}
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
         try:
             response = transport(body)
             choice = response["choices"][0]
@@ -193,7 +208,7 @@ def spark_intent(transport=None, model: str = MODEL):
         return {"probes": new_probes, "candidates": entries, "diagnostics": notes,
                 "usage": {"model": model, "promptTokens": usage.get("prompt_tokens"),
                           "completionTokens": usage.get("completion_tokens")},
-                "promptSha256": _sha(SYSTEM + "\n" + user)}
+                "promptSha256": _sha(system + "\n" + user)}
 
     propose.model = model
     propose.system = SYSTEM
@@ -297,9 +312,188 @@ def from_proposal(path, model: str | None = None):
         if not entries:
             raise IntentUnavailable("MODEL_OUTPUT_INVALID: the proposal has no contract")
         usage = doc.get("usage") if isinstance(doc.get("usage"), dict) else {}
-        return {"probes": new_probes, "candidates": entries, "diagnostics": [str(d)[:200] for d in doc.get("diagnostics") or []][:20],
-                "usage": usage, "promptSha256": doc.get("promptSha256")}
+        prior = doc.get("prior")
+        if prior is not None:
+            ok = isinstance(prior, dict) and set(prior) == {"replayUsd", "replays"} \
+                and isinstance(prior["replayUsd"], (int, float)) and not isinstance(prior["replayUsd"], bool) \
+                and 0 <= prior["replayUsd"] <= 1000 and isinstance(prior["replays"], int) \
+                and not isinstance(prior["replays"], bool) and 0 <= prior["replays"] <= 100000
+            if not ok:
+                raise IntentUnavailable("PROPOSAL_INVALID: prior spend is not two plain numbers")
+        out = {"probes": new_probes, "candidates": entries,
+               "diagnostics": [str(d)[:200] for d in doc.get("diagnostics") or []][:20],
+               "usage": usage, "promptSha256": doc.get("promptSha256")}
+        if prior is not None:
+            out["prior"] = {"replayUsd": float(prior["replayUsd"]), "replays": prior["replays"]}
+        return out
 
     propose.model = model or (doc.get("model") if isinstance(doc, dict) else None)
     propose.system = SYSTEM
     return propose
+
+
+# --- One revision: replace the checks replay rejected --------------------------------------------------
+# The first live runs proposed checks that could never be valid (#240's notes). After the first replay, the
+# rejected checks go back to the model once, with why each was rejected, and it may replace them. What it is
+# told comes only from the clean game and the bug build: a check either did not pass on the clean game
+# (with the interpreter's outcome names) or did not fail on the bug build. Never the candidate's outcomes,
+# and never the near misses built from the candidate. The record it reads was written by the job that ran
+# the change's code, so only enumerated outcomes and known ids are taken from it; every statement and
+# operation it shows the model comes from the first proposal, which this side wrote.
+
+OUTCOMES = frozenset({"pass", "fail", "not_applicable", "insufficient_evidence", "execution_error"})
+
+
+def feedback(entries: list[dict], record: dict) -> tuple[list[dict], list[dict]]:
+    """(kept entries, rejected [{entry, why, clean}]) from the first proposal's entries and its replay record."""
+    base_ids = {v["id"] for v in record.get("variants") or [] if v.get("kind") == "base"}
+    rows = {v["specId"]: v for v in record.get("validity") or []}
+    kept, rejected = [], []
+    for e in entries:
+        row = rows.get(e["spec"]["id"])
+        if row is None:  # never replayed (it applied to no probe that could run)
+            rejected.append({"entry": e, "why": "applies-to-no-probe", "clean": []})
+            continue
+        clean = [r for r in row.get("reference") or [] if r in OUTCOMES][:3]
+        if row.get("valid") is True:
+            kept.append(e)
+        elif any(r != "pass" for r in clean) or len(clean) < 3:
+            rejected.append({"entry": e, "why": "did-not-pass-on-clean", "clean": clean})
+        else:
+            killed_base = bool(base_ids & set(row.get("killed") or []))
+            rejected.append({"entry": e, "why": "did-not-fail-on-bug-build" if base_ids and not killed_base
+                             else "failed-on-no-wrong-build", "clean": clean})
+    return kept, rejected
+
+
+def revise_to_file(intent, report: str, patch_text: str, profile: dict, probes: list[dict], first: Path,
+                   record_path: Path, out, *, budget_usd: float, prices: dict | None = None,
+                   notes: list[str] | None = None) -> dict:
+    """At most one more model call. Writes ``out/jit-proposal.json`` and returns it; ``revision.revised``
+    says whether anything changed. With nothing to revise, or no budget left, the first proposal is
+    written back unchanged and the reason is in ``revision.skipped``."""
+    from pathlib import Path as _P
+
+    from expectrail.jit.diff_map import diff_map
+    from expectrail.jit.run import OutOfBudget, Spend
+
+    first_doc = json.loads(_P(first).read_text(encoding="utf-8"))
+    dmap = diff_map(patch_text, profile, probes)
+    r1 = from_proposal(first)(report, patch_text, dmap, profile, probes)
+    record = load_record(record_path, patch_text)
+    usage1 = r1.get("usage") or {}
+    doc = dict(first_doc, diagnostics=list(notes or []) + list(first_doc.get("diagnostics") or []),
+               prior={"replayUsd": round(float(record["spend"]["replayUsd"]), 6), "replays": int(record["spend"]["replays"])},
+               revision={"revised": False, "skipped": None, "kept": [], "replaced": [], "added": []})
+
+    def write(d):
+        _P(out).mkdir(parents=True, exist_ok=True)
+        (_P(out) / PROPOSAL_NAME).write_text(json.dumps(d, indent=1) + "\n", encoding="utf-8")
+        return d
+
+    if record["status"] != "complete":
+        doc["revision"]["skipped"] = f"the first replay ended {record['status']}"
+        return write(doc)
+    kept, rejected = feedback(r1["candidates"], record)
+    doc["revision"]["kept"] = [e["spec"]["id"] for e in kept]
+    if not rejected:
+        doc["revision"]["skipped"] = "every proposed check was valid"
+        return write(doc)
+    spend = Spend(budget_usd, prices or {})
+    spend.replay_usd = float(record["spend"]["replayUsd"])
+    spend.add_spark(usage1.get("promptTokens") if isinstance(usage1.get("promptTokens"), int) else 0,
+                    usage1.get("completionTokens") if isinstance(usage1.get("completionTokens"), int) else 0)
+    revision = {"kept": [_shown(e) for e in kept],
+                "rejected": [dict(_shown(r["entry"]), why=r["why"], cleanOutcomes=r["clean"]) for r in rejected]}
+    est = estimate_prompt_tokens(getattr(intent, "system", "") + REVISE_SYSTEM,
+                                 prompt(report, patch_text, dmap, profile, probes, revision))
+    try:
+        spend.reserve(spend.spark_cost(est, RESERVED_COMPLETION_TOKENS), "the revision call")
+    except OutOfBudget as exc:
+        doc["revision"]["skipped"] = " ".join(str(exc).split())[:200]
+        return write(doc)
+    try:
+        answer = intent(report, patch_text, dmap, profile, probes, revision=revision)
+    except IntentUnavailable as exc:
+        doc["revision"]["skipped"] = " ".join(str(exc).split())[:200]
+        doc["usage"] = _sum_usage(usage1, {"promptTokens": est, "completionTokens": 0})  # charged for its prompt
+        return write(doc)
+    taken = {e["spec"]["id"] for e in r1["candidates"]}
+    kept_probe_ids = {i for e in kept for i in _applies_ids(e)}
+    probes_out = [p for p in r1["probes"] if p["id"] in kept_probe_ids]
+    new_probe_ids = {}
+    for p in answer.get("probes") or []:
+        if len(probes_out) >= MAX_PROBES:
+            break
+        pid = "jit-r-" + p["id"].removeprefix("jit-")
+        new_probe_ids[p["id"]] = pid
+        probes_out.append(dict(p, id=pid))
+    added = []
+    for e in answer.get("candidates") or []:
+        if len(kept) + len(added) >= MAX_CANDIDATES or len(added) >= len(rejected):
+            break
+        e = json.loads(json.dumps(e))
+        a = e["applies"]
+        ids = [a["left"], a["right"]] if a["kind"] == "pair" else (a.get("ids") or [])
+        if any(i.startswith("jit-") and i not in new_probe_ids for i in ids):
+            continue  # its new probe did not fit under the probe limit
+        if a["kind"] == "pair":
+            a["left"], a["right"] = new_probe_ids.get(a["left"], a["left"]), new_probe_ids.get(a["right"], a["right"])
+            e["spec"]["operation"]["left"], e["spec"]["operation"]["right"] = a["left"], a["right"]
+        elif a["kind"] == "probes":
+            a["ids"] = [new_probe_ids.get(i, i) for i in a["ids"]]
+        sid = "jit-r-" + e["spec"]["id"].removeprefix("jit-")
+        if sid in taken:
+            continue
+        taken.add(sid)
+        e["spec"]["id"] = sid
+        validate_v1(e["spec"], "trace-spec")
+        added.append(e)
+    doc.update(probes=probes_out, candidates=kept + added,
+               diagnostics=doc["diagnostics"] + [f"revision: {d}" for d in answer.get("diagnostics") or []][:20],
+               usage=_sum_usage(usage1, answer.get("usage") or {}),
+               promptSha256=answer.get("promptSha256"))
+    doc["revision"].update(revised=bool(added), replaced=[r["entry"]["spec"]["id"] for r in rejected],
+                           added=[e["spec"]["id"] for e in added],
+                           skipped=None if added else "the revision proposed no usable check")
+    if not added:
+        doc["candidates"] = r1["candidates"]
+        doc["probes"] = r1["probes"]
+    return write(doc)
+
+
+def _shown(e: dict) -> dict:
+    s = e["spec"]
+    return {"id": s["id"], "statement": s.get("statement"), "operation": s.get("operation"), "applies": e["applies"]}
+
+
+def _applies_ids(e: dict) -> list[str]:
+    a = e["applies"]
+    return [a["left"], a["right"]] if a["kind"] == "pair" else list(a.get("ids") or [])
+
+
+def _sum_usage(a: dict, b: dict) -> dict:
+    def n(v):
+        return v if isinstance(v, int) and not isinstance(v, bool) and v >= 0 else 0
+    return {"model": b.get("model") or a.get("model"),
+            "promptTokens": n(a.get("promptTokens")) + n(b.get("promptTokens")),
+            "completionTokens": n(a.get("completionTokens")) + n(b.get("completionTokens"))}
+
+
+def load_record(path, patch_text: str) -> dict:
+    """The first replay's record, read as untrusted data: schema-valid, for this patch, plain numbers."""
+    from pathlib import Path as _P
+
+    from expectrail.contracts import load_strict
+
+    raw = _P(path).read_bytes()
+    if len(raw) > 8 * 1024 * 1024:
+        raise IntentUnavailable("RECORD_UNREADABLE: over 8 MiB")
+    record = load_strict(_P(path), "jit-run")
+    if record["inputs"]["patchSha256"] != _sha(patch_text):
+        raise IntentUnavailable("RECORD_MISMATCH: the record is for a different patch")
+    for k in ("replayUsd",):
+        v = record["spend"][k]
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not 0 <= v <= 1000:
+            raise IntentUnavailable("RECORD_UNREADABLE: spend is not a plain number")
+    return record

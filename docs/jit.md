@@ -32,6 +32,10 @@ headless, trace-only replays (no frames, so no SAM image)                  expec
    ▼
 valid: passes 3 of 3 on the clean game, and fails 3 of 3 on a near miss    expectrail/jit/assess.py
    │
+   ├─► any check rejected? one revision: the model is told why, from the clean game and the bug build
+   │   only, replaces those checks, and the whole set is replayed again (same budget)
+   ▼
+   │
    ▼
 catch: a valid check that fails 3 of 3 on the candidate → strong | weak
    │
@@ -48,7 +52,8 @@ jit-run/v1 record, report, and an advisory block in the gate comment and the rev
 | Job | [`run.py`](../expectrail/jit/run.py) | Replays the reference first and drops a check at its first non-pass; replays each near miss once and confirms a kill to 3 of 3; replays the candidate 3 times for valid checks only. Budget checked before the model call and before each replay. |
 | Assessor | [`assess.py`](../expectrail/jit/assess.py) | Pure functions of the interpreter's five outcomes per run. Nothing a model said reaches it. |
 | Record | [`contracts/jit-run.v1.schema.json`](../contracts/jit-run.v1.schema.json) | One per change: digests of the inputs, model and prompt; settings; the diff map; every proposed check and probe; every near miss; each check's reference runs, kills, candidate runs and outcome; the catches with their label; spend with the prices used. `advisory` is always true and there is no decision field. |
-| CLI | [`cli.py`](../expectrail/jit/cli.py) | `run`, `measure`, `propose`, `report`, `gate-summary`, `diff-games`. |
+| Revision | [`intent.py`](../expectrail/jit/intent.py) `revise_to_file` | When the first replay rejects any check, one more model call. Each rejected check goes back with one of two reasons: it did not pass on the clean game (with the interpreter's outcome names), or it did not fail on the bug build. Never the candidate's outcomes or the near misses built from the candidate, which would let it fit checks to the change under test. At most one replacement per rejected check; kept checks stay as they were. The first round's record is read as untrusted data (schema-valid, this patch, plain numbers), and the second record carries the first round's replays and both calls' tokens, so the $2 cap covers the whole change. No budget left, no rejected check, or an unusable answer: the first round stands. |
+| CLI | [`cli.py`](../expectrail/jit/cli.py) | `run`, `measure`, `propose`, `revise`, `report`, `gate-summary`, `diff-games`. |
 | CI | [`.github/workflows/jit.yml`](../.github/workflows/jit.yml) | Rehearsal on pull requests that touch this code; `live` by dispatch. |
 | Gate | [`gate/`](../expectrail/gate), the verify action's `generated-checks` input | Reads and shows a generated-checks block; nothing in a pull request's run produces one yet (below). |
 

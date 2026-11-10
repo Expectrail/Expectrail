@@ -148,6 +148,19 @@ def main(argv: list[str] | None = None) -> int:
     pp.add_argument("--base", type=Path, action="append", default=[],
                     help="the bug's patches, read only to check the measurements were taken against them")
     pp.add_argument("--measurements", type=Path, help="jit-measurements.json from the measure command")
+    rv = sub.add_parser("revise")
+    rv.add_argument("--profile", type=Path, default=PROFILE)
+    rv.add_argument("--report-file", type=Path, required=True)
+    rv.add_argument("--candidate", type=Path, required=True)
+    rv.add_argument("--proposal", type=Path, required=True, help="the first proposal")
+    rv.add_argument("--record", type=Path, required=True, help="the first replay's jit-run.json")
+    rv.add_argument("--out", type=Path, required=True)
+    rv.add_argument("--budget-usd", type=float, default=DEFAULT_BUDGET_USD)
+    rv.add_argument("--spark-usd-per-mtok-in", type=float)
+    rv.add_argument("--spark-usd-per-mtok-out", type=float)
+    rv.add_argument("--base", type=Path, action="append", default=[])
+    rv.add_argument("--measurements", type=Path)
+    rv.add_argument("--github-output", type=Path, help="append revised=true|false here (a workflow's GITHUB_OUTPUT)")
     ms = sub.add_parser("measure")
     ms.add_argument("--profile", type=Path, default=PROFILE)
     ms.add_argument("--base", type=Path, action="append", default=[])
@@ -176,6 +189,31 @@ def main(argv: list[str] | None = None) -> int:
         profile = load_strict(args.profile, "mechanics-profile")
         doc = measure(profile, args.base, args.out, probes=jit_library(profile["actions"]), game=args.game)
         print(json.dumps({"probes": len(doc["probes"]), "bugBuild": bool(args.base)}))
+        return 0
+    if args.cmd == "revise":
+        from expectrail.jit.intent import IntentUnavailable, revise_to_file, spark_intent
+        from expectrail.jit.probes import jit_library
+
+        profile = load_strict(args.profile, "mechanics-profile")
+        if args.budget_usd < 0:
+            ap.error("budget must not be negative")
+        prices = {k: v for k, v in (("sparkUsdPerMTokIn", args.spark_usd_per_mtok_in),
+                                    ("sparkUsdPerMTokOut", args.spark_usd_per_mtok_out)) if v is not None}
+        probes = jit_library(profile["actions"])
+        notes = attach_measurements(probes, args.measurements, args.base)
+        try:
+            doc = revise_to_file(spark_intent(), args.report_file.read_text(encoding="utf-8", errors="replace"),
+                                 args.candidate.read_bytes().decode("utf-8", errors="replace"), profile, probes,
+                                 args.proposal, args.record, args.out, budget_usd=args.budget_usd, prices=prices,
+                                 notes=notes)
+            revised, skipped = doc["revision"]["revised"], doc["revision"]["skipped"]
+        except (IntentUnavailable, ValueError, KeyError, OSError) as exc:
+            # The first round's record stands; nothing here can turn into a pass or a catch.
+            revised, skipped = False, " ".join(str(exc).split())[:200]
+        if args.github_output:
+            with args.github_output.open("a", encoding="utf-8") as fh:
+                fh.write(f"revised={'true' if revised else 'false'}\n")
+        print(json.dumps({"revised": revised, "skipped": skipped}))
         return 0
     if args.cmd == "propose":
         from expectrail.jit.intent import propose_to_file, spark_intent
