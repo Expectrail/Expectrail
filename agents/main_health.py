@@ -118,8 +118,18 @@ def run_check(api: Api, repo: str, run_id: int, owner: str, *, dry_run: bool = F
     sha = run["head_sha"][:7]
     if action == "open":
         jobs = failed_jobs(api, repo, run_id)
-        new = api("POST", f"/repos/{repo}/issues", {
-            "title": f"{TITLE}: CI failed at {sha}", "body": open_body(run, jobs), "assignees": [owner]})
+        issue_doc = {"title": f"{TITLE}: CI failed at {sha}", "body": open_body(run, jobs), "assignees": [owner]}
+        try:
+            new = api("POST", f"/repos/{repo}/issues", issue_doc)
+        except urllib.error.HTTPError as exc:
+            # GitHub refuses an assignee it cannot assign (422), such as an organisation: since the move
+            # to the Expectrail org, the repository's owner is one. Saying main is red matters more
+            # than who it is assigned to, so open it unassigned and say why.
+            if exc.code != 422:
+                raise
+            out(f"::warning title=Main health::could not assign the issue to {owner!r} (422); opening it "
+                "unassigned. Set the repository variable MAIN_HEALTH_ASSIGNEE to a person's login.")
+            new = api("POST", f"/repos/{repo}/issues", {k: v for k, v in issue_doc.items() if k != "assignees"})
         out(f"::warning title=Main is red::opened issue #{new['number']}")
         try:
             pulls = api("GET", f"/repos/{repo}/commits/{run['head_sha']}/pulls") or []

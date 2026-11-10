@@ -111,6 +111,40 @@ class RunCheckTest(unittest.TestCase):
         self.assertIn("#8", comment["body"])
         self.assertTrue(any("opened issue #8" in line for line in lines))
 
+    def test_an_assignee_github_refuses_still_opens_the_issue_unassigned(self):
+        # Since the move to the Expectrail org the repository's owner is an organisation, and GitHub
+        # answers 422 to assigning an issue to one: main went red on Nov 10 and no issue opened.
+        import urllib.error
+
+        class Refuses(FakeApi):
+            def __call__(self, method, path, body=None):
+                if method == "POST" and path == f"/repos/{REPO}/issues" and body.get("assignees"):
+                    self.writes.append((method, path, body))
+                    raise urllib.error.HTTPError(path, 422, "Unprocessable Entity", {}, None)
+                return super().__call__(method, path, body)
+
+        red = _run(5, "failure", "2026-11-10T20:20:00Z")
+        api = Refuses(red, [red], [])
+        action, lines = self.check(api)
+        self.assertEqual(action, "open")
+        issues = [b for m, p, b in api.writes if p == f"/repos/{REPO}/issues"]
+        self.assertEqual([("assignees" in b) for b in issues], [True, False])
+        self.assertTrue(any("could not assign" in line and "MAIN_HEALTH_ASSIGNEE" in line for line in lines))
+        self.assertTrue(any("opened issue #8" in line for line in lines))
+
+    def test_another_error_opening_the_issue_is_not_swallowed(self):
+        import urllib.error
+
+        class Fails(FakeApi):
+            def __call__(self, method, path, body=None):
+                if method == "POST" and path == f"/repos/{REPO}/issues":
+                    raise urllib.error.HTTPError(path, 403, "Forbidden", {}, None)
+                return super().__call__(method, path, body)
+
+        red = _run(6, "failure", "2026-11-10T20:20:00Z")
+        with self.assertRaises(urllib.error.HTTPError):
+            self.check(Fails(red, [red], []))
+
     def test_an_unmerged_pr_for_the_commit_is_not_commented_on(self):
         red = _run(1, "failure", "t1")
         api = FakeApi(red, [red], [], pulls=[{"number": 5, "merged_at": None}])

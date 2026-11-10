@@ -48,7 +48,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          OWNER: ${{ github.repository_owner }}
+          # A person's login: the repository's owner is the Expectrail organisation, which an issue
+          # cannot be assigned to (main_health then opens it unassigned and warns).
+          OWNER: ${{ vars.MAIN_HEALTH_ASSIGNEE || github.repository_owner }}
           RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'yes' || '' }}
         run: |
