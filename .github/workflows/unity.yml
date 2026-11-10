@@ -388,6 +388,11 @@ jobs:
               print("::error title=Unity level::the trace has no level surfaces or no ground line, so the ground spec would be needs-review")
               raise SystemExit(1)
           PY
+      - name: Calibration of the Unity checks on the clean trace
+        if: always() && steps.replays.outcome == 'success'
+        run: |
+          line=$(python3 -m agents.unity_observations calibrate runs/unity/replay/run-00/trace.json)
+          echo "::notice title=Unity calibration::$line"
       - name: Times
         if: always()
         env:
