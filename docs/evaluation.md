@@ -221,14 +221,14 @@ Twice, live (runs 40936362830 and 40943391994):
 | Expectrail, SAM off | 8 of 8, both runs | 3 of 7, both runs |
 | Muse from screenshots | 6 of 8, then 7 of 8 | 2 of 7, both runs |
 
-A third run on October 31 ([41230177124](https://github.com/seanudeke/Expectrail/actions/runs/41230177124),
+A third run on October 31 ([41230177124](https://github.com/Expectrail/Expectrail/actions/runs/41230177124),
 `bench/judge/glimmer/`) gave these three judges the same counts, Muse from screenshots at 6 of 8 as in
 the first, and added a fourth judge: the verifier with Muse Glimmer checked against the engine and no
 SAM. It accepted 8 of 8 good and 0 of 7 bad, but the deleted trees got past every public check under
 Glimmer and were stopped only on a held-out route ([docs/open-weights.md](open-weights.md)).
 
 On November 1 the same 15 candidates went to the strongest models two other vendors sell, as
-screenshot judges beside Muse in one run ([41320444374](https://github.com/seanudeke/Expectrail/actions/runs/41320444374),
+screenshot judges beside Muse in one run ([41320444374](https://github.com/Expectrail/Expectrail/actions/runs/41320444374),
 `bench/judge/outside-models/`, `agents/outside_judge.py`). Each got the screenshot judge's prompt
 byte for byte, the same ten frames under the same file names, and the same decision line, three
 times, each pass its own request. The models, prompt, passes and scoring were fixed before the run,
@@ -281,9 +281,9 @@ changes a pinned file.
 
 | Part | Cases | Result | Run |
 | --- | --- | --- | --- |
-| 1, wrong fixes | 47 made by six operators: 39 wrong, and 8 right (a correct fix plus a comment) | **31 of 39** wrong fixes caught, 24 only with SAM; all 8 right ones accepted. The 8 misses are one operator, `scale-to-zero`, that changes nothing in the running game | [41268021760](https://github.com/seanudeke/Expectrail/actions/runs/41268021760) |
-| 2, generated bugs | 150 single edits sampled, 77 different from the clean game | Weighted score **0.9%**, because none of the 45 numeric edits was caught; over the sample as drawn, 10 of 77 (5 by the cheap tier, 5 only with SAM). Of the 45, 44 move, resize or re-layer scenery no check covers, one draws the player's sprite 26 px off its body | [41268023631](https://github.com/seanudeke/Expectrail/actions/runs/41268023631), [41323827584](https://github.com/seanudeke/Expectrail/actions/runs/41323827584), [41323829361](https://github.com/seanudeke/Expectrail/actions/runs/41323829361) |
-| 3, AI-written fixes | Muse Code on the 10 bugs Part 2 caught | 10 fixed on the first attempt, all accepted, all correct on six routes, five of which the judge does not use: **0 natural catches**. They were bugs the checks had already caught, reported in the catching check's words. Muse from screenshots rejected 5 of the same 10 | [41330361829](https://github.com/seanudeke/Expectrail/actions/runs/41330361829) |
+| 1, wrong fixes | 47 made by six operators: 39 wrong, and 8 right (a correct fix plus a comment) | **31 of 39** wrong fixes caught, 24 only with SAM; all 8 right ones accepted. The 8 misses are one operator, `scale-to-zero`, that changes nothing in the running game | [41268021760](https://github.com/Expectrail/Expectrail/actions/runs/41268021760) |
+| 2, generated bugs | 150 single edits sampled, 77 different from the clean game | Weighted score **0.9%**, because none of the 45 numeric edits was caught; over the sample as drawn, 10 of 77 (5 by the cheap tier, 5 only with SAM). Of the 45, 44 move, resize or re-layer scenery no check covers, one draws the player's sprite 26 px off its body | [41268023631](https://github.com/Expectrail/Expectrail/actions/runs/41268023631), [41323827584](https://github.com/Expectrail/Expectrail/actions/runs/41323827584), [41323829361](https://github.com/Expectrail/Expectrail/actions/runs/41323829361) |
+| 3, AI-written fixes | Muse Code on the 10 bugs Part 2 caught | 10 fixed on the first attempt, all accepted, all correct on six routes, five of which the judge does not use: **0 natural catches**. They were bugs the checks had already caught, reported in the catching check's words. Muse from screenshots rejected 5 of the same 10 | [41330361829](https://github.com/Expectrail/Expectrail/actions/runs/41330361829) |
 
 What it adds to the plan above: Expectrail catches what its checks name, and the bench measures how
 much of a game that is. Most of what a random edit changes is scenery no check names. The cheap tier

@@ -14,8 +14,8 @@ from pathlib import Path
 
 from expectrail.diagnostics import redact
 
-REVIEW_DOC = "https://github.com/seanudeke/Expectrail/blob/main/docs/review.md"
-GATE_DOC = "https://github.com/seanudeke/Expectrail/blob/main/docs/ci-gate.md"
+REVIEW_DOC = "https://github.com/Expectrail/Expectrail/blob/main/docs/review.md"
+GATE_DOC = "https://github.com/Expectrail/Expectrail/blob/main/docs/ci-gate.md"
 MAX_FRAMED_FINDINGS = 20
 DECISION_MEANS = {
     "accept": "Every approved check passes on every route after this change. Accepted means this change "

@@ -288,7 +288,7 @@ class JudgeTest(unittest.TestCase):
                 return {"jobs": [{"name": "web-judge (bad/fix-logo-remove)", "id": 1}]}
             if "/check-runs/" in path:
                 return [{"title": title, "message": message}]
-            return {"html_url": "https://github.com/seanudeke/Expectrail/actions/runs/9", "head_sha": "abc", "created_at": "2026-10-30T18:00:00Z"}
+            return {"html_url": "https://github.com/Expectrail/Expectrail/actions/runs/9", "head_sha": "abc", "created_at": "2026-10-30T18:00:00Z"}
 
         back = web_judge.collect(9, fetch=fetch)
         self.assertEqual(back["rows"][0]["expectrailNoSam"], "accept")

@@ -116,7 +116,7 @@ run gave the same 110 episodes tick for tick. The record: [`bench/discovery/loca
 
 ### CI
 
-Run [41238187197](https://github.com/seanudeke/Expectrail/actions/runs/41238187197), October 31,
+Run [41238187197](https://github.com/Expectrail/Expectrail/actions/runs/41238187197), October 31,
 planner off: one job per build, each with no reference build, all 22 library probes, recorded from
 the jobs' own notices in [`bench/discovery/run-41238187197.json`](../bench/discovery/run-41238187197.json).
 
@@ -138,7 +138,7 @@ the jobs' own notices in [`bench/discovery/run-41238187197.json`](../bench/disco
 
 - **The four reported bugs and the clean game gave exactly the local counts** on a different machine.
 - **The recorder change moved nothing else.** The reported-bug bench ran on the same commit
-  ([run 41238187161](https://github.com/seanudeke/Expectrail/actions/runs/41238187161)): today's
+  ([run 41238187161](https://github.com/Expectrail/Expectrail/actions/runs/41238187161)): today's
   checks still catch none of the four, the engine-record checks still catch all four, and neither
   raises a false alarm on the clean game.
 - **Two of the eight development bugs were flagged, by contracts written for something else.** In
@@ -178,7 +178,7 @@ alarms), and incomplete jobs. A miss is a result, not a reason to change the fro
 
 ### Blind run 1, October 31
 
-Run [41248745687](https://github.com/seanudeke/Expectrail/actions/runs/41248745687), main at
+Run [41248745687](https://github.com/Expectrail/Expectrail/actions/runs/41248745687), main at
 `81f692c`, planner off. Before replaying anything, every job verified the freeze (`6e9ca2bd…`) and
 the set's digest against [`bugs/fresh/fresh.sha256`](../bugs/fresh/fresh.sha256). Recorded from the
 jobs' counts-only notices in
@@ -219,7 +219,7 @@ What it does and does not show:
 
 ### Blind run 2, planner on: the planner never answered
 
-Run [41250932288](https://github.com/seanudeke/Expectrail/actions/runs/41250932288), the same frozen
+Run [41250932288](https://github.com/Expectrail/Expectrail/actions/runs/41250932288), the same frozen
 set, dispatched with the Muse Spark planner on. Every job verified the freeze and the digest, then
 recorded the planner stage as **unavailable**: every Spark call came back with no content. The jobs
 ran the templates alone and gave run 1's result exactly: **4 of 8 defects, 0 of 3 healthy builds,
@@ -266,9 +266,9 @@ variants), not blind, on branch `discovery/planner-fix` before it merged:
 
 | Run | Planner | Reference | What happened |
 | --- | --- | --- | --- |
-| [41251362155](https://github.com/seanudeke/Expectrail/actions/runs/41251362155) | 4,096-token limit | none | No content from any call; the planner stage unavailable in every job |
-| [41251642563](https://github.com/seanudeke/Expectrail/actions/runs/41251642563) | no limit | none | It answered everywhere: 4 probes and 2 to 7 contracts a build (10,000 to 22,000 completion tokens a call). With nothing to falsify them, its contracts were reproduced 3 of 3 on the **clean game** (2) and on 4 of the 5 visual-only builds that reported. 12 of 13 jobs reported |
-| [41252054622](https://github.com/seanudeke/Expectrail/actions/runs/41252054622) | no limit | the clean game, in each job | 61 contracts proposed, 13 rejected because they failed on the clean game. No model finding on the clean game or any visual-only build; model findings only on gun-cooldown, both fall-through variants and body-flip, all already flagged by the templates. 12 of 13 jobs reported (enemy-ledge's job never got past installing packages on its runner) |
+| [41251362155](https://github.com/Expectrail/Expectrail/actions/runs/41251362155) | 4,096-token limit | none | No content from any call; the planner stage unavailable in every job |
+| [41251642563](https://github.com/Expectrail/Expectrail/actions/runs/41251642563) | no limit | none | It answered everywhere: 4 probes and 2 to 7 contracts a build (10,000 to 22,000 completion tokens a call). With nothing to falsify them, its contracts were reproduced 3 of 3 on the **clean game** (2) and on 4 of the 5 visual-only builds that reported. 12 of 13 jobs reported |
+| [41252054622](https://github.com/Expectrail/Expectrail/actions/runs/41252054622) | no limit | the clean game, in each job | 61 contracts proposed, 13 rejected because they failed on the clean game. No model finding on the clean game or any visual-only build; model findings only on gun-cooldown, both fall-through variants and body-flip, all already flagged by the templates. 12 of 13 jobs reported (enemy-ledge's job never got past installing packages on its runner) |
 
 So on public builds the planner adds second reasons, not new detections, and without a healthy
 reference its contracts are false alarms waiting to happen. Records: `bench/discovery/run-41251642563.json`,
@@ -313,10 +313,10 @@ jobs' counts-only notices in [`bench/discovery/blind-run-41319184209.json`](../b
 
 | Run | Set | Freeze | Planner | Defects flagged | Healthy builds flagged | Incomplete |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1, [41248745687](https://github.com/seanudeke/Expectrail/actions/runs/41248745687) | 1 | 1 | off | 4 of 8 | 0 of 3 | 0 |
-| 2, [41250932288](https://github.com/seanudeke/Expectrail/actions/runs/41250932288) | 1 | 1 | on, but it never answered | 4 of 8 | 0 of 3 | 0 |
-| 3, [41319184209](https://github.com/seanudeke/Expectrail/actions/runs/41319184209) | 2 | 2 | off | 3 of 8 | 0 of 3 | 0 |
-| 4, [41319197682](https://github.com/seanudeke/Expectrail/actions/runs/41319197682) | 2 | 2 | on, the clean game as reference | 4 of 8 | 0 of 3 | 0 |
+| 1, [41248745687](https://github.com/Expectrail/Expectrail/actions/runs/41248745687) | 1 | 1 | off | 4 of 8 | 0 of 3 | 0 |
+| 2, [41250932288](https://github.com/Expectrail/Expectrail/actions/runs/41250932288) | 1 | 1 | on, but it never answered | 4 of 8 | 0 of 3 | 0 |
+| 3, [41319184209](https://github.com/Expectrail/Expectrail/actions/runs/41319184209) | 2 | 2 | off | 3 of 8 | 0 of 3 | 0 |
+| 4, [41319197682](https://github.com/Expectrail/Expectrail/actions/runs/41319197682) | 2 | 2 | on, the clean game as reference | 4 of 8 | 0 of 3 | 0 |
 
 The frozen templates alone, on the two independent sets: **7 of 16 defects, no false alarm on the 4
 intentional changes or the clean game.** That is still a small sample, from two sets written by AI
@@ -331,7 +331,7 @@ after the event.
 A guard is a contract that the feature still works. The test of a guard is a "fix" that makes a
 symptom go away by disabling the feature, which it should flag, and a deliberate retune, which
 nothing should flag. Six such builds ([`bugs/challenges/`](../bugs/challenges/README.md)) ran beside
-the thirteen public builds in run [41326269491](https://github.com/seanudeke/Expectrail/actions/runs/41326269491),
+the thirteen public builds in run [41326269491](https://github.com/Expectrail/Expectrail/actions/runs/41326269491),
 planner off ([`bench/discovery/run-41326269491.json`](../bench/discovery/run-41326269491.json)):
 
 | Build | What it does | Result |

@@ -40,7 +40,7 @@ after a rejection.
 
 ## What the October 31 run changed
 
-[Fix matrix run 41223754703](https://github.com/seanudeke/Expectrail/actions/runs/41223754703)
+[Fix matrix run 41223754703](https://github.com/Expectrail/Expectrail/actions/runs/41223754703)
 ([`bench/fix-matrix/report-first/`](../bench/fix-matrix/report-first/README.md)) ran the 8 development
 bugs under all three conditions, with SAM on and the private routes mounted:
 
@@ -67,7 +67,7 @@ bugs under all three conditions, with SAM on and the private routes mounted:
   answer twice.
 - **The other decisions stand.** Every candidate is still verified. The judge results are
   unchanged. The demo loop under the new policy accepted 3 of 3 runs on the first attempt from the
-  report ([run 41223748922](https://github.com/seanudeke/Expectrail/actions/runs/41223748922)).
+  report ([run 41223748922](https://github.com/Expectrail/Expectrail/actions/runs/41223748922)).
 
 **What would make us switch back to evidence first:** if the next matrix run with the amended rule
 still loses cases that `expectrail` fixes, or takes much longer to fix them, the evidence should go
@@ -86,7 +86,7 @@ Every live repair we had run, with and without Expectrail's evidence:
 | The same 8 bugs | Expectrail's evidence (spec, verdict, first failing frame) | 8 of 8 | 7 of 8 |
 | Natural-catch trial, 4 reported bugs × 5 ([`bench/reported/trial.md`](../bench/reported/trial.md)) | The reporter's own words and screenshots | 20 of 20 | 20 of 20 |
 | Demo loop, 10 live runs ([`bench/demo-loop/`](../bench/demo-loop/README.md)) | Expectrail's evidence | 10 of 10 | 10 of 10 |
-| Demo loop on this policy, 3 live runs ([41223748922](https://github.com/seanudeke/Expectrail/actions/runs/41223748922), Oct 31; [a review](review/report-first-run-1/)) | A plain report | 3 of 3 | 3 of 3 |
+| Demo loop on this policy, 3 live runs ([41223748922](https://github.com/Expectrail/Expectrail/actions/runs/41223748922), Oct 31; [a review](review/report-first-run-1/)) | A plain report | 3 of 3 | 3 of 3 |
 
 That was 48 of 49 cases fixed on the first attempt, counting the October 31 demo runs. The one
 that needed a second attempt had the evidence. On those bugs, the evidence did not help Muse fix
@@ -119,7 +119,7 @@ stays on every candidate, and what moves is what the fixer is told.
 
 ## First live runs
 
-- **Demo loop, October 31** ([run 41223748922](https://github.com/seanudeke/Expectrail/actions/runs/41223748922),
+- **Demo loop, October 31** ([run 41223748922](https://github.com/Expectrail/Expectrail/actions/runs/41223748922),
   [`bench/demo-loop/report-first/`](../bench/demo-loop/report-first/README.md)): **3 of 3 accepted, each on
   the first attempt from the report.** Every review against the failing base showed the repair, and SAM
   judged every run with nothing falling back. Each run used 157 SAM images, against 1,164 in the earlier

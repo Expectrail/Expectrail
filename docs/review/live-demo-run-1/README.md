@@ -1,7 +1,7 @@
 # A live review: Muse Code's fix, before and after
 
 Open [`index.html`](index.html) (it needs no server). It is one run of the live overnight demo:
-demo run 1 of fix matrix run [41105875960](https://github.com/seanudeke/Expectrail/actions/runs/41105875960)
+demo run 1 of fix matrix run [41105875960](https://github.com/Expectrail/Expectrail/actions/runs/41105875960)
 (Oct 30, 2026, commit `5e792b4`). Muse Wonder triaged the physics-fall-through report, Muse Code fixed it
 in bubblewrap through the key gateway, the verifier accepted with SAM 3.1 and the private routes, and
 the review ran the same checks on the seeded game and on the fixed one.

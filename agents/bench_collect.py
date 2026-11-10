@@ -62,7 +62,7 @@ MATRIX_MSG = re.compile(r"^detected (?P<detected>[a-z-]+); outcome (?P<outcome>[
                         r"\((?P<tries>[^)]*)\); (?P<seconds>[\d.]+) s; live=(?P<live>True|False)"
                         r"(?:; SAM images (?P<sam>\d+))?$")
 # GITHUB_REPOSITORY is set in Actions; the default is the repository's name since October 30.
-REPO_SLUG = os.environ.get("GITHUB_REPOSITORY") or "seanudeke/Expectrail"
+REPO_SLUG = os.environ.get("GITHUB_REPOSITORY") or "Expectrail/Expectrail"
 # sam-3.1 image segmentation, $2.50 per 1,000 images (https://dev.meta.ai/docs/pricing-rate-limits, Oct 29, 2026).
 SAM_USD_PER_IMAGE = 2.50 / 1000
 

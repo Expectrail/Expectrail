@@ -2,7 +2,7 @@
 
 Open [`index.html`](index.html) (it needs no server). It is one run of the live overnight demo on
 the loop as it is on main since #122 and #123: demo run 1 of fix matrix run
-[41223748922](https://github.com/seanudeke/Expectrail/actions/runs/41223748922) (Oct 31, 2026,
+[41223748922](https://github.com/Expectrail/Expectrail/actions/runs/41223748922) (Oct 31, 2026,
 commit `4697f54`). Muse Wonder triaged the physics-fall-through report. Muse Code got a plain report
 first, as the loop now gives it ([docs/report-first.md](../../report-first.md)): the failing check's
 sentence, screenshots of the failing run, the route and its log, and no spec or verdict. It fixed the
