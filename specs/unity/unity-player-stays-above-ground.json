@@ -1,0 +1,27 @@
+{
+  "format": "expectrail.test-spec/v0",
+  "id": "unity-player-stays-above-ground",
+  "instruction": "The player never falls through the ground.",
+  "objects": {
+    "player": {
+      "prompt": "green cartoon alien"
+    },
+    "ground": {
+      "prompt": "grass-topped ground"
+    }
+  },
+  "assertion": {
+    "type": "never-crosses",
+    "object": "player",
+    "boundary": {
+      "relativeTo": "ground",
+      "edge": "top",
+      "side": "above",
+      "tolerancePx": 4
+    }
+  },
+  "window": {
+    "fromFrame": 0,
+    "toFrame": 199
+  }
+}

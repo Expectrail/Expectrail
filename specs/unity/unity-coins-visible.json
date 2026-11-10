@@ -1,0 +1,18 @@
+{
+  "format": "expectrail.test-spec/v0",
+  "id": "unity-coins-visible",
+  "instruction": "The coins are visible.",
+  "objects": {
+    "coin": {
+      "prompt": "coin"
+    }
+  },
+  "assertion": {
+    "type": "visible",
+    "object": "coin"
+  },
+  "window": {
+    "fromFrame": 0,
+    "toFrame": 199
+  }
+}
