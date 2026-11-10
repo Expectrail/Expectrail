@@ -429,6 +429,12 @@ jobs:
         with:
           pattern: unity-smoke-replay-*
           path: runs/unity/cross
+      - name: Pillow, so every differing frame is measured
+        # Ubuntu's own package, not PyPI: the comparison fails rather than sample without it.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends python3-pil
+          python3 -c "from harness.unity import png_pixels; assert png_pixels.fast(), 'Pillow did not import'"
       - name: The two runners replayed the route identically
         run: |
           set +e
@@ -446,6 +452,6 @@ jobs:
             echo "::notice title=Unity cross-runner::$out"
           else
             echo "::error title=Unity cross-runner::$out"
-            python3 -c "import json; d = json.load(open('runs/unity/cross/diff.json')); [print(k, json.dumps(v['first'], default=str)[:600]) for k, v in d['rows']['fields'].items()]; [print('frame', i, m['differ'], 'of', m['pixels'], 'pixels differ, largest gap', m['largest']) for i, m in sorted((d.get('pixels') or {}).get('frames', {}).items(), key=lambda kv: int(kv[0]))]"
+            python3 -c "import json; d = json.load(open('runs/unity/cross/diff.json')); [print(k, json.dumps(v['first'], default=str)[:600]) for k, v in d['rows']['fields'].items()]; p = d.get('pixels') or {}; print('frames beyond tolerance:', p.get('beyondTolerance')); [print('frame', i, m['differ'], 'of', m['pixels'], 'pixels differ, largest gap', m['largest']) for i, m in sorted(p.get('frames', {}).items(), key=lambda kv: int(kv[0])) if int(i) in (p.get('beyondTolerance') or [])][:20]"
             exit 1
           fi

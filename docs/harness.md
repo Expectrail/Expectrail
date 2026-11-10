@@ -230,8 +230,12 @@ prompt, so the Unity account the secrets belong to has two-factor sign-in off.
   failed canary does not hide the replays.
 - **Cross-runner.** A third job compares the two copies with `python3 -m harness.unity.trace_diff`:
   each trace field's first differing tick, count and largest gap; the level; the settle; and the
-  frames, a sample of the differing ones measured pixel by pixel. It fails on any difference except
-  the frame of the tick a real-time fade starts on, when both copies saw the same fade starts. Run 14
+  frames, every differing one measured pixel by pixel (with Ubuntu's `python3-pil`; the job fails
+  rather than sample without it). It fails on any trace difference. A differing frame passes only
+  if it is the frame of the tick a real-time fade starts on, when both copies saw the same fade
+  starts, or if it is within tolerance: no channel more than 2 of 255 apart and at most 0.5% of its
+  pixels different. The tolerance comes from run 15 (42746239419, an EPYC 9V74 and a Xeon 8573C):
+  every frame differed, in 1,557 to 2,351 of 1,536,000 pixels (about 0.15%), by 1 or 2 of 255. Run 14
   (42738742696, attempt 2, an EPYC 9V74 and an EPYC 7763) passed: identical traces, 199 of 200
   frames identical, frame 113 (a fade's first tick) at most 8 of 255 apart in a channel. Separate
   runners need not be different CPUs; each copy records its own.
@@ -312,7 +316,10 @@ EXPECTRAIL_UNITY_PLAYER=runs/unity/harness python3 -m harness.replay_check --ada
 - **Pixels across CPUs.** llvmpipe generates code for the CPU it runs on, and `LP_NATIVE_VECTOR_WIDTH=128`
   alone no longer keeps AVX and FMA out; run 12 (42730554068) drew different pixels from frame 0 on an
   AMD and an Intel runner. `GALLIUM_OVERRIDE_CPU_CAPS=sse4.1` gives every runner one instruction set.
-  Different AMD models have drawn identical frames with it; it has not yet run on an Intel runner.
+  Different AMD models have drawn identical frames with it. An AMD and an Intel runner still differ,
+  in about 0.15% of each frame's pixels by 1 or 2 of 255 (run 15, 42746239419); run 12 measured no
+  pixels, so how much of the difference the pin removed is not known. The cross-runner job's
+  tolerance covers this; the trace, which the specs read, was identical.
 
 The checks in `agents/observations.py` and `agents/gameplay.py` read these fields, but their constants
 (the robot's feet 13.25 px below its origin, its 60 px height, the coin's size, the drawn floor's
