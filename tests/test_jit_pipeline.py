@@ -320,3 +320,26 @@ class ProposeCommandTest(unittest.TestCase):
         job = text[text.index("  propose:"):text.index("  replay:")]
         self.assertIn('--budget-usd "$BUDGET"', job)
         self.assertIn("environment: main-only", job)
+
+
+class SparkTimeoutTest(unittest.TestCase):
+    def test_the_live_call_waits_longer_than_the_spec_writers_default(self):
+        from unittest import mock
+
+        from expectrail import spec_writer
+        from expectrail.jit import intent
+
+        seen = {}
+
+        def fake(body, timeout=120):
+            seen["timeout"] = timeout
+            raise TimeoutError("test")
+
+        with mock.patch.object(spec_writer, "http_transport", fake):
+            propose = intent.spark_intent()
+            profile = load_strict(PROFILE, "mechanics-profile") if isinstance(PROFILE, Path) else PROFILE
+            dmap = {"files": [], "claims": []}
+            with self.assertRaises(intent.IntentUnavailable):
+                propose("report", "", dmap, profile, [])
+        self.assertEqual(seen["timeout"], intent.SPARK_TIMEOUT_S)
+        self.assertGreaterEqual(intent.SPARK_TIMEOUT_S, 300)

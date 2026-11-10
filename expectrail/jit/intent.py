@@ -31,6 +31,10 @@ MAX_CANDIDATES = 8
 # Muse Spark reasons before it answers; public runs used 10,000 to 22,000 completion tokens a call
 # (docs/discovery.md). The budget reserves this many before each call.
 RESERVED_COMPLETION_TOKENS = 30000
+# How long the one Muse Spark call may take. The first live run (jit.yml run 42904922959) timed out
+# at the spec writer's 120 s default with a 2.3k-token prompt; an answer of up to
+# RESERVED_COMPLETION_TOKENS takes longer than that. The propose job's own limit is 15 minutes.
+SPARK_TIMEOUT_S = 600
 CHARS_PER_TOKEN = 3.5
 
 SYSTEM = """You write checks for one proposed change to a 2D platformer. You are given a bug report, the \
@@ -129,7 +133,10 @@ def parse_answer(content, profile: dict, existing_probe_ids: set[str]) -> tuple[
 def spark_intent(transport=None, model: str = MODEL):
     """An intent callable for run.generate(): one Muse Spark call on the Meta Model API."""
     if transport is None:
-        from expectrail.spec_writer import http_transport as transport
+        from expectrail.spec_writer import http_transport
+
+        def transport(body: dict) -> dict:
+            return http_transport(body, timeout=SPARK_TIMEOUT_S)
 
     def propose(report: str, patch_text: str, dmap: dict, profile: dict, probes: list[dict]) -> dict:
         user = prompt(report, patch_text, dmap, profile, probes)
