@@ -180,8 +180,8 @@ class LaneInventoryTest(unittest.TestCase):
 
     def test_every_job_with_a_model_key_is_a_declared_agent_or_perception_only(self):
         self.assertEqual(self.problems(), [])
-        # 16, plus the two generated-checks proposers (jit.yml#propose, expectrail-verify.yml#jit-propose).
-        self.assertEqual(len(self.declared), 18)
+        # 16, plus the generated-checks proposer (jit.yml#propose, dispatch from main only).
+        self.assertEqual(len(self.declared), 17)
         for job in self.audit.PERCEPTION:
             self.assertIn(job, self.models, f"{job} no longer holds a model key; drop it from PERCEPTION")
 

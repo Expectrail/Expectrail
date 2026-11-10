@@ -111,7 +111,9 @@ jobs:
           retention-days: 14
 
   propose:
-    # Holds the model key. Reads the patch and the report as text; replays nothing.
+    # Holds the model key. Reads the patch and the report as text; replays nothing. In main-only (#223):
+    # only a dispatch from main can reach the key.
+    environment: main-only
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'live'
     runs-on: ubuntu-24.04
     timeout-minutes: 15

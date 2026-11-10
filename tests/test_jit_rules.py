@@ -277,3 +277,34 @@ class Rule6RetiredPins(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DiffGamesSymlinkTest(unittest.TestCase):
+    """diff-games never follows a symbolic link in the pull request's game (review of #231)."""
+
+    def test_a_link_is_named_and_never_read(self):
+        import os
+        import tempfile
+        from pathlib import Path
+
+        from expectrail.jit.cli import diff_games
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            secret = root / "outside.txt"
+            secret.write_text("MODEL_API_KEY=sk-SECRET-DEMO\n")
+            base, head = root / "base", root / "head"
+            for game in (base, head):
+                (game / "player").mkdir(parents=True)
+                (game / "player" / "player.gd").write_text("var speed = 1\n")
+            (head / "player" / "player.gd").write_text("var speed = 2\n")
+            os.symlink(secret, head / "notes.txt")
+            os.symlink(root, head / "everything")
+            patch = diff_games(base, head)
+            self.assertNotIn("sk-SECRET-DEMO", patch)
+            self.assertIn("# symbolic link, not read: notes.txt", patch)
+            self.assertIn("# symbolic link, not read: everything", patch)
+            self.assertIn("+var speed = 2", patch)
+            # The same link on both sides is no change.
+            os.symlink(secret, base / "notes.txt")
+            self.assertNotIn("notes.txt", diff_games(base, head))

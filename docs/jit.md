@@ -48,7 +48,7 @@ jit-run/v1 record, report, and an advisory block in the gate comment and the rev
 | Record | [`contracts/jit-run.v1.schema.json`](../contracts/jit-run.v1.schema.json) | One per change: digests of the inputs, model and prompt; settings; the diff map; every proposed check and probe; every near miss; each check's reference runs, kills, candidate runs and outcome; the catches with their label; spend with the prices used. `advisory` is always true and there is no decision field. |
 | CLI | [`cli.py`](../expectrail/jit/cli.py) | `run`, `propose`, `report`, `gate-summary`, `diff-games`. |
 | CI | [`.github/workflows/jit.yml`](../.github/workflows/jit.yml) | Rehearsal on pull requests that touch this code; `live` by dispatch. |
-| Gate | [`expectrail-verify.yml`](../.github/workflows/expectrail-verify.yml), [`gate/`](../expectrail/gate) | Opt-in: the repository variable `EXPECTRAIL_JIT` set to `1`. |
+| Gate | [`gate/`](../expectrail/gate), the verify action's `generated-checks` input | Reads and shows a generated-checks block; nothing in a pull request's run produces one yet (below). |
 
 ### Valid, catch, strong, weak
 
@@ -89,25 +89,26 @@ fake model; they show the rules are wired, not how often the generator catches a
 
 ## In the gate
 
-Off unless the repository variable `EXPECTRAIL_JIT` is `1`, and only for pull requests from this
-repository (a fork's pull request gets no secrets).
+The gate can show a generated-checks block: `run_gate(generated_checks=...)`, the verify action's
+optional `generated-checks` input and `gate-summary` read it after the decision is made, with the
+same strict reader as the rest of the record (size cap, strict JSON, closed schema, counts recomputed
+from rows). A block it cannot read becomes "no generated checks"; it never fails the gate. The
+comment shows a short section headed "Generated checks (advisory, they never accept or reject)" and
+the review page a table, both apart from the checks that decide.
 
-The model key and the pull request's code never meet. `jit-propose` holds the key, runs Expectrail's
-code from the **base** commit, checks the pull request out as files and diffs its game against the
-base's as text (`diff-games`), then calls the model once (`propose`). It runs nothing from the pull
-request. The `verify` job, which runs the pull request's code and has no secret, replays that
-proposal against the base commit's game (`run --proposal`), re-checking it as untrusted data: it must
-be for this exact patch and every check must validate again. It writes the gate block
-(`gate-summary`) and passes it to the verify action's `generated-checks` input.
+**Nothing in a pull request's run produces that block, and nothing proposes checks there.** The first
+version of this work did, in a `jit-propose` job in `expectrail-verify.yml` that held the model key,
+ran Expectrail's code from the base commit and read the pull request's game as text. That cannot be
+made safe on `pull_request`: such a run uses the pull request's own copy of the workflow, so the
+pull request's author can edit the job to print the key, whatever the job was written to do. Since
+#223 every model key lives in the `main-only` environment, which a pull request cannot deploy to, so
+the job would also have had no key. It was removed before merging, and `tests/test_ci_gate.py` keeps
+`expectrail-verify.yml` free of secrets.
 
-The gate reads that block after the decision is made, with the same strict reader as the rest of the
-record (size cap, strict JSON, closed schema, counts recomputed from rows). A block it cannot read
-becomes "no generated checks"; it never fails the gate. The comment shows a short section headed
-"Generated checks (advisory, they never accept or reject)" and the review page a table, both apart
-from the checks that decide.
-
-This is the one job in `expectrail-verify.yml` that holds a secret. `tests/test_ci_gate.py` keeps it
-that way and checks that the job runs nothing from the pull request's checkout.
+Proposing checks for a pull request safely needs a workflow that runs from main, in `main-only`,
+and reads the pull request only as data: a `workflow_run` workflow, or a reviewed
+`pull_request_target` exception such as `private-scan`. That is not built. Until it is, generated
+checks are proposed by dispatching `jit.yml` from main (`live`).
 
 ## Run it
 

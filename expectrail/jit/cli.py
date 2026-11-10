@@ -60,12 +60,30 @@ def diff_games(base: Path, head: Path) -> str:
     caches (``.godot``) are left out; a binary file that changed is named in a comment line."""
     import difflib
 
-    def files(root: Path) -> dict[str, Path]:
-        return {p.relative_to(root).as_posix(): p for p in sorted(root.rglob("*"))
-                if p.is_file() and ".godot" not in p.relative_to(root).parts}
+    import os
 
-    a, b = files(base), files(head)
-    out: list[str] = []
+    def files(root: Path, linked: dict[str, str]) -> dict[str, Path]:
+        # A symlink is never followed: a pull request's game is untrusted, and a link to, say,
+        # /proc/self/environ would put whatever the reading process holds into the patch, which goes
+        # to the model and into an artifact. A link (or anything under a linked folder) is named, not read.
+        found: dict[str, Path] = {}
+        for p in sorted(root.rglob("*")):
+            rel = p.relative_to(root)
+            if ".godot" in rel.parts:
+                continue
+            if any((root.joinpath(*rel.parts[:k])).is_symlink() for k in range(1, len(rel.parts) + 1)):
+                linked[rel.as_posix()] = os.readlink(p) if p.is_symlink() else "(under a linked folder)"
+                continue
+            if p.is_file():
+                found[rel.as_posix()] = p
+        return found
+
+    links_a: dict[str, str] = {}
+    links_b: dict[str, str] = {}
+    a, b = files(base, links_a), files(head, links_b)
+    # Only links that were added, removed or pointed elsewhere are named; an unchanged link is no change.
+    out: list[str] = [f"# symbolic link, not read: {rel}\n" for rel in sorted(set(links_a) | set(links_b))
+                      if links_a.get(rel) != links_b.get(rel)]
     for rel in sorted(set(a) | set(b)):
         old = a[rel].read_bytes() if rel in a else b""
         new = b[rel].read_bytes() if rel in b else b""
