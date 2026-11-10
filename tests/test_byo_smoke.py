@@ -77,6 +77,12 @@ class WorkflowTest(unittest.TestCase):
         guard = self.doc["jobs"]["byo-smoke"]["if"]
         self.assertIn("head.repo.full_name == github.repository", guard)
 
+    def test_the_key_bearing_job_runs_in_an_environment(self):
+        """The approval gate for a pull request. The rules live in repository settings and the job
+        cannot read them, so this only pins that the environment is still declared: removing the
+        line would silently drop the gate."""
+        self.assertEqual(self.doc["jobs"]["byo-smoke"]["environment"], "provider-keys")
+
 
 class ProbeTest(unittest.TestCase):
     def test_a_provider_with_no_key_is_skipped_not_failed(self):
