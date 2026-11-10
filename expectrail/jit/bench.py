@@ -12,7 +12,7 @@ its catches are counted, because that is what the bench measures.
 - A correct fix is **falsely caught** by any catch, strong or weak.
 - A case with no complete record is **no result**, never a pass.
 
-The bar lives in bench/jit/known/preregistration.json, signed off before the bench runs; the workflow
+The bar lives in bench/jit/known/preregistration.json, signed off before the bench runs; jit.yml's bench mode
 refuses an unsigned registration or one whose pinned files have changed. The air-jump bug is marked
 ``tunedOn``: the measurements and the left-walk probes were designed while looking at it, so the bar
 also asks for catches on the bugs nobody tuned on.
@@ -30,7 +30,7 @@ CASES = REPO / "bench" / "jit" / "known" / "cases.json"
 PREREG = REPO / "bench" / "jit" / "known" / "preregistration.json"
 PINNED = ["expectrail/jit/*.py", "expectrail/discovery/probes.py", "expectrail/discovery/route_compiler.py",
           "expectrail/discovery/planner.py", "expectrail/trace/*.py", "harness/*.py", "harness/*.sh",
-          ".github/workflows/jit.yml", ".github/workflows/jit-bench.yml", "contracts/jit-run.v1.schema.json",
+          ".github/workflows/jit.yml", "contracts/jit-run.v1.schema.json",
           "contracts/trace-spec.v1.schema.json", "discovery/platformer.profile.json",
           "bench/jit/known/**/*.patch", "bench/jit/known/**/*.txt", "bench/jit/known/cases.json",
           "bugs/reported/*.patch"]

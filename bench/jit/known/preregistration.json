@@ -14,11 +14,11 @@
   "maxSpendUsdPerCase": 2.0
  },
  "decision": "Meets the bar: blind set 3 runs with both arms (approved checks only; plus generated checks). Below the bar: arm B does not run on blind set 3 until a later registration's bench meets its bar; the result is reported as it is.",
- "runs": "One dispatch of jit-bench.yml from main, at a commit where every pin below holds. A rerun only for an infrastructure failure (a runner or a GitHub outage), reported with the reason; never for a result.",
+ "runs": "One dispatch of jit.yml in bench mode from main, at a commit where every pin below holds. A rerun only for an infrastructure failure (a runner or a GitHub outage), reported with the reason; never for a result.",
  "pins": {
   "expectrail/jit/__init__.py": "b7b71f3de71a1fa84623ca9324b666bae2d3600b231b5e546bbd8a1f766efacf",
   "expectrail/jit/assess.py": "9c9ec38ebbad0492f3e642cc20414bb5e436977fa33e9fd2db5abc208a34482a",
-  "expectrail/jit/bench.py": "96b7e96a5fca5c97fe0d793bfd7392084c4ee98a2daeac07e606b23ac91cdbd1",
+  "expectrail/jit/bench.py": "4818707e7fb9cbb876079bd2359a850d358165d792618a2518573f817b4ee74b",
   "expectrail/jit/cli.py": "c32e8604a8e4bbab99d4822aa4b42744753e09be3629a31121f43a61e484056f",
   "expectrail/jit/diff_map.py": "793445cde6300d194f609f0ee3c8c1266b7aafa1d25f76dbc003bb1e9cfbdd21",
   "expectrail/jit/dodgy.py": "2c484720f8d111ab0a425bec23b74e990ddb69d78b305306305c71d9193c8d6b",
@@ -41,8 +41,7 @@
   "harness/run.py": "67182c77eca30bd8742f6ee79b561854fd050e96aeaba1e0d152b639b4941815",
   "harness/docker_run.sh": "766e69bd5c2f6ae1a2a386e0661c0044ab317e8c85ed737d26176420d8ee0999",
   "harness/get_godot.sh": "aa96c2ca04cc6bcb8e22662913649a76b0577b15af2bff9f2e8906275c6f8ea9",
-  ".github/workflows/jit.yml": "722ae88c82b89965bb865973310dc06a707d0f48042cad8c6e2cacb484baa97d",
-  ".github/workflows/jit-bench.yml": "2259f058e20a5b7d2101df6272daf7a7e5db40e0fdd8e56ef4a15a83f1333751",
+  ".github/workflows/jit.yml": "f65082f14351389e78604049a9241cae60ea7173d2cf1b8989c7aa7c7a6f87c6",
   "contracts/jit-run.v1.schema.json": "cd186607aba860ac667f52c0ae02fce54008530749009035251fea73c3793572",
   "contracts/trace-spec.v1.schema.json": "8c20be0ec6844fb1c6523d6affab855b764e4e07cdfb6e8fa0a94c27d6d45bc6",
   "discovery/platformer.profile.json": "3a75e19895cfbee79d93f7135427fb47e38d3e8d64c5025092860554ed29c505",
@@ -65,5 +64,16 @@
   "bugs/reported/gun-cooldown.patch": "df744001c53910625c520667e40bd7465de5ff026fc9e22420aefb50795fa6cf",
   "bugs/reported/platform-z-order-pr927.patch": "fd2fbfcedc3809ea208329fffe9bcd46f196ea81a7f493bbeb86c6f507256d7b",
   "game/platformer/**": "3ac35172fce9bfc031b5fcf4076b9393c1b28ff803d1469d7bf93eeab015e7fb"
- }
+ },
+ "amendments": [
+  {
+   "date": "2026-11-10",
+   "pins": [
+    ".github/workflows/jit-bench.yml",
+    ".github/workflows/jit.yml",
+    "expectrail/jit/bench.py"
+   ],
+   "why": "Infrastructure, before any case reached the model: bench run 42923427104 (jit-bench.yml calling jit.yml) stopped at all 8 propose jobs with no model key, because a called workflow does not see the main-only environment's secrets and the repository forbids passing every secret through. The bench now runs inside jit.yml as a bench mode, each job once per case, so the keyed jobs stay in main-only; jit-bench.yml is removed, and bench.py stops pinning it. The cases, the scoring and the bar are unchanged."
+  }
+ ]
 }

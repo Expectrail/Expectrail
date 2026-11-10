@@ -132,15 +132,20 @@ class Registration(unittest.TestCase):
 
 
 class Workflow(unittest.TestCase):
-    def test_the_bench_runs_from_main_checks_the_registration_and_calls_the_live_path(self):
-        text = (REPO / ".github/workflows/jit-bench.yml").read_text()
-        self.assertIn('[[ "$GITHUB_REF" == "refs/heads/main" ]]', text)
-        self.assertIn("expectrail.jit.cli bench-check", text)
-        self.assertIn("uses: ./.github/workflows/jit.yml", text)
-        self.assertNotIn("secrets", text)
-        self.assertNotIn("pull_request", text)
-        self.assertIn("workflow_call:", (REPO / ".github/workflows/jit.yml").read_text())
+    def test_bench_mode_runs_from_main_checks_the_registration_and_keys_stay_in_main_only(self):
+        import yaml
 
+        text = (REPO / ".github/workflows/jit.yml").read_text()
+        plan = text[text.index("  plan:"):text.index("  measure:")]
+        self.assertIn('[[ "$GITHUB_REF" == "refs/heads/main" ]]', plan)
+        self.assertIn("expectrail.jit.cli bench-check", plan)
+        self.assertNotIn("workflow_call", text)  # a called workflow would not see main-only's keys
+        jobs = yaml.safe_load(text)["jobs"]
+        for name, job in jobs.items():
+            if "secrets." in yaml.safe_dump(job):
+                self.assertEqual(job.get("environment"), "main-only", name)
+        self.assertIn("bench-score", yaml.safe_dump(jobs["score"]))
+        self.assertFalse((REPO / ".github/workflows/jit-bench.yml").exists())
 
 if __name__ == "__main__":
     unittest.main()
