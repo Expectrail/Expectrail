@@ -79,6 +79,125 @@ def ground_boxes(rows: list[dict], i: int, frame_size: tuple[int, int] = FRAME_S
     return [{"box": [0.0, round(y, 3), float(width), float(max(height, y + 1))], "score": 1.0, "source": "engine"}]
 
 
+# The harness's ground search (harness/unity/maps/unity-platformer.json, "ground"; Recorder.GroundUnder):
+# from SINK_WINDOW px above the player's origin, in its column and BODY_HALF_WIDTH px either side, the
+# first solid tile surface at or below that point, within SEARCH_CELLS cells; the highest of the three.
+SINK_WINDOW = 64.0
+BODY_HALF_WIDTH = 20.0
+SEARCH_CELLS = 16
+CELL_PX = 128.0
+
+
+def load_ground_config(map_path: Path) -> dict:
+    """The ground search's constants from a harness map, so the reference uses the harness's own."""
+    doc = json.loads(Path(map_path).read_text(encoding="utf-8"))
+    ground, ppu = doc["ground"], float(doc.get("pixelsPerUnit", CELL_PX))
+    return {"window": float(ground["sinkWindowPx"]), "half": float(ground["bodyHalfWidthPx"]),
+            "depth": float(ground["searchCells"]) * ppu}
+
+
+def _crossings(points: list, x: float) -> list[float]:
+    """The y of every non-vertical edge of a closed path at x."""
+    ys = []
+    n = len(points)
+    for i in range(n):
+        (ax, ay), (bx, by) = points[i], points[(i + 1) % n]
+        if ax == bx or x < min(ax, bx) or x > max(ax, bx):
+            continue
+        ys.append(ay + (by - ay) * (x - ax) / (bx - ax))
+    return ys
+
+
+def _inside(points: list, x: float, y: float) -> bool:
+    """Whether (x, y) is inside a closed path (even-odd, a ray towards +x)."""
+    inside = False
+    n = len(points)
+    for i in range(n):
+        (ax, ay), (bx, by) = points[i], points[(i + 1) % n]
+        if (ay > y) != (by > y) and x < ax + (bx - ax) * (y - ay) / (by - ay):
+            inside = not inside
+    return inside
+
+
+def _solid(surfaces: list, x: float, y: float) -> bool:
+    return any(_inside(points, x, y) for points in surfaces)
+
+
+def column_ground(surfaces: list, x: float, start: float, depth: float, eps: float = 0.01) -> float | None:
+    """In one column, the ground the harness's tile walk finds from ``start`` (y down): the first top
+    surface (solid just below it, not just above) at or below ``start`` and within ``depth``. When
+    ``start`` is already inside solid ground, the top of that solid, so a buried body is not given a
+    floor beneath it."""
+    ys = sorted({round(y, 4) for points in surfaces for y in _crossings(points, x)})
+    if _solid(surfaces, x, start):
+        above = [y for y in ys if y <= start and _solid(surfaces, x, y + eps) and not _solid(surfaces, x, y - eps)]
+        return above[-1] if above else None
+    for y in ys:
+        if y < start or y > start + depth:
+            continue
+        if _solid(surfaces, x, y + eps) and not _solid(surfaces, x, y - eps):
+            return y
+    return None
+
+
+def reference_ground(surfaces: list, x: float, y: float, config: dict | None = None) -> float | None:
+    """World y (down) of the ground under a player whose origin is at (x, y), from level surfaces: the
+    highest of the three columns' grounds, as the harness finds it."""
+    c = config or {"window": SINK_WINDOW, "half": BODY_HALF_WIDTH, "depth": SEARCH_CELLS * CELL_PX}
+    found = [g for dx in (-c["half"], 0.0, c["half"])
+             if (g := column_ground(surfaces, x + dx, y - c["window"], c["depth"])) is not None]
+    return min(found) if found else None
+
+
+def with_reference_ground(trace: dict, surfaces: list, config: dict | None = None) -> dict:
+    """The trace with every row's ground recomputed from trusted (the clean game's) level surfaces.
+
+    A candidate may edit the level, so the ground its harness logs is the ground it shipped; judging
+    it against the clean level means a fix cannot move the line it is measured by. SAM cannot check
+    the ground either (docs/sam.md, docs/unity.md), so on Unity this is the only guard."""
+    out = dict(trace)
+    rows = []
+    for row in trace.get("rows") or []:
+        row = dict(row)
+        player = row.get("player")
+        ground = reference_ground(surfaces, float(player[0]), float(player[1]), config) if player is not None else None
+        if ground is None:
+            row.pop("ground", None)
+        else:
+            row["ground"] = round(ground, 3)
+        rows.append(row)
+    out["rows"] = rows
+    out["groundReference"] = "clean level"
+    return out
+
+
+def reference_agreement(trace: dict, config: dict | None = None) -> dict:
+    """How the reference ground, from the trace's own surfaces, agrees with the ground its harness
+    logged: on a clean trace they must agree on every row, or the reference is not the harness's."""
+    surfaces = trace.get("levelSurfaces") or []
+    both = within = only_logged = only_reference = 0
+    worst = 0.0
+    for row in trace.get("rows") or []:
+        player = row.get("player")
+        if player is None:
+            continue
+        ref = reference_ground(surfaces, float(player[0]), float(player[1]), config)
+        logged = row.get("ground")
+        if ref is None and logged is None:
+            continue
+        if ref is None:
+            only_logged += 1
+        elif logged is None:
+            only_reference += 1
+        else:
+            both += 1
+            gap = abs(ref - float(logged))
+            worst = max(worst, gap)
+            within += gap <= 1.0
+    return {"both": both, "within1px": within, "largestGap": round(worst, 3),
+            "onlyLogged": only_logged, "onlyReference": only_reference}
+
+
 def _boxes(rows: list[dict], i: int, name: str, frame_size: tuple[int, int]) -> list[dict]:
     if name == GROUND:
         return ground_boxes(rows, i, frame_size)
@@ -208,8 +327,18 @@ def main(argv: list[str] | None = None) -> int:
     cal = sub.add_parser("calibrate", help="measure the player, ground and coin boxes on a trace")
     cal.add_argument("trace", type=Path)
     cal.add_argument("--json", action="store_true", help="print the measurements as JSON")
+    ref = sub.add_parser("reference", help="does the clean-level ground agree with the harness's on a clean trace")
+    ref.add_argument("trace", type=Path)
+    ref.add_argument("--map", type=Path, help="the harness map whose ground constants to use")
     args = ap.parse_args(argv)
-    c = calibrate(json.loads(args.trace.read_text(encoding="utf-8")))
+    trace = json.loads(args.trace.read_text(encoding="utf-8"))
+    if args.command == "reference":
+        a = reference_agreement(trace, load_ground_config(args.map) if args.map else None)
+        print(f"reference ground vs the harness's: both on {a['both']} rows, within 1 px on {a['within1px']}, "
+              f"largest gap {a['largestGap']} px; only the harness's on {a['onlyLogged']}, "
+              f"only the reference on {a['onlyReference']}")
+        return 0 if a["within1px"] == a["both"] and not a["onlyLogged"] and not a["onlyReference"] else 1
+    c = calibrate(trace)
     print(json.dumps(c, indent=1) if args.json else calibration_line(c))
     return 0
 
