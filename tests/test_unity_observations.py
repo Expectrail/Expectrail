@@ -98,7 +98,8 @@ class UnityObservations(unittest.TestCase):
         self.assertEqual(c["playerVisible"], 3)
         self.assertEqual(c["onFloorBottomMinusGround"], {"n": 2, "min": 0.0, "median": 1.0, "max": 2.0})
         self.assertEqual(c["airborneBottomMinusGround"]["min"], -50.0)
-        self.assertEqual(c["coinsVisiblePerFrame"]["max"], 1.0)
+        self.assertEqual(c["onFloorOffGround"]["rows"], 0)
+
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "trace.json"
             path.write_text(json.dumps(_trace(rows)))
@@ -106,6 +107,16 @@ class UnityObservations(unittest.TestCase):
             with redirect_stdout(out):
                 self.assertEqual(uo.main(["calibrate", str(path)]), 0)
             self.assertIn("on the floor 0.0/1.0/2.0 (n 2)", out.getvalue())
+
+
+    def test_calibrate_counts_floor_rows_standing_off_the_ground_tilemap(self):
+        rows = [_row(0), _row(1, bottom=600.0), _row(2, bottom=600.0), _row(3), _row(4, bottom=500.0)]
+        c = uo.calibrate(_trace(rows))
+        self.assertEqual(c["onFloorOffGround"]["rows"], 3)
+        self.assertEqual(c["onFloorOffGround"]["spans"], [[1, 2], [4, 4]])
+        self.assertEqual(c["onFloorOffGround"]["onGround"]["max"], 0.0)
+        self.assertIn("on 3 rows (ticks 1-2, 4)", uo.calibration_line(c))
+        self.assertEqual(c["coinsVisiblePerFrame"]["max"], 1.0)
 
 
 if __name__ == "__main__":
