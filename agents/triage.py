@@ -81,6 +81,17 @@ def call_byo(prompt: str, *, provider: str | None = None, model: str | None = No
     return extract_message_text(cfg, raw), f"{cfg.provider}/{cfg.model}"
 
 
+def _warn_fallback(attempted: str, exc: BaseException) -> None:
+    """Say on stdout why triage fell back, so a CI log carries the reason.
+
+    The reason used to reach only bug-report.md, which in CI means downloading the run's artifact
+    to find out whether a live run failed on the key, the model or the request. The loop refuses a
+    fallback either way (agents/loop.py), so this changes no decision; it only names the cause.
+    """
+    reason = " ".join(str(exc).split())[:400]
+    print(f"::warning title=Triage fell back to the offline report::{attempted} failed: {reason}")
+
+
 def triage(
     *,
     spec: dict,
@@ -119,6 +130,7 @@ def triage(
         except (RuntimeError, urllib.error.URLError, KeyError, TimeoutError) as exc:
             report = prompt + f"\n\n(BYO triage call failed: {exc}; using offline report.)"
             source = "offline-fallback"
+            _warn_fallback(triage_model, exc)
     else:
         try:
             report = call_wonder(
@@ -130,6 +142,7 @@ def triage(
         except (urllib.error.URLError, KeyError, TimeoutError) as exc:
             report = prompt + f"\n\n(Wonder call failed: {exc}; using offline report.)"
             source = "offline-fallback"
+            _warn_fallback(WONDER_MODEL, exc)
 
     (out / "bug-report.md").write_text(report + "\n", encoding="utf-8")
     triage_meta = {"source": source, "model": triage_model}

@@ -89,6 +89,32 @@ class TestBYOProviders(unittest.TestCase):
             self.assertEqual(user_blocks[0]["source"]["data"], "AAAA")
             self.assertEqual(user_blocks[1]["text"], "Find the robot.")
 
+    def test_anthropic_is_never_sent_a_temperature(self) -> None:
+        """The Messages API rejects it outright on current models:
+
+            HTTP 400 invalid_request_error: `temperature` is deprecated for this model
+
+        Every caller asks for 0.0 (agents/triage.py, agents/byo_fixer.py, agents/byo_vision.py,
+        expectrail/spec_writer.py), so sending it failed every anthropic call, not one of them.
+        """
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-123"}, clear=True):
+            cfg = resolve_provider(role="TRIAGE")
+            messages = [{"role": "user", "content": "why did it fall through?"}]
+            for requested in (0.0, 0.7, None):
+                _, _, payload = build_http_payload(cfg, messages, temperature=requested)
+                self.assertNotIn("temperature", payload, f"temperature={requested!r} reached anthropic")
+            # and the rest of the payload is still built
+            self.assertEqual(payload["model"], cfg.model)
+            self.assertEqual(payload["messages"], [{"role": "user", "content": "why did it fall through?"}])
+
+    def test_an_openai_compatible_provider_still_gets_the_temperature(self) -> None:
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-123"}, clear=True):
+            cfg = resolve_provider(role="TRIAGE")
+            _, _, payload = build_http_payload(cfg, [{"role": "user", "content": "hi"}], temperature=0.0)
+            self.assertEqual(payload["temperature"], 0.0)
+            _, _, payload = build_http_payload(cfg, [{"role": "user", "content": "hi"}], temperature=None)
+            self.assertNotIn("temperature", payload)
+
     def test_chat_completion_normalizes_anthropic_response(self) -> None:
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-123"}, clear=True):
             cfg = resolve_provider(role="SPEC")

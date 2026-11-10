@@ -118,6 +118,29 @@ class TriageTest(unittest.TestCase):
         self.assertEqual(meta["source"], "ollama/qwen")
         self.assertIn("byo report", report)
 
+    def test_a_failed_byo_call_says_why_on_stdout_as_well_as_in_the_report(self):
+        """The loop refuses a fallback either way; a CI log should not need the run's artifact to
+        say whether the key, the model or the request was at fault."""
+        import contextlib
+        import io
+
+        buf = io.StringIO()
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.dict(os.environ, {"EXPECTRAIL_LLM_PROVIDER": "anthropic",
+                                             "ANTHROPIC_API_KEY": "a"}, clear=True), \
+                mock.patch("agents.triage.call_byo",
+                           side_effect=RuntimeError("HTTP 400 from anthropic: `temperature` is deprecated")), \
+                contextlib.redirect_stdout(buf):
+            self._run(Path(tmp))
+            meta = json.loads((Path(tmp) / "triage.json").read_text())
+            report = (Path(tmp) / "bug-report.md").read_text()
+        self.assertEqual(meta["source"], "offline-fallback")
+        self.assertIn("temperature` is deprecated", report)
+        printed = buf.getvalue()
+        self.assertIn("::warning title=Triage fell back to the offline report::", printed)
+        self.assertIn("temperature` is deprecated", printed)
+        self.assertEqual(len(printed.strip().splitlines()), 1, printed)  # one line: annotations are per-line
+
     def test_offline_stays_offline_with_byo_configured(self):
         with tempfile.TemporaryDirectory() as tmp, \
                 mock.patch.dict(os.environ, {"EXPECTRAIL_LLM_PROVIDER": "ollama"}, clear=True), \

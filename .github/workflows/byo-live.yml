@@ -72,7 +72,9 @@ jobs:
       - name: Summary
         if: always()
         run: |
-          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          # tee, not >>: the step summary is not in the job log and the artifact needs downloading,
+          # so a failed run could not be read from the log alone.
+          python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
           import json
           from pathlib import Path
           root = Path("runs/byo-live")
