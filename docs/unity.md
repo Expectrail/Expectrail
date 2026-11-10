@@ -70,13 +70,22 @@ The windows cover the whole smoke route, 200 frames.
 **Prompts.** The prompts are for SAM in step 3. "green cartoon alien": the player prefab's default
 animator is the green alien's, and the colour is otherwise a menu choice the harness does not make;
 no one has yet checked it against a frame. "coin": the level has bronze, silver and gold coins.
-"grass-topped ground": the ground tiles (`spritesheet_ground.png`, grass). Step 3 checks each prompt
-against clean frames before any score is set.
+Step 3 checks both against clean frames before any score is set.
+
+**SAM will not judge the ground.** SAM 3.1 does not see the ground in the Godot game's art: it
+segments objects, not surfaces, and no ground prompt found anything ([sam.md](sam.md)). A SAM probe
+on Nov 10 (run 42867454782) again found the player in 13 of 13 frames and the ground in 0 of 13.
+So on Unity, as on Godot, the ground line comes from the engine, never from SAM: with SAM on, the
+ground spec puts SAM's player box against the engine's ground line (`engine_objects` in
+`agents/unity_observations.py`). The ground spec keeps "grass-topped ground" only because the schema
+needs a prompt for every object.
 
 ## Not yet done
 
-- The ground line comes from the candidate's own level. The Godot verifier judges against the clean
-  game's surfaces (`agents.observations.with_reference_ground`); the Unity equivalent is to do.
+- The ground line comes from the candidate's own level. The Godot verifier never does: it judges
+  against the clean game's surfaces (`agents.observations.with_reference_ground`), because a candidate
+  could otherwise move the ground to pass ([sam.md](sam.md), "The ground, from the level"). The Unity
+  equivalent is to do, and it matters more because SAM cannot check the ground either.
 - The gameplay check (`agents/gameplay.py` `check_motion`, P7 step 4) and the Unity domain in
   `agents/domain_verifier.py`.
 - SAM scored against the engine record on clean frames (P7 step 3).
