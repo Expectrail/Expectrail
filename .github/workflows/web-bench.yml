@@ -34,6 +34,7 @@ permissions:
 
 jobs:
   web-list:
+    environment: heldout
     if: inputs.bench == 'detection'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -71,6 +72,7 @@ jobs:
 
   # Named heldout-bench so agents.bench_collect reads its annotations as it reads the game's.
   heldout-bench:
+    environment: heldout
     needs: web-list
     runs-on: ubuntu-24.04
     timeout-minutes: 30
