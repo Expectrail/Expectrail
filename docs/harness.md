@@ -225,8 +225,10 @@ prompt, so the Unity account the secrets belong to has two-factor sign-in off.
   version, replays `harness/routes/unity-smoke.json` twice, and fails unless the two match in every
   frame's hash and in the trace's hash. It runs as two copies on separate runners from one build. It also reports
   the level it found, whether the ground line from the tile cells agrees with the collider paths, the
-  settle, the hazards and the errors the game logged. The apt packages in that container are not
-  pinned by version; the job records Mesa's. It starts once the harness player is uploaded, so a
+  settle, the hazards and the errors the game logged. Its apt packages, like every apt step in the workflow, come from Ubuntu's snapshot archive as it
+  stood at `UBUNTU_SNAPSHOT` (the workflow's env), not the live archive, so every run installs the
+  same versions; only `ca-certificates`, which the HTTPS snapshot needs, comes from the live archive
+  first. The job records Mesa's version and the snapshot. It starts once the harness player is uploaded, so a
   failed canary does not hide the replays.
 - **Cross-runner.** A third job compares the two copies with `python3 -m harness.unity.trace_diff`:
   each trace field's first differing tick, count and largest gap; the level; the settle; and the
