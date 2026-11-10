@@ -253,8 +253,14 @@ jobs:
       - name: Install a virtual display and software OpenGL for the canary
         if: steps.secrets.outputs.present == 'true'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends xvfb xauth libgl1-mesa-dri libglx-mesa0 libgtk-3-0t64 patch
+          # Ubuntu's mirrors can be mid-sync (run 17: 404s, then a Packages.gz of the wrong size):
+          # three attempts, a minute apart, each with a fresh index.
+          for attempt in 1 2 3; do
+            if sudo apt-get -o Acquire::Retries=3 update && sudo apt-get -o Acquire::Retries=3 install -y --no-install-recommends xvfb xauth libgl1-mesa-dri libglx-mesa0 libgtk-3-0t64 patch; then break; fi
+            [ "$attempt" = 3 ] && exit 1
+            echo "::warning title=apt::attempt $attempt failed; retrying in 60 s"
+            sleep 60
+          done
       # Like ci.yml's capture-smoke canary: the patch prints both variables from the game's own C#
       # (PlayerController.Awake). The player is never uploaded.
       - name: A candidate's game code cannot read the verifier's environment
@@ -307,10 +313,17 @@ jobs:
     steps:
       - name: Install a virtual display, software OpenGL and the player's libraries
         run: |
-          apt-get update
-          apt-get install -y --no-install-recommends ca-certificates git python3 python3-jsonschema patch \
-            xvfb xauth libgl1 libgl1-mesa-dri libglx-mesa0 libegl1 libx11-6 libxcursor1 libxrandr2 libxi6 \
-            libxinerama1 libxext6 libxrender1 libxss1 libgtk-3-0t64 libasound2t64 libfontconfig1 libfreetype6 libudev1
+          packages="ca-certificates git python3 python3-jsonschema patch xvfb xauth libgl1 libgl1-mesa-dri libglx-mesa0 libegl1
+            libx11-6 libxcursor1 libxrandr2 libxi6 libxinerama1 libxext6 libxrender1 libxss1 libgtk-3-0t64 libasound2t64
+            libfontconfig1 libfreetype6 libudev1"
+          # Ubuntu's mirrors can be mid-sync (run 17: 404s, then a Packages.gz of the wrong size):
+          # three attempts, a minute apart, each with a fresh index.
+          for attempt in 1 2 3; do
+            if apt-get -o Acquire::Retries=3 update && apt-get -o Acquire::Retries=3 install -y --no-install-recommends $packages; then break; fi
+            [ "$attempt" = 3 ] && exit 1
+            echo "::warning title=apt::attempt $attempt failed; retrying in 60 s"
+            sleep 60
+          done
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -388,6 +401,11 @@ jobs:
               print("::error title=Unity level::the trace has no level surfaces or no ground line, so the ground spec would be needs-review")
               raise SystemExit(1)
           PY
+      - name: Calibration of the Unity checks on the clean trace
+        if: always() && steps.replays.outcome == 'success'
+        run: |
+          line=$(python3 -m agents.unity_observations calibrate runs/unity/replay/run-00/trace.json)
+          echo "::notice title=Unity calibration::$line"
       - name: Times
         if: always()
         env:
@@ -432,8 +450,14 @@ jobs:
       - name: Pillow, so every differing frame is measured
         # Ubuntu's own package, not PyPI: the comparison fails rather than sample without it.
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends python3-pil
+          # Ubuntu's mirrors can be mid-sync (run 17: 404s, then a Packages.gz of the wrong size):
+          # three attempts, a minute apart, each with a fresh index.
+          for attempt in 1 2 3; do
+            if sudo apt-get -o Acquire::Retries=3 update -qq && sudo apt-get -o Acquire::Retries=3 install -y -qq --no-install-recommends python3-pil; then break; fi
+            [ "$attempt" = 3 ] && exit 1
+            echo "::warning title=apt::attempt $attempt failed; retrying in 60 s"
+            sleep 60
+          done
           python3 -c "from harness.unity import png_pixels; assert png_pixels.fast(), 'Pillow did not import'"
       - name: The two runners replayed the route identically
         run: |
