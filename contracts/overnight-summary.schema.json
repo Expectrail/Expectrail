@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/seanudeke/expectrail/contracts/overnight-summary.schema.json",
   "title": "Overnight summary: filmable loop rollup beside morning-report.md",
-  "description": "Written by agents.loop after N runs. Offline cost stubs are honest zeros with provenance unmetered-offline — never invent Meta spend.",
+  "description": "Written by agents.loop after N runs. Offline cost stubs are honest zeros with provenance unmetered-offline \u2014 never invent Meta spend.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -17,45 +17,108 @@
   ],
   "properties": {
     "format": {
-      "enum": ["expectrail.overnight-summary/v0"]
+      "enum": [
+        "expectrail.overnight-summary/v0"
+      ]
     },
     "mode": {
       "type": "object",
-      "required": ["mode"],
+      "required": [
+        "mode"
+      ],
       "properties": {
-        "mode": { "enum": ["auto", "offline", "live"] },
-        "offline_triage": { "type": "boolean" },
-        "use_muse": { "type": "boolean" },
-        "wonder_key": { "type": "boolean" },
-        "muse_ready": { "type": "boolean" }
+        "mode": {
+          "enum": [
+            "auto",
+            "offline",
+            "live"
+          ]
+        },
+        "offline_triage": {
+          "type": "boolean"
+        },
+        "use_muse": {
+          "type": "boolean"
+        },
+        "wonder_key": {
+          "type": "boolean"
+        },
+        "muse_ready": {
+          "type": "boolean"
+        }
       },
       "additionalProperties": true
     },
-    "runs": { "type": "integer", "minimum": 1 },
-    "accepted": { "type": "integer", "minimum": 0 },
+    "runs": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "accepted": {
+      "type": "integer",
+      "minimum": 0
+    },
     "verificationProvenance": {
-      "enum": ["fixture", "harness"]
+      "enum": [
+        "fixture",
+        "harness"
+      ]
     },
     "cost": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["modelCalls", "costUsd", "costProvenance"],
+      "required": [
+        "modelCalls",
+        "costUsd",
+        "costProvenance"
+      ],
       "properties": {
-        "modelCalls": { "type": "integer", "minimum": 0 },
-        "costUsd": { "type": ["number", "null"] },
+        "modelCalls": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Historical field: the live fixer's attempts consumed, which is what it has always counted. Prefer fixerAttempts and triageCalls."
+        },
+        "costUsd": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
         "costProvenance": {
-          "enum": ["unmetered-offline", "unmetered-live-unset", "metered"]
+          "enum": [
+            "unmetered-offline",
+            "unmetered-live-unset",
+            "metered"
+          ]
+        },
+        "triageCalls": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Provider calls Expectrail itself made for triage (one per live run, 0 when offline)."
+        },
+        "fixerAttempts": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Fix attempts a live fixer agent consumed. Not a model-call count: one attempt of a coding agent (Muse Code, Claude Code, Codex, aider) is many of the agent's own calls, which Expectrail cannot see."
         }
       }
     },
     "timing": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["wallClockMs"],
+      "required": [
+        "wallClockMs"
+      ],
       "properties": {
-        "wallClockMs": { "type": "number", "minimum": 0 },
-        "startedAt": { "type": "string" },
-        "finishedAt": { "type": "string" }
+        "wallClockMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "startedAt": {
+          "type": "string"
+        },
+        "finishedAt": {
+          "type": "string"
+        }
       }
     },
     "results": {
@@ -63,48 +126,145 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["decision"],
+        "required": [
+          "decision"
+        ],
         "properties": {
-          "decision": { "enum": ["accept", "reject", "needs-review"] },
-          "error": { "type": ["string", "null"] },
-          "gameplay": { "type": ["object", "null"] },
-          "morning": { "type": ["object", "null"] },
-          "trust": { "type": ["object", "null"] },
+          "decision": {
+            "enum": [
+              "accept",
+              "reject",
+              "needs-review"
+            ]
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "gameplay": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "morning": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "trust": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "timing": {
             "type": "object",
             "properties": {
-              "wallClockMs": { "type": "number", "minimum": 0 }
+              "wallClockMs": {
+                "type": "number",
+                "minimum": 0
+              }
             },
             "additionalProperties": true
           },
-          "triageSource": { "type": "string" },
-          "fixerSource": { "type": "string" },
-          "verificationProvenance": { "type": "string" },
+          "triageSource": {
+            "type": "string"
+          },
+          "fixerSource": {
+            "type": "string"
+          },
+          "verificationProvenance": {
+            "type": "string"
+          },
           "stability": {
             "description": "agents.loop --stability: the failing route replayed on the failing base before the fixer started (agents.stability.summary). Absent when the check was off. Only a stable-fail goes on to the fixer.",
             "type": "object",
             "additionalProperties": false,
-            "required": ["status", "result", "runs", "reason", "counts", "distinctReplays", "fingerprint", "baseline"],
+            "required": [
+              "status",
+              "result",
+              "runs",
+              "reason",
+              "counts",
+              "distinctReplays",
+              "fingerprint",
+              "baseline"
+            ],
             "properties": {
-              "status": { "enum": ["stable-fail", "stable-pass", "flaky", "undecided"] },
-              "result": { "enum": ["fail", "needs-review", "pass"] },
-              "runs": { "type": "integer", "minimum": 1 },
-              "reason": { "type": "string" },
+              "status": {
+                "enum": [
+                  "stable-fail",
+                  "stable-pass",
+                  "flaky",
+                  "undecided"
+                ]
+              },
+              "result": {
+                "enum": [
+                  "fail",
+                  "needs-review",
+                  "pass"
+                ]
+              },
+              "runs": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "reason": {
+                "type": "string"
+              },
               "counts": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["fail", "needs-review", "pass", "crashed"],
+                "required": [
+                  "fail",
+                  "needs-review",
+                  "pass",
+                  "crashed"
+                ],
                 "properties": {
-                  "fail": { "type": "integer", "minimum": 0 },
-                  "needs-review": { "type": "integer", "minimum": 0 },
-                  "pass": { "type": "integer", "minimum": 0 },
-                  "crashed": { "type": "integer", "minimum": 0 }
+                  "fail": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "needs-review": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "pass": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "crashed": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
                 }
               },
-              "distinctReplays": { "type": "integer", "minimum": 0 },
-              "fingerprint": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
-              "baseline": { "enum": ["off", "missing", "match", "differs", "not-compared"] },
-              "path": { "type": "string" }
+              "distinctReplays": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "fingerprint": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{16}$"
+              },
+              "baseline": {
+                "enum": [
+                  "off",
+                  "missing",
+                  "match",
+                  "differs",
+                  "not-compared"
+                ]
+              },
+              "path": {
+                "type": "string"
+              }
             }
           }
         },

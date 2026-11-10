@@ -143,6 +143,54 @@ class TestBYOFixerAndVision(unittest.TestCase):
             self.assertEqual(cmd_codex[0], "codex")
             self.assertIn("full-auto", cmd_codex)
 
+    def test_the_sandbox_record_describes_the_run_not_a_meta_gateway(self) -> None:
+        """sandbox.json backs the README's isolation claim, so it must describe what ran.
+
+        It used to read "host network (the key gateway speaks only to Meta's API)" for every bwrap
+        run whatever the agent, beside a gateway recorded as off — a Claude Code run named a Meta
+        constraint that was never applied (workflow run 42728501874).
+        """
+        import subprocess
+        import tempfile
+        from pathlib import Path
+
+        from agents.byo_fixer import run_byo_agent
+
+        done = subprocess.CompletedProcess(["claude"], 0, "", "")
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-123", "PATH": "/usr/bin"}, clear=True), \
+                patch("agents.sandbox.run_sandboxed", return_value=done), \
+                patch("agents.sandbox.detect_sandbox", return_value="bwrap"), \
+                patch("agents.sandbox.muse_kind_for", return_value="bwrap"):
+            _, meta = run_byo_agent("fix it", Path(tmp), Path(tmp), agent="claude-code")
+
+        self.assertEqual(meta["kind"], "bwrap")
+        self.assertEqual(meta["agent"], "claude-code")
+        self.assertEqual(meta["network"], "host network")  # stated plainly, never more isolation
+        self.assertNotIn("Meta", meta["network"])
+        self.assertEqual(meta["gateway"]["mode"], "off")  # agents/gateway.py reads this
+        self.assertIn("Meta", meta["gateway"]["why"])  # the reason lives with the gateway
+        # the provider key the agent actually received, by name only
+        self.assertEqual(meta["keyEnvs"], ["ANTHROPIC_API_KEY"])
+        self.assertNotIn("sk-ant-123", json.dumps(meta))
+
+    def test_the_sandbox_record_names_no_key_the_agent_did_not_get(self) -> None:
+        import subprocess
+        import tempfile
+        from pathlib import Path
+
+        from agents.byo_fixer import run_byo_agent
+
+        done = subprocess.CompletedProcess(["codex"], 0, "", "")
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-123", "PATH": "/usr/bin"}, clear=True), \
+                patch("agents.sandbox.run_sandboxed", return_value=done), \
+                patch("agents.sandbox.detect_sandbox", return_value="bwrap"), \
+                patch("agents.sandbox.muse_kind_for", return_value="bwrap"):
+            _, meta = run_byo_agent("fix it", Path(tmp), Path(tmp), agent="codex")
+        # codex takes OPENAI_API_KEY, which is not set, so it received no provider key
+        self.assertEqual(meta["keyEnvs"], [])
+
     def test_extract_unified_diff(self) -> None:
         sample = (
             "Here is the fix:\n```diff\n--- a/player/player.tscn\n+++ b/player/player.tscn\n"

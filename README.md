@@ -678,8 +678,10 @@ export EXPECTRAIL_VISION_BACKEND=local-http EXPECTRAIL_LOCAL_VISION_URL=http://l
   only its own provider's key; the candidate is diffed and held to the editable files the same way
   ([`agents/byo_fixer.py`](agents/byo_fixer.py)). One difference, recorded in each attempt's
   `sandbox.json`: Muse Code can run behind the key gateway with no network of its own; a BYO agent
-  uses the host's network, because the gateway only speaks to Meta's API. An agent installed under
-  `$HOME` needs `EXPECTRAIL_FIXER_RO_BINDS` pointing at its install.
+  uses the host's network, because the gateway proxies Meta's API only. That record states the
+  network, the gateway as off with the reason, and the names — never the values — of the provider
+  key envs the agent received. An agent installed under `$HOME` needs `EXPECTRAIL_FIXER_RO_BINDS`
+  pointing at its install.
 - **Vision.** `local-http` is any open-vocabulary detector behind one HTTP endpoint (Grounding DINO
   with SAM 2.1, Florence-2, YOLO-World); `byo-vlm-engine` is any vision-language model whose boxes
   count only where the engine agrees. A vision-language model alone (`byo-vlm`) does not decide a
@@ -704,6 +706,16 @@ Add it to `.mcp.json` (Claude Code) or `.cursor/mcp.json`, from the repository r
 
 Not measured yet: every number in this README was produced with Meta's models. The BYO paths are
 tested with recorded responses, not benchmarked; treat a run on another model as a new experiment.
+
+How little that guarantees is worth stating. Those recorded-response tests passed while the
+`anthropic` provider could not complete a single live call: it sent a `temperature` the Messages API
+rejects outright, so triage, the `llm-patch` fixer, spec drafting and `byo-vlm` all failed against
+it. One live end-to-end run now exists on that path — Claude triaged, Claude Code fixed under
+bubblewrap, a Godot replay judged it on the engine trace, and the verifier accepted on the first
+attempt. It is one accept on one seeded defect, so it is evidence the path runs, and no result.
+Expectrail also cannot meter it: it counts the triage calls it makes and the attempts a fixer
+consumes, but a coding agent's own calls inside an attempt are invisible from outside, and no price
+is configured, so no run reports a spend.
 
 ## Layout and lanes
 

@@ -7,8 +7,10 @@ under the same bubblewrap mount when bwrap is usable, with only its own provider
 environment (agents.keys.byo_agent_env). The candidate is then diffed and checked against the
 editable globs exactly as for Muse.
 
-One difference, recorded in sandbox.json: Muse Code can run behind the key gateway with no network of
-its own; a BYO agent runs with the host's network, because the gateway only speaks to Meta's API.
+One difference, recorded in each attempt's sandbox.json: Muse Code can run behind the key gateway
+with no network of its own; a BYO agent runs with the host's network, because the gateway proxies
+Meta's API only. That record states the network, the gateway as off with the reason, and the names
+(never the values) of the provider key envs the agent received.
 `llm-patch` runs nothing in the sandbox: Expectrail sends the failing check and the editable files to
 the configured model and applies the diff it returns.
 """
@@ -244,7 +246,7 @@ def run_byo_agent(
     Returns (process, sandbox meta). ``llm-patch`` applies the model's diff to ``work`` itself and
     returns a synthetic process (exit 0 when the diff applied, 1 when it did not).
     """
-    from agents.keys import byo_agent_env
+    from agents.keys import BYO_AGENT_KEY_ENVS, byo_agent_env
     from agents.sandbox import detect_sandbox, muse_kind_for, run_sandboxed
 
     if agent not in SUPPORTED_AGENTS or agent == "muse-code":
@@ -268,14 +270,24 @@ def run_byo_agent(
         raise SystemExit("--require-sandbox needs bubblewrap (bwrap) on PATH to confine the fixer agent")
     root = "/fixer" if kind == "bwrap" else str(work.resolve())
     cmd = build_agent_cli_command(agent, prompt_text, work, model=model, root_as_agent_sees_it=root)
+    agent_env = byo_agent_env(agent)
+    # The record says what this run did, not what some run could do. It used to read
+    # "host network (the key gateway speaks only to Meta's API)" for every bwrap run whatever the
+    # agent, next to a gateway recorded as off: a Claude Code run named a Meta constraint that was
+    # never applied. The network is stated plainly, the reason no gateway applies sits with the
+    # gateway, and keyEnvs names the provider key the agent actually received (names, never values).
     meta: dict[str, Any] = {
         "kind": kind, "agent": agent, "requireSandbox": require_sandbox, "detect": detected,
-        "network": "host network (the key gateway speaks only to Meta's API)" if kind == "bwrap"
-        else "host (no sandbox)",
-        "gateway": {"mode": "off"},
+        "network": "host network" if kind == "bwrap" else "host network (no sandbox)",
+        "keyEnvs": sorted(set(BYO_AGENT_KEY_ENVS.get(agent, ())) & set(agent_env)),
+        "gateway": {
+            "mode": "off",
+            "why": "the key gateway proxies Meta's API only, so a BYO agent reaches its own "
+                   "provider over the host network",
+        },
     }
     try:
-        proc = run_sandboxed(cmd, work=work, env=byo_agent_env(agent), network=True, kind=kind,
+        proc = run_sandboxed(cmd, work=work, env=agent_env, network=True, kind=kind,
                              timeout=timeout, extra_ro=agent_install_paths(agent))
     except subprocess.TimeoutExpired as exc:
         exc.sandbox_meta = meta

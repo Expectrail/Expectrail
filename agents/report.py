@@ -556,8 +556,12 @@ def write_loop_rollup(out: Path, *, summary: dict) -> Path:
         f"**Mode:** `{summary.get('mode', {}).get('mode', 'unknown')}`",
         f"**Verification provenance:** `{summary.get('verificationProvenance', 'unknown')}`",
         f"**Wall-clock ms:** `{timing.get('wallClockMs', 'n/a')}`",
-        f"**Cost:** modelCalls=`{cost.get('modelCalls', 'n/a')}` "
+        f"**Cost:** triage calls=`{cost.get('triageCalls', 'n/a')}` "
+        f"fixer attempts=`{cost.get('fixerAttempts', cost.get('modelCalls', 'n/a'))}` "
         f"costUsd=`{cost.get('costUsd')}` provenance=`{cost.get('costProvenance', 'n/a')}`",
+        "",
+        "The fixer agent's own model calls inside an attempt are not visible to Expectrail and are "
+        "not counted here; no price is configured, so no spend is reported.",
         "",
         "## Per-run",
     ]
