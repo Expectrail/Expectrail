@@ -192,7 +192,7 @@ class UnityWorkflowTest(unittest.TestCase):
         players = [n for n in names if n.startswith("unity-player-")]
         # The canary's player stays in the build job; nothing held out is built here at all.
         self.assertEqual(players, ["unity-player-clean", "unity-player-clean-harness"])
-        self.assertEqual(sorted(set(names) - set(players)), ["unity-smoke-replay"])
+        self.assertEqual(sorted(set(names) - set(players)), ["unity-smoke-replay-${{ matrix.copy }}"])
         self.assertNotIn("canary", " ".join(str(s["with"]["path"]) for job in self.jobs.values()
                                              for s in self.steps(job, uses="actions/upload-artifact@")))
 
@@ -247,6 +247,19 @@ class UnityWorkflowTest(unittest.TestCase):
         self.assertIn("--out runs/unity/replay/run-00 --compare runs/unity/replay/run-01", compare)
         download = self.steps(self.replay, uses="actions/download-artifact@")[0]
         self.assertEqual(download["with"]["name"], "unity-player-clean-harness")
+
+    def test_two_runners_replay_the_same_player_and_a_job_compares_them(self):
+        self.assertEqual(self.replay["strategy"]["matrix"]["copy"], ["a", "b"])
+        self.assertFalse(self.replay["strategy"]["fail-fast"])
+        cross = self.jobs["cross-runner"]
+        self.assertEqual(cross["needs"], ["build", "replay"])
+        self.assertEqual(cross["if"], "always() && needs.build.outputs.built == 'true'")
+        self.assertNotIn("environment", cross)
+        self.assertNotIn("secrets.", yaml.safe_dump(cross))
+        download = self.steps(cross, uses="actions/download-artifact@")[0]
+        self.assertEqual(download["with"]["pattern"], "unity-smoke-replay-*")
+        run = self.steps(cross, name="The two runners replayed the route identically")[0]["run"]
+        self.assertIn("python3 -m harness.unity.trace_diff runs/unity/cross/unity-smoke-replay-a/run-00", run)
 
     def test_the_shell_steps_parse(self):
         for name, job in self.jobs.items():
