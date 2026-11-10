@@ -297,8 +297,11 @@ def build_http_payload(
         }
         if system_str:
             payload["system"] = system_str
-        if temperature is not None:
-            payload["temperature"] = temperature
+        # No temperature: the Messages API has deprecated it on current models, and sending it is a
+        # hard error, not a warning ("`temperature` is deprecated for this model", HTTP 400
+        # invalid_request_error). Every caller here asks for 0.0, so this cost every anthropic call
+        # — triage, the llm-patch fixer, spec drafting and byo-vlm — rather than one of them. The
+        # argument is still honoured on the OpenAI-compatible protocol below, which wants it.
         return url, headers, payload
 
     # Default: OpenAI-compatible protocol (OpenAI, Gemini, OpenRouter, Ollama, vLLM, Meta, Fireworks, Baseten)
