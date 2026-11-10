@@ -108,10 +108,68 @@ class TraceDiff(unittest.TestCase):
             pixels[5] = (pixels[5] + nudge) % 256
             write_png(run / "frames" / "f00000001.png", 4, 3, bytes(pixels))
         d = trace_diff.diff(a, b)
+        self.assertFalse(d["routeIdentical"])  # 4 of 255 is beyond the tolerance
+        self.assertEqual(d["pixels"]["beyondTolerance"], [1])
         self.assertEqual(d["pixels"]["sampled"], [1])
         self.assertEqual((d["pixels"]["mostPixelsDiffering"], d["pixels"]["largestChannelGap"]), (1, 4))
         self.assertIn("by at most 4 of 255", trace_diff.summary(d))
         self.assertEqual(trace_diff.sample(list(range(100)), 4), [0, 33, 66, 99])
+
+
+    def _frames(self, run, name, nudge, count, side=10):
+        from tests.test_unity_png_pixels import _image, write_png
+        (run / "frames").mkdir(exist_ok=True)
+        pixels = bytearray(_image(side, side))
+        for k in range(count):
+            pixels[k * 3] = (pixels[k * 3] + nudge) % 256
+        write_png(run / "frames" / name, side, side, bytes(pixels))
+
+    def test_a_frame_within_tolerance_passes_when_the_trace_is_identical(self):
+        a = _run(self.root, "a", _rows(2), ["f", "x"], {"ticks": 0, "frozenFrames": 0})
+        b = _run(self.root, "b", _rows(2), ["f", "y"], {"ticks": 0, "frozenFrames": 0})
+        # 1 of 400 pixels (0.25%) differs, by 2 of 255: within the tolerance.
+        self._frames(a, "f00000001.png", 0, 1, side=20)
+        self._frames(b, "f00000001.png", 2, 1, side=20)
+        d = trace_diff.diff(a, b)
+        self.assertEqual((d["pixels"]["mostPixelsDiffering"], d["pixels"]["largestChannelGap"]), (1, 2))
+        self.assertTrue(d["routeIdentical"])
+        self.assertEqual(d["frames"]["withinTolerance"], 1)
+
+    def test_too_many_pixels_or_too_large_a_gap_fails(self):
+        # 1 of 100 pixels (1%) is over the 0.5% share.
+        a = _run(self.root, "a", _rows(2), ["f", "x"], {"ticks": 0, "frozenFrames": 0})
+        b = _run(self.root, "b", _rows(2), ["f", "y"], {"ticks": 0, "frozenFrames": 0})
+        self._frames(a, "f00000001.png", 0, 1)
+        self._frames(b, "f00000001.png", 2, 1)
+        self.assertFalse(trace_diff.diff(a, b)["routeIdentical"])
+
+    def test_tolerance_needs_the_frame_measured_and_the_trace_identical(self):
+        m = {"pixels": 1000, "differ": 5, "largest": 2}
+        self.assertTrue(trace_diff.within_tolerance(m))
+        self.assertFalse(trace_diff.within_tolerance({**m, "largest": 3}))
+        self.assertFalse(trace_diff.within_tolerance({**m, "differ": 6}))
+        # Frames that differ but cannot be measured (no frame folders) are never tolerated.
+        a = _run(self.root, "a", _rows(2), ["f", "x"], {"ticks": 0, "frozenFrames": 0})
+        b = _run(self.root, "b", _rows(2), ["f", "y"], {"ticks": 0, "frozenFrames": 0})
+        self.assertFalse(trace_diff.diff(a, b)["routeIdentical"])
+        # A trace difference fails even when every frame is within tolerance.
+        c = _run(self.root, "c", _rows(2), ["f", "x"], {"ticks": 0, "frozenFrames": 0})
+        e = _run(self.root, "e", _rows(2, nudge_from=1, by=0.5), ["f", "y"], {"ticks": 0, "frozenFrames": 0})
+        self._frames(c, "f00000001.png", 0, 0)
+        self._frames(e, "f00000001.png", 0, 0)
+        self.assertFalse(trace_diff.diff(c, e)["routeIdentical"])
+
+    def test_without_pillow_only_a_sample_is_measured_and_the_rest_fail(self):
+        frames = list(range(30))
+        a = _run(self.root, "a", _rows(30), ["f"] * 30, {"ticks": 0, "frozenFrames": 0})
+        b = _run(self.root, "b", _rows(30), ["g"] * 30, {"ticks": 0, "frozenFrames": 0})
+        for i in frames:
+            self._frames(a, f"f{i:08d}.png", 0, 0)
+            self._frames(b, f"f{i:08d}.png", 0, 0)
+        part = trace_diff.measure_frames(a, b, frames, every=False)
+        self.assertFalse(part["all"])
+        self.assertEqual(len(part["sampled"]), trace_diff.SAMPLE_FRAMES)
+        self.assertTrue(trace_diff.measure_frames(a, b, frames, every=True)["all"])
 
 
 if __name__ == "__main__":

@@ -6,12 +6,16 @@
 # put a BYO agent behind the same gateway with EXPECTRAIL_BYO_GATEWAY=on, with the allowlist derived
 # from the provider that owns the agent's key (api.anthropic.com for claude-code).
 #
-# Whether Claude Code tolerates it is a question, not an assumption, which is why this is a probe
-# and not a default. It may reach hosts besides api.anthropic.com — update checks, telemetry — and
-# the gateway refuses every host off the allowlist. The answer is in the gateway's own record:
-# the hosts it allowed, the hosts it blocked, and the header names the placeholder was swapped into.
-# Until this probe says otherwise the README's claim stands as it is: a BYO agent runs with the
-# host's network. Manual only, and it spends Anthropic credit.
+# Whether Claude Code tolerates it was a question, not an assumption, which is why this is a probe
+# and not a default. Answered once, on run 42752549697: it completed an accepted fix behind the
+# gateway with no network of its own, in 100,962ms against 100,989ms for the same loop with the
+# gateway off. It also tried http-intake.logs.us5.datadoghq.com (Datadog telemetry), which the
+# gateway refused before any key swap, and the run succeeded regardless — so the allowlist does not
+# need widening for Claude Code to work.
+#
+# Still a probe, not a default: that is one run on one defect with one agent. The answer is in the
+# gateway's own record — the hosts the agent tried, which of them were refused, and the header names
+# the placeholder was swapped into. Manual only, and it spends Anthropic credit.
 name: BYO gateway probe (Claude Code behind the key gateway)
 
 on:
@@ -95,8 +99,14 @@ jobs:
               print(f"- `{c.parent.relative_to(root)}`: source={d.get('source')} ok={d.get('ok')} "
                     f"sandbox={s.get('kind')} network={s.get('network')} keyEnvs={s.get('keyEnvs')}")
               print(f"  - gateway: mode={g.get('mode')} requests={g.get('requests')}")
-              print(f"  - allowed: {g.get('hosts')}")
-              print(f"  - blocked: {g.get('blockedHosts')}")
+              # hosts is every host the agent tried, not every host allowed (agents/gateway.py,
+              # Gateway.summary). Labelling it "allowed" put the blocked host on both lines and
+              # read as a contradiction, in the output whose only job is to be checkable.
+              seen = g.get("hosts") or []
+              blocked = g.get("blockedHosts") or []
+              print(f"  - hosts the agent tried: {seen}")
+              print(f"  - refused by the gateway: {blocked}")
+              print(f"  - reached: {[h for h in seen if h not in blocked]}")
               print(f"  - the placeholder was swapped into: {g.get('swappedHeaders')}")
           report = root / "morning-report.md"
           if report.is_file():

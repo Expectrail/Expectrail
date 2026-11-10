@@ -187,8 +187,9 @@ beforehand, which it takes from `$EXPECTRAIL_UNITY_PLAYER` (see Unity harness, b
 ## Unity builds in CI
 
 `.github/workflows/unity.yml` builds the Unity game, `game/unity-platformer` (Platformio on Unity
-6000.3.21f1), with GameCI's `game-ci/unity-builder` v4.8.2, pinned by commit. No run of it has built
-anything yet: the Unity licence secrets do not exist.
+6000.3.21f1), with GameCI's `game-ci/unity-builder` v4.8.2, pinned by commit. The first build that
+activated the licence was run 7 (42713673108, Nov 9, 2026); GameCI's login cannot answer a two-factor
+prompt, so the Unity account the secrets belong to has two-factor sign-in off.
 
 - **When it runs.** On `workflow_dispatch`, and on pull requests that touch `game/unity-platformer/`,
   `harness/unity/`, a `harness/routes/unity-*.json` route or the workflow itself. A change to
@@ -219,13 +220,25 @@ anything yet: the Unity licence secrets do not exist.
 - **The Library cache** is keyed on the hash of the game's `Assets/`, `Packages/` and
   `ProjectSettings/`, restored for the clean build, and saved only from it, on `main`.
 - **The replay job** needs no licence. It runs in `ubuntu:noble-20261024.1` pinned by digest, with
-  Xvfb and Mesa's llvmpipe (`LP_NATIVE_VECTOR_WIDTH=128`, `LP_NUM_THREADS=4`), downloads the
-  harness player, records the CPU model and Mesa version, replays `harness/routes/unity-smoke.json`
-  twice, and fails unless the two match in every frame's hash and in the trace's hash. It also reports
+  Xvfb and Mesa's llvmpipe (`LP_NATIVE_VECTOR_WIDTH=128`, `LP_NUM_THREADS=4`,
+  `GALLIUM_OVERRIDE_CPU_CAPS=sse4.1`), downloads the harness player, records the CPU model and Mesa
+  version, replays `harness/routes/unity-smoke.json` twice, and fails unless the two match in every
+  frame's hash and in the trace's hash. It runs as two copies on separate runners from one build. It also reports
   the level it found, whether the ground line from the tile cells agrees with the collider paths, the
   settle, the hazards and the errors the game logged. The apt packages in that container are not
   pinned by version; the job records Mesa's. It starts once the harness player is uploaded, so a
   failed canary does not hide the replays.
+- **Cross-runner.** A third job compares the two copies with `python3 -m harness.unity.trace_diff`:
+  each trace field's first differing tick, count and largest gap; the level; the settle; and the
+  frames, every differing one measured pixel by pixel (with Ubuntu's `python3-pil`; the job fails
+  rather than sample without it). It fails on any trace difference. A differing frame passes only
+  if it is the frame of the tick a real-time fade starts on, when both copies saw the same fade
+  starts, or if it is within tolerance: no channel more than 2 of 255 apart and at most 0.5% of its
+  pixels different. The tolerance comes from run 15 (42746239419, an EPYC 9V74 and a Xeon 8573C):
+  every frame differed, in 1,557 to 2,351 of 1,536,000 pixels (about 0.15%), by 1 or 2 of 255. Run 14
+  (42738742696, attempt 2, an EPYC 9V74 and an EPYC 7763) passed: identical traces, 199 of 200
+  frames identical, frame 113 (a fade's first tick) at most 8 of 255 apart in a channel. Separate
+  runners need not be different CPUs; each copy records its own.
 - **Times** (each build, cold or warm, and each replay) are published as notices.
 
 The `unity` environment has to be set up once, by hand, before the first build: add the three
@@ -237,8 +250,8 @@ with no protection rules and no secrets, and the build job skips.
 
 `harness/unity/` replays a route on the Unity game and writes what `harness/run.py` writes for
 Godot: `frames/f%08d.png` from 0, `trace.json`, `replay.json`, and the player's log, `unity.log`.
-None of it has run in Unity yet: no licence, and no Editor on the machines it was written on. The
-Python side is tested with a stand-in player (`tests/unity_fake_player.py`).
+It has run in CI since run 7 (above); the Python side is also tested with a stand-in player
+(`tests/unity_fake_player.py`).
 
 ```sh
 python3 -m harness.unity.run --prepare-build --out runs/unity/harness             # lay out a project
@@ -263,14 +276,30 @@ EXPECTRAIL_UNITY_PLAYER=runs/unity/harness python3 -m harness.replay_check --ada
   patches in order, the package, the start scene and the Unity version. `run` refuses a player whose
   key differs from the run it is asked for.
 - **Time.** The harness sets `Time.captureDeltaTime` to `Time.fixedDeltaTime`, so a rendered frame is
-  one physics tick (50 a second here). The player counts the physics steps in every captured frame
-  and the runner fails the run if any frame held zero or two.
+  one physics tick (50 a second here), and sets it again every frame (run 7: set once at startup it
+  did not hold). The player counts the physics steps in every captured frame and the runner fails
+  the run if any frame held zero or two.
 - **Before tick 0.** `Time.captureDeltaTime` does not lock `Time.unscaledTime` (Unity's reference for
   it says so), and Platformio fades its screen and its level banner on `Time.unscaledDeltaTime`. So the
   harness waits for the banner to come and go and the screen to fade in, holding `Time.timeScale` at
   0 while a fade is part-way, so the fade takes no game time. `replay.json` records the ticks this
-  took (`settle.ticks`) and the frames it held (`settle.frozenFrames`, which depends on the machine's
-  speed). A fade during the route, after a death or at the level's exit, is recorded as a hazard.
+  took (`settle.ticks`) and the frames it held (`settle.frozenFrames`).
+- **Holds during the route.** A fade during the route (after a death, at the level's exit) is held
+  the same way, from the end of the tick it starts on. Unheld, the respawn after a death came at a
+  tick set by the machine's speed (run 10, 42726139650: positions up to 1,934 px apart). Held frames
+  give no tick, row or frame and apply no route input; a physics step in one fails the run. Each
+  fade start is a `real-time-fade-during-route` hazard with its tick, and only that tick's frame can
+  differ between machines (the fade's first step is real time).
+- **Holds of a fixed length.** Every hold, before tick 0 and during the route, waits for its fade to
+  rest and then pads to a whole number of 120 frames, so every machine reaches every tick on the
+  same frame count. The same fade rests after 18 to 53 frames depending on the machine, and with
+  holds that long the view drifted from a few ticks after a hold even with the camera still during it
+  (run 13, 42734687182): something in Unity or Cinemachine counts frames. Padding frames draw an empty
+  scene (each camera's `cullingMask` is 0; overlay UI still draws), so they cost less; frames while a
+  fade is part-way are drawn in full, since cheaper ones would fit more of them into the fade's real
+  second. What this changed on the smoke route: the death's fade-out and fade-in fall in one hold,
+  so it has one fade start (tick 113) where it had two (113 and 114), and the settle takes 76 ticks
+  where it took 77.
 - **Input.** The harness removes every device the machine reports, adds a virtual keyboard and mouse
   (the game's control scheme needs both), ignores window focus, and queues each tick's key states
   before the tick's fixed update. The game's Player actions have no Hold or Tap interactions, so no
@@ -281,8 +310,16 @@ EXPECTRAIL_UNITY_PLAYER=runs/unity/harness python3 -m harness.replay_check --ada
   `objects`. The header has `levelSurfaces` (the ground tilemap's collider paths) and `levelArt`
   (where its tiles are drawn, from cell and sprite bounds, not rendered pixels). Frames are read with
   `ScreenCapture.CaptureScreenshotAsTexture` at the end of every tick's frame.
-- **Environment.** The player gets `harness/run.py`'s allowlisted environment, llvmpipe's settings, and
-  an empty home of its own, so PlayerPrefs start empty. Any failure raises `SystemExit`.
+- **Environment.** The player gets `harness/run.py`'s allowlisted environment, llvmpipe's settings
+  (`RENDER_DEFAULTS` in `harness/unity/run.py`, the same as the replay job's), and an empty home of
+  its own, so PlayerPrefs start empty. Any failure raises `SystemExit`.
+- **Pixels across CPUs.** llvmpipe generates code for the CPU it runs on, and `LP_NATIVE_VECTOR_WIDTH=128`
+  alone no longer keeps AVX and FMA out; run 12 (42730554068) drew different pixels from frame 0 on an
+  AMD and an Intel runner. `GALLIUM_OVERRIDE_CPU_CAPS=sse4.1` gives every runner one instruction set.
+  Different AMD models have drawn identical frames with it. An AMD and an Intel runner still differ,
+  in about 0.15% of each frame's pixels by 1 or 2 of 255 (run 15, 42746239419); run 12 measured no
+  pixels, so how much of the difference the pin removed is not known. The cross-runner job's
+  tolerance covers this; the trace, which the specs read, was identical.
 
 The checks in `agents/observations.py` and `agents/gameplay.py` read these fields, but their constants
 (the robot's feet 13.25 px below its origin, its 60 px height, the coin's size, the drawn floor's

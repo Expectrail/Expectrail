@@ -1,5 +1,8 @@
-"""Read the harness's frames (8-bit RGB or RGBA PNGs, not interlaced) with the standard library only,
-and measure how far two frames differ: the cross-runner job runs on a bare runner with no image library.
+"""Read the harness's frames (8-bit RGB or RGBA PNGs, not interlaced) and measure how far two differ.
+
+Pillow decodes when it is installed (the cross-runner job installs Ubuntu's python3-pil, which reads
+a 1600 x 960 frame in milliseconds); otherwise a standard-library decoder does, about 3 s a frame.
+``fast()`` says which.
 """
 from __future__ import annotations
 
@@ -61,15 +64,41 @@ def read(path: Path) -> tuple[int, int, int, bytes]:
     return width, height, channels, bytes(out)
 
 
+def fast() -> bool:
+    """Whether Pillow is there to decode."""
+    try:
+        import PIL.Image  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+def _decode(path: Path) -> tuple[int, int, int, bytes]:
+    try:
+        from PIL import Image
+    except ImportError:
+        return read(path)
+    with Image.open(path) as image:
+        rgb = image.convert("RGB")
+        return rgb.width, rgb.height, 3, rgb.tobytes()
+
+
 def difference(path_a: Path, path_b: Path) -> dict:
     """How far two frames differ: pixels with any channel different, and the largest channel difference."""
-    wa, ha, ca, pa = read(path_a)
-    wb, hb, cb, pb = read(path_b)
+    wa, ha, ca, pa = _decode(path_a)
+    wb, hb, cb, pb = _decode(path_b)
     if (wa, ha) != (wb, hb):
         return {"size": [[wa, ha], [wb, hb]], "pixels": wa * ha, "differ": wa * ha, "largest": 255}
     channels = min(ca, cb, 3)
     differ, largest = 0, 0
-    for i in range(wa * ha):
+    if ca == cb == channels:
+        # Rows compare in C; only the rows that differ are walked pixel by pixel.
+        stride = wa * channels
+        rows = [y for y in range(ha) if pa[y * stride:(y + 1) * stride] != pb[y * stride:(y + 1) * stride]]
+        pixels = [y * wa + x for y in rows for x in range(wa)]
+    else:
+        pixels = range(wa * ha)
+    for i in pixels:
         da = pa[i * ca:i * ca + channels]
         db = pb[i * cb:i * cb + channels]
         if da != db:

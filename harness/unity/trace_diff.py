@@ -25,6 +25,13 @@ from pathlib import Path
 from harness.unity import png_pixels
 
 SAMPLE_FRAMES = 12
+# How far a frame may differ between two runners when the trace is identical: run 15 (42746239419),
+# an EPYC 9V74 and a Xeon 8573C with llvmpipe pinned to SSE4.1, differed in every frame, in 1,557 to
+# 2,351 of 1,536,000 pixels, by 1 or 2 of 255. A frame is within tolerance when no channel is more than
+# FRAME_GAP_MAX apart and at most FRAME_SHARE_MAX of its pixels differ. Every differing frame is
+# measured, or the comparison fails: an unmeasured frame is never assumed to be within tolerance.
+FRAME_GAP_MAX = 2
+FRAME_SHARE_MAX = 0.005
 
 ROW_FIELDS_ORDER = ("tick", "frame", "player", "onFloor", "facing", "ground", "coins", "enemies",
                     "projectiles", "view", "objects")
@@ -92,14 +99,23 @@ def sample(indices: list[int], count: int = SAMPLE_FRAMES) -> list[int]:
     return sorted({indices[round(i * step)] for i in range(count)})
 
 
-def measure_frames(run_a: Path, run_b: Path, frames: list[int]) -> dict | None:
-    """How far a sample of the differing frames differ, pixel by pixel (None without both frame folders)."""
-    paths = [(run_a / "frames" / f"f{i:08d}.png", run_b / "frames" / f"f{i:08d}.png") for i in sample(frames)]
-    paths = [(i, a, b) for i, (a, b) in zip(sample(frames), paths) if a.is_file() and b.is_file()]
+def within_tolerance(m: dict) -> bool:
+    return m["largest"] <= FRAME_GAP_MAX and m["differ"] <= FRAME_SHARE_MAX * m["pixels"]
+
+
+def measure_frames(run_a: Path, run_b: Path, frames: list[int], every: bool | None = None) -> dict | None:
+    """How far the differing frames differ, pixel by pixel: all of them when Pillow decodes (or
+    ``every``), else a sample. None without both frame folders."""
+    every = png_pixels.fast() if every is None else every
+    chosen = list(frames) if every else sample(frames)
+    paths = [(run_a / "frames" / f"f{i:08d}.png", run_b / "frames" / f"f{i:08d}.png") for i in chosen]
+    paths = [(i, a, b) for i, (a, b) in zip(chosen, paths) if a.is_file() and b.is_file()]
     if not paths:
         return None
     measured = {i: png_pixels.difference(a, b) for i, a, b in paths}
-    return {"sampled": sorted(measured), "largestChannelGap": max(m["largest"] for m in measured.values()),
+    return {"sampled": sorted(measured), "all": len(measured) == len(frames),
+            "beyondTolerance": sorted(i for i, m in measured.items() if not within_tolerance(m)),
+            "largestChannelGap": max(m["largest"] for m in measured.values()),
             "mostPixelsDiffering": max(m["differ"] for m in measured.values()),
             "pixelsPerFrame": max(m["pixels"] for m in measured.values()), "frames": measured}
 
@@ -121,6 +137,9 @@ def diff(run_a: Path, run_b: Path) -> dict:
     allowed = set(starts[0]) if starts[0] == starts[1] else set()
     unexplained = [i for i in frames if i not in allowed]
     pixels = measure_frames(run_a, run_b, frames)
+    # A frame outside a fade's first tick passes only if it was measured and is within tolerance.
+    tolerated = set(i for i in (pixels or {}).get("sampled", []) if i not in (pixels or {}).get("beyondTolerance", []))
+    unexplained = [i for i in unexplained if i not in tolerated]
     machine = [next((p.read_text(encoding="utf-8").strip() for p in (r / "machine.txt", r.parent / "machine.txt")
                      if p.is_file()), None) for r in (run_a, run_b)]
     route_same = not unexplained and not rows["fields"] and rows["rows"][0] == rows["rows"][1] and starts[0] == starts[1]
@@ -130,7 +149,9 @@ def diff(run_a: Path, run_b: Path) -> dict:
         "sectionsDiffer": [s for s in sections if trace_a.get(s) != trace_b.get(s)],
         "rows": rows,
         "frames": {"count": [len(frames_a), len(frames_b)], "differ": len(frames), "first": frames[0] if frames else None,
-                   "atFadeStarts": len(frames) - len(unexplained), "unexplained": len(unexplained)},
+                   "atFadeStarts": len([i for i in frames if i in allowed]),
+                   "withinTolerance": len([i for i in frames if i not in allowed and i not in unexplained]),
+                   "unexplained": len(unexplained)},
         "fadeStarts": starts,
         "pixels": pixels,
         "settle": [rep_a.get("settle"), rep_b.get("settle")],
@@ -143,9 +164,11 @@ def summary(d: dict) -> str:
     parts = [f"route {'identical' if d['routeIdentical'] else 'DIFFERS'}",
              f"frames differing {d['frames']['differ']} of {max(d['frames']['count'])}"
              + (f" (first {d['frames']['first']})" if d["frames"]["first"] is not None else "")
-             + f", {d['frames']['atFadeStarts']} of them on a fade's first tick",
+             + f", {d['frames']['atFadeStarts']} of them on a fade's first tick, "
+             f"{d['frames']['withinTolerance']} within tolerance (at most {FRAME_GAP_MAX} of 255 a channel and "
+             f"{FRAME_SHARE_MAX:.1%} of pixels), {d['frames']['unexplained']} not",
              "fade starts " + " vs ".join(str(s) for s in d["fadeStarts"]),
-             ("pixels: in " + f"{len(d['pixels']['sampled'])} sampled differing frames at most "
+             ("pixels: in " + f"{len(d['pixels']['sampled'])} {'(all)' if d['pixels']['all'] else 'sampled'} differing frames at most "
               f"{d['pixels']['mostPixelsDiffering']} of {d['pixels']['pixelsPerFrame']} pixels differ, "
               f"by at most {d['pixels']['largestChannelGap']} of 255 in a channel") if d.get("pixels") else "pixels not measured",
              "row fields differing: " + (", ".join(
