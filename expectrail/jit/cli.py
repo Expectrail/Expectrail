@@ -146,9 +146,13 @@ def main(argv: list[str] | None = None) -> int:
         from expectrail.jit.intent import propose_to_file, spark_intent
 
         profile = load_strict(args.profile, "mechanics-profile")
+        if args.budget_usd < 0:
+            ap.error("budget must not be negative")
+        prices = {k: v for k, v in (("sparkUsdPerMTokIn", args.spark_usd_per_mtok_in),
+                                    ("sparkUsdPerMTokOut", args.spark_usd_per_mtok_out)) if v is not None}
         doc = propose_to_file(spark_intent(), args.report_file.read_text(encoding="utf-8", errors="replace"),
                               args.candidate.read_bytes().decode("utf-8", errors="replace"), profile,
-                              library(profile["actions"]), args.out)
+                              library(profile["actions"]), args.out, budget_usd=args.budget_usd, prices=prices)
         print(json.dumps({"error": doc["error"], "candidates": len(doc["candidates"]), "probes": len(doc["probes"])}))
         return 0
 

@@ -99,6 +99,13 @@ class Spend:
         self.replay_seconds.append(seconds)
         self.replay_usd += seconds / 60 * self.prices["runnerUsdPerMinute"]
 
+    def check_after(self, what: str) -> None:
+        """A replay is reserved at the longest one seen so far, so one that runs longer can carry spend
+        past the cap by its own cost. When it has, nothing further runs (review of #231)."""
+        if self.usd > self.cap + 1e-9:
+            raise OutOfBudget(f"OUT_OF_BUDGET: ${self.usd:.4f} of ${self.cap:.2f} spent after {what}, which ran "
+                              f"longer than reserved")
+
     def add_spark(self, prompt_tokens: int | None, completion_tokens: int | None) -> None:
         p, c = int(prompt_tokens or 0), int(completion_tokens or 0)
         self.prompt_tokens += p
@@ -271,6 +278,8 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
     if not plan:
         raise NothingGenerated("MODEL_OUTPUT_INVALID: no proposed check applies to a probe that can run")
 
+    prints: dict[tuple[str, str, int], str] = {}
+
     def replay(name: str, patches: list[Path], pid: str, n: int) -> dict:
         spend.reserve(spend.replay_estimate(), f"replay {name}/{pid}#{n}")
         route, path = routes[pid]
@@ -281,11 +290,13 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
         try:
             runner(path, run_dir, patches=patches)
             ep = from_run_dir(run_dir, route, episode_id=f"{name}-{pid}-{n}")
+            prints[(name, pid, n)] = _sha_bytes((run_dir / "trace.json").read_bytes())
         except Exception as exc:  # noqa: BLE001 - rule 3
             raise ReplayFailed(f"REPLAY_ERROR: {name} {pid} run {n}: {type(exc).__name__}: "
                                f"{' '.join(str(exc).split())[:160]}") from exc
         finally:
             spend.add_replay(max(0.0, clock() - t0))
+        spend.check_after(f"replay {name}/{pid}#{n}")
         return ep
 
     def runs_of(name: str, patches: list[Path], todo: list[tuple[dict, list[str]]], count: int,
@@ -312,6 +323,14 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
     #    bug report describes, without the candidate) is the first near miss of any fix; its runs also
     #    label a catch strong or weak.
     vlist = variants_fn(candidate, base_patches) if variants_fn else _variants(game, base_patches, candidate, variant_limit)
+    # The candidate's behaviour on each probe the surviving checks use, once: a generated near miss that
+    # behaves exactly like the candidate (a partial revert that only undoes a comment, a mutant of dead
+    # code) is no near miss, and a check would "kill" it just by catching the candidate (review of #231).
+    cand_print: dict[str, str] = {}
+    if on_ref and vlist:
+        for pid in sorted({i for _, ids in on_ref for i in ids}):
+            replay("candidate-print", [*base_patches, candidate], pid, 1)
+            cand_print[pid] = prints[("candidate-print", pid, 1)]
     vdir = out / "jit-variants"
     vdir.mkdir(exist_ok=True)
     variant_results: dict[str, dict[str, list[str]]] = {e["spec"]["id"]: {} for e, _ in plan}
@@ -329,10 +348,20 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
                                   "line": v.get("line", 0), "patchSha256": sha})
         if not on_ref:
             continue
-        res = runs_of("base" if v["kind"] == "base" else f"variant-{k}", patches, on_ref, reps,
-                      stop_early=lambda rs: rs[-1] != "fail")
-        for sid, rs in res.items():
-            variant_results[sid][v["id"]] = rs
+        vname = "base" if v["kind"] == "base" else f"variant-{k}"
+        res = runs_of(vname, patches, on_ref, reps, stop_early=lambda rs: rs[-1] != "fail")
+        same: list[str] = []
+        for e, ids in on_ref:
+            sid = e["spec"]["id"]
+            # The base build stays a near miss even when the candidate behaves like it: a check that fails
+            # on the bug is meaningful, and a "fix" that behaves like the bug is what a catch is for.
+            if v["kind"] != "base" and cand_print and all(
+                    prints.get((vname, pid, 1)) == cand_print.get(pid) for pid in ids):
+                same.append(sid)
+                continue
+            variant_results[sid][v["id"]] = res[sid]
+        if same:
+            state["variants"][-1]["sameAsCandidateFor"] = sorted(same)
 
     # 3. Validity, then the candidate for the valid checks.
     valid_plan = []

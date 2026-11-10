@@ -78,7 +78,9 @@
       "type": "object", "additionalProperties": false, "required": ["id", "kind", "file", "line", "patchSha256"],
       "properties": {"id": {"type": "string", "maxLength": 300}, "kind": {"enum": ["base", "operator", "jit-operator", "partial-revert"]},
                      "file": {"type": "string", "maxLength": 300}, "line": {"type": "integer", "minimum": 0},
-                     "patchSha256": {"$ref": "#/$defs/sha256"}}}},
+                     "patchSha256": {"$ref": "#/$defs/sha256"},
+                     "sameAsCandidateFor": {"type": "array", "maxItems": 64, "items": {"type": "string", "maxLength": 200},
+                                            "description": "Checks for which this near miss gave the candidate's trace.json bytes on every probe they use, so it was not counted as a kill."}}}},
     "validity": {"type": "array", "items": {
       "type": "object", "additionalProperties": false,
       "required": ["specId", "valid", "reference", "killed", "reasons", "candidate", "outcome"],

@@ -133,7 +133,10 @@ def spark_intent(transport=None, model: str = MODEL):
 
     def propose(report: str, patch_text: str, dmap: dict, profile: dict, probes: list[dict]) -> dict:
         user = prompt(report, patch_text, dmap, profile, probes)
+        # max_tokens is the completion the budget reserves (run.generate, propose_to_file), so the
+        # answer can never cost more than was reserved for it.
         body = {"model": model, "temperature": 0, "response_format": {"type": "json_object"},
+                "max_tokens": RESERVED_COMPLETION_TOKENS,
                 "messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}]}
         try:
             response = transport(body)
@@ -169,8 +172,13 @@ PROPOSAL_FORMAT = "expectrail.jit-proposal/v0"
 PROPOSAL_NAME = "jit-proposal.json"
 
 
-def propose_to_file(intent, report: str, patch_text: str, profile: dict, probes: list[dict], out) -> dict:
-    """Call ``intent`` once and write what it proposed (or why it could not) to ``out/jit-proposal.json``."""
+def propose_to_file(intent, report: str, patch_text: str, profile: dict, probes: list[dict], out, *,
+                    budget_usd: float | None = None, prices: dict | None = None) -> dict:
+    """Call ``intent`` once and write what it proposed (or why it could not) to ``out/jit-proposal.json``.
+
+    With ``budget_usd``, the call is priced first, as run.generate prices it (the prompt estimated, the
+    completion at RESERVED_COMPLETION_TOKENS, which spark_intent sends as max_tokens): over the budget,
+    no call is made and the proposal records OUT_OF_BUDGET (review of #231: this path had no check)."""
     from pathlib import Path
 
     from expectrail.jit.diff_map import PatchError, diff_map
@@ -178,7 +186,17 @@ def propose_to_file(intent, report: str, patch_text: str, profile: dict, probes:
     doc = {"format": PROPOSAL_FORMAT, "patchSha256": _sha(patch_text), "model": getattr(intent, "model", None),
            "error": None, "probes": [], "candidates": [], "diagnostics": [], "usage": {}, "promptSha256": None}
     try:
-        answer = intent(report, patch_text, diff_map(patch_text, profile, probes), profile, probes)
+        dmap = diff_map(patch_text, profile, probes)
+        if budget_usd is not None:
+            from expectrail.jit.run import OutOfBudget, Spend
+
+            spend = Spend(budget_usd, prices or {})
+            est = estimate_prompt_tokens(getattr(intent, "system", ""), prompt(report, patch_text, dmap, profile, probes))
+            try:
+                spend.reserve(spend.spark_cost(est, RESERVED_COMPLETION_TOKENS), "the intent call")
+            except OutOfBudget as exc:
+                raise IntentUnavailable(str(exc)) from exc
+        answer = intent(report, patch_text, dmap, profile, probes)
         doc.update({k: answer.get(k) for k in ("probes", "candidates", "diagnostics", "usage", "promptSha256")})
     except (IntentUnavailable, PatchError) as exc:
         doc["error"] = " ".join(str(exc).split())[:300]

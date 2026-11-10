@@ -100,11 +100,32 @@ class Pipeline(unittest.TestCase):
         self.assertIn("base", catch["killed"])
 
     def test_without_a_base_a_catch_is_weak(self):
-        doc, _t, _c = run_case("fix-wrong-no-base", base=(), variants=("variant-airjump",),
+        # The near miss brings the air jump back with the player 1 px to the right, so it differs from
+        # the candidate (which still air-jumps) while still failing the check.
+        doc, _t, _c = run_case("fix-wrong-no-base", base=(), variants=("variant-airjump-moved",),
                                runner=_AlwaysAirJump())
         # The reference is the clean game; the candidate still has unlimited air jumps.
         self.assertEqual([c["strength"] for c in doc["catches"]], ["weak"])
         self.assertIsNone(doc["catches"][0]["base"])
+
+    def test_a_near_miss_that_behaves_like_the_candidate_kills_nothing(self):
+        # Review of #231: "variant-airjump" on a candidate that already air-jumps gives the candidate's
+        # own trace, so the check "killing" it would prove nothing; it is not counted, and with no
+        # other near miss the check is not valid and nothing is caught.
+        doc, _t, _c = run_case("fix-wrong-no-base", base=(), variants=("variant-airjump",),
+                               runner=_AlwaysAirJump())
+        self.assertEqual(doc["catches"], [])
+        variant = next(v for v in doc["variants"] if v["kind"] != "base")
+        self.assertIn("jit-no-extra-air-jumps", variant["sameAsCandidateFor"])
+        row = next(v for v in doc["validity"] if v["specId"] == "jit-no-extra-air-jumps")
+        self.assertFalse(row["valid"])
+
+    def test_the_base_build_counts_even_when_the_candidate_behaves_like_it(self):
+        # A comment-only "fix" behaves like the bug: the base build is still a near miss, so the
+        # check that fails on the bug is valid and catches the candidate, strongly.
+        doc, _t, _c = run_case("fix-comment")
+        self.assertEqual([(c["specId"], c["strength"]) for c in doc["catches"]], [("jit-no-extra-air-jumps", "strong")])
+        self.assertNotIn("sameAsCandidateFor", next(v for v in doc["variants"] if v["kind"] == "base"))
 
     def test_every_generated_check_is_advisory_model_prior_and_auto_diff(self):
         doc, _t, _c = run_case("fix-wrong")
