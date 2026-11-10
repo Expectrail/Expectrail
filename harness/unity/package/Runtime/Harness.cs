@@ -100,6 +100,26 @@ namespace Expectrail.Harness
         // at every tick. 120 is over twice the longest fade seen (53 frames, run 10).
         const int HoldFrames = 120;
         int _settleHold;
+        // The padding frames of a hold (the fade has rested, game time is held, nothing is captured) draw
+        // an empty scene: each camera's cullingMask is 0 until the hold ends. Overlay UI still draws. The
+        // frames still happen, so frameCount is unchanged; they only cost less (Unity run 14: a 200-tick
+        // replay took 40 s with fully drawn padding, against 18 to 29 s before it). Frames while a fade is
+        // part-way are drawn as before: cheaper ones would fit more of them into the fade's real second.
+        readonly Dictionary<Camera, int> _blanked = new Dictionary<Camera, int>();
+
+        void Blank(bool on)
+        {
+            if (on)
+            {
+                foreach (var cam in Camera.allCameras)
+                    if (!_blanked.ContainsKey(cam)) { _blanked[cam] = cam.cullingMask; cam.cullingMask = 0; }
+                return;
+            }
+            if (_blanked.Count == 0) return;
+            foreach (var kv in _blanked)
+                if (kv.Key != null) kv.Key.cullingMask = kv.Value;
+            _blanked.Clear();
+        }
         // During the route: frames held while a real-time fade was part-way (no tick, row or frame).
         bool _holding;
         int _routeHeldFrames;
@@ -274,8 +294,10 @@ namespace Expectrail.Harness
                 if (_stepsThisFrame != 0)
                     throw new InvalidOperationException($"{_stepsThisFrame} physics steps ran in a frame held for a fade after tick {_tick - 1}: a tick with no row");
                 if (fading) _holdFadeFrames = _holdFrames;
+                Blank(!fading);
                 if (!fading && _holdFrames % HoldFrames == 0)
                 {
+                    Blank(false);
                     _holding = false;
                     Time.timeScale = 1f;
                     Debug.Log($"expectrail: hold from tick {_holdFromTick}: {_holdFrames} frames (the fade rested after {_holdFadeFrames + 1}); camera changed on " +
@@ -352,6 +374,7 @@ namespace Expectrail.Harness
             var held = fading || (_settleHold > 0 && _settleHold % HoldFrames != 0);
             if (held) { _frozenFrames++; _settleHold++; } else _settleHold = 0;
             Time.timeScale = held ? 0f : 1f;
+            Blank(held && !fading);
             if (!held && resting && !waiting && _recorder.Player() != null)
             {
                 _phase = Phase.Route;
