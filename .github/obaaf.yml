@@ -27,9 +27,21 @@ lanes:
   ".github/workflows/discovery.yml#discovery-planner": agent     # Muse Spark plans discovery probes and contracts (main only)
   ".github/workflows/discovery-blind.yml#blind": agent           # the same, on the private fresh set (counts only)
   ".github/workflows/byo-live.yml#byo-live": agent               # Claude triages, Claude Code fixes (BYO, manual)
+  ".github/workflows/byo-gateway-probe.yml#byo-gateway-probe": agent  # the same, behind the key gateway (experiment)
   # Not an agent: it calls each configured provider once and acts only on whether text came back.
   # Not perception either, so it has a lane of its own (agents/assurance/audit.py, the probe lane).
   ".github/workflows/byo-smoke.yml#byo-smoke": probe             # one live call per provider, nothing acts on it
+
+# Secrets that must never be available outside an environment (OBAAF-GHA-024). Anyone with write
+# access could read a repository secret by pushing a workflow on a branch, so these live only in
+# environments: main-only (main's workflows only) or, for the BYO provider keys, provider-keys
+# (every run approved by a maintainer). Every matching entry applies.
+protected_secrets:
+  HELDOUT_TOKEN: main-only
+  MODEL_API_KEY: main-only
+  FIREWORKS_API_KEY: main-only
+  GLIMMER_API_KEY: main-only
+  "*_API_KEY": null
 
 # Reviewed findings. Each entry says why it does not apply and expires, so it is reviewed again.
 ignore:
@@ -55,4 +67,12 @@ ignore:
     reason: >-
       The Unity licence lives in the unity environment, which requires Sean's approval for every
       run, so a pull request's build gets it only after a maintainer approves that run.
+    until: 2027-02-09
+  - rule: OBAAF-GHA-001
+    path: .github/workflows/byo-smoke.yml
+    job: byo-smoke
+    reason: >-
+      The provider keys live in the provider-keys environment, which requires a maintainer's
+      approval (Sean or Timothy) for every run, so a pull request's run gets a key only after one of
+      them approves it; same-repository pull requests only.
     until: 2027-02-09

@@ -180,13 +180,20 @@ class LaneInventoryTest(unittest.TestCase):
 
     def test_every_job_with_a_model_key_is_a_declared_agent_or_perception_only(self):
         self.assertEqual(self.problems(), [])
-        self.assertEqual(len(self.declared), 15)
+        self.assertEqual(len(self.declared), 16)
         for job in self.audit.PERCEPTION:
             self.assertIn(job, self.models, f"{job} no longer holds a model key; drop it from PERCEPTION")
 
     def test_the_byo_fixer_job_holds_its_providers_key_and_is_a_declared_agent(self):
         """byo-live runs Claude Code on the change under review, so it is an agent lane like any other."""
         job = ".github/workflows/byo-live.yml#byo-live"
+        self.assertEqual(self.models.get(job), {"ANTHROPIC_API_KEY"})
+        self.assertIn(job, self.declared)
+
+    def test_the_gateway_probe_is_an_agent_lane_like_the_run_it_mirrors(self):
+        """byo-gateway-probe runs Claude Code on the change under review, exactly as byo-live does.
+        Putting it behind the key gateway changes what it holds, not what it is."""
+        job = ".github/workflows/byo-gateway-probe.yml#byo-gateway-probe"
         self.assertEqual(self.models.get(job), {"ANTHROPIC_API_KEY"})
         self.assertIn(job, self.declared)
 
@@ -244,7 +251,7 @@ class LaneInventoryTest(unittest.TestCase):
             {"rule": "OBAAF-GHA-020", "title": "Agent job without an egress restriction", "severity": "low",
              "category": "hygiene", "path": "a.yml", "line": 3, "job": "run", "suppressed": {"reason": "x"}}]}
         lines = self.audit.finding_lines(report)
-        self.assertIn("2 findings, reported, not gated (authority 2 high, 0 medium, 0 low; "
+        self.assertIn("2 findings, reported; new ones fail the baseline step (authority 2 high, 0 medium, 0 low; "
                       "hygiene 0 high, 0 medium, 0 low)", lines[0])
         self.assertEqual(lines[1], "::notice title=OBAAF high OBAAF-GHA-005 x2::Secret available to an agent job: "
                                    "run, demo-run")

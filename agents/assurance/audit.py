@@ -1,4 +1,4 @@
-"""The OBAAF audit in CI: the lane inventory must hold, and every finding is reported, not gated.
+"""The OBAAF audit in CI: the lane inventory must hold, and every finding is reported (the baseline step in ci.yml fails on new ones).
 
 ``obaaf check`` classifies each job into a lane and applies the agent controls only to agent jobs.
 It does not recognise our model entry points (``python -m agents.*``), so ``.github/obaaf.yml``
@@ -150,7 +150,7 @@ def finding_lines(report: dict) -> list[str]:
     counts = Counter((f["category"], f["severity"]) for f in findings)
     summary = "; ".join(f"{cat} {', '.join(f'{counts[(cat, s)]} {s}' for s in ('high', 'medium', 'low'))}"
                         for cat in ("authority", "hygiene"))
-    lines = [(f"::notice title=OBAAF audit::{len(findings)} findings, reported, not gated ({summary}); "
+    lines = [(f"::notice title=OBAAF audit::{len(findings)} findings, reported; new ones fail the baseline step ({summary}); "
               f"{len(report.get('files') or [])} workflow files; {report.get('tool')}")]
     rules: dict[tuple[str, str, str], list[str]] = {}
     for f in findings:

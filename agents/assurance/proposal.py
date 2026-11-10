@@ -56,7 +56,7 @@ def game_root(adapter: str | Adapter = "godot") -> str:
 
 
 # The OBAAF commit this integration was reviewed against (integration spec, section 10).
-OBAAF_REVISION = "ef34304214923953cf7d67343b912385d4ce5906"
+OBAAF_REVISION = "d014b6366b5f1b14b8bf13a3b07c6d3727a4a1e4"
 # Expectrail's trust boundary, added to OBAAF's protected paths: a fix may never change what judges it.
 PROTECT = ["agents/**", "harness/**", "expectrail/**", "contracts/**", "specs/**", "tests/**", "bench/**",
            "bugs/**", "requirements*.txt"]

@@ -1,0 +1,262 @@
+{
+  "format": "obaaf-baseline/v0.1",
+  "tool": "obaaf 0.2.0",
+  "findings": [
+    {
+      "fingerprint": "sha256:93a54860f28ae3c982b8db3efde05385f52cb3a13e3d1bb519c48687e7f76183",
+      "rule": "OBAAF-GHA-005",
+      "severity": "high",
+      "path": ".github/workflows/byo-gateway-probe.yml",
+      "job": "byo-gateway-probe",
+      "message": "Agent job 'byo-gateway-probe' receives ANTHROPIC_API_KEY."
+    },
+    {
+      "fingerprint": "sha256:a4e759bc7ce9e4b09f1444ca2740de6bf687754b6a8b2c98741814847e13ab1a",
+      "rule": "OBAAF-GHA-020",
+      "severity": "low",
+      "path": ".github/workflows/byo-gateway-probe.yml",
+      "job": "byo-gateway-probe",
+      "message": "Agent job 'byo-gateway-probe' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
+    },
+    {
+      "fingerprint": "sha256:679d7e44776e1776e549271c14a4e098453ef5726393aeb3fd740f8d0e9ac249",
+      "rule": "OBAAF-GHA-005",
+      "severity": "high",
+      "path": ".github/workflows/byo-live.yml",
+      "job": "byo-live",
+      "message": "Agent job 'byo-live' receives ANTHROPIC_API_KEY."
+    },
+    {
+      "fingerprint": "sha256:42aecd1fe5a403b9a5c3072f86bea3dbedaa2c6f66b34a26b4baa2a064a828af",
+      "rule": "OBAAF-GHA-020",
+      "severity": "low",
+      "path": ".github/workflows/byo-live.yml",
+      "job": "byo-live",
+      "message": "Agent job 'byo-live' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
+    },
+    {
+      "fingerprint": "sha256:f90be242b8730a005e60611d04e526878b21802c7ea84793d365c7e856702ae5",
+      "rule": "OBAAF-GHA-005",
+      "severity": "high",
+      "path": ".github/workflows/case-spend.yml",
+      "job": "run",
+      "message": "Agent job 'run' receives META_API_KEY, MODEL_API_KEY."
+    },
+    {
+      "fingerprint": "sha256:270602034db89119a941303fac511185079e2d7ebb2b18f85b5047f1ff1aa6f5",
+      "rule": "OBAAF-GHA-020",
+      "severity": "low",
+      "path": ".github/workflows/case-spend.yml",
+      "job": "run",
+      "message": "Agent job 'run' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
+    },
+    {
+      "fingerprint": "sha256:2106283add955639832d88b2bdde7e57de9d08c069a854a75d60a36fbf1cac71",
+      "rule": "OBAAF-GHA-005",
+      "severity": "high",
+      "path": ".github/workflows/ci.yml",
+      "job": "agents-bench-compare-live",
+      "message": "Agent job 'agents-bench-compare-live' receives META_API_KEY."
+    },
+    {
+      "fingerprint": "sha256:4ef1f57d7539a2559161f33aa4bda39e1c5704a5bcec95bfc8187f8c151d3019",
+      "rule": "OBAAF-GHA-020",
+      "severity": "low",
+      "path": ".github/workflows/ci.yml",
+      "job": "agents-bench-compare-live",
+      "message": "Agent job 'agents-bench-compare-live' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
+    },
+    {
+      "fingerprint": "sha256:5b879208c59166fdc2d1bb04aaf29e200d5e0ca4892e823523848c463247e802",
+      "rule": "OBAAF-GHA-005",
+      "severity": "high",
+      "path": ".github/workflows/ci.yml",
+      "job": "agents-live-muse",
+      "message": "Agent job 'agents-live-muse' receives META_API_KEY."
+    },
+    {
+      "fingerprint": "sha256:7c4d48680a6ca14483561aef34b7227cf2a131fec8f23f12cd04c8cd3db94a89",
+      "rule": "OBAAF-GHA-020",
+      "severity": "low",
+      "path": ".github/workflows/ci.yml",
+      "job": "agents-live-muse",
+      "message": "Agent job 'agents-live-muse' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
+    },
+    {
+      "fingerprint": "sha256:bf7941ec57e6a3c8c642de7fe25f158196cc52e919eb75fafa9baf1d3efc10e2",
+      "rule": "OBAAF-GHA-005",
+      "severity": "high",
+      "path": ".github/workflows/ci.yml",
+      "job": "agents-oct29-film",
+      "message": "Agent job 'agents-oct29-film' receives HELDOUT_TOKEN, META_API_KEY."
+    },
+    {
+      "fingerprint": "sha256:b22bb09e1f2566d9c555a1b474e302d345e4f06162f3df1c82f884f0de484414",
+      "rule": "OBAAF-GHA-020",
+      "severity": "low",
+      "path": ".github/workflows/ci.yml",
+      "job": "agents-oct29-film",
+      "message": "Agent job 'agents-oct29-film' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
+    },
+    {
+      "fingerprint": "sha256:b3886147aa5bb1ad6fd31b063371620936150a476094158453dd1d04913f5d58",
+      "rule": "OBAAF-GHA-005",
+      "severity": "high",
+      "path": ".github/workflows/discovery-blind.yml",
+      "job": "blind",
+      "message": "Agent job 'blind' receives HELDOUT_TOKEN, META_API_KEY, MODEL_API_KEY."
+    },
+    {
+      "fingerprint": "sha256:7cc69dfd27174a2a67079854c536f768976a0773313a45e517aa4c16f27d0282",
+      "rule": "OBAAF-GHA-020",
+      "severity": "low",
+      "path": ".github/workflows/discovery-blind.yml",
+      "job": "blind",
+      "message": "Agent job 'blind' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
+    },
+    {
+      "fingerprint": "sha256:fb2c1e08079a7650e948560a6c50ecfd17be27a976e6418b9200009449670ecb",
+      "rule": "OBAAF-GHA-005",
+      "severity": "high",
+      "path": ".github/workflows/discovery.yml",
+      "job": "discovery-planner",
+      "message": "Agent job 'discovery-planner' receives META_API_KEY, MODEL_API_KEY."
+    },
+    {
+      "fingerprint": "sha256:e56d3fcaea2511cb7d3c243d34e4805147f60341bf60acb73b2e36574b2ce1db",
+      "rule": "OBAAF-GHA-020",
+      "severity": "low",
+      "path": ".github/workflows/discovery.yml",
+      "job": "discovery-planner",
+      "message": "Agent job 'discovery-planner' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
+    },
+    {
+      "fingerprint": "sha256:162d44e791829c2c6ddb00326ab083edcb062cfd6505d30c69bf453b0f172187",
+      "rule": "OBAAF-GHA-005",
+      "severity": "high",
+      "path": ".github/workflows/feedback-live.yml",
+      "job": "feedback-live",
+      "message": "Agent job 'feedback-live' receives BASETEN_API_KEY, META_API_KEY, MODEL_API_KEY."
+    },
+    {
+      "fingerprint": "sha256:6c3ac8db7c026d9091c2cdbdda52074b09e3c191bad6381f1b5d1d744c56d37a",
+      "rule": "OBAAF-GHA-020",
+      "severity": "low",
+      "path": ".github/workflows/feedback-live.yml",
+      "job": "feedback-live",
+      "message": "Agent job 'feedback-live' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
+    },
+    {
+      "fingerprint": "sha256:f30ef9b2b9222a5f7f0e61f8ab2bfc2add272ae917cd41e879f9703aba1fd753",
+      "rule": "OBAAF-GHA-005",
+      "severity": "high",
+      "path": ".github/workflows/fix-matrix.yml",
+      "job": "demo-run",
+      "message": "Agent job 'demo-run' receives FIREWORKS_API_KEY, HELDOUT_TOKEN, META_API_KEY, MODEL_API_KEY."
+    },
+    {
+      "fingerprint": "sha256:4ab118e969d70dbeaac09aa85264595c1d29009aa4df0145f25ce4f962b632cf",
+      "rule": "OBAAF-GHA-020",
+      "severity": "low",
+      "path": ".github/workflows/fix-matrix.yml",
+      "job": "demo-run",
+      "message": "Agent job 'demo-run' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
+    },
+    {
+      "fingerprint": "sha256:db4aab3677605145b994f33b4baf74b212eaae20b8d8fdc190bca293161395c7",
+      "rule": "OBAAF-GHA-005",
+      "severity": "high",
+      "path": ".github/workflows/fix-matrix.yml",
+      "job": "gateway-probe",
+      "message": "Agent job 'gateway-probe' receives META_API_KEY."
+    },
+    {
+      "fingerprint": "sha256:b74dc10acff71bf3f8913c073c06cdbee290d31c26a54c464e125ea4ba549c43",
+      "rule": "OBAAF-GHA-020",
+      "severity": "low",
+      "path": ".github/workflows/fix-matrix.yml",
+      "job": "gateway-probe",
+      "message": "Agent job 'gateway-probe' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
+    },
+    {
+      "fingerprint": "sha256:eaa92fa68ba7c991e2ff5d08792cd0cf7771b35cbf5ce31f44c10b3242190554",
+      "rule": "OBAAF-GHA-005",
+      "severity": "high",
+      "path": ".github/workflows/fix-matrix.yml",
+      "job": "judge-run",
+      "message": "Agent job 'judge-run' receives ANTHROPIC_API_KEY, FIREWORKS_API_KEY, HELDOUT_TOKEN, META_API_KEY, MODEL_API_KEY, OPENAI_API_KEY."
+    },
+    {
+      "fingerprint": "sha256:71af9f74411627d7c6aafd7e4151937303de2bd816322175d3a772dac291ae76",
+      "rule": "OBAAF-GHA-020",
+      "severity": "low",
+      "path": ".github/workflows/fix-matrix.yml",
+      "job": "judge-run",
+      "message": "Agent job 'judge-run' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
+    },
+    {
+      "fingerprint": "sha256:2cbe4400df852e94d8481f3a4b6b5e8468da19b02aed8a2a29a1ea5bdfffb030",
+      "rule": "OBAAF-GHA-005",
+      "severity": "high",
+      "path": ".github/workflows/fix-matrix.yml",
+      "job": "run",
+      "message": "Agent job 'run' receives HELDOUT_TOKEN, META_API_KEY, MODEL_API_KEY."
+    },
+    {
+      "fingerprint": "sha256:093cadae52faf564fd6646910ab290028b4b0eb4ddb84193b5f2e1d409c2fadc",
+      "rule": "OBAAF-GHA-020",
+      "severity": "low",
+      "path": ".github/workflows/fix-matrix.yml",
+      "job": "run",
+      "message": "Agent job 'run' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
+    },
+    {
+      "fingerprint": "sha256:d390b4aa193f92a7fb89412bb34d41c57ea5846000e9f8527f98ea57fd434c09",
+      "rule": "OBAAF-GHA-005",
+      "severity": "high",
+      "path": ".github/workflows/mutation-fix.yml",
+      "job": "run",
+      "message": "Agent job 'run' receives META_API_KEY, MODEL_API_KEY."
+    },
+    {
+      "fingerprint": "sha256:37dd86dcc4e984db800fb8e3a069bcccfd0b412adba7ecee77e8ebaf7b55d727",
+      "rule": "OBAAF-GHA-020",
+      "severity": "low",
+      "path": ".github/workflows/mutation-fix.yml",
+      "job": "run",
+      "message": "Agent job 'run' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
+    },
+    {
+      "fingerprint": "sha256:f2565b3f04d423f596600d1c444cac9c371c0adcf79436a730a18506c976615d",
+      "rule": "OBAAF-GHA-005",
+      "severity": "high",
+      "path": ".github/workflows/spark-open.yml",
+      "job": "spark-open",
+      "message": "Agent job 'spark-open' receives BASETEN_API_KEY, META_API_KEY."
+    },
+    {
+      "fingerprint": "sha256:ad35d4aa1133ef7f9f4ba9ffb49eb5da08bf95e16f7038cadb954b5023dc32c9",
+      "rule": "OBAAF-GHA-020",
+      "severity": "low",
+      "path": ".github/workflows/spark-open.yml",
+      "job": "spark-open",
+      "message": "Agent job 'spark-open' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
+    },
+    {
+      "fingerprint": "sha256:370824a1ac3b4f974907816e8bdd930e822bd8dd456d2f51aa3f95ff2be080cc",
+      "rule": "OBAAF-GHA-005",
+      "severity": "high",
+      "path": ".github/workflows/web-fix.yml",
+      "job": "run",
+      "message": "Agent job 'run' receives HELDOUT_TOKEN, META_API_KEY, MODEL_API_KEY."
+    },
+    {
+      "fingerprint": "sha256:efb30293b03973040ee2032129c1f595ffaf24423f474fab868645ceb0d14b24",
+      "rule": "OBAAF-GHA-020",
+      "severity": "low",
+      "path": ".github/workflows/web-fix.yml",
+      "job": "run",
+      "message": "Agent job 'run' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
+    }
+  ]
+}

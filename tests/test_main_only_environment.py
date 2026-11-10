@@ -1,4 +1,4 @@
-"""Model keys and the held-out token are reachable only through the main-only environment.
+"""Model keys and the held-out token are reachable only through a protected environment.
 
 Anyone with write access, or a coding agent acting for them, could read any repository secret by
 pushing a branch with a new workflow. So HELDOUT_TOKEN (which reads the private held-out repository)
@@ -6,8 +6,10 @@ and every model API key live in the `main-only` environment, which only `main` m
 every job that uses one declares it. These tests keep it that way: a job that names one of these
 secrets outside the environment, or a job in the environment that a pull request can start, fails.
 
-The Unity licence is the one other secret; it lives in the `unity` environment, which requires a
-maintainer's approval for every run (.github/obaaf.yml records that review).
+Two environments gate a run by approval instead of by branch, and each holds only what its jobs need:
+`provider-keys` (the BYO provider keys, so byo-smoke can test a provider-layer change on its pull
+request once a maintainer approves the run) and `unity` (the Unity licence). Both must have required
+reviewers in the repository settings; GitHub creates a missing environment with none.
 """
 from __future__ import annotations
 
@@ -32,6 +34,14 @@ def secret_refs(text: str) -> set[str]:
 
 def is_protected(name: str) -> bool:
     return name.endswith("_API_KEY") or name == "HELDOUT_TOKEN"
+
+
+# Approval-gated environments: the jobs allowed in each, and the secrets those jobs may name there.
+PROVIDER_KEYS = {"ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY", "BASETEN_API_KEY",
+                 "META_API_KEY"}
+APPROVAL_GATED = {
+    "provider-keys": ({"byo-smoke.yml:byo-smoke", "byo-gateway-probe.yml:byo-gateway-probe"}, PROVIDER_KEYS),
+}
 # Jobs in main-only that a pull_request_target can start: they run as main, so the branch rule does
 # not stop them. Each is reviewed in .github/obaaf.yml.
 PULL_REQUEST_TARGET_REVIEWED = {"private-scan.yml:private-export-scan"}
@@ -59,10 +69,18 @@ class MainOnlyEnvironmentTest(unittest.TestCase):
                 text = yaml.safe_dump(job)
                 self.assertNotRegex(text, EVERY_SECRET, f"{path.name} job {name} can take every secret")
                 self.assertNotEqual(job.get("secrets"), "inherit", f"{path.name} job {name} inherits every secret")
-                if any(is_protected(s) for s in secret_refs(text)):
-                    users.append(f"{path.name}:{name}")
-                    self.assertEqual(environment(job), "main-only",
-                                     f"{path.name} job {name} uses a model key or HELDOUT_TOKEN outside main-only")
+                used = {s for s in secret_refs(text) if is_protected(s)}
+                if used:
+                    key = f"{path.name}:{name}"
+                    users.append(key)
+                    env = environment(job)
+                    if env in APPROVAL_GATED:
+                        jobs, allowed = APPROVAL_GATED[env]
+                        self.assertIn(key, jobs, f"{key} is not expected in the {env} environment")
+                        self.assertTrue(used <= allowed, f"{key} names {sorted(used - allowed)} in {env}")
+                    else:
+                        self.assertEqual(env, "main-only",
+                                         f"{key} uses a model key or HELDOUT_TOKEN outside main-only")
         self.assertGreater(len(users), 20)
 
     def test_the_only_other_secrets_are_unitys_behind_approval(self):

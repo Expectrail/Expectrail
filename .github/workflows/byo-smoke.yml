@@ -11,17 +11,35 @@
 # It asserts that text came back. `.github/obaaf.yml` declares it a probe lane for exactly that
 # reason — agent would overclaim it, perception would be wrong about what it talks to.
 #
-# Not on pull requests. It used to run on same-repository pull requests that touched the provider
-# layer, with every provider key, on the reasoning that their authors could reach the repository's
-# secrets anyway. That is no longer true: the keys live in the main-only environment, so a branch's
-# code, a person's or a coding agent's, never holds one. The daily schedule and a dispatch from main
-# make the live calls; the offline provider tests run on every pull request.
+# Secrets on a pull request: a pull request runs its own code, and a job that can call a provider
+# can read the key out of its own environment, so the gate is approval, not a sandbox. The job runs
+# in the `provider-keys` environment; give that environment required reviewers and a run on a pull
+# request waits for a maintainer before any key is in the environment. Same-repository pull requests
+# only on top of that, the rule private-scan.yml already uses — a fork's pull request gets no
+# secrets and cleanly skips every provider. The paths filter keeps it to changes that can break the
+# provider layer.
+#
+# A workflow that names an environment GitHub does not have gets one created with NO protection
+# rules, so this line gates nothing until required reviewers are set on `provider-keys` in the
+# repository settings. There is no way for the job to check that from the inside: it cannot see its
+# own environment's rules. Until they are set, treat this as documentation of intent and the
+# schedule as the part that is actually safe.
 name: BYO smoke (live provider calls)
 
 on:
   schedule:
     # Daily, off the hour: provider-side deprecations arrive without a commit of ours.
     - cron: '23 7 * * *'
+  pull_request:
+    paths:
+      - 'expectrail/providers.py'
+      - 'expectrail/spec_writer.py'
+      - 'agents/byo_smoke.py'
+      - 'agents/byo_fixer.py'
+      - 'agents/byo_vision.py'
+      - 'agents/triage.py'
+      - 'agents/keys.py'
+      - '.github/workflows/byo-smoke.yml'
   workflow_dispatch:
     inputs:
       provider:
@@ -34,17 +52,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: byo-smoke-${{ github.ref }}
+  group: byo-smoke-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   byo-smoke:
-    # The provider keys live in the main-only environment, so only main's copy of this workflow (the
-    # schedule, or a dispatch from main) can make live calls. It no longer runs on pull requests: a
-    # pull request's code never gets a key. The probe's logic is tested offline in CI
-    # (tests/test_byo_smoke.py) on every pull request.
-    environment: main-only
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-24.04
+    environment: provider-keys
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
