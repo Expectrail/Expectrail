@@ -191,11 +191,17 @@ class LaneInventoryTest(unittest.TestCase):
         self.assertIn(job, self.declared)
 
     def test_the_gateway_probe_is_an_agent_lane_like_the_run_it_mirrors(self):
-        """byo-gateway-probe runs Claude Code on the change under review, exactly as byo-live does.
-        Putting it behind the key gateway changes what it holds, not what it is."""
+        """byo-gateway-probe runs a coding agent on the change under review, exactly as byo-live
+        does. Putting it behind the key gateway changes what it holds, not what it is.
+
+        It holds both providers' keys because the agent is an input: Anthropic for triage either
+        way, OpenAI when the agent is codex. The agent process still receives only its own
+        provider's key (agents/keys.py, BYO_AGENT_KEY_ENVS), which is what sandbox.json records.
+        """
         job = ".github/workflows/byo-gateway-probe.yml#byo-gateway-probe"
-        self.assertEqual(self.models.get(job), {"ANTHROPIC_API_KEY"})
+        self.assertEqual(self.models.get(job), {"ANTHROPIC_API_KEY", "OPENAI_API_KEY"})
         self.assertIn(job, self.declared)
+        self.assertNotIn("MODEL_API_KEY", self.models[job])  # never the verifier's SAM key
 
     def test_the_live_provider_probe_is_a_declared_probe_not_an_agent(self):
         """byo-smoke holds every provider key but calls a model and acts only on whether it

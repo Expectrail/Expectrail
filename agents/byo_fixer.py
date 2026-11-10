@@ -88,11 +88,16 @@ def build_agent_cli_command(
         return cmd
 
     if agent == "codex":
+        # `codex exec` is the non-interactive entry point of the current (Rust) CLI. The flags this
+        # built before — `codex --quiet --approval-mode full-auto` — belong to the legacy TypeScript
+        # CLI, so they had been wrong since that implementation was retired, and nothing noticed
+        # because no live codex run had ever been attempted. --skip-git-repo-check because the fixer
+        # workspace is a copy of the game, not a repository.
         cmd = [
             "codex",
-            "--quiet",
-            "--approval-mode",
-            "full-auto",
+            "exec",
+            "--full-auto",
+            "--skip-git-repo-check",
         ]
         if model and model not in ("muse-code", "codex"):
             cmd.extend(["--model", model])

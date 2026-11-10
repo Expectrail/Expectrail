@@ -164,9 +164,13 @@ class TestBYOFixerAndVision(unittest.TestCase):
             self.assertEqual(cmd_claude[0], "claude")
             self.assertIn("--allowedTools", cmd_claude)
 
+            # The current CLI runs non-interactively as `codex exec`; `--quiet --approval-mode`
+            # was the legacy TypeScript CLI's interface and had been stale here since it retired.
             cmd_codex = build_agent_cli_command("codex", "Fix player mask", wt)
-            self.assertEqual(cmd_codex[0], "codex")
-            self.assertIn("full-auto", cmd_codex)
+            self.assertEqual(cmd_codex[:4], ["codex", "exec", "--full-auto", "--skip-git-repo-check"])
+            self.assertEqual(cmd_codex[-1], "Fix player mask")
+            self.assertNotIn("--approval-mode", cmd_codex)
+            self.assertNotIn("--quiet", cmd_codex)
 
     def test_the_sandbox_record_describes_the_run_not_a_meta_gateway(self) -> None:
         """sandbox.json backs the README's isolation claim, so it must describe what ran.

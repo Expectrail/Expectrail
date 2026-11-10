@@ -16,17 +16,27 @@
 # Still a probe, not a default: that is one run on one defect with one agent. The answer is in the
 # gateway's own record — the hosts the agent tried, which of them were refused, and the header names
 # the placeholder was swapped into. Manual only, and it spends Anthropic credit.
-name: BYO gateway probe (Claude Code behind the key gateway)
+name: BYO gateway probe (a coding agent behind the key gateway)
 
 on:
   workflow_dispatch:
     inputs:
+      agent:
+        description: which BYO coding agent to put behind the gateway
+        type: choice
+        options: ["claude-code", "codex"]
+        default: "claude-code"
       runs:
         description: independent loop runs
         default: "1"
         required: true
       gateway:
         description: the key gateway (off reproduces today's behaviour for comparison)
+        type: choice
+        options: ["on", "off"]
+        default: "on"
+      require_sandbox:
+        description: fail unless the agent runs under bubblewrap (off separates a sandbox problem from an agent one)
         type: choice
         options: ["on", "off"]
         default: "on"
@@ -46,13 +56,16 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.13'
-      - name: Require the ANTHROPIC_API_KEY secret
+      - name: Require the secret this agent's provider needs
         env:
-          KEY_SET: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          AGENT: ${{ inputs.agent }}
+          ANTHROPIC_SET: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          OPENAI_SET: ${{ secrets.OPENAI_API_KEY != '' }}
         run: |
-          if [ "$KEY_SET" != "true" ]; then
-            echo "::error::Set the ANTHROPIC_API_KEY repository secret first."; exit 1
-          fi
+          case "$AGENT" in
+            codex) [ "$OPENAI_SET" = "true" ] || { echo "::error::codex needs the OPENAI_API_KEY repository secret."; exit 1; } ;;
+            *)     [ "$ANTHROPIC_SET" = "true" ] || { echo "::error::claude-code needs the ANTHROPIC_API_KEY repository secret."; exit 1; } ;;
+          esac
       - run: python -m pip install -r requirements-dev.txt
       - name: Install mitmproxy, bubblewrap, xvfb, software OpenGL
         run: |
@@ -67,23 +80,50 @@ jobs:
           if [ -f /proc/sys/kernel/unprivileged_userns_clone ]; then
             echo 1 | sudo tee /proc/sys/kernel/unprivileged_userns_clone
           fi
-      - name: Install Claude Code (under /usr/local, which the sandbox already binds read-only)
+      - name: Install the agent's CLI (under /usr/local, which the sandbox already binds read-only)
+        env:
+          AGENT: ${{ inputs.agent }}
         run: |
-          sudo npm install -g @anthropic-ai/claude-code
-          claude --version
+          if [ "$AGENT" = "codex" ]; then
+            sudo npm install -g @openai/codex
+          else
+            sudo npm install -g @anthropic-ai/claude-code
+          fi
+      - name: Record the interface the CLI actually has
+        # agents/byo_fixer.py builds the argv from this repository's idea of the CLI, and that idea
+        # was stale for codex: it still used the legacy TypeScript flags (--quiet --approval-mode)
+        # long after `codex exec` replaced them, because no live codex run had ever been attempted.
+        # Printing the version and the help puts the real interface in the log, so a failure below
+        # can be read as "wrong flags" or "something else" without guessing.
+        env:
+          AGENT: ${{ inputs.agent }}
+        run: |
+          if [ "$AGENT" = "codex" ]; then
+            codex --version
+            codex exec --help || echo "::warning::codex exec --help failed; the adapter's flags may not match this CLI"
+          else
+            claude --version
+          fi
       - name: Download Godot
         run: ./harness/get_godot.sh
       - name: Run the loop with the fixer behind the key gateway
+        # Triage stays on Anthropic whichever agent fixes, so the only thing that changes between
+        # runs is the agent behind the gateway. The agent receives only its own provider's key
+        # (agents/keys.py, BYO_AGENT_KEY_ENVS), and the gateway's allowlist is derived from it.
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ inputs.agent == 'codex' && secrets.OPENAI_API_KEY || '' }}
           EXPECTRAIL_LLM_PROVIDER: anthropic
-          EXPECTRAIL_FIXER_AGENT: claude-code
+          EXPECTRAIL_FIXER_AGENT: ${{ inputs.agent }}
           EXPECTRAIL_OBS_PROVIDER: trace
           EXPECTRAIL_BYO_GATEWAY: ${{ inputs.gateway }}
           RUNS: ${{ inputs.runs }}
+          REQUIRE_SANDBOX: ${{ inputs.require_sandbox }}
         run: |
+          extra=""
+          if [ "$REQUIRE_SANDBOX" = "on" ]; then extra="--require-sandbox"; fi
           python -m agents.loop --out runs/byo-gateway --mode live --runs "$RUNS" \
-            --no-skip-harness --require-sandbox
+            --no-skip-harness $extra
       - name: What the gateway saw
         if: always()
         run: |
