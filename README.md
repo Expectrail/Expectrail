@@ -686,11 +686,15 @@ export EXPECTRAIL_VISION_BACKEND=local-http EXPECTRAIL_LOCAL_VISION_URL=http://l
   proxy Muse Code uses: a placeholder of the key's length, the real key held by the proxy and
   swapped in for the provider's host only (derived from
   [`expectrail/providers.py`](expectrail/providers.py)), and under bubblewrap no network of its own.
-  Off by default and **not yet measured**: whether Claude Code works when every host but
-  `api.anthropic.com` is refused is what
-  [`byo-gateway-probe.yml`](.github/workflows/byo-gateway-probe.yml) is for. Until that probe
-  answers, the sentence above is what Expectrail claims. On and unavailable is an error, never a
-  quiet fallback to handing the agent the real key.
+  Off by default, so the bullet above is still what a default run does. Measured once with Claude
+  Code ([`byo-gateway-probe.yml`](.github/workflows/byo-gateway-probe.yml), run 42752549697): behind
+  the gateway it reached an accepted fix with no network of its own, in 100,962 ms against
+  100,989 ms for the same loop with the gateway off, and the only key that left was the real one the
+  proxy swapped into `x-api-key` for `api.anthropic.com`. Claude Code also tried
+  `http-intake.logs.us5.datadoghq.com`; the gateway refused it before any swap and the run passed
+  anyway, so nothing about the allowlist needs widening — and with the gateway off, that telemetry
+  goes out over the host's network. One run, one defect, one agent: enough to say it works, not a
+  benchmark. On and unavailable is an error, never a quiet fallback to handing the agent the real key.
 - **Vision.** `local-http` is any open-vocabulary detector behind one HTTP endpoint (Grounding DINO
   with SAM 2.1, Florence-2, YOLO-World); `byo-vlm-engine` is any vision-language model whose boxes
   count only where the engine agrees. A vision-language model alone (`byo-vlm`) does not decide a
