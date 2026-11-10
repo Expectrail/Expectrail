@@ -100,6 +100,7 @@ V1_FORMATS = {
     "expectrail.trace-verdict/v1": ("trace-verdict", "trace-verdict.v1.schema.json"),
     "expectrail.mechanics-profile/v1": ("mechanics-profile", "mechanics-profile.v1.schema.json"),
     "expectrail.discovery-run/v1": ("discovery-run", "discovery-run.v1.schema.json"),
+    "expectrail.jit-run/v1": ("jit-run", "jit-run.v1.schema.json"),
 }
 
 

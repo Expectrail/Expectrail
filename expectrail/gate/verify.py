@@ -302,8 +302,12 @@ def _game_ok(game: Path) -> bool:
 
 def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path, work: Path,
              base: Path | None = None, heldout: Path | None = None, pr: dict | None = None,
-             expectrail_commit: str | None = None, replay: Replay = harness_replay) -> dict:
-    """Run the gate and write the artifact in ``out``; returns the findings record."""
+             expectrail_commit: str | None = None, replay: Replay = harness_replay,
+             generated_checks: Path | None = None) -> dict:
+    """Run the gate and write the artifact in ``out``; returns the findings record.
+
+    ``generated_checks`` is the advisory block a check-generation step wrote (docs/jit.md). It is read
+    as untrusted data after the decision is made, and nothing in it can change the decision."""
     repo = repo.resolve()
     problems: list[str] = []
     game_rel = safe_relative(game, "game-path", root_ok=True)
@@ -399,6 +403,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         "findings": findings,
         "heldOut": held,
         "reviewPage": "review/index.html",
+        **({"generatedChecks": read_generated(generated_checks)} if generated_checks is not None else {}),
         "expectrail": {"version": __version__,
                        "commit": expectrail_commit if expectrail_commit and SHA40.fullmatch(expectrail_commit) else None},
         "createdAt": _now(),
@@ -415,6 +420,22 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     write_page(out, document, frames)
     (out / "findings.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
     return document
+
+
+MAX_GENERATED_BYTES = 64 * 1024
+
+
+def read_generated(path: Path) -> dict:
+    """The generated-checks block, or "nothing-generated" with a reason when it cannot be used.
+    Advisory only: whatever this returns, the decision is computed without it."""
+    try:
+        gen = rec.read_json(Path(path), MAX_GENERATED_BYTES, "generated-checks.json")
+        rec.validate(gen, rec.schema()["properties"]["generatedChecks"])
+        rec.check_generated(gen)
+        return gen
+    except (rec.RecordError, rec.SchemaError, OSError, ValueError) as exc:
+        return {"status": "nothing-generated", "reason": _clip(f"the generated checks could not be read: {exc}"),
+                "proposed": 0, "valid": 0, "strong": 0, "weak": 0, "catches": [], "runSha256": None}
 
 
 def stopped_record(reason: str, *, pr: dict | None, game: str | None, checks_from: str,
@@ -464,6 +485,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--head-sha", help="the pull request's head commit")
     p.add_argument("--base-sha", help="the pull request's base commit")
     p.add_argument("--expectrail-commit", help="the Expectrail commit this action was pinned to")
+    p.add_argument("--generated-checks", type=Path,
+                   help="the advisory generated-checks block (docs/jit.md); it never changes the decision")
     args = p.parse_args(argv)
     out = args.out.resolve()
     if out.exists() and any(out.iterdir()):
@@ -480,7 +503,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         document = run_gate(repo=args.repo, game=args.game, routes=re.split(r"[\s,]+", args.routes),
                             specs=args.specs, out=out, work=work, base=args.base, heldout=args.heldout, pr=pr,
-                            expectrail_commit=commit)
+                            expectrail_commit=commit, generated_checks=args.generated_checks)
     except ConfigError as exc:
         document = stopped_record(f"the gate's inputs cannot be used: {exc}", pr=pr, game=args.game,
                                   checks_from=checks_from, expectrail_commit=commit)

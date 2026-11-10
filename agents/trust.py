@@ -21,7 +21,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from agents.isolation import FIXER_FORBIDDEN_BASENAMES, forbidden_paths_under
+from agents.isolation import FIXER_FORBIDDEN_BASENAMES, FIXER_FORBIDDEN_PREFIXES, forbidden_paths_under
 from agents.sandbox import detect_sandbox, probe_blocked_canary_read
 from agents.signing import generate_run_keys
 
@@ -268,7 +268,7 @@ def run_trust_check(
         f"- Signing key bytes appear under fixer tree: {key_bytes_in_fixer}",
         f"- Forbidden suite/control basenames under fixer: "
         f"{[str(p) for p in forbidden] or '(none)'}",
-        f"- Deny-list: {sorted(FIXER_FORBIDDEN_BASENAMES)}",
+        f"- Deny-list: {sorted(FIXER_FORBIDDEN_BASENAMES)}; any path component starting {list(FIXER_FORBIDDEN_PREFIXES)}",
         "",
         "## OS sandbox canary (actual blocked read when enforced)",
         f"- Detected sandbox kind: `{sandbox_kind}`",

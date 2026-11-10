@@ -98,6 +98,7 @@ Both use the actions from the checked-out repository (`./.github/actions/...`) i
 | verify | `heldout-token` | empty | A token that can read it; see "Held-out routes" below before passing one |
 | verify | `fail-on` | `reject` | Fail the job on `reject`, on `needs-review` (or reject), or `never` |
 | verify | `artifact-name` | `expectrail-gate` | The evidence artifact's name |
+| verify | `generated-checks` | empty | An advisory block of checks generated for this change ([jit.md](jit.md)), shown in the comment and the review page; it never changes the decision, and one that cannot be read shows as "no generated checks" |
 | comment | `github-token` | the run's token | Reads the verify run's artifact and writes the comment |
 | comment | `artifact-name` | `expectrail-gate` | Must match the verify action's |
 | comment | `watch` | empty | More paths the verdict depends on, one per line (end a folder with `/`); the comment warns when the pull request changes one |

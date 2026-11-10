@@ -777,8 +777,36 @@ class WorkflowSafetyTest(unittest.TestCase):
         self.assertEqual(doc["permissions"], {"contents": "read"})
         for job in doc["jobs"].values():
             self.assertEqual(job.get("permissions", {"contents": "read"}), {"contents": "read"})
-        self.assertNotIn("secrets.", VERIFY_WF.read_text(encoding="utf-8"))
+        # Only the opt-in generated-checks proposer (docs/jit.md) may hold a secret, and it runs none of
+        # the pull request's code: see test_the_generated_checks_proposer_runs_no_pull_request_code.
+        others = {k: v for k, v in doc["jobs"].items() if k != "jit-propose"}
+        self.assertNotIn("secrets.", yaml.safe_dump(others))
         self.assertNotIn("pull_request_target", yaml.safe_dump(doc["on"]))
+
+    def test_the_generated_checks_proposer_runs_no_pull_request_code(self):
+        job = load_yaml(VERIFY_WF)["jobs"]["jit-propose"]
+        self.assertIn("vars.EXPECTRAIL_JIT == '1'", job["if"])
+        self.assertIn("github.event.pull_request.head.repo.full_name == github.repository", job["if"])
+        checkouts = [s for s in job["steps"] if str(s.get("uses", "")).startswith("actions/checkout@")]
+        by_path = {s["with"]["path"]: s["with"] for s in checkouts}
+        self.assertEqual(set(by_path), {"base", "head"})
+        self.assertEqual(by_path["base"]["ref"], "${{ github.event.pull_request.base.sha }}")
+        for w in by_path.values():
+            self.assertIs(w["persist-credentials"], False)
+        runs = [s for s in job["steps"] if "run" in s]
+        for step in runs:
+            self.assertNotIn("working-directory", step)
+            for line in step["run"].splitlines():
+                words = line.split()
+                # The pull request's checkout is only ever an argument (read as text), never where code
+                # runs from or what gets installed.
+                if words[:1] == ["cd"]:
+                    self.assertEqual(words[1:], ["base"], line)
+                if "pip" in words:
+                    self.assertIn("base/requirements-dev.txt", words, line)
+        secret_steps = [s for s in job["steps"] if "secrets." in yaml.safe_dump(s)]
+        self.assertEqual(len(secret_steps), 1)
+        self.assertIn("cd base", secret_steps[0]["run"])
 
     def test_the_verify_action_refuses_events_that_hold_a_write_token(self):
         steps = steps_of(VERIFY_ACTION)

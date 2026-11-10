@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Expectrail/Expectrail/contracts/jit-run.v1.schema.json",
+  "title": "Per-change check generation: one record per candidate change",
+  "description": "Report-only (docs/jit.md). advisory is always true and there is no decision field: nothing reads this record to accept or reject a change. A run that could not finish has status nothing-generated, a reason, and no catches.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "runId", "advisory", "status", "reason", "inputs", "settings", "diffMap", "proposed",
+               "probes", "variants", "validity", "catches", "counts", "spend", "diagnostics"],
+  "properties": {
+    "format": {"const": "expectrail.jit-run/v1"},
+    "runId": {"type": "string", "minLength": 1, "maxLength": 200},
+    "advisory": {"const": true},
+    "status": {"enum": ["complete", "nothing-generated"]},
+    "reason": {"type": ["string", "null"], "maxLength": 300},
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["patchSha256", "reportSha256", "basePatchSha256", "profileSha256", "model", "promptSha256"],
+      "properties": {
+        "patchSha256": {"$ref": "#/$defs/sha256"},
+        "reportSha256": {"$ref": "#/$defs/sha256"},
+        "basePatchSha256": {"type": "array", "items": {"$ref": "#/$defs/sha256"}},
+        "profileSha256": {"$ref": "#/$defs/sha256"},
+        "model": {"type": ["string", "null"], "maxLength": 100},
+        "promptSha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]}
+      }
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reps", "variantLimit", "budgetUsd"],
+      "properties": {
+        "reps": {"type": "integer", "minimum": 1},
+        "variantLimit": {"type": "integer", "minimum": 0},
+        "budgetUsd": {"type": "number", "minimum": 0}
+      }
+    },
+    "diffMap": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["files", "claims", "probeIds", "allProbes"],
+          "properties": {
+            "files": {"type": "array", "items": {
+              "type": "object", "additionalProperties": false,
+              "required": ["path", "claims", "addedLines", "removedLines"],
+              "properties": {
+                "path": {"type": "string", "maxLength": 300},
+                "claims": {"type": "array", "items": {"$ref": "#/$defs/id"}},
+                "addedLines": {"type": "array", "items": {"type": "integer", "minimum": 1}},
+                "removedLines": {"type": "array", "items": {"type": "integer", "minimum": 1}}
+              }}},
+            "claims": {"type": "array", "items": {"$ref": "#/$defs/id"}},
+            "probeIds": {"type": "array", "items": {"$ref": "#/$defs/id"}},
+            "allProbes": {"type": "boolean"}
+          }
+        }
+      ]
+    },
+    "proposed": {"type": "array", "maxItems": 8, "items": {
+      "type": "object", "additionalProperties": false, "required": ["spec", "applies", "probeIds"],
+      "properties": {
+        "spec": {"type": "object", "required": ["format", "id", "origin", "expectationRef"],
+                 "properties": {"format": {"const": "expectrail.trace-spec/v1"}, "origin": {"const": "AUTO_DIFF"},
+                                "expectationRef": {"type": "object", "required": ["authority"],
+                                                   "properties": {"authority": {"const": "model_prior"}}}}},
+        "applies": {"type": "object"},
+        "probeIds": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/id"}}
+      }}},
+    "probes": {"type": "array", "items": {
+      "type": "object", "additionalProperties": false, "required": ["id", "source", "routeSha256"],
+      "properties": {"id": {"$ref": "#/$defs/id"}, "source": {"enum": ["library", "jit"]},
+                     "routeSha256": {"$ref": "#/$defs/sha256"}}}},
+    "variants": {"type": "array", "items": {
+      "type": "object", "additionalProperties": false, "required": ["id", "kind", "file", "line", "patchSha256"],
+      "properties": {"id": {"type": "string", "maxLength": 300}, "kind": {"enum": ["base", "operator", "jit-operator", "partial-revert"]},
+                     "file": {"type": "string", "maxLength": 300}, "line": {"type": "integer", "minimum": 0},
+                     "patchSha256": {"$ref": "#/$defs/sha256"}}}},
+    "validity": {"type": "array", "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["specId", "valid", "reference", "killed", "reasons", "candidate", "outcome"],
+      "properties": {
+        "specId": {"$ref": "#/$defs/id"},
+        "valid": {"type": "boolean"},
+        "reference": {"$ref": "#/$defs/runs"},
+        "killed": {"type": "array", "items": {"type": "string", "maxLength": 300}},
+        "reasons": {"type": "array", "items": {"type": "string", "maxLength": 300}},
+        "candidate": {"$ref": "#/$defs/runs"},
+        "outcome": {"enum": ["catch", "no-catch", "flaky", "not-evaluated"]}
+      }}},
+    "catches": {"type": "array", "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["specId", "statement", "claimId", "strength", "probeIds", "candidate", "base", "killed"],
+      "properties": {
+        "specId": {"$ref": "#/$defs/id"},
+        "statement": {"type": "string", "maxLength": 300},
+        "claimId": {"$ref": "#/$defs/id"},
+        "strength": {"enum": ["strong", "weak"]},
+        "probeIds": {"type": "array", "items": {"$ref": "#/$defs/id"}},
+        "candidate": {"$ref": "#/$defs/runs"},
+        "base": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/runs"}]},
+        "killed": {"type": "array", "minItems": 1, "items": {"type": "string", "maxLength": 300}}
+      }}},
+    "counts": {
+      "type": "object", "additionalProperties": false, "required": ["proposed", "valid", "strong", "weak"],
+      "properties": {"proposed": {"type": "integer", "minimum": 0}, "valid": {"type": "integer", "minimum": 0},
+                     "strong": {"type": "integer", "minimum": 0}, "weak": {"type": "integer", "minimum": 0}}
+    },
+    "spend": {
+      "type": "object", "additionalProperties": false,
+      "required": ["usd", "capUsd", "sparkUsd", "replayUsd", "samUsd", "samImages", "replays", "promptTokens",
+                   "completionTokens", "prices"],
+      "properties": {
+        "usd": {"type": "number", "minimum": 0}, "capUsd": {"type": "number", "minimum": 0},
+        "sparkUsd": {"type": "number", "minimum": 0}, "replayUsd": {"type": "number", "minimum": 0},
+        "samUsd": {"type": "number", "minimum": 0}, "samImages": {"type": "integer", "minimum": 0},
+        "replays": {"type": "integer", "minimum": 0}, "promptTokens": {"type": "integer", "minimum": 0},
+        "completionTokens": {"type": "integer", "minimum": 0},
+        "prices": {"type": "object", "additionalProperties": false,
+                   "required": ["sparkUsdPerMTokIn", "sparkUsdPerMTokOut", "runnerUsdPerMinute", "samUsdPerImage", "source"],
+                   "properties": {"sparkUsdPerMTokIn": {"type": "number", "minimum": 0},
+                                  "sparkUsdPerMTokOut": {"type": "number", "minimum": 0},
+                                  "runnerUsdPerMinute": {"type": "number", "minimum": 0},
+                                  "samUsdPerImage": {"type": "number", "minimum": 0},
+                                  "source": {"enum": ["assumed", "published"]}}}
+      }
+    },
+    "diagnostics": {"type": "array", "maxItems": 50, "items": {"type": "string"}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._/-]*$"},
+    "runs": {"type": "array", "items": {"enum": ["pass", "fail", "not_exercised", "insufficient_observation",
+                                                  "execution_error"]}}
+  }
+}

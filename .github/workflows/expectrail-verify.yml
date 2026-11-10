@@ -5,6 +5,12 @@
 # that runs a pull request's code never sees the private set (OBAAF-GHA-001), and
 # agents-harness-private in ci.yml checks the private routes on main instead. The evidence goes up
 # as the expectrail-gate artifact; expectrail-comment.yml, a separate trusted workflow, posts it.
+#
+# Generated checks (docs/jit.md), only when the repository variable EXPECTRAIL_JIT is 1 and only for
+# pull requests from this repository: jit-propose holds the model key, runs Expectrail's code from
+# the base commit, and reads the pull request's game as text only (it runs none of it). The verify job,
+# which runs the pull request's code, never holds the key; it replays the proposal and passes an
+# advisory block to the gate, which shows it and never lets it change the decision.
 name: Expectrail verify
 
 on:
@@ -28,18 +34,97 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
+  jit-propose:
+    if: vars.EXPECTRAIL_JIT == '1' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the base commit (the code that runs here)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+      - name: Check out the pull request (read as text, never run)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: head
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r base/requirements-dev.txt
+      - name: Propose checks for this change (one Muse Spark call)
+        env:
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY || secrets.META_API_KEY }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/jit"
+          printf '%s\n\n%s\n' "$PR_TITLE" "$PR_BODY" > "$RUNNER_TEMP/jit/report.txt"
+          cd base
+          python -m expectrail.jit.cli diff-games game/platformer ../head/game/platformer --out "$RUNNER_TEMP/jit/candidate.patch"
+          python -m expectrail.jit.cli propose --report-file "$RUNNER_TEMP/jit/report.txt" \
+            --candidate "$RUNNER_TEMP/jit/candidate.patch" --out "$RUNNER_TEMP/jit"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jit-proposal
+          path: |
+            ${{ runner.temp }}/jit/jit-proposal.json
+            ${{ runner.temp }}/jit/candidate.patch
+            ${{ runner.temp }}/jit/report.txt
+          retention-days: 14
+
+  verify:
+    needs: jit-propose
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Get the proposal (generated checks only)
+        id: proposal
+        if: needs.jit-propose.result == 'success'
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: jit-proposal
+          path: ${{ runner.temp }}/jit
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        if: steps.proposal.outcome == 'success'
+        with:
+          python-version: '3.13'
+      - name: Check out the base commit's game (the reference for generated checks)
+        if: steps.proposal.outcome == 'success'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .jit-base
+          persist-credentials: false
+      - name: Replay the generated checks (advisory)
+        if: steps.proposal.outcome == 'success'
+        run: |
+          mv .jit-base "$RUNNER_TEMP/jit-base"
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends patch
+          python -m pip install -r requirements-dev.txt
+          ./harness/get_godot.sh
+          python -m expectrail.jit.cli run --report-file "$RUNNER_TEMP/jit/report.txt" \
+            --candidate "$RUNNER_TEMP/jit/candidate.patch" --proposal "$RUNNER_TEMP/jit/jit-proposal.json" \
+            --game "$RUNNER_TEMP/jit-base/game/platformer" --out "$RUNNER_TEMP/jit/run" \
+            --run-id "gate-${GITHUB_RUN_ID}" || true
+          python -m expectrail.jit.cli gate-summary "$RUNNER_TEMP/jit/run/jit-run.json" \
+            --out "$RUNNER_TEMP/generated-checks.json" || true
+          rm -rf "$RUNNER_TEMP/jit-base"
       - name: Replay the platformer on two routes, before and after the change
         uses: ./.github/actions/expectrail-verify
         with:
+          generated-checks: ${{ steps.proposal.outcome == 'success' && format('{0}/generated-checks.json', runner.temp) || '' }}
           game-path: game/platformer
           routes: |
             harness/routes/smoke.json

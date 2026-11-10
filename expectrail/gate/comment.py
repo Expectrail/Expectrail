@@ -251,6 +251,29 @@ def _held_line(held: dict, fork: bool) -> str:
     return "**Held-out routes:** not used on this run."
 
 
+JIT_DOC = "https://github.com/Expectrail/Expectrail/blob/main/docs/jit.md"
+
+
+def _generated_lines(record: dict) -> list[str]:
+    """The advisory generated-checks section (docs/jit.md). It never changes the verdict above it."""
+    gen = record.get("generatedChecks")
+    if not gen or gen["status"] == "not-run":
+        return []
+    head = "**Generated checks (advisory, they never accept or reject):**"
+    if gen["status"] == "nothing-generated":
+        return [f"{head} no generated checks. {md(gen['reason'] or '')}".rstrip(), ""]
+    lines = [f"{head} {_n(gen['proposed'], 'check')} proposed for this change, {gen['valid']} valid "
+             f"(passed the clean game 3 of 3 and failed a near-miss of this change 3 of 3); "
+             f"{_n(gen['strong'], 'strong catch', 'strong catches')}, {_n(gen['weak'], 'weak catch', 'weak catches')}. "
+             f"[What these are]({JIT_DOC}).", ""]
+    if gen["catches"]:
+        lines += ["| Generated check | Strength | Says |", "| --- | --- | --- |"]
+        for c in gen["catches"]:
+            lines.append(f"| `{md(c['specId'], 80)}` | {c['strength']} | {md(c['statement'])} |")
+        lines.append("")
+    return lines
+
+
 def _checks_line(record: dict) -> str:
     pr = record["pullRequest"] or {}
     specs, routes = len(record["specs"]), len(record["routes"])
@@ -322,6 +345,7 @@ def _body(record: dict, ctx: Context, *, previous: list[str], touched: list[str]
         lines += ["", "</details>", ""]
 
     lines += [_held_line(record["heldOut"], fork), "", _checks_line(record), ""]
+    lines += _generated_lines(record)
     page = "the review page (`review/index.html`), " if record["reviewPage"] else ""
     lines += [f"**Evidence:** {page}the verdicts and findings.json are in the `{ctx.artifact}` artifact of "
               f"[run {ctx.run_id}]({ctx.run_url}). The comparisons use the review's words: "

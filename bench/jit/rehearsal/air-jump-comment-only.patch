@@ -1,0 +1,10 @@
+--- a/player/player.gd
++++ b/player/player.gd
+@@ -76,6 +76,7 @@
+ 	return animation_new
+ 
+ 
++# Fixed: no more jumping in the air.
+ func try_jump() -> void:
+ 	if is_on_floor():
+ 		jump_sound.pitch_scale = 1.0

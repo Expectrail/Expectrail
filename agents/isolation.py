@@ -24,13 +24,24 @@ FIXER_FORBIDDEN_BASENAMES = frozenset({
 })
 
 
+# Generated checks (expectrail/jit, docs/jit.md) are never shown to the fixer, before or after a failed
+# attempt: every file and folder the check generator writes is named with this prefix.
+FIXER_FORBIDDEN_PREFIXES = ("jit-",)
+
+
+def _forbidden(rel: Path) -> bool:
+    return rel.name in FIXER_FORBIDDEN_BASENAMES or any(
+        part.startswith(FIXER_FORBIDDEN_PREFIXES) for part in rel.parts)
+
+
 def forbidden_paths_under(fixer: Path) -> list[Path]:
-    """Return paths under fixer whose basename is on the deny list."""
+    """Return paths under fixer whose basename is on the deny list, or that sit in or are a generated-check
+    output (a path component named ``jit-*``)."""
     if not fixer.is_dir():
         return []
     return sorted(
         p for p in fixer.rglob("*")
-        if p.is_file() and p.name in FIXER_FORBIDDEN_BASENAMES
+        if p.is_file() and _forbidden(p.relative_to(fixer))
     )
 
 

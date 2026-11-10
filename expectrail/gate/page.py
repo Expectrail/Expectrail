@@ -73,6 +73,28 @@ def _figure(title: str, frame: dict | None, missing: str) -> str:
             f'<code>{esc(frame["sha256"][:16])}</code></figcaption></figure>')
 
 
+def _generated_section(gen: dict | None) -> list[str]:
+    """Generated checks (docs/jit.md): advisory, shown apart from the checks that decide."""
+    if not gen or gen["status"] == "not-run":
+        return []
+    out = ["<h2>Generated checks (advisory)</h2>",
+           "<p>Checks generated for this change from its bug report and patch. They never accept or reject: "
+           "the decision above comes from the approved checks alone. A check is valid when it passed on the "
+           "clean game 3 of 3 times and failed 3 of 3 on a near-miss version of this change; it catches when "
+           "it also fails 3 of 3 on this change. A strong catch also fails on the build the bug report "
+           "describes.</p>"]
+    if gen["status"] == "nothing-generated":
+        out.append(f"<p>No generated checks: {esc(gen['reason'] or '')}</p>")
+        return out
+    out.append(f"<p>{gen['proposed']} proposed, {gen['valid']} valid, {gen['strong']} strong and "
+               f"{gen['weak']} weak catches.</p>")
+    if gen["catches"]:
+        out.append("<table><tr><th>Generated check</th><th>Strength</th><th>Says</th></tr>"
+                   + "".join(f"<tr><td><code>{esc(c['specId'])}</code></td><td>{_badge(c['strength'].upper())}</td>"
+                             f"<td>{esc(c['statement'])}</td></tr>" for c in gen["catches"]) + "</table>")
+    return out
+
+
 def write_page(out: Path, record: dict, frames: dict[str, dict]) -> Path:
     """Write out/review/index.html for ``record``. ``frames`` maps a finding id to
     {"after": (frames_dir, index), "before": (frames_dir, index)} from the replays that made them."""
@@ -142,6 +164,7 @@ def write_page(out: Path, record: dict, frames: dict[str, dict]) -> Path:
                      f"<td>{esc(WORD[check['before']])}</td><td>{esc(WORD[check['after']])}</td>"
                      f"<td>{_badge(check['comparison'])}</td><td>{link}</td></tr>")
     parts.append("</table>")
+    parts += _generated_section(record.get("generatedChecks"))
     parts.append(f'<h2>Reading this page</h2><p>The comparisons use the review\'s words: '
                  f'<a href="{REVIEW_DOC}">docs/review.md</a>. How the gate works and its limits: '
                  f'<a href="{GATE_DOC}">docs/ci-gate.md</a>. A finding id is the first 12 hex digits of '
