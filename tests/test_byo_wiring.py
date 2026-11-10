@@ -141,6 +141,30 @@ class TriageTest(unittest.TestCase):
         self.assertIn("temperature` is deprecated", printed)
         self.assertEqual(len(printed.strip().splitlines()), 1, printed)  # one line: annotations are per-line
 
+    def test_a_provider_that_answers_with_nothing_is_a_failure_not_a_live_triage(self):
+        """Every model failure becomes needs-review, never a pass. An empty answer is a failure:
+        it used to be recorded as the model's own, with an empty bug report behind it."""
+        import contextlib
+        import io
+
+        from expectrail.providers import ProviderConfig
+
+        cfg = ProviderConfig(provider="anthropic", protocol="anthropic",
+                             api_base="https://api.anthropic.com/v1",
+                             model="claude-sonnet-5-5", api_key="sk-ant-1")
+        buf = io.StringIO()
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.dict(os.environ, {"EXPECTRAIL_LLM_PROVIDER": "anthropic",
+                                             "ANTHROPIC_API_KEY": "a"}, clear=True), \
+                mock.patch("expectrail.providers.resolve_provider", return_value=cfg), \
+                mock.patch("expectrail.providers.chat_completion", return_value={"choices": [
+                    {"message": {"content": "   "}}]}), \
+                contextlib.redirect_stdout(buf):
+            self._run(Path(tmp))
+            meta = json.loads((Path(tmp) / "triage.json").read_text())
+        self.assertEqual(meta["source"], "offline-fallback")
+        self.assertIn("answered with no text", buf.getvalue())
+
     def test_offline_stays_offline_with_byo_configured(self):
         with tempfile.TemporaryDirectory() as tmp, \
                 mock.patch.dict(os.environ, {"EXPECTRAIL_LLM_PROVIDER": "ollama"}, clear=True), \

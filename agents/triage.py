@@ -78,7 +78,13 @@ def call_byo(prompt: str, *, provider: str | None = None, model: str | None = No
                            legacy_default_model=WONDER_MODEL, legacy_key_envs=("MODEL_API_KEY", "META_API_KEY"))
     messages = [{"role": "system", "content": TRIAGE_SYSTEM}, {"role": "user", "content": prompt}]
     raw = chat_completion(messages, role="TRIAGE", config=cfg, max_tokens=2048, temperature=0.0)
-    return extract_message_text(cfg, raw), f"{cfg.provider}/{cfg.model}"
+    text = extract_message_text(cfg, raw)
+    if not text.strip():
+        # A model that answers with nothing has failed, so it becomes a fallback and then
+        # needs-review, never a live triage that happens to carry an empty bug report. Without this
+        # a 200 with no extractable text was recorded as the model's own answer.
+        raise RuntimeError(f"{cfg.provider}/{cfg.model} answered with no text")
+    return text, f"{cfg.provider}/{cfg.model}"
 
 
 def _warn_fallback(attempted: str, exc: BaseException) -> None:

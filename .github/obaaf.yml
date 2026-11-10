@@ -27,3 +27,6 @@ lanes:
   ".github/workflows/discovery.yml#discovery": agent             # Muse Spark plans discovery probes and contracts
   ".github/workflows/discovery-blind.yml#blind": agent           # the same, on the private fresh set (counts only)
   ".github/workflows/byo-live.yml#byo-live": agent               # Claude triages, Claude Code fixes (BYO, manual)
+  # Not an agent: it calls each configured provider once and acts only on whether text came back.
+  # Not perception either, so it has a lane of its own (agents/assurance/audit.py, the probe lane).
+  ".github/workflows/byo-smoke.yml#byo-smoke": probe             # one live call per provider, nothing acts on it

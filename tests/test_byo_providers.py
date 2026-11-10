@@ -21,6 +21,7 @@ from expectrail.providers import (
     build_http_payload,
     chat_completion,
     detect_default_provider,
+    extract_message_text,
     resolve_provider,
     strip_json_fences,
 )
@@ -114,6 +115,30 @@ class TestBYOProviders(unittest.TestCase):
             self.assertEqual(payload["temperature"], 0.0)
             _, _, payload = build_http_payload(cfg, [{"role": "user", "content": "hi"}], temperature=None)
             self.assertNotIn("temperature", payload)
+
+    def test_anthropic_text_survives_the_round_trip_every_caller_makes(self) -> None:
+        """agents/triage.py, agents/byo_fixer.py, agents/byo_vision.py and expectrail/spec_writer.py
+        all do chat_completion() then extract_message_text(cfg, raw). chat_completion normalises an
+        Anthropic reply into the OpenAI shape, so extract_message_text keyed off cfg.protocol looked
+        for content blocks that were no longer there and returned "" — silently, for every Anthropic
+        call: triage named the model as its source and wrote an empty bug report.
+        """
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-123"}, clear=True):
+            cfg = resolve_provider(role="TRIAGE")
+            reply = {"model": "claude-sonnet-5-5",
+                     "content": [{"type": "text", "text": "the player falls through the floor"}]}
+            raw = chat_completion([{"role": "user", "content": "why?"}], config=cfg,
+                                  transport=lambda u, h, p: reply)
+            self.assertEqual(extract_message_text(cfg, raw), "the player falls through the floor")
+            # the provider's own shape still reads directly: chat_completion normalises it that way
+            self.assertEqual(extract_message_text(cfg, reply), "the player falls through the floor")
+
+    def test_an_openai_response_with_no_choices_still_raises(self) -> None:
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-123"}, clear=True):
+            cfg = resolve_provider(role="TRIAGE")
+            self.assertEqual(extract_message_text(cfg, {"choices": [{"message": {"content": "hi"}}]}), "hi")
+            with self.assertRaises(RuntimeError):
+                extract_message_text(cfg, {})
 
     def test_chat_completion_normalizes_anthropic_response(self) -> None:
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-123"}, clear=True):
