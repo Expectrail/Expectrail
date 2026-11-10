@@ -73,12 +73,12 @@ class WorkflowTest(unittest.TestCase):
     def test_the_job_never_holds_the_verifiers_sam_key(self):
         self.assertNotIn("MODEL_API_KEY", self.env)
 
-    def test_the_key_bearing_job_runs_in_an_environment(self):
-        """The approval gate for a pull request. The rules live in repository settings and the job
-        cannot read them, so this only pins that the environment is still declared: removing the
-        line would silently drop the gate."""
-        self.assertEqual(self.doc["jobs"]["byo-smoke"]["environment"], "provider-keys")
-
+    def test_no_pull_request_ever_holds_a_key(self):
+        # The keys live in the main-only environment; the live calls run on the schedule and on a
+        # dispatch from main, never on a pull request's code.
+        self.assertNotIn("pull_request", self.triggers)
+        self.assertNotIn("pull_request_target", self.triggers)
+        self.assertEqual(self.doc["jobs"]["byo-smoke"]["environment"], "main-only")
 
 class ProbeTest(unittest.TestCase):
     def test_a_provider_with_no_key_is_skipped_not_failed(self):
