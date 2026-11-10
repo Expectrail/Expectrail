@@ -165,16 +165,21 @@ class LaneInventoryTest(unittest.TestCase):
         from agents.assurance import audit
         self.audit = audit
         self.declared = audit.declared_agents()
+        self.probes = audit.declared_probes()
         self.models = audit.model_jobs()
 
     def lanes(self, **overrides):
-        jobs = set(self.models) | self.declared
+        jobs = set(self.models) | self.declared | self.probes
         lanes = {job: ("agent" if job in self.declared else "trusted") for job in jobs}
         lanes.update(overrides)
         return lanes
 
+    def problems(self, lanes=None, models=None):
+        return self.audit.inventory_problems(lanes or self.lanes(), self.declared,
+                                             models or self.models, self.probes)
+
     def test_every_job_with_a_model_key_is_a_declared_agent_or_perception_only(self):
-        self.assertEqual(self.audit.inventory_problems(self.lanes(), self.declared, self.models), [])
+        self.assertEqual(self.problems(), [])
         self.assertEqual(len(self.declared), 15)
         for job in self.audit.PERCEPTION:
             self.assertIn(job, self.models, f"{job} no longer holds a model key; drop it from PERCEPTION")
@@ -185,15 +190,44 @@ class LaneInventoryTest(unittest.TestCase):
         self.assertEqual(self.models.get(job), {"ANTHROPIC_API_KEY"})
         self.assertIn(job, self.declared)
 
+    def test_the_live_provider_probe_is_a_declared_probe_not_an_agent(self):
+        """byo-smoke holds every provider key but calls a model and acts only on whether it
+        answered, so it is neither an agent lane nor perception (audit.py, the probe lane)."""
+        job = ".github/workflows/byo-smoke.yml#byo-smoke"
+        self.assertIn(job, self.models)  # it does hold model keys
+        self.assertIn("ANTHROPIC_API_KEY", self.models[job])
+        self.assertIn(job, self.audit.declared_probes())
+        self.assertNotIn(job, self.declared)
+        self.assertNotIn(job, self.audit.PERCEPTION)
+        self.assertNotIn("MODEL_API_KEY", self.models[job])  # never the verifier's SAM key
+
+    def test_a_probe_exempts_only_what_was_declared(self):
+        probes = self.audit.declared_probes()
+        lanes = self.lanes(**{job: "trusted" for job in probes})
+        self.assertEqual(self.audit.inventory_problems(lanes, self.declared, self.models, probes), [])
+        # undeclared, the same job is a finding: the exemption is the declaration, not the lane name
+        problems = self.audit.inventory_problems(lanes, self.declared, self.models, frozenset())
+        self.assertEqual(len(problems), len(probes))
+        self.assertIn("byo-smoke", problems[0])
+        self.assertIn("declared probe", problems[0])
+
+    def test_a_probe_declaration_that_matches_no_job_fails(self):
+        """A renamed or deleted job must not keep its exemption quietly."""
+        problems = self.audit.inventory_problems(
+            self.lanes(), self.declared, self.models,
+            self.probes | {".github/workflows/gone.yml#probe"})
+        self.assertEqual(len(problems), 1)
+        self.assertIn("gone.yml#probe is declared a probe", problems[0])
+
     def test_a_new_model_job_that_nobody_declared_fails_the_audit(self):
         models = dict(self.models, **{".github/workflows/new.yml#fix-it": {"META_API_KEY"}})
-        problems = self.audit.inventory_problems(self.lanes(), self.declared, models)
+        problems = self.problems(models=models)
         self.assertEqual(len(problems), 1)
         self.assertIn("new.yml#fix-it holds META_API_KEY", problems[0])
 
     def test_a_declared_agent_the_checker_did_not_classify_as_one_fails(self):
         job = ".github/workflows/fix-matrix.yml#run"
-        problems = self.audit.inventory_problems(self.lanes(**{job: "trusted"}), self.declared, self.models)
+        problems = self.problems(lanes=self.lanes(**{job: "trusted"}))
         self.assertEqual(problems[0], f"{job} is declared as an agent but OBAAF classified it trusted")
         self.assertIn("holds META_API_KEY", problems[1])  # and it holds a model key outside an agent lane
 

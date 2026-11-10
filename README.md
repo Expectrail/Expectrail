@@ -707,10 +707,14 @@ Add it to `.mcp.json` (Claude Code) or `.cursor/mcp.json`, from the repository r
 Not measured yet: every number in this README was produced with Meta's models. The BYO paths are
 tested with recorded responses, not benchmarked; treat a run on another model as a new experiment.
 
-How little that guarantees is worth stating. Those recorded-response tests passed while the
-`anthropic` provider could not complete a single live call: it sent a `temperature` the Messages API
-rejects outright, so triage, the `llm-patch` fixer, spec drafting and `byo-vlm` all failed against
-it. One live end-to-end run now exists on that path — Claude triaged, Claude Code fixed under
+How little that guarantees is worth stating. Those recorded-response tests passed through two
+separate faults that made the `anthropic` provider useless: it sent a `temperature` the Messages API
+rejects outright, and the text of a reply that did arrive was read by the configured protocol rather
+than by the shape `chat_completion` had already normalised it into, so every answer came back empty
+— triage recorded the model as its source and wrote an empty bug report. Both failed triage, the
+`llm-patch` fixer, spec drafting and `byo-vlm` alike. `.github/workflows/byo-smoke.yml` now sends one
+real prompt to every provider whose key is set, daily and on changes to the provider layer, because
+nothing short of a live call catches either fault. One live end-to-end run now exists on that path — Claude triaged, Claude Code fixed under
 bubblewrap, a Godot replay judged it on the engine trace, and the verifier accepted on the first
 attempt. It is one accept on one seeded defect, so it is evidence the path runs, and no result.
 Expectrail also cannot meter it: it counts the triage calls it makes and the attempts a fixer

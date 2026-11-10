@@ -4,9 +4,17 @@
 It does not recognise our model entry points (``python -m agents.*``), so ``.github/obaaf.yml``
 declares them. A declaration is only as good as its upkeep, so this fails CI when:
 
-- a job declared as an agent is not classified as one, or
-- a job holds a model key (Meta's, or any bring-your-own provider's) and is neither a declared agent
-  nor a known perception-only job (one that only sends frames to SAM or Glimmer and acts on nothing).
+- a job declared as an agent is not classified as one,
+- a job declared a probe names no job that was checked, or
+- a job holds a model key (Meta's, or any bring-your-own provider's) and is none of: a declared
+  agent, a known perception-only job (one that only sends frames to SAM or Glimmer and acts on
+  nothing), or a declared probe (one that calls a model and acts only on whether it answered).
+
+The probe lane exists for ``byo-smoke.yml``: it sends one short prompt to each configured provider
+and checks that text came back, so it holds provider keys while running no fixer, replaying no game
+and reading nothing the model says. Calling that an agent would overclaim what it does; calling it
+perception would be wrong about what it talks to. Its credential findings are reported like any
+other job's, never suppressed.
 
 Everything else is reporting: the findings, by category and severity, as notices. They are not
 suppressed and do not fail the build; gating comes when the agent jobs stop receiving provider
@@ -80,9 +88,19 @@ def is_model_key(secret: str) -> bool:
     return secret in MODEL_KEYS or bool(MODEL_KEY_PATTERN.match(secret))
 
 
-def declared_agents(config: Path = CONFIG) -> set[str]:
+def declared_lanes(config: Path = CONFIG, lane: str = "agent") -> set[str]:
+    """The jobs .github/obaaf.yml declares in ``lane``."""
     doc = yaml.safe_load(config.read_text(encoding="utf-8")) or {}
-    return {job for job, lane in (doc.get("lanes") or {}).items() if lane == "agent"}
+    return {job for job, declared in (doc.get("lanes") or {}).items() if declared == lane}
+
+
+def declared_agents(config: Path = CONFIG) -> set[str]:
+    return declared_lanes(config, "agent")
+
+
+def declared_probes(config: Path = CONFIG) -> set[str]:
+    """Jobs that call a model and act only on whether it answered (see the module docstring)."""
+    return declared_lanes(config, "probe")
 
 
 def model_jobs(workflows: Path = WORKFLOWS) -> dict[str, set[str]]:
@@ -103,18 +121,25 @@ def parse_lanes(text: str) -> dict[str, str]:
     return {m["job"]: m["lane"] for m in map(LANE_LINE.match, text.splitlines()) if m}
 
 
-def inventory_problems(lanes: dict[str, str], declared: set[str], models: dict[str, set[str]]) -> list[str]:
+def inventory_problems(lanes: dict[str, str], declared: set[str], models: dict[str, set[str]],
+                       probes: set[str] | frozenset[str] = frozenset()) -> list[str]:
     problems = []
     for job in sorted(declared):
         if job not in lanes:
             problems.append(f"{job} is declared in .github/obaaf.yml but no such job was checked")
         elif lanes[job] != "agent":
             problems.append(f"{job} is declared as an agent but OBAAF classified it {lanes[job]}")
+    for job in sorted(probes):
+        # A probe is not held to OBAAF's classification: the checker may read it either way, and a
+        # more conservative reading is not a disagreement worth failing. A name that matches no job
+        # is, because a renamed or deleted job would otherwise keep its exemption silently.
+        if job not in lanes:
+            problems.append(f"{job} is declared a probe in .github/obaaf.yml but no such job was checked")
     for job, keys in sorted(models.items()):
-        if lanes.get(job) != "agent" and job not in PERCEPTION:
-            problems.append(f"{job} holds {', '.join(sorted(keys))} but is neither a declared agent lane nor a "
-                            "perception-only job: declare it in .github/obaaf.yml or add it to PERCEPTION, "
-                            "after review")
+        if lanes.get(job) != "agent" and job not in PERCEPTION and job not in probes:
+            problems.append(f"{job} holds {', '.join(sorted(keys))} but is not a declared agent lane, a "
+                            "perception-only job or a declared probe: declare it in .github/obaaf.yml or add "
+                            "it to PERCEPTION, after review")
     return problems
 
 
@@ -147,8 +172,13 @@ def main(argv: list[str] | None = None) -> int:
     if not lanes:
         print("::error title=OBAAF lanes::no lanes in the obaaf check --lanes output")
         return 1
-    problems = inventory_problems(lanes, declared_agents(), model_jobs())
+    probes = declared_probes()
+    problems = inventory_problems(lanes, declared_agents(), model_jobs(), probes)
     agents = sorted(job for job, lane in lanes.items() if lane == "agent")
+    if probes:
+        print("::notice title=OBAAF probes::"
+              + ", ".join(sorted(p.split("/")[-1] for p in probes))
+              + " call a model and act only on whether it answered")
     print(f"::notice title=OBAAF lanes::{len(lanes)} jobs; {len(agents)} agent lanes: "
           + ", ".join(a.split("/")[-1] for a in agents))
     if args.report:

@@ -1,0 +1,82 @@
+# One live call per configured provider, so that a provider the code can no longer reach is found
+# here instead of in a live run weeks later.
+#
+# Why this exists: the provider tests use recorded responses, so they passed while the `anthropic`
+# provider could not complete a single real call — it sent a `temperature` the Messages API rejects,
+# and every anthropic call failed from the day the provider layer merged (#205) until the first live
+# run was attempted (#215). Nothing else in CI talks to a provider, and the deprecation happened on
+# the provider's side while our code sat still, so only a schedule can catch the next one.
+#
+# What it does not do: run a fixer, replay the game, write a candidate or read what the model says.
+# It asserts that text came back. `.github/obaaf.yml` declares it a probe lane for exactly that
+# reason — agent would overclaim it, perception would be wrong about what it talks to.
+#
+# Secrets on a pull request: same-repository pull requests only, the same rule and reasoning as
+# private-scan.yml — their authors can already reach the repository's secrets, so this adds no
+# exposure, and a fork's pull request gets no secrets and cleanly skips every provider. The paths
+# filter keeps it to changes that can break the provider layer.
+name: BYO smoke (live provider calls)
+
+on:
+  schedule:
+    # Daily, off the hour: provider-side deprecations arrive without a commit of ours.
+    - cron: '23 7 * * *'
+  pull_request:
+    paths:
+      - 'expectrail/providers.py'
+      - 'expectrail/spec_writer.py'
+      - 'agents/byo_smoke.py'
+      - 'agents/byo_fixer.py'
+      - 'agents/byo_vision.py'
+      - 'agents/triage.py'
+      - 'agents/keys.py'
+      - '.github/workflows/byo-smoke.yml'
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: One provider, or empty for every provider whose key is set
+        type: choice
+        options: ['', 'anthropic', 'openai', 'gemini', 'openrouter', 'baseten', 'meta']
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: byo-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  byo-smoke:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      # The probe needs only the standard library (expectrail.providers has no third-party imports),
+      # so nothing is installed and a dependency change cannot make this job report a provider fault.
+      - name: What would run, before any key is in the environment
+        run: python -m agents.byo_smoke --list
+      - name: One live call per configured provider
+        env:
+          # No MODEL_API_KEY: that is the verifier's SAM key, and this job has no use for it.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          BASETEN_API_KEY: ${{ secrets.BASETEN_API_KEY }}
+          # No FIREWORKS_API_KEY: Glimmer is a vision backend and is not probed here, so the job has
+          # no reason to hold its key (agents/byo_smoke.py, PROBED).
+          META_API_KEY: ${{ secrets.META_API_KEY }}
+          ONE: ${{ inputs.provider }}
+        run: |
+          if [ -n "$ONE" ]; then
+            python -m agents.byo_smoke --provider "$ONE"
+          else
+            python -m agents.byo_smoke
+          fi

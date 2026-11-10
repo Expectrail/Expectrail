@@ -330,16 +330,27 @@ def build_http_payload(
 
 
 def extract_message_text(config: ProviderConfig, raw_response: dict[str, Any]) -> str:
-    """Extract assistant text content from OpenAI-compatible or Anthropic response JSON."""
-    if config.protocol == "anthropic":
-        content_blocks = raw_response.get("content", [])
+    """Assistant text from a ``chat_completion`` return, or from a provider's own response JSON.
+
+    Read by shape, not by configured protocol. ``chat_completion`` normalises an Anthropic response
+    into the OpenAI shape before returning it, so a normalised dict carries ``choices`` and no
+    top-level ``content``; keying off ``config.protocol`` therefore looked for content blocks that
+    were never there and returned "" for every Anthropic call. Silently: triage reported the model
+    as its source and wrote an empty bug report, the llm-patch fixer got an empty diff, and byo-vlm
+    got empty text. Anthropic's own response shape is still read directly, which is how
+    ``chat_completion`` normalises it in the first place.
+    """
+    choices = raw_response.get("choices")
+    if choices:
+        msg = choices[0].get("message", {})
+        return (msg.get("content") or "").strip()
+    content_blocks = raw_response.get("content")
+    if isinstance(content_blocks, list):
         texts = [b.get("text", "") for b in content_blocks if b.get("type") == "text"]
         return "\n".join(texts).strip()
-    choices = raw_response.get("choices", [])
-    if not choices:
-        raise RuntimeError(f"Empty choices in response from provider '{config.provider}': {raw_response}")
-    msg = choices[0].get("message", {})
-    return (msg.get("content") or "").strip()
+    if config.protocol == "anthropic":
+        return ""  # an Anthropic response with no content blocks at all
+    raise RuntimeError(f"Empty choices in response from provider '{config.provider}': {raw_response}")
 
 
 def strip_json_fences(text: str) -> str:
