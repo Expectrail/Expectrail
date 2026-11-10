@@ -1,0 +1,7 @@
+{
+  "mode": "probe",
+  "every": "10",
+  "spec": "specs/player-stays-above-ground.json",
+  "candidate": "agents/fixtures/fix-collision-mask.patch",
+  "judge": "sam"
+}
