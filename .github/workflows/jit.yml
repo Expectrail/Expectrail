@@ -5,23 +5,28 @@ name: Generated checks
 # that pass 3 of 3 on the clean game and fail 3 of 3 on a near miss of the change, runs them on the
 # candidate, and records what they catch, strong or weak. Nothing here accepts or rejects a change.
 #
-# The model key and the change's code never meet: the propose job holds the key and only reads the
-# patch as text; the measure and replay jobs run the game and have no secret. On pull requests and in rehearsal
-# mode the proposal is a committed stand-in (bench/jit/rehearsal/), so no key and no spend: a
-# rehearsal proves the plumbing and is never a result.
+# The model key and the change's code never meet: the propose and revise jobs hold the key and only
+# read the patch as text; the measure and replay jobs run the game and have no secret. On pull
+# requests and in rehearsal mode the proposal is a committed stand-in (bench/jit/rehearsal/), so no
+# key and no spend: a rehearsal proves the plumbing and is never a result.
+#
+# live: one change, from the inputs. bench: the known-bugs bench (expectrail/jit/bench.py), every case
+# in bench/jit/known/cases.json through the same jobs, scored against the signed registration. Both
+# run each job once per case (a matrix), so the keyed jobs stay in main-only: a called workflow would
+# not see the environment's keys (bench run 42923427104).
 on:
   pull_request:
     paths:
       - 'expectrail/jit/**'
       - 'contracts/jit-run.v1.schema.json'
-      - 'bench/jit/rehearsal/**'
+      - 'bench/jit/**'
       - '.github/workflows/jit.yml'
   workflow_dispatch:
     inputs:
       mode:
-        description: rehearsal (committed stand-in proposals, no key) or live (Muse Spark, needs MODEL_API_KEY)
+        description: rehearsal (committed stand-ins, no key), live (one change, Muse Spark) or bench (the known-bugs bench, from main)
         type: choice
-        options: ['rehearsal', 'live']
+        options: ['rehearsal', 'live', 'bench']
         default: 'rehearsal'
       case:
         description: A name for this change (letters, digits and dashes); live mode only
@@ -36,24 +41,14 @@ on:
         description: The bug report, a text file under bugs/ or bench/; live mode only
         default: ''
       budget_usd:
-        description: Spend cap for this change, in US dollars
+        description: Spend cap per change, in US dollars (bench mode uses the registration's)
         default: '2'
-  # The known-bugs bench (jit-bench.yml) calls the live path once per case. Its runs are dispatched from
-  # main, so github.event_name is still workflow_dispatch here and every live job's condition holds.
-  workflow_call:
-    inputs:
-      mode: {type: string, default: 'live'}
-      case: {type: string, required: true}
-      base_patch: {type: string, default: ''}
-      candidate_patch: {type: string, required: true}
-      report_file: {type: string, required: true}
-      budget_usd: {type: string, default: '2'}
 
 permissions:
   contents: read
 
 concurrency:
-  group: jit-${{ github.ref }}-${{ inputs.case || 'rehearsal' }}
+  group: jit-${{ github.ref }}-${{ inputs.mode || 'rehearsal' }}-${{ inputs.case || 'all' }}
   cancel-in-progress: false
 
 jobs:
@@ -120,20 +115,70 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  plan:
+    # No secret, no game. The cases this run covers: live, the one change from the inputs, checked;
+    # bench, the registered cases, and only from main with a signed registration whose pins hold.
+    if: github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      cases: ${{ steps.plan.outputs.cases }}
+      budget: ${{ steps.plan.outputs.budget }}
+    env:
+      MODE: ${{ inputs.mode }}
+      CASE: ${{ inputs.case }}
+      BASE: ${{ inputs.base_patch }}
+      CANDIDATE: ${{ inputs.candidate_patch }}
+      REPORT: ${{ inputs.report_file }}
+      BUDGET: ${{ inputs.budget_usd }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Plan the cases
+        id: plan
+        run: |
+          if [[ "$MODE" == "bench" ]]; then
+            [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "::error::the bench runs only from main"; exit 1; }
+            python -m expectrail.jit.cli bench-check
+            python - >> "$GITHUB_OUTPUT" <<'EOF'
+          import json
+          from expectrail.jit import bench
+          prereg = json.loads(bench.PREREG.read_text())
+          print("cases=" + json.dumps([{k: c[k] for k in ("case", "base", "candidate", "report")} for c in bench.load_cases()]))
+          print("budget=" + str(prereg["bar"]["maxSpendUsdPerCase"]))
+          EOF
+            exit 0
+          fi
+          [[ "$CASE" =~ ^[a-z0-9][a-z0-9-]{0,60}$ ]] || { echo "::error::case must be letters, digits and dashes"; exit 1; }
+          [[ -z "$BASE" || "$BASE" =~ ^bugs/[A-Za-z0-9/._-]+\.patch$ ]] || { echo "::error::base_patch must be a patch under bugs/"; exit 1; }
+          [[ "$CANDIDATE" =~ ^(bugs|bench)/[A-Za-z0-9/._-]+\.patch$ ]] || { echo "::error::candidate_patch must be a patch under bugs/ or bench/"; exit 1; }
+          [[ "$REPORT" =~ ^(bugs|bench)/[A-Za-z0-9/._-]+$ ]] || { echo "::error::report_file must be under bugs/ or bench/"; exit 1; }
+          [[ "$BUDGET" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "::error::budget_usd must be a number"; exit 1; }
+          for p in $BASE $CANDIDATE $REPORT; do [[ "$p" != *..* ]] || { echo "::error::no .. in paths"; exit 1; }; done
+          python -c 'import json, os; print("cases=" + json.dumps([{"case": os.environ["CASE"], "base": os.environ["BASE"], "candidate": os.environ["CANDIDATE"], "report": os.environ["REPORT"]}]))' >> "$GITHUB_OUTPUT"
+          echo "budget=$BUDGET" >> "$GITHUB_OUTPUT"
+
   measure:
     # Runs the game, no secret. Every probe's signals on the clean game and on the bug build (the base
     # patches), never on the candidate: the numbers the model chooses probes and thresholds from
     # (expectrail/jit/measure.py). The propose job re-checks them as data before they reach the prompt.
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'live'
+    needs: plan
+    if: github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal'
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        c: ${{ fromJSON(needs.plan.outputs.cases) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      BASE: ${{ inputs.base_patch }}
+      BASE: ${{ matrix.c.base }}
     steps:
-      - name: Check the input
-        run: |
-          [[ -z "$BASE" || "$BASE" =~ ^bugs/[A-Za-z0-9/._-]+\.patch$ ]] || { echo "::error::base_patch must be a patch under bugs/"; exit 1; }
-          [[ "$BASE" != *..* ]] || { echo "::error::no .. in paths"; exit 1; }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -152,35 +197,33 @@ jobs:
           python -m expectrail.jit.cli measure "${base[@]}" --out runs/jit-measure
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: jit-measurements-${{ inputs.case }}
+          name: jit-measurements-${{ matrix.c.case }}
           path: runs/jit-measure/jit-measurements.json
           retention-days: 14
 
   propose:
     # Holds the model key. Reads the patch and the report as text, and the measure job's numbers;
     # replays nothing. In main-only (#223): only a dispatch from main can reach the key.
-    needs: measure
+    needs: [plan, measure]
     environment: main-only
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'live'
+    if: github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal'
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        c: ${{ fromJSON(needs.plan.outputs.cases) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      CASE: ${{ inputs.case }}
-      BASE: ${{ inputs.base_patch }}
-      CANDIDATE: ${{ inputs.candidate_patch }}
-      REPORT: ${{ inputs.report_file }}
-      BUDGET: ${{ inputs.budget_usd }}
+      CASE: ${{ matrix.c.case }}
+      BASE: ${{ matrix.c.base }}
+      CANDIDATE: ${{ matrix.c.candidate }}
+      REPORT: ${{ matrix.c.report }}
+      BUDGET: ${{ needs.plan.outputs.budget }}
       KEY_SET: ${{ secrets.MODEL_API_KEY != '' || secrets.META_API_KEY != '' }}
     steps:
-      - name: Check the inputs
-        run: |
-          [[ "$KEY_SET" == "true" ]] || { echo "::error::Set MODEL_API_KEY (or META_API_KEY) in the main-only environment first."; exit 1; }
-          [[ "$CASE" =~ ^[a-z0-9][a-z0-9-]{0,60}$ ]] || { echo "::error::case must be letters, digits and dashes"; exit 1; }
-          [[ -z "$BASE" || "$BASE" =~ ^bugs/[A-Za-z0-9/._-]+\.patch$ ]] || { echo "::error::base_patch must be a patch under bugs/"; exit 1; }
-          [[ "$CANDIDATE" =~ ^(bugs|bench)/[A-Za-z0-9/._-]+\.patch$ ]] || { echo "::error::candidate_patch must be a patch under bugs/ or bench/"; exit 1; }
-          [[ "$REPORT" =~ ^(bugs|bench)/[A-Za-z0-9/._-]+$ ]] || { echo "::error::report_file must be under bugs/ or bench/"; exit 1; }
-          [[ "$BUDGET" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "::error::budget_usd must be a number"; exit 1; }
-          for p in $BASE $CANDIDATE $REPORT; do [[ "$p" != *..* ]] || { echo "::error::no .. in paths"; exit 1; }; done
+      - name: Check the key
+        run: '[[ "$KEY_SET" == "true" ]] || { echo "::error::Set MODEL_API_KEY (or META_API_KEY) in the main-only environment first."; exit 1; }'
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -190,7 +233,7 @@ jobs:
       - run: python -m pip install -r requirements-dev.txt
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          name: jit-measurements-${{ inputs.case }}
+          name: jit-measurements-${{ matrix.c.case }}
           path: runs/jit-measure
       - name: Propose checks (one Muse Spark call)
         env:
@@ -201,21 +244,27 @@ jobs:
             --budget-usd "$BUDGET" "${base[@]}" --measurements runs/jit-measure/jit-measurements.json
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: jit-proposal-${{ inputs.case }}
+          name: jit-proposal-${{ matrix.c.case }}
           path: runs/jit-proposal/jit-proposal.json
           retention-days: 14
 
   replay:
     # Runs the game. No secret. The first round; replay-final below is the result.
-    needs: propose
+    needs: [plan, propose]
+    if: github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal'
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        c: ${{ fromJSON(needs.plan.outputs.cases) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
-      CASE: ${{ inputs.case }}
-      BASE: ${{ inputs.base_patch }}
-      CANDIDATE: ${{ inputs.candidate_patch }}
-      REPORT: ${{ inputs.report_file }}
-      BUDGET: ${{ inputs.budget_usd }}
+      CASE: ${{ matrix.c.case }}
+      BASE: ${{ matrix.c.base }}
+      CANDIDATE: ${{ matrix.c.candidate }}
+      REPORT: ${{ matrix.c.report }}
+      BUDGET: ${{ needs.plan.outputs.budget }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -230,48 +279,49 @@ jobs:
         run: ./harness/get_godot.sh
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          name: jit-proposal-${{ inputs.case }}
+          name: jit-proposal-${{ matrix.c.case }}
           path: runs/jit-proposal
       - name: Replay, filter, run, assess
         run: |
-          [[ "$BUDGET" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "::error::budget_usd must be a number"; exit 1; }
           export PATH="$PWD/tools/godot:$PATH"
           base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
-          start=$(date +%s)
           python -m expectrail.jit.cli run --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
             --proposal runs/jit-proposal/jit-proposal.json --out "runs/jit/$CASE" --budget-usd "$BUDGET" \
             --run-id "ci-${GITHUB_RUN_ID}-$CASE-round1"
-          echo "::notice title=Generated checks ${CASE}::$(python -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['status'], d['counts'], 'spend', d['spend']['usd'])" "runs/jit/$CASE/jit-run.json"); $(( $(date +%s) - start )) s"
-          cat "runs/jit/$CASE/jit-report.md" >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=Generated checks ${CASE} (round 1)::$(python -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['status'], d['counts'], 'spend', d['spend']['usd'])" "runs/jit/$CASE/jit-run.json")"
       - name: Keep the record
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: jit-${{ inputs.case }}-round1
+          name: jit-${{ matrix.c.case }}-round1
           path: |
-            runs/jit/${{ inputs.case }}/jit-run.json
-            runs/jit/${{ inputs.case }}/jit-report.md
-            runs/jit/${{ inputs.case }}/jit-routes/
+            runs/jit/${{ matrix.c.case }}/jit-run.json
+            runs/jit/${{ matrix.c.case }}/jit-report.md
+            runs/jit/${{ matrix.c.case }}/jit-routes/
           if-no-files-found: error
           retention-days: 14
 
   revise:
     # Holds the model key; runs no game. One more model call, only when the first replay rejected a
     # check: told why each was rejected (from the clean game and the bug build only), within what is
-    # left of the same budget (expectrail/jit/intent.py, revise_to_file). Nothing here is a pass.
-    needs: [measure, replay]
+    # left of the same budget (expectrail/jit/intent.py, revise_to_file). Always writes the proposal
+    # replay-final uses (revised, or the first one unchanged) and says which. Nothing here is a pass.
+    needs: [plan, measure, replay]
     environment: main-only
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'live'
+    if: github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal'
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        c: ${{ fromJSON(needs.plan.outputs.cases) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    outputs:
-      revised: ${{ steps.revise.outputs.revised }}
     env:
-      CASE: ${{ inputs.case }}
-      BASE: ${{ inputs.base_patch }}
-      CANDIDATE: ${{ inputs.candidate_patch }}
-      REPORT: ${{ inputs.report_file }}
-      BUDGET: ${{ inputs.budget_usd }}
+      CASE: ${{ matrix.c.case }}
+      BASE: ${{ matrix.c.base }}
+      CANDIDATE: ${{ matrix.c.candidate }}
+      REPORT: ${{ matrix.c.report }}
+      BUDGET: ${{ needs.plan.outputs.budget }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -282,48 +332,53 @@ jobs:
       - run: python -m pip install -r requirements-dev.txt
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          name: jit-measurements-${{ inputs.case }}
+          name: jit-measurements-${{ matrix.c.case }}
           path: runs/jit-measure
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          name: jit-proposal-${{ inputs.case }}
+          name: jit-proposal-${{ matrix.c.case }}
           path: runs/jit-proposal
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          name: jit-${{ inputs.case }}-round1
+          name: jit-${{ matrix.c.case }}-round1
           path: runs/jit-round1
       - name: Revise the rejected checks (at most one Muse Spark call)
-        id: revise
         env:
           MODEL_API_KEY: ${{ secrets.MODEL_API_KEY || secrets.META_API_KEY }}
         run: |
-          [[ "$BUDGET" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "::error::budget_usd must be a number"; exit 1; }
+          mkdir -p runs/jit-proposal-2
           base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
+          # Any failure here leaves the first round standing; it can never become a pass or a catch.
           python -m expectrail.jit.cli revise --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
             --proposal runs/jit-proposal/jit-proposal.json --record runs/jit-round1/jit-run.json \
             --measurements runs/jit-measure/jit-measurements.json --out runs/jit-proposal-2 \
-            --budget-usd "$BUDGET" --github-output "$GITHUB_OUTPUT"
+            --budget-usd "$BUDGET" --github-output runs/jit-proposal-2/revised.txt \
+            || { echo "::warning::the revision failed; the first round stands"; echo "revised=false" > runs/jit-proposal-2/revised.txt; }
+          [[ -f runs/jit-proposal-2/jit-proposal.json ]] || echo "revised=false" > runs/jit-proposal-2/revised.txt
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: steps.revise.outputs.revised == 'true'
         with:
-          name: jit-proposal-${{ inputs.case }}-revised
-          path: runs/jit-proposal-2/jit-proposal.json
+          name: jit-proposal-${{ matrix.c.case }}-revised
+          path: runs/jit-proposal-2/
           retention-days: 14
 
   replay-final:
     # Runs the game. No secret. The revised proposal, replayed from scratch with the first round's spend
     # carried in; or, when nothing was revised, the first round's record as it is.
-    needs: [replay, revise]
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'live'
+    needs: [plan, replay, revise]
+    if: github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal'
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        c: ${{ fromJSON(needs.plan.outputs.cases) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
-      CASE: ${{ inputs.case }}
-      BASE: ${{ inputs.base_patch }}
-      CANDIDATE: ${{ inputs.candidate_patch }}
-      REPORT: ${{ inputs.report_file }}
-      BUDGET: ${{ inputs.budget_usd }}
-      REVISED: ${{ needs.revise.outputs.revised }}
+      CASE: ${{ matrix.c.case }}
+      BASE: ${{ matrix.c.base }}
+      CANDIDATE: ${{ matrix.c.candidate }}
+      REPORT: ${{ matrix.c.report }}
+      BUDGET: ${{ needs.plan.outputs.budget }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -333,40 +388,75 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt
       - name: Install patch
-        if: needs.revise.outputs.revised == 'true'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends patch
       - name: Download Godot 4.7.2 and check its SHA-512
-        if: needs.revise.outputs.revised == 'true'
         run: ./harness/get_godot.sh
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-        if: needs.revise.outputs.revised == 'true'
         with:
-          name: jit-proposal-${{ inputs.case }}-revised
+          name: jit-proposal-${{ matrix.c.case }}-revised
           path: runs/jit-proposal-2
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-        if: needs.revise.outputs.revised != 'true'
         with:
-          name: jit-${{ inputs.case }}-round1
-          path: runs/jit/${{ inputs.case }}
+          name: jit-${{ matrix.c.case }}-round1
+          path: runs/jit-round1
       - name: Replay the revised proposal, or keep the first round
         run: |
-          [[ "$BUDGET" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "::error::budget_usd must be a number"; exit 1; }
-          if [[ "$REVISED" == "true" ]]; then
+          revised=false; grep -qx "revised=true" runs/jit-proposal-2/revised.txt 2>/dev/null && revised=true
+          mkdir -p "runs/jit/$CASE"
+          if [[ "$revised" == "true" ]]; then
             export PATH="$PWD/tools/godot:$PATH"
             base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
             python -m expectrail.jit.cli run --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
               --proposal runs/jit-proposal-2/jit-proposal.json --out "runs/jit/$CASE" --budget-usd "$BUDGET" \
               --run-id "ci-${GITHUB_RUN_ID}-$CASE"
+          else
+            cp runs/jit-round1/jit-run.json "runs/jit/$CASE/jit-run.json"
           fi
-          echo "::notice title=Generated checks ${CASE} (revised: ${REVISED:-false})::$(python -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['status'], d['counts'], 'spend', d['spend']['usd'])" "runs/jit/$CASE/jit-run.json")"
+          echo "::notice title=Generated checks ${CASE} (revised: $revised)::$(python -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['status'], d['counts'], 'spend', d['spend']['usd'])" "runs/jit/$CASE/jit-run.json")"
           python -m expectrail.jit.cli report "runs/jit/$CASE/jit-run.json" >> "$GITHUB_STEP_SUMMARY"
       - name: Keep the record
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: jit-${{ inputs.case }}
+          name: jit-${{ matrix.c.case }}
           path: |
-            runs/jit/${{ inputs.case }}/jit-run.json
-            runs/jit/${{ inputs.case }}/jit-routes/
+            runs/jit/${{ matrix.c.case }}/jit-run.json
+            runs/jit/${{ matrix.c.case }}/jit-routes/
           if-no-files-found: ignore
           retention-days: 14
+
+  score:
+    # Bench mode only. No secret, no game: each case's final record against the registered bar.
+    needs: [plan, replay-final]
+    if: always() && github.event_name == 'workflow_dispatch' && inputs.mode == 'bench' && needs.plan.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: jit-known-*
+          path: runs/artifacts
+      - name: Score against the registration
+        run: |
+          mkdir -p runs/bench
+          for d in runs/artifacts/jit-known-*; do
+            name="${d#runs/artifacts/jit-}"
+            [[ "$name" == *-round1 ]] && continue
+            [[ -f "$d/jit-run.json" ]] && mkdir -p "runs/bench/$name" && cp "$d/jit-run.json" "runs/bench/$name/"
+          done
+          python -m expectrail.jit.cli bench-score --records runs/bench --out runs/bench-score
+          cat runs/bench-score/jit-bench.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jit-bench
+          path: |
+            runs/bench-score/
+            runs/bench/
+          retention-days: 90

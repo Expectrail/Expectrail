@@ -151,7 +151,7 @@ class Workflow(unittest.TestCase):
 
     def test_the_propose_job_reads_the_measurements_and_runs_no_game(self):
         job = self.job("propose", "replay")
-        self.assertIn("needs: measure", job)
+        self.assertIn("needs: [plan, measure]", job)
         self.assertIn("--measurements runs/jit-measure/jit-measurements.json", job)
         self.assertNotIn("get_godot", job)
         self.assertNotIn("cli measure", job)

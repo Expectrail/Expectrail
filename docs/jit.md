@@ -174,7 +174,7 @@ None of this has run. Each row will link its CI run when it does.
 The stress tests, in the order we intend to run them:
 
 0. **The known-bugs bench, live** ([`bench.py`](../expectrail/jit/bench.py),
-   [`bench/jit/known/`](../bench/jit/known/), `jit-bench.yml`). Rehearsals replay a committed stand-in, so
+   [`bench/jit/known/`](../bench/jit/known/), `jit.yml` in `bench` mode). Rehearsals replay a committed stand-in, so
    they say nothing about what a real model writes. This runs the whole live pipeline on the four
    reported bugs, each with a wrong fix (a comment claiming the fix) and the correct fix (the exact
    undo), and scores the final records against a bar registered first
