@@ -1,0 +1,18 @@
+{
+  "format": "expectrail.test-spec/v0",
+  "id": "unity-player-always-visible",
+  "instruction": "The player is always visible.",
+  "objects": {
+    "player": {
+      "prompt": "green cartoon alien"
+    }
+  },
+  "assertion": {
+    "type": "visible",
+    "object": "player"
+  },
+  "window": {
+    "fromFrame": 0,
+    "toFrame": 199
+  }
+}
