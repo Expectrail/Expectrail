@@ -8,13 +8,16 @@ from harness.unity import trace_diff
 
 
 def _run(root: Path, name: str, rows: list[dict], frames: list[str], settle: dict, machine: str | None = None,
-         surfaces=None) -> Path:
+         surfaces=None, fade_starts=()) -> Path:
     run = root / name / "run-00"
     run.mkdir(parents=True)
     trace = {"format": "expectrail.trace/v0", "ticks": len(rows), "levelSurfaces": surfaces or [[[0, 0], [10, 0]]],
              "rows": rows}
     (run / "trace.json").write_text(json.dumps(trace))
-    (run / "replay.json").write_text(json.dumps({"frameSha256": frames, "settle": settle, "trace": {"sha256": name}}))
+    hazards = [{"kind": "real-time-fade", "detail": "x", "tick": None}] + [
+        {"kind": "real-time-fade-during-route", "detail": "x", "tick": t} for t in fade_starts]
+    (run / "replay.json").write_text(json.dumps({"frameSha256": frames, "settle": settle, "trace": {"sha256": name},
+                                                 "hazards": hazards}))
     if machine:
         (root / name / "machine.txt").write_text(machine + "\n")
     return run
@@ -75,6 +78,24 @@ class TraceDiff(unittest.TestCase):
         d = trace_diff.diff(a, b)
         self.assertTrue(d["routeIdentical"])
         self.assertEqual(trace_diff.main([str(a), str(b)]), 1)
+
+
+    def test_a_frame_on_a_fades_first_tick_may_differ_when_both_saw_the_same_fades(self):
+        a = _run(self.root, "a", _rows(4), ["f", "f", "x", "f"], {"ticks": 0, "frozenFrames": 0}, fade_starts=[2])
+        b = _run(self.root, "b", _rows(4), ["f", "f", "y", "f"], {"ticks": 0, "frozenFrames": 0}, fade_starts=[2])
+        d = trace_diff.diff(a, b)
+        self.assertTrue(d["routeIdentical"])
+        self.assertEqual((d["frames"]["atFadeStarts"], d["frames"]["unexplained"]), (1, 0))
+        self.assertEqual(trace_diff.main([str(a), str(b)]), 0)
+
+    def test_any_other_frame_or_different_fade_starts_fail(self):
+        a = _run(self.root, "a", _rows(4), ["f", "f", "x", "q"], {"ticks": 0, "frozenFrames": 0}, fade_starts=[2])
+        b = _run(self.root, "b", _rows(4), ["f", "f", "y", "f"], {"ticks": 0, "frozenFrames": 0}, fade_starts=[2])
+        self.assertEqual(trace_diff.diff(a, b)["frames"]["unexplained"], 1)
+        self.assertEqual(trace_diff.main([str(a), str(b)]), 1)
+        c = _run(self.root, "c", _rows(4), ["f", "f", "x", "f"], {"ticks": 0, "frozenFrames": 0}, fade_starts=[2])
+        e = _run(self.root, "e", _rows(4), ["f", "f", "x", "f"], {"ticks": 0, "frozenFrames": 0}, fade_starts=[3])
+        self.assertFalse(trace_diff.diff(c, e)["routeIdentical"])
 
 
 if __name__ == "__main__":

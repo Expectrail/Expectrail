@@ -4,7 +4,8 @@
 sha256). When they are not, this says where: which top-level trace sections differ, and for the
 route's rows, each field's first differing tick, how many ticks differ and the largest numeric gap;
 the frames that differ; and the settle each replay held before tick 0 (replay.json), which is not in
-the trace. Unity runs 8 and 9 (42716741830, 42722765528) replayed the same route identically within
+the trace. The frame of a tick a real-time fade starts on may differ, when both replays saw the same
+fades start at the same ticks (the harness holds game time from there). Unity runs 8 and 9 (42716741830, 42722765528) replayed the same route identically within
 each run but gave different trace hashes across runs, built and replayed on different machines.
 
     python3 -m harness.unity.trace_diff RUN_A RUN_B [--json OUT]
@@ -87,15 +88,25 @@ def diff(run_a: Path, run_b: Path) -> dict:
     frames = [i for i in range(max(len(frames_a), len(frames_b)))
               if i >= len(frames_a) or i >= len(frames_b) or frames_a[i] != frames_b[i]]
     rows = diff_rows(trace_a.get("rows") or [], trace_b.get("rows") or [])
+    # The frame of a tick a real-time fade starts on can differ (the fade's first step is real time);
+    # the harness holds game time from there, so only those frames, and only when both replays saw the
+    # same fades start at the same ticks.
+    starts = [sorted(h["tick"] for h in r.get("hazards") or []
+                     if h.get("kind") == "real-time-fade-during-route" and h.get("tick") is not None)
+              for r in (rep_a, rep_b)]
+    allowed = set(starts[0]) if starts[0] == starts[1] else set()
+    unexplained = [i for i in frames if i not in allowed]
     machine = [next((p.read_text(encoding="utf-8").strip() for p in (r / "machine.txt", r.parent / "machine.txt")
                      if p.is_file()), None) for r in (run_a, run_b)]
-    route_same = not frames and not rows["fields"] and rows["rows"][0] == rows["rows"][1]
+    route_same = not unexplained and not rows["fields"] and rows["rows"][0] == rows["rows"][1] and starts[0] == starts[1]
     return {
         "machines": machine,
         "traceSha256": [rep_a.get("trace", {}).get("sha256"), rep_b.get("trace", {}).get("sha256")],
         "sectionsDiffer": [s for s in sections if trace_a.get(s) != trace_b.get(s)],
         "rows": rows,
-        "frames": {"count": [len(frames_a), len(frames_b)], "differ": len(frames), "first": frames[0] if frames else None},
+        "frames": {"count": [len(frames_a), len(frames_b)], "differ": len(frames), "first": frames[0] if frames else None,
+                   "atFadeStarts": len(frames) - len(unexplained), "unexplained": len(unexplained)},
+        "fadeStarts": starts,
         "settle": [rep_a.get("settle"), rep_b.get("settle")],
         "routeIdentical": route_same,
     }
@@ -105,7 +116,9 @@ def summary(d: dict) -> str:
     rows = d["rows"]["fields"]
     parts = [f"route {'identical' if d['routeIdentical'] else 'DIFFERS'}",
              f"frames differing {d['frames']['differ']} of {max(d['frames']['count'])}"
-             + (f" (first {d['frames']['first']})" if d["frames"]["first"] is not None else ""),
+             + (f" (first {d['frames']['first']})" if d["frames"]["first"] is not None else "")
+             + f", {d['frames']['atFadeStarts']} of them on a fade's first tick",
+             "fade starts " + " vs ".join(str(s) for s in d["fadeStarts"]),
              "row fields differing: " + (", ".join(
                  f"{k} on {v['ticksDiffer']} ticks from tick {v['firstTick']}"
                  + (f", largest gap {v['largestGap']:.4g}" if v["largestGap"] is not None else "")
