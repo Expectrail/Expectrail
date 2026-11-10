@@ -1,0 +1,113 @@
+# Does Claude Code still work when the key gateway holds its key and the sandbox has no network?
+#
+# Muse Code already runs this way (agents/gateway.py): a placeholder of the key's length, an
+# mitmproxy that holds the real key and swaps it in for an allowlisted host only, and under
+# bubblewrap no network of its own, so the proxy is the only way out. agents/byo_fixer.py can now
+# put a BYO agent behind the same gateway with EXPECTRAIL_BYO_GATEWAY=on, with the allowlist derived
+# from the provider that owns the agent's key (api.anthropic.com for claude-code).
+#
+# Whether Claude Code tolerates it is a question, not an assumption, which is why this is a probe
+# and not a default. It may reach hosts besides api.anthropic.com — update checks, telemetry — and
+# the gateway refuses every host off the allowlist. The answer is in the gateway's own record:
+# the hosts it allowed, the hosts it blocked, and the header names the placeholder was swapped into.
+# Until this probe says otherwise the README's claim stands as it is: a BYO agent runs with the
+# host's network. Manual only, and it spends Anthropic credit.
+name: BYO gateway probe (Claude Code behind the key gateway)
+
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: independent loop runs
+        default: "1"
+        required: true
+      gateway:
+        description: the key gateway (off reproduces today's behaviour for comparison)
+        type: choice
+        options: ["on", "off"]
+        default: "on"
+
+permissions:
+  contents: read
+
+jobs:
+  byo-gateway-probe:
+    runs-on: ubuntu-24.04
+    environment: provider-keys
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - name: Require the ANTHROPIC_API_KEY secret
+        env:
+          KEY_SET: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        run: |
+          if [ "$KEY_SET" != "true" ]; then
+            echo "::error::Set the ANTHROPIC_API_KEY repository secret first."; exit 1
+          fi
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Install mitmproxy, bubblewrap, xvfb, software OpenGL
+        run: |
+          python -m pip install mitmproxy
+          mitmdump --version | head -1
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends bubblewrap xvfb libgl1-mesa-dri libglx-mesa0 patch
+      - name: Allow unprivileged user namespaces for bubblewrap
+        run: |
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          fi
+          if [ -f /proc/sys/kernel/unprivileged_userns_clone ]; then
+            echo 1 | sudo tee /proc/sys/kernel/unprivileged_userns_clone
+          fi
+      - name: Install Claude Code (under /usr/local, which the sandbox already binds read-only)
+        run: |
+          sudo npm install -g @anthropic-ai/claude-code
+          claude --version
+      - name: Download Godot
+        run: ./harness/get_godot.sh
+      - name: Run the loop with the fixer behind the key gateway
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          EXPECTRAIL_LLM_PROVIDER: anthropic
+          EXPECTRAIL_FIXER_AGENT: claude-code
+          EXPECTRAIL_OBS_PROVIDER: trace
+          EXPECTRAIL_BYO_GATEWAY: ${{ inputs.gateway }}
+          RUNS: ${{ inputs.runs }}
+        run: |
+          python -m agents.loop --out runs/byo-gateway --mode live --runs "$RUNS" \
+            --no-skip-harness --require-sandbox
+      - name: What the gateway saw
+        if: always()
+        run: |
+          python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          root = Path("runs/byo-gateway")
+          print("## Claude Code behind the key gateway\n")
+          for c in sorted(root.rglob("candidate.json")):
+              d = json.loads(c.read_text())
+              s = d.get("sandbox", {})
+              g = s.get("gateway", {})
+              print(f"- `{c.parent.relative_to(root)}`: source={d.get('source')} ok={d.get('ok')} "
+                    f"sandbox={s.get('kind')} network={s.get('network')} keyEnvs={s.get('keyEnvs')}")
+              print(f"  - gateway: mode={g.get('mode')} requests={g.get('requests')}")
+              print(f"  - allowed: {g.get('hosts')}")
+              print(f"  - blocked: {g.get('blockedHosts')}")
+              print(f"  - the placeholder was swapped into: {g.get('swappedHeaders')}")
+          report = root / "morning-report.md"
+          if report.is_file():
+              print("\n" + report.read_text())
+          PY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: byo-gateway-probe
+          path: |
+            runs/byo-gateway/
+            !runs/byo-gateway/**/fixer-work/
+            !runs/byo-gateway/**/fixer-baseline/
+          retention-days: 30

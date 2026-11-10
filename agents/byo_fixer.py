@@ -246,6 +246,7 @@ def run_byo_agent(
     Returns (process, sandbox meta). ``llm-patch`` applies the model's diff to ``work`` itself and
     returns a synthetic process (exit 0 when the diff applied, 1 when it did not).
     """
+    from agents.gateway import BYO_GATEWAY_ENV, byo_gateway
     from agents.keys import BYO_AGENT_KEY_ENVS, byo_agent_env
     from agents.sandbox import detect_sandbox, muse_kind_for, run_sandboxed
 
@@ -271,6 +272,7 @@ def run_byo_agent(
     root = "/fixer" if kind == "bwrap" else str(work.resolve())
     cmd = build_agent_cli_command(agent, prompt_text, work, model=model, root_as_agent_sees_it=root)
     agent_env = byo_agent_env(agent)
+    key_envs = sorted(set(BYO_AGENT_KEY_ENVS.get(agent, ())) & set(agent_env))
     # The record says what this run did, not what some run could do. It used to read
     # "host network (the key gateway speaks only to Meta's API)" for every bwrap run whatever the
     # agent, next to a gateway recorded as off: a Claude Code run named a Meta constraint that was
@@ -279,19 +281,41 @@ def run_byo_agent(
     meta: dict[str, Any] = {
         "kind": kind, "agent": agent, "requireSandbox": require_sandbox, "detect": detected,
         "network": "host network" if kind == "bwrap" else "host network (no sandbox)",
-        "keyEnvs": sorted(set(BYO_AGENT_KEY_ENVS.get(agent, ())) & set(agent_env)),
+        "keyEnvs": key_envs,
         "gateway": {
             "mode": "off",
-            "why": "the key gateway proxies Meta's API only, so a BYO agent reaches its own "
-                   "provider over the host network",
+            "why": "the key gateway is off, so the agent holds its provider key and reaches the "
+                   f"provider over the host network ({BYO_GATEWAY_ENV}=on puts it behind the gateway)",
         },
     }
-    try:
-        proc = run_sandboxed(cmd, work=work, env=agent_env, network=True, kind=kind,
-                             timeout=timeout, extra_ro=agent_install_paths(agent))
-    except subprocess.TimeoutExpired as exc:
-        exc.sandbox_meta = meta
-        raise
-    finally:
-        (work / PROMPT_FILE).unlink(missing_ok=True)
+    with byo_gateway(agent) as gw:
+        if gw is not None:
+            # The agent gets a placeholder of the key's length; the proxy holds the real key and
+            # swaps it in for the provider's host only. Under bubblewrap the sandbox also loses its
+            # network, so the proxy is the only way out; without bubblewrap the proxy and the
+            # placeholder still apply, but nothing stops the agent opening its own connections, and
+            # the record says which of the two it was.
+            agent_env = gw.agent_env(agent_env, tuple(key_envs), in_sandbox=kind == "bwrap")
+            meta["network"] = "gateway only" if kind == "bwrap" else "host (proxy settings, no sandbox)"
+            meta["keyEnvs"] = [f"{name} (placeholder)" for name in key_envs]
+        try:
+            proc = run_sandboxed(cmd, work=work, env=agent_env, network=True, kind=kind,
+                                 timeout=timeout, extra_ro=agent_install_paths(agent), gateway=gw)
+        except subprocess.TimeoutExpired as exc:
+            # Time ran out, but the gateway still saw every request: hand the caller this run's record
+            if gw is not None:
+                meta["gateway"] = gw.summary()
+            exc.sandbox_meta = meta
+            raise
+        else:
+            if gw is not None:
+                meta["gateway"] = gw.summary()
+        finally:
+            (work / PROMPT_FILE).unlink(missing_ok=True)
+    if gw is not None and gw.real:
+        # Never let the real key reach a transcript, however the agent echoed it back.
+        proc = subprocess.CompletedProcess(
+            proc.args, proc.returncode,
+            (proc.stdout or "").replace(gw.placeholder, "[placeholder]"),
+            (proc.stderr or "").replace(gw.placeholder, "[placeholder]"))
     return proc, meta
