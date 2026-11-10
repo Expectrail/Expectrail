@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 from expectrail.contracts import load_strict, validate_v1
-from expectrail.discovery.probes import library
+from expectrail.jit.probes import jit_library
 from expectrail.jit import assess, cli
 from expectrail.jit.diff_map import PatchError, diff_map, parse
 from expectrail.jit.intent import IntentUnavailable, from_proposal, parse_answer, propose_to_file
@@ -16,7 +16,7 @@ from tests.jit_fixtures import ANSWER, PROFILE, STUB, Case, JitGame, model
 
 REPO = Path(__file__).resolve().parents[1]
 PROF = json.loads(PROFILE.read_text())
-PROBES = library(PROF["actions"])
+PROBES = jit_library(PROF["actions"])
 
 
 def run_case(fix: str, *, base=("air-jump",), variants=("variant-airjump", "variant-noop"), answer=ANSWER,

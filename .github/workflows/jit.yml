@@ -6,7 +6,7 @@ name: Generated checks
 # candidate, and records what they catch, strong or weak. Nothing here accepts or rejects a change.
 #
 # The model key and the change's code never meet: the propose job holds the key and only reads the
-# patch as text; the replay job runs the game and has no secret. On pull requests and in rehearsal
+# patch as text; the measure and replay jobs run the game and have no secret. On pull requests and in rehearsal
 # mode the proposal is a committed stand-in (bench/jit/rehearsal/), so no key and no spend: a
 # rehearsal proves the plumbing and is never a result.
 on:
@@ -110,9 +110,46 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  measure:
+    # Runs the game, no secret. Every probe's signals on the clean game and on the bug build (the base
+    # patches), never on the candidate: the numbers the model chooses probes and thresholds from
+    # (expectrail/jit/measure.py). The propose job re-checks them as data before they reach the prompt.
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'live'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      BASE: ${{ inputs.base_patch }}
+    steps:
+      - name: Check the input
+        run: |
+          [[ -z "$BASE" || "$BASE" =~ ^bugs/[A-Za-z0-9/._-]+\.patch$ ]] || { echo "::error::base_patch must be a patch under bugs/"; exit 1; }
+          [[ "$BASE" != *..* ]] || { echo "::error::no .. in paths"; exit 1; }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Install patch
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends patch
+      - name: Download Godot 4.7.2 and check its SHA-512
+        run: ./harness/get_godot.sh
+      - name: Measure every probe on the clean game and the bug build
+        run: |
+          export PATH="$PWD/tools/godot:$PATH"
+          base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
+          python -m expectrail.jit.cli measure "${base[@]}" --out runs/jit-measure
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jit-measurements-${{ inputs.case }}
+          path: runs/jit-measure/jit-measurements.json
+          retention-days: 14
+
   propose:
-    # Holds the model key. Reads the patch and the report as text; replays nothing. In main-only (#223):
-    # only a dispatch from main can reach the key.
+    # Holds the model key. Reads the patch and the report as text, and the measure job's numbers;
+    # replays nothing. In main-only (#223): only a dispatch from main can reach the key.
+    needs: measure
     environment: main-only
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'live'
     runs-on: ubuntu-24.04
@@ -141,12 +178,17 @@ jobs:
         with:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: jit-measurements-${{ inputs.case }}
+          path: runs/jit-measure
       - name: Propose checks (one Muse Spark call)
         env:
           MODEL_API_KEY: ${{ secrets.MODEL_API_KEY || secrets.META_API_KEY }}
         run: |
+          base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
           python -m expectrail.jit.cli propose --report-file "$REPORT" --candidate "$CANDIDATE" --out runs/jit-proposal \
-            --budget-usd "$BUDGET"
+            --budget-usd "$BUDGET" "${base[@]}" --measurements runs/jit-measure/jit-measurements.json
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jit-proposal-${{ inputs.case }}
