@@ -31,6 +31,7 @@ concurrency:
 
 jobs:
   list:
+    environment: heldout
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     outputs:
@@ -42,7 +43,7 @@ jobs:
       - name: Require the held-out token
         if: env.HELDOUT_TOKEN_SET != 'true'
         run: |
-          echo "::error::Set the HELDOUT_TOKEN repository secret so the run can read the private fresh set."
+          echo "::error::Set HELDOUT_TOKEN in the heldout environment (main only) so the run can read the private fresh set."
           exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -71,6 +72,7 @@ jobs:
           echo "ids: $ids"
 
   blind:
+    environment: heldout
     needs: list
     name: blind (${{ matrix.id }})
     runs-on: ubuntu-24.04

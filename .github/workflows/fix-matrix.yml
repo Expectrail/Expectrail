@@ -89,6 +89,7 @@ jobs:
   # Judge the clean game once for the whole run (see sam_cache above). Runs beside the plan job; the
   # jobs that verify wait for it, and run without it if it fails or is skipped.
   sam-warm:
+    environment: heldout
     if: ${{ inputs.sam_cache != 'off' && inputs.set != 'reported' && inputs.judge_drill == 'off' && inputs.judge_outside != 'on' && (inputs.live || inputs.bench == 'demo') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -212,6 +213,7 @@ jobs:
           retention-days: 7
 
   plan:
+    environment: heldout
     if: ${{ inputs.bench == 'fix' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -262,6 +264,7 @@ jobs:
           PY
 
   run:
+    environment: heldout
     needs: [plan, sam-warm]
     if: ${{ !cancelled() && needs.plan.result == 'success' }}
     runs-on: ubuntu-24.04
@@ -502,6 +505,7 @@ jobs:
           PY
 
   judge-run:
+    environment: heldout
     needs: [judge-plan, sam-warm]
     if: ${{ !cancelled() && needs.judge-plan.result == 'success' }}
     runs-on: ubuntu-24.04
@@ -752,6 +756,7 @@ jobs:
           echo "runs=$(python3 -c "import json,sys; print(json.dumps(list(range(1, int(sys.argv[1]) + 1))))" "$RUNS")" >> "$GITHUB_OUTPUT"
 
   demo-run:
+    environment: heldout
     needs: [demo-plan, sam-warm]
     if: ${{ !cancelled() && needs.demo-plan.result == 'success' }}
     runs-on: ubuntu-24.04

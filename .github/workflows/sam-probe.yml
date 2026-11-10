@@ -232,6 +232,7 @@ jobs:
   # uploaded only after the export scan (with the private set) finds nothing. The private routes
   # appear in the record as counts only; their frames, names and verdict file never leave.
   sam-verify:
+    environment: heldout
     if: ${{ inputs.mode == 'verify' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -354,6 +355,7 @@ jobs:
   # counts and verdicts. mode=dev-bench runs the public development variants (ids dev/<family>/vN)
   # through the same jobs, routes and checks, so both sets are measured the same way.
   heldout-list:
+    environment: heldout
     if: ${{ inputs.mode == 'heldout-bench' || inputs.mode == 'dev-bench' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -365,7 +367,7 @@ jobs:
       - name: Require the held-out token
         if: env.HELDOUT_TOKEN_SET != 'true'
         run: |
-          echo "::error::Set the HELDOUT_TOKEN repository secret so the benchmark can read the private held-out set."
+          echo "::error::Set HELDOUT_TOKEN in the heldout environment (main only) so the benchmark can read the private held-out set."
           exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -394,6 +396,7 @@ jobs:
           echo "variants: $variants"
 
   heldout-bench:
+    environment: heldout
     needs: heldout-list
     runs-on: ubuntu-24.04
     # Glimmer on one shared replica answers about one frame a second across the parallel jobs.

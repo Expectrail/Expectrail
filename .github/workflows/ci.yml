@@ -493,6 +493,7 @@ jobs:
   # on same-repository pull requests (private-scan.yml, main's scanner reading the branch's files),
   # and main-health.yml opens an issue whenever CI fails on main.
   agents-harness-private:
+    environment: heldout
     if: ${{ github.event_name != 'pull_request' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -751,6 +752,7 @@ jobs:
   # Oct 29 Fix+Trust film: Muse in bubblewrap + poison + Godot replay + held-out + Ed25519.
   # Manual only — each run spends Meta credit. Set META_API_KEY (+ HELDOUT_TOKEN for private set).
   agents-oct29-film:
+    environment: heldout
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -766,7 +768,7 @@ jobs:
       - name: Require the HELDOUT_TOKEN repo secret
         if: env.HELDOUT_TOKEN_SET != 'true'
         run: |
-          echo "::error::Set the HELDOUT_TOKEN repository secret so the verifier can mount the private held-out set."
+          echo "::error::Set HELDOUT_TOKEN in the heldout environment (main only) so the verifier can mount the private held-out set."
           exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
