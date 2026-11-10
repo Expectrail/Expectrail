@@ -23,6 +23,7 @@ permissions:
 
 jobs:
   spark-open:
+    environment: main-only
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     # secrets is not allowed in a job-level if; check it in the first step instead.
@@ -33,7 +34,7 @@ jobs:
       - name: Require the BASETEN_API_KEY secret and a plain model id
         run: |
           if [ "$BASETEN_API_KEY_SET" != "true" ]; then
-            echo "::error::Add the BASETEN_API_KEY repository secret (Settings, Secrets and variables, Actions)."
+            echo "::error::Add BASETEN_API_KEY to the main-only environment (Settings, Environments, main-only)."
             exit 1
           fi
           [[ "$MODEL_ID" =~ ^[A-Za-z0-9._/-]+$ ]] || { echo "::error::unexpected model id"; exit 1; }

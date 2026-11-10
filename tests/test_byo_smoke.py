@@ -73,15 +73,46 @@ class WorkflowTest(unittest.TestCase):
     def test_the_job_never_holds_the_verifiers_sam_key(self):
         self.assertNotIn("MODEL_API_KEY", self.env)
 
-    def test_a_fork_pull_request_cannot_run_it(self):
-        guard = self.doc["jobs"]["byo-smoke"]["if"]
-        self.assertIn("head.repo.full_name == github.repository", guard)
+    def test_no_pull_request_ever_holds_a_key(self):
+        # The keys live in the main-only environment; the live calls run on the schedule and on a
+        # dispatch from main, never on a pull request's code.
+        self.assertNotIn("pull_request", self.triggers)
+        self.assertNotIn("pull_request_target", self.triggers)
+        self.assertEqual(self.doc["jobs"]["byo-smoke"]["environment"], "main-only")
 
-    def test_the_key_bearing_job_runs_in_an_environment(self):
-        """The approval gate for a pull request. The rules live in repository settings and the job
-        cannot read them, so this only pins that the environment is still declared: removing the
-        line would silently drop the gate."""
-        self.assertEqual(self.doc["jobs"]["byo-smoke"]["environment"], "provider-keys")
+class LiveWorkflowGatewayTest(unittest.TestCase):
+    """byo-live.yml defaults the key gateway on; the library does not, and must not.
+
+    The gateway refuses to fall back to handing an agent its real key, so a library default of on
+    would hard-fail every checkout without mitmdump. CI controls its image and installs mitmproxy,
+    so it can default it on; a laptop still runs the way the README describes.
+    """
+
+    def setUp(self):
+        import yaml
+
+        from harness.run import REPO
+        self.doc = yaml.safe_load((REPO / ".github" / "workflows" / "byo-live.yml").read_text())
+        self.triggers = self.doc.get("on") or self.doc[True]
+        self.steps = self.doc["jobs"]["byo-live"]["steps"]
+
+    def test_the_workflow_defaults_the_gateway_on(self):
+        self.assertEqual(self.triggers["workflow_dispatch"]["inputs"]["gateway"]["default"], "on")
+        env = next(s["env"] for s in self.steps if "agents.loop" in str(s.get("run", "")))
+        self.assertIn("EXPECTRAIL_BYO_GATEWAY", env)
+
+    def test_the_workflow_installs_the_proxy_it_then_requires(self):
+        """On and unavailable is an error, so a workflow that turns it on must install mitmdump."""
+        runs = " ".join(str(s.get("run", "")) for s in self.steps)
+        self.assertIn("pip install mitmproxy", runs)
+
+    def test_the_library_default_is_still_off(self):
+        from agents.gateway import byo_enabled
+
+        self.assertFalse(byo_enabled({}))
+        self.assertFalse(byo_enabled({"EXPECTRAIL_BYO_GATEWAY": ""}))
+        self.assertFalse(byo_enabled({"EXPECTRAIL_BYO_GATEWAY": "off"}))
+        self.assertTrue(byo_enabled({"EXPECTRAIL_BYO_GATEWAY": "on"}))
 
 
 class ProbeTest(unittest.TestCase):

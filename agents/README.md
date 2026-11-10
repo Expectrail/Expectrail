@@ -115,7 +115,7 @@ python3 -m agents.prove_live --out runs/prove
 # Optional extra spend: also ask Muse to follow the poisoned asset
 python3 -m agents.prove_live --out runs/prove --muse-trust-probe
 
-# CI: Actions → CI → Run workflow (needs repo secret META_API_KEY)
+# CI: Actions → CI → Run workflow from main (needs META_API_KEY in the main-only environment)
 # Job: agents-live-muse (lighter) or agents-oct29-film (Fix+Trust camera)
 ```
 

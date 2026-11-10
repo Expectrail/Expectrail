@@ -52,9 +52,9 @@ and never in this one:
   check to pass there too. A fix tuned to the smoke route (for example one that only works on its
   exact timing) fails here. The verifier reads the set from `EXPECTRAIL_HELDOUT_DIR`; CI fetches it
   with the `HELDOUT_TOKEN` secret and never uploads held-out frames or traces as artifacts. The
-  secret lives in the `heldout` environment, which only `main` may deploy to, so a workflow edited
+  secret lives in the `main-only` environment, which only `main` may deploy to, so a workflow edited
   on any other branch (by a person or a coding agent) cannot read the set; every job that fetches it
-  declares `environment: heldout`. Without
+  declares `environment: main-only`. The model keys live there too (see docs/obaaf.md). Without
   the set (offline runs, forks) the check falls back to an interim fixture, labeled
   `interim-fixture` in the verification's suite provenance.
 

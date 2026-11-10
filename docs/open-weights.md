@@ -365,5 +365,5 @@ error, and Muse Spark on Meta's API drafted the same checks for comparison.
 `FIREWORKS_API_KEY` (or `EXPECTRAIL_GLIMMER_API_KEY`) and `BASETEN_API_KEY` (or
 `EXPECTRAIL_OPEN_API_KEY`) are read from the environment or the gitignored `.env`. None of them is on
 Muse Code's environment allowlist. The Glimmer key may not be the same as `META_API_KEY`, the key
-the fixer holds. In CI, add the `FIREWORKS_API_KEY` repository secret; `both` also needs the SAM key
+the fixer holds. In CI, add `FIREWORKS_API_KEY` to the `main-only` environment (not as a repository secret); `both` also needs the SAM key
 (`MODEL_API_KEY`). The workflow does not pass the SAM key to a `glimmer-engine` run.

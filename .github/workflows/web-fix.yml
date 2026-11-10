@@ -27,7 +27,7 @@ permissions:
 
 jobs:
   plan:
-    environment: heldout
+    environment: main-only
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -94,7 +94,7 @@ jobs:
 
   # Named run so agents.bench_collect --matrix reads its annotations as it reads the game's.
   run:
-    environment: heldout
+    environment: main-only
     needs: plan
     runs-on: ubuntu-24.04
     timeout-minutes: 90

@@ -16,7 +16,7 @@
 # accounts/<account>/deployments/<id> in the GLIMMER_MODEL repo variable (or the model input). A
 # deployment scaled to zero is woken first and may take a few minutes. See docs/open-weights.md.
 #
-# Needs the FIREWORKS_API_KEY repo secret (Glimmer on Fireworks), or GLIMMER_API_KEY with
+# Needs FIREWORKS_API_KEY in the main-only environment (Glimmer on Fireworks), or GLIMMER_API_KEY with
 # `base` on our own vLLM / SGLang server, whose host must be in the GLIMMER_ALLOWED_HOST repo
 # variable. https only, so the key never travels in clear. Never runs on pull requests.
 name: Glimmer probe
@@ -60,7 +60,7 @@ permissions:
 
 jobs:
   glimmer:
-    environment: heldout
+    environment: main-only
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
@@ -80,7 +80,7 @@ jobs:
       - name: Require a Glimmer key secret and check the inputs
         run: |
           if [ "$GLIMMER_KEY_SET" != "true" ]; then
-            echo "::error::Set the FIREWORKS_API_KEY (or GLIMMER_API_KEY) repository secret first."
+            echo "::error::Set FIREWORKS_API_KEY (or GLIMMER_API_KEY) in the main-only environment first."
             exit 1
           fi
           [[ "$EVERY" =~ ^[0-9]+$ ]] || { echo "::error::every must be a number"; exit 1; }

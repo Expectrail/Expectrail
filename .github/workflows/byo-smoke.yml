@@ -11,35 +11,21 @@
 # It asserts that text came back. `.github/obaaf.yml` declares it a probe lane for exactly that
 # reason — agent would overclaim it, perception would be wrong about what it talks to.
 #
-# Secrets on a pull request: a pull request runs its own code, and a job that can call a provider
-# can read the key out of its own environment, so the gate is approval, not a sandbox. The job runs
-# in the `provider-keys` environment; give that environment required reviewers and a run on a pull
-# request waits for a maintainer before any key is in the environment. Same-repository pull requests
-# only on top of that, the rule private-scan.yml already uses — a fork's pull request gets no
-# secrets and cleanly skips every provider. The paths filter keeps it to changes that can break the
-# provider layer.
+# Not on pull requests. The provider keys live in the main-only environment, which only main's
+# workflows can use, so a branch's code (a person's or a coding agent's) never holds one. The daily
+# schedule and a dispatch from main make the live calls; dispatch it from main right after merging a
+# provider-layer change. The offline provider tests run on every pull request.
 #
-# A workflow that names an environment GitHub does not have gets one created with NO protection
-# rules, so this line gates nothing until required reviewers are set on `provider-keys` in the
-# repository settings. There is no way for the job to check that from the inside: it cannot see its
-# own environment's rules. Until they are set, treat this as documentation of intent and the
-# schedule as the part that is actually safe.
+# It used to run on provider-layer pull requests, first on the reasoning that their authors could
+# reach the repository's secrets anyway, then behind an approval-gated environment (#224). Approving
+# such a run means trusting that branch's code with the real keys, and it kept a second copy of each
+# key to rotate; a check after merge costs little by comparison.
 name: BYO smoke (live provider calls)
 
 on:
   schedule:
     # Daily, off the hour: provider-side deprecations arrive without a commit of ours.
     - cron: '23 7 * * *'
-  pull_request:
-    paths:
-      - 'expectrail/providers.py'
-      - 'expectrail/spec_writer.py'
-      - 'agents/byo_smoke.py'
-      - 'agents/byo_fixer.py'
-      - 'agents/byo_vision.py'
-      - 'agents/triage.py'
-      - 'agents/keys.py'
-      - '.github/workflows/byo-smoke.yml'
   workflow_dispatch:
     inputs:
       provider:
@@ -52,14 +38,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: byo-smoke-${{ github.event.pull_request.number || github.ref }}
+  group: byo-smoke-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   byo-smoke:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    environment: main-only
     runs-on: ubuntu-24.04
-    environment: provider-keys
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

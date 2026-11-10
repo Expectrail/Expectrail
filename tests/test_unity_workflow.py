@@ -261,6 +261,18 @@ class UnityWorkflowTest(unittest.TestCase):
         run = self.steps(cross, name="The two runners replayed the route identically")[0]["run"]
         self.assertIn("python3 -m harness.unity.trace_diff runs/unity/cross/unity-smoke-replay-a/run-00", run)
 
+    def test_every_apt_install_comes_from_the_snapshot(self):
+        # re is imported at module level
+        self.assertRegex(self.doc["env"]["UBUNTU_SNAPSHOT"], r"^\d{8}T\d{6}Z$")
+        for name, job in self.jobs.items():
+            for step in job["steps"]:
+                run = step.get("run", "")
+                for line in re.findall(r"apt-get [^&;|]*install[^&;|]*", run):
+                    with self.subTest(job=name, step=step.get("name")):
+                        if "ca-certificates" in line and "$packages" not in line:
+                            continue  # the one package the HTTPS snapshot needs first
+                        self.assertIn('--snapshot "$UBUNTU_SNAPSHOT"', line)
+
     def test_the_shell_steps_parse(self):
         for name, job in self.jobs.items():
             for step in job["steps"]:

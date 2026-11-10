@@ -22,7 +22,7 @@ on:
   workflow_dispatch:
     inputs:
       planner:
-        description: Muse Spark planner (spark needs the MODEL_API_KEY or META_API_KEY secret)
+        description: Muse Spark planner (spark runs from main only, with the key in the main-only environment)
         type: choice
         options: ['off', 'spark']
         default: 'off'
@@ -35,11 +35,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Two jobs that share their steps (YAML anchors): `discovery` holds no key and runs on pull requests
+  # and on a dispatch with the planner off; `discovery-planner` is the only one that gives Muse Spark
+  # the model key, and it runs only from main, in the main-only environment that holds the key.
   discovery:
+    if: ${{ github.event_name == 'pull_request' || inputs.planner != 'spark' }}
     name: discovery (${{ matrix.build }})
     runs-on: ubuntu-24.04
     timeout-minutes: 40
-    strategy:
+    strategy: &discovery_strategy
       fail-fast: false
       matrix:
         # The clean game (the false-alarm control), the four reproduced public bug reports the profile
@@ -67,31 +71,29 @@ jobs:
           - {build: healthy-faster-walk, patch: bugs/challenges/healthy-faster-walk.patch}
           - {build: healthy-faster-enemies, patch: bugs/challenges/healthy-faster-enemies.patch}
     env:
-      PLANNER: ${{ inputs.planner || 'off' }}
-      KEY_SET: ${{ secrets.MODEL_API_KEY != '' || secrets.META_API_KEY != '' }}
+      PLANNER: 'off'
     steps:
-      - name: Require the model key when the planner is on
-        if: env.PLANNER == 'spark' && env.KEY_SET != 'true'
-        run: |
-          echo "::error::Set the MODEL_API_KEY (or META_API_KEY) repository secret first."
-          exit 1
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - &checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - &python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.13'
-      - run: python -m pip install -r requirements-dev.txt
-      - name: Install patch
+      - &deps
+        run: python -m pip install -r requirements-dev.txt
+      - &patch
+        name: Install patch
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends patch
-      - name: Download Godot 4.7.2 and check its SHA-512
+      - &godot
+        name: Download Godot 4.7.2 and check its SHA-512
         run: ./harness/get_godot.sh
       - name: Discover
         env:
-          MODEL_API_KEY: ${{ inputs.planner == 'spark' && (secrets.MODEL_API_KEY || secrets.META_API_KEY) || '' }}
           BUILD: ${{ matrix.build }}
           PATCH: ${{ matrix.patch }}
-        run: |
+        run: &discover |
           [[ "$BUILD" =~ ^[a-z0-9-]+$ ]] || { echo "::error::unexpected build id"; exit 1; }
           snapshot="$BUILD:base"
           if [[ -n "$PATCH" ]]; then
@@ -110,7 +112,8 @@ jobs:
           python -m expectrail.discovery.cli annotate "runs/discovery/$BUILD/discovery-run.json"
           echo "::notice title=Discovery time ${BUILD}::$(( $(date +%s) - start )) s"
           cat "runs/discovery/$BUILD/report.md" >> "$GITHUB_STEP_SUMMARY"
-      - name: Keep the record and the routes
+      - &keep
+        name: Keep the record and the routes
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -122,3 +125,32 @@ jobs:
             runs/discovery/${{ matrix.build }}/*/*/episode.json
           if-no-files-found: ignore
           retention-days: 14
+
+  discovery-planner:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.planner == 'spark' }}
+    environment: main-only
+    name: discovery-planner (${{ matrix.build }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy: *discovery_strategy
+    env:
+      PLANNER: spark
+      KEY_SET: ${{ secrets.MODEL_API_KEY != '' || secrets.META_API_KEY != '' }}
+    steps:
+      - name: Require the model key
+        if: env.KEY_SET != 'true'
+        run: |
+          echo "::error::Set MODEL_API_KEY (or META_API_KEY) in the main-only environment first."
+          exit 1
+      - *checkout
+      - *python
+      - *deps
+      - *patch
+      - *godot
+      - name: Discover
+        env:
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY || secrets.META_API_KEY }}
+          BUILD: ${{ matrix.build }}
+          PATCH: ${{ matrix.patch }}
+        run: *discover
+      - *keep

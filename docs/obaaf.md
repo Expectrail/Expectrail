@@ -1,29 +1,67 @@
 # OBAAF in Expectrail
 
 OBAAF (the Open Build and Agent Assurance Framework, https://github.com/Obaaf/OBAAF) is a
-dependency pinned to commit `ef34304214923953cf7d67343b912385d4ce5906`. It checks whether a
+dependency pinned to commit `d014b6366b5f1b14b8bf13a3b07c6d3727a4a1e4`. It checks whether a
 change may cause an effect, such as a pull request or release, given its origin and approvals.
 Expectrail checks whether the change does what the player needs. These are separate decisions,
 and both are needed: an OBAAF check does not establish that the fix is correct, and a passing
 Expectrail verdict does not grant write access by itself.
 
-**Status: Phase A, reporting only (Oct 30).** Nothing is enforced and no protected effect is
-enabled. What runs, in the `obaaf-audit` CI job on every push and pull request:
+**Status: Phase A, no new findings (Nov 9).** No protected effect is enabled, but a pull request
+that adds a finding now fails. What runs, in the `obaaf-audit` CI job on every push and pull request:
 
 | What | How | Gated? |
 | --- | --- | --- |
 | Lane inventory | `.github/obaaf.yml` declares the 10 jobs that hand a Meta model untrusted input and act on its output as agent lanes (OBAAF does not recognise `python -m agents.*`). `agents/assurance/audit.py` fails CI if one is not classified as an agent, or if any job holds a model key without being a declared agent or a listed perception-only job (SAM, Glimmer). | Yes: a new model job needs a declaration and review |
-| Pipeline findings | `obaaf check . --format json --fail-on never`; one notice per rule | No, reported |
+| Pipeline findings | `obaaf check . --format json --fail-on never`; one notice per rule | Reported |
+| No new findings | `obaaf check . --baseline .github/obaaf-baseline.json --fail-on low`. The baseline lists the findings accepted today (below); any other finding fails, and so does a baseline entry that no longer matches, so a fix is locked in by regenerating it with `--write-baseline`. A line added to the baseline is an accepted new finding: review it like a workflow change (CODEOWNERS covers `.github/`). | Yes |
+| Protected secrets | `protected_secrets` in `.github/obaaf.yml`: `HELDOUT_TOKEN` and every `*_API_KEY` only in `main-only` (OBAAF-GHA-024) | Yes, through the baseline |
 | Proposals | `agents/assurance/proposal.py` turns a candidate fix into an OBAAF proposal bundle and checks it with `obaaf proposal check --repo` plus Expectrail's own allowlist | Tests only, see below |
 
-## Findings (Oct 30, main at e19b378 plus this change)
+## Where the secrets live (Nov 9)
 
-| Rule | Before | Now | What it means |
+Anyone with write access, or a coding agent acting for them, could read any repository secret by
+pushing a branch with a workflow that prints it; branch protection does not apply to a workflow
+running from its own branch. So no secret is a repository secret any more:
+
+| Environment | Holds | Who can use it |
+| --- | --- | --- |
+| `main-only` | `HELDOUT_TOKEN` and every model key: today `MODEL_API_KEY`, `META_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `FIREWORKS_API_KEY` and `BASETEN_API_KEY`; the workflows also read `GEMINI_API_KEY`, `OPENROUTER_API_KEY` and `GLIMMER_API_KEY` if you add them, and those go here too, never as repository secrets | Workflows on `main` only (deployment branch rule) |
+| `unity` | The Unity licence | Any branch, after Sean approves each run (required reviewer) |
+
+- Every job that uses one of these secrets declares the environment; `tests/test_main_only_environment.py`
+  fails if one does not, or if a job in `main-only` can be started by a pull request. No key lives in
+  an approval-only environment: approving a run would hand that branch's code the key.
+- Pull requests run keyless: `discovery` (planner off) and `reported-bench` (traces only) hold no key,
+  and their keyed twins `discovery-planner` and `reported-bench-sam` run only on a dispatch from main.
+  `mutation-fix` rehearses keyless on a pull request; its live jobs are dispatch-only. `byo-smoke`
+  no longer runs on pull requests: its live calls run daily and on a dispatch from main (dispatch it
+  right after merging a provider-layer change), and its logic is tested offline on every pull request.
+- A held-out or live bench can only be dispatched from `main`.
+- `private-scan.yml` is the exception: `pull_request_target` runs as main, so the branch rule does not
+  stop it. It reads a same-repository pull request's files as data and prints counts only. The
+  residual risk is that counts are an oracle a writer could probe; it is recorded, with an expiry,
+  as a reviewed finding in `.github/obaaf.yml`.
+- `main` is protected (ruleset "Protect main"): no force pushes or deletion, a pull request with one
+  approval of its latest push and a passing `test` check. Sean and Timothy can merge their own pull
+  requests without waiting (organization admins may bypass, for pull requests only); nobody pushes to
+  `main` directly. Without this, anyone with write access could put a workflow on `main` and read
+  every key in `main-only`.
+- What the checker cannot see, check in the settings: no repository or organization copy of these
+  secrets, `main-only` limited to `main`, and required reviewers on `unity`. Create the environment before any workflow names it:
+  GitHub creates a missing environment on first use, with no protection.
+
+## Findings (Nov 9, with OBAAF at d014b63)
+
+The baseline (`.github/obaaf-baseline.json`) accepts exactly these; anything else fails CI.
+
+| Rule | Oct 30 | Nov 9 | What it means |
 | --- | --- | --- | --- |
-| OBAAF-GHA-001: secret in a pull-request job | 1 low | **0** | `agents-harness-verify` checked out the private held-out set on every same-repository pull request, then ran that branch's code: anyone who could push a branch could print the private set. That job now never sees it; `agents-harness-private` checks the private routes on pushes to main, the schedule and manual runs only. |
-| OBAAF-REPO-001: no CODEOWNERS | 1 medium | **0** | `.github/CODEOWNERS` names an owner for workflows and everything that decides a verdict. It binds merges only once branch protection requires code-owner review (a repository setting). |
-| OBAAF-GHA-005: secret in an agent job | 8 high | 8 high | The Muse key is in every agent job. Since Oct 30 Muse Code itself never receives it (the key gateway below); OBAAF's static check still sees it in the job, where the gateway runs. Clearing it needs the gateway hosted outside the job. Not suppressed. |
-| OBAAF-GHA-020: agent job without egress restriction | 8 low | 8 low | No agent job has an enforced network policy. `OBAAF_EGRESS` would only record intent, so it is not set. |
+| OBAAF-GHA-005: secret in an agent job | 8 high | 16 high (baseline) | Every agent job holds a model key, now from `main-only`. Muse Code and, when `EXPECTRAIL_BYO_GATEWAY=on`, a BYO agent never see the key itself (the key gateway below), but OBAAF's static check still sees it in the job, where the gateway runs. Clearing it needs the gateway hosted outside the job. The count grew with the BYO and web benches, not with new exposure. |
+| OBAAF-GHA-020: agent job without egress restriction | 8 low | 16 low (baseline) | No agent job has an enforced network policy. `OBAAF_EGRESS` would only record intent, so it is not set. |
+| OBAAF-GHA-001: secret in a pull-request job | 0 | 3, each reviewed with an expiry in `.github/obaaf.yml` | `private-scan` (twice: `pull_request_target` and its data-only checkout) and `unity`, behind a required reviewer. Between Oct 30 and Nov 9 six unreviewed ones had appeared in reporting mode; they are gone (keyless pull-request jobs) or reviewed. |
+| OBAAF-GHA-012: agent reads the pull request's instruction files | 0 | 0 | One appeared in reporting mode (`discovery` on pull requests); the planner now runs only on a dispatch from main. |
+| OBAAF-REPO-001: no CODEOWNERS | 0 | 0 | `.github/CODEOWNERS` names an owner for workflows and everything that decides a verdict. |
 
 ## Proposals
 

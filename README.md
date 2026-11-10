@@ -688,7 +688,12 @@ export EXPECTRAIL_VISION_BACKEND=local-http EXPECTRAIL_LOCAL_VISION_URL=http://l
   proxy Muse Code uses: a placeholder of the key's length, the real key held by the proxy and
   swapped in for the provider's host only (derived from
   [`expectrail/providers.py`](expectrail/providers.py)), and under bubblewrap no network of its own.
-  Off by default, so the bullet above is still what a default run does. Measured once with Claude
+  Off by default in the library, so the bullet above is still what a plain run does, and a checkout
+  without mitmproxy is not broken by a switch it cannot satisfy — the gateway errors rather than
+  handing an agent its real key, so defaulting it on everywhere would fail closed everywhere.
+  CI's live BYO runs ([`byo-live.yml`](.github/workflows/byo-live.yml)) do default it on: that
+  workflow installs mitmproxy and dispatches with `gateway: on`, and each attempt's `sandbox.json`
+  records which it was. Measured once with Claude
   Code ([`byo-gateway-probe.yml`](.github/workflows/byo-gateway-probe.yml), run 42752549697): behind
   the gateway it reached an accepted fix with no network of its own, in 100,962 ms against
   100,989 ms for the same loop with the gateway off, and the only key that left was the real one the
@@ -728,7 +733,7 @@ rejects outright, and the text of a reply that did arrive was read by the config
 than by the shape `chat_completion` had already normalised it into, so every answer came back empty
 — triage recorded the model as its source and wrote an empty bug report. Both failed triage, the
 `llm-patch` fixer, spec drafting and `byo-vlm` alike. `.github/workflows/byo-smoke.yml` now sends one
-real prompt to every provider whose key is set, daily and on changes to the provider layer, because
+real prompt to every provider whose key is set, daily and on dispatch from main, because
 nothing short of a live call catches either fault. One live end-to-end run now exists on that path — Claude triaged, Claude Code fixed under
 bubblewrap, a Godot replay judged it on the engine trace, and the verifier accepted on the first
 attempt. It is one accept on one seeded defect, so it is evidence the path runs, and no result.
