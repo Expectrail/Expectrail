@@ -1,0 +1,77 @@
+{
+ "format": "expectrail.jit-bench-cases/v0",
+ "cases": [
+  {
+   "case": "known-air-jump-comment-only",
+   "bug": "air-jump",
+   "label": "wrong",
+   "base": "bugs/reported/air-jump.patch",
+   "candidate": "bench/jit/known/air-jump/comment-only.patch",
+   "report": "bench/jit/known/air-jump/report.txt",
+   "tunedOn": true
+  },
+  {
+   "case": "known-air-jump-undo",
+   "bug": "air-jump",
+   "label": "correct",
+   "base": "bugs/reported/air-jump.patch",
+   "candidate": "bench/jit/known/air-jump/undo.patch",
+   "report": "bench/jit/known/air-jump/report.txt",
+   "tunedOn": true
+  },
+  {
+   "case": "known-gun-cooldown-comment-only",
+   "bug": "gun-cooldown",
+   "label": "wrong",
+   "base": "bugs/reported/gun-cooldown.patch",
+   "candidate": "bench/jit/known/gun-cooldown/comment-only.patch",
+   "report": "bench/jit/known/gun-cooldown/report.txt",
+   "tunedOn": false
+  },
+  {
+   "case": "known-gun-cooldown-undo",
+   "bug": "gun-cooldown",
+   "label": "correct",
+   "base": "bugs/reported/gun-cooldown.patch",
+   "candidate": "bench/jit/known/gun-cooldown/undo.patch",
+   "report": "bench/jit/known/gun-cooldown/report.txt",
+   "tunedOn": false
+  },
+  {
+   "case": "known-body-flip-comment-only",
+   "bug": "body-flip",
+   "label": "wrong",
+   "base": "bugs/reported/body-flip.patch",
+   "candidate": "bench/jit/known/body-flip/comment-only.patch",
+   "report": "bench/jit/known/body-flip/report.txt",
+   "tunedOn": false
+  },
+  {
+   "case": "known-body-flip-undo",
+   "bug": "body-flip",
+   "label": "correct",
+   "base": "bugs/reported/body-flip.patch",
+   "candidate": "bench/jit/known/body-flip/undo.patch",
+   "report": "bench/jit/known/body-flip/report.txt",
+   "tunedOn": false
+  },
+  {
+   "case": "known-enemy-ledge-comment-only",
+   "bug": "enemy-ledge",
+   "label": "wrong",
+   "base": "bugs/reported/enemy-ledge.patch",
+   "candidate": "bench/jit/known/enemy-ledge/comment-only.patch",
+   "report": "bench/jit/known/enemy-ledge/report.txt",
+   "tunedOn": false
+  },
+  {
+   "case": "known-enemy-ledge-undo",
+   "bug": "enemy-ledge",
+   "label": "correct",
+   "base": "bugs/reported/enemy-ledge.patch",
+   "candidate": "bench/jit/known/enemy-ledge/undo.patch",
+   "report": "bench/jit/known/enemy-ledge/report.txt",
+   "tunedOn": false
+  }
+ ]
+}

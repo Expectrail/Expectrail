@@ -166,6 +166,15 @@ def main(argv: list[str] | None = None) -> int:
     ms.add_argument("--base", type=Path, action="append", default=[])
     ms.add_argument("--out", type=Path, required=True)
     ms.add_argument("--game", type=Path, help="the reference game (default: game/platformer in this checkout)")
+    bp = sub.add_parser("bench-pins", help="print the pins a bench registration records")
+    bc = sub.add_parser("bench-check", help="exit 1 unless the bench registration is signed and its pins hold")
+    bc.add_argument("--prereg", type=Path)
+    bs = sub.add_parser("bench-score")
+    bs.add_argument("--records", type=Path, required=True, help="a folder with <case>/jit-run.json per case")
+    bs.add_argument("--prereg", type=Path)
+    bs.add_argument("--cases", type=Path)
+    bs.add_argument("--out", type=Path, required=True)
+    del bp
     dg = sub.add_parser("diff-games")
     dg.add_argument("base", type=Path)
     dg.add_argument("head", type=Path)
@@ -189,6 +198,25 @@ def main(argv: list[str] | None = None) -> int:
         profile = load_strict(args.profile, "mechanics-profile")
         doc = measure(profile, args.base, args.out, probes=jit_library(profile["actions"]), game=args.game)
         print(json.dumps({"probes": len(doc["probes"]), "bugBuild": bool(args.base)}))
+        return 0
+    if args.cmd in ("bench-pins", "bench-check", "bench-score"):
+        from expectrail.jit import bench
+
+        if args.cmd == "bench-pins":
+            print(json.dumps(bench.pins(), indent=1, sort_keys=True))
+            return 0
+        prereg = json.loads((args.prereg or bench.PREREG).read_text(encoding="utf-8"))
+        if args.cmd == "bench-check":
+            problems = bench.check_registration(prereg)
+            for p in problems:
+                print(f"::error::{p}")
+            print(json.dumps({"ok": not problems, "problems": len(problems)}))
+            return 1 if problems else 0
+        doc = bench.score(bench.load_cases(args.cases or bench.CASES), args.records, prereg["bar"])
+        args.out.mkdir(parents=True, exist_ok=True)
+        (args.out / "jit-bench.json").write_text(json.dumps(doc, indent=1) + "\n", encoding="utf-8")
+        (args.out / "jit-bench.md").write_text(bench.render(doc), encoding="utf-8")
+        print(json.dumps({"verdict": doc["verdict"], **doc["totals"]}))
         return 0
     if args.cmd == "revise":
         from expectrail.jit.intent import IntentUnavailable, revise_to_file, spark_intent

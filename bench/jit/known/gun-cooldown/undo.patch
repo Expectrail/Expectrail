@@ -1,0 +1,8 @@
+--- a/player/gun.gd
++++ b/player/gun.gd
+@@ -21,4 +21,5 @@
+ 	bullet.set_as_top_level(true)
+ 	add_child(bullet)
+ 	sound_shoot.play()
++	timer.start()
+ 	return true

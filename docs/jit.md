@@ -173,6 +173,17 @@ None of this has run. Each row will link its CI run when it does.
 
 The stress tests, in the order we intend to run them:
 
+0. **The known-bugs bench, live** ([`bench.py`](../expectrail/jit/bench.py),
+   [`bench/jit/known/`](../bench/jit/known/), `jit-bench.yml`). Rehearsals replay a committed stand-in, so
+   they say nothing about what a real model writes. This runs the whole live pipeline on the four
+   reported bugs, each with a wrong fix (a comment claiming the fix) and the correct fix (the exact
+   undo), and scores the final records against a bar registered first
+   ([`preregistration.json`](../bench/jit/known/preregistration.json)): at least 3 of 4 wrong fixes
+   caught strong, at least 2 of them on the three bugs nobody tuned on (#240 was designed on air-jump),
+   no catch of any strength on a correct fix, no case without a result, $2 or less per case. The
+   workflow refuses to start from anywhere but main, or unless the registration is signed off and every
+   file it pins is unchanged. Below the bar, arm B does not run on blind set 3.
+
 1. **A new pre-registration, then the mutation bench with generated checks on.** Registered before any
    judged case, in the style of #127 and #164: pins, the sample, the scoring rule. Rehearsed on
    stand-ins first. The existing registration stays as the record it is (rule 6); this is a new one.
