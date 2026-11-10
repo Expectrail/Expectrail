@@ -227,6 +227,22 @@
       "message": "Agent job 'propose' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
     },
     {
+      "fingerprint": "sha256:e33df392435c792a7beda32f5ae54ee76ff3e2c41d59973fc00bb724c5084307",
+      "rule": "OBAAF-GHA-005",
+      "severity": "high",
+      "path": ".github/workflows/jit.yml",
+      "job": "revise",
+      "message": "Agent job 'revise' receives META_API_KEY, MODEL_API_KEY."
+    },
+    {
+      "fingerprint": "sha256:aba476cf5687ed6f47d3e6140b9337e9f1593e2dc78630e2ce4de9dabc1543f0",
+      "rule": "OBAAF-GHA-020",
+      "severity": "low",
+      "path": ".github/workflows/jit.yml",
+      "job": "revise",
+      "message": "Agent job 'revise' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
+    },
+    {
       "fingerprint": "sha256:d390b4aa193f92a7fb89412bb34d41c57ea5846000e9f8527f98ea57fd434c09",
       "rule": "OBAAF-GHA-005",
       "severity": "high",

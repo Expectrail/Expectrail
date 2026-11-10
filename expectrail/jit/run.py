@@ -239,6 +239,13 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
     def tokens(value, fallback: int) -> int:
         return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else fallback
 
+    # A revised proposal carries the first round's replays (expectrail/jit/intent.py, revise_to_file):
+    # its usage already sums both model calls, so the one budget covers the whole change.
+    prior = answer.get("prior")
+    if prior:
+        spend.replay_usd += prior["replayUsd"]
+        spend.replays += prior["replays"]
+        diagnostics.append(f"revision: includes the first round's {prior['replays']} replays")
     # Unknown completion tokens are charged as the full reservation, never as zero.
     spend.add_spark(tokens(usage.get("promptTokens"), est_prompt),
                     tokens(usage.get("completionTokens"), intent_mod.RESERVED_COMPLETION_TOKENS))

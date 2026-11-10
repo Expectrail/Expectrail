@@ -196,7 +196,7 @@ jobs:
           retention-days: 14
 
   replay:
-    # Runs the game. No secret.
+    # Runs the game. No secret. The first round; replay-final below is the result.
     needs: propose
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -230,9 +230,126 @@ jobs:
           start=$(date +%s)
           python -m expectrail.jit.cli run --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
             --proposal runs/jit-proposal/jit-proposal.json --out "runs/jit/$CASE" --budget-usd "$BUDGET" \
-            --run-id "ci-${GITHUB_RUN_ID}-$CASE"
+            --run-id "ci-${GITHUB_RUN_ID}-$CASE-round1"
           echo "::notice title=Generated checks ${CASE}::$(python -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['status'], d['counts'], 'spend', d['spend']['usd'])" "runs/jit/$CASE/jit-run.json"); $(( $(date +%s) - start )) s"
           cat "runs/jit/$CASE/jit-report.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the record
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jit-${{ inputs.case }}-round1
+          path: |
+            runs/jit/${{ inputs.case }}/jit-run.json
+            runs/jit/${{ inputs.case }}/jit-report.md
+            runs/jit/${{ inputs.case }}/jit-routes/
+          if-no-files-found: error
+          retention-days: 14
+
+  revise:
+    # Holds the model key; runs no game. One more model call, only when the first replay rejected a
+    # check: told why each was rejected (from the clean game and the bug build only), within what is
+    # left of the same budget (expectrail/jit/intent.py, revise_to_file). Nothing here is a pass.
+    needs: [measure, replay]
+    environment: main-only
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'live'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      revised: ${{ steps.revise.outputs.revised }}
+    env:
+      CASE: ${{ inputs.case }}
+      BASE: ${{ inputs.base_patch }}
+      CANDIDATE: ${{ inputs.candidate_patch }}
+      REPORT: ${{ inputs.report_file }}
+      BUDGET: ${{ inputs.budget_usd }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: jit-measurements-${{ inputs.case }}
+          path: runs/jit-measure
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: jit-proposal-${{ inputs.case }}
+          path: runs/jit-proposal
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: jit-${{ inputs.case }}-round1
+          path: runs/jit-round1
+      - name: Revise the rejected checks (at most one Muse Spark call)
+        id: revise
+        env:
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY || secrets.META_API_KEY }}
+        run: |
+          [[ "$BUDGET" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "::error::budget_usd must be a number"; exit 1; }
+          base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
+          python -m expectrail.jit.cli revise --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
+            --proposal runs/jit-proposal/jit-proposal.json --record runs/jit-round1/jit-run.json \
+            --measurements runs/jit-measure/jit-measurements.json --out runs/jit-proposal-2 \
+            --budget-usd "$BUDGET" --github-output "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: steps.revise.outputs.revised == 'true'
+        with:
+          name: jit-proposal-${{ inputs.case }}-revised
+          path: runs/jit-proposal-2/jit-proposal.json
+          retention-days: 14
+
+  replay-final:
+    # Runs the game. No secret. The revised proposal, replayed from scratch with the first round's spend
+    # carried in; or, when nothing was revised, the first round's record as it is.
+    needs: [replay, revise]
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'live'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CASE: ${{ inputs.case }}
+      BASE: ${{ inputs.base_patch }}
+      CANDIDATE: ${{ inputs.candidate_patch }}
+      REPORT: ${{ inputs.report_file }}
+      BUDGET: ${{ inputs.budget_usd }}
+      REVISED: ${{ needs.revise.outputs.revised }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Install patch
+        if: needs.revise.outputs.revised == 'true'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends patch
+      - name: Download Godot 4.7.2 and check its SHA-512
+        if: needs.revise.outputs.revised == 'true'
+        run: ./harness/get_godot.sh
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        if: needs.revise.outputs.revised == 'true'
+        with:
+          name: jit-proposal-${{ inputs.case }}-revised
+          path: runs/jit-proposal-2
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        if: needs.revise.outputs.revised != 'true'
+        with:
+          name: jit-${{ inputs.case }}-round1
+          path: runs/jit/${{ inputs.case }}
+      - name: Replay the revised proposal, or keep the first round
+        run: |
+          [[ "$BUDGET" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "::error::budget_usd must be a number"; exit 1; }
+          if [[ "$REVISED" == "true" ]]; then
+            export PATH="$PWD/tools/godot:$PATH"
+            base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
+            python -m expectrail.jit.cli run --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
+              --proposal runs/jit-proposal-2/jit-proposal.json --out "runs/jit/$CASE" --budget-usd "$BUDGET" \
+              --run-id "ci-${GITHUB_RUN_ID}-$CASE"
+          fi
+          echo "::notice title=Generated checks ${CASE} (revised: ${REVISED:-false})::$(python -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['status'], d['counts'], 'spend', d['spend']['usd'])" "runs/jit/$CASE/jit-run.json")"
+          python -m expectrail.jit.cli report "runs/jit/$CASE/jit-run.json" >> "$GITHUB_STEP_SUMMARY"
       - name: Keep the record
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -240,7 +357,6 @@ jobs:
           name: jit-${{ inputs.case }}
           path: |
             runs/jit/${{ inputs.case }}/jit-run.json
-            runs/jit/${{ inputs.case }}/jit-report.md
             runs/jit/${{ inputs.case }}/jit-routes/
           if-no-files-found: ignore
           retention-days: 14
