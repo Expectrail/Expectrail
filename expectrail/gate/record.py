@@ -357,3 +357,32 @@ def check_consistency(doc: dict) -> None:
     pr = doc["pullRequest"]
     if pr is not None and doc["checksFrom"] == "base" and pr["baseSha"] is None:
         raise RecordError("checks from the base need the base commit")
+    generated = doc.get("generatedChecks")
+    if generated is not None:
+        check_generated(generated)
+
+
+def check_generated(gen: dict) -> None:
+    """The advisory generated-checks block (docs/jit.md) agrees with itself. It never enters ``decide``."""
+    catches = gen["catches"]
+    total = gen["strong"] + gen["weak"]
+    if gen["status"] != "ran":
+        if total or catches or gen["valid"]:
+            raise RecordError("generated checks that did not run cannot report checks or catches")
+        if gen["status"] == "not-run" and (gen["proposed"] or gen["reason"] is not None or gen["runSha256"] is not None):
+            raise RecordError("generated checks that were not run have nothing to report")
+        if gen["status"] == "nothing-generated" and not gen["reason"]:
+            raise RecordError("nothing generated needs its reason")
+    else:
+        if gen["runSha256"] is None:
+            raise RecordError("generated checks that ran name their record")
+    if not gen["valid"] <= gen["proposed"] or not total <= gen["valid"]:
+        raise RecordError("generated checks: catches <= valid <= proposed does not hold")
+    if len(catches) != min(total, 10):
+        raise RecordError("generated checks: the rows do not match the counts")
+    for strength in ("strong", "weak"):
+        if total <= 10 and sum(1 for c in catches if c["strength"] == strength) != gen[strength]:
+            raise RecordError(f"generated checks: the {strength} rows do not match the count")
+    ids = [c["specId"] for c in catches]
+    if len(set(ids)) != len(ids):
+        raise RecordError("generated checks: a check is listed twice")

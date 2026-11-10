@@ -777,6 +777,9 @@ class WorkflowSafetyTest(unittest.TestCase):
         self.assertEqual(doc["permissions"], {"contents": "read"})
         for job in doc["jobs"].values():
             self.assertEqual(job.get("permissions", {"contents": "read"}), {"contents": "read"})
+        # No job here holds a secret. A pull_request run uses the pull request's own copy of this file,
+        # so a job that held a key could be edited by the pull request to print it; generated checks
+        # are proposed only from main (jit.yml, in the main-only environment), never here.
         self.assertNotIn("secrets.", VERIFY_WF.read_text(encoding="utf-8"))
         self.assertNotIn("pull_request_target", yaml.safe_dump(doc["on"]))
 

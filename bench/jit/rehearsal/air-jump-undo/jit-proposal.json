@@ -1,0 +1,133 @@
+{
+ "format": "expectrail.jit-proposal/v0",
+ "patchSha256": "4d14ccb441c0dde278ae6c521c1f635506d81b64cab38983af8e90a5cd96c1eb",
+ "model": "rehearsal-fixture",
+ "error": null,
+ "probes": [],
+ "candidates": [
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-no-extra-air-jumps",
+    "origin": "AUTO_DIFF",
+    "statement": "Pressing jump eight times in the air gives no more air jumps than pressing it twice.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "air_jumps",
+     "comparator": "lte",
+     "toleranceAbs": 0,
+     "left": "jump-w0-x2",
+     "right": "jump-w0-x8"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "pair",
+    "left": "jump-w0-x2",
+    "right": "jump-w0-x8"
+   },
+   "source": "jit"
+  },
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-air-jump-still-works",
+    "origin": "AUTO_DIFF",
+    "statement": "A second press in the air still gives one air jump that a single press does not.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "air_jumps",
+     "comparator": "gt",
+     "toleranceAbs": 0,
+     "left": "jump-w0-x1",
+     "right": "jump-w0-x2"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "pair",
+    "left": "jump-w0-x1",
+    "right": "jump-w0-x2"
+   },
+   "source": "jit"
+  },
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-rise-bounded",
+    "origin": "AUTO_DIFF",
+    "statement": "Many jump presses never lift the player more than 400 px above the floor.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "max_episode_rise",
+     "maxPx": 400
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "jump-w40-x8"
+    ]
+   },
+   "source": "jit"
+  }
+ ],
+ "diagnostics": [],
+ "usage": {
+  "model": "rehearsal-fixture",
+  "promptTokens": 0,
+  "completionTokens": 0
+ },
+ "promptSha256": "ae70151cc1266d0f8d70e695b07830971eca28a0afc68f9a75efe98265cd6bf6"
+}

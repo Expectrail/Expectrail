@@ -39,6 +39,12 @@ inputs:
   artifact-name:
     description: The name of the evidence artifact; the comment action must use the same name.
     default: expectrail-gate
+  generated-checks:
+    description: >
+      Optional. The path of an advisory generated-checks block written by an earlier step
+      (python -m expectrail.jit.cli gate-summary, docs/jit.md). It is shown in the comment and the
+      review page and never changes the decision; a file that cannot be read shows as "no generated checks".
+    default: ''
 outputs:
   decision:
     description: accept, reject or needs-review
@@ -106,6 +112,7 @@ runs:
         BASE_SHA: ${{ github.event.pull_request.base.sha }}
         EXPECTRAIL_REF: ${{ github.action_ref }}
         HELDOUT_FETCHED: ${{ steps.heldout.outcome == 'success' }}
+        GENERATED_CHECKS: ${{ inputs.generated-checks }}
       run: |
         root="$(cd "$GITHUB_ACTION_PATH/../../.." && pwd)"
         out="$RUNNER_TEMP/expectrail-gate"
@@ -123,6 +130,9 @@ runs:
         if [ "$HELDOUT_FETCHED" = "true" ]; then
           mv "$GITHUB_WORKSPACE/.expectrail/heldout" "$RUNNER_TEMP/expectrail-heldout"
           args+=(--heldout "$RUNNER_TEMP/expectrail-heldout")
+        fi
+        if [ -n "$GENERATED_CHECKS" ]; then
+          args+=(--generated-checks "$(realpath -m "$GENERATED_CHECKS")")
         fi
         rmdir "$GITHUB_WORKSPACE/.expectrail" 2> /dev/null || true
         # The binary the previous step downloaded and checked (already there, so this only prints it).

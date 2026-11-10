@@ -1,0 +1,201 @@
+name: Generated checks
+
+# Per-change check generation, report-only (docs/jit.md). For one candidate change, Muse Spark proposes
+# checks in the closed trace language from the bug report and the patch; the job keeps only checks
+# that pass 3 of 3 on the clean game and fail 3 of 3 on a near miss of the change, runs them on the
+# candidate, and records what they catch, strong or weak. Nothing here accepts or rejects a change.
+#
+# The model key and the change's code never meet: the propose job holds the key and only reads the
+# patch as text; the replay job runs the game and has no secret. On pull requests and in rehearsal
+# mode the proposal is a committed stand-in (bench/jit/rehearsal/), so no key and no spend: a
+# rehearsal proves the plumbing and is never a result.
+on:
+  pull_request:
+    paths:
+      - 'expectrail/jit/**'
+      - 'contracts/jit-run.v1.schema.json'
+      - 'bench/jit/rehearsal/**'
+      - '.github/workflows/jit.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: rehearsal (committed stand-in proposals, no key) or live (Muse Spark, needs MODEL_API_KEY)
+        type: choice
+        options: ['rehearsal', 'live']
+        default: 'rehearsal'
+      case:
+        description: A name for this change (letters, digits and dashes); live mode only
+        default: ''
+      base_patch:
+        description: The bug, as a patch under bugs/ (empty for none); live mode only
+        default: ''
+      candidate_patch:
+        description: The candidate change, as a patch under bugs/ or bench/; live mode only
+        default: ''
+      report_file:
+        description: The bug report, a text file under bugs/ or bench/; live mode only
+        default: ''
+      budget_usd:
+        description: Spend cap for this change, in US dollars
+        default: '2'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jit-${{ github.ref }}-${{ inputs.case || 'rehearsal' }}
+  cancel-in-progress: false
+
+jobs:
+  rehearsal:
+    if: github.event_name == 'pull_request' || inputs.mode == 'rehearsal'
+    name: rehearsal (${{ matrix.case }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        # The public air-jump bug, fixed exactly (expected: no catch) and "fixed" with a comment only
+        # (expected: a strong catch). Stand-ins the study cannot draw from: the profile was written
+        # alongside this bug, so these show the plumbing, not a detection rate.
+        case: [air-jump-undo, air-jump-comment-only]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Install patch
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends patch
+      - name: Download Godot 4.7.2 and check its SHA-512
+        run: ./harness/get_godot.sh
+      - name: Replay the stand-in proposal
+        env:
+          CASE: ${{ matrix.case }}
+        run: |
+          export PATH="$PWD/tools/godot:$PATH"
+          start=$(date +%s)
+          python -m expectrail.jit.cli run --report-file bench/jit/rehearsal/air-jump.report.txt \
+            --candidate "bench/jit/rehearsal/$CASE.patch" --base bugs/reported/air-jump.patch \
+            --proposal "bench/jit/rehearsal/$CASE/jit-proposal.json" --out "runs/jit/$CASE" \
+            --run-id "rehearsal-${GITHUB_RUN_ID}-$CASE"
+          echo "::notice title=Generated checks rehearsal ${CASE}::$(python -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['status'], d['counts'], 'spend', d['spend']['usd'])" "runs/jit/$CASE/jit-run.json"); $(( $(date +%s) - start )) s"
+          cat "runs/jit/$CASE/jit-report.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Check the rehearsal reached what it rehearses
+        env:
+          CASE: ${{ matrix.case }}
+        run: |
+          python - "$CASE" <<'EOF'
+          import json, sys
+          case = sys.argv[1]
+          d = json.load(open(f"runs/jit/{case}/jit-run.json"))
+          assert d["status"] == "complete", d["reason"]
+          assert d["counts"]["valid"] >= 1, "no generated check was valid"
+          if case == "air-jump-undo":
+              assert not d["catches"], "the exact undo was caught"
+          else:
+              assert any(c["strength"] == "strong" for c in d["catches"]), "the comment-only fix was not caught"
+          EOF
+      - name: Keep the record
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jit-rehearsal-${{ matrix.case }}
+          path: |
+            runs/jit/${{ matrix.case }}/jit-run.json
+            runs/jit/${{ matrix.case }}/jit-report.md
+            runs/jit/${{ matrix.case }}/jit-routes/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  propose:
+    # Holds the model key. Reads the patch and the report as text; replays nothing. In main-only (#223):
+    # only a dispatch from main can reach the key.
+    environment: main-only
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'live'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CASE: ${{ inputs.case }}
+      BASE: ${{ inputs.base_patch }}
+      CANDIDATE: ${{ inputs.candidate_patch }}
+      REPORT: ${{ inputs.report_file }}
+      KEY_SET: ${{ secrets.MODEL_API_KEY != '' || secrets.META_API_KEY != '' }}
+    steps:
+      - name: Check the inputs
+        run: |
+          [[ "$KEY_SET" == "true" ]] || { echo "::error::Set the MODEL_API_KEY (or META_API_KEY) repository secret first."; exit 1; }
+          [[ "$CASE" =~ ^[a-z0-9][a-z0-9-]{0,60}$ ]] || { echo "::error::case must be letters, digits and dashes"; exit 1; }
+          [[ -z "$BASE" || "$BASE" =~ ^bugs/[A-Za-z0-9/._-]+\.patch$ ]] || { echo "::error::base_patch must be a patch under bugs/"; exit 1; }
+          [[ "$CANDIDATE" =~ ^(bugs|bench)/[A-Za-z0-9/._-]+\.patch$ ]] || { echo "::error::candidate_patch must be a patch under bugs/ or bench/"; exit 1; }
+          [[ "$REPORT" =~ ^(bugs|bench)/[A-Za-z0-9/._-]+$ ]] || { echo "::error::report_file must be under bugs/ or bench/"; exit 1; }
+          for p in $BASE $CANDIDATE $REPORT; do [[ "$p" != *..* ]] || { echo "::error::no .. in paths"; exit 1; }; done
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Propose checks (one Muse Spark call)
+        env:
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY || secrets.META_API_KEY }}
+        run: |
+          python -m expectrail.jit.cli propose --report-file "$REPORT" --candidate "$CANDIDATE" --out runs/jit-proposal
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jit-proposal-${{ inputs.case }}
+          path: runs/jit-proposal/jit-proposal.json
+          retention-days: 14
+
+  replay:
+    # Runs the game. No secret.
+    needs: propose
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CASE: ${{ inputs.case }}
+      BASE: ${{ inputs.base_patch }}
+      CANDIDATE: ${{ inputs.candidate_patch }}
+      REPORT: ${{ inputs.report_file }}
+      BUDGET: ${{ inputs.budget_usd }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Install patch
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends patch
+      - name: Download Godot 4.7.2 and check its SHA-512
+        run: ./harness/get_godot.sh
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: jit-proposal-${{ inputs.case }}
+          path: runs/jit-proposal
+      - name: Replay, filter, run, assess
+        run: |
+          [[ "$BUDGET" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "::error::budget_usd must be a number"; exit 1; }
+          export PATH="$PWD/tools/godot:$PATH"
+          base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
+          start=$(date +%s)
+          python -m expectrail.jit.cli run --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
+            --proposal runs/jit-proposal/jit-proposal.json --out "runs/jit/$CASE" --budget-usd "$BUDGET" \
+            --run-id "ci-${GITHUB_RUN_ID}-$CASE"
+          echo "::notice title=Generated checks ${CASE}::$(python -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['status'], d['counts'], 'spend', d['spend']['usd'])" "runs/jit/$CASE/jit-run.json"); $(( $(date +%s) - start )) s"
+          cat "runs/jit/$CASE/jit-report.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the record
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jit-${{ inputs.case }}
+          path: |
+            runs/jit/${{ inputs.case }}/jit-run.json
+            runs/jit/${{ inputs.case }}/jit-report.md
+            runs/jit/${{ inputs.case }}/jit-routes/
+          if-no-files-found: ignore
+          retention-days: 14

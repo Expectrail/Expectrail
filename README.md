@@ -545,7 +545,9 @@ What this does and does not show:
   discovery), and it reaches only the four mechanics that profile describes: of the eight
   development bugs it was not written for, it flagged the two fall-through variants by a symptom and
   missed the six that are visual or about ground contact. Blind, on sixteen fresh defects in two
-  sets, it flagged seven.
+  sets, it flagged seven. Checks generated for each change from its bug report and patch
+  ([docs/jit.md](docs/jit.md)) are built and tested offline but **not yet measured**, and they are
+  report-only too: none of them can reject a change.
 - **One game and one web page, mostly with bugs we seeded.** The game's held-out bugs were kept from
   the fixer, but a teammate wrote them, and the same team wrote the checks. The four reproduced
   public bug reports are caught only by engine-record checks written after we saw them, which the

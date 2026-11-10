@@ -302,6 +302,67 @@
         }
       }
     },
+    "generatedChecks": {
+      "type": "object",
+      "description": "Optional and advisory (docs/jit.md): checks generated for this change. The decision rule never reads it; the decision follows from counts and heldOut alone.",
+      "required": ["status", "reason", "proposed", "valid", "strong", "weak", "catches", "runSha256"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": ["not-run", "ran", "nothing-generated"]
+        },
+        "reason": {
+          "type": ["string", "null"],
+          "maxLength": 300
+        },
+        "proposed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "valid": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "strong": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "weak": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "catches": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "required": ["specId", "statement", "strength"],
+            "additionalProperties": false,
+            "properties": {
+              "specId": {
+                "type": "string",
+                "pattern": "^jit-[a-z0-9][a-z0-9._/-]{0,120}$"
+              },
+              "statement": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "strength": {
+                "enum": ["strong", "weak"]
+              }
+            }
+          }
+        },
+        "runSha256": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
     "reviewPage": {
       "enum": ["review/index.html", null],
       "description": "the review page's path inside the artifact"
