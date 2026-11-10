@@ -194,10 +194,69 @@ class TestBYOFixerAndVision(unittest.TestCase):
         self.assertEqual(meta["network"], "host network")  # stated plainly, never more isolation
         self.assertNotIn("Meta", meta["network"])
         self.assertEqual(meta["gateway"]["mode"], "off")  # agents/gateway.py reads this
-        self.assertIn("Meta", meta["gateway"]["why"])  # the reason lives with the gateway
+        # the reason lives with the gateway, and it is about this run: the gateway is off, so the
+        # agent holds its own key. It names the switch that changes that rather than a vendor.
+        self.assertIn("the key gateway is off", meta["gateway"]["why"])
+        self.assertIn("EXPECTRAIL_BYO_GATEWAY=on", meta["gateway"]["why"])
         # the provider key the agent actually received, by name only
         self.assertEqual(meta["keyEnvs"], ["ANTHROPIC_API_KEY"])
         self.assertNotIn("sk-ant-123", json.dumps(meta))
+
+    def test_behind_the_gateway_the_agent_gets_a_placeholder_and_no_network(self) -> None:
+        """EXPECTRAIL_BYO_GATEWAY=on: the proxy holds the real key and the agent never sees it, the
+        same posture Muse Code already runs in. The allowlist is the provider's host, derived from
+        expectrail/providers.py rather than listed again."""
+        import subprocess
+        import tempfile
+        from pathlib import Path
+
+        from agents.byo_fixer import run_byo_agent
+        from agents.gateway import Gateway
+
+        seen = {}
+
+        def record(argv, **kwargs):
+            seen["env"] = kwargs.get("env") or {}
+            seen["gateway"] = kwargs.get("gateway")
+            return subprocess.CompletedProcess(["claude"], 0, "done", "")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            gw = Gateway(proxy="http://127.0.0.1:1", ca=Path(tmp) / "ca.pem", placeholder="sk-ant-FAKE",
+                         real="sk-ant-REALKEY", dir=Path(tmp), log=Path(tmp) / "log.jsonl")
+            with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-REALKEY", "PATH": "/usr/bin",
+                                         "EXPECTRAIL_BYO_GATEWAY": "on"}, clear=True), \
+                    patch("agents.gateway.byo_gateway") as gwctx, \
+                    patch("agents.sandbox.run_sandboxed", side_effect=record), \
+                    patch("agents.sandbox.detect_sandbox", return_value="bwrap"), \
+                    patch("agents.sandbox.muse_kind_for", return_value="bwrap"):
+                gwctx.return_value.__enter__.return_value = gw
+                gwctx.return_value.__exit__.return_value = False
+                _, meta = run_byo_agent("fix it", Path(tmp), Path(tmp), agent="claude-code")
+
+        self.assertEqual(seen["env"]["ANTHROPIC_API_KEY"], "sk-ant-FAKE")
+        self.assertNotIn("sk-ant-REALKEY", json.dumps(seen["env"]))
+        self.assertIs(seen["gateway"], gw)  # so the sandbox loses its own network
+        self.assertEqual(meta["network"], "gateway only")
+        self.assertEqual(meta["keyEnvs"], ["ANTHROPIC_API_KEY (placeholder)"])
+
+    def test_the_gateway_allowlist_comes_from_the_provider_registry(self) -> None:
+        from agents.gateway import provider_host
+
+        self.assertEqual(provider_host("ANTHROPIC_API_KEY"), "api.anthropic.com")
+        self.assertEqual(provider_host("OPENAI_API_KEY"), "api.openai.com")
+        self.assertEqual(provider_host("META_API_KEY"), "api.meta.ai")
+        # a key every provider shares names no host, so the caller is told instead of guessed at
+        self.assertIsNone(provider_host("EXPECTRAIL_LLM_API_KEY"))
+
+    def test_the_gateway_refuses_an_agent_carrying_two_provider_keys(self) -> None:
+        from agents.gateway import agent_key_env
+
+        with self.assertRaises(SystemExit) as caught:
+            agent_key_env("aider", {"ANTHROPIC_API_KEY": "a", "OPENAI_API_KEY": "o"})
+        self.assertIn("the gateway holds one key", str(caught.exception))
+        with self.assertRaises(SystemExit):
+            agent_key_env("claude-code", {})
+        self.assertEqual(agent_key_env("claude-code", {"ANTHROPIC_API_KEY": "a"}), "ANTHROPIC_API_KEY")
 
     def test_the_sandbox_record_names_no_key_the_agent_did_not_get(self) -> None:
         import subprocess

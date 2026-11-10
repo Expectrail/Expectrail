@@ -678,10 +678,19 @@ export EXPECTRAIL_VISION_BACKEND=local-http EXPECTRAIL_LOCAL_VISION_URL=http://l
   only its own provider's key; the candidate is diffed and held to the editable files the same way
   ([`agents/byo_fixer.py`](agents/byo_fixer.py)). One difference, recorded in each attempt's
   `sandbox.json`: Muse Code can run behind the key gateway with no network of its own; a BYO agent
-  uses the host's network, because the gateway proxies Meta's API only. That record states the
-  network, the gateway as off with the reason, and the names — never the values — of the provider
-  key envs the agent received. An agent installed under `$HOME` needs `EXPECTRAIL_FIXER_RO_BINDS`
-  pointing at its install.
+  uses the host's network and holds its own provider key. That record states the network, the
+  gateway as off with the reason, and the names — never the values — of the provider key envs the
+  agent received. An agent installed under `$HOME` needs `EXPECTRAIL_FIXER_RO_BINDS` pointing at its
+  install.
+- **The key gateway, for a BYO agent.** `EXPECTRAIL_BYO_GATEWAY=on` puts the agent behind the same
+  proxy Muse Code uses: a placeholder of the key's length, the real key held by the proxy and
+  swapped in for the provider's host only (derived from
+  [`expectrail/providers.py`](expectrail/providers.py)), and under bubblewrap no network of its own.
+  Off by default and **not yet measured**: whether Claude Code works when every host but
+  `api.anthropic.com` is refused is what
+  [`byo-gateway-probe.yml`](.github/workflows/byo-gateway-probe.yml) is for. Until that probe
+  answers, the sentence above is what Expectrail claims. On and unavailable is an error, never a
+  quiet fallback to handing the agent the real key.
 - **Vision.** `local-http` is any open-vocabulary detector behind one HTTP endpoint (Grounding DINO
   with SAM 2.1, Florence-2, YOLO-World); `byo-vlm-engine` is any vision-language model whose boxes
   count only where the engine agrees. A vision-language model alone (`byo-vlm`) does not decide a

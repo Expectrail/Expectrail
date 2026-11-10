@@ -46,6 +46,11 @@ GATEWAY_ENV = "EXPECTRAIL_MUSE_GATEWAY"
 MITMDUMP_ENV = "EXPECTRAIL_MITMDUMP"
 HOSTS_ENV = "EXPECTRAIL_MUSE_GATEWAY_HOSTS"
 DEFAULT_HOSTS = ".meta.ai"
+# The same gateway for a bring-your-own coding agent, under its own switch so turning one on never
+# changes the other. The allowlist is derived from the provider whose key the agent received
+# (expectrail/providers.py), and BYO_HOSTS_ENV overrides it when a provider is served elsewhere.
+BYO_GATEWAY_ENV = "EXPECTRAIL_BYO_GATEWAY"
+BYO_HOSTS_ENV = "EXPECTRAIL_BYO_GATEWAY_HOSTS"
 ADDON = REPO / "agents" / "muse_gateway_addon.py"
 BRIDGE = REPO / "agents" / "gateway_bridge.py"
 SANDBOX_DIR = "/gateway"          # where the gateway directory is bound inside bubblewrap
@@ -59,9 +64,55 @@ class GatewayError(SystemExit):
     """The gateway is on but cannot run. Never answered by handing Muse the real key instead."""
 
 
+def _switch_on(value: str) -> bool:
+    return value.strip().lower() in ("on", "1", "true", "yes")
+
+
 def enabled(environ: Mapping[str, str] | None = None) -> bool:
-    value = (environ if environ is not None else os.environ).get(GATEWAY_ENV, "").strip().lower()
-    return value in ("on", "1", "true", "yes")
+    return _switch_on((environ if environ is not None else os.environ).get(GATEWAY_ENV, ""))
+
+
+def byo_enabled(environ: Mapping[str, str] | None = None) -> bool:
+    return _switch_on((environ if environ is not None else os.environ).get(BYO_GATEWAY_ENV, ""))
+
+
+def provider_host(key_env: str) -> str | None:
+    """The host the provider that owns ``key_env`` is reached at, or None when that is not one host.
+
+    A vendor-named key belongs to exactly one provider, so the allowlist comes from the registry
+    rather than a second list here. The shared overrides (EXPECTRAIL_LLM_API_KEY and the rest) belong
+    to every provider at once, so they name no host and the caller has to be told instead of guessed
+    at — an allowlist guessed wrong is either a broken run or a key sent somewhere it should not go.
+    """
+    from urllib.parse import urlparse
+
+    from expectrail.providers import PROVIDER_DEFAULTS
+
+    owners = {name for name, d in PROVIDER_DEFAULTS.items() if key_env in d["key_envs"]}
+    if len(owners) != 1:
+        return None
+    host = urlparse(PROVIDER_DEFAULTS[owners.pop()]["api_base"]).hostname
+    return host or None
+
+
+def agent_key_env(agent: str, environ: Mapping[str, str] | None = None) -> str:
+    """The one provider key env a BYO agent received, for the gateway to hold in its place.
+
+    The gateway swaps a single placeholder for a single real key, so an agent carrying two provider
+    keys (aider can) cannot be put behind it as it stands, and saying so is better than gatewaying
+    one key and handing over the other.
+    """
+    from agents.keys import BYO_AGENT_KEY_ENVS
+
+    env = environ if environ is not None else os.environ
+    present = [name for name in BYO_AGENT_KEY_ENVS.get(agent, ()) if (env.get(name) or "").strip()]
+    if not present:
+        raise GatewayError(f"{BYO_GATEWAY_ENV}=on but {agent} has no provider key to hold: set one of "
+                           f"{', '.join(BYO_AGENT_KEY_ENVS.get(agent, ())) or '(none known)'}")
+    if len(present) > 1:
+        raise GatewayError(f"{BYO_GATEWAY_ENV}=on but {agent} holds {len(present)} provider keys "
+                           f"({', '.join(present)}); the gateway holds one key, so run it with one")
+    return present[0]
 
 
 def find_mitmdump(environ: Mapping[str, str] | None = None) -> str | None:
@@ -169,17 +220,23 @@ class Gateway:
     def socket(self) -> Path:
         return self.dir / "gw.sock"
 
-    def muse_env(self, base: Mapping[str, str], *, in_sandbox: bool) -> dict:
-        """Muse Code's environment: the placeholder, the proxy and its certificate, nothing to bypass them."""
+    def agent_env(self, base: Mapping[str, str], key_envs: tuple[str, ...], *, in_sandbox: bool) -> dict:
+        """An agent's environment: the placeholder in place of each key, the proxy and its
+        certificate, and nothing left that would bypass them."""
         env = {k: v for k, v in base.items() if k not in PROXY_VARS + NO_PROXY_VARS + CA_VARS}
-        env["META_API_KEY"] = self.placeholder
+        for name in key_envs:
+            env[name] = self.placeholder
         proxy = f"http://127.0.0.1:{SANDBOX_PORT}" if in_sandbox else self.proxy
         ca = f"{SANDBOX_DIR}/ca.pem" if in_sandbox else str(self.ca)
         env.update({v: proxy for v in PROXY_VARS})
         env.update({v: ca for v in CA_VARS})
         if self.real and self.real in json.dumps(env):
-            raise GatewayError("the real key reached Muse's environment; stopping")
+            raise GatewayError("the real key reached the agent's environment; stopping")
         return env
+
+    def muse_env(self, base: Mapping[str, str], *, in_sandbox: bool) -> dict:
+        """Muse Code's environment: the placeholder, the proxy and its certificate, nothing to bypass them."""
+        return self.agent_env(base, ("META_API_KEY",), in_sandbox=in_sandbox)
 
     def bridge_argv(self, argv: list[str]) -> list[str]:
         """``argv`` wrapped so it runs behind the in-sandbox bridge."""
@@ -209,17 +266,49 @@ def muse_gateway(environ: Mapping[str, str] | None = None) -> Iterator[Gateway |
     real = env.get("META_API_KEY", "")
     if not real:
         raise GatewayError(f"{GATEWAY_ENV}=on needs META_API_KEY: the gateway holds it for Muse Code")
+    with _running(real, env.get(HOSTS_ENV, DEFAULT_HOSTS), env) as gw:
+        yield gw
+
+
+@contextmanager
+def byo_gateway(agent: str, environ: Mapping[str, str] | None = None) -> Iterator[Gateway | None]:
+    """The same gateway for one BYO coding agent run, or None when it is off.
+
+    The agent gets a placeholder of its provider key's length and this proxy, which holds the real
+    key and swaps it in for the provider's host only. Off by default: with it off the agent runs with
+    its own key and the host's network, which is what the README describes. On and unavailable is an
+    error, never a quiet fallback to handing the agent the real key.
+    """
+    env = environ if environ is not None else os.environ
+    if not byo_enabled(env):
+        yield None
+        return
+    key_env = agent_key_env(agent, env)
+    hosts = (env.get(BYO_HOSTS_ENV) or "").strip() or provider_host(key_env)
+    if not hosts:
+        raise GatewayError(
+            f"{BYO_GATEWAY_ENV}=on but the host for {key_env} is not one provider's: set "
+            f"{BYO_HOSTS_ENV} to the host the agent may reach. The gateway refuses every host off "
+            "its allowlist, so it is never widened by guessing.")
+    with _running(env[key_env], hosts, env) as gw:
+        yield gw
+
+
+@contextmanager
+def _running(real: str, hosts: str, env: Mapping[str, str]) -> Iterator[Gateway]:
+    """A started proxy and bridge holding ``real`` for ``hosts``; both stopped on exit."""
     mitmdump = find_mitmdump(env)
     if not mitmdump or not Path(mitmdump).exists() and not shutil.which(mitmdump):
-        raise GatewayError(f"{GATEWAY_ENV}=on but mitmdump was not found (install mitmproxy, or set {MITMDUMP_ENV})")
-    workdir = Path(tempfile.mkdtemp(prefix="muse-gateway-"))
+        raise GatewayError(f"the key gateway is on but mitmdump was not found "
+                           f"(install mitmproxy, or set {MITMDUMP_ENV})")
+    workdir = Path(tempfile.mkdtemp(prefix="key-gateway-"))
     conf = workdir / "mitm"
     conf.mkdir()
     sandbox_dir = workdir / "sandbox"  # bound read-only at /gateway: the bridge, the CA, the socket
     sandbox_dir.mkdir()
     log = workdir / "gateway-log.jsonl"
     placeholder = placeholder_for(real)
-    proc, proxy, ca = start_mitmdump(mitmdump, conf, log, real, placeholder, env.get(HOSTS_ENV, DEFAULT_HOSTS))
+    proc, proxy, ca = start_mitmdump(mitmdump, conf, log, real, placeholder, hosts)
     bridge = None
     try:
         shutil.copyfile(ca, sandbox_dir / "ca.pem")
