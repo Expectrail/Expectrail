@@ -122,15 +122,17 @@ jobs:
       BASE: ${{ inputs.base_patch }}
       CANDIDATE: ${{ inputs.candidate_patch }}
       REPORT: ${{ inputs.report_file }}
+      BUDGET: ${{ inputs.budget_usd }}
       KEY_SET: ${{ secrets.MODEL_API_KEY != '' || secrets.META_API_KEY != '' }}
     steps:
       - name: Check the inputs
         run: |
-          [[ "$KEY_SET" == "true" ]] || { echo "::error::Set the MODEL_API_KEY (or META_API_KEY) repository secret first."; exit 1; }
+          [[ "$KEY_SET" == "true" ]] || { echo "::error::Set MODEL_API_KEY (or META_API_KEY) in the main-only environment first."; exit 1; }
           [[ "$CASE" =~ ^[a-z0-9][a-z0-9-]{0,60}$ ]] || { echo "::error::case must be letters, digits and dashes"; exit 1; }
           [[ -z "$BASE" || "$BASE" =~ ^bugs/[A-Za-z0-9/._-]+\.patch$ ]] || { echo "::error::base_patch must be a patch under bugs/"; exit 1; }
           [[ "$CANDIDATE" =~ ^(bugs|bench)/[A-Za-z0-9/._-]+\.patch$ ]] || { echo "::error::candidate_patch must be a patch under bugs/ or bench/"; exit 1; }
           [[ "$REPORT" =~ ^(bugs|bench)/[A-Za-z0-9/._-]+$ ]] || { echo "::error::report_file must be under bugs/ or bench/"; exit 1; }
+          [[ "$BUDGET" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "::error::budget_usd must be a number"; exit 1; }
           for p in $BASE $CANDIDATE $REPORT; do [[ "$p" != *..* ]] || { echo "::error::no .. in paths"; exit 1; }; done
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -143,7 +145,8 @@ jobs:
         env:
           MODEL_API_KEY: ${{ secrets.MODEL_API_KEY || secrets.META_API_KEY }}
         run: |
-          python -m expectrail.jit.cli propose --report-file "$REPORT" --candidate "$CANDIDATE" --out runs/jit-proposal
+          python -m expectrail.jit.cli propose --report-file "$REPORT" --candidate "$CANDIDATE" --out runs/jit-proposal \
+            --budget-usd "$BUDGET"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jit-proposal-${{ inputs.case }}
