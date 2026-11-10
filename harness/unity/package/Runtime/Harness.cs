@@ -92,6 +92,9 @@ namespace Expectrail.Harness
         double _firstFixedTime, _lastFixedTime;
 
         int _settleFrames, _settleTicks, _frozenFrames;
+        // During the route: frames held while a real-time fade was part-way (no tick, row or frame).
+        bool _holding;
+        int _routeHeldFrames;
         readonly HashSet<string> _seen = new HashSet<string>();
         readonly List<string> _hazards = new List<string>();
         readonly HashSet<string> _hazardKeys = new HashSet<string>();
@@ -223,10 +226,12 @@ namespace Expectrail.Harness
             _stepsThisFrame = 0;
             _rowThisFrame = false;
             _input.RemoveStrays();
-            if (_phase != Phase.Route) return;
+            if (_phase != Phase.Route || _holding) return;
             _events.TryGetValue(_tick, out var events);
             _input.Apply(events);
         }
+
+        bool Fading() => _map.settle.fades.Any(f => _recorder.Alphas(f.component).Any(a => a > 0f && a < 1f));
 
         // After LateUpdate: every script has moved and the camera is where this frame draws it.
         void Record()
@@ -234,6 +239,21 @@ namespace Expectrail.Harness
             if (_phase == Phase.Done) return;
             var view = _recorder.TakeView();
             if (_phase != Phase.Route) return;
+            // Unity run 10 (42726139650): one player build, two runners, and the route diverged from the
+            // death at tick ~113: Fader.cs fades on Time.unscaledDeltaTime, so the level reloaded after a
+            // number of ticks that depended on the machine's speed. As before tick 0, hold game time while
+            // a real-time fade is part-way: held frames run no physics and give no tick, row or frame.
+            var fading = Fading();
+            if (_holding)
+            {
+                _routeHeldFrames++;
+                if (_stepsThisFrame != 0)
+                    throw new InvalidOperationException($"{_stepsThisFrame} physics steps ran in a frame held for a fade after tick {_tick - 1}: a tick with no row");
+                if (!fading) { _holding = false; Time.timeScale = 1f; }
+                if (_routeHeldFrames > _map.settle.maxTicks * 10)
+                    throw new TimeoutException($"a fade during the route did not come to rest in {_routeHeldFrames} held frames");
+                return;
+            }
             _steps.Add(_stepsThisFrame);
             if (_stepsThisFrame != 1)
                 Debug.LogWarning($"expectrail: tick {_tick} (frame {Time.frameCount}) ran {_stepsThisFrame} physics steps; " +
@@ -246,8 +266,9 @@ namespace Expectrail.Harness
             foreach (var fade in _map.settle.fades)
             {
                 if (_recorder.Alphas(fade.component).Any(a => a > 0f && a < 1f))
-                    Hazard("real-time-fade-during-route", $"{fade.component} was fading on real time from tick {_tick}; frames from here can differ between runs", _tick, fade.component);
+                    Hazard("real-time-fade-during-route", $"{fade.component} began a real-time fade at tick {_tick}; game time is held until it rests, and only this tick's frame can differ between runs", _tick, fade.component + "@" + _tick);
             }
+            if (fading) { _holding = true; Time.timeScale = 0f; }
             if (_recorder.LevelChange != null)
                 Hazard("level-changed", "the level was replaced during the route (" + _recorder.LevelChange + "); levelSurfaces describe the first level", _tick, "level");
             Debug.Log($"expectrail: tick {_tick} frameCount {Time.frameCount} fixedTime {Time.fixedTimeAsDouble:F4} steps {_stepsThisFrame}");
@@ -321,7 +342,7 @@ namespace Expectrail.Harness
             trace.Key("rows").Raw("[" + string.Join(",", _rows) + "]").Close('}');
             File.WriteAllText(Path.Combine(_args.Out, "trace.json"), trace.ToString());
             WriteRun("ok", null);
-            Debug.Log($"expectrail: wrote {_rows.Count} rows");
+            Debug.Log($"expectrail: wrote {_rows.Count} rows; held {_routeHeldFrames} frames during the route for real-time fades");
             Application.Quit(0);
         }
 
