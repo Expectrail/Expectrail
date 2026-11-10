@@ -112,8 +112,8 @@ class Score(unittest.TestCase):
 
 
 class Registration(unittest.TestCase):
-    def test_the_draft_refuses_to_run(self):
-        prereg = json.loads(bench.PREREG.read_text())
+    def test_a_draft_refuses_to_run(self):
+        prereg = dict(json.loads(bench.PREREG.read_text()), status="draft", signedOffBy=None)
         self.assertTrue(bench.check_registration(prereg))
 
     def test_signed_with_current_pins_runs_and_any_moved_pin_refuses(self):
