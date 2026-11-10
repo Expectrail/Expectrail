@@ -155,7 +155,9 @@ def prepare(game: Path, work: Path, patch: Path | None = None, patches: list[Pat
 # on the verifier's machine, whose environment holds the SAM key, the Muse key in a live loop and
 # the path to the private held-out set. So Godot gets only what it and the virtual display need.
 GAME_ENV_KEEP = frozenset({"PATH", "HOME", "USER", "LOGNAME", "SHELL", "LANG", "LANGUAGE", "TZ", "TMPDIR",
-                           "DISPLAY", "XAUTHORITY", "WAYLAND_DISPLAY", "LIBGL_ALWAYS_SOFTWARE", "GALLIUM_DRIVER"})
+                           "DISPLAY", "XAUTHORITY", "WAYLAND_DISPLAY", "LIBGL_ALWAYS_SOFTWARE", "GALLIUM_DRIVER",
+                           # llvmpipe's instruction set, held the same on every runner (harness/unity/run.py).
+                           "GALLIUM_OVERRIDE_CPU_CAPS"})
 GAME_ENV_PREFIXES = ("LC_", "XDG_", "MESA_", "LP_", "__GLX_", "__EGL_")
 
 

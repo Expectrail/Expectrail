@@ -98,5 +98,21 @@ class TraceDiff(unittest.TestCase):
         self.assertFalse(trace_diff.diff(c, e)["routeIdentical"])
 
 
+    def test_differing_frames_are_measured_pixel_by_pixel(self):
+        from tests.test_unity_png_pixels import _image, write_png
+        a = _run(self.root, "a", _rows(2), ["f", "x"], {"ticks": 0, "frozenFrames": 0})
+        b = _run(self.root, "b", _rows(2), ["f", "y"], {"ticks": 0, "frozenFrames": 0})
+        for run, nudge in ((a, 0), (b, 4)):
+            (run / "frames").mkdir()
+            pixels = bytearray(_image(4, 3))
+            pixels[5] = (pixels[5] + nudge) % 256
+            write_png(run / "frames" / "f00000001.png", 4, 3, bytes(pixels))
+        d = trace_diff.diff(a, b)
+        self.assertEqual(d["pixels"]["sampled"], [1])
+        self.assertEqual((d["pixels"]["mostPixelsDiffering"], d["pixels"]["largestChannelGap"]), (1, 4))
+        self.assertIn("by at most 4 of 255", trace_diff.summary(d))
+        self.assertEqual(trace_diff.sample(list(range(100)), 4), [0, 33, 66, 99])
+
+
 if __name__ == "__main__":
     unittest.main()

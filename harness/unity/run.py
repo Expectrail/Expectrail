@@ -47,9 +47,12 @@ BUILD_METHOD = "Expectrail.Harness.Editor.HarnessBuild.Build"
 PLAYER = "player/game.x86_64"
 BUILD_FORMAT = "expectrail.unity-build/v0"
 ROUTE_FORMAT = "expectrail.route/v0"
-# llvmpipe's settings, when the caller sets none: the same as CI's replay job.
+# llvmpipe's settings, when the caller sets none: the same as CI's replay job. llvmpipe generates code
+# for the CPU it runs on, and Unity run 12 (42730554068) drew different pixels on an AMD and an Intel
+# runner from frame 0; GALLIUM_OVERRIDE_CPU_CAPS=sse4.1 gives both the same instruction set (no AVX or
+# FMA), which LP_NATIVE_VECTOR_WIDTH=128 alone no longer does.
 RENDER_DEFAULTS = {"LIBGL_ALWAYS_SOFTWARE": "1", "GALLIUM_DRIVER": "llvmpipe",
-                   "LP_NATIVE_VECTOR_WIDTH": "128", "LP_NUM_THREADS": "4"}
+                   "LP_NATIVE_VECTOR_WIDTH": "128", "LP_NUM_THREADS": "4", "GALLIUM_OVERRIDE_CPU_CAPS": "sse4.1"}
 TIMEOUT = 1800
 LINK_XML = """<linker>
   <!-- Written by harness/unity/run.py into the build copy: Unity reads link.xml only under Assets/. -->
