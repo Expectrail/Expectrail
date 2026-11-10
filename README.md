@@ -686,7 +686,12 @@ export EXPECTRAIL_VISION_BACKEND=local-http EXPECTRAIL_LOCAL_VISION_URL=http://l
   proxy Muse Code uses: a placeholder of the key's length, the real key held by the proxy and
   swapped in for the provider's host only (derived from
   [`expectrail/providers.py`](expectrail/providers.py)), and under bubblewrap no network of its own.
-  Off by default, so the bullet above is still what a default run does. Measured once with Claude
+  Off by default in the library, so the bullet above is still what a plain run does, and a checkout
+  without mitmproxy is not broken by a switch it cannot satisfy — the gateway errors rather than
+  handing an agent its real key, so defaulting it on everywhere would fail closed everywhere.
+  CI's live BYO runs ([`byo-live.yml`](.github/workflows/byo-live.yml)) do default it on: that
+  workflow installs mitmproxy and dispatches with `gateway: on`, and each attempt's `sandbox.json`
+  records which it was. Measured once with Claude
   Code ([`byo-gateway-probe.yml`](.github/workflows/byo-gateway-probe.yml), run 42752549697): behind
   the gateway it reached an accepted fix with no network of its own, in 100,962 ms against
   100,989 ms for the same loop with the gateway off, and the only key that left was the real one the
