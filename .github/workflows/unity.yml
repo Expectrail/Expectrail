@@ -446,6 +446,6 @@ jobs:
             echo "::notice title=Unity cross-runner::$out"
           else
             echo "::error title=Unity cross-runner::$out"
-            python3 -c "import json; d = json.load(open('runs/unity/cross/diff.json')); [print(k, json.dumps(v['first'], default=str)[:600]) for k, v in d['rows']['fields'].items()]"
+            python3 -c "import json; d = json.load(open('runs/unity/cross/diff.json')); [print(k, json.dumps(v['first'], default=str)[:600]) for k, v in d['rows']['fields'].items()]; [print('frame', i, m['differ'], 'of', m['pixels'], 'pixels differ, largest gap', m['largest']) for i, m in sorted((d.get('pixels') or {}).get('frames', {}).items(), key=lambda kv: int(kv[0]))]"
             exit 1
           fi
