@@ -44,6 +44,9 @@ FRAME_SIZE = (1600, 960)
 ROLES = frozenset({"player", "coin", "enemy", "projectile"})
 GROUND = "ground"
 AGREE_IOU = 0.5
+# A row the game calls on the floor, but whose box bottom is more than this far above the ground line,
+# stands on something that is not the ground tilemap: the ground check cannot see a sink there.
+OFF_GROUND_PX = 5.0
 
 
 def _in_frame(box: list[float], frame_size: tuple[int, int]) -> bool:
@@ -141,18 +144,31 @@ def _stats(values: list[float]) -> dict | None:
             "max": round(max(values), 2)}
 
 
+def _spans(ticks: list[int]) -> list[list[int]]:
+    """Consecutive ticks as [first, last] spans."""
+    spans: list[list[int]] = []
+    for t in ticks:
+        if spans and t == spans[-1][1] + 1:
+            spans[-1][1] = t
+        else:
+            spans.append([t, t])
+    return spans
+
+
 def calibrate(trace: dict, frame_size: tuple[int, int] = FRAME_SIZE) -> dict:
     """What the Unity checks' constants come from, measured on one trace."""
     rows = list(trace.get("rows") or [])
     player = [role_boxes(r, "player", frame_size) for r in rows]
     coins = [role_boxes(r, "coin", frame_size) for r in rows]
-    standing, airborne = [], []
+    standing, airborne, off_ground = [], [], []
     for i, row in enumerate(rows):
         y = ground_line(rows, i)
         if y is None or not player[i]:
             continue
         gap = player[i][0]["box"][3] - y  # positive: the box's bottom is below the ground line
         (standing if row.get("onFloor") else airborne).append(gap)
+        if row.get("onFloor") and gap < -OFF_GROUND_PX:
+            off_ground.append(row.get("tick", i))
     boxes = [p[0]["box"] for p in player if p]
     coin_boxes = [c["box"] for frame in coins for c in frame]
     return {
@@ -163,6 +179,8 @@ def calibrate(trace: dict, frame_size: tuple[int, int] = FRAME_SIZE) -> dict:
         "playerHeight": _stats([b[3] - b[1] for b in boxes]),
         "groundRows": sum(1 for i in range(len(rows)) if ground_line(rows, i) is not None),
         "onFloorBottomMinusGround": _stats(standing),
+        "onFloorOffGround": {"rows": len(off_ground), "spans": _spans(off_ground),
+                             "onGround": _stats([g for g in standing if g >= -OFF_GROUND_PX])},
         "airborneBottomMinusGround": _stats(airborne),
         "coinsVisiblePerFrame": _stats([float(len(c)) for c in coins]),
         "coinWidth": _stats([b[2] - b[0] for b in coin_boxes]),
@@ -177,6 +195,9 @@ def calibration_line(c: dict) -> str:
     return (f"player visible on {c['playerVisible']} of {c['rows']} rows (several at once on {c['playerSeveral']}); "
             f"player box w {s(c['playerWidth'])}, h {s(c['playerHeight'])}; ground line on {c['groundRows']} rows; "
             f"box bottom minus ground (px, + is below) on the floor {s(c['onFloorBottomMinusGround'])}, "
+            f"of which on the ground tilemap {s(c['onFloorOffGround']['onGround'])} and above it by more than "
+            f"{OFF_GROUND_PX:g} px on {c['onFloorOffGround']['rows']} rows (ticks "
+            f"{', '.join(f'{a}-{b}' if a != b else str(a) for a, b in c['onFloorOffGround']['spans'][:8]) or 'none'}), "
             f"in the air {s(c['airborneBottomMinusGround'])}; coins visible a frame {s(c['coinsVisiblePerFrame'])}, "
             f"coin box w {s(c['coinWidth'])}, h {s(c['coinHeight'])} (min/median/max)")
 
