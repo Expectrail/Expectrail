@@ -82,10 +82,13 @@ needs a prompt for every object.
 
 ## Not yet done
 
-- The ground line comes from the candidate's own level. The Godot verifier never does: it judges
-  against the clean game's surfaces (`agents.observations.with_reference_ground`), because a candidate
-  could otherwise move the ground to pass ([sam.md](sam.md), "The ground, from the level"). The Unity
-  equivalent is to do, and it matters more because SAM cannot check the ground either.
+- Wiring the clean level's ground into the verdict. `agents.unity_observations.with_reference_ground`
+  recomputes every row's ground from the clean game's level surfaces with the harness's own search
+  (its constants from the map), as the Godot verifier does (`agents.observations.with_reference_ground`),
+  because a candidate could otherwise move the ground to pass ([sam.md](sam.md), "The ground, from
+  the level"); SAM cannot check the ground, so on Unity this is the ground spec's only guard. The replay
+  job reports whether it reproduces the harness's ground on every row of the clean trace. The Unity
+  domain in `agents/domain_verifier.py` (below) is what will apply it to a candidate.
 - The gameplay check (`agents/gameplay.py` `check_motion`, P7 step 4) and the Unity domain in
   `agents/domain_verifier.py`.
 - SAM scored against the engine record on clean frames (P7 step 3).
