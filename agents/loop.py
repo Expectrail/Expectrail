@@ -518,22 +518,22 @@ def main(argv: list[str] | None = None) -> int:
 
     finished = datetime.now(timezone.utc)
     accepted = sum(1 for r in results if r["decision"] == "accept")
-    if offline_triage and not use_muse:
-        cost = {
-            "modelCalls": 0,
-            "costUsd": None,
-            "costProvenance": "unmetered-offline",
-        }
-    else:
-        # Only Muse attempts count as model calls; fixture/auto-without-muse stays 0.
-        muse_calls = 0
-        if use_muse:
-            muse_calls = sum(int(r.get("attemptsConsumed") or 0) for r in results)
-        cost = {
-            "modelCalls": muse_calls,
-            "costUsd": None,
-            "costProvenance": "unmetered-live-unset",
-        }
+    # What Expectrail can count, and nothing more. It makes one triage call per live run itself, and
+    # it knows how many attempts a live fixer consumed. One attempt of a coding agent — Muse Code,
+    # Claude Code, Codex, aider — is many of that agent's own model calls, which are not visible
+    # from here, so no total is claimed and costUsd stays null rather than invented. modelCalls
+    # keeps holding the fixer's attempts, which is what it has counted all along, for whatever
+    # already reads it; fixerAttempts says so in its name and triageCalls is the new count.
+    offline_sources = {None, "offline", "offline-fallback"}
+    triage_calls = sum(1 for r in results if r.get("triageSource") not in offline_sources)
+    fixer_attempts = sum(int(r.get("attemptsConsumed") or 0) for r in results) if use_muse else 0
+    cost = {
+        "modelCalls": fixer_attempts,
+        "triageCalls": triage_calls,
+        "fixerAttempts": fixer_attempts,
+        "costUsd": None,
+        "costProvenance": "unmetered-offline" if offline_triage and not use_muse else "unmetered-live-unset",
+    }
     summary = {
         "format": "expectrail.overnight-summary/v0",
         "mode": resolved,

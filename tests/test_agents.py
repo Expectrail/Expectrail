@@ -1240,6 +1240,8 @@ class TriageReportTrustLoopTest(unittest.TestCase):
             validate(summary, "overnight-summary")
             self.assertEqual(summary["cost"]["costProvenance"], "unmetered-offline")
             self.assertEqual(summary["cost"]["modelCalls"], 0)
+            self.assertEqual(summary["cost"]["triageCalls"], 0)  # no provider was called at all
+            self.assertEqual(summary["cost"]["fixerAttempts"], 0)
             self.assertIsNone(summary["cost"]["costUsd"])
             self.assertGreaterEqual(summary["timing"]["wallClockMs"], 0)
             for r in summary["results"]:
@@ -1475,8 +1477,16 @@ class TriageReportTrustLoopTest(unittest.TestCase):
             self.assertEqual(summary["cost"]["costProvenance"], "unmetered-live-unset")
             self.assertIsNone(summary["cost"]["costUsd"])
             self.assertEqual(summary["cost"]["modelCalls"], 0)
+            # Wonder answered once, and no fixer agent ran: both are countable, so both are counted.
+            self.assertEqual(summary["cost"]["triageCalls"], 1)
+            self.assertEqual(summary["cost"]["fixerAttempts"], 0)
             rollup = (out / "morning-report.md").read_text()
             self.assertIn("unmetered-live-unset", rollup)
+            self.assertIn("triage calls=`1`", rollup)
+            self.assertIn("fixer attempts=`0`", rollup)
+            # and the rollup does not imply a spend or a model-call total it cannot know
+            self.assertIn("not visible to Expectrail", rollup)
+            self.assertNotIn("modelCalls", rollup)
             self.assertEqual(summary["results"][0]["triageSource"], WONDER_MODEL)
 
     def test_stale_signing_key_cleared_before_fixer(self):
