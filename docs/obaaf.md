@@ -24,7 +24,7 @@ running from its own branch. So no secret is a repository secret any more:
 
 | Environment | Holds | Who can use it |
 | --- | --- | --- |
-| `main-only` | `HELDOUT_TOKEN` and every model key (`MODEL_API_KEY`, `META_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `FIREWORKS_API_KEY`, `BASETEN_API_KEY`) | Workflows on `main` only (deployment branch rule) |
+| `main-only` | `HELDOUT_TOKEN` and every model key: today `MODEL_API_KEY`, `META_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `FIREWORKS_API_KEY` and `BASETEN_API_KEY`; the workflows also read `GEMINI_API_KEY`, `OPENROUTER_API_KEY` and `GLIMMER_API_KEY` if you add them, and those go here too, never as repository secrets | Workflows on `main` only (deployment branch rule) |
 | `unity` | The Unity licence | Any branch, after Sean approves each run (required reviewer) |
 
 - Every job that uses one of these secrets declares the environment; `tests/test_main_only_environment.py`
@@ -40,7 +40,8 @@ running from its own branch. So no secret is a repository secret any more:
   residual risk is that counts are an oracle a writer could probe; it is recorded, with an expiry,
   as a reviewed finding in `.github/obaaf.yml`.
 - What the checker cannot see, check in the settings: no repository or organization copy of these
-  secrets, and `main-only` limited to `main`.
+  secrets, and `main-only` limited to `main`. Create the environment before any workflow names it:
+  GitHub creates a missing environment on first use, with no protection.
 
 ## Findings (Oct 30, main at e19b378 plus this change)
 

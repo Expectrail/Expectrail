@@ -19,8 +19,19 @@ import yaml
 from harness.run import REPO
 
 WORKFLOWS = REPO / ".github" / "workflows"
-PROTECTED = re.compile(r"secrets\.([A-Z0-9_]*_API_KEY|HELDOUT_TOKEN)\b")
-ANY_SECRET = re.compile(r"secrets\.([A-Z0-9_]+)\b")
+# secrets.NAME or secrets['NAME'], in any case (expression contexts are case-insensitive).
+_REF = r"(?<![.\w-])secrets\s*(?:\.\s*([A-Za-z0-9_]+)|\[\s*['\"]([A-Za-z0-9_]+)['\"]\s*\])"
+ANY_SECRET = re.compile(_REF, re.I)
+# toJSON(secrets) in any spelling, or an index the test cannot read (secrets[matrix.k]).
+EVERY_SECRET = re.compile(r"tojson\s*\(\s*secrets\s*\)|(?<![.\w-])secrets\s*\[\s*(?!['\"])", re.I)
+
+
+def secret_refs(text: str) -> set[str]:
+    return {(a or b).upper() for a, b in ANY_SECRET.findall(text)}
+
+
+def is_protected(name: str) -> bool:
+    return name.endswith("_API_KEY") or name == "HELDOUT_TOKEN"
 # Jobs in main-only that a pull_request_target can start: they run as main, so the branch rule does
 # not stop them. Each is reviewed in .github/obaaf.yml.
 PULL_REQUEST_TARGET_REVIEWED = {"private-scan.yml:private-export-scan"}
@@ -43,12 +54,12 @@ class MainOnlyEnvironmentTest(unittest.TestCase):
     def test_every_job_using_a_protected_secret_declares_main_only(self):
         users = []
         for path, doc, _ in workflows():
-            self.assertNotRegex(yaml.safe_dump(doc.get("env") or {}), PROTECTED, path.name)
+            self.assertFalse(secret_refs(yaml.safe_dump(doc.get("env") or {})), f"{path.name}: workflow-level secret")
             for name, job in (doc.get("jobs") or {}).items():
                 text = yaml.safe_dump(job)
-                self.assertNotIn("toJSON(secrets)", text, f"{path.name} job {name} takes every secret")
+                self.assertNotRegex(text, EVERY_SECRET, f"{path.name} job {name} can take every secret")
                 self.assertNotEqual(job.get("secrets"), "inherit", f"{path.name} job {name} inherits every secret")
-                if PROTECTED.search(text):
+                if any(is_protected(s) for s in secret_refs(text)):
                     users.append(f"{path.name}:{name}")
                     self.assertEqual(environment(job), "main-only",
                                      f"{path.name} job {name} uses a model key or HELDOUT_TOKEN outside main-only")
@@ -57,8 +68,7 @@ class MainOnlyEnvironmentTest(unittest.TestCase):
     def test_the_only_other_secrets_are_unitys_behind_approval(self):
         for path, doc, _ in workflows():
             for name, job in (doc.get("jobs") or {}).items():
-                others = {s for s in ANY_SECRET.findall(yaml.safe_dump(job))
-                          if s != "GITHUB_TOKEN" and not PROTECTED.search(f"secrets.{s}")}
+                others = {s for s in secret_refs(yaml.safe_dump(job)) if s != "GITHUB_TOKEN" and not is_protected(s)}
                 if others:
                     self.assertTrue(others <= {"UNITY_LICENSE", "UNITY_EMAIL", "UNITY_PASSWORD"},
                                     f"{path.name} job {name} uses {sorted(others)}")
@@ -91,6 +101,23 @@ class MainOnlyEnvironmentTest(unittest.TestCase):
                     self.assertIn(key, PULL_REQUEST_TARGET_REVIEWED)
                 if "pull_request" in triggers:
                     self.assertTrue(limited(name), f"{key} is in main-only but a pull request can start it")
+
+    def test_no_main_only_workflow_runs_on_another_branch(self):
+        """A push or merge-group trigger that is not limited to main would start main-only jobs on
+        other branches, where the environment refuses them."""
+        for path, doc, _ in workflows():
+            if not any(environment(j) == "main-only" for j in (doc.get("jobs") or {}).values()):
+                continue
+            on = doc.get("on", doc.get(True)) or {}
+            if not isinstance(on, dict):
+                on = {event: None for event in ([on] if isinstance(on, str) else on)}
+            for event in ("push", "merge_group", "pull_request_review", "issue_comment", "issues"):
+                if event not in on:
+                    continue
+                spec = on[event] or {}
+                self.assertEqual(event, "push", f"{path.name} runs main-only jobs on {event}")
+                self.assertEqual(spec.get("branches"), ["main"], f"{path.name}: push must be limited to main")
+                self.assertNotIn("tags", spec, f"{path.name}: a tag push is not on main")
 
 
 if __name__ == "__main__":

@@ -58,7 +58,7 @@ python3 -m agents.prove_live --out runs/prove --trust-only
 ```
 
 Live Muse accept film (needs `META_API_KEY` + `muse`; or CI `workflow_dispatch` job
-`agents-live-muse` with the repo secret set):
+`agents-live-muse`, run from main with META_API_KEY in the main-only environment):
 
 ```sh
 export META_API_KEY=LLM_…
