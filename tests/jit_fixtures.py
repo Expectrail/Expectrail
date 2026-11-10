@@ -21,9 +21,19 @@ class JitGame(FakeGame):
             stems.discard("air-jump")
         if "variant-airjump" in stems:
             stems.add("air-jump")
+        moved = "variant-airjump-moved" in stems
+        if moved:  # the air jump back, and the player 1 px to the right: unlike an air-jumping candidate
+            stems.add("air-jump")
         if "variant-crash" in stems:
             stems.add("crash")
-        return super().__call__(route_path, run_dir, patches=[Path(s + ".patch") for s in sorted(stems)])
+        out = super().__call__(route_path, run_dir, patches=[Path(s + ".patch") for s in sorted(stems)])
+        if moved:
+            trace_path = Path(run_dir) / "trace.json"
+            trace = json.loads(trace_path.read_text())
+            for row in trace["rows"]:
+                row["player"][0] = round(row["player"][0] + 1.0, 3)
+            trace_path.write_text(json.dumps(trace))
+        return out
 
 
 GOOD_CHECK = {"id": "no-extra-air-jumps", "statement": "Eight presses in the air give no more air jumps than two.",

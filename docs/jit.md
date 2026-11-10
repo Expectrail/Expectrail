@@ -79,7 +79,7 @@ charged that reservation. Every record names its prices and says `source: assume
 | 1. Report-only: no path from a generated check to a rejection | `tests/test_jit_rules.py` `Rule1ReportOnly`: the schema has no decision and `advisory` is the constant true; a record with strong catches keeps the decision its counts give, and one that claims otherwise is refused; `decide()` takes only the counts and the held-out counts; nothing that decides imports `expectrail.jit` |
 | 2. The fixer never sees generated checks | `Rule2FixerNeverSees`: every file a run writes, and a proposal, sits under a `jit-*` name that the fixer workspace's isolation refuses (`agents/isolation.py`); no fixer module reads them |
 | 3. Fail closed to "nothing generated" | `Rule3FailClosed`: model unavailable, empty or invalid answers, no model, a replay error, an unreadable patch, an unreadable gate block. Each gives `nothing-generated` with its reason, no catch, and "no generated checks" in the comment |
-| 4. $2 a change, enforced before each call | `Rule4Budget`: the model is not called when its reservation does not fit; replays stop at the cap and spend never passes it; spend and prices are reported |
+| 4. $2 a change, enforced before each call | `Rule4Budget`: the model is not called when its reservation does not fit, on the one-step path and on `propose` (the call asks for no more completion than it reserved, `max_tokens`); a replay is reserved at the longest one seen so far, so one that runs longer can carry spend past the cap by its own cost, after which nothing further runs; spend and prices are reported |
 | 5. The patch and report are data | `Rule5UntrustedInput`: a patch and report that tell the generator to write a check that always passes and to mark a catch give the same validity and catches as the clean change; the injected "always passes" check is dropped as killing nothing; the extra fields (`catch`, `verdict`, `decision`, an approval) are never read |
 | 6. Retired pins untouched | `Rule6RetiredPins`: `bench/mutation/preregistration.json` and `discovery/freeze.json` are byte-identical to commit `c169a5e`; the near-miss generator only reads the registration |
 
@@ -95,6 +95,9 @@ same strict reader as the rest of the record (size cap, strict JSON, closed sche
 from rows). A block it cannot read becomes "no generated checks"; it never fails the gate. The
 comment shows a short section headed "Generated checks (advisory, they never accept or reject)" and
 the review page a table, both apart from the checks that decide.
+
+A catch in that block is strong only when the run that made it replayed a base build (`run --base`):
+the label comes from the base build's runs, so a run without one can only report weak catches.
 
 **Nothing in a pull request's run produces that block, and nothing proposes checks there.** The first
 version of this work did, in a `jit-propose` job in `expectrail-verify.yml` that held the model key,
