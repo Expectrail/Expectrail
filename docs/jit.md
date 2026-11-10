@@ -22,6 +22,7 @@ approved spec by hand.
 bug report + candidate patch
    │
    ├─► diff map: changed files and lines → profile claims → probes        expectrail/jit/diff_map.py
+   ├─► measure: every probe's signals on the clean game and the bug build expectrail/jit/measure.py
    ├─► intent: Muse Spark proposes up to 8 checks and 4 probes            expectrail/jit/intent.py
    ├─► near misses: wrong versions of the same change                      expectrail/jit/dodgy.py
    │
@@ -42,11 +43,12 @@ jit-run/v1 record, report, and an advisory block in the gate comment and the rev
 | --- | --- | --- |
 | Diff map | [`diff_map.py`](../expectrail/jit/diff_map.py) | Parses the patch as data (never applies it). A file is tied to a profile claim when the claim's own `evidenceRefs` name it; each claim maps to the probe families that exercise it. A file no claim names keeps every probe. |
 | Intent | [`intent.py`](../expectrail/jit/intent.py) | One Muse Spark call. The report and the patch go in as string values of a JSON object, under a system prompt that calls them untrusted. The answer is parsed by discovery's planner parser, so only probes that compile and contracts that validate in the closed trace language survive. Every check gets origin `AUTO_DIFF`, authority `model_prior` and an id starting `jit-`. No model-written code runs. |
+| Measure | [`measure.py`](../expectrail/jit/measure.py), [`probes.py`](../expectrail/jit/probes.py) | Before the model call, each probe is replayed once on the clean game and once on the bug build (the base patches), never on the candidate, and every signal's value goes into the prompt as a number, next to a one-line meaning of each signal. The model picks a probe and signal where the two builds differ and puts a threshold between them. Its own job, with no secret; the propose job re-checks the numbers' shape (known probes, known signals, plain numbers, the same base patches) and goes ahead without them, saying why, if they do not fit. The probes are discovery's library plus the jump taps once more after walking left, the one place on the level with nothing overhead. |
 | Near misses | [`dodgy.py`](../expectrail/jit/dodgy.py) | The base build (the game the report describes); the mutation bench's operators on the lines the candidate added, with the steps the bench registered (read, never written); three code operators of our own for lines those do not reach (a boolean flipped, a condition negated, a statement replaced by `pass`); and, when the candidate changes more than one place, each place undone on its own. At most 8 besides the base, chosen by a seed taken from the candidate's bytes. |
 | Job | [`run.py`](../expectrail/jit/run.py) | Replays the reference first and drops a check at its first non-pass; replays each near miss once and confirms a kill to 3 of 3; replays the candidate 3 times for valid checks only. Budget checked before the model call and before each replay. |
 | Assessor | [`assess.py`](../expectrail/jit/assess.py) | Pure functions of the interpreter's five outcomes per run. Nothing a model said reaches it. |
 | Record | [`contracts/jit-run.v1.schema.json`](../contracts/jit-run.v1.schema.json) | One per change: digests of the inputs, model and prompt; settings; the diff map; every proposed check and probe; every near miss; each check's reference runs, kills, candidate runs and outcome; the catches with their label; spend with the prices used. `advisory` is always true and there is no decision field. |
-| CLI | [`cli.py`](../expectrail/jit/cli.py) | `run`, `propose`, `report`, `gate-summary`, `diff-games`. |
+| CLI | [`cli.py`](../expectrail/jit/cli.py) | `run`, `measure`, `propose`, `report`, `gate-summary`, `diff-games`. |
 | CI | [`.github/workflows/jit.yml`](../.github/workflows/jit.yml) | Rehearsal on pull requests that touch this code; `live` by dispatch. |
 | Gate | [`gate/`](../expectrail/gate), the verify action's `generated-checks` input | Reads and shows a generated-checks block; nothing in a pull request's run produces one yet (below). |
 
@@ -136,6 +138,19 @@ catch) and "fixed" with a comment only (expected: a strong catch). Their proposa
 fixture standing in for the model (`"model": "rehearsal-fixture"`), not by Muse Spark. The profile was
 written alongside that bug, so a rehearsal shows the plumbing and is never a result. `live` takes a
 case name, a base patch, a candidate patch and a report file, and calls Muse Spark.
+
+## First live runs
+
+Run 42908014398 (main at `c78e623`, the comment-only "fix" of the air-jump bug) worked end to end and
+found nothing: 2 checks proposed, 0 valid, $0.04. Both compared heights (two presses higher than
+one; eight no higher than two). Replayed locally, the reason is the level, not the bug: the player
+starts under a platform, and every spot discovery's right-hand walk sweep reaches has one within
+reach of a double jump, so two presses and eight both rise 104 px on the clean game *and* on the
+bug build. No height check there can see infinite air jumps. The model was given the signal names
+and nothing else, so it could not have known. Two changes, both above: the measurements, so the
+model sees which signals move between the clean game and the bug build (on `jump-w0-x8`,
+`air_jumps` goes from 1 to 7 and `max_rise_px` does not move); and the left-walk jump probes, where
+a rise is not capped (eight presses: 114 px clean, 424 px bug build).
 
 ## Measurement plan
 

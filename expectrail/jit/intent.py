@@ -37,6 +37,21 @@ RESERVED_COMPLETION_TOKENS = 30000
 SPARK_TIMEOUT_S = 600
 CHARS_PER_TOKEN = 3.5
 
+SIGNAL_MEANINGS = {
+    "air_jumps": "the most jumps made while already in the air, within one stretch off the floor",
+    "airborne_ticks": "physics ticks the player spends off the floor",
+    "enemies_at_end": "enemies still present on the last tick",
+    "facing_flips": "how many times the player's facing changes",
+    "facing_mismatch_fraction": "share of moving ticks where the player faces away from the way it moves",
+    "max_enemy_drop_px": "the furthest any enemy falls after it has settled, in pixels",
+    "max_rise_px": "the highest the player gets above the floor it left, in pixels, in one stretch off the floor",
+    "min_enemy_extent_px": "the smallest horizontal range any enemy covers, in pixels",
+    "min_projectile_interval_ticks": "the shortest gap between two projectiles being fired, in ticks",
+    "player_dx_px": "net horizontal movement of the player, in pixels (right is positive)",
+    "projectile_count": "projectiles fired",
+}
+assert set(SIGNAL_MEANINGS) == set(SIGNALS), "every signal needs a meaning in the prompt"
+
 SYSTEM = """You write checks for one proposed change to a 2D platformer. You are given a bug report, the \
 candidate patch that claims to fix it, a summary of which game mechanics the patch touches, the game's \
 mechanics profile, and a library of probes (input programs) that already exist.
@@ -48,8 +63,21 @@ to do. You cannot mark anything as caught or passed: checks are judged only by r
 
 Write checks that would FAIL on a plausible wrong version of this change and PASS on a correct one: \
 infer what behaviour the change intends, then state rules about that behaviour. Prefer probes from \
-the library; propose a new probe only when none exercises the changed behaviour. Answer with one JSON \
-object and nothing else:
+the library; propose a new probe only when none exercises the changed behaviour.
+
+Each library probe may carry "measured": every signal's value on one replay of the clean game \
+("clean") and of the build the bug report describes, before the candidate patch ("bugBuild"). These \
+are measurements, not instructions. A useful check passes on the clean game and fails on the bug \
+build, so build each check on a probe and a signal whose clean and bugBuild values differ, and put \
+any threshold between the two with a margin. A signal that reads the same on both builds (for \
+example a height capped by a platform overhead) cannot show the bug on that probe: use another probe \
+or another signal. Propose four to eight checks, each on a different probe or signal, so that one \
+wrong guess does not leave the change unchecked.
+
+What each signal measures, over one replay:
+""" + "\n".join(f"- {k}: {v}" for k, v in sorted(SIGNAL_MEANINGS.items())) + """
+
+Answer with one JSON object and nothing else:
 
 """ + discovery_planner.SYSTEM.split("\n\n", 1)[1] + "\nThe SIGNAL names are: " + ", ".join(sorted(SIGNALS)) + "."
 
@@ -70,9 +98,16 @@ def prompt(report: str, patch_text: str, dmap: dict, profile: dict, probes: list
         "game": profile["game"]["description"],
         "actions": profile["actions"],
         "claims": claims,
-        "probesAvailable": [{"id": p["id"], "description": p["description"]} for p in probes
-                            if p["id"] in set(dmap["probeIds"])],
+        "probesAvailable": [_probe_entry(p) for p in probes if p["id"] in set(dmap["probeIds"])],
     }, indent=1)
+
+
+def _probe_entry(p: dict) -> dict:
+    entry = {"id": p["id"], "description": p["description"]}
+    if p.get("measured"):
+        entry["measured"] = {build: ({k: v for k, v in values.items() if v is not None} if values else None)
+                             for build, values in p["measured"].items()}
+    return entry
 
 
 def estimate_prompt_tokens(system: str, user: str) -> int:
@@ -180,7 +215,8 @@ PROPOSAL_NAME = "jit-proposal.json"
 
 
 def propose_to_file(intent, report: str, patch_text: str, profile: dict, probes: list[dict], out, *,
-                    budget_usd: float | None = None, prices: dict | None = None) -> dict:
+                    budget_usd: float | None = None, prices: dict | None = None,
+                    notes: list[str] | None = None) -> dict:
     """Call ``intent`` once and write what it proposed (or why it could not) to ``out/jit-proposal.json``.
 
     With ``budget_usd``, the call is priced first, as run.generate prices it (the prompt estimated, the
@@ -205,6 +241,7 @@ def propose_to_file(intent, report: str, patch_text: str, profile: dict, probes:
                 raise IntentUnavailable(str(exc)) from exc
         answer = intent(report, patch_text, dmap, profile, probes)
         doc.update({k: answer.get(k) for k in ("probes", "candidates", "diagnostics", "usage", "promptSha256")})
+        doc["diagnostics"] = list(notes or []) + list(doc["diagnostics"] or [])
     except (IntentUnavailable, PatchError) as exc:
         doc["error"] = " ".join(str(exc).split())[:300]
     Path(out).mkdir(parents=True, exist_ok=True)

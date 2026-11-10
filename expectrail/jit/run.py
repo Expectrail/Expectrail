@@ -36,11 +36,11 @@ import traceback
 from pathlib import Path
 
 from expectrail.contracts import digest_v1, load_strict, validate_v1
-from expectrail.discovery.probes import library
 from expectrail.discovery.route_compiler import ProgramError, compile_route
 from expectrail.discovery.templates import applies_to
 from expectrail.jit import assess
 from expectrail.jit.diff_map import PatchError, diff_map
+from expectrail.jit.probes import jit_library
 from expectrail.trace.evaluator import evaluate
 from expectrail.trace.normalize import from_run_dir
 
@@ -215,7 +215,7 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
 
 def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner, intent, variants_fn, game,
               spend: Spend, reps, variant_limit, approved_claims, state, diagnostics, clock) -> None:
-    probes = library(profile["actions"])
+    probes = jit_library(profile["actions"])
     for p in probes:
         p["source"] = "library"
     dmap = diff_map(cand_bytes.decode("utf-8", errors="replace"), profile, probes)

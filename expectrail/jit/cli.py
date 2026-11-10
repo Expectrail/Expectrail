@@ -102,6 +102,23 @@ def diff_games(base: Path, head: Path) -> str:
     return "".join(out)
 
 
+def attach_measurements(probes: list[dict], path: Path | None, base: list[Path]) -> list[str]:
+    """Put each probe's measurements on it for the prompt. Returns diagnostics: empty when they were
+    attached; otherwise why not, and the proposal goes ahead without them (it is never refused)."""
+    if path is None:
+        return ["measurements: none given"]
+    from expectrail.jit.measure import MeasurementsUnusable, load
+
+    try:
+        table = load(path, probe_ids={p["id"] for p in probes}, base_patches=base)
+    except (MeasurementsUnusable, OSError) as exc:
+        return [f"measurements: not used: {exc}"[:200]]
+    for p in probes:
+        if p["id"] in table:
+            p["measured"] = table[p["id"]]
+    return []
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="expectrail.jit.cli")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -128,6 +145,14 @@ def main(argv: list[str] | None = None) -> int:
     pp.add_argument("--budget-usd", type=float, default=DEFAULT_BUDGET_USD)
     pp.add_argument("--spark-usd-per-mtok-in", type=float)
     pp.add_argument("--spark-usd-per-mtok-out", type=float)
+    pp.add_argument("--base", type=Path, action="append", default=[],
+                    help="the bug's patches, read only to check the measurements were taken against them")
+    pp.add_argument("--measurements", type=Path, help="jit-measurements.json from the measure command")
+    ms = sub.add_parser("measure")
+    ms.add_argument("--profile", type=Path, default=PROFILE)
+    ms.add_argument("--base", type=Path, action="append", default=[])
+    ms.add_argument("--out", type=Path, required=True)
+    ms.add_argument("--game", type=Path, help="the reference game (default: game/platformer in this checkout)")
     dg = sub.add_parser("diff-games")
     dg.add_argument("base", type=Path)
     dg.add_argument("head", type=Path)
@@ -144,19 +169,30 @@ def main(argv: list[str] | None = None) -> int:
         args.out.write_text(text, encoding="utf-8")
         print(json.dumps({"bytes": len(text.encode("utf-8")), "empty": not text.strip()}))
         return 0
+    if args.cmd == "measure":
+        from expectrail.jit.measure import measure
+        from expectrail.jit.probes import jit_library
+
+        profile = load_strict(args.profile, "mechanics-profile")
+        doc = measure(profile, args.base, args.out, probes=jit_library(profile["actions"]), game=args.game)
+        print(json.dumps({"probes": len(doc["probes"]), "bugBuild": bool(args.base)}))
+        return 0
     if args.cmd == "propose":
-        from expectrail.discovery.probes import library
         from expectrail.jit.intent import propose_to_file, spark_intent
+        from expectrail.jit.probes import jit_library
 
         profile = load_strict(args.profile, "mechanics-profile")
         if args.budget_usd < 0:
             ap.error("budget must not be negative")
         prices = {k: v for k, v in (("sparkUsdPerMTokIn", args.spark_usd_per_mtok_in),
                                     ("sparkUsdPerMTokOut", args.spark_usd_per_mtok_out)) if v is not None}
+        probes = jit_library(profile["actions"])
+        notes = attach_measurements(probes, args.measurements, args.base)
         doc = propose_to_file(spark_intent(), args.report_file.read_text(encoding="utf-8", errors="replace"),
                               args.candidate.read_bytes().decode("utf-8", errors="replace"), profile,
-                              library(profile["actions"]), args.out, budget_usd=args.budget_usd, prices=prices)
-        print(json.dumps({"error": doc["error"], "candidates": len(doc["candidates"]), "probes": len(doc["probes"])}))
+                              probes, args.out, budget_usd=args.budget_usd, prices=prices, notes=notes)
+        print(json.dumps({"error": doc["error"], "candidates": len(doc["candidates"]), "probes": len(doc["probes"]),
+                          "measured": not notes}))
         return 0
 
     if args.cmd == "run":
