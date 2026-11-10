@@ -280,3 +280,43 @@ class Dodgy(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProposeCommandTest(unittest.TestCase):
+    """`python -m expectrail.jit.cli propose`, as jit.yml's live propose job calls it. The first live
+    dispatch failed before any model call: the subcommand read a --budget-usd it never defined."""
+
+    def test_propose_parses_its_arguments_and_records_an_unavailable_model(self):
+        import contextlib
+        import io
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+
+        from expectrail.jit import cli, intent
+
+        def unavailable():
+            def propose(*_a, **_k):
+                raise intent.IntentUnavailable("no model in tests")
+            propose.model, propose.system = "test", ""
+            return propose
+
+        repo = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(intent, "spark_intent", unavailable), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            code = cli.main(["propose", "--report-file", str(repo / "bench/jit/rehearsal/air-jump.report.txt"),
+                             "--candidate", str(repo / "bench/jit/rehearsal/air-jump-comment-only.patch"),
+                             "--out", tmp, "--budget-usd", "2"])
+            self.assertEqual(code, 0)
+            printed = json.loads(out.getvalue())
+            self.assertTrue(printed["error"])
+            self.assertEqual(printed["candidates"], 0)
+            self.assertTrue((Path(tmp) / "jit-proposal.json").is_file())
+
+    def test_live_propose_job_passes_the_budget(self):
+        from pathlib import Path
+
+        text = (Path(__file__).resolve().parents[1] / ".github/workflows/jit.yml").read_text(encoding="utf-8")
+        job = text[text.index("  propose:"):text.index("  replay:")]
+        self.assertIn('--budget-usd "$BUDGET"', job)
+        self.assertIn("environment: main-only", job)
