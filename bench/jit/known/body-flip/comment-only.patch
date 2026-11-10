@@ -1,0 +1,10 @@
+--- a/player/player.gd
++++ b/player/player.gd
+@@ -38,6 +38,7 @@
+ 
+ 	var direction := Input.get_axis("move_left" + action_suffix, "move_right" + action_suffix) * WALK_SPEED
+ 	velocity.x = move_toward(velocity.x, direction, ACCELERATION_SPEED * delta)
++# Fixed: Infinite flipping on left move.
+ 
+ 	if not is_zero_approx(velocity.x):
+ 		if velocity.x > 0.0:

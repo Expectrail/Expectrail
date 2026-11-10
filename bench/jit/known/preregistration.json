@@ -1,0 +1,19 @@
+{
+ "format": "expectrail.jit-bench-preregistration/v0",
+ "status": "draft",
+ "signedOffBy": null,
+ "question": "Does the live generator write valid checks that catch a wrong fix and leave a correct fix alone, on the reported bugs, before blind set 3 is spent on it?",
+ "cases": "bench/jit/known/cases.json: the four reported bugs (bugs/reported/), each with a wrong fix (one comment claiming the fix, nothing else) and the correct fix (the exact undo). Eight cases, one live run each, $2 cap per case.",
+ "tuning": "The measurements and the left-walk jump probes (#240) were designed while looking at the air-jump bug, so its two cases are marked tunedOn and the bar also counts the three bugs nobody tuned on.",
+ "scoring": "A wrong fix is caught when a generated check fails 3 of 3 on it and 3 of 3 on the bug build (strong). Any catch, strong or weak, on a correct fix is a false catch. A case without a complete record for its own candidate and bug is no result, never a pass. Rows come from each case's final jit-run record only (expectrail/jit/bench.py).",
+ "bar": {
+  "minWrongCaught": 3,
+  "minWrongCaughtUntuned": 2,
+  "maxCorrectFalseCatches": 0,
+  "maxNoResult": 0,
+  "maxSpendUsdPerCase": 2.0
+ },
+ "decision": "Meets the bar: blind set 3 runs with both arms (approved checks only; plus generated checks). Below the bar: arm B does not run on blind set 3 until a later registration's bench meets its bar; the result is reported as it is.",
+ "runs": "One dispatch of jit-bench.yml from main, at a commit where every pin below holds. A rerun only for an infrastructure failure (a runner or a GitHub outage), reported with the reason; never for a result.",
+ "pins": {}
+}

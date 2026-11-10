@@ -1,0 +1,22 @@
+--- a/player/player.gd
++++ b/player/player.gd
+@@ -41,16 +41,16 @@
+ 
+ 	if not is_zero_approx(velocity.x):
+ 		if velocity.x > 0.0:
+-			scale.x = 1.0
++			sprite.scale.x = 1.0
+ 		else:
+-			scale.x = -1.0
++			sprite.scale.x = -1.0
+ 
+ 	floor_stop_on_slope = not platform_detector.is_colliding()
+ 	move_and_slide()
+ 
+ 	var is_shooting: bool = false
+ 	if Input.is_action_just_pressed("shoot" + action_suffix):
+-		is_shooting = gun.shoot(scale.x)
++		is_shooting = gun.shoot(sprite.scale.x)
+ 
+ 	var animation := get_new_animation(is_shooting)
+ 	if animation != animation_player.current_animation and shoot_timer.is_stopped():

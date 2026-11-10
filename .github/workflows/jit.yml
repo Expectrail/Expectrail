@@ -38,6 +38,16 @@ on:
       budget_usd:
         description: Spend cap for this change, in US dollars
         default: '2'
+  # The known-bugs bench (jit-bench.yml) calls the live path once per case. Its runs are dispatched from
+  # main, so github.event_name is still workflow_dispatch here and every live job's condition holds.
+  workflow_call:
+    inputs:
+      mode: {type: string, default: 'live'}
+      case: {type: string, required: true}
+      base_patch: {type: string, default: ''}
+      candidate_patch: {type: string, required: true}
+      report_file: {type: string, required: true}
+      budget_usd: {type: string, default: '2'}
 
 permissions:
   contents: read
