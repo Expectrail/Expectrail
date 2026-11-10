@@ -284,6 +284,11 @@ jobs:
     needs: build
     # Once the harness player is uploaded, even if the canary after it failed the build job.
     if: always() && needs.build.outputs.built == 'true'
+    # Two copies, each on its own runner, replay the same player: cross-runner checks they agree.
+    strategy:
+      fail-fast: false
+      matrix:
+        copy: [a, b]
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
@@ -316,6 +321,8 @@ jobs:
           cpu=$(grep -m 1 '^model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')
           mesa=$(dpkg-query -W -f '${Version}' libgl1-mesa-dri)
           echo "::notice title=Unity replay machine::CPU $cpu; $(nproc) CPUs; Mesa $mesa; LP_NUM_THREADS=$LP_NUM_THREADS, LP_NATIVE_VECTOR_WIDTH=$LP_NATIVE_VECTOR_WIDTH"
+          mkdir -p runs/unity/replay
+          echo "copy ${{ matrix.copy }}: CPU $cpu; $(nproc) CPUs; Mesa $mesa" > runs/unity/replay/machine.txt
       - name: The player has its libraries
         run: |
           dir=runs/unity/players/harness/player
@@ -392,8 +399,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: unity-smoke-replay
+          name: unity-smoke-replay-${{ matrix.copy }}
           path: |
+            runs/unity/replay/machine.txt
             runs/unity/replay/run-00/frames/
             runs/unity/replay/run-00/trace.json
             runs/unity/replay/*/replay.json
@@ -402,3 +410,36 @@ jobs:
             runs/unity/replay/compare.json
           if-no-files-found: ignore
           retention-days: 7
+
+  cross-runner:
+    # The same player replayed on two runners: Unity runs 8 and 9 gave different trace hashes across runs.
+    needs: [build, replay]
+    if: always() && needs.build.outputs.built == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: unity-smoke-replay-*
+          path: runs/unity/cross
+      - name: The two runners replayed the route identically
+        run: |
+          set +e
+          out=$(python3 -m harness.unity.trace_diff runs/unity/cross/unity-smoke-replay-a/run-00 \
+            runs/unity/cross/unity-smoke-replay-b/run-00 --json runs/unity/cross/diff.json)
+          status=$?
+          set -e
+          echo "$out"
+          cat runs/unity/cross/unity-smoke-replay-*/machine.txt
+          if [ "$status" -eq 0 ]; then
+            echo "::notice title=Unity cross-runner::$out"
+          else
+            echo "::error title=Unity cross-runner::$out"
+            python3 -c "import json; d = json.load(open('runs/unity/cross/diff.json')); [print(k, json.dumps(v['first'], default=str)[:600]) for k, v in d['rows']['fields'].items()]"
+            exit 1
+          fi

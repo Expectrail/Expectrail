@@ -1,0 +1,81 @@
+"""harness.unity.trace_diff: where two replays of one Unity route differ, field by field."""
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+from harness.unity import trace_diff
+
+
+def _run(root: Path, name: str, rows: list[dict], frames: list[str], settle: dict, machine: str | None = None,
+         surfaces=None) -> Path:
+    run = root / name / "run-00"
+    run.mkdir(parents=True)
+    trace = {"format": "expectrail.trace/v0", "ticks": len(rows), "levelSurfaces": surfaces or [[[0, 0], [10, 0]]],
+             "rows": rows}
+    (run / "trace.json").write_text(json.dumps(trace))
+    (run / "replay.json").write_text(json.dumps({"frameSha256": frames, "settle": settle, "trace": {"sha256": name}}))
+    if machine:
+        (root / name / "machine.txt").write_text(machine + "\n")
+    return run
+
+
+def _rows(n: int, nudge_from: int | None = None, by: float = 0.0) -> list[dict]:
+    return [{"tick": i, "frame": i, "player": [10.0 + i + (by if nudge_from is not None and i >= nudge_from else 0.0), 50.0],
+             "ground": 60.0, "objects": [{"id": "Player", "role": "player", "box": [0, 0, 4, 4], "visible": True}]}
+            for i in range(n)]
+
+
+class TraceDiff(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_a_different_settle_alone_leaves_the_route_identical(self):
+        a = _run(self.root, "a", _rows(5), ["f"] * 5, {"ticks": 77, "frozenFrames": 23}, "copy a: CPU x")
+        b = _run(self.root, "b", _rows(5), ["f"] * 5, {"ticks": 77, "frozenFrames": 37}, "copy b: CPU y")
+        d = trace_diff.diff(a, b)
+        self.assertTrue(d["routeIdentical"])
+        self.assertEqual(d["machines"], ["copy a: CPU x", "copy b: CPU y"])
+        self.assertIn("route identical", trace_diff.summary(d))
+        self.assertIn("23 held vs 77 ticks/37 held", trace_diff.summary(d))
+        self.assertEqual(trace_diff.main([str(a), str(b)]), 0)
+
+    def test_a_drifting_field_is_named_with_its_first_tick_count_and_gap(self):
+        a = _run(self.root, "a", _rows(6), ["f"] * 6, {"ticks": 1, "frozenFrames": 0})
+        b = _run(self.root, "b", _rows(6, nudge_from=3, by=0.25), ["f", "f", "f", "g", "g", "g"],
+                 {"ticks": 1, "frozenFrames": 0})
+        d = trace_diff.diff(a, b)
+        self.assertFalse(d["routeIdentical"])
+        player = d["rows"]["fields"]["player"]
+        self.assertEqual((player["firstTick"], player["ticksDiffer"]), (3, 3))
+        self.assertAlmostEqual(player["largestGap"], 0.25)
+        self.assertEqual(list(d["rows"]["fields"]), ["player"])
+        self.assertEqual((d["frames"]["differ"], d["frames"]["first"]), (3, 3))
+        self.assertEqual(trace_diff.main([str(a), str(b)]), 1)
+
+    def test_objects_are_compared_by_id_and_level_sections_are_named(self):
+        rows_b = _rows(2)
+        rows_b[1]["objects"][0]["box"] = [0, 0, 5, 4]
+        a = _run(self.root, "a", _rows(2), ["f", "f"], {"ticks": 0, "frozenFrames": 0})
+        b = _run(self.root, "b", rows_b, ["f", "f"], {"ticks": 0, "frozenFrames": 0}, surfaces=[[[0, 1], [10, 1]]])
+        d = trace_diff.diff(a, b)
+        self.assertEqual(d["rows"]["fields"]["objects"]["first"], {"tick": 1, "ids": ["Player"]})
+        self.assertEqual(d["sectionsDiffer"], ["levelSurfaces"])
+        out = self.root / "diff.json"
+        self.assertEqual(trace_diff.main([str(a), str(b), "--json", str(out)]), 1)
+        self.assertFalse(json.loads(out.read_text())["routeIdentical"])
+
+    def test_a_different_level_alone_fails(self):
+        a = _run(self.root, "a", _rows(2), ["f", "f"], {"ticks": 0, "frozenFrames": 0})
+        b = _run(self.root, "b", _rows(2), ["f", "f"], {"ticks": 0, "frozenFrames": 0}, surfaces=[[[0, 1], [10, 1]]])
+        d = trace_diff.diff(a, b)
+        self.assertTrue(d["routeIdentical"])
+        self.assertEqual(trace_diff.main([str(a), str(b)]), 1)
+
+
+if __name__ == "__main__":
+    unittest.main()
