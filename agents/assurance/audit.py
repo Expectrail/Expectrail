@@ -1,4 +1,4 @@
-"""The OBAAF audit in CI: the lane inventory must hold, and every finding is reported, not gated.
+"""The OBAAF audit in CI: the lane inventory must hold, and every finding is reported (the baseline step in ci.yml fails on new ones).
 
 ``obaaf check`` classifies each job into a lane and applies the agent controls only to agent jobs.
 It does not recognise our model entry points (``python -m agents.*``), so ``.github/obaaf.yml``
@@ -77,8 +77,9 @@ PERCEPTION = frozenset({
     ".github/workflows/mutation-bench.yml#run",
     ".github/workflows/mutation-bench.yml#sam-warm",  # the clean game's smoke frames, once per run
     ".github/workflows/mutation-fix.yml#sam-warm",  # the same, for Part 3's jobs
-    # Reported-bug bench: SAM on frames of public bugs, and only when dispatched with sam on.
-    ".github/workflows/reported-bench.yml#reported-bench",
+    # Reported-bug bench: SAM on frames of public bugs, only when dispatched from main with sam on
+    # (the keyless reported-bench job judges from traces and holds no key).
+    ".github/workflows/reported-bench.yml#reported-bench-sam",
 })
 LANE_LINE = re.compile(r"^(?P<job>\S+#\S+): (?P<lane>[a-z]+) \(")
 
@@ -149,7 +150,7 @@ def finding_lines(report: dict) -> list[str]:
     counts = Counter((f["category"], f["severity"]) for f in findings)
     summary = "; ".join(f"{cat} {', '.join(f'{counts[(cat, s)]} {s}' for s in ('high', 'medium', 'low'))}"
                         for cat in ("authority", "hygiene"))
-    lines = [(f"::notice title=OBAAF audit::{len(findings)} findings, reported, not gated ({summary}); "
+    lines = [(f"::notice title=OBAAF audit::{len(findings)} findings, reported; new ones fail the baseline step ({summary}); "
               f"{len(report.get('files') or [])} workflow files; {report.get('tool')}")]
     rules: dict[tuple[str, str, str], list[str]] = {}
     for f in findings:

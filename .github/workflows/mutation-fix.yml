@@ -45,7 +45,7 @@ jobs:
         run: python -m agents.mutation_fix --rehearse --out runs/ai-fixes
 
   plan:
-    if: ${{ inputs.mode == 'live' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'live' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
@@ -82,6 +82,7 @@ jobs:
 
   # Judge the clean game's smoke route once, so a job asks SAM only about frames that differ from it.
   sam-warm:
+    environment: main-only
     needs: plan
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -117,8 +118,9 @@ jobs:
           retention-days: 14
 
   run:
+    environment: main-only
     needs: [plan, sam-warm]
-    if: ${{ !cancelled() && needs.plan.result == 'success' }}  # plan runs for a live dispatch only
+    if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && needs.plan.result == 'success' }}  # a live dispatch only
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     strategy:

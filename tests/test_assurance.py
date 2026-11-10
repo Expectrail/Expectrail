@@ -251,7 +251,7 @@ class LaneInventoryTest(unittest.TestCase):
             {"rule": "OBAAF-GHA-020", "title": "Agent job without an egress restriction", "severity": "low",
              "category": "hygiene", "path": "a.yml", "line": 3, "job": "run", "suppressed": {"reason": "x"}}]}
         lines = self.audit.finding_lines(report)
-        self.assertIn("2 findings, reported, not gated (authority 2 high, 0 medium, 0 low; "
+        self.assertIn("2 findings, reported; new ones fail the baseline step (authority 2 high, 0 medium, 0 low; "
                       "hygiene 0 high, 0 medium, 0 low)", lines[0])
         self.assertEqual(lines[1], "::notice title=OBAAF high OBAAF-GHA-005 x2::Secret available to an agent job: "
                                    "run, demo-run")

@@ -104,6 +104,7 @@ jobs:
   # Judge the clean game's smoke route once, so a job asks SAM only about frames that differ from it.
   # Runs beside the plan; a job runs without it if it fails or is skipped.
   sam-warm:
+    environment: main-only
     needs: plan
     if: ${{ (inputs.mode == 'wrong-fix' || inputs.mode == 'generated-sam' || inputs.mode == 'dry-run-sam') && inputs.sam_cache == 'shared' }}
     runs-on: ubuntu-24.04
@@ -141,6 +142,7 @@ jobs:
           retention-days: 14
 
   run:
+    environment: main-only
     needs: [plan, sam-warm]
     if: ${{ !cancelled() && needs.plan.result == 'success' }}
     runs-on: ubuntu-24.04

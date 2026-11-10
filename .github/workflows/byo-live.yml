@@ -1,6 +1,6 @@
 # The live loop on a non-Meta model: Claude triages, Claude Code fixes, and the verifier replays the
 # candidate in Godot and judges it from the engine's own trace. Manual only: it spends Anthropic credit.
-# Needs the ANTHROPIC_API_KEY repository secret. No Meta key is read.
+# Needs ANTHROPIC_API_KEY in the main-only environment. No Meta key is read.
 #
 # The fixer runs behind the key gateway here, so Claude Code holds a placeholder and the real key
 # stays with a proxy it cannot read (agents/gateway.py). That is this workflow's default, not
@@ -37,6 +37,7 @@ permissions:
 
 jobs:
   byo-live:
+    environment: main-only
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -51,7 +52,7 @@ jobs:
           KEY_SET: ${{ secrets.ANTHROPIC_API_KEY != '' }}
         run: |
           if [ "$KEY_SET" != "true" ]; then
-            echo "::error::Set the ANTHROPIC_API_KEY repository secret first."; exit 1
+            echo "::error::Set ANTHROPIC_API_KEY in the main-only environment first."; exit 1
           fi
       - run: python -m pip install -r requirements-dev.txt
       - name: Install mitmproxy (the key gateway's proxy)

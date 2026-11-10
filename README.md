@@ -731,7 +731,7 @@ rejects outright, and the text of a reply that did arrive was read by the config
 than by the shape `chat_completion` had already normalised it into, so every answer came back empty
 — triage recorded the model as its source and wrote an empty bug report. Both failed triage, the
 `llm-patch` fixer, spec drafting and `byo-vlm` alike. `.github/workflows/byo-smoke.yml` now sends one
-real prompt to every provider whose key is set, daily and on changes to the provider layer, because
+real prompt to every provider whose key is set, daily and on dispatch from main, because
 nothing short of a live call catches either fault. One live end-to-end run now exists on that path — Claude triaged, Claude Code fixed under
 bubblewrap, a Godot replay judged it on the engine trace, and the verifier accepted on the first
 attempt. It is one accept on one seeded defect, so it is evidence the path runs, and no result.

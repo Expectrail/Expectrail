@@ -3,7 +3,7 @@
 # the checks API), in the sam-probe artifact, and on the sam-probe-results branch (probe.json,
 # probe.md and contact sheets; per-frame overlays stay in the artifact). See docs/sam.md.
 #
-# Uses the MODEL_API_KEY repo secret, or META_API_KEY when that is the only one set. Never runs on
+# Uses MODEL_API_KEY from the main-only environment, or META_API_KEY when that is the only one set. Never runs on
 # pull requests, so the key is never exposed to forks. Probe mode never fetches the private held-out
 # set; verify and heldout-bench modes do, and publish only verdicts (see those jobs).
 name: SAM probe
@@ -51,6 +51,7 @@ permissions:
 
 jobs:
   sam-probe:
+    environment: main-only
     if: ${{ inputs.mode == 'probe' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -60,7 +61,7 @@ jobs:
       - name: Require a Meta Model API key secret
         if: env.SAM_KEY_SET != 'true'
         run: |
-          echo "::error::Set the MODEL_API_KEY (or META_API_KEY) repository secret first."
+          echo "::error::Set MODEL_API_KEY (or META_API_KEY) in the main-only environment first."
           exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -129,6 +130,7 @@ jobs:
 
   # Public runs only (the smoke route): a video of a held-out route would be the route itself.
   sam-video:
+    environment: main-only
     if: ${{ inputs.mode == 'video-compare' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -138,7 +140,7 @@ jobs:
       - name: Require a Meta Model API key secret
         if: env.SAM_KEY_SET != 'true'
         run: |
-          echo "::error::Set the MODEL_API_KEY (or META_API_KEY) repository secret first."
+          echo "::error::Set MODEL_API_KEY (or META_API_KEY) in the main-only environment first."
           exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -232,7 +234,7 @@ jobs:
   # uploaded only after the export scan (with the private set) finds nothing. The private routes
   # appear in the record as counts only; their frames, names and verdict file never leave.
   sam-verify:
-    environment: heldout
+    environment: main-only
     if: ${{ inputs.mode == 'verify' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -243,7 +245,7 @@ jobs:
       - name: Require a Meta Model API key secret
         if: env.SAM_KEY_SET != 'true'
         run: |
-          echo "::error::Set the MODEL_API_KEY (or META_API_KEY) repository secret first."
+          echo "::error::Set MODEL_API_KEY (or META_API_KEY) in the main-only environment first."
           exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -355,7 +357,7 @@ jobs:
   # counts and verdicts. mode=dev-bench runs the public development variants (ids dev/<family>/vN)
   # through the same jobs, routes and checks, so both sets are measured the same way.
   heldout-list:
-    environment: heldout
+    environment: main-only
     if: ${{ inputs.mode == 'heldout-bench' || inputs.mode == 'dev-bench' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -367,7 +369,7 @@ jobs:
       - name: Require the held-out token
         if: env.HELDOUT_TOKEN_SET != 'true'
         run: |
-          echo "::error::Set HELDOUT_TOKEN in the heldout environment (main only) so the benchmark can read the private held-out set."
+          echo "::error::Set HELDOUT_TOKEN in the main-only environment so the benchmark can read the private held-out set."
           exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -396,7 +398,7 @@ jobs:
           echo "variants: $variants"
 
   heldout-bench:
-    environment: heldout
+    environment: main-only
     needs: heldout-list
     runs-on: ubuntu-24.04
     # Glimmer on one shared replica answers about one frame a second across the parallel jobs.
@@ -415,10 +417,10 @@ jobs:
       - name: Require the judge's key secret
         run: |
           if [ "$JUDGE" = "glimmer-engine" ]; then
-            [ "$FIREWORKS_KEY_SET" = "true" ] || { echo "::error::Set the FIREWORKS_API_KEY repository secret first."; exit 1; }
+            [ "$FIREWORKS_KEY_SET" = "true" ] || { echo "::error::Set FIREWORKS_API_KEY in the main-only environment first."; exit 1; }
             [[ "$GLIMMER_MODEL" =~ ^accounts/[A-Za-z0-9_-]+/deployments/[A-Za-z0-9_-]+$ ]] || { echo "::error::Set the GLIMMER_MODEL repo variable to accounts/<account>/deployments/<id>."; exit 1; }
           elif [ "$SAM_KEY_SET" != "true" ]; then
-            echo "::error::Set the MODEL_API_KEY (or META_API_KEY) repository secret first."
+            echo "::error::Set MODEL_API_KEY (or META_API_KEY) in the main-only environment first."
             exit 1
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

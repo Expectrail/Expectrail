@@ -52,41 +52,41 @@ jobs:
           echo "variants=$variants" >> "$GITHUB_OUTPUT"
           echo "variants: $variants"
 
+  # Two jobs that share their steps (YAML anchors). `reported-bench` holds no key: it runs on pull
+  # requests and on a dispatch without SAM, judging from traces. `reported-bench-sam` is the only one
+  # that holds the SAM key, and it runs only from main, in the main-only environment that holds it.
   reported-bench:
+    if: ${{ github.event_name == 'pull_request' || !inputs.sam }}
     needs: reported-list
     name: reported-bench (${{ matrix.variant }})
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    strategy:
+    strategy: &reported_strategy
       fail-fast: false
       matrix:
         variant: ${{ fromJSON(needs.reported-list.outputs.variants) }}
-    env:
-      SAM: ${{ inputs.sam && 'true' || 'false' }}
-      SAM_KEY_SET: ${{ secrets.MODEL_API_KEY != '' || secrets.META_API_KEY != '' }}
     steps:
-      - name: Require the SAM key when SAM is on
-        if: env.SAM == 'true' && env.SAM_KEY_SET != 'true'
-        run: |
-          echo "::error::Set the MODEL_API_KEY (or META_API_KEY) repository secret first."
-          exit 1
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - &checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - &python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.13'
-      - run: python -m pip install -r requirements-dev.txt
-      - name: Install a virtual display and software OpenGL
+      - &deps
+        run: python -m pip install -r requirements-dev.txt
+      - &display
+        name: Install a virtual display and software OpenGL
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 patch
-      - name: Download Godot 4.7.2 and check its SHA-512
+      - &godot
+        name: Download Godot 4.7.2 and check its SHA-512
         run: ./harness/get_godot.sh
       - name: Render and judge
         env:
-          MODEL_API_KEY: ${{ inputs.sam && (secrets.MODEL_API_KEY || secrets.META_API_KEY) || '' }}
-          EXPECTRAIL_OBS_PROVIDER: ${{ inputs.sam && 'sam' || 'trace' }}
+          EXPECTRAIL_OBS_PROVIDER: trace
           VARIANT: ${{ matrix.variant }}
-        run: |
+        run: &judge |
           [[ "$VARIANT" =~ ^[a-z0-9-]+$ ]] || { echo "::error::unexpected variant id"; exit 1; }
           start=$(date +%s)
           # The bench exits non-zero when a check could not decide, so the counts are still published
@@ -107,7 +107,8 @@ jobs:
             echo "::error title=Reported bench ${VARIANT} error::a check could not decide or the bench failed (exit $code)"
             exit "$code"
           fi
-      - name: Keep the verdicts and traces
+      - &keep
+        name: Keep the verdicts and traces
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -118,3 +119,32 @@ jobs:
             bench.log
           if-no-files-found: ignore
           retention-days: 14
+
+  reported-bench-sam:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.sam }}
+    needs: reported-list
+    environment: main-only
+    name: reported-bench-sam (${{ matrix.variant }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy: *reported_strategy
+    env:
+      SAM_KEY_SET: ${{ secrets.MODEL_API_KEY != '' || secrets.META_API_KEY != '' }}
+    steps:
+      - name: Require the SAM key
+        if: env.SAM_KEY_SET != 'true'
+        run: |
+          echo "::error::Set MODEL_API_KEY (or META_API_KEY) in the main-only environment first."
+          exit 1
+      - *checkout
+      - *python
+      - *deps
+      - *display
+      - *godot
+      - name: Render and judge
+        env:
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY || secrets.META_API_KEY }}
+          EXPECTRAIL_OBS_PROVIDER: sam
+          VARIANT: ${{ matrix.variant }}
+        run: *judge
+      - *keep
