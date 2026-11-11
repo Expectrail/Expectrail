@@ -62,8 +62,15 @@ jobs:
               fh.write(f"cases={json.dumps(cases)}\nconditions={json.dumps(conds)}\n")
           print(cases, conds)
           PY
+      # Playwright's --with-deps calls apt itself, which fails when Ubuntu's mirror is down. The fonts are
+      # the only packages it adds to the ubuntu-24.04 runner image (read from its log on November 11);
+      # they go through apt-install, and Chromium's libraries are already on the image.
+      - name: Fonts Chromium renders with
+        uses: ./.github/actions/apt-install
+        with:
+          packages: fonts-freefont-ttf fonts-ipafont-gothic fonts-tlwg-loma-otf fonts-unifont fonts-wqy-zenhei xfonts-cyrillic xfonts-encodings xfonts-scalable xfonts-utils
       - name: Install Chromium for Playwright
-        run: python -m playwright install --with-deps chromium
+        run: python -m playwright install chromium
       - name: Fetch the private held-out set (verifier side only)
         if: env.HELDOUT_TOKEN_SET == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -121,8 +128,15 @@ jobs:
         with:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt -r requirements-web.txt
+      # Playwright's --with-deps calls apt itself, which fails when Ubuntu's mirror is down. The fonts are
+      # the only packages it adds to the ubuntu-24.04 runner image (read from its log on November 11);
+      # they go through apt-install, and Chromium's libraries are already on the image.
+      - name: Fonts Chromium renders with
+        uses: ./.github/actions/apt-install
+        with:
+          packages: fonts-freefont-ttf fonts-ipafont-gothic fonts-tlwg-loma-otf fonts-unifont fonts-wqy-zenhei xfonts-cyrillic xfonts-encodings xfonts-scalable xfonts-utils
       - name: Install Chromium for Playwright
-        run: python -m playwright install --with-deps chromium
+        run: python -m playwright install chromium
       - name: Install bubblewrap
         uses: ./.github/actions/apt-install
         with:

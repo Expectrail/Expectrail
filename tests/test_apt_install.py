@@ -182,6 +182,21 @@ class EveryWorkflowUsesIt(unittest.TestCase):
                 self.assertNotRegex(code, r"\bapt(-get)?\s+(update|install)\b",
                                     f"{path.name}:{number}: use ./.github/actions/apt-install")
 
+    def test_no_workflow_lets_playwright_call_apt(self):
+        # `playwright install --with-deps` runs apt-get itself. It failed the required check web-capture
+        # on November 11 while every direct apt-get had already been replaced.
+        for path in WORKFLOWS:
+            text = path.read_text(encoding="utf-8")
+            code = "\n".join(line.split("#", 1)[0] for line in text.splitlines())
+            self.assertNotIn("--with-deps", code, path.name)
+            self.assertNotIn("install-deps", code, path.name)
+            doc = yaml.safe_load(text)
+            for name, job in (doc.get("jobs") or {}).items():
+                steps = job.get("steps") or []
+                if any("playwright install" in str(s.get("run", "")) for s in steps):
+                    fonts = " ".join(str((s.get("with") or {}).get("packages", "")) for s in steps)
+                    self.assertIn("fonts-freefont-ttf", fonts, f"{path.name}#{name}: Chromium's fonts")
+
     def test_the_repository_is_checked_out_before_the_local_action(self):
         used = 0
         for path in WORKFLOWS:
