@@ -1,0 +1,11 @@
+--- a/player/player.tscn
++++ b/player/player.tscn
+@@ -228,7 +228,7 @@
+ process_callback = 0
+ limit_left = -715
+ limit_top = -250
+-limit_right = 1425
++limit_right = 700
+ limit_bottom = 690
+ 
+ [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1531075157]

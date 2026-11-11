@@ -1,0 +1,9 @@
+--- a/gui/coins_counter.gd
++++ b/gui/coins_counter.gd
+@@ -12,5 +12,5 @@
+ 
+ 
+ func collect_coin() -> void:
+-	_coins_collected += 1
++	_coins_collected += 2
+ 	_coins_label.set_text(str(_coins_collected))

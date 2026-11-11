@@ -1,0 +1,25 @@
+{
+ "format": "expectrail.repro-bench/v1",
+ "description": "An example with two of the public bench's defects.",
+ "game": "game/platformer",
+ "defects": [
+  {
+   "id": "air-jump",
+   "family": "movement-input",
+   "patch": "bugs/reported/air-jump.patch",
+   "report": "bench/jit/known/air-jump/report.txt",
+   "origin": "reported",
+   "authorExpects": "both",
+   "tunedOn": true
+  },
+  {
+   "id": "slow-left",
+   "family": "movement-input",
+   "patch": "bench/jit/public/slow-left/defect.patch",
+   "report": "bench/jit/public/slow-left/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "both",
+   "tunedOn": false
+  }
+ ]
+}

@@ -1,0 +1,11 @@
+--- a/player/player.gd
++++ b/player/player.gd
+@@ -32,7 +32,7 @@
+ 		try_jump()
+ 	elif Input.is_action_just_released("jump" + action_suffix) and velocity.y < 0.0:
+ 		# The player let go of jump early, reduce vertical momentum.
+-		velocity.y *= 0.6
++		velocity.y *= 1.0
+ 	# Fall.
+ 	velocity.y = minf(TERMINAL_VELOCITY, velocity.y + gravity * delta)
+ 

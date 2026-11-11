@@ -1,0 +1,11 @@
+--- a/player/player.tscn
++++ b/player/player.tscn
+@@ -227,7 +227,7 @@
+ offset = Vector2(0, 50)
+ process_callback = 0
+ limit_left = -715
+-limit_top = -250
++limit_top = 200
+ limit_right = 1425
+ limit_bottom = 690
+ 

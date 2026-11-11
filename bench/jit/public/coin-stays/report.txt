@@ -1,0 +1,1 @@
+Coins don't disappear when I collect them. I hear nothing, the coin stays where it is, and if I walk away and back through it the counter goes up again.

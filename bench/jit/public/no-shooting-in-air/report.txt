@@ -1,0 +1,1 @@
+I can't shoot while jumping. The gun only fires when the robot is standing on something; in the air pressing shoot does nothing.

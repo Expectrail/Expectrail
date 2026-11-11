@@ -1,0 +1,8 @@
+--- a/level/coin.gd
++++ b/level/coin.gd
+@@ -7,5 +7,4 @@
+ 
+ 
+ func _on_body_entered(body: Node2D) -> void:
+-	animation_player.play(&"picked")
+ 	(body as Player).coin_collected.emit()

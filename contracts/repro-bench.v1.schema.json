@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/repro-bench.v1.schema.json",
+  "title": "expectrail.repro-bench/v1",
+  "description": "The public reproduction bench: defects of one game, each a patch against the clean game and a bug report written as a player would write it. Read by expectrail.repro.bench. It holds no result: results are records made from runs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "description", "game", "defects"],
+  "$defs": {
+    "text": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "path": {
+      "type": "string",
+      "maxLength": 200,
+      "pattern": "^(bench|bugs)/[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$",
+      "not": { "pattern": "(^|/)\\.\\.?(/|$)" },
+      "description": "A file in this repository under bench/ or bugs/. The reader (expectrail.repro.bench) also refuses a path with a part that names held-out material, and any path reached through a link."
+    }
+  },
+  "properties": {
+    "format": { "const": "expectrail.repro-bench/v1" },
+    "description": { "$ref": "#/$defs/text" },
+    "game": { "const": "game/platformer", "description": "The clean game every patch applies to." },
+    "defects": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "family", "patch", "report", "origin", "authorExpects", "tunedOn"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 60 },
+          "family": {
+            "enum": ["collision-physics", "movement-input", "state-counters", "visibility-rendering",
+                     "layering-draw-order", "assets", "camera-viewport", "timing-cooldowns",
+                     "spawning-enemies", "hud-text"],
+            "description": "The defect families of issue #282, section 3."
+          },
+          "patch": { "$ref": "#/$defs/path", "description": "The defect, a unified diff against the game (-p1)." },
+          "report": { "$ref": "#/$defs/path", "description": "The bug report, a text file in a player's words." },
+          "origin": {
+            "enum": ["reported", "written-for-bench"],
+            "description": "reported: a reproduction of a publicly reported bug (bugs/reported/). written-for-bench: written by the team for this bench."
+          },
+          "authorExpects": {
+            "enum": ["trace", "screen", "both"],
+            "description": "Where the author expects the defect to show: in the engine's record, only on screen, or both. A label written before any run, not a measurement."
+          },
+          "tunedOn": {
+            "type": "boolean",
+            "description": "True when probes or signals were designed while looking at this defect, so reproducing it shows less."
+          }
+        }
+      }
+    }
+  }
+}

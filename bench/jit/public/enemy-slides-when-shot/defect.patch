@@ -1,0 +1,10 @@
+--- a/enemy/enemy.gd
++++ b/enemy/enemy.gd
+@@ -44,7 +44,6 @@
+ 
+ func destroy() -> void:
+ 	_state = State.DEAD
+-	velocity = Vector2.ZERO
+ 
+ 
+ func get_new_animation() -> StringName:

@@ -1,0 +1,1 @@
+The coin counter is wrong. I picked up three coins and the pause menu says 6. Every coin seems to count double.

@@ -1,0 +1,11 @@
+--- a/player/player.tscn
++++ b/player/player.tscn
+@@ -216,7 +216,7 @@
+ stream = ExtResource("6")
+ 
+ [node name="Cooldown" type="Timer" parent="Sprite2D/Gun" unique_id=935250789]
+-wait_time = 0.3
++wait_time = 1.5
+ one_shot = true
+ 
+ [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=615569074]

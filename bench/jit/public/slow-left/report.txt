@@ -1,0 +1,1 @@
+The robot walks left much slower than it walks right. Going right feels normal, going back left is about half speed.
