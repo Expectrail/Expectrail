@@ -48,12 +48,13 @@ class LedgerTest(unittest.TestCase):
         for row, ev in cited:
             self.assertIn("conclusion", ev, row["id"])
             if ev["conclusion"] != "success":
-                self.assertEqual(row["status"], "experimental", row["id"])
+                self.assertIn(row["status"], ("experimental", "implemented"), row["id"])
+                self.assertTrue(ev.get("conclusionNote"), row["id"])
 
     def test_the_unity_row_says_its_specs_are_approved_and_cites_runs_that_passed(self):
         row = _row(self.doc, "unity-harness")
         self.assertEqual(row["status"], "experimental")
-        self.assertIn("approved the three specs", row["limits"])
+        self.assertIn("are approved (#235)", row["limits"])
         self.assertNotIn("draft", row["mode"].lower())
         runs = [e for e in row["evidence"] if e["kind"] == "run"]
         self.assertEqual({e["conclusion"] for e in runs}, {"success"})
@@ -98,7 +99,7 @@ class RowRulesTest(unittest.TestCase):
         self.assertEqual(cap.row_problems(self.doc), ["godot-verify: marked measured with no CI run link"])
 
     def test_a_measured_or_integrated_row_that_cites_a_failed_run_fails(self):
-        for rid, status in (("godot-verify", "measured"), ("ci-gate", "integrated"), ("feedback-intake", "implemented")):
+        for rid, status in (("godot-verify", "measured"), ("ci-gate", "integrated")):
             doc = copy.deepcopy(self.doc)
             run = next(e for e in _row(doc, rid)["evidence"] if e["kind"] == "run")
             run["conclusion"] = "failure"
@@ -114,8 +115,46 @@ class RowRulesTest(unittest.TestCase):
     def test_an_experimental_row_may_cite_a_failed_run_and_the_page_says_it_failed(self):
         row = _row(self.doc, "cocos-trial")
         self.assertEqual((row["status"], row["evidence"][0]["conclusion"]), ("experimental", "failure"))
-        self.assertIn("(https://github.com/Expectrail/Expectrail/actions/runs/42680755693), which ended in failure:",
-                      cap.render(self.doc))
+        self.assertIn(". The run ended in failure: " + row["evidence"][0]["conclusionNote"], cap.render(self.doc))
+
+    def test_a_run_with_no_recorded_conclusion_fails(self):
+        run = next(e for e in _row(self.doc, "godot-verify")["evidence"] if e["kind"] == "run")
+        del run["conclusion"]
+        self.assertEqual(cap.row_problems(self.doc), [f"godot-verify: no recorded conclusion for {run['ref']}"])
+
+    def test_a_failed_run_cited_without_a_reason_fails(self):
+        # What let two failed Unity runs through review of #275: a link was accepted without a look.
+        run = next(e for e in _row(self.doc, "unity-harness")["evidence"] if e["kind"] == "run")
+        run["conclusion"] = "failure"
+        found = cap.row_problems(self.doc)
+        self.assertEqual(len(found), 1)
+        self.assertIn("ended in failure without saying why", found[0])
+        run["conclusionNote"] = "The failure is the result under test."
+        self.assertEqual(cap.row_problems(self.doc), [])
+        self.assertIn("The run ended in failure: The failure is the result under test.", cap.render(self.doc))
+
+    def test_a_reason_does_not_let_a_measured_or_integrated_row_cite_a_failed_run(self):
+        run = next(e for e in _row(self.doc, "judge-fallback")["evidence"] if e["kind"] == "run")
+        run["conclusion"], run["conclusionNote"] = "failure", "The failure is the result."
+        number = run["ref"].split("/runs/")[1]
+        self.assertEqual(cap.row_problems(self.doc),
+                         [f"judge-fallback: marked integrated and cites run {number}, recorded as failure"])
+
+    def test_measured_with_no_successful_run_fails(self):
+        for run in _row(self.doc, "godot-verify")["evidence"]:
+            if run["kind"] == "run":
+                run["conclusion"], run["conclusionNote"] = "failure", "explained"
+        found = cap.row_problems(self.doc)
+        self.assertEqual(found[0], "godot-verify: marked measured and no cited run ended in success")
+        # Stricter than the first version of this test: each failed run is also reported on its own.
+        self.assertEqual(len(found), 3)
+        self.assertTrue(all("recorded as failure" in line for line in found[1:]), found)
+
+    def test_the_unity_specs_are_not_called_drafts(self):
+        row = _row(self.doc, "unity-harness")
+        self.assertNotIn("no person has approved", row["limits"])
+        for path in sorted((ROOT / "specs" / "unity").glob("*.json")):
+            self.assertIn("approval", json.loads(path.read_text(encoding="utf-8")), path.name)
 
     def test_the_wall_time_may_not_rest_on_a_failed_run(self):
         self.doc["timings"][0]["conclusion"] = "failure"
@@ -132,6 +171,9 @@ class RowRulesTest(unittest.TestCase):
         extra = copy.deepcopy(self.doc)
         next(e for e in _row(extra, "ci-gate")["evidence"] if e["kind"] == "test")["conclusion"] = "success"
         self.assertTrue(list(validator.iter_errors(extra)))
+        note = copy.deepcopy(self.doc)
+        next(e for e in _row(note, "ci-gate")["evidence"] if e["kind"] == "test")["conclusionNote"] = "x"
+        self.assertTrue(list(validator.iter_errors(note)))
         unknown = copy.deepcopy(self.doc)
         next(e for e in _row(unknown, "ci-gate")["evidence"] if e["kind"] == "run")["conclusion"] = "green"
         self.assertTrue(list(validator.iter_errors(unknown)))

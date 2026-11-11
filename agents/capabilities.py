@@ -7,7 +7,8 @@ believe exists. This module reads it, checks it, and renders ``docs/capabilities
     python3 -m agents.capabilities render    # rewrite docs/capabilities.md
 
 ``problems`` is what the test suite runs. It fails when a ``measured`` row has no CI run link, when
-a row that is not experimental cites a run recorded as anything but success, when a row points at
+a measured or integrated row cites a run recorded as anything but success (any other row must say why
+such a run is evidence), when a row points at
 a file that is not there, and when the README or the site names a command, a switch, a workflow, a
 doc page or a watched name that no row lists. A run's conclusion is the value recorded in the
 ledger when the row was written; nothing here calls GitHub.
@@ -87,13 +88,22 @@ def row_problems(doc: dict, root: Path = ROOT) -> list[str]:
             out.append(f"{rid}: saved or synthetic data is not a measurement (grade fixture, status measured)")
         if row["grade"] == "protected":
             out.append(f"{rid}: the protected grade is reserved until capture the game cannot forge exists")
+        runs = [e for e in row["evidence"] if e["kind"] == "run"]
+        if row["status"] == "measured" and runs and not any(e.get("conclusion") == "success" for e in runs):
+            out.append(f"{rid}: marked measured and no cited run ended in success")
         for ev in row["evidence"]:
             if ev["kind"] == "run":
                 if not _RUN.match(ev["ref"]):
                     out.append(f"{rid}: not a CI run link: {ev['ref']}")
-                elif row["status"] != "experimental" and ev.get("conclusion") != "success":
-                    out.append(f"{rid}: marked {row['status']} and cites run {_number(ev['ref'])}, "
-                               f"recorded as {ev.get('conclusion', 'unread')}")
+                elif "conclusion" not in ev:
+                    out.append(f"{rid}: no recorded conclusion for {ev['ref']}")
+                elif ev["conclusion"] != "success":
+                    if row["status"] in ("measured", "integrated"):
+                        out.append(f"{rid}: marked {row['status']} and cites run {_number(ev['ref'])}, "
+                                   f"recorded as {ev['conclusion']}")
+                    elif not ev.get("conclusionNote"):
+                        out.append(f"{rid}: cites a run that ended in {ev['conclusion']} without saying why it is "
+                                   f"evidence: {ev['ref']}")
             elif not (root / ev["ref"].split("#", 1)[0]).exists():
                 out.append(f"{rid}: evidence file not found: {ev['ref']}")
         for module in row["entryPoints"]:
@@ -196,8 +206,10 @@ def _link(ref: str) -> str:
 
 def _evidence(ev: dict) -> str:
     if ev["kind"] == "run":
-        ended = "" if ev["conclusion"] == "success" else f", which ended in {ev['conclusion'].replace('_', ' ')}"
-        return f"[run {_number(ev['ref'])}]({ev['ref']}){ended}: {ev['shows']}"
+        text = f"[run {_number(ev['ref'])}]({ev['ref']}): {ev['shows']}"
+        if ev.get("conclusion", "success") != "success":
+            text += f". The run ended in {ev['conclusion'].replace('_', ' ')}: {ev.get('conclusionNote', 'no reason given')}"
+        return text
     return f"{_link(ev['ref'])}: {ev['shows']}"
 
 
@@ -222,8 +234,9 @@ def render(doc: dict) -> str:
         "the site names a command, a switch, a workflow, a doc page or a watched name that no row lists.",
         "",
         "Every run link carries the run's conclusion as GitHub's API gave it when the row was written. The",
-        "test reads that recorded value, not GitHub: a row that is not experimental may cite only runs",
-        "recorded as success, and a run that ended any other way says so beside its link.",
+        "test reads that recorded value, not GitHub. A measured or integrated row may cite only runs",
+        "recorded as success. Any other row that cites a run that ended another way says so beside the",
+        "link, with the reason it is evidence all the same.",
         "",
         f"Last changed {doc['updated']}. {len(doc['rows'])} rows: "
         + ", ".join(f"{counts[s]} {s}" for s in doc["statuses"]) + ". By grade: "

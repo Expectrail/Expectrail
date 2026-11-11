@@ -90,7 +90,7 @@ routes appear as counts only; the schema has no field for anything else about th
 `capabilities` (`expectrail.capabilities/v1`,
 [`docs/capabilities.schema.json`](capabilities.schema.json)) is the one record
 of how far each advertised mode is proven: [`docs/capabilities.json`](capabilities.json), rendered as
-[capabilities.md](capabilities.md). The example is two rows of the real ledger.
+[capabilities.md](capabilities.md). The example is two rows of the real ledger. Each cited run records how it ended (`conclusion`), read from GitHub when the row was written; a run that did not end in success needs a `conclusionNote` saying why it is evidence all the same, and only an implemented or experimental row may cite one.
 
 | Record | Written by | Read by |
 | --- | --- | --- |
@@ -101,7 +101,7 @@ It is not in `expectrail.contracts.KINDS`, and neither its schema nor its reader
 `contracts/*.json` and `expectrail/**/*.py`, a new file there moves a pin, and only a person re-registers.
 So the schema sits beside the ledger in `docs/` and the reader is `agents/capabilities.py`. The schema fixes the shape, the four statuses and the four
 grades. `agents.capabilities.problems` checks what a schema cannot: a `measured` row links a CI
-run, a row that is not experimental cites only runs whose recorded `conclusion` is success, every file a
+run, a measured or integrated row cites only runs whose recorded `conclusion` is success, every file a
 row points at exists, the `protected` grade is refused, and every command, switch,
 workflow, doc page and watched name in the README or `docs/index.html` belongs to a row.
 

@@ -32,13 +32,17 @@
           "$ref": "#/$defs/conclusion",
           "description": "For a run: how the run ended, as GitHub's API reported it when the row was written. A recorded value; nothing re-reads it."
         },
+        "conclusionNote": {
+          "$ref": "#/$defs/text",
+          "description": "Required when a cited run did not end in success: why it is evidence all the same. Only an implemented or experimental row may cite such a run."
+        },
         "shows": { "$ref": "#/$defs/text" }
       },
       "allOf": [
         {
           "if": { "properties": { "kind": { "const": "run" } } },
           "then": { "required": ["conclusion"], "properties": { "ref": { "$ref": "#/$defs/runUrl" } } },
-          "else": { "properties": { "ref": { "$ref": "#/$defs/repoPath" }, "conclusion": false } }
+          "else": { "properties": { "ref": { "$ref": "#/$defs/repoPath" }, "conclusion": false, "conclusionNote": false } }
         }
       ]
     },

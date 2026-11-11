@@ -137,7 +137,7 @@
     },
     {
       "id": "unity-harness",
-      "mode": "Unity harness and specs",
+      "mode": "Unity harness and approved specs",
       "profile": "Unity, the Platformio game, on GitHub Actions",
       "observer": "The engine's record (renderer bounds, the ground tilemap); SAM 3.1 probed, not scored",
       "entryPoints": [
@@ -179,7 +179,7 @@
           "shows": "the harness against a fake player: a short, gapped or malformed trace fails the run"
         }
       ],
-      "limits": "Parked until after the fund. A person has approved the three specs in specs/unity/, but no seeded Unity bug has been judged against them, the verifier is not wired to them, and SAM is not scored on this game's art. docs/unity.md cites runs 42754753371 and 42758198963 for its calibration numbers; both ended in failure, so this row does not rest on them."
+      "limits": "Parked until after the fund. The three specs in specs/unity/ are approved (#235), but no seeded Unity bug has been judged against them, the verifier is not wired to them, and SAM is not scored on this game's art. docs/unity.md cites runs 42754753371 and 42758198963 for its calibration numbers; both ended in failure, so this row does not rest on them."
     },
     {
       "id": "web-checkout",
@@ -883,7 +883,8 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42680755693",
           "conclusion": "failure",
-          "shows": "the run docs/cocos-trial.md cites for the build running in Chromium; its one job, trial, ended in failure"
+          "conclusionNote": "The run ended in failure; docs/cocos-trial.md says which steps worked and which did not.",
+          "shows": "the trial run docs/cocos-trial.md cites for the build running in Chromium; its one job, trial, ended in failure"
         },
         {
           "kind": "record",
