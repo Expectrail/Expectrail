@@ -128,12 +128,18 @@
           "shows": "the comment workflow completed with success after it"
         },
         {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42942805407",
+          "conclusion": "success",
+          "shows": "blind set 3, at 0906f29: the gate with the approved checks alone accepted all 34 candidates, so it caught 0 of 8 wrong fixes; it also rejected none of the 8 correct fixes or 2 intentional changes"
+        },
+        {
           "kind": "test",
           "ref": "tests/test_ci_gate.py",
           "shows": "finding ids that stay the same across pushes, and that the comment job's reader refuses a malformed or oversized artifact"
         }
       ],
-      "limits": "This row cites no run on a project the team did not write (#263). The candidate job's replay is not sandboxed (#253) and the verdict is not signed (#255). No catch rate or runtime is published for it."
+      "limits": "On blind set 3 the approved checks covered none of the eight defects: what the gate catches is bounded by the checks a project has. This row cites no run on a project the team did not write (#263). The candidate job's replay is not sandboxed (#253) and the verdict is not signed (#255). No catch rate or runtime is published for it."
     },
     {
       "id": "unity-harness",
@@ -458,6 +464,7 @@
         "expectrail.jit.cli"
       ],
       "workflows": [
+        "jit-blind.yml",
         "jit.yml"
       ],
       "docs": [
@@ -466,6 +473,17 @@
       "grade": "diagnostic",
       "status": "experimental",
       "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42942805407",
+          "conclusion": "success",
+          "shows": "blind set 3, at 0906f29: with generated checks added, 3 of 8 wrong fixes caught against 0 of 8 with the approved checks alone; no false catch on 8 correct fixes and 2 intentional changes; $3.67 for 34 candidates"
+        },
+        {
+          "kind": "record",
+          "ref": "bench/jit/blind-3/preregistration.json",
+          "shows": "the registration signed before the run, its amendments, and the recorded result"
+        },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42908014398",
@@ -483,7 +501,7 @@
           "shows": "the keep rule on a simulated game: a check is valid only if it passes the reference three times of three and kills a near miss"
         }
       ],
-      "limits": "Nothing is measured. Report-only: a generated check cannot reject a change."
+      "limits": "One blind run on eight defects in one game: evidence, not a rate. On 5 of the 8 defects the generator wrote no check that reproduced the defect. Report-only: a generated check cannot reject a change, and there is no path yet to promote one (#271)."
     },
     {
       "id": "discovery",
