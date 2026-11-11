@@ -140,6 +140,15 @@ class Score(unittest.TestCase):
         rows[0]["jitStatus"] = "nothing-generated"
         self.assertEqual(blind.score(rows)["verdict"], "incomplete")
 
+    def test_missing_rows_are_incomplete_never_no_added_value(self):
+        # Blind run 42939008550: every entry job failed before writing a row, and the score said
+        # "no-added-value" on zero rows.
+        self.assertEqual(blind.score([])["verdict"], "incomplete")
+        rows = [r for r in self.rows() if r["cid"] != "h04-wrong"]
+        doc = blind.score(rows)
+        self.assertEqual((doc["verdict"], doc["missingPrimary"]), ("incomplete", 1))
+        self.assertIn("1 of the 18 primary candidates have no row", blind.render(doc))
+
     def test_supplementary_never_mixes_into_primary_and_weak_does_not_count(self):
         rows = [r for r in self.rows() if r["source"] == "primary"]
         for r in rows:
@@ -179,6 +188,8 @@ class Workflow(unittest.TestCase):
         uploads = [s["with"]["path"] for j in doc["jobs"].values() for s in j["steps"] if "upload-artifact" in str(s.get("uses"))]
         self.assertEqual(uploads, ["public/${{ matrix.id }}/public-rows.json", "runs/blind-score/"])
         self.assertIn('> "runs/blind-$ID.log" 2>&1', text)
+        # The log's folder exists before the redirect (blind run 42939008550 failed there, in 0 s).
+        self.assertLess(text.index('mkdir -p "runs/blind/$ID"'), text.index('> "runs/blind-$ID.log"'))
 
 
 if __name__ == "__main__":
