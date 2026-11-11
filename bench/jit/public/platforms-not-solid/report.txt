@@ -1,0 +1,1 @@
+The robot falls straight through the floating platforms. I can stand on the ground fine, but when I jump onto one of the moving platforms I drop right through it.

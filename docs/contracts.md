@@ -106,6 +106,27 @@ A wall time in the ledger may carry `phases` (import, replay, evaluate, other), 
 `timing.json`, with `phasesFrom` saying where in the run they can be read. The check fails when the
 phases do not add up to the whole.
 
+## The public reproduction bench (added November 11)
+
+Two records for issue #285, both about public defects only.
+
+| Record | Written by | Read by |
+| --- | --- | --- |
+| `repro-bench` (`expectrail.repro-bench/v1`, [`contracts/repro-bench.v1.schema.json`](../contracts/repro-bench.v1.schema.json), example [`repro-bench.json`](../contracts/examples/repro-bench.json)) | By hand: [`bench/jit/public/defects.json`](../bench/jit/public/defects.json) | `expectrail.repro.bench.load`, `python3 -m expectrail.repro check` |
+| `repro-visibility` (`expectrail.repro-visibility/v1`, [`contracts/repro-visibility.v1.schema.json`](../contracts/repro-visibility.v1.schema.json); the committed record [`bench/jit/public/visibility.json`](../bench/jit/public/visibility.json) is the example) | `python3 -m expectrail.repro visibility` | `expectrail.repro.visibility.load`, `python3 -m expectrail.repro render` |
+
+A bench entry is a defect id, its family, a patch against the clean game, a bug report, where its
+author expects it to show, and whether probes or signals were designed around it. The reader refuses
+a path outside `bench/` and `bugs/`, any path with a part that starts with `fresh`, a link, an id or a patch listed
+twice, an empty report, and a patch that names a file the game does not have. The bench holds no
+result.
+
+A visibility record says, per defect, what replaying the library probes on the defect build changed against
+the clean game: the signals that moved, the fields of the engine's record that differ, and one of
+`signal`, `trace-only`, `none` or `error`. The reader recomputes that label and the totals from the
+rows and refuses a record where they disagree. It says what the library probes can see, not how often a defect is reproduced, and has
+no field for a rate.
+
 ## Wall time per phase (added November 11)
 
 `verify-timing` (`expectrail.verify-timing/v1`,

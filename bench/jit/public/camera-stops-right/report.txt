@@ -1,0 +1,1 @@
+When I walk towards the right side of the level the camera stops following and the robot walks off the edge of the screen. I can't see where I am over there.

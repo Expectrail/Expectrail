@@ -1,0 +1,8 @@
+--- a/player/bullet.gd
++++ b/player/bullet.gd
+@@ -11,4 +11,4 @@
+ 
+ func _on_body_entered(body: Node) -> void:
+ 	if body is Enemy:
+-		(body as Enemy).destroy()
++		destroy()

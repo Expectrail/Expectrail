@@ -1,0 +1,1 @@
+When I shoot an enemy it doesn't stop. It keeps sliding along the platform while it's blowing up.

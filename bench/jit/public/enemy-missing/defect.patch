@@ -1,0 +1,13 @@
+--- a/level/level.tscn
++++ b/level/level.tscn
+@@ -1333,10 +1333,6 @@
+ z_index = 2
+ position = Vector2(492, 610)
+ 
+-[node name="Enemy4" parent="Enemies" unique_id=2135398607 instance=ExtResource("2")]
+-z_index = 2
+-position = Vector2(395, 53)
+-
+ [node name="ParallaxBackground" parent="." unique_id=1950798943 instance=ExtResource("7")]
+ 
+ [node name="Trees" type="Node" parent="." unique_id=558591329]

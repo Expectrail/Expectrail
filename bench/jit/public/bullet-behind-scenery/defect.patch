@@ -1,0 +1,11 @@
+--- a/player/bullet.tscn
++++ b/player/bullet.tscn
+@@ -90,7 +90,7 @@
+ }
+ 
+ [node name="Bullet" type="RigidBody2D" unique_id=623138605]
+-z_index = 5
++z_index = -5
+ material = SubResource("1")
+ collision_layer = 0
+ collision_mask = 26

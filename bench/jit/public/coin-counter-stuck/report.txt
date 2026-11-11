@@ -1,0 +1,1 @@
+The coin count in the pause menu always says 0, however many coins I pick up.

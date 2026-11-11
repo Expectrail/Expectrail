@@ -1,0 +1,223 @@
+{
+ "format": "expectrail.repro-bench/v1",
+ "description": "Public defects of the bundled platformer for developing reproduction (issue #285): the four reproductions of publicly reported bugs, and twenty written for this bench across the defect families of issue #282. Each has a patch against the clean game and a report in a player's words. authorExpects was written before any run. The four reported bugs are marked tunedOn because the trace signals were built around them.",
+ "game": "game/platformer",
+ "defects": [
+  {
+   "id": "air-jump",
+   "family": "movement-input",
+   "patch": "bugs/reported/air-jump.patch",
+   "report": "bench/jit/known/air-jump/report.txt",
+   "origin": "reported",
+   "authorExpects": "both",
+   "tunedOn": true
+  },
+  {
+   "id": "gun-cooldown",
+   "family": "timing-cooldowns",
+   "patch": "bugs/reported/gun-cooldown.patch",
+   "report": "bench/jit/known/gun-cooldown/report.txt",
+   "origin": "reported",
+   "authorExpects": "both",
+   "tunedOn": true
+  },
+  {
+   "id": "body-flip",
+   "family": "movement-input",
+   "patch": "bugs/reported/body-flip.patch",
+   "report": "bench/jit/known/body-flip/report.txt",
+   "origin": "reported",
+   "authorExpects": "both",
+   "tunedOn": true
+  },
+  {
+   "id": "enemy-ledge",
+   "family": "spawning-enemies",
+   "patch": "bugs/reported/enemy-ledge.patch",
+   "report": "bench/jit/known/enemy-ledge/report.txt",
+   "origin": "reported",
+   "authorExpects": "both",
+   "tunedOn": true
+  },
+  {
+   "id": "bullet-through-enemy",
+   "family": "collision-physics",
+   "patch": "bench/jit/public/bullet-through-enemy/defect.patch",
+   "report": "bench/jit/public/bullet-through-enemy/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "both",
+   "tunedOn": false
+  },
+  {
+   "id": "platforms-not-solid",
+   "family": "collision-physics",
+   "patch": "bench/jit/public/platforms-not-solid/defect.patch",
+   "report": "bench/jit/public/platforms-not-solid/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "both",
+   "tunedOn": false
+  },
+  {
+   "id": "floaty-fall",
+   "family": "collision-physics",
+   "patch": "bench/jit/public/floaty-fall/defect.patch",
+   "report": "bench/jit/public/floaty-fall/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "both",
+   "tunedOn": false
+  },
+  {
+   "id": "jump-always-full",
+   "family": "movement-input",
+   "patch": "bench/jit/public/jump-always-full/defect.patch",
+   "report": "bench/jit/public/jump-always-full/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "both",
+   "tunedOn": false
+  },
+  {
+   "id": "slow-left",
+   "family": "movement-input",
+   "patch": "bench/jit/public/slow-left/defect.patch",
+   "report": "bench/jit/public/slow-left/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "both",
+   "tunedOn": false
+  },
+  {
+   "id": "slides-after-stop",
+   "family": "movement-input",
+   "patch": "bench/jit/public/slides-after-stop/defect.patch",
+   "report": "bench/jit/public/slides-after-stop/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "both",
+   "tunedOn": false
+  },
+  {
+   "id": "no-shooting-in-air",
+   "family": "movement-input",
+   "patch": "bench/jit/public/no-shooting-in-air/defect.patch",
+   "report": "bench/jit/public/no-shooting-in-air/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "both",
+   "tunedOn": false
+  },
+  {
+   "id": "jump-needs-rest",
+   "family": "movement-input",
+   "patch": "bench/jit/public/jump-needs-rest/defect.patch",
+   "report": "bench/jit/public/jump-needs-rest/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "both",
+   "tunedOn": false
+  },
+  {
+   "id": "double-jump-once",
+   "family": "state-counters",
+   "patch": "bench/jit/public/double-jump-once/defect.patch",
+   "report": "bench/jit/public/double-jump-once/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "both",
+   "tunedOn": false
+  },
+  {
+   "id": "coin-stays",
+   "family": "state-counters",
+   "patch": "bench/jit/public/coin-stays/defect.patch",
+   "report": "bench/jit/public/coin-stays/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "both",
+   "tunedOn": false
+  },
+  {
+   "id": "coin-counts-twice",
+   "family": "state-counters",
+   "patch": "bench/jit/public/coin-counts-twice/defect.patch",
+   "report": "bench/jit/public/coin-counts-twice/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "screen",
+   "tunedOn": false
+  },
+  {
+   "id": "coin-counter-stuck",
+   "family": "hud-text",
+   "patch": "bench/jit/public/coin-counter-stuck/defect.patch",
+   "report": "bench/jit/public/coin-counter-stuck/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "screen",
+   "tunedOn": false
+  },
+  {
+   "id": "gun-cooldown-long",
+   "family": "timing-cooldowns",
+   "patch": "bench/jit/public/gun-cooldown-long/defect.patch",
+   "report": "bench/jit/public/gun-cooldown-long/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "both",
+   "tunedOn": false
+  },
+  {
+   "id": "enemy-missing",
+   "family": "spawning-enemies",
+   "patch": "bench/jit/public/enemy-missing/defect.patch",
+   "report": "bench/jit/public/enemy-missing/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "both",
+   "tunedOn": false
+  },
+  {
+   "id": "enemy-fast-left",
+   "family": "spawning-enemies",
+   "patch": "bench/jit/public/enemy-fast-left/defect.patch",
+   "report": "bench/jit/public/enemy-fast-left/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "both",
+   "tunedOn": false
+  },
+  {
+   "id": "enemy-slides-when-shot",
+   "family": "spawning-enemies",
+   "patch": "bench/jit/public/enemy-slides-when-shot/defect.patch",
+   "report": "bench/jit/public/enemy-slides-when-shot/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "both",
+   "tunedOn": false
+  },
+  {
+   "id": "enemy-walks-backwards",
+   "family": "visibility-rendering",
+   "patch": "bench/jit/public/enemy-walks-backwards/defect.patch",
+   "report": "bench/jit/public/enemy-walks-backwards/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "screen",
+   "tunedOn": false
+  },
+  {
+   "id": "camera-stops-right",
+   "family": "camera-viewport",
+   "patch": "bench/jit/public/camera-stops-right/defect.patch",
+   "report": "bench/jit/public/camera-stops-right/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "both",
+   "tunedOn": false
+  },
+  {
+   "id": "camera-cut-top",
+   "family": "camera-viewport",
+   "patch": "bench/jit/public/camera-cut-top/defect.patch",
+   "report": "bench/jit/public/camera-cut-top/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "both",
+   "tunedOn": false
+  },
+  {
+   "id": "bullet-behind-scenery",
+   "family": "layering-draw-order",
+   "patch": "bench/jit/public/bullet-behind-scenery/defect.patch",
+   "report": "bench/jit/public/bullet-behind-scenery/report.txt",
+   "origin": "written-for-bench",
+   "authorExpects": "screen",
+   "tunedOn": false
+  }
+ ]
+}

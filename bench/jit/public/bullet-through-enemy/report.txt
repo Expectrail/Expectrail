@@ -1,0 +1,1 @@
+Shooting the enemies does nothing to them. The bullet pops when it hits one but the enemy just carries on walking. I emptied the gun into one and it never died.

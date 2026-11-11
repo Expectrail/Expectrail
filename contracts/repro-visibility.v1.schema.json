@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/repro-visibility.v1.schema.json",
+  "title": "expectrail.repro-visibility/v1",
+  "description": "What each defect of the public reproduction bench changes in the engine's record, on the library probes generated checks may use today. Made by replaying the clean game and each defect build with no model. It says what those probes can see and is never a reproduction rate: on a library probe a signal must move for a generated check to fail on the defect, and that is not enough. The model may also propose probes of its own, which this does not replay. Written and read by expectrail.repro.visibility.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "benchSha256", "engine", "probes", "replaysPerBuild", "engineRetries", "unstable", "defects", "totals"],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "name": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,60}$" },
+    "value": { "type": ["number", "null"] },
+    "count": { "type": "integer", "minimum": 0 }
+  },
+  "properties": {
+    "format": { "const": "expectrail.repro-visibility/v1" },
+    "benchSha256": { "$ref": "#/$defs/sha256", "description": "The bench file the defects were read from." },
+    "engine": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "probes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/name" } },
+    "replaysPerBuild": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clean", "defect"],
+      "properties": {
+        "clean": { "const": 2, "description": "The clean game is replayed twice; whatever differs between the two is unstable and never counted." },
+        "defect": { "const": 1 }
+      }
+    },
+    "engineRetries": {
+      "$ref": "#/$defs/count",
+      "description": "Replays made again because the engine failed (a crash, not a result), over the builds that were measured in the end. A probe that fails three times makes its defect an error row."
+    },
+    "unstable": {
+      "type": "array",
+      "description": "Per probe, the trace fields and signals that differed between the two clean replays.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["probe", "fields", "signals"],
+        "properties": {
+          "probe": { "$ref": "#/$defs/name" },
+          "fields": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/name" } },
+          "signals": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/name" } }
+        }
+      }
+    },
+    "defects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "patchSha256", "visibility", "signals", "traceFields", "probesChanged"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 60 },
+          "patchSha256": { "$ref": "#/$defs/sha256" },
+          "visibility": {
+            "enum": ["signal", "trace-only", "none", "error"],
+            "description": "signal: a trace signal reads differently on some probe. trace-only: the record differs on some probe, and no signal does. none: the record is the same on every probe. error: a replay of the defect build failed."
+          },
+          "signals": {
+            "type": "object",
+            "description": "Each signal that moved: on how many probes, and the probe where it moved most with both readings. A move can be tiny: a side effect of a change elsewhere, not something a check should rest on.",
+            "propertyNames": { "$ref": "#/$defs/name" },
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["probes", "probe", "clean", "defect"],
+              "properties": {
+                "probes": { "type": "integer", "minimum": 1 },
+                "probe": { "$ref": "#/$defs/name" },
+                "clean": { "$ref": "#/$defs/value" },
+                "defect": { "$ref": "#/$defs/value" }
+              }
+            }
+          },
+          "traceFields": {
+            "type": "array",
+            "uniqueItems": true,
+            "description": "The fields of the engine's record that differed on some probe.",
+            "items": { "$ref": "#/$defs/name" }
+          },
+          "probesChanged": { "$ref": "#/$defs/count", "description": "Probes on which the record differed at all." },
+          "error": { "type": "string", "maxLength": 300 }
+        }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["defects", "signal", "trace-only", "none", "error"],
+      "properties": {
+        "defects": { "$ref": "#/$defs/count" },
+        "signal": { "$ref": "#/$defs/count" },
+        "trace-only": { "$ref": "#/$defs/count" },
+        "none": { "$ref": "#/$defs/count" },
+        "error": { "$ref": "#/$defs/count" }
+      }
+    }
+  }
+}

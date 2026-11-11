@@ -1,0 +1,1 @@
+The enemies crawl to the right at their normal speed but then race back to the left about four times faster.

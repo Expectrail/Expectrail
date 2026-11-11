@@ -213,6 +213,30 @@ The stress tests, in the order we intend to run them:
    map, near misses and replays here are Godot's.
 7. **Flake.** 10 reruns of the same change, live.
 
+## The public reproduction bench
+
+Added November 11, 2026, for issue #285. On blind set 3 every miss was a defect the generator never
+reproduced, so the next number to move is the reproduction rate: the share of reported bugs for
+which a generated check fails on the bug build 3 times of 3 and passes on the clean game 3 times of
+3. It is developed on public defects only.
+
+[`bench/jit/public/`](../bench/jit/public/README.md) holds the bench: 24 defects of the bundled
+game, the 4 reported bugs and 20 written for it, each a patch and a bug report in a player's words
+(`expectrail.repro-bench/v1`, read by [`expectrail/repro/bench.py`](../expectrail/repro/bench.py)).
+
+**No reproduction rate has been measured on it.** What has been measured needs no model
+([`expectrail/repro/visibility.py`](../expectrail/repro/visibility.py)): every probe was replayed on
+the clean game and on each defect build, and each defect sorted by what changed in the engine's
+record. A signal reads differently on some probe for 17 of the 24 (for one of them only by a
+hundredth of a pixel); the record differs and no signal does for 2, both camera defects; the record
+is the same on every probe for 5. So on the library's probes, with today's signals, a generated
+check could fail on at most 17 of the 24, before the model has proposed anything; the model may add
+up to four probes of its own, which this does not replay. The table, the command and what was and
+was not shown are on the bench's page. That run was made in a cloud container, not in CI.
+
+Not built yet: the live baseline on this bench, the scorer that reads its records, and the reason
+for each miss.
+
 ## What this does not claim
 
 - **No detection rate.** The offline tests use a simulated game and a fake model. They show that an

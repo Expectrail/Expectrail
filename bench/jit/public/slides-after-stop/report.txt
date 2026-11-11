@@ -1,0 +1,1 @@
+When I let go of the arrow key the robot keeps sliding for ages before it stops, like the floor is ice. It used to stop almost straight away.

@@ -1,0 +1,1 @@
+I can't jump while running. The robot only jumps if it's standing still; press jump while walking and nothing happens.

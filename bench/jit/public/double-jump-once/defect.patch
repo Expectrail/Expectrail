@@ -1,0 +1,16 @@
+--- a/player/player.gd
++++ b/player/player.gd
+@@ -22,12 +22,10 @@
+ @onready var jump_sound := $Jump as AudioStreamPlayer2D
+ @onready var gun: Gun = sprite.get_node(^"Gun")
+ @onready var camera := $Camera as Camera2D
+-var _double_jump_charged: bool = false
++var _double_jump_charged: bool = true
+ 
+ 
+ func _physics_process(delta: float) -> void:
+-	if is_on_floor():
+-		_double_jump_charged = true
+ 	if Input.is_action_just_pressed("jump" + action_suffix):
+ 		try_jump()
+ 	elif Input.is_action_just_released("jump" + action_suffix) and velocity.y < 0.0:

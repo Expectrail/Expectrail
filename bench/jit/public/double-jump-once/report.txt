@@ -1,0 +1,1 @@
+The double jump only works once. The first time I jump twice it works, but after I land I only ever get single jumps for the rest of the game.

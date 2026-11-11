@@ -1,0 +1,11 @@
+--- a/player/player.gd
++++ b/player/player.gd
+@@ -37,6 +37,8 @@
+ 	velocity.y = minf(TERMINAL_VELOCITY, velocity.y + gravity * delta)
+ 
+ 	var direction := Input.get_axis("move_left" + action_suffix, "move_right" + action_suffix) * WALK_SPEED
++	if direction < 0.0:
++		direction *= 0.5
+ 	velocity.x = move_toward(velocity.x, direction, ACCELERATION_SPEED * delta)
+ 
+ 	if not is_zero_approx(velocity.x):
