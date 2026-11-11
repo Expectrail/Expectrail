@@ -107,7 +107,9 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt
       - name: Install xvfb, software OpenGL
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 patch
+        uses: ./.github/actions/apt-install
+        with:
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
         run: ./harness/get_godot.sh
       - name: Fetch the private held-out set (its routes only are rendered here)
@@ -181,7 +183,9 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt
       - name: Install bubblewrap
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bubblewrap
+        uses: ./.github/actions/apt-install
+        with:
+          packages: bubblewrap
       - name: Allow unprivileged user namespaces for bubblewrap
         run: |
           if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
@@ -299,7 +303,9 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt
       - name: Install bubblewrap, xvfb, software OpenGL
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bubblewrap xvfb libgl1-mesa-dri libglx-mesa0 patch
+        uses: ./.github/actions/apt-install
+        with:
+          packages: bubblewrap xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Allow unprivileged user namespaces for bubblewrap
         run: |
           if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
@@ -563,7 +569,9 @@ jobs:
           EXPECTRAIL_OUTSIDE_GPT_MODEL: ${{ vars.OUTSIDE_GPT_MODEL }}
         run: python -m agents.outside_judge --smoke
       - name: Install bubblewrap, xvfb, software OpenGL
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bubblewrap xvfb libgl1-mesa-dri libglx-mesa0 patch
+        uses: ./.github/actions/apt-install
+        with:
+          packages: bubblewrap xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Allow unprivileged user namespaces for bubblewrap
         run: |
           if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
@@ -783,7 +791,9 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt
       - name: Install bubblewrap, xvfb, software OpenGL
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bubblewrap xvfb libgl1-mesa-dri libglx-mesa0 patch
+        uses: ./.github/actions/apt-install
+        with:
+          packages: bubblewrap xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Allow unprivileged user namespaces for bubblewrap
         run: |
           if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then

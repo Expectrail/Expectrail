@@ -102,7 +102,9 @@ jobs:
         with:
           python-version: '3.13'
       - name: Install a virtual display and software OpenGL
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0
+        uses: ./.github/actions/apt-install
+        with:
+          packages: xvfb libgl1-mesa-dri libglx-mesa0
       - name: Download Godot 4.7.2 and check its SHA-512
         run: ./harness/get_godot.sh
       - name: Render the smoke route twice and compare
@@ -147,8 +149,15 @@ jobs:
         with:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt -r requirements-web.txt
+      # Playwright's --with-deps calls apt itself, which fails when Ubuntu's mirror is down. The fonts are
+      # the only packages it adds to the ubuntu-24.04 runner image (read from its log on November 11);
+      # they go through apt-install, and Chromium's libraries are already on the image.
+      - name: Fonts Chromium renders with
+        uses: ./.github/actions/apt-install
+        with:
+          packages: fonts-freefont-ttf fonts-ipafont-gothic fonts-tlwg-loma-otf fonts-unifont fonts-wqy-zenhei xfonts-cyrillic xfonts-encodings xfonts-scalable xfonts-utils
       - name: Install Chromium for Playwright
-        run: python -m playwright install --with-deps chromium
+        run: python -m playwright install chromium
       - name: Open every page of the site in Chromium (script errors, missing files, broken links)
         run: |
           python -m unittest tests.test_check_pages -v
@@ -182,7 +191,9 @@ jobs:
         with:
           python-version: '3.13'
       - name: Install a virtual display and software OpenGL
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 patch
+        uses: ./.github/actions/apt-install
+        with:
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
         run: ./harness/get_godot.sh
       - name: Replay every seeded bug against the clean game
@@ -387,7 +398,9 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt
       - name: Install a virtual display and software OpenGL
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 patch
+        uses: ./.github/actions/apt-install
+        with:
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
         run: ./harness/get_godot.sh
       - name: Flake control — seed+fix replay identical twice
@@ -518,7 +531,9 @@ jobs:
         run: python -m pip install -r requirements-dev.txt
       - name: Install a virtual display and software OpenGL
         if: env.HELDOUT_TOKEN_SET == 'true'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 patch
+        uses: ./.github/actions/apt-install
+        with:
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
         if: env.HELDOUT_TOKEN_SET == 'true'
         run: ./harness/get_godot.sh
@@ -648,7 +663,9 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt
       - name: Install bubblewrap
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bubblewrap
+        uses: ./.github/actions/apt-install
+        with:
+          packages: bubblewrap
       - name: Allow unprivileged user namespaces for bubblewrap
         run: |
           if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
@@ -782,7 +799,9 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt
       - name: Install bubblewrap, xvfb, software OpenGL
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bubblewrap xvfb libgl1-mesa-dri libglx-mesa0
+        uses: ./.github/actions/apt-install
+        with:
+          packages: bubblewrap xvfb libgl1-mesa-dri libglx-mesa0
       - name: Allow unprivileged user namespaces for bubblewrap
         run: |
           # Ubuntu 24.04 runners often deny bwrap uid_map writes ("Permission denied").
