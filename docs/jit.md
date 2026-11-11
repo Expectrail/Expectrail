@@ -187,12 +187,15 @@ The stress tests, in the order we intend to run them:
 1. **A new pre-registration, then the mutation bench with generated checks on.** Registered before any
    judged case, in the style of #127 and #164: pins, the sample, the scoring rule. Rehearsed on
    stand-ins first. The existing registration stays as the record it is (rule 6); this is a new one.
-2. **Blind set 3.** Frozen in the private held-out repository (digest `a5ffad12…`, game commit
-   `f864af5d…`). One run, at one commit that freezes the verifier, specs, harness, generator and game,
-   in two arms (approved checks only; plus generated checks), after recomputing the digest. The
-   implementers never read `fresh-3/`. *Open point:* the issue describes the set as 8 defects and 8
-   wrong fixes; the frozen set has 10 entries, 8 defects and 2 intentional changes. The run will be
-   reported against the set as frozen, and the difference stated.
+2. **Blind set 3** ([`blind.py`](../expectrail/jit/blind.py), `jit-blind.yml`,
+   [`preregistration.json`](../bench/jit/blind-3/preregistration.json), signed off 2026-11-10). The
+   private set (digest `a5ffad12…`, game commit `f864af5d…`) has 8 defects, each with its own wrong
+   fix and correct fix written by the session that wrote the defect, and 2 intentional changes. Arm A
+   is the CI gate with the defect build as base; arm B adds a strong catch from the generated checks.
+   Primary candidates are the set's own fixes and the intentional changes (18); supplementary ones,
+   reported apart, are a comment-only fix and the exact undo per defect, made by the runner from the
+   defect patch alone (16). The claim holds if B catches more primary wrong fixes than A with no more
+   false catches. One run from main, after the pins and the digest are checked; counts only leave.
 3. **Correct-fix pressure.** Every correct fix we have, three runs each. A strong catch on a correct
    fix is a bug in the filter and is looked at before anything else.
 4. **Overfitting adversary.** A separate fixer instance gets the generated checks for one bug (only in
