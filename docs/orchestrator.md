@@ -12,6 +12,16 @@ python3 -m expectrail.orchestrator cancel JOB
 python3 -m expectrail.orchestrator report JOB
 ```
 
+`sample` is the quickest way to see it work. It copies the bundled game twice, once as it is and once
+with the seeded fall-through bug, and runs three real verifications with no model key: the game as
+it is (accept), the change that breaks it (reject) and the change that repairs it (accept). It exits
+0 only when all three decide that way and 3 otherwise (it checks the install; it is not a verdict on a
+change, so it never exits 1), and CI runs it on every pull request (`seeded-bugs`).
+
+```bash
+python3 -m expectrail.orchestrator sample
+```
+
 Exit code: 0 accept, 1 reject, 2 needs review, 3 the job failed (no result), 4 cancelled, 5 the
 command could not be carried out. 1 only ever means a job that completed as reject: a request that is
 refused and a crash in the command itself are both 5, with one line saying why. Jobs are kept under

@@ -30,6 +30,7 @@ import time
 import unittest
 import unittest.mock
 from pathlib import Path
+from unittest import mock
 
 import jsonschema
 
@@ -37,9 +38,10 @@ from expectrail.gate import record as rec
 from expectrail.gate import verify as gate
 from expectrail.orchestrator import cli, engines, runner
 from expectrail.orchestrator import request as req
+from expectrail.orchestrator import sample as smp
 from expectrail.orchestrator import store as st
 from tests.orchestrator_worker import ENGINES as STAND_INS
-from tests.test_ci_gate import FakeReplay, make_repo
+from tests.test_ci_gate import FIXTURES, FakeReplay, make_repo
 
 REPO = Path(__file__).resolve().parent.parent
 EXAMPLES = REPO / "contracts" / "examples"
@@ -847,6 +849,107 @@ class EvidenceTest(Case):
         self.store.paths(job).staging.mkdir()
         status = self.store.finish(job, "completed", decision="reject", publish=True)
         self.assertEqual((status["phase"], status["decision"], status["output"]), ("completed", "reject", "output"))
+
+
+class PatchedReplay:
+    """The gate tests' two recorded traces, chosen by whether the sample's seeded bug is in the game:
+    the bug's patch changes player/player.tscn, so a copy that differs from the repository's has it."""
+
+    def __init__(self):
+        self.calls = 0
+
+    def __call__(self, route: Path, game: Path, out: Path, frames: bool) -> dict:
+        self.calls += 1
+        bug = (game / "player" / "player.tscn").read_bytes() != (REPO / smp.GAME / "player" / "player.tscn").read_bytes()
+        out.mkdir(parents=True, exist_ok=True)
+        trace = json.loads((FIXTURES / ("trace-fallthrough.json" if bug else "trace-fixed.json")).read_text(encoding="utf-8"))
+        frames_dir = None
+        if frames:
+            frames_dir = out / "frames"
+            frames_dir.mkdir(exist_ok=True)
+            for n in range(40):
+                (frames_dir / f"f{n:08d}.png").write_bytes(b"\x89PNG\r\n\x1a\n" + f"{bug}:{n}".encode())
+        return {"trace": trace, "replaySha256": "0" * 64, "framesDir": frames_dir}
+
+
+class SampleTest(Case):
+    def test_the_two_checkouts_differ_by_the_seeded_bug_only(self):
+        clean = smp.checkout(self.tmp / "clean", bug=False)
+        bug = smp.checkout(self.tmp / "bug", bug=True)
+        changed = [p.relative_to(clean).as_posix() for p in sorted(clean.rglob("*"))
+                   if p.is_file() and p.read_bytes() != (bug / p.relative_to(clean)).read_bytes()]
+        self.assertEqual(changed, ["game/platformer/player/player.tscn"])
+        self.assertEqual(sorted(p.relative_to(clean).as_posix() for p in clean.rglob("*") if p.is_file()),
+                         sorted(p.relative_to(bug).as_posix() for p in bug.rglob("*") if p.is_file()
+                                if not p.name.endswith((".orig", ".rej"))))
+        project = {"game": smp.GAME, "routes": [smp.ROUTE], "specs": smp.SPECS}
+        self.assertEqual(req.policy_digest(clean, project), req.policy_digest(bug, project))
+        self.assertNotEqual(req.tree_digest(clean / smp.GAME), req.tree_digest(bug / smp.GAME))
+
+    def test_the_three_runs_decide_accept_reject_accept(self):
+        replay = PatchedReplay()
+        seen = []
+        with contextlib.redirect_stdout(io.StringIO()):
+            results = smp.run(self.store, engines={"godot": engines.GodotGate(replay=replay)}, on_case=seen.append)
+        self.assertEqual([(r["status"]["phase"], r["status"]["decision"]) for r in results],
+                         [("completed", "accept"), ("completed", "reject"), ("completed", "accept")])
+        self.assertEqual([r["expected"] for r in results], ["accept", "reject", "accept"])
+        self.assertTrue(all(r["asExpected"] for r in results))
+        self.assertEqual(seen, results)
+        self.assertEqual(len({r["status"]["id"] for r in results}), 3)
+        self.assertGreater(replay.calls, 3)   # the base is replayed too when there is one
+        self.assertIn("as expected", smp.line(results[1]))
+
+    def test_a_run_that_decides_otherwise_is_said_plainly(self):
+        class Accepts:
+            def preflight(self, request):
+                return []
+
+            def execute(self, request, paths, advance):
+                paths.staging.mkdir()
+                (paths.staging / "evidence.txt").write_text("accepted without looking\n", encoding="utf-8")
+                return engines.Result("accept", ["accepts everything"])
+
+        results = smp.run(self.store, engines={"godot": Accepts()})
+        self.assertEqual([r["asExpected"] for r in results], [True, False, True])
+        self.assertIn("NOT as expected (a working install gives reject)", smp.line(results[1]))
+
+    def test_a_missing_tool_shows_its_fix_and_is_not_as_expected(self):
+        results = smp.run(self.store, engines={"godot": NoTool()})
+        self.assertEqual([r["asExpected"] for r in results], [False, False, False])
+        text = smp.line(results[0])
+        self.assertIn("needs-review, NOT as expected", text)
+        self.assertIn("TOOL_MISSING", text)
+        self.assertIn("Fix:", text)
+
+    def test_the_command_exits_0_only_when_all_three_are_as_expected(self):
+        def fake(decisions):
+            return [{"case": n, "expected": e, "asExpected": d == e,
+                     "status": {"phase": "completed", "decision": d, "diagnostics": []}}
+                    for (n, _h, _b, e), d in zip(smp.CASES, decisions)]
+
+        # Never 1: that is a job that completed as reject, and the sample is a check of the install.
+        for decisions, code in ((("accept", "reject", "accept"), 0), (("accept", "accept", "accept"), 3)):
+            with self.subTest(decisions=decisions), mock.patch.object(smp, "run", return_value=fake(decisions)):
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out):
+                    self.assertEqual(cli.main(["--jobs-root", str(self.store.root), "sample", "--json"]), code)
+                self.assertEqual(len(json.loads(out.getvalue())), 3)
+
+    def test_a_copy_of_expectrail_without_the_sample_files_says_so(self):
+        with self.assertRaises(smp.SampleError):
+            smp.checkout(self.tmp / "x", bug=True, root=self.tmp)
+
+    def test_a_machine_without_the_patch_program_gets_one_line_and_exit_5(self):
+        with mock.patch.object(smp.subprocess, "run", side_effect=FileNotFoundError("patch")):
+            with self.assertRaisesRegex(smp.SampleError, "patch program is not installed"):
+                smp.checkout(self.tmp / "y", bug=True)
+            err = io.StringIO()
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+                code = cli.main(["--jobs-root", str(self.store.root), "sample", "--json"])
+        self.assertEqual(code, 5)
+        self.assertEqual(len(err.getvalue().strip().splitlines()), 1)
+        self.assertNotIn("Traceback", err.getvalue())
 
 
 if __name__ == "__main__":

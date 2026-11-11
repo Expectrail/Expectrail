@@ -5,12 +5,15 @@
     python3 -m expectrail.orchestrator status JOB [--json]
     python3 -m expectrail.orchestrator cancel JOB
     python3 -m expectrail.orchestrator report JOB
+    python3 -m expectrail.orchestrator sample [--json]     three real runs on the bundled game
 
 Jobs are kept under ``--jobs-root`` (default: $EXPECTRAIL_JOBS, else runs/jobs here). `verify` waits for
 the job unless ``--detach`` is given; then it prints the job's id and returns.
 
 Exit code: 0 accept, 1 reject, 2 needs review, 3 the job failed (no result), 4 cancelled, 5 the
-command could not be carried out.
+command could not be carried out. 1 only ever means a job that completed as reject. `sample` exits 0
+when all three runs decide as a working install does, and 3 otherwise: it is a check of the install,
+not a verdict on a change.
 """
 from __future__ import annotations
 
@@ -23,6 +26,7 @@ from pathlib import Path
 
 from expectrail.orchestrator import request as req
 from expectrail.orchestrator import runner
+from expectrail.orchestrator import sample as smp
 from expectrail.orchestrator import store as st
 
 EXIT = {"accept": 0, "reject": 1, "needs-review": 2}
@@ -80,6 +84,10 @@ def main(argv: list[str] | None = None) -> int:
         s.add_argument("job")
         s.add_argument("--json", action="store_true")
 
+    sm = sub.add_parser("sample", help="three real verifications of the bundled game: as it is, broken, repaired")
+    sm.add_argument("--timeout", type=int, default=600, help="seconds allowed for each of the three runs")
+    sm.add_argument("--json", action="store_true")
+
     w = sub.add_parser("_work")   # the worker process; started by `verify`, not by people
     w.add_argument("job")
 
@@ -89,6 +97,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "_work":
             runner.work(store, args.job, own_group=True)
             return 0
+        if args.command == "sample":
+            if not args.json:
+                print("Expectrail sample: three real runs on the bundled game and a seeded bug. No model key is used.")
+            results = smp.run(store, timeout_seconds=args.timeout,
+                              on_case=None if args.json else (lambda r: print(smp.line(r), flush=True)))
+            if args.json:
+                print(json.dumps(results, indent=2))
+            return 0 if all(r["asExpected"] for r in results) else EXIT_FAILED
         if args.command == "verify":
             request = req.build(adapter=args.adapter, head=args.head, base=args.base, game=args.game,
                                 routes=[r for r in re.split(r"[\s,]+", args.routes) if r], specs=args.specs,
@@ -119,7 +135,7 @@ def main(argv: list[str] | None = None) -> int:
             return exit_code(status)
         _show(status, args.json)
         return 0 if status["phase"] not in st.FINAL else exit_code(status)
-    except (req.RequestError, st.StoreError) as exc:
+    except (req.RequestError, st.StoreError, smp.SampleError) as exc:
         print(f"expectrail: {exc}", file=sys.stderr)
         return EXIT_USAGE
     except Exception as exc:  # noqa: BLE001 - a crash here must never look like a verdict (1 is reject)
