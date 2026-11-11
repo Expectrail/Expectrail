@@ -3,12 +3,14 @@
 ``docs/capabilities.json`` (``expectrail.capabilities/v1``) holds one row per mode a user could
 believe exists. This module reads it, checks it, and renders ``docs/capabilities.md`` from it.
 
-    python3 -m expectrail.capabilities check     # exit 1 and one line per problem
-    python3 -m expectrail.capabilities render    # rewrite docs/capabilities.md
+    python3 -m agents.capabilities check     # exit 1 and one line per problem
+    python3 -m agents.capabilities render    # rewrite docs/capabilities.md
 
 ``problems`` is what the test suite runs. It fails when a ``measured`` row has no CI run link, when
-a row points at a file that is not there, and when the README or the site names a command, a
-switch, a workflow, a doc page or a watched name that no row lists.
+a row that is not experimental cites a run recorded as anything but success, when a row points at
+a file that is not there, and when the README or the site names a command, a switch, a workflow, a
+doc page or a watched name that no row lists. A run's conclusion is the value recorded in the
+ledger when the row was written; nothing here calls GitHub.
 """
 from __future__ import annotations
 
@@ -22,7 +24,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 LEDGER = ROOT / "docs" / "capabilities.json"
 PAGE = ROOT / "docs" / "capabilities.md"
-SCHEMA = ROOT / "contracts" / "capabilities.v1.schema.json"
+SCHEMA = ROOT / "docs" / "capabilities.schema.json"
 ADVERTS = ("README.md", "docs/index.html")
 REPO_URL = "https://github.com/Expectrail/Expectrail"
 
@@ -58,6 +60,10 @@ def load(path: Path = LEDGER) -> dict:
     return doc
 
 
+def _number(run_url: str) -> str:
+    return run_url.split("/runs/", 1)[1].split("/", 1)[0]
+
+
 def _module_exists(module: str, root: Path) -> bool:
     base = root.joinpath(*module.split("."))
     return base.with_suffix(".py").is_file() or (base / "__init__.py").is_file()
@@ -85,6 +91,9 @@ def row_problems(doc: dict, root: Path = ROOT) -> list[str]:
             if ev["kind"] == "run":
                 if not _RUN.match(ev["ref"]):
                     out.append(f"{rid}: not a CI run link: {ev['ref']}")
+                elif row["status"] != "experimental" and ev.get("conclusion") != "success":
+                    out.append(f"{rid}: marked {row['status']} and cites run {_number(ev['ref'])}, "
+                               f"recorded as {ev.get('conclusion', 'unread')}")
             elif not (root / ev["ref"].split("#", 1)[0]).exists():
                 out.append(f"{rid}: evidence file not found: {ev['ref']}")
         for module in row["entryPoints"]:
@@ -96,6 +105,9 @@ def row_problems(doc: dict, root: Path = ROOT) -> list[str]:
         for page in row.get("docs", []):
             if not (root / page).is_file():
                 out.append(f"{rid}: doc not found: {page}")
+    for timing in doc.get("timings", []):
+        if timing.get("conclusion") != "success":
+            out.append(f"timings: run {_number(timing['run'])} is recorded as {timing.get('conclusion', 'unread')}")
     for rid in REQUIRED:
         if rid not in seen:
             out.append(f"{rid}: a mode the ledger must cover has no row")
@@ -184,8 +196,8 @@ def _link(ref: str) -> str:
 
 def _evidence(ev: dict) -> str:
     if ev["kind"] == "run":
-        number = ev["ref"].split("/runs/", 1)[1].split("/", 1)[0]
-        return f"[run {number}]({ev['ref']}): {ev['shows']}"
+        ended = "" if ev["conclusion"] == "success" else f", which ended in {ev['conclusion'].replace('_', ' ')}"
+        return f"[run {_number(ev['ref'])}]({ev['ref']}){ended}: {ev['shows']}"
     return f"{_link(ev['ref'])}: {ev['shows']}"
 
 
@@ -200,7 +212,7 @@ def render(doc: dict) -> str:
     lines = [
         "# What Expectrail can do, and how far each part is proven",
         "",
-        "<!-- Rendered from docs/capabilities.json by `python3 -m expectrail.capabilities render`. Edit the JSON, not this file. -->",
+        "<!-- Rendered from docs/capabilities.json by `python3 -m agents.capabilities render`. Edit the JSON, not this file. -->",
         "",
         "One row for every mode a reader of the README or the site could believe exists. Each row says how",
         "far the mode is proven (its status), what kind of evidence its best recorded run produced (its",
@@ -208,6 +220,10 @@ def render(doc: dict) -> str:
         "[`capabilities.json`](capabilities.json); `tests/test_capabilities.py` fails when a row marked",
         "measured has no run link, when a link points at a file that is not there, and when the README or",
         "the site names a command, a switch, a workflow, a doc page or a watched name that no row lists.",
+        "",
+        "Every run link carries the run's conclusion as GitHub's API gave it when the row was written. The",
+        "test reads that recorded value, not GitHub: a row that is not experimental may cite only runs",
+        "recorded as success, and a run that ended any other way says so beside its link.",
         "",
         f"Last changed {doc['updated']}. {len(doc['rows'])} rows: "
         + ", ".join(f"{counts[s]} {s}" for s in doc["statuses"]) + ". By grade: "
@@ -263,7 +279,7 @@ def render(doc: dict) -> str:
         "",
         "## Changing the ledger",
         "",
-        "Edit [`capabilities.json`](capabilities.json), run `python3 -m expectrail.capabilities render`, and",
+        "Edit [`capabilities.json`](capabilities.json), run `python3 -m agents.capabilities render`, and",
         "commit both files. Move a row to `measured` only with the link of the CI run that produced the",
         "number. The benches under [`bench/`](../bench/README.md) are records of runs, not modes: a row",
         "links to them, they have no rows of their own. The check on what the README and the site name is",

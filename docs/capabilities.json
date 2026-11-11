@@ -36,11 +36,13 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41003749744",
+          "conclusion": "success",
           "shows": "8 of 8 held-out bugs caught with SAM 3.1 on, no false alarm on the clean game"
         },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
+          "conclusion": "success",
           "shows": "CI on main, job agents-harness-verify: real replays with SAM off accept the correct fix and reject the fix that freezes the player"
         },
         {
@@ -78,6 +80,7 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
+          "conclusion": "success",
           "shows": "CI on main, job capture-smoke: the smoke route rendered twice and compared"
         },
         {
@@ -115,11 +118,13 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42926526666",
+          "conclusion": "success",
           "shows": "the verify workflow completed with success on a pull request of this repository"
         },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42926734313",
+          "conclusion": "success",
           "shows": "the comment workflow completed with success after it"
         },
         {
@@ -132,7 +137,7 @@
     },
     {
       "id": "unity-harness",
-      "mode": "Unity harness and draft specs",
+      "mode": "Unity harness and specs",
       "profile": "Unity, the Platformio game, on GitHub Actions",
       "observer": "The engine's record (renderer bounds, the ground tilemap); SAM 3.1 probed, not scored",
       "entryPoints": [
@@ -153,18 +158,20 @@
       "evidence": [
         {
           "kind": "run",
-          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42754753371",
-          "shows": "the clean smoke route replayed and calibrated, 200 ticks"
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42758583740",
+          "conclusion": "success",
+          "shows": "Unity workflow run 19: the jobs build, replay (a), replay (b) and cross-runner all completed with success"
         },
         {
           "kind": "run",
-          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42758198963",
-          "shows": "the same trace on a second runner"
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42877487075",
+          "conclusion": "success",
+          "shows": "Unity workflow run 23: the same four jobs all completed with success"
         },
         {
           "kind": "test",
           "ref": "tests/test_unity_specs.py",
-          "shows": "the three drafts are valid, and the Godot loaders do not read them"
+          "shows": "the three specs are valid and lint clean, and the Godot loaders do not read them"
         },
         {
           "kind": "test",
@@ -172,7 +179,7 @@
           "shows": "the harness against a fake player: a short, gapped or malformed trace fails the run"
         }
       ],
-      "limits": "Parked until after the fund. The three specs are drafts no person has approved, no seeded Unity bug has been judged, the verifier is not wired to it, and SAM is not scored on its art."
+      "limits": "Parked until after the fund. A person has approved the three specs in specs/unity/, but no seeded Unity bug has been judged against them, the verifier is not wired to them, and SAM is not scored on this game's art. docs/unity.md cites runs 42754753371 and 42758198963 for its calibration numbers; both ended in failure, so this row does not rest on them."
     },
     {
       "id": "web-checkout",
@@ -198,11 +205,13 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41109233666",
+          "conclusion": "success",
           "shows": "8 of 8 development bugs caught with SAM on, 4 of 8 with SAM off, no false alarm"
         },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41130091655",
+          "conclusion": "success",
           "shows": "4 of 4 private bugs caught with SAM on, 2 of 4 with SAM off"
         },
         {
@@ -242,6 +251,7 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41003749744",
+          "conclusion": "success",
           "shows": "8 of 8 held-out bugs caught with SAM on; 4 of 8 without a vision model"
         },
         {
@@ -282,11 +292,13 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41003751876",
+          "conclusion": "success",
           "shows": "8 of 8 held-out bugs caught with Glimmer in place of SAM, no false alarm"
         },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41230177124",
+          "conclusion": "success",
           "shows": "the judge benchmark with Glimmer: 0 of 7 fake fixes accepted, one run"
         },
         {
@@ -315,12 +327,8 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41244537695",
+          "conclusion": "success",
           "shows": "fourth drill: Glimmer accepted after two SAM failures"
-        },
-        {
-          "kind": "run",
-          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41234190741",
-          "shows": "third drill: the pre-run check stops the run before the fixer"
         },
         {
           "kind": "test",
@@ -328,7 +336,7 @@
           "shows": "a rejection is never judged again; when SAM stays down, Glimmer checked against the engine decides"
         }
       ],
-      "limits": "Shown in drills with an injected outage, not in a real one."
+      "limits": "Shown in drills with an injected outage, not in a real one. The drill of the pre-run check (run 41234190741) is not cited: that run ended in failure."
     },
     {
       "id": "byo-models",
@@ -359,6 +367,7 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42867299018",
+          "conclusion": "success",
           "shows": "the smoke workflow, dispatched from main, completed with success; it sends one real prompt to each provider whose key is set, and which providers those were is in the run, not checked for this row"
         },
         {
@@ -394,6 +403,7 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42752549697",
+          "conclusion": "success",
           "shows": "Claude Code behind the key gateway reached an accepted fix on one seeded defect"
         },
         {
@@ -459,6 +469,7 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42908014398",
+          "conclusion": "success",
           "shows": "the first live run worked end to end and found nothing: 2 checks proposed, 0 valid"
         },
         {
@@ -496,16 +507,19 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41248745687",
+          "conclusion": "success",
           "shows": "blind, fresh set 1: 4 of 8 defects flagged, no healthy build flagged"
         },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41319184209",
+          "conclusion": "success",
           "shows": "blind, fresh set 2: 3 of 8 defects flagged, no healthy build flagged"
         },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41238187197",
+          "conclusion": "success",
           "shows": "development: the four reported bugs found, 2 of 8 development bugs"
         },
         {
@@ -543,11 +557,13 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/40990485265",
+          "conclusion": "success",
           "shows": "the demo path live: 10 of 10 runs accepted, each on the first attempt"
         },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41223748922",
+          "conclusion": "success",
           "shows": "after the report-first change: 3 of 3 accepted from the plain report"
         },
         {
@@ -576,11 +592,13 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
+          "conclusion": "success",
           "shows": "CI on main, job agents-harness-verify: the correct fix reviewed as failing before and passing after, and the lower-the-floor fix rejected, on real replays with SAM off"
         },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41223748922",
+          "conclusion": "success",
           "shows": "each live fix's review: repair demonstrated"
         },
         {
@@ -612,6 +630,7 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
+          "conclusion": "success",
           "shows": "CI on main, job agents-sandbox: the bubblewrap guard tests on a hosted runner"
         },
         {
@@ -646,11 +665,13 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41074472926",
+          "conclusion": "success",
           "shows": "Muse Code behind the gateway: 19 requests, 5.5 s inside the sandbox"
         },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42752549697",
+          "conclusion": "success",
           "shows": "Claude Code behind the gateway: an accepted fix in 100,962 ms against 100,989 ms without it; one off-list host refused"
         },
         {
@@ -685,6 +706,7 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
+          "conclusion": "success",
           "shows": "CI on main, job agents-gate1: the trust probe ran and the canary read was denied; the release candidate validates"
         },
         {
@@ -806,6 +828,7 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
+          "conclusion": "success",
           "shows": "CI on main, job feedback-offline: the intake on a recorded transcript"
         },
         {
@@ -859,7 +882,8 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42680755693",
-          "shows": "the build ran in Chromium with the web harness's switches"
+          "conclusion": "failure",
+          "shows": "the run docs/cocos-trial.md cites for the build running in Chromium; its one job, trial, ended in failure"
         },
         {
           "kind": "record",
@@ -867,7 +891,7 @@
           "shows": "the conditions, and the two approaches that failed"
         }
       ],
-      "limits": "A build trial only. No harness, check or verdict exists for a COCOS game."
+      "limits": "A build trial only, and the run it cites ended in failure. No harness, check or verdict exists for a COCOS game."
     }
   ],
   "notModes": {
@@ -925,7 +949,8 @@
       "resolutionSeconds": 1,
       "run": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223/job/130241583383",
       "step": "Harness-backed Gate 1 accept (seed + fix candidate)",
-      "notMeasured": "The time per phase (import, replay, evaluate): the step is timed as a whole, from the job's step timestamps. One run, so no spread."
+      "notMeasured": "The time per phase (import, replay, evaluate): the step is timed as a whole, from the job's step timestamps. One run, so no spread.",
+      "conclusion": "success"
     }
   ]
 }

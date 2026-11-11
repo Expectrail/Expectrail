@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/Expectrail/Expectrail/contracts/capabilities.v1.schema.json",
+  "$id": "https://github.com/Expectrail/Expectrail/docs/capabilities.schema.json",
   "title": "Capability ledger: one row per mode a user could believe exists, with the proof behind it",
-  "description": "Read and written by expectrail.capabilities; the instance is docs/capabilities.json and docs/capabilities.md is rendered from it. A row's status says how far the mode is proven, its grade says what kind of evidence its best recorded run produced, and every row links the test, record or CI run that shows it. A measured row needs a CI run link. The schema checks shape; expectrail.capabilities.problems checks the rules a schema cannot (links that resolve, files that exist, what the README and the site advertise).",
+  "description": "Read and written by agents.capabilities; the instance is docs/capabilities.json and docs/capabilities.md is rendered from it. A row's status says how far the mode is proven, its grade says what kind of evidence its best recorded run produced, and every row links the test, record or CI run that shows it. A measured row needs a CI run link, and every run link carries the run's conclusion as read when the row was written. The schema checks shape; agents.capabilities.problems checks the rules a schema cannot (links that resolve, files that exist, what the README and the site advertise).",
   "type": "object",
   "additionalProperties": false,
   "required": ["format", "updated", "statuses", "grades", "rows", "notModes", "nameWatch", "timings"],
@@ -10,6 +10,7 @@
     "status": { "enum": ["implemented", "integrated", "measured", "experimental"] },
     "grade": { "enum": ["fixture", "diagnostic", "isolated", "protected"] },
     "text": { "type": "string", "minLength": 1 },
+    "conclusion": { "enum": ["success", "failure", "cancelled", "timed_out", "skipped", "neutral", "action_required", "stale"] },
     "repoPath": { "type": "string", "pattern": "^[A-Za-z0-9_.][A-Za-z0-9_./-]*(#[A-Za-z0-9_-]+)?$" },
     "runUrl": { "type": "string", "pattern": "^https://github\\.com/Expectrail/Expectrail/actions/runs/[0-9]+(/job/[0-9]+)?$" },
     "module": { "type": "string", "pattern": "^[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)*$" },
@@ -27,13 +28,17 @@
           "description": "run: a CI run on GitHub, by URL. test: a test file in this repository. record: a file in this repository written from a run's output, or a page that lists its runs."
         },
         "ref": { "type": "string", "minLength": 1 },
+        "conclusion": {
+          "$ref": "#/$defs/conclusion",
+          "description": "For a run: how the run ended, as GitHub's API reported it when the row was written. A recorded value; nothing re-reads it."
+        },
         "shows": { "$ref": "#/$defs/text" }
       },
       "allOf": [
         {
           "if": { "properties": { "kind": { "const": "run" } } },
-          "then": { "properties": { "ref": { "$ref": "#/$defs/runUrl" } } },
-          "else": { "properties": { "ref": { "$ref": "#/$defs/repoPath" } } }
+          "then": { "required": ["conclusion"], "properties": { "ref": { "$ref": "#/$defs/runUrl" } } },
+          "else": { "properties": { "ref": { "$ref": "#/$defs/repoPath" }, "conclusion": false } }
         }
       ]
     },
@@ -68,13 +73,14 @@
     "timing": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["what", "runner", "seconds", "resolutionSeconds", "run", "step", "notMeasured"],
+      "required": ["what", "runner", "seconds", "resolutionSeconds", "run", "conclusion", "step", "notMeasured"],
       "properties": {
         "what": { "$ref": "#/$defs/text" },
         "runner": { "$ref": "#/$defs/text" },
         "seconds": { "type": "number", "minimum": 0 },
         "resolutionSeconds": { "type": "number", "exclusiveMinimum": 0 },
         "run": { "$ref": "#/$defs/runUrl" },
+        "conclusion": { "$ref": "#/$defs/conclusion" },
         "step": { "$ref": "#/$defs/text" },
         "notMeasured": { "$ref": "#/$defs/text" }
       }

@@ -36,11 +36,13 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41003749744",
+          "conclusion": "success",
           "shows": "8 of 8 held-out bugs caught with SAM 3.1 on, no false alarm on the clean game"
         },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
+          "conclusion": "success",
           "shows": "CI on main, job agents-harness-verify: real replays with SAM off accept the correct fix and reject the fix that freezes the player"
         },
         {
@@ -105,7 +107,8 @@
       "resolutionSeconds": 1,
       "run": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223/job/130241583383",
       "step": "Harness-backed Gate 1 accept (seed + fix candidate)",
-      "notMeasured": "The time per phase (import, replay, evaluate): the step is timed as a whole, from the job's step timestamps. One run, so no spread."
+      "notMeasured": "The time per phase (import, replay, evaluate): the step is timed as a whole, from the job's step timestamps. One run, so no spread.",
+      "conclusion": "success"
     }
   ]
 }

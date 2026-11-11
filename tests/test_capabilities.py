@@ -6,7 +6,7 @@ import json
 import unittest
 from pathlib import Path
 
-from expectrail import capabilities as cap
+from agents import capabilities as cap
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -27,7 +27,7 @@ class LedgerTest(unittest.TestCase):
 
     def test_the_page_is_what_the_ledger_renders_to(self):
         self.assertEqual(cap.PAGE.read_text(encoding="utf-8"), cap.render(self.doc),
-                         "run: python3 -m expectrail.capabilities render")
+                         "run: python3 -m agents.capabilities render")
 
     def test_the_readme_links_to_the_ledger(self):
         self.assertIn("(docs/capabilities.md)", (ROOT / "README.md").read_text(encoding="utf-8"))
@@ -41,6 +41,27 @@ class LedgerTest(unittest.TestCase):
         self.assertTrue(measured)
         for row in measured:
             self.assertTrue([e for e in row["evidence"] if e["kind"] == "run"], row["id"])
+
+    def test_every_cited_run_carries_its_conclusion_and_only_experimental_rows_cite_a_failure(self):
+        cited = [(r, e) for r in self.doc["rows"] for e in r["evidence"] if e["kind"] == "run"]
+        self.assertGreater(len(cited), 20)
+        for row, ev in cited:
+            self.assertIn("conclusion", ev, row["id"])
+            if ev["conclusion"] != "success":
+                self.assertEqual(row["status"], "experimental", row["id"])
+
+    def test_the_unity_row_says_its_specs_are_approved_and_cites_runs_that_passed(self):
+        row = _row(self.doc, "unity-harness")
+        self.assertEqual(row["status"], "experimental")
+        self.assertIn("approved the three specs", row["limits"])
+        self.assertNotIn("draft", row["mode"].lower())
+        runs = [e for e in row["evidence"] if e["kind"] == "run"]
+        self.assertEqual({e["conclusion"] for e in runs}, {"success"})
+        # The ledger's claim and the files agree: each spec in specs/unity/ carries an approval.
+        specs = sorted((ROOT / "specs" / "unity").glob("*.json"))
+        self.assertEqual(len(specs), 3)
+        for path in specs:
+            self.assertIn("approval", json.loads(path.read_text(encoding="utf-8")), path.name)
 
     def test_no_row_claims_a_grade_above_diagnostic_yet(self):
         # Isolated needs the replay sandbox, the two-job action and the receipt; none has landed.
@@ -75,6 +96,45 @@ class RowRulesTest(unittest.TestCase):
         row = _row(self.doc, "godot-verify")
         row["evidence"] = [e for e in row["evidence"] if e["kind"] != "run"]
         self.assertEqual(cap.row_problems(self.doc), ["godot-verify: marked measured with no CI run link"])
+
+    def test_a_measured_or_integrated_row_that_cites_a_failed_run_fails(self):
+        for rid, status in (("godot-verify", "measured"), ("ci-gate", "integrated"), ("feedback-intake", "implemented")):
+            doc = copy.deepcopy(self.doc)
+            run = next(e for e in _row(doc, rid)["evidence"] if e["kind"] == "run")
+            run["conclusion"] = "failure"
+            number = run["ref"].split("/runs/")[1]
+            self.assertEqual(cap.row_problems(doc), [f"{rid}: marked {status} and cites run {number}, recorded as failure"])
+
+    def test_a_cancelled_run_is_not_a_success_either(self):
+        run = next(e for e in _row(self.doc, "discovery")["evidence"] if e["kind"] == "run")
+        run["conclusion"] = "cancelled"
+        self.assertEqual(len(cap.row_problems(self.doc)), 1)
+        self.assertIn("recorded as cancelled", cap.row_problems(self.doc)[0])
+
+    def test_an_experimental_row_may_cite_a_failed_run_and_the_page_says_it_failed(self):
+        row = _row(self.doc, "cocos-trial")
+        self.assertEqual((row["status"], row["evidence"][0]["conclusion"]), ("experimental", "failure"))
+        self.assertIn("(https://github.com/Expectrail/Expectrail/actions/runs/42680755693), which ended in failure:",
+                      cap.render(self.doc))
+
+    def test_the_wall_time_may_not_rest_on_a_failed_run(self):
+        self.doc["timings"][0]["conclusion"] = "failure"
+        self.assertEqual(cap.row_problems(self.doc), ["timings: run 42934646223 is recorded as failure"])
+
+    def test_the_schema_requires_a_conclusion_on_a_run_and_refuses_one_on_a_file(self):
+        import jsonschema
+
+        validator = jsonschema.Draft202012Validator(json.loads(cap.SCHEMA.read_text(encoding="utf-8")))
+        self.assertEqual(list(validator.iter_errors(self.doc)), [])
+        missing = copy.deepcopy(self.doc)
+        del next(e for e in _row(missing, "ci-gate")["evidence"] if e["kind"] == "run")["conclusion"]
+        self.assertTrue(list(validator.iter_errors(missing)))
+        extra = copy.deepcopy(self.doc)
+        next(e for e in _row(extra, "ci-gate")["evidence"] if e["kind"] == "test")["conclusion"] = "success"
+        self.assertTrue(list(validator.iter_errors(extra)))
+        unknown = copy.deepcopy(self.doc)
+        next(e for e in _row(unknown, "ci-gate")["evidence"] if e["kind"] == "run")["conclusion"] = "green"
+        self.assertTrue(list(validator.iter_errors(unknown)))
 
     def test_measured_on_saved_data_fails(self):
         _row(self.doc, "godot-verify")["grade"] = "fixture"
