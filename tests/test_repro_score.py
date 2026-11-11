@@ -81,8 +81,6 @@ class TheNoFixCandidate(unittest.TestCase):
         self.assertFalse([line for line in text.splitlines() if line.startswith("-") and not line.startswith("---")])
 
     def test_it_applies_to_a_copy_of_the_clean_game(self):
-        if shutil.which("git") is None:
-            self.skipTest("git is not installed")
         self.assertIsNone(bench.applies({"patch": score.NO_FIX}))
 
     @unittest.skipUnless(shutil.which("patch"), "patch is not installed")
