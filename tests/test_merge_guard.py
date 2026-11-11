@@ -165,8 +165,15 @@ class WorkflowTest(unittest.TestCase):
         self.assertTrue(all((r.label, r.rule, r.path) == (NEEDS_SEAN, "workflow", self.PATH) for r in reasons))
         return [r.message for r in reasons]
 
+    NAMED = "the file names secrets more often than it did, where no job is read as gaining them: "
+
     def test_a_harmless_edit_passes(self):
-        self.assertEqual(self.found(WORKFLOW.replace("echo build", "echo built  # a comment naming secrets.X")), [])
+        self.assertEqual(self.found(WORKFLOW.replace("echo build", "echo built  # a comment")), [])
+
+    def test_a_comment_that_newly_names_a_secret_is_reported(self):
+        # The words are counted in the raw text, so the guard need not know what is a comment and what is not.
+        self.assertEqual(self.found(WORKFLOW.replace("echo build", "echo built  # a comment naming secrets.X")),
+                         [self.NAMED + "X"])
 
     def test_a_new_read_only_job_passes(self):
         new = WORKFLOW + "  lint:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo lint\n"
@@ -203,9 +210,128 @@ class WorkflowTest(unittest.TestCase):
         new = WORKFLOW.replace("echo build", "echo ${{ secrets.GITHUB_TOKEN }} ${{ steps.secrets.outputs.x }}")
         self.assertEqual(self.found(new), [])
 
-    def test_the_word_in_a_name_or_a_script_is_not_a_use(self):
+    def test_the_word_in_a_name_or_a_script_is_not_read_as_a_use_but_is_reported_as_a_word(self):
         new = WORKFLOW.replace("      - run: echo build", "      - name: Check that no secrets leak\n        run: grep -r secrets docs || true")
-        self.assertEqual(self.found(new), [])
+        jobs, _ = mg.parse_workflow(new)
+        self.assertEqual(jobs["build"].secrets, set())
+        self.assertEqual(self.found(new), [self.NAMED + "(the word alone)"])
+        self.assertEqual(self.found(new.replace("echo report", "echo done"), old=new), [])
+
+    def test_a_secret_after_a_hash_in_a_block_scalar_is_reported(self):
+        # Found in review of #278: in a block scalar a "#" is text, and GitHub fills in ${{ }} there.
+        cases = {
+            "an env value": ("- run: echo hi\n        env:\n          K: |\n            # ${{ secrets.X }}",
+                             lambda d: d["jobs"]["a"]["steps"][0]["env"]["K"]),
+            "a shell string over two lines": ("- run: |\n          printf '%s' \"\n          # ${{ secrets.X }}\" | base64",
+                                              lambda d: d["jobs"]["a"]["steps"][0]["run"]),
+            "after a command": ("- run: |\n          echo hi; echo x #${{ secrets.X }}",
+                                lambda d: d["jobs"]["a"]["steps"][0]["run"]),
+            "a line of its own": ("- run: |\n          echo hi\n          # ${{ secrets.X }}\n          cat \"$0\"",
+                                  lambda d: d["jobs"]["a"]["steps"][0]["run"]),
+        }
+        for label, (step, value) in cases.items():
+            new = self.BLOCK.replace("- run: echo hi", step)
+            self.assertIn("secrets.X", value(yaml.safe_load(new)), label)  # PyYAML keeps it as text
+            self.assertEqual(self.found(new, old=self.BLOCK), [self.NAMED + "X"], label)
+            self.assertEqual(self.found(new, old=None), [self.NAMED + "X"], label + ", as a new workflow")
+        folded = self.BLOCK.replace("    steps:", "    if: >-\n      true ||\n      # secrets.X\n      false\n    steps:")
+        self.assertEqual(yaml.safe_load(folded)["jobs"]["a"]["if"], "true || # secrets.X false")
+        self.assertEqual(self.found(folded, old=self.BLOCK), [self.NAMED + "X"])
+
+    def test_a_hidden_use_of_a_secret_the_file_already_names_is_reported(self):
+        # Counted, not listed: one more mention of a name the file already has is still a gain.
+        old = self.BLOCK + "  b:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo ${{ secrets.X }}\n"
+        new = old.replace("- run: echo hi", "- run: |\n          echo hi\n          # ${{ secrets.X }}")
+        self.assertEqual(self.found(new, old=old), [self.NAMED + "X"])
+
+    def test_a_new_job_reaches_a_secret_in_the_workflows_own_env(self):
+        # Found in review of #278: the workflow's env reaches every job, so a new job gains what it holds.
+        old = self.BLOCK.replace("permissions:", "env:\n  K: ${{ secrets.X }}\npermissions:")
+        job = "  b:\n    runs-on: ubuntu-24.04\n    permissions:\n      contents: read\n    steps:\n      - run: echo \"$K\" | base64\n"
+        self.assertEqual(self.found(old + job, old=old), ["job b gains secrets: X"])
+        self.assertEqual(self.found(old.replace("echo hi", "echo hello"), old=old), [])  # an edit to a job that had it
+        self.assertEqual(self.found(self.BLOCK + job, old=self.BLOCK), [])  # the same job where the workflow holds none
+
+    ALIAS = "the file gains an alias (*name), which the guard does not follow; a person reads it"
+
+    def test_an_alias_is_reported_not_followed(self):
+        # Found in review of #278: an alias gives a new job another job's steps and permissions.
+        plain = "on: push\njobs:\n  a:\n    runs-on: ubuntu-24.04\n    permissions:\n      contents: write\n    steps:\n      - run: echo ${{ secrets.X }}\n"
+        anchored = plain.replace("permissions:", "permissions: &p").replace("steps:", "steps: &s")
+        new = anchored + "  b:\n    runs-on: ubuntu-24.04\n    permissions: *p\n    steps: *s\n"
+        b = yaml.safe_load(new)["jobs"]["b"]
+        self.assertEqual(b["permissions"], {"contents": "write"})
+        self.assertIn("secrets.X", b["steps"][0]["run"])
+        self.assertIn(self.ALIAS, self.found(new, old=plain))
+        self.assertIn(self.ALIAS, self.found(new, old=anchored))  # the anchors were already there
+        for value in ("<<: *defaults", "needs: [*a, *b]", "- *step"):
+            self.assertEqual(mg.aliases("x:\n  " + value + "\n"), value.count("*"), value)
+        self.assertEqual(mg.aliases("x: |\n  ls *.py *args\n  echo $((2 * 3))\ny: 2 * 3\n"), 0)  # a script, and arithmetic
+
+    def test_an_edit_elsewhere_in_a_workflow_that_has_aliases_passes(self):
+        path = ROOT / ".github" / "workflows" / "discovery.yml"
+        text = path.read_text(encoding="utf-8")
+        self.assertGreater(mg.aliases(text), 0)
+        self.assertIn("timeout-minutes: ", text)
+        edited = text.replace("timeout-minutes: ", "timeout-minutes:  ", 1)
+        self.assertNotEqual(edited, text)
+        self.assertEqual(mg.check_workflows([Change(".github/workflows/discovery.yml", text, edited)]), [])
+
+    ODD = "the file gains a line among its keys that is not a plain key, which the guard does not read; a person reads it"
+
+    def test_a_job_keyed_in_a_way_the_reader_does_not_split_is_reported(self):
+        # "? b" is a job to YAML; the line reader would give its lines to the job above it.
+        new = self.BLOCK + "  ? b\n  :\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo hi\n"
+        self.assertEqual(sorted(yaml.safe_load(new)["jobs"]), ["a", "b"])
+        self.assertEqual(self.found(new, old=self.BLOCK), [self.ODD])
+        key = self.BLOCK.replace("    runs-on:", "    ? timeout-minutes\n    : 5\n    runs-on:")
+        self.assertEqual(yaml.safe_load(key)["jobs"]["a"]["timeout-minutes"], 5)
+        self.assertEqual(self.found(key, old=self.BLOCK), [self.ODD])
+        steps_at_the_keys_indent = self.BLOCK.replace("      - run: echo hi", "    - run: echo hi")
+        self.assertEqual(self.found(steps_at_the_keys_indent, old=self.BLOCK), [])
+
+    def test_a_permissions_entry_that_is_not_scope_and_level_counts_as_write(self):
+        job = "  a:\n"
+        for label, block in (("an anchor on the value", "    permissions:\n      contents: &w write\n"),
+                             ("a tag", "    permissions:\n      contents: !!str write\n"),
+                             ("a block scalar", "    permissions:\n      contents: |-\n        write\n"),
+                             ("the value on the next line", "    permissions:\n      contents:\n        write\n")):
+            new = self.BLOCK.replace(job, job + block)
+            self.assertEqual(yaml.safe_load(new)["jobs"]["a"]["permissions"], {"contents": "write"}, label)
+            found = " | ".join(self.found(new, old=self.BLOCK))
+            self.assertIn("job a gets wider permissions", found, label)
+        # With a write word removed elsewhere, so that the file's count of the word does not rise.
+        old = self.BLOCK + "  b:\n    runs-on: ubuntu-24.04\n    permissions:\n      issues: write\n    steps:\n      - run: echo\n"
+        new = old.replace("issues: write", "issues: read").replace(job, job + "    permissions:\n      contents: &w write\n")
+        self.assertIn("job a gets wider permissions", " | ".join(self.found(new, old=old)))
+        flow = self.BLOCK.replace(job, job + "    permissions: {contents: read, issues: write}\n")
+        self.assertEqual(self.found(flow, old=self.BLOCK), ["job a gets wider permissions: issues"])
+        self.assertEqual(self.found(self.BLOCK.replace(job, job + "    permissions: {contents: read}\n"), old=self.BLOCK), [])
+
+    def test_the_words_are_counted_wherever_they_are(self):
+        for label, new, message in (
+            ("a step's name", self.BLOCK.replace("- run: echo hi", "- name: Set up the environment\n        run: echo hi"),
+             "the file gains the word environment that no job accounts for"),
+            ("a key under matrix", self.BLOCK + "    strategy:\n      matrix:\n        include:\n          - environment: unity\n",
+             "the file gains the word environment that no job accounts for"),
+            ("a write value under another key", self.BLOCK.replace("jobs:", "x-extra:\n  contents: write\njobs:"),
+             "the file gains a write permission that no job accounts for"),
+            ("id-token in a comment", self.BLOCK.replace("echo hi", "echo hi  # id-token: none"),
+             "the file gains the word id-token that no job accounts for"),
+        ):
+            self.assertEqual(self.found(new, old=self.BLOCK), [message], label)
+        script = self.BLOCK.replace("- run: echo hi", "- run: python3 -c \"open('x', 'w').write('y')\"  # rewrite it")
+        self.assertEqual(self.found(script, old=self.BLOCK), [])
+
+    def test_no_workflow_in_the_repository_has_a_line_or_a_permissions_block_the_guard_would_not_read(self):
+        for path in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
+            text = path.read_text(encoding="utf-8")
+            self.assertEqual(mg.odd_lines(text), 0, path.name)
+            doc = yaml.safe_load(text)
+            jobs, _ = mg.parse_workflow(text)
+            for name, job in doc["jobs"].items():
+                if job.get("permissions", doc.get("permissions")) != "write-all":
+                    self.assertNotEqual(jobs[name].perms, {"*": 2}, f"{path.name}#{name}")
 
     def test_the_secret_patterns_agree_with_the_test_that_guards_the_protected_environment(self):
         # tests/test_main_only_environment.py names secrets with its own pattern; on today's workflows the two agree.
@@ -233,7 +359,10 @@ class WorkflowTest(unittest.TestCase):
                          ["pull_request_target was added"])
         flow = WORKFLOW.replace("on:\n  pull_request:", "on: [push, pull_request_target]")
         self.assertEqual(self.found(flow), ["pull_request_target was added"])
-        self.assertEqual(self.found(WORKFLOW.replace("echo build", "echo x  # not pull_request_target")), [])
+        # The word is counted in the raw text, so a comment that newly holds it is reported too.
+        self.assertEqual(self.found(WORKFLOW.replace("echo build", "echo x  # not pull_request_target")),
+                         ["pull_request_target was added"])
+        self.assertEqual(self.found(WORKFLOW.replace("echo build", "echo x  # not that trigger")), [])
 
     def test_id_token_write_needs_a_person(self):
         new = WORKFLOW.replace("      pull-requests: write\n", "      pull-requests: write\n      id-token: write\n")

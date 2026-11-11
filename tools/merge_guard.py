@@ -10,9 +10,16 @@ reasons, 2 when the diff could not be read. The pull request's description comes
 
 Standard library only, so the job that runs it installs nothing.
 
-A workflow is read line by line, not parsed. What that reading cannot follow is reported rather than
-passed: a job written as a flow mapping, a ``\\x``, ``\\u`` or ``\\U`` escape anywhere in the file, and
-a quoted string that runs past the end of its line.
+A workflow is read line by line, not parsed, so the reading is not what the check rests on. Two
+things are. First, the words themselves are counted in the file's raw text, comments and scripts
+included: the ``secrets`` context, ``environment``, ``id-token``, ``write``, ``write-all``,
+``read-all`` and ``pull_request_target``. A file that holds more of one than it did, with no job
+the reading can name as the one that gained it, is reported against the file; so a comment, a step's
+name or a script that newly says one of these words is reported too, and a person reads it. Second,
+what the line reading cannot follow is reported rather than passed: a job written as a flow mapping,
+a ``\\x``, ``\\u`` or ``\\U`` escape anywhere in the file, a quoted string that runs past the end of
+its line, an alias (``*name``) outside a script, a line among the top-level keys, the jobs or a job's
+keys that is not a plain ``key:``, and a permissions block with an entry that is not ``scope: level``.
 
 What it does not see: a test loosened without being skipped; a skip moved from one test to another
 in the same file (skips are counted per file, added less removed); a skip whose name is not written
@@ -20,7 +27,8 @@ out (built with ``getattr`` or from pieces, or split over two lines); a ``load_t
 no tests, or a test that returns before it asserts; a test method removed or renamed so that it no
 longer runs; a file that is not Python deleted under ``tests/``; a new trigger (such as
 ``workflow_run``) on a workflow that already holds a secret; an ``approval`` in a JSON file outside
-a ``specs`` or ``contracts`` folder; a new file that agents read as instructions (an ``AGENTS.md``
+a ``specs`` or ``contracts`` folder; a job given a wider read scope by YAML the line reading
+does not follow and the checks above do not name; a new file that agents read as instructions (an ``AGENTS.md``
 in a subfolder, a ``CLAUDE.md``) or the audit's own configuration; the private repository named
 with no path after it, or a held-out name put together from pieces; whether a claim in the
 description has a run behind it; and the contents of held-out files (it never reads them; the
@@ -37,6 +45,7 @@ import os
 import re
 import subprocess
 import sys
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -78,20 +87,32 @@ _EXPRESSION = re.compile(r"\$\{\{.*?\}\}", re.S)
 _IF_LINE = re.compile(r"^\s*(?:-\s*)?if\s*:.*$", re.M)
 
 
-def secret_names(text: str) -> set[str]:
-    """The secrets a piece of a workflow can reach; ``(every secret)`` when a use names none."""
+def secret_uses(text: str, anywhere: bool = False) -> Counter:
+    """How often each secret is named; ``(every secret)`` counts the uses that name none.
+
+    As a job is read, the bare word counts only inside ``${{ }}`` or on an ``if:`` line. With
+    ``anywhere`` every appearance of the word counts, wherever it is: that is the raw-text count.
+    """
     spans = [m.span() for m in _EXPRESSION.finditer(text)] + [m.span() for m in _IF_LINE.finditer(text)]
-    names: set[str] = set()
+    uses: Counter = Counter()
     for m in _SECRETS.finditer(text):
         rest = text[m.end():]
         named = _SECRET_NAME.match(rest)
         if named:
-            names.add(named.group(1) or named.group(2))
-        elif re.match(r"\s*[.\[]", rest) or re.match(r"\s*:\s*inherit\b", rest):
-            names.add("(every secret)")
-        elif any(a <= m.start() < b for a, b in spans):
-            names.add("(every secret)")
-    return {n for n in names if n.upper() != "GITHUB_TOKEN"}
+            name = named.group(1) or named.group(2)
+            if name.upper() != "GITHUB_TOKEN":
+                uses[name] += 1
+        elif (re.match(r"\s*[.\[]", rest) or re.match(r"\s*:\s*inherit\b", rest)
+              or any(a <= m.start() < b for a, b in spans)):
+            uses["(every secret)"] += 1
+        elif anywhere:
+            uses["(the word alone)"] += 1
+    return uses
+
+
+def secret_names(text: str) -> set[str]:
+    """The secrets a piece of a workflow can reach; ``(every secret)`` when a use names none."""
+    return set(secret_uses(text))
 
 
 _LEVEL = {"none": 0, "read": 1, "write": 2}
@@ -270,19 +291,41 @@ def _blocks(lines: list[str]) -> dict[str, list[str]]:
     return out
 
 
+# A block the reader could not take apart: treated as able to write everything, so it is never the narrower one.
+_UNREAD = {"*": 2}
+_PERMISSION = re.compile(r"""\s*["']?([a-z-]+)["']?\s*:\s*["']?(read|write|none)["']?\s*$""")
+
+
 def _permissions(block: list[str] | None) -> dict[str, int] | None:
-    """A permissions block as scope -> level, ``*`` for every scope not named. None when absent."""
+    """A permissions block as scope -> level, ``*`` for every scope not named. None when absent.
+
+    Every entry must be a plain ``scope: level``. Anything else (a tag, an anchor, a value on the next
+    line, no value at all) is not guessed at: the block counts as write to everything.
+    """
     if block is None:
         return None
-    text = "\n".join(block)
-    inline = block[0].split(":", 1)[1].strip().strip("'\"")
-    if inline == "write-all":
+    inline = block[0].split(":", 1)[1].strip()
+    rest = [l for l in block[1:] if l.strip()]
+    if inline and rest:
+        return dict(_UNREAD)
+    if inline.strip("'\"") == "write-all":
         return {"*": 2}
-    if inline == "read-all":
+    if inline.strip("'\"") == "read-all":
         return {"*": 1}
+    if inline:
+        if not (inline.startswith("{") and inline.endswith("}")):
+            return dict(_UNREAD)
+        entries = [e for e in inline[1:-1].split(",") if e.strip()]
+    elif not rest:
+        return dict(_UNREAD)
+    else:
+        entries = rest
     perms = {"*": 0}
-    for scope, level in re.findall(r"""([a-z-]+)["']?\s*:\s*["']?(read|write|none)\b""", text.split(":", 1)[1]):
-        perms[scope] = _LEVEL[level]
+    for entry in entries:
+        m = _PERMISSION.match(entry)
+        if not m:
+            return dict(_UNREAD)
+        perms[m.group(1)] = _LEVEL[m.group(2)]
     return perms
 
 
@@ -297,10 +340,17 @@ class Job:
     text: str
     environment: str
     perms: dict[str, int] | None
+    inherited: str = ""  # the workflow's own text outside ``jobs``: its ``env`` reaches every job
 
     @property
     def secrets(self) -> set[str]:
+        """The secrets the job's own text names."""
         return secret_names(self.text)
+
+    @property
+    def reach(self) -> set[str]:
+        """The secrets the job can reach: its own and the workflow level's."""
+        return secret_names(self.text) | secret_names(self.inherited)
 
     @property
     def id_token(self) -> bool:
@@ -308,9 +358,13 @@ class Job:
         return bool(named) or (self.perms is not None and _level(self.perms, "id-token") == 2)
 
 
-_ENVIRONMENT_KEY = re.compile(r"""(?<![\w.-])["']?environment["']?\s*:""")
-_WRITE_VALUE = re.compile(r""":\s*["']?(?:write|write-all)\b""")
-_ID_TOKEN = re.compile(r"""id-token["']?\s*:\s*["']?write\b""")
+# The words, as whole YAML scalars, wherever they are in the raw text: a key or a value, quoted or not,
+# on its own line or not, in a comment or a script. Nothing here depends on how the file is laid out.
+_ENVIRONMENT_WORD = re.compile(r"""(?:^|[\s"',{\[?])environment(?=$|[\s"':])""", re.M)
+_ID_TOKEN_WORD = re.compile(r"""(?:^|[\s"',{\[?])id-token(?=$|[\s"':])""", re.M)
+_WRITE_WORD = re.compile(r"""(?:^|[\s"',{\[:])(?:write|write-all|read-all)(?=$|[\s"',}\]#])""", re.M)
+# An alias, where YAML allows a value to start: "permissions: *p", "- *step", "<<: *defaults", "[*a, *b]".
+_ALIAS = re.compile(r"""(?:^|[\s,\[{:])\*[^\s,\[\]{}]+""")
 
 
 def unread_jobs(text: str | None) -> list[str]:
@@ -328,6 +382,49 @@ def unread_jobs(text: str | None) -> list[str]:
         if job[0].split(":", 1)[1].strip():
             out.append(f"job {name}")
     return out
+
+
+def odd_lines(text: str | None) -> int:
+    """Lines among the top-level keys, the jobs or a job's keys that are not a plain ``key:``.
+
+    The reader gives such a line to the key above it. A job keyed with ``? name`` would be read as
+    part of the job before it, so these are counted and a gain is reported.
+    """
+    if text is None:
+        return 0
+    lines = [l for l in (_strip_comment(l).replace("\t", "    ") for l in text.splitlines()) if l.strip()]
+
+    def odd(block: list[str]) -> int:
+        if not block:
+            return 0
+        base = min(_indent(l) for l in block)
+        return sum(1 for l in block
+                   if _indent(l) == base and not _key(l) and not re.match(r"\s*-(?:\s|$)", l))
+
+    count = odd(lines)
+    jobs = _blocks(lines).get("jobs", [])[1:]
+    count += odd(jobs)
+    for job in _blocks(jobs).values():
+        count += odd(job[1:])
+    return count
+
+
+def aliases(text: str | None) -> int:
+    """How many aliases (``*name``) the text holds outside block scalars. A script may use ``*`` as it likes."""
+    count = 0
+    block = None
+    for raw in (text or "").splitlines():
+        line = raw.replace("\t", "    ")
+        if block is not None:
+            if not line.strip() or _indent(line) > block:
+                continue
+            block = None
+        header = _BLOCK_HEADER.match(_strip_comment(line))
+        if header:
+            block = len(header.group("lead"))
+            continue
+        count += len(_ALIAS.findall(line))
+    return count
 
 
 # YAML decodes these inside a double-quoted string, so "env\x69ronment" is a key the patterns never see.
@@ -389,8 +486,9 @@ def open_strings(text: str | None) -> int:
 def parse_workflow(text: str | None) -> tuple[dict[str, Job], str]:
     """The jobs of a workflow with what each can reach, and the file without comments.
 
-    Anything outside ``jobs`` (workflow-level ``env``, ``permissions``) counts toward every job, and
-    is also kept as the pseudo-job ``(workflow)`` so a secret added there is seen.
+    Anything outside ``jobs`` (workflow-level ``env``, ``permissions``) counts toward every job: a job
+    reaches the secrets named there as well as its own. It is also kept as the pseudo-job
+    ``(workflow)`` so a secret added there is reported once, against the workflow.
     """
     if text is None:
         return {}, ""
@@ -404,7 +502,7 @@ def parse_workflow(text: str | None) -> tuple[dict[str, Job], str]:
         keys = _blocks(block[1:])
         perms = _permissions(keys.get("permissions"))
         environment = " ".join(" ".join(l.split()) for l in keys.get("environment", []))
-        jobs[name] = Job("\n".join(block), environment, perms if perms is not None else workflow_perms)
+        jobs[name] = Job("\n".join(block), environment, perms if perms is not None else workflow_perms, outside)
     return jobs, plain
 
 
@@ -413,13 +511,14 @@ def check_workflows(changes: list[Change]) -> list[Reason]:
     for c in changes:
         if not re.match(r"\.github/workflows/[^/]+\.ya?ml$", c.path) or c.new is None:
             continue
-        old_jobs, old_plain = parse_workflow(c.old)
-        new_jobs, new_plain = parse_workflow(c.new)
+        old_jobs, _ = parse_workflow(c.old)
+        new_jobs, _ = parse_workflow(c.new)
 
         def reason(message: str) -> None:
             out.append(Reason(NEEDS_SEAN, "workflow", c.path, message))
 
-        if new_plain.count("pull_request_target") > old_plain.count("pull_request_target"):
+        raw_old, raw_new = c.old or "", c.new
+        if raw_new.count("pull_request_target") > raw_old.count("pull_request_target"):
             reason("pull_request_target was added")
         # Fail closed: a job written as a flow mapping ({...}) is not split into its keys, so say so.
         for name in unread_jobs(c.new):
@@ -430,12 +529,24 @@ def check_workflows(changes: list[Change]) -> list[Reason]:
             reason("the file gains an escaped character (\\x, \\u or \\U), which the guard does not read; a person reads it")
         if open_strings(c.new) > open_strings(c.old):
             reason("the file gains a quoted string that runs over a line, which the guard does not read; a person reads it")
+        # An alias gives a job whatever its anchor holds, and the words are only at the anchor.
+        if aliases(c.new) > aliases(c.old):
+            reason("the file gains an alias (*name), which the guard does not follow; a person reads it")
+        if odd_lines(c.new) > odd_lines(c.old):
+            reason("the file gains a line among its keys that is not a plain key, which the guard does not read; a person reads it")
         before_reasons = len(out)
+        named: set[str] = set()
+        workflow_gain: set[str] = set()
         for name, job in new_jobs.items():
             before = old_jobs.get(name)
             where = "the workflow" if name == "(workflow)" else f"job {name}"
-            gained = job.secrets - (before.secrets if before else set())
+            if name == "(workflow)":
+                gained = workflow_gain = job.secrets - (before.secrets if before else set())
+            else:
+                # What the workflow level gained is reported once, against the workflow, not per job.
+                gained = job.reach - (before.reach if before else set()) - workflow_gain
             if gained:
+                named |= gained
                 reason(f"{where} gains secrets: {', '.join(sorted(gained))}")
             if job.environment and job.environment != (before.environment if before else ""):
                 reason(f"{where} gains or changes an environment")
@@ -458,16 +569,17 @@ def check_workflows(changes: list[Change]) -> list[Reason]:
                 reason(f"{where} lost its permissions block, so its token gets the repository default")
             elif wider:
                 reason(f"{where} gets wider permissions: {', '.join('every other scope' if s == '*' else s for s in wider)}")
-        # Backstop: whatever the file as a whole gains must be accounted for by a reason above.
+        # What the check rests on: the words, counted in the raw text with comments and scripts left in.
+        # The reading above can make these messages better; it cannot make a gain go unreported.
         said = " ".join(r.message for r in out[before_reasons:])
-        gained = secret_names(new_plain) - secret_names(old_plain)
-        unsaid = sorted(n for n in gained if n not in said)
+        more = secret_uses(raw_new, anywhere=True) - secret_uses(raw_old, anywhere=True)
+        unsaid = sorted(n for n in more if n not in named)
         if unsaid:
-            reason(f"the file gains secrets no job accounts for: {', '.join(unsaid)}")
-        for pattern, words, what in ((_ENVIRONMENT_KEY, ("environment",), "an environment"),
-                                     (_WRITE_VALUE, ("permissions", "may write", "id-token"), "a write permission"),
-                                     (_ID_TOKEN, ("id-token",), "id-token: write")):
-            if len(pattern.findall(new_plain)) > len(pattern.findall(old_plain)) and not any(w in said for w in words):
+            reason(f"the file names secrets more often than it did, where no job is read as gaining them: {', '.join(unsaid)}")
+        for pattern, words, what in ((_ENVIRONMENT_WORD, ("environment",), "the word environment"),
+                                     (_WRITE_WORD, ("permissions", "may write", "id-token"), "a write permission"),
+                                     (_ID_TOKEN_WORD, ("id-token",), "the word id-token")):
+            if len(pattern.findall(raw_new)) > len(pattern.findall(raw_old)) and not any(w in said for w in words):
                 reason(f"the file gains {what} that no job accounts for")
     return out
 
