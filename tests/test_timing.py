@@ -159,6 +159,29 @@ class RecordTest(unittest.TestCase):
             change(doc)
             self.assertEqual(len(timing.problems(doc)), 1, doc)
 
+    def test_seconds_that_are_not_a_number_are_refused(self):
+        for value in (float("nan"), float("inf"), float("-inf")):
+            for change, where in ((lambda d: d.update(totalSeconds=value), "totalSeconds"),
+                                  (lambda d: d["phases"].update(replay=value), "phases/replay"),
+                                  (lambda d: d["arms"][0]["seconds"].update(replay=value), "arms/0/seconds/replay")):
+                doc = copy.deepcopy(self.doc)
+                change(doc)
+                self.assertEqual(timing.problems(doc), [f"verify-timing: {where}: not a finite number"])
+
+    def test_load_refuses_nan_in_the_file_and_write_never_puts_one_there(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "timing.json"
+            path.write_text(EXAMPLE.read_text(encoding="utf-8").replace('"totalSeconds": ', '"totalSeconds": NaN, "was": ', 1))
+            self.assertIn("NaN", path.read_text())
+            with self.assertRaisesRegex(timing.TimingError, "totalSeconds: not a finite number"):
+                timing.load(path)
+            path.unlink()
+            ticks = iter([0.0, float("nan")])
+            recorder = timing.Recorder(clock=lambda: next(ticks))
+            with self.assertRaisesRegex(timing.TimingError, "not a finite number"):
+                timing.write(recorder, path, "a clock that broke")
+            self.assertFalse(path.exists())
+
     def test_load_refuses_a_file_that_is_not_a_record(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "timing.json"
@@ -299,6 +322,59 @@ class VerifierTimingTest(unittest.TestCase):
             self.assertEqual(json.loads((out / "verification.json").read_text())["decision"], doc["decision"])
             self.assertFalse((out / "timing.json").exists(), "an earlier run's numbers were left beside this verdict")
             self.assertIn("verify-timing: broken", (out / "timing-error.txt").read_text())
+
+    def _saved(self, out: Path) -> dict:
+        return self._verify(out, observations_path=REPO / "agents" / "fixtures" / "obs-fixed.json", skip_harness=True)
+
+    def test_a_timing_json_that_is_a_folder_does_not_lose_the_verdict(self):
+        # The write fails on the folder, and so does removing it: the second fault used to escape verify().
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            (out / "timing.json").mkdir()
+            doc = self._saved(out)
+            self.assertEqual(json.loads((out / "verification.json").read_text())["decision"], doc["decision"])
+            note = (out / "timing-error.txt").read_text()
+            self.assertIn("timing.json is not this run's and could not be removed", note)
+            with self.assertRaises(timing.TimingError):
+                timing.load(out / "timing.json")
+
+    def test_when_the_error_note_cannot_be_written_either_the_verdict_stands_and_stderr_says_why(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            (out / "timing.json").write_text("{\"stale\": true}\n")
+            (out / "timing-error.txt").mkdir()
+            err = io.StringIO()
+            with mock.patch.object(timing, "write", side_effect=OSError("disk full")), contextlib.redirect_stderr(err):
+                doc = self._saved(out)
+            self.assertEqual(json.loads((out / "verification.json").read_text())["decision"], doc["decision"])
+            self.assertFalse((out / "timing.json").exists())
+            self.assertIn("OSError: disk full", err.getvalue())
+            self.assertIn("timing-error.txt could not be written", err.getvalue())
+
+    def test_no_kind_of_fault_in_the_timing_loses_the_verdict(self):
+        for fault in (TypeError("not serialisable"), ValueError("Out of range float values"), ImportError("jsonschema"),
+                      RuntimeError("anything")):
+            with tempfile.TemporaryDirectory() as tmp:
+                out = Path(tmp)
+                with mock.patch.object(timing, "write", side_effect=fault):
+                    doc = self._saved(out)
+                self.assertEqual(json.loads((out / "verification.json").read_text())["decision"], doc["decision"])
+                self.assertIn(f"{type(fault).__name__}: {fault}", (out / "timing-error.txt").read_text())
+
+    def test_a_fault_in_the_verification_itself_is_still_raised(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(verifier, "_verify", side_effect=RuntimeError("the verifier broke")):
+                with self.assertRaisesRegex(RuntimeError, "the verifier broke"):
+                    self._saved(Path(tmp))
+            self.assertFalse((Path(tmp) / "timing.json").exists())
+
+    def test_a_timing_that_is_written_removes_an_earlier_runs_error_note(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            (out / "timing-error.txt").write_text("TimingError: from the run before\n")
+            self._saved(out)
+            self.assertFalse((out / "timing-error.txt").exists())
+            self.assertEqual(timing.load(out / "timing.json")["format"], "expectrail.verify-timing/v1")
 
     def test_the_verdict_is_the_same_with_and_without_a_recording(self):
         with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:

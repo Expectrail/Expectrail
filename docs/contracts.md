@@ -90,11 +90,11 @@ routes appear as counts only; the schema has no field for anything else about th
 `capabilities` (`expectrail.capabilities/v1`,
 [`contracts/capabilities.v1.schema.json`](../contracts/capabilities.v1.schema.json)) is the one record
 of how far each advertised mode is proven: [`docs/capabilities.json`](capabilities.json), rendered as
-[capabilities.md](capabilities.md). The example is two rows of the real ledger. Each cited run records how it ended (`conclusion`), read from GitHub when the row was written; a run that did not end in success needs a `conclusionNote` saying why it is evidence all the same, and only an implemented or experimental row may cite one.
+[capabilities.md](capabilities.md). The example is two rows of the real ledger. Each cited run records how it ended (`conclusion`), read from GitHub when the row was written; a run that did not end in success needs a `conclusionNote` saying why it is evidence all the same, and only an implemented or experimental row may cite one. A run's evidence may name the `jobs` it rests on. `python3 -m expectrail.capabilities recheck` (`expectrail.capability_runs`) asks GitHub again: it fails when a run's conclusion is not the one recorded, when a named or linked job is missing or did not end in success, when a wall time's step is missing or failed, when a time read from the step's timestamps is not what the step lasted to the second, when a time measured inside the step (one with `phases`) is longer than the step (a shorter one passes, since the step does other work too), and when a run cannot be read. It reads conclusions, jobs and steps only, never logs, so it does not check a count a row quotes.
 
 | Record | Written by | Read by |
 | --- | --- | --- |
-| `capabilities` | a person or an agent, by hand, in the pull request that changes what a mode has shown | `expectrail.capabilities` (`check`, `render`) and `tests/test_capabilities.py` |
+| `capabilities` | a person or an agent, by hand, in the pull request that changes what a mode has shown | `expectrail.capabilities` (`check`, `render`, `recheck`) and `tests/test_capabilities.py` |
 
 It is not in `expectrail.contracts.KINDS`. The schema fixes the shape, the four statuses and the four
 grades. `expectrail.capabilities.problems` checks what a schema cannot: a `measured` row links a CI
@@ -150,7 +150,8 @@ the harness's five steps for each replay the verifier asked for: `reference`, `c
 and `held-out-1`, `held-out-2` and so on; a private route is named by its position only, and the
 schema refuses any other name. It is not in `expectrail.contracts.KINDS`. One run on one machine: it
 is a measurement of that run, with no spread. If the record cannot be written the verification
-stands, `timing.json` is removed and `timing-error.txt` says why. The review's replays
+stands, `timing.json` is removed and `timing-error.txt` says why; a second fault while doing that is
+noted, never raised. A number that is not finite (`NaN`, `Infinity`) is refused when a record is read or written. The review's replays
 (`agents.review_change`) and the CI gate's are not timed yet.
 
 ## Rules the contracts encode

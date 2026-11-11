@@ -31,7 +31,9 @@ orchestrator refused its `isolated` class outright.
   but not the three properties; required and outside (never accept, and the reader refuses a record
   that says accept); required where the machine cannot sandbox (nothing replayed, exit 2, a record);
   self-contradicting blocks; an old record; the comment line with hostile text; the action's input.
-- The full suite: 1,880 tests, OK, 17 skipped (7 need bubblewrap).
+- The full suite on the tree merged with main: 1,921 tests, OK, 17 skipped (7 need bubblewrap).
+- `python3 -m expectrail.capabilities recheck`: 24 runs read from GitHub, 0 problems, the newly cited
+  run 43115035122 and its `seeded-bugs` job among them.
 - One existing test changed: `tests/test_jit_rules.py` held that the decision reads only the counts and
   the held-out block. It now holds three inputs, and that the third can only take an accept away.
 - Real bubblewrap through the gate with the sandbox required: this change's own `Expectrail verify`

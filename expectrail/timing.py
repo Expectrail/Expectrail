@@ -23,6 +23,7 @@ import argparse
 import contextlib
 import contextvars
 import json
+import math
 import os
 import sys
 import time
@@ -146,10 +147,34 @@ def phase(name: str):
             recorder.events.append((_arm.get(), name, recorder.clock() - started))
 
 
+def not_finite(value, where: str = "") -> str | None:
+    """Where the first NaN or infinity sits in a parsed JSON value, or None when every number is finite.
+
+    ``json`` reads and writes ``NaN`` and ``Infinity`` unless told not to, a JSON Schema ``number`` accepts
+    them, and every comparison with NaN is false, so a sum check passes on one.
+    """
+    if isinstance(value, float) and not math.isfinite(value):
+        return where or "(root)"
+    if isinstance(value, dict):
+        children = ((f"{where}/{key}" if where else str(key), child) for key, child in value.items())
+    elif isinstance(value, (list, tuple)):
+        children = ((f"{where}/{index}" if where else str(index), child) for index, child in enumerate(value))
+    else:
+        return None
+    for path, child in children:
+        found = not_finite(child, path)
+        if found:
+            return found
+    return None
+
+
 def problems(doc: dict) -> list[str]:
-    """What is wrong with a timing record, one line each: the schema first, then the sums."""
+    """What is wrong with a timing record, one line each: numbers that are not numbers, the schema, the sums."""
     import jsonschema
 
+    bad = not_finite(doc)
+    if bad:
+        return [f"verify-timing: {bad}: not a finite number"]
     schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
     errors = sorted(jsonschema.Draft202012Validator(schema).iter_errors(doc), key=lambda e: list(e.path))
     if errors:
@@ -191,7 +216,7 @@ def write(recorder: Recorder, path: Path, what: str, **context) -> dict:
     found = problems(doc)
     if found:
         raise TimingError(found[0])
-    Path(path).write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+    Path(path).write_text(json.dumps(doc, indent=2, allow_nan=False) + "\n", encoding="utf-8")
     return doc
 
 
