@@ -94,6 +94,7 @@ jobs:
         run: |
           [[ "$ID" =~ ^h[0-9]{2}$ ]] || { echo "::error::unexpected id"; exit 1; }
           python -m expectrail.jit.blind verify --set heldout-set > /dev/null
+          mkdir -p "runs/blind/$ID"
           export PATH="$PWD/tools/godot:$PATH"
           if ! python -m expectrail.jit.blind entry --set heldout-set --id "$ID" --out "runs/blind/$ID" \
               > "runs/blind-$ID.log" 2>&1; then

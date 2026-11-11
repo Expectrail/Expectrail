@@ -51,7 +51,7 @@
   "expectrail/jit/__init__.py": "b7b71f3de71a1fa84623ca9324b666bae2d3600b231b5e546bbd8a1f766efacf",
   "expectrail/jit/assess.py": "9c9ec38ebbad0492f3e642cc20414bb5e436977fa33e9fd2db5abc208a34482a",
   "expectrail/jit/bench.py": "4818707e7fb9cbb876079bd2359a850d358165d792618a2518573f817b4ee74b",
-  "expectrail/jit/blind.py": "e0ebafb62dce637e2dde8f769998196fce69451e580012c916a4cdae37630295",
+  "expectrail/jit/blind.py": "7dc4fc7246c28112b6772e4033df5717b419a74ec882ae55e23e5609e6c800c2",
   "expectrail/jit/cli.py": "c32e8604a8e4bbab99d4822aa4b42744753e09be3629a31121f43a61e484056f",
   "expectrail/jit/diff_map.py": "793445cde6300d194f609f0ee3c8c1266b7aafa1d25f76dbc003bb1e9cfbdd21",
   "expectrail/jit/dodgy.py": "2c484720f8d111ab0a425bec23b74e990ddb69d78b305306305c71d9193c8d6b",
@@ -103,10 +103,20 @@
   "contracts/verdict.schema.json": "ca399e7280a0a49e2ea9e4d65b6ebcdcfadabbe0f571f9001378760a0cab3443",
   "contracts/verification.schema.json": "e107b7f1273a2ca0863b8494c18b6be4573e92fc75653c174d27b7800ce76b3e",
   "discovery/platformer.profile.json": "3a75e19895cfbee79d93f7135427fb47e38d3e8d64c5025092860554ed29c505",
-  ".github/workflows/jit-blind.yml": "f51f81719f1fd1c39527f9bf9b16694dcfbecc8d56e5789fd6e5c7a60b4bd67f",
+  ".github/workflows/jit-blind.yml": "5e68392b171bd5f367de886d44c0655180f59e5b556909a3c47e042eb99c9783",
   "game/platformer/**": "3ac35172fce9bfc031b5fcf4076b9393c1b28ff803d1469d7bf93eeab015e7fb"
  },
  "budgetUsdPerCandidate": 2.0,
  "isolation": "One job per entry, in main-only, holds the held-out token's checkout and the model key, as the discovery blind run does. The game always runs through the harness with a whitelisted environment (harness/run.py game_env), so the set's patched code never sees either secret; the model reads the report and the candidate's patch as text only.",
- "code": "expectrail/jit/blind.py and .github/workflows/jit-blind.yml, written before anyone on the team read the set; the supplementary candidates are made by that code from each defect patch alone."
+ "code": "expectrail/jit/blind.py and .github/workflows/jit-blind.yml, written before anyone on the team read the set; the supplementary candidates are made by that code from each defect patch alone.",
+ "amendments": [
+  {
+   "date": "2026-11-10",
+   "pins": [
+    ".github/workflows/jit-blind.yml",
+    "expectrail/jit/blind.py"
+   ],
+   "why": "Infrastructure, before any candidate ran: blind run 42939008550 stopped in every entry job in 0 s, because the step redirected its private log into a folder it had not created yet. No replay ran, no model was called, nothing from the set was printed. The step now creates the folder first, and the score calls a run with any of the 18 primary candidates missing incomplete (that run's score said no-added-value on zero rows). The candidates, arms, scoring rule and claim are unchanged."
+  }
+ ]
 }

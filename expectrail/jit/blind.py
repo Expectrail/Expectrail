@@ -282,7 +282,10 @@ def score(rows: list[dict]) -> dict:
     false_a = correct.get("Acaught", 0) + intent.get("Acaught", 0)
     false_b = correct.get("Bcaught", 0) + intent.get("Bcaught", 0)
     no_result = sum(t.get("AnoResult", 0) + t.get("BnoResult", 0) for t in (wrong, correct, intent))
-    if no_result:
+    expected = {"wrong": 8, "correct": 8, "intentional": 2}
+    missing = sum(max(0, n - g.get(f"primary/{k}", {}).get("cases", 0)) for k, n in expected.items())
+    out["missingPrimary"] = missing
+    if no_result or missing:
         verdict = "incomplete"
     elif wrong.get("Bcaught", 0) > wrong.get("Acaught", 0) and false_b == false_a:
         verdict = "adds-value"
@@ -297,7 +300,10 @@ def score(rows: list[dict]) -> dict:
 
 
 def render(doc: dict) -> str:
-    lines = [f"# Blind set 3: {doc['verdict']}", "",
+    lines = [f"# Blind set 3: {doc['verdict']}", ""]
+    if doc.get("missingPrimary"):
+        lines += [f"{doc['missingPrimary']} of the 18 primary candidates have no row: the run is incomplete.", ""]
+    lines += [
              f"False catches on primary correct fixes and intentional changes: A {doc['falseCatches']['A']}, "
              f"B {doc['falseCatches']['B']}. Generated-checks spend: ${doc['spendUsd']:.4f}.", "",
              "| Group | Cases | A caught | B caught | A no result | B no result | weak only |",
