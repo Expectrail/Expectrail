@@ -23,7 +23,8 @@
   Main may change the files it pins; judged mutation runs check out that commit, and `tests/test_mutation_registration.py` checks the
   record against it.
 - **No secrets.** API keys go in your environment or the CI secret store, never in a file.
-- **Log new work.** Add a line to the After the event table in [docs/new-work.md](docs/new-work.md)
-  when something lands; the table above it is the record of the event and stays as it is.
+- **Log new work.** Add one file under [docs/new-work/](docs/new-work/README.md) for each change, named
+  `YYYY-MM-DD-short-name.md`. The tables in [docs/new-work.md](docs/new-work.md) are the record up to
+  November 11, 2026 and stay as they are.
 - **Tests.** `python3 -m pip install -r requirements-dev.txt` once, then
   `python3 -m unittest discover -s tests -t .` before you push.

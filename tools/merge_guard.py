@@ -65,6 +65,10 @@ RULE_FILES = ("AGENTS.md", ".github/CODEOWNERS")
 GUARD_FILES = ("tools/merge_guard.py", "tools/__init__.py", ".github/workflows/merge-guard.yml",
                "tests/test_merge_guard.py")
 NEW_WORK = "docs/new-work.md"
+# One file per change since November 11: two pull requests that each add a file never conflict, where
+# two that each add a last row to one table always did.
+NEW_WORK_DIR = "docs/new-work/"
+NEW_WORK_NAME = re.compile(r"\d{4}-\d{2}-\d{2}-[a-z0-9][a-z0-9-]*\.md")
 INTENDED = re.compile(r"^Guard: test change intended \(#\d+\)\s*$", re.M)
 # An HTML comment in a description does not show on the page, so a line inside one is not a statement.
 _HTML_COMMENT = re.compile(r"<!--.*?(?:-->|\Z)", re.S)
@@ -759,9 +763,19 @@ def check_new_work(changes: list[Change]) -> list[Reason]:
     if not code:
         return []
     for c in changes:
+        if is_entry(c.path) and c.old is None and c.new is not None and "## What was run" in c.new:
+            return []
+        # A row in the old table still counts, for pull requests that were open when the folder came in.
         if c.path == NEW_WORK and any(l.lstrip().startswith("|") and l.count("|") >= 4 for l in c.added):
             return []
-    return [Reason(CHANGES, "new-work", NEW_WORK, f"{len(code)} file(s) outside the docs changed and no row was added (first: {code[0]})")]
+    return [Reason(CHANGES, "new-work", NEW_WORK_DIR,
+                   f"{len(code)} file(s) outside the docs changed and no entry was added under {NEW_WORK_DIR} "
+                   f"(YYYY-MM-DD-short-name.md with a 'What was run' section; first: {code[0]})")]
+
+
+def is_entry(path: str) -> bool:
+    """A work-log entry: docs/new-work/YYYY-MM-DD-short-name.md."""
+    return path.startswith(NEW_WORK_DIR) and bool(NEW_WORK_NAME.fullmatch(path[len(NEW_WORK_DIR):]))
 
 
 def check(changes: list[Change], body: str = "") -> list[Reason]:
