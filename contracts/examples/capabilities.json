@@ -43,6 +43,9 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
           "conclusion": "success",
+          "jobs": [
+            "agents-harness-verify"
+          ],
           "shows": "CI on main, job agents-harness-verify: real replays with SAM off accept the correct fix and reject the fix that freezes the player"
         },
         {

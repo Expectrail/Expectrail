@@ -43,6 +43,9 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
           "conclusion": "success",
+          "jobs": [
+            "agents-harness-verify"
+          ],
           "shows": "CI on main, job agents-harness-verify: real replays with SAM off accept the correct fix and reject the fix that freezes the player"
         },
         {
@@ -81,6 +84,9 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
           "conclusion": "success",
+          "jobs": [
+            "capture-smoke"
+          ],
           "shows": "CI on main, job capture-smoke: the smoke route rendered twice and compared"
         },
         {
@@ -119,12 +125,18 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42926526666",
           "conclusion": "success",
+          "jobs": [
+            "verify"
+          ],
           "shows": "the verify workflow completed with success on a pull request of this repository"
         },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42926734313",
           "conclusion": "success",
+          "jobs": [
+            "comment"
+          ],
           "shows": "the comment workflow completed with success after it"
         },
         {
@@ -166,12 +178,24 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42758583740",
           "conclusion": "success",
+          "jobs": [
+            "build",
+            "replay (a)",
+            "replay (b)",
+            "cross-runner"
+          ],
           "shows": "Unity workflow run 19: the jobs build, replay (a), replay (b) and cross-runner all completed with success"
         },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42877487075",
           "conclusion": "success",
+          "jobs": [
+            "build",
+            "replay (a)",
+            "replay (b)",
+            "cross-runner"
+          ],
           "shows": "Unity workflow run 23: the same four jobs all completed with success"
         },
         {
@@ -185,7 +209,7 @@
           "shows": "the harness against a fake player: a short, gapped or malformed trace fails the run"
         }
       ],
-      "limits": "Parked until after the fund. The three specs in specs/unity/ are approved (#235), but no seeded Unity bug has been judged against them, the verifier is not wired to them, and SAM is not scored on this game's art. docs/unity.md cites runs 42754753371 and 42758198963 for its calibration numbers; both ended in failure, so this row does not rest on them."
+      "limits": "Parked until after the fund. The three specs in specs/unity/ are approved (#235), but no seeded Unity bug has been judged against them, the verifier is not wired to them, and SAM is not scored on this game's art. docs/unity.md's calibration numbers are the line the replay jobs of runs 42758583740 and 42877487075 print; they were first read from runs 42754753371 and 42758198963, which ended in failure, and this row does not rest on those."
     },
     {
       "id": "web-checkout",
@@ -611,6 +635,9 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
           "conclusion": "success",
+          "jobs": [
+            "agents-harness-verify"
+          ],
           "shows": "CI on main, job agents-harness-verify: the correct fix reviewed as failing before and passing after, and the lower-the-floor fix rejected, on real replays with SAM off"
         },
         {
@@ -649,6 +676,9 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
           "conclusion": "success",
+          "jobs": [
+            "agents-sandbox"
+          ],
           "shows": "CI on main, job agents-sandbox: the bubblewrap guard tests on a hosted runner"
         },
         {
@@ -751,6 +781,9 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
           "conclusion": "success",
+          "jobs": [
+            "agents-gate1"
+          ],
           "shows": "CI on main, job agents-gate1: the trust probe ran and the canary read was denied; the release candidate validates"
         },
         {
@@ -873,6 +906,9 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
           "conclusion": "success",
+          "jobs": [
+            "feedback-offline"
+          ],
           "shows": "CI on main, job feedback-offline: the intake on a recorded transcript"
         },
         {

@@ -31,8 +31,18 @@ job of the Unity workflow, which prints:
 python3 -m agents.unity_observations calibrate runs/unity/replay/run-00/trace.json
 ```
 
-Runs 17 (42754753371, EPYC 9V74) and 18 (42758198963, EPYC 7763) gave the same numbers, as they must:
-the trace is the same on every runner (`8079801f135d`). Frame pixels, 1600 x 960.
+The numbers below are that line as the four replay jobs of runs 19
+([42758583740](https://github.com/Expectrail/Expectrail/actions/runs/42758583740)) and 23
+([42877487075](https://github.com/Expectrail/Expectrail/actions/runs/42877487075)) printed it. Both runs
+ended in success, and the line is the same in all four jobs (Xeon 8370C, EPYC 7763, EPYC 9V45, EPYC
+7763), as it must be: the trace is the same on every runner (`8079801f135d`). Frame pixels, 1600 x 960.
+
+The numbers were first read from runs 17 (42754753371) and 18 (42758198963). Both of those runs ended
+in failure: in each, one of the two replay jobs failed while installing the virtual display, so the
+cross-runner comparison failed too. The other replay job (EPYC 9V74 in run 17, EPYC 7763 in run 18)
+finished and printed the line. Run 18's line is the one above, character for character; run 17's is
+from before the floor rows were split into on and off the ground tilemap, and agrees on every number
+it has. This page rests on runs 19 and 23, not on those two.
 
 | Measure | Rows | Min | Median | Max |
 | --- | --- | --- | --- | --- |
