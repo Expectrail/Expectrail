@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Expectrail/Expectrail/contracts/capabilities.v1.schema.json",
+  "title": "Capability ledger: one row per mode a user could believe exists, with the proof behind it",
+  "description": "Read and written by expectrail.capabilities; the instance is docs/capabilities.json and docs/capabilities.md is rendered from it. A row's status says how far the mode is proven, its grade says what kind of evidence its best recorded run produced, and every row links the test, record or CI run that shows it. A measured row needs a CI run link. The schema checks shape; expectrail.capabilities.problems checks the rules a schema cannot (links that resolve, files that exist, what the README and the site advertise).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "updated", "statuses", "grades", "rows", "notModes", "nameWatch", "timings"],
+  "$defs": {
+    "status": { "enum": ["implemented", "integrated", "measured", "experimental"] },
+    "grade": { "enum": ["fixture", "diagnostic", "isolated", "protected"] },
+    "text": { "type": "string", "minLength": 1 },
+    "repoPath": { "type": "string", "pattern": "^[A-Za-z0-9_.][A-Za-z0-9_./-]*(#[A-Za-z0-9_-]+)?$" },
+    "runUrl": { "type": "string", "pattern": "^https://github\\.com/Expectrail/Expectrail/actions/runs/[0-9]+(/job/[0-9]+)?$" },
+    "module": { "type": "string", "pattern": "^[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)*$" },
+    "reasons": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/text" }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ref", "shows"],
+      "properties": {
+        "kind": {
+          "enum": ["run", "test", "record"],
+          "description": "run: a CI run on GitHub, by URL. test: a test file in this repository. record: a file in this repository written from a run's output, or a page that lists its runs."
+        },
+        "ref": { "type": "string", "minLength": 1 },
+        "shows": { "$ref": "#/$defs/text" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "run" } } },
+          "then": { "properties": { "ref": { "$ref": "#/$defs/runUrl" } } },
+          "else": { "properties": { "ref": { "$ref": "#/$defs/repoPath" } } }
+        }
+      ]
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "mode", "profile", "observer", "entryPoints", "grade", "status", "evidence", "limits"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+        "mode": { "$ref": "#/$defs/text" },
+        "profile": { "$ref": "#/$defs/text", "description": "The engine or kind of software, and the platform it has run on." },
+        "observer": { "$ref": "#/$defs/text", "description": "What looks at the run: the engine's record, a vision model, a page's layout boxes, or none." },
+        "entryPoints": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/module" },
+          "description": "Python modules a person runs with python3 -m, or that hold the mode. Each must exist."
+        },
+        "workflows": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9-]+\\.yml$" } },
+        "switches": { "type": "array", "items": { "type": "string", "pattern": "^EXPECTRAIL_[A-Z_]+\\*?$" } },
+        "docs": { "type": "array", "items": { "type": "string", "pattern": "^docs/[a-z0-9-]+\\.md$" } },
+        "names": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/text" },
+          "description": "Names the README or the site uses for this mode's engine, model or agent."
+        },
+        "grade": { "$ref": "#/$defs/grade" },
+        "status": { "$ref": "#/$defs/status" },
+        "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } },
+        "limits": { "$ref": "#/$defs/text", "description": "What the evidence does not show, in a sentence." }
+      }
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["what", "runner", "seconds", "resolutionSeconds", "run", "step", "notMeasured"],
+      "properties": {
+        "what": { "$ref": "#/$defs/text" },
+        "runner": { "$ref": "#/$defs/text" },
+        "seconds": { "type": "number", "minimum": 0 },
+        "resolutionSeconds": { "type": "number", "exclusiveMinimum": 0 },
+        "run": { "$ref": "#/$defs/runUrl" },
+        "step": { "$ref": "#/$defs/text" },
+        "notMeasured": { "$ref": "#/$defs/text" }
+      }
+    }
+  },
+  "properties": {
+    "format": { "const": "expectrail.capabilities/v1" },
+    "updated": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "statuses": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implemented", "integrated", "measured", "experimental"],
+      "properties": {
+        "implemented": { "$ref": "#/$defs/text" },
+        "integrated": { "$ref": "#/$defs/text" },
+        "measured": { "$ref": "#/$defs/text" },
+        "experimental": { "$ref": "#/$defs/text" }
+      }
+    },
+    "grades": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fixture", "diagnostic", "isolated", "protected"],
+      "properties": {
+        "fixture": { "$ref": "#/$defs/text" },
+        "diagnostic": { "$ref": "#/$defs/text" },
+        "isolated": { "$ref": "#/$defs/text" },
+        "protected": { "$ref": "#/$defs/text" }
+      }
+    },
+    "rows": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/row" } },
+    "notModes": {
+      "type": "object",
+      "description": "Things the README or the site names that are not modes, each with the reason.",
+      "additionalProperties": false,
+      "required": ["commands", "switches", "docs", "workflows"],
+      "properties": {
+        "commands": { "$ref": "#/$defs/reasons" },
+        "switches": { "$ref": "#/$defs/reasons" },
+        "docs": { "$ref": "#/$defs/reasons" },
+        "workflows": { "$ref": "#/$defs/reasons" }
+      }
+    },
+    "nameWatch": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/text" },
+      "description": "Engine, model and agent names. If the README or the site uses one, a row must list it under names."
+    },
+    "timings": { "type": "array", "items": { "$ref": "#/$defs/timing" } }
+  }
+}
