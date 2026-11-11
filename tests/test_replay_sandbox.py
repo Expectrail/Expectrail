@@ -381,7 +381,20 @@ attempt("writeSystem", write("/usr/planted-by-expectrail-test.txt"))
 attempt("writeGame", write("/game/made-by-game.txt"))
 attempt("writeOut", write("/out/made-by-game.txt"))
 attempt("readInput", read("/in/route.json"))
-attempt("newUserNamespace", lambda: os.unshare(os.CLONE_NEWUSER) or "done")
+def new_user_namespace():
+    # In a child: on Ubuntu 24.04 a process that makes one outside the sandbox is confined by
+    # AppArmor from then on, and the rest of this program could no longer look around.
+    child = os.fork()
+    if child == 0:
+        try:
+            os.unshare(os.CLONE_NEWUSER)
+        except OSError:
+            os._exit(1)
+        os._exit(0)
+    if os.waitpid(child, 0)[1] != 0:
+        raise PermissionError("no new user namespace")
+    return "done"
+attempt("newUserNamespace", new_user_namespace)
 found["environment"] = sorted(os.environ)
 found["processes"] = len([name for name in os.listdir("/proc") if name.isdigit()])
 found["root"] = sorted(os.listdir("/"))
@@ -432,6 +445,9 @@ class EscapeTest(unittest.TestCase):
         for name in ("socket", "writeOutside", "readSpec", "readVerifier", "readParentEnvironment"):
             self.assertEqual(found[name], "done", name)
         self.assertNotIn(SECRET, found["environment"])  # the environment was already narrowed (game_env)
+        # Whether a user namespace can be made outside depends on the machine (Ubuntu 24.04 refuses by
+        # default), so the control only requires that the attempt reported one way or the other.
+        self.assertIn(found["newUserNamespace"], ("done", "refused: PermissionError"))
         (self.tmp / "outside" / "planted.txt").unlink()
 
     def test_inside_none_of_them_does(self):
@@ -451,7 +467,8 @@ class EscapeTest(unittest.TestCase):
         self.assertEqual(list((self.tmp / "outside").iterdir()), [])
         self.assertFalse(Path("/usr/planted-by-expectrail-test.txt").exists())
         for name in found["environment"]:
-            self.assertTrue(name in {"HOME", "PATH", "TMPDIR", "LANG", "LANGUAGE", "TZ", "LIBGL_ALWAYS_SOFTWARE",
+            # PWD is set by bubblewrap itself (to /game), not passed in.
+            self.assertTrue(name in {"HOME", "PATH", "TMPDIR", "PWD", "LANG", "LANGUAGE", "TZ", "LIBGL_ALWAYS_SOFTWARE",
                                      "GALLIUM_DRIVER", "GALLIUM_OVERRIDE_CPU_CAPS"}
                             or name.startswith(("LC_", "MESA_", "LP_", "__GLX_", "__EGL_")), name)
         self.assertLessEqual(found["processes"], 3)  # bubblewrap and this program
