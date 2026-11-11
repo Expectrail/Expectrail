@@ -122,6 +122,10 @@ def main(argv: list[str] | None = None) -> int:
     except (req.RequestError, st.StoreError) as exc:
         print(f"expectrail: {exc}", file=sys.stderr)
         return EXIT_USAGE
+    except Exception as exc:  # noqa: BLE001 - a crash here must never look like a verdict (1 is reject)
+        print(f"expectrail: the command failed and no job result was produced ({type(exc).__name__}: "
+              f"{str(exc)[:200]})", file=sys.stderr)
+        return EXIT_USAGE
 
 
 if __name__ == "__main__":

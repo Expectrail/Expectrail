@@ -28,6 +28,7 @@ import tempfile
 import threading
 import time
 import unittest
+import unittest.mock
 from pathlib import Path
 
 import jsonschema
@@ -574,6 +575,278 @@ class CliTest(Case):
         self.assertEqual(code, 5)
         self.assertIn("different inputs", err)
         runner.wait(self.store, first.strip())
+
+
+
+class TreeTest(Case):
+    """headTree describes what a replay reads: the harness's copy of the game folder (harness.run.prepare).
+    The first review of #300 found a second skip list here that the replay did not share."""
+
+    def setUp(self):
+        super().setUp()
+        self.game = self.head / "game" / "platformer"
+
+    def tree(self) -> str | None:
+        return req.inputs(self.request())["headTree"]
+
+    def copied(self) -> dict[str, bytes]:
+        """What harness.run.prepare's copy of the game holds: links followed, .godot left out."""
+        work = self.tmp / "copy"
+        shutil.rmtree(work, ignore_errors=True)
+        shutil.copytree(self.game, work, ignore=shutil.ignore_patterns(".godot"))
+        return {p.relative_to(work).as_posix(): p.read_bytes() for p in work.rglob("*") if p.is_file()}
+
+    def test_without_links_it_is_the_harness_digest(self):
+        from harness.run import tree_digest
+
+        (self.game / "levels").mkdir()
+        (self.game / "levels" / "one.tscn").write_text("[node]\n", encoding="utf-8")
+        self.assertEqual(self.tree(), tree_digest(self.game))
+
+    def test_whenever_the_copy_changes_the_digest_changes(self):
+        from harness.run import tree_digest
+
+        # Every folder name either skip list had (the gate's and this module's first one), and .godot.
+        for folder in (".git", ".expectrail", "__pycache__", "addons", ".godot"):
+            with self.subTest(folder=folder):
+                (self.game / folder).mkdir()
+                (self.game / folder / "logic.gd").write_text("# one\n", encoding="utf-8")
+                copy, harness, tree = self.copied(), tree_digest(self.game), self.tree()
+                (self.game / folder / "logic.gd").write_text("# two\n", encoding="utf-8")
+                copy_changed, harness_changed = self.copied() != copy, tree_digest(self.game) != harness
+                self.assertEqual(copy_changed, folder != ".godot")
+                self.assertEqual(harness_changed, copy_changed)
+                self.assertEqual(self.tree() != tree, copy_changed)
+
+    def test_a_linked_folder_inside_the_checkout_is_part_of_the_game(self):
+        (self.head / "ext").mkdir()
+        (self.head / "ext" / "lvl.tscn").write_text("[one]\n", encoding="utf-8")
+        (self.game / "linked").symlink_to(Path("..") / ".." / "ext")
+        (self.game / "notes.txt").symlink_to(Path("..") / ".." / "ext" / "lvl.tscn")
+        self.assertEqual(sorted(name for name, _ in req.tree_files(self.game, self.head)), sorted(self.copied()))
+        self.assertIn("linked/lvl.tscn", self.copied())
+        first, created = self.store.create(self.request(idempotency_key="pr-9"))
+        (self.head / "ext" / "lvl.tscn").write_text("[two]\n", encoding="utf-8")
+        self.assertNotEqual(req.inputs(self.request())["headTree"], first["inputs"]["headTree"])
+        with self.assertRaises(st.IdempotencyConflict):   # not the earlier job, which replayed other files
+            self.store.create(self.request(idempotency_key="pr-9"))
+
+    def test_a_link_that_leaves_the_checkout_is_never_read_and_stops_the_job(self):
+        outside = self.tmp / "outside"
+        outside.mkdir()
+        (outside / "secret.txt").write_text("not part of the change", encoding="utf-8")
+        for name, target in (("folder", outside), ("file.txt", outside / "secret.txt"), ("nothing", self.head / "absent")):
+            with self.subTest(link=name):
+                link = self.game / name
+                link.symlink_to(target)
+                self.addCleanup(link.unlink, missing_ok=True)
+                with self.assertRaisesRegex(req.TreeProblem, f"{name} is a link"):
+                    req.tree_digest(self.game, self.head)
+                found = req.problems(self.request())
+                self.assertEqual(len(found), 1)
+                self.assertIn("leaves the checkout" if name != "nothing" else "link to nothing", found[0])
+                job = self.job("instant")
+                self.assertIsNone(self.store.status(job)["inputs"]["headTree"])
+                with contextlib.redirect_stderr(io.StringIO()):
+                    status = runner.work(self.store, job, engines=STAND_INS)
+                self.assertEqual((status["phase"], status["decision"], [d["code"] for d in status["diagnostics"]]),
+                                 ("completed", "needs-review", ["INPUT_INVALID"]))
+                self.assertIsNone(status["output"])   # the engine never ran
+                link.unlink()
+
+    def test_a_link_that_loops_is_refused(self):
+        (self.game / "again").symlink_to(".")
+        with self.assertRaisesRegex(req.TreeProblem, "loops"):
+            req.tree_digest(self.game, self.head)
+
+    def test_a_tree_that_cannot_be_used_is_not_the_same_request_as_one_that_can(self):
+        usable = req.inputs(self.request())
+        (self.game / "out").symlink_to("/etc")
+        broken = req.inputs(self.request())
+        self.assertIsNone(broken["headTree"])
+        self.assertNotEqual(broken["requestDigest"], usable["requestDigest"])
+        jsonschema.validate(self.store.create(self.request())[0], st.schema())
+
+    def test_files_changed_between_the_request_and_the_run_stop_the_job(self):
+        job = self.job("instant")
+        (self.game / "player.gd").write_text("# changed after the job was created\n", encoding="utf-8")
+        with contextlib.redirect_stderr(io.StringIO()):
+            status = runner.work(self.store, job, engines=STAND_INS)
+        self.assertEqual((status["decision"], [d["code"] for d in status["diagnostics"]]), ("needs-review", ["INPUT_INVALID"]))
+        self.assertIn("changed after the job was created", status["diagnostics"][0]["detail"])
+        self.assertIsNone(status["output"])
+
+    def test_the_jobs_folder_may_not_be_inside_the_game(self):
+        store = st.JobStore(self.game / "runs" / "jobs")
+        with self.assertRaisesRegex(st.StoreError, "inside the head game folder"):
+            store.create(self.request())
+        self.assertFalse((self.game / "runs").exists())
+
+
+class OutsidePathsTest(Case):
+    """A request names paths inside the checkout only, and nothing it names is opened before that is
+    checked. The first review of #300 hashed ../.. and crashed on /etc/*.json with exit 1 (reject)."""
+
+    BAD = (dict(game="/etc"), dict(game="../.."), dict(game="game/../../.."), dict(specs="/etc"), dict(specs="../specs"),
+           dict(routes=["/etc/*.json"]), dict(routes=["../**/*.json"]), dict(routes=["routes/*.json", "/etc/*.json"]),
+           dict(game="game\\platformer"), dict(specs=""))
+
+    def test_they_are_refused_as_text_before_any_file_is_read(self):
+        opened = []
+        with unittest.mock.patch.object(req, "tree_files", side_effect=lambda *a: opened.append(a) or []), \
+                unittest.mock.patch.object(req, "policy_digest", side_effect=lambda *a: opened.append(a)):
+            for over in self.BAD:
+                with self.subTest(**over), self.assertRaises(req.RequestError):
+                    self.request(**over)
+                # A request that did not come through build() is refused by the store and by inputs() too.
+                doc = self.request()
+                doc["project"].update(over)
+                for use in (self.store.create, req.inputs):
+                    with self.subTest(use=use.__name__, **over), self.assertRaises(req.RequestError):
+                        use(doc)
+        self.assertEqual(opened, [])
+        self.assertFalse((self.store.root / "jobs").exists())
+
+    def test_the_game_at_the_checkout_root_is_allowed(self):
+        self.assertEqual(self.request(game=".")["project"]["game"], ".")
+
+    def test_a_refusal_names_the_request_not_another_record(self):
+        doc = self.request()
+        doc["surprise"] = 1
+        with self.assertRaisesRegex(req.RequestError, "verify-request.v1.schema.json") as caught:
+            req.check(doc)
+        self.assertNotIn("findings", str(caught.exception))
+
+
+class ExitCodeTest(Case):
+    """1 means a job that completed as reject, and nothing else."""
+
+    run_cli = CliTest.run_cli
+
+    def verify(self, **over) -> tuple[int, str, str]:
+        fields = {"--game": "game/platformer", "--routes": "routes/*.json", "--specs": "specs", **over}
+        return self.run_cli("verify", "--head", str(self.head), "--detach", *[x for pair in fields.items() for x in pair])
+
+    def test_paths_outside_the_checkout_are_exit_5_with_one_line(self):
+        for over in ({"--routes": "/etc/*.json"}, {"--game": "/etc"}, {"--game": "../.."}, {"--routes": "../**/*.json"}):
+            with self.subTest(**over):
+                code, out, err = self.verify(**over)
+                self.assertEqual((code, out), (5, ""))
+                self.assertEqual(len(err.strip().splitlines()), 1, err)
+                self.assertNotIn("Traceback", err)
+        self.assertFalse((self.store.root / "jobs").exists())
+
+    def test_a_crash_in_the_command_is_exit_5_never_1(self):
+        for command in (("verify", "--head", str(self.head), "--game", "game/platformer", "--routes", "routes/*.json",
+                         "--specs", "specs"), ("status", "0" * 32), ("cancel", "0" * 32), ("report", "0" * 32)):
+            with self.subTest(command=command[0]), \
+                    unittest.mock.patch.object(st.JobStore, "create", side_effect=NotImplementedError("Non-relative patterns")), \
+                    unittest.mock.patch.object(st.JobStore, "status", side_effect=ZeroDivisionError("x")), \
+                    unittest.mock.patch.object(st.JobStore, "cancel", side_effect=KeyError("y")):
+                code, out, err = self.run_cli(*command)
+                self.assertEqual((code, out), (5, ""))
+                self.assertIn("no job result was produced", err)
+                self.assertNotIn("Traceback", err)
+
+
+class NobodyWaitsForEverTest(Case):
+    def test_a_job_no_worker_takes_is_failed_when_its_first_lease_runs_out(self):
+        status, _ = self.store.create(self.request(idempotency_key="pr-11"))
+        self.assertIsNotNone(status["lease"])
+        self.assertEqual(self.store.status(status["id"])["phase"], "queued")
+        time.sleep(self.store.lease_seconds * 1.5)
+        lost = self.store.status(status["id"])
+        self.assertEqual((lost["phase"], [d["code"] for d in lost["diagnostics"]], lost["reasons"]),
+                         ("failed", ["WORKER_LOST"], ["no worker took the job in time"]))
+
+    def test_asking_again_with_the_same_key_returns_instead_of_waiting(self):
+        args = ("verify", "--head", str(self.head), "--game", "game/platformer", "--routes", "routes/*.json",
+                "--specs", "specs", "--idempotency-key", "pr-12", "--json")
+        first, _ = self.store.create(self.request(idempotency_key="pr-12"))   # a starter that died before spawning
+        result: dict = {}
+
+        def ask():
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                result["code"] = cli.main(["--jobs-root", str(self.store.root), "--lease-seconds", "0.6", *args])
+            result["status"] = json.loads(out.getvalue())
+
+        thread = threading.Thread(target=ask, daemon=True)
+        thread.start()
+        thread.join(timeout=10)
+        self.assertFalse(thread.is_alive(), "verify with the same key is still waiting")
+        self.assertEqual((result["code"], result["status"]["id"], result["status"]["phase"]), (3, first["id"], "failed"))
+
+    def test_a_worker_that_takes_the_job_in_time_renews_the_lease(self):
+        job = self.job("slow")
+        self.spawn(job)
+        self.running(job)
+        time.sleep(self.store.lease_seconds * 2)
+        self.assertEqual(self.store.status(job)["phase"], "executing")
+
+
+class CancelOrderTest(Case):
+    def test_a_worker_that_records_itself_as_cancel_begins_is_still_stopped(self):
+        # The order the first review of #300 forced: cancel reads the status (no worker yet), the worker
+        # records itself, cancel makes the job final. The worker must be the one that gets stopped.
+        job = self.job("slow")
+        read = self.store.status
+
+        def status_then_the_worker_arrives(job_id):
+            doc = read(job_id)
+            if not self.started:
+                self.spawn(job_id)
+                self.running(job_id)
+            return doc
+
+        with unittest.mock.patch.object(self.store, "status", side_effect=status_then_the_worker_arrives):
+            status = self.store.cancel(job, grace_seconds=1.0)
+        worker = self.started[0]
+        child = int((self.store.paths(job).work / "child.pid").read_text())
+        self.assertEqual(status["phase"], "cancelled")
+        self.assertEqual(status["worker"]["pid"], worker.pid)
+        wait_for(lambda: worker.poll() is not None and gone(child), what="the worker and its child stopping")
+
+    def test_a_worker_that_arrives_after_the_cancel_does_nothing(self):
+        job = self.job("instant")
+        self.store.cancel(job)
+        with contextlib.redirect_stderr(io.StringIO()):
+            status = runner.work(self.store, job, engines=STAND_INS)
+        self.assertEqual((status["phase"], status["worker"], status["output"]), ("cancelled", None, None))
+        self.assertFalse(self.store.paths(job).staging.exists())
+
+
+class EvidenceTest(Case):
+    def test_an_accept_or_a_reject_with_no_evidence_is_a_failed_job(self):
+        for decision in ("accept", "reject"):
+            with self.subTest(decision=decision):
+                job = self.job()
+                status = self.store.finish(job, "completed", decision=decision, publish=True)
+                self.assertEqual((status["phase"], status["decision"], status["output"], status["evidenceGrade"]),
+                                 ("failed", None, None, None))
+                self.assertEqual([d["code"] for d in status["diagnostics"]], ["INTERNAL_ERROR"])
+                self.assertIn("wrote no evidence", status["diagnostics"][0]["detail"])
+
+    def test_an_engine_that_decides_and_writes_nothing_fails_the_job(self):
+        class Silent:
+            def preflight(self, request):
+                return []
+
+            def execute(self, request, paths, advance):
+                return engines.Result("accept", ["nothing to show for it"])
+
+        job = self.job("silent")
+        with contextlib.redirect_stderr(io.StringIO()):
+            status = runner.work(self.store, job, engines={"silent": Silent()})
+        self.assertEqual((status["phase"], status["decision"], status["output"]), ("failed", None, None))
+
+    def test_needs_review_needs_no_evidence_and_a_decision_with_evidence_is_published(self):
+        job = self.job()
+        self.assertEqual(self.store.finish(job, "completed", decision="needs-review", publish=True)["phase"], "completed")
+        job = self.job()
+        self.store.paths(job).staging.mkdir()
+        status = self.store.finish(job, "completed", decision="reject", publish=True)
+        self.assertEqual((status["phase"], status["decision"], status["output"]), ("completed", "reject", "output"))
 
 
 if __name__ == "__main__":

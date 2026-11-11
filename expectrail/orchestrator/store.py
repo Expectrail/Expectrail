@@ -91,10 +91,10 @@ def diagnostic(code: str, *, stage: str, detail: str = "") -> dict:
 
 def check_status(doc) -> None:
     """Raise StoreError unless ``doc`` is a status this code could have written."""
-    try:
-        rec.validate(doc, schema())
-    except rec.RecordError as exc:
-        raise StoreError(f"status.json: {exc}") from exc
+    found = rec.errors(doc, schema())
+    if found:
+        raise StoreError(f"status.json does not match contracts/{SCHEMA_PATH.name}: {found[0]}"
+                         + (f" (and {len(found) - 1} more)" if len(found) > 1 else ""))
     final, decided = doc["phase"] in FINAL, doc["decision"] is not None
     if decided != (doc["phase"] == "completed"):
         raise StoreError("status.json: only a completed job has a decision, and every completed job has one")
@@ -183,6 +183,12 @@ class JobStore:
         """The job for this request, and whether it was created now. With an idempotency key, the job
         made earlier for the same key and inputs is returned instead; different inputs are an error."""
         req.check(request)
+        for side in ("head", "base"):
+            if request[side] is not None:
+                game = (Path(request[side]["checkout"]) / request["project"]["game"]).resolve()
+                if self.root == game or game in self.root.parents:
+                    # Every job would change the game's own digest, and the game's copy would hold the jobs.
+                    raise StoreError(f"the jobs folder {self.root} is inside the {side} game folder; keep it outside")
         inputs = req.inputs(request)
         key = request["idempotencyKey"]
         if key is None:
@@ -212,7 +218,9 @@ class JobStore:
         status = {
             "format": FORMAT, "id": job_id, "phase": "queued", "decision": None, "reasons": [], "diagnostics": [],
             "inputs": inputs, "executionClass": request["executionClass"], "evidenceGrade": None,
-            "worker": None, "lease": None, "output": None, "history": [{"phase": "queued", "at": created}],
+            # A job nobody takes is failed when this first lease runs out (`status`), so a starter that
+            # died between creating the job and starting its worker leaves nothing to wait on for ever.
+            "worker": None, "lease": self._lease(), "output": None, "history": [{"phase": "queued", "at": created}],
             "createdAt": created, "updatedAt": created, "finishedAt": None, "expectrail": {"version": __version__},
         }
         check_status(status)
@@ -233,16 +241,16 @@ class JobStore:
         return doc
 
     def status(self, job_id: str) -> dict:
-        """The job's status. An unfinished job whose lease ran out and whose worker is gone is failed
-        here, so nobody waits on a job that will never finish."""
+        """The job's status. An unfinished job whose lease ran out and whose worker is gone, or that
+        no worker ever took, is failed here, so nobody waits on a job that will never finish."""
         paths = self._existing(job_id)
         doc = self._read(paths)
-        if doc["phase"] in FINAL or doc["lease"] is None:
+        if doc["phase"] in FINAL or doc["lease"] is None:   # no lease: written before jobs had one from the start
             return doc
         if parse_stamp(doc["lease"]["expiresAt"]) > now() or (doc["worker"] and alive(doc["worker"]["pid"])):
             return doc
-        return self.finish(job_id, "failed", diagnostics=[diagnostic("WORKER_LOST", stage=doc["phase"])],
-                           reasons=["the worker stopped before the job finished"])
+        why = "the worker stopped before the job finished" if doc["worker"] else "no worker took the job in time"
+        return self.finish(job_id, "failed", diagnostics=[diagnostic("WORKER_LOST", stage=doc["phase"])], reasons=[why])
 
     # --- changing ----------------------------------------------------------------------------------
     def _write(self, paths: JobPaths, doc: dict) -> dict:
@@ -303,7 +311,16 @@ class JobStore:
         """Take the job to a final phase, once. If it is already final, nothing changes and the status
         as it stands is returned: the first finish wins, so a cancel cannot be undone by a late result.
 
-        ``publish`` renames staging/ to output/ for a completed job. Anything else in staging/ is removed."""
+        ``publish`` renames staging/ to output/ for a completed job. Anything else in staging/ is removed.
+        An accept or a reject with nothing to publish is not a result: the job is failed instead, so
+        a decision never stands without its evidence."""
+        return self._finish(job_id, phase, decision=decision, reasons=reasons, diagnostics=diagnostics,
+                            evidence_grade=evidence_grade, publish=publish)[0]
+
+    def _finish(self, job_id: str, phase: str, *, decision: str | None = None, reasons: list[str] | None = None,
+                diagnostics: list[dict] | None = None, evidence_grade: str | None = None,
+                publish: bool = False) -> tuple[dict, bool]:
+        """``finish``, also saying whether this call is the one that made the job final."""
         if phase not in FINAL:
             raise StoreError(f"{phase!r} is not a final phase")
         if (phase == "completed") != (decision in DECISIONS) or (decision is not None and decision not in DECISIONS):
@@ -312,8 +329,13 @@ class JobStore:
         with self._locked(paths.lock):
             doc = self._read(paths)
             if doc["phase"] in FINAL:
-                return doc
+                return doc, False
             output = None
+            if phase == "completed" and publish and decision in ("accept", "reject") and not paths.staging.is_dir():
+                phase, decision, evidence_grade = "failed", None, None
+                reasons = ["the orchestrator failed; this says nothing about the change"]
+                diagnostics = (diagnostics or []) + [diagnostic(
+                    "INTERNAL_ERROR", stage=doc["phase"], detail="the engine returned a decision and wrote no evidence")]
             if phase == "completed" and publish and paths.staging.is_dir():
                 os.replace(paths.staging, paths.output)
                 output = "output"
@@ -323,17 +345,18 @@ class JobStore:
                        diagnostics=(doc["diagnostics"] + (diagnostics or []))[:32], output=output,
                        evidenceGrade=evidence_grade if phase == "completed" else None, finishedAt=finished)
             doc["history"].append({"phase": phase, "at": finished})
-            return self._write(paths, doc)
+            return self._write(paths, doc), True
 
     def cancel(self, job_id: str, *, grace_seconds: float = 3.0) -> dict:
         """Cancel an unfinished job and stop everything its worker started. The status is made final
         first, so whatever the worker does next cannot become a result."""
-        before = self.status(job_id)
-        status = self.finish(job_id, "cancelled", reasons=["cancelled on request"])
-        worker = before["worker"]
-        if before["phase"] in FINAL or status["phase"] != "cancelled" or worker is None:
-            return status
-        stop_group(worker["pgid"], grace_seconds=grace_seconds)
+        self.status(job_id)   # a job whose worker is already lost is failed, not cancelled
+        # The worker to stop is the one in the status this call made final, read under the lock: a
+        # worker that recorded itself a moment before is in it, and one that comes later finds the
+        # job final and does nothing (`claim`).
+        status, cancelled_now = self._finish(job_id, "cancelled", reasons=["cancelled on request"])
+        if cancelled_now and status["worker"] is not None:
+            stop_group(status["worker"]["pgid"], grace_seconds=grace_seconds)
         return status
 
 
