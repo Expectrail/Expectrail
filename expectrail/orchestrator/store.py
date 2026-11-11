@@ -255,15 +255,22 @@ class JobStore:
         beat = now()
         return {"heartbeatAt": stamp(beat), "expiresAt": stamp(beat + timedelta(seconds=self.lease_seconds))}
 
-    def start(self, job_id: str, pid: int, pgid: int) -> dict:
-        """A worker takes the job. Only a queued job can be taken, and only once."""
+    def claim(self, job_id: str, pid: int, pgid: int) -> dict:
+        """Record the job's worker. The process that starts a worker and the worker itself both call
+        this, in either order: the first call records the worker and the second, naming the same
+        process, changes nothing. A different process is refused, so a job has one worker, ever.
+        A job that is already final is returned as it stands."""
         paths = self._existing(job_id)
         with self._locked(paths.lock):
             doc = self._read(paths)
-            if doc["phase"] != "queued" or doc["worker"] is not None:
-                raise StoreError(f"job {job_id} is {doc['phase']} and cannot be started")
-            doc.update(worker={"pid": pid, "pgid": pgid}, lease=self._lease())
-            return self._write(paths, doc)
+            if doc["phase"] in FINAL:
+                return doc
+            if doc["worker"] is None:
+                doc.update(worker={"pid": pid, "pgid": pgid}, lease=self._lease())
+                return self._write(paths, doc)
+            if doc["worker"] != {"pid": pid, "pgid": pgid}:
+                raise StoreError(f"job {job_id} belongs to another worker")
+            return doc
 
     def heartbeat(self, job_id: str) -> dict:
         paths = self._existing(job_id)
