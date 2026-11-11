@@ -36,11 +36,8 @@ def work(store: st.JobStore, job_id: str, engines: dict | None = None, *, own_gr
     made for the job, so it may stop that whole group when the time limit passes."""
     engines = eng.ENGINES if engines is None else engines
     request = store.request(job_id)
-    status = store.status(job_id)
-    if status["worker"] is None:
-        store.start(job_id, os.getpid(), os.getpgid(0))
-    elif status["worker"]["pid"] != os.getpid():
-        raise st.StoreError(f"job {job_id} belongs to another worker")
+    if store.claim(job_id, os.getpid(), os.getpgid(0))["phase"] in st.FINAL:
+        return store.status(job_id)   # cancelled before the worker got going: nothing to do
     paths = store.paths(job_id)
     done = threading.Event()
 
@@ -108,7 +105,8 @@ def spawn(store: st.JobStore, job_id: str, command: list[str] | None = None) -> 
             command,
             cwd=EXPECTRAIL_ROOT, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
             start_new_session=True)
-    store.start(job_id, proc.pid, proc.pid)
+    # The worker claims the job too, as soon as it starts; whichever call comes first records it.
+    store.claim(job_id, proc.pid, proc.pid)
     return proc
 
 

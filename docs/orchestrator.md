@@ -61,6 +61,9 @@ Every job has a folder of its own:
 - **Cancelling stops everything.** The worker runs in a process group of its own; `cancel` makes the
   status final first, then stops the group, so the game and anything else the worker started end
   with it.
+- **A job has one worker, whoever records it first.** The process that starts a worker and the
+  worker itself both record it; the second to arrive changes nothing, and any other process is
+  refused.
 - **A worker that dies is not waited for.** The worker renews a lease while it runs. A job whose
   lease has run out and whose worker is gone is reported `failed` with `WORKER_LOST`.
 - **Out of time is needs-review.** When the limit passes, the job completes as needs-review with

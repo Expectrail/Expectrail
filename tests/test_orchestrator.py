@@ -177,7 +177,7 @@ class StoreTest(Case):
 
     def test_the_status_file_is_always_whole(self):
         job = self.job()
-        self.store.start(job, os.getpid(), os.getpgid(0))
+        self.store.claim(job, os.getpid(), os.getpgid(0))
         stop, problems = threading.Event(), []
 
         def read():
@@ -275,11 +275,19 @@ class StoreTest(Case):
             self.store.create(self.request(idempotency_key="pr-7:abc"))
         self.assertEqual(len(list((self.store.root / "jobs").iterdir())), 1)
 
-    def test_a_job_is_started_once(self):
+    def test_a_job_has_one_worker_whoever_records_it_first(self):
+        # The process that starts a worker and the worker itself both record it. In CI the worker got
+        # there first, the starter's call then failed, and the job was lost (the first run of #302).
         job = self.job()
-        self.store.start(job, os.getpid(), os.getpgid(0))
-        with self.assertRaises(st.StoreError):
-            self.store.start(job, os.getpid(), os.getpgid(0))
+        first = self.store.claim(job, 4242, 4242)
+        self.assertEqual(first["worker"], {"pid": 4242, "pgid": 4242})
+        self.assertIsNotNone(first["lease"])
+        self.assertEqual(self.store.claim(job, 4242, 4242)["worker"], first["worker"])
+        for other in ((4243, 4243), (4242, 1)):
+            with self.subTest(other=other), self.assertRaises(st.StoreError):
+                self.store.claim(job, *other)
+        self.store.finish(job, "cancelled")
+        self.assertEqual(self.store.claim(job, 9, 9)["phase"], "cancelled")
 
 
 class Crash:
@@ -354,9 +362,21 @@ class WorkTest(Case):
 
     def test_a_job_belongs_to_one_worker(self):
         job = self.job("instant")
-        self.store.start(job, 1, 1)
+        self.store.claim(job, 1, 1)
         with self.assertRaises(st.StoreError):
             runner.work(self.store, job, engines=STAND_INS)
+
+    def test_a_worker_recorded_before_it_starts_still_does_the_job(self):
+        job = self.job("instant")
+        self.store.claim(job, os.getpid(), os.getpgid(0))   # the starter got there first
+        self.assertEqual(self.work(job, STAND_INS)["decision"], "accept")
+
+    def test_a_job_cancelled_before_its_worker_starts_is_left_alone(self):
+        job = self.job("instant")
+        self.store.cancel(job)
+        status = self.work(job, STAND_INS)
+        self.assertEqual((status["phase"], status["decision"]), ("cancelled", None))
+        self.assertFalse(self.store.paths(job).output.exists())
 
 
 class GodotEngineTest(Case):
@@ -462,6 +482,24 @@ class ProcessTest(Case):
                           what="the lease running out")
         self.assertEqual((status["phase"], status["decision"], status["output"]), ("failed", None, None))
         self.assertEqual([d["code"] for d in status["diagnostics"]], ["WORKER_LOST"])
+
+    def test_a_worker_that_records_itself_before_its_starter_does_is_not_lost(self):
+        # Start the worker by hand and let it finish before the starter records it.
+        job = self.job("instant")
+        with open(self.store.paths(job).log, "ab") as log:
+            proc = subprocess.Popen([sys.executable, "-m", "tests.orchestrator_worker", str(self.store.root),
+                                     str(self.store.lease_seconds), job], cwd=REPO, stdout=log, stderr=subprocess.STDOUT,
+                                    start_new_session=True)
+        self.started.append(proc)
+        self.assertEqual(proc.wait(timeout=20), 0)
+        status = self.store.claim(job, proc.pid, proc.pid)
+        self.assertEqual((status["phase"], status["decision"], status["worker"]["pid"]), ("completed", "accept", proc.pid))
+
+    def test_many_jobs_started_at_once_all_finish(self):
+        jobs = [self.job("instant") for _ in range(8)]
+        procs = [self.spawn(job) for job in jobs]
+        decisions = [runner.wait(self.store, job, proc)["decision"] for job, proc in zip(jobs, procs)]
+        self.assertEqual(decisions, ["accept"] * 8)
 
     def test_waiting_on_a_worker_that_died_reports_it_at_once(self):
         job = self.job("slow")
