@@ -28,7 +28,9 @@ no tests, or a test that returns before it asserts; a test method removed or ren
 longer runs; a file that is not Python deleted under ``tests/``; a new trigger (such as
 ``workflow_run``) on a workflow that already holds a secret; an ``approval`` in a JSON file outside
 a ``specs`` or ``contracts`` folder; a job given a wider read scope by YAML the line reading
-does not follow and the checks above do not name; a new file that agents read as instructions (an ``AGENTS.md``
+does not follow and the checks above do not name; one of the counted words hidden in the same
+change that removes a plain mention of it elsewhere in the file, in a form none of the checks above
+names; a new file that agents read as instructions (an ``AGENTS.md``
 in a subfolder, a ``CLAUDE.md``) or the audit's own configuration; the private repository named
 with no path after it, or a held-out name put together from pieces; whether a claim in the
 description has a run behind it; and the contents of held-out files (it never reads them; the
