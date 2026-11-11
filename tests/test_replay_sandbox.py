@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import pty
 import shutil
 import socket
 import subprocess
@@ -65,7 +66,7 @@ class CommandTest(unittest.TestCase):
     def test_no_network_own_processes_and_nothing_inherited(self):
         cmd = self.build()
         for flag in ("--unshare-net", "--unshare-pid", "--unshare-user", "--unshare-ipc", "--disable-userns",
-                     "--clearenv", "--die-with-parent"):
+                     "--clearenv", "--die-with-parent", "--new-session"):
             self.assertIn(flag, cmd)
         self.assertNotIn("--share-net", cmd)
         # xvfb-run waits forever when it is the first process of its namespace (seen November 11),
@@ -300,6 +301,13 @@ class HarnessTest(unittest.TestCase):
             hr.run(self.route, self.tmp / "run", game=self.game, godot=self.godot, sandbox="require")
         self.assertFalse((self.tmp / "run" / "work").exists())
 
+    def test_warming_the_cache_with_the_sandbox_required_and_impossible_is_one_line(self):
+        with mock.patch.object(box, "probe", return_value=(None, "bubblewrap (bwrap) is not installed")), \
+                mock.patch.object(hr, "find_godot", return_value=self.godot), \
+                mock.patch.object(hr.subprocess, "run", side_effect=AssertionError("the game was started")), \
+                self.assertRaisesRegex(SystemExit, "required and is not possible here"):
+            hr.main(["--warm-cache", "--sandbox", "require", "--game", str(self.game)])
+
     def test_a_planted_link_fails_the_replay(self):
         def planting(tool, argv, **kwargs):
             done = self.engine(tool, argv, **kwargs)
@@ -476,6 +484,40 @@ class EscapeTest(unittest.TestCase):
                                                   "lib64", "out", "proc", "sbin", "tmp", "usr"})
         self.assertEqual(found["home"], [])
         self.assertFalse(found["sys"])
+
+    TERMINAL = ('import json\ntry:\n    open("/dev/tty", "r+b", buffering=0).close()\n    print(json.dumps("opened"))\n'
+                'except OSError as exc:\n    print(json.dumps("refused: " + type(exc).__name__))\n')
+
+    def from_a_terminal(self, start) -> str:
+        """Run ``start`` (which returns a finished process) in a child that has a terminal of its
+        own, as a harness started from a shell does, and return what the program inside printed."""
+        answer = self.tmp / "answer.json"
+        child, terminal = pty.fork()
+        if child == 0:
+            try:
+                answer.write_text(start().stdout, encoding="utf-8")
+            finally:
+                os._exit(0)
+        try:
+            while os.read(terminal, 4096):
+                pass
+        except OSError:
+            pass  # the child has gone and its terminal with it
+        os.waitpid(child, 0)
+        os.close(terminal)
+        return json.loads(answer.read_text(encoding="utf-8"))
+
+    def test_control_outside_the_sandbox_the_harness_terminal_can_be_opened(self):
+        found = self.from_a_terminal(lambda: subprocess.run(
+            ["python3", "-c", self.TERMINAL], capture_output=True, text=True, timeout=60, stdin=subprocess.DEVNULL,
+            env=hr.game_env()))
+        self.assertEqual(found, "opened")
+
+    def test_inside_the_harness_terminal_cannot_be_opened(self):
+        tool = real_tool()
+        found = self.from_a_terminal(lambda: box.run(
+            tool, ["python3", "-c", self.TERMINAL], timeout=60, game=self.tmp / "game", out=self.tmp / "out"))
+        self.assertTrue(found.startswith("refused: "), found)
 
     def test_a_time_limit_ends_everything_that_was_started_inside(self):
         tool = real_tool()

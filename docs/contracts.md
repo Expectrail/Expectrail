@@ -188,3 +188,22 @@ harness sets `Time.captureDeltaTime` to the fixed step so that each rendered fra
 and fails a run in which any frame holds zero or two; frame `n` then shows the state after tick `n`,
 captured at 50 frames per second. No Unity player has run yet. Its world pixels are Unity units times 128 (the art's pixels per unit), with y
 negated so it points down as in the Godot traces.
+
+## Verification jobs (added November 11)
+
+`verify-request` (`expectrail.verify-request/v1`,
+[`contracts/verify-request.v1.schema.json`](../contracts/verify-request.v1.schema.json)) and `verify-job`
+(`expectrail.verify-job/v1`, [`contracts/verify-job.v1.schema.json`](../contracts/verify-job.v1.schema.json))
+are the orchestrator's two records ([orchestrator.md](orchestrator.md)). The request example is a real
+request with its checkout paths replaced; the job example is the status of that request run through
+the Godot engine on the gate tests' stand-in replay, with a placeholder worker.
+
+| Record | Written by | Read by |
+| --- | --- | --- |
+| `verify-request` | whoever asks for a verification, through `expectrail.orchestrator.request.build` | `expectrail.orchestrator.store` when it creates the job, and the worker |
+| `verify-job` | `expectrail.orchestrator.store`, the only code that changes a job's status | `status`, `report`, and whoever waits for the job |
+
+Neither is in `expectrail.contracts.KINDS`. Both are read with a size cap, strict JSON and the
+standard-library validator in `expectrail.gate.record`, and the store then checks what a schema
+cannot: only a completed job has a decision or an output, and no history leaves a final phase.
+

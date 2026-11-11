@@ -214,6 +214,13 @@ jobs:
         env:
           EXPECTRAIL_SANDBOX: require
         run: python -m harness.check_seeded --out runs/seeded-check
+      # Three real verifications through the orchestrator (docs/orchestrator.md): the bundled game as it
+      # is (accept), with the seeded fall-through bug (reject), and the repair (accept). No model key.
+      # The step fails unless all three decide that way.
+      - name: Verification as a job, on the bundled game (accept, reject, accept), each replay sandboxed
+        env:
+          EXPECTRAIL_SANDBOX: require
+        run: python -m expectrail.orchestrator --jobs-root runs/orchestrator-sample sample
       - name: The ground line is logged, and the position log sees a robot resting too low
         run: |
           python -m pip install -r requirements-dev.txt

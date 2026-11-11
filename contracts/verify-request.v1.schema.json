@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/verify-request.v1.schema.json",
+  "title": "expectrail.verify-request/v1",
+  "description": "A request to verify one change. It names files and limits; it carries no digest, because the orchestrator computes every digest from the files itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "project",
+    "head",
+    "base",
+    "executionClass",
+    "limits",
+    "idempotencyKey"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.verify-request/v1"
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter",
+        "game",
+        "routes",
+        "specs"
+      ],
+      "properties": {
+        "adapter": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "description": "The engine adapter. An adapter the orchestrator does not have is refused."
+        },
+        "game": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "description": "The project folder, relative to the checkout."
+        },
+        "routes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "description": "Route files or globs, relative to the checkout the checks come from."
+        },
+        "specs": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "description": "The folder of approved test specs, relative to the checkout the checks come from."
+        }
+      }
+    },
+    "head": {
+      "$comment": "the change",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "checkout",
+        "commit"
+      ],
+      "properties": {
+        "checkout": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "commit": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}$"
+            }
+          ]
+        }
+      }
+    },
+    "base": {
+      "description": "What the change is compared with, and where the checks are read from. null: the head's own checks judge it, and the record says so.",
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "checkout",
+            "commit"
+          ],
+          "properties": {
+            "checkout": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "commit": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}$"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "executionClass": {
+      "enum": [
+        "diagnostic",
+        "isolated"
+      ],
+      "description": "diagnostic: the game runs as this user, unsandboxed. isolated: the game must run in the replay sandbox; a build without it refuses instead of running unsandboxed."
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "timeoutSeconds"
+      ],
+      "properties": {
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400
+        }
+      }
+    },
+    "idempotencyKey": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+        }
+      ],
+      "description": "The same key with the same inputs returns the job that already exists; the same key with different inputs is an error."
+    }
+  }
+}

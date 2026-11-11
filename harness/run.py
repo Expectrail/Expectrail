@@ -326,7 +326,10 @@ def main(argv: list[str] | None = None) -> int:
         game = args.game or REPO / "game" / "platformer"
         godot = find_godot()
         env = game_env()
-        tool, _isolation = box.choose(args.sandbox, display=False)
+        try:
+            tool, _isolation = box.choose(args.sandbox, display=False)
+        except box.SandboxError as exc:
+            raise SystemExit(str(exc)) from exc
         cache = ensure_import_cache(game, godot, env, tool)
         print(f"harness cache ready at {cache}")
         return 0

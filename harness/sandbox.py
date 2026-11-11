@@ -13,7 +13,10 @@ which holds every key the job has) and write into the evidence folder. Inside, i
   ``/in``, the engine read-only at ``/engine``, and a size-limited empty ``/tmp`` and home. The
   repository, the checks, the caller's home and every other folder are not there;
 - an environment built from nothing, holding only the display and rendering variables;
-- no way to make another user namespace, a cap on any one file's size, and no core dumps.
+- no way to make another user namespace, a cap on any one file's size, and no core dumps;
+- no terminal: a session of its own, so the terminal the harness was started from cannot be opened
+  through ``/dev/tty`` (on kernels that still allow it, a program that can open a terminal can type
+  into the shell behind it).
 
 ``run`` in ``harness.run`` asks ``probe`` whether this machine can do that and records the answer in
 ``replay.json`` (``isolation``), so a reader of the evidence can tell an isolated replay from one
@@ -87,7 +90,9 @@ def command(tool: Tool, argv: list[str], *, game: Path, out: Path, inputs: dict[
             engine: Path | None = None, env: dict | None = None) -> list[str]:
     """The bubblewrap command that runs ``argv`` with ``game`` at /game and ``out`` at /out (both
     writable), each of ``inputs`` read-only at /in/<name>, and ``engine`` read-only at /engine/godot."""
-    cmd = [tool.path, "--die-with-parent",
+    # --new-session: without it the game shares the harness's session and can open its terminal.
+    # Never --as-pid-1: xvfb-run hangs as the first process of its namespace.
+    cmd = [tool.path, "--die-with-parent", "--new-session",
            "--unshare-user", "--unshare-ipc", "--unshare-pid", "--unshare-net", "--unshare-uts",
            "--unshare-cgroup-try", "--disable-userns", "--hostname", "expectrail", "--clearenv"]
     for path in SYSTEM:
