@@ -25,11 +25,16 @@ without it a game started from a developer's terminal could open that terminal t
 
 ## What was run
 - In real bubblewrap 0.9.0 on a hosted runner, CI job `seeded-bugs`, run
-  [43104148935](https://github.com/Expectrail/Expectrail/actions/runs/43104148935/job/130802949557)
-  (commit bb3e1a0, success): `tests.test_replay_sandbox` with the sandbox tests required, 31 ran, 31
-  passed, none skipped; then every seeded-bug replay with `EXPECTRAIL_SANDBOX=require`. That run is
-  from before the session change and before main's orchestrator was merged in: the pull request
-  names the run that covers both.
+  [43110370385](https://github.com/Expectrail/Expectrail/actions/runs/43110370385/job/130824463969)
+  (commit f15be18, success): `tests.test_replay_sandbox` with the sandbox tests required, 34 ran, 34
+  passed, none skipped, the terminal pair among them; every seeded-bug replay with
+  `EXPECTRAIL_SANDBOX=require`; and the orchestrator's `sample` step with the same setting: accept,
+  reject, accept, the first verifications through the gate and the worker with the replay sandboxed.
+- Not run: real bubblewrap without `--new-session`, to watch the terminal open from inside. That it
+  was reachable before is from bubblewrap's source and a stand-in, not from a run in the real tool.
+- The first contact with real bubblewrap (the run on commit 9024d75) passed 30 of
+  31 and failed on two things in the tests, neither in `harness/sandbox.py`: an allowed-names list
+  without `PWD`, and a control that confined itself under AppArmor.
 - Locally: the full suite passes; the tests that need bubblewrap skip, because this machine has none
   and none can be installed. The controls with real processes and the real engine pass locally.
 - Locally, and not evidence for the sandbox: the two engine tests and four replays against a stand-in
