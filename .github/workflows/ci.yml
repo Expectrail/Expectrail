@@ -193,10 +193,26 @@ jobs:
       - name: Install a virtual display and software OpenGL
         uses: ./.github/actions/apt-install
         with:
-          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch bubblewrap
       - name: Download Godot 4.7.2 and check its SHA-512
         uses: ./.github/actions/get-godot
-      - name: Replay every seeded bug against the clean game
+      - name: Allow unprivileged user namespaces for bubblewrap
+        run: |
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          fi
+          if [ -f /proc/sys/kernel/unprivileged_userns_clone ]; then
+            echo 1 | sudo tee /proc/sys/kernel/unprivileged_userns_clone
+          fi
+      - name: "The replay's sandbox: escapes refused by real processes and the real engine, same hashes"
+        env:
+          EXPECTRAIL_SANDBOX_TESTS: required
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m unittest tests.test_replay_sandbox -v
+      - name: Replay every seeded bug against the clean game, each replay sandboxed
+        env:
+          EXPECTRAIL_SANDBOX: require
         run: python -m harness.check_seeded --out runs/seeded-check
       - name: The ground line is logged, and the position log sees a robot resting too low
         run: |
