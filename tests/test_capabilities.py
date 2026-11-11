@@ -64,6 +64,18 @@ class LedgerTest(unittest.TestCase):
         for path in specs:
             self.assertIn("approval", json.loads(path.read_text(encoding="utf-8")), path.name)
 
+    def test_the_unity_page_rests_its_calibration_on_the_runs_the_row_cites_and_says_which_runs_failed(self):
+        page = (ROOT / "docs" / "unity.md").read_text(encoding="utf-8")
+        section = page.split("## Calibration on the clean game", 1)[1].split("\n## ", 1)[0]
+        cited = {cap._number(e["ref"]) for e in _row(self.doc, "unity-harness")["evidence"] if e["kind"] == "run"}
+        self.assertEqual(cited, {"42758583740", "42877487075"})
+        for number in cited:
+            self.assertIn(f"actions/runs/{number})", section)
+        for failed in ("42754753371", "42758198963"):
+            self.assertIn(failed, section)
+            self.assertNotIn(f"actions/runs/{failed}", page, "a run that ended in failure is linked as evidence")
+        self.assertIn("ended\nin failure", section)
+
     def test_no_row_claims_a_grade_above_diagnostic_yet(self):
         # Isolated needs the replay sandbox, the two-job action and the receipt; none has landed.
         # When one does, this test changes in the pull request that shows it.

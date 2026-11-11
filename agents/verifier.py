@@ -27,6 +27,7 @@ move it): on SAM's box for the robot when SAM is on, on the position log otherwi
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import subprocess
@@ -434,8 +435,8 @@ def verify(
 ) -> dict:
     """Verify one candidate and write verification.json, with timing.json (expectrail.timing) beside it.
 
-    The timing is written after the decision and is never read back here. If it cannot be written the
-    verification stands and timing-error.txt says why.
+    The timing is written after the decision and is never read back here. If it cannot be written, for
+    any reason, the verification stands and timing-error.txt says why.
     """
     with timing.recording() as recorder:
         doc = _verify(
@@ -445,10 +446,31 @@ def verify(
         )
     try:
         timing.write(recorder, out / "timing.json", TIMED, decision=doc["decision"], sam=sam_on())
-    except (timing.TimingError, OSError) as exc:
-        (out / "timing.json").unlink(missing_ok=True)  # never leave an earlier run's numbers beside this verdict
-        (out / "timing-error.txt").write_text(f"{type(exc).__name__}: {exc}\n", encoding="utf-8")
+    except Exception as exc:  # noqa: BLE001 - the verdict is written; no fault in a side record may lose it
+        _timing_failed(out, exc)
+    else:
+        with contextlib.suppress(OSError):
+            (out / "timing-error.txt").unlink(missing_ok=True)  # an earlier run's error is not this run's
     return doc
+
+
+def _timing_failed(out: Path, exc: BaseException) -> None:
+    """Say why there is no timing for this verdict, and leave no earlier run's numbers beside it.
+
+    Never raises: verification.json is already written. What cannot be removed is named in
+    timing-error.txt, and when that file cannot be written either the reason goes to stderr.
+    """
+    notes = [f"{type(exc).__name__}: {exc}"]
+    stale = out / "timing.json"
+    try:
+        stale.unlink(missing_ok=True)
+    except OSError as err:
+        notes.append(f"timing.json is not this run's and could not be removed: {type(err).__name__}: {err}")
+    try:
+        (out / "timing-error.txt").write_text("\n".join(notes) + "\n", encoding="utf-8")
+    except OSError as err:
+        notes.append(f"timing-error.txt could not be written: {type(err).__name__}: {err}")
+        print("verifier: no timing for this verification: " + "; ".join(notes), file=sys.stderr)
 
 
 def _verify(

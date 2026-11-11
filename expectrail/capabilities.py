@@ -5,13 +5,16 @@ believe exists. This module reads it, checks it, and renders ``docs/capabilities
 
     python3 -m expectrail.capabilities check     # exit 1 and one line per problem
     python3 -m expectrail.capabilities render    # rewrite docs/capabilities.md
+    python3 -m expectrail.capabilities recheck   # ask GitHub again how every cited run and its jobs ended
 
 ``problems`` is what the test suite runs. It fails when a ``measured`` row has no CI run link, when
 a measured or integrated row cites a run recorded as anything but success (any other row must say why
 such a run is evidence), when a row points at
 a file that is not there, and when the README or the site names a command, a switch, a workflow, a
 doc page or a watched name that no row lists. A run's conclusion is the value recorded in the
-ledger when the row was written; nothing here calls GitHub.
+ledger when the row was written; ``check``, ``render`` and the test suite never call GitHub. ``recheck``
+does (``expectrail.capability_runs``): it needs the ``gh`` command and the network, so a person or an
+agent runs it, and the suite tests it on saved answers.
 """
 from __future__ import annotations
 
@@ -21,6 +24,8 @@ import json
 import re
 import sys
 from pathlib import Path
+
+from expectrail.timing import not_finite
 
 ROOT = Path(__file__).resolve().parent.parent
 LEDGER = ROOT / "docs" / "capabilities.json"
@@ -52,6 +57,9 @@ def load(path: Path = LEDGER) -> dict:
     import jsonschema
 
     doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    bad = not_finite(doc)
+    if bad:
+        raise LedgerError(f"capabilities: {bad}: not a finite number")
     schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
     errors = sorted(jsonschema.Draft202012Validator(schema).iter_errors(doc), key=lambda e: list(e.path))
     if errors:
@@ -74,6 +82,9 @@ def row_problems(doc: dict, root: Path = ROOT) -> list[str]:
     """What is wrong with the rows themselves, one line each."""
     out: list[str] = []
     seen: set[str] = set()
+    bad = not_finite(doc)
+    if bad:
+        return [f"{bad}: not a finite number"]
     for row in doc["rows"]:
         rid = row["id"]
         if rid in seen:
@@ -321,13 +332,23 @@ def render(doc: dict) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("command", choices=("check", "render"))
+    parser.add_argument("command", choices=("check", "render", "recheck"))
     args = parser.parse_args(argv)
     try:
         doc = load()
     except LedgerError as err:
         print(err, file=sys.stderr)
         return 1
+    if args.command == "recheck":
+        from expectrail import capability_runs
+
+        found, checked = capability_runs.recheck(doc, capability_runs.github_reader())
+        for line in checked:
+            print(line)
+        for line in found:
+            print(line, file=sys.stderr)
+        print(f"{len(checked)} runs read, {len(found)} problems")
+        return 1 if found else 0
     if args.command == "render":
         PAGE.write_text(render(doc), encoding="utf-8")
         print(f"wrote {PAGE.relative_to(ROOT)}")
