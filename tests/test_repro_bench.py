@@ -67,7 +67,6 @@ class TheBench(unittest.TestCase):
         for did in written:
             self.assertEqual(sorted(p.name for p in (PUBLIC / did).iterdir()), ["defect.patch", "report.txt"])
 
-    @unittest.skipUnless(shutil.which("patch"), "patch is not installed")
     def test_every_patch_applies_to_a_copy_of_the_game_and_the_game_is_untouched(self):
         game = REPO / "game" / "platformer"
         before = tree_digest(game)
@@ -75,7 +74,6 @@ class TheBench(unittest.TestCase):
             self.assertIsNone(bench.applies(d), d["id"])
         self.assertEqual(tree_digest(game), before)
 
-    @unittest.skipUnless(shutil.which("patch"), "patch is not installed")
     def test_a_patch_that_does_not_apply_is_reported_with_the_reason(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -85,15 +83,13 @@ class TheBench(unittest.TestCase):
             (root / "bench" / "x.patch").write_text(STUB)
             why = bench.applies({"patch": "bench/x.patch"}, root=root)
             self.assertIsInstance(why, str)
-            self.assertIn("FAILED", why)
+            self.assertIn("patch does not apply", why)
 
     def test_the_example_is_a_valid_bench(self):
         example = bench.load(REPO / "contracts" / "examples" / "repro-bench.json")
         self.assertEqual(example["format"], "expectrail.repro-bench/v1")
 
     def test_check_command_reads_the_bench_and_applies_every_patch(self):
-        if not shutil.which("patch"):
-            self.skipTest("patch is not installed")
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             self.assertEqual(main(["check"]), 0)
@@ -138,7 +134,7 @@ class Refusals(unittest.TestCase):
 
     def test_paths_that_leave_the_public_folders(self):
         for path in ("../outside.patch", "bench/../../x.patch", "/etc/passwd", "game/platformer/player/player.gd",
-                     "bugs/fresh/x.patch", "bench/fresh-2/x.patch", "bench/./one.patch", "bench\\one.patch"):
+                     "bugs/fresh/x.patch", "bench/freshly/x.patch", "bench/./one.patch", "bench\\one.patch"):
             doc = copy.deepcopy(self.doc)
             doc["defects"][0]["patch"] = path
             found = bench.problems(doc, self.tmp)

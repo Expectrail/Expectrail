@@ -29,7 +29,7 @@ layering and draw order 1, visibility and rendering 1. No defect is in "missing 
 or both) and was written before any run. It is a label, not a measurement.
 
 ```
-python3 -m expectrail.repro check          # reads the bench strictly and applies every patch to a copy of the game
+python3 -m expectrail.repro check          # reads the bench strictly and checks every patch against a copy of the game
 ```
 
 ## What each defect changes in the engine's record

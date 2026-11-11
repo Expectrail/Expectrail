@@ -1,6 +1,6 @@
 """The public reproduction bench: its defects and their reports, read strictly.
 
-    python3 -m expectrail.repro check
+    python3 -m expectrail.repro check      # the bench reads strictly and every patch applies to a copy of the game
 
 A defect is a patch against the clean game and a bug report in a player's words
 (bench/jit/public/defects.json, ``expectrail.repro-bench/v1``). Everything here is public: reproduction
@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -107,15 +108,19 @@ def load(path: Path = BENCH, root: Path = REPO) -> dict:
 
 
 def applies(defect: dict, root: Path = REPO, game: str = "game/platformer") -> str | None:
-    """None when the defect's patch applies cleanly to a copy of the game, as the harness applies it;
-    otherwise why not. The game itself is never touched. Needs the ``patch`` program."""
+    """None when the defect's patch applies exactly to a copy of the game; otherwise why not.
+
+    ``git apply --check`` on a copy outside any repository: nothing is written, the game itself is
+    never touched, and no context line may be off (the harness's ``patch`` is more forgiving, so a
+    patch that passes here applies there)."""
     with tempfile.TemporaryDirectory(prefix="expectrail-repro-") as tmp:
         work = Path(tmp) / "game"
         shutil.copytree(root / game, work, ignore=shutil.ignore_patterns(".godot"))
-        done = subprocess.run(["patch", "-p1", "--forward", "--batch", "--fuzz=0", "-d", str(work), "-i",
-                               str((root / defect["patch"]).resolve())], capture_output=True, text=True)
+        env = {**os.environ, "GIT_CEILING_DIRECTORIES": str(Path(tmp).resolve()), "GIT_CONFIG_NOSYSTEM": "1"}
+        done = subprocess.run(["git", "apply", "--check", "-p1", str((root / defect["patch"]).resolve())],
+                              cwd=work, capture_output=True, text=True, env=env)
         if done.returncode != 0:
-            return " ".join((done.stdout + done.stderr).split())[:300] or f"patch exited {done.returncode}"
+            return " ".join((done.stdout + done.stderr).split())[:300] or f"git apply exited {done.returncode}"
     return None
 
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 import sys
 from pathlib import Path
 
@@ -15,7 +14,7 @@ PROFILE = bench.REPO / "discovery" / "platformer.profile.json"
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python3 -m expectrail.repro")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    c = sub.add_parser("check", help="read the bench strictly and apply every patch to a copy of the game")
+    c = sub.add_parser("check", help="read the bench strictly and check every patch against a copy of the game")
     c.add_argument("--bench", type=Path, default=bench.BENCH)
     v = sub.add_parser("visibility", help="replay the clean game and every defect build; no model, no key")
     v.add_argument("--bench", type=Path, default=bench.BENCH)
@@ -30,9 +29,6 @@ def main(argv: list[str] | None = None) -> int:
     try:
         doc = bench.load(args.bench)
         if args.cmd == "check":
-            if not shutil.which("patch"):
-                print("repro check: the patch program is not installed, so no patch was applied", file=sys.stderr)
-                return 1
             failed = [(d["id"], why) for d in doc["defects"] if (why := bench.applies(d)) is not None]
             for did, why in failed:
                 print(f"repro check: {did}: does not apply: {why}", file=sys.stderr)
