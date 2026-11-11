@@ -1,6 +1,6 @@
 {
  "format": "expectrail.jit-blind-preregistration/v0",
- "status": "registered",
+ "status": "completed",
  "signedOffBy": "Sean Keluo-Udeke: agreed to these terms in the working session on 2026-11-10 at 18:49 CT, and by merging the pull request that registers them",
  "question": "On defects nobody on the team has seen, does adding generated checks (arm B) catch more wrong fixes than the approved checks alone (arm A), without catching any more correct fixes or intentional changes?",
  "set": {
@@ -125,5 +125,57 @@
    ],
    "why": "Infrastructure: blind run 42940175240 failed in every defect's job before any row was written, because patch -d opens a relative patch path from inside the game folder and the workflow passes the set as a relative path. The two intentional entries were still running when the run was cancelled; it has no result. The runner now makes every path absolute, and a test runs the workflow's exact command with relative paths. Candidates, arms, scoring and claim are unchanged."
   }
- ]
+ ],
+ "result": {
+  "run": "https://github.com/Expectrail/Expectrail/actions/runs/42942805407",
+  "commit": "0906f29",
+  "verdict": "adds-value",
+  "primary": {
+   "wrongCaught": {
+    "A": 0,
+    "B": 3,
+    "of": 8
+   },
+   "correctFalseCatches": {
+    "A": 0,
+    "B": 0,
+    "of": 8
+   },
+   "intentionalFalseCatches": {
+    "A": 0,
+    "B": 0,
+    "of": 2
+   },
+   "noResult": {
+    "A": 0,
+    "B": 0
+   }
+  },
+  "byTraceVisible": {
+   "yes": "B caught 3 of 5 wrong fixes",
+   "no": "0 of 2",
+   "unsure": "0 of 1"
+  },
+  "supplementary": {
+   "commentOnlyCaught": {
+    "A": 0,
+    "B": 3,
+    "of": 8
+   },
+   "commentOnlyNoResult": {
+    "B": 1
+   },
+   "undoFalseCatches": {
+    "A": 0,
+    "B": 0,
+    "of": 8
+   }
+  },
+  "spendUsd": 3.6667,
+  "earlierRuns": [
+   "42939008550 and 42940175240: stopped by runner bugs before any candidate ran (amendments above); no result"
+  ],
+  "reading": "Arm A accepted all 34 candidates: the approved checks cover none of these defects, so B adds value over a zero baseline. On the 3 defects where the generator wrote a check that fails on the defect (where the comment-only fix was caught), it also caught the set's own wrong fix, 3 of 3; on the other 5 it did not reproduce the defect, 2 of them trace-visible. No false catch on 18 correct candidates. Eight defects in one game: evidence, not a rate.",
+  "note": "Completed: the pins describe the run's commit and no longer have to hold on main. As registered, generated checks and records stayed on the runners and were not kept."
+ }
 }
