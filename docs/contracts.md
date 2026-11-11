@@ -90,7 +90,7 @@ routes appear as counts only; the schema has no field for anything else about th
 `capabilities` (`expectrail.capabilities/v1`,
 [`contracts/capabilities.v1.schema.json`](../contracts/capabilities.v1.schema.json)) is the one record
 of how far each advertised mode is proven: [`docs/capabilities.json`](capabilities.json), rendered as
-[capabilities.md](capabilities.md). The example is two rows of the real ledger.
+[capabilities.md](capabilities.md). The example is two rows of the real ledger. Each cited run records how it ended (`conclusion`), read from GitHub when the row was written; a run that did not end in success needs a `conclusionNote` saying why it is evidence all the same.
 
 | Record | Written by | Read by |
 | --- | --- | --- |

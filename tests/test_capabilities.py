@@ -76,6 +76,40 @@ class RowRulesTest(unittest.TestCase):
         row["evidence"] = [e for e in row["evidence"] if e["kind"] != "run"]
         self.assertEqual(cap.row_problems(self.doc), ["godot-verify: marked measured with no CI run link"])
 
+    def test_a_run_with_no_recorded_conclusion_fails(self):
+        run = next(e for e in _row(self.doc, "godot-verify")["evidence"] if e["kind"] == "run")
+        del run["conclusion"]
+        self.assertEqual(cap.row_problems(self.doc), [f"godot-verify: no recorded conclusion for {run['ref']}"])
+
+    def test_a_failed_run_cited_without_a_reason_fails(self):
+        # What let two failed Unity runs through review of #275: a link was accepted without a look.
+        run = next(e for e in _row(self.doc, "unity-harness")["evidence"] if e["kind"] == "run")
+        run["conclusion"] = "failure"
+        found = cap.row_problems(self.doc)
+        self.assertEqual(len(found), 1)
+        self.assertIn("ended in failure without saying why", found[0])
+        run["conclusionNote"] = "The failure is the result under test."
+        self.assertEqual(cap.row_problems(self.doc), [])
+        self.assertIn("The run ended in failure: The failure is the result under test.", cap.render(self.doc))
+
+    def test_measured_with_no_successful_run_fails(self):
+        for run in _row(self.doc, "godot-verify")["evidence"]:
+            if run["kind"] == "run":
+                run["conclusion"], run["conclusionNote"] = "failure", "explained"
+        self.assertEqual(cap.row_problems(self.doc), ["godot-verify: marked measured and no cited run ended in success"])
+
+    def test_the_schema_requires_a_conclusion_on_a_run_and_refuses_one_elsewhere(self):
+        schema = json.loads((ROOT / "contracts" / "capabilities.v1.schema.json").read_text(encoding="utf-8"))
+        ev = schema["$defs"]["evidence"]["allOf"][0]
+        self.assertEqual(ev["then"]["required"], ["conclusion"])
+        self.assertIs(ev["else"]["properties"]["conclusion"], False)
+
+    def test_the_unity_specs_are_not_called_drafts(self):
+        row = _row(self.doc, "unity-harness")
+        self.assertNotIn("no person has approved", row["limits"])
+        for path in sorted((ROOT / "specs" / "unity").glob("*.json")):
+            self.assertIn("approval", json.loads(path.read_text(encoding="utf-8")), path.name)
+
     def test_measured_on_saved_data_fails(self):
         _row(self.doc, "godot-verify")["grade"] = "fixture"
         self.assertEqual(len(cap.row_problems(self.doc)), 1)

@@ -81,10 +81,18 @@ def row_problems(doc: dict, root: Path = ROOT) -> list[str]:
             out.append(f"{rid}: saved or synthetic data is not a measurement (grade fixture, status measured)")
         if row["grade"] == "protected":
             out.append(f"{rid}: the protected grade is reserved until capture the game cannot forge exists")
+        runs = [e for e in row["evidence"] if e["kind"] == "run"]
+        if row["status"] == "measured" and runs and not any(e.get("conclusion") == "success" for e in runs):
+            out.append(f"{rid}: marked measured and no cited run ended in success")
         for ev in row["evidence"]:
             if ev["kind"] == "run":
                 if not _RUN.match(ev["ref"]):
                     out.append(f"{rid}: not a CI run link: {ev['ref']}")
+                if "conclusion" not in ev:
+                    out.append(f"{rid}: no recorded conclusion for {ev['ref']}")
+                elif ev["conclusion"] != "success" and not ev.get("conclusionNote"):
+                    out.append(f"{rid}: cites a run that ended in {ev['conclusion']} without saying why it is "
+                               f"evidence: {ev['ref']}")
             elif not (root / ev["ref"].split("#", 1)[0]).exists():
                 out.append(f"{rid}: evidence file not found: {ev['ref']}")
         for module in row["entryPoints"]:
@@ -185,7 +193,10 @@ def _link(ref: str) -> str:
 def _evidence(ev: dict) -> str:
     if ev["kind"] == "run":
         number = ev["ref"].split("/runs/", 1)[1].split("/", 1)[0]
-        return f"[run {number}]({ev['ref']}): {ev['shows']}"
+        text = f"[run {number}]({ev['ref']}): {ev['shows']}"
+        if ev.get("conclusion", "success") != "success":
+            text += f". The run ended in {ev['conclusion'].replace('_', ' ')}: {ev.get('conclusionNote', 'no reason given')}"
+        return text
     return f"{_link(ev['ref'])}: {ev['shows']}"
 
 

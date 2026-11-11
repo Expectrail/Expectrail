@@ -36,12 +36,14 @@
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41003749744",
-          "shows": "8 of 8 held-out bugs caught with SAM 3.1 on, no false alarm on the clean game"
+          "shows": "8 of 8 held-out bugs caught with SAM 3.1 on, no false alarm on the clean game",
+          "conclusion": "success"
         },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
-          "shows": "CI on main, job agents-harness-verify: real replays with SAM off accept the correct fix and reject the fix that freezes the player"
+          "shows": "CI on main, job agents-harness-verify: real replays with SAM off accept the correct fix and reject the fix that freezes the player",
+          "conclusion": "success"
         },
         {
           "kind": "record",

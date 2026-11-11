@@ -27,13 +27,18 @@
           "description": "run: a CI run on GitHub, by URL. test: a test file in this repository. record: a file in this repository written from a run's output, or a page that lists its runs."
         },
         "ref": { "type": "string", "minLength": 1 },
-        "shows": { "$ref": "#/$defs/text" }
+        "shows": { "$ref": "#/$defs/text" },
+        "conclusion": {
+          "enum": ["success", "failure", "cancelled", "timed_out"],
+          "description": "For a run: how the workflow run ended, read from GitHub when the row was written. The suite cannot call GitHub, so this recorded value is what it checks."
+        },
+        "conclusionNote": { "$ref": "#/$defs/text", "description": "Required when a cited run did not end in success: why it is evidence all the same." }
       },
       "allOf": [
         {
           "if": { "properties": { "kind": { "const": "run" } } },
-          "then": { "properties": { "ref": { "$ref": "#/$defs/runUrl" } } },
-          "else": { "properties": { "ref": { "$ref": "#/$defs/repoPath" } } }
+          "then": { "required": ["conclusion"], "properties": { "ref": { "$ref": "#/$defs/runUrl" } } },
+          "else": { "properties": { "ref": { "$ref": "#/$defs/repoPath" }, "conclusion": false, "conclusionNote": false } }
         }
       ]
     },
