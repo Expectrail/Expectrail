@@ -49,8 +49,8 @@ The box sizes vary because the camera zooms during the route.
 
 ## The specs, as drafted
 
-Drafts in `specs/unity/`, not yet approved. A person approves each with
-`python3 -m expectrail.spec_writer approve specs/unity/<id>.json --by "<name>"`. The Godot loaders
+In `specs/unity/`. Each carries a person's approval (commit `2b2785a`); only a person approves a
+spec, with `python3 -m expectrail.spec_writer approve specs/unity/<id>.json --by "<name>"`. The Godot loaders
 read `specs/*.json` only, so these are not judged on the Godot game.
 
 - **`unity-player-stays-above-ground`**: `never-crosses`, the player's box bottom against the ground

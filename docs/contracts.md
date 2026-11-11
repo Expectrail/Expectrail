@@ -85,6 +85,23 @@ validator equal to `jsonschema`. The reader then recomputes every derived value.
 the first 12 hex digits of sha256(spec, route, kind), so a failure keeps its id across pushes. Held-out
 routes appear as counts only; the schema has no field for anything else about them.
 
+## The capability ledger (added November 11)
+
+`capabilities` (`expectrail.capabilities/v1`,
+[`contracts/capabilities.v1.schema.json`](../contracts/capabilities.v1.schema.json)) is the one record
+of how far each advertised mode is proven: [`docs/capabilities.json`](capabilities.json), rendered as
+[capabilities.md](capabilities.md). The example is two rows of the real ledger. Each cited run records how it ended (`conclusion`), read from GitHub when the row was written; a run that did not end in success needs a `conclusionNote` saying why it is evidence all the same, and only an implemented or experimental row may cite one.
+
+| Record | Written by | Read by |
+| --- | --- | --- |
+| `capabilities` | a person or an agent, by hand, in the pull request that changes what a mode has shown | `expectrail.capabilities` (`check`, `render`) and `tests/test_capabilities.py` |
+
+It is not in `expectrail.contracts.KINDS`. The schema fixes the shape, the four statuses and the four
+grades. `expectrail.capabilities.problems` checks what a schema cannot: a `measured` row links a CI
+run, a measured or integrated row cites only runs whose recorded `conclusion` is success, every file a
+row points at exists, the `protected` grade is refused, and every command, switch,
+workflow, doc page and watched name in the README or `docs/index.html` belongs to a row.
+
 ## Rules the contracts encode
 
 - **A missing object is never a pass.** In `observations`, an object with an empty list in a frame
