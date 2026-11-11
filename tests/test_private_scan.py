@@ -495,9 +495,17 @@ class TrustedHalf(unittest.TestCase):
         self.assertLess(names.index("Check out the scanner (this branch, never the pull request's code)"),
                         names.index("Require the held-out token"))
 
-    def test_obaaf_no_longer_carries_the_pull_request_target_exceptions(self):
+    def test_obaaf_carries_only_the_new_designs_two_reviewed_exceptions(self):
+        # The pull_request_target exceptions (GHA-001, GHA-002) are gone. The workflow_run design brings
+        # two findings of its own, accepted by a person with a reason and an expiry each.
         config = yaml.safe_load((REPO / ".github" / "obaaf.yml").read_text(encoding="utf-8"))
-        self.assertEqual([i for i in config["ignore"] if "private-scan" in i["path"]], [])
+        mine = [i for i in config["ignore"] if "private-scan" in i["path"]]
+        self.assertEqual(sorted(i["rule"] for i in mine), ["OBAAF-GHA-001", "OBAAF-GHA-021"])
+        for entry in mine:
+            self.assertEqual(entry["path"], ".github/workflows/private-scan.yml")
+            self.assertEqual(entry["job"], "private-export-scan")
+            self.assertTrue(entry["reason"].strip() and entry["until"])
+        self.assertIn("scan_handoff.py", next(i["reason"] for i in mine if i["rule"] == "OBAAF-GHA-021"))
         self.assertNotIn("pull_request_target", yaml.safe_dump(config))
 
 
