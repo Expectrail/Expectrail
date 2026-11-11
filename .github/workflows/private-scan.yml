@@ -1,21 +1,32 @@
 # The export scan against the private set, on a pull request, before it merges.
 #
 # CI's private job (agents-harness-private) runs only on main, because a pull request's own code
-# must never run where the private set is. So until now a page or bench file that matched the
-# private set was found only after it merged, and main went red. This workflow runs the base
-# branch's scanner (pull_request_target) and only reads the pull request's files: it checks them out
-# as data, never runs or imports them, and prints counts and file names, never the matched text.
+# must never run where the private set is. Without this workflow a page or bench file that matched
+# the private set would be found only after it merged, and main would go red.
+#
+# How it runs (no pull_request_target, which GitHub blocks by default in public repositories from
+# December 2, 2026):
+# 1. private-scan-collect.yml runs on the pull request with no secret and uploads the files the scan
+#    reads as one archive.
+# 2. When that run finishes, GitHub starts this workflow from the default branch's copy of this file
+#    (workflow_run), so a pull request cannot change it. The job is in the main-only environment,
+#    which holds HELDOUT_TOKEN and which only main may use.
+# 3. The scanner and the hand-off code come from main. The archive is data: agents/scan_handoff.py
+#    asks GitHub for the head commit's tree and writes a file only when its bytes are that commit's,
+#    and fails if a file of the commit is missing. Nothing from the pull request is run or imported.
+# 4. The result is posted as the check `private-export-scan` on the pull request's head commit. The
+#    check says passed or failed and links here; the log prints counts and file names, never the
+#    matched text.
 #
 # Same-repository pull requests only; a fork's pull request never runs it, so it cannot be used to
-# test guesses against the private set. HELDOUT_TOKEN lives in the main-only environment, which only
-# main may use: pull_request_target runs as main, so this job gets the token while the pull
-# request's own branch never can. A pull request that changes the scanner itself is scanned by main's
-# scanner until it merges.
+# test guesses against the private set. A pull request that changes the scanner itself is scanned by
+# main's scanner until it merges. A manual run scans a branch or commit of this repository.
 name: Private scan
 
 on:
-  pull_request_target:
-    types: [opened, synchronize, reopened]
+  workflow_run:
+    workflows: [Private scan collect]
+    types: [completed]
   workflow_dispatch:
     inputs:
       ref:
@@ -26,34 +37,69 @@ permissions:
   contents: read
 
 concurrency:
-  group: private-scan-${{ github.event.pull_request.number || github.run_id }}
+  group: private-scan-${{ github.event.workflow_run.head_branch || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   private-export-scan:
     environment: main-only
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
+    # Only the collector at its own path (a pull request can add another workflow with the same
+    # name), only for a pull request from this repository, and not for a run a newer push cancelled.
+    # A collector that failed still gets here: no archive arrives, and the check is posted as failed.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.path == '.github/workflows/private-scan-collect.yml' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.conclusion != 'cancelled' &&
+      github.event.workflow_run.conclusion != 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      actions: read    # download the collector run's archive
+      contents: read   # main's scanner, and the head commit's tree
+      checks: write    # post the result on the pull request's head commit
     env:
       HELDOUT_TOKEN_SET: ${{ secrets.HELDOUT_TOKEN != '' }}
     steps:
-      - name: Require the held-out token
-        if: env.HELDOUT_TOKEN_SET != 'true'
-        run: |
-          echo "::error::HELDOUT_TOKEN is not set here, so the private set cannot be compared"
-          exit 1
-      - name: Check out the scanner (the base branch, never the pull request's code)
+      - name: Check out the scanner (this branch, never the pull request's code)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.13'
-      - name: Check out the files to scan, as data only
+      # After the checkout, so that a missing token is still reported on the pull request's head.
+      - name: Require the held-out token
+        if: env.HELDOUT_TOKEN_SET != 'true'
+        run: |
+          echo "::error::HELDOUT_TOKEN is not set here, so the private set cannot be compared"
+          exit 1
+      - name: Download the pull request's files (data only, outside the workspace)
+        if: github.event_name == 'workflow_run'
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: private-scan-input
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/private-scan-input
+      # Every value from the event reaches the script through env, never by expansion in the script.
+      - name: Check the files against the head commit's tree and unpack them
+        if: github.event_name == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: >-
+          python -I agents/scan_handoff.py unpack
+          --archive "$RUNNER_TEMP/private-scan-input/files.tar"
+          --repo "$REPO" --sha "$HEAD_SHA" --out scanned
+      - name: Check out the files to scan, as data only (manual run)
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha || inputs.ref }}
+          ref: ${{ inputs.ref }}
           path: scanned
           persist-credentials: false
       - name: Fetch the private held-out set
@@ -64,6 +110,17 @@ jobs:
           path: heldout-set
           persist-credentials: false
       # The scanner needs only the standard library, so nothing is installed. Python imports from
-      # the base branch's checkout (the working directory), never from scanned/.
+      # this branch's checkout (the working directory), never from scanned/.
       - name: Export scan of the pull request against the private set (counts only, never names)
         run: python -m agents.export_scan scanned/bench scanned/docs scanned/README.md scanned/apps --private heldout-set
+      - name: Post the result on the pull request's head commit
+        if: always() && github.event_name == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >-
+          python3 -I agents/scan_handoff.py report
+          --repo "$REPO" --sha "$HEAD_SHA" --status "$STATUS" --run-url "$RUN_URL"
