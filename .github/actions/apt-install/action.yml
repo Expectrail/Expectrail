@@ -1,0 +1,62 @@
+# Install Ubuntu packages in a job without depending on a package mirror being reachable.
+#
+# Why: `sudo apt-get update && sudo apt-get install` fails the job whenever Ubuntu's mirror cannot be
+# resolved or is mid-sync. That broke Unity runs 17 and 18 (November 9) and the required check
+# agents-sandbox on main and on #287 (November 11, over half an hour of failed re-runs). A red
+# required check on main stops every merge.
+#
+# How (install.sh): nothing is installed when the image already has the packages; otherwise cached
+# .deb files from an earlier run on the same runner image are installed with no network; otherwise
+# the live mirror is tried several times, then Ubuntu's snapshot archive, and what was downloaded is
+# cached. The cache key holds the runner image's version, so a new image fetches afresh.
+#
+# What it does not cover: the first run on a new runner image during an outage of both the live
+# mirror and the snapshot archive. Caches written on main are readable by pull requests; a pull
+# request's cache is not readable by main, so a pull request cannot change what main installs.
+#
+# The repository must be checked out before this step (it is a local action). Every workflow uses
+# this instead of calling apt-get; tests/test_apt_install.py fails on a bare apt-get. unity.yml is
+# the exception: it pins every package to the snapshot for identical frames across runners.
+name: apt install
+description: Install Ubuntu packages from the image, a cache, the live mirror or the snapshot archive, in that order.
+inputs:
+  packages:
+    description: Package names, separated by spaces.
+    required: true
+  snapshot:
+    description: The Ubuntu snapshot to fall back to when the live mirror fails. Empty for no fallback.
+    default: 20261108T000000Z
+outputs:
+  source:
+    description: Which layer served the install (image, cache, live or snapshot).
+    value: ${{ steps.install.outputs.source }}
+runs:
+  using: composite
+  steps:
+    - id: key
+      shell: bash
+      env:
+        PACKAGES: ${{ inputs.packages }}
+      run: |
+        sorted=$(printf '%s\n' $PACKAGES | sort -u | tr '\n' ' ')
+        hash=$(printf '%s' "$sorted" | sha256sum | cut -c1-16)
+        echo "dir=$HOME/.cache/expectrail-apt/$hash" >> "$GITHUB_OUTPUT"
+        echo "key=apt-${ImageOS:-unknown}-${ImageVersion:-unknown}-$(dpkg --print-architecture)-$hash" >> "$GITHUB_OUTPUT"
+    - id: restore
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.key.outputs.dir }}
+        key: ${{ steps.key.outputs.key }}
+    - id: install
+      shell: bash
+      env:
+        PACKAGES: ${{ inputs.packages }}
+        APT_SNAPSHOT: ${{ inputs.snapshot }}
+        CACHE_DIR: ${{ steps.key.outputs.dir }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: bash "$ACTION_PATH/install.sh" "$CACHE_DIR" $PACKAGES
+    - if: steps.install.outputs.fetched == 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.key.outputs.dir }}
+        key: ${{ steps.key.outputs.key }}
