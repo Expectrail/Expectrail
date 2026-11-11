@@ -39,11 +39,11 @@ def is_protected(name: str) -> bool:
     return name.endswith("_API_KEY") or name == "HELDOUT_TOKEN"
 
 
-# Jobs in main-only that start when another workflow finishes (workflow_run). They run main's copy
-# of the workflow, as main, so the branch rule lets them in; the run that started them may have been
-# a pull request's. Each is listed here and has tests of its own that it reads the pull request only
-# as data (private-scan.yml: tests/test_private_scan.py).
-WORKFLOW_RUN_REVIEWED = {"private-scan.yml:private-export-scan"}
+# Jobs in main-only that start when another workflow finishes (workflow_run) would run main's copy
+# of the workflow for a run a pull request may have started. None exists: the private scan tried it
+# and GitHub never started the run (#247). One added later is listed here, with tests of its own that
+# it reads the pull request only as data.
+WORKFLOW_RUN_REVIEWED: set[str] = set()
 
 
 def workflows():
