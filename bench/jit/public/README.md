@@ -6,8 +6,9 @@ bench that number will be measured on. Everything in it is public, and reproduct
 it and on nothing else: never on a blind set, its logs or its counts.
 
 **No reproduction rate has been measured.** That takes a live run from main, which calls a paid
-model, and none has been made on this bench. What is here is the bench, and one measurement that
-needs no model: what each defect changes in the engine's record.
+model, and none has been made on this bench. What is here is the bench, one measurement that
+needs no model (what each defect changes in the engine's record), and the scorer that will read a
+live run's records when there is one.
 
 ## What is in it
 
@@ -121,8 +122,63 @@ have stuck at a wall never met one within a route's 15 seconds; and an uncapped 
 longer drop than any route found. A defect that cannot be shown to change the game does not belong
 in a bench, apart from the two counter defects named above.
 
+## How a live run on this bench is made and scored
+
+Built November 11, 2026. **It has not been run**: the workflow mode below has never been
+dispatched, and the scorer has only read records from the simulated game and records written by
+hand in tests.
+
+**The case.** The generator judges a candidate change, and reproduction has none: the check has to
+come from the bug build and the report alone, so that a fix cannot shape the check that later
+judges it. So every defect runs with the same stand-in candidate,
+[`no-fix.patch`](no-fix.patch): one comment line added to the game's `README.md`, a file the
+engine never loads. No profile claim names that file, so the diff map keeps all 25 probes, and
+the patch tells the model nothing about any defect. `python3 -m expectrail.repro cases` prints the
+24 cases.
+
+What was checked about the no-fix patch, in a cloud container with the pinned Godot 4.7.2, not in
+CI: the clean game and each of the 24 defect builds were replayed once on one probe with the patch
+and once without, and the engine's record was the same byte for byte in 25 of 25 pairs. That is
+one probe and one replay per build, not every probe. A test applies it after every
+defect and checks that only the README differs.
+
+**The run.** `jit.yml` has a mode `repro`: from main only, the cases from this folder and nothing
+typed at dispatch, each through the same jobs as any live change (measure, propose, replay, one
+revision, replay), at the usual $2 cap per defect. The model sees the report, the no-fix patch,
+and each probe's signals on the clean game and on the bug build, as it does for any change.
+
+**The score.** `python3 -m expectrail.repro score --records <dir> --out <dir>` reads the 24
+records and writes `repro-score.json` (`expectrail.repro-score/v1`) and a page. A defect is
+**reproduced** when at least one generated check, in the record's own runs, passed on the clean
+game 3 times of 3, failed on the bug build 3 times of 3, and failed 3 times of 3 again on the bug
+build with the no-fix patch applied. The last three runs are more than the issue asks: the two
+builds behave the same, so a check that fails on one and not the other is flaky and does not
+count. The scorer works a check's standing out from its runs and refuses a record whose own flag
+disagrees, a record for another candidate, defect or report, and a record that ran each check
+some other number of times. A defect with no usable record is **no result**: it stays in the
+denominator and is never counted as reproduced.
+
+A miss gets a reason from the issue's vocabulary only where the records can show one:
+
+| Reason | When the scorer gives it |
+| --- | --- |
+| `budget` | The run ended with `OUT_OF_BUDGET`. |
+| `flaky` | A check passed and then did not on the clean game, or failed 3 of 3 on the bug build and then did not with the no-fix patch. |
+| `wrong-predicate` | Checks were proposed, none failed 3 of 3 on the bug build, and the table above shows a signal that moves on a library probe. For `coin-stays` that signal is a side effect a hundredth of a pixel wide, so this label would be unfair to the model there. |
+| `no-signal` | The table above shows the record differs and no signal does. |
+| `undetermined` | The table above shows nothing on any library probe: no route reaches the behaviour, or it shows only on screen. The records cannot say which. |
+
+`route-never-reaches` and `probe-language` are in the vocabulary and the scorer never gives them:
+no record separates them from the others. The five defects the table marks `none` were looked at
+by hand above; a person carries those findings into the published breakdown.
+
+The score also gives the rate over the defects that change the engine's record on a library probe
+(`signal` or `trace-only` in the table, 19 of the 24), which is the set the issue's 70% target is
+about, the rate over the 20 defects nothing was tuned on, and spend per defect against the cap.
+
 ## What comes next (issue #285)
 
-1. The baseline reproduction rate, from a dispatch on main (a person starts it; it costs money).
-2. The reason for every miss, in the issue's fixed vocabulary, from that run's records.
+1. The baseline reproduction rate, from a dispatch of `jit.yml` in mode `repro` on main (a person
+   starts it; it costs money).
+2. The reason for every miss, from that run's score and, where the records cannot say, by hand.
 3. Then reach, signals and proposal quality, in the order the misses decide.

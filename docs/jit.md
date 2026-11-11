@@ -54,7 +54,7 @@ jit-run/v1 record, report, and an advisory block in the gate comment and the rev
 | Record | [`contracts/jit-run.v1.schema.json`](../contracts/jit-run.v1.schema.json) | One per change: digests of the inputs, model and prompt; settings; the diff map; every proposed check and probe; every near miss; each check's reference runs, kills, candidate runs and outcome; the catches with their label; spend with the prices used. `advisory` is always true and there is no decision field. |
 | Revision | [`intent.py`](../expectrail/jit/intent.py) `revise_to_file` | When the first replay rejects any check, one more model call. Each rejected check goes back with one of two reasons: it did not pass on the clean game (with the interpreter's outcome names), or it did not fail on the bug build. Never the candidate's outcomes or the near misses built from the candidate, which would let it fit checks to the change under test. At most one replacement per rejected check; kept checks stay as they were. The first round's record is read as untrusted data (schema-valid, this patch, plain numbers), and the second record carries the first round's replays and both calls' tokens, so the $2 cap covers the whole change. No budget left, no rejected check, or an unusable answer: the first round stands. |
 | CLI | [`cli.py`](../expectrail/jit/cli.py) | `run`, `measure`, `propose`, `revise`, `report`, `gate-summary`, `diff-games`. |
-| CI | [`.github/workflows/jit.yml`](../.github/workflows/jit.yml) | Rehearsal on pull requests that touch this code; `live` by dispatch. |
+| CI | [`.github/workflows/jit.yml`](../.github/workflows/jit.yml) | Rehearsal on pull requests that touch this code; `live` by dispatch; `bench` (the known-bugs bench) and `repro` (the public reproduction bench) by dispatch from main only. |
 | Gate | [`gate/`](../expectrail/gate), the verify action's `generated-checks` input | Reads and shows a generated-checks block; nothing in a pull request's run produces one yet (below). |
 
 ### Valid, catch, strong, weak
@@ -234,8 +234,18 @@ check could fail on at most 17 of the 24, before the model has proposed anything
 up to four probes of its own, which this does not replay. The table, the command and what was and
 was not shown are on the bench's page. That run was made in a cloud container, not in CI.
 
-Not built yet: the live baseline on this bench, the scorer that reads its records, and the reason
-for each miss.
+Built and not yet run: a `repro` mode in `jit.yml` (from main only) that sends each defect through
+the live jobs with one stand-in candidate for all, a comment line in the game's README that
+changes nothing ([`no-fix.patch`](../bench/jit/public/no-fix.patch)), so a check comes from the bug
+build and the report alone; and the scorer that reads the run's records
+([`expectrail/repro/score.py`](../expectrail/repro/score.py), `expectrail.repro-score/v1`). A
+defect counts as reproduced when a generated check passed on the clean game 3 times of 3 and
+failed on the bug build 3 times of 3, with and without the no-fix patch. A miss gets a reason from
+the issue's vocabulary where the records can show one, and `undetermined` where they cannot. The
+bench's page says how each is decided.
+
+Not done: the live baseline itself, which a person dispatches, and so the rate and the breakdown
+of misses.
 
 ## What this does not claim
 

@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/repro-score.v1.schema.json",
+  "title": "expectrail.repro-score/v1",
+  "description": "The reproduction rate of one live run on the public reproduction bench: per defect, whether a generated check passed on the clean game 3 times of 3 and failed on the bug build 3 times of 3, read from that run's jit-run records. Every defect runs with the same stand-in candidate, a comment line that changes nothing, so the check comes from the bug build and the report alone. A defect with no usable record is no-result and never counts as reproduced. A miss carries a reason only where the records can show one. Written and read by expectrail.repro.score.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "benchSha256", "noFixSha256", "visibilitySha256", "source", "reps", "capUsd", "rows", "totals"],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "count": { "type": "integer", "minimum": 0 },
+    "usd": { "type": "number", "minimum": 0 },
+    "reason": {
+      "enum": ["route-never-reaches", "no-signal", "probe-language", "wrong-predicate", "flaky", "budget", "undetermined"],
+      "description": "The issue's vocabulary (#285, step 2), and undetermined. The scorer assigns budget, flaky, wrong-predicate, no-signal and undetermined; no record separates route-never-reaches or probe-language from the others, so a record that carries one of those is refused."
+    }
+  },
+  "properties": {
+    "format": { "const": "expectrail.repro-score/v1" },
+    "benchSha256": { "$ref": "#/$defs/sha256", "description": "The bench file the defects were read from." },
+    "noFixSha256": { "$ref": "#/$defs/sha256", "description": "The stand-in candidate every case ran with." },
+    "visibilitySha256": {
+      "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }],
+      "description": "The visibility record the rows' visibility came from, or null when none was given."
+    },
+    "source": {
+      "type": ["string", "null"], "maxLength": 200,
+      "description": "Where the jit-run records came from, as the person who scored them said: a CI run, for example. Not checked."
+    },
+    "reps": { "const": 3 },
+    "capUsd": { "const": 2.0 },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "family", "tunedOn", "patchSha256", "visibility", "outcome", "why", "proposed", "kept",
+                     "reproducing", "missReason", "evidence", "spendUsd", "recordSha256"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 60 },
+          "family": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 60 },
+          "tunedOn": { "type": "boolean" },
+          "patchSha256": { "$ref": "#/$defs/sha256" },
+          "visibility": {
+            "enum": ["signal", "trace-only", "none", null],
+            "description": "What the library probes see of this defect, copied from the visibility record; null when it has no row for it."
+          },
+          "outcome": { "enum": ["reproduced", "not-reproduced", "no-result"] },
+          "why": { "type": ["string", "null"], "maxLength": 300, "description": "For no-result: why there is no result." },
+          "proposed": { "$ref": "#/$defs/count" },
+          "kept": {
+            "$ref": "#/$defs/count",
+            "description": "Checks that passed on the clean game 3 of 3 and failed 3 of 3 on a near miss, worked out from the runs."
+          },
+          "reproducing": {
+            "type": "array", "uniqueItems": true, "maxItems": 8,
+            "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._/-]*$", "maxLength": 200 },
+            "description": "The kept checks that failed 3 of 3 on the bug build, with and without the no-fix candidate."
+          },
+          "missReason": { "oneOf": [{ "$ref": "#/$defs/reason" }, { "type": "null" }] },
+          "evidence": { "type": ["string", "null"], "maxLength": 300, "description": "For a miss: what in the records gives the reason." },
+          "spendUsd": { "oneOf": [{ "$ref": "#/$defs/usd" }, { "type": "null" }] },
+          "recordSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] }
+        }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["defects", "reproduced", "notReproduced", "noResult", "untuned", "reproducedUntuned", "traceVisible",
+                   "reproducedTraceVisible", "keptChecks", "misses", "spendUsd", "maxSpendUsd", "overCap"],
+      "properties": {
+        "defects": { "$ref": "#/$defs/count" },
+        "reproduced": { "$ref": "#/$defs/count" },
+        "notReproduced": { "$ref": "#/$defs/count" },
+        "noResult": { "$ref": "#/$defs/count" },
+        "untuned": { "$ref": "#/$defs/count" },
+        "reproducedUntuned": { "$ref": "#/$defs/count" },
+        "traceVisible": {
+          "$ref": "#/$defs/count",
+          "description": "Defects whose visibility is signal or trace-only: the engine's record differs on some library probe."
+        },
+        "reproducedTraceVisible": { "$ref": "#/$defs/count" },
+        "keptChecks": { "$ref": "#/$defs/count" },
+        "misses": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": { "^[a-z-]{1,40}$": { "type": "integer", "minimum": 1 } }
+        },
+        "spendUsd": { "$ref": "#/$defs/usd" },
+        "maxSpendUsd": { "$ref": "#/$defs/usd" },
+        "overCap": { "$ref": "#/$defs/count" }
+      }
+    }
+  }
+}

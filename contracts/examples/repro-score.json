@@ -1,0 +1,78 @@
+{
+ "format": "expectrail.repro-score/v1",
+ "benchSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+ "noFixSha256": "96f6aa972c0ea9d9dc84c4843ec04b1b850e908fd26b6798d63f24d67b9f8d33",
+ "visibilitySha256": null,
+ "source": "An example with made-up rows. Not a measured run.",
+ "reps": 3,
+ "capUsd": 2.0,
+ "rows": [
+  {
+   "id": "air-jump",
+   "family": "movement-input",
+   "tunedOn": true,
+   "patchSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679",
+   "visibility": "signal",
+   "outcome": "reproduced",
+   "why": null,
+   "proposed": 4,
+   "kept": 1,
+   "reproducing": [
+    "jit-no-extra-air-jumps"
+   ],
+   "missReason": null,
+   "evidence": null,
+   "spendUsd": 0.1,
+   "recordSha256": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  {
+   "id": "slow-left",
+   "family": "movement-input",
+   "tunedOn": false,
+   "patchSha256": "c0184f820a786c63290aba04c351d33fdd08ec147fea6d9be1b2493877527077",
+   "visibility": "signal",
+   "outcome": "not-reproduced",
+   "why": null,
+   "proposed": 3,
+   "kept": 0,
+   "reproducing": [],
+   "missReason": "wrong-predicate",
+   "evidence": "a signal moves on a library probe, and none of the 3 proposed checks failed 3 of 3 on the bug build",
+   "spendUsd": 0.08,
+   "recordSha256": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  {
+   "id": "camera-cut-top",
+   "family": "camera-viewport",
+   "tunedOn": false,
+   "patchSha256": "58aa8ecdbfa68434dde777cd3229da2f73afc6a34e145509e24402a5e3875b62",
+   "visibility": "trace-only",
+   "outcome": "no-result",
+   "why": "no readable record (FileNotFoundError)",
+   "proposed": 0,
+   "kept": 0,
+   "reproducing": [],
+   "missReason": null,
+   "evidence": null,
+   "spendUsd": null,
+   "recordSha256": null
+  }
+ ],
+ "totals": {
+  "defects": 3,
+  "reproduced": 1,
+  "notReproduced": 1,
+  "noResult": 1,
+  "untuned": 2,
+  "reproducedUntuned": 0,
+  "traceVisible": 3,
+  "reproducedTraceVisible": 1,
+  "keptChecks": 1,
+  "misses": {
+   "wrong-predicate": 1
+  },
+  "spendUsd": 0.18,
+  "maxSpendUsd": 0.1,
+  "overCap": 0
+ }
+}
