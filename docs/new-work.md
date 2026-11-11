@@ -1,8 +1,11 @@
 # What we built during the event
 
 The rules say the demo may only show work done during the event (October 26 to November 4, 2026).
-This log, not the repository's creation date, is what shows it. Add a line when you land
-something; keep prior work out of it.
+This log, not the repository's creation date, is what shows it.
+
+**Since November 11, 2026 this file gets no new rows.** Each change adds a file of its own under
+[`new-work/`](new-work/README.md), so two pull requests no longer conflict here. The tables below
+are the record up to that day.
 
 ## Prior work we use (not built during the event)
 
