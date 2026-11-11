@@ -159,17 +159,17 @@ a rise is not capped (eight presses: 114 px clean, 424 px bug build).
 
 ## Measurement plan
 
-None of this has run. Each row will link its CI run when it does.
+Rows link their CI run once measured. The two rows measured so far are the known-bugs bench and blind set 3 (below).
 
 | Measure | Baseline today | Target for v1 to be worth keeping | Result |
 | --- | --- | --- | --- |
 | Mutation bench Part 2 (generated bugs), weighted catch rate, approved checks plus generated checks | 0.9% (10 of 77) | Clearly above, with the per-class table | not run |
 | Mutation bench Part 1 (wrong fixes), catch rate | 31 of 39 | No loss; extra catches among the 8 missed | not run |
 | False alarms on the clean game | 0 | 0 | not run |
-| False catches on correct fixes (the judge benchmark's 8 correct fixes, 3 runs each; the 10 live demo-path fixes) | none measured | 0 strong; weak reported | not run |
+| False catches on correct fixes (the judge benchmark's 8 correct fixes, 3 runs each; the 10 live demo-path fixes) | none measured | 0 strong; weak reported | not run on those; 0 of 4 on the known-bugs bench, 0 of 18 correct candidates on blind set 3 |
 | A natural catch: a generated check fails on a real Muse Code fix the approved checks accepted, confirmed wrong by a person | 0 | 1 or more, or an honest "none" | not run |
 | Determinism: the same change, 10 reruns | none measured | The same catches every time | offline only (simulated game) |
-| Spend per change | none measured | $2 or less, median reported | not run |
+| Spend per change | none measured | $2 or less, median reported | known-bugs bench: $0.10 per case on average, $0.23 at most ([42927364671](https://github.com/Expectrail/Expectrail/actions/runs/42927364671)); blind set 3: $3.67 for 34 candidates ([42942805407](https://github.com/Expectrail/Expectrail/actions/runs/42942805407)) |
 
 The stress tests, in the order we intend to run them:
 
@@ -196,6 +196,13 @@ The stress tests, in the order we intend to run them:
    reported apart, are a comment-only fix and the exact undo per defect, made by the runner from the
    defect patch alone (16). The claim holds if B catches more primary wrong fixes than A with no more
    false catches. One run from main, after the pins and the digest are checked; counts only leave.
+   **Result** (run [42942805407](https://github.com/Expectrail/Expectrail/actions/runs/42942805407), `0906f29`):
+   **adds value.** Wrong fixes caught: A 0 of 8, B 3 of 8 (all 3 among the 5 trace-visible defects).
+   False catches on 8 correct fixes and 2 intentional changes: A 0, B 0. Supplementary: comment-only
+   fixes caught by B on the same 3 defects (1 no result), no exact undo caught. Spend $3.67. The
+   approved checks accepted every candidate, so the baseline is zero; wherever the generator
+   reproduced the defect it also caught the set's convincing wrong fix, and the 5 misses are defects
+   it did not reproduce. Two earlier runs stopped on runner bugs before any candidate ran.
 3. **Correct-fix pressure.** Every correct fix we have, three runs each. A strong catch on a correct
    fix is a bug in the filter and is looked at before anything else.
 4. **Overfitting adversary.** A separate fixer instance gets the generated checks for one bug (only in
