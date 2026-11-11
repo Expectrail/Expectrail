@@ -31,6 +31,7 @@ from pathlib import Path
 
 from expectrail.contracts import ContractError, strict_loads
 from expectrail.repro import bench
+from expectrail.trace.signals import SIGNALS
 
 REPO = bench.REPO
 SCHEMA = REPO / "contracts" / "repro-visibility.v1.schema.json"
@@ -219,6 +220,8 @@ def problems(record) -> list[str]:
         if (r["probesChanged"] > 0) != bool(r["signals"] or r["traceFields"]) or r["probesChanged"] > len(record["probes"]):
             out.append(f"repro-visibility: {r['id']}: probesChanged does not agree with its row")
         for name, s in r["signals"].items():
+            if name not in SIGNALS:
+                out.append(f"repro-visibility: {r['id']}: {name} is not a trace signal")
             if s["probe"] not in record["probes"] or s["probes"] > r["probesChanged"] or s["clean"] == s["defect"]:
                 out.append(f"repro-visibility: {r['id']}: signal {name} does not agree with its row")
     if record["totals"] != totals(record["defects"]):

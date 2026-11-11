@@ -57,8 +57,8 @@ class TheBench(unittest.TestCase):
     def test_no_defect_or_report_comes_from_held_out_material(self):
         for d in self.doc["defects"]:
             for path in (d["patch"], d["report"]):
-                for word in ("fresh", "blind", "heldout", "held-out"):
-                    self.assertNotIn(word, path)
+                self.assertIsNone(bench.held_out_name(path), path)   # the reader's rule, the only copy of it
+                self.assertFalse(any((REPO / part).is_symlink() for part in Path(path).parents), path)
 
     def test_the_written_defects_live_in_their_own_folder_and_nothing_else_is_there(self):
         written = {d["id"] for d in self.doc["defects"] if d["origin"] == "written-for-bench"}
@@ -134,11 +134,72 @@ class Refusals(unittest.TestCase):
 
     def test_paths_that_leave_the_public_folders(self):
         for path in ("../outside.patch", "bench/../../x.patch", "/etc/passwd", "game/platformer/player/player.gd",
-                     "bugs/fresh/x.patch", "bench/freshly/x.patch", "bench/./one.patch", "bench\\one.patch"):
+                     "bench/./one.patch", "bench\\one.patch", "bugs/../bench/one.patch"):
             doc = copy.deepcopy(self.doc)
             doc["defects"][0]["patch"] = path
             found = bench.problems(doc, self.tmp)
             self.assertTrue(found and "defects/0/patch" in found[0], (path, found))
+
+    def test_a_path_with_a_part_that_names_held_out_material_whatever_its_case(self):
+        """Every one of these files exists, so only the name rule can refuse it."""
+        for path in ("bugs/fresh/x.patch", "bench/freshly/x.patch", "bench/FRESH/x.patch", "bench/Fresh-set/x.patch",
+                     "bench/x/fresh/x.patch", "bench/jit/blind-9/x.patch", "bench/Blind/x.patch",
+                     "bench/heldout/x.patch", "bench/held-out/x.patch", "bench/HeldOut-set/x.patch",
+                     "bench/fresh.patch"):
+            target = self.tmp / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(STUB.replace("+b", "+" + path))
+            for field in ("patch", "report"):
+                doc = copy.deepcopy(self.doc)
+                doc["defects"][0][field] = path
+                found = bench.problems(doc, self.tmp)
+                self.assertEqual(len(found), 1, (path, found))
+                self.assertIn("names held-out material", found[0], path)
+
+    def test_the_name_rule_is_the_readers_and_the_committed_bench_passes_it(self):
+        self.assertIsNone(bench.held_out_name("bench/jit/known/air-jump/report.txt"))
+        self.assertIsNone(bench.held_out_name("bugs/reported/refresh-rate.patch"))
+        for d in bench.load()["defects"]:
+            self.assertIsNone(bench.held_out_name(d["patch"]))
+            self.assertIsNone(bench.held_out_name(d["report"]))
+
+    def test_a_linked_folder_on_the_way_is_refused_wherever_it_leads(self):
+        """The merge guard's cases on #306: the text of the path is innocent, the folder it goes through is a link."""
+        fresh_set = self.tmp / "fresh-9"
+        private = self.tmp / "Expectrail-heldout"
+        plain = self.tmp / "elsewhere"
+        outside = Path(tempfile.mkdtemp(prefix="repro-outside-"))
+        self.addCleanup(shutil.rmtree, outside, ignore_errors=True)
+        for folder in (fresh_set, private, plain, outside):
+            folder.mkdir(exist_ok=True)
+            (folder / "p.patch").write_text(STUB.replace("+b", "+" + folder.name))
+            (folder / "r.txt").write_text("A report that must not be read.\n")
+        (self.tmp / "bench" / "linked").symlink_to(fresh_set, target_is_directory=True)
+        (self.tmp / "bench" / "notes").symlink_to(private, target_is_directory=True)
+        (self.tmp / "bench" / "same-repo").symlink_to(plain, target_is_directory=True)
+        (self.tmp / "bench" / "away").symlink_to(outside, target_is_directory=True)
+        cases = (("patch", "bench/linked/p.patch", "leads to 'fresh-9', which names held-out material"),
+                 ("report", "bench/notes/r.txt", "leads to 'Expectrail-heldout', which names held-out material"),
+                 ("patch", "bench/same-repo/p.patch", "reached through a link"),
+                 ("report", "bench/same-repo/r.txt", "reached through a link"),
+                 ("patch", "bench/away/p.patch", "outside the repository"))
+        for field, path, why in cases:
+            doc = copy.deepcopy(self.doc)
+            doc["defects"][0][field] = path
+            found = bench.problems(doc, self.tmp)
+            self.assertEqual(len(found), 1, (path, found))
+            self.assertIn(why, found[0], path)
+
+    def test_a_refused_file_is_never_opened(self):
+        """Refusal comes before reading: a linked report that is far too large is refused for the link."""
+        big = self.tmp / "elsewhere"
+        big.mkdir()
+        (big / "r.txt").write_text("x" * 10000)
+        (self.tmp / "bench" / "via").symlink_to(big, target_is_directory=True)
+        self.doc["defects"][0]["report"] = "bench/via/r.txt"
+        found = self.problems()
+        self.assertEqual(len(found), 1)
+        self.assertNotIn("the report is empty or over", found[0])
 
     def test_a_link_out_of_the_repository(self):
         outside = Path(tempfile.mkdtemp(prefix="repro-outside-"))
@@ -151,7 +212,8 @@ class Refusals(unittest.TestCase):
     def test_a_link_inside_the_repository_is_still_not_a_file(self):
         (self.tmp / "bench" / "link.patch").symlink_to(self.tmp / "bench" / "one.patch")
         self.doc["defects"][0]["patch"] = "bench/link.patch"
-        self.assertIn("repro-bench: one: bench/link.patch: not a file in the repository", self.problems())
+        self.assertIn("repro-bench: one: bench/link.patch: reached through a link, or not written as its own path",
+                      self.problems())
 
     def test_a_missing_file(self):
         self.doc["defects"][0]["report"] = "bench/none.txt"
@@ -305,6 +367,9 @@ class Visibility(unittest.TestCase):
             "reason on a measured row": lambda r: r["defects"][0].update(error="x"),
             "no probe changed": lambda r: r["defects"][0].update(probesChanged=0),
             "a signal that did not move": lambda r: r["defects"][0]["signals"]["air_jumps"].update(defect=1),
+            "a signal the trace does not have": lambda r: r["defects"][3].update(
+                visibility="signal", probesChanged=1,
+                signals={"made_up_signal": {"probes": 1, "probe": "hold-right", "clean": 0, "defect": 1}}),
             "an unknown probe": lambda r: r["defects"][0]["signals"]["air_jumps"].update(probe="other"),
             "a defect twice": lambda r: r["defects"].append(copy.deepcopy(r["defects"][0])),
             "an extra field": lambda r: r.update(reproductionRate=1.0),

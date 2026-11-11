@@ -11,8 +11,8 @@ first slice, the bench itself, and one measurement that needs no model.
   20 written for the bench across nine of the ten defect families of #282 (none in missing or wrong
   assets). The game folder is not edited; every defect is a patch.
 - `python3 -m expectrail.repro check` reads the bench strictly (no path outside `bench/` and
-  `bugs/`, none with a part that starts with `fresh`, no link, no id or patch twice, no empty
-  report) and checks that every patch applies to a copy of the game.
+  `bugs/`; none with a part that names held-out material, in any case; none reached through a
+  link, a linked folder on the way included; no id or patch twice; no empty report) and checks that every patch applies to a copy of the game.
 - `python3 -m expectrail.repro visibility` replays every library probe on the clean game twice and on
   each defect build once and sorts each defect by what changed in the engine's record: a signal
   moved, the record differs and no signal does, or nothing differs
@@ -23,6 +23,12 @@ first slice, the bench itself, and one measurement that needs no model.
   reached: two camera defects edited `level/level.gd`, which the level scene does not load.
 
 ## What was run
+- After the merge guard's first review of #306 (a linked folder on the way was followed, so a bench
+  file could reach a held-out folder through one; the name rule was case-sensitive and missed
+  `blind` and `heldout`): the reader now resolves a path once and requires it to be exactly its own
+  path, and one rule for held-out names is applied to the text and to the resolved path. The
+  guard's cases are tests in `Refusals`. A record that names a signal the trace does not have is
+  refused as well.
 - `python3 -m expectrail.repro visibility --out <dir> --jobs 2`, in a cloud container with the pinned
   Godot 4.7.2, on November 11, not in CI, no model: a signal moves for 17 of 24 (for `coin-stays`
   only by 0.01 px, a side effect), the record differs with no signal for 2 (both camera defects),

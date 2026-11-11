@@ -12,8 +12,8 @@
       "type": "string",
       "maxLength": 200,
       "pattern": "^(bench|bugs)/[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$",
-      "not": { "pattern": "(^|/)\\.\\.?(/|$)|(^|/)fresh" },
-      "description": "A file in this repository under bench/ or bugs/, never a held-out path."
+      "not": { "pattern": "(^|/)\\.\\.?(/|$)" },
+      "description": "A file in this repository under bench/ or bugs/. The reader (expectrail.repro.bench) also refuses a path with a part that names held-out material, and any path reached through a link."
     }
   },
   "properties": {

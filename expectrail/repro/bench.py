@@ -27,6 +27,8 @@ SCHEMA = REPO / "contracts" / "repro-bench.v1.schema.json"
 FORMAT = "expectrail.repro-bench/v1"
 MAX_BYTES = 256 * 1024
 MAX_REPORT_BYTES = 4000
+HELD_OUT_STARTS = ("fresh",)
+HELD_OUT_WORDS = ("blind", "heldout", "held-out", "held_out")
 
 
 class BenchError(ValueError):
@@ -37,14 +39,42 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def held_out_name(rel: str) -> str | None:
+    """The part of a path that names held-out material, or None. The one place this rule lives.
+
+    Case is ignored, because some file systems ignore it. A part that starts with ``fresh`` (the fresh
+    sets), or has ``blind``, ``heldout`` or ``held-out`` in it, is refused whatever else it says: a
+    public bench has no reason to reach for a folder with such a name."""
+    for part in rel.replace("\\", "/").split("/"):
+        low = part.lower()
+        if low.startswith(HELD_OUT_STARTS) or any(word in low for word in HELD_OUT_WORDS):
+            return part
+    return None
+
+
 def _inside(root: Path, rel: str) -> Path:
-    """``root/rel``, refused when it is not a regular file inside ``root`` (a link out of it included)."""
+    """``root/rel``, refused unless it is a regular file reached with no link anywhere on the way.
+
+    The path is resolved once and must be exactly ``root/rel``: a linked folder on the way, or a
+    linked file, is refused whether it ends inside the repository or outside it, so a bench file
+    cannot name one folder and read another. The held-out name rule is applied to the text and to
+    the resolved path."""
+    named = held_out_name(rel)
+    if named is not None:
+        raise BenchError(f"{rel}: {named!r} names held-out material")
+    base = root.resolve()
     path = root / rel
-    try:
-        path.resolve().relative_to(root.resolve())
-    except ValueError:
-        raise BenchError(f"{rel}: outside the repository") from None
-    if path.is_symlink() or not path.is_file():
+    resolved = path.resolve()
+    if resolved != base / rel:
+        try:
+            inside = resolved.relative_to(base).as_posix()
+        except ValueError:
+            raise BenchError(f"{rel}: outside the repository") from None
+        named = held_out_name(inside)
+        if named is not None:
+            raise BenchError(f"{rel}: leads to {named!r}, which names held-out material")
+        raise BenchError(f"{rel}: reached through a link, or not written as its own path")
+    if not path.is_file():
         raise BenchError(f"{rel}: not a file in the repository")
     return path
 

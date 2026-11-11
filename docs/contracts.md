@@ -117,14 +117,17 @@ Two records for issue #285, both about public defects only.
 
 A bench entry is a defect id, its family, a patch against the clean game, a bug report, where its
 author expects it to show, and whether probes or signals were designed around it. The reader refuses
-a path outside `bench/` and `bugs/`, any path with a part that starts with `fresh`, a link, an id or a patch listed
+a path outside `bench/` and `bugs/`; a path with a part that names held-out material (it starts with
+`fresh`, or has `blind`, `heldout` or `held-out` in it, in any case; `expectrail.repro.bench.held_out_name`
+is the one copy of that rule); a path reached through a link, whether the link is the file or a
+folder on the way and wherever it leads; an id or a patch listed
 twice, an empty report, and a patch that names a file the game does not have. The bench holds no
 result.
 
 A visibility record says, per defect, what replaying the library probes on the defect build changed against
 the clean game: the signals that moved, the fields of the engine's record that differ, and one of
 `signal`, `trace-only`, `none` or `error`. The reader recomputes that label and the totals from the
-rows and refuses a record where they disagree. It says what the library probes can see, not how often a defect is reproduced, and has
+rows and refuses a record where they disagree, or one that names a signal `expectrail.trace.signals` does not have. It says what the library probes can see, not how often a defect is reproduced, and has
 no field for a rate.
 
 ## Wall time per phase (added November 11)
