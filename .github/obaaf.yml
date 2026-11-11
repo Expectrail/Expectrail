@@ -45,6 +45,26 @@ protected_secrets:
 # Reviewed findings. Each entry says why it does not apply and expires, so it is reviewed again.
 ignore:
   - rule: OBAAF-GHA-001
+    path: .github/workflows/private-scan.yml
+    job: private-export-scan
+    reason: >-
+      workflow_run starts this job from main's copy of the workflow, so a pull request cannot change
+      it, and the main-only environment's branch rule is met by design. It runs only for the
+      collector at its own path, from this repository. The scanner comes from main; the pull
+      request's files arrive as data and it prints counts, never names or text. Residual risk:
+      pass or fail is an oracle a writer could probe across many pushes. Revisit with required
+      reviewers on this job.
+    until: 2027-02-09
+  - rule: OBAAF-GHA-021
+    path: .github/workflows/private-scan.yml
+    job: private-export-scan
+    reason: >-
+      The other run's output is an archive of files, not a proposal that is applied. Before use,
+      agents/scan_handoff.py asks GitHub for the head commit's tree and keeps a file only when its
+      bytes hash to the blob that tree names; it fails on a missing file, a link or a path that
+      leaves the folder. Nothing from the archive is run or imported.
+    until: 2027-02-09
+  - rule: OBAAF-GHA-001
     path: .github/workflows/unity.yml
     job: build
     reason: >-
