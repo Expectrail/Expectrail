@@ -45,22 +45,6 @@ protected_secrets:
 # Reviewed findings. Each entry says why it does not apply and expires, so it is reviewed again.
 ignore:
   - rule: OBAAF-GHA-001
-    path: .github/workflows/private-scan.yml
-    job: private-export-scan
-    reason: >-
-      pull_request_target runs as main, so the main-only environment's branch rule does not stop it.
-      Same-repository pull requests only; the scanner comes from main and reads the pull request's
-      files as data, printing counts, never names or text. Residual risk: counts are an oracle a
-      writer could probe across many pushes. Revisit with required reviewers on this job.
-    until: 2027-02-09
-  - rule: OBAAF-GHA-002
-    path: .github/workflows/private-scan.yml
-    job: private-export-scan
-    reason: >-
-      The pull request is checked out to scanned/ as data with persist-credentials false; nothing
-      from it is run or imported (Python runs from main's checkout), see the workflow's header.
-    until: 2027-02-09
-  - rule: OBAAF-GHA-001
     path: .github/workflows/unity.yml
     job: build
     reason: >-

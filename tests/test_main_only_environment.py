@@ -23,8 +23,12 @@ WORKFLOWS = REPO / ".github" / "workflows"
 # secrets.NAME or secrets['NAME'], in any case (expression contexts are case-insensitive).
 _REF = r"(?<![.\w-])secrets\s*(?:\.\s*([A-Za-z0-9_]+)|\[\s*['\"]([A-Za-z0-9_]+)['\"]\s*\])"
 ANY_SECRET = re.compile(_REF, re.I)
-# toJSON(secrets) in any spelling, or an index the test cannot read (secrets[matrix.k]).
-EVERY_SECRET = re.compile(r"tojson\s*\(\s*secrets\s*\)|(?<![.\w-])secrets\s*\[\s*(?!['\"])", re.I)
+# Every secret at once: toJSON(secrets) in any spelling, an index the test cannot read
+# (secrets[matrix.k]), the object filter (secrets.*), or the whole context handed to a function
+# (format('{0}', secrets)). The last also matches the word before a comma or a closing bracket in a
+# step's name; reword the name.
+EVERY_SECRET = re.compile(
+    r"tojson\s*\(\s*secrets\s*\)|(?<![.\w-])secrets\s*(?:\[\s*(?!['\"])|\.\s*\*|[,)])", re.I)
 
 
 def secret_refs(text: str) -> set[str]:
@@ -35,9 +39,11 @@ def is_protected(name: str) -> bool:
     return name.endswith("_API_KEY") or name == "HELDOUT_TOKEN"
 
 
-# Jobs in main-only that a pull_request_target can start: they run as main, so the branch rule does
-# not stop them. Each is reviewed in .github/obaaf.yml.
-PULL_REQUEST_TARGET_REVIEWED = {"private-scan.yml:private-export-scan"}
+# Jobs in main-only that start when another workflow finishes (workflow_run). They run main's copy
+# of the workflow, as main, so the branch rule lets them in; the run that started them may have been
+# a pull request's. Each is listed here and has tests of its own that it reads the pull request only
+# as data (private-scan.yml: tests/test_private_scan.py).
+WORKFLOW_RUN_REVIEWED = {"private-scan.yml:private-export-scan"}
 
 
 def workflows():
@@ -102,10 +108,26 @@ class MainOnlyEnvironmentTest(unittest.TestCase):
                 if environment(job) != "main-only":
                     continue
                 key = f"{path.name}:{name}"
-                if "pull_request_target" in triggers:
-                    self.assertIn(key, PULL_REQUEST_TARGET_REVIEWED)
+                if "workflow_run" in triggers:
+                    self.assertIn(key, WORKFLOW_RUN_REVIEWED)
                 if "pull_request" in triggers:
                     self.assertTrue(limited(name), f"{key} is in main-only but a pull request can start it")
+
+    def test_no_workflow_uses_pull_request_target(self):
+        """It runs as main with main's secrets on a pull request's event, and GitHub blocks it by
+        default in public repositories from December 2, 2026 (#247). Adding it back is a person's
+        decision (AGENTS.md)."""
+        for path, _, triggers in workflows():
+            self.assertNotIn("pull_request_target", triggers, path.name)
+
+    def test_every_secret_at_once_is_seen_in_each_spelling(self):
+        for text in ("${{ toJSON(secrets) }}", "${{ tojson( secrets ) }}", "${{ secrets[matrix.key] }}",
+                     "${{ join(secrets.*, ' ') }}", "${{ toJSON(secrets.*) }}", "${{ format('{0}', secrets) }}",
+                     "${{ format('{0}{1}', secrets, 1) }}"):
+            self.assertRegex(text, EVERY_SECRET)
+        for text in ("${{ secrets.MODEL_API_KEY }}", "${{ secrets['MODEL_API_KEY'] }}",
+                     "${{ secrets.HELDOUT_TOKEN != '' }}", "${{ steps.secrets.outputs.x }}", "no secrets here"):
+            self.assertNotRegex(text, EVERY_SECRET)
 
     def test_no_main_only_workflow_runs_on_another_branch(self):
         """A push or merge-group trigger that is not limited to main would start main-only jobs on

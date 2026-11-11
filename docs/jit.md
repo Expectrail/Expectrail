@@ -116,9 +116,9 @@ the job would also have had no key. It was removed before merging, and `tests/te
 `expectrail-verify.yml` free of secrets.
 
 Proposing checks for a pull request safely needs a workflow that runs from main, in `main-only`,
-and reads the pull request only as data: a `workflow_run` workflow, or a reviewed
-`pull_request_target` exception such as `private-scan`. That is not built. Until it is, generated
-checks are proposed by dispatching `jit.yml` from main (`live`).
+and reads the pull request only as data: a `workflow_run` workflow, as `private-scan` is since
+#247. That is not built. Until it is, generated checks are proposed by dispatching `jit.yml` from
+main (`live`).
 
 ## Run it
 
