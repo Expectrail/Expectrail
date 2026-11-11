@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/Expectrail/Expectrail/docs/capabilities.schema.json",
+  "$id": "https://github.com/Expectrail/Expectrail/contracts/capabilities.v1.schema.json",
   "title": "Capability ledger: one row per mode a user could believe exists, with the proof behind it",
-  "description": "Read and written by agents.capabilities; the instance is docs/capabilities.json and docs/capabilities.md is rendered from it. A row's status says how far the mode is proven, its grade says what kind of evidence its best recorded run produced, and every row links the test, record or CI run that shows it. A measured row needs a CI run link, and every run link carries the run's conclusion as read when the row was written. The schema checks shape; agents.capabilities.problems checks the rules a schema cannot (links that resolve, files that exist, what the README and the site advertise).",
+  "description": "Read and written by expectrail.capabilities; the instance is docs/capabilities.json and docs/capabilities.md is rendered from it. A row's status says how far the mode is proven, its grade says what kind of evidence its best recorded run produced, and every row links the test, record or CI run that shows it. A measured row needs a CI run link, and every run link carries the run's conclusion as read when the row was written. The schema checks shape; expectrail.capabilities.problems checks the rules a schema cannot (links that resolve, files that exist, what the README and the site advertise).",
   "type": "object",
   "additionalProperties": false,
   "required": ["format", "updated", "statuses", "grades", "rows", "notModes", "nameWatch", "timings"],

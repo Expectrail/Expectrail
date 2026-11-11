@@ -6,7 +6,7 @@ import json
 import unittest
 from pathlib import Path
 
-from agents import capabilities as cap
+from expectrail import capabilities as cap
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -27,7 +27,7 @@ class LedgerTest(unittest.TestCase):
 
     def test_the_page_is_what_the_ledger_renders_to(self):
         self.assertEqual(cap.PAGE.read_text(encoding="utf-8"), cap.render(self.doc),
-                         "run: python3 -m agents.capabilities render")
+                         "run: python3 -m expectrail.capabilities render")
 
     def test_the_readme_links_to_the_ledger(self):
         self.assertIn("(docs/capabilities.md)", (ROOT / "README.md").read_text(encoding="utf-8"))

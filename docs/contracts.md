@@ -88,19 +88,16 @@ routes appear as counts only; the schema has no field for anything else about th
 ## The capability ledger (added November 11)
 
 `capabilities` (`expectrail.capabilities/v1`,
-[`docs/capabilities.schema.json`](capabilities.schema.json)) is the one record
+[`contracts/capabilities.v1.schema.json`](../contracts/capabilities.v1.schema.json)) is the one record
 of how far each advertised mode is proven: [`docs/capabilities.json`](capabilities.json), rendered as
 [capabilities.md](capabilities.md). The example is two rows of the real ledger. Each cited run records how it ended (`conclusion`), read from GitHub when the row was written; a run that did not end in success needs a `conclusionNote` saying why it is evidence all the same, and only an implemented or experimental row may cite one.
 
 | Record | Written by | Read by |
 | --- | --- | --- |
-| `capabilities` | a person or an agent, by hand, in the pull request that changes what a mode has shown | `agents.capabilities` (`check`, `render`) and `tests/test_capabilities.py` |
+| `capabilities` | a person or an agent, by hand, in the pull request that changes what a mode has shown | `expectrail.capabilities` (`check`, `render`) and `tests/test_capabilities.py` |
 
-It is not in `expectrail.contracts.KINDS`, and neither its schema nor its reader is under `contracts/` or
-`expectrail/`: the registration for blind set 3 (`bench/jit/blind-3/preregistration.json`) pins every
-`contracts/*.json` and `expectrail/**/*.py`, a new file there moves a pin, and only a person re-registers.
-So the schema sits beside the ledger in `docs/` and the reader is `agents/capabilities.py`. The schema fixes the shape, the four statuses and the four
-grades. `agents.capabilities.problems` checks what a schema cannot: a `measured` row links a CI
+It is not in `expectrail.contracts.KINDS`. The schema fixes the shape, the four statuses and the four
+grades. `expectrail.capabilities.problems` checks what a schema cannot: a `measured` row links a CI
 run, a measured or integrated row cites only runs whose recorded `conclusion` is success, every file a
 row points at exists, the `protected` grade is refused, and every command, switch,
 workflow, doc page and watched name in the README or `docs/index.html` belongs to a row.

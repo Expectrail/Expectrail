@@ -1,6 +1,6 @@
 # What Expectrail can do, and how far each part is proven
 
-<!-- Rendered from docs/capabilities.json by `python3 -m agents.capabilities render`. Edit the JSON, not this file. -->
+<!-- Rendered from docs/capabilities.json by `python3 -m expectrail.capabilities render`. Edit the JSON, not this file. -->
 
 One row for every mode a reader of the README or the site could believe exists. Each row says how
 far the mode is proven (its status), what kind of evidence its best recorded run produced (its
@@ -84,7 +84,7 @@ Last changed 2026-11-11. 24 rows: 3 implemented, 11 integrated, 7 measured, 3 ex
 
 ## Changing the ledger
 
-Edit [`capabilities.json`](capabilities.json), run `python3 -m agents.capabilities render`, and
+Edit [`capabilities.json`](capabilities.json), run `python3 -m expectrail.capabilities render`, and
 commit both files. Move a row to `measured` only with the link of the CI run that produced the
 number. The benches under [`bench/`](../bench/README.md) are records of runs, not modes: a row
 links to them, they have no rows of their own. The check on what the README and the site name is

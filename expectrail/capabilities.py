@@ -3,8 +3,8 @@
 ``docs/capabilities.json`` (``expectrail.capabilities/v1``) holds one row per mode a user could
 believe exists. This module reads it, checks it, and renders ``docs/capabilities.md`` from it.
 
-    python3 -m agents.capabilities check     # exit 1 and one line per problem
-    python3 -m agents.capabilities render    # rewrite docs/capabilities.md
+    python3 -m expectrail.capabilities check     # exit 1 and one line per problem
+    python3 -m expectrail.capabilities render    # rewrite docs/capabilities.md
 
 ``problems`` is what the test suite runs. It fails when a ``measured`` row has no CI run link, when
 a measured or integrated row cites a run recorded as anything but success (any other row must say why
@@ -25,7 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 LEDGER = ROOT / "docs" / "capabilities.json"
 PAGE = ROOT / "docs" / "capabilities.md"
-SCHEMA = ROOT / "docs" / "capabilities.schema.json"
+SCHEMA = ROOT / "contracts" / "capabilities.v1.schema.json"
 ADVERTS = ("README.md", "docs/index.html")
 REPO_URL = "https://github.com/Expectrail/Expectrail"
 
@@ -224,7 +224,7 @@ def render(doc: dict) -> str:
     lines = [
         "# What Expectrail can do, and how far each part is proven",
         "",
-        "<!-- Rendered from docs/capabilities.json by `python3 -m agents.capabilities render`. Edit the JSON, not this file. -->",
+        "<!-- Rendered from docs/capabilities.json by `python3 -m expectrail.capabilities render`. Edit the JSON, not this file. -->",
         "",
         "One row for every mode a reader of the README or the site could believe exists. Each row says how",
         "far the mode is proven (its status), what kind of evidence its best recorded run produced (its",
@@ -292,7 +292,7 @@ def render(doc: dict) -> str:
         "",
         "## Changing the ledger",
         "",
-        "Edit [`capabilities.json`](capabilities.json), run `python3 -m agents.capabilities render`, and",
+        "Edit [`capabilities.json`](capabilities.json), run `python3 -m expectrail.capabilities render`, and",
         "commit both files. Move a row to `measured` only with the link of the CI run that produced the",
         "number. The benches under [`bench/`](../bench/README.md) are records of runs, not modes: a row",
         "links to them, they have no rows of their own. The check on what the README and the site name is",
