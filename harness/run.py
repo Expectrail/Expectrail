@@ -21,6 +21,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from expectrail import timing
+
 REPO = Path(__file__).resolve().parent.parent
 GODOT_VERSION = "4.7.2-stable"
 AUTOLOAD = 'ExpectrailHarness="*res://expectrail_harness.gd"'
@@ -187,11 +189,15 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
     work, frames = out / "work", out / "frames"
     ordered = list(patches) if patches is not None else ([patch] if patch is not None else [])
     env = game_env()
-    cache = ensure_import_cache(game, godot, env)
-    prepare(game, work, patches=ordered, cache=cache)
-    if frames.exists():
-        shutil.rmtree(frames)
-    frames.mkdir()
+    # Wall time per step, for the verifier's timing.json (expectrail.timing); nothing here reads it back.
+    timing.count_run()
+    with timing.phase("import-cache"):
+        cache = ensure_import_cache(game, godot, env)
+    with timing.phase("prepare"):
+        prepare(game, work, patches=ordered, cache=cache)
+        if frames.exists():
+            shutil.rmtree(frames)
+        frames.mkdir()
     route_doc = json.loads(route.read_text(encoding="utf-8"))
 
     # If the clean cache is populated and no patches modified assets, skip --import (~7s savings).
@@ -199,8 +205,9 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
     needs_import = force_import or (not cache) or bool(ordered) or not (work / ".godot" / "imported").is_dir()
     if needs_import:
         try:
-            subprocess.run([str(godot), "--headless", "--path", str(work), "--import"], check=True,
-                           capture_output=True, text=True, env=env, timeout=600)
+            with timing.phase("import"):
+                subprocess.run([str(godot), "--headless", "--path", str(work), "--import"], check=True,
+                               capture_output=True, text=True, env=env, timeout=600)
         except subprocess.TimeoutExpired as exc:
             (out / "godot.log").write_text((exc.stdout or "") + (exc.stderr or "") + "\nimport timed out\n",
                                            encoding="utf-8")
@@ -216,7 +223,8 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
             "--", f"--route={route.resolve()}", f"--trace={(out / 'trace.json').resolve()}",
             f"--seed={route_doc.get('seed', 1)}"]
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=1800)
+        with timing.phase("replay"):
+            proc = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=1800)
     except subprocess.TimeoutExpired as exc:
         (out / "godot.log").write_text((exc.stdout or "") + (exc.stderr or "") + "\ncapture timed out\n",
                                        encoding="utf-8")
@@ -224,7 +232,14 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
     (out / "godot.log").write_text(proc.stdout + proc.stderr, encoding="utf-8")
     if proc.returncode != 0 or not (out / "trace.json").exists():
         raise SystemExit(f"godot failed ({proc.returncode}); see {out / 'godot.log'}")
-    log = proc.stdout + proc.stderr
+    with timing.phase("record"):
+        replay = _replay_record(route, out, game, fps, ordered, route_doc, proc.stdout + proc.stderr, frames)
+    return replay
+
+
+def _replay_record(route: Path, out: Path, game: Path, fps: int, ordered: list[Path], route_doc: dict, log: str,
+                   frames: Path) -> dict:
+    """Hash the frames and the trace and write replay.json."""
     device = re.search(r"Using Device: (.+)", log)
     version = re.search(r"Godot Engine v(\S+)", log)
     pngs = sorted(frames.glob("f*.png"))

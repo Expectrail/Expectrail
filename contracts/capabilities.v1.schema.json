@@ -86,8 +86,22 @@
         "run": { "$ref": "#/$defs/runUrl" },
         "conclusion": { "$ref": "#/$defs/conclusion" },
         "step": { "$ref": "#/$defs/text" },
-        "notMeasured": { "$ref": "#/$defs/text" }
-      }
+        "notMeasured": { "$ref": "#/$defs/text" },
+        "phases": {
+          "type": "object",
+          "description": "The same seconds split by phase, copied from the run's timing.json (expectrail.verify-timing/v1). They add up to seconds.",
+          "additionalProperties": false,
+          "required": ["import", "replay", "evaluate", "other"],
+          "properties": {
+            "import": { "type": "number", "minimum": 0 },
+            "replay": { "type": "number", "minimum": 0 },
+            "evaluate": { "type": "number", "minimum": 0 },
+            "other": { "type": "number", "minimum": 0 }
+          }
+        },
+        "phasesFrom": { "$ref": "#/$defs/text", "description": "Where in the run the phases can be read." }
+      },
+      "dependentRequired": { "phases": ["phasesFrom"] }
     }
   },
   "properties": {

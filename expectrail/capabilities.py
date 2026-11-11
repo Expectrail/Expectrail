@@ -118,6 +118,11 @@ def row_problems(doc: dict, root: Path = ROOT) -> list[str]:
     for timing in doc.get("timings", []):
         if timing.get("conclusion") != "success":
             out.append(f"timings: run {_number(timing['run'])} is recorded as {timing.get('conclusion', 'unread')}")
+        if "phases" in timing:
+            parts = sum(timing["phases"].values())
+            if abs(parts - timing["seconds"]) > timing["resolutionSeconds"]:
+                out.append(f"timings: run {_number(timing['run'])}: the phases add up to {parts:g} s and the whole "
+                           f"is {timing['seconds']:g} s")
     for rid in REQUIRED:
         if rid not in seen:
             out.append(f"{rid}: a mode the ledger must cover has no row")
@@ -268,14 +273,24 @@ def render(doc: dict) -> str:
         )
     lines += ["", "## Wall time", ""]
     if doc["timings"]:
-        lines += ["| What | Runner | Seconds | Run | Not measured |", "| --- | --- | --- | --- | --- |"]
+        lines += ["| What | Runner | Seconds | Per phase | Run | Not measured |", "| --- | --- | --- | --- | --- | --- |"]
         for t in doc["timings"]:
             number = t["run"].split("/runs/", 1)[1].split("/", 1)[0]
+            phases = "not measured"
+            if "phases" in t:
+                phases = ", ".join(f"{name} {t['phases'][name]:g}" for name in ("import", "replay", "evaluate", "other"))
+                phases += f" ({_cell(t['phasesFrom'])})"
             lines.append(
                 f"| {_cell(t['what'])} (step \"{_cell(t['step'])}\") | {_cell(t['runner'])} "
-                f"| {t['seconds']:g}, to the nearest {t['resolutionSeconds']:g} | [run {number}]({t['run']}) "
+                f"| {t['seconds']:g}, to the nearest {t['resolutionSeconds']:g} | {phases} | [run {number}]({t['run']}) "
                 f"| {_cell(t['notMeasured'])} |"
             )
+        lines += [
+            "",
+            "The phases are those of [`expectrail.timing`](../expectrail/timing.py): `import` is Godot's `--import`,",
+            "`replay` is the Godot process playing the route, `evaluate` is everything the verifier does outside a",
+            "harness run, and `other` is the harness copying the game, applying patches and hashing frames.",
+        ]
     else:
         lines.append("Not measured.")
     lines += [
