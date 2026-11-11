@@ -184,7 +184,9 @@ class EveryWorkflowUsesIt(unittest.TestCase):
             if "run" in step:
                 self.assertNotIn("${{", step["run"])   # inputs reach the script through env only
         self.assertEqual(doc["runs"]["steps"][-1]["if"], "steps.install.outputs.fetched == 'true'")
-        self.assertIn("ImageVersion", text)             # a new runner image fetches afresh
+        restore = next(s for s in doc["runs"]["steps"] if s.get("id") == "restore")
+        self.assertIn("ImageVersion", text)             # each runner image has its own cache
+        self.assertEqual(restore["with"]["restore-keys"], "${{ steps.key.outputs.prefix }}")   # and tries the last one's
 
 
 if __name__ == "__main__":

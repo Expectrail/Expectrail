@@ -8,10 +8,12 @@
 # How (install.sh): nothing is installed when the image already has the packages; otherwise cached
 # .deb files from an earlier run on the same runner image are installed with no network; otherwise
 # the live mirror is tried several times, then Ubuntu's snapshot archive, and what was downloaded is
-# cached. The cache key holds the runner image's version, so a new image fetches afresh.
+# cached. The cache key holds the runner image's version; a new image first tries the previous
+# image's packages and fetches afresh only if they do not install.
 #
-# What it does not cover: the first run on a new runner image during an outage of both the live
-# mirror and the snapshot archive. Caches written on main are readable by pull requests; a pull
+# What it does not cover: a run with no cache at all (the first ever, or after a week without runs)
+# during an outage of both the live mirror and the snapshot archive, as on November 11 when neither
+# archive.ubuntu.com nor snapshot.ubuntu.com answered. Caches written on main are readable by pull requests; a pull
 # request's cache is not readable by main, so a pull request cannot change what main installs.
 #
 # The repository must be checked out before this step (it is a local action). Every workflow uses
@@ -41,12 +43,17 @@ runs:
         sorted=$(printf '%s\n' $PACKAGES | sort -u | tr '\n' ' ')
         hash=$(printf '%s' "$sorted" | sha256sum | cut -c1-16)
         echo "dir=$HOME/.cache/expectrail-apt/$hash" >> "$GITHUB_OUTPUT"
-        echo "key=apt-${ImageOS:-unknown}-${ImageVersion:-unknown}-$(dpkg --print-architecture)-$hash" >> "$GITHUB_OUTPUT"
+        prefix="apt-${ImageOS:-unknown}-$(dpkg --print-architecture)-$hash-"
+        echo "prefix=$prefix" >> "$GITHUB_OUTPUT"
+        echo "key=$prefix${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
     - id: restore
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.key.outputs.dir }}
         key: ${{ steps.key.outputs.key }}
+        # An earlier runner image's packages are tried too: install.sh falls back to the network if
+        # they do not install here, so a new image during an outage is still served when it can be.
+        restore-keys: ${{ steps.key.outputs.prefix }}
     - id: install
       shell: bash
       env:
