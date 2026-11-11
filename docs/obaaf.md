@@ -41,18 +41,19 @@ running from its own branch. So no secret is a repository secret any more:
 - The private scan of a pull request is the one `main-only` job that a pull request's run leads to,
   and it no longer uses `pull_request_target` (#247; GitHub blocks that trigger by default in public
   repositories from December 2, 2026). It has two halves:
-  - `private-scan-collect.yml` runs on the pull request with no secret and uploads the files the
-    scan reads (`bench`, `docs`, `apps`, `README.md`) as one archive.
-  - `private-scan.yml` starts from main's copy of the file when that finishes (`workflow_run`), in
-    `main-only`. `agents/scan_handoff.py` asks GitHub for the head commit's tree and writes a file
-    only when its bytes are that commit's, and fails if a file of the commit is missing, so the
-    collector, which a pull request can edit, cannot swap or hold back a file. Main's scanner then
-    reads the files as data and the result is posted as the check `private-export-scan` on the head
-    commit. Nothing from the pull request is run or imported; `tests/test_private_scan.py` holds
-    that shape.
-  - What it does not close: the counts are still an oracle a writer could probe across pushes, and
-    a pull request that deletes the collector gets no scan and no check, so `private-export-scan`
-    should be a required check. The scan on main after a merge is unchanged.
+  - `private-scan-request.yml` runs on the pull request with no secret, checks nothing out, and
+    makes one API call: start `private-scan.yml` on the default branch (`workflow_dispatch`) with
+    the head commit's id.
+  - `private-scan.yml` then runs from main's copy of the file, in `main-only`. It checks the commit
+    out as data, main's scanner reads it, and the result is posted as the check
+    `private-export-scan` on that commit. Nothing from the pull request is run or imported;
+    `tests/test_private_scan.py` holds that shape. A run started on any other branch is refused by
+    the environment before a step runs.
+  - The first design used `workflow_run`; every run GitHub started that way ended in
+    `startup_failure` (November 11), while the same workflow started by `workflow_dispatch` ran.
+  - What it does not close: pass or fail is still an oracle a writer could probe across pushes, and
+    a pull request that edits its own copy of the request gets no scan and no check, so
+    `private-export-scan` should be a required check. The scan on main after a merge is unchanged.
 - `main` is protected (ruleset "Protect main"): no force pushes or deletion, a pull request with one
   approval of its latest push and a passing `test` check. Sean and Timothy can merge their own pull
   requests without waiting (organization admins may bypass, for pull requests only); nobody pushes to
@@ -70,7 +71,7 @@ The baseline (`.github/obaaf-baseline.json`) accepts exactly these; anything els
 | --- | --- | --- | --- |
 | OBAAF-GHA-005: secret in an agent job | 8 high | 19 high (baseline) | Every agent job holds a model key, now from `main-only`. Muse Code and, when `EXPECTRAIL_BYO_GATEWAY=on`, a BYO agent never see the key itself (the key gateway below), but OBAAF's static check still sees it in the job, where the gateway runs. Clearing it needs the gateway hosted outside the job. The count grew with the BYO and web benches and the generated-checks proposer and its revision (`jit.yml#propose`, `#revise`, dispatch from main) and the blind run (`jit-blind.yml#entry`), not with new exposure. |
 | OBAAF-GHA-020: agent job without egress restriction | 8 low | 19 low (baseline) | No agent job has an enforced network policy. `OBAAF_EGRESS` would only record intent, so it is not set. |
-| OBAAF-GHA-001: secret in a pull-request job | 0 | 3, each reviewed with an expiry in `.github/obaaf.yml`; 1 from Nov 11 | `private-scan` (twice: `pull_request_target` and its data-only checkout) and `unity`, behind a required reviewer. On Nov 11 `private-scan` moved to `workflow_run` (#247) and its two entries were removed from `.github/obaaf.yml`. Between Oct 30 and Nov 9 six unreviewed ones had appeared in reporting mode; they are gone (keyless pull-request jobs) or reviewed. |
+| OBAAF-GHA-001: secret in a pull-request job | 0 | 1, reviewed with an expiry in `.github/obaaf.yml` | `private-scan` (twice: `pull_request_target` and its data-only checkout) and `unity`, behind a required reviewer. On Nov 11 `private-scan` moved off `pull_request_target` to a `workflow_dispatch` that a keyless pull-request job starts (#247); its entries were removed from `.github/obaaf.yml`, and the audit reports no finding on it. Between Oct 30 and Nov 9 six unreviewed ones had appeared in reporting mode; they are gone (keyless pull-request jobs) or reviewed. |
 | OBAAF-GHA-012: agent reads the pull request's instruction files | 0 | 0 | One appeared in reporting mode (`discovery` on pull requests); the planner now runs only on a dispatch from main. |
 | OBAAF-REPO-001: no CODEOWNERS | 0 | 0 | `.github/CODEOWNERS` names an owner for workflows and everything that decides a verdict. |
 

@@ -1,0 +1,48 @@
+# The private scan, first half: a pull request asks main's scanner to scan its head commit.
+#
+# This job holds no secret and no environment, checks nothing out and runs no file from the pull
+# request. It makes one API call: start private-scan.yml on the default branch (workflow_dispatch)
+# with the head commit's id. That run uses main's copy of the workflow and main's scanner, in the
+# main-only environment, and posts the result on the commit as the check `private-export-scan`.
+#
+# Why a dispatch and not workflow_run: a run GitHub starts for workflow_run ended in startup_failure
+# every time here on November 11, 2026 (#247), while the same workflow started by workflow_dispatch
+# ran. A dispatch is also simpler: main checks the commit out itself, so no files pass between runs.
+#
+# `actions: write` lets this job start a workflow_dispatch workflow. People who can open a
+# same-repository pull request can already do that, so it adds nothing they lack. A pull request can
+# edit its own copy of this file and skip the request; then no check appears on its commit, which is
+# why `private-export-scan` should be a required check. Same-repository pull requests only: a fork's
+# token is read-only and cannot dispatch.
+name: Private scan request
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: private-scan-request-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  private-scan-request:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write   # start private-scan.yml on the default branch; nothing else here needs it
+    steps:
+      # Every value from the event reaches the script through env, never by expansion in the script.
+      - name: Ask main's scanner to scan this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          gh api -X POST "repos/$REPO/actions/workflows/private-scan.yml/dispatches" \
+            -f "ref=$DEFAULT_BRANCH" -f "inputs[ref]=$HEAD_SHA"
+          echo "::notice title=Private scan::asked $DEFAULT_BRANCH's scanner to scan $HEAD_SHA; the result is the check private-export-scan on that commit"
