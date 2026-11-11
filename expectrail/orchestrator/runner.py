@@ -17,6 +17,7 @@ from pathlib import Path
 
 from expectrail import diagnostics as diag
 from expectrail.orchestrator import engines as eng
+from expectrail.orchestrator import request as req
 from expectrail.orchestrator import store as st
 
 EXPECTRAIL_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -61,8 +62,15 @@ def work(store: st.JobStore, job_id: str, engines: dict | None = None, *, own_gr
         if engine is None:
             return _needs_review(store, job_id, [st.diagnostic(
                 "INPUT_INVALID", stage="preparing", detail=f"no adapter named {request['project']['adapter']!r}")])
-        store.advance(job_id, "preparing")
-        blocking = engine.preflight(request)
+        status = store.advance(job_id, "preparing")
+        # The files are read again here, by the process that will run them. A link that leaves the
+        # checkout stops the job, and so does a game or a check that changed since the job was
+        # created: its recorded inputs would describe files that were not the ones verified.
+        blocking = [st.diagnostic("INPUT_INVALID", stage="preparing", detail=why) for why in req.problems(request)]
+        if not blocking and req.inputs(request) != status["inputs"]:
+            blocking = [st.diagnostic("INPUT_INVALID", stage="preparing",
+                                      detail="the game or its checks changed after the job was created; ask again")]
+        blocking = blocking or engine.preflight(request)
         if blocking:
             return _needs_review(store, job_id, blocking)
         store.advance(job_id, "executing")

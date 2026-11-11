@@ -11,8 +11,9 @@ Jobs are kept under ``--jobs-root`` (default: $EXPECTRAIL_JOBS, else runs/jobs h
 the job unless ``--detach`` is given; then it prints the job's id and returns.
 
 Exit code: 0 accept, 1 reject, 2 needs review, 3 the job failed (no result), 4 cancelled, 5 the
-command could not be carried out. `sample` exits 0 when all three runs decide as a working install
-does, and 1 otherwise.
+command could not be carried out. 1 only ever means a job that completed as reject. `sample` exits 0
+when all three runs decide as a working install does, and 3 otherwise: it is a check of the install,
+not a verdict on a change.
 """
 from __future__ import annotations
 
@@ -103,7 +104,7 @@ def main(argv: list[str] | None = None) -> int:
                               on_case=None if args.json else (lambda r: print(smp.line(r), flush=True)))
             if args.json:
                 print(json.dumps(results, indent=2))
-            return 0 if all(r["asExpected"] for r in results) else 1
+            return 0 if all(r["asExpected"] for r in results) else EXIT_FAILED
         if args.command == "verify":
             request = req.build(adapter=args.adapter, head=args.head, base=args.base, game=args.game,
                                 routes=[r for r in re.split(r"[\s,]+", args.routes) if r], specs=args.specs,
@@ -136,6 +137,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if status["phase"] not in st.FINAL else exit_code(status)
     except (req.RequestError, st.StoreError, smp.SampleError) as exc:
         print(f"expectrail: {exc}", file=sys.stderr)
+        return EXIT_USAGE
+    except Exception as exc:  # noqa: BLE001 - a crash here must never look like a verdict (1 is reject)
+        print(f"expectrail: the command failed and no job result was produced ({type(exc).__name__}: "
+              f"{str(exc)[:200]})", file=sys.stderr)
         return EXIT_USAGE
 
 

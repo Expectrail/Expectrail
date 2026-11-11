@@ -15,15 +15,17 @@ python3 -m expectrail.orchestrator report JOB
 `sample` is the quickest way to see it work. It copies the bundled game twice, once as it is and once
 with the seeded fall-through bug, and runs three real verifications with no model key: the game as
 it is (accept), the change that breaks it (reject) and the change that repairs it (accept). It exits
-0 only when all three decide that way, and CI runs it on every pull request (`seeded-bugs`).
+0 only when all three decide that way and 3 otherwise (it checks the install; it is not a verdict on a
+change, so it never exits 1), and CI runs it on every pull request (`seeded-bugs`).
 
 ```bash
 python3 -m expectrail.orchestrator sample
 ```
 
 Exit code: 0 accept, 1 reject, 2 needs review, 3 the job failed (no result), 4 cancelled, 5 the
-command could not be carried out. Jobs are kept under `--jobs-root` (default `$EXPECTRAIL_JOBS`,
-else `runs/jobs`).
+command could not be carried out. 1 only ever means a job that completed as reject: a request that is
+refused and a crash in the command itself are both 5, with one line saying why. Jobs are kept under
+`--jobs-root` (default `$EXPECTRAIL_JOBS`, else `runs/jobs`), which may not be inside the game folder.
 
 ## The request and the job
 
@@ -35,6 +37,22 @@ else `runs/jobs`).
 A request carries no digest. The orchestrator computes them from the files when it creates the job
 (`inputs`): the head's game tree, the base's, and the policy digest, which covers the spec and route
 files read from the base when there is one, so a change cannot edit the checks that judge it.
+
+**A game's digest describes what a replay reads.** The harness copies the game folder into a work
+folder, following links and leaving out only `.godot`. The digest walks the same way and leaves out
+the same one name; it keeps no skip list of its own, so a file under `__pycache__`, `.git` or any other
+folder in the game changes it, and so does a file reached through a link. For a game with no links it
+is `harness.run.tree_digest` exactly. A link that leaves the checkout, loops or points at nothing is
+not hashed and not skipped: the tree is recorded as `null`, the reason becomes part of what the
+request means, and the job completes as needs-review with `INPUT_INVALID` before anything runs.
+
+**A request names paths inside the checkout only.** `game`, `specs` and every route pattern are
+checked as text by the gate's own rule (`gate.verify.safe_relative`: relative, no `..`, no backslash)
+before any file is opened. `/etc`, `../..` and `/etc/*.json` are refused and nothing is read.
+
+**The worker reads the files again before it runs them.** If the game or its checks changed after the
+job was created, the job completes as needs-review with `INPUT_INVALID`: the recorded inputs would
+describe files that were not the ones verified.
 
 Every job has a folder of its own:
 
@@ -58,14 +76,18 @@ Every job has a folder of its own:
   a cancelled job cannot become accept, whatever its worker does afterwards.
 - **A decision belongs to a completed job only.** A failed or cancelled job has none.
 - **Output appears by one rename**, after the work is done, and only for a completed job.
+- **No accept or reject without evidence.** A worker that returns either with nothing written is a
+  `failed` job with `INTERNAL_ERROR`, not a result.
 - **Cancelling stops everything.** The worker runs in a process group of its own; `cancel` makes the
-  status final first, then stops the group, so the game and anything else the worker started end
-  with it.
+  status final first, then stops the group named in that final status, so the game and anything else
+  the worker started end with it. A worker that recorded itself a moment before the cancel is the
+  one stopped; one that arrives after finds the job final and does nothing.
 - **A job has one worker, whoever records it first.** The process that starts a worker and the
   worker itself both record it; the second to arrive changes nothing, and any other process is
   refused.
-- **A worker that dies is not waited for.** The worker renews a lease while it runs. A job whose
-  lease has run out and whose worker is gone is reported `failed` with `WORKER_LOST`.
+- **A worker that dies is not waited for, and neither is one that never comes.** A job has a lease
+  from the moment it is created; taking the job and working on it renew it. A job whose lease has run
+  out and whose worker is gone, or that no worker ever took, is reported `failed` with `WORKER_LOST`.
 - **Out of time is needs-review.** When the limit passes, the job completes as needs-review with
   `EXECUTION_TIMEOUT` and its group is stopped.
 - **No result is never a pass.** A missing tool, an unusable input or a project that is not there
