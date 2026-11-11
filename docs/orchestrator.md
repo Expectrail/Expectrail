@@ -22,10 +22,27 @@ change, so it never exits 1), and CI runs it on every pull request (`seeded-bugs
 python3 -m expectrail.orchestrator sample
 ```
 
-Exit code: 0 accept, 1 reject, 2 needs review, 3 the job failed (no result), 4 cancelled, 5 the
-command could not be carried out. 1 only ever means a job that completed as reject: a request that is
-refused and a crash in the command itself are both 5, with one line saying why. Jobs are kept under
-`--jobs-root` (default `$EXPECTRAIL_JOBS`, else `runs/jobs`), which may not be inside the game folder.
+Exit code, the same for `verify`, `status`, `cancel` and `report`:
+
+| Code | Meaning |
+| --- | --- |
+| 0 | the job completed as accept |
+| 1 | the job completed as reject |
+| 2 | the job completed as needs review |
+| 3 | the job failed: no result |
+| 4 | the job was cancelled |
+| 5 | the command could not be carried out (a refused request, an unknown job, a crash in the command) |
+| 6 | the job is not finished: no result yet |
+
+0 only ever means a job that completed as accept, and 1 one that completed as reject. So
+`status "$JOB" && deploy` cannot pass on a job that is still queued. Two stated exceptions for 0:
+`verify --detach` exits 0 when the job was started, which says nothing about its result, and `sample`
+exits 0 when all three of its runs were as expected.
+
+Jobs are kept under `--jobs-root` (default `$EXPECTRAIL_JOBS`, else `runs/jobs`). The jobs folder may
+not be inside the game folder or the specs folder, or anywhere a route pattern looks: a job's own
+`request.json` would be read as part of the game or as a check. With `--routes '**/*.json'` the default
+folder is refused; name the routes' own folder (`routes/*.json`) or keep the jobs elsewhere.
 
 ## The request and the job
 
@@ -42,7 +59,9 @@ files read from the base when there is one, so a change cannot edit the checks t
 folder, following links and leaving out only `.godot`. The digest walks the same way and leaves out
 the same one name; it keeps no skip list of its own, so a file under `__pycache__`, `.git` or any other
 folder in the game changes it, and so does a file reached through a link. For a game with no links it
-is `harness.run.tree_digest` exactly. A link that leaves the checkout, loops or points at nothing is
+is `harness.run.tree_digest` exactly: the same files in the same order (tested on folder names that
+sort differently as one string and part by part). A pipe, a socket or a device in the game is refused
+like a link that leaves the checkout: the copy would try to read it. A link that leaves the checkout, loops or points at nothing is
 not hashed and not skipped: the tree is recorded as `null`, the reason becomes part of what the
 request means, and the job completes as needs-review with `INPUT_INVALID` before anything runs.
 
@@ -76,8 +95,10 @@ Every job has a folder of its own:
   a cancelled job cannot become accept, whatever its worker does afterwards.
 - **A decision belongs to a completed job only.** A failed or cancelled job has none.
 - **Output appears by one rename**, after the work is done, and only for a completed job.
-- **No accept or reject without evidence.** A worker that returns either with nothing written is a
-  `failed` job with `INTERNAL_ERROR`, not a result.
+- **No accept or reject without evidence.** Either decision always publishes the evidence folder and
+  needs at least one file in it, whatever the caller asked for. With none, the job is `failed` with
+  `INTERNAL_ERROR`, not a result, and a status file that claims accept or reject with no output is
+  refused when read.
 - **Cancelling stops everything.** The worker runs in a process group of its own; `cancel` makes the
   status final first, then stops the group named in that final status, so the game and anything else
   the worker started end with it. A worker that recorded itself a moment before the cancel is the
@@ -106,6 +127,12 @@ alike; a test holds that on the gate tests' stand-in replay.
 
 ## What is not built yet
 
+- **Stopping what a killed worker started.** A worker that is killed is reported `failed` with
+  `WORKER_LOST` one lease later, and what it had started (Godot, the virtual display) runs on until its
+  own time limit. `cancel` does stop everything; a kill from outside does not yet (#307).
+- **Files that change during the run.** The worker reads the inputs again just before it runs them,
+  but between that read and the gate's own copy of the game they can still change. Closing it needs
+  the gate's record and the request to name the tree the same way (#303, #307).
 - **The isolated execution class.** It needs the replay sandbox (#253). Until then a request for it
   completes as needs-review with `TOOL_MISSING` and nothing is run unsandboxed in its place. Every
   run is graded `diagnostic`.
