@@ -970,6 +970,23 @@
       "step": "Harness-backed Gate 1 accept (seed + fix candidate)",
       "notMeasured": "The time per phase (import, replay, evaluate): the step is timed as a whole, from the job's step timestamps. One run, so no spread.",
       "conclusion": "success"
+    },
+    {
+      "what": "One Godot verification of a seeded bug with its fix (agents.verifier.verify alone: three replays, the reference level, the candidate and the clean game, and judging them)",
+      "runner": "GitHub-hosted ubuntu-24.04, SAM off, no private routes",
+      "seconds": 33.1,
+      "resolutionSeconds": 0.1,
+      "run": "https://github.com/Expectrail/Expectrail/actions/runs/43081720384/job/130735694019",
+      "step": "Harness-backed Gate 1 accept (seed + fix candidate)",
+      "notMeasured": "Spread: this is one run, on the pull request that added the timing (#301), not on main. A cold import cache: the step before had warmed it, so a first verification on a fresh machine pays a full import this does not show. The private routes, which add a replay each, and SAM, which adds model calls to evaluate. The fixer and the report in the same step are outside the 33.1 s; the step took 34 s by its timestamps.",
+      "conclusion": "success",
+      "phases": {
+        "import": 2.8,
+        "replay": 29.9,
+        "evaluate": 0.3,
+        "other": 0.1
+      },
+      "phasesFrom": "the job's notice \"Verification wall time\", which prints timing.json; the file is in the run's agents-harness-verify artifact"
     }
   ]
 }
