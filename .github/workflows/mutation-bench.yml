@@ -123,7 +123,7 @@ jobs:
         with:
           packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Judge the clean game once
         id: warm
         env:
@@ -177,7 +177,7 @@ jobs:
         with:
           packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Fetch this run's shared SAM answers
         if: (inputs.mode == 'wrong-fix' || inputs.mode == 'generated-sam' || inputs.mode == 'dry-run-sam') && inputs.sam_cache == 'shared'
         continue-on-error: true

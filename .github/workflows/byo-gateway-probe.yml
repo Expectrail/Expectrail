@@ -75,7 +75,7 @@ jobs:
           sudo npm install -g @anthropic-ai/claude-code
           claude --version
       - name: Download Godot
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Run the loop with the fixer behind the key gateway
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

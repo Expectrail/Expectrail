@@ -193,7 +193,7 @@ class EveryWorkflowUsesIt(unittest.TestCase):
             doc = yaml.safe_load(text)
             for name, job in (doc.get("jobs") or {}).items():
                 steps = job.get("steps") or []
-                if any("playwright install" in str(s.get("run", "")) for s in steps):
+                if any(str(s.get("uses", "")) == "./.github/actions/get-chromium" for s in steps):
                     fonts = " ".join(str((s.get("with") or {}).get("packages", "")) for s in steps)
                     self.assertIn("fonts-freefont-ttf", fonts, f"{path.name}#{name}: Chromium's fonts")
 

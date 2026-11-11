@@ -42,7 +42,7 @@ jobs:
         with:
           packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Rehearse, never a result
         run: python -m agents.mutation_fix --rehearse --out runs/ai-fixes
 
@@ -102,7 +102,7 @@ jobs:
         with:
           packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Judge the clean game once
         env:
           MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
@@ -157,7 +157,7 @@ jobs:
             echo 1 | sudo tee /proc/sys/kernel/unprivileged_userns_clone
           fi
       - name: Download Godot
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Fetch this run's shared SAM answers
         continue-on-error: true
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0

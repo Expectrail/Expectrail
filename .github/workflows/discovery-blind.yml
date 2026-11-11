@@ -109,7 +109,7 @@ jobs:
         with:
           packages: patch
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Verify the freeze and the committed digest of the set
         run: |
           python -m expectrail.discovery.freeze verify

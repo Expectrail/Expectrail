@@ -106,7 +106,7 @@ jobs:
         with:
           packages: xvfb libgl1-mesa-dri libglx-mesa0
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Render the smoke route twice and compare
         run: python -m harness.replay_check --route harness/routes/smoke.json --runs 2 --out runs/ci
       - name: A candidate's game code cannot read the verifier's environment
@@ -157,7 +157,7 @@ jobs:
         with:
           packages: fonts-freefont-ttf fonts-ipafont-gothic fonts-tlwg-loma-otf fonts-unifont fonts-wqy-zenhei xfonts-cyrillic xfonts-encodings xfonts-scalable xfonts-utils
       - name: Install Chromium for Playwright
-        run: python -m playwright install chromium
+        uses: ./.github/actions/get-chromium
       - name: Open every page of the site in Chromium (script errors, missing files, broken links)
         run: |
           python -m unittest tests.test_check_pages -v
@@ -195,7 +195,7 @@ jobs:
         with:
           packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Replay every seeded bug against the clean game
         run: python -m harness.check_seeded --out runs/seeded-check
       - name: The ground line is logged, and the position log sees a robot resting too low
@@ -402,7 +402,7 @@ jobs:
         with:
           packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Flake control — seed+fix replay identical twice
         run: >
           python -m harness.replay_check --route harness/routes/smoke.json --runs 2
@@ -536,7 +536,7 @@ jobs:
           packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
         if: env.HELDOUT_TOKEN_SET == 'true'
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Fetch the private held-out set (verifier side only)
         if: env.HELDOUT_TOKEN_SET == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -815,7 +815,7 @@ jobs:
             --ro-bind /usr /usr --ro-bind /bin /bin --ro-bind /lib /lib \
             --ro-bind /lib64 /lib64 -- true
       - name: Download Godot
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Fetch the private held-out set (verifier side only)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

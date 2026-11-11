@@ -77,7 +77,7 @@ jobs:
         with:
           packages: patch
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Replay the stand-in proposal
         env:
           CASE: ${{ matrix.case }}
@@ -193,7 +193,7 @@ jobs:
         with:
           packages: patch
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Measure every probe on the clean game and the bug build
         run: |
           export PATH="$PWD/tools/godot:$PATH"
@@ -282,7 +282,7 @@ jobs:
         with:
           packages: patch
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: jit-proposal-${{ matrix.c.case }}
@@ -398,7 +398,7 @@ jobs:
         with:
           packages: patch
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: jit-proposal-${{ matrix.c.case }}-revised

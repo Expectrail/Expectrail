@@ -122,6 +122,7 @@ class Workflow(unittest.TestCase):
         final = text[text.index("  replay-final:"):]
         self.assertIn("environment: main-only", revise)
         self.assertNotIn("get_godot", revise)
+        self.assertNotIn("get-godot", revise)   # the action every other job gets the engine through
         self.assertNotIn("secrets.", final)
         self.assertNotIn("environment:", final)
 

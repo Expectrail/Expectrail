@@ -111,7 +111,7 @@ jobs:
           python -m venv "$RUNNER_TEMP/mitm"
           "$RUNNER_TEMP/mitm/bin/python" -m pip install --quiet --disable-pip-version-check "mitmproxy==12.2.3"
       - name: Download Godot
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Allow unprivileged user namespaces for bubblewrap
         run: |
           if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then

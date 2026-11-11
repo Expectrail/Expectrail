@@ -154,6 +154,7 @@ class Workflow(unittest.TestCase):
         self.assertIn("needs: [plan, measure]", job)
         self.assertIn("--measurements runs/jit-measure/jit-measurements.json", job)
         self.assertNotIn("get_godot", job)
+        self.assertNotIn("get-godot", job)   # the action every other job gets the engine through
         self.assertNotIn("cli measure", job)
 
 
