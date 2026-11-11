@@ -631,7 +631,10 @@ python3 -m agents.trust --out runs/trust                    # signing key stays 
 python3 -m expectrail.discovery.cli discover --profile discovery/platformer.profile.json \
   --snapshot clean:reference --snapshot air-jump:base:bugs/reported/air-jump.patch \
   --out runs/discovery                                      # advisory discovery, headless
-python3 -m expectrail.discovery.freeze verify               # discovery is frozen for the blind run
+# Freeze 2 is a record of the baseline commit, not of main (on main this command exits 1 by design):
+git fetch --no-tags --depth=1 origin c169a5e0da304773587304ed47bc8aabcec80da7
+git worktree add --detach runs/baseline c169a5e0da304773587304ed47bc8aabcec80da7
+python3 -m expectrail.discovery.freeze verify --root runs/baseline   # freeze holds: 9af1f621…
 
 # Local Meta keys: copy .env.example → .env (gitignored) and set META_API_KEY / MODEL_API_KEY
 python3 -m expectrail.spec_writer draft "The player never falls through the ground" --out /tmp/spec.json

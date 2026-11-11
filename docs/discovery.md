@@ -159,7 +159,8 @@ The results above are development reproduction. The blind run is the test that i
    schemas, recorder, replay harness) and of the clean game, plus the exact blind command. Freeze 1
    (commit `0b6556c14a51`, kept as `discovery/freeze-1.json`) is what set 1 was written against;
    freeze 2 (`discovery/freeze.json`) is set 2's. `python -m expectrail.discovery.freeze verify`
-   names any file that changed, and a test keeps the freeze holding on main while a set is in use.
+   names any file that changed, and a test kept the freeze holding on main while a set was in use
+   (freeze 2 is retired; see below for checking it against the baseline commit).
 2. **Fresh defects, written after the freeze.** Eight to ten defects and one or two intentional
    changes, in the private held-out repository (set 1 under `fresh/`, set 2 under `fresh-2/`), each
    with a private route showing it.
