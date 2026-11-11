@@ -121,6 +121,8 @@ class PathsTest(unittest.TestCase):
 
     def test_adding_the_guard_passes_and_changing_or_deleting_it_needs_a_person(self):
         self.assertEqual(mg.check_paths([Change("tools/merge_guard.py", None, "x\n")]), [])
+        init = mg.check_paths([Change("tools/__init__.py", "x\n", "import sys; sys.exit(0)\n")])
+        self.assertEqual(rules(init), [(NEEDS_SEAN, "guard", "tools/__init__.py")])
         changed = mg.check_paths([Change("tools/merge_guard.py", "x\n", "y\n")])
         deleted = mg.check_paths([Change(".github/workflows/merge-guard.yml", "x\n", None)])
         self.assertEqual(rules(changed), [(NEEDS_SEAN, "guard", "tools/merge_guard.py")])
@@ -257,6 +259,41 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(self.found(bare, old=None),
                          ["new job a has no permissions block, so its token gets the repository default"])
 
+    def test_a_job_written_as_a_flow_mapping_is_reported_not_passed(self):
+        # Found in review of #278: PyYAML reads each of these as an ordinary job; the line parser did not.
+        base = "on: push\npermissions:\n  contents: read\njobs:\n  a:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo hi\n"
+        head = "on: push\npermissions:\n  contents: read\njobs:\n"
+        flow = "{runs-on: ubuntu-24.04, environment: unity, permissions: write-all, steps: [{run: echo hi}]}"
+        cases = {
+            "the job rewritten": head + "  a: " + flow + "\n",
+            "a new job beside a block job": base + "  b: " + flow + "\n",
+            "the whole map on one line": "on: push\npermissions:\n  contents: read\njobs: {a: {runs-on: ubuntu-24.04, steps: [{run: 'echo ${{ secrets.X }}'}]}}\n",
+            "the map over three lines": "on: push\npermissions:\n  contents: read\njobs: {\n  a: {runs-on: ubuntu-24.04, environment: unity, steps: [{run: 'echo ${{ secrets.X }}'}]}\n}\n",
+        }
+        for label, new in cases.items():
+            self.assertIsInstance(yaml.safe_load(new)["jobs"], dict, label)
+            found = " | ".join(self.found(new, old=base))
+            self.assertIn("flow mapping", found, label)
+            if "secrets.X" in new:
+                self.assertIn("secrets", found, label)
+                self.assertIn("X", found, label)
+            if "environment" in new:
+                self.assertIn("environment", found, label)
+            if "write-all" in new:
+                self.assertIn("write permission", found, label)
+
+    def test_what_the_file_gains_is_reported_even_where_no_job_was_read(self):
+        base = "on: push\npermissions:\n  contents: read\njobs:\n  a:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo hi\n"
+        self.assertEqual(self.found(base.replace("echo hi", "echo hello"), old=base), [])
+        nested = base + "    strategy:\n      matrix:\n        include: [{id-token: write}]\n"
+        self.assertEqual(self.found(nested, old=base), ["job a gains id-token: write"])
+        hidden = base.replace("jobs:", "x-extra: &p {contents: write}\njobs:")
+        self.assertEqual(self.found(hidden, old=base), ["the file gains a write permission that no job accounts for"])
+
+    def test_a_block_job_reports_each_gain_once(self):
+        new = WORKFLOW.replace("  build:\n", "  build:\n    environment: main-only\n").replace("echo build", "echo ${{ secrets.K }}")
+        self.assertEqual(self.found(new), ["job build gains secrets: K", "job build gains or changes an environment"])
+
     def test_a_file_outside_the_workflows_folder_is_not_a_workflow(self):
         change = Change("docs/example.yml", None, WORKFLOW.replace("pull_request:", "pull_request_target:"))
         self.assertEqual(mg.check_workflows([change]), [])
@@ -299,7 +336,9 @@ class TestsRuleTest(unittest.TestCase):
                        # through an alias (import unittest as u), found in review of #278
                        "@u." + "skip" + "('x')", "@u." + "skipIf" + "(True, 'x')", "@u." + "expectedFailure",
                        "@testing.case." + "skipUnless" + "(False, 'x')", "        raise u." + "SkipTest" + "('x')",
-                       "test_a = u." + "skip" + "('x')(test_a)"):
+                       "test_a = u." + "skip" + "('x')(test_a)",
+                       # one name of a parenthesised import on its own line, found in the second review
+                       "    " + "skip" + " as later,", "    " + "skipIf" + ",", "    " + "expectedFailure" + ")"):
             new = self.OLD.replace("    def test_a", f"    {marker.strip()}\n    def test_a")
             found = mg.check_tests([Change("tests/test_x.py", self.OLD, new)], "")
             self.assertEqual(rules(found), [(CHANGES, "tests", "tests/test_x.py")], marker)

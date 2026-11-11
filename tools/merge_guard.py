@@ -10,7 +10,8 @@ reasons, 2 when the diff could not be read. The pull request's description comes
 
 Standard library only, so the job that runs it installs nothing.
 
-What it does not see: a test loosened without being skipped; a test method removed or renamed so
+What it does not see: a test loosened without being skipped; a skip moved from one test to another
+in the same file (skips are counted per file, added less removed); a test method removed or renamed so
 that it no longer runs; a file that is not Python deleted under ``tests/``; a new trigger (such as
 ``workflow_run``) on a workflow that already holds a secret; an ``approval`` in a JSON file outside
 a ``specs`` or ``contracts`` folder; whether a claim in the description has a run behind it; and the
@@ -36,7 +37,7 @@ CHANGES = "changes-requested"
 GAME_DIRS = ("game/platformer/", "game/unity-platformer/")
 BASELINE = ".github/obaaf-baseline.json"
 RULE_FILES = ("AGENTS.md", ".github/CODEOWNERS")
-GUARD_FILES = ("tools/merge_guard.py", ".github/workflows/merge-guard.yml")
+GUARD_FILES = ("tools/merge_guard.py", "tools/__init__.py", ".github/workflows/merge-guard.yml")
 NEW_WORK = "docs/new-work.md"
 INTENDED = re.compile(r"^Guard: test change intended \(#\d+\)\s*$", re.M)
 MAX_BYTES = 4 * 1024 * 1024
@@ -50,6 +51,8 @@ _SKIP = re.compile(
     r"|@\s*" + _SKIP_NAMES + r"\b"
     r"|\braise\s+SkipTest\b"
     r"|^\s*from\s+(?:unittest|pytest)(?:\.\w+)*\s+import\b.*\b" + _SKIP_NAMES + r"\b"
+    # one name of a parenthesised import, on a line of its own: "skip as later,"
+    r"|^\s*" + _SKIP_NAMES + r"(?:\s+as\s+\w+)?\s*[,)]\s*$"
     r"|__unittest_skip__")
 # A path under any fresh set, the third set by name, or a path inside the private repository.
 _HELD_OUT = re.compile(r"\bfresh-[0-9]+/|\bfresh-[3]\b|Expectrail-heldout/[\w.]", re.I)
@@ -293,6 +296,28 @@ class Job:
         return bool(named) or (self.perms is not None and _level(self.perms, "id-token") == 2)
 
 
+_ENVIRONMENT_KEY = re.compile(r"""(?<![\w.-])["']?environment["']?\s*:""")
+_WRITE_VALUE = re.compile(r""":\s*["']?(?:write|write-all)\b""")
+_ID_TOKEN = re.compile(r"""id-token["']?\s*:\s*["']?write\b""")
+
+
+def unread_jobs(text: str | None) -> list[str]:
+    """Jobs (or the whole ``jobs`` map) whose value starts on the key's own line, as a flow mapping does."""
+    if text is None:
+        return []
+    lines = [_strip_comment(l).replace("\t", "    ") for l in text.splitlines()]
+    block = _blocks(lines).get("jobs")
+    if block is None:
+        return []
+    if block[0].split(":", 1)[1].strip():
+        return ["the jobs map"]
+    out = []
+    for name, job in _blocks(block[1:]).items():
+        if job[0].split(":", 1)[1].strip():
+            out.append(f"job {name}")
+    return out
+
+
 def parse_workflow(text: str | None) -> tuple[dict[str, Job], str]:
     """The jobs of a workflow with what each can reach, and the file without comments.
 
@@ -328,6 +353,10 @@ def check_workflows(changes: list[Change]) -> list[Reason]:
 
         if new_plain.count("pull_request_target") > old_plain.count("pull_request_target"):
             reason("pull_request_target was added")
+        # Fail closed: a job written as a flow mapping ({...}) is not split into its keys, so say so.
+        for name in unread_jobs(c.new):
+            reason(f"{name} is written as a flow mapping, which the guard does not read; a person reads it")
+        before_reasons = len(out)
         for name, job in new_jobs.items():
             before = old_jobs.get(name)
             where = "the workflow" if name == "(workflow)" else f"job {name}"
@@ -355,6 +384,17 @@ def check_workflows(changes: list[Change]) -> list[Reason]:
                 reason(f"{where} lost its permissions block, so its token gets the repository default")
             elif wider:
                 reason(f"{where} gets wider permissions: {', '.join('every other scope' if s == '*' else s for s in wider)}")
+        # Backstop: whatever the file as a whole gains must be accounted for by a reason above.
+        said = " ".join(r.message for r in out[before_reasons:])
+        gained = secret_names(new_plain) - secret_names(old_plain)
+        unsaid = sorted(n for n in gained if n not in said)
+        if unsaid:
+            reason(f"the file gains secrets no job accounts for: {', '.join(unsaid)}")
+        for pattern, words, what in ((_ENVIRONMENT_KEY, ("environment",), "an environment"),
+                                     (_WRITE_VALUE, ("permissions", "may write", "id-token"), "a write permission"),
+                                     (_ID_TOKEN, ("id-token",), "id-token: write")):
+            if len(pattern.findall(new_plain)) > len(pattern.findall(old_plain)) and not any(w in said for w in words):
+                reason(f"the file gains {what} that no job accounts for")
     return out
 
 
