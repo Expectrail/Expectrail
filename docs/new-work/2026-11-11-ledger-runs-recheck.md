@@ -32,9 +32,22 @@
   42758198963: both `failure`; in each, one replay job failed at "Install a virtual display, software
   OpenGL and the player's libraries" and `cross-runner` failed; the other replay job ended in success
   and printed the line.
-- `python3 -m unittest discover -s tests -t .` on the branch, which is main at 3d66fb4 plus this change:
-  1,756 tests, 10 skipped, OK.
-- CI on the pull request: not run when this was written.
+- `python3 -m unittest discover -s tests -t .` on the branch merged with main at c61940d: 1,868 tests,
+  17 skipped, OK. The 17 are the usual 10 and 7 that need bubblewrap, which this machine does not have.
+  Before the merge, on main at 3d66fb4 plus this change: 1,756 tests, 10 skipped, OK.
+- `python3 -m expectrail.capabilities recheck` again after the merge: `23 runs read, 0 problems`.
+- CI on the first head, 76a7e7b: 46 checks, 40 success, 6 skipped, none failed. CI on the merged head: not
+  run when this was written.
+
+## After the merge guard's review
+- Main moved (#304, #310) and `docs/capabilities.md` conflicted. Main is merged in and the page is
+  rendered again from the JSON, not resolved by hand.
+- A run with more than 100 jobs is read page by page; before, it could only be "cannot tell".
+- A time read from a step's timestamps is held to the second. The row's own `resolutionSeconds` was the
+  tolerance, so a row could excuse itself.
+- A reader that fails in any other way is "cannot tell", not a traceback.
+- The docs say that a time measured inside a step (one with `phases`) is only held to "not longer than
+  the step".
 
 ## Not done
 - `recheck` is not run by CI. It needs a token that can read Actions runs, and adding that permission to

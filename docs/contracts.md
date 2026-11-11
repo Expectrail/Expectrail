@@ -90,7 +90,7 @@ routes appear as counts only; the schema has no field for anything else about th
 `capabilities` (`expectrail.capabilities/v1`,
 [`contracts/capabilities.v1.schema.json`](../contracts/capabilities.v1.schema.json)) is the one record
 of how far each advertised mode is proven: [`docs/capabilities.json`](capabilities.json), rendered as
-[capabilities.md](capabilities.md). The example is two rows of the real ledger. Each cited run records how it ended (`conclusion`), read from GitHub when the row was written; a run that did not end in success needs a `conclusionNote` saying why it is evidence all the same, and only an implemented or experimental row may cite one. A run's evidence may name the `jobs` it rests on. `python3 -m expectrail.capabilities recheck` (`expectrail.capability_runs`) asks GitHub again: it fails when a run's conclusion is not the one recorded, when a named or linked job is missing or did not end in success, when a wall time's step is missing, failed or lasted a different time, and when a run cannot be read. It reads conclusions, jobs and steps only, never logs, so it does not check a count a row quotes.
+[capabilities.md](capabilities.md). The example is two rows of the real ledger. Each cited run records how it ended (`conclusion`), read from GitHub when the row was written; a run that did not end in success needs a `conclusionNote` saying why it is evidence all the same, and only an implemented or experimental row may cite one. A run's evidence may name the `jobs` it rests on. `python3 -m expectrail.capabilities recheck` (`expectrail.capability_runs`) asks GitHub again: it fails when a run's conclusion is not the one recorded, when a named or linked job is missing or did not end in success, when a wall time's step is missing or failed, when a time read from the step's timestamps is not what the step lasted to the second, when a time measured inside the step (one with `phases`) is longer than the step (a shorter one passes, since the step does other work too), and when a run cannot be read. It reads conclusions, jobs and steps only, never logs, so it does not check a count a row quotes.
 
 | Record | Written by | Read by |
 | --- | --- | --- |
@@ -189,3 +189,22 @@ harness sets `Time.captureDeltaTime` to the fixed step so that each rendered fra
 and fails a run in which any frame holds zero or two; frame `n` then shows the state after tick `n`,
 captured at 50 frames per second. No Unity player has run yet. Its world pixels are Unity units times 128 (the art's pixels per unit), with y
 negated so it points down as in the Godot traces.
+
+## Verification jobs (added November 11)
+
+`verify-request` (`expectrail.verify-request/v1`,
+[`contracts/verify-request.v1.schema.json`](../contracts/verify-request.v1.schema.json)) and `verify-job`
+(`expectrail.verify-job/v1`, [`contracts/verify-job.v1.schema.json`](../contracts/verify-job.v1.schema.json))
+are the orchestrator's two records ([orchestrator.md](orchestrator.md)). The request example is a real
+request with its checkout paths replaced; the job example is the status of that request run through
+the Godot engine on the gate tests' stand-in replay, with a placeholder worker.
+
+| Record | Written by | Read by |
+| --- | --- | --- |
+| `verify-request` | whoever asks for a verification, through `expectrail.orchestrator.request.build` | `expectrail.orchestrator.store` when it creates the job, and the worker |
+| `verify-job` | `expectrail.orchestrator.store`, the only code that changes a job's status | `status`, `report`, and whoever waits for the job |
+
+Neither is in `expectrail.contracts.KINDS`. Both are read with a size cap, strict JSON and the
+standard-library validator in `expectrail.gate.record`, and the store then checks what a schema
+cannot: only a completed job has a decision or an output, and no history leaves a final phase.
+

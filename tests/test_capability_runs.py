@@ -103,6 +103,10 @@ class RecheckTest(_Checks, unittest.TestCase):
         found = self.check(_ledger([_cite()]), {"1": _run(status="in_progress", conclusion=None)})
         self.assertEqual(found, ["mode: run 1: cannot tell: the run is in_progress, not completed"])
 
+    def test_a_reader_that_fails_in_any_other_way_is_cannot_tell_not_a_traceback(self):
+        found = self.check(_ledger([_cite(), _cite("2")]), {"1": KeyError("jobs"), "2": _run()})
+        self.assertEqual(found, ["mode: run 1: cannot tell: the reader failed: KeyError: 'jobs'"])
+
     def test_each_run_is_read_once_however_many_rows_cite_it(self):
         seen = []
 
@@ -132,6 +136,10 @@ class WallTimeTest(_Checks, unittest.TestCase):
         self.assertEqual(self.timed(inside, _step("Verify", 50)), [])
         self.assertEqual(self.timed(inside, _step("Verify", 20)),
                          ["timings: run 1: 33.1 s is recorded for a verification inside a step that lasted 20 s"])
+
+    def test_a_rows_own_resolution_cannot_excuse_a_time_that_is_not_the_steps(self):
+        self.assertEqual(len(self.timed(_timing(seconds=1000, resolutionSeconds=1000), _step("Verify", 30))), 1)
+        self.assertEqual(len(self.timed(_timing(resolutionSeconds=1000), _step("Verify", 32))), 1)
 
     def test_the_step_must_be_there_once_and_green(self):
         self.assertEqual(self.timed(_timing(), _step("Something else")),
@@ -174,11 +182,33 @@ class GithubReaderTest(unittest.TestCase):
         asked: list[str] = []
         run = self.reader(asked=asked)("5")
         self.assertEqual(asked, ["repos/Expectrail/Expectrail/actions/runs/5",
-                                 "repos/Expectrail/Expectrail/actions/runs/5/jobs?per_page=100"])
+                                 "repos/Expectrail/Expectrail/actions/runs/5/jobs?per_page=100&page=1"])
         self.assertFalse([path for path in asked if "logs" in path or "artifacts" in path])
         self.assertEqual((run["status"], run["conclusion"], run["attempt"]), ("completed", "success", 2))
         self.assertEqual(run["jobs"][0]["id"], "130241583383")
         self.assertEqual(runs._seconds(run["jobs"][0]["steps"][0]), 29.0)
+
+    def _paged(self, pages: dict, total: int, asked: list):
+        def call(path: str) -> str:
+            asked.append(path)
+            if "/jobs" not in path:
+                return json.dumps(self.RUN_ANSWER)
+            page = int(path.rsplit("page=", 1)[1])
+            return json.dumps({"total_count": total, "jobs": [
+                {"id": i, "name": f"job {i}", "conclusion": "success", "steps": []} for i in pages.get(page, [])]})
+        return runs.github_reader(call)
+
+    def test_a_run_with_more_than_a_page_of_jobs_is_read_page_by_page(self):
+        asked: list[str] = []
+        run = self._paged({1: range(100), 2: range(100, 140)}, 140, asked)("5")
+        self.assertEqual(len(run["jobs"]), 140)
+        self.assertEqual(len(asked), 3)
+
+    def test_pages_that_stop_short_or_repeat_a_job_are_unreadable(self):
+        with self.assertRaisesRegex(runs.RunUnreadable, "counts 140 jobs and listed 100"):
+            self._paged({1: range(100)}, 140, [])("5")
+        with self.assertRaisesRegex(runs.RunUnreadable, "counts 140 jobs"):
+            self._paged({1: range(100), 2: range(60, 100)}, 140, [])("5")
 
     def test_fewer_jobs_listed_than_counted_is_unreadable_not_a_shorter_list(self):
         with self.assertRaisesRegex(runs.RunUnreadable, "counts 140 jobs and listed 1"):

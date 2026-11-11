@@ -59,7 +59,7 @@
           "shows": "the decision rule on recorded observations"
         }
       ],
-      "limits": "One game, with bugs the team seeded. The replay is not yet sandboxed without network (#253) and no separate trusted job signs the verdict, so nothing here is isolated. The approved specs judge frames 0 to 119 of a route."
+      "limits": "One game, with bugs the team seeded. The replay is sandboxed only where bubblewrap can run (see replay-sandbox), no verdict is graded by it yet (#253) and no separate trusted job signs the verdict, so nothing here is isolated. The approved specs judge frames 0 to 119 of a route."
     },
     {
       "id": "godot-harness",
@@ -151,7 +151,7 @@
           "shows": "finding ids that stay the same across pushes, and that the comment job's reader refuses a malformed or oversized artifact"
         }
       ],
-      "limits": "On blind set 3 the approved checks covered none of the eight defects: what the gate catches is bounded by the checks a project has. This row cites no run on a project the team did not write (#263). The candidate job's replay is not sandboxed (#253) and the verdict is not signed (#255). No catch rate or runtime is published for it."
+      "limits": "On blind set 3 the approved checks covered none of the eight defects: what the gate catches is bounded by the checks a project has. This row cites no run on a project the team did not write (#263). The candidate job does not install bubblewrap, so its replay is not sandboxed, and the findings record does not yet say whether it was (#253) and the verdict is not signed (#255). No catch rate or runtime is published for it."
     },
     {
       "id": "unity-harness",
@@ -687,7 +687,33 @@
           "shows": "writes outside the editable files are denied; bubblewrap never mounts the host's local directories"
         }
       ],
-      "limits": "A namespace sandbox on the host's kernel, not a virtual machine. Shell commands inside it are logged, not checked. It sandboxes the fixer, not the game's replay."
+      "limits": "A namespace sandbox on the host's kernel, not a virtual machine. Shell commands inside it are logged, not checked. It sandboxes the fixer; the game's replay has its own (replay-sandbox)."
+    },
+    {
+      "id": "replay-sandbox",
+      "mode": "Replay sandbox: the game runs with no network, its own process tree and only its work copy, one output folder and its inputs",
+      "profile": "Linux with a bubblewrap that has --disable-userns and --size (the harness tries the real command and finds out), Godot only; elsewhere the replay runs without it and replay.json says why",
+      "observer": "None",
+      "entryPoints": [
+        "harness.sandbox",
+        "harness.run"
+      ],
+      "workflows": [
+        "ci.yml"
+      ],
+      "names": [
+        "bubblewrap"
+      ],
+      "grade": "diagnostic",
+      "status": "implemented",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_replay_sandbox.py",
+          "shows": "inside, a program and the real game each fail to open a socket, write outside, read a check or the verifier, and read the starting process's environment, while the same attempts succeed outside; a link left as the trace is refused; the clean game's frame and trace hashes are the same with and without"
+        }
+      ],
+      "limits": "No run on main yet: the row moves when the seeded-bugs job has run there. Godot only: the Unity player and the web replay are not sandboxed. The gate and the orchestrator do not yet read the isolation block or grade a verdict by it. A namespace sandbox on the host's kernel, not a virtual machine. Total disk use of the work copy and the output folder is not limited, only each file; CPU and memory are limited only by the replay's time limit. On Ubuntu 24.04 the runner must allow unprivileged user namespaces first."
     },
     {
       "id": "key-gateway",
@@ -947,6 +973,29 @@
         }
       ],
       "limits": "A build trial only, and the run it cites ended in failure. No harness, check or verdict exists for a COCOS game."
+    },
+    {
+      "id": "orchestrator",
+      "mode": "Verification as a job: verify, status, cancel and report, with a folder and a status file per job",
+      "profile": "The Godot game, through the CI gate's verification",
+      "observer": "The engine's record; no vision model",
+      "entryPoints": [
+        "expectrail.orchestrator"
+      ],
+      "workflows": [],
+      "docs": [
+        "docs/orchestrator.md"
+      ],
+      "grade": "diagnostic",
+      "status": "implemented",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_orchestrator.py",
+          "shows": "two jobs keep to their own folders; a cancelled job stays cancelled and what it started is stopped; a killed worker leaves a failed job; a job out of time is needs-review; a missing tool is a diagnostic and needs-review; the Godot engine decides as the gate does, on a stand-in replay"
+        }
+      ],
+      "limits": "No CI run yet: the real Godot runs behind it (a fix accepted, a regression rejected, a job cancelled mid-run) were local. The isolated execution class is refused until the replay sandbox exists (#253). One host."
     }
   ],
   "notModes": {

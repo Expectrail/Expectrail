@@ -3,12 +3,14 @@
     python3 -m expectrail.capabilities recheck
 
 The ledger records how each cited run ended when its row was written. This asks GitHub again, through
-``gh api`` (read-only, two requests a run), and reports one line per problem:
+``gh api`` (read-only: the run, then its jobs a page of 100 at a time), and reports one line per problem:
 
     the run's conclusion is not the one recorded
     a job the evidence rests on (``jobs``, or the job its link names) is not in the run or did not
       end in success
-    a wall time's step is not in its job, did not end in success, or lasted a different time
+    a wall time's step is not in its job or did not end in success; a time read from the step's
+      timestamps is not the time the step lasted, to the second; a time measured inside the step
+      (one with ``phases``) is longer than the step. A shorter one passes: the step does other work
     the run could not be read: "cannot tell", which is a problem, never a pass
 
 It reads a run's conclusion, its jobs and their steps, and nothing else: no logs and no artifacts. So
@@ -27,6 +29,7 @@ from typing import Callable
 
 REPO = "Expectrail/Expectrail"
 PAGE_SIZE = 100
+MAX_PAGES = 20
 # A step's start and end are whole seconds, so a time read from them is good to a second either way.
 STEP_RESOLUTION = 1.0
 
@@ -56,16 +59,25 @@ def github_reader(call: Callable[[str], str] = _gh, repo: str = REPO) -> Reader:
     def read(number: str) -> dict:
         try:
             run = json.loads(call(f"repos/{repo}/actions/runs/{number}"))
-            listing = json.loads(call(f"repos/{repo}/actions/runs/{number}/jobs?per_page={PAGE_SIZE}"))
+            listed: list[dict] = []
+            total = None
+            for page in range(1, MAX_PAGES + 1):
+                listing = json.loads(call(f"repos/{repo}/actions/runs/{number}/jobs?per_page={PAGE_SIZE}&page={page}"))
+                total = listing["total_count"]
+                seen = {job["id"] for job in listed}
+                fresh = [job for job in listing["jobs"] if job["id"] not in seen]
+                listed += fresh
+                if len(listed) >= total or not fresh:  # a page with nothing new: asking again will not help
+                    break
             jobs = [
                 {"id": str(job["id"]), "name": job["name"], "conclusion": job["conclusion"],
                  "steps": [{"name": step["name"], "conclusion": step["conclusion"],
                             "startedAt": step.get("started_at"), "completedAt": step.get("completed_at")}
                            for step in job.get("steps") or []]}
-                for job in listing["jobs"]
+                for job in listed
             ]
-            if listing["total_count"] != len(jobs):
-                raise RunUnreadable(f"GitHub counts {listing['total_count']} jobs and listed {len(jobs)}")
+            if total != len(jobs):
+                raise RunUnreadable(f"GitHub counts {total} jobs and listed {len(jobs)}")
             return {"status": run["status"], "conclusion": run["conclusion"], "attempt": run["run_attempt"],
                     "jobs": jobs}
         except (ValueError, KeyError, TypeError) as exc:
@@ -149,7 +161,8 @@ def _one(cite: dict, run: dict) -> list[str]:
             if timing["seconds"] > lasted + STEP_RESOLUTION:
                 out.append(f"{head}: {timing['seconds']:g} s is recorded for a verification inside a step that "
                            f"lasted {lasted:g} s")
-        elif abs(timing["seconds"] - lasted) > max(timing["resolutionSeconds"], STEP_RESOLUTION):
+        elif abs(timing["seconds"] - lasted) > STEP_RESOLUTION:
+            # The ledger's own resolutionSeconds is not the tolerance: a row could then excuse itself.
             out.append(f"{head}: {timing['seconds']:g} s is recorded and the step lasted {lasted:g} s by its "
                        "timestamps")
     return out
@@ -170,6 +183,8 @@ def recheck(doc: dict, read: Reader) -> tuple[list[str], list[str]]:
                 answers[number] = read(number)
             except RunUnreadable as exc:
                 answers[number] = exc
+            except Exception as exc:  # noqa: BLE001 - whatever a reader does, an unread run is "cannot tell"
+                answers[number] = RunUnreadable(f"the reader failed: {type(exc).__name__}: {exc}")
             else:
                 run = answers[number]
                 checked.append(f"run {number}: {run['status']}, {run['conclusion']}, attempt {run['attempt']}, "

@@ -22,6 +22,7 @@ import tempfile
 from pathlib import Path
 
 from expectrail import timing
+from harness import sandbox as box
 
 REPO = Path(__file__).resolve().parent.parent
 GODOT_VERSION = "4.7.2-stable"
@@ -73,7 +74,22 @@ def _key_file(cache_dir: Path) -> Path:
     return cache_dir.with_name(cache_dir.name + ".key")
 
 
-def ensure_import_cache(game: Path, godot: Path, env: dict) -> Path | None:
+def godot_import(godot: Path, project: Path, env: dict, tool: box.Tool | None = None,
+                 timeout: float = 600) -> subprocess.CompletedProcess:
+    """Godot's import step on a game copy, inside the sandbox when there is one: importing runs the
+    project's own import code, so it is the candidate's code as much as the replay is."""
+    if tool is None:
+        return subprocess.run([str(godot), "--headless", "--path", str(project), "--import"], check=True,
+                              capture_output=True, text=True, env=env, timeout=timeout)
+    with tempfile.TemporaryDirectory(prefix="expectrail-import-") as nowhere:
+        done = box.run(tool, [box.ENGINE_BINARY, "--headless", "--path", box.GAME, "--import"],
+                       timeout=timeout, game=project, out=Path(nowhere), engine=godot, env=env)
+    if done.returncode != 0:
+        raise subprocess.CalledProcessError(done.returncode, done.args, done.stdout, done.stderr)
+    return done
+
+
+def ensure_import_cache(game: Path, godot: Path, env: dict, tool: box.Tool | None = None) -> Path | None:
     """Return an import cache built from exactly this game and Godot binary, warming it if needed.
 
     Only the external cache directory is used, and only when its key matches. An import folder
@@ -95,10 +111,7 @@ def ensure_import_cache(game: Path, godot: Path, env: dict) -> Path | None:
         staging = Path(tempfile.mkdtemp(prefix="staging-", dir=cache_dir.parent))
         copy = staging / "game"
         shutil.copytree(game, copy, ignore=shutil.ignore_patterns(".godot"))
-        subprocess.run(
-            [str(godot), "--headless", "--path", str(copy), "--import"],
-            check=True, capture_output=True, text=True, env=env, timeout=600,
-        )
+        godot_import(godot, copy, env, tool)
         if not (copy / ".godot" / "imported").is_dir():
             return None
         if cache_dir.exists():
@@ -180,24 +193,37 @@ def godot_cmd(godot: Path, display: bool) -> list[str]:
 
 def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = None, fps: int = 60,
         godot: Path | None = None, patches: list[Path] | None = None,
-        force_import: bool = False, capture_frames: bool = True) -> dict:
+        force_import: bool = False, capture_frames: bool = True, sandbox: str | None = None) -> dict:
     """Replay one route and write trace.json and replay.json (and the frames, unless capture_frames is
-    False: discovery reads only the trace, so it runs headless and skips writing a PNG per frame)."""
+    False: discovery reads only the trace, so it runs headless and skips writing a PNG per frame).
+
+    ``sandbox`` is ``auto``, ``require`` or ``off`` (default: $EXPECTRAIL_SANDBOX, else ``auto``); see
+    ``harness.sandbox``. What was in force is written to replay.json as ``isolation``."""
     game = game or REPO / "game" / "platformer"
     godot = godot or find_godot()
     out.mkdir(parents=True, exist_ok=True)
     work, frames = out / "work", out / "frames"
     ordered = list(patches) if patches is not None else ([patch] if patch is not None else [])
+    try:
+        tool, isolation = box.choose(sandbox, display=capture_frames)
+    except box.SandboxError as exc:
+        raise SystemExit(str(exc)) from exc
     env = game_env()
     # Wall time per step, for the verifier's timing.json (expectrail.timing); nothing here reads it back.
     timing.count_run()
     with timing.phase("import-cache"):
-        cache = ensure_import_cache(game, godot, env)
+        cache = ensure_import_cache(game, godot, env, tool)
+    staging = out / "sandbox"  # the one folder the sandboxed game can write to, besides its own copy
     with timing.phase("prepare"):
         prepare(game, work, patches=ordered, cache=cache)
         if frames.exists():
             shutil.rmtree(frames)
         frames.mkdir()
+        (out / "trace.json").unlink(missing_ok=True)  # a trace left by an earlier run is not this run's
+        if staging.exists():
+            shutil.rmtree(staging)
+        if tool is not None:
+            (staging / "frames").mkdir(parents=True)
     route_doc = json.loads(route.read_text(encoding="utf-8"))
 
     # If the clean cache is populated and no patches modified assets, skip --import (~7s savings).
@@ -206,39 +232,54 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
     if needs_import:
         try:
             with timing.phase("import"):
-                subprocess.run([str(godot), "--headless", "--path", str(work), "--import"], check=True,
-                               capture_output=True, text=True, env=env, timeout=600)
+                godot_import(godot, work, env, tool)
         except subprocess.TimeoutExpired as exc:
             (out / "godot.log").write_text((exc.stdout or "") + (exc.stderr or "") + "\nimport timed out\n",
                                            encoding="utf-8")
             raise SystemExit(f"godot import timed out; see {out / 'godot.log'}") from exc
-    display = bool(os.environ.get("DISPLAY"))
-    if capture_frames:
-        cmd = godot_cmd(godot, display) + [
-            "--path", str(work), "--audio-driver", "Dummy", "--rendering-driver", "opengl3",
-            "--write-movie", str((frames / "f.png").resolve()), "--fixed-fps", str(fps)]
+    if tool is not None:
+        # Inside, the game sees these paths and never the host's; the display is started inside too.
+        engine, project, movie = box.ENGINE_BINARY, box.GAME, f"{box.OUT}/frames/f.png"
+        route_arg, trace_arg = f"{box.INPUTS}/route.json", f"{box.OUT}/trace.json"
+        shown = godot_cmd(Path(engine), False)
     else:
-        cmd = [str(godot), "--headless", "--path", str(work), "--audio-driver", "Dummy", "--fixed-fps", str(fps)]
-    cmd += ["--disable-vsync",
-            "--", f"--route={route.resolve()}", f"--trace={(out / 'trace.json').resolve()}",
+        engine, project, movie = str(godot), str(work), str((frames / "f.png").resolve())
+        route_arg, trace_arg = str(route.resolve()), str((out / "trace.json").resolve())
+        shown = godot_cmd(godot, bool(os.environ.get("DISPLAY")))
+    if capture_frames:
+        cmd = shown + ["--path", project, "--audio-driver", "Dummy", "--rendering-driver", "opengl3",
+                       "--write-movie", movie, "--fixed-fps", str(fps)]
+    else:
+        cmd = [engine, "--headless", "--path", project, "--audio-driver", "Dummy", "--fixed-fps", str(fps)]
+    cmd += ["--disable-vsync", "--", f"--route={route_arg}", f"--trace={trace_arg}",
             f"--seed={route_doc.get('seed', 1)}"]
     try:
         with timing.phase("replay"):
-            proc = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=1800)
+            if tool is not None:
+                proc = box.run(tool, cmd, timeout=1800, game=work, out=staging, engine=godot, env=env,
+                               inputs={"route.json": route})
+            else:
+                proc = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=1800)
     except subprocess.TimeoutExpired as exc:
         (out / "godot.log").write_text((exc.stdout or "") + (exc.stderr or "") + "\ncapture timed out\n",
                                        encoding="utf-8")
         raise SystemExit(f"godot capture timed out; see {out / 'godot.log'}") from exc
     (out / "godot.log").write_text(proc.stdout + proc.stderr, encoding="utf-8")
+    if tool is not None:
+        try:
+            box.collect(staging, out, frames=capture_frames)
+        except box.SandboxError as exc:
+            raise SystemExit(f"the replay's output was refused: {exc}") from exc
     if proc.returncode != 0 or not (out / "trace.json").exists():
         raise SystemExit(f"godot failed ({proc.returncode}); see {out / 'godot.log'}")
     with timing.phase("record"):
-        replay = _replay_record(route, out, game, fps, ordered, route_doc, proc.stdout + proc.stderr, frames)
+        replay = _replay_record(route, out, game, fps, ordered, route_doc, proc.stdout + proc.stderr, frames,
+                                isolation)
     return replay
 
 
 def _replay_record(route: Path, out: Path, game: Path, fps: int, ordered: list[Path], route_doc: dict, log: str,
-                   frames: Path) -> dict:
+                   frames: Path, isolation: dict) -> dict:
     """Hash the frames and the trace and write replay.json."""
     device = re.search(r"Using Device: (.+)", log)
     version = re.search(r"Godot Engine v(\S+)", log)
@@ -259,6 +300,7 @@ def _replay_record(route: Path, out: Path, game: Path, fps: int, ordered: list[P
                     "frames": len(pngs), "pattern": "frames/f%08d.png"},
         "frameSha256": [sha256_file(p) for p in pngs],
         "trace": {"path": "trace.json", "sha256": sha256_file(out / "trace.json")},
+        "isolation": isolation,
     }
     (out / "replay.json").write_text(json.dumps(replay, indent=2) + "\n", encoding="utf-8")
     return replay
@@ -274,6 +316,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--fps", type=int, default=60)
     p.add_argument("--warm-cache", action="store_true",
                    help="warm the .godot/ import cache and exit")
+    p.add_argument("--sandbox", choices=box.MODES,
+                   help="auto: isolate the game when this machine can, and record why not otherwise "
+                        "(default, or $EXPECTRAIL_SANDBOX); require: refuse to run without it; off")
     p.add_argument("--force-import", action="store_true",
                    help="force full godot --import even if cache is present")
     args = p.parse_args(argv)
@@ -281,15 +326,21 @@ def main(argv: list[str] | None = None) -> int:
         game = args.game or REPO / "game" / "platformer"
         godot = find_godot()
         env = game_env()
-        cache = ensure_import_cache(game, godot, env)
+        try:
+            tool, _isolation = box.choose(args.sandbox, display=False)
+        except box.SandboxError as exc:
+            raise SystemExit(str(exc)) from exc
+        cache = ensure_import_cache(game, godot, env, tool)
         print(f"harness cache ready at {cache}")
         return 0
     if not args.route or not args.out:
         p.error("--route and --out are required unless --warm-cache is specified")
     patches = args.patch or None
     replay = run(args.route, args.out, patch=None, game=args.game, fps=args.fps, patches=patches,
-                 force_import=args.force_import)
-    print(f"{replay['capture']['frames']} frames, device {replay['engine']['device']}: {args.out / 'replay.json'}")
+                 force_import=args.force_import, sandbox=args.sandbox)
+    how = replay["isolation"]
+    print(f"{replay['capture']['frames']} frames, device {replay['engine']['device']}, "
+          + ("sandboxed" if how["sandbox"] else f"not sandboxed ({how['reason']})") + f": {args.out / 'replay.json'}")
     return 0
 
 
