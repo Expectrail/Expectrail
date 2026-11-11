@@ -108,12 +108,13 @@ phases do not add up to the whole.
 
 ## The public reproduction bench (added November 11)
 
-Two records for issue #285, both about public defects only.
+Three records for issue #285, all about public defects only.
 
 | Record | Written by | Read by |
 | --- | --- | --- |
 | `repro-bench` (`expectrail.repro-bench/v1`, [`contracts/repro-bench.v1.schema.json`](../contracts/repro-bench.v1.schema.json), example [`repro-bench.json`](../contracts/examples/repro-bench.json)) | By hand: [`bench/jit/public/defects.json`](../bench/jit/public/defects.json) | `expectrail.repro.bench.load`, `python3 -m expectrail.repro check` |
 | `repro-visibility` (`expectrail.repro-visibility/v1`, [`contracts/repro-visibility.v1.schema.json`](../contracts/repro-visibility.v1.schema.json); the committed record [`bench/jit/public/visibility.json`](../bench/jit/public/visibility.json) is the example) | `python3 -m expectrail.repro visibility` | `expectrail.repro.visibility.load`, `python3 -m expectrail.repro render` |
+| `repro-score` (`expectrail.repro-score/v1`, [`contracts/repro-score.v1.schema.json`](../contracts/repro-score.v1.schema.json), example [`repro-score.json`](../contracts/examples/repro-score.json), made-up rows) | `python3 -m expectrail.repro score`, from a live run's `jit-run` records | `expectrail.repro.score.load`, `python3 -m expectrail.repro score-render` |
 
 A bench entry is a defect id, its family, a patch against the clean game, a bug report, where its
 author expects it to show, and whether probes or signals were designed around it. The reader refuses
@@ -129,6 +130,16 @@ the clean game: the signals that moved, the fields of the engine's record that d
 `signal`, `trace-only`, `none` or `error`. The reader recomputes that label and the totals from the
 rows and refuses a record where they disagree, or one that names a signal `expectrail.trace.signals` does not have. It says what the library probes can see, not how often a defect is reproduced, and has
 no field for a rate.
+
+A score record has one row per defect of the bench: `reproduced`, `not-reproduced` or `no-result`;
+the checks that reproduced it; for a miss, a reason from a closed list and the evidence for it; what
+the run spent on it; and the digest of the `jit-run` record it was read from. The writer takes a
+check's standing from its runs, never from the record's own `valid` flag, and gives `no-result` to a
+record whose flag disagrees with its runs or that was made for another candidate, defect or report.
+The reader recomputes the totals from the rows and refuses a row whose outcome does not follow from
+it, and a reason the records cannot show (`route-never-reaches`, `probe-language`). It has no
+decision field: nothing reads it to accept or reject a change. No score record is committed, because
+no live run has been made.
 
 ## Wall time per phase (added November 11)
 

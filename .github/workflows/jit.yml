@@ -14,6 +14,12 @@ name: Generated checks
 # in bench/jit/known/cases.json through the same jobs, scored against the signed registration. Both
 # run each job once per case (a matrix), so the keyed jobs stay in main-only: a called workflow would
 # not see the environment's keys (bench run 42923427104).
+#
+# repro: the public reproduction bench (bench/jit/public, issue #285), from main only. Every defect is
+# one case through the same jobs: the defect is the bug, and the candidate is the same for all, one
+# comment line in the game's README (bench/jit/public/no-fix.patch), so the checks come from the bug
+# build and the report alone. The cases come from the committed bench and nothing typed at dispatch.
+# repro-score reads the final records and writes the reproduction rate (expectrail/repro/score.py).
 on:
   pull_request:
     paths:
@@ -24,9 +30,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: rehearsal (committed stand-ins, no key), live (one change, Muse Spark) or bench (the known-bugs bench, from main)
+        description: rehearsal (committed stand-ins, no key), live (one change, Muse Spark), bench (the known-bugs bench, from main) or repro (the public reproduction bench, from main)
         type: choice
-        options: ['rehearsal', 'live', 'bench']
+        options: ['rehearsal', 'live', 'bench', 'repro']
         default: 'rehearsal'
       case:
         description: A name for this change (letters, digits and dashes); live mode only
@@ -154,6 +160,12 @@ jobs:
           print("cases=" + json.dumps([{k: c[k] for k in ("case", "base", "candidate", "report")} for c in bench.load_cases()]))
           print("budget=" + str(prereg["bar"]["maxSpendUsdPerCase"]))
           EOF
+            exit 0
+          fi
+          if [[ "$MODE" == "repro" ]]; then
+            [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "::error::the reproduction bench runs only from main"; exit 1; }
+            python -m expectrail.repro check
+            python -m expectrail.repro cases --github-output >> "$GITHUB_OUTPUT"
             exit 0
           fi
           [[ "$CASE" =~ ^[a-z0-9][a-z0-9-]{0,60}$ ]] || { echo "::error::case must be letters, digits and dashes"; exit 1; }
@@ -467,4 +479,42 @@ jobs:
           path: |
             runs/bench-score/
             runs/bench/
+          retention-days: 90
+
+  repro-score:
+    # Repro mode only. No secret, no game: each defect's final record, read by the reproduction scorer.
+    # A defect with no usable record is "no result" and never counts as reproduced.
+    needs: [plan, replay-final]
+    if: always() && github.event_name == 'workflow_dispatch' && inputs.mode == 'repro' && needs.plan.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: jit-repro-*
+          path: runs/artifacts
+      - name: Score the reproduction bench
+        run: |
+          mkdir -p runs/repro
+          for d in runs/artifacts/jit-repro-*; do
+            name="${d#runs/artifacts/jit-}"
+            [[ "$name" == *-round1 ]] && continue
+            [[ -f "$d/jit-run.json" ]] && mkdir -p "runs/repro/$name" && cp "$d/jit-run.json" "runs/repro/$name/"
+          done
+          python -m expectrail.repro score --records runs/repro --out runs/repro-score \
+            --source "jit.yml run ${GITHUB_RUN_ID}, attempt ${GITHUB_RUN_ATTEMPT}, at ${GITHUB_SHA}"
+          cat runs/repro-score/repro-score.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: repro-score
+          path: |
+            runs/repro-score/
+            runs/repro/
           retention-days: 90

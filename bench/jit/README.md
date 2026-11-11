@@ -10,4 +10,5 @@ never a result.
 
 [`public/`](public/README.md) is the public reproduction bench (issue #285): 24 defects with bug
 reports, and what each one changes in the engine's record on the probes generated checks may use.
-It holds no reproduction rate yet.
+It holds no reproduction rate yet: the workflow mode and the scorer for a live run on it are built
+and have not been run.
