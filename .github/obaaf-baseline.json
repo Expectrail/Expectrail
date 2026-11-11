@@ -211,6 +211,22 @@
       "message": "Agent job 'run' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
     },
     {
+      "fingerprint": "sha256:3e502fdf112edf097bf68ad8571c776eb450f2633e90dda3cb6d91e5f0f32e96",
+      "rule": "OBAAF-GHA-005",
+      "severity": "high",
+      "path": ".github/workflows/jit-blind.yml",
+      "job": "entry",
+      "message": "Agent job 'entry' receives HELDOUT_TOKEN, META_API_KEY, MODEL_API_KEY."
+    },
+    {
+      "fingerprint": "sha256:80a111b6520de330b63d58f04ab2f167cd7978302979b04d7a9b0d8571e7d311",
+      "rule": "OBAAF-GHA-020",
+      "severity": "low",
+      "path": ".github/workflows/jit-blind.yml",
+      "job": "entry",
+      "message": "Agent job 'entry' shows no egress restriction (no OBAAF_EGRESS declaration and no blocking egress monitor)."
+    },
+    {
       "fingerprint": "sha256:ef203d72409631589d016a323b025a1cde620d4260cebde93f7178e56de0aad5",
       "rule": "OBAAF-GHA-005",
       "severity": "high",

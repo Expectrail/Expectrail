@@ -1,0 +1,139 @@
+name: Generated checks blind run
+
+# Blind set 3 (expectrail/jit/blind.py, bench/jit/blind-3/preregistration.json): approved checks alone
+# (arm A) against approved plus generated checks (arm B), on the private set's own wrong and correct
+# fixes and on mechanically made extra candidates. Refuses unless dispatched from main with a signed
+# registration whose pins hold and the set's digest matches. Every job reads the private set, so all
+# run in main-only. The game runs with the harness's whitelisted environment: the set's patched code
+# never sees the model key or the held-out token. Public output is counts only: each entry's job
+# uploads one row per candidate (opaque id, source, label, each arm's outcome, spend); its own work,
+# logs and generated checks stay on the runner. Run it once.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jit-blind
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    environment: main-only
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      ids: ${{ steps.verify.outputs.ids }}
+    env:
+      HELDOUT_TOKEN_SET: ${{ secrets.HELDOUT_TOKEN != '' }}
+    steps:
+      - name: Require main and the held-out token
+        run: |
+          [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "::error::the blind run starts only from main"; exit 1; }
+          [[ "$HELDOUT_TOKEN_SET" == "true" ]] || { echo "::error::Set HELDOUT_TOKEN in the main-only environment."; exit 1; }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Expectrail/Expectrail-heldout
+          token: ${{ secrets.HELDOUT_TOKEN }}
+          path: heldout-set
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Verify the registration, the pins and the set's digest
+        id: verify
+        run: |
+          ids=$(python -m expectrail.jit.blind verify --set heldout-set)
+          [[ "$ids" =~ ^\[\"h[0-9]{2}\"(,\ \"h[0-9]{2}\"){9}\]$ ]] || { echo "::error::unexpected id list"; exit 1; }
+          echo "ids=$ids" >> "$GITHUB_OUTPUT"
+
+  entry:
+    environment: main-only
+    needs: verify
+    if: github.event_name == 'workflow_dispatch'
+    name: entry (${{ matrix.id }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        id: ${{ fromJSON(needs.verify.outputs.ids) }}
+    env:
+      KEY_SET: ${{ secrets.MODEL_API_KEY != '' || secrets.META_API_KEY != '' }}
+    steps:
+      - name: Require the model key
+        run: '[[ "$KEY_SET" == "true" ]] || { echo "::error::Set MODEL_API_KEY (or META_API_KEY) in the main-only environment first."; exit 1; }'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Expectrail/Expectrail-heldout
+          token: ${{ secrets.HELDOUT_TOKEN }}
+          path: heldout-set
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Install patch
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends patch
+      - name: Download Godot 4.7.2 and check its SHA-512
+        run: ./harness/get_godot.sh
+      - name: Both arms on every candidate of this entry (output kept private)
+        env:
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY || secrets.META_API_KEY }}
+          ID: ${{ matrix.id }}
+        run: |
+          [[ "$ID" =~ ^h[0-9]{2}$ ]] || { echo "::error::unexpected id"; exit 1; }
+          python -m expectrail.jit.blind verify --set heldout-set > /dev/null
+          mkdir -p "runs/blind/$ID"
+          export PATH="$PWD/tools/godot:$PATH"
+          if ! python -m expectrail.jit.blind entry --set heldout-set --id "$ID" --out "runs/blind/$ID" \
+              > "runs/blind-$ID.log" 2>&1; then
+            echo "::error title=Blind ${ID}::the entry did not finish (its log stays private)"
+            exit 1
+          fi
+          mkdir -p "public/$ID"
+          cp "runs/blind/$ID/public-rows.json" "public/$ID/public-rows.json"
+          python -c "import json,sys; rows=json.load(open(sys.argv[1])); print('\n'.join(f\"::notice title=Blind {r['cid']}::{r['source']} {r['label']}: arm A {r['armA']}, generated {r['jitStatus']} strong {r['jitStrong']} weak {r['jitWeak']}\" for r in rows))" "public/$ID/public-rows.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: blind3-rows-${{ matrix.id }}
+          path: public/${{ matrix.id }}/public-rows.json
+          if-no-files-found: ignore
+          retention-days: 90
+
+  score:
+    needs: [verify, entry]
+    if: always() && github.event_name == 'workflow_dispatch' && needs.verify.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: blind3-rows-*
+          path: runs/rows
+      - name: Score against the registration
+        run: |
+          python -m expectrail.jit.blind score --rows runs/rows --out runs/blind-score
+          cat runs/blind-score/blind-3.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: blind3-score
+          path: runs/blind-score/
+          retention-days: 90
