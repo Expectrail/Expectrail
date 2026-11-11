@@ -1,6 +1,6 @@
 {
  "format": "expectrail.jit-bench-preregistration/v0",
- "status": "registered",
+ "status": "completed",
  "signedOffBy": "Sean Keluo-Udeke: approved this bar in the working session on 2026-11-10 at 17:15 CT, and by merging the pull request that registers it",
  "question": "Does the live generator write valid checks that catch a wrong fix and leave a correct fix alone, on the reported bugs, before blind set 3 is spent on it?",
  "cases": "bench/jit/known/cases.json: the four reported bugs (bugs/reported/), each with a wrong fix (one comment claiming the fix, nothing else) and the correct fix (the exact undo). Eight cases, one live run each, $2 cap per case.",
@@ -75,5 +75,16 @@
    ],
    "why": "Infrastructure, before any case reached the model: bench run 42923427104 (jit-bench.yml calling jit.yml) stopped at all 8 propose jobs with no model key, because a called workflow does not see the main-only environment's secrets and the repository forbids passing every secret through. The bench now runs inside jit.yml as a bench mode, each job once per case, so the keyed jobs stay in main-only; jit-bench.yml is removed, and bench.py stops pinning it. The cases, the scoring and the bar are unchanged."
   }
- ]
+ ],
+ "result": {
+  "run": "https://github.com/Expectrail/Expectrail/actions/runs/42927364671",
+  "commit": "ac2ea73",
+  "verdict": "meets-bar",
+  "wrongCaught": "4 of 4 (3 of 3 untuned)",
+  "correctFalseCatches": "0 of 4",
+  "noResult": 0,
+  "spendUsd": 0.7999,
+  "maxSpendUsdPerCase": 0.2332,
+  "note": "Completed: the pins describe the run's commit and no longer have to hold on main. A comment-only wrong fix behaves like the bug, so any valid check catches it; the result shows valid checks on every bug and no false catch, not resistance to harder wrong fixes."
+ }
 }

@@ -28,6 +28,7 @@ lanes:
   ".github/workflows/discovery-blind.yml#blind": agent           # the same, on the private fresh set (counts only)
   ".github/workflows/jit.yml#propose": agent                     # Muse Spark proposes checks for one change (docs/jit.md)
   ".github/workflows/jit.yml#revise": agent                      # the same, once more, for the checks replay rejected
+  ".github/workflows/jit-blind.yml#entry": agent                 # the same pipeline on blind set 3 (counts only)
   ".github/workflows/byo-live.yml#byo-live": agent               # Claude triages, Claude Code fixes (BYO, manual)
   ".github/workflows/byo-gateway-probe.yml#byo-gateway-probe": agent  # the same, behind the key gateway (experiment)
   # Not an agent: it calls each configured provider once and acts only on whether text came back.
