@@ -1004,7 +1004,9 @@ class WorkflowTest(unittest.TestCase):
 
     def test_every_render_job_installs_a_display(self):
         for job in ("run", "sam-warm"):
-            steps = " ".join(str(s.get("run", "")) for s in self.doc["jobs"][job]["steps"])
+            # Packages are installed through the apt-install action, so they are named in its inputs.
+            steps = " ".join(str(s.get("run", "")) + " " + str((s.get("with") or {}).get("packages", ""))
+                             for s in self.doc["jobs"][job]["steps"])
             with self.subTest(job=job):
                 self.assertIn("xvfb", steps)
                 self.assertIn("libgl1-mesa-dri", steps)

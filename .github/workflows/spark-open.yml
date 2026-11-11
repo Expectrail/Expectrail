@@ -52,7 +52,9 @@ jobs:
           EXPECTRAIL_OPEN_MODEL: ${{ env.MODEL_ID }}
         run: python -m agents.spark_open models || echo "::warning::the endpoint did not list its models"
       - name: Install a virtual display and software OpenGL
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 patch
+        uses: ./.github/actions/apt-install
+        with:
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
         run: ./harness/get_godot.sh
       - name: Replay every seeded bug, for the ground draft's verdicts

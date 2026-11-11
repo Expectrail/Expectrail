@@ -78,7 +78,9 @@ jobs:
         run: python -m pip install -r requirements-dev.txt
       - &display
         name: Install a virtual display and software OpenGL
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 patch
+        uses: ./.github/actions/apt-install
+        with:
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - &godot
         name: Download Godot 4.7.2 and check its SHA-512
         run: ./harness/get_godot.sh
