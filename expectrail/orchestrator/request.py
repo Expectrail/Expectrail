@@ -8,12 +8,13 @@ files are is never used.
 ``headTree`` and ``baseTree`` describe what a replay reads. The harness copies the game folder into a
 work folder, following links and leaving out only ``.godot`` (``harness.run.prepare``), so the digest
 walks the same way and leaves out the same one name: there is no second list of folders to skip. For
-a game with no links it is ``harness.run.tree_digest`` exactly. A link that leaves the checkout, or
+a game with no links it is ``harness.run.tree_digest`` exactly: the same files in the same order. A link that leaves the checkout, or
 that loops, is a problem with the input (``problems``): the copy would pull in a file from outside
 what was asked to be verified.
 """
 from __future__ import annotations
 
+import fnmatch
 import hashlib
 import json
 import os
@@ -131,9 +132,13 @@ def tree_files(root: Path, checkout: Path) -> list[tuple[str, Path]]:
                     found.append((name, Path(entry.path)))
                 elif entry.is_symlink():
                     raise TreeProblem(f"{name} is a link to nothing")
+                else:
+                    # A pipe, a socket or a device: the copy would try to read it. Never left out quietly.
+                    raise TreeProblem(f"{name} is not a file, a folder or a link")
 
     walk(str(root), "", ())
-    return sorted(found)
+    # Part by part, as pathlib orders paths and so as the harness's digest does: "a/y" before "a-b/x".
+    return sorted(found, key=lambda item: item[0].split("/"))
 
 
 def tree_digest(root: Path, checkout: Path | None = None) -> str | None:
@@ -159,6 +164,22 @@ def policy_digest(checks_root: Path, project: dict) -> str | None:
         files += [p for p in checks_root.glob(pattern) if p.is_file()]
     inside = [p for p in set(files) if checks_root.resolve() in p.resolve().parents]
     return _files_digest(inside, checks_root) if inside else None
+
+
+def pattern_reaches(pattern: str, folder: str) -> bool:
+    """Whether a route pattern could match a file somewhere below ``folder`` (both relative to the
+    same checkout, with ``/``). Errs towards yes: it is used to keep the jobs folder out of where
+    routes are looked for."""
+    def reach(parts: list[str], below: list[str]) -> bool:
+        if not below:
+            return bool(parts)
+        if not parts:
+            return False
+        if parts[0] == "**":
+            return reach(parts[1:], below) or reach(parts, below[1:])
+        return fnmatch.fnmatchcase(below[0], parts[0]) and reach(parts[1:], below[1:])
+
+    return reach([p for p in pattern.split("/") if p not in ("", ".")], [p for p in folder.split("/") if p not in ("", ".")])
 
 
 def _trees(doc: dict) -> tuple[dict, list[str]]:

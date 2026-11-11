@@ -10,10 +10,12 @@
 Jobs are kept under ``--jobs-root`` (default: $EXPECTRAIL_JOBS, else runs/jobs here). `verify` waits for
 the job unless ``--detach`` is given; then it prints the job's id and returns.
 
-Exit code: 0 accept, 1 reject, 2 needs review, 3 the job failed (no result), 4 cancelled, 5 the
-command could not be carried out. 1 only ever means a job that completed as reject. `sample` exits 0
-when all three runs decide as a working install does, and 3 otherwise: it is a check of the install,
-not a verdict on a change.
+Exit code, the same for `verify`, `status`, `cancel` and `report`: 0 accept, 1 reject, 2 needs
+review, 3 the job failed (no result), 4 cancelled, 5 the command could not be carried out, 6 the job
+is not finished (no result yet). 0 only ever means a job that completed as accept and 1 one that
+completed as reject, with two stated exceptions for 0: `verify --detach` exits 0 when the job was
+started, and `sample` exits 0 when all three runs decide as a working install does (3 otherwise: it
+checks the install, it is not a verdict on a change).
 """
 from __future__ import annotations
 
@@ -30,13 +32,15 @@ from expectrail.orchestrator import sample as smp
 from expectrail.orchestrator import store as st
 
 EXIT = {"accept": 0, "reject": 1, "needs-review": 2}
-EXIT_FAILED, EXIT_CANCELLED, EXIT_USAGE = 3, 4, 5
+EXIT_FAILED, EXIT_CANCELLED, EXIT_USAGE, EXIT_UNFINISHED = 3, 4, 5, 6
 
 
 def exit_code(status: dict) -> int:
+    """The exit code for a job's status, the same for every command that reports one. 0 is a
+    completed job with accept and nothing else; a job that is not finished has a code of its own."""
     if status["phase"] == "completed":
         return EXIT[status["decision"]]
-    return {"failed": EXIT_FAILED, "cancelled": EXIT_CANCELLED}.get(status["phase"], EXIT_USAGE)
+    return {"failed": EXIT_FAILED, "cancelled": EXIT_CANCELLED}.get(status["phase"], EXIT_UNFINISHED)
 
 
 def describe(status: dict) -> str:
@@ -128,13 +132,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "report":
             if status["phase"] not in st.FINAL:
                 print(f"job {status['id']} is {status['phase']}; there is no result yet", file=sys.stderr)
-                return EXIT_USAGE
+                return EXIT_UNFINISHED
             _show(status, args.json)
             if not args.json and status["output"]:
                 print(f"  evidence: {store.paths(status['id']).output}")
             return exit_code(status)
         _show(status, args.json)
-        return 0 if status["phase"] not in st.FINAL else exit_code(status)
+        return exit_code(status)
     except (req.RequestError, st.StoreError, smp.SampleError) as exc:
         print(f"expectrail: {exc}", file=sys.stderr)
         return EXIT_USAGE

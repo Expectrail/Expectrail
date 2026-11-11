@@ -102,10 +102,19 @@ def check_status(doc) -> None:
         raise StoreError("status.json: a job has a finish time exactly when its phase is final")
     if doc["output"] is not None and doc["phase"] != "completed":
         raise StoreError("status.json: only a completed job has an output")
+    if doc["decision"] in ("accept", "reject") and doc["output"] is None:
+        raise StoreError("status.json: an accept or a reject has its evidence in output/")
     if doc["history"][-1]["phase"] != doc["phase"]:
         raise StoreError("status.json: the history does not end at the phase")
     if any(entry["phase"] in FINAL for entry in doc["history"][:-1]):
         raise StoreError("status.json: the history leaves a final phase")
+
+
+def _holds_a_file(folder: Path) -> bool:
+    """Whether ``folder`` is a real folder with at least one plain file somewhere in it."""
+    if folder.is_symlink() or not folder.is_dir():
+        return False
+    return any(entry.is_file() and not entry.is_symlink() for entry in folder.rglob("*"))
 
 
 def _write_atomic(path: Path, text: str) -> None:
@@ -189,6 +198,19 @@ class JobStore:
                 if self.root == game or game in self.root.parents:
                     # Every job would change the game's own digest, and the game's copy would hold the jobs.
                     raise StoreError(f"the jobs folder {self.root} is inside the {side} game folder; keep it outside")
+                # The same for the checks: a job's own request.json and status.json would be read as
+                # specs or routes, and the worker's second read of the inputs would never match the first.
+                checkout = Path(request[side]["checkout"]).resolve()
+                if checkout != self.root and checkout not in self.root.parents:
+                    continue
+                inside = self.root.relative_to(checkout).as_posix()
+                specs = (checkout / request["project"]["specs"]).resolve()
+                if self.root == specs or specs in self.root.parents:
+                    raise StoreError(f"the jobs folder {self.root} is inside the {side} specs folder; keep it outside")
+                for pattern in request["project"]["routes"]:
+                    if req.pattern_reaches(pattern, inside):
+                        raise StoreError(f"the jobs folder {self.root} is where the route pattern {pattern!r} looks "
+                                         f"in the {side} checkout; keep it elsewhere or name the routes' own folder")
         inputs = req.inputs(request)
         key = request["idempotencyKey"]
         if key is None:
@@ -311,9 +333,10 @@ class JobStore:
         """Take the job to a final phase, once. If it is already final, nothing changes and the status
         as it stands is returned: the first finish wins, so a cancel cannot be undone by a late result.
 
-        ``publish`` renames staging/ to output/ for a completed job. Anything else in staging/ is removed.
-        An accept or a reject with nothing to publish is not a result: the job is failed instead, so
-        a decision never stands without its evidence."""
+        A completed job's evidence is staging/, renamed to output/. An accept or a reject always
+        publishes it and needs it to hold at least one file: with nothing to show, the job is failed
+        instead, so neither decision ever stands without evidence, whatever the caller passed.
+        ``publish`` only matters for needs-review, which may have none."""
         return self._finish(job_id, phase, decision=decision, reasons=reasons, diagnostics=diagnostics,
                             evidence_grade=evidence_grade, publish=publish)[0]
 
@@ -331,12 +354,14 @@ class JobStore:
             if doc["phase"] in FINAL:
                 return doc, False
             output = None
-            if phase == "completed" and publish and decision in ("accept", "reject") and not paths.staging.is_dir():
+            decided = phase == "completed" and decision in ("accept", "reject")
+            if decided and not _holds_a_file(paths.staging):
                 phase, decision, evidence_grade = "failed", None, None
                 reasons = ["the orchestrator failed; this says nothing about the change"]
                 diagnostics = (diagnostics or []) + [diagnostic(
                     "INTERNAL_ERROR", stage=doc["phase"], detail="the engine returned a decision and wrote no evidence")]
-            if phase == "completed" and publish and paths.staging.is_dir():
+                decided = False
+            if phase == "completed" and (publish or decided) and paths.staging.is_dir():
                 os.replace(paths.staging, paths.output)
                 output = "output"
             shutil.rmtree(paths.staging, ignore_errors=True)

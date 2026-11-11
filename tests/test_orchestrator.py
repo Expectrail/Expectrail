@@ -92,6 +92,12 @@ class Case(unittest.TestCase):
         self.started.append(proc)
         return proc
 
+    def evidence(self, job_id: str) -> None:
+        """What an engine leaves before it decides: a staging folder with something in it."""
+        staging = self.store.paths(job_id).staging
+        staging.mkdir(exist_ok=True)
+        (staging / "evidence.txt").write_text("x", encoding="utf-8")
+
     def running(self, job_id: str) -> None:
         wait_for(lambda: (self.store.paths(job_id).work / "running").exists(), what="the slow engine starting")
 
@@ -221,6 +227,7 @@ class StoreTest(Case):
                 self.assertEqual(self.store.advance(job, "executing")["phase"], first)
                 self.assertEqual(self.store.heartbeat(job)["phase"], first)
         done = self.job()
+        self.evidence(done)
         self.store.finish(done, "completed", decision="reject", reasons=["a check fails"])
         self.assertEqual(self.store.finish(done, "completed", decision="accept")["decision"], "reject")
         self.assertEqual(self.store.cancel(done)["phase"], "completed")
@@ -240,8 +247,12 @@ class StoreTest(Case):
         job = self.job()
         path = self.store.paths(job).status
         good = json.loads(path.read_text(encoding="utf-8"))
+        ended = [{"phase": "queued", "at": good["createdAt"]}, {"phase": "completed", "at": good["createdAt"]}]
         for edit in ({"decision": "accept"}, {"phase": "cancelled"}, {"output": "output"}, {"extra": 1},
-                     {"phase": "completed", "decision": "accept", "finishedAt": good["createdAt"]}):
+                     {"phase": "completed", "decision": "accept", "finishedAt": good["createdAt"]},
+                     # everything a completed accept has, except the evidence
+                     {"phase": "completed", "decision": "accept", "finishedAt": good["createdAt"], "history": ended},
+                     {"phase": "completed", "decision": "reject", "finishedAt": good["createdAt"], "history": ended}):
             with self.subTest(edit=edit):
                 path.write_text(json.dumps(dict(good, **edit)), encoding="utf-8")
                 with self.assertRaises(st.StoreError):
@@ -547,6 +558,7 @@ class CliTest(Case):
                              ("needs-review", dict(phase="completed", decision="needs-review")),
                              ("failed", dict(phase="failed")), ("cancelled", dict(phase="cancelled"))):
             job = self.job()
+            self.evidence(job)
             self.store.finish(job, finish.pop("phase"), **finish)
             outcomes[name] = self.run_cli("report", job)[0]
         self.assertEqual(outcomes, {"accept": 0, "reject": 1, "needs-review": 2, "failed": 3, "cancelled": 4})
@@ -554,9 +566,9 @@ class CliTest(Case):
     def test_status_cancel_and_report(self):
         job = self.job()
         code, out, _ = self.run_cli("status", job, "--json")
-        self.assertEqual((code, json.loads(out)["phase"]), (0, "queued"))
+        self.assertEqual((code, json.loads(out)["phase"]), (6, "queued"))   # not finished: never 0, which is accept
         code, _, err = self.run_cli("report", job)
-        self.assertEqual(code, 5)
+        self.assertEqual(code, 6)
         self.assertIn("no result yet", err)
         code, out, _ = self.run_cli("cancel", job)
         self.assertEqual(code, 4)
@@ -604,6 +616,17 @@ class TreeTest(Case):
         (self.game / "levels").mkdir()
         (self.game / "levels" / "one.tscn").write_text("[node]\n", encoding="utf-8")
         self.assertEqual(self.tree(), tree_digest(self.game))
+        # Sibling folders where one name continues the other with a character below "/": as one
+        # string "a-b/x.gd" sorts before "a/y.gd", part by part it sorts after. The harness goes
+        # part by part, and so must this (second review of #300).
+        for a, b in (("a", "a-b"), ("a", "a.b"), ("a", "a b"), ("lvl", "lvl+1")):
+            for folder, name in ((a, "y.gd"), (b, "x.gd")):
+                (self.game / folder).mkdir(exist_ok=True)
+                (self.game / folder / name).write_text(f"# {folder}\n", encoding="utf-8")
+            with self.subTest(pair=(a, b)):
+                self.assertEqual(self.tree(), tree_digest(self.game))
+        self.assertEqual([name for name, _ in req.tree_files(self.game, self.head)],
+                         [p.relative_to(self.game).as_posix() for p in sorted(q for q in self.game.rglob("*") if q.is_file())])
 
     def test_whenever_the_copy_changes_the_digest_changes(self):
         from harness.run import tree_digest
@@ -656,6 +679,17 @@ class TreeTest(Case):
                 self.assertIsNone(status["output"])   # the engine never ran
                 link.unlink()
 
+    def test_a_pipe_in_the_game_is_named_not_left_out(self):
+        os.mkfifo(self.game / "pipe")
+        with self.assertRaisesRegex(req.TreeProblem, "pipe is not a file, a folder or a link"):
+            req.tree_digest(self.game, self.head)
+        job = self.job("instant")
+        self.assertIsNone(self.store.status(job)["inputs"]["headTree"])
+        with contextlib.redirect_stderr(io.StringIO()):
+            status = runner.work(self.store, job, engines=STAND_INS)
+        self.assertEqual((status["decision"], [d["code"] for d in status["diagnostics"]], status["output"]),
+                         ("needs-review", ["INPUT_INVALID"], None))
+
     def test_a_link_that_loops_is_refused(self):
         (self.game / "again").symlink_to(".")
         with self.assertRaisesRegex(req.TreeProblem, "loops"):
@@ -677,6 +711,32 @@ class TreeTest(Case):
         self.assertEqual((status["decision"], [d["code"] for d in status["diagnostics"]]), ("needs-review", ["INPUT_INVALID"]))
         self.assertIn("changed after the job was created", status["diagnostics"][0]["detail"])
         self.assertIsNone(status["output"])
+
+    def test_the_jobs_folder_may_not_be_where_the_checks_are_read(self):
+        # With --head . and the default runs/jobs, a pattern like **/*.json read each job's own
+        # request.json and status.json as routes, and every job ended INPUT_INVALID with a message
+        # about the game having changed (second review of #300).
+        for root, over, words in (
+                (self.head / "runs" / "jobs", dict(routes=["**/*.json"]), "route pattern '\\*\\*/\\*.json'"),
+                (self.head / "runs" / "jobs", dict(routes=["routes/*.json", "runs/**/request.json"]), "route pattern 'runs/"),
+                (self.head / "routes" / "jobs", dict(routes=["routes/**/*.json"]), "route pattern"),
+                (self.head / "specs" / "jobs", {}, "inside the head specs folder")):
+            with self.subTest(root=root.relative_to(self.head).as_posix(), **over), self.assertRaisesRegex(st.StoreError, words):
+                st.JobStore(root).create(self.request(**over))
+            self.assertFalse(root.exists())
+        # Beside the checks, not among them: allowed, and the job's inputs are the same on a second read.
+        store = st.JobStore(self.head / "runs" / "jobs")
+        status, _ = store.create(self.request())
+        self.assertEqual(req.inputs(self.request()), status["inputs"])
+
+    def test_a_route_pattern_reaches_a_folder_or_does_not(self):
+        for pattern, folder, reaches in (
+                ("**/*.json", "runs/jobs", True), ("*.json", "runs/jobs", False), ("routes/*.json", "runs/jobs", False),
+                ("routes/*.json", "routes", True), ("routes/*.json", "routes/jobs", False), ("routes/**", "routes/jobs", True),
+                ("r*/**/*.json", "runs/jobs", True), ("runs/jobs/a/request.json", "runs/jobs", True),
+                ("harness/routes/smoke.json", "runs/jobs", False), ("**", "x", True), ("*/*/*/*.json", "runs/jobs", True)):
+            with self.subTest(pattern=pattern, folder=folder):
+                self.assertEqual(req.pattern_reaches(pattern, folder), reaches)
 
     def test_the_jobs_folder_may_not_be_inside_the_game(self):
         store = st.JobStore(self.game / "runs" / "jobs")
@@ -728,6 +788,54 @@ class ExitCodeTest(Case):
     def verify(self, **over) -> tuple[int, str, str]:
         fields = {"--game": "game/platformer", "--routes": "routes/*.json", "--specs": "specs", **over}
         return self.run_cli("verify", "--head", str(self.head), "--detach", *[x for pair in fields.items() for x in pair])
+
+    VERIFY = ("--game", "game/platformer", "--routes", "routes/*.json", "--specs", "specs")
+
+    def test_zero_is_a_completed_accept_and_nothing_else(self):
+        # `status` used to exit 0 for a job with no result, so `status "$JOB" && deploy` passed on a
+        # queued job and on one that later ended in reject (second review of #300).
+        def make(state: str) -> str:
+            status, _ = self.store.create(self.request(idempotency_key=f"key-{state}"))
+            job = status["id"]
+            if state in ("preparing", "executing"):
+                stand_in = subprocess.Popen(["sleep", "600"], start_new_session=True)   # a worker to stop
+                self.started.append(stand_in)
+                self.store.claim(job, stand_in.pid, stand_in.pid)
+                self.store.advance(job, state)
+            elif state in ("accept", "reject", "needs-review"):
+                self.evidence(job)
+                self.store.finish(job, "completed", decision=state, publish=True)
+            elif state in ("failed", "cancelled"):
+                self.store.finish(job, state)
+            return job
+
+        expected = {"queued": 6, "preparing": 6, "executing": 6, "accept": 0, "reject": 1, "needs-review": 2,
+                    "failed": 3, "cancelled": 4}
+        seen = {}
+        for state, code in expected.items():
+            job = make(state)
+            for command in ("status", "report"):
+                seen[(command, state)] = self.run_cli(command, job)[0]
+                self.assertEqual(seen[(command, state)], code, (command, state))
+            if code != 6:   # the same key gives the same job back, and `verify` reports it
+                seen[("verify", state)] = self.run_cli("verify", "--head", str(self.head), *self.VERIFY,
+                                                       "--idempotency-key", f"key-{state}")[0]
+                self.assertEqual(seen[("verify", state)], code, ("verify", state))
+            seen[("cancel", state)] = self.run_cli("cancel", job)[0]
+            self.assertEqual(seen[("cancel", state)], 4 if code == 6 else code, ("cancel", state))
+        self.assertEqual({key for key, code in seen.items() if code == 0},
+                         {(command, "accept") for command in ("status", "report", "verify", "cancel")})
+
+    def test_the_two_stated_exceptions_for_zero(self):
+        code, out, _ = self.run_cli("verify", "--head", str(self.head), "--game", "game/missing", "--routes", "routes/*.json",
+                                    "--specs", "specs", "--detach")
+        self.assertEqual(code, 0)   # the job was started; it says nothing about the result
+        job = out.strip()
+        wait_for(lambda: self.store.status(job)["phase"] in st.FINAL, what="the job finishing")
+        self.assertEqual(self.run_cli("status", job)[0], 2)   # no project there: needs review
+        text = Path(cli.__file__).read_text(encoding="utf-8") + (REPO / "docs" / "orchestrator.md").read_text(encoding="utf-8")
+        for words in ("`verify --detach` exits 0 when the job was", "`sample` exits 0"):
+            self.assertIn(words, " ".join(text.split()))
 
     def test_paths_outside_the_checkout_are_exit_5_with_one_line(self):
         for over in ({"--routes": "/etc/*.json"}, {"--game": "/etc"}, {"--game": "../.."}, {"--routes": "../**/*.json"}):
@@ -846,9 +954,36 @@ class EvidenceTest(Case):
         job = self.job()
         self.assertEqual(self.store.finish(job, "completed", decision="needs-review", publish=True)["phase"], "completed")
         job = self.job()
-        self.store.paths(job).staging.mkdir()
+        self.evidence(job)
         status = self.store.finish(job, "completed", decision="reject", publish=True)
         self.assertEqual((status["phase"], status["decision"], status["output"]), ("completed", "reject", "output"))
+
+    def test_leaving_publish_out_does_not_let_a_decision_stand_without_evidence(self):
+        for decision in ("accept", "reject"):
+            with self.subTest(decision=decision, staging="none"):
+                status = self.store.finish(self.job(), "completed", decision=decision)
+                self.assertEqual((status["phase"], status["decision"], status["output"]), ("failed", None, None))
+                self.assertEqual([d["code"] for d in status["diagnostics"]], ["INTERNAL_ERROR"])
+            with self.subTest(decision=decision, staging="with a file"):
+                job = self.job()
+                self.evidence(job)
+                status = self.store.finish(job, "completed", decision=decision)   # publish left out
+                self.assertEqual((status["phase"], status["decision"], status["output"]), ("completed", decision, "output"))
+                self.assertTrue((self.store.paths(job).output / "evidence.txt").is_file())
+
+    def test_an_empty_evidence_folder_is_not_evidence(self):
+        for layout in ("empty", "folders only", "a link"):
+            with self.subTest(layout=layout):
+                job = self.job()
+                staging = self.store.paths(job).staging
+                staging.mkdir()
+                if layout == "folders only":
+                    (staging / "verdicts" / "head").mkdir(parents=True)
+                if layout == "a link":
+                    (staging / "findings.json").symlink_to(self.head / "specs" / "player-stays-above-ground.json")
+                status = self.store.finish(job, "completed", decision="accept", publish=True)
+                self.assertEqual((status["phase"], status["decision"], status["output"]), ("failed", None, None))
+                self.assertFalse(self.store.paths(job).output.exists())
 
 
 class PatchedReplay:
