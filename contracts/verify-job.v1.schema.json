@@ -1,0 +1,319 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/verify-job.v1.schema.json",
+  "title": "expectrail.verify-job/v1",
+  "description": "The status of one verification job. The file is replaced whole on every change, so a reader never sees half of one. A decision exists only for a completed job; a failed or cancelled job has none and can never gain one.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "id",
+    "phase",
+    "decision",
+    "reasons",
+    "diagnostics",
+    "inputs",
+    "executionClass",
+    "evidenceGrade",
+    "worker",
+    "lease",
+    "output",
+    "history",
+    "createdAt",
+    "updatedAt",
+    "finishedAt",
+    "expectrail"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.verify-job/v1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "phase": {
+      "enum": [
+        "queued",
+        "preparing",
+        "executing",
+        "observing",
+        "evaluating",
+        "completed",
+        "failed",
+        "cancelled"
+      ],
+      "description": "queued, preparing, executing, observing and evaluating are in progress; completed, failed and cancelled are final. An engine reports the in-progress phases it can tell apart."
+    },
+    "decision": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "enum": [
+            "accept",
+            "reject",
+            "needs-review"
+          ]
+        }
+      ]
+    },
+    "reasons": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "maxLength": 300
+      }
+    },
+    "diagnostics": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "stage",
+          "detail",
+          "fix"
+        ],
+        "properties": {
+          "code": {
+            "enum": [
+              "INPUT_INVALID",
+              "PATCH_SCOPE_BLOCKED",
+              "TOOL_MISSING",
+              "PRIVATE_SUITE_UNAVAILABLE",
+              "PROVIDER_FAILED",
+              "OBSERVATION_INVALID",
+              "EXECUTION_TIMEOUT",
+              "BASE_MISMATCH",
+              "EVIDENCE_MISMATCH",
+              "BEHAVIOR_FAILED",
+              "WORKER_LOST",
+              "INTERNAL_ERROR"
+            ]
+          },
+          "stage": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "fix": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "exceptionType": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "providerStatus": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599
+          }
+        }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestDigest",
+        "headTree",
+        "baseTree",
+        "policyDigest"
+      ],
+      "properties": {
+        "requestDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "headTree": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          ]
+        },
+        "baseTree": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          ]
+        },
+        "policyDigest": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          ]
+        }
+      },
+      "description": "Computed by the orchestrator from the files when the job was created."
+    },
+    "executionClass": {
+      "enum": [
+        "diagnostic",
+        "isolated"
+      ]
+    },
+    "evidenceGrade": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "enum": [
+            "diagnostic",
+            "isolated"
+          ]
+        }
+      ]
+    },
+    "worker": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "pid",
+            "pgid"
+          ],
+          "properties": {
+            "pid": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "pgid": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      ]
+    },
+    "lease": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "heartbeatAt",
+            "expiresAt"
+          ],
+          "properties": {
+            "heartbeatAt": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"
+            },
+            "expiresAt": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"
+            }
+          },
+          "description": "The worker renews it while it runs. An unfinished job whose lease has run out and whose worker is gone is reported failed."
+        }
+      ]
+    },
+    "output": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "const": "output",
+          "description": "The finished evidence folder, relative to the job's folder. It appears by one rename, after the job's work is done."
+        }
+      ]
+    },
+    "history": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "phase",
+          "at"
+        ],
+        "properties": {
+          "phase": {
+            "enum": [
+              "queued",
+              "preparing",
+              "executing",
+              "observing",
+              "evaluating",
+              "completed",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"
+          }
+        }
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"
+    },
+    "updatedAt": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"
+    },
+    "finishedAt": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"
+        }
+      ]
+    },
+    "expectrail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "maxLength": 32
+        }
+      }
+    }
+  }
+}
