@@ -15,7 +15,11 @@ things are. First, the words themselves are counted in the file's raw text, comm
 included: the ``secrets`` context, ``environment``, ``id-token``, ``write``, ``write-all``,
 ``read-all`` and ``pull_request_target``. A file that holds more of one than it did, with no job
 the reading can name as the one that gained it, is reported against the file; so a comment, a step's
-name or a script that newly says one of these words is reported too, and a person reads it. Second,
+name or a script that newly says one of these words is reported too, and a person reads it. Each
+word is counted three ways (comments stripped, the text of block scalars kept whole, as written)
+and a rise in any one is a gain, so a comment removed does not pay for a use added. Secrets are
+also read job by job in the same three ways: a use after a ``#`` in a job's script is that job's
+gain, wherever else in the file a mention went away. Second,
 what the line reading cannot follow is reported rather than passed: a job written as a flow mapping,
 a ``\\x``, ``\\u`` or ``\\U`` escape anywhere in the file, a quoted string that runs past the end of
 its line, an alias (``*name``) outside a script, a line among the top-level keys, the jobs or a job's
@@ -28,9 +32,10 @@ no tests, or a test that returns before it asserts; a test method removed or ren
 longer runs; a file that is not Python deleted under ``tests/``; a new trigger (such as
 ``workflow_run``) on a workflow that already holds a secret; an ``approval`` in a JSON file outside
 a ``specs`` or ``contracts`` folder; a job given a wider read scope by YAML the line reading
-does not follow and the checks above do not name; one of the counted words hidden in the same
-change that removes a plain mention of it elsewhere in the file, in a form none of the checks above
-names; a new file that agents read as instructions (an ``AGENTS.md``
+does not follow and the checks above do not name; ``environment``, ``id-token`` or a write
+permission hidden in the same change that removes a mention the same reading counts, in a form none
+of the checks above names; a secret a job already names in its script and newly uses, since the
+gain is read per job; a new file that agents read as instructions (an ``AGENTS.md``
 in a subfolder, a ``CLAUDE.md``) or the audit's own configuration; the private repository named
 with no path after it, or a held-out name put together from pieces; whether a claim in the
 description has a run behind it; and the contents of held-out files (it never reads them; the
@@ -343,16 +348,31 @@ class Job:
     environment: str
     perms: dict[str, int] | None
     inherited: str = ""  # the workflow's own text outside ``jobs``: its ``env`` reaches every job
+    # The same lines read two more ways (see ``_rows``). ``live`` keeps a "#" and what follows it inside
+    # a block scalar, where it is text; ``raw`` keeps every comment.
+    live: str = ""
+    inherited_live: str = ""
+    raw: str = ""
 
     @property
     def secrets(self) -> set[str]:
-        """The secrets the job's own text names."""
+        """The secrets the job's own text names, comments left out."""
         return secret_names(self.text)
 
     @property
     def reach(self) -> set[str]:
         """The secrets the job can reach: its own and the workflow level's."""
         return secret_names(self.text) | secret_names(self.inherited)
+
+    @property
+    def live_reach(self) -> set[str]:
+        """The same with the text of block scalars kept whole, so a use after a "#" in a script counts."""
+        return secret_names(self.live) | secret_names(self.inherited_live)
+
+    @property
+    def named(self) -> set[str]:
+        """Every secret named anywhere in the job's own lines, comments included."""
+        return secret_names(self.raw)
 
     @property
     def id_token(self) -> bool:
@@ -485,6 +505,80 @@ def open_strings(text: str | None) -> int:
     return count
 
 
+# A line that may open a block scalar: it ends in "|" or ">" (with its indicators), a comment after it or
+# not. Looser than ``_BLOCK_HEADER`` on purpose: a line taken for a header by mistake only means the
+# lines under it keep their "#", which is the strict side.
+_MAY_OPEN_BLOCK = re.compile(r"^(?P<lead>\s*(?:-\s+)*)(?:.*\s)?[|>][+-]?[1-9]?[+-]?\s*(?:\s#.*)?$")
+
+Row = tuple  # (stripped, live, raw): one line of a workflow, read three ways
+
+
+def _rows(text: str) -> list[Row]:
+    """Each line three ways: comments stripped; stripped except inside a block scalar; as written.
+
+    The keys are found on the first. Secrets are looked for in all three, because what a "#" means
+    depends on where it is: in ``run: |`` it is text that GitHub fills in, elsewhere it is a comment.
+    """
+    rows = []
+    block = None  # inside a block scalar: the column its text must be indented past
+    for raw in text.splitlines():
+        line = raw.replace("\t", "    ")
+        stripped = _strip_comment(line)
+        if block is not None and (not line.strip() or _indent(line) > block):
+            rows.append((stripped, line.rstrip(), line))
+            continue
+        opened = _MAY_OPEN_BLOCK.match(line)
+        block = len(opened.group("lead")) if opened else None
+        rows.append((stripped, stripped, line))
+    return rows
+
+
+def _split(rows: list[Row]) -> dict[str, list[Row]]:
+    """``_blocks`` for rows: split by the keys of the stripped lines; a line that is only a comment
+    stays with the key above it, so the job it sits in still holds its raw text."""
+    solid = [r[0] for r in rows if r[0].strip()]
+    if not solid:
+        return {}
+    base = min(_indent(l) for l in solid)
+    out: dict[str, list[Row]] = {}
+    current = None
+    for row in rows:
+        line = row[0]
+        if line.strip() and _indent(line) == base and not line.lstrip().startswith("- ") and _key(line):
+            current = _key(line)
+            out[current] = [row]
+        elif current is not None:
+            out[current].append(row)
+    return out
+
+
+def _column(rows: list[Row], n: int) -> str:
+    return "\n".join(r[n] for r in rows if n or r[0].strip())
+
+
+def readings(text: str | None) -> tuple[str, str, str]:
+    """The whole file three ways: comments stripped, stripped outside block scalars only, as written."""
+    rows = _rows(text or "")
+    return "\n".join(r[0] for r in rows), "\n".join(r[1] for r in rows), text or ""
+
+
+def triggers(text: str | None) -> set[str]:
+    """The events under ``on``: its keys, the items of its list, or every word of a value on its own line."""
+    lines = [l for l in (_strip_comment(l).replace("\t", "    ") for l in (text or "").splitlines()) if l.strip()]
+    block = _blocks(lines).get("on")
+    if block is None:
+        return set()
+    inline = block[0].split(":", 1)[1]
+    found = set(re.findall(r"[A-Za-z_]+", inline))
+    rest = block[1:]
+    if rest:
+        base = min(_indent(l) for l in rest)
+        for line in rest:
+            if _indent(line) == base:
+                found |= set(re.findall(r"[A-Za-z_]+", line.split(":", 1)[0]))
+    return found
+
+
 def parse_workflow(text: str | None) -> tuple[dict[str, Job], str]:
     """The jobs of a workflow with what each can reach, and the file without comments.
 
@@ -494,17 +588,23 @@ def parse_workflow(text: str | None) -> tuple[dict[str, Job], str]:
     """
     if text is None:
         return {}, ""
-    lines = [_strip_comment(l).replace("\t", "    ") for l in text.splitlines()]
-    plain = "\n".join(lines)
-    top = _blocks(lines)
-    workflow_perms = _permissions(top.get("permissions"))
-    outside = "\n".join(l for key, block in top.items() if key not in ("jobs", "permissions") for l in block)
-    jobs = {"(workflow)": Job(outside, "", None)}
-    for name, block in _blocks(top.get("jobs", [])[1:]).items():
-        keys = _blocks(block[1:])
+    rows = _rows(text)
+    plain = "\n".join(r[0] for r in rows)
+
+    def strings(block: list[Row] | None) -> list[str] | None:
+        return None if block is None else [r[0] for r in block if r[0].strip()]
+
+    top = _split(rows)
+    workflow_perms = _permissions(strings(top.get("permissions")))
+    outside = [r for key, block in top.items() if key not in ("jobs", "permissions") for r in block]
+    jobs = {"(workflow)": Job(_column(outside, 0), "", None, live=_column(outside, 1), raw=_column(outside, 2))}
+    for name, block in _split(top.get("jobs", [])[1:]).items():
+        keys = _blocks(strings(block[1:]))
         perms = _permissions(keys.get("permissions"))
         environment = " ".join(" ".join(l.split()) for l in keys.get("environment", []))
-        jobs[name] = Job("\n".join(block), environment, perms if perms is not None else workflow_perms, outside)
+        jobs[name] = Job(_column(block, 0), environment, perms if perms is not None else workflow_perms,
+                         _column(outside, 0), live=_column(block, 1), inherited_live=_column(outside, 1),
+                         raw=_column(block, 2))
     return jobs, plain
 
 
@@ -520,7 +620,16 @@ def check_workflows(changes: list[Change]) -> list[Reason]:
             out.append(Reason(NEEDS_SEAN, "workflow", c.path, message))
 
         raw_old, raw_new = c.old or "", c.new
-        if raw_new.count("pull_request_target") > raw_old.count("pull_request_target"):
+        # Each word is counted three ways (comments stripped, block scalars kept whole, as written) and a
+        # rise in any one is a gain. A count for the whole file in one reading only would let a mention
+        # taken away in one place pay for one added in another: a comment for a trigger, say.
+        old_views, new_views = readings(c.old), readings(c.new)
+
+        def rises(count) -> bool:
+            return any(count(new) > count(old) for old, new in zip(old_views, new_views))
+
+        target = "pull_request_target"
+        if (target in triggers(c.new) and target not in triggers(c.old)) or rises(lambda t: t.count(target)):
             reason("pull_request_target was added")
         # Fail closed: a job written as a flow mapping ({...}) is not split into its keys, so say so.
         for name in unread_jobs(c.new):
@@ -543,13 +652,23 @@ def check_workflows(changes: list[Change]) -> list[Reason]:
             before = old_jobs.get(name)
             where = "the workflow" if name == "(workflow)" else f"job {name}"
             if name == "(workflow)":
-                gained = workflow_gain = job.secrets - (before.secrets if before else set())
+                gained = workflow_gain = ((job.secrets - (before.secrets if before else set()))
+                                          | (job.live_reach - (before.live_reach if before else set())))
             else:
                 # What the workflow level gained is reported once, against the workflow, not per job.
-                gained = job.reach - (before.reach if before else set()) - workflow_gain
+                # A use after a "#" in a block scalar is the job's own use: GitHub fills it in there.
+                gained = ((job.reach - (before.reach if before else set()))
+                          | (job.live_reach - (before.live_reach if before else set()))) - workflow_gain
             if gained:
                 named |= gained
                 reason(f"{where} gains secrets: {', '.join(sorted(gained))}")
+            # The job's lines as written, comments and all. A secret this job did not name anywhere and
+            # now does is the job's gain even where the guard reads it as a comment, so that a mention
+            # removed from another job, or from a comment elsewhere, does not pay for it.
+            newly = job.named - (before.named if before else set()) - gained - workflow_gain
+            if newly:
+                named |= newly
+                reason(f"{where} newly names secrets, in a comment or where the guard does not read: {', '.join(sorted(newly))}")
             if job.environment and job.environment != (before.environment if before else ""):
                 reason(f"{where} gains or changes an environment")
             if job.id_token and not (before and before.id_token):
@@ -574,14 +693,16 @@ def check_workflows(changes: list[Change]) -> list[Reason]:
         # What the check rests on: the words, counted in the raw text with comments and scripts left in.
         # The reading above can make these messages better; it cannot make a gain go unreported.
         said = " ".join(r.message for r in out[before_reasons:])
-        more = secret_uses(raw_new, anywhere=True) - secret_uses(raw_old, anywhere=True)
+        more: set[str] = set()
+        for old_view, new_view in zip(old_views, new_views):
+            more |= set(secret_uses(new_view, anywhere=True) - secret_uses(old_view, anywhere=True))
         unsaid = sorted(n for n in more if n not in named)
         if unsaid:
             reason(f"the file names secrets more often than it did, where no job is read as gaining them: {', '.join(unsaid)}")
         for pattern, words, what in ((_ENVIRONMENT_WORD, ("environment",), "the word environment"),
                                      (_WRITE_WORD, ("permissions", "may write", "id-token"), "a write permission"),
                                      (_ID_TOKEN_WORD, ("id-token",), "the word id-token")):
-            if len(pattern.findall(raw_new)) > len(pattern.findall(raw_old)) and not any(w in said for w in words):
+            if rises(lambda t: len(pattern.findall(t))) and not any(w in said for w in words):
                 reason(f"the file gains {what} that no job accounts for")
     return out
 

@@ -170,10 +170,14 @@ class WorkflowTest(unittest.TestCase):
     def test_a_harmless_edit_passes(self):
         self.assertEqual(self.found(WORKFLOW.replace("echo build", "echo built  # a comment")), [])
 
+    NEWLY = " newly names secrets, in a comment or where the guard does not read: "
+
     def test_a_comment_that_newly_names_a_secret_is_reported(self):
         # The words are counted in the raw text, so the guard need not know what is a comment and what is not.
+        # Inside a job the report is against that job; outside every job it is against the file.
         self.assertEqual(self.found(WORKFLOW.replace("echo build", "echo built  # a comment naming secrets.X")),
-                         [self.NAMED + "X"])
+                         ["job build" + self.NEWLY + "X"])
+        self.assertEqual(self.found("# a comment naming secrets.X\n" + WORKFLOW), [self.NAMED + "X"])
 
     def test_a_new_read_only_job_passes(self):
         new = WORKFLOW + "  lint:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo lint\n"
@@ -232,17 +236,90 @@ class WorkflowTest(unittest.TestCase):
         for label, (step, value) in cases.items():
             new = self.BLOCK.replace("- run: echo hi", step)
             self.assertIn("secrets.X", value(yaml.safe_load(new)), label)  # PyYAML keeps it as text
-            self.assertEqual(self.found(new, old=self.BLOCK), [self.NAMED + "X"], label)
-            self.assertEqual(self.found(new, old=None), [self.NAMED + "X"], label + ", as a new workflow")
+            # It is the job's own use, so it is reported against the job (the fifth review of #278).
+            self.assertEqual(self.found(new, old=self.BLOCK), ["job a gains secrets: X"], label)
+            self.assertEqual(self.found(new, old=None), ["job a gains secrets: X"], label + ", as a new workflow")
         folded = self.BLOCK.replace("    steps:", "    if: >-\n      true ||\n      # secrets.X\n      false\n    steps:")
         self.assertEqual(yaml.safe_load(folded)["jobs"]["a"]["if"], "true || # secrets.X false")
-        self.assertEqual(self.found(folded, old=self.BLOCK), [self.NAMED + "X"])
+        self.assertEqual(self.found(folded, old=self.BLOCK), ["job a gains secrets: X"])
 
     def test_a_hidden_use_of_a_secret_the_file_already_names_is_reported(self):
         # Counted, not listed: one more mention of a name the file already has is still a gain.
         old = self.BLOCK + "  b:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo ${{ secrets.X }}\n"
         new = old.replace("- run: echo hi", "- run: |\n          echo hi\n          # ${{ secrets.X }}")
-        self.assertEqual(self.found(new, old=old), [self.NAMED + "X"])
+        self.assertEqual(self.found(new, old=old), ["job a gains secrets: X"])
+        # In the job that already holds it, no job gains anything; the count for the file still rises.
+        again = old.replace("- run: echo ${{ secrets.X }}", "- run: |\n          echo ${{ secrets.X }}\n          # ${{ secrets.X }}")
+        self.assertEqual(self.found(again, old=old), [self.NAMED + "X"])
+
+    TWO = ("on: push\npermissions:\n  contents: read\njobs:\n"
+           "  a:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo ${{ secrets.X }}\n"
+           "  b:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: |\n          echo hi\n")
+    HIDDEN = "          # ${{ secrets.X }}\n          cat \"$0\"\n"
+
+    def test_a_secret_moved_to_another_job_behind_a_hash_is_that_jobs_gain(self):
+        # Found in the fifth review of #278: a count for the whole file does not rise when a plain mention
+        # goes away in one job and a hidden one arrives in another. Each job is read on its own lines.
+        moved = self.TWO.replace("echo ${{ secrets.X }}", "echo hi") + self.HIDDEN
+        self.assertIn("secrets.X", yaml.safe_load(moved)["jobs"]["b"]["steps"][0]["run"])  # PyYAML keeps it as text
+        self.assertNotIn("secrets", json.dumps(yaml.safe_load(moved)["jobs"]["a"]))
+        self.assertEqual(self.found(moved, old=self.TWO), ["job b gains secrets: X"])
+        # The control: the same move written plainly.
+        plain = self.TWO.replace("echo ${{ secrets.X }}", "echo hi").replace("          echo hi\n", "          echo ${{ secrets.X }}\n")
+        self.assertEqual(self.found(plain, old=self.TWO), ["job b gains secrets: X"])
+        # Where the first job had two uses and keeps one.
+        twice = self.TWO.replace("echo ${{ secrets.X }}", "echo ${{ secrets.X }} ${{ secrets.X }}")
+        self.assertEqual(self.found(self.TWO + self.HIDDEN, old=twice), ["job b gains secrets: X"])
+        # Where no job held it: a comment above the jobs goes, and the use arrives in a script.
+        noted = self.BLOCK.replace("jobs:", "# needs secrets.X one day\njobs:")
+        hidden = self.BLOCK.replace("- run: echo hi", "- run: |\n          echo hi\n          # ${{ secrets.X }}")
+        self.assertEqual(self.found(hidden, old=noted), ["job a gains secrets: X"])
+        # Nothing moved: an edit elsewhere in such a file passes.
+        self.assertEqual(self.found((self.TWO + self.HIDDEN).replace("echo hi", "echo hello"), old=self.TWO + self.HIDDEN), [])
+
+    def test_a_comment_in_a_job_does_not_pay_for_a_use_in_its_script(self):
+        # The same shape inside one job: the job's own comment names the secret, the comment goes and the
+        # use arrives after a "#" in its script. Read as written, the job named it before and after.
+        old = self.BLOCK.replace("    steps:", "    # needs secrets.X one day\n    steps:")
+        new = self.BLOCK.replace("- run: echo hi", "- run: |\n          echo hi\n          # ${{ secrets.X }}")
+        self.assertEqual(self.found(new, old=old), ["job a gains secrets: X"])
+        # And the other way about: the comment goes and a plain use arrives.
+        self.assertEqual(self.found(self.BLOCK.replace("echo hi", "echo ${{ secrets.X }}"), old=old), ["job a gains secrets: X"])
+
+    def test_a_block_scalar_under_a_key_the_strict_header_does_not_know_is_still_read_whole(self):
+        # The header is taken loosely: any line that ends in "|" or ">" may open a block scalar.
+        for header in ("it's: |", "\"a key\": |-", "K: !!str |", "K: &k >", "K: |2+  # note"):
+            new = self.TWO.replace("echo ${{ secrets.X }}", "echo hi").replace(
+                "      - run: |\n", f"      - env:\n          {header}\n            # ${{{{ secrets.X }}}}\n        run: |\n")
+            self.assertIn("job b gains secrets: X", self.found(new, old=self.TWO), header)
+
+    def test_a_secret_moved_in_the_repositorys_own_ci_is_reported(self):
+        # The fifth review's first case, on ci.yml as it is: a use made plain in one job and hidden in the
+        # script of another that reaches no secret. The jobs are found here, not named, so ci.yml may change.
+        text = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        jobs, _ = mg.parse_workflow(text)
+        del jobs["(workflow)"]
+        holder = next(n for n, j in jobs.items() if j.secrets - {"(every secret)"})
+        name = sorted(jobs[holder].secrets - {"(every secret)"})[0]
+        use = "${{ secrets." + name + " }}"
+        lines = text.splitlines(keepends=True)
+        target = at = None
+        for n, line in enumerate(lines):
+            if line.startswith("  ") and line[2:3].strip() and mg._key(line) in jobs:
+                target = mg._key(line)
+            if target and not jobs[target].named and line.rstrip().endswith("run: |"):
+                at = n
+                break
+        self.assertIsNotNone(at, "ci.yml has no job that names no secret and runs a script")
+        last = max(n for n, line in enumerate(lines) if use in line)
+        lines[last] = lines[last].replace(use, "plain", 1)
+        indent = " " * (len(lines[at + 1]) - len(lines[at + 1].lstrip()))
+        lines.insert(at + 1, f"{indent}# {use}\n")
+        new = "".join(lines)
+        self.assertEqual(new.count(use), text.count(use))  # the count for the file does not rise
+        self.assertTrue(any(use in step.get("run", "") for step in yaml.safe_load(new)["jobs"][target]["steps"]))
+        found = [r.message for r in mg.check_workflows([Change(".github/workflows/ci.yml", text, new)])]
+        self.assertEqual(found, [f"job {target} gains secrets: {name}"])
 
     def test_a_new_job_reaches_a_secret_in_the_workflows_own_env(self):
         # Found in review of #278: the workflow's env reaches every job, so a new job gains what it holds.
@@ -363,6 +440,35 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(self.found(WORKFLOW.replace("echo build", "echo x  # not pull_request_target")),
                          ["pull_request_target was added"])
         self.assertEqual(self.found(WORKFLOW.replace("echo build", "echo x  # not that trigger")), [])
+
+    def test_a_comment_that_names_the_trigger_does_not_pay_for_the_trigger(self):
+        # Found in the fifth review of #278: the comment goes, the trigger arrives, the word's count is the same.
+        old = "# not pull_request_target: see docs\n" + WORKFLOW
+        new = WORKFLOW.replace("  pull_request:", "  pull_request_target:")
+        self.assertEqual(old.count("pull_request_target"), new.count("pull_request_target"))
+        self.assertEqual(yaml.safe_load(new)[True], {"pull_request_target": None})
+        self.assertEqual(self.found(new, old=old), ["pull_request_target was added"])
+        self.assertEqual(self.found(new, old=WORKFLOW), ["pull_request_target was added"])  # the control
+        # The same where the word that goes is not in a comment: a step that only says it.
+        said = WORKFLOW.replace("echo build", "echo pull_request_target")
+        for form in ("on:\n  pull_request_target:", "on: [push, pull_request_target]", "on: pull_request_target",
+                     "on:\n  - push\n  - pull_request_target", "'on':\n  \"pull_request_target\":\n    types: [opened]"):
+            new = WORKFLOW.replace("on:\n  pull_request:", form)
+            self.assertIn("pull_request_target", json.dumps(yaml.safe_load(new)[True if not form.startswith("'") else "on"]), form)
+            self.assertEqual(self.found(new, old=said), ["pull_request_target was added"], form)
+        # A workflow that has the trigger and keeps it: an edit elsewhere passes, and so does dropping it.
+        self.assertEqual(self.found(new.replace("echo report", "echo done"), old=new), [])
+        self.assertEqual(self.found(old.replace("# not pull_request_target: see docs\n", ""), old=old), [])
+
+    def test_a_comment_that_names_a_word_does_not_pay_for_the_word(self):
+        # The same shape for the other counted words, each hidden where the per-job reading does not look.
+        base = "on: push\npermissions:\n  contents: read\njobs:\n  a:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo hi\n"
+        hidden = base.replace("jobs:", "x-extra: &p {contents: write}\njobs:")
+        self.assertEqual(self.found(hidden, old="# may not write\n" + base),
+                         ["the file gains a write permission that no job accounts for"])
+        hidden = base.replace("jobs:", "x-extra: &e {environment: unity}\njobs:")
+        self.assertEqual(self.found(hidden, old="# no environment here\n" + base),
+                         ["the file gains the word environment that no job accounts for"])
 
     def test_id_token_write_needs_a_person(self):
         new = WORKFLOW.replace("      pull-requests: write\n", "      pull-requests: write\n      id-token: write\n")
