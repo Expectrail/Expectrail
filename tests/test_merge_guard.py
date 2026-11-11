@@ -123,6 +123,9 @@ class PathsTest(unittest.TestCase):
         self.assertEqual(mg.check_paths([Change("tools/merge_guard.py", None, "x\n")]), [])
         init = mg.check_paths([Change("tools/__init__.py", "x\n", "import sys; sys.exit(0)\n")])
         self.assertEqual(rules(init), [(NEEDS_SEAN, "guard", "tools/__init__.py")])
+        self.assertEqual(mg.check_paths([Change("tests/test_merge_guard.py", None, "x\n")]), [])
+        own_tests = mg.check_paths([Change("tests/test_merge_guard.py", "x\n", "y\n")])
+        self.assertEqual(rules(own_tests), [(NEEDS_SEAN, "guard", "tests/test_merge_guard.py")])
         changed = mg.check_paths([Change("tools/merge_guard.py", "x\n", "y\n")])
         deleted = mg.check_paths([Change(".github/workflows/merge-guard.yml", "x\n", None)])
         self.assertEqual(rules(changed), [(NEEDS_SEAN, "guard", "tools/merge_guard.py")])
@@ -282,6 +285,72 @@ class WorkflowTest(unittest.TestCase):
             if "write-all" in new:
                 self.assertIn("write permission", found, label)
 
+    BLOCK = "on:\n  pull_request:\npermissions:\n  contents: read\njobs:\n  a:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo hi\n"
+    ESCAPED = "the file gains an escaped character (\\x, \\u or \\U), which the guard does not read; a person reads it"
+    OPEN = "the file gains a quoted string that runs over a line, which the guard does not read; a person reads it"
+
+    def test_an_escape_that_spells_a_word_the_guard_looks_for_is_reported_not_passed(self):
+        # Found in review of #278: YAML decodes these inside double quotes, so the word is never in the text.
+        job = "  a:\n"
+        cases = {
+            "an environment key": (self.BLOCK.replace(job, job + '    "env\\x69ronment": prod\n'),
+                                   lambda d: d["jobs"]["a"]["environment"] == "prod"),
+            "a secret": (self.BLOCK.replace("- run: echo hi", '- run: "echo ${{ secr\\x65ts.X }}"'),
+                         lambda d: "secrets.X" in d["jobs"]["a"]["steps"][0]["run"]),
+            "a write value": (self.BLOCK.replace(job, job + '    permissions:\n      contents: "wr\\x69te"\n'),
+                              lambda d: d["jobs"]["a"]["permissions"] == {"contents": "write"}),
+            "a permissions key": (self.BLOCK.replace(job, job + '    "perm\\x69ssions":\n      contents: "write"\n'),
+                                  lambda d: d["jobs"]["a"]["permissions"] == {"contents": "write"}),
+            "id-token": (self.BLOCK.replace(job, job + '    permissions:\n      "id-tok\\x65n": "wr\\x69te"\n'),
+                         lambda d: d["jobs"]["a"]["permissions"] == {"id-token": "write"}),
+            "the trigger": (self.BLOCK.replace("  pull_request:", '  "pull_request_t\\x61rget":'),
+                            lambda d: "pull_request_target" in d[True]),
+            "a four-digit escape": (self.BLOCK.replace("- run: echo hi", '- run: "echo ${{ secr\\u0065ts.X }}"'),
+                                    lambda d: "secrets.X" in d["jobs"]["a"]["steps"][0]["run"]),
+            "an eight-digit escape": (self.BLOCK.replace("- run: echo hi", '- run: "echo ${{ secr\\U00000065ts.X }}"'),
+                                      lambda d: "secrets.X" in d["jobs"]["a"]["steps"][0]["run"]),
+        }
+        for label, (new, means) in cases.items():
+            self.assertTrue(means(yaml.safe_load(new)), label)  # PyYAML reads the word the text never spells
+            self.assertIn(self.ESCAPED, self.found(new, old=self.BLOCK), label)
+
+    def test_an_escape_the_file_already_had_is_not_a_gain(self):
+        # fix-matrix.yml and web-fix.yml strip colour codes in a script with one; editing them must stay possible.
+        old = self.BLOCK.replace("- run: echo hi", "- run: |\n          printf '\\x1b[0m'")
+        self.assertEqual(self.found(old.replace("ubuntu-24.04", "ubuntu-22.04"), old=old), [])
+        self.assertEqual(self.found(old + "      - run: printf '\\x1b[1m'\n", old=old), [self.ESCAPED])
+        self.assertEqual(self.found(old, old=None), [self.ESCAPED])
+
+    def test_a_quoted_string_that_runs_over_a_line_is_reported_not_passed(self):
+        # A string left open can hold a line the reader takes for a comment, or join a word across a line's end.
+        cases = {
+            "a word joined by a backslash": '- run: "echo ${{ secr\\\n          ets.X }}"',
+            "a line that looks like a comment": '- run: "echo\n        # ${{ secrets.X }}"',
+            "the same in single quotes": "- run: 'echo\n        # ${{ secrets.X }}'",
+            "after a line that only looks like a block scalar": '- name: x\n          - |\n        run: "echo\n        # ${{ secrets.X }}"',
+        }
+        for label, step in cases.items():
+            new = self.BLOCK.replace("- run: echo hi", step)
+            self.assertIn("secrets.X", yaml.safe_load(new)["jobs"]["a"]["steps"][0]["run"], label)
+            self.assertIn(self.OPEN, self.found(new, old=self.BLOCK), label)
+
+    def test_quotes_in_a_script_or_closed_on_their_line_are_not_reported(self):
+        script = ('- run: |\n          echo "a\n          # b" \'c\n          d\' "e \\\n          f"\n'
+                  '      - run: echo "it\'s" # don\'t\n      - name: "a # b \\" c"\n        run: echo it\'s\n'
+                  "      - name: 'it''s'\n        run: >-\n          echo \"x\n          y\"")
+        new = self.BLOCK.replace("- run: echo hi", script)
+        yaml.safe_load(new)
+        self.assertEqual(self.found(new, old=self.BLOCK), [])
+
+    def test_no_workflow_in_the_repository_has_a_string_the_guard_would_not_read(self):
+        for path in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
+            text = path.read_text(encoding="utf-8")
+            self.assertEqual(mg.open_strings(text), 0, path.name)
+            # Whatever escapes there are sit in scripts: the parsed file, written back out plainly, says the same.
+            jobs, _ = mg.parse_workflow(text)
+            for name, job in yaml.safe_load(text)["jobs"].items():
+                self.assertEqual(jobs[name].secrets, mg.secret_names(yaml.safe_dump(job, width=10_000)), f"{path.name}#{name}")
+
     def test_what_the_file_gains_is_reported_even_where_no_job_was_read(self):
         base = "on: push\npermissions:\n  contents: read\njobs:\n  a:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo hi\n"
         self.assertEqual(self.found(base.replace("echo hi", "echo hello"), old=base), [])
@@ -354,6 +423,15 @@ class TestsRuleTest(unittest.TestCase):
         for body in ("Guard: test change intended", "guard: test change intended (#9)",
                      "we say: Guard: test change intended (#9)", "Guard: test change intended (#nine)"):
             self.assertEqual(len(mg.check_tests([change], body)), 1, body)
+
+    def test_the_stated_line_hidden_in_an_html_comment_does_not_count(self):
+        # A comment does not show on the rendered page, so nobody reading the pull request would see the line.
+        change = Change("tests/test_x.py", self.OLD, None)
+        for body in ("<!--\nGuard: test change intended (#9)\n-->", "text\n<!-- note\nGuard: test change intended (#9)\n",
+                     "<!-- a --> x\n<!--\nGuard: test change intended (#9)\n-->\n"):
+            self.assertEqual(len(mg.check_tests([change], body)), 1, body)
+        shown = "<!-- fill this in -->\nGuard: test change intended (#9)\n"
+        self.assertEqual(mg.check_tests([change], shown), [])
 
     def test_a_word_that_only_contains_skip_and_a_file_that_is_not_a_test_pass(self):
         new = self.OLD + "    def test_skipping_rope(self):\n        self.assertIn('skip', 'skipped')\n"

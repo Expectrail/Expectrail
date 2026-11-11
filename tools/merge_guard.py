@@ -10,14 +10,23 @@ reasons, 2 when the diff could not be read. The pull request's description comes
 
 Standard library only, so the job that runs it installs nothing.
 
+A workflow is read line by line, not parsed. What that reading cannot follow is reported rather than
+passed: a job written as a flow mapping, a ``\\x``, ``\\u`` or ``\\U`` escape anywhere in the file, and
+a quoted string that runs past the end of its line.
+
 What it does not see: a test loosened without being skipped; a skip moved from one test to another
-in the same file (skips are counted per file, added less removed); a test method removed or renamed so
-that it no longer runs; a file that is not Python deleted under ``tests/``; a new trigger (such as
+in the same file (skips are counted per file, added less removed); a skip whose name is not written
+out (built with ``getattr`` or from pieces, or split over two lines); a ``load_tests`` that returns
+no tests, or a test that returns before it asserts; a test method removed or renamed so that it no
+longer runs; a file that is not Python deleted under ``tests/``; a new trigger (such as
 ``workflow_run``) on a workflow that already holds a secret; an ``approval`` in a JSON file outside
-a ``specs`` or ``contracts`` folder; whether a claim in the description has a run behind it; and the
-contents of held-out files (it never reads them; the private scan does that with the private set). On a ``pull_request`` run the workflow and this file
-come from the pull request itself, so a change to either is reported as ``needs-sean`` and the
-merge guard agent should run main's copy.
+a ``specs`` or ``contracts`` folder; a new file that agents read as instructions (an ``AGENTS.md``
+in a subfolder, a ``CLAUDE.md``) or the audit's own configuration; the private repository named
+with no path after it, or a held-out name put together from pieces; whether a claim in the
+description has a run behind it; and the contents of held-out files (it never reads them; the
+private scan does that with the private set). On a ``pull_request`` run the workflow, this file
+and its tests come from the pull request itself, so a change to any of them is reported as
+``needs-sean`` and the merge guard agent should run main's copy.
 """
 from __future__ import annotations
 
@@ -37,9 +46,12 @@ CHANGES = "changes-requested"
 GAME_DIRS = ("game/platformer/", "game/unity-platformer/")
 BASELINE = ".github/obaaf-baseline.json"
 RULE_FILES = ("AGENTS.md", ".github/CODEOWNERS")
-GUARD_FILES = ("tools/merge_guard.py", "tools/__init__.py", ".github/workflows/merge-guard.yml")
+GUARD_FILES = ("tools/merge_guard.py", "tools/__init__.py", ".github/workflows/merge-guard.yml",
+               "tests/test_merge_guard.py")
 NEW_WORK = "docs/new-work.md"
 INTENDED = re.compile(r"^Guard: test change intended \(#\d+\)\s*$", re.M)
+# An HTML comment in a description does not show on the page, so a line inside one is not a statement.
+_HTML_COMMENT = re.compile(r"<!--.*?(?:-->|\Z)", re.S)
 MAX_BYTES = 4 * 1024 * 1024
 
 # Skips: unittest's decorators and calls, and pytest's, as they appear on a line of a test file.
@@ -318,6 +330,62 @@ def unread_jobs(text: str | None) -> list[str]:
     return out
 
 
+# YAML decodes these inside a double-quoted string, so "env\x69ronment" is a key the patterns never see.
+_ESCAPE = re.compile(r"\\(?:x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})")
+# The line that opens a block scalar: "run: |", "- >-", "script: |2+".
+_BLOCK_HEADER = re.compile(r"""^(?P<lead>\s*(?:-\s+)*)(?:(?:[A-Za-z0-9_.-]+|"[^"\\]*"|'[^']*')\s*:\s+)?[|>][+-]?[1-9]?[+-]?\s*$""")
+
+
+def escapes(text: str | None) -> int:
+    """How many ``\\x``, ``\\u`` and ``\\U`` escapes the text holds, wherever they are."""
+    return len(_ESCAPE.findall(text or ""))
+
+
+def open_strings(text: str | None) -> int:
+    """How many quoted strings, outside block scalars, are still open where their line ends.
+
+    Such a string can hold a ``#`` line the reader takes for a comment, or join two halves of a word
+    with a backslash at the line's end. The text of a block scalar (``run: |``) is not looked at: it
+    is literal, and a shell script may quote as it likes.
+    """
+    count = 0
+    block = None  # inside a block scalar: the column its text must be indented past
+    quote = ""
+    for raw in (text or "").splitlines():
+        line = raw.replace("\t", "    ")
+        if not quote:
+            if block is not None:
+                if not line.strip() or _indent(line) > block:
+                    continue
+                block = None
+            header = _BLOCK_HEADER.match(_strip_comment(line))
+            if header:
+                block = len(header.group("lead"))
+                continue
+        n = 0
+        while n < len(line):
+            ch = line[n]
+            if quote == '"':
+                if ch == "\\":
+                    n += 1
+                elif ch == '"':
+                    quote = ""
+            elif quote == "'":
+                if ch == "'":
+                    if line[n + 1:n + 2] == "'":
+                        n += 1
+                    else:
+                        quote = ""
+            elif ch == "#" and (n == 0 or line[n - 1] == " "):
+                break
+            elif ch in "'\"" and (n == 0 or line[n - 1] in " {[,:"):
+                quote = ch
+            n += 1
+        if quote:
+            count += 1
+    return count
+
+
 def parse_workflow(text: str | None) -> tuple[dict[str, Job], str]:
     """The jobs of a workflow with what each can reach, and the file without comments.
 
@@ -356,6 +424,12 @@ def check_workflows(changes: list[Change]) -> list[Reason]:
         # Fail closed: a job written as a flow mapping ({...}) is not split into its keys, so say so.
         for name in unread_jobs(c.new):
             reason(f"{name} is written as a flow mapping, which the guard does not read; a person reads it")
+        # Fail closed again: an escape can spell any word the patterns look for, and a string that runs
+        # over a line can hide one. Neither is read; both are counted against what the file had.
+        if escapes(c.new) > escapes(c.old):
+            reason("the file gains an escaped character (\\x, \\u or \\U), which the guard does not read; a person reads it")
+        if open_strings(c.new) > open_strings(c.old):
+            reason("the file gains a quoted string that runs over a line, which the guard does not read; a person reads it")
         before_reasons = len(out)
         for name, job in new_jobs.items():
             before = old_jobs.get(name)
@@ -406,7 +480,7 @@ def _is_test(path: str) -> bool:
 
 
 def check_tests(changes: list[Change], body: str) -> list[Reason]:
-    if INTENDED.search(body or ""):
+    if INTENDED.search(_HTML_COMMENT.sub("", body or "")):
         return []
     hint = "; if intended, the description needs the line \"Guard: test change intended (#issue)\""
     out = []
