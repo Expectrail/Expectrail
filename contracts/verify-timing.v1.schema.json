@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/verify-timing.v1.schema.json",
+  "title": "expectrail.verify-timing/v1",
+  "description": "Where the wall time of one verification went. Written by agents.verifier beside verification.json; it never feeds a decision. The four phases add up to the total: evaluate is the total less the harness's own time.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "what", "clock", "totalSeconds", "phases", "arms"],
+  "$defs": {
+    "seconds": { "type": "number", "minimum": 0 },
+    "text": { "type": "string", "minLength": 1 }
+  },
+  "properties": {
+    "format": { "const": "expectrail.verify-timing/v1" },
+    "what": { "$ref": "#/$defs/text", "description": "What was timed, in words." },
+    "clock": { "const": "time.perf_counter", "description": "Wall time on the machine that ran it." },
+    "totalSeconds": { "$ref": "#/$defs/seconds" },
+    "phases": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["import", "replay", "evaluate", "other"],
+      "properties": {
+        "import": { "$ref": "#/$defs/seconds", "description": "Godot's --import, and warming the shared import cache when it is cold." },
+        "replay": { "$ref": "#/$defs/seconds", "description": "The Godot process that plays the route and writes the frames and the trace." },
+        "evaluate": { "$ref": "#/$defs/seconds", "description": "Everything the verifier does outside a harness run: observations, the checks, the verdict files." },
+        "other": { "$ref": "#/$defs/seconds", "description": "The harness outside Godot: copying the game, applying patches, hashing the frames." }
+      }
+    },
+    "arms": {
+      "type": "array",
+      "description": "One entry per replay the verifier asked for, in the order they first ran. A private route is named by its position, never by its name.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["arm", "harnessRuns", "seconds"],
+        "properties": {
+          "arm": { "type": "string", "pattern": "^(reference|candidate|clean|held-out-[0-9]+|unlabelled)$" },
+          "harnessRuns": { "type": "integer", "minimum": 0, "description": "More than one when a replay was retried." },
+          "seconds": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["import-cache", "prepare", "import", "replay", "record"],
+            "properties": {
+              "import-cache": { "$ref": "#/$defs/seconds" },
+              "prepare": { "$ref": "#/$defs/seconds" },
+              "import": { "$ref": "#/$defs/seconds" },
+              "replay": { "$ref": "#/$defs/seconds" },
+              "record": { "$ref": "#/$defs/seconds" }
+            }
+          }
+        }
+      }
+    },
+    "decision": { "enum": ["accept", "reject", "needs-review"], "description": "The verification's decision, so a timing is not read without its outcome." },
+    "sam": { "type": "boolean", "description": "Whether the SAM specs were judged; they add model calls to evaluate." }
+  }
+}

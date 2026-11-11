@@ -417,6 +417,12 @@ jobs:
           python -c "import json, os; d=json.load(open('runs/harness-accept/verify/verification.json')); src=d['suite']['heldOut']['source']; print('held-out source:', src); assert (src=='harness') == bool(os.environ.get('EXPECTRAIL_HELDOUT_DIR')), d['suite']"
           python -m agents.report --verification runs/harness-accept/verify/verification.json --candidate runs/harness-accept/fix/candidate.patch --gameplay-verdict runs/harness-accept/verify/verdict-gameplay.json --before agents/fixtures/frames/before-fall.png --after agents/fixtures/frames/after-fixed.png --out runs/harness-accept/morning
           python -c "import json; from expectrail.contracts import validate; from pathlib import Path; md=Path('runs/harness-accept/morning/morning-report.md').read_text(); assert '## Gameplay' in md and '## Suite provenance' in md, md; rc=json.load(open('runs/harness-accept/morning/release-candidate.json')); validate(rc,'release-candidate'); assert rc['decision']=='accept'; assert rc.get('requestSha256')"
+      # timing.json is written by the verifier in the step above (expectrail.timing). The notice and the job
+      # summary carry the numbers; the file is in the agents-harness-verify artifact.
+      - name: Wall time per phase of that verification (import, replay, evaluate)
+        run: |
+          python -m expectrail.timing show runs/harness-accept/verify/timing.json --notice
+          python -c "import json; d=json.load(open('runs/harness-accept/verify/timing.json')); arms={a['arm']: a for a in d['arms']}; assert arms['candidate']['harnessRuns']>=1 and arms['candidate']['seconds']['replay']>0, d; assert d['decision']=='accept', d"
       - name: Harness-backed freeze-player must reject
         run: |
           python -m agents.orchestrator \
