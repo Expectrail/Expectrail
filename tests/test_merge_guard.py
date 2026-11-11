@@ -184,12 +184,32 @@ class WorkflowTest(unittest.TestCase):
                            ("${{ secrets[matrix.key] }}", "(every secret)")):
             new = WORKFLOW.replace("echo build", "echo " + text)
             self.assertEqual(self.found(new), [f"job build gains secrets: {name}"], text)
+        # Uses that name no secret reach all of them; found in review of #278.
+        for text in ("${{ join(secrets.*, ' ') }}", "${{ toJSON(secrets.*) }}", "${{ format('{0}', secrets) }}",
+                     "${{ secrets }}", "${{ toJSON( secrets ) }}"):
+            new = WORKFLOW.replace("echo build", "echo " + text)
+            self.assertEqual(self.found(new), ["job build gains secrets: (every secret)"], text)
+        guarded = WORKFLOW.replace("    steps:\n      - run: echo build", "    if: secrets != ''\n    steps:\n      - run: echo build")
+        self.assertEqual(self.found(guarded), ["job build gains secrets: (every secret)"])
         inherit = WORKFLOW + "  call:\n    uses: ./.github/workflows/x.yml\n    secrets: inherit\n"
         self.assertEqual(self.found(inherit), ["job call gains secrets: (every secret)"])
 
     def test_the_repository_token_and_a_step_named_secrets_are_not_secrets(self):
         new = WORKFLOW.replace("echo build", "echo ${{ secrets.GITHUB_TOKEN }} ${{ steps.secrets.outputs.x }}")
         self.assertEqual(self.found(new), [])
+
+    def test_the_word_in_a_name_or_a_script_is_not_a_use(self):
+        new = WORKFLOW.replace("      - run: echo build", "      - name: Check that no secrets leak\n        run: grep -r secrets docs || true")
+        self.assertEqual(self.found(new), [])
+
+    def test_the_secret_patterns_agree_with_the_test_that_guards_the_protected_environment(self):
+        # tests/test_main_only_environment.py names secrets with its own pattern; on today's workflows the two agree.
+        from tests import test_main_only_environment as main_only
+
+        for path in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
+            text = "\n".join(mg._strip_comment(l) for l in path.read_text(encoding="utf-8").splitlines())
+            theirs = {n for n in main_only.secret_refs(text) if n.upper() != "GITHUB_TOKEN"}
+            self.assertEqual(mg.secret_names(text) - {"(every secret)"}, theirs, path.name)
 
     def test_a_secret_in_the_workflows_own_env_needs_a_person(self):
         new = WORKFLOW.replace("permissions:\n  contents: read\njobs:", "env:\n  KEY: ${{ secrets.K }}\npermissions:\n  contents: read\njobs:")
@@ -257,9 +277,8 @@ class WorkflowTest(unittest.TestCase):
                     perms = {"*": {"read-all": 1, "write-all": 2}[perms]}
                 self.assertEqual(jobs[name].perms, perms, f"{path.name}#{name}")
                 self.assertEqual(bool(jobs[name].environment), bool(job.get("environment")), f"{path.name}#{name}")
-                declared = set(mg._SECRET.findall(yaml.safe_dump(job)) and
-                               {a or b for a, b in mg._SECRET.findall(yaml.safe_dump(job))}) - {"GITHUB_TOKEN"}
-                self.assertEqual(jobs[name].secrets - {"(every secret)"}, declared, f"{path.name}#{name}")
+                declared = mg.secret_names(yaml.safe_dump(job, width=10_000))
+                self.assertEqual(jobs[name].secrets, declared, f"{path.name}#{name}")
 
 
 class TestsRuleTest(unittest.TestCase):
@@ -276,7 +295,11 @@ class TestsRuleTest(unittest.TestCase):
     def test_every_kind_of_skip_fails(self):
         for marker in (SKIP + '("later")', SKIP_IF + '(True, "x")', XFAIL, "        " + SKIP_CALL + '("no display")',
                        "        raise unittest." + "SkipTest" + '("x")', "from unittest import " + "skip",
-                       "@pytest.mark." + "skip", "@pytest.mark." + "xfail"):
+                       "@pytest.mark." + "skip", "@pytest.mark." + "xfail",
+                       # through an alias (import unittest as u), found in review of #278
+                       "@u." + "skip" + "('x')", "@u." + "skipIf" + "(True, 'x')", "@u." + "expectedFailure",
+                       "@testing.case." + "skipUnless" + "(False, 'x')", "        raise u." + "SkipTest" + "('x')",
+                       "test_a = u." + "skip" + "('x')(test_a)"):
             new = self.OLD.replace("    def test_a", f"    {marker.strip()}\n    def test_a")
             found = mg.check_tests([Change("tests/test_x.py", self.OLD, new)], "")
             self.assertEqual(rules(found), [(CHANGES, "tests", "tests/test_x.py")], marker)

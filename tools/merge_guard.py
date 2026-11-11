@@ -10,9 +10,11 @@ reasons, 2 when the diff could not be read. The pull request's description comes
 
 Standard library only, so the job that runs it installs nothing.
 
-What it does not see: whether a test was loosened without being skipped, whether a claim in the
-description has a run behind it, and the contents of held-out files (it never reads them; the
-private scan does that with the private set). On a ``pull_request`` run the workflow and this file
+What it does not see: a test loosened without being skipped; a test method removed or renamed so
+that it no longer runs; a file that is not Python deleted under ``tests/``; a new trigger (such as
+``workflow_run``) on a workflow that already holds a secret; an ``approval`` in a JSON file outside
+a ``specs`` or ``contracts`` folder; whether a claim in the description has a run behind it; and the
+contents of held-out files (it never reads them; the private scan does that with the private set). On a ``pull_request`` run the workflow and this file
 come from the pull request itself, so a change to either is reported as ``needs-sean`` and the
 merge guard agent should run main's copy.
 """
@@ -40,18 +42,43 @@ INTENDED = re.compile(r"^Guard: test change intended \(#\d+\)\s*$", re.M)
 MAX_BYTES = 4 * 1024 * 1024
 
 # Skips: unittest's decorators and calls, and pytest's, as they appear on a line of a test file.
+_SKIP_NAMES = r"(?:skip|skipIf|skipUnless|skipif|expectedFailure|xfail|SkipTest|skipTest)"
 _SKIP = re.compile(
-    r"\b(?:unittest|pytest|mark)\s*\.\s*(?:skip|skipIf|skipUnless|skipif|expectedFailure|xfail|SkipTest)\b"
-    r"|@\s*(?:skip|skipIf|skipUnless|expectedFailure)\b"
-    r"|\.\s*skipTest\s*\("
-    r"|\braise\s+(?:unittest\s*\.\s*)?SkipTest\b"
-    r"|^\s*from\s+(?:unittest|pytest)(?:\.\w+)*\s+import\b.*\b(?:skip|skipIf|skipUnless|expectedFailure|SkipTest)\b"
+    # any dotted name that ends in one: unittest.skip, an alias such as u.skip, pytest.mark.skipif, self.skipTest
+    r"\.\s*" + _SKIP_NAMES + r"\b"
+    # a bare decorator, a bare raise, and the import that makes either possible
+    r"|@\s*" + _SKIP_NAMES + r"\b"
+    r"|\braise\s+SkipTest\b"
+    r"|^\s*from\s+(?:unittest|pytest)(?:\.\w+)*\s+import\b.*\b" + _SKIP_NAMES + r"\b"
     r"|__unittest_skip__")
 # A path under any fresh set, the third set by name, or a path inside the private repository.
 _HELD_OUT = re.compile(r"\bfresh-[0-9]+/|\bfresh-[3]\b|Expectrail-heldout/[\w.]", re.I)
 _APPROVAL_LINE = re.compile(r"""["']?approval["']?\s*[:=]""")
-_SECRET = re.compile(r"(?<![.\w-])secrets\s*\.\s*([A-Za-z_][A-Za-z0-9_-]*)|(?<![.\w-])secrets\s*\[\s*['\"]([^'\"]+)['\"]\s*\]", re.I)
-_ALL_SECRETS = re.compile(r"tojson\s*\(\s*secrets\s*\)|(?<![.\w-])secrets\s*\[\s*(?!['\"])|(?<![.\w-])secrets\s*:\s*inherit\b", re.I)
+# Any use of the secrets context. The name is read where there is one (secrets.NAME, secrets['NAME']);
+# every other use (secrets.*, toJSON(secrets), format('{0}', secrets), secrets[matrix.key],
+# secrets: inherit) can reach all of them.
+_SECRETS = re.compile(r"(?<![.\w-])secrets\b(?![\w-])", re.I)
+_SECRET_NAME = re.compile(r"\s*(?:\.\s*([A-Za-z_][A-Za-z0-9_-]*)|\[\s*['\"]([^'\"]+)['\"]\s*\])")
+_EXPRESSION = re.compile(r"\$\{\{.*?\}\}", re.S)
+_IF_LINE = re.compile(r"^\s*(?:-\s*)?if\s*:.*$", re.M)
+
+
+def secret_names(text: str) -> set[str]:
+    """The secrets a piece of a workflow can reach; ``(every secret)`` when a use names none."""
+    spans = [m.span() for m in _EXPRESSION.finditer(text)] + [m.span() for m in _IF_LINE.finditer(text)]
+    names: set[str] = set()
+    for m in _SECRETS.finditer(text):
+        rest = text[m.end():]
+        named = _SECRET_NAME.match(rest)
+        if named:
+            names.add(named.group(1) or named.group(2))
+        elif re.match(r"\s*[.\[]", rest) or re.match(r"\s*:\s*inherit\b", rest):
+            names.add("(every secret)")
+        elif any(a <= m.start() < b for a, b in spans):
+            names.add("(every secret)")
+    return {n for n in names if n.upper() != "GITHUB_TOKEN"}
+
+
 _LEVEL = {"none": 0, "read": 1, "write": 2}
 
 
@@ -258,10 +285,7 @@ class Job:
 
     @property
     def secrets(self) -> set[str]:
-        names = {a or b for a, b in _SECRET.findall(self.text)} - {"GITHUB_TOKEN", "github_token"}
-        if _ALL_SECRETS.search(self.text):
-            names.add("(every secret)")
-        return names
+        return secret_names(self.text)
 
     @property
     def id_token(self) -> bool:
