@@ -1,7 +1,9 @@
 # Godot editor cache and our run output
 .godot/
 /runs/
-/tools/
+/tools/*
+!/tools/__init__.py
+!/tools/merge_guard.py
 # The private held-out set when checked out locally or in CI (never commit it)
 /heldout-set/
 # Python
