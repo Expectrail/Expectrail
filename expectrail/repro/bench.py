@@ -116,8 +116,13 @@ def applies(defect: dict, root: Path = REPO, game: str = "game/platformer") -> s
     with tempfile.TemporaryDirectory(prefix="expectrail-repro-") as tmp:
         work = Path(tmp) / "game"
         shutil.copytree(root / game, work, ignore=shutil.ignore_patterns(".godot"))
-        env = {**os.environ, "GIT_CEILING_DIRECTORIES": str(Path(tmp).resolve()), "GIT_CONFIG_NOSYSTEM": "1"}
-        done = subprocess.run(["git", "apply", "--check", "-p1", str((root / defect["patch"]).resolve())],
+        git = shutil.which("git")
+        if git is None:
+            return "git is not installed, so the patch was not checked"
+        # Its own small environment: git finds no repository above the copy and reads nobody's settings.
+        env = {"PATH": os.defpath, "HOME": tmp, "GIT_CEILING_DIRECTORIES": str(Path(tmp).resolve()),
+               "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull}
+        done = subprocess.run([git, "apply", "--check", "-p1", str((root / defect["patch"]).resolve())],
                               cwd=work, capture_output=True, text=True, env=env)
         if done.returncode != 0:
             return " ".join((done.stdout + done.stderr).split())[:300] or f"git apply exited {done.returncode}"
