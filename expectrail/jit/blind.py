@@ -102,7 +102,9 @@ def report_text(entry: dict) -> str:
 
 
 def _patch(game: Path, patch: Path) -> None:
-    subprocess.run(["patch", "-p1", "--forward", "--batch", "--silent", "-d", str(game), "-i", str(patch)],
+    # Absolute: patch -d changes folder before it opens -i, so a relative patch path is not found
+    # (blind run 42940175240: the workflow passes the set as the relative path heldout-set).
+    subprocess.run(["patch", "-p1", "--forward", "--batch", "--silent", "-d", str(game), "-i", str(Path(patch).resolve())],
                    check=True, capture_output=True)
 
 
@@ -216,9 +218,11 @@ def arm_b(base: list[Path], candidate: Path, report: str, work: Path, *, budget_
                     intent=from_proposal(work / "p2" / "jit-proposal.json"), budget_usd=budget_usd)
 
 
-def run_entry(set_root: Path, entry_id: str, out: Path, *, budget_usd: float, arm_a_fn=arm_a, arm_b_fn=arm_b) -> list[dict]:
+def run_entry(set_root: Path, entry_id: str, out: Path, *, budget_usd: float, arm_a_fn=None, arm_b_fn=None) -> list[dict]:
     """Every candidate of one entry through both arms. Returns the public rows; writes them and keeps
-    the rest under ``out``."""
+    the rest under ``out``. Paths are made absolute first, as the workflow passes relative ones."""
+    arm_a_fn, arm_b_fn = arm_a_fn or arm_a, arm_b_fn or arm_b
+    set_root, out = Path(set_root).resolve(), Path(out).resolve()
     entry = next(e for e in entries(set_root) if e["id"] == entry_id)
     out.mkdir(parents=True, exist_ok=True)
     rows = []

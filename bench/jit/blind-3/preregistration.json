@@ -1,6 +1,6 @@
 {
  "format": "expectrail.jit-blind-preregistration/v0",
- "status": "registered",
+ "status": "completed",
  "signedOffBy": "Sean Keluo-Udeke: agreed to these terms in the working session on 2026-11-10 at 18:49 CT, and by merging the pull request that registers them",
  "question": "On defects nobody on the team has seen, does adding generated checks (arm B) catch more wrong fixes than the approved checks alone (arm A), without catching any more correct fixes or intentional changes?",
  "set": {
@@ -51,7 +51,7 @@
   "expectrail/jit/__init__.py": "b7b71f3de71a1fa84623ca9324b666bae2d3600b231b5e546bbd8a1f766efacf",
   "expectrail/jit/assess.py": "9c9ec38ebbad0492f3e642cc20414bb5e436977fa33e9fd2db5abc208a34482a",
   "expectrail/jit/bench.py": "4818707e7fb9cbb876079bd2359a850d358165d792618a2518573f817b4ee74b",
-  "expectrail/jit/blind.py": "7dc4fc7246c28112b6772e4033df5717b419a74ec882ae55e23e5609e6c800c2",
+  "expectrail/jit/blind.py": "856faa917cb8a3c23fb6c625e3fa786112e17373526544e57703c55db56cb901",
   "expectrail/jit/cli.py": "c32e8604a8e4bbab99d4822aa4b42744753e09be3629a31121f43a61e484056f",
   "expectrail/jit/diff_map.py": "793445cde6300d194f609f0ee3c8c1266b7aafa1d25f76dbc003bb1e9cfbdd21",
   "expectrail/jit/dodgy.py": "2c484720f8d111ab0a425bec23b74e990ddb69d78b305306305c71d9193c8d6b",
@@ -117,6 +117,65 @@
     "expectrail/jit/blind.py"
    ],
    "why": "Infrastructure, before any candidate ran: blind run 42939008550 stopped in every entry job in 0 s, because the step redirected its private log into a folder it had not created yet. No replay ran, no model was called, nothing from the set was printed. The step now creates the folder first, and the score calls a run with any of the 18 primary candidates missing incomplete (that run's score said no-added-value on zero rows). The candidates, arms, scoring rule and claim are unchanged."
+  },
+  {
+   "date": "2026-11-10",
+   "pins": [
+    "expectrail/jit/blind.py"
+   ],
+   "why": "Infrastructure: blind run 42940175240 failed in every defect's job before any row was written, because patch -d opens a relative patch path from inside the game folder and the workflow passes the set as a relative path. The two intentional entries were still running when the run was cancelled; it has no result. The runner now makes every path absolute, and a test runs the workflow's exact command with relative paths. Candidates, arms, scoring and claim are unchanged."
   }
- ]
+ ],
+ "result": {
+  "run": "https://github.com/Expectrail/Expectrail/actions/runs/42942805407",
+  "commit": "0906f29",
+  "verdict": "adds-value",
+  "primary": {
+   "wrongCaught": {
+    "A": 0,
+    "B": 3,
+    "of": 8
+   },
+   "correctFalseCatches": {
+    "A": 0,
+    "B": 0,
+    "of": 8
+   },
+   "intentionalFalseCatches": {
+    "A": 0,
+    "B": 0,
+    "of": 2
+   },
+   "noResult": {
+    "A": 0,
+    "B": 0
+   }
+  },
+  "byTraceVisible": {
+   "yes": "B caught 3 of 5 wrong fixes",
+   "no": "0 of 2",
+   "unsure": "0 of 1"
+  },
+  "supplementary": {
+   "commentOnlyCaught": {
+    "A": 0,
+    "B": 3,
+    "of": 8
+   },
+   "commentOnlyNoResult": {
+    "B": 1
+   },
+   "undoFalseCatches": {
+    "A": 0,
+    "B": 0,
+    "of": 8
+   }
+  },
+  "spendUsd": 3.6667,
+  "earlierRuns": [
+   "42939008550 and 42940175240: stopped by runner bugs before any candidate ran (amendments above); no result"
+  ],
+  "reading": "Arm A accepted all 34 candidates: the approved checks cover none of these defects, so B adds value over a zero baseline. On the 3 defects where the generator wrote a check that fails on the defect (where the comment-only fix was caught), it also caught the set's own wrong fix, 3 of 3; on the other 5 it did not reproduce the defect, 2 of them trace-visible. No false catch on 18 correct candidates. Eight defects in one game: evidence, not a rate.",
+  "note": "Completed: the pins describe the run's commit and no longer have to hold on main. As registered, generated checks and records stayed on the runners and were not kept."
+ }
 }
