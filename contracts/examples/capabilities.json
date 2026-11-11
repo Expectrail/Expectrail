@@ -1,0 +1,114 @@
+{
+  "format": "expectrail.capabilities/v1",
+  "updated": "2026-11-11",
+  "statuses": {
+    "implemented": "The code is in the repository and its tests pass in CI. It has run only on recorded or synthetic inputs, or has no recorded end-to-end run.",
+    "integrated": "Wired into the path a user takes (a command, a workflow or the site) and exercised there by a CI job or a recorded run. No published result rests on it.",
+    "measured": "A recorded CI run produced a result that the README, the site or a bench record publishes. The row links the run.",
+    "experimental": "Built and possibly run, but parked, a trial, or advisory and unmeasured. Do not rely on it; it may change or go."
+  },
+  "grades": {
+    "fixture": "Saved or synthetic data, for demos and tests. Never clears a release.",
+    "diagnostic": "A real run: the engine or the browser ran, or a live model answered, on a developer's machine or a CI runner, with isolation as declared. Does not clear a release.",
+    "isolated": "The game ran sandboxed with no network, the checks came from the base commit, and a separate trusted job judged and signed. No row has this grade yet: the replay sandbox (#253), the two-job action (#254) and the receipt (#255) are open.",
+    "protected": "Isolated, plus capture the game cannot forge. Reserved until the capture spike (#246) shows a way; the check refuses this grade."
+  },
+  "rows": [
+    {
+      "id": "godot-verify",
+      "mode": "Godot verify path: replay a candidate, judge the approved checks, accept or reject",
+      "profile": "Godot 4.7.2, 2D, Linux under Xvfb and Mesa; one game (Godot's platformer demo)",
+      "observer": "The engine's position log and the gameplay check; SAM 3.1 or Muse Glimmer for the vision checks",
+      "entryPoints": [
+        "agents.verifier",
+        "agents.gate1",
+        "expectrail.evaluator"
+      ],
+      "workflows": [
+        "ci.yml"
+      ],
+      "names": [
+        "Godot"
+      ],
+      "grade": "diagnostic",
+      "status": "measured",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41003749744",
+          "conclusion": "success",
+          "shows": "8 of 8 held-out bugs caught with SAM 3.1 on, no false alarm on the clean game"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
+          "conclusion": "success",
+          "shows": "CI on main, job agents-harness-verify: real replays with SAM off accept the correct fix and reject the fix that freezes the player"
+        },
+        {
+          "kind": "record",
+          "ref": "bench/judge/README.md",
+          "shows": "0 of 7 fixes that only look right accepted and 8 of 8 correct fixes accepted, three runs"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_agents.py",
+          "shows": "the decision rule on recorded observations"
+        }
+      ],
+      "limits": "One game, with bugs the team seeded. The replay is not yet sandboxed without network (#253) and no separate trusted job signs the verdict, so nothing here is isolated. The approved specs judge frames 0 to 119 of a route."
+    },
+    {
+      "id": "mcp-tools",
+      "mode": "MCP tools: draft a spec, run the loop once, run the trust probe",
+      "profile": "A stdio MCP server for Claude Code, Cursor or any MCP client",
+      "observer": "None",
+      "entryPoints": [
+        "agents.mcp_server"
+      ],
+      "names": [
+        "MCP",
+        "Cursor"
+      ],
+      "grade": "fixture",
+      "status": "implemented",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_byo_wiring.py",
+          "shows": "the draft-spec tool writes a valid, unapproved spec; a bad line gets a parse error"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_byo_providers.py",
+          "shows": "initialize and the tool list"
+        }
+      ],
+      "limits": "No run from an MCP client is recorded. The tools are expectrail_draft_spec, expectrail_verify_build and expectrail_trust_check; #252 retires verify_build's fix loop."
+    }
+  ],
+  "notModes": {
+    "commands": {
+      "unittest": "runs the test suite"
+    },
+    "switches": {},
+    "docs": {},
+    "workflows": {}
+  },
+  "nameWatch": [
+    "Godot",
+    "MCP"
+  ],
+  "timings": [
+    {
+      "what": "One Godot verification of a seeded bug with its fix: replay, judge, write the report and the release candidate",
+      "runner": "GitHub-hosted ubuntu-24.04, SAM off",
+      "seconds": 29,
+      "resolutionSeconds": 1,
+      "run": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223/job/130241583383",
+      "step": "Harness-backed Gate 1 accept (seed + fix candidate)",
+      "notMeasured": "The time per phase (import, replay, evaluate): the step is timed as a whole, from the job's step timestamps. One run, so no spread.",
+      "conclusion": "success"
+    }
+  ]
+}

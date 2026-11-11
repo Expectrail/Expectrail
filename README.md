@@ -82,6 +82,8 @@ Expectrail's first version was built between October 26 and November 4, 2026. It
 ## What it shows
 
 Each claim below has a run behind it; the full tables, with limits, are under [Results](#results).
+How far each mode is proven (measured in CI, wired in and run, tested only, or experimental) is in
+the [capability ledger](docs/capabilities.md), one row per mode with the run or test that shows it.
 
 - **It rejects fixes that only look right.** Given a "fix" that stops the robot falling through the
   floor by drawing it sunk into the ground, a position-only check passed it, and Muse Code, shown
@@ -569,6 +571,7 @@ What this does and does not show:
   check built after that bug was first missed.
 
 Known limits in more detail, and what we would build next: [docs/future-work.md](docs/future-work.md).
+Which modes are measured and which are only built: [docs/capabilities.md](docs/capabilities.md).
 
 ## Interactive demo
 
