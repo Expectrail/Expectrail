@@ -1,0 +1,34 @@
+# Merge guard check (tools/merge_guard.py, issue #245): the rules in AGENTS.md that a diff can break
+# and a program can see. It reads the diff and the description, installs nothing and holds no secret.
+# One line per reason, each starting with the label the merge guard agent applies.
+#
+# On a pull_request run this file and the tool come from the pull request itself, so the tool reports
+# a change to either as needs-sean, and the merge guard agent runs main's copy before it merges.
+name: Merge guard
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: merge-guard-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  merge-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Check the diff against the rules no agent may break
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MERGE_GUARD_PR_BODY: ${{ github.event.pull_request.body }}
+        run: python3 -m tools.merge_guard --base "$BASE_SHA" --head "$HEAD_SHA"
