@@ -7,20 +7,20 @@
 #
 # How (install.sh): nothing is installed when the image already has the packages; otherwise cached
 # .deb files from an earlier run on the same runner image are installed with no network; otherwise
-# the live mirror is tried several times, then Ubuntu's snapshot archive, and what was downloaded is
-# cached. The cache key holds the runner image's version; a new image first tries the previous
+# the live mirror is tried twice, then two mirrors Canonical does not run (apt still checks the
+# archive's signature), then Ubuntu's snapshot archive, and what was downloaded is cached. The cache key holds the runner image's version; a new image first tries the previous
 # image's packages and fetches afresh only if they do not install.
 #
 # What it does not cover: a run with no cache at all (the first ever, or after a week without runs)
-# during an outage of both the live mirror and the snapshot archive, as on November 11 when neither
-# archive.ubuntu.com nor snapshot.ubuntu.com answered. Caches written on main are readable by pull requests; a pull
+# while Ubuntu's mirror, both independent mirrors and the snapshot archive are all unreachable. On
+# November 11 neither archive.ubuntu.com nor snapshot.ubuntu.com answered for over an hour. Caches written on main are readable by pull requests; a pull
 # request's cache is not readable by main, so a pull request cannot change what main installs.
 #
 # The repository must be checked out before this step (it is a local action). Every workflow uses
 # this instead of calling apt-get; tests/test_apt_install.py fails on a bare apt-get. unity.yml is
 # the exception: it pins every package to the snapshot for identical frames across runners.
 name: apt install
-description: Install Ubuntu packages from the image, a cache, the live mirror or the snapshot archive, in that order.
+description: Install Ubuntu packages from the image, a cache, the live mirror, an independent mirror or the snapshot archive, in that order.
 inputs:
   packages:
     description: Package names, separated by spaces.

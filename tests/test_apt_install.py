@@ -26,13 +26,18 @@ STUBS = {
     # Installed packages are lines of $STATE/installed.
     "dpkg-query": '#!/bin/bash\np="${@: -1}"\ngrep -qx "$p" "$STATE/installed" 2>/dev/null && printf "install ok installed" || exit 1\n',
     # dpkg -i installs whatever .deb names it is given, unless $STATE/dpkg-fails exists.
-    "dpkg": '#!/bin/bash\necho "dpkg $*" >> "$STATE/calls"\n[ -e "$STATE/dpkg-fails" ] && exit 1\n'
+    "dpkg": '#!/bin/bash\n[ "$1" = --print-architecture ] && { echo amd64; exit 0; }\n'
+            'echo "dpkg $*" >> "$STATE/calls"\n[ -e "$STATE/dpkg-fails" ] && exit 1\n'
             'for f in "$@"; do case "$f" in *.deb) basename "$f" .deb >> "$STATE/installed";; esac; done\n',
     # apt-get fails while $STATE/live-failures (or snapshot-failures, with --snapshot) is above zero,
     # counted once per `update`. --download-only writes a .deb per package; install marks them installed.
     "apt-get": r'''#!/bin/bash
 echo "apt-get $*" >> "$STATE/calls"
-which=live; for a in "$@"; do [ "$a" = "--snapshot" ] && which=snapshot; done
+which=live
+for a in "$@"; do
+  [ "$a" = "--snapshot" ] && which=snapshot
+  case "$a" in Dir::Etc::sourcelist=*) which=mirror; cat "${a#Dir::Etc::sourcelist=}" >> "$STATE/sources";; esac
+done
 left=$(cat "$STATE/$which-failures" 2>/dev/null || echo 0)
 verb=; for a in "$@"; do case "$a" in update|install) verb=$a;; esac; done
 if [ "$verb" = update ]; then
@@ -45,7 +50,7 @@ for a in "$@"; do
   case "$a" in
     Dir::Cache::Archives=*) dir="${a#Dir::Cache::Archives=}";;
     --download-only) download=1;;
-    -*|install|[0-9]*T*Z|Acquire::*) ;;
+    -*|install|[0-9]*T*Z|Acquire::*|Dir::Etc::*) ;;
     *) pkgs+=("$a");;
   esac
 done
@@ -70,9 +75,10 @@ class InstallScript(unittest.TestCase):
             path.chmod(path.stat().st_mode | stat.S_IEXEC)
         self.output = root / "output"
 
-    def run_install(self, *packages, snapshot="20261108T000000Z"):
+    def run_install(self, *packages, snapshot="20261108T000000Z", mirrors="https://mirror-a.example/ubuntu https://mirror-b.example/ubuntu"):
         env = dict(os.environ, PATH=f"{self.bin}:{os.environ['PATH']}", STATE=str(self.state),
-                   GITHUB_OUTPUT=str(self.output), APT_PAUSE_SECONDS="0", APT_ATTEMPTS="3", APT_SNAPSHOT=snapshot)
+                   GITHUB_OUTPUT=str(self.output), APT_PAUSE_SECONDS="0", APT_ATTEMPTS="3", APT_SNAPSHOT=snapshot,
+                   APT_MIRRORS=mirrors)
         return subprocess.run(["bash", str(ACTION / "install.sh"), str(self.cache), *packages],
                               env=env, capture_output=True, text=True)
 
@@ -119,16 +125,33 @@ class InstallScript(unittest.TestCase):
         self.assertEqual(sorted(p.name for p in self.cache.glob("*.deb")), ["bubblewrap.deb", "xvfb.deb"])
         self.assertFalse((self.cache / "partial").exists())   # only the packages are cached
 
+    def test_an_independent_mirror_serves_when_ubuntus_own_is_down(self):
+        # November 11: archive.ubuntu.com and snapshot.ubuntu.com were both unreachable.
+        for which in ("live", "snapshot"):
+            (self.state / f"{which}-failures").write_text("99", encoding="utf-8")
+        (self.state / "mirror-failures").write_text("1", encoding="utf-8")   # the first mirror is down too
+        done = self.run_install("bubblewrap")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.outputs(), {"source": "mirror", "fetched": "true"})
+        self.assertIn("installed from the mirror https://mirror-b.example/ubuntu", done.stdout)
+        sources = (self.state / "sources").read_text(encoding="utf-8")
+        codename = next(l.split("=", 1)[1].strip() for l in Path("/etc/os-release").read_text().splitlines()
+                        if l.startswith("VERSION_CODENAME="))
+        self.assertIn(f"deb https://mirror-b.example/ubuntu {codename}-updates main universe", sources)
+        # The system's own source files are switched off for that call, so only the mirror is asked.
+        self.assertTrue(any("Dir::Etc::sourceparts=-" in c for c in self.calls()))
+        self.assertFalse(any("--snapshot" in c for c in self.calls()))   # the mirror came first
+
     def test_the_snapshot_archive_serves_when_the_live_mirror_stays_down(self):
         (self.state / "live-failures").write_text("99", encoding="utf-8")
-        done = self.run_install("bubblewrap")
+        done = self.run_install("bubblewrap", mirrors="")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertEqual(self.outputs(), {"source": "snapshot", "fetched": "true"})
         self.assertIn("may differ from the live archive", done.stdout)
         self.assertTrue(any("--snapshot 20261108T000000Z" in c for c in self.calls()))
 
     def test_everything_down_fails_and_says_why(self):
-        for which in ("live", "snapshot"):
+        for which in ("live", "mirror", "snapshot"):
             (self.state / f"{which}-failures").write_text("99", encoding="utf-8")
         done = self.run_install("bubblewrap")
         self.assertEqual(done.returncode, 1)
@@ -137,9 +160,9 @@ class InstallScript(unittest.TestCase):
 
     def test_no_snapshot_means_no_fallback(self):
         (self.state / "live-failures").write_text("99", encoding="utf-8")
-        done = self.run_install("bubblewrap", snapshot="")
+        done = self.run_install("bubblewrap", snapshot="", mirrors="")
         self.assertEqual(done.returncode, 1)
-        self.assertFalse(any("--snapshot" in c for c in self.calls()))
+        self.assertFalse(any("--snapshot" in c or "sourcelist" in c for c in self.calls()))
 
     def test_a_reported_success_that_installed_nothing_is_not_success(self):
         # `apt-get update` exits 0 with only warnings when a mirror cannot be resolved (the November 11
