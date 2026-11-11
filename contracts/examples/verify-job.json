@@ -1,0 +1,51 @@
+{
+  "format": "expectrail.verify-job/v1",
+  "id": "9d829046502d03a81abd22e52b65173b",
+  "phase": "completed",
+  "decision": "accept",
+  "reasons": [
+    "all 2 checks pass"
+  ],
+  "diagnostics": [],
+  "inputs": {
+    "requestDigest": "03254b44611e436ba0c8d34f1b70d89bcf246fb22c901aeda682c7fa782ed2bf",
+    "headTree": "696d3a2911d4b812223555e8da870c23381bdbe3b382c0e4f603518d7fbab55c",
+    "baseTree": "a40ee44f58b3027df1f47b4f537d51c06e805f63b7a63a2ed044f8f00d19948c",
+    "policyDigest": "76be2bb906b8085d8ac8cfad388b36aa931ee0e73526c325c67502169d8a7944"
+  },
+  "executionClass": "diagnostic",
+  "evidenceGrade": "diagnostic",
+  "worker": {
+    "pid": 4242,
+    "pgid": 4242
+  },
+  "lease": {
+    "heartbeatAt": "2026-11-11T18:20:24.992237Z",
+    "expiresAt": "2026-11-11T18:20:54.992237Z"
+  },
+  "output": "output",
+  "history": [
+    {
+      "phase": "queued",
+      "at": "2026-11-11T18:20:24.987730Z"
+    },
+    {
+      "phase": "preparing",
+      "at": "2026-11-11T18:20:24.991452Z"
+    },
+    {
+      "phase": "executing",
+      "at": "2026-11-11T18:20:24.992226Z"
+    },
+    {
+      "phase": "completed",
+      "at": "2026-11-11T18:20:25.012097Z"
+    }
+  ],
+  "createdAt": "2026-11-11T18:20:24.987730Z",
+  "updatedAt": "2026-11-11T18:20:25.012113Z",
+  "finishedAt": "2026-11-11T18:20:25.012097Z",
+  "expectrail": {
+    "version": "0.1.0"
+  }
+}

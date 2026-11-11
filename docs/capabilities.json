@@ -911,6 +911,29 @@
         }
       ],
       "limits": "A build trial only, and the run it cites ended in failure. No harness, check or verdict exists for a COCOS game."
+    },
+    {
+      "id": "orchestrator",
+      "mode": "Verification as a job: verify, status, cancel and report, with a folder and a status file per job",
+      "profile": "The Godot game, through the CI gate's verification",
+      "observer": "The engine's record; no vision model",
+      "entryPoints": [
+        "expectrail.orchestrator"
+      ],
+      "workflows": [],
+      "docs": [
+        "docs/orchestrator.md"
+      ],
+      "grade": "diagnostic",
+      "status": "implemented",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_orchestrator.py",
+          "shows": "two jobs keep to their own folders; a cancelled job stays cancelled and what it started is stopped; a killed worker leaves a failed job; a job out of time is needs-review; a missing tool is a diagnostic and needs-review; the Godot engine decides as the gate does, on a stand-in replay"
+        }
+      ],
+      "limits": "No CI run yet: the real Godot runs behind it (a fix accepted, a regression rejected, a job cancelled mid-run) were local. The isolated execution class is refused until the replay sandbox exists (#253). One host."
     }
   ],
   "notModes": {
