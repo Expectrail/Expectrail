@@ -45,7 +45,7 @@ _SKIP = re.compile(
     r"|@\s*(?:skip|skipIf|skipUnless|expectedFailure)\b"
     r"|\.\s*skipTest\s*\("
     r"|\braise\s+(?:unittest\s*\.\s*)?SkipTest\b"
-    r"|\bimport\b.*\b(?:skip|skipIf|skipUnless|expectedFailure|SkipTest)\b"
+    r"|^\s*from\s+(?:unittest|pytest)(?:\.\w+)*\s+import\b.*\b(?:skip|skipIf|skipUnless|expectedFailure|SkipTest)\b"
     r"|__unittest_skip__")
 # A path under any fresh set, the third set by name, or a path inside the private repository.
 _HELD_OUT = re.compile(r"\bfresh-[0-9]+/|\bfresh-[3]\b|Expectrail-heldout/[\w.]", re.I)
