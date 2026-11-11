@@ -146,5 +146,22 @@
   "trace": {
     "path": "trace.json",
     "sha256": "9e15302e3647dc19155083dc9708ef5180309ea916fd53a532b89cffde1336fd"
+  },
+  "isolation": {
+    "sandbox": {
+      "tool": "bubblewrap",
+      "version": "0.9.0"
+    },
+    "mode": "auto",
+    "reason": null,
+    "network": "none",
+    "filesystem": "confined",
+    "processes": "own",
+    "environment": "allowlist",
+    "limits": {
+      "scratchBytes": 268435456,
+      "fileBytes": 2147483648,
+      "processes": 4096
+    }
   }
 }

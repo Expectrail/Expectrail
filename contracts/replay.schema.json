@@ -184,6 +184,22 @@
           }
         }
       }
+    },
+    "isolation": {
+      "description": "What the game could reach while it ran (harness/sandbox.py). With a sandbox: no network, its own process tree, and a file system holding only its work copy, one output folder and its inputs. Without one, 'reason' says why and the game ran as the harness's user with only its environment narrowed. Written by the Godot harness; absent from older replays and from engines that do not record it yet, which a reader must treat as not isolated.",
+      "type": "object",
+      "required": ["sandbox", "mode", "reason", "network", "filesystem", "processes", "environment", "limits"],
+      "additionalProperties": false,
+      "properties": {
+        "sandbox": {"description": "The tool that isolated the game, or null when nothing did.", "type": ["object", "null"], "required": ["tool", "version"], "additionalProperties": false, "properties": {"tool": {"enum": ["bubblewrap"]}, "version": {"type": "string", "minLength": 1}}},
+        "mode": {"description": "What was asked for: isolate when possible, refuse to run without it, or do not isolate.", "enum": ["auto", "require", "off"]},
+        "reason": {"description": "Why the game was not isolated; null when it was.", "type": ["string", "null"]},
+        "network": {"enum": ["none", "host"]},
+        "filesystem": {"enum": ["confined", "host"]},
+        "processes": {"description": "own: a separate process tree and /proc; host: the game could see the harness's processes.", "enum": ["own", "host"]},
+        "environment": {"description": "allowlist: only display and rendering variables were passed.", "enum": ["allowlist"]},
+        "limits": {"description": "Limits in force inside the sandbox, or null without one. Total disk use of the work copy and the output folder is not limited.", "type": ["object", "null"], "required": ["scratchBytes", "fileBytes", "processes"], "additionalProperties": false, "properties": {"scratchBytes": {"type": "integer", "minimum": 1}, "fileBytes": {"type": "integer", "minimum": 1}, "processes": {"type": "integer", "minimum": 1}}}
+      }
     }
   }
 }

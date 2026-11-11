@@ -213,8 +213,11 @@ and searches every output file, the log and the comment for its route names.
   same user as the gate, so it could rewrite files the gate reads before the upload. The comment
   job checks the record's shape, the commit it names and the workflow behind it, and says so when the
   pull request changes that workflow. It cannot prove that the verification itself was not tampered
-  with. Use the comment as evidence for a reviewer. Next: run the game in a sandbox inside the verify
-  job (no network, writes only to its own run folder).
+  with. Use the comment as evidence for a reviewer. The harness now runs the game in a sandbox wherever
+  bubblewrap can run ([replay-sandbox.md](replay-sandbox.md)): no network, writes only to its own copy
+  and one output folder, no view of the checks or of the gate's processes. The verify workflow does not
+  install bubblewrap yet and the findings record does not say whether the replay was isolated, so this
+  limit stands until both are done (#253).
 - **Held-out routes and pull request code share a job.** If you pass `heldout-token`, the pull
   request's game runs in the job that holds the held-out routes and can read them while it runs.
   Pass it only when the people and agents who open pull requests may see the held-out set anyway.
