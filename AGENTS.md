@@ -22,7 +22,8 @@ The roadmap is at https://claude.ai/artifact/19H7AMWjV7K6fVpt18DLQx and every de
 - Never push to main and never push to someone else's branch under review. Changes reach main by pull request.
 - Run `git fetch --no-tags --depth=1 origin c169a5e0da304773587304ed47bc8aabcec80da7` once, then
   `python3 -m unittest discover -s tests -t .` before pushing. Do not open a pull request with a failing suite.
-- Add one row to `docs/new-work.md` for every change: the date, what changed and what was or was not run, the files.
+- Add one file under `docs/new-work/` for every change, named `YYYY-MM-DD-short-name.md`: what changed, what was
+  or was not run, the files (`docs/new-work/README.md` has the layout). Never add to another change's file.
 - Contracts first: a schema, its example, the writer and the reader change in one pull request.
 - Never edit `game/platformer` or `game/unity-platformer`. Seeded bugs and their fixes are patches.
 - Never weaken a test to make it pass. Deleting or skipping a test needs a reason in the pull request and a line
@@ -59,7 +60,7 @@ each open pull request labelled `agent-pr` and merges it only when all of these 
 4. Nothing in the diff is on the list above. If something is, the guard labels it `needs-sean` and leaves it.
 5. No test was deleted, skipped or loosened without the stated reason, and every claim in the description is backed
    by a run it can see.
-6. The issue's "Done when" is met for the part the pull request claims, and `docs/new-work.md` has its row.
+6. The issue's "Done when" is met for the part the pull request claims, and `docs/new-work/` has its entry.
 
 No agent merges its own pull request. When the guard finds a problem it comments with the exact reason and labels the
 pull request `changes-requested`; the builder fixes it on the same branch. If main turns red after a merge, the guard
