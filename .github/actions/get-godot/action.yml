@@ -1,0 +1,35 @@
+# Put the pinned Godot binary in tools/godot without depending on a download succeeding first time.
+#
+# Why: every job downloaded the engine from GitHub releases with one curl and no retry. One HTTP 500
+# failed the required check capture-smoke on November 11, 2026 (#296).
+#
+# How: the verified download is kept in GitHub's cache, keyed on harness/get_godot.sh (which names the
+# version and its SHA-512). harness/get_godot.sh checks that SHA-512 on every use, cached or not, and
+# retries the download when it has to make one. The cache is saved only after a fresh download.
+# A pull request cannot change what main restores: its cache is not readable by main.
+#
+# The repository must be checked out first (this is a local action). Every workflow uses this instead
+# of calling harness/get_godot.sh; tests/test_downloads.py fails otherwise.
+name: get Godot
+description: The pinned Godot binary, from the cache or a retried download, SHA-512 checked either way.
+outputs:
+  source:
+    description: Where the binary came from (present, cache or download).
+    value: ${{ steps.get.outputs.source }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: tools/godot_cache
+        key: godot-${{ hashFiles('harness/get_godot.sh') }}
+    - id: get
+      shell: bash
+      env:
+        GODOT_KEEP_DOWNLOAD: '1'
+      run: ./harness/get_godot.sh
+    - if: steps.get.outputs.source == 'download'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: tools/godot_cache
+        key: godot-${{ hashFiles('harness/get_godot.sh') }}

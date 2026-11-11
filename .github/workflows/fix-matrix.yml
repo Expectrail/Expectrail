@@ -111,7 +111,7 @@ jobs:
         with:
           packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Fetch the private held-out set (its routes only are rendered here)
         if: inputs.sam_cache == 'shared'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -318,7 +318,7 @@ jobs:
             --ro-bind /usr /usr --ro-bind /bin /bin --ro-bind /lib /lib \
             --ro-bind /lib64 /lib64 -- true
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Fetch the private held-out set (verifier side only)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -581,7 +581,7 @@ jobs:
             echo 1 | sudo tee /proc/sys/kernel/unprivileged_userns_clone
           fi
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Fetch the private held-out set (verifier side only)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -806,7 +806,7 @@ jobs:
             --ro-bind /usr /usr --ro-bind /bin /bin --ro-bind /lib /lib \
             --ro-bind /lib64 /lib64 -- true
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Fetch the private held-out set (verifier side only)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

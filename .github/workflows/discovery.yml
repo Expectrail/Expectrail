@@ -90,7 +90,7 @@ jobs:
           packages: patch
       - &godot
         name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Discover
         env:
           BUILD: ${{ matrix.build }}

@@ -88,7 +88,7 @@ jobs:
         with:
           packages: patch
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Both arms on every candidate of this entry (output kept private)
         env:
           MODEL_API_KEY: ${{ secrets.MODEL_API_KEY || secrets.META_API_KEY }}

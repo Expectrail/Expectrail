@@ -1,0 +1,41 @@
+# Playwright's Chromium without depending on its download succeeding first time (#296).
+#
+# The browser Playwright downloads is kept in GitHub's cache, keyed on requirements-web.txt (which
+# pins the Playwright version, and with it the browser build). On a miss the download is tried three
+# times. Playwright must already be installed (pip install -r requirements-web.txt), and the fonts
+# Chromium renders with come from .github/actions/apt-install, not from `--with-deps`.
+name: get Chromium
+description: Playwright's Chromium, from the cache or a retried download.
+runs:
+  using: composite
+  steps:
+    - id: restore
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-chromium-${{ runner.os }}-${{ hashFiles('requirements-web.txt') }}
+    - id: get
+      shell: bash
+      env:
+        RESTORED: ${{ steps.restore.outputs.cache-hit }}
+      run: |
+        attempt=1
+        until python -m playwright install chromium; do
+          if [ "$attempt" -ge 3 ]; then
+            echo "::error title=get-chromium::could not download Chromium in 3 attempts"
+            exit 1
+          fi
+          echo "::warning title=get-chromium::download attempt $attempt of 3 failed; trying again in 10 s"
+          sleep 10
+          attempt=$((attempt + 1))
+        done
+        if [ "$RESTORED" = true ]; then
+          echo "::notice title=get-chromium::Chromium restored from the cache"
+        else
+          echo "fetched=true" >> "$GITHUB_OUTPUT"
+        fi
+    - if: steps.get.outputs.fetched == 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-chromium-${{ runner.os }}-${{ hashFiles('requirements-web.txt') }}

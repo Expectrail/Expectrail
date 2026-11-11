@@ -75,7 +75,7 @@ jobs:
         with:
           packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Render the clean game and every seeded bug
         run: python -m harness.check_seeded --out runs/seeded
       - name: Ask SAM 3.1 what it sees
@@ -156,7 +156,7 @@ jobs:
         with:
           packages: xvfb libgl1-mesa-dri libglx-mesa0 patch ffmpeg
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Render the clean game and every seeded bug (public route)
         run: python -m harness.check_seeded --out runs/seeded
       - name: Send every frame both ways
@@ -263,7 +263,7 @@ jobs:
         with:
           packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Fetch the private held-out set (verifier side only)
         if: env.HELDOUT_TOKEN_SET == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -441,7 +441,7 @@ jobs:
         with:
           packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Expectrail/Expectrail-heldout

@@ -110,7 +110,7 @@ jobs:
         with:
           packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Fetch the private held-out set (verify mode, verifier side only)
         if: env.HELDOUT_TOKEN_SET == 'true' && inputs.mode == 'verify'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

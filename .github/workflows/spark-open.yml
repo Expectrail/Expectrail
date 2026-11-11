@@ -56,7 +56,7 @@ jobs:
         with:
           packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Replay every seeded bug, for the ground draft's verdicts
         run: python -m harness.check_seeded --out runs/seeded-check
       - name: Draft, judge and sort with Muse Spark Open

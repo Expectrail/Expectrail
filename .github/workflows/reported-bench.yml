@@ -83,7 +83,7 @@ jobs:
           packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - &godot
         name: Download Godot 4.7.2 and check its SHA-512
-        run: ./harness/get_godot.sh
+        uses: ./.github/actions/get-godot
       - name: Render and judge
         env:
           EXPECTRAIL_OBS_PROVIDER: trace
