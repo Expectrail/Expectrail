@@ -60,7 +60,9 @@ jobs:
           python -m pip install mitmproxy
           mitmdump --version | head -1
       - name: Install bubblewrap, xvfb, software OpenGL
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bubblewrap xvfb libgl1-mesa-dri libglx-mesa0 patch
+        uses: ./.github/actions/apt-install
+        with:
+          packages: bubblewrap xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Allow unprivileged user namespaces for bubblewrap
         run: |
           if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then

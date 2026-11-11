@@ -71,7 +71,9 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt pillow==12.3.0
       - name: Install a virtual display and software OpenGL
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 patch
+        uses: ./.github/actions/apt-install
+        with:
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
         run: ./harness/get_godot.sh
       - name: Render the clean game and every seeded bug
@@ -150,7 +152,9 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt
       - name: Install a virtual display, software OpenGL and ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 patch ffmpeg
+        uses: ./.github/actions/apt-install
+        with:
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch ffmpeg
       - name: Download Godot 4.7.2 and check its SHA-512
         run: ./harness/get_godot.sh
       - name: Render the clean game and every seeded bug (public route)
@@ -255,7 +259,9 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt
       - name: Install a virtual display and software OpenGL
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 patch
+        uses: ./.github/actions/apt-install
+        with:
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
         run: ./harness/get_godot.sh
       - name: Fetch the private held-out set (verifier side only)
@@ -431,7 +437,9 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt
       - name: Install a virtual display and software OpenGL
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 patch
+        uses: ./.github/actions/apt-install
+        with:
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
       - name: Download Godot 4.7.2 and check its SHA-512
         run: ./harness/get_godot.sh
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

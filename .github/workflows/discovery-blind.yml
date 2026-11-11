@@ -105,7 +105,9 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt
       - name: Install patch
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends patch
+        uses: ./.github/actions/apt-install
+        with:
+          packages: patch
       - name: Download Godot 4.7.2 and check its SHA-512
         run: ./harness/get_godot.sh
       - name: Verify the freeze and the committed digest of the set
