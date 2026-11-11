@@ -1,0 +1,31 @@
+{
+  "format": "expectrail.verify-timing/v1",
+  "what": "One verification by agents.verifier.verify, from the request to verification.json: the replays it asks the harness for, and judging them",
+  "clock": "time.perf_counter",
+  "totalSeconds": 20.0,
+  "phases": {
+    "import": 1.5,
+    "replay": 15.0,
+    "evaluate": 0.5,
+    "other": 3.0
+  },
+  "arms": [
+    {
+      "arm": "reference",
+      "harnessRuns": 1,
+      "seconds": { "import-cache": 0.1, "prepare": 0.4, "import": 0.0, "replay": 3.0, "record": 0.1 }
+    },
+    {
+      "arm": "candidate",
+      "harnessRuns": 1,
+      "seconds": { "import-cache": 0.1, "prepare": 0.5, "import": 1.2, "replay": 6.0, "record": 0.7 }
+    },
+    {
+      "arm": "clean",
+      "harnessRuns": 1,
+      "seconds": { "import-cache": 0.1, "prepare": 0.5, "import": 0.0, "replay": 6.0, "record": 0.8 }
+    }
+  ],
+  "decision": "accept",
+  "sam": false
+}

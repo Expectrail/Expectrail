@@ -102,6 +102,33 @@ run, a measured or integrated row cites only runs whose recorded `conclusion` is
 row points at exists, the `protected` grade is refused, and every command, switch,
 workflow, doc page and watched name in the README or `docs/index.html` belongs to a row.
 
+A wall time in the ledger may carry `phases` (import, replay, evaluate, other), copied from a run's
+`timing.json`, with `phasesFrom` saying where in the run they can be read. The check fails when the
+phases do not add up to the whole.
+
+## Wall time per phase (added November 11)
+
+`verify-timing` (`expectrail.verify-timing/v1`,
+[`contracts/verify-timing.v1.schema.json`](../contracts/verify-timing.v1.schema.json), example
+[`verify-timing.json`](../contracts/examples/verify-timing.json)) says where the wall time of one
+verification went. It never feeds a decision.
+
+| Record | Written by | Read by |
+| --- | --- | --- |
+| `verify-timing` | `agents.verifier.verify`, as `timing.json` beside `verification.json` | `python3 -m expectrail.timing show` (a CI notice and job summary), and by hand into the ledger's wall times |
+
+Four phases that add up to the total: `import` (Godot's `--import`, and warming the shared import
+cache when it is cold), `replay` (the Godot process playing the route), `evaluate` (everything the
+verifier does outside a harness run: observations, the checks, the verdict files; with SAM on this
+includes the model calls) and `other` (the harness copying the game, applying patches and hashing
+frames). `evaluate` is the total less the harness's own time, not a timer of its own. `arms` gives
+the harness's five steps for each replay the verifier asked for: `reference`, `candidate`, `clean`,
+and `held-out-1`, `held-out-2` and so on; a private route is named by its position only, and the
+schema refuses any other name. It is not in `expectrail.contracts.KINDS`. One run on one machine: it
+is a measurement of that run, with no spread. If the record cannot be written the verification
+stands, `timing.json` is removed and `timing-error.txt` says why. The review's replays
+(`agents.review_change`) and the CI gate's are not timed yet.
+
 ## Rules the contracts encode
 
 - **A missing object is never a pass.** In `observations`, an object with an empty list in a frame

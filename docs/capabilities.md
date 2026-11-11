@@ -65,9 +65,13 @@ Last changed 2026-11-11. 24 rows: 3 implemented, 11 integrated, 7 measured, 3 ex
 
 ## Wall time
 
-| What | Runner | Seconds | Run | Not measured |
-| --- | --- | --- | --- | --- |
-| One Godot verification of a seeded bug with its fix: replay, judge, write the report and the release candidate (step "Harness-backed Gate 1 accept (seed + fix candidate)") | GitHub-hosted ubuntu-24.04, SAM off | 29, to the nearest 1 | [run 42934646223](https://github.com/Expectrail/Expectrail/actions/runs/42934646223/job/130241583383) | The time per phase (import, replay, evaluate): the step is timed as a whole, from the job's step timestamps. One run, so no spread. |
+| What | Runner | Seconds | Per phase | Run | Not measured |
+| --- | --- | --- | --- | --- | --- |
+| One Godot verification of a seeded bug with its fix: replay, judge, write the report and the release candidate (step "Harness-backed Gate 1 accept (seed + fix candidate)") | GitHub-hosted ubuntu-24.04, SAM off | 29, to the nearest 1 | not measured | [run 42934646223](https://github.com/Expectrail/Expectrail/actions/runs/42934646223/job/130241583383) | The time per phase (import, replay, evaluate): the step is timed as a whole, from the job's step timestamps. One run, so no spread. |
+
+The phases are those of [`expectrail.timing`](../expectrail/timing.py): `import` is Godot's `--import`,
+`replay` is the Godot process playing the route, `evaluate` is everything the verifier does outside a
+harness run, and `other` is the harness copying the game, applying patches and hashing frames.
 
 ## Named in the README or the site, and not a mode
 
