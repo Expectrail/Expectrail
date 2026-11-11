@@ -40,6 +40,7 @@ Agents stop and label the issue or pull request `needs-sean` for any of these, a
 - **Read held-out material.** Never open the private repository `Expectrail-heldout`, anything under `fresh-*`, the
   private web patches or sessions, or the content of a blind set. Never use the private scan to test a guess.
   Publish counts only.
+- **Change these rules.** Any change to `AGENTS.md` or `.github/CODEOWNERS`.
 - **Change what holds a secret.** A workflow change that adds a secret, an `environment:`, `pull_request_target`,
   `id-token: write` or wider `permissions`, and any change to `.github/obaaf-baseline.json` that adds findings.
 - **Approve a protected environment's run** (`unity`, `main-only`), rotate a key, create an account, change
