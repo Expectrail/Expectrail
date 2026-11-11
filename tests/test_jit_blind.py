@@ -113,6 +113,36 @@ class Entry(unittest.TestCase):
         self.assertIn(("b", "secret h01\n\nSECRET-HOW\n", 2.0), calls)
 
 
+    def test_the_command_the_workflow_runs_with_relative_paths(self):
+        """Blind run 42940175240 failed here: the workflow passes --set heldout-set and --out runs/...,
+        relative, and patch -d could not open a relative patch path. Real candidates and patches;
+        both arms stubbed, called through main() exactly as the workflow calls it."""
+        import contextlib
+        import io
+        import os
+        from unittest import mock
+
+        def fake_a(base, cand, work):
+            g = blind._copy_game(work / "head", [*base, cand])   # the real patching, relative inputs
+            return "accept" if g.is_dir() else "needs-review"
+
+        def fake_b(base, cand, report, work, *, budget_usd):
+            return {"status": "complete", "counts": {"strong": 0, "weak": 0}, "spend": {"usd": 0.0}}
+
+        cwd = os.getcwd()
+        os.chdir(self.set.parent)
+        try:
+            with mock.patch.object(blind, "arm_a", fake_a), mock.patch.object(blind, "arm_b", fake_b), \
+                    contextlib.redirect_stdout(io.StringIO()) as printed:
+                code = blind.main(["entry", "--set", self.set.name, "--id", "h04", "--out", "runs/blind/h04"])
+            rows = json.loads((self.set.parent / "runs/blind/h04/public-rows.json").read_text())
+        finally:
+            os.chdir(cwd)
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(printed.getvalue()), {"candidates": 4, "errors": 0})
+        self.assertEqual({r["armA"] for r in rows}, {"accept"})
+
+
 class Score(unittest.TestCase):
     def row(self, cid, label, kind="defect", source="primary", a="accept", strong=0, weak=0, status="complete", tv="yes"):
         return {"cid": cid, "source": source, "label": label, "kind": kind, "traceVisible": tv, "armA": a,
