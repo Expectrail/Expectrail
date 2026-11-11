@@ -708,10 +708,29 @@ class NewWorkTest(unittest.TestCase):
     def test_docs_alone_need_no_row(self):
         self.assertEqual(mg.check_new_work([Change("docs/unity.md", "a\n", "b\n"), Change("README.md", "a\n", "b\n")]), [])
 
-    def test_code_without_a_row_fails(self):
+    def test_code_without_an_entry_fails(self):
         found = mg.check_new_work([self.CODE])
-        self.assertEqual(rules(found), [(CHANGES, "new-work", "docs/new-work.md")])
+        self.assertEqual(rules(found), [(CHANGES, "new-work", "docs/new-work/")])
         self.assertIn("agents/x.py", found[0].message)
+
+    ENTRY = "# What changed\n\n## What changed\nx\n\n## What was run\nthe suite, OK\n\n## Files\n`agents/x.py`\n"
+
+    def test_code_with_its_own_entry_file_passes(self):
+        entry = Change("docs/new-work/2026-11-12-short-name.md", None, self.ENTRY)
+        self.assertEqual(mg.check_new_work([self.CODE, entry]), [])
+
+    def test_only_a_new_dated_file_with_what_was_run_is_an_entry(self):
+        for path, old, new in (
+                ("docs/new-work/README.md", None, self.ENTRY),                           # the layout, not an entry
+                ("docs/new-work/notes.md", None, self.ENTRY),                            # no date
+                ("docs/new-work/2026-11-12-Short Name.md", None, self.ENTRY),            # not a plain name
+                ("docs/new-work/2026-11-12-x/y.md", None, self.ENTRY),                   # not in the folder itself
+                ("docs/2026-11-12-short-name.md", None, self.ENTRY),                     # not in the folder
+                ("docs/new-work/2026-11-12-short-name.md", None, "# What changed\n"),    # says nothing about a run
+                ("docs/new-work/2026-11-10-someone-elses.md", self.ENTRY, self.ENTRY + "and mine\n"),  # another change's file
+                ("docs/new-work/2026-11-12-short-name.md", self.ENTRY, None)):           # deleted
+            with self.subTest(path=path, new=old is None):
+                self.assertEqual(len(mg.check_new_work([self.CODE, Change(path, old, new)])), 1)
 
     def test_an_edit_to_the_log_that_adds_no_row_does_not_count(self):
         prose = Change("docs/new-work.md", "intro\n", "intro, reworded\n")
@@ -789,7 +808,7 @@ class GitTest(unittest.TestCase):
         code, report = self.run_guard()
         self.assertEqual(code, 1)
         self.assertEqual([(r["rule"], r["path"]) for r in report["reasons"]],
-                         [("game", "game/platformer/player.gd"), ("tests", "tests/test_old.py"), ("new-work", "docs/new-work.md")])
+                         [("game", "game/platformer/player.gd"), ("tests", "tests/test_old.py"), ("new-work", "docs/new-work/")])
         self.assertEqual(report["labels"], [CHANGES])
 
     def test_the_description_comes_from_a_file(self):
@@ -860,7 +879,7 @@ class WorkflowFileTest(unittest.TestCase):
         pull = (ROOT / ".github" / "pull_request_template.md").read_text(encoding="utf-8")
         for heading in ("**Why.**", "**Build.**", "**Done when.**", "**Depends on.**", "**Start here.**"):
             self.assertIn(heading, work)
-        for phrase in ("Part of #", "What was run", "What is left", "docs/new-work.md", "Guard: test change intended (#issue)"):
+        for phrase in ("Part of #", "What was run", "What is left", "docs/new-work/", "Guard: test change intended (#issue)"):
             self.assertIn(phrase, pull)
         self.assertIsNone(mg.INTENDED.search(pull))  # the template alone does not switch the tests rule off
 

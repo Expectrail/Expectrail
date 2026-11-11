@@ -16,7 +16,7 @@ Part of #
 ## Checklist
 
 - [ ] `python3 -m unittest discover -s tests -t .` passes on this branch
-- [ ] One row added to `docs/new-work.md`: the date, what changed, what was and was not run, the files
+- [ ] One file added under `docs/new-work/` (`YYYY-MM-DD-short-name.md`): what changed, what was and was not run, the files
 - [ ] No `approval` added or changed, nothing under `game/platformer` or `game/unity-platformer` edited
 - [ ] No test deleted or skipped, or the reason is above with the line `Guard: test change intended (#issue)`
 - [ ] A schema, its example, its writer and its reader change together
