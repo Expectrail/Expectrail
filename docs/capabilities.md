@@ -66,9 +66,14 @@ Last changed 2026-11-11. 25 rows: 4 implemented, 11 integrated, 7 measured, 3 ex
 
 ## Wall time
 
-| What | Runner | Seconds | Run | Not measured |
-| --- | --- | --- | --- | --- |
-| One Godot verification of a seeded bug with its fix: replay, judge, write the report and the release candidate (step "Harness-backed Gate 1 accept (seed + fix candidate)") | GitHub-hosted ubuntu-24.04, SAM off | 29, to the nearest 1 | [run 42934646223](https://github.com/Expectrail/Expectrail/actions/runs/42934646223/job/130241583383) | The time per phase (import, replay, evaluate): the step is timed as a whole, from the job's step timestamps. One run, so no spread. |
+| What | Runner | Seconds | Per phase | Run | Not measured |
+| --- | --- | --- | --- | --- | --- |
+| One Godot verification of a seeded bug with its fix: replay, judge, write the report and the release candidate (step "Harness-backed Gate 1 accept (seed + fix candidate)") | GitHub-hosted ubuntu-24.04, SAM off | 29, to the nearest 1 | not measured | [run 42934646223](https://github.com/Expectrail/Expectrail/actions/runs/42934646223/job/130241583383) | The time per phase (import, replay, evaluate): the step is timed as a whole, from the job's step timestamps. One run, so no spread. |
+| One Godot verification of a seeded bug with its fix (agents.verifier.verify alone: three replays, the reference level, the candidate and the clean game, and judging them) (step "Harness-backed Gate 1 accept (seed + fix candidate)") | GitHub-hosted ubuntu-24.04, SAM off, no private routes | 33.1, to the nearest 0.1 | import 2.8, replay 29.9, evaluate 0.3, other 0.1 (the job's notice "Verification wall time", which prints timing.json; the file is in the run's agents-harness-verify artifact) | [run 43081720384](https://github.com/Expectrail/Expectrail/actions/runs/43081720384/job/130735694019) | Spread: this is one run, on the pull request that added the timing (#301), not on main. A cold import cache: the step before had warmed it, so a first verification on a fresh machine pays a full import this does not show. The private routes, which add a replay each, and SAM, which adds model calls to evaluate. The fixer and the report in the same step are outside the 33.1 s; the step took 34 s by its timestamps. |
+
+The phases are those of [`expectrail.timing`](../expectrail/timing.py): `import` is Godot's `--import`,
+`replay` is the Godot process playing the route, `evaluate` is everything the verifier does outside a
+harness run, and `other` is the harness copying the game, applying patches and hashing frames.
 
 ## Named in the README or the site, and not a mode
 

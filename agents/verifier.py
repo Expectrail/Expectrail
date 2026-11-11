@@ -45,6 +45,7 @@ from agents.observations import (
 )
 from agents.patchutil import assert_editable, sha256_file
 from harness.run import REPO, run as harness_run, tree_digest
+from expectrail import timing
 from expectrail.contracts import digest, load, validate
 from expectrail.evaluator import decide, evaluate
 
@@ -185,7 +186,8 @@ def reference_surfaces(out: Path) -> list | None:
     route.write_text(json.dumps(LEVEL_REFERENCE_ROUTE) + "\n", encoding="utf-8")
     for _attempt in range(2):
         try:
-            harness_run(route, run_dir / "replay", patches=[])
+            with timing.arm("reference"):
+                harness_run(route, run_dir / "replay", patches=[])
             surfaces = json.loads((run_dir / "replay" / "trace.json").read_text(encoding="utf-8")).get("levelSurfaces")
         except (subprocess.CalledProcessError, OSError, TimeoutError, ValueError):
             continue
@@ -294,17 +296,21 @@ def _run_held_out_routes(
     """
     sam_spec_docs = sam_specs(spec["id"]) if use_sam else []
     rows = []
-    for entry in manifest["routes"]:
+    for position, entry in enumerate(manifest["routes"], start=1):
         name = str(entry.get("name") or Path(entry["file"]).stem)
         run_dir = out / "held-out" / name
         row: dict = {"route": name, "minDeltaX": float(entry["minDeltaX"])}
+        # timing.json is kept as a public artifact: a private route is timed under its position, not its name.
+        label = f"held-out-{position}"
         try:
             # Godot has aborted on back-to-back imports in CI; one retry, and it is recorded.
             try:
-                harness_run(root / entry["file"], run_dir, patches=patches)
+                with timing.arm(label):
+                    harness_run(root / entry["file"], run_dir, patches=patches)
             except (subprocess.CalledProcessError, OSError, TimeoutError):
                 row["harnessRetried"] = True
-                harness_run(root / entry["file"], run_dir, patches=patches)
+                with timing.arm(label):
+                    harness_run(root / entry["file"], run_dir, patches=patches)
             trace = json.loads((run_dir / "trace.json").read_text(encoding="utf-8"))
             replay_sha = sha256_file(run_dir / "replay.json")
             try:
@@ -410,7 +416,42 @@ def _resolve_gameplay_trace(
     raise SystemExit("gameplay requires candidate replay/trace.json when observations are unset")
 
 
+TIMED = ("One verification by agents.verifier.verify, from the request to verification.json: the replays it "
+         "asks the harness for, and judging them")
+
+
 def verify(
+    request: dict,
+    candidate: Path,
+    out: Path,
+    *,
+    route: Path | None = None,
+    observations_path: Path | None = None,
+    clean_observations_path: Path | None = None,
+    held_out_observations_path: Path | None = None,
+    skip_harness: bool = False,
+    attempt: int = 1,
+) -> dict:
+    """Verify one candidate and write verification.json, with timing.json (expectrail.timing) beside it.
+
+    The timing is written after the decision and is never read back here. If it cannot be written the
+    verification stands and timing-error.txt says why.
+    """
+    with timing.recording() as recorder:
+        doc = _verify(
+            request, candidate, out, route=route, observations_path=observations_path,
+            clean_observations_path=clean_observations_path,
+            held_out_observations_path=held_out_observations_path, skip_harness=skip_harness, attempt=attempt,
+        )
+    try:
+        timing.write(recorder, out / "timing.json", TIMED, decision=doc["decision"], sam=sam_on())
+    except (timing.TimingError, OSError) as exc:
+        (out / "timing.json").unlink(missing_ok=True)  # never leave an earlier run's numbers beside this verdict
+        (out / "timing-error.txt").write_text(f"{type(exc).__name__}: {exc}\n", encoding="utf-8")
+    return doc
+
+
+def _verify(
     request: dict,
     candidate: Path,
     out: Path,
@@ -489,7 +530,8 @@ def verify(
     elif skip_harness:
         raise SystemExit("--skip-harness requires --observations")
     else:
-        harness_run(route, out / "replay", patches=patches)
+        with timing.arm("candidate"):
+            harness_run(route, out / "replay", patches=patches)
         trace = json.loads((out / "replay" / "trace.json").read_text(encoding="utf-8"))
         replay_sha = sha256_file(out / "replay" / "replay.json")
         frames_dir = out / "replay" / "frames"
@@ -582,7 +624,8 @@ def verify(
         )
     else:
         try:
-            harness_run(route, out / "clean-replay", patches=[])
+            with timing.arm("clean"):
+                harness_run(route, out / "clean-replay", patches=[])
             clean_trace = json.loads((out / "clean-replay" / "trace.json").read_text(encoding="utf-8"))
             clean_replay_sha = sha256_file(out / "clean-replay" / "replay.json")
         except (subprocess.CalledProcessError, SystemExit, OSError, TimeoutError) as exc:
