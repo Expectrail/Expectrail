@@ -46,9 +46,14 @@ class GodotGate:
         if base is not None and not Path(base["checkout"]).is_dir():
             found.append(st.diagnostic("INPUT_INVALID", stage="preparing", detail="the base checkout is not a folder"))
         if request["executionClass"] == "isolated":
-            found.append(st.diagnostic("TOOL_MISSING", stage="preparing",
-                                       detail="the isolated execution class needs the replay sandbox, which this "
-                                              "build does not have; nothing was run unsandboxed in its place"))
+            from harness import sandbox as box
+
+            tool, why = box.probe(True)
+            if tool is None:
+                found.append(st.diagnostic("TOOL_MISSING", stage="preparing",
+                                           detail=f"the isolated execution class needs the replay sandbox and this "
+                                                  f"machine cannot provide it ({why}); nothing was run unsandboxed "
+                                                  f"in its place"))
         if self._replay is None and not found:
             found += self._tools()
         return found
@@ -78,7 +83,12 @@ class GodotGate:
             repo=Path(request["head"]["checkout"]), game=project["game"], routes=project["routes"],
             specs=project["specs"], out=paths.staging, work=paths.work / "gate",
             base=Path(base["checkout"]) if base else None,
+            # The isolated class: every replay in the sandbox, or the gate refuses and nothing is accepted.
+            require_sandbox=request["executionClass"] == "isolated",
             **({"replay": self._replay} if self._replay is not None else {}))
+        # The grade stays `diagnostic` even when every replay was sandboxed: the ledger's `isolated`
+        # also needs a separate trusted job that judges and signs (#254, #255). What the sandbox did
+        # is in the evidence: findings.json, `isolation`.
         return Result(document["decision"], list(document.get("reasons", [])))
 
 

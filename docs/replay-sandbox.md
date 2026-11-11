@@ -38,6 +38,18 @@ There is no silent fallback. Every `replay.json` carries an `isolation` block
 (`contracts/replay.schema.json`): the tool and its version or `null`, the mode asked for, the reason
 when not isolated, and what the game could reach (`network`, `filesystem`, `processes`).
 
+## In the gate and the orchestrator
+
+- The gate's record (`findings.json`) has an `isolation` block: how many replays finished, how many
+  ran in the sandbox, the tool, whether it was required, and why any ran outside. A replay counts as
+  inside only when its own `replay.json` names the tool and says no network, a confined file system
+  and its own processes. The review page and the pull request comment carry one line from it.
+- `python3 -m expectrail.gate.verify --require-sandbox`, or `require-sandbox: 'true'` on the verify
+  action: where the machine cannot sandbox, nothing is replayed and the decision is needs-review;
+  a replay that ran outside anyway keeps the decision from accept. This repository's verify workflow
+  sets it.
+- The orchestrator's `isolated` execution class does the same for a job.
+
 ## What a machine needs
 
 Linux, `bwrap` and, for replays with frames, `xvfb-run`. The harness checks by running the real
@@ -56,8 +68,8 @@ that off first (`kernel.apparmor_restrict_unprivileged_userns=0`), as the fixer'
 - The fixer's sandbox (`agents/sandbox.py`) is a separate one and still shares its starter's terminal
   (#309).
 - Godot only. The Unity player and the web replay are not sandboxed yet.
-- The gate and the orchestrator do not yet read `isolation`: no verdict is graded by it, and the
-  gate's own workflow does not install bubblewrap. Both are the rest of #253.
+- No verdict is graded `isolated` by it. The gate records it and can require it (below); the grade
+  also needs a separate trusted job that judges and signs (#254, #255).
 
 ## How it is tested
 

@@ -65,12 +65,49 @@ def kind_of(after: str) -> str | None:
     return None if after == "pass" else after
 
 
-def decide(counts: dict, held: dict) -> tuple[str, list[str]]:
+NOT_SAID = "the replay did not say whether it was sandboxed"
+
+
+def isolation_summary(seen: list, required: bool) -> dict:
+    """The record's ``isolation`` block from each finished replay's own account (the ``isolation``
+    block of its replay.json, or None when the replay gave none). A replay counts as sandboxed only
+    when it names the tool and says the game had no network, a confined file system and its own
+    processes; anything less is outside."""
+    def inside(one) -> bool:
+        return (isinstance(one, dict) and isinstance(one.get("sandbox"), dict)
+                and (one.get("network"), one.get("filesystem"), one.get("processes")) == ("none", "confined", "own"))
+
+    sandboxed = [one for one in seen if inside(one)]
+    reasons = sorted({str((one or {}).get("reason") or NOT_SAID)[:300] if isinstance(one, dict) else NOT_SAID
+                      for one in seen if not inside(one)})[:5]
+    tool = sandboxed[0]["sandbox"] if sandboxed else None
+    return {"replays": len(seen), "sandboxed": len(sandboxed), "required": bool(required),
+            "sandbox": None if tool is None else {"tool": str(tool.get("tool")), "version": str(tool.get("version"))[:40]},
+            "reasons": reasons}
+
+
+def isolation_words(isolation: dict | None) -> str:
+    """One line on whether the game ran in the replay sandbox, for the page and the comment."""
+    if isolation is None:
+        return "not recorded (a record from before the sandbox existed): read it as not sandboxed"
+    total, inside = isolation["replays"], isolation["sandboxed"]
+    if not total:
+        return "no replay ran" + (" (the sandbox was required)" if isolation["required"] else "")
+    tool = isolation["sandbox"]
+    if inside == total:
+        return (f"all {total}, in {tool['tool']} {tool['version']}: no network, the game's own files only"
+                + (" (required)" if isolation["required"] else ""))
+    why = "; ".join(isolation["reasons"])
+    return f"{inside} of {total}. Outside it the game ran as the job's user, with the network: {why}"
+
+
+def decide(counts: dict, held: dict, isolation: dict | None = None) -> tuple[str, list[str]]:
     """accept, reject or needs-review, and why.
 
     Accept only when at least one check ran and every public and held-out check passed. Any failure
     rejects. Anything unclear (a check that needs review, a replay that did not finish, held-out
-    routes that could not be read) needs review: it is never read as a pass.
+    routes that could not be read) needs review: it is never read as a pass. When the sandbox was
+    required, a replay outside it is unclear too: an accept never rests on one.
     """
     reasons = []
     if counts["failed"]:
@@ -87,6 +124,9 @@ def decide(counts: dict, held: dict) -> tuple[str, list[str]]:
         reasons.append("the held-out routes could not be judged")
     elif held["needsReview"]:
         reasons.append(f"{held['needsReview']} held-out checks could not be decided")
+    if isolation is not None and isolation["required"] and isolation["sandboxed"] != isolation["replays"]:
+        outside = isolation["replays"] - isolation["sandboxed"]
+        reasons.append(f"{outside} of {isolation['replays']} replays ran outside the sandbox, which was required")
     if reasons:
         return "needs-review", reasons
     total = counts["checks"] + held["checks"]
@@ -351,7 +391,15 @@ def check_consistency(doc: dict) -> None:
         raise RecordError("the held-out counts do not add up")
     if held["status"] == "not-used" and any(held[k] for k in ("routes", "checks", "passed", "failed", "needsReview")):
         raise RecordError("held-out counts are given but the held-out routes were not used")
-    decision, _reasons = decide(counts, held)
+    isolation = doc.get("isolation")
+    if isolation is not None:
+        if isolation["sandboxed"] > isolation["replays"]:
+            raise RecordError("more replays are called sandboxed than ran")
+        if (isolation["sandbox"] is None) != (isolation["sandboxed"] == 0):
+            raise RecordError("the sandbox tool is named exactly when a replay ran in it")
+        if bool(isolation["reasons"]) != (isolation["sandboxed"] < isolation["replays"]):
+            raise RecordError("a reason is given exactly when a replay ran outside the sandbox")
+    decision, _reasons = decide(counts, held, isolation)
     if doc["decision"] != decision:
         raise RecordError(f"the decision should be {decision} from these counts")
     pr = doc["pullRequest"]

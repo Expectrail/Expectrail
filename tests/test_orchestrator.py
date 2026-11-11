@@ -429,13 +429,43 @@ class GodotEngineTest(Case):
         self.assertEqual(replay.calls, [])
 
     def test_the_isolated_class_refuses_instead_of_running_unsandboxed(self):
+        from harness import sandbox as box
+
         replay = FakeReplay()
         job = self.job(execution_class="isolated")
-        status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=replay)})
+        with mock.patch.object(box, "probe", return_value=(None, "bubblewrap (bwrap) is not installed")):
+            status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=replay)})
         self.assertEqual((status["phase"], status["decision"], status["evidenceGrade"]), ("completed", "needs-review", None))
         self.assertEqual([d["code"] for d in status["diagnostics"]], ["TOOL_MISSING"])
-        self.assertIn("sandbox", status["diagnostics"][0]["detail"])
+        self.assertIn("bubblewrap (bwrap) is not installed", status["diagnostics"][0]["detail"])
+        self.assertIn("nothing was run unsandboxed", status["diagnostics"][0]["detail"])
         self.assertEqual(replay.calls, [])
+
+    def test_the_isolated_class_runs_with_the_sandbox_required(self):
+        from harness import sandbox as box
+        from tests.test_ci_gate import INSIDE, Accounting
+
+        with mock.patch.object(box, "probe", return_value=(box.Tool("/usr/bin/bwrap", "0.9.0"), None)):
+            # Every replay says it ran inside: the job completes, and the evidence says so.
+            job = self.job(execution_class="isolated")
+            status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=Accounting(INSIDE))})
+            self.assertEqual((status["phase"], status["decision"]), ("completed", "accept"))
+            record = rec.read_record(self.store.paths(job).output / "findings.json")
+            self.assertEqual((record["isolation"]["required"], record["isolation"]["sandboxed"], record["isolation"]["replays"]),
+                             (True, 2, 2))
+            # The ledger's `isolated` grade also needs a trusted job that judges and signs: not yet.
+            self.assertEqual(status["evidenceGrade"], "diagnostic")
+            # A replay that does not say it ran inside cannot give an accept in this class.
+            job = self.job(execution_class="isolated")
+            status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=FakeReplay())})
+            self.assertEqual((status["phase"], status["decision"]), ("completed", "needs-review"))
+            self.assertTrue(any("outside the sandbox" in reason for reason in status["reasons"]), status["reasons"])
+
+    def test_the_diagnostic_class_records_isolation_and_does_not_require_it(self):
+        job = self.job()
+        status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=FakeReplay())})
+        record = rec.read_record(self.store.paths(job).output / "findings.json")
+        self.assertEqual((status["decision"], record["isolation"]["required"], record["isolation"]["sandboxed"]), ("accept", False, 0))
 
     def test_the_orchestrator_imports_no_fixer_no_loop_and_no_saved_data(self):
         code = ("import sys, expectrail.orchestrator.cli, expectrail.orchestrator.engines, expectrail.gate.verify\n"

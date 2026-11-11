@@ -53,11 +53,21 @@ class Rule1ReportOnly(unittest.TestCase):
         with self.assertRaises(rec.RecordError):
             rec.check_record(doc)
 
-    def test_decide_reads_nothing_but_counts_and_held_out(self):
+    def test_decide_reads_nothing_but_counts_held_out_and_whether_replays_were_sandboxed(self):
+        # The third input came with the replay sandbox (#253): when the sandbox was required, a replay
+        # outside it keeps the decision from accept. Generated checks are still not an input.
         tree = ast.parse((REPO / "expectrail" / "gate" / "record.py").read_text())
         fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "decide")
-        self.assertEqual([a.arg for a in fn.args.args], ["counts", "held"])
+        self.assertEqual([a.arg for a in fn.args.args], ["counts", "held", "isolation"])
         self.assertNotIn("generated", ast.dump(fn).lower())
+        # And isolation can only take an accept away, never give one or turn anything into a reject.
+        outside = {"replays": 2, "sandboxed": 0, "required": True, "sandbox": None, "reasons": ["x"]}
+        for counts, held in (({"checks": 2, "passed": 2, "failed": 0, "needsReview": 0}, {"status": "not-used", "routes": 0, "checks": 0, "passed": 0, "failed": 0, "needsReview": 0}),
+                             ({"checks": 2, "passed": 1, "failed": 1, "needsReview": 0}, {"status": "not-used", "routes": 0, "checks": 0, "passed": 0, "failed": 0, "needsReview": 0}),
+                             ({"checks": 0, "passed": 0, "failed": 0, "needsReview": 0}, {"status": "not-used", "routes": 0, "checks": 0, "passed": 0, "failed": 0, "needsReview": 0})):
+            plain = rec.decide(counts, held)[0]
+            self.assertEqual(rec.decide(counts, held, dict(outside, required=False))[0], plain)
+            self.assertEqual(rec.decide(counts, held, outside)[0], "needs-review" if plain == "accept" else plain)
 
     def test_nothing_that_decides_imports_the_check_generator(self):
         deciders = [REPO / "agents" / "verifier.py", REPO / "agents" / "orchestrator.py", REPO / "agents" / "loop.py",

@@ -13,6 +13,7 @@ import shutil
 from pathlib import Path
 
 from expectrail.diagnostics import redact
+from expectrail.gate import record as rec
 
 REVIEW_DOC = "https://github.com/Expectrail/Expectrail/blob/main/docs/review.md"
 GATE_DOC = "https://github.com/Expectrail/Expectrail/blob/main/docs/ci-gate.md"
@@ -42,6 +43,7 @@ code{font:13px ui-monospace,SFMono-Regular,Menlo,monospace}
 figcaption{font-size:13px;color:#4b5049}.hole{padding:40px 12px;border:1px dashed #b9b9b0;color:#4b5049;text-align:center}
 .meta td:first-child{width:220px;color:#4b5049}
 """
+
 
 
 def esc(value) -> str:
@@ -128,6 +130,7 @@ def write_page(out: Path, record: dict, frames: dict[str, dict]) -> Path:
          "could not be judged" if held["status"] == "unavailable" else
          f"{held['routes']} routes, {held['checks']} checks: {held['passed']} pass, {held['failed']} fail, "
          f"{held['needsReview']} need review (counts only)"),
+        ("Replays in the sandbox", rec.isolation_words(record.get("isolation"))),
         ("Draft specs not used", str(record["drafts"])),
         ("Replayed by", f"the {ADAPTER.get(record['adapter'], record['adapter'])} harness; judged by the evaluator "
                         "on the engine's position log"),
