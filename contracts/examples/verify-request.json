@@ -1,0 +1,24 @@
+{
+  "format": "expectrail.verify-request/v1",
+  "project": {
+    "adapter": "godot",
+    "game": "game/platformer",
+    "routes": [
+      "routes/*.json"
+    ],
+    "specs": "specs"
+  },
+  "head": {
+    "checkout": "/work/checkout/head",
+    "commit": null
+  },
+  "base": {
+    "checkout": "/work/checkout/base",
+    "commit": null
+  },
+  "executionClass": "diagnostic",
+  "limits": {
+    "timeoutSeconds": 1800
+  },
+  "idempotencyKey": "pr-7:1111111"
+}
