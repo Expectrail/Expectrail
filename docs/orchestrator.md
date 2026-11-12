@@ -114,9 +114,15 @@ Every job has a folder of its own:
   it starts inherits that: the harness passes that one name on to the game, the virtual display and
   the sandbox tool. When a job is declared lost, and when it is cancelled, every process whose
   environment names the job is stopped, and the job's reasons say how many were found and how many
-  are gone. Never by number alone, which the system can give to something else: the process is held
-  by a handle, its environment is read again, and the signal goes to the handle. The caller and its
-  own ancestors are never stopped, so a status asked from inside a job does not end the asking.
+  are gone. A process number alone can pass to something else between the look and the signal, so
+  where the system gives process handles (Linux 5.3 and later, unless the container refuses the
+  call) the process is held by one, its environment is read again, the handle is checked to still
+  be a live process, and the signal goes to the handle. Where it gives none, the environment is
+  read again and the signal goes to the number, and the job's reasons say "by process number":
+  the handle is the better way and the number stays for every system the handle does not cover.
+  The caller and its own ancestors are never stopped, so a status asked from inside a job does not
+  end the asking; the reasons then say how many were left for that. A cancel that leaves something
+  running says so too.
   Where there is no `/proc` to ask (macOS), nothing is stopped and the job says so. One limit: the
   environment read is what the process holds now, so a program that writes over its own environment
   is not found. The sandboxed game cannot stay alive that way: the sandbox tool is started so that
