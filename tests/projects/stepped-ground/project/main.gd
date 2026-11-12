@@ -3,12 +3,13 @@ extends Node2D
 ##   the floor: tiles with their top at y = 320, from x = 0 to 640
 ##   a gap:     no tile from x = 192 to 256
 ##   a step:    one tile on the floor from x = 448 to 512, its top at y = 256
-## The player is a marker 8 px above the floor. While `right` is held it moves 2 px a tick at the
-## same height: across the gap, up to the step, and into it. It does not fall and does not climb,
-## because what is tested is which surface the harness calls the ground under each position.
+## The player is a body 24 px wide (12 either side of its origin), 8 px above the floor. While
+## `right` is held it is moved 2 px a tick at the same height: across the gap, up to the step, and
+## into it. It is placed, not simulated: it does not fall, climb or stop at the step, because what
+## is tested is which surface the harness calls the ground under each position of a body this wide.
 
 const TILE := 64
-@onready var player: Node2D = $Player
+@onready var player: CharacterBody2D = $Player
 
 
 func _ready() -> void:

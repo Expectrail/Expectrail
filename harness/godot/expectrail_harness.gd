@@ -57,9 +57,12 @@ var _next_id := 0
 # a robot sunk into the ground by less than this is measured against the surface it sank into.
 # Platforms over the robot's head are at least about 95 px above its origin, so they never count.
 const SINK_WINDOW := 64.0
-# Half the player's width, to look for the highest surface under the whole body, not just its
-# centre (the body rests on the highest point beneath it, e.g. on a slope or a ledge).
+# How far either side of the player's origin to look for the highest surface under the whole body,
+# not just its centre (the body rests on the highest point beneath it, e.g. on a slope or a ledge),
+# when the player has no collision shape to measure. With one, its own half width is used, less
+# EDGE_INSET (see _edge_reach): the bundled robot's shape is 42.5 px wide, so 21.25 - 1.25 = 20.
 const BODY_HALF_WIDTH := 20.0
+const EDGE_INSET := 1.25
 const SEARCH_ROWS := 16
 # The tile-art render (_render_level_art): a visibility layer no game node uses, and the largest
 # render it makes (world pixels a side); a bigger level is rendered in tiles of this size.
@@ -262,7 +265,7 @@ func _tracked_positions(tracked: Array) -> Array:
 
 
 func _ground_under(origin: Vector2) -> Variant:
-	"""World y of the solid tile surface under the player, or null.
+	"""World y of the highest solid tile surface under the player's body, or null.
 
 	Only surfaces at or below origin.y - SINK_WINDOW count. Read from each tile's authored
 	collision polygons, so it stays put when a bug switches collision off or changes the player.
@@ -272,20 +275,36 @@ func _ground_under(origin: Vector2) -> Variant:
 		var scene := get_tree().current_scene
 		if scene != null:
 			_layers = scene.find_children("*", "TileMapLayer", true, false)
-	# The surface under the player's centre is the ground when there is one. The columns at the
-	# body's edges are asked only when the centre has none (the body hangs over a ledge and rests on
-	# what is under one edge). Until November 12, 2026 the highest of the three always won, so a step
-	# up to SINK_WINDOW high beside the player was read as the ground under it: walking up to a
-	# 64 px step, a clean game was reported 56 px below its ground (#263, the kinematic character demo).
-	var centre = _highest_surface(origin.x, origin.y - SINK_WINDOW)
-	if centre != null:
-		return centre
+	# The highest surface under the body: under its centre and under its two edges, because a body
+	# rests on the highest point beneath it (on a slope, or on a ledge it has half walked off).
+	# The edges are the player's own (see _edge_reach). Until November 12, 2026 they were always the
+	# bundled robot's, 20 px either side: a narrower player standing on the floor 20 px from a step
+	# had a column inside the step, and the step's top was read as the ground under it (#348).
+	var reach := _edge_reach(_player)
 	var best = null
-	for dx in [-BODY_HALF_WIDTH, BODY_HALF_WIDTH]:
+	for dx in [-reach, 0.0, reach]:
 		var surface = _highest_surface(origin.x + dx, origin.y - SINK_WINDOW)
 		if surface != null and (best == null or surface < best):
 			best = surface
 	return best
+
+
+func _edge_reach(body: Node2D) -> float:
+	"""How far either side of the player's origin its body is asked about: the half width of its own
+	collision shapes, less EDGE_INSET so that a wall the body touches is not counted as under it.
+	BODY_HALF_WIDTH when the player has no collision shape to measure (none, or all disabled)."""
+	var widest := 0.0
+	if body != null:
+		for child in body.get_children():
+			var shape_node := child as CollisionShape2D
+			if shape_node == null or shape_node.shape == null or shape_node.disabled:
+				continue
+			var rect: Rect2 = shape_node.shape.get_rect()
+			for corner in [rect.position, rect.end, Vector2(rect.position.x, rect.end.y), Vector2(rect.end.x, rect.position.y)]:
+				widest = maxf(widest, absf((shape_node.transform * corner).x))
+	if widest <= EDGE_INSET:
+		return BODY_HALF_WIDTH
+	return widest - EDGE_INSET
 
 
 func _highest_surface(x: float, min_y: float) -> Variant:

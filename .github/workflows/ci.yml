@@ -115,8 +115,8 @@ jobs:
         env:
           EXPECTRAIL_ENGINE_TESTS: required
         run: python -m unittest tests.test_event_input -v
-      # A level with a gap and a step, built for the test: the ground under the player is the
-      # surface under its centre, and a step beside it is not (#348).
+      # A level with a gap and a step, built for the test, and the bundled level's slope: the
+      # ground is the highest surface under the body, and the body's edges are its own (#348).
       - name: A step beside the player is not the ground under it
         env:
           EXPECTRAIL_ENGINE_TESTS: required
