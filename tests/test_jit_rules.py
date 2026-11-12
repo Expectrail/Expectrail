@@ -58,7 +58,9 @@ class Rule1ReportOnly(unittest.TestCase):
         # outside it keeps the decision from accept. Generated checks are still not an input.
         tree = ast.parse((REPO / "expectrail" / "gate" / "record.py").read_text())
         fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "decide")
-        self.assertEqual([a.arg for a in fn.args.args], ["counts", "held", "isolation"])
+        # The fourth came with #340: how many problems the gate found reading the spec and route
+        # files. With any, the checks that ran are not all of the project's checks.
+        self.assertEqual([a.arg for a in fn.args.args], ["counts", "held", "isolation", "check_problems"])
         self.assertNotIn("generated", ast.dump(fn).lower())
         # And isolation can only take an accept away, never give one or turn anything into a reject.
         outside = {"replays": 2, "sandboxed": 0, "required": True, "sandbox": None, "reasons": ["x"]}
@@ -68,6 +70,10 @@ class Rule1ReportOnly(unittest.TestCase):
             plain = rec.decide(counts, held)[0]
             self.assertEqual(rec.decide(counts, held, dict(outside, required=False))[0], plain)
             self.assertEqual(rec.decide(counts, held, outside)[0], "needs-review" if plain == "accept" else plain)
+            # The same for a problem with a check file: it takes an accept away and does nothing else.
+            self.assertEqual(rec.decide(counts, held, None, 0)[0], plain)
+            for problems in (1, 7):
+                self.assertEqual(rec.decide(counts, held, None, problems)[0], "needs-review" if plain == "accept" else plain)
 
     def test_nothing_that_decides_imports_the_check_generator(self):
         deciders = [REPO / "agents" / "verifier.py", REPO / "agents" / "orchestrator.py", REPO / "agents" / "loop.py",
