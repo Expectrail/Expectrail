@@ -6,6 +6,9 @@
 #   probe    holds the key. Downloads those frames from this same run and asks SAM what it sees in
 #            every Nth one. It never fetches, checks out or starts the outside project: frames are
 #            pictures and the trace is numbers.
+# Two ways to ask. With words (prompt or sweep): "find a player character". With a point (anchor):
+# "what is drawn at this pixel", the pixel being where the engine's position log puts the player.
+# Words found nothing in either project on November 12, 2026.
 # The probe costs one image per frame and prompt (13 frames a run at the default), and the run stops
 # at the cap given when it is started. Started by a person only.
 name: Outside SAM probe
@@ -24,6 +27,13 @@ on:
       sweep:
         description: Or several prompts to compare, separated by | (up to 9); leave empty for the one above
         default: ''
+      anchor:
+        description: Ask with a point at the engine's player position, not with words (prompt and sweep are then unused)
+        type: boolean
+        default: false
+      lift:
+        description: With anchor, point this many game pixels above the player's origin (0 is the origin itself)
+        default: '0'
       every:
         description: Probe every Nth frame of the first 120 (10 means 13 frames)
         default: '10'
@@ -108,10 +118,14 @@ jobs:
           PROJECT: ${{ inputs.project }}
           PROMPT: ${{ inputs.prompt }}
           SWEEP: ${{ inputs.sweep }}
+          ANCHOR: ${{ inputs.anchor }}
+          LIFT: ${{ inputs.lift }}
           EVERY: ${{ inputs.every }}
           CAP: ${{ inputs.sam_usd_cap }}
         run: |
           word="[A-Za-z0-9 -]+"
+          [[ "$ANCHOR" == "true" || "$ANCHOR" == "false" ]] || { echo "::error::anchor must be true or false"; exit 1; }
+          [[ "$LIFT" =~ ^[0-9]{1,3}$ ]] || { echo "::error::lift must be a whole number from 0 to 999"; exit 1; }
           [[ "$PROJECT" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "::error::project must be a plain name"; exit 1; }
           [[ "$PROMPT" =~ ^$word$ ]] || { echo "::error::prompt must be letters, digits, spaces and hyphens"; exit 1; }
           [[ -z "$SWEEP" || "$SWEEP" =~ ^$word(\|$word){0,8}$ ]] || { echo "::error::sweep must look like robot|player|small character, up to 9"; exit 1; }
@@ -132,6 +146,12 @@ jobs:
             names+=("$(basename "$dir")")
           done
           [ "${#runs[@]}" -gt 0 ] || { echo "::error::the capture job left no frames for $PROJECT"; exit 1; }
+          if [[ "$ANCHOR" == "true" ]]; then
+            anchor=(--every "$EVERY" --lift "$LIFT" --out runs/sam-probe --runs "${runs[@]}")
+            python -m agents.sam_anchor "${anchor[@]}" --dry-run
+            python -m agents.sam_anchor "${anchor[@]}"
+            exit 0
+          fi
           clean=$(IFS=,; echo "${names[*]}")
           args=(--spec specs/player-always-visible.json --every "$EVERY" --clean "$clean" --out runs/sam-probe --runs "${runs[@]}")
           if [[ -n "$SWEEP" ]]; then args+=(--sweep "player=$SWEEP"); else args+=(--set "player=$PROMPT"); fi
@@ -143,7 +163,9 @@ jobs:
           {
             echo "## Outside SAM probe: ${{ inputs.project }}"
             echo
-            if [ -f runs/sam-probe/probe.md ]; then cat runs/sam-probe/probe.md; else echo "No probe result was made."; fi
+            if [ -f runs/sam-probe/anchor.md ]; then cat runs/sam-probe/anchor.md
+            elif [ -f runs/sam-probe/probe.md ]; then cat runs/sam-probe/probe.md
+            else echo "No probe result was made."; fi
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Keep the probe's overlays
         if: always()

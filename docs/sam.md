@@ -251,6 +251,58 @@ to 40714993165 on all four. Their frames never left the runner; only the per-spe
 object over the same frames; `--set ground=grass` probes one other prompt without editing the spec.
 Both are inputs on the SAM probe workflow, together with `runs` to probe only some runs.
 
+## Asking with a point at the engine's player position (November 12)
+
+**Words did not find the player in a game the team did not write.** Four runs of the outside SAM
+probe on November 12, 13 frames each and one image a prompt, 104 images in all:
+
+| Run | Project | Prompt | Frames with a match | Matches a frame |
+| --- | --- | --- | --- | --- |
+| [43292219671](https://github.com/Expectrail/Expectrail/actions/runs/43292219671) | kinematic-character | player character | 0 of 13 | 0 |
+| [43293706871](https://github.com/Expectrail/Expectrail/actions/runs/43293706871) | kinematic-character | small square | 13 of 13, median score 0.84 | 38 to 46 |
+| the same | kinematic-character | grey square | 0 of 13 | 0 |
+| the same | kinematic-character | small grey square | 0 of 13 | 0 |
+| [43294012542](https://github.com/Expectrail/Expectrail/actions/runs/43294012542) | dodge-the-creeps | player character | 0 of 13 | 0 |
+| [43294995368](https://github.com/Expectrail/Expectrail/actions/runs/43294995368) | dodge-the-creeps | grey monster | 0 of 13 | 0 |
+| the same | dodge-the-creeps | round grey creature | 0 of 13 | 0 |
+| the same | dodge-the-creeps | one-eyed creature | 0 of 13 | 0 |
+
+The kinematic demo's player is a grey square in a level made of squares: the one prompt that found
+anything found every square. The frames of these runs were not looked at by anyone, so a blank
+capture of Dodge the Creeps is not ruled out.
+
+**A point asks a different question.** The Model API takes a point as a prompt ("what is the
+object drawn at this pixel") in place of words; the two cannot be mixed in one request, and there
+is no way to give it a picture of the sprite
+([the API's page](https://dev.meta.ai/docs/sam/segmenting), read November 12). The engine's
+position log says where the player is, the camera it logs places that in the frame, and
+`agents/sam_anchor.py` asks SAM about that pixel:
+
+```sh
+export EXPECTRAIL_SAM_USD_CAP=0.50
+python3 -m agents.sam_anchor --runs runs/seeded/* --every 10 --out runs/sam-anchor --dry-run   # the points, nothing sent
+python3 -m agents.sam_anchor --runs runs/seeded/* --every 10 --out runs/sam-anchor
+```
+
+For each probed frame it reports the box that came back, its size in the game's own pixels, how
+far it reaches above and below the player's origin, its confidence when one is given, whether it
+holds the point, and how much of the frame it covers. It is a probe: it decides nothing and no
+verdict reads it. From GitHub: **Outside SAM probe** with `anchor` ticked for an outside project,
+**SAM probe** in probe mode with `anchor` ticked for the bundled game and its seeded bugs. Both
+take `sam_usd_cap`, at most 2. One image a frame: 13 a run, 117 for the bundled game's nine runs
+at the list price of an image ($0.29).
+
+What is not known until it has run once against the service:
+
+- what comes back when nothing is drawn at the point (an empty reply is reported as "nothing came
+  back", a reply that cannot be read is written down with its text, and neither becomes a box);
+- whether a point's box comes with a confidence (a box without one is kept and shown as unscored);
+- what a point request is billed at. The page gives no price for it; the cap counts it as an image.
+
+What it leans on: the point is the engine's. A game that lies about where its player is sends the
+question to the wrong place, so this can never be the only evidence that a player is where the
+engine says. It can say what is drawn there: nothing, something of the player's size, or the level.
+
 ## What is still open
 
 1. **Held-out routes under SAM.** Run the verifier with `EXPECTRAIL_OBS_PROVIDER=sam` on the
