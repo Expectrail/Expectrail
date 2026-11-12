@@ -45,6 +45,10 @@ jobs:
 """
 
 
+# Since #291 an anchor on a line the diff adds is a reason of its own, whatever else is found.
+ANCHOR = "a line the diff adds holds an anchor (&name), which the guard does not follow; a person reads it"
+
+
 def rules(reasons) -> list[tuple[str, str, str]]:
     return [(r.label, r.rule, r.path) for r in reasons]
 
@@ -465,10 +469,10 @@ class WorkflowTest(unittest.TestCase):
         base = "on: push\npermissions:\n  contents: read\njobs:\n  a:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo hi\n"
         hidden = base.replace("jobs:", "x-extra: &p {contents: write}\njobs:")
         self.assertEqual(self.found(hidden, old="# may not write\n" + base),
-                         ["the file gains a write permission that no job accounts for"])
+                         [ANCHOR, "the file gains a write permission that no job accounts for"])
         hidden = base.replace("jobs:", "x-extra: &e {environment: unity}\njobs:")
         self.assertEqual(self.found(hidden, old="# no environment here\n" + base),
-                         ["the file gains the word environment that no job accounts for"])
+                         [ANCHOR, "the file gains the word environment that no job accounts for"])
 
     def test_id_token_write_needs_a_person(self):
         new = WORKFLOW.replace("      pull-requests: write\n", "      pull-requests: write\n      id-token: write\n")
@@ -592,7 +596,7 @@ class WorkflowTest(unittest.TestCase):
         nested = base + "    strategy:\n      matrix:\n        include: [{id-token: write}]\n"
         self.assertEqual(self.found(nested, old=base), ["job a gains id-token: write"])
         hidden = base.replace("jobs:", "x-extra: &p {contents: write}\njobs:")
-        self.assertEqual(self.found(hidden, old=base), ["the file gains a write permission that no job accounts for"])
+        self.assertEqual(self.found(hidden, old=base), [ANCHOR, "the file gains a write permission that no job accounts for"])
 
     def test_a_block_job_reports_each_gain_once(self):
         new = WORKFLOW.replace("  build:\n", "  build:\n    environment: main-only\n").replace("echo build", "echo ${{ secrets.K }}")
@@ -882,6 +886,256 @@ class WorkflowFileTest(unittest.TestCase):
         for phrase in ("Part of #", "What was run", "What is left", "docs/new-work/", "Guard: test change intended (#issue)"):
             self.assertIn(phrase, pull)
         self.assertIsNone(mg.INTENDED.search(pull))  # the template alone does not switch the tests rule off
+
+
+class WorkflowAddedLinesAndParsedTest(unittest.TestCase):
+    """#291: the three ways past the workflow rule found in the sixth review of #278, each as its test.
+
+    What ends the shape is not one more pattern: escapes, aliases and anchors are counted on the lines
+    the diff adds, and the file is parsed and compared job by job, so a gain is seen however its line
+    is written.
+    """
+    PATH = ".github/workflows/example.yml"
+    ESCAPED = WorkflowTest.ESCAPED
+    ALIAS = WorkflowTest.ALIAS
+    PARSED = mg.AS_PARSED
+    # Two jobs: a holds the secret in an anchored step, b takes a's checkout step by alias.
+    PAIR = ("on: push\npermissions:\n  contents: read\njobs:\n"
+            "  a:\n    runs-on: ubuntu-24.04\n    steps:\n"
+            "      - &c\n        uses: actions/checkout@v4\n"
+            "      - &s\n        run: echo ${{ secrets.X }}\n"
+            "  b:\n    runs-on: ubuntu-24.04\n    steps:\n"
+            "      - *c\n      - run: echo hi\n")
+
+    def found(self, new: str, old: str | None, path: str | None = None) -> list[str]:
+        reasons = mg.check_workflows([Change(path or self.PATH, old, new)])
+        self.assertTrue(all((r.label, r.rule) == (NEEDS_SEAN, "workflow") for r in reasons))
+        return [r.message for r in reasons]
+
+    @staticmethod
+    def workflow(name: str) -> tuple[str, str]:
+        return f".github/workflows/{name}", (ROOT / ".github" / "workflows" / name).read_text(encoding="utf-8")
+
+    # --- 1. an escape removed in one place pays for one added in another ---------------------------
+
+    def escaped_trigger(self, text: str) -> str:
+        lines = text.splitlines(keepends=True)
+        at = next(n for n, line in enumerate(lines) if line.rstrip() == "on:")
+        lines.insert(at + 1, '  "pull_request_t\\x61rget":\n')
+        return "".join(lines)
+
+    def test_an_escape_taken_away_does_not_pay_for_an_escaped_trigger(self):
+        for name in ("fix-matrix.yml", "web-fix.yml"):
+            path, text = self.workflow(name)
+            self.assertEqual(text.count("\\x1b"), 1, name)
+            octal = text.replace("\\x1b", "\\033")
+            new = self.escaped_trigger(octal)
+            self.assertEqual(mg.escapes(new), mg.escapes(text), name)  # the file's total does not rise
+            self.assertIn("pull_request_target", yaml.safe_load(new)[True], name)
+            found = self.found(new, text, path)
+            self.assertIn(self.ESCAPED, found, name)
+            self.assertIn("pull_request_target was added" + self.PARSED, found, name)
+            # The review's controls: the escaped trigger alone is reported, the other edit alone is not.
+            self.assertIn(self.ESCAPED, self.found(self.escaped_trigger(text), text, path), name)
+            self.assertEqual(self.found(octal, text, path), [], name)
+
+    def test_the_small_form_of_the_escaped_trigger(self):
+        old = "on:\n  push:\njobs:\n  a:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: printf '\\x1b[0m'\n"
+        new = self.escaped_trigger(old.replace("\\x1b", "\\033"))
+        self.assertEqual(self.found(new, old), [self.ESCAPED, "pull_request_target was added" + self.PARSED])
+
+    def test_an_escape_on_a_line_that_moved_is_reported(self):
+        # The strict side of counting by added line: the same escape, on a line the diff adds again.
+        old = "on: push\njobs:\n  a:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: printf '\\x1b[0m'\n      - run: echo hi\n"
+        moved = old.replace("      - run: printf '\\x1b[0m'\n      - run: echo hi\n", "      - run: echo hi\n      - run:  printf '\\x1b[0m'\n")
+        self.assertEqual(self.found(moved, old), [self.ESCAPED])
+
+    # --- 2. aliases counted per file, anchors not at all -------------------------------------------
+
+    def test_a_new_job_takes_a_secret_step_in_discovery_through_a_moved_anchor(self):
+        path, text = self.workflow("discovery.yml")
+        lines = text.splitlines(keepends=True)
+        # "- *patch" written out as the two lines its anchor holds; the anchor itself stays where it is.
+        anchor = next(n for n, line in enumerate(lines) if line.strip() == "- &patch")
+        indent = lines[anchor][:len(lines[anchor]) - len(lines[anchor].lstrip())]
+        body = []
+        for line in lines[anchor + 1:]:
+            if not line.startswith(indent + "  "):
+                break
+            body.append(line)
+        self.assertTrue(body)
+        alias = next(n for n, line in enumerate(lines) if line.strip() == "- *patch")
+        lines[alias:alias + 1] = [indent + "- " + body[0].lstrip()] + body[1:]
+        # "- name: Discover", the step that holds the model key, gets an anchor.
+        step = next(n for n, line in enumerate(lines) if line.strip() == "- name: Discover" and n > alias)
+        lines[step:step + 1] = [indent + "- &run\n", indent + "  name: Discover\n"]
+        lines += ["  discovery-notes:\n", "    runs-on: ubuntu-24.04\n", "    permissions:\n", "      contents: read\n",
+                  "    steps:\n", "      - *run\n"]
+        new = "".join(lines)
+        self.assertEqual(mg.aliases(new), mg.aliases(text))  # as many aliases as before
+        job = yaml.safe_load(new)["jobs"]["discovery-notes"]
+        self.assertNotIn("environment", job)
+        self.assertIn("secrets.", json.dumps(job["steps"][0]["env"]))
+        found = self.found(new, text, path)
+        self.assertIn(self.ALIAS, found)
+        self.assertIn(ANCHOR, found)
+        gained = [m for m in found if m.startswith("job discovery-notes gains secrets: ") and m.endswith(self.PARSED)]
+        self.assertEqual(len(gained), 1, found)
+        # The review's control, and the same job with a step of its own: nothing but what a new job is asked.
+        self.assertIn(self.ALIAS, self.found(text + "  notes:\n    runs-on: ubuntu-24.04\n    permissions:\n      contents: read\n"
+                                             "    steps:\n      - *checkout\n", text, path))
+        self.assertEqual(self.found(text + "  notes:\n    runs-on: ubuntu-24.04\n    permissions:\n      contents: read\n"
+                                    "    steps:\n      - run: echo hi\n", text, path), [])
+
+    def test_an_alias_swapped_for_another_gives_a_job_the_secret_step(self):
+        new = self.PAIR.replace("      - *c\n      - run: echo hi\n", "      - uses: actions/checkout@v4\n      - *s\n")
+        self.assertEqual(mg.aliases(new), mg.aliases(self.PAIR))
+        self.assertIn("secrets.X", yaml.safe_load(new)["jobs"]["b"]["steps"][1]["run"])
+        self.assertEqual(self.found(new, self.PAIR), [self.ALIAS, "job b gains secrets: X" + self.PARSED])
+
+    def test_an_anchor_moved_with_no_alias_touched_gives_a_job_the_secret_step(self):
+        old = self.PAIR.replace("      - &s\n        run:", "      - name: use\n        run:")
+        new = old.replace("      - &c\n        uses: actions/checkout@v4\n      - name: use\n",
+                          "      - uses: actions/checkout@v4\n      - &c\n        name: use\n")
+        self.assertNotEqual(new, old)
+        self.assertIn("secrets.X", yaml.safe_load(new)["jobs"]["b"]["steps"][0]["run"])
+        found = self.found(new, old)
+        self.assertIn("job b gains secrets: X" + self.PARSED, found)
+        # However the diff lines the two files up, the parsed reading alone is enough to report it.
+        self.assertEqual([m for m in found if m not in (ANCHOR, self.ALIAS)], ["job b gains secrets: X" + self.PARSED])
+
+    def test_a_secret_one_job_gains_plainly_and_another_through_an_alias_is_reported_for_both(self):
+        old = self.PAIR.replace("      - &s\n        run: echo ${{ secrets.X }}\n", "")
+        new = self.PAIR.replace("      - *c\n      - run: echo hi\n", "      - *c\n      - *s\n")
+        found = self.found(new, old)
+        self.assertIn("job a gains secrets: X", found)
+        self.assertIn("job b gains secrets: X" + self.PARSED, found)
+
+    def test_an_anchor_on_a_line_the_diff_adds_is_reported(self):
+        self.assertIn(ANCHOR, self.found(self.PAIR, self.PAIR.replace("- &s\n        run:", "- name: s\n        run:")))
+        counted = mg.unread_added("", "a: &x 1\nb: [&y 2, *x]\nc: !!str &z v\n- &w\n  k: v\nrun: make && make test & wait\n"
+                                      "script: |\n  ls *.py &> /dev/null && echo &done\n")
+        self.assertEqual(counted, {"escape": 0, "alias": 1, "anchor": 4})
+
+    def test_only_the_lines_the_diff_adds_are_counted(self):
+        old = "a: 1\nb: &x 2\nc: *x\nd: \"\\x41\"\n"
+        self.assertEqual(mg.unread_added(old, old.replace("a: 1", "a: 2")), {"escape": 0, "alias": 0, "anchor": 0})
+        self.assertEqual(mg.added_line_numbers(old, old.replace("a: 1", "a: 2") + "e: 5\n"), {0, 4})
+        self.assertEqual(mg.unread_added(old, old + "e: *x\nf: \"\\u0041\"\n"), {"escape": 1, "alias": 1, "anchor": 0})
+        self.assertEqual(mg.unread_added(None, old), {"escape": 1, "alias": 1, "anchor": 1})
+
+    # --- 3. \" closes the guard's quote but not YAML's -----------------------------------------------
+
+    def test_an_escaped_quote_does_not_close_the_string(self):
+        base = ("on: push\npermissions:\n  contents: read\njobs:\n"
+                "  a:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo ${{ secrets.X }}\n"
+                "  b:\n    runs-on: ubuntu-24.04\n    # this job must never get secrets.X\n    steps:\n      - run: echo hi\n")
+        step = '- run: "echo \\" # ${{ secrets.X }}"'
+        kept = base.replace("- run: echo hi", step)
+        new = kept.replace("    # this job must never get secrets.X\n", "")
+        self.assertEqual(yaml.safe_load(new)["jobs"]["b"]["steps"][0]["run"], 'echo " # ${{ secrets.X }}')
+        self.assertEqual(self.found(new, base), ["job b gains secrets: X"])
+        # The review's controls: the same step with the comment kept, and the plain use.
+        self.assertEqual(self.found(kept, base), ["job b gains secrets: X"])
+        self.assertEqual(self.found(base.replace("- run: echo hi", "- run: echo ${{ secrets.X }}"), base), ["job b gains secrets: X"])
+        self.assertEqual(mg._strip_comment('run: "a \\" # b" # c'), 'run: "a \\" # b"')
+        self.assertEqual(mg._strip_comment('run: "a \\\\" # c'), 'run: "a \\\\"')
+        self.assertEqual(mg._strip_comment("run: 'a \\' # c"), "run: 'a \\'")  # single quotes have no escapes
+
+    # --- the parsed reading, and where it cannot be made ---------------------------------------------
+
+    def test_an_ordinary_edit_to_each_of_the_repositorys_workflows_passes(self):
+        named = {"discovery.yml", "fix-matrix.yml", "reported-bench.yml", "web-fix.yml"}
+        seen = set()
+        for file in sorted((ROOT / ".github" / "workflows").glob("*.y*ml")):
+            text = file.read_text(encoding="utf-8")
+            path = f".github/workflows/{file.name}"
+            self.assertIn("runs-on: ", text, file.name)
+            for edited in (text.replace("runs-on: ", "runs-on:  ", 1), text + "# a note\n",
+                           text.replace("jobs:\n", "jobs:\n  # a note\n", 1)):
+                self.assertNotEqual(edited, text, file.name)
+                self.assertEqual(self.found(edited, text, path), [], file.name)
+            seen.add(file.name)
+        self.assertLessEqual(named, seen)
+
+    def test_the_parsed_reading_and_the_line_reading_agree_on_the_repositorys_workflows(self):
+        for file in sorted((ROOT / ".github" / "workflows").glob("*.y*ml")):
+            text = file.read_text(encoding="utf-8")
+            parsed = mg.parsed_workflow(text)
+            jobs, _ = mg.parse_workflow(text)
+            self.assertEqual(set(parsed.jobs), set(jobs) - {"(workflow)"}, file.name)
+            self.assertEqual(parsed.triggers, {t.lower() for t in mg.triggers(text)} & parsed.triggers, file.name)
+            for name, job in parsed.jobs.items():
+                self.assertEqual(job.secrets | parsed.workflow, jobs[name].reach, f"{file.name}#{name}")
+                self.assertEqual(job.id_token, jobs[name].id_token, f"{file.name}#{name}")
+                self.assertEqual(bool(job.environment), bool(jobs[name].environment), f"{file.name}#{name}")
+                self.assertEqual(job.perms, jobs[name].perms, f"{file.name}#{name}")
+
+    def test_the_parsed_reading_sees_what_a_job_reaches_however_it_is_written(self):
+        base = "on: push\npermissions:\n  contents: read\njobs:\n  a:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo hi\n"
+        old = mg.parsed_workflow(base)
+
+        def gains(new: str) -> list[tuple[str, str, str, set[str]]]:
+            return mg.parsed_gains(old, mg.parsed_workflow(new))
+
+        self.assertEqual(gains(base.replace("echo hi", "echo hello")), [])
+        self.assertEqual(gains(base.replace("echo hi", "echo ${{ secrets.X }}")), [("secrets", "job a", "", {"X"})])
+        self.assertEqual(gains(base.replace("    steps:", "    if: secrets.X != ''\n    steps:")), [("secrets", "job a", "", {"X"})])
+        self.assertEqual(gains(base.replace("    steps:", "    if: contains(toJSON(secrets), 'x')\n    steps:")),
+                         [("secrets", "job a", "", {"(every secret)"})])
+        self.assertEqual(gains(base + "  b:\n    uses: ./.github/workflows/x.yml\n    secrets: inherit\n    permissions: {}\n"),
+                         [("secrets", "job b", "", {"(every secret)"})])
+        self.assertEqual(gains(base.replace("permissions:", "env:\n  K: ${{ secrets.X }}\npermissions:")),
+                         [("secrets", "the workflow", "", {"X"})])
+        self.assertEqual([g[:3] for g in gains(base.replace("    steps:", "    \"env\\x69ronment\": unity\n    steps:"))],
+                         [("environment", "job a", "job a gains or changes an environment")])
+        self.assertEqual([g[2] for g in gains(base.replace("    steps:", "    permissions: {\"id-tok\\x65n\": write}\n    steps:"))],
+                         ["job a gains id-token: write", "job a gets wider permissions: id-token"])
+        self.assertEqual([g[2] for g in gains(base.replace("permissions:\n  contents: read\n", ""))],
+                         ["job a lost its permissions block, so its token gets the repository default"])
+        self.assertEqual([g[2] for g in gains(base.replace("  contents: read", "  contents: write"))],
+                         ["job a gets wider permissions: contents"])
+        self.assertEqual([g[2] for g in gains(base + "  b:\n    runs-on: ubuntu-24.04\n    steps: []\n")], [])
+        self.assertEqual([g[2] for g in gains(base + "  b:\n    runs-on: ubuntu-24.04\n    permissions: write-all\n    steps: []\n")],
+                         ["job b gains id-token: write", "new job b may write: every scope"])
+        for form in ("on: [push, pull_request_target]", "on: pull_request_target", "\"on\":\n  \"pull_request_t\\x61rget\":",
+                     "ON:\n  pull_request_target:\n    types: [opened]"):
+            self.assertEqual([g[2] for g in gains(base.replace("on: push", form))], ["pull_request_target was added"], form)
+
+    def test_a_workflow_the_parsed_reading_cannot_make_is_cannot_tell(self):
+        base = "on: push\npermissions:\n  contents: read\njobs:\n  a:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo hi\n"
+        cases = {
+            "not YAML": base + "  b: [\n",
+            "one key twice": base + "  a:\n    runs-on: ubuntu-24.04\n    steps: []\n",
+            "jobs twice under two spellings": base + "Jobs:\n  c:\n    runs-on: ubuntu-24.04\n",
+            "two documents": base + "---\non: pull_request_target\n",
+            "not a mapping": "- on: push\n",
+            "a job that is not a mapping": base + "  b: echo\n",
+            "a tag PyYAML's safe reader refuses": base.replace("echo hi", "!!python/name:os.system x"),
+        }
+        for label, new in cases.items():
+            found = self.found(new, base)
+            self.assertEqual(len([m for m in found if m.startswith(mg.CANNOT_TELL + ": ")]), 1, f"{label}: {found}")
+        # The file as it was counts too: what it reached is then not known.
+        self.assertTrue(any(m.startswith(mg.CANNOT_TELL) for m in self.found(base, base + "  b: [\n")))
+        # Aliases that multiply are not followed for ever.
+        bomb = "a: &a [x, x, x, x, x, x, x, x, x, x]\n" + "".join(
+            f"{chr(98 + n)}: &{chr(98 + n)} [{', '.join(['*' + chr(97 + n)] * 10)}]\n" for n in range(6))
+        self.assertTrue(any("too large" in m for m in self.found(base + bomb.replace("\n", "\n", 1), base)))
+
+    def test_without_pyyaml_every_changed_workflow_is_cannot_tell(self):
+        base = "on: push\npermissions:\n  contents: read\njobs:\n  a:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo hi\n"
+        had = mg._yaml
+        mg._yaml = None
+        try:
+            found = self.found(base.replace("echo hi", "echo hello"), base)
+            self.assertIn("PyYAML is not installed", mg.yaml_status())
+        finally:
+            mg._yaml = had
+        self.assertEqual(len(found), 1)
+        self.assertTrue(found[0].startswith(mg.CANNOT_TELL + ": PyYAML is not installed"), found)
+        self.assertEqual(self.found(base.replace("echo hi", "echo hello"), base), [])
+        self.assertIn("PyYAML " + yaml.__version__, mg.yaml_status())
 
 
 if __name__ == "__main__":

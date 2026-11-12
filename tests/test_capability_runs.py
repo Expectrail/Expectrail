@@ -12,6 +12,13 @@ from expectrail import capabilities as cap
 from expectrail import capability_runs as runs
 
 RUN = "https://github.com/Expectrail/Expectrail/actions/runs/"
+SAVED_NOTICES = json.loads((cap.ROOT / "tests" / "capability_notices.json").read_text(encoding="utf-8"))["runs"]
+
+
+def saved_notices(job_id: str) -> list:
+    """The notices GitHub gave for a job, from the saved answers. A job id here is "<run>:<job name>"."""
+    number, _, name = job_id.partition(":")
+    return [item for item in SAVED_NOTICES.get(number, []) if item["job"] == name]
 
 
 def _step(name: str, seconds: int = 29, conclusion: str = "success") -> dict:
@@ -253,11 +260,15 @@ class LedgerRunsTest(unittest.TestCase):
             if job_id and "timing" in cite:
                 seconds = int(cite["timing"]["seconds"]) + (1 if "phases" in cite["timing"] else 0)
                 run["jobs"].append(_job("timed", job_id=job_id, steps=[_step(cite["timing"]["step"], seconds)]))
+        # The jobs whose saved notices the ledger's counts rest on (tests/capability_notices.json).
+        for number, items in SAVED_NOTICES.items():
+            for name in dict.fromkeys(item["job"] for item in items):
+                out[number]["jobs"].append(_job(name, job_id=f"{number}:{name}"))
         return out
 
     def test_every_cited_run_is_asked_about_and_the_ledger_agrees_with_itself(self):
         answers = self.answers()
-        problems, checked = runs.recheck(self.doc, answers.__getitem__)
+        problems, checked = runs.recheck(self.doc, answers.__getitem__, saved_notices)
         self.assertEqual(problems, [])
         self.assertEqual(len(checked), len(answers))
         self.assertGreater(len(answers), 20)
@@ -265,7 +276,7 @@ class LedgerRunsTest(unittest.TestCase):
     def test_a_run_that_turned_red_since_is_caught_on_every_row_that_cites_it(self):
         answers = self.answers()
         answers["42934646223"]["conclusion"] = "failure"
-        problems, _ = runs.recheck(self.doc, answers.__getitem__)
+        problems, _ = runs.recheck(self.doc, answers.__getitem__, saved_notices)
         self.assertGreaterEqual(len(problems), 6)
         self.assertTrue(all("recorded as success and GitHub says failure" in p for p in problems), problems)
 

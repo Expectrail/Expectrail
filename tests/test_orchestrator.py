@@ -46,6 +46,19 @@ from tests.test_ci_gate import FIXTURES, FakeReplay, make_repo
 REPO = Path(__file__).resolve().parent.parent
 EXAMPLES = REPO / "contracts" / "examples"
 
+# Every file this process opens while WATCHING is non-empty, by any route (an audit hook cannot be
+# removed, so it is added once and switched by the list).
+OPENED: list[str] = []
+WATCHING: list[bool] = []
+
+
+def _note_opens(event: str, args: tuple) -> None:
+    if WATCHING and event == "open" and isinstance(args[0], (str, bytes, os.PathLike)):
+        OPENED.append(os.fsdecode(args[0]))
+
+
+sys.addaudithook(_note_opens)
+
 
 def wait_for(condition, seconds: float = 10.0, what: str = "the condition"):
     deadline = time.monotonic() + seconds
@@ -460,6 +473,162 @@ class GodotEngineTest(Case):
             status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=FakeReplay())})
             self.assertEqual((status["phase"], status["decision"]), ("completed", "needs-review"))
             self.assertTrue(any("outside the sandbox" in reason for reason in status["reasons"]), status["reasons"])
+
+    def test_the_checks_that_judge_are_the_ones_the_job_names(self):
+        # The engine reads the specs and routes once, holds their digest against the job's, and the
+        # gate judges with what was read. Whatever is done to the checkout afterwards does not reach
+        # the verdict, and each replay plays a copy of its route made from the bytes that were read.
+        import hashlib
+
+        specs, routes = self.head / "specs", self.head / "routes"
+        played: list[str] = []
+
+        class SpoilsTheChecksMidRun(FakeReplay):
+            def __call__(self, route, game, out, frames):
+                for spec in specs.glob("*.json"):
+                    spec.write_text("{}", encoding="utf-8")      # no longer a spec at all
+                for file in routes.glob("*.json"):
+                    file.unlink()
+                played.append(hashlib.sha256(Path(route).read_bytes()).hexdigest())
+                self.assertNotInTheCheckout(route)
+                return super().__call__(route, game, out, frames)
+
+            def assertNotInTheCheckout(self, route):
+                assert routes.resolve() not in Path(route).resolve().parents, route
+
+        expected = self.gate(self.head, None, "gate-before")     # the gate on the checkout as it was
+        job = self.job()
+        named = self.store.status(job)["inputs"]["policyDigest"]
+        with contextlib.redirect_stdout(io.StringIO()):
+            status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=SpoilsTheChecksMidRun())})
+        self.assertEqual((status["phase"], status["decision"]), ("completed", "accept"))
+        record = rec.read_record(self.store.paths(job).output / "findings.json")
+        self.assertEqual((record["specs"], record["routes"], record["checks"]),
+                         (expected["specs"], expected["routes"], expected["checks"]))
+        self.assertEqual(sorted(set(played)), sorted(r["sha256"] for r in record["routes"]))
+        self.assertNotEqual(req.inputs(self.request())["policyDigest"], named)   # the checkout has moved on
+
+    def test_checks_that_changed_before_the_engine_reads_them_stop_the_job(self):
+        # There is one source for the checks, the engine's one reading. If it is not what the job
+        # names, there is no verdict; nothing is read a second time and nothing is fallen back to
+        # (second review of #321: an engine that lost its copy went back to the checkout in silence).
+        spec = self.head / "specs" / "player-stays-above-ground.json"
+
+        class EditsTheSpecFirst(engines.GodotGate):
+            def execute(self, request, paths, advance):
+                spec.write_text(spec.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+                return super().execute(request, paths, advance)
+
+        replay = FakeReplay()
+        job = self.job()
+        status = runner.work(self.store, job, engines={"godot": EditsTheSpecFirst(replay=replay)})
+        self.assertEqual((status["decision"], [d["code"] for d in status["diagnostics"]]), ("needs-review", ["INPUT_INVALID"]))
+        self.assertIn("the checks changed after the job was created", status["diagnostics"][0]["detail"])
+        self.assertEqual(replay.calls, [])
+        self.assertIsNone(status["output"])
+
+    def test_a_verdict_judged_with_other_checks_than_the_jobs_is_not_given(self):
+        # The worker's own hold, for any engine: the digest of the checks the engine says it judged
+        # with must be the job's.
+        case = self
+
+        class JudgedWithOtherChecks:
+            def preflight(self, request):
+                return []
+
+            def execute(self, request, paths, advance):
+                case.evidence(paths.root.name)
+                return engines.Result("accept", policy="0" * 64)
+
+        job = self.job()
+        status = runner.work(self.store, job, engines={"godot": JudgedWithOtherChecks()})
+        self.assertEqual((status["decision"], [d["code"] for d in status["diagnostics"]]), ("needs-review", ["INPUT_INVALID"]))
+        self.assertIn("the checks changed while the job was running", status["diagnostics"][0]["detail"])
+        self.assertIsNone(status["output"])
+
+    def test_a_spec_the_gate_refuses_is_refused_the_same_way_in_a_job_and_never_opened(self):
+        # One reader for the checks, the gate's. Whatever form a spec file takes, a job says what
+        # the plain gate says about the same checkout, and what a link leads to is not opened
+        # (first review of #321: a copy made by another reader followed links the gate refuses).
+        second = json.loads((self.head / "specs" / "player-stays-above-ground.json").read_text(encoding="utf-8"))
+        second["id"] = "second-check"
+        text = json.dumps(second)
+        forms = {
+            "a file": lambda repo, spec: spec.write_text(text, encoding="utf-8"),
+            "a link to a file inside the checkout": lambda repo, spec: (
+                (repo / "kept").mkdir(), (repo / "kept" / "target.json").write_text(text, encoding="utf-8"),
+                spec.symlink_to(repo / "kept" / "target.json")),
+            "a link to a file outside the checkout": lambda repo, spec: (
+                (repo.parent / f"outside-{repo.name}").mkdir(),
+                (repo.parent / f"outside-{repo.name}" / "target.json").write_text(text, encoding="utf-8"),
+                spec.symlink_to(repo.parent / f"outside-{repo.name}" / "target.json")),
+            "a link to nothing": lambda repo, spec: spec.symlink_to(repo / "kept" / "missing.json"),
+            "a link to something that is not JSON": lambda repo, spec: (
+                (repo / "kept").mkdir(), (repo / "kept" / "target.json").write_text("not json", encoding="utf-8"),
+                spec.symlink_to(repo / "kept" / "target.json")),
+            "a file over the size cap": lambda repo, spec: spec.write_text(text + " " * (gate.SPEC_CAP + 1), encoding="utf-8"),
+        }
+        checks_expected = {"a file": 4}
+        for n, (name, make) in enumerate(forms.items()):
+            with self.subTest(two_json=name):
+                repo = make_repo(self.tmp / f"form-{n}")
+                spec = repo / "specs" / "two.json"
+                make(repo, spec)
+                target = os.path.abspath(os.readlink(spec)) if spec.is_symlink() else None
+                plain = self.gate(repo, None, f"gate-form-{n}")
+                self.head = repo
+                OPENED.clear()
+                WATCHING.append(True)
+                try:
+                    job = self.job(idempotency_key=f"form-{n}")
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=FakeReplay())})
+                finally:
+                    WATCHING.clear()
+                self.assertEqual((status["phase"], status["decision"], status["reasons"]),
+                                 ("completed", plain["decision"], plain["reasons"]))
+                record = rec.read_record(self.store.paths(job).output / "findings.json")
+                self.assertEqual((len(record["checks"]), record["specs"], record["drafts"]),
+                                 (len(plain["checks"]), plain["specs"], plain["drafts"]))
+                self.assertEqual(len(record["checks"]), checks_expected.get(name, 2))
+                opened = {os.path.abspath(p) for p in OPENED}
+                self.assertIn(str(repo / "specs" / "player-stays-above-ground.json"), opened)   # the watch does see opens
+                if target is not None:
+                    self.assertNotIn(target, opened)   # what the link leads to was never opened, by anything
+                if name not in ("a file", "a link to nothing"):
+                    self.assertTrue(any("two.json" in reason for reason in status["reasons"]), status["reasons"])
+
+    def test_the_digest_of_the_checks_covers_what_the_gate_reads_and_nothing_a_link_leads_to(self):
+        project = self.request()["project"]
+        before = req.policy_digest(self.head, project)
+        self.assertEqual(before, gate.read_checks(self.head, "specs", ["routes/*.json"]).digest)
+        # A route that is a link is not read by the gate (find_routes), so it is not in the digest.
+        (self.head / "routes" / "linked.json").symlink_to("smoke.json")
+        # A file that only looks like a check is neither read nor digested.
+        (self.head / "specs" / "notes.txt").write_text("not a spec\n", encoding="utf-8")
+        (self.head / "specs" / "deeper").mkdir()
+        (self.head / "specs" / "deeper" / "nested.json").write_text("{}", encoding="utf-8")
+        self.assertEqual(req.policy_digest(self.head, project), before)
+        # A draft is read by the gate (and counted), so it is in the digest.
+        with_draft = make_repo(self.tmp / "with-draft", draft=True)
+        self.assertNotEqual(req.policy_digest(with_draft, project), before)
+        # A spec that is a link is in the digest by its name and its refusal: adding it changes the
+        # digest, what it leads to does not, and making it a real file does.
+        (self.head / "kept").mkdir()
+        target = self.head / "kept" / "target.json"
+        target.write_text("{}", encoding="utf-8")
+        (self.head / "specs" / "two.json").symlink_to(target)
+        linked = req.policy_digest(self.head, project)
+        self.assertNotEqual(linked, before)
+        target.write_text('{"something": "else"}', encoding="utf-8")
+        self.assertEqual(req.policy_digest(self.head, project), linked)
+        (self.head / "specs" / "two.json").unlink()
+        (self.head / "specs" / "two.json").write_text('{"something": "else"}', encoding="utf-8")
+        self.assertNotEqual(req.policy_digest(self.head, project), linked)
+        # No checks at all: no digest.
+        empty = self.tmp / "empty"
+        (empty / "specs").mkdir(parents=True)
+        self.assertIsNone(req.policy_digest(empty, project))
 
     def test_a_game_that_changes_after_the_workers_read_gives_no_decision(self):
         # The window the worker's second read leaves: the files are right when the worker checks
@@ -1165,6 +1334,107 @@ class LostWorkerTest(Case):
                 mock.patch.object(st.os, "kill", side_effect=AssertionError("signalled by number")):
             st._signal(live.pid, f"{st.JOB_ENV}={job}".encode(), signal.SIGKILL)
         self.assertIsNone(live.poll())
+
+    def test_a_caller_holding_many_open_files_still_stops_a_lost_jobs_processes(self):
+        # A long-lived caller with a thousand files open gets a handle numbered 1024 or higher.
+        # `select` refuses such a number; asked that way, the stop raised and the job's processes ran
+        # on, where the way before handles stopped them (second review of #316).
+        import fcntl
+        import resource
+
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        need = 1100
+        if soft != resource.RLIM_INFINITY and soft < need:
+            if hard != resource.RLIM_INFINITY and hard < need:
+                self.skipTest(f"this system allows only {hard} open files")
+            resource.setrlimit(resource.RLIMIT_NOFILE, (need, hard))
+            self.addCleanup(resource.setrlimit, resource.RLIMIT_NOFILE, (soft, hard))
+        real_open, handed = os.pidfd_open, []
+
+        def a_high_handle(pid: int) -> int:
+            low = real_open(pid)
+            try:
+                high = fcntl.fcntl(low, fcntl.F_DUPFD_CLOEXEC, 1024)
+            finally:
+                os.close(low)
+            handed.append(high)
+            return high
+
+        job = self.job()
+        proc = self.marked(job)
+        with mock.patch.object(st.os, "pidfd_open", side_effect=a_high_handle), \
+                mock.patch.object(st.os, "kill", side_effect=AssertionError("signalled by number")):
+            status = self.store.lose(job, "the worker stopped before the job finished", stage="queued")
+        self.assertTrue(handed and min(handed) >= 1024, handed)
+        wait_for(lambda: proc.poll() is not None, what="the marked process stopping through a high-numbered handle")
+        self.assertEqual(status["reasons"][-1], "stopped 1 process(es) it had started")
+
+    def test_any_failure_of_the_handle_path_falls_to_the_process_number(self):
+        # One fallback for the whole first way: whichever step fails, and however, the process is
+        # stopped as it was before handles. Only "no such process" ends it.
+        import errno
+
+        ways = {
+            "the liveness check raises": lambda: mock.patch.object(st, "_exited", side_effect=ValueError("filedescriptor out of range")),
+            "the signal to the handle is refused": lambda: mock.patch.object(
+                st.signal, "pidfd_send_signal", side_effect=OSError(errno.EINVAL, "Invalid argument")),
+            "the signal to the handle is not allowed": lambda: mock.patch.object(
+                st.signal, "pidfd_send_signal", side_effect=PermissionError(errno.EPERM, "Operation not permitted")),
+            "no handle: too many open files": lambda: mock.patch.object(
+                st.os, "pidfd_open", side_effect=OSError(errno.EMFILE, "Too many open files")),
+        }
+        for n, (name, broken) in enumerate(ways.items()):
+            with self.subTest(failure=name):
+                job = self.job(idempotency_key=f"handle-path-{n}")
+                proc = self.marked(job)
+                with broken():
+                    status = self.store.lose(job, "the worker stopped before the job finished", stage="queued")
+                wait_for(lambda: proc.poll() is not None, what=f"the marked process stopping by number ({name})")
+                self.assertEqual(status["phase"], "failed")
+                # Why is said too: "a process handle could not be used", or "this system has no
+                # process handles" when none can be opened at all.
+                self.assertTrue(status["reasons"][-1].startswith("stopped 1 process(es) it had started; by process number: "),
+                                status["reasons"])
+                self.assertEqual("could not be used" in status["reasons"][-1], not name.startswith("no handle"))
+        # "No such process" from the handle is the end of it: nothing is signalled by number.
+        job = self.job(idempotency_key="handle-path-gone")
+        proc = self.marked(job)
+        with mock.patch.object(st.signal, "pidfd_send_signal", side_effect=ProcessLookupError(errno.ESRCH, "No such process")), \
+                mock.patch.object(st.os, "kill", side_effect=AssertionError("signalled by number")):
+            self.assertIsNone(st._signal(proc.pid, f"{st.JOB_ENV}={job}".encode(), signal.SIGKILL))
+        self.assertIsNone(proc.poll())
+
+    def test_an_error_while_stopping_is_said_on_the_job_and_not_raised(self):
+        # The job is final before the stop, so nothing tries again: the error must be on the job.
+        job = self.job()
+        with mock.patch.object(st, "stop_job", side_effect=RuntimeError("the stop itself broke")):
+            status = self.store.lose(job, "the worker stopped before the job finished", stage="queued")
+        self.assertEqual(status["phase"], "failed")
+        self.assertEqual(status["reasons"], ["the worker stopped before the job finished",
+                                             "could not stop what it had started: RuntimeError: the stop itself broke"])
+        self.assertEqual(self.store.status(job)["reasons"], status["reasons"])
+        job = self.job(idempotency_key="cancel-stop-error")
+        with mock.patch.object(st, "stop_job", side_effect=RuntimeError("the stop itself broke")):
+            status = self.store.cancel(job)
+        self.assertEqual((status["phase"], status["reasons"][-1]),
+                         ("cancelled", "could not stop what it had started: RuntimeError: the stop itself broke"))
+
+    def test_a_process_started_after_the_first_look_is_counted(self):
+        job = self.job()
+        looks = iter([[101], [101, 202]])   # the job starts one more between the first look and the next
+
+        def look(_job):
+            return next(looks, [])
+
+        with mock.patch.object(st, "processes_of", side_effect=look), mock.patch.object(st, "_signal", return_value="handle") as sent:
+            ways: set = set()
+            self.assertEqual(st.stop_job(job, grace_seconds=0.1, ways=ways), (2, 2))
+        self.assertEqual(sorted(call.args[0] for call in sent.call_args_list), [101, 202])
+        self.assertEqual(ways, {"handle"})
+        # And one that is still there at the end is found and not counted as gone.
+        looks = iter([[101]])
+        with mock.patch.object(st, "processes_of", side_effect=lambda _job: next(looks, [303])), mock.patch.object(st, "_signal"):
+            self.assertEqual(st.stop_job(job, grace_seconds=0.1), (2, 1))
 
     def test_a_cancel_that_leaves_something_running_says_so(self):
         job = self.job()

@@ -19,11 +19,12 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from expectrail import resources
 from expectrail.orchestrator import request as req
 from expectrail.orchestrator import runner
 from expectrail.orchestrator import store as st
 
-ROOT = Path(__file__).resolve().parent.parent.parent
+ROOT = resources.ROOT
 GAME = "game/platformer"
 ROUTE = "harness/routes/smoke.json"
 SPECS = "agents/specs"

@@ -230,6 +230,10 @@ and searches every output file, the log and the comment for its route names.
   with the reason. `.git` and `.godot` are never part of the game. The output and work folders may
   not be inside the game folder. A replay whose copy is not the tree the record names (the folder
   changed during the run) is a `replay-error`, not a result.
+- **The checks are read once.** The gate reads each spec and route file one time, without following
+  a link and up to a size cap (256 KiB a spec, 1 MiB a route), and says so in the reasons when it
+  refuses one. Each replay plays a copy of its route written from the bytes that were read, in the
+  gate's work folder, so the route a replay plays is the route the record names by its sha256.
 - **Held-out routes and pull request code share a job.** If you pass `heldout-token`, the pull
   request's code runs in the job that holds the held-out routes. Inside the replay sandbox the game
   sees only the one route it is playing, not the folder; a replay outside the sandbox, and any other

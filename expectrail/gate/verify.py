@@ -39,16 +39,18 @@ import shutil
 import sys
 import tempfile
 import traceback
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Callable
 
+from expectrail import resources
 from expectrail import __version__
 from expectrail.contracts import digest
 from expectrail.gate import record as rec
 from expectrail.gate.page import write_page
 
-EXPECTRAIL_ROOT = Path(__file__).resolve().parent.parent.parent
+EXPECTRAIL_ROOT = resources.ROOT
 CONTRACTS = EXPECTRAIL_ROOT / "contracts"
 EXIT = {"accept": 0, "reject": 1, "needs-review": 2}
 MAX_SPECS = 64
@@ -145,72 +147,146 @@ def find_routes(root: Path, patterns: list[str]) -> list[Path]:
     return sorted(files)
 
 
+def spec_files(folder: Path) -> list[Path]:
+    """The spec files of a specs folder that is a real folder: every *.json that is a file, or a
+    link to one. (A link is listed and then refused by the reader, with the reason; it is never
+    followed to be read.)"""
+    if not folder.is_dir() or folder.is_symlink():
+        return []
+    return sorted(p for p in folder.glob("*.json") if p.is_file())
+
+
 def _schema(kind: str) -> dict:
     return json.loads((CONTRACTS / f"{kind}.schema.json").read_text(encoding="utf-8"))
 
 
-def load_specs(folder: Path, shown: str) -> tuple[list[dict], int, list[str]]:
-    """(approved specs, drafts, problems) from every *.json in ``folder``."""
-    if not folder.is_dir() or folder.is_symlink():
-        return [], 0, [f"no specs folder at {shown}"]
-    schema, specs, drafts, problems = _schema("test-spec"), [], 0, []
-    for path in sorted(p for p in folder.glob("*.json") if p.is_file()):
-        try:
-            doc = rec.read_json(path, SPEC_CAP, path.name)
-        except rec.RecordError as exc:
-            problems.append(f"spec {path.name}: {exc}")
-            continue
-        found = rec.errors(doc, schema)
-        if found:
-            problems.append(f"spec {path.name} is not a valid test spec: {found[0]}")
-        elif not doc.get("approval"):
-            drafts += 1  # a draft never judges a change: a person approves every spec first
-        else:
-            specs.append(doc)
-    ids = [s["id"] for s in specs]
-    twice = sorted({i for i in ids if ids.count(i) > 1})
-    if twice:
-        problems.append(f"spec id(s) {', '.join(twice)} appear in more than one file")
-        specs = [s for s in specs if s["id"] not in twice]
-    if len(specs) > MAX_SPECS:
-        problems.append(f"{len(specs)} approved specs, over the gate's limit of {MAX_SPECS}")
-        specs = []
-    return sorted(specs, key=lambda s: s["id"]), drafts, problems
+@dataclass(frozen=True)
+class Checks:
+    """The checks that judge a change, read once.
+
+    Everything the gate knows about its specs and routes comes from this one reading: the approved
+    specs, the routes as the bytes that were read (replays run copies made from those bytes, not
+    the checkout's files again), what could not be used and why, and a digest of all of it. A
+    caller that must know the checks did not change (a verification job) reads them with
+    ``read_checks``, compares the digest, and hands the same object to ``run_gate``: one reader and
+    one source, so there is no second reading to hold against the first."""
+    specs: list
+    drafts: int
+    problems: list
+    routes: list            # [(name, the file's bytes, sha256)], sorted by name
+    found_routes: bool      # whether any route file matched at all
+    spec_entries: dict      # path inside the checkout -> what the digest holds for it, for every spec
+                            # file listed: the sha256 of the bytes read, or `refused: <the reason>`
+    route_entries: dict     # the same for every route file listed
+    digest: str | None      # None when there is no spec file and no route file
 
 
-def load_routes(paths: list[Path], root: Path) -> tuple[list[tuple[str, Path, str]], list[str]]:
-    """([(name, file, sha256)], problems) for route files."""
+def _parse(data: bytes, label: str):
+    """``rec.read_json``'s parsing, for bytes already read."""
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        raise rec.RecordError(f"{label} is not UTF-8") from None
+    return rec.strict_loads(text)
+
+
+def read_checks(root: Path, specs: str, patterns: list[str], checks_from: str = "head") -> Checks:
+    """Read the spec and route files of the checkout ``root``, each once, with the gate's reader
+    (``rec.read_bytes_capped``: no link followed, a size cap).
+
+    The digest covers every file listed, in path order: its path, a NUL, then the sha256 of the
+    bytes that were read, or ``refused:`` and the reader's reason for a file it would not read (a
+    link, a file over the cap). So a spec that is a link is in the digest by its name and the fact
+    that it was refused, never by what it leads to, which is not opened."""
     import hashlib
 
-    schema, routes, problems = _schema("route"), [], []
-    for path in paths:
+    problems: list[str] = []
+    spec_entries: dict[str, str] = {}
+    route_entries: dict[str, str] = {}
+
+    def read(path: Path, cap: int, label: str, entries: dict) -> bytes:
+        name = path.relative_to(root).as_posix()
+        try:
+            data = rec.read_bytes_capped(path, cap, label)
+        except rec.RecordError as exc:
+            entries[name] = f"refused: {exc}"
+            raise
+        entries[name] = hashlib.sha256(data).hexdigest()
+        return data
+
+    # Specs: (approved specs, drafts, problems) from every *.json in the folder.
+    folder = root / specs
+    spec_problems: list[str] = []
+    approved: list[dict] = []
+    drafts = 0
+    if not folder.is_dir() or folder.is_symlink():
+        spec_problems.append(f"no specs folder at {specs} ({checks_from})")
+    else:
+        schema = _schema("test-spec")
+        for path in spec_files(folder):
+            try:
+                doc = _parse(read(path, SPEC_CAP, path.name, spec_entries), path.name)
+            except rec.RecordError as exc:
+                spec_problems.append(f"spec {path.name}: {exc}")
+                continue
+            found = rec.errors(doc, schema)
+            if found:
+                spec_problems.append(f"spec {path.name} is not a valid test spec: {found[0]}")
+            elif not doc.get("approval"):
+                drafts += 1  # a draft never judges a change: a person approves every spec first
+            else:
+                approved.append(doc)
+        ids = [s["id"] for s in approved]
+        twice = sorted({i for i in ids if ids.count(i) > 1})
+        if twice:
+            spec_problems.append(f"spec id(s) {', '.join(twice)} appear in more than one file")
+            approved = [s for s in approved if s["id"] not in twice]
+        if len(approved) > MAX_SPECS:
+            spec_problems.append(f"{len(approved)} approved specs, over the gate's limit of {MAX_SPECS}")
+            approved = []
+
+    # Routes: [(name, bytes, sha256)] and problems, from every matching file that is not a link.
+    route_files = find_routes(root, patterns)
+    if not route_files:
+        problems.append(f"no route files match {', '.join(patterns)} ({checks_from})")
+    route_problems: list[str] = []
+    routes: list[tuple[str, bytes, str]] = []
+    schema = _schema("route")
+    for path in route_files:
         shown = path.relative_to(root).as_posix() if _inside(root, path) else path.name
         try:
-            doc = rec.read_json(path, ROUTE_CAP, shown)
+            data = read(path, ROUTE_CAP, shown, route_entries)
+            doc = _parse(data, shown)
         except rec.RecordError as exc:
-            problems.append(f"route {shown}: {exc}")
+            route_problems.append(f"route {shown}: {exc}")
             continue
         found = rec.errors(doc, schema)
         if found:
-            problems.append(f"route {shown} is not a valid route: {found[0]}")
+            route_problems.append(f"route {shown} is not a valid route: {found[0]}")
             continue
-        routes.append((doc["name"], path, hashlib.sha256(path.read_bytes()).hexdigest()))
+        routes.append((doc["name"], data, hashlib.sha256(data).hexdigest()))
     names = [r[0] for r in routes]
     twice = sorted({n for n in names if names.count(n) > 1})
     if twice:
-        problems.append(f"route name(s) {', '.join(twice)} appear in more than one file")
+        route_problems.append(f"route name(s) {', '.join(twice)} appear in more than one file")
         routes = [r for r in routes if r[0] not in twice]
     if len(routes) > MAX_ROUTES:
-        problems.append(f"{len(routes)} routes, over the gate's limit of {MAX_ROUTES}")
+        route_problems.append(f"{len(routes)} routes, over the gate's limit of {MAX_ROUTES}")
         routes = []
-    return sorted(routes), problems
+
+    listed = {**route_entries, **spec_entries}
+    h = hashlib.sha256()
+    for name in sorted(listed):
+        h.update(name.encode() + b"\0" + listed[name].encode() + b"\n")
+    return Checks(specs=sorted(approved, key=lambda s: s["id"]), drafts=drafts,
+                  problems=problems + spec_problems + route_problems, routes=sorted(routes),
+                  found_routes=bool(route_files), spec_entries=spec_entries, route_entries=route_entries,
+                  digest=h.hexdigest() if listed else None)
 
 
-def _files_by_name(paths: list[Path], root: Path) -> dict[str, bytes]:
-    return {p.relative_to(root).as_posix(): p.read_bytes() for p in paths if _inside(root, p)}
-
-
-def changed_count(head: dict[str, bytes], base: dict[str, bytes]) -> int:
+def changed_count(head: dict, base: dict) -> int:
+    """How many names differ between two listings of check files (``Checks.spec_entries`` or
+    ``route_entries``): added, removed, or with another entry."""
     return sum(1 for name in set(head) | set(base) if head.get(name) != base.get(name))
 
 
@@ -320,8 +396,14 @@ def _game_ok(game: Path) -> bool:
 def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path, work: Path,
              base: Path | None = None, heldout: Path | None = None, pr: dict | None = None,
              expectrail_commit: str | None = None, replay: Replay = harness_replay,
-             generated_checks: Path | None = None, require_sandbox: bool = False) -> dict:
+             generated_checks: Path | None = None, require_sandbox: bool = False,
+             checks: Checks | None = None) -> dict:
     """Run the gate and write the artifact in ``out``; returns the findings record.
+
+    ``checks`` is the checks as a caller has already read them (``read_checks``). The gate then
+    judges with exactly those and reads no spec or route file itself. Without it the gate reads them
+    here, once. Either way each replay is given a copy of its route made from the bytes that were
+    read, so the route a replay plays is the route the record names.
 
     ``require_sandbox`` refuses to replay the game outside the replay sandbox: where the machine
     cannot provide it nothing is replayed (ConfigError), and a replay that ran outside it anyway
@@ -364,21 +446,23 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     checks_root = base.resolve() if base is not None else repo
     checks_from = "base" if base is not None else "head"
 
-    spec_docs, drafts, spec_problems = load_specs(checks_root / specs_rel, f"{specs_rel} ({checks_from})")
-    route_files = find_routes(checks_root, patterns)
-    if not route_files:
-        problems.append(f"no route files match {', '.join(patterns)} ({checks_from})")
-    route_list, route_problems = load_routes(route_files, checks_root)
-    problems += spec_problems + route_problems
+    if checks is None:
+        checks = read_checks(checks_root, specs_rel, patterns, checks_from)
+    spec_docs, drafts = checks.specs, checks.drafts
+    problems += checks.problems
+    # The replays play copies of the routes made from the bytes that were read (written below, once
+    # the work folder is known not to be inside a game): the checkout's route files are not opened again.
+    routes_dir = Path(work) / "checks" / "routes"
+    route_list = [(name, routes_dir / f"{name}.json", sha) for name, _data, sha in checks.routes]
     changed = {"specs": 0, "routes": 0}
     if base is not None:
-        head_specs = sorted(p for p in (repo / specs_rel).glob("*.json") if p.is_file()) \
-            if (repo / specs_rel).is_dir() else []
-        base_specs = sorted(p for p in (checks_root / specs_rel).glob("*.json") if p.is_file()) \
-            if (checks_root / specs_rel).is_dir() else []
-        changed["specs"] = changed_count(_files_by_name(head_specs, repo), _files_by_name(base_specs, checks_root))
-        changed["routes"] = changed_count(_files_by_name(find_routes(repo, patterns), repo),
-                                          _files_by_name(route_files, checks_root))
+        # What the change does to the check files, counted from one kind of reading on both sides:
+        # the head's checks are listed by the same reader as the base's. A file the reader refuses
+        # compares by its name and its refusal, so one that is the same on both sides is not counted
+        # and one that the change removes is. (The head's checks judge nothing here.)
+        mine = read_checks(repo, specs_rel, patterns, "head")
+        changed["specs"] = changed_count(mine.spec_entries, checks.spec_entries)
+        changed["routes"] = changed_count(mine.route_entries, checks.route_entries)
 
     head_game = repo / game_rel
     base_game = (checks_root / game_rel) if base is not None else None
@@ -408,6 +492,10 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         except TreeProblem as exc:
             raise ConfigError(f"the {side} game cannot be verified as it stands: {exc}") from exc
         named[Path(folder)] = trees[side]
+    shutil.rmtree(routes_dir, ignore_errors=True)
+    routes_dir.mkdir(parents=True)
+    for name, data, _sha in checks.routes:
+        (routes_dir / f"{name}.json").write_bytes(data)
 
     head = judge_arm(head_game, route_list_for_head, spec_docs, work / "head", replay, label="head") \
         if route_list_for_head and spec_docs else {}

@@ -15,12 +15,13 @@ import time
 import traceback
 from pathlib import Path
 
+from expectrail import resources
 from expectrail import diagnostics as diag
 from expectrail.orchestrator import engines as eng
 from expectrail.orchestrator import request as req
 from expectrail.orchestrator import store as st
 
-EXPECTRAIL_ROOT = Path(__file__).resolve().parent.parent.parent
+EXPECTRAIL_ROOT = resources.ROOT
 # A failure with one of these codes is a known reason there is no result: the job completes as
 # needs-review and says why. Anything else is the orchestrator's own failure.
 EXPLAINED = ("INPUT_INVALID", "TOOL_MISSING", "PRIVATE_SUITE_UNAVAILABLE", "PROVIDER_FAILED",
@@ -79,12 +80,14 @@ def work(store: st.JobStore, job_id: str, engines: dict | None = None, *, own_gr
         # If the evidence names another tree than the job's inputs, the game changed in between:
         # the decision is about files nobody asked about, so it is not given and its evidence is
         # not published under this job.
-        moved = [side for side in ("head", "base") if (result.trees or {}).get(f"{side}Tree") is not None
+        moved = [f"{side} game" for side in ("head", "base") if (result.trees or {}).get(f"{side}Tree") is not None
                  and result.trees[f"{side}Tree"] != status["inputs"][f"{side}Tree"]]
+        if result.policy is not None and result.policy != status["inputs"]["policyDigest"]:
+            moved.append("checks")
         if moved:
             return _needs_review(store, job_id, [st.diagnostic(
                 "INPUT_INVALID", stage="executing",
-                detail=f"the {' and the '.join(moved)} game changed while the job was running; what was "
+                detail=f"the {' and the '.join(moved)} changed while the job was running; what was "
                        f"verified is not what was asked. Ask again")])
         return store.finish(job_id, "completed", decision=result.decision, reasons=result.reasons,
                             evidence_grade=result.evidence_grade, publish=True)

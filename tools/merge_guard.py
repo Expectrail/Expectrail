@@ -8,10 +8,20 @@ do, ``changes-requested`` for what the builder must fix. Exit 0 with nothing to 
 reasons, 2 when the diff could not be read. The pull request's description comes from
 ``--body-file`` or the ``MERGE_GUARD_PR_BODY`` environment variable.
 
-Standard library only, so the job that runs it installs nothing.
+Standard library only, so the job that runs it installs nothing. PyYAML is used when it is already
+there (the last line printed says whether it was) and is never installed by this tool.
 
-A workflow is read line by line, not parsed, so the reading is not what the check rests on. Two
-things are. First, the words themselves are counted in the file's raw text, comments and scripts
+A workflow is read twice. With PyYAML, the file as it was and as it is are parsed, aliases followed
+and escapes decoded, and compared job by job: the events under ``on``, the secrets each job's own
+text and the workflow's text name, each job's ``environment`` and its permissions. That reading does
+not depend on how a line is written, so a secret reached through a moved anchor, an escaped key or a
+quote the line reading closes too early is still that job's gain. A file that PyYAML cannot parse,
+that holds one key twice, or that is not the mapping a workflow is, is reported as "cannot tell: read
+this workflow". Without PyYAML every changed workflow is reported that way: the line reading alone is
+not passed.
+
+The file is also read line by line, as before, and that reading is not what the check rests on. Two
+more things are. First, the words themselves are counted in the file's raw text, comments and scripts
 included: the ``secrets`` context, ``environment``, ``id-token``, ``write``, ``write-all``,
 ``read-all`` and ``pull_request_target``. A file that holds more of one than it did, with no job
 the reading can name as the one that gained it, is reported against the file; so a comment, a step's
@@ -21,8 +31,10 @@ and a rise in any one is a gain, so a comment removed does not pay for a use add
 also read job by job in the same three ways: a use after a ``#`` in a job's script is that job's
 gain, wherever else in the file a mention went away. Second,
 what the line reading cannot follow is reported rather than passed: a job written as a flow mapping,
-a ``\\x``, ``\\u`` or ``\\U`` escape anywhere in the file, a quoted string that runs past the end of
-its line, an alias (``*name``) outside a script, a line among the top-level keys, the jobs or a job's
+a ``\\x``, ``\\u`` or ``\\U`` escape on any line the diff adds, an alias (``*name``) or an anchor
+(``&name``) outside a script on any line the diff adds (whatever the file's totals do, so one taken
+away elsewhere does not pay for it, and a moved line is reported too), a quoted string that runs
+past the end of its line, a line among the top-level keys, the jobs or a job's
 keys that is not a plain ``key:``, and a permissions block with an entry that is not ``scope: level``.
 
 What it does not see: a test loosened without being skipped; a skip moved from one test to another
@@ -31,10 +43,8 @@ out (built with ``getattr`` or from pieces, or split over two lines); a ``load_t
 no tests, or a test that returns before it asserts; a test method removed or renamed so that it no
 longer runs; a file that is not Python deleted under ``tests/``; a new trigger (such as
 ``workflow_run``) on a workflow that already holds a secret; an ``approval`` in a JSON file outside
-a ``specs`` or ``contracts`` folder; a job given a wider read scope by YAML the line reading
-does not follow and the checks above do not name; ``environment``, ``id-token`` or a write
-permission hidden in the same change that removes a mention the same reading counts, in a form none
-of the checks above names; a secret a job already names in its script and newly uses, since the
+a ``specs`` or ``contracts`` folder; what GitHub's own reader takes differently from PyYAML (PyYAML
+reads YAML 1.1 and follows ``<<``); a secret a job already names in its script and newly uses, since the
 gain is read per job; a new file that agents read as instructions (an ``AGENTS.md``
 in a subfolder, a ``CLAUDE.md``) or the audit's own configuration; the private repository named
 with no path after it, or a held-out name put together from pieces; whether a claim in the
@@ -55,6 +65,11 @@ import sys
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
+
+try:  # Not a requirement: see the module's text. Without it a changed workflow is "cannot tell".
+    import yaml as _yaml
+except Exception:  # pragma: no cover - depends on the machine
+    _yaml = None
 
 NEEDS_SEAN = "needs-sean"
 CHANGES = "changes-requested"
@@ -265,14 +280,19 @@ def check_baseline(changes: list[Change]) -> list[Reason]:
 
 def _strip_comment(line: str) -> str:
     quote = ""
-    for n, ch in enumerate(line):
+    n = 0
+    while n < len(line):
+        ch = line[n]
         if quote:
-            if ch == quote:
+            if quote == '"' and ch == "\\":
+                n += 1  # YAML takes the next character as it is: \" does not close the string
+            elif ch == quote:
                 quote = ""
         elif ch in "'\"":
             quote = ch
         elif ch == "#" and (n == 0 or line[n - 1] in " \t"):
             return line[:n].rstrip()
+        n += 1
     return line.rstrip()
 
 
@@ -509,6 +529,249 @@ def open_strings(text: str | None) -> int:
     return count
 
 
+# An anchor, where YAML allows a node to start. "a && b" in a one-line script is not one.
+_ANCHOR = re.compile(r"""(?:^|[\s,\[{:])&[^\s,\[\]{}&]+""")
+
+
+def added_line_numbers(old: str | None, new: str | None) -> set[int]:
+    """Which lines of ``new`` (from 0) the diff adds: every line that is not carried over unchanged."""
+    olds, news = (old or "").splitlines(), (new or "").splitlines()
+    if len(olds) * len(news) >= 4_000_000:
+        had = set(olds)
+        return {n for n, line in enumerate(news) if line not in had}
+    added: set[int] = set()
+    for tag, _, _, j1, j2 in difflib.SequenceMatcher(None, olds, news, autojunk=False).get_opcodes():
+        if tag in ("replace", "insert"):
+            added.update(range(j1, j2))
+    return added
+
+
+def unread_added(old: str | None, new: str | None) -> dict[str, int]:
+    """Escapes, aliases and anchors on the lines the diff adds, counted line by line.
+
+    The file's totals are not compared: an escape or an alias taken away in one place would pay for
+    one added in another. An escape counts wherever its line is; an alias or an anchor counts outside
+    block scalars, where a script may write ``*`` and ``&`` as it likes.
+    """
+    added = added_line_numbers(old, new)
+    found = {"escape": 0, "alias": 0, "anchor": 0}
+    block = None
+    for n, raw in enumerate((new or "").splitlines()):
+        if n in added:
+            found["escape"] += len(_ESCAPE.findall(raw))
+        line = raw.replace("\t", "    ")
+        if block is not None:
+            if not line.strip() or _indent(line) > block:
+                continue
+            block = None
+        header = _BLOCK_HEADER.match(_strip_comment(line))
+        if header:
+            block = len(header.group("lead"))
+        if n in added:
+            found["alias"] += len(_ALIAS.findall(line))
+            found["anchor"] += len(_ANCHOR.findall(line))
+    return found
+
+
+# --- workflows, parsed -----------------------------------------------------------------------
+
+class Unreadable(Exception):
+    """The parsed reading cannot say what this workflow does. The message says why."""
+
+
+_MAX_NODES = 200_000  # a file of 4 MB whose aliases multiply is not followed for ever
+
+
+def _load(text: str):
+    """The file as PyYAML reads it, or ``Unreadable``. One key twice in a mapping is not guessed at."""
+    if _yaml is None:
+        raise Unreadable("PyYAML is not installed, so the file was only read line by line")
+
+    class Loader(_yaml.SafeLoader):
+        def construct_mapping(self, node, deep=False):
+            if isinstance(node, _yaml.MappingNode):
+                seen = set()
+                for key, _ in node.value:
+                    if not isinstance(key, _yaml.ScalarNode):
+                        raise Unreadable("a key is not a plain scalar")
+                    if key.value in seen:
+                        raise Unreadable("a mapping holds one key twice")
+                    seen.add(key.value)
+            return super().construct_mapping(node, deep=deep)
+
+    try:
+        return _yaml.load(text, Loader=Loader)  # noqa: S506 - a SafeLoader subclass
+    except _yaml.YAMLError as err:
+        problem = getattr(err, "problem", None) or type(err).__name__
+        raise Unreadable(f"PyYAML cannot parse it ({problem})") from None
+    except (RecursionError, ValueError, TypeError, OverflowError) as err:
+        raise Unreadable(f"PyYAML cannot parse it ({type(err).__name__})") from None
+
+
+def _named(mapping: dict, name: str) -> list:
+    """The values of the keys that read as ``name``, whatever their case. YAML 1.1 reads a bare ``on`` as true."""
+    return [v for k, v in mapping.items()
+            if (isinstance(k, str) and k.lower() == name) or (name == "on" and k is True)]
+
+
+def _one(mapping: dict, name: str, where: str):
+    """(present, value) for a key that must not be there twice under two spellings."""
+    values = _named(mapping, name)
+    if len(values) > 1:
+        raise Unreadable(f"{where} holds the key {name} under two spellings")
+    return (True, values[0]) if values else (False, None)
+
+
+def _secrets_in(node, counter: list[int]) -> set[str]:
+    """The secrets named by any string in a parsed node, keys included, aliases already followed."""
+    found: set[str] = set()
+    stack = [(node, False)]
+    while stack:
+        item, is_if = stack.pop()
+        counter[0] += 1
+        if counter[0] > _MAX_NODES:
+            raise Unreadable("it is too large once its aliases are followed")
+        if isinstance(item, dict):
+            for key, value in item.items():
+                stack.append((key, False))
+                lowered = key.lower() if isinstance(key, str) else ""
+                if lowered == "secrets" and isinstance(value, str) and value.strip().lower() == "inherit":
+                    found.add("(every secret)")
+                stack.append((value, lowered == "if"))
+        elif isinstance(item, (list, tuple, set)):
+            stack.extend((value, is_if) for value in item)
+        elif isinstance(item, str):
+            # An ``if`` is an expression with or without the braces.
+            found |= secret_names("${{ " + item + " }}" if is_if else item)
+    return found
+
+
+def _parsed_permissions(present: bool, value) -> dict[str, int] | None:
+    """A parsed permissions value as scope -> level; None when the key is absent. What is not a plain
+    ``scope: level`` map, ``read-all`` or ``write-all`` counts as write to everything."""
+    if not present:
+        return None
+    if value == "write-all":
+        return {"*": 2}
+    if value == "read-all":
+        return {"*": 1}
+    if not isinstance(value, dict):
+        return dict(_UNREAD)
+    perms = {"*": 0}
+    for scope, level in value.items():
+        if not isinstance(scope, str) or not isinstance(level, str) or level not in _LEVEL:
+            return dict(_UNREAD)
+        perms[scope] = _LEVEL[level]
+    return perms
+
+
+@dataclass
+class ParsedJob:
+    secrets: set[str]
+    environment: str
+    perms: dict[str, int] | None
+
+    @property
+    def id_token(self) -> bool:
+        return self.perms is not None and _level(self.perms, "id-token") == 2
+
+
+@dataclass
+class Parsed:
+    triggers: set[str]
+    workflow: set[str]  # the secrets named outside ``jobs``: every job reaches them
+    jobs: dict[str, ParsedJob]
+
+
+def parsed_workflow(text: str | None) -> Parsed:
+    """What a workflow can reach, from the parsed file. Raises ``Unreadable`` rather than guess."""
+    if text is None:
+        return Parsed(set(), set(), {})
+    doc = _load(text)
+    if not isinstance(doc, dict):
+        raise Unreadable("the file is not a mapping")
+    counter = [0]
+    _, on = _one(doc, "on", "the workflow")
+    if on is None:
+        events: set[str] = set()
+    elif isinstance(on, str):
+        events = {on}
+    elif isinstance(on, list) and all(isinstance(e, str) for e in on):
+        events = set(on)
+    elif isinstance(on, dict) and all(isinstance(e, str) for e in on):
+        events = set(on)
+    else:
+        raise Unreadable("the events under on are not names")
+    has_perms, perms_value = _one(doc, "permissions", "the workflow")
+    workflow_perms = _parsed_permissions(has_perms, perms_value)
+    _, jobs = _one(doc, "jobs", "the workflow")
+    if jobs is None:
+        jobs = {}
+    if not isinstance(jobs, dict):
+        raise Unreadable("jobs is not a mapping")
+    outside = {k: v for k, v in doc.items() if not (isinstance(k, str) and k.lower() == "jobs")}
+    out: dict[str, ParsedJob] = {}
+    for name, job in jobs.items():
+        if not isinstance(name, str) or not isinstance(job, dict):
+            raise Unreadable(f"job {name} is not a mapping under a name")
+        where = f"job {name}"
+        has_env, environment = _one(job, "environment", where)
+        has_own, own = _one(job, "permissions", where)
+        perms = _parsed_permissions(has_own, own)
+        out[name] = ParsedJob(_secrets_in(job, counter),
+                              json.dumps(environment, sort_keys=True, default=str) if has_env and environment is not None else "",
+                              perms if perms is not None else workflow_perms)
+    return Parsed({e.lower() for e in events}, _secrets_in(outside, counter), out)
+
+
+def parsed_gains(old: Parsed, new: Parsed) -> list[tuple[str, str, str, set[str]]]:
+    """What the new file reaches that the old did not, as (kind, where, message, secrets)."""
+    out: list[tuple[str, str, str, set[str]]] = []
+    target = "pull_request_target"
+    if target in new.triggers and target not in old.triggers:
+        out.append(("trigger", "the workflow", "pull_request_target was added", set()))
+    workflow_gain = new.workflow - old.workflow
+    if workflow_gain:
+        out.append(("secrets", "the workflow", "", workflow_gain))
+    for name, job in new.jobs.items():
+        before = old.jobs.get(name)
+        where = f"job {name}"
+        gained = (job.secrets | new.workflow) - ((before.secrets | old.workflow) if before else set()) - workflow_gain
+        if gained:
+            out.append(("secrets", where, "", gained))
+        if job.environment and job.environment != (before.environment if before else ""):
+            out.append(("environment", where, f"{where} gains or changes an environment", set()))
+        if job.id_token and not (before and before.id_token):
+            out.append(("id-token", where, f"{where} gains id-token: write", set()))
+        if before is None:
+            if job.perms is None:
+                out.append(("permissions", where, f"new {where} has no permissions block, so its token gets the repository default", set()))
+            else:
+                wide = sorted(s for s, level in job.perms.items() if level == 2)
+                if wide:
+                    out.append(("permissions", where,
+                                f"new {where} may write: {', '.join('every scope' if s == '*' else s for s in wide)}", set()))
+            continue
+        scopes = set(job.perms or {"*": 0}) | set(before.perms or {"*": 0})
+        wider = sorted(s for s in scopes if _level(job.perms, s) > _level(before.perms, s))
+        if job.perms is None and before.perms is not None:
+            out.append(("permissions", where, f"{where} lost its permissions block, so its token gets the repository default", set()))
+        elif wider:
+            out.append(("permissions", where,
+                        f"{where} gets wider permissions: {', '.join('every other scope' if s == '*' else s for s in wider)}", set()))
+    return out
+
+
+CANNOT_TELL = "cannot tell: read this workflow"
+AS_PARSED = ", as the parsed file reads (the line reading did not see it)"
+
+
+def yaml_status() -> str:
+    if _yaml is None:
+        return "PyYAML is not installed: every changed workflow is reported as \"cannot tell\""
+    return f"workflows are parsed with PyYAML {getattr(_yaml, '__version__', '(version unknown)')}"
+
+
 # A line that may open a block scalar: it ends in "|" or ">" (with its indicators), a comment after it or
 # not. Looser than ``_BLOCK_HEADER`` on purpose: a line taken for a header by mistake only means the
 # lines under it keep their "#", which is the strict side.
@@ -619,6 +882,7 @@ def check_workflows(changes: list[Change]) -> list[Reason]:
             continue
         old_jobs, _ = parse_workflow(c.old)
         new_jobs, _ = parse_workflow(c.new)
+        file_start = len(out)
 
         def reason(message: str) -> None:
             out.append(Reason(NEEDS_SEAN, "workflow", c.path, message))
@@ -640,17 +904,24 @@ def check_workflows(changes: list[Change]) -> list[Reason]:
             reason(f"{name} is written as a flow mapping, which the guard does not read; a person reads it")
         # Fail closed again: an escape can spell any word the patterns look for, and a string that runs
         # over a line can hide one. Neither is read; both are counted against what the file had.
-        if escapes(c.new) > escapes(c.old):
+        # Counted on the lines the diff adds, not as the file's totals: one taken away in one place must
+        # not pay for one added in another. The totals are still compared, for a line that did not
+        # change and now reads differently.
+        unread = unread_added(c.old, c.new)
+        if unread["escape"] or escapes(c.new) > escapes(c.old):
             reason("the file gains an escaped character (\\x, \\u or \\U), which the guard does not read; a person reads it")
         if open_strings(c.new) > open_strings(c.old):
             reason("the file gains a quoted string that runs over a line, which the guard does not read; a person reads it")
         # An alias gives a job whatever its anchor holds, and the words are only at the anchor.
-        if aliases(c.new) > aliases(c.old):
+        if unread["alias"] or aliases(c.new) > aliases(c.old):
             reason("the file gains an alias (*name), which the guard does not follow; a person reads it")
+        if unread["anchor"]:
+            reason("a line the diff adds holds an anchor (&name), which the guard does not follow; a person reads it")
         if odd_lines(c.new) > odd_lines(c.old):
             reason("the file gains a line among its keys that is not a plain key, which the guard does not read; a person reads it")
         before_reasons = len(out)
         named: set[str] = set()
+        named_at: dict[str, set[str]] = {}  # the same, by the job each was reported against
         workflow_gain: set[str] = set()
         for name, job in new_jobs.items():
             before = old_jobs.get(name)
@@ -665,6 +936,7 @@ def check_workflows(changes: list[Change]) -> list[Reason]:
                           | (job.live_reach - (before.live_reach if before else set()))) - workflow_gain
             if gained:
                 named |= gained
+                named_at.setdefault(where, set()).update(gained)
                 reason(f"{where} gains secrets: {', '.join(sorted(gained))}")
             # The job's lines as written, comments and all. A secret this job did not name anywhere and
             # now does is the job's gain even where the guard reads it as a comment, so that a mention
@@ -672,6 +944,7 @@ def check_workflows(changes: list[Change]) -> list[Reason]:
             newly = job.named - (before.named if before else set()) - gained - workflow_gain
             if newly:
                 named |= newly
+                named_at.setdefault(where, set()).update(newly)
                 reason(f"{where} newly names secrets, in a comment or where the guard does not read: {', '.join(sorted(newly))}")
             if job.environment and job.environment != (before.environment if before else ""):
                 reason(f"{where} gains or changes an environment")
@@ -694,9 +967,36 @@ def check_workflows(changes: list[Change]) -> list[Reason]:
                 reason(f"{where} lost its permissions block, so its token gets the repository default")
             elif wider:
                 reason(f"{where} gets wider permissions: {', '.join('every other scope' if s == '*' else s for s in wider)}")
-        # What the check rests on: the words, counted in the raw text with comments and scripts left in.
-        # The reading above can make these messages better; it cannot make a gain go unreported.
-        said = " ".join(r.message for r in out[before_reasons:])
+        # The parsed reading: aliases followed, escapes decoded, quotes closed where YAML closes them. It
+        # says only what the line reading has not already said of the same job. Where it cannot be
+        # made, that is a reason, not a pass.
+        try:
+            gains = parsed_gains(parsed_workflow(c.old), parsed_workflow(c.new))
+        except Unreadable as err:
+            gains = []
+            reason(f"{CANNOT_TELL}: {err}")
+        messages = [r.message for r in out[before_reasons:]]
+
+        def covered(where: str, *words: str) -> bool:
+            spot = re.compile(re.escape(where) + r"(?![\w-])")
+            return any(spot.search(m) and any(w in m for w in words) for m in messages)
+
+        for kind, where, message, names in gains:
+            if kind == "secrets":
+                unseen = names - named_at.get(where, set())
+                if unseen:
+                    named |= unseen
+                    reason(f"{where} gains secrets: {', '.join(sorted(unseen))}{AS_PARSED}")
+            elif kind == "trigger":
+                if not any(r.message == message for r in out[file_start:]):
+                    reason(message + AS_PARSED)
+            elif not covered(where, {"environment": "environment", "id-token": "id-token",
+                                     "permissions": "permissions"}[kind], *(("may write",) if kind == "permissions" else ())):
+                reason(message + AS_PARSED)
+        # What the check also rests on: the words, counted in the raw text with comments and scripts left in.
+        # The line reading can make these messages better; it cannot make a gain go unreported. What the
+        # parsed reading said does not count as said here, so the two do not stand in for each other.
+        said = " ".join(messages)
         more: set[str] = set()
         for old_view, new_view in zip(old_views, new_views):
             more |= set(secret_uses(new_view, anywhere=True) - secret_uses(old_view, anywhere=True))
@@ -837,7 +1137,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     reasons = check(changes, body)
     if args.json:
-        print(json.dumps({"files": len(changes), "labels": labels(reasons),
+        print(json.dumps({"files": len(changes), "labels": labels(reasons), "yaml": yaml_status(),
                           "reasons": [r.__dict__ for r in reasons]}, indent=2))
     else:
         for r in reasons:
@@ -846,6 +1146,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"merge guard: {len(reasons)} reason(s) in {len(changes)} file(s); labels: {', '.join(labels(reasons))}")
         else:
             print(f"merge guard: nothing to report in {len(changes)} file(s)")
+        print(f"merge guard: {yaml_status()}")
     return 1 if reasons else 0
 
 
