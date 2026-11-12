@@ -461,6 +461,83 @@ class GodotEngineTest(Case):
             self.assertEqual((status["phase"], status["decision"]), ("completed", "needs-review"))
             self.assertTrue(any("outside the sandbox" in reason for reason in status["reasons"]), status["reasons"])
 
+    def test_the_checks_that_judge_are_the_ones_the_job_names(self):
+        # The verifier reads its specs and routes from the worker's copy, whose digest is the job's
+        # policyDigest. Whatever is done to the checkout after the copy does not reach the verdict.
+        specs, routes = self.head / "specs", self.head / "routes"
+
+        class SpoilsTheChecksFirst(engines.GodotGate):
+            def execute(self, request, paths, advance):
+                for spec in specs.glob("*.json"):
+                    spec.write_text("{}", encoding="utf-8")      # no longer a spec at all
+                for route in routes.glob("*.json"):
+                    route.unlink()
+                return super().execute(request, paths, advance)
+
+        expected = self.gate(self.head, None, "gate-before")     # the gate on the checkout as it was
+        job = self.job()
+        named = self.store.status(job)["inputs"]["policyDigest"]
+        with contextlib.redirect_stdout(io.StringIO()):
+            status = runner.work(self.store, job, engines={"godot": SpoilsTheChecksFirst(replay=FakeReplay())})
+        self.assertEqual((status["phase"], status["decision"]), ("completed", "accept"))
+        record = rec.read_record(self.store.paths(job).output / "findings.json")
+        self.assertEqual((record["specs"], record["routes"], record["checks"]),
+                         (expected["specs"], expected["routes"], expected["checks"]))
+        # The copy is in the job's folder, and its digest is the one the job names.
+        project = self.request()["project"]
+        self.assertEqual(req.policy_digest(self.store.paths(job).checks, project), named)
+        self.assertNotEqual(req.inputs(self.request())["policyDigest"], named)   # the checkout has moved on
+
+    def test_checks_that_change_before_they_are_copied_stop_the_job(self):
+        real = req.copy_checks
+
+        def changed_just_before(doc, dest):
+            spec = self.head / "specs" / "player-stays-above-ground.json"
+            spec.write_text(spec.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+            return real(doc, dest)
+
+        replay = FakeReplay()
+        job = self.job()
+        with mock.patch.object(req, "copy_checks", side_effect=changed_just_before):
+            status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=replay)})
+        self.assertEqual((status["decision"], [d["code"] for d in status["diagnostics"]]), ("needs-review", ["INPUT_INVALID"]))
+        self.assertIn("the checks changed after the job was created", status["diagnostics"][0]["detail"])
+        self.assertEqual(replay.calls, [])
+
+    def test_the_digest_of_the_checks_covers_exactly_what_the_gate_reads(self):
+        project = self.request()["project"]
+        listed = lambda: [p.relative_to(self.head).as_posix() for p in req.check_files(self.head, project)]  # noqa: E731
+        self.assertEqual(listed(), ["routes/combat.json", "routes/smoke.json", "specs/player-stays-above-ground.json"])
+        before = req.policy_digest(self.head, project)
+        # A route that is a link is not read by the gate (find_routes), so it is not in the digest.
+        (self.head / "routes" / "linked.json").symlink_to("smoke.json")
+        # A file that only looks like a check is neither read nor digested.
+        (self.head / "specs" / "notes.txt").write_text("not a spec\n", encoding="utf-8")
+        (self.head / "specs" / "deeper").mkdir()
+        (self.head / "specs" / "deeper" / "nested.json").write_text("{}", encoding="utf-8")
+        self.assertEqual(req.policy_digest(self.head, project), before)
+        # A draft is read by the gate (and counted), so it is in the digest.
+        make_repo(self.tmp / "with-draft", draft=True)
+        self.assertIn("specs/draft.json", [p.relative_to(self.tmp / "with-draft").as_posix()
+                                           for p in req.check_files(self.tmp / "with-draft", project)])
+        # The copy holds exactly the listed files, its digest is the policy digest, and the gate
+        # decides from the copy as it does from the checkout.
+        for name, repo in (("clean", self.head), ("draft", self.tmp / "with-draft")):
+            with self.subTest(repo=name):
+                self.head = repo
+                dest = self.tmp / f"copy-{name}"
+                self.assertEqual(req.copy_checks(self.request(), dest), req.policy_digest(repo, project))
+                held = sorted(p.relative_to(dest).as_posix() for p in dest.rglob("*") if p.is_file())
+                self.assertEqual(held, [p.relative_to(repo).as_posix() for p in req.check_files(repo, project)])
+                self.assertFalse(any(p.is_symlink() for p in dest.rglob("*")))
+                with contextlib.redirect_stdout(io.StringIO()):
+                    from_copy = gate.run_gate(repo=repo, game="game/platformer", routes=["routes/*.json"], specs="specs",
+                                              out=self.tmp / f"o-{name}", work=self.tmp / f"w-{name}", replay=FakeReplay(),
+                                              checks=dest)
+                from_checkout = self.gate(repo, None, f"gate-{name}")
+                for key in ("decision", "reasons", "specs", "drafts", "routes", "checks", "counts", "checksFrom"):
+                    self.assertEqual(from_copy[key], from_checkout[key], key)
+
     def test_a_game_that_changes_after_the_workers_read_gives_no_decision(self):
         # The window the worker's second read leaves: the files are right when the worker checks
         # them and different when the engine reads them to run them.

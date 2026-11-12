@@ -7,6 +7,7 @@ job as needs-review and stops its own group: a job that ran out of time is never
 from __future__ import annotations
 
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -71,6 +72,15 @@ def work(store: st.JobStore, job_id: str, engines: dict | None = None, *, own_gr
             blocking = [st.diagnostic("INPUT_INVALID", stage="preparing",
                                       detail="the game or its checks changed after the job was created; ask again")]
         blocking = blocking or engine.preflight(request)
+        if not blocking:
+            # The checks are copied into the job's own folder and the verifier reads that copy. The
+            # copy's digest is of the bytes written, so if it is the job's policyDigest, the checks
+            # that judge are the ones the job names, and nothing done to the checkout after this
+            # can change them.
+            shutil.rmtree(paths.checks, ignore_errors=True)
+            if req.copy_checks(request, paths.checks) != status["inputs"]["policyDigest"]:
+                blocking = [st.diagnostic("INPUT_INVALID", stage="preparing",
+                                          detail="the checks changed after the job was created; ask again")]
         if blocking:
             return _needs_review(store, job_id, blocking)
         store.advance(job_id, "executing")

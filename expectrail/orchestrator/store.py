@@ -158,6 +158,8 @@ class JobPaths:
     @property
     def work(self) -> Path: return self.root / "work"
     @property
+    def checks(self) -> Path: return self.root / "work" / "checks"   # the worker's copy of the specs and routes
+    @property
     def staging(self) -> Path: return self.root / "staging"
     @property
     def output(self) -> Path: return self.root / "output"

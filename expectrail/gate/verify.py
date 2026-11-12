@@ -145,6 +145,20 @@ def find_routes(root: Path, patterns: list[str]) -> list[Path]:
     return sorted(files)
 
 
+def spec_files(folder: Path) -> list[Path]:
+    """The files ``load_specs`` reads: every *.json in a specs folder that is a real folder."""
+    if not folder.is_dir() or folder.is_symlink():
+        return []
+    return sorted(p for p in folder.glob("*.json") if p.is_file())
+
+
+def check_files(root: Path, specs: str, patterns: list[str]) -> list[Path]:
+    """Every file the gate reads to judge a change, from the checkout ``root``: the spec files and
+    the route files. The one listing: the gate loads from it and a verification job's digest of
+    its checks is taken over it, so that digest names what the judge reads."""
+    return sorted(set(spec_files(root / specs)) | set(find_routes(root, patterns)))
+
+
 def _schema(kind: str) -> dict:
     return json.loads((CONTRACTS / f"{kind}.schema.json").read_text(encoding="utf-8"))
 
@@ -154,7 +168,7 @@ def load_specs(folder: Path, shown: str) -> tuple[list[dict], int, list[str]]:
     if not folder.is_dir() or folder.is_symlink():
         return [], 0, [f"no specs folder at {shown}"]
     schema, specs, drafts, problems = _schema("test-spec"), [], 0, []
-    for path in sorted(p for p in folder.glob("*.json") if p.is_file()):
+    for path in spec_files(folder):
         try:
             doc = rec.read_json(path, SPEC_CAP, path.name)
         except rec.RecordError as exc:
@@ -320,8 +334,14 @@ def _game_ok(game: Path) -> bool:
 def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path, work: Path,
              base: Path | None = None, heldout: Path | None = None, pr: dict | None = None,
              expectrail_commit: str | None = None, replay: Replay = harness_replay,
-             generated_checks: Path | None = None, require_sandbox: bool = False) -> dict:
+             generated_checks: Path | None = None, require_sandbox: bool = False,
+             checks: Path | None = None) -> dict:
     """Run the gate and write the artifact in ``out``; returns the findings record.
+
+    ``checks`` is a folder to read the specs and routes from in place of the checkout they come
+    from (the base, or the head without one), laid out as that checkout is. A caller that has
+    copied the checks and taken a digest of the copy passes it, so the checks that judge are the
+    bytes that were digested. The games are still the checkouts'.
 
     ``require_sandbox`` refuses to replay the game outside the replay sandbox: where the machine
     cannot provide it nothing is replayed (ConfigError), and a replay that ran outside it anyway
@@ -364,21 +384,22 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     checks_root = base.resolve() if base is not None else repo
     checks_from = "base" if base is not None else "head"
 
-    spec_docs, drafts, spec_problems = load_specs(checks_root / specs_rel, f"{specs_rel} ({checks_from})")
-    route_files = find_routes(checks_root, patterns)
+    checks_dir = Path(checks).resolve() if checks is not None else checks_root
+    spec_docs, drafts, spec_problems = load_specs(checks_dir / specs_rel, f"{specs_rel} ({checks_from})")
+    route_files = find_routes(checks_dir, patterns)
     if not route_files:
         problems.append(f"no route files match {', '.join(patterns)} ({checks_from})")
-    route_list, route_problems = load_routes(route_files, checks_root)
+    route_list, route_problems = load_routes(route_files, checks_dir)
     problems += spec_problems + route_problems
     changed = {"specs": 0, "routes": 0}
     if base is not None:
         head_specs = sorted(p for p in (repo / specs_rel).glob("*.json") if p.is_file()) \
             if (repo / specs_rel).is_dir() else []
-        base_specs = sorted(p for p in (checks_root / specs_rel).glob("*.json") if p.is_file()) \
-            if (checks_root / specs_rel).is_dir() else []
-        changed["specs"] = changed_count(_files_by_name(head_specs, repo), _files_by_name(base_specs, checks_root))
+        base_specs = sorted(p for p in (checks_dir / specs_rel).glob("*.json") if p.is_file()) \
+            if (checks_dir / specs_rel).is_dir() else []
+        changed["specs"] = changed_count(_files_by_name(head_specs, repo), _files_by_name(base_specs, checks_dir))
         changed["routes"] = changed_count(_files_by_name(find_routes(repo, patterns), repo),
-                                          _files_by_name(route_files, checks_root))
+                                          _files_by_name(route_files, checks_dir))
 
     head_game = repo / game_rel
     base_game = (checks_root / game_rel) if base is not None else None
