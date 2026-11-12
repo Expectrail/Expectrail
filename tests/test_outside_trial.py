@@ -102,6 +102,25 @@ class TrialTest(unittest.TestCase):
                 self.assertIn("no verdict", trial.markdown([row]))
 
 
+class AroundTest(unittest.TestCase):
+    def test_a_failing_checks_first_frame_is_shown_with_what_the_engine_logged(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "jobs" / "abc" / "work" / "gate" / "head" / "walk"
+            folder.mkdir(parents=True)
+            rows = [{"tick": t, "player": [float(t), 300.0], "ground": 272.5 if t >= 100 else None, "onFloor": True,
+                     "view": [1, 0, 0, 1, 0, 0]} for t in range(360)]
+            (folder / "trace.json").write_text(json.dumps({"physicsTicksPerSecond": 120, "rows": rows}), encoding="utf-8")
+            shown = trial.around(Path(tmp) / "jobs", {"spec": "s", "route": "walk", "frame": 92})
+            self.assertEqual(shown["ticksPerFrame"], 2)
+            self.assertEqual([r["tick"] for r in shown["rows"]], [178, 180, 182, 184, 186, 188, 190])   # frame 92 is tick 184
+            self.assertEqual(shown["rows"][3], {"tick": 184, "player": [184.0, 300.0], "ground": 272.5, "onFloor": True,
+                                                "view": [1, 0, 0, 1, 0, 0]})
+            self.assertEqual(trial.around(Path(tmp) / "jobs", {"spec": "s", "route": "other", "frame": 1})["rows"], [])
+            row = {"name": "x", "commit": "b" * 40, "licence": "MIT", "kind": "k", "exit": 1, "verdict": "reject",
+                   "seconds": 1, "checks": None, "reasons": ["r"], "failures": [], "around": [shown]}
+            self.assertIn('"tick": 184', trial.markdown([row]))
+
+
 class WorkflowTest(unittest.TestCase):
     def test_the_job_that_starts_outside_code_holds_no_secret_and_requires_the_sandbox(self):
         text = WORKFLOW.read_text(encoding="utf-8")

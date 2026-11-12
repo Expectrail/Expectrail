@@ -125,7 +125,7 @@ def verify(project: dict, checkout: Path, out: Path, command: list[str], timeout
     row = {"name": project["name"], "repository": project["repository"], "commit": project["commit"],
            "path": project["path"], "licence": project["licence"], "kind": project["kind"],
            "exit": code, "verdict": VERDICTS.get(code), "seconds": seconds, "decision": None, "reasons": [],
-           "checks": None, "routes": [], "failures": [], "isolation": None}
+           "checks": None, "routes": [], "failures": [], "isolation": None, "around": []}
     try:
         status = json.loads(stdout)
         row["decision"] = status.get("decision")
@@ -142,9 +142,32 @@ def verify(project: dict, checkout: Path, out: Path, command: list[str], timeout
             row["isolation"] = doc.get("isolation")
             row["failures"] = [f"{f.get('spec')} on {f.get('route')}: {str(f.get('reason'))[:300]}"
                                for f in doc.get("findings", [])][:8]
+            row["around"] = [around(jobs, f) for f in doc.get("findings", [])[:3] if isinstance(f.get("frame"), int)]
         except (OSError, ValueError):
             pass
     return row
+
+
+def around(jobs: Path, finding: dict, before: int = 3, after: int = 3) -> dict:
+    """What the engine logged around a failing check's first frame: the player's position, the
+    ground line and whether the player was on a floor, from the head's trace. Printed with the
+    result because the trace itself stays in the job's folder."""
+    out = {"spec": finding.get("spec"), "route": finding.get("route"), "frame": finding["frame"], "rows": []}
+    for trace_file in sorted(jobs.rglob(f"head/{finding.get('route')}/trace.json")):
+        try:
+            trace = json.loads(trace_file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        rows = trace.get("rows") or []
+        step = max(int(trace.get("physicsTicksPerSecond") or 120) // 60, 1)
+        tick = finding["frame"] * step
+        out["ticksPerFrame"] = step
+        out["rows"] = [{"tick": r.get("tick"), "player": r.get("player"), "ground": r.get("ground"),
+                        "onFloor": r.get("onFloor"), "view": r.get("view")}
+                       for r in rows[max(0, tick - before * step):tick + after * step + 1:step]]
+        out["first"] = {k: rows[0].get(k) for k in ("player", "ground", "onFloor")} if rows else None
+        break
+    return out
 
 
 def markdown(rows: list[dict]) -> str:
@@ -154,6 +177,12 @@ def markdown(rows: list[dict]) -> str:
         reasons = "; ".join((r["reasons"] or r.get("diagnostics") or [r.get("output", "")]) + r.get("failures", [])) or "none"
         lines.append(f"| {r['name']} (`{r['commit'][:7]}`, {r['licence']}) | {r['kind']} | {r['exit']} | "
                      f"{r['verdict'] or 'no verdict'} | {r['seconds']} | {checks} | {reasons.replace('|', '/')} |")
+    for r in rows:
+        for a in r.get("around", []):
+            lines += ["", f"What the engine logged for {r['name']} around frame {a['frame']} of `{a['route']}` "
+                          f"({a.get('ticksPerFrame', '?')} ticks a frame; at tick 0: {json.dumps(a.get('first'))}):", "", "```"]
+            lines += [json.dumps(row) for row in a["rows"]] or ["no trace was found"]
+            lines += ["```"]
     return "\n".join(lines) + "\n"
 
 
