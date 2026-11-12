@@ -109,6 +109,12 @@ jobs:
         uses: ./.github/actions/get-godot
       - name: Render the smoke route twice and compare
         run: python -m harness.replay_check --route harness/routes/smoke.json --runs 2 --out runs/ci
+      # A project written for the test reads input four ways (polled, _input, _unhandled_input, a
+      # button's shortcut); each press must arrive on the tick the route names (#338).
+      - name: A game that reads input as events is driven on the tick the route names
+        env:
+          EXPECTRAIL_ENGINE_TESTS: required
+        run: python -m unittest tests.test_event_input -v
       - name: A candidate's game code cannot read the verifier's environment
         env:
           EXPECTRAIL_CANARY: canary-${{ github.run_id }}
