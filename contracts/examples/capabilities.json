@@ -37,6 +37,25 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41003749744",
           "conclusion": "success",
+          "counts": [
+            {
+              "says": "8 of 8",
+              "n": 8,
+              "of": 8,
+              "titled": "Held-out bench *",
+              "not": [
+                "Held-out bench clean"
+              ],
+              "count": "caught with SAM on: yes"
+            },
+            {
+              "says": "no false alarm",
+              "n": 1,
+              "of": 1,
+              "titled": "Held-out bench clean",
+              "count": "false alarm with SAM on: no"
+            }
+          ],
           "shows": "8 of 8 held-out bugs caught with SAM 3.1 on, no false alarm on the clean game"
         },
         {

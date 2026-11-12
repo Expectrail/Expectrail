@@ -1,6 +1,6 @@
 {
   "format": "expectrail.capabilities/v1",
-  "updated": "2026-11-11",
+  "updated": "2026-11-12",
   "statuses": {
     "implemented": "The code is in the repository and its tests pass in CI. It has run only on recorded or synthetic inputs, or has no recorded end-to-end run.",
     "integrated": "Wired into the path a user takes (a command, a workflow or the site) and exercised there by a CI job or a recorded run. No published result rests on it.",
@@ -37,6 +37,25 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41003749744",
           "conclusion": "success",
+          "counts": [
+            {
+              "says": "8 of 8",
+              "n": 8,
+              "of": 8,
+              "titled": "Held-out bench *",
+              "not": [
+                "Held-out bench clean"
+              ],
+              "count": "caught with SAM on: yes"
+            },
+            {
+              "says": "no false alarm",
+              "n": 1,
+              "of": 1,
+              "titled": "Held-out bench clean",
+              "count": "false alarm with SAM on: no"
+            }
+          ],
           "shows": "8 of 8 held-out bugs caught with SAM 3.1 on, no false alarm on the clean game"
         },
         {
@@ -236,12 +255,57 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41109233666",
           "conclusion": "success",
+          "counts": [
+            {
+              "says": "8 of 8",
+              "n": 8,
+              "of": 8,
+              "titled": "Dev bench *",
+              "count": "caught with SAM on: yes"
+            },
+            {
+              "says": "4 of 8",
+              "n": 4,
+              "of": 8,
+              "titled": "Dev bench *",
+              "count": "caught with SAM off: yes"
+            },
+            {
+              "says": "no false alarm",
+              "n": 1,
+              "of": 1,
+              "titled": "Held-out bench clean",
+              "count": "false alarm with SAM on: no"
+            }
+          ],
           "shows": "8 of 8 development bugs caught with SAM on, 4 of 8 with SAM off, no false alarm"
         },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41130091655",
           "conclusion": "success",
+          "counts": [
+            {
+              "says": "4 of 4",
+              "n": 4,
+              "of": 4,
+              "titled": "Held-out bench *",
+              "not": [
+                "Held-out bench clean"
+              ],
+              "count": "caught with SAM on: yes"
+            },
+            {
+              "says": "2 of 4",
+              "n": 2,
+              "of": 4,
+              "titled": "Held-out bench *",
+              "not": [
+                "Held-out bench clean"
+              ],
+              "count": "caught with SAM off: yes"
+            }
+          ],
           "shows": "4 of 4 private bugs caught with SAM on, 2 of 4 with SAM off"
         },
         {
@@ -282,6 +346,28 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41003749744",
           "conclusion": "success",
+          "counts": [
+            {
+              "says": "8 of 8",
+              "n": 8,
+              "of": 8,
+              "titled": "Held-out bench *",
+              "not": [
+                "Held-out bench clean"
+              ],
+              "count": "caught with SAM on: yes"
+            },
+            {
+              "says": "4 of 8",
+              "n": 4,
+              "of": 8,
+              "titled": "Held-out bench *",
+              "not": [
+                "Held-out bench clean"
+              ],
+              "count": "caught with SAM off: yes"
+            }
+          ],
           "shows": "8 of 8 held-out bugs caught with SAM on; 4 of 8 without a vision model"
         },
         {
@@ -323,12 +409,40 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41003751876",
           "conclusion": "success",
+          "counts": [
+            {
+              "says": "8 of 8",
+              "n": 8,
+              "of": 8,
+              "titled": "Held-out bench *",
+              "not": [
+                "Held-out bench clean"
+              ],
+              "count": "caught with Glimmer+engine (no SAM): yes"
+            },
+            {
+              "says": "no false alarm",
+              "n": 1,
+              "of": 1,
+              "titled": "Held-out bench clean",
+              "count": "false alarm with Glimmer+engine (no SAM): no"
+            }
+          ],
           "shows": "8 of 8 held-out bugs caught with Glimmer in place of SAM, no false alarm"
         },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41230177124",
           "conclusion": "success",
+          "counts": [
+            {
+              "says": "0 of 7",
+              "n": 0,
+              "of": 7,
+              "titled": "Judge summary expectrailGlimmer",
+              "reads": "bad fixes accepted {n} of {of}"
+            }
+          ],
           "shows": "the judge benchmark with Glimmer: 0 of 7 fake fixes accepted, one run"
         },
         {
@@ -600,12 +714,46 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/40990485265",
           "conclusion": "success",
+          "counts": [
+            {
+              "says": "10 of 10",
+              "n": 10,
+              "of": 10,
+              "titled": "Demo run *",
+              "not": [
+                "Demo run * *"
+              ],
+              "count": "decision accept"
+            },
+            {
+              "says": "each on the first attempt",
+              "n": 10,
+              "of": 10,
+              "titled": "Demo run *",
+              "not": [
+                "Demo run * *"
+              ],
+              "count": "attempts 1: accept"
+            }
+          ],
           "shows": "the demo path live: 10 of 10 runs accepted, each on the first attempt"
         },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41223748922",
           "conclusion": "success",
+          "counts": [
+            {
+              "says": "3 of 3",
+              "n": 3,
+              "of": 3,
+              "titled": "Demo run *",
+              "not": [
+                "Demo run * *"
+              ],
+              "count": "decision accept"
+            }
+          ],
           "shows": "after the report-first change: 3 of 3 accepted from the plain report"
         },
         {
@@ -644,6 +792,15 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41223748922",
           "conclusion": "success",
+          "counts": [
+            {
+              "says": "repair demonstrated",
+              "n": 3,
+              "of": 3,
+              "titled": "Demo run * review",
+              "count": "REPAIR DEMONSTRATED"
+            }
+          ],
           "shows": "each live fix's review: repair demonstrated"
         },
         {

@@ -5,13 +5,16 @@ believe exists. This module reads it, checks it, and renders ``docs/capabilities
 
     python3 -m expectrail.capabilities check     # exit 1 and one line per problem
     python3 -m expectrail.capabilities render    # rewrite docs/capabilities.md
-    python3 -m expectrail.capabilities recheck   # ask GitHub again how every cited run and its jobs ended
+    python3 -m expectrail.capabilities recheck   # ask GitHub again how every cited run and its jobs ended,
+                                                 # and count again what a row ties to a run's notices
 
 ``problems`` is what the test suite runs. It fails when a ``measured`` row has no CI run link, when
 a measured or integrated row cites a run recorded as anything but success (any other row must say why
 such a run is evidence), when a row points at
 a file that is not there, and when the README or the site names a command, a switch, a workflow, a
-doc page or a watched name that no row lists. A run's conclusion is the value recorded in the
+doc page or a watched name that no row lists. It also fails when a count a row ties to its run's
+notices (``counts``) is not in the words of the evidence, or its numbers are not the ones the words
+give. A run's conclusion is the value recorded in the
 ledger when the row was written; ``check``, ``render`` and the test suite never call GitHub. ``recheck``
 does (``expectrail.capability_runs``): it needs the ``gh`` command and the network, so a person or an
 agent runs it, and the suite tests it on saved answers.
@@ -46,6 +49,8 @@ _WORKFLOW = re.compile(r"(?<![A-Za-z0-9_-])([a-z0-9][a-z0-9-]*\.yml)\b")
 _DOC = re.compile(r"\bdocs/([a-z0-9-]+\.md)\b")
 _ONE = {"commands": "command", "switches": "switch", "workflows": "workflow", "docs": "doc"}
 _RUN = re.compile(r"^https://github\.com/Expectrail/Expectrail/actions/runs/[0-9]+(/job/[0-9]+)?$")
+# A count as a row quotes it: "8 of 8", "3 of 12".
+_QUOTED = re.compile(r"(?<![\w.,$])(\d+) of (\d+)(?![\w]|[.,]\d)")
 
 
 class LedgerError(ValueError):
@@ -76,6 +81,54 @@ def _number(run_url: str) -> str:
 def _module_exists(module: str, root: Path) -> bool:
     base = root.joinpath(*module.split("."))
     return base.with_suffix(".py").is_file() or (base / "__init__.py").is_file()
+
+
+def count_problems(rid: str, ev: dict) -> list[str]:
+    """What is wrong with the counts one piece of run evidence ties to its run's notices.
+
+    This is the part that needs no network: the words are in the evidence, the numbers are the ones
+    the words give, and the entry can be counted at all. Whether the run's notices give the same
+    numbers is ``recheck``'s question.
+    """
+    out: list[str] = []
+    said: list[str] = []
+    for count in ev.get("counts", []):
+        says = count["says"]
+        head = f"{rid}: run {_number(ev['ref'])}: the count {says!r}"
+        if says not in ev["shows"]:
+            out.append(f"{head} is tied to notices and the evidence does not say it")
+        if says in said:
+            out.append(f"{head} is tied to notices twice")
+        said.append(says)
+        quoted = _QUOTED.findall(says)
+        if len(quoted) > 1:
+            out.append(f"{head} quotes {len(quoted)} counts; tie each to notices on its own")
+        elif quoted and (int(quoted[0][0]), int(quoted[0][1])) != (count["n"], count["of"]):
+            out.append(f"{head} is recorded as {count['n']} of {count['of']}")
+        if count["n"] > count["of"]:
+            out.append(f"{head}: {count['n']} of {count['of']} is more than there are")
+        if "reads" in count and (count["reads"].count("{n}"), count["reads"].count("{of}")) != (1, 1):
+            out.append(f"{head}: 'reads' must have {{n}} and {{of}} once each")
+        if "count" in count and ";" in count["count"]:
+            out.append(f"{head}: 'count' is one field of a notice and has a semicolon in it")
+        if "reads" in count and ";" in count["reads"]:
+            out.append(f"{head}: 'reads' is one field of a notice and has a semicolon in it")
+    return out
+
+
+def quoted_counts(doc: dict) -> tuple[int, int]:
+    """``(quoted, tied)``: the counts ("N of M") quoted beside a run link, and how many are tied to notices."""
+    quoted = tied = 0
+    for row in doc["rows"]:
+        for ev in row["evidence"]:
+            if ev["kind"] != "run":
+                continue
+            backed = [count["says"] for count in ev.get("counts", [])]
+            texts = [found.group(0) for found in _QUOTED.finditer(ev["shows"])]
+            quoted += len(texts)
+            # The same words twice in one sentence are two counts: one entry ties one of them.
+            tied += sum(min(texts.count(text), sum(1 for says in backed if text in says)) for text in set(texts))
+    return quoted, tied
 
 
 def row_problems(doc: dict, root: Path = ROOT) -> list[str]:
@@ -115,6 +168,8 @@ def row_problems(doc: dict, root: Path = ROOT) -> list[str]:
                     elif not ev.get("conclusionNote"):
                         out.append(f"{rid}: cites a run that ended in {ev['conclusion']} without saying why it is "
                                    f"evidence: {ev['ref']}")
+                if _RUN.match(ev["ref"]):
+                    out.extend(count_problems(rid, ev))
             elif not (root / ev["ref"].split("#", 1)[0]).exists():
                 out.append(f"{rid}: evidence file not found: {ev['ref']}")
         for module in row["entryPoints"]:
@@ -223,10 +278,24 @@ def _link(ref: str) -> str:
 def _evidence(ev: dict) -> str:
     if ev["kind"] == "run":
         text = f"[run {_number(ev['ref'])}]({ev['ref']}): {ev['shows']}"
+        if ev.get("counts"):
+            text += ". Counted from the run's notices: " + ", ".join(
+                c["says"] if _QUOTED.search(c["says"])
+                else f"{c['says']} ({c['n']} of {c['of']} with \"{c.get('count', c.get('reads'))}\")"
+                for c in ev["counts"])
         if ev.get("conclusion", "success") != "success":
             text += f". The run ended in {ev['conclusion'].replace('_', ' ')}: {ev.get('conclusionNote', 'no reason given')}"
         return text
     return f"{_link(ev['ref'])}: {ev['shows']}"
+
+
+def _tied(doc: dict) -> str:
+    quoted, tied = quoted_counts(doc)
+    if not quoted:
+        return "No row quotes a count beside a run link."
+    rest = "every one" if tied == quoted else f"{tied}"
+    return (f"Of the {quoted} counts quoted beside a run link, {rest} {'is' if tied == 1 else 'are'} tied to notices; "
+            "any other is as the row's writer wrote it, and no check has compared it with its run.")
 
 
 def _cell(text: str) -> str:
@@ -253,6 +322,11 @@ def render(doc: dict) -> str:
         "test reads that recorded value, not GitHub. A measured or integrated row may cite only runs",
         "recorded as success. Any other row that cites a run that ended another way says so beside the",
         "link, with the reason it is evidence all the same.",
+        "",
+        "A count beside a run link (\"8 of 8\") is checked only where the row ties it to the notices the",
+        "run published, which is where the bench jobs put their public counts. Such evidence ends with",
+        "\"Counted from the run's notices\", and `python3 -m expectrail.capabilities recheck` counts those",
+        f"notices again from GitHub. {_tied(doc)}",
         "",
         f"Last changed {doc['updated']}. {len(doc['rows'])} rows: "
         + ", ".join(f"{counts[s]} {s}" for s in doc["statuses"]) + ". By grade: "
@@ -342,7 +416,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "recheck":
         from expectrail import capability_runs
 
-        found, checked = capability_runs.recheck(doc, capability_runs.github_reader())
+        found, checked = capability_runs.recheck(doc, capability_runs.github_reader(),
+                                                 capability_runs.github_notices())
         for line in checked:
             print(line)
         for line in found:

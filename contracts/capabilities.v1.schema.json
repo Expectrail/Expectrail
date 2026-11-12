@@ -18,6 +18,28 @@
       "type": "object",
       "additionalProperties": { "$ref": "#/$defs/text" }
     },
+    "count": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["says", "n", "of", "titled"],
+      "description": "One count tied to a run's notices (the annotations a job writes with ::notice). With `count`: `of` is how many notices have a title matching `titled`, and `n` is how many of those have `count` as one whole field of their message. With `reads`: exactly one notice has the title and one of its fields is `reads` with {n} and {of} filled in. A message's fields are what lies between its semicolons.",
+      "properties": {
+        "says": { "$ref": "#/$defs/text", "description": "The words in `shows` this entry backs, for example \"8 of 8\". When they hold a count it must be `n` of `of`." },
+        "n": { "type": "integer", "minimum": 0 },
+        "of": { "type": "integer", "minimum": 1 },
+        "titled": { "$ref": "#/$defs/text", "description": "A notice's whole title; * stands for any text and nothing else is special." },
+        "not": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/text" },
+          "description": "Titles left out of those `titled` matches, written the same way."
+        },
+        "count": { "$ref": "#/$defs/text", "description": "The field a notice must have, whole, to be counted in `n`." },
+        "reads": { "type": "string", "pattern": "\\{n\\}.*\\{of\\}|\\{of\\}.*\\{n\\}", "description": "The field the one notice must have, with {n} and {of} where the numbers go." }
+      },
+      "oneOf": [ { "required": ["count"] }, { "required": ["reads"] } ]
+    },
     "evidence": {
       "type": "object",
       "additionalProperties": false,
@@ -39,6 +61,12 @@
           "items": { "$ref": "#/$defs/text" },
           "description": "For a run: the names of the jobs this evidence rests on, as GitHub lists them. `recheck` fails when one is not in the run or did not end in success. Left out, only the run's conclusion is held to."
         },
+        "counts": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/count" },
+          "description": "For a run: the counts in `shows` that are tied to the notices the run published. `recheck` reads the notices of the run's jobs and counts again. A count in `shows` with no entry here is as its writer wrote it."
+        },
         "conclusionNote": {
           "$ref": "#/$defs/text",
           "description": "Required when a cited run did not end in success: why it is evidence all the same. Only an implemented or experimental row may cite such a run."
@@ -49,7 +77,7 @@
         {
           "if": { "properties": { "kind": { "const": "run" } } },
           "then": { "required": ["conclusion"], "properties": { "ref": { "$ref": "#/$defs/runUrl" } } },
-          "else": { "properties": { "ref": { "$ref": "#/$defs/repoPath" }, "conclusion": false, "conclusionNote": false, "jobs": false } }
+          "else": { "properties": { "ref": { "$ref": "#/$defs/repoPath" }, "conclusion": false, "conclusionNote": false, "jobs": false, "counts": false } }
         }
       ]
     },
