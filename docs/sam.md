@@ -197,6 +197,17 @@ prints how many requests it would send.
 
 ## Run it
 
+**Every run needs a spend cap (November 12, 2026).** `EXPECTRAIL_SAM_USD_CAP` is the most one run
+may spend on SAM, in US dollars at list price ($2.50 per 1,000 images, $0.20 per 1,000 video
+frames). Every try is counted against it before it is sent, a failed try included, so the count can
+only be over what is billed. A request that would pass the cap is not sent: the run's checks that
+still needed SAM end as needs-review with the reason, and the judge ladder does not wait and retry
+(waiting does not fix it). **Without the variable nothing is sent at all.** The limit for the
+project is $200 in a calendar month and never more (#327); the cap is what gives every run a worst
+case, and the count across the month is the next part of #267. **No workflow in this repository
+sets the variable yet, so every live SAM call from a workflow stops with that reason until one
+does.** That is on purpose: Sean goes through each live run and its cap first.
+
 **From GitHub, no setup.** Actions, then **SAM probe**, then **Run workflow**. It renders the clean
 game and every seeded bug, probes every 10th frame (13 frames a run), and puts `probe.md` in the
 run summary. Overlays and contact sheets are in the `sam-probe` artifact. It uses the
@@ -207,6 +218,7 @@ Actions list once this file is on `main`.
 
 ```sh
 export MODEL_API_KEY=...                      # or put it in .env
+export EXPECTRAIL_SAM_USD_CAP=0.50            # the most this run may spend; nothing is sent without it
 python3 -m harness.check_seeded --out runs/seeded          # clean + seeded bugs, with frames
 python3 -m agents.sam_probe --runs runs/seeded/*/ \
   --spec specs/player-stays-above-ground.json --every 10 --dry-run   # what it would send

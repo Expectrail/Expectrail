@@ -61,12 +61,44 @@ MIN_VIDEO_FRAMES = 50
 # "images" counts image requests that got a response (one frame and one prompt each);
 # "videoFrames" the frames billed for video requests that got one; "requests" also counts the
 # tries that failed and were retried.
-_usage = {"requests": 0, "images": 0, "videoFrames": 0}
+_usage = {"requests": 0, "images": 0, "videoFrames": 0, "reservedUsd": 0.0}
 _usage_lock = threading.Lock()
+
+# The most this process may spend on sam-3.1, in US dollars at list price. Every try is counted
+# against it before it is sent, a failed try included, so the count can only be over what was
+# billed. A request that would pass it is not sent. Without it no request leaves this machine.
+CAP_ENV = "EXPECTRAIL_SAM_USD_CAP"
+
+
+def usd_cap() -> float | None:
+    """This run's spend cap from the environment, or None when none is set. A value that is not a
+    plain amount of at least 0 is an error, never "no cap"."""
+    raw = os.environ.get(CAP_ENV, "").strip()
+    if not raw:
+        return None
+    try:
+        cap = float(raw)
+    except ValueError:
+        cap = float("nan")
+    if not (0.0 <= cap < float("inf")):
+        raise SamError(f"{CAP_ENV} must be an amount in US dollars, 0 or more; it is {raw!r}", kind="budget")
+    return cap
+
+
+def _reserve(usd: float) -> None:
+    """Count one try against the cap before it is sent; refuse it when it would pass the cap."""
+    cap = usd_cap()
+    with _usage_lock:
+        if cap is not None and _usage["reservedUsd"] + usd > cap + 1e-9:
+            raise SamError(f"this run's SAM spend cap is reached: ${_usage['reservedUsd']:.4f} counted of "
+                           f"${cap:.2f} ({CAP_ENV}), and the next request costs ${usd:.4f}; it was not sent",
+                           kind="budget")
+        _usage["reservedUsd"] += usd
 
 
 def sam_usage() -> dict:
-    """A snapshot of this process's sam-3.1 usage: {"requests", "images"}."""
+    """A snapshot of this process's sam-3.1 usage: {"requests", "images", "videoFrames", "reservedUsd"}.
+    ``reservedUsd`` counts every try that was sent, at list price, and is what the cap is held against."""
     with _usage_lock:
         return dict(_usage)
 
@@ -118,7 +150,8 @@ class SamError(RuntimeError):
     """SAM could not produce observations. Callers must treat the check as needs-review.
 
     ``kind`` says what went wrong, so a caller can tell a passing outage from one that waiting will
-    not fix (agents/judge_ladder.py): auth, credit, rate-limit, server, network, request or unknown.
+    not fix (agents/judge_ladder.py): auth, credit, budget (this run's own spend cap, or none set),
+    rate-limit, server, network, request or unknown.
     ``status`` is the HTTP status when there was one.
     """
 
@@ -328,6 +361,9 @@ class MetaSamClient:
             print(f"warning: {KEY_ENV} is the same key as META_API_KEY, which Muse Code (the fixer) "
                   "receives; use a separate key for SAM so the fixer never holds the verifier's key",
                   file=sys.stderr)
+        if usd_cap() is None:
+            raise SamError(f"no spend cap for this run: set {CAP_ENV} to the most it may spend on SAM, in US "
+                           "dollars. Nothing is sent without one", kind="budget")
         req = urllib.request.Request(
             f"{self.base}/responses", data=json.dumps(body).encode(), method="POST",
             headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
@@ -343,6 +379,7 @@ class MetaSamClient:
                 self.calls += 1
             with _usage_lock:
                 _usage["requests"] += 1
+            _reserve(USD_PER_IMAGE if video_frames is None else max(video_frames, MIN_VIDEO_FRAMES) * USD_PER_VIDEO_FRAME)
             started = time.monotonic()
             try:
                 reply = self._transport(body)

@@ -37,7 +37,7 @@ from agents.verifier import sam_on, verify
 
 UNAVAILABLE = "sam observations unavailable"  # agents/observations.py, on any vision client error
 # Only what an error says outright: an unknown error keeps the retry (agents.sam_observations.SamError).
-NO_RETRY_KINDS = ("auth", "credit")
+NO_RETRY_KINDS = ("auth", "credit", "budget")   # waiting fixes none of these
 _KIND = re.compile(r"\(kind=([a-z-]+)\)")
 FALLBACK = "glimmer-engine"
 RETRY_WAIT_ENV = "EXPECTRAIL_JUDGE_RETRY_WAIT"
