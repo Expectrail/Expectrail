@@ -7,6 +7,11 @@
 # The private held-out set when checked out locally or in CI (never commit it)
 /heldout-set/
 # Python
+/build/
+# Exists only inside a wheel (expectrail/resources.py). Never in the repository.
+/expectrail/_bundle/
+/dist/
+*.egg-info/
 __pycache__/
 *.pyc
 .venv/

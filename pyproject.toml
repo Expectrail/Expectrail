@@ -1,0 +1,71 @@
+# The Expectrail package: `pip install` gives the `expectrail` command and everything a verification
+# of a Godot project needs except the system programs (the engine is fetched on first use; a virtual
+# display, Mesa and `patch` come from the system). docs/install.md says what is in the wheel and why.
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "expectrail"
+dynamic = ["version"]
+description = "Independent verification of game changes: replay the build, judge it against approved checks, and say accept, reject or needs review."
+readme = "README.md"
+# The lowest version with a recorded run: CI's `package` job builds, installs and runs the sample on
+# 3.12 (the suite itself runs on 3.13). Lower needs a CI run that shows it.
+requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+# The verifier's own import chain is the standard library only. Keep it that way: anything a model
+# or a browser needs is an extra.
+dependencies = []
+
+[project.optional-dependencies]
+# Checking documents against the contract schemas (the suite and some tools do; a verification does not).
+contracts = ["jsonschema>=4.20"]
+
+[project.urls]
+Homepage = "https://expectrail.tech"
+Source = "https://github.com/Expectrail/Expectrail"
+
+[project.scripts]
+expectrail = "expectrail.cli:main"
+
+[tool.setuptools]
+include-package-data = false
+# One top-level name is installed: `expectrail`. The harness, the schemas and the bundled game sit
+# beside it in the repository; in the wheel they go inside it, under `expectrail/_bundle`, laid out
+# as the repository is (expectrail/resources.py).
+#
+# The wheel holds what a verification runs, and nothing that could not work from an installed copy:
+# the gate and the orchestrator, not the benches and the check generator (discovery, jit, repro,
+# trace), which need the repository's bugs and bench files. setup.py limits the modules of
+# `expectrail`, `harness` and `agents` the same way. tests/test_package.py builds the wheel and
+# checks that every module it holds can import everything it asks for.
+packages = [
+    "expectrail",
+    "expectrail.gate",
+    "expectrail.orchestrator",
+    "expectrail._bundle.harness",
+    "expectrail._bundle.agents",
+    "expectrail._bundle.contracts",
+    "expectrail._bundle.game",
+    "expectrail._bundle.bugs",
+]
+
+[tool.setuptools.package-dir]
+"expectrail._bundle.harness" = "harness"
+"expectrail._bundle.agents" = "agents"
+"expectrail._bundle.contracts" = "contracts"
+"expectrail._bundle.game" = "game"
+"expectrail._bundle.bugs" = "bugs"
+
+[tool.setuptools.dynamic]
+version = { attr = "expectrail.__version__" }
+
+[tool.setuptools.package-data]
+"expectrail._bundle.harness" = ["get_godot.sh", "godot/*.gd", "routes/*.json", "macos/get_godot_mac.sh"]
+"expectrail._bundle.agents" = ["specs/*.json"]
+"expectrail._bundle.contracts" = ["*.json"]
+# Every file of the bundled game, dot-files included (`*` does not match them); never `.godot`.
+"expectrail._bundle.game" = ["platformer/**/*", "platformer/**/.gdignore"]
+"expectrail._bundle.bugs" = ["physics-fall-through/v1.patch"]
