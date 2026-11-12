@@ -125,7 +125,7 @@ def verify(project: dict, checkout: Path, out: Path, command: list[str], timeout
     row = {"name": project["name"], "repository": project["repository"], "commit": project["commit"],
            "path": project["path"], "licence": project["licence"], "kind": project["kind"],
            "exit": code, "verdict": VERDICTS.get(code), "seconds": seconds, "decision": None, "reasons": [],
-           "checks": None, "routes": []}
+           "checks": None, "routes": [], "failures": [], "isolation": None}
     try:
         status = json.loads(stdout)
         row["decision"] = status.get("decision")
@@ -139,7 +139,9 @@ def verify(project: dict, checkout: Path, out: Path, command: list[str], timeout
             doc = json.loads(record.read_text(encoding="utf-8"))
             row["checks"] = doc.get("counts")
             row["routes"] = [{"name": r.get("name"), "status": r.get("status")} for r in doc.get("routes", [])]
-            row["sandboxed"] = (doc.get("isolation") or {}).get("sandboxed")
+            row["isolation"] = doc.get("isolation")
+            row["failures"] = [f"{f.get('spec')} on {f.get('route')}: {str(f.get('reason'))[:300]}"
+                               for f in doc.get("findings", [])][:8]
         except (OSError, ValueError):
             pass
     return row
@@ -149,7 +151,7 @@ def markdown(rows: list[dict]) -> str:
     lines = ["| Project | Kind | Exit | Verdict | Seconds | Checks | Reasons |", "| --- | --- | --- | --- | --- | --- | --- |"]
     for r in rows:
         checks = "none" if not r["checks"] else f"{r['checks'].get('passed')} of {r['checks'].get('checks')} pass"
-        reasons = "; ".join(r["reasons"] or r.get("diagnostics") or [r.get("output", "")]) or "none"
+        reasons = "; ".join((r["reasons"] or r.get("diagnostics") or [r.get("output", "")]) + r.get("failures", [])) or "none"
         lines.append(f"| {r['name']} (`{r['commit'][:7]}`, {r['licence']}) | {r['kind']} | {r['exit']} | "
                      f"{r['verdict'] or 'no verdict'} | {r['seconds']} | {checks} | {reasons.replace('|', '/')} |")
     return "\n".join(lines) + "\n"
