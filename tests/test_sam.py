@@ -279,6 +279,108 @@ class ClientTest(unittest.TestCase):
         self.assertNotIn("LLM_same", err.getvalue())
 
 
+class SpendCapTest(unittest.TestCase):
+    """EXPECTRAIL_SAM_USD_CAP: the most one run may spend on SAM. Every try is counted before it is
+    sent, and a request that would pass the cap is not sent (#267; Sean's limit of November 12 is
+    $200 a month and never more, which needs every run to have a worst case it cannot pass)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.png = Path(self.tmp.name) / "f.png"
+        self.png.write_bytes(png_bytes(W, H, 1))
+        self.sent = []
+        patcher = mock.patch.dict(sam._usage, {"requests": 0, "images": 0, "videoFrames": 0, "reservedUsd": 0.0})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.addCleanup(self.tmp.cleanup)
+
+    def answer(self, body):
+        self.sent.append(body)
+        return json.dumps({"output_text": "<0f>" + box_token(0, (1, 1, 5, 5), 0.8)}).encode(), "application/json"
+
+    def client(self, transport=None):
+        return MetaSamClient(transport=transport or self.answer, sleep=lambda s: None)
+
+    def test_the_request_that_would_pass_the_cap_is_not_sent(self):
+        with mock.patch.dict(os.environ, {sam.CAP_ENV: "0.0075"}):   # three images at $0.0025
+            client = self.client()
+            for _ in range(3):
+                client.segment(self.png, "x")
+            with self.assertRaises(sam.SamError) as stopped:
+                client.segment(self.png, "x")
+        self.assertEqual(stopped.exception.kind, "budget")
+        self.assertIn("was not sent", str(stopped.exception))
+        self.assertEqual(len(self.sent), 3)
+        self.assertAlmostEqual(sam.sam_usage()["reservedUsd"], 0.0075)
+        # Still refused after the stop: the count does not go back.
+        with mock.patch.dict(os.environ, {sam.CAP_ENV: "0.0075"}), self.assertRaises(sam.SamError):
+            self.client().segment(self.png, "y")
+        self.assertEqual(len(self.sent), 3)
+
+    def test_a_try_that_fails_is_counted_too(self):
+        # Three tries of one image (two rate limits, then an answer) count as three: whether a
+        # failed try is billed is not known, so the count can only err over.
+        tries = []
+
+        def transport(body):
+            tries.append(body)
+            if len(tries) < 3:
+                raise urllib.error.HTTPError("u", 429, "slow down", {}, io.BytesIO(b"rate limited"))
+            return self.answer(body)
+
+        with mock.patch.dict(os.environ, {sam.CAP_ENV: "1"}):
+            self.client(transport).segment(self.png, "x")
+        self.assertAlmostEqual(sam.sam_usage()["reservedUsd"], 3 * sam.USD_PER_IMAGE)
+        # And a retry stops at the cap like any other request: one try fits, the retry does not.
+        sam._usage["reservedUsd"] = 0.0
+        tries.clear()
+        with mock.patch.dict(os.environ, {sam.CAP_ENV: "0.0025"}), self.assertRaises(sam.SamError) as stopped:
+            self.client(transport).segment(self.png, "x")
+        self.assertEqual((stopped.exception.kind, len(tries)), ("budget", 1))
+
+    def test_a_cap_of_nothing_sends_nothing(self):
+        with mock.patch.dict(os.environ, {sam.CAP_ENV: "0"}), self.assertRaises(sam.SamError) as stopped:
+            self.client().segment(self.png, "x")
+        self.assertEqual((stopped.exception.kind, self.sent), ("budget", []))
+
+    def test_a_cap_that_is_not_an_amount_is_an_error_and_never_no_cap(self):
+        for raw in ("lots", "-1", "nan", "inf", "1e999", "$5", "5 dollars"):
+            with self.subTest(raw=raw), mock.patch.dict(os.environ, {sam.CAP_ENV: raw}):
+                with self.assertRaises(sam.SamError) as refused:
+                    self.client().segment(self.png, "x")
+                self.assertEqual(refused.exception.kind, "budget")
+        self.assertEqual(self.sent, [])
+
+    def test_without_a_cap_nothing_leaves_this_machine(self):
+        # The real sender refuses before it opens a connection; a stand-in sender (every test, every
+        # recorded answer) is not held to a cap that was never set.
+        env = {k: v for k, v in os.environ.items() if k != sam.CAP_ENV}
+        env[sam.KEY_ENV] = "not-a-real-key"
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch.object(sam.urllib.request, "urlopen", side_effect=AssertionError("a request was opened")):
+            with self.assertRaises(sam.SamError) as refused:
+                MetaSamClient(sleep=lambda s: None).segment(self.png, "x")
+            self.assertEqual(refused.exception.kind, "budget")
+            self.assertIn(sam.CAP_ENV, str(refused.exception))
+            self.client().segment(self.png, "x")
+        self.assertEqual(len(self.sent), 1)
+
+    def test_a_budget_stop_is_written_where_the_judge_ladder_reads_it(self):
+        # The ladder reads the kind from the observer's error file; tests/test_judge_ladder.py runs
+        # the ladder on such a file and holds that it stops there.
+        from agents import judge_ladder
+        self.assertIn("budget", judge_ladder.STOP_KINDS)
+        self.assertNotIn("budget", judge_ladder.NO_RETRY_KINDS)
+        message = f"sam observations unavailable (kind={sam.SamError('x', kind='budget').kind}): x"
+        self.assertEqual(judge_ladder._KIND.findall(message), ["budget"])
+
+    def test_a_video_is_counted_by_its_frames(self):
+        with mock.patch.dict(os.environ, {sam.CAP_ENV: "1"}):
+            self.client()._call({"x": 1}, video_frames=10)     # billed as the least a video costs
+            self.client()._call({"x": 1}, video_frames=120)
+        self.assertAlmostEqual(sam.sam_usage()["reservedUsd"], (sam.MIN_VIDEO_FRAMES + 120) * sam.USD_PER_VIDEO_FRAME)
+
+
 class SamplingTest(unittest.TestCase):
     def test_every_nth_frame_plus_the_last(self):
         self.assertEqual(sample(list(range(120)), 4)[:3], [0, 4, 8])
