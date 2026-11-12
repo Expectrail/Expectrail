@@ -115,10 +115,10 @@ def check_status(doc) -> None:
 
 
 def _holds_a_file(folder: Path) -> bool:
-    """Whether ``folder`` is a real folder with at least one plain file somewhere in it."""
+    """Whether ``folder`` is a real folder with at least one plain file that has something in it."""
     if folder.is_symlink() or not folder.is_dir():
         return False
-    return any(entry.is_file() and not entry.is_symlink() for entry in folder.rglob("*"))
+    return any(entry.is_file() and not entry.is_symlink() and entry.stat().st_size > 0 for entry in folder.rglob("*"))
 
 
 def _write_atomic(path: Path, text: str) -> None:

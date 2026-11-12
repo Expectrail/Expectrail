@@ -800,9 +800,43 @@ class TreeTest(Case):
                 ("**/*.json", "runs/jobs", True), ("*.json", "runs/jobs", False), ("routes/*.json", "runs/jobs", False),
                 ("routes/*.json", "routes", True), ("routes/*.json", "routes/jobs", False), ("routes/**", "routes/jobs", True),
                 ("r*/**/*.json", "runs/jobs", True), ("runs/jobs/a/request.json", "runs/jobs", True),
-                ("harness/routes/smoke.json", "runs/jobs", False), ("**", "x", True), ("*/*/*/*.json", "runs/jobs", True)):
+                ("harness/routes/smoke.json", "runs/jobs", False), ("**", "x", True), ("*/*/*/*.json", "runs/jobs", True),
+                # Without regard to case: on a file system that ignores it, RUNS/** is runs/**.
+                ("RUNS/**", "runs/jobs", True), ("runs/JOBS/*/request.json", "runs/jobs", True), ("Routes/*.json", "runs/jobs", False),
+                # A range that holds "r" as written and not once its case is folded (first review of #313).
+                ("[S-s]uns/**", "runs/jobs", True), ("[Z-s]uns/jobs/*/request.json", "runs/jobs", True),
+                ("[!R]uns/**", "runs/jobs", True), ("[!A-Z]*/**", "runs/jobs", True)):
             with self.subTest(pattern=pattern, folder=folder):
                 self.assertEqual(req.pattern_reaches(pattern, folder), reaches)
+
+    def test_no_pattern_that_really_matches_below_the_folder_is_missed(self):
+        # The property, not only cases: the check errs towards yes, so over a generated set of
+        # patterns, every one whose real glob finds a file below the jobs folder must be reported as
+        # reaching it. A change that widens the check has to keep this (it is how the range mistake
+        # in #313 was caught).
+        import itertools
+
+        root = self.tmp / "tree"
+        for name in ("runs/jobs/abc/request.json", "runs/jobs/abc/status.json", "runs/jobs/keys/k.json",
+                     "runs/jobs/abc/output/findings.json", "runs/other.json", "routes/smoke.json", "top.json"):
+            (root / name).parent.mkdir(parents=True, exist_ok=True)
+            (root / name).write_text("{}", encoding="utf-8")
+        below = (root / "runs" / "jobs").resolve()
+        parts = ("**", "*", "r*", "*.json", "?obs", "[rj]*", "[S-s]uns", "[Z-s]*", "[!R]uns", "[!A-Z]*", "runs", "jobs",
+                 "abc", "request.json", "routes")
+        checked = matched = 0
+        for length in (1, 2, 3, 4):
+            combos = itertools.product(parts, repeat=length)
+            if length == 4:
+                combos = itertools.islice(combos, 0, None, 7)   # one in seven of the longest
+            for combo in combos:
+                pattern = "/".join(combo)
+                checked += 1
+                really = any(below in found.resolve().parents for found in root.glob(pattern) if found.is_file())
+                if really:
+                    matched += 1
+                    self.assertTrue(req.pattern_reaches(pattern, "runs/jobs"), pattern)
+        self.assertGreater(matched, 500, (checked, matched))
 
     def test_the_jobs_folder_may_not_be_inside_the_game(self):
         store = st.JobStore(self.game / "runs" / "jobs")
@@ -1136,13 +1170,15 @@ class EvidenceTest(Case):
                 self.assertTrue((self.store.paths(job).output / "evidence.txt").is_file())
 
     def test_an_empty_evidence_folder_is_not_evidence(self):
-        for layout in ("empty", "folders only", "a link"):
+        for layout in ("empty", "folders only", "a link", "an empty file"):
             with self.subTest(layout=layout):
                 job = self.job()
                 staging = self.store.paths(job).staging
                 staging.mkdir()
                 if layout == "folders only":
                     (staging / "verdicts" / "head").mkdir(parents=True)
+                if layout == "an empty file":
+                    (staging / "findings.json").write_bytes(b"")
                 if layout == "a link":
                     (staging / "findings.json").symlink_to(self.head / "specs" / "player-stays-above-ground.json")
                 status = self.store.finish(job, "completed", decision="accept", publish=True)
