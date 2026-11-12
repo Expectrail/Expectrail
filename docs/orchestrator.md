@@ -125,9 +125,14 @@ Every job has a folder of its own:
   are gone. A process number alone can pass to something else between the look and the signal, so
   where the system gives process handles (Linux 5.3 and later, unless the container refuses the
   call) the process is held by one, its environment is read again, the handle is checked to still
-  be a live process, and the signal goes to the handle. Where it gives none, the environment is
-  read again and the signal goes to the number, and the job's reasons say "by process number":
-  the handle is the better way and the number stays for every system the handle does not cover.
+  be a live process, and the signal goes to the handle. Whenever that cannot be completed, at any
+  step and for any reason but "no such process" (no such call, a container that refuses it, a
+  handle that cannot be asked or signalled), the environment is read again and the signal goes to
+  the number, and the job's reasons say "by process number" and why. The handle is the better way
+  and the number stays for everything the handle does not cover, so no failure of the better way
+  leaves a lost job's processes running. The job is final before the stop, so an error in the stop
+  itself is not raised: it becomes a reason on the job ("could not stop what it had started").
+  A process the job starts while it is being stopped is found by the next look and counted.
   The caller and its own ancestors are never stopped, so a status asked from inside a job does not
   end the asking; the reasons then say how many were left for that. A cancel that leaves something
   running says so too.
