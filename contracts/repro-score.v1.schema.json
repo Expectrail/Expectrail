@@ -24,8 +24,8 @@
       "description": "The visibility record the rows' visibility came from, or null when none was given."
     },
     "source": {
-      "type": ["string", "null"], "maxLength": 200,
-      "description": "Where the jit-run records came from, as the person who scored them said: a CI run, for example. Not checked."
+      "type": ["string", "null"], "maxLength": 200, "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]*$",
+      "description": "Where the jit-run records came from, as the person who scored them said: a CI run, for example. Not checked. One line: no control character."
     },
     "reps": { "const": 3 },
     "capUsd": { "const": 2.0 },
@@ -46,7 +46,7 @@
             "description": "What the library probes see of this defect, copied from the visibility record; null when it has no row for it."
           },
           "outcome": { "enum": ["reproduced", "not-reproduced", "no-result"] },
-          "why": { "type": ["string", "null"], "maxLength": 300, "description": "For no-result: why there is no result." },
+          "why": { "type": ["string", "null"], "maxLength": 300, "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]*$", "description": "For no-result: why there is no result. One line: no control character." },
           "proposed": { "$ref": "#/$defs/count" },
           "kept": {
             "$ref": "#/$defs/count",
@@ -55,10 +55,10 @@
           "reproducing": {
             "type": "array", "uniqueItems": true, "maxItems": 8,
             "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._/-]*$", "maxLength": 200 },
-            "description": "The kept checks that failed 3 of 3 on the bug build, with and without the no-fix candidate."
+            "description": "The kept checks that failed 3 of 3 on the bug build, with and without the no-fix candidate. The bug build's three fails are read from the check's catch entry in the jit-run record, which keeps those runs."
           },
           "missReason": { "oneOf": [{ "$ref": "#/$defs/reason" }, { "type": "null" }] },
-          "evidence": { "type": ["string", "null"], "maxLength": 300, "description": "For a miss: what in the records gives the reason." },
+          "evidence": { "type": ["string", "null"], "maxLength": 300, "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]*$", "description": "For a miss: what in the records gives the reason. One line: no control character." },
           "spendUsd": { "oneOf": [{ "$ref": "#/$defs/usd" }, { "type": "null" }] },
           "recordSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] }
         }

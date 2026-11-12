@@ -26,6 +26,22 @@ build, so a check that fails 3 of 3 on one and not on the other is flaky, and a 
 counts. The scorer works this out from the runs and refuses a record whose own ``valid`` flag says
 otherwise.
 
+Where each of the three is read from. The clean game's runs and the no-fix candidate's runs are in
+the record for every check (``validity``). The bug build's runs are kept only for a catch
+(``catches[].base``); for any other check the record keeps the bug build's name in a list
+(``killed``) and not its runs. A reproducing check is always a catch, because it failed 3 of 3 on
+the candidate, so **a check counts as reproducing only when its catch entry is there and shows three
+fails on the bug build, with the same candidate runs as its validity row**. A record that names the
+bug build as killed for such a check and has no catch that shows it disagrees with itself, and gives
+no result. The ``flaky`` reason for "failed on the bug build, then did not with the no-fix candidate"
+still rests on the ``killed`` list: that check is no catch, so the record has no runs to read. It
+is a reason for a miss and cannot raise the rate.
+
+**Free text is one line.** A reason copied from a record (``why``, ``evidence``) has its whitespace
+collapsed where the row is finished, so no text from a record can start a line of the page; the
+schema refuses a control character in either, so a score record edited by hand cannot either; and the
+page writes every such cell as a code span, where GitHub renders no link, image, HTML or mention.
+
 **A miss gets a reason** in the issue's vocabulary, where the records can show one:
 
 - ``budget``: the run ended with OUT_OF_BUDGET.
@@ -47,6 +63,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import unicodedata
 from pathlib import Path
 
 from expectrail.contracts import ContractError, load_strict, strict_loads
@@ -63,6 +80,7 @@ CASE_PREFIX = "repro-"
 REPS = 3
 CAP_USD = 2.0
 MAX_BYTES = 1024 * 1024
+TEXT_MAX = 300
 OUTCOMES = ("reproduced", "not-reproduced", "no-result")
 MISS_REASONS = ("route-never-reaches", "no-signal", "probe-language", "wrong-predicate", "flaky", "budget",
                 "undetermined")
@@ -143,8 +161,31 @@ def _read(defect: dict, path: Path, root: Path) -> tuple[dict | None, str | None
     return record, None
 
 
+def one_line(text, limit: int = TEXT_MAX) -> str:
+    """Free text as one line: every run of whitespace or control characters becomes one space."""
+    flat = "".join(" " if (ch.isspace() or unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp")) else ch
+                   for ch in str(text))
+    return " ".join(flat.split())[:limit]
+
+
 def score_one(defect: dict, record_path: Path, visible: str | None, root: Path = REPO) -> dict:
-    """One defect's row."""
+    """One defect's row. Its free text (``why``, ``evidence``) is made one line here, whatever set it."""
+    row = _score_one(defect, record_path, visible, root)
+    for key in ("why", "evidence"):
+        if row[key] is not None:
+            row[key] = one_line(row[key])
+    return row
+
+
+def _bug_build_runs(record: dict, spec_id: str, candidate: list[str]) -> list[str] | None:
+    """The bug build's runs for a check, from its catch entry; None when the record has none to read."""
+    entries = [c for c in record["catches"] if c["specId"] == spec_id]
+    if len(entries) != 1 or entries[0]["base"] is None or entries[0]["candidate"] != candidate:
+        return None
+    return entries[0]["base"]
+
+
+def _score_one(defect: dict, record_path: Path, visible: str | None, root: Path) -> dict:
     row = {"id": defect["id"], "family": defect["family"], "tunedOn": defect["tunedOn"],
            "patchSha256": bench.sha256(root / defect["patch"]), "visibility": visible,
            "outcome": "no-result", "why": None, "proposed": 0, "kept": 0, "reproducing": [],
@@ -180,6 +221,14 @@ def score_one(defect: dict, record_path: Path, visible: str | None, root: Path =
         kept += is_kept
         fails_bug = is_kept and "base" in v["killed"]
         if fails_bug and _all(v["candidate"], "fail"):
+            # Counted from runs, not from the killed list: a reproducing check is a catch, and a catch
+            # keeps the bug build's runs.
+            base_runs = _bug_build_runs(record, v["specId"], v["candidate"])
+            if base_runs is None or len(base_runs) > REPS or not _all(base_runs, "fail"):
+                row.update(spendUsd=None, recordSha256=None,
+                           why=f"the record disagrees with itself: {v['specId']} is listed as failing on the "
+                               f"bug build, and no catch of it shows {REPS} fails there")
+                return row
             reproducing.append(v["specId"])
         elif fails_bug:
             flaky.append(f"{v['specId']} failed {REPS} of {REPS} on the bug build, then gave "
@@ -255,7 +304,7 @@ def score(doc: dict, records_dir: Path, *, visibility_path: Path | None = None, 
             for d in doc["defects"]]
     record = {"format": FORMAT, "benchSha256": bench.sha256(bench_path), "noFixSha256": bench.sha256(root / NO_FIX),
               "visibilitySha256": bench.sha256(Path(visibility_path)) if visibility_path is not None else None,
-              "source": " ".join(source.split())[:200] if source and source.strip() else None,
+              "source": (one_line(source, 200) or None) if source else None,
               "reps": REPS, "capUsd": CAP_USD, "rows": rows, "totals": totals(rows)}
     found = problems(record)
     if found:
@@ -298,8 +347,13 @@ def problems(record) -> list[str]:
             out.append(f"repro-score: {r['id']}: more reproducing checks than kept, or more kept than proposed")
         if scored != (r["spendUsd"] is not None):
             out.append(f"repro-score: {r['id']}: spend and record digest must both be there or both be missing")
+        for key in ("why", "evidence"):
+            if r[key] is not None and r[key] != one_line(r[key]):
+                out.append(f"repro-score: {r['id']}: {key} is not one line of plain text")
         if r["missReason"] is not None and r["missReason"] not in ASSIGNED_HERE:
             out.append(f"repro-score: {r['id']}: {r['missReason']!r} is not a reason the records can show")
+    if record["source"] is not None and record["source"] != one_line(record["source"], 200):
+        out.append("repro-score: source is not one line of plain text")
     if record["totals"] != totals(record["rows"]):
         out.append("repro-score: the totals do not match the rows")
     return out
@@ -342,11 +396,18 @@ def _share(n: int, of: int) -> str:
     return f"{n} of {of}" + (f" ({100 * n / of:.0f}%)" if of else "")
 
 
+def _code(text) -> str:
+    """Text from a record as a code span on one line: no link, image, HTML or mention is rendered in one,
+    and it cannot end the table cell or the span."""
+    return "`" + one_line(text).replace("`", "'").replace("|", "/") + "`"
+
+
 def render(record: dict) -> str:
     """The score as a page: the rate first, then what it does not cover, then one row per defect."""
     t = record["totals"]
     lines = [f"# Reproduction on the public bench: {_share(t['reproduced'], t['defects'])}", "",
-             f"From {record['source'] or 'records with no named source'}. A defect is reproduced when a generated "
+             f"From {_code(record['source']) if record['source'] else 'records with no named source'}. "
+             f"A defect is reproduced when a generated "
              f"check passed on the clean game {REPS} times of {REPS} and failed on the bug build {REPS} times of "
              f"{REPS}, with and without the no-fix candidate.", "",
              f"- Reproduced: {_share(t['reproduced'], t['defects'])}; not reproduced: {t['notReproduced']}; "
@@ -368,10 +429,10 @@ def render(record: dict) -> str:
         if r["outcome"] == "reproduced":
             note = ", ".join(f"`{s}`" for s in r["reproducing"])
         elif r["outcome"] == "not-reproduced":
-            note = f"{r['missReason']}: {r['evidence']}"
+            note = f"{r['missReason']}: {_code(r['evidence'])}"
         else:
-            note = r["why"]
+            note = _code(r["why"])
         spend = "" if r["spendUsd"] is None else f"${r['spendUsd']:.4f}"
         lines.append(f"| `{r['id']}` | {r['family']} | {'yes' if r['tunedOn'] else 'no'} | {r['visibility'] or 'not measured'} | "
-                     f"{r['proposed']} | {r['kept']} | {r['outcome']} | {str(note).replace('|', '/')} | {spend} |")
+                     f"{r['proposed']} | {r['kept']} | {r['outcome']} | {note} | {spend} |")
     return "\n".join(lines) + "\n"

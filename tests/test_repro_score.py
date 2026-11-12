@@ -32,7 +32,7 @@ def sha(path: Path) -> str:
 
 
 def check(spec_id, reference=PASS3, killed=("base",), candidate=FAIL3, valid=None):
-    """One proposed check and its runs, as the pipeline would record them."""
+    """One proposed check and its runs, as the pipeline would record them (its ``validity`` row)."""
     kept = reference == PASS3 and bool(killed)
     return {"specId": spec_id, "valid": kept if valid is None else valid, "reference": list(reference),
             "killed": list(killed), "reasons": [] if kept else ["test"], "candidate": list(candidate) if kept else [],
@@ -40,10 +40,23 @@ def check(spec_id, reference=PASS3, killed=("base",), candidate=FAIL3, valid=Non
                                                          if "fail" in candidate else "no-catch")}
 
 
+def catch_of(row: dict, base=None) -> dict:
+    """The catch entry the pipeline writes for a check that failed every time on the candidate: it
+    keeps the bug build's runs (three fails when the check killed it, one pass when it did not)."""
+    if base is None:
+        base = FAIL3 if "base" in row["killed"] else ["pass"]
+    return {"specId": row["specId"], "statement": "A rule.", "claimId": "player.jump",
+            "strength": "strong" if list(base) == FAIL3 else "weak", "probeIds": ["jump-w0-x8"],
+            "candidate": list(row["candidate"]), "base": None if base == "none" else list(base),
+            "killed": list(row["killed"])}
+
+
 def jit_record(root: Path, defect: dict, checks=(), *, status="complete", reason=None, spend=0.1, reps=3,
-               candidate=None, report=None, base=None) -> dict:
+               candidate=None, report=None, base=None, catches=None) -> dict:
     report_text = (root / (report or defect["report"])).read_text(encoding="utf-8")
     rows = list(checks) if status == "complete" else []
+    if catches is None:
+        catches = [catch_of(c) for c in rows if c["outcome"] == "catch"]
     return {"format": "expectrail.jit-run/v1", "runId": "test-" + defect["id"], "advisory": True, "status": status,
             "reason": reason,
             "inputs": {"patchSha256": sha(root / (candidate or score.NO_FIX)),
@@ -54,7 +67,7 @@ def jit_record(root: Path, defect: dict, checks=(), *, status="complete", reason
             "proposed": [{"spec": {"format": "expectrail.trace-spec/v1", "id": c["specId"], "origin": "AUTO_DIFF",
                                    "expectationRef": {"authority": "model_prior"}},
                           "applies": {}, "probeIds": ["jump-w0-x8"]} for c in rows],
-            "probes": [], "variants": [], "validity": rows, "catches": [],
+            "probes": [], "variants": [], "validity": rows, "catches": list(catches),
             "counts": {"proposed": len(rows), "valid": sum(c["valid"] for c in rows), "strong": 0, "weak": 0},
             "spend": {"usd": spend, "capUsd": 2.0, "sparkUsd": 0.0, "replayUsd": 0.0, "samUsd": 0.0, "samImages": 0,
                       "replays": 10, "promptTokens": 1, "completionTokens": 1,
@@ -367,7 +380,7 @@ class TheScoreRecord(Fixture):
     def test_the_page_gives_the_rate_the_subsets_and_a_row_per_defect(self):
         text = score.render(self.record)
         self.assertTrue(text.startswith("# Reproduction on the public bench: 1 of 4 (25%)\n"))
-        self.assertIn("From run 123 456.", text)
+        self.assertIn("From `run 123 456`.", text)   # a code span since the review of #311: source is free text
         self.assertIn("no result: 1", text)
         self.assertIn("1 of 3 (33%)", text)              # of the defects the engine's record shows
         self.assertIn("Misses by reason: wrong-predicate 1, budget 1", text)
@@ -383,6 +396,147 @@ class TheScoreRecord(Fixture):
         self.visibility_path.write_text("{}")
         with self.assertRaises(score.ScoreError):
             self.score()
+
+
+class TheBugBuildsRunsAreRead(Fixture):
+    """Review of #311, gap 2: "failed on the bug build 3 of 3" was read from the record's ``killed``
+    list. A reproducing check is a catch, and a catch keeps the bug build's runs, so they are read."""
+
+    def reproduced_with(self, **kw):
+        row = check("jit-a")
+        self.put("sig-one", [row], **kw)
+        return self.row("sig-one")
+
+    def test_a_catch_that_shows_three_fails_on_the_bug_build_reproduces(self):
+        r = self.reproduced_with()
+        self.assertEqual((r["outcome"], r["reproducing"]), ("reproduced", ["jit-a"]))
+
+    def test_a_killed_list_that_names_the_bug_build_is_not_enough(self):
+        row = check("jit-a")
+        cases = {
+            "no catch entry": [],
+            "a catch of another check": [catch_of(dict(row, specId="jit-other"))],
+            "the bug build's runs are missing": [catch_of(row, base="none")],
+            "two of three on the bug build": [catch_of(row, base=["fail", "fail", "pass"])],
+            "one run on the bug build": [catch_of(row, base=["fail"])],
+            "the bug build passed": [catch_of(row, base=PASS3)],
+            "a fourth run on the bug build": [catch_of(row, base=FAIL3 + ["fail"])],
+            "an error on the bug build": [catch_of(row, base=["fail", "fail", "execution_error"])],
+            "other candidate runs than the validity row's": [dict(catch_of(row), candidate=["fail", "fail", "pass"])],
+            "the same check caught twice": [catch_of(row), catch_of(row)],
+        }
+        for name, catches in cases.items():
+            with self.subTest(name):
+                r = self.reproduced_with(catches=catches)
+                self.assertEqual((r["outcome"], r["reproducing"], r["spendUsd"]), ("no-result", [], None), name)
+                self.assertIn("disagrees with itself", r["why"])
+                self.assertIn("no catch of it shows 3 fails", r["why"])
+        self.assertEqual(self.score()["totals"]["reproduced"], 0)
+
+    def test_one_such_check_gives_no_result_even_beside_a_sound_one(self):
+        good, bad = check("jit-good"), check("jit-bad")
+        self.put("sig-one", [good, bad], catches=[catch_of(good)])
+        self.assertEqual(self.row("sig-one")["outcome"], "no-result")
+
+    def test_the_whole_pipeline_writes_the_catch_the_scorer_reads(self):
+        # OneWholeRun below scores a record the real job wrote on the simulated game; this checks the
+        # fixture here has the same shape as that record's catch.
+        row = check("jit-a")
+        entry = catch_of(row)
+        self.assertEqual(set(entry), {"specId", "statement", "claimId", "strength", "probeIds", "candidate", "base", "killed"})
+        self.assertEqual(score._bug_build_runs({"catches": [entry]}, "jit-a", row["candidate"]), FAIL3)
+
+
+class FreeTextIsOneLine(Fixture):
+    """Review of #311, gap 1: a budget reason with a newline added lines to the page that goes to the
+    step summary. Every free text of the record is one line, wherever it was set, and the page writes
+    it as a code span."""
+
+    INJECTED = "OUT_OF_BUDGET\n| injected | row |\n# heading"
+    BREAKS = ("\n", "\r\n", "\r", "\t", "\x0b", "\x0c", "\x1c", "\x85", "\u2028", "\u2029", "\x00", "\x1b[2J",
+              "\u200b", "\u202e", "\ufeff", "  ")
+
+    def page_lines(self, **kw):
+        return score.render(self.score(**kw)).splitlines()
+
+    def assert_page_is_sound(self, lines, rows=4):
+        table = [line for line in lines if line.startswith("|")]
+        self.assertEqual(len(table), rows + 2, table)                      # the header, the rule, one per defect
+        self.assertTrue(all(line.startswith("| `") for line in table[2:]), table)
+        self.assertEqual([line for line in lines if line.startswith("#")], lines[:1])
+        self.assertTrue(all(line.count("|") == 10 for line in table), table)
+
+    def test_the_reviewers_case_adds_no_line_to_the_page(self):
+        self.put("cam", status="nothing-generated", reason=self.INJECTED)
+        r = self.row("cam")
+        self.assertEqual((r["missReason"], r["evidence"]), ("budget", "OUT_OF_BUDGET | injected | row | # heading"))
+        lines = self.page_lines()
+        self.assert_page_is_sound(lines)
+        self.assertFalse(any(line.startswith(("| injected", "# heading")) for line in lines))
+        self.assertIn("budget: `OUT_OF_BUDGET / injected / row / # heading`", "\n".join(lines))
+
+    def test_no_kind_of_line_break_or_control_character_survives_in_evidence_or_why(self):
+        for brk in self.BREAKS:
+            with self.subTest(repr(brk)):
+                self.put("cam", status="nothing-generated", reason=f"OUT_OF_BUDGET a{brk}| b |{brk}# c")
+                self.put("sig-two", status="nothing-generated", reason=f"MODEL_UNAVAILABLE a{brk}| b |{brk}# c")
+                record = self.score()
+                rows = {r["id"]: r for r in record["rows"]}
+                for text in (rows["cam"]["evidence"], rows["sig-two"]["why"]):
+                    self.assertEqual(text, score.one_line(text))
+                    self.assertFalse(any(ord(ch) < 32 or ch in "\x7f\x85\u2028\u2029\u200b\u202e\ufeff" for ch in text), repr(text))
+                    self.assertNotIn("  ", text)
+                self.assertEqual(score.problems(record), [])
+                self.assert_page_is_sound(score.render(record).splitlines())
+
+    def test_a_flaky_reason_and_a_disagreement_are_one_line_too(self):
+        self.put("sig-one", [check("jit-a", candidate=["fail", "pass", "fail"])])
+        self.put("sig-two", [check("jit-a", valid=False)])
+        rows = {r["id"]: r for r in self.score()["rows"]}
+        self.assertEqual(rows["sig-one"]["evidence"], score.one_line(rows["sig-one"]["evidence"]))
+        self.assertEqual(rows["sig-two"]["why"], score.one_line(rows["sig-two"]["why"]))
+
+    def test_the_source_is_one_line(self):
+        record = self.score(source="run 1\n| injected | row |\n# heading\u2028x")
+        self.assertEqual(record["source"], "run 1 | injected | row | # heading x")
+        self.assert_page_is_sound(score.render(record).splitlines())
+        self.assertIsNone(self.score(source=" \n\t ")["source"])
+
+    def test_text_from_a_record_is_a_code_span_so_nothing_in_it_is_rendered(self):
+        reason = "OUT_OF_BUDGET [click](https://example.invalid) <img src=x> @someone ![i](https://example.invalid/i) `x` **b**"
+        self.put("cam", status="nothing-generated", reason=reason)
+        line = next(x for x in self.page_lines() if x.startswith("| `cam`"))
+        cell = line.split(" | ")[7]
+        self.assertTrue(cell.startswith("budget: `") and cell.endswith("`"), cell)
+        self.assertEqual(cell.count("`"), 2, cell)            # the span cannot be closed from inside
+
+    def test_the_reader_refuses_free_text_that_is_not_one_line(self):
+        self.put("cam", status="nothing-generated", reason="OUT_OF_BUDGET: x")
+        self.put("sig-two", status="nothing-generated", reason="MODEL_UNAVAILABLE: y")
+        good = self.score(source="run 1")
+        self.assertEqual(score.problems(good), [])
+        for key, did in (("evidence", "cam"), ("why", "sig-two")):
+            for bad in ("a\nb", "a\r| x |", "a\tb", "a\u2028b", "a\x00b", "a\x85b", "a  b", " a", "a ", "a\u202eb"):
+                with self.subTest(key=key, bad=repr(bad)):
+                    record = copy.deepcopy(good)
+                    next(r for r in record["rows"] if r["id"] == did)[key] = bad
+                    self.assertTrue(score.problems(record), repr(bad))
+                    path = self.tmp / "tampered.json"
+                    path.write_text(json.dumps(record), encoding="utf-8")
+                    with self.assertRaises(score.ScoreError):
+                        score.load(path)
+        for bad in ("run\n1", "run\u20281", "run  1"):
+            record = copy.deepcopy(good)
+            record["source"] = bad
+            self.assertTrue(score.problems(record), repr(bad))
+
+    def test_a_page_made_from_a_record_someone_edited_still_adds_no_line(self):
+        # render is also given records it did not write (score render <file> loads first and refuses;
+        # this is the page itself, called directly).
+        record = self.score()
+        record["rows"][3]["why"] = "x\n| injected | row |\n# heading"
+        record["source"] = "s\n# heading"
+        self.assert_page_is_sound(score.render(record).splitlines())
 
 
 class NoFixRefusals(Fixture):
