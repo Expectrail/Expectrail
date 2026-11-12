@@ -15,6 +15,9 @@ that the model key and other people's code must never be in the same job.
     starts the outside project.
   - The run is started with a spend cap in dollars (at most 2) and stops at it.
 - Tests hold each of those against the workflow file.
+- `agents/assurance/audit.py`: the `probe` job is added to the list of jobs that hold a model key
+  and only send frames to a perception model. That list says "after review": the review is Sean's,
+  with the rest of this pull request.
 
 ## What was run
 - The capture on a project of our own (`tests/projects/event-input`, Godot 4.7.2, sandbox off
@@ -40,4 +43,5 @@ At the default (every 10th of the first 120 frames, one prompt) a run is 13 imag
 A sweep of 9 prompts is 117 images, about $0.29. Arithmetic at the list price, not a measurement.
 
 ## Files
-`tools/outside_trial.py`, `.github/workflows/outside-sam-probe.yml`, `tests/test_outside_trial.py`
+`tools/outside_trial.py`, `.github/workflows/outside-sam-probe.yml`, `tests/test_outside_trial.py`,
+`agents/assurance/audit.py`
