@@ -286,10 +286,22 @@ class JobStore:
         status, lost_now = self._finish(job_id, "failed", reasons=[why],
                                         diagnostics=[diagnostic("WORKER_LOST", stage=stage, detail=detail)])
         if lost_now:
-            note = _stopped_note(job_id, stop_job(job_id, grace_seconds=grace_seconds))
+            note = self._stop_what_it_started(job_id, grace_seconds=grace_seconds)
             if note:
                 status = self._note(job_id, note)
         return status
+
+    @staticmethod
+    def _stop_what_it_started(job_id: str, *, grace_seconds: float, only_if_left: bool = False) -> str | None:
+        """Stop the job's processes and return what to say about it. The job is already final when
+        this runs, so nothing is tried again later: an error here becomes a reason on the job and is
+        never raised past it."""
+        try:
+            ways: set = set()
+            return _stopped_note(job_id, stop_job(job_id, grace_seconds=grace_seconds, ways=ways), ways,
+                                 only_if_left=only_if_left)
+        except Exception as exc:  # noqa: BLE001 - said on the job; raising would leave no trace of it there
+            return f"could not stop what it had started: {type(exc).__name__}: {exc}"
 
     def _note(self, job_id: str, text: str) -> dict:
         """Add a reason to a job that is already final. Nothing else about it changes."""
@@ -412,8 +424,7 @@ class JobStore:
         if cancelled_now:
             # And anything of the job's that had left the group. A cancel that leaves something
             # running says so; one that stopped everything says nothing more.
-            stopped = stop_job(job_id, grace_seconds=1.0)
-            note = _stopped_note(job_id, stopped, only_if_left=True)
+            note = self._stop_what_it_started(job_id, grace_seconds=1.0, only_if_left=True)
             if note:
                 status = self._note(job_id, note)
         return status
@@ -470,41 +481,60 @@ def process_handles() -> bool:
 
 
 def _exited(handle: int) -> bool:
-    """A process handle becomes readable when its process has exited."""
-    return bool(select.select([handle], [], [], 0)[0])
+    """A process handle becomes readable when its process has exited. Asked with poll, which takes
+    a descriptor of any number (select refuses 1024 and up, which a caller holding many open files
+    gets)."""
+    poller = select.poll()
+    poller.register(handle, select.POLLIN)
+    return bool(poller.poll(0))
 
 
-def _signal(pid: int, marker: bytes, sig: int) -> None:
-    """Signal the process that names the job, and only it.
-
-    With a process handle: the process is held, its environment is read again, the handle is
-    checked to still be a live process, and the signal goes to the handle. A process number alone
-    could have passed to another program between the look and the signal; a handle cannot.
-
-    Without one (an older kernel, or a container that refuses the call): the environment is read
-    again and the signal goes to the number, only if it still names the job. That is what was done
-    before handles, with one more look. The handle is the better way; the number stays as the way
-    for every system the handle does not cover, so a lost job's processes are stopped there too."""
-    try:
-        handle = os.pidfd_open(pid)
-    except ProcessLookupError:
-        return   # gone
-    except (AttributeError, OSError):
-        if _names_job(pid, marker):
-            with contextlib.suppress(ProcessLookupError, PermissionError):
-                os.kill(pid, sig)
-        return
+def _by_handle(pid: int, marker: bytes, sig: int) -> bool:
+    """The first way: hold the process by a handle, read its environment again, check the handle is
+    still a live process, and send the signal to the handle. Returns whether a signal was sent.
+    Raises when any step cannot be done; the caller then takes the second way."""
+    handle = os.pidfd_open(pid)
     try:
         if _names_job(pid, marker) and not _exited(handle):
-            with contextlib.suppress(ProcessLookupError, PermissionError):
-                signal.pidfd_send_signal(handle, sig)
+            signal.pidfd_send_signal(handle, sig)
+            return True
+        return False
     finally:
         os.close(handle)
 
 
-def _stopped_note(job_id: str, stopped: tuple[int, int] | None, *, only_if_left: bool = False) -> str | None:
-    """What to say in a job's reasons about the processes it had started. ``only_if_left`` keeps
-    quiet unless something is still running."""
+def _signal(pid: int, marker: bytes, sig: int) -> str | None:
+    """Signal the process that names the job, and only it. Returns how the signal was sent
+    (``handle`` or ``number``), or None when none was.
+
+    The first way is a process handle (``_by_handle``): a process number alone could have passed
+    to another program between the look and the signal, and a handle cannot.
+
+    The second way is what was done before handles, with one more look: the environment is read
+    again and the signal goes to the number, only if it still names the job. It is taken whenever
+    the first way cannot be completed, whatever the step and whatever the error: no such call (an
+    older kernel), a container that refuses it, a handle that cannot be asked or signalled. Only
+    "no such process" ends it, since then there is nothing to stop. So there is no failure of the
+    better way that leaves a lost job's processes running where the older way would stop them."""
+    try:
+        return "handle" if _by_handle(pid, marker, sig) else None
+    except ProcessLookupError:
+        return None   # gone
+    except Exception:  # noqa: BLE001 - any failure of the first way leads to the second, never to nothing
+        pass
+    if _names_job(pid, marker):
+        try:
+            os.kill(pid, sig)
+            return "number"
+        except (ProcessLookupError, PermissionError):
+            pass
+    return None
+
+
+def _stopped_note(job_id: str, stopped: tuple[int, int] | None, ways: frozenset | set = frozenset(), *,
+                  only_if_left: bool = False) -> str | None:
+    """What to say in a job's reasons about the processes it had started. ``ways`` is how they were
+    signalled (``stop_job``). ``only_if_left`` keeps quiet unless something is still running."""
     marker = f"{JOB_ENV}={job_id}".encode()
     own = sum(1 for pid in _own_line() if _names_job(pid, marker))
     parts = []
@@ -515,32 +545,40 @@ def _stopped_note(job_id: str, stopped: tuple[int, int] | None, *, only_if_left:
         parts.append(f"found {stopped[0]} process(es) it had started and stopped {stopped[1]}; the rest are still running")
     elif stopped[0] and not only_if_left:
         parts.append(f"stopped {stopped[1]} process(es) it had started")
-    if parts and stopped and stopped[1] and not process_handles():
-        parts.append("by process number: this system has no process handles")
+    if parts and "number" in ways:
+        parts.append("by process number: " + ("a process handle could not be used" if process_handles()
+                                              else "this system has no process handles"))
     if own:
         # The asking came from inside the job: the caller and its ancestors are never stopped.
         parts.append(f"left {own} running: they are the caller's own")
     return "; ".join(parts) or None
 
 
-def stop_job(job_id: str, *, grace_seconds: float = 1.0) -> tuple[int, int] | None:
+def stop_job(job_id: str, *, grace_seconds: float = 1.0, ways: set | None = None) -> tuple[int, int] | None:
     """Stop every process that names this job: ask, then make. Returns (how many were found, how
-    many of those are gone), or None where they cannot be looked for."""
+    many of those are gone), or None where they cannot be looked for. A process the job started
+    after the first look is found by a later one and counted too. ``ways`` collects how the signals
+    were sent (``handle``, ``number``)."""
     first = processes_of(job_id)
     if first is None:
         return None
+    seen = set(first)
     marker = f"{JOB_ENV}={job_id}".encode()
     for sig, wait in ((signal.SIGTERM, grace_seconds), (signal.SIGKILL, 1.0)):
         left = processes_of(job_id) or []
         if not left:
             break
+        seen.update(left)
         for pid in left:
-            _signal(pid, marker, sig)
+            how = _signal(pid, marker, sig)
+            if how and ways is not None:
+                ways.add(how)
         deadline = time.monotonic() + wait
         while time.monotonic() < deadline and processes_of(job_id):
             time.sleep(0.05)
     still = set(processes_of(job_id) or [])
-    return len(first), len([pid for pid in first if pid not in still])
+    seen.update(still)
+    return len(seen), len(seen - still)
 
 
 def stop_group(pgid: int, *, grace_seconds: float = 3.0) -> None:

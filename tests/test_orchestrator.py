@@ -1166,6 +1166,107 @@ class LostWorkerTest(Case):
             st._signal(live.pid, f"{st.JOB_ENV}={job}".encode(), signal.SIGKILL)
         self.assertIsNone(live.poll())
 
+    def test_a_caller_holding_many_open_files_still_stops_a_lost_jobs_processes(self):
+        # A long-lived caller with a thousand files open gets a handle numbered 1024 or higher.
+        # `select` refuses such a number; asked that way, the stop raised and the job's processes ran
+        # on, where the way before handles stopped them (second review of #316).
+        import fcntl
+        import resource
+
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        need = 1100
+        if soft != resource.RLIM_INFINITY and soft < need:
+            if hard != resource.RLIM_INFINITY and hard < need:
+                self.skipTest(f"this system allows only {hard} open files")
+            resource.setrlimit(resource.RLIMIT_NOFILE, (need, hard))
+            self.addCleanup(resource.setrlimit, resource.RLIMIT_NOFILE, (soft, hard))
+        real_open, handed = os.pidfd_open, []
+
+        def a_high_handle(pid: int) -> int:
+            low = real_open(pid)
+            try:
+                high = fcntl.fcntl(low, fcntl.F_DUPFD_CLOEXEC, 1024)
+            finally:
+                os.close(low)
+            handed.append(high)
+            return high
+
+        job = self.job()
+        proc = self.marked(job)
+        with mock.patch.object(st.os, "pidfd_open", side_effect=a_high_handle), \
+                mock.patch.object(st.os, "kill", side_effect=AssertionError("signalled by number")):
+            status = self.store.lose(job, "the worker stopped before the job finished", stage="queued")
+        self.assertTrue(handed and min(handed) >= 1024, handed)
+        wait_for(lambda: proc.poll() is not None, what="the marked process stopping through a high-numbered handle")
+        self.assertEqual(status["reasons"][-1], "stopped 1 process(es) it had started")
+
+    def test_any_failure_of_the_handle_path_falls_to_the_process_number(self):
+        # One fallback for the whole first way: whichever step fails, and however, the process is
+        # stopped as it was before handles. Only "no such process" ends it.
+        import errno
+
+        ways = {
+            "the liveness check raises": lambda: mock.patch.object(st, "_exited", side_effect=ValueError("filedescriptor out of range")),
+            "the signal to the handle is refused": lambda: mock.patch.object(
+                st.signal, "pidfd_send_signal", side_effect=OSError(errno.EINVAL, "Invalid argument")),
+            "the signal to the handle is not allowed": lambda: mock.patch.object(
+                st.signal, "pidfd_send_signal", side_effect=PermissionError(errno.EPERM, "Operation not permitted")),
+            "no handle: too many open files": lambda: mock.patch.object(
+                st.os, "pidfd_open", side_effect=OSError(errno.EMFILE, "Too many open files")),
+        }
+        for n, (name, broken) in enumerate(ways.items()):
+            with self.subTest(failure=name):
+                job = self.job(idempotency_key=f"handle-path-{n}")
+                proc = self.marked(job)
+                with broken():
+                    status = self.store.lose(job, "the worker stopped before the job finished", stage="queued")
+                wait_for(lambda: proc.poll() is not None, what=f"the marked process stopping by number ({name})")
+                self.assertEqual(status["phase"], "failed")
+                # Why is said too: "a process handle could not be used", or "this system has no
+                # process handles" when none can be opened at all.
+                self.assertTrue(status["reasons"][-1].startswith("stopped 1 process(es) it had started; by process number: "),
+                                status["reasons"])
+                self.assertEqual("could not be used" in status["reasons"][-1], not name.startswith("no handle"))
+        # "No such process" from the handle is the end of it: nothing is signalled by number.
+        job = self.job(idempotency_key="handle-path-gone")
+        proc = self.marked(job)
+        with mock.patch.object(st.signal, "pidfd_send_signal", side_effect=ProcessLookupError(errno.ESRCH, "No such process")), \
+                mock.patch.object(st.os, "kill", side_effect=AssertionError("signalled by number")):
+            self.assertIsNone(st._signal(proc.pid, f"{st.JOB_ENV}={job}".encode(), signal.SIGKILL))
+        self.assertIsNone(proc.poll())
+
+    def test_an_error_while_stopping_is_said_on_the_job_and_not_raised(self):
+        # The job is final before the stop, so nothing tries again: the error must be on the job.
+        job = self.job()
+        with mock.patch.object(st, "stop_job", side_effect=RuntimeError("the stop itself broke")):
+            status = self.store.lose(job, "the worker stopped before the job finished", stage="queued")
+        self.assertEqual(status["phase"], "failed")
+        self.assertEqual(status["reasons"], ["the worker stopped before the job finished",
+                                             "could not stop what it had started: RuntimeError: the stop itself broke"])
+        self.assertEqual(self.store.status(job)["reasons"], status["reasons"])
+        job = self.job(idempotency_key="cancel-stop-error")
+        with mock.patch.object(st, "stop_job", side_effect=RuntimeError("the stop itself broke")):
+            status = self.store.cancel(job)
+        self.assertEqual((status["phase"], status["reasons"][-1]),
+                         ("cancelled", "could not stop what it had started: RuntimeError: the stop itself broke"))
+
+    def test_a_process_started_after_the_first_look_is_counted(self):
+        job = self.job()
+        looks = iter([[101], [101, 202]])   # the job starts one more between the first look and the next
+
+        def look(_job):
+            return next(looks, [])
+
+        with mock.patch.object(st, "processes_of", side_effect=look), mock.patch.object(st, "_signal", return_value="handle") as sent:
+            ways: set = set()
+            self.assertEqual(st.stop_job(job, grace_seconds=0.1, ways=ways), (2, 2))
+        self.assertEqual(sorted(call.args[0] for call in sent.call_args_list), [101, 202])
+        self.assertEqual(ways, {"handle"})
+        # And one that is still there at the end is found and not counted as gone.
+        looks = iter([[101]])
+        with mock.patch.object(st, "processes_of", side_effect=lambda _job: next(looks, [303])), mock.patch.object(st, "_signal"):
+            self.assertEqual(st.stop_job(job, grace_seconds=0.1), (2, 1))
+
     def test_a_cancel_that_leaves_something_running_says_so(self):
         job = self.job()
         proc = self.marked(job)
