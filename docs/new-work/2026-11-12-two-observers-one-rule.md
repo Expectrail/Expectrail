@@ -67,6 +67,11 @@ takes a rule for which observers judge.
   coins 240, 240, 120; traversal 360, 360, 180. On each, `engine_gap` found nothing missing and
   every frame of the window was on disk. So a real replay is not sent to needs-review by these
   checks.
+- Fourth push: main had moved (#355, the rule that a declared fix needs a demonstrated repair, changed
+  the same three files). Both changes are kept, and the reruns that demonstrate a repair are judged
+  by the same rule as the first run, so under `both` a repair is demonstrated only by both observers
+  on every run; one test added for that. `tests.test_two_observers`: 50 tests, OK. The full suite on
+  the merge (main at aa290b1): 2,468 tests, 26 skipped, OK.
 - Not run: a visual observer over real frames (that is a live model call), and the whole gate under
   `both` with real Godot.
 
