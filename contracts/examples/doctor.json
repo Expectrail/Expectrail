@@ -1,0 +1,87 @@
+{
+  "format": "expectrail.doctor/v1",
+  "expectrail": "0.1.0",
+  "ok": false,
+  "checks": [
+    {
+      "id": "python",
+      "what": "Python 3.12 or later",
+      "status": "ok",
+      "required": true,
+      "found": "Python 3.13.9",
+      "fix": null
+    },
+    {
+      "id": "godot",
+      "what": "Godot 4.7.2-stable",
+      "status": "ok",
+      "required": true,
+      "found": "Godot 4.7.2.stable.official.ed1daf0bf at /home/dev/.cache/expectrail/godot/Godot_v4.7.2-stable_linux.x86_64",
+      "fix": null
+    },
+    {
+      "id": "display",
+      "what": "a virtual display (xvfb-run)",
+      "status": "missing",
+      "required": true,
+      "found": "xvfb-run is not installed",
+      "fix": "sudo apt-get install xvfb"
+    },
+    {
+      "id": "opengl",
+      "what": "OpenGL the engine can draw with (Mesa's software renderer)",
+      "status": "skipped",
+      "required": true,
+      "found": "not tried: it needs Godot and a display, and one is missing above",
+      "fix": "fix what is missing above, then run `expectrail doctor` again"
+    },
+    {
+      "id": "disk",
+      "what": "1024 MB free for the engine and a run's frames",
+      "status": "ok",
+      "required": true,
+      "found": "29879 MB free in the engine's folder (/home/dev/.cache/expectrail); 29879 MB free in the temporary folder (/tmp)",
+      "fix": null
+    },
+    {
+      "id": "sandbox",
+      "what": "the replay sandbox (bubblewrap)",
+      "status": "missing",
+      "required": false,
+      "found": "bubblewrap (bwrap) is not installed",
+      "fix": "sudo apt-get install bubblewrap (Linux; the kernel must allow unprivileged user namespaces). Without it replays run outside the sandbox, and the isolated class and `require-sandbox` refuse to run"
+    },
+    {
+      "id": "patch",
+      "what": "`patch` (`expectrail sample` and seeded bugs put a patch on a copy of the game)",
+      "status": "ok",
+      "required": true,
+      "found": "patch at /usr/bin/patch",
+      "fix": null
+    },
+    {
+      "id": "curl",
+      "what": "`curl` (to fetch the engine; it is already here)",
+      "status": "ok",
+      "required": false,
+      "found": "curl at /usr/bin/curl",
+      "fix": null
+    },
+    {
+      "id": "unzip",
+      "what": "`unzip` (to fetch the engine; it is already here)",
+      "status": "ok",
+      "required": false,
+      "found": "unzip at /usr/bin/unzip",
+      "fix": null
+    },
+    {
+      "id": "vision-key",
+      "what": "a key for a visual observer (a vision model over the captured frames)",
+      "status": "absent",
+      "required": false,
+      "found": "none of MODEL_API_KEY, EXPECTRAIL_GLIMMER_API_KEY, FIREWORKS_API_KEY, EXPECTRAIL_VLM_API_KEY is set. Today `expectrail verify` and `sample` judge on the engine's record only and use no key. Under the two-observer rule (#327) a run without a key still rejects a failing change and accepts nothing: an accept needs the visual observer's evidence.",
+      "fix": null
+    }
+  ]
+}

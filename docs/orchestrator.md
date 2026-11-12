@@ -31,7 +31,7 @@ Exit code, the same for `verify`, `status`, `cancel` and `report`:
 | 2 | the job completed as needs review |
 | 3 | the job failed: no result |
 | 4 | the job was cancelled |
-| 5 | the command could not be carried out (a refused request, an unknown job, a crash in the command) |
+| 5 | the command could not be carried out (a refused request, an unknown job, a crash in the command, a command line that cannot be read) |
 | 6 | the job is not finished: no result yet |
 
 0 only ever means a job that completed as accept, and 1 one that completed as reject. So
@@ -176,7 +176,8 @@ An engine verifies for one adapter (`expectrail/orchestrator/engines.py`). It ha
 returns the diagnostics that stop a job before anything runs, and `execute`, which writes evidence
 into the job's `staging/` and returns a decision. `godot` is the CI gate's verification
 (`expectrail.gate.verify.run_gate`), so for the same inputs the orchestrator and the gate decide
-alike; a test holds that on the gate tests' stand-in replay.
+alike; a test holds that on the gate tests' stand-in replay. Its preflight's tool check is the part
+of `expectrail doctor`'s list every run needs ([install.md](install.md)), so the two cannot disagree.
 
 The engine tells the job when it moves on: `observing` when a replay starts, `evaluating` when its
 checks are judged. It takes the gate's rule for which observers judge (`GodotGate(rule="both",

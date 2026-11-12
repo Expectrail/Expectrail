@@ -11,8 +11,9 @@ Jobs are kept under ``--jobs-root`` (default: $EXPECTRAIL_JOBS, else runs/jobs h
 the job unless ``--detach`` is given; then it prints the job's id and returns.
 
 Exit code, the same for `verify`, `status`, `cancel` and `report`: 0 accept, 1 reject, 2 needs
-review, 3 the job failed (no result), 4 cancelled, 5 the command could not be carried out, 6 the job
-is not finished (no result yet). 0 only ever means a job that completed as accept and 1 one that
+review, 3 the job failed (no result), 4 cancelled, 5 the command could not be carried out (a command
+line that cannot be read is one of these: a missing or unknown option exits 5, not argparse's 2, which
+here means needs review), 6 the job is not finished (no result yet). 0 only ever means a job that completed as accept and 1 one that
 completed as reject, with two stated exceptions for 0: `verify --detach` exits 0 when the job was
 started, and `sample` exits 0 when all three runs decide as a working install does (3 otherwise: it
 checks the install, it is not a verdict on a change).
@@ -61,9 +62,22 @@ def _show(status: dict, as_json: bool) -> None:
     print(json.dumps(status, indent=2) if as_json else describe(status))
 
 
+class UsageError(Exception):
+    """The command line could not be read."""
+
+
+class Parser(argparse.ArgumentParser):
+    """argparse exits 2 on a command line it cannot read, and 2 is needs-review here. This parser
+    raises instead, and ``main`` returns 5: the command could not be carried out. (Subcommands are
+    made with this class too: ``add_subparsers`` uses the class of the parser it is called on.)"""
+
+    def error(self, message):
+        raise UsageError(f"{message}\n{self.format_usage().strip()}")
+
+
 def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.orchestrator") -> int:
     """``prog`` is the name shown in help and errors: the `expectrail` command passes its own."""
-    p = argparse.ArgumentParser(prog=prog, description=__doc__.splitlines()[0])
+    p = Parser(prog=prog, description=__doc__.splitlines()[0])
     p.add_argument("--jobs-root", help="where jobs are kept (default: $EXPECTRAIL_JOBS, else runs/jobs)")
     p.add_argument("--lease-seconds", type=float, default=st.DEFAULT_LEASE_SECONDS, help=argparse.SUPPRESS)
     sub = p.add_subparsers(dest="command", required=True)
@@ -96,7 +110,11 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
     w = sub.add_parser("_work")   # the worker process; started by `verify`, not by people
     w.add_argument("job")
 
-    args = p.parse_args(argv)
+    try:
+        args = p.parse_args(argv)
+    except UsageError as exc:
+        print(f"expectrail: {exc}\nNothing was run.", file=sys.stderr)
+        return EXIT_USAGE
     store = _store(args)
     try:
         if args.command == "_work":

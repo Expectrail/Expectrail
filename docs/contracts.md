@@ -183,6 +183,17 @@ the run's records again and compare. The writer counts a check as reproducing on
 decision field: nothing reads it to accept or reject a change. No score record is committed, because
 no live run has been made.
 
+## What `doctor` found (added November 12)
+
+`doctor` (`expectrail.doctor/v1`, [`contracts/doctor.v1.schema.json`](../contracts/doctor.v1.schema.json),
+example [`doctor.json`](../contracts/examples/doctor.json)) is what `expectrail doctor --json` prints:
+one row per piece a verification needs on this machine, with what was found and the fix. It never
+feeds a decision, and it holds no key's value.
+
+| Record | Written by | Read by |
+| --- | --- | --- |
+| `doctor` | `expectrail.doctor.document` (`expectrail doctor --json`) | `expectrail.doctor.problems`: the schema, no check listed twice, a fix exactly when something is missing or was not tried, and `ok` recomputed from the rows |
+
 ## Wall time per phase (added November 11)
 
 `verify-timing` (`expectrail.verify-timing/v1`,
