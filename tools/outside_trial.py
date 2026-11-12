@@ -148,6 +148,34 @@ def verify(project: dict, checkout: Path, out: Path, command: list[str], timeout
     return row
 
 
+def capture(project: dict, checkout: Path, out: Path, timeout: int, sandbox: str = "require") -> list[dict]:
+    """Replay each of our routes on the project with the harness alone, the sandbox required, and
+    keep the frames and the trace: `out/<project>/<route>/frames/`, `trace.json`, `replay.json`.
+    Nothing is judged. The frames are pictures, to be looked at by a job that never starts the
+    project's code. The command line always requires the sandbox; ``sandbox`` is an argument only so
+    that the tests can run this on a project of our own where bubblewrap is not installed."""
+    rows = []
+    for route in sorted((checkout / "routes").glob("*.json")):
+        into = out / project["name"] / route.stem
+        try:
+            done = subprocess.run([sys.executable, "-m", "harness.run", "--route", str(route), "--game",
+                                   str(checkout / "project"), "--out", str(into), "--sandbox", sandbox],
+                                  capture_output=True, text=True, timeout=timeout, cwd=REPO)
+            code, said = done.returncode, (done.stderr.strip() or done.stdout.strip())[-300:]
+        except subprocess.TimeoutExpired:
+            code, said = 6, f"no answer in {timeout} seconds"
+        frames = len(list((into / "frames").glob("*.png"))) if (into / "frames").is_dir() else 0
+        for extra in ("work", "godot.log"):   # the copy of the project and its log stay out of the artifact
+            target = into / extra
+            if target.is_dir():
+                shutil.rmtree(target, ignore_errors=True)
+            elif target.exists():
+                target.unlink()
+        rows.append({"project": project["name"], "route": route.stem, "exit": code, "frames": frames,
+                     "said": "" if code == 0 else said})
+    return rows
+
+
 def around(jobs: Path, finding: dict, before: int = 3, after: int = 3) -> dict:
     """What the engine logged around a failing check's first frame: the player's position, the
     ground line and whether the player was on a floor, from the head's trace. Printed with the
@@ -192,6 +220,8 @@ def main(argv: list[str] | None = None) -> int:
     where.add_argument("--fetch", action="store_true", help="fetch each project at its pinned commit")
     where.add_argument("--source", type=Path, help="a clone that already holds the projects' folders")
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--capture", action="store_true",
+                    help="only replay our routes and keep the frames and traces; judge nothing")
     ap.add_argument("--only", help="one project's name")
     ap.add_argument("--timeout", type=int, default=900, help="seconds for one verification")
     ap.add_argument("--execution-class", default="diagnostic", choices=("diagnostic", "isolated"),
@@ -205,6 +235,17 @@ def main(argv: list[str] | None = None) -> int:
             raise TrialError(f"no project named {args.only}")
         args.out.mkdir(parents=True, exist_ok=True)
         rows = []
+        if args.capture:
+            work = args.out.parent / (args.out.name + "-work")   # sources and checkouts stay out of --out
+            captured = []
+            for project in projects:
+                source = fetch(project, work / "sources") if args.fetch else args.source
+                captured += capture(project, lay_out(project, source, work / "checkouts"), args.out, args.timeout)
+            (args.out / "captured.json").write_text(json.dumps({"format": "expectrail.outside-capture/v0",
+                                                                "runs": captured}, indent=2) + "\n", encoding="utf-8")
+            for row in captured:
+                print(f"{row['project']}/{row['route']}: exit {row['exit']}, {row['frames']} frames {row['said']}".rstrip(), flush=True)
+            return 0 if captured and all(r["exit"] == 0 and r["frames"] for r in captured) else 3
         for project in projects:
             source = fetch(project, args.out / "sources") if args.fetch else args.source
             checkout = lay_out(project, source, args.out / "checkouts")

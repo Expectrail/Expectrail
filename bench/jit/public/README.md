@@ -6,9 +6,9 @@ bench that number will be measured on. Everything in it is public, and reproduct
 it and on nothing else: never on a blind set, its logs or its counts.
 
 **No reproduction rate has been measured.** That takes a live run from main, which calls a paid
-model, and none has been made on this bench. What is here is the bench, one measurement that
-needs no model (what each defect changes in the engine's record), and the scorer that will read a
-live run's records when there is one.
+model, and none has been made on this bench. What is here is the bench, two measurements that
+need no model (what each defect changes in the engine's record, and what it changes on the screen),
+and the scorer that will read a live run's records when there is one.
 
 ## What is in it
 
@@ -196,6 +196,106 @@ Four defects in the first draft were replaced after replaying them: two camera d
 have stuck at a wall never met one within a route's 15 seconds; and an uncapped fall speed needed a
 longer drop than any route found. A defect that cannot be shown to change the game does not belong
 in a bench, apart from the two counter defects named above.
+
+## What each defect changes on the screen
+
+Added November 12, 2026 ([`expectrail/repro/screen.py`](../../../expectrail/repro/screen.py)).
+Expectrail verifies by observing, so a generated check has to be able to speak about what is drawn
+(issue #286), and a defect that shows only on the screen can never be reproduced by a check that
+reads the engine's record. Until now "screen only" was a label the bench's author wrote, and two
+replays made by hand. This measures it for every defect.
+
+Every library probe was replayed with its frames captured (1600 x 960, 60 a second), on the clean
+game twice and on each defect build once. The frames and the engine's record of the same replay
+were both compared with the clean game's:
+
+- **record-and-screen**: the record differs on some probe and frames differ on some probe.
+- **screen-only**: frames differ; the record is the same on every probe.
+- **record-only**: the record differs and every frame is the same.
+- **neither**: nothing differs on any probe.
+
+A frame differs when any pixel does. A frame, or a field of the record, that differs between the
+two clean replays would be unstable and counted for no defect; none did. How large a difference is
+comes from at most eight of a probe's differing frames (the first, the last and evenly between).
+
+<!-- screen:start -->
+24 defects, 25 probes, Godot 4.7.2-stable, frames of 1600 x 960, no model. The record and the screen both differ: 19. Only the screen differs: 2. Only the record differs: 0. Nothing differs on any probe: 3.
+
+| Defect | Family | Author expected | Measured | Record fields that differ (probes) | On the screen: the probe where most frames differ | Frames that differ | Most pixels in one frame | Where (left, top, right, bottom) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `air-jump` | movement-input | both | record-and-screen | `onFloor`, `player`, `view` (5) | `jump-w40-x8` (of 5) | 90 of 140, from frame 50 | 12968 (frame 63) | 736, 459, 854, 785 |
+| `gun-cooldown` | timing-cooldowns | both | record-and-screen | `projectiles` (2) | `shoot-left-every12` (of 2) | 96 of 123, from frame 27 | 18610 (frame 68) | 373, 667, 840, 806 |
+| `body-flip` | movement-input | both | record-and-screen | `enemies`, `facing`, `player`, `projectiles`, `view` (8) | `hold-left` (of 8) | 165 of 170, from frame 5 | 13254 (frame 99) | 621, 0, 1599, 884 |
+| `enemy-ledge` | spawning-enemies | both | record-and-screen | `enemies`, `projectiles` (25) | `move-fire-right` (of 3) | 68 of 158, from frame 33 | 22789 (frame 100) | 928, 604, 1473, 806 |
+| `bullet-through-enemy` | collision-physics | both | record-and-screen | `enemies`, `projectiles` (3) | `move-fire-right` (of 3) | 125 of 158, from frame 33 | 25100 (frame 68) | 945, 624, 1545, 805 |
+| `platforms-not-solid` | collision-physics | both | record-and-screen | `onFloor`, `player`, `view` (2) | `jump-l40-x8` (of 2) | 87 of 140, from frame 47 | 973045 (frame 90) | 0, 0, 1600, 960 |
+| `floaty-fall` | collision-physics | both | record-and-screen | `onFloor`, `player`, `view` (14) | `jump-w120-x8` (of 14) | 86 of 180, from frame 92 | 12956 (frame 128) | 736, 501, 854, 785 |
+| `jump-always-full` | movement-input | both | record-and-screen | `onFloor`, `player`, `view` (15) | `jump-l40-x8` (of 15) | 107 of 140, from frame 33 | 1009949 (frame 124) | 0, 0, 1600, 960 |
+| `slow-left` | movement-input | both | record-and-screen | `facing`, `player`, `projectiles`, `view` (8) | `hold-left` (of 8) | 160 of 170, from frame 10 | 828819 (frame 55) | 0, 0, 1600, 960 |
+| `slides-after-stop` | movement-input | both | record-and-screen | `coins`, `enemies`, `ground`, `onFloor`, `player`, `projectiles`, `view` (19) | `jump-w80-x8` (of 19) | 115 of 160, from frame 45 | 1193708 (frame 126) | 0, 0, 1600, 960 |
+| `no-shooting-in-air` | movement-input | both | neither | none | none |  |  |  |
+| `jump-needs-rest` | movement-input | both | record-and-screen | `onFloor`, `player`, `view` (12) | `jump-l40-x8` (of 12) | 110 of 140, from frame 30 | 997248 (frame 108) | 0, 0, 1600, 960 |
+| `double-jump-once` | state-counters | both | record-and-screen | `onFloor`, `player`, `view` (5) | `jump-l40-x8` (of 5) | 69 of 140, from frame 71 | 1004579 (frame 81) | 0, 0, 1600, 960 |
+| `coin-stays` | state-counters | both | record-and-screen | `coins`, `enemies` (10) | `jump-w120-x8` (of 12) | 153 of 180, from frame 26 | 7442 (frame 70) | 399, 628, 871, 720 |
+| `coin-counts-twice` | state-counters | screen | neither | none | none |  |  |  |
+| `coin-counter-stuck` | hud-text | screen | neither | none | none |  |  |  |
+| `gun-cooldown-long` | timing-cooldowns | both | record-and-screen | `enemies`, `projectiles` (6) | `move-fire-left` (of 6) | 133 of 158, from frame 25 | 10192 (frame 82) | 686, 666, 840, 806 |
+| `enemy-missing` | spawning-enemies | both | record-and-screen | `enemies`, `player`, `projectiles`, `view` (25) | `hold-left` (of 1) | 94 of 170, from frame 76 | 6078 (frame 103) | 673, 8, 1600, 884 |
+| `enemy-fast-left` | spawning-enemies | both | record-and-screen | `enemies` (1) | `wait-long` (of 1) | 74 of 575, from frame 501 | 8608 (frame 564) | 1392, 187, 1600, 281 |
+| `enemy-slides-when-shot` | spawning-enemies | both | record-and-screen | `enemies`, `projectiles` (3) | `move-fire-right` (of 3) | 68 of 158, from frame 33 | 22789 (frame 100) | 928, 604, 1473, 806 |
+| `enemy-walks-backwards` | visibility-rendering | screen | screen-only | none | `jump-w120-x8` (of 25) | 180 of 180, from frame 0 | 16972 (frame 77) | 973, 185, 1600, 792 |
+| `camera-stops-right` | camera-viewport | both | record-and-screen | `view` (6) | `jump-w120-x8` (of 6) | 128 of 180, from frame 52 | 899960 (frame 179) | 0, 0, 1600, 960 |
+| `camera-cut-top` | camera-viewport | both | record-and-screen | `view` (1) | `jump-l40-x8` (of 1) | 61 of 140, from frame 72 | 980517 (frame 113) | 0, 0, 1600, 960 |
+| `bullet-behind-scenery` | layering-draw-order | screen | screen-only | none | `move-fire-left` (of 6) | 153 of 158, from frame 5 | 8079 (frame 27) | 516, 671, 824, 806 |
+<!-- screen:end -->
+
+The record is [`screen.json`](screen.json) (`expectrail.repro-screen/v1`), made by
+
+```
+python3 -m expectrail.repro screen --out runs/repro-screen --jobs 2     # about two and a half hours on two cores
+python3 -m expectrail.repro screen-render bench/jit/public/screen.json
+```
+
+in a cloud container on November 12, 2026, with the pinned Godot 4.7.2 drawing in software (Mesa
+llvmpipe) and no model: 650 replays. It was not run in CI. No frame and no record field differed
+between the two replays of the clean game, on any of the 25 probes, and no replay had to be made
+again. The same command again for the two screen-only defects alone gave the same two rows.
+
+What the table shows, and what it does not:
+
+- **Two defects are screen-only, measured: `enemy-walks-backwards` and `bullet-behind-scenery`.**
+  The first differs on all 25 probes (from the first frame, on the probe where it shows most); the
+  second on the 6 probes that fire.
+  Neither changes any field of the engine's record on any probe. These two are the bench's
+  screen-only defects for issue #286, and no check in today's closed language can fail on them.
+- **No defect is record-only.** Each of the 19 defects whose record differs also changes the
+  picture on some probe. So a check about what is drawn could, in principle, fail on 21 of the 24
+  on the library's probes; a check on the record's fields, on 19. Neither number is a rate: a
+  check still has to be proposed, an observer has to be able to tell the difference, and the check
+  has to pass on the clean game 3 times of 3.
+- **Per probe the two do not agree, and the record sees more.** `enemy-ledge` and `enemy-missing`
+  change the record on all 25 probes and the picture on 3 and on 1: on the others the enemy that
+  changed is off the screen. The other way round is rarer: `coin-stays` changes the picture on 12
+  probes and the record on 10.
+- **Three defects change nothing on any probe, in the record or on the screen.**
+  `no-shooting-in-air` needs a route that shoots in the air; the reach probes above have one, and
+  they were not captured with frames here. `coin-counts-twice` and `coin-counter-stuck` need the
+  pause menu, which no route can open.
+- **A whole-frame difference is the camera.** Eight rows have a rectangle of the whole frame and
+  about a million pixels: the camera follows the player, so a player a few pixels away from where
+  the clean game has it shifts the whole picture. The size of a difference says how much of the
+  picture changed, not how plain the defect is to a player.
+- **`enemy-ledge` and `enemy-slides-when-shot` have the same row, and it is not a mistake.** On
+  `move-fire-right` the two defect builds draw the same 158 frames (checked by replaying that probe
+  on both and comparing them with each other), while their records differ in `enemies`.
+- **No visual observer was asked anything.** This compares pixels exactly. It says where a watcher
+  of the frames could be shown a difference, on which probe and from which frame. Whether SAM or
+  any other observer reports that difference is not shown here, and needs recorded or live answers.
+- **It is exact for this renderer only.** Another machine's renderer can draw other pixels; the
+  record names the one used. Frames are 60 a second and the engine's record has 120 ticks a
+  second, so a frame number is not a tick number.
+- **It is not a reproduction rate**, and nothing generated checks run on reads it: a live run on
+  this bench, the baseline included, is the same with or without it.
 
 ## How a live run on this bench is made and scored
 

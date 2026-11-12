@@ -119,12 +119,13 @@ phases do not add up to the whole.
 
 ## The public reproduction bench (added November 11)
 
-Three records for issue #285, all about public defects only.
+Four records for issue #285, all about public defects only.
 
 | Record | Written by | Read by |
 | --- | --- | --- |
 | `repro-bench` (`expectrail.repro-bench/v1`, [`contracts/repro-bench.v1.schema.json`](../contracts/repro-bench.v1.schema.json), example [`repro-bench.json`](../contracts/examples/repro-bench.json)) | By hand: [`bench/jit/public/defects.json`](../bench/jit/public/defects.json) | `expectrail.repro.bench.load`, `python3 -m expectrail.repro check` |
 | `repro-visibility` (`expectrail.repro-visibility/v1`, [`contracts/repro-visibility.v1.schema.json`](../contracts/repro-visibility.v1.schema.json); the committed records [`bench/jit/public/visibility.json`](../bench/jit/public/visibility.json), on the library probes, and [`visibility-reach.json`](../bench/jit/public/visibility-reach.json), on the reach probes, are the examples) | `python3 -m expectrail.repro visibility`, with `--reach` for the reach probes | `expectrail.repro.visibility.load`, `python3 -m expectrail.repro render` |
+| `repro-screen` (`expectrail.repro-screen/v1`, [`contracts/repro-screen.v1.schema.json`](../contracts/repro-screen.v1.schema.json); the committed record [`bench/jit/public/screen.json`](../bench/jit/public/screen.json) is the example) | `python3 -m expectrail.repro screen` (added November 12) | `expectrail.repro.screen.load`, `python3 -m expectrail.repro screen-render` |
 | `repro-score` (`expectrail.repro-score/v1`, [`contracts/repro-score.v1.schema.json`](../contracts/repro-score.v1.schema.json), example [`repro-score.json`](../contracts/examples/repro-score.json), made-up rows) | `python3 -m expectrail.repro score`, from a live run's `jit-run` records | `expectrail.repro.score.load`, `python3 -m expectrail.repro score-render` |
 
 A bench entry is a defect id, its family, a patch against the clean game, a bug report, where its
@@ -141,6 +142,18 @@ the clean game: the signals that moved, the fields of the engine's record that d
 `signal`, `trace-only`, `none` or `error`. The reader recomputes that label and the totals from the
 rows and refuses a record where they disagree, or one that names a signal `expectrail.trace.signals` does not have. It says what those probes can see, not how often a defect is reproduced, and has
 no field for a rate.
+
+A screen record says, per defect, what replaying the probes it names with every frame captured
+changed against the clean game, in the frames and in the engine's record of the same replays: one
+of `record-and-screen`, `screen-only`, `record-only`, `neither` or `error`, the record fields that
+differ, and for the probe where the most frames differ, how many, from which frame, the most pixels
+in one examined frame and the rectangle that holds them. A frame differs when any pixel does, and a
+frame that differs between the two clean replays is counted for no defect. The reader recomputes
+the label and the totals from the rows and refuses a record where they disagree, or a difference
+that does not fit its own numbers (more frames than were captured, a rectangle outside the frame,
+more pixels than the rectangle holds). What a reader cannot check from the record: it holds no
+frames, so the counts are as good as the run that made them, and they are exact only for the
+renderer it names. It has no field for a rate, and no visual observer's answer is in it.
 
 A score record has one row per defect of the bench: `reproduced`, `not-reproduced` or `no-result`;
 the checks that reproduced it; for a miss, a reason from a closed list and the evidence for it; what

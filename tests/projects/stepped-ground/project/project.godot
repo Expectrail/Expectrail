@@ -1,0 +1,28 @@
+; Stepped Ground: a small Godot project for Expectrail's own tests.
+; A floor with a gap and a step, built in code, and a marker that walks along it.
+
+config_version=5
+
+[application]
+
+config/name="Stepped Ground"
+config/description="A floor of tiles with a gap and a 64 px step; the player walks right along it."
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.7")
+
+[display]
+
+window/size/viewport_width=640
+window/size/viewport_height=480
+
+[input]
+
+right={
+"deadzone": 0.5,
+"events": []
+}
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
