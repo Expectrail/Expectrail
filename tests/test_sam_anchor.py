@@ -182,6 +182,18 @@ class AnchorsTest(unittest.TestCase):
         above = anchor.anchors(trace(player=lambda t: (71.0, 5.0)), (W, H), [5])[5]
         self.assertEqual((above["why"], above["point"]), ("the player is outside the picture", [30, -10]))
 
+    def test_a_player_exactly_on_the_right_or_bottom_edge_is_asked_about_at_the_last_pixel_inside(self):
+        # Camera at tick 12: x shift -112, y shift -20, scale 2. x = 136 lands on 160, the picture's
+        # width; y = 58 lands on 96, its height. One game pixel further is outside.
+        self.assertEqual(anchor.anchors(trace(player=lambda t: (136.0, 30.0)), (W, H), [5])[5]["point"], [159, 40])
+        self.assertEqual(anchor.anchors(trace(player=lambda t: (82.0, 58.0)), (W, H), [5])[5]["point"], [52, 95])
+        corner = anchor.anchors(trace(player=lambda t: (136.0, 58.0)), (W, H), [5])[5]
+        self.assertEqual((corner["point"], "why" in corner), ([159, 95], False))
+        for player in ((136.5, 30.0), (82.0, 58.5)):
+            with self.subTest(player=player):
+                self.assertEqual(anchor.anchors(trace(player=lambda t: player), (W, H), [5])[5]["why"],
+                                 "the player is outside the picture")
+
     def test_no_player_no_camera_or_no_row_is_said_and_never_guessed(self):
         self.assertEqual(anchor.anchors(trace(player=lambda t: None), (W, H), [5])[5],
                          {"why": "the engine logged no player"})

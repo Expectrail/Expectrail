@@ -80,6 +80,12 @@ def anchors(trace: dict, frame_size: tuple[int, int], frames: list[int], lift: f
             out[n] = {"why": "the player's place in the frame is not a number", "world": [wx, wy]}
             continue
         px, py = int(math.floor(fx)), int(math.floor(fy))
+        # A player standing exactly on the picture's right or bottom edge is still half in it (Dodge
+        # the Creeps holds its player at x = the screen's width): ask at the last pixel inside.
+        if fx == width:
+            px = width - 1
+        if fy == height:
+            py = height - 1
         entry = {"world": [round(wx, 2), round(wy, 2)], "point": [px, py],
                  "scale": [round(math.hypot(view[0], view[1]), 4), round(math.hypot(view[2], view[3]), 4)]}
         if not (0 <= px < width and 0 <= py < height):
