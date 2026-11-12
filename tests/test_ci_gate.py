@@ -528,7 +528,8 @@ class IsolationTest(GateCase):
         head = make_repo(self.tmp / "head")
         asked = []
 
-        def run(route, out, game=None, capture_frames=True, sandbox=None):
+        def run(route, out, game=None, capture_frames=True, sandbox=None, within=None):
+            self.assertEqual(within, head.resolve())   # a link in the game may lead into its checkout, no further
             asked.append(sandbox)
             raise SystemExit("stop here: only the argument matters")
 
@@ -552,6 +553,53 @@ class IsolationTest(GateCase):
                               ("a seventh field", dict(grade="isolated"))):
             with self.subTest(label), self.assertRaises(rec.RecordError):
                 rec.check_record(dict(good, isolation=dict(good["isolation"], **change)))
+
+    def test_a_record_cannot_count_fewer_replays_than_its_checks_rest_on(self):
+        # The first review of #312: with the sandbox required, a record that counted no replays, or one
+        # for two routes, read as accept, so a replay outside the sandbox could be hidden by not
+        # counting it.
+        self.replay = Accounting(INSIDE)
+        doc = self.gate(make_repo(self.tmp / "head"), base=make_repo(self.tmp / "base"),
+                        heldout=make_heldout(self.tmp / "held"), require_sandbox=True)
+        full = doc["isolation"]["replays"]
+        self.assertEqual(full, 4 + doc["heldOut"]["routes"])
+        rec.check_record(doc)
+        for replays in range(full):
+            with self.subTest(replays=replays), self.assertRaisesRegex(rec.RecordError, f"at least {full} replays"):
+                rec.check_record(dict(doc, isolation=dict(doc["isolation"], replays=replays, sandboxed=replays,
+                                                         sandbox=doc["isolation"]["sandbox"] if replays else None)))
+        # Not required: the count must still be honest.
+        plain = self.gate(make_repo(self.tmp / "head2"), out_name="plain")
+        self.assertRaises(rec.RecordError, rec.check_record,
+                          dict(plain, isolation=dict(plain["isolation"], replays=1)))
+        # A route whose replay did not finish needs none: the writer's own record of a crash still reads.
+        self.replay = Accounting(INSIDE)
+        crashed = self.gate(make_repo(self.tmp / "head3", crash=True), out_name="crashed", require_sandbox=True)
+        self.assertEqual(crashed["isolation"]["replays"], 0)
+        rec.check_record(crashed)
+
+    def test_an_account_must_name_a_tool_the_record_knows(self):
+        for label, account in (("an empty sandbox", dict(INSIDE, sandbox={})),
+                               ("an unknown tool", dict(INSIDE, sandbox={"tool": "docker", "version": "27"})),
+                               ("no version", dict(INSIDE, sandbox={"tool": "bubblewrap"})),
+                               ("a version that is not text", dict(INSIDE, sandbox={"tool": "bubblewrap", "version": 9})),
+                               ("a version too long to record", dict(INSIDE, sandbox={"tool": "bubblewrap", "version": "9" * 41}))):
+            with self.subTest(label):
+                block = rec.isolation_summary([account, INSIDE], True)
+                self.assertEqual((block["sandboxed"], block["sandbox"]), (1, INSIDE["sandbox"]))
+                self.assertEqual(len(block["reasons"]), 1)
+                # A plain reason in a record that reads, not a schema error (it used to name the tool "None").
+                rec.validate(block, rec.schema()["properties"]["isolation"])
+        self.replay = Accounting(dict(INSIDE, sandbox={}))
+        doc = self.gate(make_repo(self.tmp / "head"), require_sandbox=True)
+        self.assertEqual((doc["decision"], doc["isolation"]["sandboxed"], doc["isolation"]["sandbox"]), ("needs-review", 0, None))
+
+    def test_two_tools_or_versions_are_not_counted_as_one(self):
+        other = dict(INSIDE, sandbox={"tool": "bubblewrap", "version": "0.11.0"})
+        block = rec.isolation_summary([INSIDE, other, INSIDE], True)
+        self.assertEqual((block["replays"], block["sandboxed"], block["sandbox"]), (3, 2, INSIDE["sandbox"]))
+        self.assertEqual(block["reasons"], ["a replay ran in bubblewrap 0.11.0, not the bubblewrap 0.9.0 the others ran in"])
+        rec.validate(block, rec.schema()["properties"]["isolation"])
 
     def test_a_record_from_before_the_sandbox_still_reads_and_is_not_called_isolated(self):
         old = example()
@@ -577,8 +625,15 @@ class IsolationTest(GateCase):
         self.assertIn('case "$REQUIRE_SANDBOX" in true|false) ;;', text)
         self.assertIn("args+=(--require-sandbox)", text)
         self.assertIn("bubblewrap", text)
+        # The runner's kernel setting is changed only when the sandbox was asked for (it stays on a
+        # self-hosted runner until reboot), and the docs say so.
+        setting = next(s for s in action["runs"]["steps"] if "apparmor_restrict_unprivileged_userns" in str(s.get("run")))
+        self.assertEqual(setting["if"], "inputs.require-sandbox == 'true'")
+        self.assertIn("stays until reboot", (REPO / "docs" / "ci-gate.md").read_text(encoding="utf-8"))
         uses = [line.strip() for line in text.splitlines() if "inputs.require-sandbox" in line]
-        self.assertEqual(uses, ["REQUIRE_SANDBOX: ${{ inputs.require-sandbox }}"] * 2)   # through env only, never in a script
+        # In scripts through env only; the one other use is a step's `if:`, which GitHub evaluates itself.
+        self.assertEqual(sorted(uses), ["REQUIRE_SANDBOX: ${{ inputs.require-sandbox }}"] * 2
+                         + ["if: inputs.require-sandbox == 'true'"])
         workflow = yaml.safe_load(VERIFY_WF.read_text(encoding="utf-8"))
         step = next(s for s in workflow["jobs"]["verify"]["steps"] if "expectrail-verify" in str(s.get("uses")))
         self.assertEqual(step["with"]["require-sandbox"], "true")
@@ -684,6 +739,7 @@ class RenderTest(unittest.TestCase):
                                         "frame": 1})
         doc["counts"] = {"checks": 4096, "passed": 0, "failed": 4096, "needsReview": 0}
         doc["reasons"] = ["r" * 300] * 20
+        doc["isolation"] = dict(doc["isolation"], replays=130, sandboxed=130)   # 64 routes on each side, and the held-out ones
         rec.check_record(doc)
         body = gc.render(doc, ctx(), previous=["0" * 12] * 4096)
         self.assertLessEqual(len(body), gc.MAX_BODY)

@@ -25,6 +25,7 @@ import hashlib
 import json
 import os
 import secrets
+import select
 import shutil
 import signal
 import time
@@ -45,6 +46,10 @@ DECISIONS = ("accept", "reject", "needs-review")
 DEFAULT_LEASE_SECONDS = 30
 MAX_STATUS_BYTES = 256 * 1024
 JOB_ID_LENGTH = 32
+# A worker's environment names its job, and everything the worker starts inherits that (the harness
+# passes this one name on to the game and to the sandbox tool). It is how a lost worker's children
+# are found: by the job's own random id, never by a process or group number, which can be reused.
+JOB_ENV = "EXPECTRAIL_JOB"
 # Codes a job can carry beyond expectrail.diagnostics.CODES: the worker itself, not the change.
 OWN_CODES = {
     "WORKER_LOST": ("the worker process stopped without finishing the job; there is no result",
@@ -111,10 +116,10 @@ def check_status(doc) -> None:
 
 
 def _holds_a_file(folder: Path) -> bool:
-    """Whether ``folder`` is a real folder with at least one plain file somewhere in it."""
+    """Whether ``folder`` is a real folder with at least one plain file that has something in it."""
     if folder.is_symlink() or not folder.is_dir():
         return False
-    return any(entry.is_file() and not entry.is_symlink() for entry in folder.rglob("*"))
+    return any(entry.is_file() and not entry.is_symlink() and entry.stat().st_size > 0 for entry in folder.rglob("*"))
 
 
 def _write_atomic(path: Path, text: str) -> None:
@@ -272,7 +277,41 @@ class JobStore:
         if parse_stamp(doc["lease"]["expiresAt"]) > now() or (doc["worker"] and alive(doc["worker"]["pid"])):
             return doc
         why = "the worker stopped before the job finished" if doc["worker"] else "no worker took the job in time"
-        return self.finish(job_id, "failed", diagnostics=[diagnostic("WORKER_LOST", stage=doc["phase"])], reasons=[why])
+        return self.lose(job_id, why, stage=doc["phase"])
+
+    def lose(self, job_id: str, why: str, *, stage: str, detail: str = "", grace_seconds: float = 1.0) -> dict:
+        """Fail a job whose worker is gone, then stop what that worker had started: a worker that
+        was killed cannot do it itself, and the game and its display would run on to their own time
+        limits. The status is made final first, so nothing they do can become a result."""
+        status, lost_now = self._finish(job_id, "failed", reasons=[why],
+                                        diagnostics=[diagnostic("WORKER_LOST", stage=stage, detail=detail)])
+        if lost_now:
+            note = self._stop_what_it_started(job_id, grace_seconds=grace_seconds)
+            if note:
+                status = self._note(job_id, note)
+        return status
+
+    @staticmethod
+    def _stop_what_it_started(job_id: str, *, grace_seconds: float, only_if_left: bool = False) -> str | None:
+        """Stop the job's processes and return what to say about it. The job is already final when
+        this runs, so nothing is tried again later: an error here becomes a reason on the job and is
+        never raised past it."""
+        try:
+            ways: set = set()
+            return _stopped_note(job_id, stop_job(job_id, grace_seconds=grace_seconds, ways=ways), ways,
+                                 only_if_left=only_if_left)
+        except Exception as exc:  # noqa: BLE001 - said on the job; raising would leave no trace of it there
+            return f"could not stop what it had started: {type(exc).__name__}: {exc}"
+
+    def _note(self, job_id: str, text: str) -> dict:
+        """Add a reason to a job that is already final. Nothing else about it changes."""
+        paths = self._existing(job_id)
+        with self._locked(paths.lock):
+            doc = self._read(paths)
+            if text not in doc["reasons"] and len(doc["reasons"]) < 20:
+                doc["reasons"].append(text[:300])
+                return self._write(paths, doc)
+            return doc
 
     # --- changing ----------------------------------------------------------------------------------
     def _write(self, paths: JobPaths, doc: dict) -> dict:
@@ -382,7 +421,164 @@ class JobStore:
         status, cancelled_now = self._finish(job_id, "cancelled", reasons=["cancelled on request"])
         if cancelled_now and status["worker"] is not None:
             stop_group(status["worker"]["pgid"], grace_seconds=grace_seconds)
+        if cancelled_now:
+            # And anything of the job's that had left the group. A cancel that leaves something
+            # running says so; one that stopped everything says nothing more.
+            note = self._stop_what_it_started(job_id, grace_seconds=1.0, only_if_left=True)
+            if note:
+                status = self._note(job_id, note)
         return status
+
+
+def _names_job(pid: int, marker: bytes) -> bool:
+    try:
+        with open(f"/proc/{pid}/environ", "rb") as handle:
+            return marker in handle.read().split(b"\0")
+    except OSError:
+        return False   # gone already, or another user's
+
+
+def _own_line() -> set[int]:
+    """This process and its ancestors: the processes a call from inside a job must never stop,
+    because stopping the shell that asked would stop the asking."""
+    line, pid = set(), os.getpid()
+    while pid > 0 and pid not in line:
+        line.add(pid)
+        try:
+            with open(f"/proc/{pid}/stat", "rb") as handle:
+                pid = int(handle.read().rsplit(b")", 1)[1].split()[1])   # the field after the state
+        except (OSError, ValueError, IndexError):
+            break
+    return line
+
+
+def processes_of(job_id: str) -> list[int] | None:
+    """The processes whose environment names this job, other than this process and its ancestors.
+    None where the system has no /proc to ask.
+
+    What is read is the environment area the process holds now. It is what the process started
+    with unless the process itself wrote over it, so a program that does not want to be found can
+    hide from this; the sandboxed game cannot stay alive that way (it dies with the sandbox tool)."""
+    if not Path("/proc/self/environ").exists():
+        return None
+    marker = f"{JOB_ENV}={job_id}".encode()
+    mine = _own_line()
+    found = []
+    for entry in os.scandir("/proc"):
+        if entry.name.isdigit() and int(entry.name) not in mine and _names_job(int(entry.name), marker):
+            found.append(int(entry.name))
+    return sorted(found)
+
+
+def process_handles() -> bool:
+    """Whether this system gives a handle on a process (Linux 5.3 and later, where the container's
+    system call filter allows it)."""
+    try:
+        os.close(os.pidfd_open(os.getpid()))
+    except (AttributeError, OSError):
+        return False
+    return True
+
+
+def _exited(handle: int) -> bool:
+    """A process handle becomes readable when its process has exited. Asked with poll, which takes
+    a descriptor of any number (select refuses 1024 and up, which a caller holding many open files
+    gets)."""
+    poller = select.poll()
+    poller.register(handle, select.POLLIN)
+    return bool(poller.poll(0))
+
+
+def _by_handle(pid: int, marker: bytes, sig: int) -> bool:
+    """The first way: hold the process by a handle, read its environment again, check the handle is
+    still a live process, and send the signal to the handle. Returns whether a signal was sent.
+    Raises when any step cannot be done; the caller then takes the second way."""
+    handle = os.pidfd_open(pid)
+    try:
+        if _names_job(pid, marker) and not _exited(handle):
+            signal.pidfd_send_signal(handle, sig)
+            return True
+        return False
+    finally:
+        os.close(handle)
+
+
+def _signal(pid: int, marker: bytes, sig: int) -> str | None:
+    """Signal the process that names the job, and only it. Returns how the signal was sent
+    (``handle`` or ``number``), or None when none was.
+
+    The first way is a process handle (``_by_handle``): a process number alone could have passed
+    to another program between the look and the signal, and a handle cannot.
+
+    The second way is what was done before handles, with one more look: the environment is read
+    again and the signal goes to the number, only if it still names the job. It is taken whenever
+    the first way cannot be completed, whatever the step and whatever the error: no such call (an
+    older kernel), a container that refuses it, a handle that cannot be asked or signalled. Only
+    "no such process" ends it, since then there is nothing to stop. So there is no failure of the
+    better way that leaves a lost job's processes running where the older way would stop them."""
+    try:
+        return "handle" if _by_handle(pid, marker, sig) else None
+    except ProcessLookupError:
+        return None   # gone
+    except Exception:  # noqa: BLE001 - any failure of the first way leads to the second, never to nothing
+        pass
+    if _names_job(pid, marker):
+        try:
+            os.kill(pid, sig)
+            return "number"
+        except (ProcessLookupError, PermissionError):
+            pass
+    return None
+
+
+def _stopped_note(job_id: str, stopped: tuple[int, int] | None, ways: frozenset | set = frozenset(), *,
+                  only_if_left: bool = False) -> str | None:
+    """What to say in a job's reasons about the processes it had started. ``ways`` is how they were
+    signalled (``stop_job``). ``only_if_left`` keeps quiet unless something is still running."""
+    marker = f"{JOB_ENV}={job_id}".encode()
+    own = sum(1 for pid in _own_line() if _names_job(pid, marker))
+    parts = []
+    if stopped is None:
+        if not only_if_left:
+            parts.append("what it had started could not be looked for on this system (no /proc)")
+    elif stopped[0] != stopped[1]:
+        parts.append(f"found {stopped[0]} process(es) it had started and stopped {stopped[1]}; the rest are still running")
+    elif stopped[0] and not only_if_left:
+        parts.append(f"stopped {stopped[1]} process(es) it had started")
+    if parts and "number" in ways:
+        parts.append("by process number: " + ("a process handle could not be used" if process_handles()
+                                              else "this system has no process handles"))
+    if own:
+        # The asking came from inside the job: the caller and its ancestors are never stopped.
+        parts.append(f"left {own} running: they are the caller's own")
+    return "; ".join(parts) or None
+
+
+def stop_job(job_id: str, *, grace_seconds: float = 1.0, ways: set | None = None) -> tuple[int, int] | None:
+    """Stop every process that names this job: ask, then make. Returns (how many were found, how
+    many of those are gone), or None where they cannot be looked for. A process the job started
+    after the first look is found by a later one and counted too. ``ways`` collects how the signals
+    were sent (``handle``, ``number``)."""
+    first = processes_of(job_id)
+    if first is None:
+        return None
+    seen = set(first)
+    marker = f"{JOB_ENV}={job_id}".encode()
+    for sig, wait in ((signal.SIGTERM, grace_seconds), (signal.SIGKILL, 1.0)):
+        left = processes_of(job_id) or []
+        if not left:
+            break
+        seen.update(left)
+        for pid in left:
+            how = _signal(pid, marker, sig)
+            if how and ways is not None:
+                ways.add(how)
+        deadline = time.monotonic() + wait
+        while time.monotonic() < deadline and processes_of(job_id):
+            time.sleep(0.05)
+    still = set(processes_of(job_id) or [])
+    seen.update(still)
+    return len(seen), len(seen - still)
 
 
 def stop_group(pgid: int, *, grace_seconds: float = 3.0) -> None:

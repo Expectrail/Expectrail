@@ -72,16 +72,22 @@ class ConfigError(ValueError):
     """An input the workflow gave cannot be used."""
 
 
-def harness_replay(route: Path, game: Path, out: Path, frames: bool, sandbox: str | None = None) -> dict:
+def harness_replay(route: Path, game: Path, out: Path, frames: bool, sandbox: str | None = None,
+                   checkouts: tuple[Path, ...] = ()) -> dict:
     """One replay through the Godot harness (``harness.run``), which gives Godot only the display
     and rendering variables from the environment and runs it in the replay sandbox where the
-    machine can (``sandbox``: auto, require or off; default $EXPECTRAIL_SANDBOX, else auto)."""
+    machine can (``sandbox``: auto, require or off; default $EXPECTRAIL_SANDBOX, else auto).
+    ``checkouts`` are the folders a link in a game may lead into: the one that holds ``game``
+    is used, and without one a link may not leave the game folder."""
     from harness.run import run, sha256_file
 
-    replay = run(route, out, game=game, capture_frames=frames, sandbox=sandbox)
+    replay = run(route, out, game=game, capture_frames=frames, sandbox=sandbox, within=_checkout_of(game, checkouts))
     trace = json.loads((out / "trace.json").read_text(encoding="utf-8"))
     return {"trace": trace, "replaySha256": sha256_file(out / "replay.json"),
-            "framesDir": (out / "frames") if frames else None, "isolation": replay.get("isolation")}
+            "framesDir": (out / "frames") if frames else None, "isolation": replay.get("isolation"),
+            # The digest of the copy this replay ran (harness.tree.copy), for the gate to hold
+            # against the tree its record names.
+            "tree": replay["game"]["tree"]}
 
 
 def observations(trace: dict, replay_sha256: str) -> dict:
@@ -217,12 +223,14 @@ def judge_arm(game: Path, routes: list[tuple[str, Path, str]], specs: list[dict]
             run = replay(path, game, out / name, True)
             obs = observations(run["trace"], run["replaySha256"])
         except (Exception, SystemExit) as exc:  # noqa: BLE001 - the harness exits on a failed replay
-            print(f"::warning title=Expectrail gate::the {label} replay of route {name} did not finish "
-                  f"({type(exc).__name__})")
+            # The gate's own sentence when it is the gate that refused the replay; otherwise only the
+            # kind of error, since a message could carry text from the game.
+            why = f"the {label} game changed while it was being verified" if isinstance(exc, GameChanged) \
+                else f"the {label} replay did not finish ({type(exc).__name__})"
+            print(f"::warning title=Expectrail gate::route {name}: {why}")
             for spec in specs:
                 results[(spec["id"], name)] = {"result": "replay-error", "verdict": None, "frame": None,
-                                               "framesDir": None,
-                                               "reason": f"the {label} replay did not finish ({type(exc).__name__})"}
+                                               "framesDir": None, "reason": why}
             continue
         for spec in specs:
             try:
@@ -236,6 +244,11 @@ def judge_arm(game: Path, routes: list[tuple[str, Path, str]], specs: list[dict]
                                            "reason": verdict["reason"], "frame": verdict.get("firstFrame"),
                                            "framesDir": run.get("framesDir")}
     return results
+
+
+class GameChanged(RuntimeError):
+    """A replay ran a game other than the one the record names: the folder changed after the gate
+    read it. The replay's result is not used."""
 
 
 HELD_ZERO = {"routes": 0, "checks": 0, "passed": 0, "failed": 0, "needsReview": 0}
@@ -285,18 +298,19 @@ def judge_heldout(root: Path | None, game: Path, specs: list[dict], replay: Repl
     return {"status": "judged", **counts}
 
 
-def game_tree(root: Path) -> str:
-    """harness.run.tree_digest, also skipping version-control and gate folders (for a game at the
-    repository root): a digest of every file in the game, so the record names the exact tree."""
-    import hashlib
+def _checkout_of(game: Path, checkouts: tuple[Path, ...]) -> Path | None:
+    game = Path(game).resolve()
+    return next((c for c in (Path(c).resolve() for c in checkouts) if c == game or c in game.parents), None)
 
-    from harness.run import sha256_file
 
-    skip = {".godot", ".git", ".expectrail"}
-    h = hashlib.sha256()
-    for path in sorted(p for p in root.rglob("*") if p.is_file() and not skip & set(p.relative_to(root).parts)):
-        h.update(path.relative_to(root).as_posix().encode() + b"\0" + sha256_file(path).encode() + b"\n")
-    return h.hexdigest()
+def game_tree(root: Path, within: Path | None = None) -> str:
+    """The digest of the game the record names: ``harness.run.tree_digest``, which is taken over the
+    files a replay's copy holds (``harness.tree``). The same function writes replay.json's
+    ``game.tree``, so the record and its replays name a tree the same way. Raises
+    ``harness.tree.TreeProblem`` for a link that leaves ``within``, loops or leads nowhere."""
+    from harness.run import tree_digest
+
+    return tree_digest(root, within)
 
 
 def _game_ok(game: Path) -> bool:
@@ -325,12 +339,21 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         if tool is None:
             raise ConfigError(f"the replay sandbox is required and this machine cannot provide it: {why}")
         replay = functools.partial(harness_replay, sandbox="require")
+    if getattr(replay, "func", replay) is harness_replay:
+        # A link in a game may lead anywhere inside its own checkout, and nowhere else.
+        replay = functools.partial(replay, checkouts=tuple(c for c in (repo, base) if c is not None))
     accounts: list = []   # each finished replay's own account of its isolation
+    named: dict[Path, str] = {}   # game folder -> the tree the record names for it (filled below)
     one_replay = replay
 
     def replay(route: Path, game: Path, out: Path, frames: bool) -> dict:  # noqa: F811 - the same call, recorded
         run = one_replay(route, game, out, frames)
         accounts.append(run.get("isolation"))
+        # The harness says which tree its copy was made from. The record names one tree per side,
+        # read once before any replay: a replay of anything else is not a replay of that game.
+        ran, want = run.get("tree"), named.get(Path(game))
+        if ran is not None and want is not None and ran != want:
+            raise GameChanged(f"the replay ran tree {ran[:12]}, the record names {want[:12]}")
         return run
 
     game_rel = safe_relative(game, "game-path", root_ok=True)
@@ -367,6 +390,24 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     if base_game is not None and not _game_ok(base_game):
         problems.append(f"the base commit has no Godot project at {game_rel}, so nothing is compared")
         base_game = None
+    # The trees are taken now, before anything is copied or replayed, by the walk the replay's copy
+    # uses. A game that cannot be described (a link that leaves its checkout, loops or leads nowhere)
+    # is not replayed, and neither is one that holds the gate's own output: its copy would hold itself.
+    from harness.tree import TreeProblem
+
+    trees: dict = {"head": None, "base": None}
+    for side, folder, checkout in (("head", head_game if _game_ok(head_game) else None, repo), ("base", base_game, base)):
+        if folder is None:
+            continue
+        for label, place in (("output", out), ("work", work)):
+            place = Path(place).resolve()
+            if place == folder.resolve() or folder.resolve() in place.parents:
+                raise ConfigError(f"the {label} folder is inside the {side} game folder ({game_rel}); keep it outside the game")
+        try:
+            trees[side] = game_tree(folder, checkout)
+        except TreeProblem as exc:
+            raise ConfigError(f"the {side} game cannot be verified as it stands: {exc}") from exc
+        named[Path(folder)] = trees[side]
 
     head = judge_arm(head_game, route_list_for_head, spec_docs, work / "head", replay, label="head") \
         if route_list_for_head and spec_docs else {}
@@ -414,8 +455,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         "reasons": reasons,
         "adapter": "godot",
         "pullRequest": pr,
-        "game": {"path": game_rel, "headTree": game_tree(head_game) if _game_ok(head_game) else None,
-                 "baseTree": game_tree(base_game) if base_game is not None else None},
+        "game": {"path": game_rel, "headTree": trees["head"], "baseTree": trees["base"]},
         "checksFrom": checks_from,
         "checksChanged": changed,
         "specs": [{"id": s["id"], "sha256": digest(s), "instruction": _clip(s["instruction"])} for s in spec_docs],

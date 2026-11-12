@@ -75,6 +75,17 @@ def work(store: st.JobStore, job_id: str, engines: dict | None = None, *, own_gr
             return _needs_review(store, job_id, blocking)
         store.advance(job_id, "executing")
         result = engine.execute(request, paths, lambda phase: store.advance(job_id, phase))
+        # The worker read the files just before the run and the engine read them again to run them.
+        # If the evidence names another tree than the job's inputs, the game changed in between:
+        # the decision is about files nobody asked about, so it is not given and its evidence is
+        # not published under this job.
+        moved = [side for side in ("head", "base") if (result.trees or {}).get(f"{side}Tree") is not None
+                 and result.trees[f"{side}Tree"] != status["inputs"][f"{side}Tree"]]
+        if moved:
+            return _needs_review(store, job_id, [st.diagnostic(
+                "INPUT_INVALID", stage="executing",
+                detail=f"the {' and the '.join(moved)} game changed while the job was running; what was "
+                       f"verified is not what was asked. Ask again")])
         return store.finish(job_id, "completed", decision=result.decision, reasons=result.reasons,
                             evidence_grade=result.evidence_grade, publish=True)
     except BaseException as exc:  # noqa: BLE001 - whatever happens, the job ends in a final phase
@@ -112,6 +123,8 @@ def spawn(store: st.JobStore, job_id: str, command: list[str] | None = None) -> 
         proc = subprocess.Popen(
             command,
             cwd=EXPECTRAIL_ROOT, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+            # The job's id in the environment is how what this worker starts is found if it is killed.
+            env=dict(os.environ, **{st.JOB_ENV: job_id}),
             start_new_session=True)
     # The worker claims the job too, as soon as it starts; whichever call comes first records it.
     store.claim(job_id, proc.pid, proc.pid)
@@ -138,8 +151,7 @@ def wait(store: st.JobStore, job_id: str, proc: subprocess.Popen | None = None, 
         if proc is not None and proc.poll() is not None:
             status = store.status(job_id)
             if status["phase"] not in st.FINAL:
-                return store.finish(job_id, "failed", reasons=["the worker stopped before the job finished"],
-                                    diagnostics=[st.diagnostic("WORKER_LOST", stage=status["phase"],
-                                                               detail=f"the worker exited with code {proc.returncode}")])
+                return store.lose(job_id, "the worker stopped before the job finished", stage=status["phase"],
+                                  detail=f"the worker exited with code {proc.returncode}")
             return status
         time.sleep(poll_seconds)

@@ -23,6 +23,7 @@ from pathlib import Path
 
 from expectrail import timing
 from harness import sandbox as box
+from harness import tree
 
 REPO = Path(__file__).resolve().parent.parent
 GODOT_VERSION = "4.7.2-stable"
@@ -56,7 +57,7 @@ def get_cache_dir() -> Path:
     return DEFAULT_CACHE_DIR
 
 
-def cache_key(game: Path, godot: Path) -> str:
+def cache_key(game: Path, godot: Path, within: Path | None = None) -> str:
     """Identify what an import cache was built from: the Godot binary and the exact game files.
 
     A cache built by another Godot build (another version, or the macOS editor) or from a game
@@ -65,7 +66,7 @@ def cache_key(game: Path, godot: Path) -> str:
     st = godot.resolve().stat()
     h = hashlib.sha256()
     h.update(f"{GODOT_VERSION}\0{godot.resolve()}\0{st.st_size}\0{st.st_mtime_ns}\0".encode())
-    h.update(tree_digest(game).encode())
+    h.update(tree_digest(game, within).encode())
     return h.hexdigest()
 
 
@@ -89,7 +90,8 @@ def godot_import(godot: Path, project: Path, env: dict, tool: box.Tool | None = 
     return done
 
 
-def ensure_import_cache(game: Path, godot: Path, env: dict, tool: box.Tool | None = None) -> Path | None:
+def ensure_import_cache(game: Path, godot: Path, env: dict, tool: box.Tool | None = None,
+                        within: Path | None = None) -> Path | None:
     """Return an import cache built from exactly this game and Godot binary, warming it if needed.
 
     Only the external cache directory is used, and only when its key matches. An import folder
@@ -99,7 +101,7 @@ def ensure_import_cache(game: Path, godot: Path, env: dict, tool: box.Tool | Non
     frames).
     """
     cache_dir = get_cache_dir()
-    key = cache_key(game, godot)
+    key = cache_key(game, godot, within)
     key_file = _key_file(cache_dir)
     if (cache_dir / "imported").is_dir() and key_file.is_file() \
             and key_file.read_text(encoding="utf-8").strip() == key:
@@ -110,7 +112,7 @@ def ensure_import_cache(game: Path, godot: Path, env: dict, tool: box.Tool | Non
         cache_dir.parent.mkdir(parents=True, exist_ok=True)
         staging = Path(tempfile.mkdtemp(prefix="staging-", dir=cache_dir.parent))
         copy = staging / "game"
-        shutil.copytree(game, copy, ignore=shutil.ignore_patterns(".godot"))
+        tree.copy(game, copy, within=within, skip=tree.GODOT_SKIP)
         godot_import(godot, copy, env, tool)
         if not (copy / ".godot" / "imported").is_dir():
             return None
@@ -129,12 +131,11 @@ def ensure_import_cache(game: Path, godot: Path, env: dict, tool: box.Tool | Non
             shutil.rmtree(staging, ignore_errors=True)
 
 
-def tree_digest(root: Path) -> str:
-    """A digest of every file under root, so a replay names the exact game it ran."""
-    h = hashlib.sha256()
-    for path in sorted(p for p in root.rglob("*") if p.is_file() and ".godot" not in p.parts):
-        h.update(path.relative_to(root).as_posix().encode() + b"\0" + sha256_file(path).encode() + b"\n")
-    return h.hexdigest()
+def tree_digest(root: Path, within: Path | None = None) -> str:
+    """A digest of the game at ``root``, so a replay names the exact game it ran: the files the
+    replay's copy holds (``harness.tree``), no more and no fewer. Raises ``tree.TreeProblem`` for a
+    link that leaves ``within`` (default: the game folder), loops or leads nowhere."""
+    return tree.digest(root, within=within, skip=tree.GODOT_SKIP)
 
 
 def apply_patches(work: Path, patches: list[Path]) -> None:
@@ -147,10 +148,13 @@ def apply_patches(work: Path, patches: list[Path]) -> None:
 
 
 def prepare(game: Path, work: Path, patch: Path | None = None, patches: list[Path] | None = None,
-            cache: Path | None = None) -> None:
+            cache: Path | None = None, within: Path | None = None) -> str:
+    """Make the copy of the game a replay runs: exactly the files its digest is taken over
+    (``harness.tree``), then the import cache, the patches and the harness's own two scripts.
+    Returns the digest of the game files as they were copied, before anything was added."""
     if work.exists():
         shutil.rmtree(work)
-    shutil.copytree(game, work, ignore=shutil.ignore_patterns(".godot"))
+    copied = tree.copy(game, work, within=within, skip=tree.GODOT_SKIP)
     if cache and (cache / "imported").is_dir():
         shutil.copytree(cache, work / ".godot")
     ordered = list(patches) if patches is not None else ([patch] if patch is not None else [])
@@ -163,6 +167,7 @@ def prepare(game: Path, work: Path, patch: Path | None = None, patches: list[Pat
     else:
         project += "\n[autoload]\n\n" + AUTOLOAD + "\n"
     (work / "project.godot").write_text(project, encoding="utf-8")
+    return copied
 
 
 # The patched game is the candidate's code: a fix can change any script under the editable globs,
@@ -172,7 +177,10 @@ def prepare(game: Path, work: Path, patch: Path | None = None, patches: list[Pat
 GAME_ENV_KEEP = frozenset({"PATH", "HOME", "USER", "LOGNAME", "SHELL", "LANG", "LANGUAGE", "TZ", "TMPDIR",
                            "DISPLAY", "XAUTHORITY", "WAYLAND_DISPLAY", "LIBGL_ALWAYS_SOFTWARE", "GALLIUM_DRIVER",
                            # llvmpipe's instruction set, held the same on every runner (harness/unity/run.py).
-                           "GALLIUM_OVERRIDE_CPU_CAPS"})
+                           "GALLIUM_OVERRIDE_CPU_CAPS",
+                           # The id of the verification job this replay belongs to (a random number, no
+                           # secret): the orchestrator finds a lost worker's processes by it.
+                           "EXPECTRAIL_JOB"})
 GAME_ENV_PREFIXES = ("LC_", "XDG_", "MESA_", "LP_", "__GLX_", "__EGL_")
 
 
@@ -193,12 +201,17 @@ def godot_cmd(godot: Path, display: bool) -> list[str]:
 
 def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = None, fps: int = 60,
         godot: Path | None = None, patches: list[Path] | None = None,
-        force_import: bool = False, capture_frames: bool = True, sandbox: str | None = None) -> dict:
+        force_import: bool = False, capture_frames: bool = True, sandbox: str | None = None,
+        within: Path | None = None) -> dict:
     """Replay one route and write trace.json and replay.json (and the frames, unless capture_frames is
     False: discovery reads only the trace, so it runs headless and skips writing a PNG per frame).
 
     ``sandbox`` is ``auto``, ``require`` or ``off`` (default: $EXPECTRAIL_SANDBOX, else ``auto``); see
-    ``harness.sandbox``. What was in force is written to replay.json as ``isolation``."""
+    ``harness.sandbox``. What was in force is written to replay.json as ``isolation``.
+
+    ``within`` is the folder a link in the game may lead into (default: the game folder itself; a
+    caller that verifies a checkout passes the checkout). A link that leaves it, loops or leads
+    nowhere stops the replay before anything is copied or run."""
     game = game or REPO / "game" / "platformer"
     godot = godot or find_godot()
     out.mkdir(parents=True, exist_ok=True)
@@ -208,14 +221,28 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
         tool, isolation = box.choose(sandbox, display=capture_frames)
     except box.SandboxError as exc:
         raise SystemExit(str(exc)) from exc
+    try:
+        game_tree = tree_digest(game, within)
+    except tree.TreeProblem as exc:
+        raise SystemExit(f"the game cannot be replayed as it stands: {exc}") from exc
     env = game_env()
     # Wall time per step, for the verifier's timing.json (expectrail.timing); nothing here reads it back.
     timing.count_run()
     with timing.phase("import-cache"):
-        cache = ensure_import_cache(game, godot, env, tool)
+        cache = ensure_import_cache(game, godot, env, tool, within)
     staging = out / "sandbox"  # the one folder the sandboxed game can write to, besides its own copy
     with timing.phase("prepare"):
-        prepare(game, work, patches=ordered, cache=cache)
+        try:
+            copied = prepare(game, work, patches=ordered, cache=cache, within=within)
+        except tree.TreeProblem as exc:
+            raise SystemExit(f"the game cannot be replayed as it stands: {exc}") from exc
+        if copied != game_tree:
+            # The folder was read once for the digest (and the import cache's key) and once for the
+            # copy. A replay names exactly the game it ran, or it does not run.
+            shutil.rmtree(work, ignore_errors=True)
+            raise SystemExit("the game folder changed while the replay was being set up: the copy made for "
+                             f"this replay ({copied[:12]}) is not the game read at the start ({game_tree[:12]}). "
+                             "Nothing was run.")
         if frames.exists():
             shutil.rmtree(frames)
         frames.mkdir()
@@ -273,12 +300,12 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
     if proc.returncode != 0 or not (out / "trace.json").exists():
         raise SystemExit(f"godot failed ({proc.returncode}); see {out / 'godot.log'}")
     with timing.phase("record"):
-        replay = _replay_record(route, out, game, fps, ordered, route_doc, proc.stdout + proc.stderr, frames,
+        replay = _replay_record(route, out, game_tree, fps, ordered, route_doc, proc.stdout + proc.stderr, frames,
                                 isolation)
     return replay
 
 
-def _replay_record(route: Path, out: Path, game: Path, fps: int, ordered: list[Path], route_doc: dict, log: str,
+def _replay_record(route: Path, out: Path, game_tree: str, fps: int, ordered: list[Path], route_doc: dict, log: str,
                    frames: Path, isolation: dict) -> dict:
     """Hash the frames and the trace and write replay.json."""
     device = re.search(r"Using Device: (.+)", log)
@@ -289,7 +316,8 @@ def _replay_record(route: Path, out: Path, game: Path, fps: int, ordered: list[P
     replay = {
         "format": "expectrail.replay/v0",
         "route": {"name": route_doc.get("name", route.stem), "sha256": sha256_file(route)},
-        "game": {"tree": tree_digest(game),
+        # The digest of the bytes this replay's copy was made from (harness.tree.copy).
+        "game": {"tree": game_tree,
                  "patch": ",".join(str(p) for p in ordered) if ordered else None,
                  "patchSha256": sha256_file(primary) if primary and len(ordered) == 1 else (
                      None if not ordered else hashlib.sha256(

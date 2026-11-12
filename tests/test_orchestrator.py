@@ -461,6 +461,38 @@ class GodotEngineTest(Case):
             self.assertEqual((status["phase"], status["decision"]), ("completed", "needs-review"))
             self.assertTrue(any("outside the sandbox" in reason for reason in status["reasons"]), status["reasons"])
 
+    def test_a_game_that_changes_after_the_workers_read_gives_no_decision(self):
+        # The window the worker's second read leaves: the files are right when the worker checks
+        # them and different when the engine reads them to run them.
+        game = self.head / "game" / "platformer"
+
+        class ChangesFirst(engines.GodotGate):
+            def execute(self, request, paths, advance):
+                (game / "swapped.gd").write_text("# written after the worker's check\n", encoding="utf-8")
+                return super().execute(request, paths, advance)
+
+        replay = FakeReplay()
+        job = self.job()
+        asked = self.store.status(job)["inputs"]["headTree"]
+        with contextlib.redirect_stdout(io.StringIO()):
+            status = runner.work(self.store, job, engines={"godot": ChangesFirst(replay=replay)})
+        self.assertTrue(replay.calls)   # the changed game did run, and would have been accepted
+        self.assertNotEqual(req.inputs(self.request())["headTree"], asked)
+        self.assertEqual((status["phase"], status["decision"], [d["code"] for d in status["diagnostics"]]),
+                         ("completed", "needs-review", ["INPUT_INVALID"]))
+        self.assertIn("the head game changed while the job was running", status["diagnostics"][0]["detail"])
+        # A record that decides about another game is not published as this job's evidence.
+        self.assertIsNone(status["output"])
+        self.assertFalse(self.store.paths(job).output.exists())
+
+    def test_the_evidence_names_the_trees_the_job_asked_about(self):
+        bug = make_repo(self.tmp / "bug", bug=True)
+        status = self.decide(self.head, bug)
+        record = rec.read_record(self.store.paths(status["id"]).output / "findings.json")
+        self.assertEqual((record["game"]["headTree"], record["game"]["baseTree"]),
+                         (status["inputs"]["headTree"], status["inputs"]["baseTree"]))
+        self.assertEqual(status["decision"], "accept")
+
     def test_the_diagnostic_class_records_isolation_and_does_not_require_it(self):
         job = self.job()
         status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=FakeReplay())})
@@ -634,10 +666,13 @@ class TreeTest(Case):
         return req.inputs(self.request())["headTree"]
 
     def copied(self) -> dict[str, bytes]:
-        """What harness.run.prepare's copy of the game holds: links followed, .godot left out."""
+        """What the copy a replay runs holds, made by the harness's own function (harness.run.prepare
+        without its patches and scripts): links followed, .godot and .git left out."""
+        from harness import tree
+
         work = self.tmp / "copy"
         shutil.rmtree(work, ignore_errors=True)
-        shutil.copytree(self.game, work, ignore=shutil.ignore_patterns(".godot"))
+        tree.copy(self.game, work, within=self.head, skip=tree.GODOT_SKIP)
         return {p.relative_to(work).as_posix(): p.read_bytes() for p in work.rglob("*") if p.is_file()}
 
     def test_without_links_it_is_the_harness_digest(self):
@@ -661,7 +696,8 @@ class TreeTest(Case):
     def test_whenever_the_copy_changes_the_digest_changes(self):
         from harness.run import tree_digest
 
-        # Every folder name either skip list had (the gate's and this module's first one), and .godot.
+        # Every folder name any skip list has had. Two are not part of a game, for the copy and every
+        # digest alike (harness.tree): .godot, the engine's cache, and .git, version control.
         for folder in (".git", ".expectrail", "__pycache__", "addons", ".godot"):
             with self.subTest(folder=folder):
                 (self.game / folder).mkdir()
@@ -669,7 +705,7 @@ class TreeTest(Case):
                 copy, harness, tree = self.copied(), tree_digest(self.game), self.tree()
                 (self.game / folder / "logic.gd").write_text("# two\n", encoding="utf-8")
                 copy_changed, harness_changed = self.copied() != copy, tree_digest(self.game) != harness
-                self.assertEqual(copy_changed, folder != ".godot")
+                self.assertEqual(copy_changed, folder not in (".godot", ".git"))
                 self.assertEqual(harness_changed, copy_changed)
                 self.assertEqual(self.tree() != tree, copy_changed)
 
@@ -764,9 +800,43 @@ class TreeTest(Case):
                 ("**/*.json", "runs/jobs", True), ("*.json", "runs/jobs", False), ("routes/*.json", "runs/jobs", False),
                 ("routes/*.json", "routes", True), ("routes/*.json", "routes/jobs", False), ("routes/**", "routes/jobs", True),
                 ("r*/**/*.json", "runs/jobs", True), ("runs/jobs/a/request.json", "runs/jobs", True),
-                ("harness/routes/smoke.json", "runs/jobs", False), ("**", "x", True), ("*/*/*/*.json", "runs/jobs", True)):
+                ("harness/routes/smoke.json", "runs/jobs", False), ("**", "x", True), ("*/*/*/*.json", "runs/jobs", True),
+                # Without regard to case: on a file system that ignores it, RUNS/** is runs/**.
+                ("RUNS/**", "runs/jobs", True), ("runs/JOBS/*/request.json", "runs/jobs", True), ("Routes/*.json", "runs/jobs", False),
+                # A range that holds "r" as written and not once its case is folded (first review of #313).
+                ("[S-s]uns/**", "runs/jobs", True), ("[Z-s]uns/jobs/*/request.json", "runs/jobs", True),
+                ("[!R]uns/**", "runs/jobs", True), ("[!A-Z]*/**", "runs/jobs", True)):
             with self.subTest(pattern=pattern, folder=folder):
                 self.assertEqual(req.pattern_reaches(pattern, folder), reaches)
+
+    def test_no_pattern_that_really_matches_below_the_folder_is_missed(self):
+        # The property, not only cases: the check errs towards yes, so over a generated set of
+        # patterns, every one whose real glob finds a file below the jobs folder must be reported as
+        # reaching it. A change that widens the check has to keep this (it is how the range mistake
+        # in #313 was caught).
+        import itertools
+
+        root = self.tmp / "tree"
+        for name in ("runs/jobs/abc/request.json", "runs/jobs/abc/status.json", "runs/jobs/keys/k.json",
+                     "runs/jobs/abc/output/findings.json", "runs/other.json", "routes/smoke.json", "top.json"):
+            (root / name).parent.mkdir(parents=True, exist_ok=True)
+            (root / name).write_text("{}", encoding="utf-8")
+        below = (root / "runs" / "jobs").resolve()
+        parts = ("**", "*", "r*", "*.json", "?obs", "[rj]*", "[S-s]uns", "[Z-s]*", "[!R]uns", "[!A-Z]*", "runs", "jobs",
+                 "abc", "request.json", "routes")
+        checked = matched = 0
+        for length in (1, 2, 3, 4):
+            combos = itertools.product(parts, repeat=length)
+            if length == 4:
+                combos = itertools.islice(combos, 0, None, 7)   # one in seven of the longest
+            for combo in combos:
+                pattern = "/".join(combo)
+                checked += 1
+                really = any(below in found.resolve().parents for found in root.glob(pattern) if found.is_file())
+                if really:
+                    matched += 1
+                    self.assertTrue(req.pattern_reaches(pattern, "runs/jobs"), pattern)
+        self.assertGreater(matched, 500, (checked, matched))
 
     def test_the_jobs_folder_may_not_be_inside_the_game(self):
         store = st.JobStore(self.game / "runs" / "jobs")
@@ -925,6 +995,340 @@ class NobodyWaitsForEverTest(Case):
         self.assertEqual(self.store.status(job)["phase"], "executing")
 
 
+class LostWorkerTest(Case):
+    """A worker that is killed cannot stop what it started, so the store does, and finds it by the
+    job's id in each process's environment, never by a process or group number (#307, gap 3)."""
+
+    def child_of(self, job: str) -> int:
+        return int((self.store.paths(job).work / "child.pid").read_text())
+
+    def test_a_worker_and_what_it_starts_carry_the_jobs_id(self):
+        job = self.job("slow")
+        proc = self.spawn(job)
+        self.running(job)
+        self.assertEqual(st.processes_of(job), sorted([proc.pid, self.child_of(job)]))
+        self.assertEqual(st.processes_of("0" * 32), [])
+
+    def test_killing_only_the_worker_leaves_nothing_of_the_job_running(self):
+        for engine in ("slow", "detached"):
+            with self.subTest(engine=engine):
+                job = self.job(engine)
+                proc = self.spawn(job)
+                self.running(job)
+                child = self.child_of(job)
+                os.kill(proc.pid, signal.SIGKILL)   # the worker alone: its child lives on
+                proc.wait(timeout=5)
+                self.assertTrue(st.alive(child))
+                status = wait_for(lambda: (s := self.store.status(job))["phase"] in st.FINAL and s, seconds=5,
+                                  what="the lease running out")
+                self.assertEqual((status["phase"], [d["code"] for d in status["diagnostics"]]), ("failed", ["WORKER_LOST"]))
+                wait_for(lambda: gone(child), what="the worker's child stopping")
+                self.assertIn("stopped 1 process(es) it had started", status["reasons"])
+                self.assertEqual(st.processes_of(job), [])
+                self.assertEqual(self.store.status(job), status)   # and asking again changes nothing
+
+    def test_waiting_on_a_killed_worker_stops_its_child_at_once(self):
+        job = self.job("slow")
+        proc = self.spawn(job)
+        self.running(job)
+        child = self.child_of(job)
+        os.kill(proc.pid, signal.SIGKILL)
+        status = runner.wait(self.store, job, proc, poll_seconds=0.05)
+        self.assertEqual((status["phase"], [d["code"] for d in status["diagnostics"]]), ("failed", ["WORKER_LOST"]))
+        wait_for(lambda: gone(child), what="the worker's child stopping")
+
+    def test_cancel_also_stops_what_left_the_workers_group(self):
+        job = self.job("detached")
+        proc = self.spawn(job)
+        self.running(job)
+        child = self.child_of(job)
+        self.assertNotEqual(os.getpgid(child), proc.pid)
+        self.assertEqual(self.store.cancel(job, grace_seconds=1.0)["phase"], "cancelled")
+        wait_for(lambda: proc.poll() is not None and gone(child), what="the worker and its detached child stopping")
+
+    def test_only_processes_that_name_this_job_are_stopped(self):
+        job, other = self.job("slow"), "f" * 32
+        self.assertNotEqual(job, other)
+
+        def sleeper(**env) -> subprocess.Popen:
+            proc = subprocess.Popen(["sleep", "600"], env={"PATH": os.environ["PATH"], **env}, start_new_session=True)
+            self.started.append(proc)
+            return proc
+
+        mine = sleeper(**{st.JOB_ENV: job})
+        bystanders = [sleeper(), sleeper(**{st.JOB_ENV: other}), sleeper(**{st.JOB_ENV: job + "0"}),
+                      sleeper(**{st.JOB_ENV: job[:-1]}), sleeper(NOTE=f"{st.JOB_ENV}={job}"),
+                      sleeper(**{"X" + st.JOB_ENV: job})]
+        wait_for(lambda: st.processes_of(job) == [mine.pid], what="the marked process showing up")
+        self.assertEqual(st.stop_job(job, grace_seconds=1.0), (1, 1))
+        wait_for(lambda: mine.poll() is not None, what="the marked process stopping")
+        time.sleep(0.2)
+        self.assertEqual([p.poll() for p in bystanders], [None] * len(bystanders))
+        self.assertNotIn(os.getpid(), st.processes_of(job) or [])
+
+    def test_a_call_from_inside_the_job_does_not_stop_its_own_callers(self):
+        # A status or a cancel asked from a script that itself runs inside the job: the script's shell
+        # carries the job's id too, and stopping it would stop the asking (first review of #314).
+        job = self.job()
+        other = subprocess.Popen(["sleep", "600"], env={"PATH": os.environ["PATH"], st.JOB_ENV: job}, start_new_session=True)
+        self.started.append(other)
+        ask = (f"import sys; sys.path.insert(0, {str(REPO)!r}); from expectrail.orchestrator import store as st; "
+               f"print('stopped', st.stop_job({job!r}, grace_seconds=1.0))")
+        done = subprocess.run(["sh", "-c", f'{sys.executable} -c "{ask}"; echo survived'], capture_output=True, text=True,
+                              timeout=30, env={"PATH": os.environ["PATH"], st.JOB_ENV: job})
+        self.assertEqual((done.returncode, done.stdout.split()[-1]), (0, "survived"), done.stdout + done.stderr)
+        self.assertIn("stopped (1, 1)", done.stdout)   # the other process of the job, and not the asking shell
+        wait_for(lambda: other.poll() is not None, what="the job's other process stopping")
+
+    def test_a_process_is_signalled_only_while_it_still_names_the_job(self):
+        # Between the look and the signal a process number can pass to another program. The signal goes
+        # to a handle on the process, after its environment is read again through that hold.
+        job = self.job()
+        proc = subprocess.Popen(["sleep", "600"], env={"PATH": os.environ["PATH"], st.JOB_ENV: job}, start_new_session=True)
+        self.started.append(proc)
+        wait_for(lambda: st.processes_of(job) == [proc.pid], what="the marked process showing up")
+        marker = f"{st.JOB_ENV}={job}".encode()
+        with mock.patch.object(st, "_names_job", return_value=False):   # as if the number now named something else
+            st._signal(proc.pid, marker, signal.SIGKILL)
+        time.sleep(0.2)
+        self.assertIsNone(proc.poll())
+        with mock.patch.object(st.os, "kill", side_effect=AssertionError("signalled by number")):
+            st._signal(proc.pid, marker, signal.SIGKILL)
+        wait_for(lambda: proc.poll() is not None, what="the process stopping through its handle")
+        st._signal(proc.pid, marker, signal.SIGKILL)   # gone: nothing happens, nothing is raised
+
+    def marked(self, job: str) -> subprocess.Popen:
+        proc = subprocess.Popen(["sleep", "600"], env={"PATH": os.environ["PATH"], st.JOB_ENV: job}, start_new_session=True)
+        self.started.append(proc)
+        wait_for(lambda: st.processes_of(job) == [proc.pid], what="the marked process showing up")
+        return proc
+
+    def test_where_no_handle_can_be_had_the_jobs_processes_are_still_stopped(self):
+        # The handle is the better way, and the process number stays as the way for every system the
+        # handle does not cover: an older kernel (no such call), a container that refuses it (review
+        # of #316: with the handle alone, a lost job's processes ran on there, and main stopped them).
+        import errno
+
+        for name, missing in (("no such function", AttributeError("module 'os' has no attribute 'pidfd_open'")),
+                              ("no such system call", OSError(errno.ENOSYS, "Function not implemented")),
+                              ("refused by the container", PermissionError(errno.EPERM, "Operation not permitted"))):
+            with self.subTest(handles=name):
+                job = self.job(idempotency_key=f"no-handles-{type(missing).__name__}")
+                proc = self.marked(job)
+                with mock.patch.object(st.os, "pidfd_open", side_effect=missing, create=True), \
+                        mock.patch.object(st.signal, "pidfd_send_signal", side_effect=AssertionError("no handle to signal"),
+                                          create=True):
+                    self.assertFalse(st.process_handles())
+                    status = self.store.lose(job, "the worker stopped before the job finished", stage="queued")
+                wait_for(lambda: proc.poll() is not None, what="the marked process stopping, signalled by number")
+                self.assertIn("stopped 1 process(es) it had started; by process number: this system has no process handles",
+                              status["reasons"])
+        # And stop_job counts it as it does with handles.
+        job = self.job(idempotency_key="no-handles-count")
+        proc = self.marked(job)
+        with mock.patch.object(st.os, "pidfd_open", side_effect=OSError(errno.ENOSYS, "Function not implemented"), create=True):
+            self.assertEqual(st.stop_job(job, grace_seconds=1.0), (1, 1))
+
+    def test_without_a_handle_a_number_is_signalled_only_while_it_still_names_the_job(self):
+        import errno
+
+        job = self.job()
+        proc = self.marked(job)
+        marker = f"{st.JOB_ENV}={job}".encode()
+        with mock.patch.object(st.os, "kill", side_effect=AssertionError("signalled by number")):
+            # The process went away between the look and the signal: nothing is signalled.
+            with mock.patch.object(st.os, "pidfd_open", side_effect=ProcessLookupError(errno.ESRCH, "No such process"), create=True):
+                st._signal(proc.pid, marker, signal.SIGKILL)
+            # No handles, and the number no longer names the job: nothing is signalled.
+            with mock.patch.object(st.os, "pidfd_open", side_effect=OSError(errno.ENOSYS, "x"), create=True), \
+                    mock.patch.object(st, "_names_job", return_value=False):
+                st._signal(proc.pid, marker, signal.SIGKILL)
+        time.sleep(0.2)
+        self.assertIsNone(proc.poll())
+
+    @unittest.skipUnless(hasattr(os, "pidfd_open"), "this system has no process handles")
+    def test_a_handle_whose_process_has_exited_is_not_signalled(self):
+        job = self.job()
+        proc = subprocess.Popen(["true"])
+        handle = os.pidfd_open(proc.pid)
+        self.addCleanup(os.close, handle)
+        wait_for(lambda: st._exited(handle), what="the handle saying its process has exited")
+        proc.wait()
+        live = self.marked(job)
+        live_handle = os.pidfd_open(live.pid)
+        self.addCleanup(os.close, live_handle)
+        self.assertFalse(st._exited(live_handle))
+        # As if the number had passed to a program that names the job after the handle's process went.
+        with mock.patch.object(st.os, "pidfd_open", return_value=os.dup(handle)), \
+                mock.patch.object(st, "_names_job", return_value=True), \
+                mock.patch.object(st.signal, "pidfd_send_signal", side_effect=AssertionError("signalled a dead handle")), \
+                mock.patch.object(st.os, "kill", side_effect=AssertionError("signalled by number")):
+            st._signal(live.pid, f"{st.JOB_ENV}={job}".encode(), signal.SIGKILL)
+        self.assertIsNone(live.poll())
+
+    def test_a_caller_holding_many_open_files_still_stops_a_lost_jobs_processes(self):
+        # A long-lived caller with a thousand files open gets a handle numbered 1024 or higher.
+        # `select` refuses such a number; asked that way, the stop raised and the job's processes ran
+        # on, where the way before handles stopped them (second review of #316).
+        import fcntl
+        import resource
+
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        need = 1100
+        if soft != resource.RLIM_INFINITY and soft < need:
+            if hard != resource.RLIM_INFINITY and hard < need:
+                self.skipTest(f"this system allows only {hard} open files")
+            resource.setrlimit(resource.RLIMIT_NOFILE, (need, hard))
+            self.addCleanup(resource.setrlimit, resource.RLIMIT_NOFILE, (soft, hard))
+        real_open, handed = os.pidfd_open, []
+
+        def a_high_handle(pid: int) -> int:
+            low = real_open(pid)
+            try:
+                high = fcntl.fcntl(low, fcntl.F_DUPFD_CLOEXEC, 1024)
+            finally:
+                os.close(low)
+            handed.append(high)
+            return high
+
+        job = self.job()
+        proc = self.marked(job)
+        with mock.patch.object(st.os, "pidfd_open", side_effect=a_high_handle), \
+                mock.patch.object(st.os, "kill", side_effect=AssertionError("signalled by number")):
+            status = self.store.lose(job, "the worker stopped before the job finished", stage="queued")
+        self.assertTrue(handed and min(handed) >= 1024, handed)
+        wait_for(lambda: proc.poll() is not None, what="the marked process stopping through a high-numbered handle")
+        self.assertEqual(status["reasons"][-1], "stopped 1 process(es) it had started")
+
+    def test_any_failure_of_the_handle_path_falls_to_the_process_number(self):
+        # One fallback for the whole first way: whichever step fails, and however, the process is
+        # stopped as it was before handles. Only "no such process" ends it.
+        import errno
+
+        ways = {
+            "the liveness check raises": lambda: mock.patch.object(st, "_exited", side_effect=ValueError("filedescriptor out of range")),
+            "the signal to the handle is refused": lambda: mock.patch.object(
+                st.signal, "pidfd_send_signal", side_effect=OSError(errno.EINVAL, "Invalid argument")),
+            "the signal to the handle is not allowed": lambda: mock.patch.object(
+                st.signal, "pidfd_send_signal", side_effect=PermissionError(errno.EPERM, "Operation not permitted")),
+            "no handle: too many open files": lambda: mock.patch.object(
+                st.os, "pidfd_open", side_effect=OSError(errno.EMFILE, "Too many open files")),
+        }
+        for n, (name, broken) in enumerate(ways.items()):
+            with self.subTest(failure=name):
+                job = self.job(idempotency_key=f"handle-path-{n}")
+                proc = self.marked(job)
+                with broken():
+                    status = self.store.lose(job, "the worker stopped before the job finished", stage="queued")
+                wait_for(lambda: proc.poll() is not None, what=f"the marked process stopping by number ({name})")
+                self.assertEqual(status["phase"], "failed")
+                # Why is said too: "a process handle could not be used", or "this system has no
+                # process handles" when none can be opened at all.
+                self.assertTrue(status["reasons"][-1].startswith("stopped 1 process(es) it had started; by process number: "),
+                                status["reasons"])
+                self.assertEqual("could not be used" in status["reasons"][-1], not name.startswith("no handle"))
+        # "No such process" from the handle is the end of it: nothing is signalled by number.
+        job = self.job(idempotency_key="handle-path-gone")
+        proc = self.marked(job)
+        with mock.patch.object(st.signal, "pidfd_send_signal", side_effect=ProcessLookupError(errno.ESRCH, "No such process")), \
+                mock.patch.object(st.os, "kill", side_effect=AssertionError("signalled by number")):
+            self.assertIsNone(st._signal(proc.pid, f"{st.JOB_ENV}={job}".encode(), signal.SIGKILL))
+        self.assertIsNone(proc.poll())
+
+    def test_an_error_while_stopping_is_said_on_the_job_and_not_raised(self):
+        # The job is final before the stop, so nothing tries again: the error must be on the job.
+        job = self.job()
+        with mock.patch.object(st, "stop_job", side_effect=RuntimeError("the stop itself broke")):
+            status = self.store.lose(job, "the worker stopped before the job finished", stage="queued")
+        self.assertEqual(status["phase"], "failed")
+        self.assertEqual(status["reasons"], ["the worker stopped before the job finished",
+                                             "could not stop what it had started: RuntimeError: the stop itself broke"])
+        self.assertEqual(self.store.status(job)["reasons"], status["reasons"])
+        job = self.job(idempotency_key="cancel-stop-error")
+        with mock.patch.object(st, "stop_job", side_effect=RuntimeError("the stop itself broke")):
+            status = self.store.cancel(job)
+        self.assertEqual((status["phase"], status["reasons"][-1]),
+                         ("cancelled", "could not stop what it had started: RuntimeError: the stop itself broke"))
+
+    def test_a_process_started_after_the_first_look_is_counted(self):
+        job = self.job()
+        looks = iter([[101], [101, 202]])   # the job starts one more between the first look and the next
+
+        def look(_job):
+            return next(looks, [])
+
+        with mock.patch.object(st, "processes_of", side_effect=look), mock.patch.object(st, "_signal", return_value="handle") as sent:
+            ways: set = set()
+            self.assertEqual(st.stop_job(job, grace_seconds=0.1, ways=ways), (2, 2))
+        self.assertEqual(sorted(call.args[0] for call in sent.call_args_list), [101, 202])
+        self.assertEqual(ways, {"handle"})
+        # And one that is still there at the end is found and not counted as gone.
+        looks = iter([[101]])
+        with mock.patch.object(st, "processes_of", side_effect=lambda _job: next(looks, [303])), mock.patch.object(st, "_signal"):
+            self.assertEqual(st.stop_job(job, grace_seconds=0.1), (2, 1))
+
+    def test_a_cancel_that_leaves_something_running_says_so(self):
+        job = self.job()
+        proc = self.marked(job)
+        with mock.patch.object(st, "_signal"):   # a process that cannot be signalled
+            status = self.store.cancel(job)
+        self.assertEqual(status["phase"], "cancelled")
+        self.assertEqual(status["reasons"], ["cancelled on request",
+                                             "found 1 process(es) it had started and stopped 0; the rest are still running"])
+        self.assertIsNone(proc.poll())
+        # One that stops everything says nothing more.
+        job = self.job(idempotency_key="cancel-clean")
+        proc = self.marked(job)
+        self.assertEqual(self.store.cancel(job)["reasons"], ["cancelled on request"])
+        wait_for(lambda: proc.poll() is not None, what="the marked process stopping")
+
+    def test_processes_left_because_they_are_the_callers_own_are_said(self):
+        job = self.job()
+        ask = (f"import sys; sys.path.insert(0, {str(REPO)!r}); from expectrail.orchestrator import store as st; "
+               f"print(st._stopped_note({job!r}, st.stop_job({job!r})))")
+        done = subprocess.run([sys.executable, "-c", ask], capture_output=True, text=True, timeout=30,
+                              env={"PATH": os.environ["PATH"], st.JOB_ENV: job})
+        self.assertRegex(done.stdout.strip(), r"^left [1-9]\d* running: they are the caller's own$", done.stdout + done.stderr)
+        self.assertIsNone(st._stopped_note(job, (0, 0)))   # asked from outside the job: nothing to say
+
+    def test_what_could_not_be_stopped_is_said_not_counted_as_stopped(self):
+        job = self.job()
+        proc = subprocess.Popen(["sleep", "600"], env={"PATH": os.environ["PATH"], st.JOB_ENV: job}, start_new_session=True)
+        self.started.append(proc)
+        wait_for(lambda: st.processes_of(job) == [proc.pid], what="the marked process showing up")
+        with mock.patch.object(st, "_signal"):   # a process that cannot be signalled
+            self.assertEqual(st.stop_job(job, grace_seconds=0.1), (1, 0))
+            status = self.store.lose(job, "the worker stopped before the job finished", stage="queued", grace_seconds=0.1)
+        self.assertIn("found 1 process(es) it had started and stopped 0; the rest are still running", status["reasons"])
+        self.assertIsNone(proc.poll())
+
+    def test_where_processes_cannot_be_looked_for_the_job_says_so(self):
+        job = self.job()
+        with mock.patch.object(st, "processes_of", return_value=None):
+            self.assertIsNone(st.stop_job(job))
+            status = self.store.lose(job, "the worker stopped before the job finished", stage="queued")
+        self.assertEqual(status["phase"], "failed")
+        self.assertIn("could not be looked for on this system", " ".join(status["reasons"]))
+
+    def test_the_harness_passes_the_jobs_id_on_and_nothing_else_new(self):
+        from harness import run as hr
+        from harness import sandbox as box
+
+        self.assertEqual(st.JOB_ENV, "EXPECTRAIL_JOB")
+        env = hr.game_env({"PATH": "/usr/bin", st.JOB_ENV: "a" * 32, "MODEL_API_KEY": "k", "EXPECTRAIL_HELDOUT_DIR": "/p"})
+        self.assertEqual((env.get(st.JOB_ENV), "MODEL_API_KEY" in env, "EXPECTRAIL_HELDOUT_DIR" in env), ("a" * 32, False, False))
+        seen = {}
+
+        def fake(cmd, **kwargs):
+            seen.update(kwargs["env"])
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+
+        with mock.patch.dict(os.environ, {st.JOB_ENV: "b" * 32, "MODEL_API_KEY": "k"}), \
+                mock.patch.object(box.subprocess, "run", side_effect=fake):
+            box.run(box.Tool("/usr/bin/bwrap", "0.9.0"), ["true"], timeout=5, game=self.tmp, out=self.tmp)
+        self.assertEqual(seen, {"PATH": "/usr/bin:/bin", st.JOB_ENV: "b" * 32})
+
+
 class CancelOrderTest(Case):
     def test_a_worker_that_records_itself_as_cancel_begins_is_still_stopped(self):
         # The order the first review of #300 forced: cancel reads the status (no worker yet), the worker
@@ -1002,13 +1406,15 @@ class EvidenceTest(Case):
                 self.assertTrue((self.store.paths(job).output / "evidence.txt").is_file())
 
     def test_an_empty_evidence_folder_is_not_evidence(self):
-        for layout in ("empty", "folders only", "a link"):
+        for layout in ("empty", "folders only", "a link", "an empty file"):
             with self.subTest(layout=layout):
                 job = self.job()
                 staging = self.store.paths(job).staging
                 staging.mkdir()
                 if layout == "folders only":
                     (staging / "verdicts" / "head").mkdir(parents=True)
+                if layout == "an empty file":
+                    (staging / "findings.json").write_bytes(b"")
                 if layout == "a link":
                     (staging / "findings.json").symlink_to(self.head / "specs" / "player-stays-above-ground.json")
                 status = self.store.finish(job, "completed", decision="accept", publish=True)

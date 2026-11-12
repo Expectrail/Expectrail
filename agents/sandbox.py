@@ -30,6 +30,7 @@ def _bwrap_usable() -> bool:
     cmd = [
         "bwrap",
         "--die-with-parent",
+        "--new-session",   # the probe runs what the fixer runs
         "--unshare-pid",
         "--dev", "/dev",
         "--tmpfs", "/tmp",
@@ -39,7 +40,7 @@ def _bwrap_usable() -> bool:
             cmd.extend(["--ro-bind", ro, ro])
     cmd.extend(["--", "true"])
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15, stdin=subprocess.DEVNULL)
     except (OSError, subprocess.TimeoutExpired):
         return False
     return proc.returncode == 0
@@ -115,11 +116,19 @@ def _bwrap_cmd(work: Path, argv: list[str], *, network: bool, gateway=None,
     With ``gateway`` (agents.gateway.Gateway) the sandbox has no network at all: its directory is
     bound read-only at /gateway and ``argv`` runs behind the bridge there, so the key gateway is the
     only way out.
+
+    ``--new-session`` gives the agent a session of its own, with no controlling terminal.
+    bubblewrap's ``--dev`` provides ``/dev/tty``; without a new session the agent could open the
+    terminal the loop was started from and, where the kernel still allows ``TIOCSTI``, type into
+    the shell behind it (#309). In its own session a signal to the starter's process group does not
+    reach the agent; what ends it is bubblewrap itself going (``--die-with-parent`` and the PID
+    namespace: when bubblewrap is killed, everything inside is).
     """
     work = work.resolve()
     cmd = [
         "bwrap",
         "--die-with-parent",
+        "--new-session",
         "--unshare-pid",
         "--bind", str(work), "/fixer",
     ]
@@ -213,8 +222,10 @@ def run_sandboxed(
     run_env = dict(env) if env is not None else muse_subprocess_env()
     if resolved == "bwrap":
         cmd = _bwrap_cmd(work, argv, network=network, gateway=gateway, extra_ro=extra_ro)
+        # No input: the agent is given its task as arguments and files, and an inherited stdin
+        # would be the starter's terminal when the loop is run from one.
         return subprocess.run(
-            cmd, capture_output=True, text=True, env=run_env, timeout=timeout,
+            cmd, capture_output=True, text=True, env=run_env, timeout=timeout, stdin=subprocess.DEVNULL,
         )
     if resolved == "docker":
         # Docker injects env via -e; still pass a minimal host env for docker CLI itself.

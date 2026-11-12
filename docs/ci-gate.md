@@ -97,7 +97,7 @@ Both use the actions from the checked-out repository (`./.github/actions/...`) i
 | verify | `heldout-ref` | empty | Its branch, tag or commit |
 | verify | `heldout-token` | empty | A token that can read it; see "Held-out routes" below before passing one |
 | verify | `fail-on` | `reject` | Fail the job on `reject`, on `needs-review` (or reject), or `never` |
-| verify | `require-sandbox` | `false` | `true` refuses to replay the game outside the replay sandbox ([replay-sandbox.md](replay-sandbox.md)): where the runner cannot provide it nothing is replayed and the decision is needs-review. `false` sandboxes the game where the runner can; the record and the comment say how many replays were |
+| verify | `require-sandbox` | `false` | `true` refuses to replay the game outside the replay sandbox ([replay-sandbox.md](replay-sandbox.md)): where the runner cannot provide it nothing is replayed and the decision is needs-review. To let the sandbox start, `true` also sets `kernel.apparmor_restrict_unprivileged_userns=0` on the runner (Ubuntu 24.04 ships it on); on a hosted runner that ends with the job, on a self-hosted runner it stays until reboot. `false` changes no setting and sandboxes the game only where the runner already allows it; the record and the comment say how many replays were |
 | verify | `artifact-name` | `expectrail-gate` | The evidence artifact's name |
 | verify | `generated-checks` | empty | An advisory block of checks generated for this change ([jit.md](jit.md)), shown in the comment and the review page; it never changes the decision, and one that cannot be read shows as "no generated checks" |
 | comment | `github-token` | the run's token | Reads the verify run's artifact and writes the comment |
@@ -223,6 +223,13 @@ and searches every output file, the log and the comment for its route names.
   tool. So the game itself can no longer rewrite what the gate reads. What it does not change: the
   workflow and, in this repository, the action's own code are still the pull request's copy, and the
   record is written by that job. A separate trusted job that judges is #254; a signed receipt is #255.
+- **What counts as the game.** The record's `headTree` and `baseTree` are taken before anything is
+  replayed, over the files a replay's copy holds ([harness.md](harness.md#what-a-game-folder-holds)).
+  A link in the game may lead anywhere inside its own checkout and nowhere else: a game with a link
+  that leaves it, loops or leads nowhere is not replayed, and the step ends as needs-review (exit 2)
+  with the reason. `.git` and `.godot` are never part of the game. The output and work folders may
+  not be inside the game folder. A replay whose copy is not the tree the record names (the folder
+  changed during the run) is a `replay-error`, not a result.
 - **Held-out routes and pull request code share a job.** If you pass `heldout-token`, the pull
   request's code runs in the job that holds the held-out routes. Inside the replay sandbox the game
   sees only the one route it is playing, not the folder; a replay outside the sandbox, and any other

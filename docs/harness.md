@@ -46,6 +46,32 @@ How it works:
 5. `replay.json` records the route, the game tree digest, the patch, the engine and device, and the
    sha256 of every frame.
 
+### What a game folder holds
+
+Several records name a game by a digest of its files: `replay.json` (`game.tree`), the gate's record
+(`headTree`, `baseTree`), the import cache's key and a verification job's inputs. Until November 12
+each walked the folder its own way and the copy a replay runs was made a fifth way, so a file could be
+replayed without being in the digest (#303). Now there is one walk, `harness/tree.py`, and the digests
+and the copies are all made from it:
+
+- Links are followed. What a link leads to is part of the game, under the link's own path, and is
+  copied as a plain file: nothing in a replay's copy leads back out.
+- A link may not leave the game folder, or the checkout when the caller gives one (the gate and the
+  orchestrator do). A link that leaves, loops back into its own folder or leads nowhere, and anything
+  that is not a file, a folder or a link (a pipe, a socket, a device), stops the replay before
+  anything is copied or run. It is never followed and never left out quietly.
+- `.godot` (the engine's cache, rebuilt from the game) and `.git` are not part of a Godot game, at
+  any depth. Nothing else is skipped. Before this, a game at the root of its repository carried its
+  `.git` folder into every replay's copy, sandbox included, and into its digest.
+- An empty folder is not part of a game: no digest covered one, and now the copy holds none either.
+- The copy returns the digest of the bytes it wrote, and that is what `replay.json` records. If the
+  folder changed between the replay's first read (which keys the import cache) and its copy, the
+  replay stops and runs nothing.
+
+For a game with no links, no `.git` and no special files the digest is what it was: a test holds that
+for the bundled Godot and Unity games against the old definition, and a real replay of `game/platformer` gave
+the same `game.tree`, the same 120 frame hashes and the same trace as before the change.
+
 **Trace-only replays (October 31).** Advisory discovery reads the trace, not the frames, so it calls
 `harness.run.run(..., capture_frames=False)`: Godot runs `--headless` with the same fixed frame rate
 and writes no PNGs, about four times faster. The physics is identical: on the same route and patch,
