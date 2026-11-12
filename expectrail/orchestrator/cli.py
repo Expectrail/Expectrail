@@ -61,8 +61,9 @@ def _show(status: dict, as_json: bool) -> None:
     print(json.dumps(status, indent=2) if as_json else describe(status))
 
 
-def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="python3 -m expectrail.orchestrator", description=__doc__.splitlines()[0])
+def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.orchestrator") -> int:
+    """``prog`` is the name shown in help and errors: the `expectrail` command passes its own."""
+    p = argparse.ArgumentParser(prog=prog, description=__doc__.splitlines()[0])
     p.add_argument("--jobs-root", help="where jobs are kept (default: $EXPECTRAIL_JOBS, else runs/jobs)")
     p.add_argument("--lease-seconds", type=float, default=st.DEFAULT_LEASE_SECONDS, help=argparse.SUPPRESS)
     sub = p.add_subparsers(dest="command", required=True)

@@ -33,13 +33,14 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from expectrail import resources
 from expectrail import __version__
 from expectrail import diagnostics as diag
 from expectrail.gate import record as rec
 from expectrail.orchestrator import request as req
 
 FORMAT = "expectrail.verify-job/v1"
-SCHEMA_PATH = Path(__file__).resolve().parent.parent.parent / "contracts" / "verify-job.v1.schema.json"
+SCHEMA_PATH = resources.ROOT / "contracts" / "verify-job.v1.schema.json"
 IN_PROGRESS = ("queued", "preparing", "executing", "observing", "evaluating")
 FINAL = ("completed", "failed", "cancelled")
 DECISIONS = ("accept", "reject", "needs-review")

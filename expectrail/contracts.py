@@ -5,9 +5,10 @@ import hashlib
 import json
 from pathlib import Path
 
+from expectrail import resources
 from expectrail.legacy import format_ids
 
-SCHEMAS = Path(__file__).resolve().parent.parent / "contracts"
+SCHEMAS = resources.ROOT / "contracts"
 KINDS = (
     "route",
     "replay",
