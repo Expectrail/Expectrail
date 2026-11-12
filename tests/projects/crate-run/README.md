@@ -13,8 +13,7 @@ meant to be a good game.
 `tests/test_second_project.py` copies these into a checkout and verifies it:
 
 ```
-python3 -m expectrail.orchestrator verify --head CHECKOUT --game project \
-    --routes routes/walk.json --specs specs
+expectrail verify --head CHECKOUT --game project --routes routes/walk.json --specs specs
 ```
 
 ## What the tests judge it with

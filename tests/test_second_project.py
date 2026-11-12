@@ -9,7 +9,8 @@ What these tests hold, with no game started (the gate tests' stand-in replay):
 - a project whose only spec is a draft is needs-review, never accept.
 
 With ``EXPECTRAIL_ENGINE_TESTS=required`` (the CI job that has Godot sets it), real Godot replays
-through the one command, ``python3 -m expectrail.orchestrator verify``:
+through the one command, ``expectrail verify`` (run here as ``python3 -m expectrail.cli verify``, the
+module the installed command starts):
 - the bundled game: accept;
 - the second project, given by path: accept, and the evidence names that project's tree;
 - the second project with its collision broken, compared with it as it is: reject;
@@ -171,7 +172,7 @@ class RealGodotTest(Case):
     """Real replays through the one command. Each test starts Godot at least once."""
 
     def verify(self, head: Path, *, game: str, routes: str, specs: str, base: Path | None = None) -> tuple[int, dict]:
-        command = [sys.executable, "-m", "expectrail.orchestrator", "--jobs-root", str(self.tmp / "jobs"), "verify",
+        command = [sys.executable, "-m", "expectrail.cli", "--jobs-root", str(self.tmp / "jobs"), "verify",
                    "--head", str(head), "--game", game, "--routes", routes, "--specs", specs, "--json"]
         if base is not None:
             command += ["--base", str(base)]

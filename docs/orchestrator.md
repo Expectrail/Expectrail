@@ -164,11 +164,10 @@ alike; a test holds that on the gate tests' stand-in replay.
 replay names the bundled game. [`tests/projects/crate-run`](../tests/projects/crate-run/README.md) is
 a small Godot project that shares no file with it, and `tests/test_second_project.py` verifies both
 through this one command with real Godot replays (CI job `seeded-bugs`; locally with
-`EXPECTRAIL_ENGINE_TESTS=required`):
+`EXPECTRAIL_ENGINE_TESTS=required`), and the CI job `package` runs the installed command on it:
 
 ```
-python3 -m expectrail.orchestrator verify --head CHECKOUT --game project \
-    --routes routes/walk.json --specs specs
+expectrail verify --head CHECKOUT --game project --routes routes/walk.json --specs specs
 ```
 
 What a second project still has to match, because it is in code and not in the project's own config
