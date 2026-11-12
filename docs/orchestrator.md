@@ -73,6 +73,19 @@ After the run the worker holds the trees the record names against the job's inpu
 the job completes as needs-review with `INPUT_INVALID` ("changed while the job was running") and the
 record is not published as the job's evidence, because it decides about a game nobody asked about.
 
+**The checks that judge are the ones the job names.** There is one reader of the specs and routes,
+the gate's (`expectrail.gate.verify.read_checks`): each file is read once, no link is followed, and
+a file over the size cap is refused. The job's `policyDigest` is that reader's digest: every `*.json`
+in the specs folder (drafts included) and every route file the patterns match that is not a link,
+each by the sha256 of the bytes read, or by the reader's refusal when it would not read the file. A
+spec that is a link is in the digest by its name and the refusal; what it leads to is never opened.
+When the job runs, the engine reads the checks once more with the same reader. If the digest is not
+the job's, the job stops ("the checks changed after the job was created") and nothing is replayed.
+Otherwise the gate is handed what was read and opens no spec or route file itself: the routes the
+replays play are copies made from the bytes that were read. There is no second source to fall back
+to. After the run the worker holds the digest the engine judged with against the job's, as it does
+the game's trees.
+
 **A request names paths inside the checkout only.** `game`, `specs` and every route pattern are
 checked as text by the gate's own rule (`gate.verify.safe_relative`: relative, no `..`, no backslash)
 before any file is opened. `/etc`, `../..` and `/etc/*.json` are refused and nothing is read.
@@ -160,10 +173,6 @@ alike; a test holds that on the gate tests' stand-in replay.
 
 ## What is not built yet
 
-- **Checks that change during the run.** The game is covered (above). The specs and routes are read
-  by the worker and again by the gate, and the two readings are not held against each other after
-  the run: the record names each spec and route by its sha256, the request by one digest of them
-  all (#307).
 - **A grade above `diagnostic`.** The `isolated` execution class is built: every replay runs in the
   replay sandbox ([replay-sandbox.md](replay-sandbox.md)) or the job does not run (`TOOL_MISSING`,
   needs-review, nothing replayed unsandboxed), and a replay that does not say it ran inside keeps the

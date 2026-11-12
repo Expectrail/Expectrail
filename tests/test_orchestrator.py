@@ -46,6 +46,19 @@ from tests.test_ci_gate import FIXTURES, FakeReplay, make_repo
 REPO = Path(__file__).resolve().parent.parent
 EXAMPLES = REPO / "contracts" / "examples"
 
+# Every file this process opens while WATCHING is non-empty, by any route (an audit hook cannot be
+# removed, so it is added once and switched by the list).
+OPENED: list[str] = []
+WATCHING: list[bool] = []
+
+
+def _note_opens(event: str, args: tuple) -> None:
+    if WATCHING and event == "open" and isinstance(args[0], (str, bytes, os.PathLike)):
+        OPENED.append(os.fsdecode(args[0]))
+
+
+sys.addaudithook(_note_opens)
+
 
 def wait_for(condition, seconds: float = 10.0, what: str = "the condition"):
     deadline = time.monotonic() + seconds
@@ -460,6 +473,162 @@ class GodotEngineTest(Case):
             status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=FakeReplay())})
             self.assertEqual((status["phase"], status["decision"]), ("completed", "needs-review"))
             self.assertTrue(any("outside the sandbox" in reason for reason in status["reasons"]), status["reasons"])
+
+    def test_the_checks_that_judge_are_the_ones_the_job_names(self):
+        # The engine reads the specs and routes once, holds their digest against the job's, and the
+        # gate judges with what was read. Whatever is done to the checkout afterwards does not reach
+        # the verdict, and each replay plays a copy of its route made from the bytes that were read.
+        import hashlib
+
+        specs, routes = self.head / "specs", self.head / "routes"
+        played: list[str] = []
+
+        class SpoilsTheChecksMidRun(FakeReplay):
+            def __call__(self, route, game, out, frames):
+                for spec in specs.glob("*.json"):
+                    spec.write_text("{}", encoding="utf-8")      # no longer a spec at all
+                for file in routes.glob("*.json"):
+                    file.unlink()
+                played.append(hashlib.sha256(Path(route).read_bytes()).hexdigest())
+                self.assertNotInTheCheckout(route)
+                return super().__call__(route, game, out, frames)
+
+            def assertNotInTheCheckout(self, route):
+                assert routes.resolve() not in Path(route).resolve().parents, route
+
+        expected = self.gate(self.head, None, "gate-before")     # the gate on the checkout as it was
+        job = self.job()
+        named = self.store.status(job)["inputs"]["policyDigest"]
+        with contextlib.redirect_stdout(io.StringIO()):
+            status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=SpoilsTheChecksMidRun())})
+        self.assertEqual((status["phase"], status["decision"]), ("completed", "accept"))
+        record = rec.read_record(self.store.paths(job).output / "findings.json")
+        self.assertEqual((record["specs"], record["routes"], record["checks"]),
+                         (expected["specs"], expected["routes"], expected["checks"]))
+        self.assertEqual(sorted(set(played)), sorted(r["sha256"] for r in record["routes"]))
+        self.assertNotEqual(req.inputs(self.request())["policyDigest"], named)   # the checkout has moved on
+
+    def test_checks_that_changed_before_the_engine_reads_them_stop_the_job(self):
+        # There is one source for the checks, the engine's one reading. If it is not what the job
+        # names, there is no verdict; nothing is read a second time and nothing is fallen back to
+        # (second review of #321: an engine that lost its copy went back to the checkout in silence).
+        spec = self.head / "specs" / "player-stays-above-ground.json"
+
+        class EditsTheSpecFirst(engines.GodotGate):
+            def execute(self, request, paths, advance):
+                spec.write_text(spec.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+                return super().execute(request, paths, advance)
+
+        replay = FakeReplay()
+        job = self.job()
+        status = runner.work(self.store, job, engines={"godot": EditsTheSpecFirst(replay=replay)})
+        self.assertEqual((status["decision"], [d["code"] for d in status["diagnostics"]]), ("needs-review", ["INPUT_INVALID"]))
+        self.assertIn("the checks changed after the job was created", status["diagnostics"][0]["detail"])
+        self.assertEqual(replay.calls, [])
+        self.assertIsNone(status["output"])
+
+    def test_a_verdict_judged_with_other_checks_than_the_jobs_is_not_given(self):
+        # The worker's own hold, for any engine: the digest of the checks the engine says it judged
+        # with must be the job's.
+        case = self
+
+        class JudgedWithOtherChecks:
+            def preflight(self, request):
+                return []
+
+            def execute(self, request, paths, advance):
+                case.evidence(paths.root.name)
+                return engines.Result("accept", policy="0" * 64)
+
+        job = self.job()
+        status = runner.work(self.store, job, engines={"godot": JudgedWithOtherChecks()})
+        self.assertEqual((status["decision"], [d["code"] for d in status["diagnostics"]]), ("needs-review", ["INPUT_INVALID"]))
+        self.assertIn("the checks changed while the job was running", status["diagnostics"][0]["detail"])
+        self.assertIsNone(status["output"])
+
+    def test_a_spec_the_gate_refuses_is_refused_the_same_way_in_a_job_and_never_opened(self):
+        # One reader for the checks, the gate's. Whatever form a spec file takes, a job says what
+        # the plain gate says about the same checkout, and what a link leads to is not opened
+        # (first review of #321: a copy made by another reader followed links the gate refuses).
+        second = json.loads((self.head / "specs" / "player-stays-above-ground.json").read_text(encoding="utf-8"))
+        second["id"] = "second-check"
+        text = json.dumps(second)
+        forms = {
+            "a file": lambda repo, spec: spec.write_text(text, encoding="utf-8"),
+            "a link to a file inside the checkout": lambda repo, spec: (
+                (repo / "kept").mkdir(), (repo / "kept" / "target.json").write_text(text, encoding="utf-8"),
+                spec.symlink_to(repo / "kept" / "target.json")),
+            "a link to a file outside the checkout": lambda repo, spec: (
+                (repo.parent / f"outside-{repo.name}").mkdir(),
+                (repo.parent / f"outside-{repo.name}" / "target.json").write_text(text, encoding="utf-8"),
+                spec.symlink_to(repo.parent / f"outside-{repo.name}" / "target.json")),
+            "a link to nothing": lambda repo, spec: spec.symlink_to(repo / "kept" / "missing.json"),
+            "a link to something that is not JSON": lambda repo, spec: (
+                (repo / "kept").mkdir(), (repo / "kept" / "target.json").write_text("not json", encoding="utf-8"),
+                spec.symlink_to(repo / "kept" / "target.json")),
+            "a file over the size cap": lambda repo, spec: spec.write_text(text + " " * (gate.SPEC_CAP + 1), encoding="utf-8"),
+        }
+        checks_expected = {"a file": 4}
+        for n, (name, make) in enumerate(forms.items()):
+            with self.subTest(two_json=name):
+                repo = make_repo(self.tmp / f"form-{n}")
+                spec = repo / "specs" / "two.json"
+                make(repo, spec)
+                target = os.path.abspath(os.readlink(spec)) if spec.is_symlink() else None
+                plain = self.gate(repo, None, f"gate-form-{n}")
+                self.head = repo
+                OPENED.clear()
+                WATCHING.append(True)
+                try:
+                    job = self.job(idempotency_key=f"form-{n}")
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=FakeReplay())})
+                finally:
+                    WATCHING.clear()
+                self.assertEqual((status["phase"], status["decision"], status["reasons"]),
+                                 ("completed", plain["decision"], plain["reasons"]))
+                record = rec.read_record(self.store.paths(job).output / "findings.json")
+                self.assertEqual((len(record["checks"]), record["specs"], record["drafts"]),
+                                 (len(plain["checks"]), plain["specs"], plain["drafts"]))
+                self.assertEqual(len(record["checks"]), checks_expected.get(name, 2))
+                opened = {os.path.abspath(p) for p in OPENED}
+                self.assertIn(str(repo / "specs" / "player-stays-above-ground.json"), opened)   # the watch does see opens
+                if target is not None:
+                    self.assertNotIn(target, opened)   # what the link leads to was never opened, by anything
+                if name not in ("a file", "a link to nothing"):
+                    self.assertTrue(any("two.json" in reason for reason in status["reasons"]), status["reasons"])
+
+    def test_the_digest_of_the_checks_covers_what_the_gate_reads_and_nothing_a_link_leads_to(self):
+        project = self.request()["project"]
+        before = req.policy_digest(self.head, project)
+        self.assertEqual(before, gate.read_checks(self.head, "specs", ["routes/*.json"]).digest)
+        # A route that is a link is not read by the gate (find_routes), so it is not in the digest.
+        (self.head / "routes" / "linked.json").symlink_to("smoke.json")
+        # A file that only looks like a check is neither read nor digested.
+        (self.head / "specs" / "notes.txt").write_text("not a spec\n", encoding="utf-8")
+        (self.head / "specs" / "deeper").mkdir()
+        (self.head / "specs" / "deeper" / "nested.json").write_text("{}", encoding="utf-8")
+        self.assertEqual(req.policy_digest(self.head, project), before)
+        # A draft is read by the gate (and counted), so it is in the digest.
+        with_draft = make_repo(self.tmp / "with-draft", draft=True)
+        self.assertNotEqual(req.policy_digest(with_draft, project), before)
+        # A spec that is a link is in the digest by its name and its refusal: adding it changes the
+        # digest, what it leads to does not, and making it a real file does.
+        (self.head / "kept").mkdir()
+        target = self.head / "kept" / "target.json"
+        target.write_text("{}", encoding="utf-8")
+        (self.head / "specs" / "two.json").symlink_to(target)
+        linked = req.policy_digest(self.head, project)
+        self.assertNotEqual(linked, before)
+        target.write_text('{"something": "else"}', encoding="utf-8")
+        self.assertEqual(req.policy_digest(self.head, project), linked)
+        (self.head / "specs" / "two.json").unlink()
+        (self.head / "specs" / "two.json").write_text('{"something": "else"}', encoding="utf-8")
+        self.assertNotEqual(req.policy_digest(self.head, project), linked)
+        # No checks at all: no digest.
+        empty = self.tmp / "empty"
+        (empty / "specs").mkdir(parents=True)
+        self.assertIsNone(req.policy_digest(empty, project))
 
     def test_a_game_that_changes_after_the_workers_read_gives_no_decision(self):
         # The window the worker's second read leaves: the files are right when the worker checks

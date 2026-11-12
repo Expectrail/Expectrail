@@ -67,6 +67,9 @@ and the copies are all made from it:
 - The copy returns the digest of the bytes it wrote, and that is what `replay.json` records. If the
   folder changed between the replay's first read (which keys the import cache) and its copy, the
   replay stops and runs nothing.
+- The import cache is keyed by the same digest and imported from a copy of its own. A cache is
+  stored only when that copy is the tree the key names; if the folder changed in between, nothing is
+  stored and the run imports directly.
 
 For a game with no links, no `.git` and no special files the digest is what it was: a test holds that
 for the bundled Godot and Unity games against the old definition, and a real replay of `game/platformer` gave

@@ -333,6 +333,50 @@ class VerifyTest(GateCase):
             verdict = json.loads((out / "verdicts" / arm / "smoke" / "player-stays-above-ground.json").read_text())
             self.assertEqual(verdict["format"], "expectrail.verdict/v0")
 
+    def test_what_a_change_does_to_the_check_files_is_counted_by_one_reader_on_both_sides(self):
+        # The count of check files a change edits compares the head's listing with the base's, both
+        # made by the gate's reader. A file the reader refuses compares by its name and its refusal:
+        # the same refused file on both sides is no edit, and removing one is (second review of #321).
+        big_spec = "{}" + " " * (gv.SPEC_CAP + 1)
+        big_route = "{}" + " " * (gv.ROUTE_CAP + 1)
+
+        def link(repo: Path) -> None:
+            (repo / "kept").mkdir()
+            (repo / "kept" / "target.json").write_text("{}", encoding="utf-8")
+            (repo / "specs" / "two.json").symlink_to(Path("..") / "kept" / "target.json")
+
+        def spec(repo: Path, text: str = "{}") -> None:
+            (repo / "specs" / "extra.json").write_text(text, encoding="utf-8")
+
+        def route(repo: Path, text: str = "{}") -> None:
+            (repo / "routes" / "extra.json").write_text(text, encoding="utf-8")
+
+        nothing = lambda repo: None  # noqa: E731
+        cases = (
+            # (what it shows, on the head, on the base, the counts)
+            ("the same spec link on both sides", link, link, {"specs": 0, "routes": 0}),
+            ("the same spec over the cap on both sides", lambda r: spec(r, big_spec), lambda r: spec(r, big_spec), {"specs": 0, "routes": 0}),
+            ("the same route over the cap on both sides", lambda r: route(r, big_route), lambda r: route(r, big_route), {"specs": 0, "routes": 0}),
+            ("the change removes a spec that is a link", nothing, link, {"specs": 1, "routes": 0}),
+            ("the change adds a spec that is a link", link, nothing, {"specs": 1, "routes": 0}),
+            ("the change adds a spec", spec, nothing, {"specs": 1, "routes": 0}),
+            ("the change removes a spec", nothing, spec, {"specs": 1, "routes": 0}),
+            ("the change edits a spec", lambda r: spec(r, '{"a": 1}'), spec, {"specs": 1, "routes": 0}),
+            ("the change adds a route", route, nothing, {"specs": 0, "routes": 1}),
+            ("the change removes a route", nothing, route, {"specs": 0, "routes": 1}),
+            ("the change edits a route", lambda r: route(r, '{"a": 1}'), route, {"specs": 0, "routes": 1}),
+            ("nothing differs", nothing, nothing, {"specs": 0, "routes": 0}),
+        )
+        for n, (name, on_head, on_base, counts) in enumerate(cases):
+            with self.subTest(case=name):
+                head, base = make_repo(self.tmp / f"h{n}"), make_repo(self.tmp / f"b{n}")
+                on_head(head)
+                on_base(base)
+                doc = self.gate(head, base, out_name=f"out{n}")
+                self.assertEqual(doc["checksChanged"], counts)
+                said = [r for r in doc["reasons"] if "this change edits" in r]
+                self.assertEqual(bool(said), bool(counts["specs"] or counts["routes"]), doc["reasons"])
+
     def test_an_unchanged_game_is_accepted_and_preserved(self):
         doc = self.gate(make_repo(self.tmp / "head"), make_repo(self.tmp / "base"))
         self.assertEqual(doc["decision"], "accept")
