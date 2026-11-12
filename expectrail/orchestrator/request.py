@@ -5,20 +5,20 @@ of the head and (when there is one) of the base, the execution class and the lim
 digest. The orchestrator computes them from the files (`inputs`): a client's claim about what the
 files are is never used.
 
-``headTree`` and ``baseTree`` describe what a replay reads. The harness copies the game folder into a
-work folder, following links and leaving out only ``.godot`` (``harness.run.prepare``), so the digest
-walks the same way and leaves out the same one name: there is no second list of folders to skip. For
-a game with no links it is ``harness.run.tree_digest`` exactly: the same files in the same order. A link that leaves the checkout, or
-that loops, is a problem with the input (``problems``): the copy would pull in a file from outside
-what was asked to be verified.
+``headTree`` and ``baseTree`` describe what a replay reads. They come from ``harness.tree``, the one
+walk every digest of a game and every copy a replay runs is made from: links are followed, ``.godot``
+and ``.git`` are not part of a game, and there is no other list of folders to skip. A link that leaves
+the checkout, loops or leads nowhere, and anything that is not a file, a folder or a link, is a
+problem with the input (``problems``): never hashed and never left out quietly.
 """
 from __future__ import annotations
 
 import fnmatch
 import hashlib
 import json
-import os
 from pathlib import Path
+
+from harness import tree
 
 from expectrail.contracts import digest
 from expectrail.gate import record as rec
@@ -94,51 +94,14 @@ def _files_digest(files: list[Path], root: Path) -> str:
     return h.hexdigest()
 
 
-class TreeProblem(ValueError):
-    """The game folder cannot be described: a link in it leaves the checkout or loops."""
-
-
-# The one name the harness's copy leaves out (harness.run.prepare, harness.run.tree_digest).
-NOT_COPIED = ".godot"
-
-
-def _inside(path: str, root: str) -> bool:
-    return path == root or path.startswith(root.rstrip(os.sep) + os.sep)
+# The walk is the harness's (harness.tree): the one definition of what a game folder holds.
+TreeProblem = tree.TreeProblem
 
 
 def tree_files(root: Path, checkout: Path) -> list[tuple[str, Path]]:
-    """Every file a replay's copy of ``root`` would hold, as (path inside the game, file to read),
-    sorted. Links are followed, as the copy follows them; one that leaves ``checkout`` or loops raises
-    TreeProblem. Nothing outside ``checkout`` is opened."""
-    limit = os.path.realpath(checkout)
-    found: list[tuple[str, Path]] = []
-
-    def walk(folder: str, inside: str, above: tuple[str, ...]) -> None:
-        real = os.path.realpath(folder)
-        if not _inside(real, limit):
-            raise TreeProblem(f"{inside or '.'} is a link that leaves the checkout")
-        if real in above:
-            raise TreeProblem(f"{inside or '.'} is a link that loops back into its own folder")
-        with os.scandir(folder) as entries:
-            for entry in sorted(entries, key=lambda e: e.name):
-                if entry.name == NOT_COPIED:
-                    continue
-                name = f"{inside}/{entry.name}" if inside else entry.name
-                if entry.is_symlink() and not _inside(os.path.realpath(entry.path), limit):
-                    raise TreeProblem(f"{name} is a link that leaves the checkout")
-                if entry.is_dir():
-                    walk(entry.path, name, above + (real,))
-                elif entry.is_file():
-                    found.append((name, Path(entry.path)))
-                elif entry.is_symlink():
-                    raise TreeProblem(f"{name} is a link to nothing")
-                else:
-                    # A pipe, a socket or a device: the copy would try to read it. Never left out quietly.
-                    raise TreeProblem(f"{name} is not a file, a folder or a link")
-
-    walk(str(root), "", ())
-    # Part by part, as pathlib orders paths and so as the harness's digest does: "a/y" before "a-b/x".
-    return sorted(found, key=lambda item: item[0].split("/"))
+    """Every file a replay's copy of ``root`` holds, as (path inside the game, file to read), sorted:
+    ``harness.tree.files`` with the checkout as the folder a link may lead into."""
+    return tree.files(root, within=checkout, skip=tree.GODOT_SKIP)
 
 
 def tree_digest(root: Path, checkout: Path | None = None) -> str | None:
@@ -147,10 +110,7 @@ def tree_digest(root: Path, checkout: Path | None = None) -> str | None:
     root = Path(root)
     if not root.is_dir():
         return None
-    h = hashlib.sha256()
-    for name, path in tree_files(root, root if checkout is None else checkout):
-        h.update(name.encode() + b"\0" + hashlib.sha256(path.read_bytes()).hexdigest().encode() + b"\n")
-    return h.hexdigest()
+    return tree.digest(root, within=checkout, skip=tree.GODOT_SKIP)
 
 
 def policy_digest(checks_root: Path, project: dict) -> str | None:

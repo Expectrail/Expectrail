@@ -1015,9 +1015,14 @@
           "kind": "test",
           "ref": "tests/test_orchestrator.py",
           "shows": "two jobs keep to their own folders; a cancelled job stays cancelled and what it started is stopped; a killed worker leaves a failed job; a job out of time is needs-review; a missing tool is a diagnostic and needs-review; the Godot engine decides as the gate does, on a stand-in replay"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_tree.py",
+          "shows": "one walk of a game folder makes every digest and every copy: the copy holds exactly the files the digest covers; the bundled games keep their digests; a link that leaves the checkout, a loop or a pipe stops a replay before anything is copied; a replay of another tree than the record names is not used"
         }
       ],
-      "limits": "Only the sample command and tests call it: the gate's action and the site do not go through it yet. The isolated execution class runs every replay with the sandbox required and refuses where the machine cannot; its evidence grade stays diagnostic, because the ledger's isolated grade also needs a trusted job that judges and signs (#254, #255). Files can change between the worker's last read and the gate's copy (#307, #303). On a system without /proc a killed worker's children are not found and run on to their own time limit. One host."
+      "limits": "Only the sample command and tests call it: the gate's action and the site do not go through it yet. The isolated execution class runs every replay with the sandbox required and refuses where the machine cannot; its evidence grade stays diagnostic, because the ledger's isolated grade also needs a trusted job that judges and signs (#254, #255). The game is held to the tree the job asked about (the worker's read, the gate's record and each replay's copy must agree, or the job is needs-review); the specs and routes are read twice and not compared after the run (#307). On a system without /proc a killed worker's children are not found and run on to their own time limit. One host."
     }
   ],
   "notModes": {

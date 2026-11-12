@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Callable
 
 from harness import run as _godot
+from harness import tree as _tree
 
 REPO = _godot.REPO
 
@@ -53,17 +54,10 @@ def tree_digest(root: Path, ignore: tuple[str, ...] = ()) -> str:
     """A digest of every file under ``root``, skipping any file with a folder (or a name) in ``ignore``.
 
     Each file adds its path relative to ``root``, a NUL, its sha256 and a newline, in sorted path
-    order: the same bytes ``harness.run.tree_digest`` hashes. The ignore list is matched against the
-    path relative to ``root``. ``harness.run.tree_digest`` matches ``.godot`` against the whole path,
-    so the two differ only for a root that itself sits inside a folder named ``.godot``, where that
-    function hashes no file at all.
+    order: the same bytes ``harness.run.tree_digest`` hashes, from the same walk (``harness.tree``).
+    Links are followed and may not leave ``root``; see that module for the rules.
     """
-    root = Path(root)
-    skip = set(ignore)
-    h = hashlib.sha256()
-    for path in sorted(p for p in root.rglob("*") if p.is_file() and not skip.intersection(p.relative_to(root).parts)):
-        h.update(path.relative_to(root).as_posix().encode() + b"\0" + sha256_file(path).encode() + b"\n")
-    return h.hexdigest()
+    return _tree.digest(Path(root), skip=tuple(ignore))
 
 
 @dataclass(frozen=True)
@@ -134,7 +128,7 @@ GODOT = Adapter(
     engine="godot",
     run=_godot_run,
     game_root=REPO / "game" / "platformer",
-    ignore=(".godot",),
+    ignore=_tree.GODOT_SKIP,
     frame_pattern="frames/f%08d.png",
     log_name="godot.log",
     editable=("player/**", "level/**", "game_singleplayer.tscn"),

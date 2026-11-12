@@ -75,6 +75,17 @@ def work(store: st.JobStore, job_id: str, engines: dict | None = None, *, own_gr
             return _needs_review(store, job_id, blocking)
         store.advance(job_id, "executing")
         result = engine.execute(request, paths, lambda phase: store.advance(job_id, phase))
+        # The worker read the files just before the run and the engine read them again to run them.
+        # If the evidence names another tree than the job's inputs, the game changed in between:
+        # the decision is about files nobody asked about, so it is not given and its evidence is
+        # not published under this job.
+        moved = [side for side in ("head", "base") if (result.trees or {}).get(f"{side}Tree") is not None
+                 and result.trees[f"{side}Tree"] != status["inputs"][f"{side}Tree"]]
+        if moved:
+            return _needs_review(store, job_id, [st.diagnostic(
+                "INPUT_INVALID", stage="executing",
+                detail=f"the {' and the '.join(moved)} game changed while the job was running; what was "
+                       f"verified is not what was asked. Ask again")])
         return store.finish(job_id, "completed", decision=result.decision, reasons=result.reasons,
                             evidence_grade=result.evidence_grade, publish=True)
     except BaseException as exc:  # noqa: BLE001 - whatever happens, the job ends in a final phase

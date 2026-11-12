@@ -461,6 +461,38 @@ class GodotEngineTest(Case):
             self.assertEqual((status["phase"], status["decision"]), ("completed", "needs-review"))
             self.assertTrue(any("outside the sandbox" in reason for reason in status["reasons"]), status["reasons"])
 
+    def test_a_game_that_changes_after_the_workers_read_gives_no_decision(self):
+        # The window the worker's second read leaves: the files are right when the worker checks
+        # them and different when the engine reads them to run them.
+        game = self.head / "game" / "platformer"
+
+        class ChangesFirst(engines.GodotGate):
+            def execute(self, request, paths, advance):
+                (game / "swapped.gd").write_text("# written after the worker's check\n", encoding="utf-8")
+                return super().execute(request, paths, advance)
+
+        replay = FakeReplay()
+        job = self.job()
+        asked = self.store.status(job)["inputs"]["headTree"]
+        with contextlib.redirect_stdout(io.StringIO()):
+            status = runner.work(self.store, job, engines={"godot": ChangesFirst(replay=replay)})
+        self.assertTrue(replay.calls)   # the changed game did run, and would have been accepted
+        self.assertNotEqual(req.inputs(self.request())["headTree"], asked)
+        self.assertEqual((status["phase"], status["decision"], [d["code"] for d in status["diagnostics"]]),
+                         ("completed", "needs-review", ["INPUT_INVALID"]))
+        self.assertIn("the head game changed while the job was running", status["diagnostics"][0]["detail"])
+        # A record that decides about another game is not published as this job's evidence.
+        self.assertIsNone(status["output"])
+        self.assertFalse(self.store.paths(job).output.exists())
+
+    def test_the_evidence_names_the_trees_the_job_asked_about(self):
+        bug = make_repo(self.tmp / "bug", bug=True)
+        status = self.decide(self.head, bug)
+        record = rec.read_record(self.store.paths(status["id"]).output / "findings.json")
+        self.assertEqual((record["game"]["headTree"], record["game"]["baseTree"]),
+                         (status["inputs"]["headTree"], status["inputs"]["baseTree"]))
+        self.assertEqual(status["decision"], "accept")
+
     def test_the_diagnostic_class_records_isolation_and_does_not_require_it(self):
         job = self.job()
         status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=FakeReplay())})
@@ -634,10 +666,13 @@ class TreeTest(Case):
         return req.inputs(self.request())["headTree"]
 
     def copied(self) -> dict[str, bytes]:
-        """What harness.run.prepare's copy of the game holds: links followed, .godot left out."""
+        """What the copy a replay runs holds, made by the harness's own function (harness.run.prepare
+        without its patches and scripts): links followed, .godot and .git left out."""
+        from harness import tree
+
         work = self.tmp / "copy"
         shutil.rmtree(work, ignore_errors=True)
-        shutil.copytree(self.game, work, ignore=shutil.ignore_patterns(".godot"))
+        tree.copy(self.game, work, within=self.head, skip=tree.GODOT_SKIP)
         return {p.relative_to(work).as_posix(): p.read_bytes() for p in work.rglob("*") if p.is_file()}
 
     def test_without_links_it_is_the_harness_digest(self):
@@ -661,7 +696,8 @@ class TreeTest(Case):
     def test_whenever_the_copy_changes_the_digest_changes(self):
         from harness.run import tree_digest
 
-        # Every folder name either skip list had (the gate's and this module's first one), and .godot.
+        # Every folder name any skip list has had. Two are not part of a game, for the copy and every
+        # digest alike (harness.tree): .godot, the engine's cache, and .git, version control.
         for folder in (".git", ".expectrail", "__pycache__", "addons", ".godot"):
             with self.subTest(folder=folder):
                 (self.game / folder).mkdir()
@@ -669,7 +705,7 @@ class TreeTest(Case):
                 copy, harness, tree = self.copied(), tree_digest(self.game), self.tree()
                 (self.game / folder / "logic.gd").write_text("# two\n", encoding="utf-8")
                 copy_changed, harness_changed = self.copied() != copy, tree_digest(self.game) != harness
-                self.assertEqual(copy_changed, folder != ".godot")
+                self.assertEqual(copy_changed, folder not in (".godot", ".git"))
                 self.assertEqual(harness_changed, copy_changed)
                 self.assertEqual(self.tree() != tree, copy_changed)
 

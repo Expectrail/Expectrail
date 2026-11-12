@@ -24,6 +24,10 @@ class Result:
     decision: str
     reasons: list[str] = field(default_factory=list)
     evidence_grade: str = "diagnostic"
+    # The game trees the evidence names ({"headTree": ..., "baseTree": ...}), when the engine knows
+    # them. The worker holds them against the job's recorded inputs: a decision about another tree
+    # than the one asked about is not this job's decision.
+    trees: dict | None = None
 
 
 class GodotGate:
@@ -89,7 +93,9 @@ class GodotGate:
         # The grade stays `diagnostic` even when every replay was sandboxed: the ledger's `isolated`
         # also needs a separate trusted job that judges and signs (#254, #255). What the sandbox did
         # is in the evidence: findings.json, `isolation`.
-        return Result(document["decision"], list(document.get("reasons", [])))
+        game = document.get("game") or {}
+        return Result(document["decision"], list(document.get("reasons", [])),
+                      trees={"headTree": game.get("headTree"), "baseTree": game.get("baseTree")})
 
 
 ENGINES = {GodotGate.name: GodotGate()}

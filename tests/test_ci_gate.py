@@ -528,7 +528,8 @@ class IsolationTest(GateCase):
         head = make_repo(self.tmp / "head")
         asked = []
 
-        def run(route, out, game=None, capture_frames=True, sandbox=None):
+        def run(route, out, game=None, capture_frames=True, sandbox=None, within=None):
+            self.assertEqual(within, head.resolve())   # a link in the game may lead into its checkout, no further
             asked.append(sandbox)
             raise SystemExit("stop here: only the argument matters")
 
