@@ -554,6 +554,10 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         checks = read_checks(checks_root, specs_rel, patterns, checks_from)
     spec_docs, drafts = checks.specs, checks.drafts
     problems += checks.problems
+    # Every problem the one reading of the spec and route files found: a file refused or not valid,
+    # an id or a name used twice, a limit passed, nothing found where the job said to look. With
+    # any of them the checks that run are not all of the project's checks, and `decide` is told.
+    check_problems = len(checks.problems)
     # The replays play copies of the routes made from the bytes that were read (written below, once
     # the work folder is known not to be inside a game): the checkout's route files are not opened again.
     routes_dir = Path(work) / "checks" / "routes"
@@ -635,7 +639,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     counts = {"checks": len(afters), "passed": afters.count("pass"), "failed": afters.count("fail"),
               "needsReview": len(afters) - afters.count("pass") - afters.count("fail")}
     isolation = rec.isolation_summary(accounts, require_sandbox)
-    decision, reasons = rec.decide(counts, held, isolation)
+    decision, reasons = rec.decide(counts, held, isolation, check_problems)
     if checks_from == "base" and (changed["specs"] or changed["routes"]):
         reasons.append(f"this change edits {changed['specs']} spec and {changed['routes']} route files; "
                        "they judge changes once it merges")
@@ -652,6 +656,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         "checksChanged": changed,
         "specs": [{"id": s["id"], "sha256": digest(s), "instruction": _clip(s["instruction"])} for s in spec_docs],
         "drafts": drafts,
+        "checkProblems": check_problems,
         # The record lists the routes that were judged, so its checks are every spec on every route.
         "routes": [{"name": n, "sha256": sha} for n, _p, sha in route_list] if head else [],
         "counts": counts,
@@ -708,7 +713,7 @@ def stopped_record(reason: str, *, pr: dict | None, game: str | None, checks_fro
     document = {
         "format": rec.FORMAT, "decision": decision, "reasons": [_clip(reason)] + reasons, "adapter": "godot",
         "pullRequest": pr, "game": {"path": game_path, "headTree": None, "baseTree": None},
-        "checksFrom": checks_from, "checksChanged": {"specs": 0, "routes": 0}, "specs": [], "drafts": 0,
+        "checksFrom": checks_from, "checksChanged": {"specs": 0, "routes": 0}, "specs": [], "drafts": 0, "checkProblems": 0,
         "routes": [], "counts": counts, "checks": [], "findings": [], "heldOut": held,
         "isolation": rec.isolation_summary([], require_sandbox), "reviewPage": None,
         "expectrail": {"version": __version__,

@@ -29,6 +29,7 @@
     }
   ],
   "drafts": 0,
+  "checkProblems": 0,
   "routes": [
     {
       "name": "combat",

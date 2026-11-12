@@ -73,6 +73,10 @@ comment ([ci-gate.md](ci-gate.md)). The example is a real local run: the clean g
 game with `bugs/physics-fall-through/v1.patch` as the head, and a stand-in held-out set. Its pull
 request number and head commit are placeholders.
 
+`checkProblems` (added November 12, #340) counts the problems the gate found reading the spec and
+route files. Above 0 the decision is never accept, and the reader that recomputes the decision from
+the record holds it to that. A record written before the field existed has none and reads as 0.
+
 | Record | Written by | Read by |
 | --- | --- | --- |
 | `findings` | the gate's verify step (`expectrail.gate.verify`), untrusted | the gate's comment step (`expectrail.gate.comment`), which treats it as data |
