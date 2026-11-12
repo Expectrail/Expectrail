@@ -104,16 +104,24 @@ def from_trace_synthetic(
     Traces from the current harness carry the level's ground line (``ground``) and the camera
     (``view``): the ground box then sits on that line, the player's box ends at its feet
     (origin + FEET_OFFSET), and both are in captured-frame pixels like SAM's boxes, so a spec's
-    tolerancePx means the same thing for either provider. Older traces fall back to world pixels
-    and a floor taken from the player's own on-floor positions, which cannot see a player that
-    rests too low.
+    tolerancePx means the same thing for either provider. A row with no ground line (no tile
+    collision under the player, or a level with none at all) has no ground observation, so a check
+    against the ground cannot be decided there and is needs-review: an unmeasured ground is never
+    stood in for by a guess.
+
+    Traces from before the harness logged the camera fall back to world pixels and a floor taken
+    from the player's own on-floor positions, which cannot see a player that rests too low. That
+    fallback is for those old traces only. Until November 12, 2026 it also took every trace that had
+    no ground line at all, and a game with no tile ground (Godot's Dodge the Creeps, #263) was
+    rejected against a floor guessed at 0.
     """
     rows = list(trace.get("rows") or [])
     tps = physics_tps or int(trace.get("physicsTicksPerSecond") or 120)
     step = max(tps // fps, 1)
     floor = _floor_y(rows)
     start_x = _start_x(rows)
-    in_frame = any(r.get("ground") is not None for r in rows) and any(r.get("view") for r in rows)
+    in_frame = any(r.get("view") for r in rows)   # today's harness logs the camera in every row
+    measured = any(r.get("ground") is not None for r in rows)
 
     frames = []
     if in_frame:
@@ -156,7 +164,8 @@ def from_trace_synthetic(
                 "player": "blue robot",
                 "ground": "grass-topped ground",
             },
-            "ground": "level tile geometry (harness)" if in_frame else "player's own on-floor positions",
+            "ground": ("level tile geometry (harness)" if measured else "not measured: no tile collision under the player")
+            if in_frame else "player's own on-floor positions",
             "units": "captured-frame pixels" if in_frame else "world pixels",
         },
         "frames": frames,
@@ -354,8 +363,10 @@ def has_engine_ground(trace: dict) -> bool:
     return any(r.get("ground") is not None and r.get("view") for r in trace.get("rows") or [])
 
 
-# The ground search, the same as the harness's (_ground_under in expectrail_harness.gd), but over
-# the level surfaces of a game the verifier trusts: the clean game, not the candidate.
+# The ground search, like the harness's (_ground_under in expectrail_harness.gd), but over the level
+# surfaces of a game the verifier trusts: the clean game, not the candidate. It differs in one
+# thing: the harness asks at the ends of the player's own collision, and this asks 20 px either
+# side of the origin whatever the player is. For the bundled robot the two are the same columns.
 SINK_WINDOW = 64.0
 BODY_HALF_WIDTH = 20.0
 

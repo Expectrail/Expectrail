@@ -32,8 +32,10 @@ written at all.
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import functools
 import json
+import os
 import re
 import shutil
 import sys
@@ -56,6 +58,7 @@ EXIT = {"accept": 0, "reject": 1, "needs-review": 2}
 MAX_SPECS = 64
 MAX_ROUTES = 64
 MAX_REASONS = 20
+MAX_UNLISTED = 5   # folders that cannot be listed, named one by one in the reasons
 MAX_REASON = 300
 SPEC_CAP = 256 * 1024
 ROUTE_CAP = 1024 * 1024
@@ -138,13 +141,124 @@ def _inside(root: Path, path: Path) -> bool:
         return False
 
 
-def find_routes(root: Path, patterns: list[str]) -> list[Path]:
+def segment_matches(name: str, part: str) -> bool:
+    """Whether one name matches one part of a route pattern (`*`, `?`, `[...]`), as written: the
+    case of the name counts on every file system."""
+    return fnmatch.fnmatchcase(name, part)
+
+
+def pattern_matches(root: Path, pattern: str, unlisted: set[Path] | None = None) -> set[Path]:
+    """Every path below ``root`` that a route pattern names. The gate's own matcher, so the files
+    that judge a change are the same on every Python: ``Path.glob`` gives a pattern that ends in
+    ``**`` the files below on Python 3.13 and none of them on 3.12.
+
+    The rules, part by part between the slashes:
+
+    - ``**`` alone stands for no folder or any number of them, and as the last part for everything
+      below as well. It never passes through a link to a folder.
+    - Any other part matches one name with ``segment_matches``. Such a part may name a link to a
+      folder and continue below it (the caller keeps a file only when it is inside the checkout).
+    - A folder that cannot be listed is never passed over in silence. A part that is a plain name
+      (no ``*``, ``?`` or ``[``) needs no listing: the one name is tried, so a route named in full
+      is found in a folder that can be entered but not listed. Any other part, and ``**``, cannot
+      know what is there: the folder is added to ``unlisted``, for the caller to report.
+    """
+    parts = [p for p in pattern.split("/") if p not in ("", ".")]
+    found: set[Path] = set()
+    if not parts:
+        return found
+
+    def listing(folder: str) -> list[os.DirEntry] | None:
+        try:
+            with os.scandir(folder) as entries:
+                return sorted(entries, key=lambda e: e.name)
+        except OSError:
+            return None
+
+    def listed(folder: str) -> list[os.DirEntry]:
+        entries = listing(folder)
+        if entries is None:
+            if unlisted is not None:
+                unlisted.add(Path(folder))
+            return []
+        return entries
+
+    def is_folder(entry: os.DirEntry, through_links: bool) -> bool:
+        try:
+            return entry.is_dir(follow_symlinks=through_links)
+        except OSError:
+            return False
+
+    # A list of work, not recursion: a checkout may nest folders deeper than Python nests calls.
+    seen: set[tuple[str, int]] = set()
+    work: list[tuple[str, int]] = [(str(root), 0)]
+    last = len(parts) - 1
+    while work:
+        at = work.pop()
+        if at in seen:
+            continue
+        seen.add(at)
+        folder, i = at
+        if i > last:  # only after a last "**": everything below, and no link to a folder is entered
+            for entry in listed(folder):
+                found.add(Path(entry.path))
+                if is_folder(entry, False):
+                    work.append((entry.path, i))
+        elif parts[i] == "**":
+            work.append((folder, i + 1))
+            work.extend((entry.path, i) for entry in listed(folder) if is_folder(entry, False))
+        else:
+            entries = listing(folder)
+            if entries is None:
+                if any(c in parts[i] for c in "*?["):
+                    listed(folder)  # recorded: what the part matches in there cannot be known
+                    continue
+                # A plain name in a folder that cannot be listed: go to the name. (Here the file
+                # system compares the name, so one that ignores case ignores it for this part.)
+                named = os.path.join(folder, parts[i])
+                if i == last:
+                    if os.path.lexists(named):
+                        found.add(Path(named))
+                elif os.path.isdir(named):
+                    work.append((named, i + 1))
+                continue
+            for entry in entries:
+                if not segment_matches(entry.name, parts[i]):
+                    continue
+                if i == last:
+                    found.add(Path(entry.path))
+                elif is_folder(entry, True):
+                    work.append((entry.path, i + 1))
+    return found
+
+
+def match_routes(root: Path, patterns: list[str],
+                 unlisted: set[Path] | None = None) -> tuple[list[Path], list[Path], list[Path]]:
+    """What the patterns name, in three lists: the route files (regular files inside the checkout),
+    the links to a file, and the files that are outside the checkout (reached through a link that
+    leaves it). The last two are never read as routes; they are given back so the caller can say
+    so, because a file the job named as a route and the gate left out is a check that did not run.
+    A folder, a link to a folder or to nothing, and anything that is not a file are no route file.
+    Folders that could not be listed while looking are added to ``unlisted``."""
     files: set[Path] = set()
+    links: set[Path] = set()
+    outside: set[Path] = set()
     for pattern in patterns:
-        for match in root.glob(pattern):
-            if match.is_file() and not match.is_symlink() and _inside(root, match):
+        for match in pattern_matches(root, pattern, unlisted):
+            if not match.is_file():
+                continue
+            if match.is_symlink():
+                links.add(match)
+            elif not _inside(root, match):
+                outside.add(match)
+            else:
                 files.add(match)
-    return sorted(files)
+    return sorted(files), sorted(links), sorted(outside)
+
+
+def find_routes(root: Path, patterns: list[str], unlisted: set[Path] | None = None) -> list[Path]:
+    """The route files the patterns name: regular files inside the checkout, never a link."""
+    return match_routes(root, patterns, unlisted)[0]
 
 
 def spec_files(folder: Path) -> list[Path]:
@@ -245,15 +359,30 @@ def read_checks(root: Path, specs: str, patterns: list[str], checks_from: str = 
             spec_problems.append(f"{len(approved)} approved specs, over the gate's limit of {MAX_SPECS}")
             approved = []
 
-    # Routes: [(name, bytes, sha256)] and problems, from every matching file that is not a link.
-    route_files = find_routes(root, patterns)
-    if not route_files:
+    # Routes: [(name, bytes, sha256)] and problems, from every file the patterns name.
+    unlisted: set[Path] = set()
+    route_files, route_links, route_outside = match_routes(root, patterns, unlisted)
+    if not (route_files or route_links or route_outside):
         problems.append(f"no route files match {', '.join(patterns)} ({checks_from})")
+    # Never silence: a route in a folder the gate could not list would judge nothing and nobody
+    # would know. Named in the problems, which keep the result from an accept (#340).
+    for folder in sorted(unlisted)[:MAX_UNLISTED]:
+        shown = folder.relative_to(root).as_posix() if folder != root else "(the checkout itself)"
+        problems.append(f"cannot list the folder {shown} while looking for routes ({checks_from})")
+    if len(unlisted) > MAX_UNLISTED:
+        problems.append(f"and {len(unlisted) - MAX_UNLISTED} more folders that cannot be listed ({checks_from})")
     route_problems: list[str] = []
     routes: list[tuple[str, bytes, str]] = []
     schema = _schema("route")
-    for path in route_files:
-        shown = path.relative_to(root).as_posix() if _inside(root, path) else path.name
+    # A file the patterns name that is outside the checkout is never opened. It is listed by its
+    # name and the refusal, as a spec that is a link is: a check the job named did not run.
+    for path in route_outside:
+        shown = path.relative_to(root).as_posix()
+        route_entries[shown] = "refused: outside the checkout"
+        route_problems.append(f"route {shown}: it is outside the checkout (reached through a link) and is not read")
+    # A link to a file goes to the reader with the route files, and the reader refuses it.
+    for path in sorted(route_files + route_links):
+        shown = path.relative_to(root).as_posix()
         try:
             data = read(path, ROUTE_CAP, shown, route_entries)
             doc = _parse(data, shown)
@@ -280,7 +409,8 @@ def read_checks(root: Path, specs: str, patterns: list[str], checks_from: str = 
         h.update(name.encode() + b"\0" + listed[name].encode() + b"\n")
     return Checks(specs=sorted(approved, key=lambda s: s["id"]), drafts=drafts,
                   problems=problems + spec_problems + route_problems, routes=sorted(routes),
-                  found_routes=bool(route_files), spec_entries=spec_entries, route_entries=route_entries,
+                  found_routes=bool(route_files or route_links or route_outside), spec_entries=spec_entries,
+                  route_entries=route_entries,
                   digest=h.hexdigest() if listed else None)
 
 
@@ -397,8 +527,14 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
              base: Path | None = None, heldout: Path | None = None, pr: dict | None = None,
              expectrail_commit: str | None = None, replay: Replay = harness_replay,
              generated_checks: Path | None = None, require_sandbox: bool = False,
-             checks: Checks | None = None) -> dict:
+             checks: Checks | None = None, intent: str = "none") -> dict:
     """Run the gate and write the artifact in ``out``; returns the findings record.
+
+    ``intent`` is what the change says it is for (``fix``, ``change`` or ``none``; issue #284). For
+    ``fix`` an accept also needs a check that failed on the base and passes on the head. Each such
+    check is replayed twice more on each side, and only one that fails on the base and passes on the
+    head all three times demonstrates the repair; with none the decision is needs-review. For
+    ``change`` and ``none`` nothing more is replayed and the rule is as it was.
 
     ``checks`` is the checks as a caller has already read them (``read_checks``). The gate then
     judges with exactly those and reads no spec or route file itself. Without it the gate reads them
@@ -413,6 +549,8 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     ``generated_checks`` is the advisory block a check-generation step wrote (docs/jit.md). It is read
     as untrusted data after the decision is made, and nothing in it can change the decision."""
     repo = repo.resolve()
+    if intent not in rec.INTENTS:
+        raise ConfigError("the intent must be one of: " + ", ".join(rec.INTENTS))
     problems: list[str] = []
     if require_sandbox and replay is harness_replay:
         from harness import sandbox as box
@@ -450,6 +588,10 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         checks = read_checks(checks_root, specs_rel, patterns, checks_from)
     spec_docs, drafts = checks.specs, checks.drafts
     problems += checks.problems
+    # Every problem the one reading of the spec and route files found: a file refused or not valid,
+    # an id or a name used twice, a limit passed, nothing found where the job said to look. With
+    # any of them the checks that run are not all of the project's checks, and `decide` is told.
+    check_problems = len(checks.problems)
     # The replays play copies of the routes made from the bytes that were read (written below, once
     # the work folder is known not to be inside a game): the checkout's route files are not opened again.
     routes_dir = Path(work) / "checks" / "routes"
@@ -530,8 +672,25 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     afters = [c["after"] for c in checks]
     counts = {"checks": len(afters), "passed": afters.count("pass"), "failed": afters.count("fail"),
               "needsReview": len(afters) - afters.count("pass") - afters.count("fail")}
+    repair = None
+    if intent == "fix":
+        # A check that failed on the base and passes on the head may demonstrate the repair. One
+        # failure on the base could be a flaky check, so its route is replayed again on both sides
+        # until each side has REPAIR_RUNS results; only a row that fails every time on the base and
+        # passes every time on the head counts (rec.row_counts). Nothing else is replayed again.
+        claimed = [c for c in checks if c["comparison"] == "REPAIRED"]
+        again = [r for r in route_list if r[0] in {c["route"] for c in claimed}]
+        runs = {(c["spec"], c["route"]): {"base": [c["before"]], "head": [c["after"]]} for c in claimed}
+        for n in range(2, rec.REPAIR_RUNS + 1):
+            for side, folder in (("base", base_game), ("head", head_game)):
+                more = judge_arm(folder, again, spec_docs, work / f"{side}-run{n}", replay, label=side) if again else {}
+                for key, kept in runs.items():
+                    kept[side].append(more[key]["result"])
+        repair = rec.repair_block([{"spec": c["spec"], "route": c["route"], **runs[(c["spec"], c["route"])]}
+                                   for c in claimed])
     isolation = rec.isolation_summary(accounts, require_sandbox)
-    decision, reasons = rec.decide(counts, held, isolation)
+    decision, reasons = rec.decide(counts, held, isolation, check_problems, intent=intent, repair=repair,
+                                   base_judged=any(c["before"] is not None for c in checks))
     if checks_from == "base" and (changed["specs"] or changed["routes"]):
         reasons.append(f"this change edits {changed['specs']} spec and {changed['routes']} route files; "
                        "they judge changes once it merges")
@@ -548,6 +707,11 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         "checksChanged": changed,
         "specs": [{"id": s["id"], "sha256": digest(s), "instruction": _clip(s["instruction"])} for s in spec_docs],
         "drafts": drafts,
+        "checkProblems": check_problems,
+        # Written only when something was declared, so a record of an undeclared change is the record
+        # it was before the field existed and a reader older than the field still reads it.
+        **({"intent": intent} if intent != "none" else {}),
+        **({"repair": repair} if repair is not None else {}),
         # The record lists the routes that were judged, so its checks are every spec on every route.
         "routes": [{"name": n, "sha256": sha} for n, _p, sha in route_list] if head else [],
         "counts": counts,
@@ -592,11 +756,14 @@ def read_generated(path: Path) -> dict:
 
 
 def stopped_record(reason: str, *, pr: dict | None, game: str | None, checks_from: str,
-                   expectrail_commit: str | None, require_sandbox: bool = False) -> dict:
-    """A valid record for a run that could not finish: needs review, and why."""
+                   expectrail_commit: str | None, require_sandbox: bool = False, intent: str = "none") -> dict:
+    """A valid record for a run that could not finish: needs review, and why. An intent that is not
+    one of the three is recorded as ``fix``, the stricter reading; the reason given says what was wrong."""
     held = {"status": "not-used", **HELD_ZERO}
     counts = {"checks": 0, "passed": 0, "failed": 0, "needsReview": 0}
-    decision, reasons = rec.decide(counts, held)
+    intent = intent if intent in rec.INTENTS else "fix"
+    repair = rec.repair_block([]) if intent == "fix" else None
+    decision, reasons = rec.decide(counts, held, intent=intent, repair=repair, base_judged=False)
     try:
         game_path = safe_relative(game, "game-path", root_ok=True)
     except ConfigError:
@@ -604,7 +771,8 @@ def stopped_record(reason: str, *, pr: dict | None, game: str | None, checks_fro
     document = {
         "format": rec.FORMAT, "decision": decision, "reasons": [_clip(reason)] + reasons, "adapter": "godot",
         "pullRequest": pr, "game": {"path": game_path, "headTree": None, "baseTree": None},
-        "checksFrom": checks_from, "checksChanged": {"specs": 0, "routes": 0}, "specs": [], "drafts": 0,
+        "checksFrom": checks_from, "checksChanged": {"specs": 0, "routes": 0}, "specs": [], "drafts": 0, "checkProblems": 0,
+        **({"intent": intent} if intent != "none" else {}), **({"repair": repair} if repair is not None else {}),
         "routes": [], "counts": counts, "checks": [], "findings": [], "heldOut": held,
         "isolation": rec.isolation_summary([], require_sandbox), "reviewPage": None,
         "expectrail": {"version": __version__,
@@ -644,6 +812,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--require-sandbox", action="store_true",
                    help="refuse to replay the game outside the replay sandbox (docs/replay-sandbox.md): "
                         "where bubblewrap cannot run, nothing is replayed and the decision is needs-review")
+    p.add_argument("--intent", default="none",
+                   help="what the change says it is for: fix, change or none (default). A fix is accepted only "
+                        "when a check failed before the change and passes after it, three times of three "
+                        "(docs/ci-gate.md); anything else typed here is read as fix, the stricter path")
     args = p.parse_args(argv)
     out = args.out.resolve()
     if out.exists() and any(out.iterdir()):
@@ -661,16 +833,16 @@ def main(argv: list[str] | None = None) -> int:
         document = run_gate(repo=args.repo, game=args.game, routes=re.split(r"[\s,]+", args.routes),
                             specs=args.specs, out=out, work=work, base=args.base, heldout=args.heldout, pr=pr,
                             expectrail_commit=commit, generated_checks=args.generated_checks,
-                            require_sandbox=args.require_sandbox)
+                            require_sandbox=args.require_sandbox, intent=args.intent)
     except ConfigError as exc:
         document = stopped_record(f"the gate's inputs cannot be used: {exc}", pr=pr, game=args.game,
                                   checks_from=checks_from, expectrail_commit=commit,
-                                  require_sandbox=args.require_sandbox)
+                                  require_sandbox=args.require_sandbox, intent=args.intent)
     except Exception as exc:  # noqa: BLE001 - a crash still leaves a record, so the comment says so
         traceback.print_exc()
         document = stopped_record(f"the gate stopped ({type(exc).__name__}); see the verify job's log", pr=pr,
                                   game=args.game, checks_from=checks_from, expectrail_commit=commit,
-                                  require_sandbox=args.require_sandbox)
+                                  require_sandbox=args.require_sandbox, intent=args.intent)
     if not (out / "findings.json").is_file():
         out.mkdir(parents=True, exist_ok=True)
         (out / "findings.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")

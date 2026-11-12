@@ -21,7 +21,7 @@ the notices its jobs published (the annotations a workflow writes with ``::notic
 jobs use for their public counts). It reads no logs and no artifacts. So a count is checked only where
 the evidence ties it to notices; any other count a row quotes is still as its writer wrote it.
 
-A count is tied to notices in one of two ways. ``count``: of the notices whose title matches ``titled``
+A count is tied to notices in one of three ways. ``count``: of the notices whose title matches ``titled``
 (``*`` stands for any text; titles matching a pattern under ``not`` are left out), ``of`` is how many
 there are and ``n`` is how many have ``count`` as one whole field of their message, the fields being
 what lies between semicolons. Every such notice must say which side it is on: it has ``count``, or it
@@ -29,7 +29,14 @@ has the field the entry names under ``otherwise``, once and not both. A notice w
 "no"; the count is then "cannot tell". An entry without ``otherwise`` needs every notice to have
 ``count``. ``reads``: exactly one notice has the title, and one of its fields is
 ``reads`` with ``{n}`` and ``{of}`` filled in. Nothing is matched as a pattern inside a message: a
-field is equal or it is not.
+field is equal or it is not. ``has``: for a job that publishes one JSON object as its notice's message.
+Every notice with the title must be one JSON object, with no member twice. ``of`` is how many of them
+have each member named under ``where`` equal to the value given there (or to one of the values, when
+a list is given), and ``n`` is how many of those have each member named under ``has`` equal to its
+value. A member is equal only to a value of its own kind: ``true`` is not ``1`` and ``1`` is not
+``"1"``. A notice that is not such an object, that lacks a member the entry names, or that has it as
+another kind of value is not a "no": the count is then "cannot tell". The message is parsed as JSON by
+Python's ``json`` and by nothing else; no text is searched.
 
 A re-run replaces a run's conclusion and jobs on GitHub. The latest attempt is what is read, and what
 a row is held to.
@@ -172,6 +179,87 @@ def fields(message: str) -> list[str]:
     return [part.strip() for part in message.split(";")]
 
 
+class _NotAnObject(Exception):
+    """A notice's message is not one JSON object that can be counted."""
+
+
+def record(message: str) -> dict:
+    """A notice's message as the one JSON object it is. Raises _NotAnObject for anything else.
+
+    A member there twice is refused at any depth (Python's parser would keep the last and say
+    nothing), and so are ``NaN`` and ``Infinity``, which are not JSON.
+    """
+    def pairs(items: list) -> dict:
+        names = [name for name, _ in items]
+        twice = next((name for name in names if names.count(name) > 1), None)
+        if twice is not None:
+            raise _NotAnObject(f"cannot be counted: the member {twice!r} is there twice")
+        return dict(items)
+
+    def constant(name: str):
+        raise _NotAnObject(f"cannot be counted: {name} is not a JSON number")
+
+    try:
+        got = json.loads(message, object_pairs_hook=pairs, parse_constant=constant)
+    except (ValueError, RecursionError) as exc:
+        raise _NotAnObject(f"is not JSON: {type(exc).__name__}: {str(exc)[:80]}") from exc
+    if not isinstance(got, dict):
+        raise _NotAnObject("is JSON and not an object")
+    return got
+
+
+def members(named: dict) -> str:
+    """The members an entry names, as words: ``"kind": "clean" or "intentional"``."""
+    def one_of(wanted) -> str:
+        return " or ".join(json.dumps(value) for value in (wanted if isinstance(wanted, list) else [wanted]))
+    return " and ".join(f"{json.dumps(name)}: {one_of(wanted)}" for name, wanted in named.items())
+
+
+_KINDS = {bool: "true or false", int: "a whole number", str: "text"}
+
+
+def _equal(title: str, got: dict, name: str, wanted) -> bool | str:
+    """Whether a notice's member is the value wanted (or one of them), or why that cannot be told."""
+    wanted = wanted if isinstance(wanted, list) else [wanted]
+    kinds = {type(value) for value in wanted}
+    if len(kinds) != 1 or next(iter(kinds)) not in _KINDS:
+        return f"the entry's values for {name!r} are not all true or false, all whole numbers or all text"
+    kind = next(iter(kinds))
+    if name not in got:
+        return f"the notice {title!r} has no member {name!r}"
+    if type(got[name]) is not kind:
+        return (f"the notice {title!r} has the member {name!r} as {json.dumps(got[name])[:40]}, which is not "
+                f"{_KINDS[kind]}")
+    return any(got[name] == value for value in wanted)
+
+
+def _held(chosen: list, where: dict, has: dict) -> tuple[int, int, list[str]]:
+    """``(having, kept, unclear)`` for a count read from notices that are JSON objects.
+
+    ``kept`` is how many notices have every ``where`` member as given, ``having`` how many of those
+    have every ``has`` member as given. Anything that stops a notice from being placed on one side
+    is in ``unclear``, and then neither number means anything.
+    """
+    unclear: list[str] = []
+    kept: list[tuple[dict, dict]] = []
+    for item in chosen:
+        try:
+            got = record(item["message"])
+        except _NotAnObject as exc:
+            unclear.append(f"the message of the notice {item['title']!r} {exc}")
+            continue
+        answers = [_equal(item["title"], got, name, wanted) for name, wanted in where.items()]
+        unclear += [answer for answer in answers if isinstance(answer, str)]
+        if all(answer is True for answer in answers):
+            kept.append((item, got))
+    having = 0
+    for item, got in kept:
+        answers = [_equal(item["title"], got, name, wanted) for name, wanted in has.items()]
+        unclear += [answer for answer in answers if isinstance(answer, str)]
+        having += all(answer is True for answer in answers)
+    return having, len(kept), unclear
+
+
 def _run_notices(run: dict, notices: Notices | None) -> list:
     """Every notice the run's jobs published, each with its job's name and how the job ended.
 
@@ -186,6 +274,12 @@ def _run_notices(run: dict, notices: Notices | None) -> list:
             continue
         try:
             found = notices(job["id"])
+            if not isinstance(found, list):
+                raise RunUnreadable(f"job {job['name']!r}: the notices are not a list")
+            for item in found:
+                if not (isinstance(item, dict) and isinstance(item.get("title"), str)
+                        and isinstance(item.get("message"), str)):
+                    raise RunUnreadable(f"job {job['name']!r}: a notice's title or message is not text")
             out += [{"job": job["name"], "conclusion": job["conclusion"], "title": item["title"],
                      "message": item["message"]} for item in found]
         except RunUnreadable:
@@ -258,6 +352,18 @@ def _counts(cite: dict, head: str, noticed: list | RunUnreadable) -> list[str]:
             elif (having, len(chosen)) != (count["n"], count["of"]):
                 out.append(f"{what}: {count['n']} of {count['of']} is recorded and the run's notices give "
                            f"{having} of {len(chosen)} (titled {count['titled']!r}, with the field {count['count']!r})")
+        elif "has" in count:
+            where = count.get("where", {})
+            having, kept, unclear = _held(chosen, where, count["has"])
+            given = f"titled {count['titled']!r}" + (f", where {members(where)}" if where else "")
+            if unclear:
+                more = f" (and {len(unclear) - 1} more)" if len(unclear) > 1 else ""
+                out.append(f"{what}: cannot tell: {unclear[0]}{more}")
+            elif not kept:
+                out.append(f"{what}: cannot tell: the run published no notice {given}")
+            elif (having, kept) != (count["n"], count["of"]):
+                out.append(f"{what}: {count['n']} of {count['of']} is recorded and the run's notices give "
+                           f"{having} of {kept} ({given}, with {members(count['has'])})")
         elif len(chosen) != 1:
             out.append(f"{what}: cannot tell: {len(chosen)} notices are titled {count['titled']!r}, and a count read "
                        "from one notice takes exactly one")

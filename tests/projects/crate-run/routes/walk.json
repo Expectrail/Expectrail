@@ -1,0 +1,15 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "walk",
+  "description": "Walk right, jump twice, stop. Two and a half seconds at 60 ticks per second.",
+  "ticks": 150,
+  "seed": 1,
+  "events": [
+    {"tick": 10, "action": "right", "pressed": true},
+    {"tick": 40, "action": "jump", "pressed": true},
+    {"tick": 50, "action": "jump", "pressed": false},
+    {"tick": 90, "action": "jump", "pressed": true},
+    {"tick": 100, "action": "jump", "pressed": false},
+    {"tick": 130, "action": "right", "pressed": false}
+  ]
+}

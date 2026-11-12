@@ -344,6 +344,274 @@
     "title": "Demo run 1",
     "message": "decision accept; attempts 1: accept; triage muse-wonder-1.0; fixer muse; trust ok; verified on harness; signed True; 669.2 s; SAM images 157"
    }
+  ],
+  "41248745687": [
+   {
+    "job": "blind (clean)",
+    "conclusion": "success",
+    "title": "Blind time clean",
+    "message": "13 s"
+   },
+   {
+    "job": "blind (clean)",
+    "conclusion": "success",
+    "title": "Blind clean",
+    "message": "{\"id\":\"clean\",\"kind\":\"clean\",\"flagged\":false,\"reproduced\":0,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":22,\"wallSeconds\":12.8,\"results\":{\"pass\":91,\"fail\":0,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (f02)",
+    "conclusion": "success",
+    "title": "Blind time f02",
+    "message": "123 s"
+   },
+   {
+    "job": "blind (f02)",
+    "conclusion": "success",
+    "title": "Blind f02",
+    "message": "{\"id\":\"f02\",\"kind\":\"defect\",\"flagged\":true,\"reproduced\":4,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":38,\"wallSeconds\":122.9,\"results\":{\"pass\":87,\"fail\":4,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (f08)",
+    "conclusion": "success",
+    "title": "Blind time f08",
+    "message": "74 s"
+   },
+   {
+    "job": "blind (f08)",
+    "conclusion": "success",
+    "title": "Blind f08",
+    "message": "{\"id\":\"f08\",\"kind\":\"defect\",\"flagged\":false,\"reproduced\":0,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":22,\"wallSeconds\":73.8,\"results\":{\"pass\":91,\"fail\":0,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (f07)",
+    "conclusion": "success",
+    "title": "Blind time f07",
+    "message": "74 s"
+   },
+   {
+    "job": "blind (f07)",
+    "conclusion": "success",
+    "title": "Blind f07",
+    "message": "{\"id\":\"f07\",\"kind\":\"defect\",\"flagged\":false,\"reproduced\":0,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":22,\"wallSeconds\":73.8,\"results\":{\"pass\":91,\"fail\":0,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (f10)",
+    "conclusion": "success",
+    "title": "Blind time f10",
+    "message": "55 s"
+   },
+   {
+    "job": "blind (f10)",
+    "conclusion": "success",
+    "title": "Blind f10",
+    "message": "{\"id\":\"f10\",\"kind\":\"intentional\",\"flagged\":false,\"reproduced\":0,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":22,\"wallSeconds\":54.2,\"results\":{\"pass\":91,\"fail\":0,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (f05)",
+    "conclusion": "success",
+    "title": "Blind time f05",
+    "message": "75 s"
+   },
+   {
+    "job": "blind (f05)",
+    "conclusion": "success",
+    "title": "Blind f05",
+    "message": "{\"id\":\"f05\",\"kind\":\"defect\",\"flagged\":false,\"reproduced\":0,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":22,\"wallSeconds\":74.5,\"results\":{\"pass\":91,\"fail\":0,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (f01)",
+    "conclusion": "success",
+    "title": "Blind time f01",
+    "message": "62 s"
+   },
+   {
+    "job": "blind (f01)",
+    "conclusion": "success",
+    "title": "Blind f01",
+    "message": "{\"id\":\"f01\",\"kind\":\"defect\",\"flagged\":true,\"reproduced\":1,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":24,\"wallSeconds\":62.5,\"results\":{\"pass\":90,\"fail\":1,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (f06)",
+    "conclusion": "success",
+    "title": "Blind time f06",
+    "message": "71 s"
+   },
+   {
+    "job": "blind (f06)",
+    "conclusion": "success",
+    "title": "Blind f06",
+    "message": "{\"id\":\"f06\",\"kind\":\"defect\",\"flagged\":true,\"reproduced\":1,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":24,\"wallSeconds\":70.9,\"results\":{\"pass\":90,\"fail\":1,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (f04)",
+    "conclusion": "success",
+    "title": "Blind time f04",
+    "message": "65 s"
+   },
+   {
+    "job": "blind (f04)",
+    "conclusion": "success",
+    "title": "Blind f04",
+    "message": "{\"id\":\"f04\",\"kind\":\"defect\",\"flagged\":false,\"reproduced\":0,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":22,\"wallSeconds\":64.5,\"results\":{\"pass\":91,\"fail\":0,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (f09)",
+    "conclusion": "success",
+    "title": "Blind time f09",
+    "message": "113 s"
+   },
+   {
+    "job": "blind (f09)",
+    "conclusion": "success",
+    "title": "Blind f09",
+    "message": "{\"id\":\"f09\",\"kind\":\"defect\",\"flagged\":true,\"reproduced\":4,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":38,\"wallSeconds\":113.1,\"results\":{\"pass\":87,\"fail\":4,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (f03)",
+    "conclusion": "success",
+    "title": "Blind time f03",
+    "message": "64 s"
+   },
+   {
+    "job": "blind (f03)",
+    "conclusion": "success",
+    "title": "Blind f03",
+    "message": "{\"id\":\"f03\",\"kind\":\"intentional\",\"flagged\":false,\"reproduced\":0,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":22,\"wallSeconds\":64.2,\"results\":{\"pass\":91,\"fail\":0,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   }
+  ],
+  "41319184209": [
+   {
+    "job": "blind (clean)",
+    "conclusion": "success",
+    "title": "Blind time clean",
+    "message": "14 s"
+   },
+   {
+    "job": "blind (clean)",
+    "conclusion": "success",
+    "title": "Blind clean",
+    "message": "{\"id\":\"clean\",\"kind\":\"clean\",\"flagged\":false,\"reproduced\":0,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":22,\"wallSeconds\":14.0,\"results\":{\"pass\":91,\"fail\":0,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (g09)",
+    "conclusion": "success",
+    "title": "Blind time g09",
+    "message": "56 s"
+   },
+   {
+    "job": "blind (g09)",
+    "conclusion": "success",
+    "title": "Blind g09",
+    "message": "{\"id\":\"g09\",\"kind\":\"intentional\",\"flagged\":false,\"reproduced\":0,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":22,\"wallSeconds\":55.6,\"results\":{\"pass\":91,\"fail\":0,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (g01)",
+    "conclusion": "success",
+    "title": "Blind time g01",
+    "message": "77 s"
+   },
+   {
+    "job": "blind (g01)",
+    "conclusion": "success",
+    "title": "Blind g01",
+    "message": "{\"id\":\"g01\",\"kind\":\"intentional\",\"flagged\":false,\"reproduced\":0,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":22,\"wallSeconds\":76.9,\"results\":{\"pass\":91,\"fail\":0,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (g07)",
+    "conclusion": "success",
+    "title": "Blind time g07",
+    "message": "74 s"
+   },
+   {
+    "job": "blind (g07)",
+    "conclusion": "success",
+    "title": "Blind g07",
+    "message": "{\"id\":\"g07\",\"kind\":\"defect\",\"flagged\":false,\"reproduced\":0,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":22,\"wallSeconds\":73.3,\"results\":{\"pass\":91,\"fail\":0,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (g06)",
+    "conclusion": "success",
+    "title": "Blind time g06",
+    "message": "61 s"
+   },
+   {
+    "job": "blind (g06)",
+    "conclusion": "success",
+    "title": "Blind g06",
+    "message": "{\"id\":\"g06\",\"kind\":\"defect\",\"flagged\":false,\"reproduced\":0,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":22,\"wallSeconds\":61.3,\"results\":{\"pass\":86,\"fail\":0,\"not_exercised\":69,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (g08)",
+    "conclusion": "success",
+    "title": "Blind time g08",
+    "message": "80 s"
+   },
+   {
+    "job": "blind (g08)",
+    "conclusion": "success",
+    "title": "Blind g08",
+    "message": "{\"id\":\"g08\",\"kind\":\"defect\",\"flagged\":true,\"reproduced\":1,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":24,\"wallSeconds\":79.5,\"results\":{\"pass\":88,\"fail\":3,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (g02)",
+    "conclusion": "success",
+    "title": "Blind time g02",
+    "message": "58 s"
+   },
+   {
+    "job": "blind (g02)",
+    "conclusion": "success",
+    "title": "Blind g02",
+    "message": "{\"id\":\"g02\",\"kind\":\"defect\",\"flagged\":false,\"reproduced\":0,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":22,\"wallSeconds\":57.2,\"results\":{\"pass\":89,\"fail\":0,\"not_exercised\":66,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (g10)",
+    "conclusion": "success",
+    "title": "Blind time g10",
+    "message": "70 s"
+   },
+   {
+    "job": "blind (g10)",
+    "conclusion": "success",
+    "title": "Blind g10",
+    "message": "{\"id\":\"g10\",\"kind\":\"defect\",\"flagged\":false,\"reproduced\":0,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":22,\"wallSeconds\":69.9,\"results\":{\"pass\":91,\"fail\":0,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (g05)",
+    "conclusion": "success",
+    "title": "Blind time g05",
+    "message": "72 s"
+   },
+   {
+    "job": "blind (g05)",
+    "conclusion": "success",
+    "title": "Blind g05",
+    "message": "{\"id\":\"g05\",\"kind\":\"defect\",\"flagged\":false,\"reproduced\":0,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":22,\"wallSeconds\":71.5,\"results\":{\"pass\":91,\"fail\":0,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (g04)",
+    "conclusion": "success",
+    "title": "Blind time g04",
+    "message": "66 s"
+   },
+   {
+    "job": "blind (g04)",
+    "conclusion": "success",
+    "title": "Blind g04",
+    "message": "{\"id\":\"g04\",\"kind\":\"defect\",\"flagged\":true,\"reproduced\":1,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":24,\"wallSeconds\":65.6,\"results\":{\"pass\":88,\"fail\":3,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   },
+   {
+    "job": "blind (g03)",
+    "conclusion": "success",
+    "title": "Blind time g03",
+    "message": "105 s"
+   },
+   {
+    "job": "blind (g03)",
+    "conclusion": "success",
+    "title": "Blind g03",
+    "message": "{\"id\":\"g03\",\"kind\":\"defect\",\"flagged\":true,\"reproduced\":4,\"otherFindings\":0,\"completion\":\"complete\",\"episodes\":38,\"wallSeconds\":104.3,\"results\":{\"pass\":87,\"fail\":4,\"not_exercised\":64,\"insufficient_observation\":0,\"execution_error\":0},\"planner\":\"skipped\"}"
+   }
   ]
  }
 }

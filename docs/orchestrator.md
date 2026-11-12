@@ -76,15 +76,22 @@ record is not published as the job's evidence, because it decides about a game n
 **The checks that judge are the ones the job names.** There is one reader of the specs and routes,
 the gate's (`expectrail.gate.verify.read_checks`): each file is read once, no link is followed, and
 a file over the size cap is refused. The job's `policyDigest` is that reader's digest: every `*.json`
-in the specs folder (drafts included) and every route file the patterns match that is not a link,
-each by the sha256 of the bytes read, or by the reader's refusal when it would not read the file. A
-spec that is a link is in the digest by its name and the refusal; what it leads to is never opened.
+in the specs folder (drafts included) and every route file the patterns name, each by the sha256 of
+the bytes read, or by the reader's refusal when it would not read the file. A spec or a route that
+is a link to a file, and a route outside the checkout, is in the digest by its name and the refusal;
+what it leads to is never opened.
 When the job runs, the engine reads the checks once more with the same reader. If the digest is not
 the job's, the job stops ("the checks changed after the job was created") and nothing is replayed.
 Otherwise the gate is handed what was read and opens no spec or route file itself: the routes the
 replays play are copies made from the bytes that were read. There is no second source to fall back
 to. After the run the worker holds the digest the engine judged with against the job's, as it does
 the game's trees.
+
+**A route pattern means the same on every Python.** The patterns are matched by the gate's own
+matcher ([how a pattern is read](ci-gate.md#route-patterns)), so a job's `policyDigest` and the
+routes that judge do not depend on the Python that runs the worker. The check that keeps the jobs
+folder out of where routes are looked for (`request.pattern_reaches`) compares names with the same
+function, and also without regard to case, so it can only say yes more often than the matcher finds.
 
 **A request names paths inside the checkout only.** `game`, `specs` and every route pattern are
 checked as text by the gate's own rule (`gate.verify.safe_relative`: relative, no `..`, no backslash)
@@ -170,6 +177,26 @@ returns the diagnostics that stop a job before anything runs, and `execute`, whi
 into the job's `staging/` and returns a decision. `godot` is the CI gate's verification
 (`expectrail.gate.verify.run_gate`), so for the same inputs the orchestrator and the gate decide
 alike; a test holds that on the gate tests' stand-in replay.
+
+## A second Godot project
+
+`verify` takes its game from `--head` and `--game`. A test holds that the six modules of the gate
+and the orchestrator on that path do not name the bundled game, and that the gate always hands the
+harness a game. `harness.run.run` itself still falls back to the bundled game when it is given
+none; this path never takes that fallback. [`tests/projects/crate-run`](../tests/projects/crate-run/README.md) is
+a small Godot project that shares no file with it, and `tests/test_second_project.py` verifies both
+through this one command with real Godot replays (CI job `seeded-bugs`; locally with
+`EXPECTRAIL_ENGINE_TESTS=required`), and the CI job `package` runs the installed command on it:
+
+```
+expectrail verify --head CHECKOUT --game project --routes routes/walk.json --specs specs
+```
+
+What a second project still has to match, because it is in code and not in the project's own config
+(#259): the player is the node named `Player`, the ground is the collision of `TileMapLayer` tiles,
+and the position log draws the player's box at the bundled game's size (40 by 60 pixels, its bottom
+13.25 below the node's origin). A project without tile collision has no ground line, and a check
+about the ground then needs review.
 
 ## What is not built yet
 

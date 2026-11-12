@@ -11,6 +11,8 @@
     "grade": { "enum": ["fixture", "diagnostic", "isolated", "protected"] },
     "text": { "type": "string", "minLength": 1 },
     "field": { "type": "string", "pattern": "^[^;\\s]([^;\\n\\r]*[^;\\s])?$", "description": "One whole field of a notice's message: no semicolon, no line break, no space at either end." },
+    "member": { "type": ["string", "integer", "boolean"], "description": "The value of one member of a JSON notice. 1.0 is not a whole number here: `python3 -m expectrail.capabilities check` refuses it." },
+    "members": { "type": "object", "minProperties": 1, "additionalProperties": { "$ref": "#/$defs/member" } },
     "conclusion": { "enum": ["success", "failure", "cancelled", "timed_out", "skipped", "neutral", "action_required", "stale"] },
     "repoPath": { "type": "string", "pattern": "^[A-Za-z0-9_.][A-Za-z0-9_./-]*(#[A-Za-z0-9_-]+)?$" },
     "runUrl": { "type": "string", "pattern": "^https://github\\.com/Expectrail/Expectrail/actions/runs/[0-9]+(/job/[0-9]+)?$" },
@@ -23,7 +25,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["says", "n", "of", "titled"],
-      "description": "One count tied to a run's notices (the annotations a job writes with ::notice). With `count`: `of` is how many notices have a title matching `titled`, and `n` is how many of those have `count` as one whole field of their message; every one of those notices must have `count` or `otherwise`, once and not both, or the count cannot be told. With `reads`: exactly one notice has the title and one of its fields is `reads` with {n} and {of} filled in. A message's fields are what lies between its semicolons.",
+      "description": "One count tied to a run's notices (the annotations a job writes with ::notice). With `count`: `of` is how many notices have a title matching `titled`, and `n` is how many of those have `count` as one whole field of their message; every one of those notices must have `count` or `otherwise`, once and not both, or the count cannot be told. With `reads`: exactly one notice has the title and one of its fields is `reads` with {n} and {of} filled in. A message's fields are what lies between its semicolons. With `has`: every notice with the title is one JSON object; `of` is how many have the members under `where` as given (all of them, without `where`), and `n` is how many of those have the members under `has` as given. Words in `says` that hold no count speak of every notice counted, so `n` must be `of`; the check holds that.",
       "properties": {
         "says": { "$ref": "#/$defs/text", "description": "The words in `shows` this entry backs, for example \"8 of 8\". When they hold a count it must be `n` of `of`." },
         "n": { "type": "integer", "minimum": 0 },
@@ -38,10 +40,23 @@
         },
         "count": { "$ref": "#/$defs/field", "description": "The field a notice must have, whole, to be counted in `n`." },
         "otherwise": { "$ref": "#/$defs/field", "description": "With `count`: the field a notice that is not counted in `n` must have instead, for example \"caught with SAM off: no\" beside \"caught with SAM off: yes\". Required whenever `n` is less than `of`; a schema cannot compare two numbers, so `python3 -m expectrail.capabilities check` and the test suite hold that. Without it every notice must have `count`." },
-        "reads": { "allOf": [ { "$ref": "#/$defs/field" }, { "pattern": "\\{n\\}.*\\{of\\}|\\{of\\}.*\\{n\\}" } ], "description": "The field the one notice must have, with {n} and {of} where the numbers go." }
+        "reads": { "allOf": [ { "$ref": "#/$defs/field" }, { "pattern": "(^|[^0-9{}])\\{n\\}[^0-9{}](.*[^0-9{}])?\\{of\\}([^0-9{}]|$)|(^|[^0-9{}])\\{of\\}[^0-9{}](.*[^0-9{}])?\\{n\\}([^0-9{}]|$)" } ], "description": "The field the one notice must have, with {n} and {of} where the numbers go. Neither may stand right beside a digit or beside the other: \"{n}{of}\" would be filled the same by 1 of 11 and by 11 of 1." },
+        "has": { "$ref": "#/$defs/members", "description": "For notices whose message is one JSON object: the members a notice must have, each equal to the value given, to be counted in `n`. Every notice counted in `of` must have each of these members with a value of the same kind (true or false, a whole number, text), or the count cannot be told." },
+        "where": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "anyOf": [
+              { "$ref": "#/$defs/member" },
+              { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "type": "string" } },
+              { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "type": "integer" } }
+            ]
+          },
+          "description": "With `has`: the members a notice with the title must have, each equal to the value given or to one of a list of values, to be counted in `of`. Every notice with the title must have each of these members with a value of the same kind, or the count cannot be told."
+        }
       },
-      "oneOf": [ { "required": ["count"] }, { "required": ["reads"] } ],
-      "dependentRequired": { "otherwise": ["count"] }
+      "oneOf": [ { "required": ["count"] }, { "required": ["reads"] }, { "required": ["has"] } ],
+      "dependentRequired": { "otherwise": ["count"], "where": ["has"] }
     },
     "evidence": {
       "type": "object",

@@ -667,12 +667,82 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41248745687",
           "conclusion": "success",
+          "counts": [
+            {
+              "says": "4 of 8",
+              "n": 4,
+              "of": 8,
+              "titled": "Blind *",
+              "not": [
+                "Blind time *"
+              ],
+              "where": {
+                "kind": "defect"
+              },
+              "has": {
+                "flagged": true
+              }
+            },
+            {
+              "says": "no healthy build flagged",
+              "n": 3,
+              "of": 3,
+              "titled": "Blind *",
+              "not": [
+                "Blind time *"
+              ],
+              "where": {
+                "kind": [
+                  "clean",
+                  "intentional"
+                ]
+              },
+              "has": {
+                "flagged": false
+              }
+            }
+          ],
           "shows": "blind, fresh set 1: 4 of 8 defects flagged, no healthy build flagged"
         },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41319184209",
           "conclusion": "success",
+          "counts": [
+            {
+              "says": "3 of 8",
+              "n": 3,
+              "of": 8,
+              "titled": "Blind *",
+              "not": [
+                "Blind time *"
+              ],
+              "where": {
+                "kind": "defect"
+              },
+              "has": {
+                "flagged": true
+              }
+            },
+            {
+              "says": "no healthy build flagged",
+              "n": 3,
+              "of": 3,
+              "titled": "Blind *",
+              "not": [
+                "Blind time *"
+              ],
+              "where": {
+                "kind": [
+                  "clean",
+                  "intentional"
+                ]
+              },
+              "has": {
+                "flagged": false
+              }
+            }
+          ],
           "shows": "blind, fresh set 2: 3 of 8 defects flagged, no healthy build flagged"
         },
         {

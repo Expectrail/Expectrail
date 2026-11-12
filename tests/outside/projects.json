@@ -1,0 +1,24 @@
+{
+  "format": "expectrail.outside-projects/v0",
+  "note": "Godot projects the team did not write, fetched at a pinned commit and never copied into this repository. Routes and the list are ours. See docs/outside-projects.md.",
+  "projects": [
+    {
+      "name": "kinematic-character",
+      "repository": "https://github.com/godotengine/godot-demo-projects.git",
+      "commit": "b761b4cd5718a7118f2c95eb55f181d0a5f004f1",
+      "path": "2d/kinematic_character",
+      "licence": "MIT",
+      "kind": "platformer with moving and one-way platforms; CharacterBody2D player; 530 by 495; 120 ticks a second",
+      "routes": "tests/outside/kinematic-character/routes"
+    },
+    {
+      "name": "dodge-the-creeps",
+      "repository": "https://github.com/godotengine/godot-demo-projects.git",
+      "commit": "b761b4cd5718a7118f2c95eb55f181d0a5f004f1",
+      "path": "2d/dodge_the_creeps",
+      "licence": "MIT",
+      "kind": "top-down; Area2D player; no tiles; enemies spawn at random; starts from a button whose shortcut is an action; 480 by 720; 60 ticks a second",
+      "routes": "tests/outside/dodge-the-creeps/routes"
+    }
+  ]
+}

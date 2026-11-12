@@ -1,0 +1,96 @@
+{
+  "format": "expectrail.findings/v0",
+  "decision": "needs-review",
+  "reasons": [
+    "repair-not-demonstrated: this change is declared as a fix, and none of the 2 checks that ran failed before the change, so no check reproduced the reported bug and nothing shows it is fixed"
+  ],
+  "adapter": "godot",
+  "pullRequest": {
+    "number": 7,
+    "headSha": "1111111111111111111111111111111111111111",
+    "baseSha": "2222222222222222222222222222222222222222"
+  },
+  "game": {
+    "path": "game/platformer",
+    "headTree": "696d3a2911d4b812223555e8da870c23381bdbe3b382c0e4f603518d7fbab55c",
+    "baseTree": "696d3a2911d4b812223555e8da870c23381bdbe3b382c0e4f603518d7fbab55c"
+  },
+  "checksFrom": "base",
+  "checksChanged": {
+    "specs": 0,
+    "routes": 0
+  },
+  "specs": [
+    {
+      "id": "player-stays-above-ground",
+      "sha256": "4829b493e18b84208fcf9790004d822b775d12c3cb3505b4063b3ba2a6585d55",
+      "instruction": "The player never falls through the ground."
+    }
+  ],
+  "drafts": 0,
+  "checkProblems": 0,
+  "intent": "fix",
+  "repair": {
+    "runs": 3,
+    "demonstrated": 0,
+    "rows": []
+  },
+  "routes": [
+    {
+      "name": "combat",
+      "sha256": "2183a646295437eda61b2978a12451a7cebdb4eee3c2fb97d6f4db5fb1ce8afa"
+    },
+    {
+      "name": "smoke",
+      "sha256": "0db750ef7ab79124ccd80c63c03f117d84c579281f7ca487f0877f829660f02d"
+    }
+  ],
+  "counts": {
+    "checks": 2,
+    "passed": 2,
+    "failed": 0,
+    "needsReview": 0
+  },
+  "checks": [
+    {
+      "spec": "player-stays-above-ground",
+      "route": "combat",
+      "before": "pass",
+      "after": "pass",
+      "comparison": "PRESERVED",
+      "findingId": null
+    },
+    {
+      "spec": "player-stays-above-ground",
+      "route": "smoke",
+      "before": "pass",
+      "after": "pass",
+      "comparison": "PRESERVED",
+      "findingId": null
+    }
+  ],
+  "findings": [],
+  "heldOut": {
+    "status": "not-used",
+    "routes": 0,
+    "checks": 0,
+    "passed": 0,
+    "failed": 0,
+    "needsReview": 0
+  },
+  "isolation": {
+    "replays": 4,
+    "sandboxed": 0,
+    "required": false,
+    "sandbox": null,
+    "reasons": [
+      "the replay did not say whether it was sandboxed"
+    ]
+  },
+  "reviewPage": "review/index.html",
+  "expectrail": {
+    "version": "0.1.0",
+    "commit": null
+  },
+  "createdAt": "2026-11-09T18:47:12Z"
+}

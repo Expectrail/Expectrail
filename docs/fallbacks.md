@@ -45,10 +45,14 @@ because nothing was verified. A run with SAM off, on Glimmer checked against the
 fixtures alone sends nothing. The check does not reach Glimmer: an outage that starts after it is
 the judge ladder's.
 
-The kinds are `auth`, `credit`, `rate-limit`, `server`, `network`, `request` and `unknown`
+The kinds are `auth`, `credit`, `budget`, `rate-limit`, `server`, `network`, `request` and `unknown`
 (`agents.sam_observations.SamError`). Meta's out-of-credit reply has never been observed, so `credit`
 means a 402, or a 403 or 429 whose body speaks of credit, billing, balance, payment or an insufficient
 quota. A per-minute quota is a `rate-limit`.
+
+`budget` is not an outage of the judge: it is this run's own SAM spend cap, reached or never set
+(`EXPECTRAIL_SAM_USD_CAP`, [sam.md](sam.md)). The ladder ends on it at once. It does not ask SAM
+again and it does not go on to Glimmer: the candidate stays needs-review for a person.
 
 ## The judge ladder: the judge did not answer
 

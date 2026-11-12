@@ -197,6 +197,19 @@ prints how many requests it would send.
 
 ## Run it
 
+**Every run needs a spend cap (November 12, 2026).** `EXPECTRAIL_SAM_USD_CAP` is the most one run
+may spend on SAM, in US dollars at list price ($2.50 per 1,000 images, $0.20 per 1,000 video
+frames). Every try is counted against it before it is sent, a failed try included, so the count can
+only be over what is billed. A request that would pass the cap is not sent: the run's checks that
+still needed SAM end as needs-review with the reason. The judge ladder ends there: it does not
+wait and ask again, and it does not go on to Glimmer, because a stop that holds spend must not
+start other spend and an accept must not come from a judge that was asked only because the money
+ran out. The candidate stays needs-review for a person. **Without the variable nothing is sent at all.** The limit for the
+project is $200 in a calendar month and never more (#327); the cap is what gives every run a worst
+case, and the count across the month is the next part of #267. **No workflow in this repository
+sets the variable yet, so every live SAM call from a workflow stops with that reason until one
+does.** That is on purpose: Sean goes through each live run and its cap first.
+
 **From GitHub, no setup.** Actions, then **SAM probe**, then **Run workflow**. It renders the clean
 game and every seeded bug, probes every 10th frame (13 frames a run), and puts `probe.md` in the
 run summary. Overlays and contact sheets are in the `sam-probe` artifact. It uses the
@@ -207,6 +220,7 @@ Actions list once this file is on `main`.
 
 ```sh
 export MODEL_API_KEY=...                      # or put it in .env
+export EXPECTRAIL_SAM_USD_CAP=0.50            # the most this run may spend; nothing is sent without it
 python3 -m harness.check_seeded --out runs/seeded          # clean + seeded bugs, with frames
 python3 -m agents.sam_probe --runs runs/seeded/*/ \
   --spec specs/player-stays-above-ground.json --every 10 --dry-run   # what it would send
@@ -236,6 +250,167 @@ to 40714993165 on all four. Their frames never left the runner; only the per-spe
 **Prompt sweeps.** `--sweep player="blue robot|robot boy|astronaut"` tries several prompts for one
 object over the same frames; `--set ground=grass` probes one other prompt without editing the spec.
 Both are inputs on the SAM probe workflow, together with `runs` to probe only some runs.
+
+## Asking with a point at the engine's player position (November 12)
+
+**Words did not find the player in a game the team did not write.** Four runs of the outside SAM
+probe on November 12, 13 frames each and one image a prompt, 104 images in all:
+
+| Run | Project | Prompt | Frames with a match | Matches a frame |
+| --- | --- | --- | --- | --- |
+| [43292219671](https://github.com/Expectrail/Expectrail/actions/runs/43292219671) | kinematic-character | player character | 0 of 13 | 0 |
+| [43293706871](https://github.com/Expectrail/Expectrail/actions/runs/43293706871) | kinematic-character | small square | 13 of 13, median score 0.84 | 38 to 46 |
+| the same | kinematic-character | grey square | 0 of 13 | 0 |
+| the same | kinematic-character | small grey square | 0 of 13 | 0 |
+| [43294012542](https://github.com/Expectrail/Expectrail/actions/runs/43294012542) | dodge-the-creeps | player character | 0 of 13 | 0 |
+| [43294995368](https://github.com/Expectrail/Expectrail/actions/runs/43294995368) | dodge-the-creeps | grey monster | 0 of 13 | 0 |
+| the same | dodge-the-creeps | round grey creature | 0 of 13 | 0 |
+| the same | dodge-the-creeps | one-eyed creature | 0 of 13 | 0 |
+
+The kinematic demo's player is a grey square in a level made of squares: the one prompt that found
+anything found every square. The frames of these runs were not looked at by anyone, so a blank
+capture of Dodge the Creeps is not ruled out.
+
+**A point asks a different question.** The Model API takes a point as a prompt ("what is the
+object drawn at this pixel") in place of words; the two cannot be mixed in one request, and there
+is no way to give it a picture of the sprite
+([the API's page](https://dev.meta.ai/docs/sam/segmenting), read November 12). The engine's
+position log says where the player is, the camera it logs places that in the frame, and
+`agents/sam_anchor.py` asks SAM about that pixel:
+
+```sh
+export EXPECTRAIL_SAM_USD_CAP=0.50
+python3 -m agents.sam_anchor --runs runs/seeded/* --every 10 --out runs/sam-anchor --dry-run   # the points, nothing sent
+python3 -m agents.sam_anchor --runs runs/seeded/* --every 10 --out runs/sam-anchor
+```
+
+For each probed frame it reports the box that came back, its size in the game's own pixels, how
+far it reaches above and below the player's origin, its confidence when one is given, whether it
+holds the point, and how much of the frame it covers. It is a probe: it decides nothing and no
+verdict reads it. From GitHub: **Outside SAM probe** with `anchor` ticked for an outside project,
+**SAM probe** in probe mode with `anchor` ticked for the bundled game and its seeded bugs. Both
+take `sam_usd_cap`, at most 2. One image a frame: 13 a run at most, 95 for the bundled game's nine
+runs ($0.24 at the list price of an image), because the fall-through runs leave the picture.
+
+### What the first live runs showed (November 12)
+
+Five runs, 308 images, $0.77 counted at the list price of an image. Every answer came with a
+confidence. The second bundled run repeated the first by accident (the `lift` field was left at
+0): all 95 of its answers are the same as the first run's, to the pixel and to the last digit of
+the confidence.
+
+**The two outside games, clean, point at the origin.**
+
+| Run | Project | Asked | Box holds the point | Box (game px) | Confidence |
+| --- | --- | --- | --- | --- | --- |
+| [43304967915](https://github.com/Expectrail/Expectrail/actions/runs/43304967915) | kinematic-character | 13 of 13 | 13 | 16 x 16 or 16 x 17 in every frame (the sprite is 16 x 16) | 0.91 to 0.95 |
+| [43305243223](https://github.com/Expectrail/Expectrail/actions/runs/43305243223) | dodge-the-creeps | 10 of 13 | 10 | 30 or 31 wide, 31 or 32 tall in 9 frames | 0.73 to 0.92 in those 9 |
+
+- In Dodge the Creeps' frame 0 the game has not started and its player is hidden. SAM answered
+  with a box over the whole frame (480 x 720) at confidence 0.012. That is what "nothing is drawn
+  here" looked like, once.
+- Three Dodge frames were not asked about: the game holds its player at x = 480, the picture's
+  width, and the probe called a point on the edge "outside". Fixed since: the last pixel inside is
+  asked.
+- So the Dodge capture is not blank, which the word runs could not show.
+
+**The bundled game and its eight seeded bugs**, published on the `sam-probe-results` branch
+(`anchor.json`, `anchor.md` and a contact sheet a run): runs
+[43306507436](https://github.com/Expectrail/Expectrail/actions/runs/43306507436) and 43308321074 with
+the point at the origin, which is in the robot's lower legs, and
+[43310237299](https://github.com/Expectrail/Expectrail/actions/runs/43310237299) with the point
+14 game pixels higher, at mid-body. "Outside the clean range" below means the box's width, height,
+or its reach above or below the point is outside the smallest and largest value of the clean run's
+own 13 frames **in the same run**.
+
+| Run | What the bug is | Frames outside the clean range, point at the origin | The same, 14 px higher | Confidence under 0.8, 14 px higher |
+| --- | --- | --- | --- | --- |
+| clean | none | 0 of 13 | 0 of 13 | 3 of 13 (0.50, 0.72, 0.75) |
+| missing-texture v1, v2 | the coins' texture is missing | 2 of 13 | 0 of 13 | 2 of 13 |
+| layering v1, v2 | the robot is drawn behind the level | 6 of 13 | 9 of 13 | 7 of 13 |
+| sinking v1 | the robot stands lower, and the engine says so | 5 of 13 | 4 of 13 | 3 of 13 |
+| sinking v2 | the robot is drawn 26 px lower than the engine says | 13 of 13 | 13 of 13 | 7 of 13 |
+| physics-fall-through v1, v2 | the robot falls out of the picture | 2 of 2 asked | 1 of 2 asked | 0 of 2 |
+
+What that says:
+
+- **At the origin the clean run itself is unsteady.** In 2 of 13 clean frames SAM answered with a
+  small part of the robot (19 x 24.5 and 12.5 x 7.5 game px, confidence 0.28 and 0.48), so the clean
+  range there is 7.5 to 63.5 px tall and means little. Frame 0 of clean and of sinking v1 have the
+  point at the same pixel; one got the whole robot and the other a 7 px part.
+- **At mid-body every clean frame is the robot:** 30.5 to 59 px wide, 52 to 64.5 px tall.
+- **Sinking v2 is outside the clean range in every frame at both points.** Its trace is the same as
+  the clean game's, so the engine's record cannot see it. 14 px higher, its box reaches 50.5 to
+  68.5 px below the point; the clean run's reaches 25.5 to 37.5.
+- **Layering shows in 9 of 13 frames** at mid-body: slivers 16.5 to 46 px tall where the robot is
+  behind the ground, and a box 140 to 154 px wide around a tree it is behind (seen on the contact
+  sheet). In 4 frames where it is in the air it is inside the clean range.
+- **Missing texture looks clean, as it should from here:** the texture is the coins'. A point on
+  each coin would be the test for it; that was not run.
+- **Sinking v1 and fall-through are the engine's to catch.** The robot and the engine's position
+  move together, so a box measured from the point looks much the same.
+- **Confidence does not separate anything frame by frame.** The clean run dips to 0.50, and sinking
+  v2 scores up to 0.92.
+
+What it does not say:
+
+- The clean range was set on the same 13 frames it is then held against. No clean route it was not
+  set on has been asked about, so nothing here is a false-alarm rate.
+- 13 frames a run, one route, one game with broken copies. No outside game has a broken copy.
+- 14 is this robot's number. The two outside games worked at 0 because their origin is the middle
+  of the sprite. The general form is a point at the middle of the player's collision body, which
+  the harness does not log yet.
+- What a point request is billed at is still not known; the counts above price it as an image.
+
+### The rule those numbers point to (agreed November 12, not in any verdict)
+
+Sean agreed the rule to try: **one box holding the point, its size and its reach above and below
+the point inside the range a clean run sets.** Confidence is not part of it. `agents/anchor_rule.py`
+is that rule as arithmetic over an `anchor.json`:
+
+```sh
+python3 -m agents.anchor_rule --calibrate runs/sam-probe/anchor.json:clean \
+    --judge runs/sam-probe/anchor.json --out runs/sam-probe
+```
+
+- **Set:** from a clean run, the smallest and largest width, height, reach above and reach below of
+  its boxes in game pixels, each widened by a pad (2 px unless told otherwise). A clean run with a
+  frame the observer could not read sets no range.
+- **Judge:** a frame is out when its box does not hold the point or a measure is outside its range.
+  A run fails on its first frame out. A frame that was asked and got no box is never a pass
+  (needs-review), and a run with no frame judged is needs-review.
+- **Why a pad:** the clean run and the missing-texture run show the same robot in the same frames,
+  only the coins differ, and between them a box's height and reach moved by up to 1.5 px (its width
+  by 5 px, once). With no pad, the clean run has one frame outside the range the missing-texture
+  run sets. 2 px is a starting value, not a tuned one.
+
+On the recorded answers with the point at mid-body (`tests/data/sam-anchor/bundled-lift-14.json`),
+set on the clean run, pad 2:
+
+| Run | Result | Frames out of those judged |
+| --- | --- | --- |
+| clean | pass (it set the range) | 0 of 13 |
+| missing-texture v1, v2 | pass | 0 of 13 |
+| layering v1, v2 | fail | 9 of 13 |
+| sinking v2 | fail, by its reach in every frame | 13 of 13 |
+| sinking v1 | fail, on one frame whose box is 73.5 px wide | 1 of 13 |
+| physics-fall-through v1, v2 | pass on the 2 frames before the robot leaves the picture | 0 of 2 |
+
+Sinking v2's first frame reads "above 3, below 56" against the clean frame's 29 and 30: the patch
+moves the drawing 26 px down, and that is the 26.
+
+**None of this is a false-alarm rate.** The range was set on the smoke route's clean run and the
+only clean-looking runs it was held against are that run and the missing-texture runs, the same
+frames. The measurement that matters is the clean game on routes the range was not set on. The
+SAM probe workflow can now make it: probe mode with `anchor` ticked, `lift` 14, and `clean_routes`
+set to `coins,combat,traversal` replays the clean game on those routes as `clean-coins` and so on,
+asks about all twelve runs (131 images, $0.33) and puts the rule's table in the summary and on the
+`sam-probe-results` branch. A clean route that fails there is a false alarm, and the rule changes
+before it goes anywhere near a verdict.
+
+What it leans on: the point is the engine's. A game that lies about where its player is sends the
+question to the wrong place, so this can never be the only evidence that a player is where the
+engine says. It can say what is drawn there: nothing, something of the player's size, or the level.
 
 ## What is still open
 

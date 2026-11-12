@@ -244,6 +244,34 @@ failed on the bug build 3 times of 3, with and without the no-fix patch. A miss 
 the issue's vocabulary where the records can show one, and `undetermined` where they cannot. The
 bench's page says how each is decided.
 
+**Reach** (November 12, 2026, issue #285 step 3; [`expectrail/repro/reach.py`](../expectrail/repro/reach.py)).
+One of the five defects the library's probes leave unchanged, `no-shooting-in-air`, is in the
+engine's record whenever a route shoots in the air, and no library probe does: the library never
+presses two different actions close together except moving while firing. Reach finds every pair of
+actions in the game's own catalog that no library route uses together (on the platformer: left with
+right, left with jump, right with jump, jump with shoot) and makes two short routes for each: hold
+one and tap the other three times meanwhile, and the other way round. Eight probes of 160 ticks on
+the platformer, at most eight for any game. No model is asked, and nothing is written for one bug.
+The bug report only orders them, the pair it names first, and can add nothing. Replayed on the
+real engine with no model (the clean game twice, each defect build once, in a cloud container, not
+in CI), `reach-jump-with-shoot` reads `projectile_count` 1 on the clean game and 0 on
+`no-shooting-in-air`; a signal moves on a reach probe for 14 of the 24 defects, 13 of which the
+library already showed. The table is on the bench's page. A reach probe is a route: what watches
+the game along it, the engine's record or frames for a visual observer, is the caller's choice.
+**Generated checks are not offered these probes yet**: `expectrail/jit/run.py` still draws on the
+library alone, so the baseline run is unchanged.
+
+**What each defect changes on the screen** (November 12, 2026; [`expectrail/repro/screen.py`](../expectrail/repro/screen.py),
+`expectrail.repro-screen/v1`). Every library probe was replayed with its frames captured, on the
+clean game twice and on each defect build once (650 replays on the real engine, in a cloud
+container, no model, not in CI), and the frames and the record of the same replays compared with
+the clean game's. The record and the picture both differ for 19 of the 24 defects; only the picture
+differs for 2 (`enemy-walks-backwards`, `bullet-behind-scenery`), which are the bench's screen-only
+defects for issue #286; no defect changes the record and no frame; 3 change nothing on any probe.
+Nothing differed between the two clean replays. This compares pixels exactly and asks no visual
+observer anything: it says where a difference could be shown, not that an observer reports it. The
+table and its limits are on the bench's page. **Nothing generated checks run on reads it.**
+
 Not done: the live baseline itself, which a person dispatches, and so the rate and the breakdown
 of misses.
 

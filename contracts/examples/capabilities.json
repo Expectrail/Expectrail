@@ -1,6 +1,6 @@
 {
   "format": "expectrail.capabilities/v1",
-  "updated": "2026-11-11",
+  "updated": "2026-11-12",
   "statuses": {
     "implemented": "The code is in the repository and its tests pass in CI. It has run only on recorded or synthetic inputs, or has no recorded end-to-end run.",
     "integrated": "Wired into the path a user takes (a command, a workflow or the site) and exercised there by a CI job or a recorded run. No published result rests on it.",
@@ -170,6 +170,74 @@
         }
       ],
       "limits": "No run from an MCP client is recorded. The tools are expectrail_draft_spec, expectrail_verify_build and expectrail_trust_check; #252 retires verify_build's fix loop."
+    },
+    {
+      "id": "discovery",
+      "mode": "Advisory discovery: generic probes judged by rules read from the game's code",
+      "profile": "The Godot game, headless",
+      "observer": "The engine's trace",
+      "entryPoints": [
+        "expectrail.discovery.cli",
+        "expectrail.discovery.freeze"
+      ],
+      "workflows": [
+        "discovery.yml",
+        "discovery-blind.yml"
+      ],
+      "docs": [
+        "docs/discovery.md"
+      ],
+      "grade": "diagnostic",
+      "status": "measured",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41248745687",
+          "conclusion": "success",
+          "counts": [
+            {
+              "says": "4 of 8",
+              "n": 4,
+              "of": 8,
+              "titled": "Blind *",
+              "not": [
+                "Blind time *"
+              ],
+              "where": {
+                "kind": "defect"
+              },
+              "has": {
+                "flagged": true
+              }
+            },
+            {
+              "says": "no healthy build flagged",
+              "n": 3,
+              "of": 3,
+              "titled": "Blind *",
+              "not": [
+                "Blind time *"
+              ],
+              "where": {
+                "kind": [
+                  "clean",
+                  "intentional"
+                ]
+              },
+              "has": {
+                "flagged": false
+              }
+            }
+          ],
+          "shows": "blind, fresh set 1: 4 of 8 defects flagged, no healthy build flagged"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_discovery.py",
+          "shows": "a flaky failure is a candidate, not a finding; a runner failure is recorded, never a pass"
+        }
+      ],
+      "limits": "Advisory: it cannot reject a change. Blind, it flagged 7 of 16 defects. Its profile covers four mechanics of one game and was written after reading four bug reports."
     }
   ],
   "notModes": {

@@ -79,6 +79,22 @@ comment ([ci-gate.md](ci-gate.md)). The example is a real local run: the clean g
 game with `bugs/physics-fall-through/v1.patch` as the head, and a stand-in held-out set. Its pull
 request number and head commit are placeholders.
 
+`checkProblems` (added November 12, #340) counts the problems the gate found reading the spec and
+route files. Above 0 the decision is never accept, and the reader that recomputes the decision from
+the record holds it to that. A record written before the field existed has none and reads as 0.
+
+`intent` and `repair` (added November 12, #284). `intent` is what the change was declared as:
+`fix`, `change` or `none`; it is written only when it is not `none`, so the record of an undeclared
+change is what it was. For a `fix` the record carries `repair`: one row for every check that
+failed on the base and passes after the change, with its result on each of three runs a side, and
+whether the row counts (the base failed and the head passed on all three). A fix is accepted only
+when a row counts; otherwise the decision is needs-review with a reason that starts
+`repair-not-demonstrated:`. The reader recomputes which rows count and their number, holds the
+rows to the checks, and holds the decision to both. What a reader cannot check: that the stated
+intent is the pull request's, since the verify job writes it. The example
+[`findings-fix-not-demonstrated.json`](../contracts/examples/findings-fix-not-demonstrated.json) is
+a fix where no check failed on the base, from the tests' stand-in replay, not from the engine.
+
 | Record | Written by | Read by |
 | --- | --- | --- |
 | `findings` | the gate's verify step (`expectrail.gate.verify`), untrusted | the gate's comment step (`expectrail.gate.comment`), which treats it as data |
@@ -96,7 +112,7 @@ routes appear as counts only; the schema has no field for anything else about th
 `capabilities` (`expectrail.capabilities/v1`,
 [`contracts/capabilities.v1.schema.json`](../contracts/capabilities.v1.schema.json)) is the one record
 of how far each advertised mode is proven: [`docs/capabilities.json`](capabilities.json), rendered as
-[capabilities.md](capabilities.md). The example is three rows of the real ledger. Each cited run records how it ended (`conclusion`), read from GitHub when the row was written; a run that did not end in success needs a `conclusionNote` saying why it is evidence all the same, and only an implemented or experimental row may cite one. A run's evidence may name the `jobs` it rests on. `python3 -m expectrail.capabilities recheck` (`expectrail.capability_runs`) asks GitHub again: it fails when a run's conclusion is not the one recorded, when a named or linked job is missing or did not end in success, when a wall time's step is missing or failed, when a time read from the step's timestamps is not what the step lasted to the second, when a time measured inside the step (one with `phases`) is longer than the step (a shorter one passes, since the step does other work too), and when a run cannot be read. A run's evidence may also carry `counts`: the counts in its `shows` that are tied to the notices the run published (the annotations a job writes with `::notice`, where the bench jobs put their public counts). An entry names the words it backs (`says`), the numbers (`n`, `of`), the notices by title (`titled`, with `*` for any text, and `not` for titles left out), and one of two ways of counting: `count`, where `of` is how many such notices there are and `n` how many have that text as one whole field of their message (the fields are what lies between semicolons), and every such notice must say which side it is on: it has `count`, or it has the field named under `otherwise` (for example "caught with SAM off: no"), once and not both, so a notice that lacks the field is "cannot tell" and never a "no"; or `reads`, where exactly one notice has the title and one of its fields is that text with `{n}` and `{of}` filled in. `recheck` reads those runs' notices and counts again: a different count is a problem, and so is a notice that is missing, is there twice, comes from a job that did not end in success, or cannot be read. The test suite checks without the network that the words stand in `shows` where a count is found ("8 of 8" is not in "8 of 80"), that the numbers are the ones the words give, and that an entry counting fewer notices than there are names `otherwise`, and counts the committed ledger against the notices saved in `tests/capability_notices.json`. It reads conclusions, jobs, steps and notices only, never logs or artifacts, so a count with no `counts` entry is as its writer wrote it; the page says how many are tied.
+[capabilities.md](capabilities.md). The example is four rows of the real ledger. Each cited run records how it ended (`conclusion`), read from GitHub when the row was written; a run that did not end in success needs a `conclusionNote` saying why it is evidence all the same, and only an implemented or experimental row may cite one. A run's evidence may name the `jobs` it rests on. `python3 -m expectrail.capabilities recheck` (`expectrail.capability_runs`) asks GitHub again: it fails when a run's conclusion is not the one recorded, when a named or linked job is missing or did not end in success, when a wall time's step is missing or failed, when a time read from the step's timestamps is not what the step lasted to the second, when a time measured inside the step (one with `phases`) is longer than the step (a shorter one passes, since the step does other work too), and when a run cannot be read. A run's evidence may also carry `counts`: the counts in its `shows` that are tied to the notices the run published (the annotations a job writes with `::notice`, where the bench jobs put their public counts). An entry names the words it backs (`says`), the numbers (`n`, `of`), the notices by title (`titled`, with `*` for any text, and `not` for titles left out), and one of three ways of counting: `count`, where `of` is how many such notices there are and `n` how many have that text as one whole field of their message (the fields are what lies between semicolons), and every such notice must say which side it is on: it has `count`, or it has the field named under `otherwise` (for example "caught with SAM off: no"), once and not both, so a notice that lacks the field is "cannot tell" and never a "no"; or `reads`, where exactly one notice has the title and one of its fields is that text with `{n}` and `{of}` filled in (neither may stand beside a digit or beside the other, so no two counts fill it the same); or `has`, for a job whose notice is one JSON object: `of` is how many notices with the title have the members under `where` as given (a value, or a list of values to be one of), and `n` how many of those have the members under `has` as given. A member is equal only to a value of its own kind, and a notice that is not one JSON object, has a member twice, lacks a named member or has it as another kind of value is "cannot tell", never a "no". `recheck` reads those runs' notices and counts again: a different count is a problem, and so is a notice that is missing, is there twice, comes from a job that did not end in success, or cannot be read. The test suite checks without the network that the words stand in `shows` where a count is found ("8 of 8" is not in "8 of 80"), that the numbers are the ones the words give (words that hold no count speak of every notice counted, so their `n` is their `of`), and that an entry counting fewer notices than there are names `otherwise`, and counts the committed ledger against the notices saved in `tests/capability_notices.json`. It reads conclusions, jobs, steps and notices only, never logs or artifacts, so a count with no `counts` entry is as its writer wrote it; the page says how many are tied.
 
 | Record | Written by | Read by |
 | --- | --- | --- |
@@ -114,12 +130,13 @@ phases do not add up to the whole.
 
 ## The public reproduction bench (added November 11)
 
-Three records for issue #285, all about public defects only.
+Four records for issue #285, all about public defects only.
 
 | Record | Written by | Read by |
 | --- | --- | --- |
 | `repro-bench` (`expectrail.repro-bench/v1`, [`contracts/repro-bench.v1.schema.json`](../contracts/repro-bench.v1.schema.json), example [`repro-bench.json`](../contracts/examples/repro-bench.json)) | By hand: [`bench/jit/public/defects.json`](../bench/jit/public/defects.json) | `expectrail.repro.bench.load`, `python3 -m expectrail.repro check` |
-| `repro-visibility` (`expectrail.repro-visibility/v1`, [`contracts/repro-visibility.v1.schema.json`](../contracts/repro-visibility.v1.schema.json); the committed record [`bench/jit/public/visibility.json`](../bench/jit/public/visibility.json) is the example) | `python3 -m expectrail.repro visibility` | `expectrail.repro.visibility.load`, `python3 -m expectrail.repro render` |
+| `repro-visibility` (`expectrail.repro-visibility/v1`, [`contracts/repro-visibility.v1.schema.json`](../contracts/repro-visibility.v1.schema.json); the committed records [`bench/jit/public/visibility.json`](../bench/jit/public/visibility.json), on the library probes, and [`visibility-reach.json`](../bench/jit/public/visibility-reach.json), on the reach probes, are the examples) | `python3 -m expectrail.repro visibility`, with `--reach` for the reach probes | `expectrail.repro.visibility.load`, `python3 -m expectrail.repro render` |
+| `repro-screen` (`expectrail.repro-screen/v1`, [`contracts/repro-screen.v1.schema.json`](../contracts/repro-screen.v1.schema.json); the committed record [`bench/jit/public/screen.json`](../bench/jit/public/screen.json) is the example) | `python3 -m expectrail.repro screen` (added November 12) | `expectrail.repro.screen.load`, `python3 -m expectrail.repro screen-render` |
 | `repro-score` (`expectrail.repro-score/v1`, [`contracts/repro-score.v1.schema.json`](../contracts/repro-score.v1.schema.json), example [`repro-score.json`](../contracts/examples/repro-score.json), made-up rows) | `python3 -m expectrail.repro score`, from a live run's `jit-run` records | `expectrail.repro.score.load`, `python3 -m expectrail.repro score-render` |
 
 A bench entry is a defect id, its family, a patch against the clean game, a bug report, where its
@@ -131,11 +148,23 @@ folder on the way and wherever it leads; an id or a patch listed
 twice, an empty report, and a patch that names a file the game does not have. The bench holds no
 result.
 
-A visibility record says, per defect, what replaying the library probes on the defect build changed against
+A visibility record says, per defect, what replaying the probes it names (the library's, or the reach probes of `expectrail.repro.reach`) on the defect build changed against
 the clean game: the signals that moved, the fields of the engine's record that differ, and one of
 `signal`, `trace-only`, `none` or `error`. The reader recomputes that label and the totals from the
-rows and refuses a record where they disagree, or one that names a signal `expectrail.trace.signals` does not have. It says what the library probes can see, not how often a defect is reproduced, and has
+rows and refuses a record where they disagree, or one that names a signal `expectrail.trace.signals` does not have. It says what those probes can see, not how often a defect is reproduced, and has
 no field for a rate.
+
+A screen record says, per defect, what replaying the probes it names with every frame captured
+changed against the clean game, in the frames and in the engine's record of the same replays: one
+of `record-and-screen`, `screen-only`, `record-only`, `neither` or `error`, the record fields that
+differ, and for the probe where the most frames differ, how many, from which frame, the most pixels
+in one examined frame and the rectangle that holds them. A frame differs when any pixel does, and a
+frame that differs between the two clean replays is counted for no defect. The reader recomputes
+the label and the totals from the rows and refuses a record where they disagree, or a difference
+that does not fit its own numbers (more frames than were captured, a rectangle outside the frame,
+more pixels than the rectangle holds). What a reader cannot check from the record: it holds no
+frames, so the counts are as good as the run that made them, and they are exact only for the
+renderer it names. It has no field for a rate, and no visual observer's answer is in it.
 
 A score record has one row per defect of the bench: `reproduced`, `not-reproduced` or `no-result`;
 the checks that reproduced it; for a miss, a reason from a closed list and the evidence for it; what
@@ -143,7 +172,13 @@ the run spent on it; and the digest of the `jit-run` record it was read from. Th
 check's standing from its runs, never from the record's own `valid` flag, and gives `no-result` to a
 record whose flag disagrees with its runs or that was made for another candidate, defect or report.
 The reader recomputes the totals from the rows and refuses a row whose outcome does not follow from
-it, and a reason the records cannot show (`route-never-reaches`, `probe-language`). It has no
+it, and a reason the records cannot show (`route-never-reaches`, `probe-language`). That is all a
+reader of this record can check: a score record holds no runs, so a row changed to `reproduced` with
+a check named, a spend, a digest and the totals redone to match reads as well as a true one. What
+ties a row to runs is its `recordSha256` and the `jit-run` record it names; to trust a rate, score
+the run's records again and compare. The writer counts a check as reproducing only when the
+`jit-run` record's catch entry for it shows three fails on the bug build, and writes free text
+(`why`, `evidence`, `source`) as one line; the reader refuses free text that is not. It has no
 decision field: nothing reads it to accept or reject a change. No score record is committed, because
 no live run has been made.
 

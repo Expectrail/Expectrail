@@ -333,6 +333,92 @@ class VerifyTest(GateCase):
             verdict = json.loads((out / "verdicts" / arm / "smoke" / "player-stays-above-ground.json").read_text())
             self.assertEqual(verdict["format"], "expectrail.verdict/v0")
 
+    def test_a_check_file_the_gate_cannot_use_never_leaves_an_accept(self):
+        # #340. Until November 12, 2026 each of these was an accept: "all 2 checks pass", with the
+        # problem added after it (and the comment shows no reasons on an accept).
+        breakers = {
+            "a route that is not JSON": lambda r: (r / "routes" / "broken.json").write_text("{not json"),
+            "a route that is not a valid route": lambda r: (r / "routes" / "odd.json").write_text('{"format": "x"}'),
+            "a route over the size cap": lambda r: (r / "routes" / "big.json").write_text("{}" + " " * (gv.ROUTE_CAP + 1)),
+            "a route's name used by two files": lambda r: shutil.copy(r / "routes" / "smoke.json", r / "routes" / "again.json"),
+            "a spec that is not a valid spec": lambda r: (r / "specs" / "broken.json").write_text('{"id": 1}'),
+            "a spec over the size cap": lambda r: (r / "specs" / "big.json").write_text("{}" + " " * (gv.SPEC_CAP + 1)),
+            "a spec that is a link": lambda r: (r / "specs" / "link.json").symlink_to("player-stays-above-ground.json"),
+            "a spec's id used by two files": lambda r: [shutil.copy(r / "specs" / "player-stays-above-ground.json", r / "specs" / "again.json"),
+                                                      shutil.copy(SPEC, r / "specs" / "other.json"),
+                                                      (r / "specs" / "other.json").write_text(json.dumps(dict(
+                                                          json.loads(SPEC.read_text(encoding="utf-8")), id="another-approved-check")))],
+        }
+        for n, (label, breaker) in enumerate(breakers.items()):
+            for with_base in (False, True):
+                with self.subTest(label, base=with_base):
+                    # With a base the checks are read from the base, so the broken file is put there.
+                    head = make_repo(self.tmp / f"head-{n}-{with_base}")
+                    base = make_repo(self.tmp / f"base-{n}-{with_base}") if with_base else None
+                    breaker(base if with_base else head)
+                    doc = self.gate(head, base, out_name=f"out-{n}-{with_base}")
+                    self.assertEqual(doc["decision"], "needs-review")
+                    self.assertGreaterEqual(doc["checkProblems"], 1)
+                    # The checks that could run did, and passed: it is the missing ones that decide.
+                    self.assertGreaterEqual(doc["counts"]["checks"], 1)
+                    self.assertEqual(doc["counts"]["passed"], doc["counts"]["checks"])
+                    self.assertRegex(doc["reasons"][0], r"^\d+ problems? with the spec and route files")
+                    # The sentence, then each problem by name (with a base, also the line that
+                    # says this change edits the check files: the head does not hold the broken one).
+                    self.assertEqual(len(doc["reasons"]), 1 + doc["checkProblems"] + (1 if with_base else 0))
+                    self.assertEqual(rec.read_record(self.tmp / f"out-{n}-{with_base}" / "findings.json"), doc)
+                    body = gc.render(doc, ctx())
+                    self.assertIn("needs review", body)
+                    self.assertIn("problem", body)
+
+    def test_a_route_that_is_a_link_or_outside_the_checkout_never_leaves_an_accept(self):
+        # The last row of #340's table: both were left out of the routes and nothing said so.
+        outside = self.tmp / "elsewhere"
+        outside.mkdir()
+        shutil.copy(ROUTES / "coins.json", outside / "coins.json")
+        breakers = {
+            "a route that is a link to a file": lambda r: (r / "routes" / "linked.json").symlink_to("smoke.json"),
+            "a route reached through a link out of the checkout": lambda r: (r / "routes" / "away").symlink_to(outside),
+        }
+        for n, (label, breaker) in enumerate(breakers.items()):
+            with self.subTest(label):
+                head = make_repo(self.tmp / f"head-{n}")
+                breaker(head)
+                with contextlib.redirect_stdout(io.StringIO()):
+                    doc = gv.run_gate(repo=head, game="game/platformer", routes=["routes/*.json", "routes/*/*.json"],
+                                      specs="specs", out=self.tmp / f"out-{n}", work=self.tmp / f"work-{n}", base=None,
+                                      heldout=None, pr={"number": 7, "headSha": HEAD, "baseSha": None}, replay=self.replay)
+                self.assertEqual((doc["decision"], doc["checkProblems"]), ("needs-review", 1))
+                self.assertEqual(sorted(r["name"] for r in doc["routes"]), ["combat", "smoke"])   # nothing outside was played
+                self.assertEqual(doc["counts"]["passed"], doc["counts"]["checks"])
+                self.assertIn("is not read" if n else "a symlink is refused", doc["reasons"][1])
+
+    def test_a_failing_check_still_rejects_beside_a_check_file_that_cannot_be_used(self):
+        head = make_repo(self.tmp / "head", bug=True)
+        (head / "routes" / "broken.json").write_text("{not json")
+        doc = self.gate(head)
+        self.assertEqual((doc["decision"], doc["checkProblems"]), ("reject", 1))
+
+    def test_a_clean_project_counts_no_problem_and_a_draft_is_not_one(self):
+        doc = self.gate(make_repo(self.tmp / "head", draft=True))
+        self.assertEqual((doc["decision"], doc["checkProblems"], doc["drafts"]), ("accept", 0, 1))
+
+    def test_the_reader_holds_the_decision_to_the_count_of_problems(self):
+        good = example()
+        self.assertEqual((good["decision"], good["checkProblems"]), ("reject", 0))
+        doc = self.gate(make_repo(self.tmp / "head"))
+        self.assertEqual(doc["decision"], "accept")
+        rec.check_record(doc)
+        # An accept that says a check file could not be used contradicts itself.
+        with self.assertRaisesRegex(rec.RecordError, "the decision should be needs-review"):
+            rec.check_record(dict(doc, checkProblems=1))
+        # A record written before the count existed has none, and reads as it always did.
+        older = {k: v for k, v in doc.items() if k != "checkProblems"}
+        rec.check_record(older)
+        for bad in (-1, 1.5, "1", None, True):
+            with self.subTest(bad=bad), self.assertRaises(rec.RecordError):
+                rec.check_record(dict(doc, checkProblems=bad))
+
     def test_what_a_change_does_to_the_check_files_is_counted_by_one_reader_on_both_sides(self):
         # The count of check files a change edits compares the head's listing with the base's, both
         # made by the gate's reader. A file the reader refuses compares by its name and its refusal:

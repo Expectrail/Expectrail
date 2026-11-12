@@ -125,14 +125,78 @@ def isolation_words(isolation: dict | None) -> str:
     return f"{inside} of {total}. Outside it the game ran as the job's user, with the network: {why}"
 
 
-def decide(counts: dict, held: dict, isolation: dict | None = None) -> tuple[str, list[str]]:
+# What a change says it is for (issue #284). ``fix``: it claims to fix a reported bug, and is accepted
+# only when the repair is demonstrated. ``change``: an intended change of behaviour. ``none``: nothing
+# declared, which is also how a record from before the field existed is read. ``change`` and ``none``
+# are judged by the same rule as before; ``fix`` is the stricter path and can only take accepts away.
+INTENTS = ("fix", "change", "none")
+REPAIR_RUNS = 3   # a demonstration is the base failing and the head passing this many times of this many
+NOT_DEMONSTRATED = "repair-not-demonstrated"
+
+
+def intent_of(doc: dict) -> str:
+    """What the change was declared as; a record from before the field existed declared nothing."""
+    return doc.get("intent", "none")
+
+
+def row_counts(row: dict) -> bool:
+    """Whether one repair row is a demonstration: the check failed on the base on every run and passed
+    after the change on every run, REPAIR_RUNS times each. A base that fails once and then passes is
+    flaky, and a flaky failure demonstrates nothing."""
+    return (len(row["base"]) == REPAIR_RUNS and len(row["head"]) == REPAIR_RUNS
+            and all(r == "fail" for r in row["base"]) and all(r == "pass" for r in row["head"]))
+
+
+def repair_block(rows: list[dict]) -> dict:
+    """The record's ``repair`` block from its rows; ``counts`` and ``demonstrated`` are worked out here."""
+    rows = [dict(spec=r["spec"], route=r["route"], base=list(r["base"]), head=list(r["head"])) for r in rows]
+    for row in rows:
+        row["counts"] = row_counts(row)
+    return {"runs": REPAIR_RUNS, "demonstrated": sum(r["counts"] for r in rows), "rows": rows}
+
+
+def unverified_fix(doc: dict) -> bool:
+    """A change declared as a fix for which no check demonstrated the repair."""
+    return intent_of(doc) == "fix" and not (doc.get("repair") or {}).get("demonstrated")
+
+
+def _not_demonstrated(counts: dict, repair: dict | None, base_judged: bool) -> str:
+    """The reason line for a fix whose repair no check demonstrated. It starts with the reason's name."""
+    head = f"{NOT_DEMONSTRATED}: this change is declared as a fix, and "
+    rows = (repair or {}).get("rows") or []
+    if rows:
+        return (head + f"{len(rows)} check{'s' if len(rows) != 1 else ''} failed before the change and passed after it "
+                f"once, but not {REPAIR_RUNS} times of {REPAIR_RUNS} on both sides, so the repair is not demonstrated")
+    if not counts["checks"]:
+        return head + "no check ran, so nothing shows the bug or its repair"
+    if not base_judged:
+        return head + "the build before the change was not judged, so no check could show the bug"
+    return (head + f"none of the {counts['checks']} checks that ran failed before the change, so no check reproduced "
+            "the reported bug and nothing shows it is fixed")
+
+
+def decide(counts: dict, held: dict, isolation: dict | None = None, check_problems: int = 0, *,
+           intent: str = "none", repair: dict | None = None, base_judged: bool = True) -> tuple[str, list[str]]:
     """accept, reject or needs-review, and why.
 
     Accept only when at least one check ran and every public and held-out check passed. Any failure
     rejects. Anything unclear (a check that needs review, a replay that did not finish, held-out
     routes that could not be read) needs review: it is never read as a pass. When the sandbox was
-    required, a replay outside it is unclear too: an accept never rests on one.
+    required, a replay outside it is unclear too: an accept never rests on one. A spec or route file
+    the gate could not use (``check_problems``) is unclear in the same way: the checks that ran are
+    then not all of the project's checks, so their passing is not an accept.
+
+    ``intent`` is what the change says it is for. For ``fix`` an accept also needs the repair
+    demonstrated: at least one row of ``repair`` (see ``repair_block``) where a check failed on the
+    base and passed after the change, on the same route, REPAIR_RUNS times of REPAIR_RUNS. Without one
+    the decision is needs-review with the reason ``repair-not-demonstrated``: "no check failed" is not
+    "the fix is good" when no check touched the bug. It never turns a reject into anything else, and
+    for ``change`` and ``none`` the rule is the one above, unchanged. ``base_judged`` only words the
+    reason: whether any check has a result on the base.
     """
+    if intent not in INTENTS:
+        raise ValueError(f"unknown intent {intent!r}")
+    unverified = intent == "fix" and not (repair or {}).get("demonstrated")
     reasons = []
     if counts["failed"]:
         reasons.append(f"{counts['failed']} of {counts['checks']} public checks fail after the change")
@@ -141,7 +205,10 @@ def decide(counts: dict, held: dict, isolation: dict | None = None) -> tuple[str
     if reasons:
         return "reject", reasons
     if not counts["checks"]:
-        return "needs-review", ["no checks ran"]
+        return "needs-review", ["no checks ran"] + ([_not_demonstrated(counts, repair, base_judged)] if unverified else [])
+    if check_problems:
+        reasons.append(f"{check_problems} problem{'s' if check_problems != 1 else ''} with the spec and route files, "
+                       "so the checks that ran are not all of the project's checks")
     if counts["needsReview"]:
         reasons.append(f"{counts['needsReview']} of {counts['checks']} public checks could not be decided")
     if held["status"] == "unavailable":
@@ -151,9 +218,15 @@ def decide(counts: dict, held: dict, isolation: dict | None = None) -> tuple[str
     if isolation is not None and isolation["required"] and isolation["sandboxed"] != isolation["replays"]:
         outside = isolation["replays"] - isolation["sandboxed"]
         reasons.append(f"{outside} of {isolation['replays']} replays ran outside the sandbox, which was required")
+    if unverified:
+        reasons.insert(0, _not_demonstrated(counts, repair, base_judged))
     if reasons:
         return "needs-review", reasons
     total = counts["checks"] + held["checks"]
+    if intent == "fix":
+        shown = repair["demonstrated"]
+        return "accept", [f"all {total} checks pass, and {shown} of them failed before the change "
+                          f"{REPAIR_RUNS} times of {REPAIR_RUNS}: the repair is demonstrated"]
     return "accept", [f"all {total} checks pass"]
 
 
@@ -434,7 +507,9 @@ def check_consistency(doc: dict) -> None:
                   + -(-(held["passed"] + held["failed"]) // max(1, len(spec_ids))))
         if isolation["replays"] < needed:
             raise RecordError(f"the checks rest on at least {needed} replays and the record counts {isolation['replays']}")
-    decision, _reasons = decide(counts, held, isolation)
+    check_repair(doc)
+    decision, _reasons = decide(counts, held, isolation, doc.get("checkProblems", 0),
+                                intent=intent_of(doc), repair=doc.get("repair"))
     if doc["decision"] != decision:
         raise RecordError(f"the decision should be {decision} from these counts")
     pr = doc["pullRequest"]
@@ -443,6 +518,47 @@ def check_consistency(doc: dict) -> None:
     generated = doc.get("generatedChecks")
     if generated is not None:
         check_generated(generated)
+
+
+def check_repair(doc: dict) -> None:
+    """The ``repair`` block agrees with the checks: it is there exactly when the change was declared a
+    fix, it has one row for every check that failed before and passes after (and no other), each
+    row's first run on each side is the check's own result, and whether a row counts, and how many
+    do, is recomputed. So a record cannot call a repair demonstrated that its own runs do not show."""
+    repair = doc.get("repair")
+    if (repair is not None) != (intent_of(doc) == "fix"):
+        raise RecordError("the repair block is given exactly when the change is declared a fix")
+    if repair is None:
+        return
+    if repair["runs"] != REPAIR_RUNS:
+        raise RecordError(f"a repair is judged on {REPAIR_RUNS} runs a side")
+    want = [(c["spec"], c["route"]) for c in doc["checks"] if c["comparison"] == "REPAIRED"]
+    if [(r["spec"], r["route"]) for r in repair["rows"]] != want:
+        raise RecordError("the repair rows are not exactly the checks that failed before and pass after, in their order")
+    for n, row in enumerate(repair["rows"]):
+        if not row["base"] or not row["head"] or row["base"][0] != "fail" or row["head"][0] != "pass":
+            raise RecordError(f"repair/rows/{n}: the first run on each side is the check's own result")
+        if row["counts"] != row_counts(row):
+            raise RecordError(f"repair/rows/{n}: whether it counts does not follow from its runs")
+    if repair["demonstrated"] != sum(r["counts"] for r in repair["rows"]):
+        raise RecordError("the count of demonstrations does not match the repair rows")
+
+
+def repair_words(doc: dict) -> str:
+    """One line on what the change was declared as and whether its repair was shown, for the page and the comment."""
+    intent = intent_of(doc)
+    if intent == "none":
+        return "nothing declared: judged as a change that should break no check"
+    if intent == "change":
+        return "an intended change of behaviour: judged as a change that should break no check"
+    repair = doc["repair"]
+    if repair["demonstrated"]:
+        row = next(r for r in repair["rows"] if r["counts"])
+        more = repair["demonstrated"] - 1
+        return (f"a fix, and the repair is demonstrated: {row['spec']} on {row['route']} failed before the change "
+                f"{REPAIR_RUNS} times of {REPAIR_RUNS} and passes after it {REPAIR_RUNS} times of {REPAIR_RUNS}"
+                + (f" (and {more} more)" if more else ""))
+    return "a fix, and no check demonstrated the repair"
 
 
 def check_generated(gen: dict) -> None:

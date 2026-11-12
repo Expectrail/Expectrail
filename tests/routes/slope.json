@@ -1,0 +1,44 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "slope",
+  "description": "The traversal route's three jumps, then right held to tick 420: the player walks up the level's slope (x 838 to 896) and stops on it.",
+  "ticks": 420,
+  "seed": 1,
+  "events": [
+    {
+      "tick": 10,
+      "action": "move_right",
+      "pressed": true
+    },
+    {
+      "tick": 30,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 55,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 80,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 105,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 150,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 175,
+      "action": "jump",
+      "pressed": false
+    }
+  ]
+}

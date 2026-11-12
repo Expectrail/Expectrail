@@ -1,4 +1,4 @@
-"""python3 -m expectrail.repro check | visibility | render | cases | score | score-render"""
+"""python3 -m expectrail.repro check | visibility | render | screen | screen-render | reach | cases | score | score-render"""
 from __future__ import annotations
 
 import argparse
@@ -6,7 +6,7 @@ import json
 import sys
 from pathlib import Path
 
-from expectrail.repro import bench, score, visibility
+from expectrail.repro import bench, reach, score, screen, visibility
 
 PROFILE = bench.REPO / "discovery" / "platformer.profile.json"
 
@@ -22,9 +22,28 @@ def main(argv: list[str] | None = None) -> int:
     v.add_argument("--out", type=Path, required=True)
     v.add_argument("--jobs", type=int, default=1)
     v.add_argument("--only", action="append", default=[], help="a defect id (repeatable); default: all")
+    v.add_argument("--reach", action="store_true",
+                   help="replay the reach probes (expectrail/repro/reach.py) in place of the library probes")
+    g = sub.add_parser("reach", help="print the reach probes for a bug report: routes for pairs of actions no "
+                                     "library probe uses together; no model, no engine")
+    g.add_argument("--bench", type=Path, default=bench.BENCH)
+    g.add_argument("--profile", type=Path, default=PROFILE)
+    g.add_argument("--report", type=Path, default=None, help="a bug report; it only orders the probes")
     r = sub.add_parser("render", help="print a visibility record as a table")
     r.add_argument("record", type=Path)
     r.add_argument("--bench", type=Path, default=bench.BENCH)
+    sc = sub.add_parser("screen", help="replay the clean game and every defect build with frames, and compare the "
+                                       "frames and the record; no model, no key")
+    sc.add_argument("--bench", type=Path, default=bench.BENCH)
+    sc.add_argument("--profile", type=Path, default=PROFILE)
+    sc.add_argument("--out", type=Path, required=True)
+    sc.add_argument("--jobs", type=int, default=1)
+    sc.add_argument("--only", action="append", default=[], help="a defect id (repeatable); default: all")
+    sc.add_argument("--reach", action="store_true", help="replay the reach probes in place of the library probes")
+    sc.add_argument("--keep-frames", action="store_true", help="leave the captured frames under <out>/work")
+    scr = sub.add_parser("screen-render", help="print a screen record as a table")
+    scr.add_argument("record", type=Path)
+    scr.add_argument("--bench", type=Path, default=bench.BENCH)
     k = sub.add_parser("cases", help="the cases a live run on the bench covers: each defect with the no-fix candidate")
     k.add_argument("--bench", type=Path, default=bench.BENCH)
     k.add_argument("--github-output", action="store_true", help="print cases= and budget= lines for a workflow step")
@@ -69,12 +88,41 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"defects": len(doc["defects"]), "apply": len(doc["defects"]) - len(failed),
                               "families": bench.families(doc)}))
             return 1 if failed else 0
+        if args.cmd == "reach":
+            from expectrail.contracts import load_strict
+            from expectrail.jit.probes import jit_library
+
+            profile = load_strict(args.profile, "mechanics-profile")
+            report = args.report.read_text(encoding="utf-8", errors="replace") if args.report else ""
+            print(json.dumps(reach.reach(report, profile["actions"], jit_library(profile["actions"])), indent=1))
+            return 0
+        if args.cmd == "screen":
+            from expectrail.contracts import load_strict
+            from expectrail.jit.probes import jit_library
+
+            profile = load_strict(args.profile, "mechanics-profile")
+            probes = jit_library(profile["actions"])
+            if args.reach:
+                probes = reach.reach_probes(profile["actions"], probes)
+            record = screen.measure(doc, profile, probes, args.out, jobs=args.jobs, only=args.only or None,
+                                    bench_path=args.bench, keep_frames=args.keep_frames)
+            print(json.dumps(record["totals"]))
+            return 1 if record["totals"]["error"] else 0
+        if args.cmd == "screen-render":
+            record = screen.load(args.record)
+            for line in screen.stale(record, doc, bench_path=args.bench):
+                print(f"repro screen-render: stale: {line}", file=sys.stderr)
+            sys.stdout.write(screen.render(record, doc))
+            return 0
         if args.cmd == "visibility":
             from expectrail.contracts import load_strict
             from expectrail.jit.probes import jit_library
 
             profile = load_strict(args.profile, "mechanics-profile")
-            record = visibility.measure(doc, profile, jit_library(profile["actions"]), args.out, jobs=args.jobs,
+            probes = jit_library(profile["actions"])
+            if args.reach:
+                probes = reach.reach_probes(profile["actions"], probes)
+            record = visibility.measure(doc, profile, probes, args.out, jobs=args.jobs,
                                         only=args.only or None, bench_path=args.bench)
             print(json.dumps(record["totals"]))
             return 1 if record["totals"]["error"] else 0
@@ -83,7 +131,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"repro render: stale: {line}", file=sys.stderr)
         sys.stdout.write(visibility.render(record, doc))
         return 0
-    except (bench.BenchError, visibility.VisibilityError, score.ScoreError, OSError) as exc:
+    except (bench.BenchError, visibility.VisibilityError, screen.ScreenError, score.ScoreError, reach.ReachError,
+            OSError) as exc:
         print(f"repro: {exc}", file=sys.stderr)
         return 1
 
