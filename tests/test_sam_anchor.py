@@ -289,6 +289,16 @@ class ProbeRunTest(TempCase):
         self.assertEqual([r["frame"] for r in stopped.exception.partial["frames"]], [0, 10])
         self.assertEqual(len(run.sent), 2)
 
+    def test_the_route_a_run_replayed_is_recorded_when_its_replay_says(self):
+        run = Run(self.tmp, doc=trace())
+        answer = lambda n: reply("<0f>" + box_token(1, (20, 30, 44, 60), 0.9))      # noqa: E731
+        self.assertIsNone(anchor.probe_run(run.dir, [0], 10, 120, 0.0, self.client(run, answer), None)["route"])
+        (run.dir / "replay.json").write_text(json.dumps({"route": {"name": "combat", "sha256": "ab" * 32}}), encoding="utf-8")
+        self.assertEqual(anchor.probe_run(run.dir, [0], 10, 120, 0.0, self.client(run, answer), None)["route"],
+                         {"name": "combat", "sha256": "ab" * 32})
+        (run.dir / "replay.json").write_text("{}", encoding="utf-8")
+        self.assertIsNone(anchor.route_of(run.dir))
+
     def test_a_run_without_its_position_log_is_refused(self):
         run = Run(self.tmp)
         with self.assertRaises(SamError) as refused:

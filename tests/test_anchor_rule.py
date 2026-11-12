@@ -23,11 +23,12 @@ DATA = Path(__file__).resolve().parent / "data" / "sam-anchor"
 AT_ORIGIN = DATA / "bundled-lift-0.json"
 MID_BODY = DATA / "bundled-lift-14.json"
 OTHER_CLEAN = DATA / "bundled-lift-14-other-clean-routes.json"      # run 43316420400: coins, combat, traversal
+NEAR_THE_SLIP = DATA / "bundled-lift-14-traversal-frames-15-25.json"  # run 43318368572: traversal, frames 15 to 25
 
 
-def row(frame, width=40.0, height=60.0, above=30.0, below=30.0, holds=True):
+def row(frame, width=40.0, height=60.0, above=30.0, below=30.0, holds=True, world=(100.0, 200.0)):
     return {"frame": frame, "asked": True, "box": [0, 0, 1, 1], "score": 0.9, "holdsPoint": holds,
-            "worldSize": [width, height], "aboveOrigin": above, "belowOrigin": below}
+            "world": list(world), "worldSize": [width, height], "aboveOrigin": above, "belowOrigin": below}
 
 
 def clean_run():
@@ -117,6 +118,152 @@ class JudgeTest(unittest.TestCase):
     def test_every_judged_frame_inside_is_a_pass_and_says_how_many(self):
         got = rule.judge({"run": "r", "frames": [row(0), row(10), {"frame": 20, "asked": False}]}, self.CAL)
         self.assertEqual((got["result"], got["reason"], got["not-asked"]), ("pass", "all 2 judged frames are inside the clean range", 1))
+
+
+class PairTest(unittest.TestCase):
+    """A changed game's frame against the unchanged game's same frame."""
+
+    def one(self, base, head, tolerance=6.0):
+        return rule.pair_frame(base, head, tolerance)
+
+    def test_boxes_that_agree_within_the_tolerance_are_in_and_the_edge_counts(self):
+        self.assertEqual(self.one(row(5), row(5)), {"frame": 5, "state": "in", "why": []})
+        self.assertEqual(self.one(row(5, width=40), row(5, width=46))["state"], "in")
+        self.assertEqual(self.one(row(5, width=40), row(5, width=46.5))["state"], "out")
+
+    def test_each_measure_that_differs_is_named_with_both_values(self):
+        got = self.one(row(5, above=29, below=30), row(5, above=3, below=56))
+        self.assertEqual(got["state"], "out")
+        self.assertEqual(got["why"], ["above 3 against 29 unchanged", "below 56 against 30 unchanged"])
+
+    def test_a_slip_the_unchanged_game_has_too_is_not_a_difference(self):
+        # The robot and a trunk answered as one object, 107.5 px tall, in both games: they agree.
+        slip = dict(height=107.5, below=81.0)
+        self.assertEqual(self.one(row(20, **slip), row(20, **slip))["state"], "in")
+
+    def test_where_the_engine_moved_the_player_nothing_is_compared(self):
+        got = self.one(row(5), row(5, height=20, world=(100.0, 226.0)))
+        self.assertEqual(got["state"], "moved")
+        self.assertEqual(got["why"], ["the engine has the player at 100, 226; unchanged, at 100, 200"])
+        self.assertEqual(self.one(row(5), row(5, world=(100.04, 200.0)))["state"], "in")       # the trace's last digit
+        self.assertEqual(self.one(row(5), row(5, world=(100.19, 200.0)))["state"], "moved")
+
+    def test_no_box_in_either_game_and_frames_not_asked(self):
+        empty = {"frame": 5, "asked": True, "box": None, "world": [100.0, 200.0], "note": "nothing came back for the point"}
+        self.assertEqual(self.one(row(5), empty)["state"], "no-answer")
+        self.assertEqual(self.one(empty, row(5))["state"], "no-base")
+        self.assertEqual(self.one(None, row(5))["state"], "no-base")
+        self.assertEqual(self.one({"frame": 5, "asked": False}, row(5))["state"], "no-base")
+        self.assertEqual(self.one(row(5), {"frame": 5, "asked": False, "note": "the player is outside the picture"})["state"], "not-asked")
+
+    def test_a_box_that_holds_the_point_in_one_game_only_is_out(self):
+        self.assertEqual(self.one(row(5), row(5, holds=False))["why"], ["the box holds the point in one game and not in the other"])
+
+    def run_of(self, *frames, name="head", route=None):
+        return {"run": name, "frames": list(frames), **({"route": route} if route else {})}
+
+    def test_a_pass_needs_every_asked_frame_compared_and_in(self):
+        base = self.run_of(row(0), row(10), row(20), name="clean")
+        self.assertEqual(rule.pair(base, self.run_of(row(0), row(10), row(20)))["result"], "pass")
+        got = rule.pair(base, self.run_of(row(0), row(10), {"frame": 20, "asked": False}))
+        self.assertEqual((got["result"], got["judged"], got["not-asked"]), ("pass", 2, 1))
+
+    def test_a_frame_that_differs_fails_the_run_and_is_named(self):
+        base = self.run_of(row(0), row(10), name="clean")
+        got = rule.pair(base, self.run_of(row(0), row(10, below=56)))
+        self.assertEqual((got["result"], got["out"]), ("fail", 1))
+        self.assertIn("first frame 10: below 56 against 30 unchanged", got["reason"])
+
+    def test_frames_this_rule_cannot_compare_are_never_a_pass(self):
+        base = self.run_of(row(0), row(10), name="clean")
+        for head in (self.run_of(row(0), row(10, world=(100.0, 226.0))),            # the engine moved the player
+                     self.run_of(row(0), row(10), row(20)),                          # a frame the base does not have
+                     self.run_of(row(0), {"frame": 10, "asked": True, "box": None, "world": [100.0, 200.0]}),
+                     self.run_of()):
+            with self.subTest(head=head):
+                got = rule.pair(base, head)
+                self.assertEqual(got["result"], "needs-review")
+                self.assertIn("not a pass", got["reason"])
+
+    def test_runs_of_different_routes_are_not_compared(self):
+        smoke, combat = {"name": "smoke", "sha256": "a" * 64}, {"name": "combat", "sha256": "b" * 64}
+        base = self.run_of(row(0), name="clean", route=smoke)
+        got = rule.pair(base, self.run_of(row(0), route=combat))
+        self.assertEqual((got["result"], got["judged"]), ("needs-review", 0))
+        self.assertIn("a different route (combat against smoke)", got["reason"])
+        self.assertEqual(rule.pair(base, self.run_of(row(0), route=dict(smoke)))["result"], "pass")
+        # A route of the same name with other contents is another route: the digest decides.
+        self.assertEqual(rule.pair(base, self.run_of(row(0), route={"name": "smoke", "sha256": "c" * 64}))["result"], "needs-review")
+        # A run that does not say its route is compared: older reports did not record it.
+        self.assertEqual(rule.pair(base, self.run_of(row(0)))["result"], "pass")
+
+    def test_a_negative_tolerance_is_refused(self):
+        with self.assertRaises(rule.RuleError):
+            rule.pair(self.run_of(row(0)), self.run_of(row(0)), tolerance=-1)
+
+
+class RecordedPairsTest(unittest.TestCase):
+    """The recorded answers, every run against the clean run's same frame (mid-body, tolerance 6)."""
+
+    def paired(self, path=MID_BODY, tolerance=rule.DEFAULT_TOLERANCE):
+        report, clean = rule.load_run(path, "clean")
+        return {run["run"]: rule.pair(clean, run, tolerance) for run in report["runs"] if run["run"] != "clean"}
+
+    def test_the_drawing_bugs_differ_the_coins_bug_agrees_and_the_engines_bugs_are_not_compared(self):
+        got = {name: (r["result"], r["out"], r["judged"], r["moved"]) for name, r in self.paired().items()}
+        self.assertEqual(got, {
+            "missing-texture_v1": ("pass", 0, 13, 0),
+            "missing-texture_v2": ("pass", 0, 13, 0),
+            "layering_v1": ("fail", 9, 13, 0),
+            "layering_v2": ("fail", 9, 13, 0),
+            "sinking_v2": ("fail", 13, 13, 0),
+            "sinking_v1": ("needs-review", 0, 0, 13),                 # the engine has the robot 26 px lower
+            "physics-fall-through_v1": ("needs-review", 0, 0, 2),     # and falling; 11 frames out of the picture
+            "physics-fall-through_v2": ("needs-review", 0, 0, 2),
+        })
+
+    def test_the_sinking_bug_reads_as_the_patch_is_written(self):
+        reason = self.paired()["sinking_v2"]["reason"]
+        self.assertIn("first frame 0: above 3 against 29 unchanged; below 56 against 30 unchanged", reason)
+
+    def test_the_tolerance_sits_between_the_same_robot_and_the_bugs(self):
+        # The same robot in the same place differs by 5 px once (missing-texture, frame 70, the width).
+        self.assertEqual(self.paired(tolerance=4.9)["missing-texture_v1"]["out"], 1)
+        self.assertEqual(self.paired(tolerance=5)["missing-texture_v1"]["out"], 0)
+        # The sinking bug moves two measures by 25.5 px or more in every frame.
+        self.assertEqual(self.paired(tolerance=25)["sinking_v2"]["out"], 13)
+        self.assertLess(self.paired(tolerance=26)["sinking_v2"]["out"], 13)
+
+    def test_at_the_origin_pairs_inherit_the_unsteady_clean_answers(self):
+        # Clean frame 60 at the origin is a 19 px part of the robot; missing-texture got the whole robot.
+        got = self.paired(AT_ORIGIN)
+        self.assertEqual((got["missing-texture_v1"]["result"], got["missing-texture_v1"]["out"]), ("fail", 1))
+        self.assertEqual(got["sinking_v2"]["out"], 13)
+
+    def test_other_routes_clean_runs_are_refused_not_judged(self):
+        _, clean = rule.load_run(MID_BODY, "clean")
+        for run in rule.load_report(OTHER_CLEAN)["runs"]:
+            with self.subTest(run=run["run"]):
+                got = rule.pair(clean, run)
+                self.assertEqual((got["result"], got["judged"]), ("needs-review", 0))
+                self.assertIn("a different route", got["reason"])
+
+    def test_the_slip_lasts_nine_frames_and_the_same_frame_asked_twice_agrees_with_itself(self):
+        # Why neighbours cannot tell a slip from a bug: frames 16 to 24 of clean traversal are all out
+        # of the smoke route's clean range, the box growing from 69 to 140.5 px tall.
+        report, clean = rule.load_run(MID_BODY, "clean")
+        cal = rule.calibrate(clean, rule.DEFAULT_PAD, report["lift"])
+        near = rule.load_report(NEAR_THE_SLIP)["runs"][0]
+        states = {f["frame"]: f["state"] for f in rule.judge(near, cal)["frames"]}
+        self.assertEqual([n for n, state in states.items() if state == "out"], list(range(16, 25)))
+        self.assertEqual((states[15], states[25]), ("in", "in"))
+        heights = [r["worldSize"][1] for r in near["frames"] if 16 <= r["frame"] <= 24]
+        self.assertEqual((heights[0], heights[-1], heights == sorted(heights)), (69.0, 140.5, True))
+        # Frame 20 was asked in two runs. Paired, the second agrees with the first exactly.
+        every_tenth = next(r for r in rule.load_report(OTHER_CLEAN)["runs"] if r["run"] == "clean-traversal")
+        twenty = rule.pair(every_tenth, {"run": "again", "route": near["route"],
+                                         "frames": [r for r in near["frames"] if r["frame"] == 20]}, tolerance=0)
+        self.assertEqual((twenty["result"], twenty["judged"]), ("pass", 1))
 
 
 class RecordedAnswersTest(unittest.TestCase):
@@ -239,6 +386,29 @@ class MainTest(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("cannot be compared", err)
 
+    def test_pairs_print_their_own_table_and_leave_their_own_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, out, _ = self.run_main(["--pair", f"{MID_BODY}:clean", "--judge", MID_BODY, OTHER_CLEAN, "--out", tmp],
+                                         {"GITHUB_ACTIONS": "true"})
+            self.assertEqual(code, 0)
+            page = (Path(tmp) / "anchor-pairs.md").read_text(encoding="utf-8")
+            doc = json.loads((Path(tmp) / "anchor-pairs.json").read_text(encoding="utf-8"))
+        self.assertIn("Unchanged game: `clean`. Tolerance 6 game px, point 14 px above the origin.", page)
+        self.assertIn("| sinking_v2 | fail | 13 | 13 | 0 | 0 | 0 | 0 |", page)
+        self.assertIn("| clean-combat | needs-review | 0 | 0 | 0 | 0 | 0 | 0 | a different route (combat against smoke)", page)
+        self.assertNotIn("| clean |", page)                       # the unchanged game is not paired with itself
+        self.assertEqual((doc["base"], doc["tolerance"], len(doc["results"])), ("clean", 6.0, 11))
+        self.assertIn("::notice title=Anchored pairs sinking_v2::fail: 13 of 13 compared frames differ", out)
+
+    def test_pairs_asked_at_another_point_are_not_compared_and_one_way_must_be_chosen(self):
+        code, _, err = self.run_main(["--pair", f"{MID_BODY}:clean", "--judge", AT_ORIGIN])
+        self.assertEqual(code, 2)
+        self.assertIn("cannot be compared", err)
+        with self.assertRaises(SystemExit):
+            self.run_main(["--judge", MID_BODY])
+        with self.assertRaises(SystemExit):
+            self.run_main(["--pair", f"{MID_BODY}:clean", "--calibrate", f"{MID_BODY}:clean", "--judge", MID_BODY])
+
     def test_a_run_name_that_is_not_there_or_not_given_is_an_error(self):
         code, _, err = self.run_main(["--calibrate", f"{MID_BODY}:tidy", "--judge", MID_BODY])
         self.assertEqual(code, 2)
@@ -277,7 +447,21 @@ class WorkflowTest(unittest.TestCase):
         ruled = self.job.index("python -m agents.anchor_rule --calibrate runs/sam-probe/anchor.json:clean")
         self.assertLess(probe, ruled)
         self.assertIn('|| echo "::warning title=Anchored rule::', self.job[ruled:ruled + 400])
-        self.assertIn("for page in anchor-rule.md anchor.md probe.md; do", self.job)
+        self.assertIn("for page in anchor-pairs.md anchor-rule.md anchor.md probe.md; do", self.job)
+
+    def test_the_pairs_follow_the_range_rule_and_cannot_fail_the_step_either(self):
+        ruled = self.job.index("python -m agents.anchor_rule --calibrate runs/sam-probe/anchor.json:clean")
+        paired = self.job.index("python -m agents.anchor_rule --pair runs/sam-probe/anchor.json:clean")
+        self.assertLess(ruled, paired)
+        self.assertIn('|| echo "::warning title=Anchored pairs::', self.job[paired:paired + 400])
+
+    def test_another_route_for_the_seeded_runs_is_a_route_name_that_exists_and_no_key_is_near_it(self):
+        step = self.job.split("- name: Render the clean game and every seeded bug", 1)[1].split("\n      - name:", 1)[0]
+        self.assertNotIn("secrets.", step)
+        self.assertIn('[[ "$ROUTE" =~ ^[a-z][a-z0-9-]*$ ]]', step)
+        self.assertIn('[[ -f "harness/routes/$ROUTE.json" ]]', step)
+        self.assertIn('python -m harness.check_seeded --route "harness/routes/$ROUTE.json" --out runs/seeded', step)
+        self.assertIn("python -m harness.check_seeded --out runs/seeded\n", step)       # no route given: as before
 
 
 if __name__ == "__main__":

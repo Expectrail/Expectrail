@@ -19,6 +19,15 @@ range. A run fails on its first frame that is out. A frame that was asked and go
 a pass: with no frame out, the run is needs-review. Frames the probe did not ask about (the player
 outside the picture) are not judged, and a run with none judged is needs-review.
 
+A second way to judge, added after the first clean routes the range was held against (one clean
+frame in 36 was out: the robot in front of a tree, answered as robot and trunk together, for nine
+frames in a row):
+
+    pair        every frame of a changed game against the same frame of the unchanged game on the
+                same route. Where the engine puts the player in the same place in both, the two
+                boxes must agree within ``tolerance``. Where it does not, this rule has nothing to
+                compare and says so. The unchanged game's own slips are in both and cancel.
+
 **This decides nothing in the product.** No verdict reads it. It exists to be measured: set on one
 clean route and held against other clean routes (the false alarms) and against the seeded bugs.
 
@@ -42,6 +51,15 @@ MEASURES = ("width", "height", "above", "below")
 # reach moved by up to 1.5 px (its width by 5 px, once in 13 frames). With no pad the clean run has
 # a frame outside the range the missing-texture run sets. It is a starting value, not a tuned one.
 DEFAULT_PAD = 2.0
+# For pairs. How far a measure may differ between the unchanged game's box and the changed game's,
+# in game pixels. The largest difference in the recorded answers between two runs that show the
+# same robot in the same place (clean and missing-texture, 13 frames) is 5 px, once, in the width;
+# the rest are 1.5 px or less. The sinking bug moves two measures by 25.5 px or more in every frame.
+# A drawing moved by 6 px or less is not seen at this value.
+DEFAULT_TOLERANCE = 6.0
+# The engine's player position, in game pixels, must agree this closely for two frames to be the
+# same place. The trace is written to a hundredth of a pixel.
+SAME_PLACE = 0.05
 
 
 class RuleError(ValueError):
@@ -136,6 +154,99 @@ def judge(run: dict, calibration: dict) -> dict:
     return {"run": run.get("run"), "result": result, "reason": reason, "judged": judged, **count, "frames": frames}
 
 
+def pair_frame(base: dict | None, head: dict, tolerance: float) -> dict:
+    """One frame of the changed game against the same frame of the unchanged game.
+
+    States: in, out, moved (the engine puts the player somewhere else, so there is nothing to
+    compare), no-base (the unchanged game has no box for this frame), no-answer, not-asked.
+    """
+    out = {"frame": head["frame"]}
+    if not head.get("asked"):
+        return {**out, "state": "not-asked", "why": [head.get("note") or "not asked"]}
+    if base is None or not base.get("asked") or not base.get("box"):
+        return {**out, "state": "no-base", "why": ["the unchanged game has no box for this frame"]}
+    (bx, by), (hx, hy) = base["world"], head["world"]
+    if abs(bx - hx) > SAME_PLACE or abs(by - hy) > SAME_PLACE:
+        return {**out, "state": "moved", "why": [f"the engine has the player at {hx:g}, {hy:g}; unchanged, at {bx:g}, {by:g}"]}
+    if not head.get("box"):
+        return {**out, "state": "no-answer", "why": [head.get("error") or head.get("note") or "no box came back"]}
+    why = []
+    if bool(head.get("holdsPoint")) != bool(base.get("holdsPoint")):
+        why.append("the box holds the point in one game and not in the other")
+    was, now = measures(base), measures(head)
+    for name in MEASURES:
+        if abs(now[name] - was[name]) > tolerance:
+            why.append(f"{name} {now[name]:g} against {was[name]:g} unchanged")
+    return {**out, "state": "out" if why else "in", "why": why}
+
+
+def different_route(base: dict | None, head: dict | None) -> str | None:
+    """Why two runs are not the same route, or None when they are or when either does not say.
+    The digest decides when both have one; otherwise the name."""
+    if not base or not head:
+        return None
+    key = "sha256" if base.get("sha256") and head.get("sha256") else "name"
+    if base.get(key) == head.get(key):
+        return None
+    return f"a different route ({head.get('name')} against {base.get('name')})"
+
+
+def pair(base_run: dict, head_run: dict, tolerance: float = DEFAULT_TOLERANCE) -> dict:
+    """A changed game's run against the unchanged game's run of the same route.
+
+    Fail on the first frame out. A pass needs every asked frame compared and in: a frame the engine
+    moved, a frame the unchanged game has no box for, or a frame with no answer leaves the run at
+    needs-review, because this rule then says nothing about it and silence is never a pass.
+    """
+    if tolerance < 0:
+        raise RuleError("the tolerance cannot be negative")
+    states = ("in", "out", "moved", "no-base", "no-answer", "not-asked")
+    other = different_route(base_run.get("route"), head_run.get("route"))
+    if other:
+        # The same place on another route is another moment of play: the pose need not be the same.
+        return {"run": head_run.get("run"), "result": "needs-review", "judged": 0, **{s: 0 for s in states}, "frames": [],
+                "reason": f"{other}: frames of different routes are not compared, and that is not a pass"}
+    base = {r["frame"]: r for r in base_run.get("frames") or []}
+    frames = [pair_frame(base.get(r["frame"]), r, tolerance) for r in head_run.get("frames") or []]
+    count = {state: sum(1 for f in frames if f["state"] == state) for state in states}
+    judged = count["in"] + count["out"]
+    first = next((f for f in frames if f["state"] == "out"), None)
+    unjudged = count["moved"] + count["no-base"] + count["no-answer"]
+    if first is not None:
+        result = "fail"
+        reason = (f"{count['out']} of {judged} compared frames differ from the unchanged game, first frame "
+                  f"{first['frame']}: {'; '.join(first['why'])}")
+    elif unjudged or not judged:
+        result = "needs-review"
+        parts = []
+        if count["moved"]:
+            parts.append(f"the engine puts the player elsewhere in {count['moved']} frames")
+        if count["no-base"]:
+            parts.append(f"the unchanged game has no box for {count['no-base']}")
+        if count["no-answer"]:
+            parts.append(f"{count['no-answer']} got no box")
+        if not parts:
+            parts.append("no frame was asked about in both games")
+        reason = "; ".join(parts) + f"; {judged} frames were compared and agree, and that is not a pass"
+    else:
+        result = "pass"
+        reason = f"all {judged} asked frames agree with the unchanged game within {tolerance:g} px"
+    return {"run": head_run.get("run"), "result": result, "reason": reason, "judged": judged, **count, "frames": frames}
+
+
+def pairs_markdown(base_name: str, tolerance: float, lift, results: list[dict]) -> str:
+    lines = ["# The anchored rule, in pairs: each frame against the unchanged game's same frame", "",
+             f"Unchanged game: `{base_name}`. Tolerance {tolerance:g} game px"
+             + (f", point {lift:g} px above the origin" if lift is not None else "")
+             + ". A probe's rule: no verdict reads it.", "",
+             "| Run | Result | Compared | Differ | Engine moved | No base | No answer | Not asked | Why |",
+             "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
+    for res in results:
+        lines.append(f"| {res['run']} | {res['result']} | {res['judged']} | {res['out']} | {res['moved']} | "
+                     f"{res['no-base']} | {res['no-answer']} | {res['not-asked']} | {res['reason'].replace('|', '/')} |")
+    return "\n".join(lines) + "\n"
+
+
 def markdown(calibration: dict, results: list[dict]) -> str:
     r = calibration["ranges"]
     lines = ["# The anchored rule: what is drawn at the player's place, against a clean run's range", "",
@@ -157,13 +268,21 @@ def _escape(text: str) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Judge an anchored probe's answers against a clean run's range.")
-    p.add_argument("--calibrate", required=True, metavar="FILE[:RUN]",
-                   help="the anchor.json and the clean run in it that sets the range")
+    how = p.add_mutually_exclusive_group(required=True)
+    how.add_argument("--calibrate", metavar="FILE[:RUN]",
+                     help="the anchor.json and the clean run in it that sets the range")
+    how.add_argument("--pair", metavar="FILE[:RUN]",
+                     help="the anchor.json and the unchanged game's run in it: judge every other run frame by "
+                          "frame against it (the runs must be the same route)")
+    p.add_argument("--tolerance", type=float, default=DEFAULT_TOLERANCE,
+                   help=f"with --pair, how far a measure may differ, in game pixels (default {DEFAULT_TOLERANCE:g})")
     p.add_argument("--judge", type=Path, nargs="+", required=True, metavar="FILE", help="anchor.json files to judge, every run")
     p.add_argument("--pad", type=float, default=DEFAULT_PAD,
                    help=f"widen every range by this many game pixels (default {DEFAULT_PAD:g})")
     p.add_argument("--out", type=Path)
     args = p.parse_args(argv)
+    if args.pair:
+        return _main_pairs(args)
     path, _, name = args.calibrate.partition(":")
     try:
         report, clean = load_run(Path(path), name or None)
@@ -194,6 +313,38 @@ def main(argv: list[str] | None = None) -> int:
         print("::notice title=Anchored rule range::" + _escape(
             f"set on {calibration['from']}, pad {calibration['pad']:g}; "
             + "; ".join(f"{n} {r[n][0]:g} to {r[n][1]:g}" for n in MEASURES)))
+    return 0
+
+
+def _main_pairs(args) -> int:
+    path, _, name = args.pair.partition(":")
+    try:
+        report, base = load_run(Path(path), name or None)
+        results = []
+        for file in args.judge:
+            doc = load_report(file)
+            if doc.get("lift") != report.get("lift"):
+                raise RuleError(f"{file} was asked {doc.get('lift')} px above the origin and the unchanged game "
+                                f"{report.get('lift')}: boxes asked at different points cannot be compared")
+            same_file = Path(file).resolve() == Path(path).resolve()
+            results += [pair(base, run, args.tolerance) for run in doc["runs"]
+                        if not (same_file and run.get("run") == base.get("run"))]
+    except RuleError as exc:
+        print(f"anchored rule: {exc}", file=sys.stderr)
+        return 2
+    page = pairs_markdown(base.get("run"), args.tolerance, report.get("lift"), results)
+    if args.out:
+        args.out.mkdir(parents=True, exist_ok=True)
+        (args.out / "anchor-pairs.md").write_text(page, encoding="utf-8")
+        (args.out / "anchor-pairs.json").write_text(json.dumps(
+            {"base": base.get("run"), "tolerance": args.tolerance, "lift": report.get("lift"), "results": results},
+            indent=2) + "\n", encoding="utf-8")
+        print(f"wrote {args.out / 'anchor-pairs.md'}")
+    else:
+        print(page, end="")
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        for res in results[:9]:
+            print(f"::notice title=Anchored pairs {res['run']}::{_escape(res['result'] + ': ' + res['reason'])}")
     return 0
 
 

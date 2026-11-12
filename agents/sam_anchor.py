@@ -50,6 +50,16 @@ def load_trace(run: Path) -> dict:
                        "player position, so a run without its position log cannot be asked about") from exc
 
 
+def route_of(run: Path) -> dict | None:
+    """The route a run replayed, {"name", "sha256"} from its replay.json, or None when it does not say.
+    Two runs can be compared frame by frame only when this is the same."""
+    try:
+        route = json.loads((run / "replay.json").read_text(encoding="utf-8"))["route"]
+        return {"name": str(route["name"]), "sha256": str(route["sha256"])}
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
 def anchors(trace: dict, frame_size: tuple[int, int], frames: list[int], lift: float = 0.0,
             fps: int = 60) -> dict[int, dict]:
     """Where to point in each frame: the engine's player origin, ``lift`` game pixels up, in frame pixels.
@@ -163,7 +173,7 @@ def probe_run(run: Path, picked: list[int] | None, every: int, first: int, lift:
     """Ask about every chosen frame of one run. A stop (see STOP_KINDS) is raised with the rows so far."""
     frames, chosen, where = plan(run, picked, every, first, lift)
     rows = []
-    result = {"run": run.name, "framesProbed": chosen, "frames": rows}
+    result = {"run": run.name, "route": route_of(run), "framesProbed": chosen, "frames": rows}
     for n in chosen:
         anchor = where[n]
         if "why" in anchor:

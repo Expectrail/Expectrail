@@ -419,10 +419,58 @@ range still set on the smoke route's clean run, pad 2.
 - The nine runs of the earlier probe were asked again in this run and gave the same 95 answers,
   for the third time.
 
-What to try next: a drawing bug lasts from frame to frame, and a slip like this may not. Before a
-frame out decides anything, the frames either side of it would be asked about. Whether that works
-depends on how long the robot-and-trunk answer lasts, which a probe of every tenth frame cannot
-say. Not measured yet.
+**Asking the frames either side would not help.** [Run 43318368572](https://github.com/Expectrail/Expectrail/actions/runs/43318368572)
+asked about frames 15 to 25 of that route (11 images). The robot-and-trunk answer lasts nine frames
+in a row, 16 to 24, the box growing from 69 to 140.5 px tall as the robot rises through the tree;
+frames 15 and 25 are the robot alone. A slip that long looks like a bug that lasts.
+
+### In pairs: each frame against the unchanged game's same frame
+
+Expectrail verifies a change by replaying the same route on the unchanged game and on the changed
+one. So the yardstick for a frame can be the unchanged game's answer for that same frame, not a
+range taken from another route. A slip the unchanged game has is then in both, and SAM gave the
+same answer to the same frame three times running.
+
+```sh
+python3 -m agents.anchor_rule --pair runs/sam-probe/anchor.json:clean \
+    --judge runs/sam-probe/anchor.json --out runs/sam-probe
+```
+
+- **Compared:** a frame where the engine puts the player in the same place in both games (to
+  0.05 px). The four measures must agree within a tolerance, 6 px unless told otherwise: the same
+  robot in the same place differed by 5 px once in 13 frames (the width), and by 1.5 px or less
+  otherwise.
+- **Not compared:** a frame where the engine moved the player, a frame the unchanged game has no
+  box for, and runs of different routes (the probe now records each run's route). The same place
+  on another route is another moment of play: on the combat route, a frame at the smoke route's
+  start position is 8 px narrower.
+- **Result:** fail on the first frame that differs. A pass needs every asked frame compared and in
+  agreement. Anything this rule could not compare leaves the run at needs-review.
+
+On the recorded answers at mid-body, every run against the clean run:
+
+| Run | Result | Frames that differ of those compared | Engine moved the player |
+| --- | --- | --- | --- |
+| missing-texture v1, v2 | pass | 0 of 13 | 0 |
+| layering v1, v2 | fail | 9 of 13 | 0 |
+| sinking v2 | fail: "above 3 against 29 unchanged; below 56 against 30 unchanged" | 13 of 13 | 0 |
+| sinking v1 | needs-review | 0 of 0 | 13 |
+| physics-fall-through v1, v2 | needs-review | 0 of 0 | 2 (11 not asked) |
+
+So the two bugs that are only in the drawing fail, the two the engine's record already shows are
+left to it, and the harmless change passes. The tolerance has room both ways on this data: the
+missing-texture run passes from 5 px up, and sinking v2 differs in all 13 frames up to 25 px.
+
+What this has not shown, and it is the point of the idea: **a harmless change on a route where the
+unchanged game slips.** If the missing-texture game on the traversal route gets the same
+robot-and-trunk boxes in frames 16 to 24 as the clean game does, the pair agrees and the false
+alarm is gone. If the different coins tip SAM into a different answer there, it is not. The SAM
+probe workflow can make that run: probe mode, `anchor` ticked, `lift` 14, `route` `traversal`,
+`runs` `clean,missing-texture_v1,layering_v1,sinking_v2` (52 images, $0.13), and for the frames
+around the slip, `frames` `14,15,16,17,18,19,20,21,22,23,24,25,26`.
+
+Also not shown: a change that moves the player a little and changes nothing else (every frame is
+then "moved", and this rule is silent), and any game but this one.
 
 What it leans on: the point is the engine's. A game that lies about where its player is sends the
 question to the wrong place, so this can never be the only evidence that a player is where the
