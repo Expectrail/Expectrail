@@ -1,7 +1,8 @@
 """Normalize one replay's raw trace into an expectrail.episode/v1 record.
 
 The raw trace is what harness/godot/expectrail_harness.gd writes: one row per physics tick with the
-player, its floor state, its sprite's facing, and the enemies and bullets it tracks. The episode keeps
+player, its floor state, its sprite's facing, the enemies and bullets it tracks, the coins still in the
+level and the camera. The episode keeps
 those samples, states what the recorder collected (``capabilities``), checks that ticks are contiguous,
 and derives the events the contract interpreter reads (a bullet's first appearance, a take-off, a
 landing). It never fills a gap, smooths a value or invents an event the trace does not show.
@@ -9,6 +10,12 @@ landing). It never fills a gap, smooths a value or invents an event the trace do
 A trace from before the recorder declared its capabilities is still read, with narrower guarantees:
 its enemies and bullets were only written when there were some, so an empty tick cannot prove that
 none were there, and those collections are "unknown".
+
+Coins and the camera (added November 12, 2026, issue #285). The recorder finds the level's coins once,
+on its first row, and then writes ``coins`` on every row that still has one. So when any row has
+``coins``, a row without it has none left, and the collection is "initial-instances"; when no row
+has it, the trace cannot say whether the level has coins, and every sample's ``coins`` is None. The
+camera (``view``) is kept as the recorder wrote it; a sample without one has None.
 """
 from __future__ import annotations
 
@@ -74,6 +81,8 @@ def normalize(trace: dict, route: dict, *, episode_id: str, trace_bytes: bytes |
         "facing": any("facing" in r for r in rows),
         "enemies": enemies_cap,
         "projectiles": projectiles_cap,
+        "coins": "initial-instances" if any("coins" in r for r in rows) else "unknown",
+        "view": any(r.get("view") is not None for r in rows),
     }
     samples = []
     for r in rows:
@@ -98,9 +107,22 @@ def normalize(trace: dict, route: dict, *, episode_id: str, trace_bytes: bytes |
             # Absent key: an empty collection only when the recorder said it writes every tick.
             return [] if cap in ("complete", "initial-instances", "absent") else None
 
+        view = r.get("view")
+        if view is not None:
+            if not (isinstance(view, (list, tuple)) and len(view) == 6 and _finite(*view)):
+                raise EpisodeError(f"tick {tick}: malformed view {view!r}")
+            view = [float(v) for v in view]
+        coins = None
+        if caps["coins"] == "initial-instances":
+            coins = []
+            for item in r.get("coins") or []:
+                if not (isinstance(item, (list, tuple)) and len(item) == 2 and _finite(*item)):
+                    raise EpisodeError(f"tick {tick}: malformed coins entry {item!r}")
+                coins.append([float(item[0]), float(item[1])])
         samples.append({"tick": tick, "player": player, "onFloor": on_floor, "facing": facing,
                         "enemies": collection("enemies", enemies_cap),
-                        "projectiles": collection("projectiles", projectiles_cap)})
+                        "projectiles": collection("projectiles", projectiles_cap),
+                        "coins": coins, "view": view})
     ticks = [s["tick"] for s in samples]
     if ticks != sorted(ticks) or len(set(ticks)) != len(ticks):
         raise EpisodeError("ticks are not strictly increasing")

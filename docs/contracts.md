@@ -61,6 +61,12 @@ Two more documents support the blind run without a schema of their own: `discove
 set's manifest (`expectrail.fresh-set/v1`), which lives only in the private repository and is
 checked by `python -m expectrail.discovery.fresh check`.
 
+Since November 12, 2026 an `episode` also keeps the coins still in the level and the camera, per
+sample (`coins`, `view`) and in `capabilities`. Both are optional in the schema, so an episode
+written before then is still read; a signal that needs them gives no reading on it. A `trace-spec`
+relation may name three more signals (`coins_collected`, `player_screen_x_range_px`,
+`player_screen_y_range_px`).
+
 The difference from a `test-spec`: a person approves every test spec before it can fail a fix. A
 `trace-spec` from discovery is advisory until the promotion stage exists (validation, a person's
 approval, a pinned contract set), which is not built.

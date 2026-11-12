@@ -128,6 +128,15 @@
             "absent",
             "unknown"
           ]
+        },
+        "coins": {
+          "enum": [
+            "initial-instances",
+            "unknown"
+          ]
+        },
+        "view": {
+          "type": "boolean"
         }
       }
     },
@@ -296,6 +305,61 @@
                   "items": false,
                   "minItems": 3
                 }
+              }
+            ]
+          },
+          "coins": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
+                  "items": false,
+                  "minItems": 2
+                }
+              }
+            ]
+          },
+          "view": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "items": false,
+                "minItems": 6
               }
             ]
           }

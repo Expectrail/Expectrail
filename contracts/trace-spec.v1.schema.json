@@ -339,7 +339,10 @@
                 "enemies_at_end",
                 "player_dx_px",
                 "airborne_ticks",
-                "air_jumps"
+                "air_jumps",
+                "coins_collected",
+                "player_screen_x_range_px",
+                "player_screen_y_range_px"
               ]
             },
             "comparator": {
