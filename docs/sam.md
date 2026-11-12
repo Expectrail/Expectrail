@@ -362,6 +362,52 @@ What it does not say:
   the harness does not log yet.
 - What a point request is billed at is still not known; the counts above price it as an image.
 
+### The rule those numbers point to (agreed November 12, not in any verdict)
+
+Sean agreed the rule to try: **one box holding the point, its size and its reach above and below
+the point inside the range a clean run sets.** Confidence is not part of it. `agents/anchor_rule.py`
+is that rule as arithmetic over an `anchor.json`:
+
+```sh
+python3 -m agents.anchor_rule --calibrate runs/sam-probe/anchor.json:clean \
+    --judge runs/sam-probe/anchor.json --out runs/sam-probe
+```
+
+- **Set:** from a clean run, the smallest and largest width, height, reach above and reach below of
+  its boxes in game pixels, each widened by a pad (2 px unless told otherwise). A clean run with a
+  frame the observer could not read sets no range.
+- **Judge:** a frame is out when its box does not hold the point or a measure is outside its range.
+  A run fails on its first frame out. A frame that was asked and got no box is never a pass
+  (needs-review), and a run with no frame judged is needs-review.
+- **Why a pad:** the clean run and the missing-texture run show the same robot in the same frames,
+  only the coins differ, and between them a box's height and reach moved by up to 1.5 px (its width
+  by 5 px, once). With no pad, the clean run has one frame outside the range the missing-texture
+  run sets. 2 px is a starting value, not a tuned one.
+
+On the recorded answers with the point at mid-body (`tests/data/sam-anchor/bundled-lift-14.json`),
+set on the clean run, pad 2:
+
+| Run | Result | Frames out of those judged |
+| --- | --- | --- |
+| clean | pass (it set the range) | 0 of 13 |
+| missing-texture v1, v2 | pass | 0 of 13 |
+| layering v1, v2 | fail | 9 of 13 |
+| sinking v2 | fail, by its reach in every frame | 13 of 13 |
+| sinking v1 | fail, on one frame whose box is 73.5 px wide | 1 of 13 |
+| physics-fall-through v1, v2 | pass on the 2 frames before the robot leaves the picture | 0 of 2 |
+
+Sinking v2's first frame reads "above 3, below 56" against the clean frame's 29 and 30: the patch
+moves the drawing 26 px down, and that is the 26.
+
+**None of this is a false-alarm rate.** The range was set on the smoke route's clean run and the
+only clean-looking runs it was held against are that run and the missing-texture runs, the same
+frames. The measurement that matters is the clean game on routes the range was not set on. The
+SAM probe workflow can now make it: probe mode with `anchor` ticked, `lift` 14, and `clean_routes`
+set to `coins,combat,traversal` replays the clean game on those routes as `clean-coins` and so on,
+asks about all twelve runs (131 images, $0.33) and puts the rule's table in the summary and on the
+`sam-probe-results` branch. A clean route that fails there is a false alarm, and the rule changes
+before it goes anywhere near a verdict.
+
 What it leans on: the point is the engine's. A game that lies about where its player is sends the
 question to the wrong place, so this can never be the only evidence that a player is where the
 engine says. It can say what is drawn there: nothing, something of the player's size, or the level.
