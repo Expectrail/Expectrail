@@ -275,6 +275,45 @@ table and its limits are on the bench's page. **Nothing generated checks run on 
 Not done: the live baseline itself, which a person dispatches, and so the rate and the breakdown
 of misses.
 
+### Three signals for what the record showed and no signal read
+
+Added November 12, 2026 (issue #285, step 4). The measurement above found three defects whose
+symptom is in the engine's record in a field no signal read: both camera defects (`view`) and
+`coin-stays` (`coins`). The episode now keeps those two fields
+([`normalize.py`](../expectrail/trace/normalize.py), `contracts/episode.v1.schema.json`) and three
+signals read them ([`signals.py`](../expectrail/trace/signals.py)). Each is a number over one replay
+and can be used in a `relation` between two probes, like every other signal:
+
+- `coins_collected`: coins in the level on the first tick, less those still there on the last. No
+  reading when the trace never names coins.
+- `player_screen_x_range_px`: how far apart the player's leftmost and rightmost places on the screen
+  are, in frame pixels. Near zero while the camera follows; it grows when the camera stops and the
+  player walks on. The ticks before the engine first applies the camera are left out. No reading
+  without a camera in the trace.
+- `player_screen_y_range_px`: the same, top to bottom.
+
+What they read on the real engine (Godot 4.7.2, every library probe replayed once on each build, the
+clean game twice with the same readings both times; in a cloud container, not in CI):
+
+| Defect | Signal | Probe where it moves most | Clean game | Defect build | Probes where it moves |
+| --- | --- | --- | --- | --- | --- |
+| `camera-stops-right` | `player_screen_x_range_px` | `hold-right` | 5 | 191.69 | 6 of 25 |
+| `camera-cut-top` | `player_screen_y_range_px` | `jump-l40-x8` | 169.81 | 203.37 | 1 of 25 |
+| `coin-stays` | `coins_collected` | `hold-right` | 5 | 0 | 10 of 25 |
+
+`camera-cut-top` is the weak one: one probe reaches high enough, and the range there is not near
+zero on the clean game either, because the camera sits on its lower limit at the start and the
+player's jump shows on screen. A check on it needs a threshold between two measured numbers.
+
+**The generator is not offered these three yet.** The issue asks for the baseline rate before
+anything changes, and that run has not been made. So the model gets the same signal names, meanings
+and measurements as before (`NOT_YET_OFFERED` in [`intent.py`](../expectrail/jit/intent.py)); a
+check it proposes on one of the three is dropped and said, and a saved proposal with one is
+refused. The system prompt is the same text as before, byte for byte. Offering them is moving three
+entries from one table to the other, after the baseline is recorded, and the visibility table on the bench's page is measured again
+then. No live run has used these signals, and nothing here says the model will propose a check
+on them.
+
 ## What this does not claim
 
 - **No detection rate.** The offline tests use a simulated game and a fake model. They show that an

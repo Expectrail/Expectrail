@@ -114,6 +114,20 @@ What the table shows, and what it does not:
 
 Those hand replays were made once and are not kept as tests.
 
+**Three signals were added on November 12, 2026, and the table above does not count them.** They
+read the two fields named above: `coins_collected` (`coins`), and `player_screen_x_range_px` and
+`player_screen_y_range_px` (`view`). On the same probes and engine, `coins_collected` goes from 5 to
+0 on `coin-stays` (`hold-right`; it moves on 10 probes), `player_screen_x_range_px` from 5 to 191.69
+on `camera-stops-right` (`hold-right`; 6 probes), and `player_screen_y_range_px` from 169.81 to
+203.37 on `camera-cut-top` (`jump-l40-x8`; that one probe). The generator is not offered them until
+the baseline run is recorded ([`docs/jit.md`](../../../docs/jit.md)), so the table stays as it was
+measured: it is what the generator can use in that run, and the scorer's reasons are read from it.
+To see the three on the real engine without changing the committed record:
+
+```
+python3 -m expectrail.repro visibility --out runs/repro-visibility-three --only camera-stops-right --only camera-cut-top --only coin-stays
+```
+
 ## Reach: routes for what no library probe does
 
 Added November 12, 2026 ([`expectrail/repro/reach.py`](../../../expectrail/repro/reach.py), issue #285 step 3).

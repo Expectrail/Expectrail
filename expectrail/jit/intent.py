@@ -50,7 +50,23 @@ SIGNAL_MEANINGS = {
     "player_dx_px": "net horizontal movement of the player, in pixels (right is positive)",
     "projectile_count": "projectiles fired",
 }
-assert set(SIGNAL_MEANINGS) == set(SIGNALS), "every signal needs a meaning in the prompt"
+
+# Signals the interpreter reads and the model is not yet told about, with the meaning each will be
+# given. Issue #285 asks for the baseline reproduction rate "before changing anything", and that run
+# had not been made when these three were added (November 12, 2026). Until it is recorded, the model
+# gets the same signal names, meanings and measurements as before, and a check it proposes on one of
+# these is dropped, so the baseline measures the generator as it was. Moving these entries into
+# SIGNAL_MEANINGS is the whole of the change that offers them.
+NOT_YET_OFFERED = {
+    "coins_collected": "coins in the level on the first tick, less those still there on the last",
+    "player_screen_x_range_px": "how far apart the player's leftmost and rightmost places on the screen are, in "
+                                "frame pixels: near zero while the camera follows the player",
+    "player_screen_y_range_px": "how far apart the player's highest and lowest places on the screen are, in "
+                                "frame pixels",
+}
+assert not set(SIGNAL_MEANINGS) & set(NOT_YET_OFFERED)
+assert set(SIGNAL_MEANINGS) | set(NOT_YET_OFFERED) == set(SIGNALS), "every signal needs a meaning for the prompt"
+OFFERED = tuple(sorted(SIGNAL_MEANINGS))
 
 SYSTEM = """You write checks for one proposed change to a 2D platformer. You are given a bug report, the \
 candidate patch that claims to fix it, a summary of which game mechanics the patch touches, the game's \
@@ -79,7 +95,7 @@ What each signal measures, over one replay:
 
 Answer with one JSON object and nothing else:
 
-""" + discovery_planner.SYSTEM.split("\n\n", 1)[1] + "\nThe SIGNAL names are: " + ", ".join(sorted(SIGNALS)) + "."
+""" + discovery_planner.SYSTEM.split("\n\n", 1)[1] + "\nThe SIGNAL names are: " + ", ".join(OFFERED) + "."
 
 
 REVISE_SYSTEM = """
@@ -118,7 +134,8 @@ def prompt(report: str, patch_text: str, dmap: dict, profile: dict, probes: list
 def _probe_entry(p: dict) -> dict:
     entry = {"id": p["id"], "description": p["description"]}
     if p.get("measured"):
-        entry["measured"] = {build: ({k: v for k, v in values.items() if v is not None} if values else None)
+        entry["measured"] = {build: ({k: v for k, v in values.items() if v is not None and k in OFFERED}
+                                     if values else None)
                              for build, values in p["measured"].items()}
     return entry
 
@@ -168,6 +185,11 @@ def parse_answer(content, profile: dict, existing_probe_ids: set[str]) -> tuple[
             op["left"], op["right"] = a["left"], a["right"]
         elif a["kind"] == "probes":
             a["ids"] = [renamed.get(i, i) for i in a["ids"]]
+    held = [e for e in entries if e["spec"]["operation"].get("signal") in NOT_YET_OFFERED]
+    if held:
+        entries = [e for e in entries if e not in held]
+        notes = [*notes, *(f"dropped {e['spec']['id']}: the signal {e['spec']['operation']['signal']} is not offered yet"
+                           for e in held)]
     try:
         entries = _as_jit(entries)
     except ContractError as exc:  # should not happen: parse already validated
@@ -306,6 +328,8 @@ def from_proposal(path, model: str | None = None):
                         or not spec["id"].startswith("jit-") or applies.get("kind") not in ("all", "probes", "pair"):
                     raise ContractError("not a generated check")
                 validate_v1(spec, "trace-spec")
+                if spec["operation"].get("signal") in NOT_YET_OFFERED:
+                    raise ContractError(f"the signal {spec['operation']['signal']} is not offered yet")
             except (ContractError, KeyError, TypeError, AttributeError) as exc:
                 raise IntentUnavailable(f"PROPOSAL_INVALID: contract: {exc}"[:300]) from exc
             entries.append({"templateId": "jit", "spec": spec, "approved": False, "applies": applies, "source": "jit"})
