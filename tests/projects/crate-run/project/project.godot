@@ -1,0 +1,36 @@
+; Crate Run: a second, small Godot project for Expectrail's own tests.
+; It shares no file with the bundled game.
+
+config_version=5
+
+[application]
+
+config/name="Crate Run"
+config/description="A crate that walks and jumps on a flat floor."
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.7")
+
+[display]
+
+window/size/viewport_width=640
+window/size/viewport_height=360
+
+[input]
+
+left={
+"deadzone": 0.5,
+"events": []
+}
+right={
+"deadzone": 0.5,
+"events": []
+}
+jump={
+"deadzone": 0.5,
+"events": []
+}
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
