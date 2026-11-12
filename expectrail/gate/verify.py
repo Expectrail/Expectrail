@@ -44,12 +44,13 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Callable
 
+from expectrail import resources
 from expectrail import __version__
 from expectrail.contracts import digest
 from expectrail.gate import record as rec
 from expectrail.gate.page import write_page
 
-EXPECTRAIL_ROOT = Path(__file__).resolve().parent.parent.parent
+EXPECTRAIL_ROOT = resources.ROOT
 CONTRACTS = EXPECTRAIL_ROOT / "contracts"
 EXIT = {"accept": 0, "reject": 1, "needs-review": 2}
 MAX_SPECS = 64

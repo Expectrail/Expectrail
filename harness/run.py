@@ -28,7 +28,22 @@ from harness import tree
 REPO = Path(__file__).resolve().parent.parent
 GODOT_VERSION = "4.7.2-stable"
 AUTOLOAD = 'ExpectrailHarness="*res://expectrail_harness.gd"'
-DEFAULT_CACHE_DIR = REPO / "tools" / "godot_cache" / ".godot"
+
+
+def tools_dir() -> Path:
+    """Where the engine download and the import cache are kept: $EXPECTRAIL_TOOLS if set; ``tools/``
+    in a clone; and for an installed copy (the harness is then inside the package, under
+    ``_bundle``) the user's cache folder, since the place a package is installed is not one to
+    write into and is often read-only."""
+    named = os.environ.get("EXPECTRAIL_TOOLS")
+    if named:
+        return Path(named)
+    if REPO.name == "_bundle":
+        return Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "expectrail"
+    return REPO / "tools"
+
+
+DEFAULT_CACHE_DIR = tools_dir() / "godot_cache" / ".godot"
 
 
 def sha256_file(path: Path) -> str:
@@ -45,7 +60,10 @@ def find_godot() -> Path:
             return mac_binary
         out = subprocess.run([str(REPO / "harness" / "macos" / "get_godot_mac.sh")], check=True, capture_output=True, text=True)
         return Path(out.stdout.strip().splitlines()[-1])
-    out = subprocess.run([str(REPO / "harness" / "get_godot.sh")], check=True, capture_output=True, text=True)
+    # Run with bash by name: an installed copy's script may have lost its executable bit. It is told
+    # where to keep the engine, so a clone and an installed copy use the one rule (tools_dir).
+    out = subprocess.run(["bash", str(REPO / "harness" / "get_godot.sh")], check=True, capture_output=True, text=True,
+                         env={**os.environ, "EXPECTRAIL_TOOLS": str(tools_dir())})
     return Path(out.stdout.strip().splitlines()[-1])
 
 
@@ -54,7 +72,7 @@ def get_cache_dir() -> Path:
     if env:
         p = Path(env)
         return p if p.name == ".godot" else p / ".godot"
-    return DEFAULT_CACHE_DIR
+    return tools_dir() / "godot_cache" / ".godot"
 
 
 def cache_key(game: Path, godot: Path, within: Path | None = None, game_tree: str | None = None) -> str:

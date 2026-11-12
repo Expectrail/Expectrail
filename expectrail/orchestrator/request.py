@@ -20,11 +20,12 @@ from pathlib import Path
 
 from harness import tree
 
+from expectrail import resources
 from expectrail.contracts import digest
 from expectrail.gate import record as rec
 
 FORMAT = "expectrail.verify-request/v1"
-SCHEMA_PATH = Path(__file__).resolve().parent.parent.parent / "contracts" / "verify-request.v1.schema.json"
+SCHEMA_PATH = resources.ROOT / "contracts" / "verify-request.v1.schema.json"
 EXECUTION_CLASSES = ("diagnostic", "isolated")
 DEFAULT_TIMEOUT_SECONDS = 1800
 MAX_REQUEST_BYTES = 64 * 1024
