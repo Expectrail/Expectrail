@@ -399,14 +399,30 @@ set on the clean run, pad 2:
 Sinking v2's first frame reads "above 3, below 56" against the clean frame's 29 and 30: the patch
 moves the drawing 26 px down, and that is the 26.
 
-**None of this is a false-alarm rate.** The range was set on the smoke route's clean run and the
-only clean-looking runs it was held against are that run and the missing-texture runs, the same
-frames. The measurement that matters is the clean game on routes the range was not set on. The
-SAM probe workflow can now make it: probe mode with `anchor` ticked, `lift` 14, and `clean_routes`
-set to `coins,combat,traversal` replays the clean game on those routes as `clean-coins` and so on,
-asks about all twelve runs (131 images, $0.33) and puts the rule's table in the summary and on the
-`sam-probe-results` branch. A clean route that fails there is a false alarm, and the rule changes
-before it goes anywhere near a verdict.
+**Held against clean routes it was not set on: one false alarm in 36 frames, and that fails a
+route.** [Run 43316420400](https://github.com/Expectrail/Expectrail/actions/runs/43316420400)
+(November 12, 131 images, $0.33): the clean game replayed on `coins`, `combat` and `traversal`, the
+range still set on the smoke route's clean run, pad 2.
+
+| Clean route | Result | Frames out of those judged |
+| --- | --- | --- |
+| coins | pass | 0 of 13 |
+| combat | pass | 0 of 10 |
+| traversal | **fail** | 1 of 13: frame 20, height 107.5 (clean 50 to 66.5), below 81 (clean 23.5 to 39.5) |
+
+- In that frame the robot is mid-jump in front of a tree, and SAM answered with the robot and the
+  trunk under it as one object (seen on the contact sheet). The game drew nothing wrong.
+- So the rule as it stands (fail on the first frame out) rejects a clean game on one route in
+  three. **It is not fit for a verdict.**
+- A wider pad is not the cure: the frame stays out up to a pad of 43 px, and at 44 the sinking bug
+  passes too. No pad at all is much worse: 8 of the 36 frames are out.
+- The nine runs of the earlier probe were asked again in this run and gave the same 95 answers,
+  for the third time.
+
+What to try next: a drawing bug lasts from frame to frame, and a slip like this may not. Before a
+frame out decides anything, the frames either side of it would be asked about. Whether that works
+depends on how long the robot-and-trunk answer lasts, which a probe of every tenth frame cannot
+say. Not measured yet.
 
 What it leans on: the point is the engine's. A game that lies about where its player is sends the
 question to the wrong place, so this can never be the only evidence that a player is where the

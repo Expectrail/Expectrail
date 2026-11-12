@@ -22,6 +22,7 @@ from agents import anchor_rule as rule
 DATA = Path(__file__).resolve().parent / "data" / "sam-anchor"
 AT_ORIGIN = DATA / "bundled-lift-0.json"
 MID_BODY = DATA / "bundled-lift-14.json"
+OTHER_CLEAN = DATA / "bundled-lift-14-other-clean-routes.json"      # run 43316420400: coins, combat, traversal
 
 
 def row(frame, width=40.0, height=60.0, above=30.0, below=30.0, holds=True):
@@ -166,6 +167,36 @@ class RecordedAnswersTest(unittest.TestCase):
         cal, got = self.judged(AT_ORIGIN, pad=0)
         self.assertEqual((cal["ranges"]["height"], cal["ranges"]["width"]), ([7.5, 63.5], [12.5, 59.5]))
         self.assertEqual((got["layering_v1"]["out"], got["sinking_v2"]["out"], got["missing-texture_v1"]["out"]), (6, 13, 2))
+
+    def held_out(self, pad=rule.DEFAULT_PAD):
+        """The clean game on three routes the range was not set on, against the smoke route's clean range."""
+        report, clean = rule.load_run(MID_BODY, "clean")
+        cal = rule.calibrate(clean, pad, report["lift"])
+        other = rule.load_report(OTHER_CLEAN)
+        self.assertEqual(other["lift"], report["lift"])
+        return {r["run"]: r for r in (rule.judge(run, cal) for run in other["runs"])}
+
+    def test_the_known_false_alarm_one_clean_frame_in_36_fails_a_clean_route(self):
+        # The first measurement on clean frames the range was not set on (November 12, 2026). In frame
+        # 20 of the traversal route the robot jumps in front of a tree and SAM answered with the robot
+        # and the trunk under it as one object, 107.5 px tall. The rule as it stands fails the route.
+        # This test holds the fault in view; it changes when the rule does.
+        got = self.held_out()
+        self.assertEqual({n: (r["result"], r["out"], r["judged"]) for n, r in got.items()}, {
+            "clean-coins": ("pass", 0, 13), "clean-combat": ("pass", 0, 10), "clean-traversal": ("fail", 1, 13)})
+        self.assertIn("first frame 20: height 107.5 (clean 50 to 66.5); below 81 (clean 23.5 to 39.5)",
+                      got["clean-traversal"]["reason"])
+
+    def test_no_pad_cures_it_and_no_pad_at_all_is_much_worse(self):
+        self.assertEqual([r["out"] for r in self.held_out(pad=0).values()], [4, 1, 3])     # 8 of 36 with no pad
+        self.assertEqual([r["out"] for r in self.held_out(pad=16).values()], [0, 0, 1])
+        self.assertEqual([r["out"] for r in self.held_out(pad=43).values()], [0, 0, 1])
+        # A pad wide enough to take the trunk in (44 px) would take the sinking bug in with it.
+        report, clean = rule.load_run(MID_BODY, "clean")
+        wide = rule.calibrate(clean, 44, report["lift"])
+        sinking = rule.judge(rule.load_run(MID_BODY, "sinking_v2")[1], wide)
+        self.assertEqual([r["out"] for r in self.held_out(pad=44).values()], [0, 0, 0])
+        self.assertEqual(sinking["result"], "pass")
 
     def test_the_two_recorded_runs_are_the_runs_they_say_they_are(self):
         for path, lift, run_id in ((AT_ORIGIN, 0.0, "43306507436"), (MID_BODY, 14.0, "43310237299")):
