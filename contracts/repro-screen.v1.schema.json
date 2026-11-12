@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/repro-screen.v1.schema.json",
+  "title": "expectrail.repro-screen/v1",
+  "description": "What each defect of the public reproduction bench changes on the screen and in the engine's record, on the library probes (bench/jit/public/screen.json). Made by replaying the clean game twice and each defect build once with frames captured, and comparing the frames and the record of each replay with the clean game's; no model and no observer. A frame differs when at least one pixel does, so this says that the picture changed, where and from which frame, and nothing about whether an observer could name the change. It is never a reproduction rate. Written and read by expectrail.repro.screen.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "benchSha256", "engine", "probes", "capture", "replaysPerBuild", "engineRetries", "unstable", "defects", "totals"],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "name": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,60}$" },
+    "count": { "type": "integer", "minimum": 0 }
+  },
+  "properties": {
+    "format": { "const": "expectrail.repro-screen/v1" },
+    "benchSha256": { "$ref": "#/$defs/sha256", "description": "The bench file the defects were read from." },
+    "engine": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "probes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/name" } },
+    "capture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fps", "width", "height", "frames"],
+      "properties": {
+        "fps": { "type": "integer", "minimum": 1, "description": "Frames captured per second of play." },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "frames": { "type": "integer", "minimum": 1, "description": "Frames in one build's replays, over all the probes." }
+      }
+    },
+    "replaysPerBuild": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clean", "defect"],
+      "properties": {
+        "clean": { "const": 2, "description": "The clean game is replayed twice; whatever differs between the two is unstable and never counted." },
+        "defect": { "const": 1 }
+      }
+    },
+    "engineRetries": {
+      "$ref": "#/$defs/count",
+      "description": "Replays made again because the engine failed (a crash, not a result), over the builds that were measured in the end."
+    },
+    "unstable": {
+      "type": "array",
+      "description": "Per probe, what differed between the two clean replays: record fields, and how many frames differed over how many pixels in all. Those fields and pixels are not counted on that probe for any defect.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["probe", "fields", "frames", "pixels"],
+        "properties": {
+          "probe": { "$ref": "#/$defs/name" },
+          "fields": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/name" } },
+          "frames": { "$ref": "#/$defs/count" },
+          "pixels": { "$ref": "#/$defs/count" }
+        }
+      }
+    },
+    "defects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "patchSha256", "shows", "recordFields", "probes"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 60 },
+          "patchSha256": { "$ref": "#/$defs/sha256" },
+          "shows": {
+            "enum": ["record-and-screen", "screen-only", "record-only", "neither", "error"],
+            "description": "record-and-screen: the record differs on some probe and the frames differ on some probe. screen-only: the frames differ on some probe and the record on none. record-only: the record differs and every frame is the same. neither: nothing differs on any probe. error: the defect build could not be replayed, or its frames could not be compared with the clean game's."
+          },
+          "recordFields": {
+            "type": "array",
+            "uniqueItems": true,
+            "description": "The fields of the engine's record that differed on some probe.",
+            "items": { "$ref": "#/$defs/name" }
+          },
+          "probes": {
+            "type": "array",
+            "description": "Each probe on which the record or a frame differed from the clean game's. A probe on which nothing differed is not listed.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["probe", "recordFields", "recordFirstTick", "frames", "screenFrames", "screenFirstFrame", "maxPixels", "box"],
+              "properties": {
+                "probe": { "$ref": "#/$defs/name" },
+                "recordFields": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/name" } },
+                "recordFirstTick": { "type": ["integer", "null"], "minimum": 0, "description": "The first tick on which a record field differed; null when none did." },
+                "frames": { "type": "integer", "minimum": 1, "description": "Frames captured on this probe." },
+                "screenFrames": { "$ref": "#/$defs/count", "description": "Frames with at least one pixel different from the clean game's frame of the same number." },
+                "screenFirstFrame": { "type": ["integer", "null"], "minimum": 0, "description": "The first such frame, counted from 0; null when there is none." },
+                "maxPixels": { "$ref": "#/$defs/count", "description": "The most pixels that differed in one frame." },
+                "box": {
+                  "description": "The smallest rectangle holding every pixel that differed on any frame: left, top, right, bottom, in pixels from the top left; right and bottom are one past the last pixel. null when no frame differed.",
+                  "oneOf": [
+                    { "type": "null" },
+                    { "type": "array", "minItems": 4, "maxItems": 4, "items": { "type": "integer", "minimum": 0 } }
+                  ]
+                }
+              }
+            }
+          },
+          "error": { "type": "string", "maxLength": 300 }
+        }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["defects", "record-and-screen", "screen-only", "record-only", "neither", "error"],
+      "properties": {
+        "defects": { "$ref": "#/$defs/count" },
+        "record-and-screen": { "$ref": "#/$defs/count" },
+        "screen-only": { "$ref": "#/$defs/count" },
+        "record-only": { "$ref": "#/$defs/count" },
+        "neither": { "$ref": "#/$defs/count" },
+        "error": { "$ref": "#/$defs/count" }
+      }
+    }
+  }
+}
