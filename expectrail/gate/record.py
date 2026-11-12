@@ -66,6 +66,7 @@ def kind_of(after: str) -> str | None:
 
 
 NOT_SAID = "the replay did not say whether it was sandboxed"
+SANDBOX_TOOLS = ("bubblewrap",)   # the tools contracts/findings.schema.json lets a record name
 
 
 def isolation_summary(seen: list, required: bool) -> dict:
@@ -73,17 +74,36 @@ def isolation_summary(seen: list, required: bool) -> dict:
     block of its replay.json, or None when the replay gave none). A replay counts as sandboxed only
     when it names the tool and says the game had no network, a confined file system and its own
     processes; anything less is outside."""
-    def inside(one) -> bool:
-        return (isinstance(one, dict) and isinstance(one.get("sandbox"), dict)
-                and (one.get("network"), one.get("filesystem"), one.get("processes")) == ("none", "confined", "own"))
+    def named(one) -> tuple[str, str] | None:
+        """The tool and version a replay names, when it names a known tool and all three properties."""
+        if not isinstance(one, dict) or not isinstance(one.get("sandbox"), dict):
+            return None
+        tool, version = one["sandbox"].get("tool"), one["sandbox"].get("version")
+        if tool not in SANDBOX_TOOLS or not isinstance(version, str) or not 0 < len(version) <= 40:
+            return None
+        if (one.get("network"), one.get("filesystem"), one.get("processes")) != ("none", "confined", "own"):
+            return None
+        return tool, version
 
-    sandboxed = [one for one in seen if inside(one)]
-    reasons = sorted({str((one or {}).get("reason") or NOT_SAID)[:300] if isinstance(one, dict) else NOT_SAID
-                      for one in seen if not inside(one)})[:5]
-    tool = sandboxed[0]["sandbox"] if sandboxed else None
-    return {"replays": len(seen), "sandboxed": len(sandboxed), "required": bool(required),
-            "sandbox": None if tool is None else {"tool": str(tool.get("tool")), "version": str(tool.get("version"))[:40]},
-            "reasons": reasons}
+    names = [named(one) for one in seen]
+    first = next((name for name in names if name is not None), None)
+    # One record names one tool: a replay that names another tool or version is not counted with it.
+    inside = [name is not None and name == first for name in names]
+    reasons = set()
+    for one, name, ok in zip(seen, names, inside):
+        if ok:
+            continue
+        if name is not None:
+            reasons.add(f"a replay ran in {name[0]} {name[1]}, not the {first[0]} {first[1]} the others ran in")
+        elif isinstance(one, dict) and isinstance(one.get("sandbox"), dict):
+            reasons.add("a replay named a sandbox this record does not know, or not all of: no network, "
+                        "confined files, own processes")
+        else:
+            said = one.get("reason") if isinstance(one, dict) else None
+            reasons.add(str(said)[:300] if isinstance(said, str) and said.strip() else NOT_SAID)
+    return {"replays": len(seen), "sandboxed": sum(inside), "required": bool(required),
+            "sandbox": None if first is None or not any(inside) else {"tool": first[0], "version": first[1]},
+            "reasons": sorted(reasons)[:5]}
 
 
 def isolation_words(isolation: dict | None) -> str:
@@ -399,6 +419,17 @@ def check_consistency(doc: dict) -> None:
             raise RecordError("the sandbox tool is named exactly when a replay ran in it")
         if bool(isolation["reasons"]) != (isolation["sandboxed"] < isolation["replays"]):
             raise RecordError("a reason is given exactly when a replay ran outside the sandbox")
+        # Every judged route was replayed at least once on each side that has a result, so a record
+        # cannot count fewer replays than its own checks rest on (and so cannot hide one that ran
+        # outside the sandbox by not counting it).
+        ran = lambda result: result is not None and result != "replay-error"   # noqa: E731
+        needed = (len({c["route"] for c in doc["checks"] if ran(c["after"])})
+                  + len({c["route"] for c in doc["checks"] if ran(c["before"])})
+                  # A held-out replay that finished gave every spec a result; one that did not finish
+                  # is in needsReview and was not counted as a replay.
+                  + -(-(held["passed"] + held["failed"]) // max(1, len(spec_ids))))
+        if isolation["replays"] < needed:
+            raise RecordError(f"the checks rest on at least {needed} replays and the record counts {isolation['replays']}")
     decision, _reasons = decide(counts, held, isolation)
     if doc["decision"] != decision:
         raise RecordError(f"the decision should be {decision} from these counts")
