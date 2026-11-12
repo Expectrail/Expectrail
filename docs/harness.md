@@ -97,6 +97,27 @@ On a 2-core cloud container with no GPU (Mesa llvmpipe, LLVM 20), Godot 4.7.2:
 Not settled yet: the input driver for gamepad-style analog input (routes only press actions), and
 resetting mid-run (each run starts the game fresh, which takes a few seconds).
 
+## The ground under the player
+
+Each row of the position log may carry `ground`: the world y of the solid tile surface under the
+player, read from the tiles' own collision shapes (so it stays put when a bug switches collision
+off). It is the surface under the player's centre when there is one. Only when the centre has none
+(the body hangs over a ledge) are the columns at the body's edges asked, 20 px either side. A
+surface counts when it is no more than 64 px above the player's origin, so a player sunk into the
+floor is still measured against the floor it sank into.
+
+A row with nothing under the player has no `ground`, and a check against the ground cannot be
+decided there: it is needs-review, never a guess (#346).
+
+Until November 12, 2026 the highest surface of the three columns always won. A step one tile
+high, 20 px ahead of a player standing on the floor, was then read as the ground under it, and a
+clean game was reported below its ground: Godot's kinematic character demo, unchanged, was
+rejected that way (#348). The bundled game's four routes log the same ground in every row before
+and after.
+
+Still the bundled robot's: the 20 px, the 64 px and the 13.25 px from the origin to the feet
+(#259). A platform that is a body and not a tile (one-way, moving) has no ground line.
+
 ## How a press is sent
 
 A route names actions. The harness sends each press and release as an input event, the way one

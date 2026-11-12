@@ -262,7 +262,7 @@ func _tracked_positions(tracked: Array) -> Array:
 
 
 func _ground_under(origin: Vector2) -> Variant:
-	"""World y of the highest solid tile surface under the player's body, or null.
+	"""World y of the solid tile surface under the player, or null.
 
 	Only surfaces at or below origin.y - SINK_WINDOW count. Read from each tile's authored
 	collision polygons, so it stays put when a bug switches collision off or changes the player.
@@ -272,12 +272,29 @@ func _ground_under(origin: Vector2) -> Variant:
 		var scene := get_tree().current_scene
 		if scene != null:
 			_layers = scene.find_children("*", "TileMapLayer", true, false)
+	# The surface under the player's centre is the ground when there is one. The columns at the
+	# body's edges are asked only when the centre has none (the body hangs over a ledge and rests on
+	# what is under one edge). Until November 12, 2026 the highest of the three always won, so a step
+	# up to SINK_WINDOW high beside the player was read as the ground under it: walking up to a
+	# 64 px step, a clean game was reported 56 px below its ground (#263, the kinematic character demo).
+	var centre = _highest_surface(origin.x, origin.y - SINK_WINDOW)
+	if centre != null:
+		return centre
 	var best = null
-	for dx in [-BODY_HALF_WIDTH, 0.0, BODY_HALF_WIDTH]:
-		for layer in _layers:
-			var surface = _surface_in_column(layer, origin.x + dx, origin.y - SINK_WINDOW)
-			if surface != null and (best == null or surface < best):
-				best = surface
+	for dx in [-BODY_HALF_WIDTH, BODY_HALF_WIDTH]:
+		var surface = _highest_surface(origin.x + dx, origin.y - SINK_WINDOW)
+		if surface != null and (best == null or surface < best):
+			best = surface
+	return best
+
+
+func _highest_surface(x: float, min_y: float) -> Variant:
+	"""World y of the highest solid tile surface in one column at or below min_y, over every layer."""
+	var best = null
+	for layer in _layers:
+		var surface = _surface_in_column(layer, x, min_y)
+		if surface != null and (best == null or surface < best):
+			best = surface
 	return best
 
 
