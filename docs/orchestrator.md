@@ -55,15 +55,23 @@ A request carries no digest. The orchestrator computes them from the files when 
 (`inputs`): the head's game tree, the base's, and the policy digest, which covers the spec and route
 files read from the base when there is one, so a change cannot edit the checks that judge it.
 
-**A game's digest describes what a replay reads.** The harness copies the game folder into a work
-folder, following links and leaving out only `.godot`. The digest walks the same way and leaves out
-the same one name; it keeps no skip list of its own, so a file under `__pycache__`, `.git` or any other
-folder in the game changes it, and so does a file reached through a link. For a game with no links it
-is `harness.run.tree_digest` exactly: the same files in the same order (tested on folder names that
-sort differently as one string and part by part). A pipe, a socket or a device in the game is refused
-like a link that leaves the checkout: the copy would try to read it. A link that leaves the checkout, loops or points at nothing is
-not hashed and not skipped: the tree is recorded as `null`, the reason becomes part of what the
-request means, and the job completes as needs-review with `INPUT_INVALID` before anything runs.
+**A game's digest describes what a replay reads.** The request's `headTree` and `baseTree`, the
+gate's record, `replay.json` and the copy a replay runs all come from one walk of the game folder
+([harness.md](harness.md#what-a-game-folder-holds)): links are followed, `.godot` and `.git` are not
+part of a game, and nothing else is skipped, so a file under `__pycache__` or any other folder
+changes the digest, and so does a file reached through a link. A pipe, a socket or a device in the
+game is refused like a link that leaves the checkout: the copy would try to read it. A link that
+leaves the checkout, loops or points at nothing is not hashed and not skipped: the tree is recorded
+as `null`, the reason becomes part of what the request means, and the job completes as needs-review
+with `INPUT_INVALID` before anything runs.
+
+**The decision is about the tree that was asked about.** Three readings are held against each other.
+The worker reads the files again before it starts and stops if they differ from the job's inputs.
+Each replay's copy reports the digest of the bytes it was made from, and the gate does not use a
+replay whose copy is not the tree its record names (the check is a `replay-error`, so needs-review).
+After the run the worker holds the trees the record names against the job's inputs: if they differ,
+the job completes as needs-review with `INPUT_INVALID` ("changed while the job was running") and the
+record is not published as the job's evidence, because it decides about a game nobody asked about.
 
 **A request names paths inside the checkout only.** `game`, `specs` and every route pattern are
 checked as text by the gate's own rule (`gate.verify.safe_relative`: relative, no `..`, no backslash)
@@ -134,9 +142,10 @@ alike; a test holds that on the gate tests' stand-in replay.
 
 ## What is not built yet
 
-- **Files that change during the run.** The worker reads the inputs again just before it runs them,
-  but between that read and the gate's own copy of the game they can still change. Closing it needs
-  the gate's record and the request to name the tree the same way (#303, #307).
+- **Checks that change during the run.** The game is covered (above). The specs and routes are read
+  by the worker and again by the gate, and the two readings are not held against each other after
+  the run: the record names each spec and route by its sha256, the request by one digest of them
+  all (#307).
 - **A grade above `diagnostic`.** The `isolated` execution class is built: every replay runs in the
   replay sandbox ([replay-sandbox.md](replay-sandbox.md)) or the job does not run (`TOOL_MISSING`,
   needs-review, nothing replayed unsandboxed), and a replay that does not say it ran inside keeps the
