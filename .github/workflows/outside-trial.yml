@@ -1,4 +1,4 @@
-# Expectrail on Godot projects the team did not write (#263).
+# Expectrail on Godot projects made by other people (#263).
 #
 # Each project in tests/outside/projects.json is fetched at its pinned commit, laid out as a
 # checkout with our own routes, and verified with the command a stranger would run. The projects'
