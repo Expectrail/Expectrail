@@ -112,6 +112,8 @@ def spawn(store: st.JobStore, job_id: str, command: list[str] | None = None) -> 
         proc = subprocess.Popen(
             command,
             cwd=EXPECTRAIL_ROOT, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+            # The job's id in the environment is how what this worker starts is found if it is killed.
+            env=dict(os.environ, **{st.JOB_ENV: job_id}),
             start_new_session=True)
     # The worker claims the job too, as soon as it starts; whichever call comes first records it.
     store.claim(job_id, proc.pid, proc.pid)
@@ -138,8 +140,7 @@ def wait(store: st.JobStore, job_id: str, proc: subprocess.Popen | None = None, 
         if proc is not None and proc.poll() is not None:
             status = store.status(job_id)
             if status["phase"] not in st.FINAL:
-                return store.finish(job_id, "failed", reasons=["the worker stopped before the job finished"],
-                                    diagnostics=[st.diagnostic("WORKER_LOST", stage=status["phase"],
-                                                               detail=f"the worker exited with code {proc.returncode}")])
+                return store.lose(job_id, "the worker stopped before the job finished", stage=status["phase"],
+                                  detail=f"the worker exited with code {proc.returncode}")
             return status
         time.sleep(poll_seconds)

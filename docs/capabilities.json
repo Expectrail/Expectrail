@@ -1017,7 +1017,7 @@
           "shows": "two jobs keep to their own folders; a cancelled job stays cancelled and what it started is stopped; a killed worker leaves a failed job; a job out of time is needs-review; a missing tool is a diagnostic and needs-review; the Godot engine decides as the gate does, on a stand-in replay"
         }
       ],
-      "limits": "Only the sample command and tests call it: the gate's action and the site do not go through it yet. The isolated execution class runs every replay with the sandbox required and refuses where the machine cannot; its evidence grade stays diagnostic, because the ledger's isolated grade also needs a trusted job that judges and signs (#254, #255). A killed worker's children run on until their own time limit, and files can change between the worker's last read and the gate's copy (#307). One host."
+      "limits": "Only the sample command and tests call it: the gate's action and the site do not go through it yet. The isolated execution class runs every replay with the sandbox required and refuses where the machine cannot; its evidence grade stays diagnostic, because the ledger's isolated grade also needs a trusted job that judges and signs (#254, #255). Files can change between the worker's last read and the gate's copy (#307, #303). On a system without /proc a killed worker's children are not found and run on to their own time limit. One host."
     }
   ],
   "notModes": {
