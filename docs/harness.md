@@ -97,6 +97,45 @@ On a 2-core cloud container with no GPU (Mesa llvmpipe, LLVM 20), Godot 4.7.2:
 Not settled yet: the input driver for gamepad-style analog input (routes only press actions), and
 resetting mid-run (each run starts the game fresh, which takes a few seconds).
 
+## The ground under the player
+
+Each row of the position log may carry `ground`: the world y of the highest solid tile surface under
+the player's body. The surfaces are read from the tiles' own collision shapes, so they stay put when
+a bug switches the level's collision off. Three columns are asked: under the middle of the body and
+under its two ends, because a body rests on the highest point beneath it, on a slope or on a ledge
+it has half walked off. A surface counts when it is no more than 64 px above the player's origin,
+so a player sunk into the floor is still measured against the floor it sank into.
+
+The ends are the player's own: the leftmost and rightmost points of its collision
+(`CollisionShape2D` and `CollisionPolygon2D` children that are not disabled), measured where the
+body is in the world, each pulled in by 1.25 px so that a wall the body touches is not counted as
+under it. A scaled body, a scaled parent and a mirrored body are measured as they stand; a shape
+off to one side gives two different ends, and the middle column is midway between them. A player
+with no collision to measure is given 20 px either side of its origin. The bundled robot's shape is
+42.5 px wide and centred, which is those same 20 px.
+
+So the columns belong to the game being measured. A change that makes the player's collision
+narrower or wider moves them, and can move the ground the harness logs. Measured on
+`tests/routes/slope.json` with the robot's shape made 6 px wide and lifted 10 px (the merge guard's
+run on #349): on the slope its feet are 17.2 to 32.8 px below the ground main's harness logged and
+5.9 to 10.0 px below the ground logged now. The gate reads the logged ground. The fix loop's
+verifier does not: it works the ground out again from the clean level with a fixed 20 px
+(`surface_under` in `agents/observations.py`).
+
+A row with nothing under the body has no `ground`, and a check against the ground cannot be decided
+there: it is needs-review, never a guess (#346).
+
+Until November 12, 2026 the edges were always the robot's 20 px. Godot's kinematic character demo
+has a player 14 px wide: standing on the floor 20 px from a step it had a column inside the step,
+the step's top was read as its ground, and the clean game was rejected (#348). The bundled game
+logs the same ground in every row before and after, on its four routes and on a route up its slope.
+
+Still the bundled robot's: the 64 px, and the 13.25 px from the origin to the feet that the check
+itself uses (#259). The kinematic demo's feet are 7.2 px below its origin, so the check reads it
+6 px lower than it stands. A platform that is a body and not a tile (one-way, moving) has no ground
+line. A rotated capsule or circle is measured by the corners of its box, a little wider
+than it is.
+
 ## How a press is sent
 
 A route names actions. The harness sends each press and release as an input event, the way one

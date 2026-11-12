@@ -1,0 +1,10 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "walk",
+  "description": "Hold right from the first tick: from x = 100, over the gap, up to the step and into it.",
+  "ticks": 215,
+  "seed": 1,
+  "events": [
+    {"tick": 0, "action": "right", "pressed": true}
+  ]
+}
