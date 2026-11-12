@@ -158,6 +158,13 @@ disagrees, a record for another candidate, defect or report, and a record that r
 some other number of times. A defect with no usable record is **no result**: it stays in the
 denominator and is never counted as reproduced.
 
+Where the three sets of runs are read from: the clean game's and the no-fix candidate's are in the
+record for every check. The bug build's are kept only for a catch, and a reproducing check is
+always a catch, so a check counts only when its catch entry shows three fails on the bug build; a
+record that lists the bug build as failed for it and has no such entry gives no result. A `flaky`
+miss of the second kind in the table below still rests on the record's list of builds a check
+failed on, since the record keeps no runs for it. That can change a reason, never the rate.
+
 A miss gets a reason from the issue's vocabulary only where the records can show one:
 
 | Reason | When the scorer gives it |

@@ -137,7 +137,13 @@ the run spent on it; and the digest of the `jit-run` record it was read from. Th
 check's standing from its runs, never from the record's own `valid` flag, and gives `no-result` to a
 record whose flag disagrees with its runs or that was made for another candidate, defect or report.
 The reader recomputes the totals from the rows and refuses a row whose outcome does not follow from
-it, and a reason the records cannot show (`route-never-reaches`, `probe-language`). It has no
+it, and a reason the records cannot show (`route-never-reaches`, `probe-language`). That is all a
+reader of this record can check: a score record holds no runs, so a row changed to `reproduced` with
+a check named, a spend, a digest and the totals redone to match reads as well as a true one. What
+ties a row to runs is its `recordSha256` and the `jit-run` record it names; to trust a rate, score
+the run's records again and compare. The writer counts a check as reproducing only when the
+`jit-run` record's catch entry for it shows three fails on the bug build, and writes free text
+(`why`, `evidence`, `source`) as one line; the reader refuses free text that is not. It has no
 decision field: nothing reads it to accept or reject a change. No score record is committed, because
 no live run has been made.
 
