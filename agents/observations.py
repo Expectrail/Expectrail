@@ -363,8 +363,10 @@ def has_engine_ground(trace: dict) -> bool:
     return any(r.get("ground") is not None and r.get("view") for r in trace.get("rows") or [])
 
 
-# The ground search, the same as the harness's (_ground_under in expectrail_harness.gd), but over
-# the level surfaces of a game the verifier trusts: the clean game, not the candidate.
+# The ground search, like the harness's (_ground_under in expectrail_harness.gd), but over the level
+# surfaces of a game the verifier trusts: the clean game, not the candidate. It differs in one
+# thing: the harness asks at the ends of the player's own collision, and this asks 20 px either
+# side of the origin whatever the player is. For the bundled robot the two are the same columns.
 SINK_WINDOW = 64.0
 BODY_HALF_WIDTH = 20.0
 

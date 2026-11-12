@@ -60,7 +60,7 @@ const SINK_WINDOW := 64.0
 # How far either side of the player's origin to look for the highest surface under the whole body,
 # not just its centre (the body rests on the highest point beneath it, e.g. on a slope or a ledge),
 # when the player has no collision shape to measure. With one, its own half width is used, less
-# EDGE_INSET (see _edge_reach): the bundled robot's shape is 42.5 px wide, so 21.25 - 1.25 = 20.
+# EDGE_INSET (see _body_span): the bundled robot's shape is 42.5 px wide, so 21.25 - 1.25 = 20.
 const BODY_HALF_WIDTH := 20.0
 const EDGE_INSET := 1.25
 const SEARCH_ROWS := 16
@@ -267,44 +267,60 @@ func _tracked_positions(tracked: Array) -> Array:
 func _ground_under(origin: Vector2) -> Variant:
 	"""World y of the highest solid tile surface under the player's body, or null.
 
-	Only surfaces at or below origin.y - SINK_WINDOW count. Read from each tile's authored
-	collision polygons, so it stays put when a bug switches collision off or changes the player.
+	Only surfaces at or below origin.y - SINK_WINDOW count. The surfaces are read from each tile's
+	authored collision polygons, so they stay put when a bug switches the level's collision off.
+	Where the body is asked about is the candidate's own (see _body_span): a change that makes the
+	player's collision narrower or wider moves the columns, and with them the ground that is logged.
 	"""
 	if not _layers_searched:
 		_layers_searched = true
 		var scene := get_tree().current_scene
 		if scene != null:
 			_layers = scene.find_children("*", "TileMapLayer", true, false)
-	# The highest surface under the body: under its centre and under its two edges, because a body
+	# The highest surface under the body: under its middle and under its two edges, because a body
 	# rests on the highest point beneath it (on a slope, or on a ledge it has half walked off).
-	# The edges are the player's own (see _edge_reach). Until November 12, 2026 they were always the
+	# The edges are the player's own (see _body_span). Until November 12, 2026 they were always the
 	# bundled robot's, 20 px either side: a narrower player standing on the floor 20 px from a step
 	# had a column inside the step, and the step's top was read as the ground under it (#348).
-	var reach := _edge_reach(_player)
+	var span := _body_span(_player)
 	var best = null
-	for dx in [-reach, 0.0, reach]:
+	for dx in [span.x, (span.x + span.y) / 2.0, span.y]:
 		var surface = _highest_surface(origin.x + dx, origin.y - SINK_WINDOW)
 		if surface != null and (best == null or surface < best):
 			best = surface
 	return best
 
 
-func _edge_reach(body: Node2D) -> float:
-	"""How far either side of the player's origin its body is asked about: the half width of its own
-	collision shapes, less EDGE_INSET so that a wall the body touches is not counted as under it.
-	BODY_HALF_WIDTH when the player has no collision shape to measure (none, or all disabled)."""
-	var widest := 0.0
+func _body_span(body: Node2D) -> Vector2:
+	"""Where the player's body is asked about, in world pixels from its origin: (left, right).
+
+	The two ends of its own collision (CollisionShape2D and CollisionPolygon2D children that are
+	not disabled), measured where the body is in the world, so its scale, a scaled parent and a
+	mirrored body count. Each end is pulled in by EDGE_INSET so that a wall the body touches is not
+	counted as under it. (-BODY_HALF_WIDTH, BODY_HALF_WIDTH) when there is nothing to measure.
+	"""
+	var left := INF
+	var right := -INF
 	if body != null:
+		var to_world := body.global_transform
 		for child in body.get_children():
+			var points := PackedVector2Array()
 			var shape_node := child as CollisionShape2D
-			if shape_node == null or shape_node.shape == null or shape_node.disabled:
-				continue
-			var rect: Rect2 = shape_node.shape.get_rect()
-			for corner in [rect.position, rect.end, Vector2(rect.position.x, rect.end.y), Vector2(rect.end.x, rect.position.y)]:
-				widest = maxf(widest, absf((shape_node.transform * corner).x))
-	if widest <= EDGE_INSET:
-		return BODY_HALF_WIDTH
-	return widest - EDGE_INSET
+			var polygon_node := child as CollisionPolygon2D
+			if shape_node != null and shape_node.shape != null and not shape_node.disabled:
+				var rect: Rect2 = shape_node.shape.get_rect()
+				points = PackedVector2Array([rect.position, rect.end,
+					Vector2(rect.position.x, rect.end.y), Vector2(rect.end.x, rect.position.y)])
+			elif polygon_node != null and not polygon_node.disabled:
+				points = polygon_node.polygon
+			for point in points:
+				# The body's rotation and scale without its position, so no precision is lost to a far-off x.
+				var x: float = to_world.basis_xform((child as Node2D).transform * point).x
+				left = minf(left, x)
+				right = maxf(right, x)
+	if right - left <= 2.0 * EDGE_INSET:
+		return Vector2(-BODY_HALF_WIDTH, BODY_HALF_WIDTH)
+	return Vector2(left + EDGE_INSET, right - EDGE_INSET)
 
 
 func _highest_surface(x: float, min_y: float) -> Variant:
