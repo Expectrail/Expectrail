@@ -13,7 +13,6 @@ problem with the input (``problems``): never hashed and never left out quietly.
 """
 from __future__ import annotations
 
-import fnmatch
 import hashlib
 import json
 from pathlib import Path
@@ -137,8 +136,12 @@ def policy_digest(checks_root: Path, project: dict) -> str | None:
 def pattern_reaches(pattern: str, folder: str) -> bool:
     """Whether a route pattern could match a file somewhere below ``folder`` (both relative to the
     same checkout, with ``/``). Errs towards yes: it is used to keep the jobs folder out of where
-    routes are looked for. Names are compared without regard to case, because on a file system that
-    ignores case (macOS by default) ``RUNS/**`` does reach ``runs/jobs``."""
+    routes are looked for. The gate's matcher (``gate.verify.pattern_matches``) compares names as
+    written, case included; here they are also compared without regard to case, kept from when
+    ``Path.glob`` found the routes and ``RUNS/**`` did reach ``runs/jobs`` on a file system that
+    ignores case. It can only add a yes."""
+    from expectrail.gate import verify as gate
+
     def reach(parts: list[str], below: list[str]) -> bool:
         if not below:
             return bool(parts)
@@ -146,10 +149,11 @@ def pattern_reaches(pattern: str, folder: str) -> bool:
             return False
         if parts[0] == "**":
             return reach(parts[1:], below) or reach(parts, below[1:])
-        # The exact comparison, or the one without regard to case: the second is added to the first,
-        # never in its place, because folding a pattern's case changes what a range such as [S-s] holds.
-        return ((fnmatch.fnmatchcase(below[0], parts[0])
-                 or fnmatch.fnmatchcase(below[0].casefold(), parts[0].casefold()))
+        # The gate's own comparison of one name (the matcher that finds the routes uses the same
+        # one), or that comparison without regard to case: the second is added to the first, never
+        # in its place, because folding a pattern's case changes what a range such as [S-s] holds.
+        return ((gate.segment_matches(below[0], parts[0])
+                 or gate.segment_matches(below[0].casefold(), parts[0].casefold()))
                 and reach(parts[1:], below[1:]))
 
     return reach([p for p in pattern.split("/") if p not in ("", ".")], [p for p in folder.split("/") if p not in ("", ".")])

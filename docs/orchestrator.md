@@ -86,6 +86,12 @@ replays play are copies made from the bytes that were read. There is no second s
 to. After the run the worker holds the digest the engine judged with against the job's, as it does
 the game's trees.
 
+**A route pattern means the same on every Python.** The patterns are matched by the gate's own
+matcher ([how a pattern is read](ci-gate.md#route-patterns)), so a job's `policyDigest` and the
+routes that judge do not depend on the Python that runs the worker. The check that keeps the jobs
+folder out of where routes are looked for (`request.pattern_reaches`) compares names with the same
+function, and also without regard to case, so it can only say yes more often than the matcher finds.
+
 **A request names paths inside the checkout only.** `game`, `specs` and every route pattern are
 checked as text by the gate's own rule (`gate.verify.safe_relative`: relative, no `..`, no backslash)
 before any file is opened. `/etc`, `../..` and `/etc/*.json` are refused and nothing is read.
