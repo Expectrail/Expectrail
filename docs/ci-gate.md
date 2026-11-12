@@ -144,6 +144,50 @@ failure keeps its id. To reproduce one:
 `printf '%s\n%s\n%s' player-stays-above-ground smoke fail | sha256sum | cut -c1-12`. The comment lists
 the ids that are new and resolved since its last update.
 
+## Two observers, one rule
+
+Expectrail verifies by observing, and the full verdict has two observers on every check (Sean's
+decision of November 12, 2026, #327): the engine's record, which is exact about positions, and a
+visual observer, a vision model over the frames the replay captured, which sees what was drawn.
+`expectrail.gate.record.combine` joins what the two said about a check:
+
+| The engine's record | The visual observer | The check |
+| --- | --- | --- |
+| pass | pass | pass |
+| fail | anything | fail |
+| anything | fail | fail |
+| pass | could not decide, gave no answer, or was not asked | needs review |
+| needs review | pass | needs review |
+
+So a pass needs both, a failure on either rejects, and nothing is accepted on the engine's record
+alone. With no visual observer a seeded bug is still rejected and nothing is accepted; the reasons
+say why. The visual observer is not asked about a check the engine's record already fails, since its
+answer could not change the result.
+
+`run_gate` takes the rule (`rule="both"`, with `visual=` an `expectrail.observers.FramesObserver`), and
+so does the orchestrator's engine (`GodotGate(rule="both", visual=...)`). The record then has
+`observers` (the rule, and the visual observer's name, provider and model), and every row has
+`observed`: what each observer said before and after, and the SHA256 of the visual observer's answer.
+That answer, an observations document, is in the artifact at
+`observations/<head or base>/<route>/<spec>.visual.json`, with its verdict at
+`verdicts/.../<spec>.visual.json`, so the verdict can be read again without asking the model. The
+reader recomputes every row from `observed`: a record whose row passes without the visual observer's
+pass is refused. Held-out routes are judged by the same rule, and the visual observer keeps no answer
+cache for them. `contracts/examples/findings-both-observers.json` is such a record; it was made with
+the tests' stand-in replay and stand-in model, not by a live run.
+
+What is and is not in use, as of November 12, 2026:
+
+- The pull-request gate and `expectrail verify` still judge by the rule `engine-only`, and every record
+  they write says so (`observers.rule`). The job that runs a pull request's code must not hold a model
+  key, so vision on pull requests waits for the two-job action (#254).
+- No command constructs a visual observer yet, so nothing in this repository can start a paid model
+  call through the gate. An observer made with the real client is held to the run's spend cap
+  (`EXPECTRAIL_SAM_USD_CAP`, [sam.md](sam.md)): with none set nothing is sent, and a request the cap
+  stops is "no answer", so the check needs review. The month's total is not built (#267).
+- The rule has been run only against a stand-in model that answers in SAM 3.1's wire format
+  (`tests/test_two_observers.py`). No live model has judged through this path.
+
 The evidence artifact holds `findings.json` (the record, [`contracts/findings.schema.json`](../contracts/findings.schema.json)),
 `verdicts/head/<route>/<spec>.json` and `verdicts/base/...` (the evaluator's verdicts), and
 `review/index.html`. The review page opens from disk with no scripts. It shows every check, and for
@@ -264,7 +308,9 @@ and searches every output file, the log and the comment for its route names.
   open pull requests may see the held-out set anyway, and set `require-sandbox: 'true'` with it.
   This repository does not pass it on pull requests (OBAAF-GHA-001). A fork's pull request never gets
   it, because GitHub gives forks no secrets and the action checks the head repository too.
-- **The position log is the only observer.** No model key is used, so SAM 3.1 does not judge. The
+- **On a pull request the position log is the only observer.** No model key is used, so SAM 3.1 does
+  not judge, and the comment and the review page say so on every verdict ("Judged on: the engine's
+  record only"). That is not the full verdict: see [Two observers](#two-observers-one-rule) below. The
   harness logs the node named `Player`, and the stand-in observations use the platformer demo's player
   size ([sam.md](sam.md), `agents/observations.py`). A spec about any other object needs review. On
   another game, a spec's `tolerancePx` is measured against that size, so its meaning is approximate.

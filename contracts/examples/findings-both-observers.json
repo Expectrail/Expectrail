@@ -1,0 +1,122 @@
+{
+  "format": "expectrail.findings/v0",
+  "decision": "accept",
+  "reasons": [
+    "all 2 checks pass"
+  ],
+  "adapter": "godot",
+  "pullRequest": {
+    "number": 7,
+    "headSha": "1111111111111111111111111111111111111111",
+    "baseSha": "2222222222222222222222222222222222222222"
+  },
+  "game": {
+    "path": "game/platformer",
+    "headTree": "696d3a2911d4b812223555e8da870c23381bdbe3b382c0e4f603518d7fbab55c",
+    "baseTree": "a40ee44f58b3027df1f47b4f537d51c06e805f63b7a63a2ed044f8f00d19948c"
+  },
+  "checksFrom": "base",
+  "checksChanged": {
+    "specs": 0,
+    "routes": 0
+  },
+  "specs": [
+    {
+      "id": "player-stays-above-ground",
+      "sha256": "4829b493e18b84208fcf9790004d822b775d12c3cb3505b4063b3ba2a6585d55",
+      "instruction": "The player never falls through the ground."
+    }
+  ],
+  "drafts": 0,
+  "checkProblems": 0,
+  "observers": {
+    "rule": "both",
+    "visual": {
+      "name": "sam",
+      "provider": "meta-model-api",
+      "model": "sam-3.1"
+    }
+  },
+  "routes": [
+    {
+      "name": "combat",
+      "sha256": "2183a646295437eda61b2978a12451a7cebdb4eee3c2fb97d6f4db5fb1ce8afa"
+    },
+    {
+      "name": "smoke",
+      "sha256": "0db750ef7ab79124ccd80c63c03f117d84c579281f7ca487f0877f829660f02d"
+    }
+  ],
+  "counts": {
+    "checks": 2,
+    "passed": 2,
+    "failed": 0,
+    "needsReview": 0
+  },
+  "checks": [
+    {
+      "spec": "player-stays-above-ground",
+      "route": "combat",
+      "before": "fail",
+      "after": "pass",
+      "comparison": "REPAIRED",
+      "findingId": null,
+      "observed": {
+        "before": {
+          "engine": "fail",
+          "visual": "not-asked",
+          "visualAnswerSha256": null
+        },
+        "after": {
+          "engine": "pass",
+          "visual": "pass",
+          "visualAnswerSha256": "5e4a376923e950906023de0fcd9089182e8ea41f2cecbc4daa95a6eb9515ff38"
+        }
+      }
+    },
+    {
+      "spec": "player-stays-above-ground",
+      "route": "smoke",
+      "before": "fail",
+      "after": "pass",
+      "comparison": "REPAIRED",
+      "findingId": null,
+      "observed": {
+        "before": {
+          "engine": "fail",
+          "visual": "not-asked",
+          "visualAnswerSha256": null
+        },
+        "after": {
+          "engine": "pass",
+          "visual": "pass",
+          "visualAnswerSha256": "cdc39161f729078410ab5405ff811ea09661c76c9445524f2d006f47b9fc97f6"
+        }
+      }
+    }
+  ],
+  "findings": [],
+  "heldOut": {
+    "status": "not-used",
+    "routes": 0,
+    "checks": 0,
+    "passed": 0,
+    "failed": 0,
+    "needsReview": 0
+  },
+  "isolation": {
+    "replays": 4,
+    "sandboxed": 0,
+    "required": false,
+    "sandbox": null,
+    "reasons": [
+      "the replay did not say whether it was sandboxed"
+    ]
+  },
+  "reviewPage": "review/index.html",
+  "expectrail": {
+    "version": "0.1.0",
+    "commit": null
+  },
+  "createdAt": "2026-11-12T19:00:00Z"
+}

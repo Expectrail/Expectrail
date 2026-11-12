@@ -178,6 +178,11 @@ into the job's `staging/` and returns a decision. `godot` is the CI gate's verif
 (`expectrail.gate.verify.run_gate`), so for the same inputs the orchestrator and the gate decide
 alike; a test holds that on the gate tests' stand-in replay.
 
+The engine tells the job when it moves on: `observing` when a replay starts, `evaluating` when its
+checks are judged. It takes the gate's rule for which observers judge (`GodotGate(rule="both",
+visual=...)`, [ci-gate.md](ci-gate.md), "Two observers, one rule"). The engine registered for `godot`
+still judges by `engine-only`, and each job's `findings.json` says which rule judged it.
+
 ## A second Godot project
 
 `verify` takes its game from `--head` and `--game`. A test holds that the six modules of the gate
