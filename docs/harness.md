@@ -33,8 +33,8 @@ How it works:
    frame to a PNG. It runs in non-real time, so a slow machine produces the same frames, more
    slowly, instead of dropping them.
 4. The autoload presses and releases input actions on the exact physics ticks the route names, before
-   any game node runs that tick, and a second node records the player's position after every node
-   has moved. It writes `trace.json` and quits when the route ends. Besides the player's position,
+   any game node runs that tick ([how a press is sent](#how-a-press-is-sent)), and a second node
+   records the player's position after every node has moved. It writes `trace.json` and quits when the route ends. Besides the player's position,
    each row records which way the robot's sprite faces, where every enemy and every bullet is, the
    ground line under the player, the coins and the camera; the header comment of
    `harness/godot/expectrail_harness.gd` lists every field. Recording facing, enemies and bullets
@@ -96,6 +96,29 @@ On a 2-core cloud container with no GPU (Mesa llvmpipe, LLVM 20), Godot 4.7.2:
 
 Not settled yet: the input driver for gamepad-style analog input (routes only press actions), and
 resetting mid-run (each run starts the game fresh, which takes a few seconds).
+
+## How a press is sent
+
+A route names actions. The harness sends each press and release as an input event, the way one
+reaches a game from a player, and sends it on at once so it arrives in the tick the route names
+(the engine otherwise holds events until the next drawn frame):
+
+- **The action has a key or a pad button bound to it:** that key or button is pressed, the first one
+  the project lists. Every way of reading input sees it: the action's state in a tick
+  (`Input.is_action_pressed`), `_input`, `_unhandled_input`, `_unhandled_key_input`, and a button
+  whose shortcut is the action. Any other action bound to the same key is pressed with it, as it is
+  for the player.
+- **It has none** (nothing bound, or only a mouse button or a stick): an action event is sent. The
+  action's state, `_input` and `_unhandled_input` see it. A button's shortcut does not: the engine
+  offers only key and pad-button events to shortcuts.
+
+Until November 12, 2026 the harness called `Input.action_press`, which sets the state and sends no
+event. A game started from a menu, or one that reads a pause key in `_unhandled_input`, was replayed
+without ever starting, and the replay said nothing. The bundled game polls, so its traces and frames
+are the same before and after (four routes, compared byte for byte).
+
+What a route still cannot say: a mouse click, a key that is no action, an amount on a stick. A route
+that names an action the project does not have is not stopped; the press goes nowhere.
 
 ## Flaky routes and baselines (November 9)
 

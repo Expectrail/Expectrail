@@ -177,6 +177,26 @@ into the job's `staging/` and returns a decision. `godot` is the CI gate's verif
 (`expectrail.gate.verify.run_gate`), so for the same inputs the orchestrator and the gate decide
 alike; a test holds that on the gate tests' stand-in replay.
 
+## A second Godot project
+
+`verify` takes its game from `--head` and `--game`. A test holds that the six modules of the gate
+and the orchestrator on that path do not name the bundled game, and that the gate always hands the
+harness a game. `harness.run.run` itself still falls back to the bundled game when it is given
+none; this path never takes that fallback. [`tests/projects/crate-run`](../tests/projects/crate-run/README.md) is
+a small Godot project that shares no file with it, and `tests/test_second_project.py` verifies both
+through this one command with real Godot replays (CI job `seeded-bugs`; locally with
+`EXPECTRAIL_ENGINE_TESTS=required`), and the CI job `package` runs the installed command on it:
+
+```
+expectrail verify --head CHECKOUT --game project --routes routes/walk.json --specs specs
+```
+
+What a second project still has to match, because it is in code and not in the project's own config
+(#259): the player is the node named `Player`, the ground is the collision of `TileMapLayer` tiles,
+and the position log draws the player's box at the bundled game's size (40 by 60 pixels, its bottom
+13.25 below the node's origin). A project without tile collision has no ground line, and a check
+about the ground then needs review.
+
 ## What is not built yet
 
 - **A grade above `diagnostic`.** The `isolated` execution class is built: every replay runs in the

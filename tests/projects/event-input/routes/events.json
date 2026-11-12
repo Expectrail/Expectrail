@@ -1,0 +1,19 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "events",
+  "description": "Hold right from the first tick, start at tick 10, hop twice, open the menu at tick 50.",
+  "ticks": 70,
+  "seed": 1,
+  "events": [
+    {"tick": 2, "action": "right", "pressed": true},
+    {"tick": 10, "action": "start", "pressed": true},
+    {"tick": 12, "action": "start", "pressed": false},
+    {"tick": 20, "action": "hop", "pressed": true},
+    {"tick": 22, "action": "hop", "pressed": false},
+    {"tick": 30, "action": "hop", "pressed": true},
+    {"tick": 32, "action": "hop", "pressed": false},
+    {"tick": 40, "action": "right", "pressed": false},
+    {"tick": 50, "action": "menu", "pressed": true},
+    {"tick": 52, "action": "menu", "pressed": false}
+  ]
+}

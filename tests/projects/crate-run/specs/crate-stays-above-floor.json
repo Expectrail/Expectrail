@@ -1,0 +1,27 @@
+{
+  "format": "expectrail.test-spec/v0",
+  "id": "crate-stays-above-floor",
+  "instruction": "The crate never falls through the floor.",
+  "objects": {
+    "player": {
+      "prompt": "orange crate"
+    },
+    "ground": {
+      "prompt": "grey floor"
+    }
+  },
+  "assertion": {
+    "type": "never-crosses",
+    "object": "player",
+    "boundary": {
+      "relativeTo": "ground",
+      "edge": "top",
+      "side": "above",
+      "tolerancePx": 20
+    }
+  },
+  "window": {
+    "fromFrame": 0,
+    "toFrame": 119
+  }
+}
