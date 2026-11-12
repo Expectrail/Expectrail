@@ -317,6 +317,27 @@ def request_body(prompt: str, image_url: str, model: str = MODEL) -> dict:
     }
 
 
+def point_prompt(points: list[tuple[int, int]], size: tuple[int, int]) -> str:
+    """The text of an object prompt for one image: one point per object, under the ids 1, 2, ...
+
+    The Model API's grammar (https://dev.meta.ai/docs/sam/segmenting, read November 12, 2026):
+    ``<0f>1<|point;x=..;y=..;w=..;h=..|>,2<|point;...|>``. A point asks for the object drawn at
+    that pixel. ``w`` and ``h`` are the image's own size, and a point outside it is refused by the
+    service with HTTP 400, so it is refused here first and nothing is sent or paid for.
+    """
+    width, height = size
+    if not points:
+        raise ValueError("an object prompt needs at least one point")
+    parts = []
+    for n, (x, y) in enumerate(points, start=1):
+        if isinstance(x, bool) or isinstance(y, bool) or not isinstance(x, int) or not isinstance(y, int):
+            raise ValueError(f"a point is two whole pixel numbers, not {(x, y)!r}")
+        if not (0 <= x < width and 0 <= y < height):
+            raise ValueError(f"the point {(x, y)} is outside the {width}x{height} image")
+        parts.append(f"{n}<|point;x={x};y={y};w={width};h={height}|>")
+    return "<0f>" + ",".join(parts)
+
+
 def png_size(path: Path) -> tuple[int, int]:
     with open(path, "rb") as fh:
         head = fh.read(24)
@@ -422,6 +443,28 @@ class MetaSamClient:
                                "for one (metadata.include_confidence); a missing score is never guessed")
             detections.append({"box": record["box"], "score": record["score"]})
         return sorted(detections, key=lambda d: (-d["score"], d["box"]))
+
+
+    def segment_at(self, png: Path, points: list[tuple[int, int]]) -> list[dict | None]:
+        """What is drawn at each of ``points`` in one frame: ``{"box", "score"}`` or None, in the points' order.
+
+        One request, whatever the number of points. None means the reply held no record under that
+        point's id. ``score`` is None when the reply gave a box without a confidence: with a point
+        the question is "what is here", and whether the service scores that is not documented, so
+        a missing score is reported as missing and never guessed. A reply about an object that was
+        not asked for, or two records for one point, is an error and never a pick.
+        """
+        size = png_size(png)
+        raw, content_type = self._call(request_body(point_prompt(points, size), data_url(png), self.model))
+        found: dict[int, dict] = {}
+        for record in parse_output(output_text(raw, content_type), frame_size=size):
+            n = record["id"]
+            if not 1 <= n <= len(points):
+                raise SamError(f"sam-3.1 answered for object {n}, and {len(points)} were asked for")
+            if n in found:
+                raise SamError(f"sam-3.1 gave two boxes for object {n}; one point is one object")
+            found[n] = {"box": record["box"], "score": record["score"]}
+        return [found.get(n) for n in range(1, len(points) + 1)]
 
 
 _warned_shared_key = threading.Event()

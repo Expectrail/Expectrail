@@ -37,6 +37,16 @@ on:
       engine_ground:
         description: probe mode, take this object (e.g. ground) from the engine's ground line instead of SAM
         default: ''
+      anchor:
+        description: probe mode, ask with a point at the engine's player position, not with words (spec, prompts, sweep and engine_ground are then unused)
+        type: boolean
+        default: false
+      lift:
+        description: probe mode with anchor, point this many game pixels above the player's origin (0 is the origin itself)
+        default: '0'
+      sam_usd_cap:
+        description: probe mode, the most this run may spend on SAM, in US dollars (at most 2). Every run of 13 frames is about $0.03 a prompt
+        default: '0.50'
       candidate:
         description: verify mode only, the candidate patch to verify
         default: agents/fixtures/fix-collision-mask.patch
@@ -88,25 +98,47 @@ jobs:
           SWEEP: ${{ inputs.sweep }}
           RUNS: ${{ inputs.runs }}
           ENGINE_GROUND: ${{ inputs.engine_ground }}
+          ANCHOR: ${{ inputs.anchor }}
+          LIFT: ${{ inputs.lift }}
+          CAP: ${{ inputs.sam_usd_cap }}
         run: |
           word="[A-Za-z0-9 -]+"
           name="[a-z][a-z0-9_-]*"
           [[ "$EVERY" =~ ^[0-9]+$ ]] || { echo "::error::every must be a number"; exit 1; }
+          [[ "$ANCHOR" == "true" || "$ANCHOR" == "false" ]] || { echo "::error::anchor must be true or false"; exit 1; }
+          [[ "$LIFT" =~ ^[0-9]{1,3}$ ]] || { echo "::error::lift must be a whole number from 0 to 999"; exit 1; }
+          [[ "$CAP" =~ ^[0-9]+(\.[0-9]{1,2})?$ ]] || { echo "::error::sam_usd_cap must be an amount like 0.50"; exit 1; }
+          python - "$CAP" <<'PY'
+          import sys
+          if not 0 < float(sys.argv[1]) <= 2:
+              sys.exit("::error::sam_usd_cap must be above 0 and at most 2")
+          PY
+          export EXPECTRAIL_SAM_USD_CAP="$CAP"
+          echo "::notice title=SAM budget::reserved \$$CAP for a probe of the bundled game, month $(date -u +%Y-%m)"
           [[ -z "$FRAMES" || "$FRAMES" =~ ^[0-9]+(,[0-9]+)*$ ]] || { echo "::error::frames must be numbers and commas"; exit 1; }
           [[ "$SPEC" =~ ^specs/[A-Za-z0-9._-]+\.json$ && -f "$SPEC" ]] || { echo "::error::spec must be a file under specs/"; exit 1; }
           [[ -z "$PROMPTS" || "$PROMPTS" =~ ^$name=$word(\;$name=$word)*$ ]] || { echo "::error::prompts must look like ground=floor;player=robot"; exit 1; }
           [[ -z "$SWEEP" || "$SWEEP" =~ ^$name=$word(\|$word)*$ ]] || { echo "::error::sweep must look like ground=ground|floor|dirt"; exit 1; }
           [[ -z "$RUNS" || "$RUNS" =~ ^[A-Za-z0-9_.-]+(,[A-Za-z0-9_.-]+)*$ ]] || { echo "::error::runs must be run names and commas"; exit 1; }
           args=(--spec "$SPEC" --every "$EVERY" --out runs/sam-probe --runs)
+          dirs=()
           if [[ -n "$RUNS" ]]; then
             IFS=',' read -ra wanted <<< "$RUNS"
             for r in "${wanted[@]}"; do
               [[ -d "runs/seeded/$r/frames" ]] || { echo "::error::no run named $r"; exit 1; }
-              args+=("runs/seeded/$r/")
+              dirs+=("runs/seeded/$r")
             done
           else
-            args+=(runs/seeded/*/)
+            for dir in runs/seeded/*/; do dirs+=("${dir%/}"); done
           fi
+          if [[ "$ANCHOR" == "true" ]]; then
+            anchor=(--every "$EVERY" --lift "$LIFT" --out runs/sam-probe --runs "${dirs[@]}")
+            [[ -n "$FRAMES" ]] && anchor+=(--frames "$FRAMES")
+            python -m agents.sam_anchor "${anchor[@]}" --dry-run
+            python -m agents.sam_anchor "${anchor[@]}"
+            exit 0
+          fi
+          args+=("${dirs[@]}")
           [[ -n "$FRAMES" ]] && args+=(--frames "$FRAMES")
           if [[ -n "$PROMPTS" ]]; then
             IFS=';' read -ra pairs <<< "$PROMPTS"
@@ -121,7 +153,9 @@ jobs:
       - name: Show the probe in the run summary
         if: always()
         run: |
-          if [ -f runs/sam-probe/probe.md ]; then cat runs/sam-probe/probe.md >> "$GITHUB_STEP_SUMMARY"; fi
+          for page in anchor.md probe.md; do
+            if [ -f "runs/sam-probe/$page" ]; then cat "runs/sam-probe/$page" >> "$GITHUB_STEP_SUMMARY"; fi
+          done
       - name: Keep the probe
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
