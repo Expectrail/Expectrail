@@ -73,14 +73,18 @@ After the run the worker holds the trees the record names against the job's inpu
 the job completes as needs-review with `INPUT_INVALID` ("changed while the job was running") and the
 record is not published as the job's evidence, because it decides about a game nobody asked about.
 
-**The checks that judge are the ones the job names.** Before the run the worker copies the spec and
-route files into the job's own folder (`work/checks`), each read once, and the copy's digest must
-be the job's `policyDigest` or the job stops ("the checks changed after the job was created"). The
-verifier reads its checks from that copy and not from the checkout, so nothing done to the checkout
-afterwards reaches the verdict. The digest and the copy are taken over the gate's own listing of
-what it reads (`expectrail.gate.verify.check_files`): every `*.json` in the specs folder, drafts
-included, and every route file the patterns match that is not a link. A file the gate does not read
-is not in the digest.
+**The checks that judge are the ones the job names.** There is one reader of the specs and routes,
+the gate's (`expectrail.gate.verify.read_checks`): each file is read once, no link is followed, and
+a file over the size cap is refused. The job's `policyDigest` is that reader's digest: every `*.json`
+in the specs folder (drafts included) and every route file the patterns match that is not a link,
+each by the sha256 of the bytes read, or by the reader's refusal when it would not read the file. A
+spec that is a link is in the digest by its name and the refusal; what it leads to is never opened.
+When the job runs, the engine reads the checks once more with the same reader. If the digest is not
+the job's, the job stops ("the checks changed after the job was created") and nothing is replayed.
+Otherwise the gate is handed what was read and opens no spec or route file itself: the routes the
+replays play are copies made from the bytes that were read. There is no second source to fall back
+to. After the run the worker holds the digest the engine judged with against the job's, as it does
+the game's trees.
 
 **A request names paths inside the checkout only.** `game`, `specs` and every route pattern are
 checked as text by the gate's own rule (`gate.verify.safe_relative`: relative, no `..`, no backslash)

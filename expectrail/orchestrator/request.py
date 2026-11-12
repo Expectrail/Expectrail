@@ -113,48 +113,24 @@ def tree_digest(root: Path, checkout: Path | None = None) -> str | None:
     return tree.digest(root, within=checkout, skip=tree.GODOT_SKIP)
 
 
-def check_files(checks_root: Path, project: dict) -> list[Path]:
-    """The spec and route files that will judge the change: the gate's own listing
-    (``expectrail.gate.verify.check_files``), less any file that is not inside the checkout, which
-    the orchestrator never opens. Sorted by path inside the checkout."""
+def read_checks(doc: dict):
+    """The checks that will judge the change, read once by the gate's own reader
+    (``expectrail.gate.verify.read_checks``), from where they come from: the base when there is one."""
     from expectrail.gate import verify as gate
 
-    inside = [p for p in gate.check_files(checks_root, project["specs"], project["routes"])
-              if checks_root.resolve() in p.resolve().parents]
-    return sorted(inside, key=lambda p: p.relative_to(checks_root).as_posix())
+    checks_root = Path(doc["base"]["checkout"]) if doc["base"] is not None else Path(doc["head"]["checkout"])
+    return gate.read_checks(checks_root.resolve(), doc["project"]["specs"], doc["project"]["routes"],
+                            "base" if doc["base"] is not None else "head")
 
 
 def policy_digest(checks_root: Path, project: dict) -> str | None:
-    """A digest of the spec and route files that will judge the change, read from where the checks come
-    from (the base when there is one). None when none can be read; the verifier then says so itself."""
-    files = check_files(checks_root, project)
-    return _files_digest(files, checks_root) if files else None
+    """A digest of the spec and route files that will judge the change, as the gate's reader reads
+    them (``expectrail.gate.verify.read_checks``): no link is followed, and a file it refuses is in
+    the digest as refused. None when there is no spec file and no route file; the verifier then
+    says so itself."""
+    from expectrail.gate import verify as gate
 
-
-def copy_checks(doc: dict, dest: Path) -> str | None:
-    """Copy the checks that will judge the change into the new folder ``dest``, laid out as in their
-    checkout, and return the digest of the bytes written, in ``policy_digest``'s form (None when
-    there are none). Each file is read once: what was digested is what was written. The verifier is
-    then given ``dest`` to read its checks from, so the checks that judge are the ones the job's
-    ``policyDigest`` names, whatever happens to the checkout afterwards."""
-    check(doc)
-    checks_root = Path(doc["base"]["checkout"]) if doc["base"] is not None else Path(doc["head"]["checkout"])
-    project = doc["project"]
-    dest = Path(dest)
-    dest.mkdir(parents=True)
-    specs = checks_root / project["specs"]
-    if specs.is_dir() and not specs.is_symlink():
-        (dest / project["specs"]).mkdir(parents=True, exist_ok=True)   # an empty specs folder is still one
-    files = check_files(checks_root, project)
-    h = hashlib.sha256()
-    for path in files:
-        name = path.relative_to(checks_root).as_posix()
-        data = path.read_bytes()
-        target = dest / name
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(data)
-        h.update(name.encode() + b"\0" + hashlib.sha256(data).hexdigest().encode() + b"\n")
-    return h.hexdigest() if files else None
+    return gate.read_checks(Path(checks_root).resolve(), project["specs"], project["routes"]).digest
 
 
 def pattern_reaches(pattern: str, folder: str) -> bool:

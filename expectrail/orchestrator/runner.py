@@ -7,7 +7,6 @@ job as needs-review and stops its own group: a job that ran out of time is never
 from __future__ import annotations
 
 import os
-import shutil
 import signal
 import subprocess
 import sys
@@ -72,15 +71,6 @@ def work(store: st.JobStore, job_id: str, engines: dict | None = None, *, own_gr
             blocking = [st.diagnostic("INPUT_INVALID", stage="preparing",
                                       detail="the game or its checks changed after the job was created; ask again")]
         blocking = blocking or engine.preflight(request)
-        if not blocking:
-            # The checks are copied into the job's own folder and the verifier reads that copy. The
-            # copy's digest is of the bytes written, so if it is the job's policyDigest, the checks
-            # that judge are the ones the job names, and nothing done to the checkout after this
-            # can change them.
-            shutil.rmtree(paths.checks, ignore_errors=True)
-            if req.copy_checks(request, paths.checks) != status["inputs"]["policyDigest"]:
-                blocking = [st.diagnostic("INPUT_INVALID", stage="preparing",
-                                          detail="the checks changed after the job was created; ask again")]
         if blocking:
             return _needs_review(store, job_id, blocking)
         store.advance(job_id, "executing")
@@ -89,12 +79,14 @@ def work(store: st.JobStore, job_id: str, engines: dict | None = None, *, own_gr
         # If the evidence names another tree than the job's inputs, the game changed in between:
         # the decision is about files nobody asked about, so it is not given and its evidence is
         # not published under this job.
-        moved = [side for side in ("head", "base") if (result.trees or {}).get(f"{side}Tree") is not None
+        moved = [f"{side} game" for side in ("head", "base") if (result.trees or {}).get(f"{side}Tree") is not None
                  and result.trees[f"{side}Tree"] != status["inputs"][f"{side}Tree"]]
+        if result.policy is not None and result.policy != status["inputs"]["policyDigest"]:
+            moved.append("checks")
         if moved:
             return _needs_review(store, job_id, [st.diagnostic(
                 "INPUT_INVALID", stage="executing",
-                detail=f"the {' and the '.join(moved)} game changed while the job was running; what was "
+                detail=f"the {' and the '.join(moved)} changed while the job was running; what was "
                        f"verified is not what was asked. Ask again")])
         return store.finish(job_id, "completed", decision=result.decision, reasons=result.reasons,
                             evidence_grade=result.evidence_grade, publish=True)

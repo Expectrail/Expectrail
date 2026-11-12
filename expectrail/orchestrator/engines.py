@@ -10,12 +10,14 @@ An engine has two parts:
 """
 from __future__ import annotations
 
+import json
 import shutil
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
+from expectrail.orchestrator import request as req
 from expectrail.orchestrator import store as st
 
 
@@ -28,6 +30,9 @@ class Result:
     # them. The worker holds them against the job's recorded inputs: a decision about another tree
     # than the one asked about is not this job's decision.
     trees: dict | None = None
+    # The digest of the checks the verdict was judged with, when the engine knows it. Held against
+    # the job's policyDigest the same way.
+    policy: str | None = None
 
 
 class GodotGate:
@@ -83,21 +88,28 @@ class GodotGate:
 
         project = request["project"]
         base = request["base"]
+        # The checks are read here, once, by the gate's own reader, and must be the ones the job
+        # names. The gate is then given what was read: it opens no spec or route file itself, so
+        # there is no second reading and no other source to fall back to.
+        checks = req.read_checks(request)
+        named = json.loads(paths.status.read_text(encoding="utf-8"))["inputs"]["policyDigest"]
+        if checks.digest != named:
+            raise gate.ConfigError("the checks changed after the job was created; ask again")
         document = gate.run_gate(
             repo=Path(request["head"]["checkout"]), game=project["game"], routes=project["routes"],
             specs=project["specs"], out=paths.staging, work=paths.work / "gate",
             base=Path(base["checkout"]) if base else None,
             # The isolated class: every replay in the sandbox, or the gate refuses and nothing is accepted.
             require_sandbox=request["executionClass"] == "isolated",
-            # The worker's copy of the specs and routes, whose digest is the job's policyDigest.
-            checks=paths.checks if paths.checks.is_dir() else None,
+            checks=checks,
             **({"replay": self._replay} if self._replay is not None else {}))
         # The grade stays `diagnostic` even when every replay was sandboxed: the ledger's `isolated`
         # also needs a separate trusted job that judges and signs (#254, #255). What the sandbox did
         # is in the evidence: findings.json, `isolation`.
         game = document.get("game") or {}
         return Result(document["decision"], list(document.get("reasons", [])),
-                      trees={"headTree": game.get("headTree"), "baseTree": game.get("baseTree")})
+                      trees={"headTree": game.get("headTree"), "baseTree": game.get("baseTree")},
+                      policy=checks.digest)
 
 
 ENGINES = {GodotGate.name: GodotGate()}
