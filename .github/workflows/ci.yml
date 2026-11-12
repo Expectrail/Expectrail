@@ -703,10 +703,10 @@ jobs:
           if [ -f /proc/sys/kernel/unprivileged_userns_clone ]; then
             echo 1 | sudo tee /proc/sys/kernel/unprivileged_userns_clone
           fi
-      - name: Fixer guard files are read-only to the agent under bubblewrap
+      - name: Fixer guard files are read-only to the agent under bubblewrap, and the agent has no terminal
         env:
           EXPECTRAIL_REQUIRE_BWRAP: '1'
-        run: python -m unittest tests.test_guard.BwrapGuardTest -v
+        run: python -m unittest tests.test_guard.BwrapGuardTest tests.test_guard.BwrapSessionTest -v
       - name: Trust with required OS sandbox (blocked canary read)
         run: |
           python -m agents.trust --out runs/agents-sandbox-trust --require-sandbox

@@ -4,9 +4,13 @@ from __future__ import annotations
 import ast
 import json
 import os
+import pty
+import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -327,6 +331,146 @@ class FixerWiringTest(unittest.TestCase):
             self.assertIsNone(seen["hooks"])
             self.assertNotIn("guard", meta)
             self.assertFalse((out / "guard.json").exists())
+
+
+
+def _processes_naming(mark: str) -> list[list[str]]:
+    """The command line of every process that has ``mark`` as one of its words."""
+    found = []
+    for entry in Path("/proc").iterdir():
+        if entry.name.isdigit():
+            try:
+                words = (entry / "cmdline").read_bytes().decode(errors="replace").split("\0")
+            except OSError:
+                continue
+            if mark in words:
+                found.append(words)
+    return found
+
+
+def _wait(test, done, what: str, seconds: float = 15) -> None:
+    deadline = time.monotonic() + seconds
+    while not done():
+        if time.monotonic() > deadline:
+            test.fail(f"timed out waiting for {what}")
+        time.sleep(0.1)
+
+
+class BwrapSessionTest(unittest.TestCase):
+    """The fixer runs in a session of its own (#309): it cannot open the terminal the loop was started
+    from, and stopping the loop still ends it. The tests that start bubblewrap run where it works
+    (CI's agents-sandbox job sets EXPECTRAIL_REQUIRE_BWRAP=1, so a skip there is a failure)."""
+
+    TERMINAL = ('import json\ntry:\n    open("/dev/tty", "r+b", buffering=0).close()\n    print(json.dumps("opened"))\n'
+                'except OSError as exc:\n    print(json.dumps("refused: " + type(exc).__name__))\n')
+    ENV = {"PATH": "/usr/bin:/bin"}
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="expectrail-fixer-session-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.work = self.tmp / "fixer-work"
+        self.work.mkdir()
+
+    def need_bwrap(self):
+        from agents.sandbox import _bwrap_usable
+
+        if not _bwrap_usable():
+            if os.environ.get("EXPECTRAIL_REQUIRE_BWRAP") == "1":
+                self.fail("bubblewrap is required here but not usable")
+            self.skipTest("bubblewrap not usable here")
+
+    def from_a_terminal(self, start) -> str:
+        """Run ``start`` (which returns a finished process) in a child that has a terminal of its own,
+        as a loop started from a shell does, and return what the program it started printed."""
+        answer = self.tmp / "answer.json"
+        child, terminal = pty.fork()
+        if child == 0:
+            try:
+                answer.write_text(start().stdout, encoding="utf-8")
+            finally:
+                os._exit(0)
+        try:
+            while os.read(terminal, 4096):
+                pass
+        except OSError:
+            pass  # the child has gone and its terminal with it
+        os.waitpid(child, 0)
+        os.close(terminal)
+        return json.loads(answer.read_text(encoding="utf-8"))
+
+    def test_the_fixer_and_the_probe_both_start_a_new_session(self):
+        from agents import sandbox
+
+        cmd = sandbox._bwrap_cmd(self.work, ["true"], network=False)
+        self.assertIn("--new-session", cmd[:cmd.index("--")])
+        self.assertIn("--die-with-parent", cmd[:cmd.index("--")])
+        with mock.patch.object(sandbox.shutil, "which", return_value="/usr/bin/bwrap"), \
+                mock.patch.object(sandbox.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
+            self.assertTrue(sandbox._bwrap_usable())
+        probe = run.call_args.args[0]
+        self.assertIn("--new-session", probe[:probe.index("--")])
+
+    def test_the_fixer_is_given_no_input(self):
+        from agents import sandbox
+
+        with mock.patch.object(sandbox.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "")) as run:
+            sandbox.run_sandboxed(["true"], work=self.work, env=self.ENV, network=False, kind="bwrap")
+        self.assertIs(run.call_args.kwargs["stdin"], subprocess.DEVNULL)
+
+    def test_control_outside_the_sandbox_the_starters_terminal_can_be_opened(self):
+        found = self.from_a_terminal(lambda: subprocess.run(
+            ["python3", "-c", self.TERMINAL], capture_output=True, text=True, timeout=60, stdin=subprocess.DEVNULL,
+            env=self.ENV))
+        self.assertEqual(found, "opened")
+
+    def test_inside_the_starters_terminal_cannot_be_opened(self):
+        from agents.sandbox import run_sandboxed
+
+        self.need_bwrap()
+        found = self.from_a_terminal(lambda: run_sandboxed(
+            ["python3", "-c", self.TERMINAL], work=self.work, env=self.ENV, network=False, kind="bwrap", timeout=60))
+        self.assertTrue(found.startswith("refused: "), found)
+
+    def test_a_time_limit_ends_everything_the_fixer_started(self):
+        from agents.sandbox import run_sandboxed
+
+        self.need_bwrap()
+        mark = "311.2718"
+        with self.assertRaises(subprocess.TimeoutExpired):
+            run_sandboxed(["sh", "-c", f"sleep {mark} & sleep {mark} & wait"], work=self.work, env=self.ENV,
+                          network=False, kind="bwrap", timeout=2)
+        _wait(self, lambda: not _processes_naming(mark), "the fixer's processes to end after its time limit")
+
+    def stopped_loop_leaves_nothing(self, mark: str, stop) -> None:
+        """Start a loop that runs a long fixer, stop the loop with ``stop(loop)``, and expect the
+        fixer and bubblewrap gone. The fixer is in a session of its own, so no signal sent to the
+        loop or its process group reaches it: bubblewrap going is what ends it."""
+        self.need_bwrap()
+        code = ("import sys; from pathlib import Path; from agents.sandbox import run_sandboxed; "
+                "run_sandboxed(['sleep', sys.argv[2]], work=Path(sys.argv[1]), env={'PATH': '/usr/bin:/bin'}, "
+                "network=False, kind='bwrap')")
+        loop = subprocess.Popen([sys.executable, "-c", code, str(self.work), mark], cwd=str(REPO),
+                                start_new_session=True, stdin=subprocess.DEVNULL)
+        try:
+            _wait(self, lambda: any(words[0] == "sleep" for words in _processes_naming(mark)), "the fixer to start")
+            inside = [words for words in _processes_naming(mark) if words[0] == "sleep"]
+            self.assertEqual(len(inside), 1, inside)
+            stop(loop)
+            loop.wait(timeout=10)
+            _wait(self, lambda: not _processes_naming(mark), "the fixer to end after its loop was stopped")
+        finally:
+            try:
+                os.killpg(loop.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+
+    def test_a_loop_that_is_killed_leaves_no_fixer_running(self):
+        self.stopped_loop_leaves_nothing("313.1414", lambda loop: loop.kill())
+
+    def test_a_loop_whose_process_group_is_signalled_leaves_no_fixer_running(self):
+        # A signal to the loop's process group (Ctrl-C in a terminal sends one the same way) reaches
+        # the loop and bubblewrap and not the fixer.
+        self.stopped_loop_leaves_nothing("317.1732", lambda loop: os.killpg(loop.pid, signal.SIGTERM))
 
 
 if __name__ == "__main__":
