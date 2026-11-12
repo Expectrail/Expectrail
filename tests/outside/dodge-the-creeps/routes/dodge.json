@@ -1,0 +1,19 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "dodge",
+  "description": "Start the game from its button's shortcut, then move right, down, left and up. Five seconds at 60 ticks a second.",
+  "ticks": 300,
+  "seed": 1,
+  "events": [
+    {"tick": 10, "action": "start_game", "pressed": true},
+    {"tick": 14, "action": "start_game", "pressed": false},
+    {"tick": 60, "action": "move_right", "pressed": true},
+    {"tick": 110, "action": "move_right", "pressed": false},
+    {"tick": 120, "action": "move_down", "pressed": true},
+    {"tick": 170, "action": "move_down", "pressed": false},
+    {"tick": 180, "action": "move_left", "pressed": true},
+    {"tick": 230, "action": "move_left", "pressed": false},
+    {"tick": 240, "action": "move_up", "pressed": true},
+    {"tick": 290, "action": "move_up", "pressed": false}
+  ]
+}

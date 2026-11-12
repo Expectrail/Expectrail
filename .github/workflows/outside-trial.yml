@@ -1,0 +1,72 @@
+# Expectrail on Godot projects the team did not write (#263).
+#
+# Each project in tests/outside/projects.json is fetched at its pinned commit, laid out as a
+# checkout with our own routes, and verified with the command a stranger would run. The projects'
+# code is not ours, so this job holds no secret, has a read-only token, and requires the replay
+# sandbox for every replay. It is a trial, not a gate: a needs-review or a reject is a finding to
+# read in the summary, and the job fails only when a project cannot be fetched as pinned or the
+# command ends with no verdict.
+name: Outside projects trial
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'tests/outside/**'
+      - 'tools/outside_trial.py'
+      - 'harness/godot/**'
+      - '.github/workflows/outside-trial.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: outside-trial-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  outside-trial:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+      - name: Install a virtual display, software OpenGL and bubblewrap
+        uses: ./.github/actions/apt-install
+        with:
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch bubblewrap
+      - name: Download Godot 4.7.2 and check its SHA-512
+        uses: ./.github/actions/get-godot
+      - name: Allow unprivileged user namespaces for bubblewrap
+        run: |
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          fi
+          if [ -f /proc/sys/kernel/unprivileged_userns_clone ]; then
+            echo 1 | sudo tee /proc/sys/kernel/unprivileged_userns_clone
+          fi
+      - name: Verify each outside project, every replay in the sandbox
+        run: python -m tools.outside_trial --fetch --execution-class isolated --out runs/outside
+      - name: What happened, in the summary
+        if: always()
+        run: |
+          {
+            echo "## Outside projects trial"
+            echo
+            if [ -f runs/outside/outside-trial.md ]; then cat runs/outside/outside-trial.md; else echo "No result was written."; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the result and the records
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: outside-trial
+          path: |
+            runs/outside/outside-trial.json
+            runs/outside/outside-trial.md
+            runs/outside/jobs/**/status.json
+            runs/outside/jobs/**/findings.json
+          retention-days: 30
