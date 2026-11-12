@@ -61,10 +61,14 @@ takes a rule for which observers judge.
   one frame, an answer with no replay named, a route twice as long, a trace with no tick rate). With
   the three new checks taken out on purpose, 15 of the 49 fail. The full suite on the branch merged
   with main at 3bc07d9: 2,406 tests, 26 skipped, OK.
-- Not run: a real Godot replay through the rule `both`. That the harness writes one row for every
-  tick and one frame for every other tick is read from `harness/godot/expectrail_harness.gd` and from
-  the recorded replays in the repository (240 ticks, 120 frames), not measured here. If a real replay
-  comes back one frame short, the result is needs-review with the count, not a wrong pass.
+- With real Godot 4.7.2 on the builder's machine (no sandbox there: bubblewrap is not installed), the
+  four Godot routes replayed on the bundled game through `gate.verify.harness_replay`, and the counts
+  the new checks rest on: smoke 240 ticks, 240 rows, 120 frames (0 to 119); combat 180, 180, 90;
+  coins 240, 240, 120; traversal 360, 360, 180. On each, `engine_gap` found nothing missing and
+  every frame of the window was on disk. So a real replay is not sent to needs-review by these
+  checks.
+- Not run: a visual observer over real frames (that is a live model call), and the whole gate under
+  `both` with real Godot.
 
 ## Not done
 - The reader still takes the record's word for what the visual observer said: it does not read the
