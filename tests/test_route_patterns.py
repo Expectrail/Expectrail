@@ -90,6 +90,39 @@ class RoutePatternTest(unittest.TestCase):
         self.assertEqual(self.routes("routes/out/*.json", "routes/dangling.json", "routes/alias.json"), [])
         self.assertEqual(self.routes("routes/link/*.json"), ["routes/link/c.json"])
 
+    def test_a_link_to_a_file_and_a_file_outside_the_checkout_are_named_and_not_read(self):
+        # #340: both were left out of the routes and nothing said so, so a change was judged on
+        # fewer routes than the job named.
+        files, links, outside = gv.match_routes(self.root, ["routes/*.json", "routes/*/*.json", "runs/up/top.json"])
+        rel = lambda paths: [p.relative_to(self.root).as_posix() for p in paths]   # noqa: E731
+        self.assertEqual(rel(files), ["routes/.hidden.json", "routes/link/c.json", "routes/smoke.json", "runs/up/top.json"])
+        self.assertEqual(rel(links), ["routes/alias.json"])            # dangling.json leads to nothing: no file
+        self.assertEqual(rel(outside), ["routes/out/o.json"])
+        self.assertEqual(gv.find_routes(self.root, ["routes/*.json", "routes/*/*.json", "runs/up/top.json"]), files)
+
+        route = (REPO / "harness" / "routes" / "smoke.json").read_bytes()
+        (self.root / "routes" / "smoke.json").write_bytes(route)
+        (self.tmp / "outside" / "o.json").write_bytes((REPO / "harness" / "routes" / "coins.json").read_bytes())
+        (self.root / "specs").mkdir()
+        plain = gv.read_checks(self.root, "specs", ["routes/smoke.json"])
+        both = gv.read_checks(self.root, "specs", ["routes/smoke.json", "routes/alias.json", "routes/out/*.json"])
+        self.assertEqual([name for name, _data, _sha in both.routes], ["smoke"])   # coins, outside, is not read
+        self.assertEqual(both.route_entries["routes/smoke.json"], plain.route_entries["routes/smoke.json"])
+        self.assertEqual(both.route_entries["routes/out/o.json"], "refused: outside the checkout")
+        self.assertRegex(both.route_entries["routes/alias.json"], r"^refused: .*a symlink is refused")
+        self.assertEqual([p for p in both.problems if p.startswith("route ")],
+                         ["route routes/out/o.json: it is outside the checkout (reached through a link) and is not read",
+                          "route routes/alias.json: routes/alias.json cannot be opened (OSError; a symlink is refused)"])
+        self.assertNotEqual(both.digest, plain.digest)
+        # Only a link where the routes should be: a problem, not "no route files match".
+        only = gv.read_checks(self.root, "specs", ["routes/alias.json"])
+        self.assertTrue(only.found_routes)
+        self.assertEqual((only.routes, [p for p in only.problems if "no route files match" in p]), ([], []))
+        self.assertEqual(len([p for p in only.problems if p.startswith("route ")]), 1)
+        nothing = gv.read_checks(self.root, "specs", ["routes/dangling.json"])
+        self.assertFalse(nothing.found_routes)
+        self.assertEqual(len([p for p in nothing.problems if "no route files match" in p]), 1)
+
     def test_a_loop_of_links_ends(self):
         # runs/up leads back to the checkout. A part that names it goes round once per part, and
         # "**" does not enter it.

@@ -232,15 +232,33 @@ def pattern_matches(root: Path, pattern: str, unlisted: set[Path] | None = None)
     return found
 
 
-def find_routes(root: Path, patterns: list[str], unlisted: set[Path] | None = None) -> list[Path]:
-    """The route files the patterns name: regular files inside the checkout, never a link. Folders
-    that could not be listed while looking are added to ``unlisted``."""
+def match_routes(root: Path, patterns: list[str],
+                 unlisted: set[Path] | None = None) -> tuple[list[Path], list[Path], list[Path]]:
+    """What the patterns name, in three lists: the route files (regular files inside the checkout),
+    the links to a file, and the files that are outside the checkout (reached through a link that
+    leaves it). The last two are never read as routes; they are given back so the caller can say
+    so, because a file the job named as a route and the gate left out is a check that did not run.
+    A folder, a link to a folder or to nothing, and anything that is not a file are no route file.
+    Folders that could not be listed while looking are added to ``unlisted``."""
     files: set[Path] = set()
+    links: set[Path] = set()
+    outside: set[Path] = set()
     for pattern in patterns:
         for match in pattern_matches(root, pattern, unlisted):
-            if match.is_file() and not match.is_symlink() and _inside(root, match):
+            if not match.is_file():
+                continue
+            if match.is_symlink():
+                links.add(match)
+            elif not _inside(root, match):
+                outside.add(match)
+            else:
                 files.add(match)
-    return sorted(files)
+    return sorted(files), sorted(links), sorted(outside)
+
+
+def find_routes(root: Path, patterns: list[str], unlisted: set[Path] | None = None) -> list[Path]:
+    """The route files the patterns name: regular files inside the checkout, never a link."""
+    return match_routes(root, patterns, unlisted)[0]
 
 
 def spec_files(folder: Path) -> list[Path]:
@@ -341,13 +359,13 @@ def read_checks(root: Path, specs: str, patterns: list[str], checks_from: str = 
             spec_problems.append(f"{len(approved)} approved specs, over the gate's limit of {MAX_SPECS}")
             approved = []
 
-    # Routes: [(name, bytes, sha256)] and problems, from every matching file that is not a link.
+    # Routes: [(name, bytes, sha256)] and problems, from every file the patterns name.
     unlisted: set[Path] = set()
-    route_files = find_routes(root, patterns, unlisted)
-    if not route_files:
+    route_files, route_links, route_outside = match_routes(root, patterns, unlisted)
+    if not (route_files or route_links or route_outside):
         problems.append(f"no route files match {', '.join(patterns)} ({checks_from})")
     # Never silence: a route in a folder the gate could not list would judge nothing and nobody
-    # would know. Named, so the result is needs-review and says where.
+    # would know. Named in the problems, which keep the result from an accept (#340).
     for folder in sorted(unlisted)[:MAX_UNLISTED]:
         shown = folder.relative_to(root).as_posix() if folder != root else "(the checkout itself)"
         problems.append(f"cannot list the folder {shown} while looking for routes ({checks_from})")
@@ -356,8 +374,15 @@ def read_checks(root: Path, specs: str, patterns: list[str], checks_from: str = 
     route_problems: list[str] = []
     routes: list[tuple[str, bytes, str]] = []
     schema = _schema("route")
-    for path in route_files:
-        shown = path.relative_to(root).as_posix() if _inside(root, path) else path.name
+    # A file the patterns name that is outside the checkout is never opened. It is listed by its
+    # name and the refusal, as a spec that is a link is: a check the job named did not run.
+    for path in route_outside:
+        shown = path.relative_to(root).as_posix()
+        route_entries[shown] = "refused: outside the checkout"
+        route_problems.append(f"route {shown}: it is outside the checkout (reached through a link) and is not read")
+    # A link to a file goes to the reader with the route files, and the reader refuses it.
+    for path in sorted(route_files + route_links):
+        shown = path.relative_to(root).as_posix()
         try:
             data = read(path, ROUTE_CAP, shown, route_entries)
             doc = _parse(data, shown)
@@ -384,7 +409,8 @@ def read_checks(root: Path, specs: str, patterns: list[str], checks_from: str = 
         h.update(name.encode() + b"\0" + listed[name].encode() + b"\n")
     return Checks(specs=sorted(approved, key=lambda s: s["id"]), drafts=drafts,
                   problems=problems + spec_problems + route_problems, routes=sorted(routes),
-                  found_routes=bool(route_files), spec_entries=spec_entries, route_entries=route_entries,
+                  found_routes=bool(route_files or route_links or route_outside), spec_entries=spec_entries,
+                  route_entries=route_entries,
                   digest=h.hexdigest() if listed else None)
 
 
