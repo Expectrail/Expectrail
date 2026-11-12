@@ -1,0 +1,450 @@
+{
+ "benchSha256": "216fa355f94cc9d6478867b69b90e5ef3ca6f7503b89e5674e21f68b3ceed355",
+ "defects": [
+  {
+   "id": "air-jump",
+   "patchSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679",
+   "probesChanged": 3,
+   "signals": {
+    "air_jumps": {
+     "clean": 2,
+     "defect": 3,
+     "probe": "reach-move-left-with-jump",
+     "probes": 2
+    },
+    "airborne_ticks": {
+     "clean": 61,
+     "defect": 89,
+     "probe": "reach-move-left-with-jump",
+     "probes": 2
+    },
+    "max_rise_px": {
+     "clean": 108.17,
+     "defect": 160.58,
+     "probe": "reach-move-left-with-jump",
+     "probes": 1
+    },
+    "player_dx_px": {
+     "clean": 204.39,
+     "defect": 273.8,
+     "probe": "reach-move-right-with-jump",
+     "probes": 1
+    }
+   },
+   "traceFields": [
+    "onFloor",
+    "player",
+    "view"
+   ],
+   "visibility": "signal"
+  },
+  {
+   "id": "gun-cooldown",
+   "patchSha256": "df744001c53910625c520667e40bd7465de5ff026fc9e22420aefb50795fa6cf",
+   "probesChanged": 1,
+   "signals": {
+    "min_projectile_interval_ticks": {
+     "clean": null,
+     "defect": 16,
+     "probe": "reach-jump-with-shoot",
+     "probes": 1
+    },
+    "projectile_count": {
+     "clean": 1,
+     "defect": 3,
+     "probe": "reach-jump-with-shoot",
+     "probes": 1
+    }
+   },
+   "traceFields": [
+    "projectiles"
+   ],
+   "visibility": "signal"
+  },
+  {
+   "id": "body-flip",
+   "patchSha256": "52dcc966811716720fc6d3648c58b52aa7a646c975c0ffe788a5fc9c76eb526a",
+   "probesChanged": 3,
+   "signals": {
+    "facing_flips": {
+     "clean": 1,
+     "defect": 79,
+     "probe": "reach-move-left-with-move-right",
+     "probes": 3
+    },
+    "facing_mismatch_fraction": {
+     "clean": 0.0,
+     "defect": 0.67,
+     "probe": "reach-jump-with-move-left",
+     "probes": 3
+    }
+   },
+   "traceFields": [
+    "facing",
+    "player"
+   ],
+   "visibility": "signal"
+  },
+  {
+   "id": "enemy-ledge",
+   "patchSha256": "644ad443ede20eea4630f2e5aa85e8ef20123e46dd1418289eb928aebbfdd856",
+   "probesChanged": 8,
+   "signals": {
+    "min_enemy_extent_px": {
+     "clean": 11.92,
+     "defect": 28.97,
+     "probe": "reach-shoot-with-jump",
+     "probes": 8
+    }
+   },
+   "traceFields": [
+    "enemies",
+    "projectiles"
+   ],
+   "visibility": "signal"
+  },
+  {
+   "id": "bullet-through-enemy",
+   "patchSha256": "204e5d1cbe8fafcd5c2ab855fcd9928510174d051bf7b110cbd72c4da76f5161",
+   "probesChanged": 1,
+   "signals": {
+    "min_enemy_extent_px": {
+     "clean": 11.92,
+     "defect": 29.15,
+     "probe": "reach-shoot-with-jump",
+     "probes": 1
+    }
+   },
+   "traceFields": [
+    "enemies",
+    "projectiles"
+   ],
+   "visibility": "signal"
+  },
+  {
+   "id": "platforms-not-solid",
+   "patchSha256": "10fe6444adced5d9939aa88f924da8675bdadb44a06eb0cc0984056065befa00",
+   "probesChanged": 2,
+   "signals": {
+    "air_jumps": {
+     "clean": 1,
+     "defect": 0,
+     "probe": "reach-jump-with-move-left",
+     "probes": 2
+    },
+    "airborne_ticks": {
+     "clean": 82,
+     "defect": 64,
+     "probe": "reach-jump-with-move-left",
+     "probes": 2
+    },
+    "max_rise_px": {
+     "clean": 108.17,
+     "defect": 106.8,
+     "probe": "reach-move-left-with-jump",
+     "probes": 1
+    }
+   },
+   "traceFields": [
+    "onFloor",
+    "player",
+    "view"
+   ],
+   "visibility": "signal"
+  },
+  {
+   "id": "floaty-fall",
+   "patchSha256": "ef2763dd8d0e39b5f7a6ca595450c417d6d79d3037ec4610f9baf9484b45ae32",
+   "probesChanged": 6,
+   "signals": {
+    "airborne_ticks": {
+     "clean": 64,
+     "defect": 83,
+     "probe": "reach-jump-with-move-right",
+     "probes": 6
+    }
+   },
+   "traceFields": [
+    "onFloor",
+    "player",
+    "view"
+   ],
+   "visibility": "signal"
+  },
+  {
+   "id": "jump-always-full",
+   "patchSha256": "ff24312117d44af205e7b9fbd7ef5b9dc7b56ff7fa1e62085bbcb687cbc28ab7",
+   "probesChanged": 3,
+   "signals": {
+    "air_jumps": {
+     "clean": 2,
+     "defect": 1,
+     "probe": "reach-move-left-with-jump",
+     "probes": 1
+    },
+    "airborne_ticks": {
+     "clean": 61,
+     "defect": 95,
+     "probe": "reach-move-left-with-jump",
+     "probes": 3
+    },
+    "max_rise_px": {
+     "clean": 108.17,
+     "defect": 199.05,
+     "probe": "reach-move-left-with-jump",
+     "probes": 2
+    }
+   },
+   "traceFields": [
+    "onFloor",
+    "player",
+    "view"
+   ],
+   "visibility": "signal"
+  },
+  {
+   "id": "slow-left",
+   "patchSha256": "c0184f820a786c63290aba04c351d33fdd08ec147fea6d9be1b2493877527077",
+   "probesChanged": 2,
+   "signals": {
+    "player_dx_px": {
+     "clean": -196.67,
+     "defect": -88.14,
+     "probe": "reach-move-left-with-jump",
+     "probes": 2
+    }
+   },
+   "traceFields": [
+    "player",
+    "view"
+   ],
+   "visibility": "signal"
+  },
+  {
+   "id": "slides-after-stop",
+   "patchSha256": "5ceb20d16be32522de154b01ccbc8d432aebf141d385b323c5fcdfd2af10c454",
+   "probesChanged": 6,
+   "signals": {
+    "air_jumps": {
+     "clean": 1,
+     "defect": 0,
+     "probe": "reach-jump-with-move-left",
+     "probes": 1
+    },
+    "airborne_ticks": {
+     "clean": 82,
+     "defect": 50,
+     "probe": "reach-jump-with-move-left",
+     "probes": 1
+    },
+    "player_dx_px": {
+     "clean": 128.0,
+     "defect": 301.62,
+     "probe": "reach-move-right-with-move-left",
+     "probes": 5
+    }
+   },
+   "traceFields": [
+    "onFloor",
+    "player",
+    "view"
+   ],
+   "visibility": "signal"
+  },
+  {
+   "id": "no-shooting-in-air",
+   "patchSha256": "c7f7952bb67993262344711c218be2d1b730ab7de890117096764228b3b494aa",
+   "probesChanged": 1,
+   "signals": {
+    "projectile_count": {
+     "clean": 1,
+     "defect": 0,
+     "probe": "reach-jump-with-shoot",
+     "probes": 1
+    }
+   },
+   "traceFields": [
+    "projectiles"
+   ],
+   "visibility": "signal"
+  },
+  {
+   "id": "jump-needs-rest",
+   "patchSha256": "9f1e976329828265adb8d167213f1ad7bd79680721687b3021274a4de4c29d57",
+   "probesChanged": 2,
+   "signals": {
+    "air_jumps": {
+     "clean": 2,
+     "defect": 0,
+     "probe": "reach-move-left-with-jump",
+     "probes": 2
+    },
+    "airborne_ticks": {
+     "clean": 70,
+     "defect": 1,
+     "probe": "reach-move-right-with-jump",
+     "probes": 2
+    },
+    "max_rise_px": {
+     "clean": 108.17,
+     "defect": 0.0,
+     "probe": "reach-move-left-with-jump",
+     "probes": 2
+    },
+    "player_dx_px": {
+     "clean": 204.39,
+     "defect": 150.0,
+     "probe": "reach-move-right-with-jump",
+     "probes": 2
+    }
+   },
+   "traceFields": [
+    "onFloor",
+    "player",
+    "view"
+   ],
+   "visibility": "signal"
+  },
+  {
+   "id": "double-jump-once",
+   "patchSha256": "0215b0f96da9ce696b170d66fc71249449d1db93ec0791d5f2bc565f328d890b",
+   "probesChanged": 0,
+   "signals": {},
+   "traceFields": [],
+   "visibility": "none"
+  },
+  {
+   "id": "coin-stays",
+   "patchSha256": "8892eb10ced0cc35258e4edfa551d43e7550547233519dc1ba7a572efc5e508d",
+   "probesChanged": 0,
+   "signals": {},
+   "traceFields": [],
+   "visibility": "none"
+  },
+  {
+   "id": "coin-counts-twice",
+   "patchSha256": "5ab3f89edba809c1189d0693505b4b1b668a76d836a3b6d7b49caba4bd79ff77",
+   "probesChanged": 0,
+   "signals": {},
+   "traceFields": [],
+   "visibility": "none"
+  },
+  {
+   "id": "coin-counter-stuck",
+   "patchSha256": "2af3947288f662b936dc51f74df2579206cc1b3dddec445e58b96ea0c19b20c0",
+   "probesChanged": 0,
+   "signals": {},
+   "traceFields": [],
+   "visibility": "none"
+  },
+  {
+   "id": "gun-cooldown-long",
+   "patchSha256": "44d5f4790887353d431cbefb509f6213838455d41c8641adc42c5daf04c3b6e5",
+   "probesChanged": 0,
+   "signals": {},
+   "traceFields": [],
+   "visibility": "none"
+  },
+  {
+   "id": "enemy-missing",
+   "patchSha256": "08bb6bcf5027403f00b509f06ce72100f687d333e8ca97ff9586a078407fb7ac",
+   "probesChanged": 8,
+   "signals": {
+    "enemies_at_end": {
+     "clean": 3,
+     "defect": 2,
+     "probe": "reach-jump-with-move-left",
+     "probes": 8
+    }
+   },
+   "traceFields": [
+    "enemies",
+    "projectiles"
+   ],
+   "visibility": "signal"
+  },
+  {
+   "id": "enemy-fast-left",
+   "patchSha256": "cbb51750ca7830469517a6a0c11f57ad2da913bc1cc89092542e11a88c95119c",
+   "probesChanged": 0,
+   "signals": {},
+   "traceFields": [],
+   "visibility": "none"
+  },
+  {
+   "id": "enemy-slides-when-shot",
+   "patchSha256": "4ff66239fc83121921b31e0c5953f765430c866fd52468394465099e334e3694",
+   "probesChanged": 1,
+   "signals": {
+    "min_enemy_extent_px": {
+     "clean": 11.92,
+     "defect": 29.15,
+     "probe": "reach-shoot-with-jump",
+     "probes": 1
+    }
+   },
+   "traceFields": [
+    "enemies",
+    "projectiles"
+   ],
+   "visibility": "signal"
+  },
+  {
+   "id": "enemy-walks-backwards",
+   "patchSha256": "d5f98a8deb2af9da727330d119c1755cae4f00d436aa59e818610c20d789080b",
+   "probesChanged": 0,
+   "signals": {},
+   "traceFields": [],
+   "visibility": "none"
+  },
+  {
+   "id": "camera-stops-right",
+   "patchSha256": "24d5d8636d7b5c71bc148d06550549b08e6ac036c81179e8ed7e012dda8c3f28",
+   "probesChanged": 0,
+   "signals": {},
+   "traceFields": [],
+   "visibility": "none"
+  },
+  {
+   "id": "camera-cut-top",
+   "patchSha256": "58aa8ecdbfa68434dde777cd3229da2f73afc6a34e145509e24402a5e3875b62",
+   "probesChanged": 0,
+   "signals": {},
+   "traceFields": [],
+   "visibility": "none"
+  },
+  {
+   "id": "bullet-behind-scenery",
+   "patchSha256": "52c90da34798edd5624fbd52980b8f5a2ef1a8253b78623c4ef93296122f5cf5",
+   "probesChanged": 0,
+   "signals": {},
+   "traceFields": [],
+   "visibility": "none"
+  }
+ ],
+ "engine": "Godot 4.7.2-stable",
+ "engineRetries": 0,
+ "format": "expectrail.repro-visibility/v1",
+ "probes": [
+  "reach-move-left-with-move-right",
+  "reach-move-right-with-move-left",
+  "reach-move-left-with-jump",
+  "reach-jump-with-move-left",
+  "reach-move-right-with-jump",
+  "reach-jump-with-move-right",
+  "reach-jump-with-shoot",
+  "reach-shoot-with-jump"
+ ],
+ "replaysPerBuild": {
+  "clean": 2,
+  "defect": 1
+ },
+ "totals": {
+  "defects": 24,
+  "error": 0,
+  "none": 10,
+  "signal": 14,
+  "trace-only": 0
+ },
+ "unstable": []
+}
