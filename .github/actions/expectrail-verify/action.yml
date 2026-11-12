@@ -40,8 +40,10 @@ inputs:
     description: >
       'true' refuses to replay the game outside the replay sandbox (bubblewrap: no network, the
       game's own files only; docs/replay-sandbox.md). Where the runner cannot provide it nothing is
-      replayed and the decision is needs-review. 'false' (default) sandboxes the game where the
-      runner can and says in the record how many replays were.
+      replayed and the decision is needs-review. With 'true' the action also turns off Ubuntu
+      24.04's limit on unprivileged user namespaces, a kernel setting of the runner, which on a
+      self-hosted runner stays until reboot. 'false' (default) changes no setting: it sandboxes the
+      game only where the runner already allows it, and the record says how many replays were.
     default: 'false'
   artifact-name:
     description: The name of the evidence artifact; the comment action must use the same name.
@@ -105,9 +107,11 @@ runs:
       shell: bash
       run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 patch bubblewrap
     - name: Let the replay sandbox start (Ubuntu 24.04 keeps unprivileged user namespaces off)
+      # Only when the sandbox was asked for: this changes a kernel setting of the runner. On a hosted
+      # runner that ends with the job; on a self-hosted one it stays until reboot (docs/ci-gate.md).
+      # Best effort: where it is not allowed the sandbox cannot start and the gate refuses to replay.
+      if: inputs.require-sandbox == 'true'
       shell: bash
-      # Best effort: on a runner where this is not allowed the sandbox cannot start, the record says
-      # why, and with require-sandbox the gate refuses to replay.
       run: |
         if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
           echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns > /dev/null || true
