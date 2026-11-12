@@ -76,9 +76,10 @@ record is not published as the job's evidence, because it decides about a game n
 **The checks that judge are the ones the job names.** There is one reader of the specs and routes,
 the gate's (`expectrail.gate.verify.read_checks`): each file is read once, no link is followed, and
 a file over the size cap is refused. The job's `policyDigest` is that reader's digest: every `*.json`
-in the specs folder (drafts included) and every route file the patterns match that is not a link,
-each by the sha256 of the bytes read, or by the reader's refusal when it would not read the file. A
-spec that is a link is in the digest by its name and the refusal; what it leads to is never opened.
+in the specs folder (drafts included) and every route file the patterns name, each by the sha256 of
+the bytes read, or by the reader's refusal when it would not read the file. A spec or a route that
+is a link to a file, and a route outside the checkout, is in the digest by its name and the refusal;
+what it leads to is never opened.
 When the job runs, the engine reads the checks once more with the same reader. If the digest is not
 the job's, the job stops ("the checks changed after the job was created") and nothing is replayed.
 Otherwise the gate is handed what was read and opens no spec or route file itself: the routes the
