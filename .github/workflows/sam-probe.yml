@@ -41,6 +41,9 @@ on:
         description: probe mode, ask with a point at the engine's player position, not with words (spec, prompts, sweep and engine_ground are then unused)
         type: boolean
         default: false
+      route:
+        description: probe mode, replay the clean game and the seeded bugs on this route and not on smoke (a name in harness/routes, e.g. traversal)
+        default: ''
       clean_routes:
         description: probe mode with anchor, also replay the clean game on these other routes, e.g. coins,combat,traversal (each is a run named clean-ROUTE; about 13 more images each)
         default: ''
@@ -90,7 +93,16 @@ jobs:
       - name: Download Godot 4.7.2 and check its SHA-512
         uses: ./.github/actions/get-godot
       - name: Render the clean game and every seeded bug
-        run: python -m harness.check_seeded --out runs/seeded
+        env:
+          ROUTE: ${{ inputs.route }}
+        run: |
+          if [[ -z "$ROUTE" ]]; then
+            python -m harness.check_seeded --out runs/seeded
+            exit 0
+          fi
+          [[ "$ROUTE" =~ ^[a-z][a-z0-9-]*$ ]] || { echo "::error::route must be a route's name"; exit 1; }
+          [[ -f "harness/routes/$ROUTE.json" ]] || { echo "::error::no route named $ROUTE in harness/routes"; exit 1; }
+          python -m harness.check_seeded --route "harness/routes/$ROUTE.json" --out runs/seeded
       - name: Replay the clean game on other routes, when asked
         if: ${{ inputs.anchor && inputs.clean_routes != '' }}
         env:
@@ -154,6 +166,10 @@ jobs:
             # it is a table, so that other clean routes and the seeded bugs can be held against it.
             python -m agents.anchor_rule --calibrate runs/sam-probe/anchor.json:clean --judge runs/sam-probe/anchor.json --out runs/sam-probe \
               || echo "::warning title=Anchored rule::not applied (its reason is in the log, e.g. no run named clean was probed); the probe's own numbers stand"
+            # And in pairs: every run against the clean run's same frame. Runs of another route are
+            # not compared (the rule says so). It decides nothing either.
+            python -m agents.anchor_rule --pair runs/sam-probe/anchor.json:clean --judge runs/sam-probe/anchor.json --out runs/sam-probe \
+              || echo "::warning title=Anchored pairs::not applied (its reason is in the log, e.g. no run named clean was probed); the probe's own numbers stand"
             exit 0
           fi
           args+=("${dirs[@]}")
@@ -171,7 +187,7 @@ jobs:
       - name: Show the probe in the run summary
         if: always()
         run: |
-          for page in anchor-rule.md anchor.md probe.md; do
+          for page in anchor-pairs.md anchor-rule.md anchor.md probe.md; do
             if [ -f "runs/sam-probe/$page" ]; then cat "runs/sam-probe/$page" >> "$GITHUB_STEP_SUMMARY"; fi
           done
       - name: Keep the probe

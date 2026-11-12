@@ -12,6 +12,9 @@
  "runs": [
   {
    "run": "clean-coins",
+   "route": {
+    "name": "coins"
+   },
    "framesProbed": [
     0,
     10,
@@ -474,6 +477,9 @@
   },
   {
    "run": "clean-combat",
+   "route": {
+    "name": "combat"
+   },
    "framesProbed": [
     0,
     10,
@@ -840,6 +846,9 @@
   },
   {
    "run": "clean-traversal",
+   "route": {
+    "name": "traversal"
+   },
    "framesProbed": [
     0,
     10,
@@ -1300,5 +1309,6 @@
     }
    }
   }
- ]
+ ],
+ "routeNote": "Route names were added by hand: check_seeded replays harness/routes/smoke.json, and each clean-ROUTE run is that route. The probe did not record routes when these runs were made."
 }
