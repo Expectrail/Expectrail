@@ -45,6 +45,10 @@ DECISIONS = ("accept", "reject", "needs-review")
 DEFAULT_LEASE_SECONDS = 30
 MAX_STATUS_BYTES = 256 * 1024
 JOB_ID_LENGTH = 32
+# A worker's environment names its job, and everything the worker starts inherits that (the harness
+# passes this one name on to the game and to the sandbox tool). It is how a lost worker's children
+# are found: by the job's own random id, never by a process or group number, which can be reused.
+JOB_ENV = "EXPECTRAIL_JOB"
 # Codes a job can carry beyond expectrail.diagnostics.CODES: the worker itself, not the change.
 OWN_CODES = {
     "WORKER_LOST": ("the worker process stopped without finishing the job; there is no result",
@@ -272,7 +276,31 @@ class JobStore:
         if parse_stamp(doc["lease"]["expiresAt"]) > now() or (doc["worker"] and alive(doc["worker"]["pid"])):
             return doc
         why = "the worker stopped before the job finished" if doc["worker"] else "no worker took the job in time"
-        return self.finish(job_id, "failed", diagnostics=[diagnostic("WORKER_LOST", stage=doc["phase"])], reasons=[why])
+        return self.lose(job_id, why, stage=doc["phase"])
+
+    def lose(self, job_id: str, why: str, *, stage: str, detail: str = "", grace_seconds: float = 1.0) -> dict:
+        """Fail a job whose worker is gone, then stop what that worker had started: a worker that
+        was killed cannot do it itself, and the game and its display would run on to their own time
+        limits. The status is made final first, so nothing they do can become a result."""
+        status, lost_now = self._finish(job_id, "failed", reasons=[why],
+                                        diagnostics=[diagnostic("WORKER_LOST", stage=stage, detail=detail)])
+        if lost_now:
+            stopped = stop_job(job_id, grace_seconds=grace_seconds)
+            note = ("what it had started could not be looked for on this system (no /proc)" if stopped is None
+                    else f"stopped {stopped} process(es) it had started" if stopped else None)
+            if note:
+                status = self._note(job_id, note)
+        return status
+
+    def _note(self, job_id: str, text: str) -> dict:
+        """Add a reason to a job that is already final. Nothing else about it changes."""
+        paths = self._existing(job_id)
+        with self._locked(paths.lock):
+            doc = self._read(paths)
+            if text not in doc["reasons"] and len(doc["reasons"]) < 20:
+                doc["reasons"].append(text[:300])
+                return self._write(paths, doc)
+            return doc
 
     # --- changing ----------------------------------------------------------------------------------
     def _write(self, paths: JobPaths, doc: dict) -> dict:
@@ -382,7 +410,48 @@ class JobStore:
         status, cancelled_now = self._finish(job_id, "cancelled", reasons=["cancelled on request"])
         if cancelled_now and status["worker"] is not None:
             stop_group(status["worker"]["pgid"], grace_seconds=grace_seconds)
+        if cancelled_now:
+            stop_job(job_id, grace_seconds=1.0)   # and anything of the job's that had left the group
         return status
+
+
+def processes_of(job_id: str) -> list[int] | None:
+    """The processes whose starting environment names this job, other than this one. None where the
+    system has no /proc to ask."""
+    if not Path("/proc/self/environ").exists():
+        return None
+    marker = f"{JOB_ENV}={job_id}".encode()
+    found = []
+    for entry in os.scandir("/proc"):
+        if not entry.name.isdigit() or int(entry.name) == os.getpid():
+            continue
+        try:
+            with open(f"/proc/{entry.name}/environ", "rb") as handle:
+                names = handle.read().split(b"\0")
+        except OSError:
+            continue   # gone already, or another user's
+        if marker in names:
+            found.append(int(entry.name))
+    return sorted(found)
+
+
+def stop_job(job_id: str, *, grace_seconds: float = 1.0) -> int | None:
+    """Stop every process that carries this job's id: ask, then make. Returns how many there were,
+    or None where they cannot be looked for."""
+    first = processes_of(job_id)
+    if first is None:
+        return None
+    for sig, wait in ((signal.SIGTERM, grace_seconds), (signal.SIGKILL, 1.0)):
+        left = processes_of(job_id) or []
+        if not left:
+            break
+        for pid in left:
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                os.kill(pid, sig)
+        deadline = time.monotonic() + wait
+        while time.monotonic() < deadline and processes_of(job_id):
+            time.sleep(0.05)
+    return len(first)
 
 
 def stop_group(pgid: int, *, grace_seconds: float = 3.0) -> None:

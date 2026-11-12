@@ -925,6 +925,104 @@ class NobodyWaitsForEverTest(Case):
         self.assertEqual(self.store.status(job)["phase"], "executing")
 
 
+class LostWorkerTest(Case):
+    """A worker that is killed cannot stop what it started, so the store does, and finds it by the
+    job's id in each process's environment, never by a process or group number (#307, gap 3)."""
+
+    def child_of(self, job: str) -> int:
+        return int((self.store.paths(job).work / "child.pid").read_text())
+
+    def test_a_worker_and_what_it_starts_carry_the_jobs_id(self):
+        job = self.job("slow")
+        proc = self.spawn(job)
+        self.running(job)
+        self.assertEqual(st.processes_of(job), sorted([proc.pid, self.child_of(job)]))
+        self.assertEqual(st.processes_of("0" * 32), [])
+
+    def test_killing_only_the_worker_leaves_nothing_of_the_job_running(self):
+        for engine in ("slow", "detached"):
+            with self.subTest(engine=engine):
+                job = self.job(engine)
+                proc = self.spawn(job)
+                self.running(job)
+                child = self.child_of(job)
+                os.kill(proc.pid, signal.SIGKILL)   # the worker alone: its child lives on
+                proc.wait(timeout=5)
+                self.assertTrue(st.alive(child))
+                status = wait_for(lambda: (s := self.store.status(job))["phase"] in st.FINAL and s, seconds=5,
+                                  what="the lease running out")
+                self.assertEqual((status["phase"], [d["code"] for d in status["diagnostics"]]), ("failed", ["WORKER_LOST"]))
+                wait_for(lambda: gone(child), what="the worker's child stopping")
+                self.assertIn("stopped 1 process(es) it had started", status["reasons"])
+                self.assertEqual(st.processes_of(job), [])
+                self.assertEqual(self.store.status(job), status)   # and asking again changes nothing
+
+    def test_waiting_on_a_killed_worker_stops_its_child_at_once(self):
+        job = self.job("slow")
+        proc = self.spawn(job)
+        self.running(job)
+        child = self.child_of(job)
+        os.kill(proc.pid, signal.SIGKILL)
+        status = runner.wait(self.store, job, proc, poll_seconds=0.05)
+        self.assertEqual((status["phase"], [d["code"] for d in status["diagnostics"]]), ("failed", ["WORKER_LOST"]))
+        wait_for(lambda: gone(child), what="the worker's child stopping")
+
+    def test_cancel_also_stops_what_left_the_workers_group(self):
+        job = self.job("detached")
+        proc = self.spawn(job)
+        self.running(job)
+        child = self.child_of(job)
+        self.assertNotEqual(os.getpgid(child), proc.pid)
+        self.assertEqual(self.store.cancel(job, grace_seconds=1.0)["phase"], "cancelled")
+        wait_for(lambda: proc.poll() is not None and gone(child), what="the worker and its detached child stopping")
+
+    def test_only_processes_that_name_this_job_are_stopped(self):
+        job, other = self.job("slow"), "f" * 32
+        self.assertNotEqual(job, other)
+
+        def sleeper(**env) -> subprocess.Popen:
+            proc = subprocess.Popen(["sleep", "600"], env={"PATH": os.environ["PATH"], **env}, start_new_session=True)
+            self.started.append(proc)
+            return proc
+
+        mine = sleeper(**{st.JOB_ENV: job})
+        bystanders = [sleeper(), sleeper(**{st.JOB_ENV: other}), sleeper(**{st.JOB_ENV: job + "0"}),
+                      sleeper(**{st.JOB_ENV: job[:-1]}), sleeper(NOTE=f"{st.JOB_ENV}={job}"),
+                      sleeper(**{"X" + st.JOB_ENV: job})]
+        wait_for(lambda: st.processes_of(job) == [mine.pid], what="the marked process showing up")
+        self.assertEqual(st.stop_job(job, grace_seconds=1.0), 1)
+        wait_for(lambda: mine.poll() is not None, what="the marked process stopping")
+        time.sleep(0.2)
+        self.assertEqual([p.poll() for p in bystanders], [None] * len(bystanders))
+        self.assertNotIn(os.getpid(), st.processes_of(job) or [])
+
+    def test_where_processes_cannot_be_looked_for_the_job_says_so(self):
+        job = self.job()
+        with mock.patch.object(st, "processes_of", return_value=None):
+            self.assertIsNone(st.stop_job(job))
+            status = self.store.lose(job, "the worker stopped before the job finished", stage="queued")
+        self.assertEqual(status["phase"], "failed")
+        self.assertIn("could not be looked for on this system", " ".join(status["reasons"]))
+
+    def test_the_harness_passes_the_jobs_id_on_and_nothing_else_new(self):
+        from harness import run as hr
+        from harness import sandbox as box
+
+        self.assertEqual(st.JOB_ENV, "EXPECTRAIL_JOB")
+        env = hr.game_env({"PATH": "/usr/bin", st.JOB_ENV: "a" * 32, "MODEL_API_KEY": "k", "EXPECTRAIL_HELDOUT_DIR": "/p"})
+        self.assertEqual((env.get(st.JOB_ENV), "MODEL_API_KEY" in env, "EXPECTRAIL_HELDOUT_DIR" in env), ("a" * 32, False, False))
+        seen = {}
+
+        def fake(cmd, **kwargs):
+            seen.update(kwargs["env"])
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+
+        with mock.patch.dict(os.environ, {st.JOB_ENV: "b" * 32, "MODEL_API_KEY": "k"}), \
+                mock.patch.object(box.subprocess, "run", side_effect=fake):
+            box.run(box.Tool("/usr/bin/bwrap", "0.9.0"), ["true"], timeout=5, game=self.tmp, out=self.tmp)
+        self.assertEqual(seen, {"PATH": "/usr/bin:/bin", st.JOB_ENV: "b" * 32})
+
+
 class CancelOrderTest(Case):
     def test_a_worker_that_records_itself_as_cancel_begins_is_still_stopped(self):
         # The order the first review of #300 forced: cancel reads the status (no worker yet), the worker

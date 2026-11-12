@@ -172,7 +172,10 @@ def prepare(game: Path, work: Path, patch: Path | None = None, patches: list[Pat
 GAME_ENV_KEEP = frozenset({"PATH", "HOME", "USER", "LOGNAME", "SHELL", "LANG", "LANGUAGE", "TZ", "TMPDIR",
                            "DISPLAY", "XAUTHORITY", "WAYLAND_DISPLAY", "LIBGL_ALWAYS_SOFTWARE", "GALLIUM_DRIVER",
                            # llvmpipe's instruction set, held the same on every runner (harness/unity/run.py).
-                           "GALLIUM_OVERRIDE_CPU_CAPS"})
+                           "GALLIUM_OVERRIDE_CPU_CAPS",
+                           # The id of the verification job this replay belongs to (a random number, no
+                           # secret): the orchestrator finds a lost worker's processes by it.
+                           "EXPECTRAIL_JOB"})
 GAME_ENV_PREFIXES = ("LC_", "XDG_", "MESA_", "LP_", "__GLX_", "__EGL_")
 
 

@@ -109,6 +109,13 @@ Every job has a folder of its own:
 - **A worker that dies is not waited for, and neither is one that never comes.** A job has a lease
   from the moment it is created; taking the job and working on it renew it. A job whose lease has run
   out and whose worker is gone, or that no worker ever took, is reported `failed` with `WORKER_LOST`.
+- **A lost worker's processes are stopped, and found by the job's id.** A worker that is killed
+  cannot stop what it started. Every worker's environment names its job (`EXPECTRAIL_JOB`), and what
+  it starts inherits that: the harness passes that one name on to the game, the virtual display and
+  the sandbox tool. When a job is declared lost, and when it is cancelled, every process whose
+  starting environment names the job is stopped, and the job's reasons say how many. Never by a
+  process or group number, which the system can give to something else. Where there is no `/proc`
+  to ask (macOS), nothing is stopped and the job says so.
 - **Out of time is needs-review.** When the limit passes, the job completes as needs-review with
   `EXECUTION_TIMEOUT` and its group is stopped.
 - **No result is never a pass.** A missing tool, an unusable input or a project that is not there
@@ -127,9 +134,6 @@ alike; a test holds that on the gate tests' stand-in replay.
 
 ## What is not built yet
 
-- **Stopping what a killed worker started.** A worker that is killed is reported `failed` with
-  `WORKER_LOST` one lease later, and what it had started (Godot, the virtual display) runs on until its
-  own time limit. `cancel` does stop everything; a kill from outside does not yet (#307).
 - **Files that change during the run.** The worker reads the inputs again just before it runs them,
   but between that read and the gate's own copy of the game they can still change. Closing it needs
   the gate's record and the request to name the tree the same way (#303, #307).
