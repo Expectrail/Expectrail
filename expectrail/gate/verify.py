@@ -441,7 +441,99 @@ def _why(text) -> str:
     return _clip(str(text), 160)
 
 
-def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None, keep: bool = True) -> dict:
+CAPTURE_FPS = 60   # what the harness captures at (harness.run), and what a spec's window counts in
+FRAME_FILE = re.compile(r"f(\d+)\.png")   # a captured frame: f00000000.png, f00000001.png, ...
+PASSES_ON_ONE_FRAME = ("reaches",)   # a pass that rests on the frame that shows it, not on every frame
+
+
+def route_ticks(path: Path) -> int | None:
+    """How many physics ticks the route file says a replay of it runs; None when it cannot be told."""
+    try:
+        ticks = json.loads(Path(path).read_bytes())["ticks"]
+    except Exception:  # noqa: BLE001 - a route that cannot be read gives no count, and no pass rests on none
+        return None
+    return ticks if isinstance(ticks, int) and not isinstance(ticks, bool) and ticks >= 0 else None
+
+
+def window_frames(spec: dict, ticks: int | None, trace: dict | None) -> list[int] | None:
+    """The frames of the spec's window that a finished replay of a route of ``ticks`` ticks has.
+
+    Counted from the route (the gate's own input) and the tick rate the trace states, never from
+    what an observer returned: an observer that saw five frames cannot say the window is five frames
+    long. None when it cannot be told (no tick count, no tick rate, a window that is not numbers)."""
+    tps = (trace or {}).get("physicsTicksPerSecond")
+    whole = lambda v: isinstance(v, int) and not isinstance(v, bool)   # noqa: E731
+    if not whole(ticks) or ticks < 0 or not whole(tps) or tps < 1:
+        return None
+    window = spec.get("window") or {}
+    lo, hi = window.get("fromFrame", 0), window.get("toFrame")
+    if not whole(lo) or (hi is not None and not whole(hi)):
+        return None
+    total = ticks // max(tps // CAPTURE_FPS, 1)
+    return list(range(max(lo, 0), total if hi is None else min(hi + 1, total)))
+
+
+def frames_in(obs) -> set[int]:
+    """The frame numbers an observations document holds."""
+    frames = obs.get("frames") if isinstance(obs, dict) else None
+    return {f["frame"] for f in frames if isinstance(f, dict) and isinstance(f.get("frame"), int)} \
+        if isinstance(frames, list) else set()
+
+
+def captured_frames(frames_dir) -> set[int]:
+    """The frame numbers of the frame files in a replay's frames folder (none when there is none)."""
+    try:
+        names = [p.name for p in Path(frames_dir).iterdir()] if frames_dir is not None else []
+    except OSError:
+        return set()
+    return {int(m.group(1)) for m in map(FRAME_FILE.fullmatch, names) if m}
+
+
+def engine_gap(spec: dict, run: dict, ticks: int | None) -> str | None:
+    """Why the engine's record cannot carry a pass under the rule ``both``, or None when it can: the
+    log must hold every tick of the route, and its observations every frame of the check's window.
+    A log that stops early says nothing about the ticks it does not have."""
+    trace = run.get("trace") or {}
+    want = window_frames(spec, ticks, trace)
+    if want is None:
+        return "the gate cannot tell how many frames this route should have"
+    rows = trace.get("rows")
+    logged = len(rows) if isinstance(rows, list) else 0
+    if logged < ticks:
+        return f"the engine's record has {logged} of {ticks} ticks of the route"
+    have = frames_in(run.get("engineObservations"))
+    got = sum(1 for i in want if i in have)
+    if got < len(want):
+        return f"the engine's record covers {got} of {len(want)} frames of the check's window"
+    return None
+
+
+def visual_gap(spec: dict, seen: dict, run: dict, ticks: int | None) -> str | None:
+    """Why the visual observer's passing answer cannot carry a pass, or None when it can.
+
+    A pass counts only when the replay captured every frame of the check's window and the observer's
+    answer holds every one of them. The one exception is an assertion that passes on the frame that
+    shows it (``reaches``): there the answer need not hold every frame, but the replay must still
+    have captured the whole window. (That the answer is about this replay at all is checked before
+    any verdict is read from it: ``judge_run``.)"""
+    want = window_frames(spec, ticks, run.get("trace"))
+    if want is None:
+        return "the gate cannot tell how many frames this route should have"
+    on_disk = captured_frames(run.get("framesDir"))
+    got = sum(1 for i in want if i in on_disk)
+    if got < len(want):
+        return f"the replay captured {got} of {len(want)} frames of the check's window"
+    if (spec.get("assertion") or {}).get("type") in PASSES_ON_ONE_FRAME:
+        return None
+    have = frames_in(seen)
+    got = sum(1 for i in want if i in have)
+    if got < len(want):
+        return f"the visual observer saw {got} of {len(want)} frames of the check's window"
+    return None
+
+
+def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None, keep: bool = True,
+              ticks: int | None = None) -> dict:
     """One approved spec on one finished replay, by the rule.
 
     ``engine-only``: the evaluator on the engine's record, as the gate always judged. ``both``: that,
@@ -449,7 +541,14 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
     frames, joined by ``rec.combine``. The visual observer is not asked when the engine's record
     already fails the check (a failure on either observer is a failure, so its answer could not
     change the result), and anything it cannot answer is needs-review, never a pass. The result
-    then carries ``observed`` (what each said), and the visual observer's observations and verdict."""
+    then carries ``observed`` (what each said), and the visual observer's observations and verdict.
+
+    Under ``both`` a pass is a pass only when it covers the check: ``ticks`` is how many physics
+    ticks the route runs (``route_ticks``), and from it the gate counts the frames of the spec's
+    window the replay should have. An engine's record that stops short of the route, a replay that
+    captured only part of the window, or a visual answer that holds only part of it is needs-review
+    with the count in the reason (``engine_gap``, ``visual_gap``); a visual answer that names
+    another replay is no answer. Without ``ticks`` the gate cannot tell, and nothing passes."""
     try:
         verdict = evaluate(spec, run["engineObservations"])
     except Exception as exc:  # noqa: BLE001 - a crash is recorded, never read as a pass
@@ -464,13 +563,26 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
               "framesDir": run.get("framesDir") if verdict else None}
     if rule == rec.ENGINE_ONLY:
         return result
-    said, why, seen, seen_verdict, answer = "not-asked", None, None, None, None
+    if engine == "pass":
+        gap = engine_gap(spec, run, ticks)
+        if gap:
+            engine, engine_reason = "needs-review", f"{gap}, so its pass is not counted"
+    said, why, seen, seen_verdict, answer, part = "not-asked", None, None, None, None, None
     if engine != "fail" and visual is not None:
         try:
             seen = visual.look(spec, run, keep=keep)
             answer = digest(seen)
+            about = (seen.get("replay") or {}).get("sha256")
+            if not isinstance(about, str) or about != run.get("replaySha256"):
+                # Whatever it says, it is not about what this replay showed: not a pass, and not a
+                # failure of this change either.
+                raise NoAnswer("its answer is about another replay")
             seen_verdict = evaluate(spec, seen)
             said = seen_verdict["result"] if seen_verdict["result"] in rec.VISUAL_VERDICTS else "needs-review"
+            if said == "pass":
+                part = visual_gap(spec, seen, run, ticks)
+                if part:
+                    said = "needs-review"
         except NoAnswer as exc:
             said, why, seen, seen_verdict = "no-answer", _why(exc), None, None
         except Exception as exc:  # noqa: BLE001 - a visual observer that stops, or whose answer cannot be
@@ -488,7 +600,7 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
         reason = "the engine's record passes; " + {
             "not-asked": "no visual observer was asked, so this is not a pass",
             "no-answer": f"the visual observer gave no answer ({why}), so this is not a pass",
-            "needs-review": f"the visual observer could not decide ({_why((seen_verdict or {}).get('reason'))}), "
+            "needs-review": f"the visual observer could not decide ({_why(part or (seen_verdict or {}).get('reason'))}), "
                             "so this is not a pass"}[said]
     else:
         reason = f"the engine's record could not decide: {engine_reason}"
@@ -525,8 +637,9 @@ def judge_arm(game: Path, routes: list[tuple[str, Path, str]], specs: list[dict]
             continue
         if on_phase:
             on_phase("evaluating")
+        ticks = route_ticks(path) if rule == rec.BOTH else None
         for spec in specs:
-            results[(spec["id"], name)] = judge_run(spec, run, rule=rule, visual=visual)
+            results[(spec["id"], name)] = judge_run(spec, run, rule=rule, visual=visual, ticks=ticks)
     return results
 
 
@@ -539,12 +652,19 @@ HELD_ZERO = {"routes": 0, "checks": 0, "passed": 0, "failed": 0, "needsReview": 
 
 
 def judge_heldout(root: Path | None, game: Path, specs: list[dict], replay: Replay, *,
-                  rule: str = rec.ENGINE_ONLY, visual=None) -> dict:
+                  rule: str = rec.ENGINE_ONLY, visual=None, frames_to_visual: bool = False) -> dict:
     """Counts only. Nothing from the held-out set is printed, returned or left on disk.
 
-    Under the rule ``both`` the held-out routes are replayed with frames (in the scratch folder that
-    is deleted) and each check needs both observers, as a public check does: a held-out check cannot
-    pass on the engine's record alone either. The visual observer is asked to keep no answer cache."""
+    Under the rule ``both`` each held-out check needs both observers, as a public check does: a
+    held-out check cannot pass on the engine's record alone either. A visual observer over the
+    frames sends those frames to a model's provider, and whether a held-out route's frames may leave
+    for a third party is a person's decision. So it is off unless the caller says
+    ``frames_to_visual=True``: without it the held-out routes are replayed without frames, the
+    visual observer is not asked, a failure on the engine's record still counts, and no held-out
+    check passes. With it they are replayed with frames (in the scratch folder that is deleted) and
+    the visual observer is asked to keep no answer cache."""
+    if not (rule == rec.BOTH and frames_to_visual):
+        visual = None
     if root is None:
         return {"status": "not-used", **HELD_ZERO}
     try:
@@ -568,9 +688,11 @@ def judge_heldout(root: Path | None, game: Path, specs: list[dict], replay: Repl
     try:
         for n, path in enumerate(paths):
             try:
-                run = replay(path, game, scratch / f"r{n:02d}", rule == rec.BOTH)
+                run = replay(path, game, scratch / f"r{n:02d}", visual is not None)
                 run = dict(run, engineObservations=observations(run["trace"], run["replaySha256"]))
-                results = [judge_run(spec, run, rule=rule, visual=visual, keep=False)["result"] for spec in specs]
+                ticks = route_ticks(path) if rule == rec.BOTH else None
+                results = [judge_run(spec, run, rule=rule, visual=visual, keep=False, ticks=ticks)["result"]
+                           for spec in specs]
             except (Exception, SystemExit):  # noqa: BLE001
                 results = ["needs-review"] * len(specs)
             counts["checks"] += len(results)
@@ -606,7 +728,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
              expectrail_commit: str | None = None, replay: Replay = harness_replay,
              generated_checks: Path | None = None, require_sandbox: bool = False,
              checks: Checks | None = None, rule: str = rec.ENGINE_ONLY, visual=None,
-             on_phase: Callable[[str], object] | None = None) -> dict:
+             on_phase: Callable[[str], object] | None = None, heldout_frames_to_visual: bool = False) -> dict:
     """Run the gate and write the artifact in ``out``; returns the findings record.
 
     ``rule`` is which observers judge (``rec.RULES``). ``engine-only`` is the engine's record alone,
@@ -618,6 +740,12 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     reads as ``engine-only``) names the rule and the observer, each row says what
     each observer said, and the visual observer's observations are written under ``observations/``
     with their digest in the row, so its verdict can be read again without asking the model.
+
+    Under ``both`` a pass must cover the check: the engine's record every tick of the route, the
+    captured frames and the visual observer's answer every frame of the spec's window, counted from
+    the route's ticks (``judge_run``). ``heldout_frames_to_visual`` lets the visual observer see the
+    held-out routes' frames, which sends them to the model's provider; it is off by default, and
+    then no held-out check passes under ``both`` (``judge_heldout``).
 
     ``on_phase`` is told ``observing`` when a replay starts and ``evaluating`` when its checks are
     judged (the verification job's phases).
@@ -739,6 +867,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         (routes_dir / f"{name}.json").write_bytes(data)
 
     how = {"rule": rule, "visual": visual, "on_phase": on_phase}
+    held_back = False   # under `both`: the held-out frames were kept from the visual observer
     head = judge_arm(head_game, route_list_for_head, spec_docs, work / "head", replay, label="head", **how) \
         if route_list_for_head and spec_docs else {}
     before = judge_arm(base_game, route_list, spec_docs, work / "base", replay, label="base", **how) \
@@ -748,7 +877,10 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     elif not _game_ok(head_game):
         held = {"status": "unavailable", **HELD_ZERO}
     else:
-        held = judge_heldout(heldout.resolve(), head_game, spec_docs, replay, rule=rule, visual=visual)
+        held = judge_heldout(heldout.resolve(), head_game, spec_docs, replay, rule=rule, visual=visual,
+                             frames_to_visual=heldout_frames_to_visual)
+        if rule == rec.BOTH and visual is not None and not heldout_frames_to_visual:
+            held_back = True
 
     checks, findings, frames = [], [], {}
     for name, _path, _sha in route_list if head else []:
@@ -787,6 +919,9 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
             if n:
                 reasons.append(f"the engine's record passes {n} check{'s' if n != 1 else ''} that {words}, "
                                "so this is not an accept: an accept needs the visual observer's evidence")
+        if held_back and held["status"] == "judged" and decision != "reject":
+            reasons.append("the held-out routes' frames were not sent to the visual observer (that needs a "
+                           "person's decision), so no held-out check passes under this rule")
     if checks_from == "base" and (changed["specs"] or changed["routes"]):
         reasons.append(f"this change edits {changed['specs']} spec and {changed['routes']} route files; "
                        "they judge changes once it merges")

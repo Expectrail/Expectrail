@@ -69,22 +69,28 @@ class Game:
         self.asked: list[tuple[str, int, str]] = []   # (look, frame, prompt) for every request
         self.replays: list[tuple[str, str, bool]] = []
         self.down = False
+        self.look_of = look_of   # which look a game folder has
+        self.log_ticks: int | None = None   # the log stops after this many ticks (None: the whole route)
+        self.keep_frames: int | None = None   # only the first this-many frame files are left on disk
 
     def replay(self, route: Path, game: Path, out: Path, frames: bool) -> dict:
-        look = look_of(game)
+        look = self.look_of(game)
         self.replays.append((route.name, look, frames))
         if (game / "CRASH").exists():
             raise SystemExit("godot failed (139)")
         falls = LOOKS[look][0]
+        # As the harness does: one row for every tick of the route, one frame for every other tick.
+        ticks = json.loads(route.read_text(encoding="utf-8"))["ticks"] if route.is_file() else TICKS
+        logged = ticks if self.log_ticks is None else min(self.log_ticks, ticks)
         rows = [{"tick": t, "player": [70.0, GROUND_TOP - FEET + (sink(t // 2) if falls else 0.0)], "onFloor": not falls,
-                 "ground": float(GROUND_TOP), "view": [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]} for t in range(TICKS)]
+                 "ground": float(GROUND_TOP), "view": [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]} for t in range(logged)]
         trace = {"physicsTicksPerSecond": 120, "rows": rows}
         out.mkdir(parents=True, exist_ok=True)
         frames_dir = None
         if frames:
             frames_dir = out / "frames"
             frames_dir.mkdir(exist_ok=True)
-            for i in range(FRAMES):
+            for i in range(logged // 2 if self.keep_frames is None else min(self.keep_frames, logged // 2)):
                 data = png_bytes(W, H, list(LOOKS).index(look) * 1000 + i)
                 (frames_dir / f"f{i:08d}.png").write_bytes(data)
                 self.index[base64.b64encode(data).decode()] = (look, i)
@@ -319,18 +325,180 @@ class BothObserversTest(Case):
 
         client = MetaSamClient(transport=self.game.transport, retries=0, sleep=lambda s: None)
         held = make_heldout(self.tmp / "heldout")
-        doc = self.gate(repo(self.tmp / "head"), heldout=held, visual=Watching(client=client, cache=Cache(None), name="sam"))
+        send = {"heldout_frames_to_visual": True}
+        doc = self.gate(repo(self.tmp / "head"), heldout=held, visual=Watching(client=client, cache=Cache(None), name="sam"),
+                        **send)
         self.assertEqual((doc["decision"], doc["heldOut"]["passed"], doc["heldOut"]["checks"]), ("accept", 2, 2))
         self.assertEqual(sorted(seen), [(False, True), (True, False), (True, False)])
-        doc = self.gate(repo(self.tmp / "head2"), heldout=held, visual=None)
+        doc = self.gate(repo(self.tmp / "head2"), heldout=held, visual=None, **send)
         self.assertEqual((doc["decision"], doc["heldOut"]["passed"], doc["heldOut"]["needsReview"]), ("needs-review", 0, 2))
-        doc = self.gate(repo(self.tmp / "head3", "DRAWN"), heldout=held)
+        doc = self.gate(repo(self.tmp / "head3", "DRAWN"), heldout=held, **send)
         self.assertEqual((doc["decision"], doc["heldOut"]["failed"]), ("reject", 2))
+
+    def test_held_out_frames_reach_the_visual_observer_only_when_the_caller_says_so(self):
+        # Sending a held-out route's frames to a model's provider is a person's decision (the merge
+        # guard's review of #351). Unless the caller says so: no frames, no request, and no pass.
+        held = make_heldout(self.tmp / "heldout")
+        doc = self.gate(repo(self.tmp / "head"), heldout=held)
+        self.assertEqual((doc["decision"], doc["counts"]["passed"]), ("needs-review", 1))
+        self.assertEqual((doc["heldOut"]["passed"], doc["heldOut"]["needsReview"]), (0, 2))
+        self.assertTrue(any("held-out routes' frames were not sent to the visual observer" in r for r in doc["reasons"]),
+                        doc["reasons"])
+        held_replays = [r for r in self.game.replays if r[0] != "smoke.json"]
+        self.assertEqual([frames for _route, _look, frames in held_replays], [False, False])
+        self.assertEqual({look for look, _i, _p in self.game.asked}, {"clean"})
+        self.assertEqual(len(self.game.asked), FRAMES)   # the public route's frames only
+        # A failure on the engine's record still counts.
+        doc = self.gate(repo(self.tmp / "head2", "BUG"), heldout=held)
+        self.assertEqual((doc["decision"], doc["heldOut"]["failed"]), ("reject", 2))
+        rec.read_record(self.out / "findings.json")
 
     def test_the_phases_are_reported_as_the_gate_moves_on(self):
         phases = []
         self.gate(repo(self.tmp / "head"), base=repo(self.tmp / "base"), on_phase=phases.append)
         self.assertEqual(phases, ["observing", "evaluating", "observing", "evaluating"])
+
+
+class CoverageTest(Case):
+    """A pass under `both` has to cover the check: the merge guard's review of #351, case by case.
+    The window of the spec is frames 0 to 119, and the route (smoke) runs 240 ticks: 120 frames."""
+
+    def after(self, doc: dict) -> tuple[str, str, str]:
+        seen = self.row(doc)["observed"]["after"]
+        return doc["decision"], seen["engine"], seen["visual"]
+
+    def test_a_whole_replay_that_looks_wrong_is_rejected(self):
+        self.assertEqual(self.after(self.gate(repo(self.tmp / "head", "DRAWN"))), ("reject", "pass", "fail"))
+
+    def test_a_few_captured_frames_are_not_the_visual_observers_pass(self):
+        # DRAWN sinks from frame 34: five frames, or one, never show it.
+        for kept in (5, 1):
+            with self.subTest(kept=kept):
+                self.game.keep_frames = kept
+                doc = self.gate(repo(self.tmp / f"head{kept}", "DRAWN"))
+                self.assertEqual(self.after(doc), ("needs-review", "pass", "needs-review"))
+                self.assertIn(f"the replay captured {kept} of 120 frames of the check's window", doc["findings"][0]["reason"])
+                self.assertTrue(any("could not decide" in r and "not an accept" in r for r in doc["reasons"]), doc["reasons"])
+                rec.read_record(self.out / "findings.json")
+
+    def test_a_clean_game_with_a_few_captured_frames_is_not_accepted_either(self):
+        self.game.keep_frames = 5
+        self.assertEqual(self.after(self.gate(repo(self.tmp / "head"))), ("needs-review", "pass", "needs-review"))
+
+    def test_a_log_that_stops_early_is_not_the_engines_pass(self):
+        # 20 ticks logged and 10 frames captured: the bug shows from frame 38, which neither has.
+        self.game.log_ticks = 20
+        doc = self.gate(repo(self.tmp / "head", "BUG"))
+        self.assertEqual(self.after(doc)[:2], ("needs-review", "needs-review"))
+        self.assertIn("the engine's record has 20 of 240 ticks of the route", doc["findings"][0]["reason"])
+        # The visual observer's ten frames are not a pass either, whatever the engine's record says.
+        self.assertEqual(self.after(doc)[2], "needs-review")
+        self.game.log_ticks = 239
+        self.assertEqual(self.after(self.gate(repo(self.tmp / "head2")))[:2], ("needs-review", "needs-review"))
+
+    def test_an_answer_cut_to_part_of_the_window_is_not_a_pass(self):
+        full = self.game.observer()
+
+        class Cut:
+            def __init__(self, keep):
+                self.keep = keep
+
+            def describe(self):
+                return full.describe()
+
+            def look(self, spec, run, keep=True):
+                doc = full.look(spec, run, keep=keep)
+                return dict(doc, frames=[f for f in doc["frames"] if self.keep(f["frame"])])
+
+        for name, keep, count in (("first", lambda i: i == 0, 1), ("every30th", lambda i: i % 30 == 0, 4),
+                                  ("all-but-one", lambda i: i != 77, 119)):
+            with self.subTest(name=name):
+                doc = self.gate(repo(self.tmp / name), visual=Cut(keep))
+                self.assertEqual(self.after(doc), ("needs-review", "pass", "needs-review"))
+                self.assertIn(f"the visual observer saw {count} of 120 frames of the check's window",
+                              doc["findings"][0]["reason"])
+        # A failure seen in part of the window is still a failure: only a pass has to cover it.
+        doc = self.gate(repo(self.tmp / "drawn", "DRAWN"), visual=Cut(lambda i: 30 <= i <= 50))
+        self.assertEqual(self.after(doc), ("reject", "pass", "fail"))
+
+    def test_an_answer_about_another_replay_is_no_answer(self):
+        full = self.game.observer()
+
+        class Other:
+            sha = "f" * 64
+
+            def describe(self):
+                return full.describe()
+
+            def look(self, spec, run, keep=True):
+                doc = full.look(spec, run, keep=keep)
+                return dict(doc, replay={"sha256": self.sha} if self.sha else {})
+
+        class Unnamed(Other):
+            sha = None
+
+        for n, (look, observer) in enumerate((("clean", Other()), ("clean", Unnamed()), ("DRAWN", Other()))):
+            with self.subTest(look=look, observer=type(observer).__name__):
+                doc = self.gate(repo(self.tmp / f"head{n}", look), visual=observer)
+                self.assertEqual(self.after(doc), ("needs-review", "pass", "no-answer"))
+                self.assertEqual(self.row(doc)["observed"]["after"]["visualAnswerSha256"], None)
+                self.assertIn("its answer is about another replay", doc["findings"][0]["reason"])
+                self.assertFalse((self.out / "observations").exists())
+
+    def test_no_frames_at_all_is_no_answer(self):
+        self.game.keep_frames = 0
+        self.assertEqual(self.after(self.gate(repo(self.tmp / "head", "DRAWN"))), ("needs-review", "pass", "no-answer"))
+
+    def test_without_the_routes_tick_count_nothing_passes(self):
+        run = self.game.replay(Path("smoke.json"), repo(self.tmp / "head") / "game" / "platformer", self.tmp / "run", True)
+        run = dict(run, engineObservations=gv.observations(run["trace"], run["replaySha256"]))
+        how = {"rule": rec.BOTH, "visual": self.game.observer()}
+        self.assertEqual(gv.judge_run(SPEC, run, ticks=TICKS, **how)["result"], "pass")
+        for ticks in (None, True, "240", -1):
+            with self.subTest(ticks=ticks):
+                got = gv.judge_run(SPEC, run, ticks=ticks, **how)
+                self.assertEqual((got["result"], got["observed"]["engine"]), ("needs-review", "needs-review"))
+                self.assertIn("cannot tell how many frames", got["reason"])
+        # The count comes from the route, so a route twice as long is not covered by this replay.
+        got = gv.judge_run(SPEC, run, ticks=2 * TICKS, **how)
+        self.assertEqual(got["result"], "needs-review")
+        self.assertIn("240 of 480 ticks", got["reason"])
+        # And the trace has to state its tick rate.
+        bare = dict(run, trace={"rows": run["trace"]["rows"]})
+        self.assertEqual(gv.judge_run(SPEC, bare, ticks=TICKS, **how)["result"], "needs-review")
+
+    def test_the_window_is_counted_from_the_route_not_from_the_answer(self):
+        trace = {"physicsTicksPerSecond": 120}
+        self.assertEqual(gv.window_frames(SPEC, 240, trace), list(range(120)))
+        self.assertEqual(gv.window_frames(SPEC, 180, trace), list(range(90)))     # a shorter route: what it has
+        self.assertEqual(gv.window_frames(SPEC, 480, trace), list(range(120)))    # a longer one: the window
+        self.assertEqual(gv.window_frames(dict(SPEC, window={"fromFrame": 100}), 240, trace), list(range(100, 120)))
+        self.assertEqual(gv.window_frames(SPEC, 240, {"physicsTicksPerSecond": 60}), list(range(120)))
+        for spec, ticks, tr in ((SPEC, None, trace), (SPEC, 240, {}), (SPEC, 240, None), (SPEC, 240, {"physicsTicksPerSecond": 0}),
+                                (dict(SPEC, window={"fromFrame": "0"}), 240, trace),
+                                (dict(SPEC, window={"toFrame": 1.5}), 240, trace)):
+            self.assertIsNone(gv.window_frames(spec, ticks, tr))
+        self.assertEqual(gv.route_ticks(REPO / "harness" / "routes" / "smoke.json"), 240)
+        self.assertIsNone(gv.route_ticks(self.tmp / "missing.json"))
+        (self.tmp / "bad.json").write_text('{"ticks": "240"}', encoding="utf-8")
+        self.assertIsNone(gv.route_ticks(self.tmp / "bad.json"))
+
+    def test_a_check_that_passes_on_one_frame_needs_the_whole_capture_but_not_the_whole_answer(self):
+        # `reaches` passes on the frame that shows it, and the adapter does not look at every frame
+        # for it. The replay must still have captured the whole window.
+        reaches = dict(SPEC, assertion={"type": "reaches"})
+        run = self.game.replay(Path("smoke.json"), repo(self.tmp / "head") / "game" / "platformer", self.tmp / "run", True)
+        some = {"replay": {"sha256": run["replaySha256"]}, "frames": [{"frame": 3, "objects": {}}]}
+        self.assertIsNone(gv.visual_gap(reaches, some, run, TICKS))
+        self.assertIn("saw 1 of 120 frames", gv.visual_gap(SPEC, some, run, TICKS))
+        (Path(run["framesDir"]) / "f00000100.png").unlink()
+        self.assertIn("captured 119 of 120 frames", gv.visual_gap(reaches, some, run, TICKS))
+
+    def test_the_engine_only_rule_is_not_changed_by_any_of_this(self):
+        # What main does today, kept as it is (the same question for that rule is #357).
+        self.game.log_ticks = 20
+        doc = self.gate(repo(self.tmp / "head", "BUG"), rule=rec.ENGINE_ONLY, visual=None)
+        self.assertEqual(doc["decision"], "accept")
 
 
 class EngineOnlyTest(Case):
@@ -551,11 +719,21 @@ class EngineTest(Case):
     def test_the_sample_without_a_visual_observer_rejects_the_bug_and_accepts_nothing(self):
         from tests.test_orchestrator import PatchedReplay
 
+        # The sample's seeded bug is a patch to player/player.tscn, so a copy that differs from the
+        # repository's has it (as PatchedReplay tells them apart). The replay logs the whole route.
+        tscn = (REPO / smp.GAME / "player" / "player.tscn").read_bytes()
+        self.game.look_of = lambda game: "clean" if (game / "player" / "player.tscn").read_bytes() == tscn else "BUG"
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            results = smp.run(self.store, engines={"godot": engines.GodotGate(replay=PatchedReplay(), rule=rec.BOTH)})
+            results = smp.run(self.store, engines={"godot": engines.GodotGate(replay=self.game.replay, rule=rec.BOTH)})
         self.assertEqual([r["status"]["decision"] for r in results], ["needs-review", "reject", "needs-review"])
         for r in (results[0], results[2]):
             self.assertTrue(any("no visual observer was asked" in why for why in r["status"]["reasons"]), r["status"]["reasons"])
+        # The recorded traces the other gate tests replay hold 3 and 4 ticks of a 240-tick route.
+        # Under `both` that is not the engine's pass, so nothing is accepted on them either.
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            short = smp.run(st.JobStore(self.tmp / "jobs2", lease_seconds=5),
+                            engines={"godot": engines.GodotGate(replay=PatchedReplay(), rule=rec.BOTH)})
+        self.assertEqual([r["status"]["decision"] for r in short], ["needs-review", "reject", "needs-review"])
 
 
 if __name__ == "__main__":

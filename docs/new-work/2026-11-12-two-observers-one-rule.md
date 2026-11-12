@@ -31,6 +31,22 @@ takes a rule for which observers judge.
 - The orchestrator's engine takes the rule and the observer (`GodotGate(rule=, visual=)`) and tells the
   job its `observing` and `evaluating` phases.
 
+- **A pass has to cover the check** (third push, after the merge guard's review). The guard showed
+  that under `both` a visual pass on 5 frames, or on 1, of a 120-frame window was an accept, as was
+  an answer cut to its first frame, an answer naming another replay, and a 20-tick log of a 240-tick
+  route. The gate now counts the frames the window should have from the route's ticks, not from
+  what an observer returned. The engine's pass needs every tick of the route and every frame of the
+  window; the visual observer's pass needs the replay to have captured every frame of the window and
+  the answer to hold every one (`reaches`, which passes on one frame, needs the whole capture only);
+  an answer about another replay is no answer; and when the gate cannot tell the count, nothing
+  passes. The reason carries the count ("the visual observer saw 4 of 120 frames of the check's
+  window"). `engine-only` is unchanged; the same question for it is #357.
+- **Held-out frames are not sent to the visual observer** unless the caller passes
+  `heldout_frames_to_visual=True`, which nothing does. Without it no held-out check passes under
+  `both` (a failure on the engine's record still counts), and the reasons say so. Whether held-out
+  frames may go to a model's provider is Sean's decision; this makes the default the side that
+  sends nothing.
+
 ## What was run
 - `python3 -m unittest tests.test_two_observers`: 37 tests, OK (inside the full run below). They use a stand-in replay (a position
   log with the ground line and the camera, and real PNG frames) and a stand-in model that answers in
@@ -40,8 +56,22 @@ takes a rule for which observers judge.
   first 35 tests fail (run before the spend-cap test was added).
 - The full suite, `python3 -m unittest discover -s tests -t .`, on the branch rebased on main 25d8585:
   2,295 tests, 26 skipped, OK (after the second push's change; 2,294 before it).
+- Third push (the merge guard's review): `python3 -m unittest tests.test_two_observers`: 49 tests, OK.
+  The guard's seven rows are tests in `CoverageTest`, with the cases beside them (an answer missing
+  one frame, an answer with no replay named, a route twice as long, a trace with no tick rate). With
+  the three new checks taken out on purpose, 15 of the 49 fail. The full suite on the branch merged
+  with main at 3bc07d9: 2,406 tests, 26 skipped, OK.
+- Not run: a real Godot replay through the rule `both`. That the harness writes one row for every
+  tick and one frame for every other tick is read from `harness/godot/expectrail_harness.gd` and from
+  the recorded replays in the repository (240 ticks, 120 frames), not measured here. If a real replay
+  comes back one frame short, the result is needs-review with the count, not a wrong pass.
 
 ## Not done
+- The reader still takes the record's word for what the visual observer said: it does not read the
+  stored answer back or count its frames (#254's trusted job; `visual_gap` is callable on a stored answer).
+- The count of frames a route should have uses the tick rate the trace states. A game that misstates
+  it is not caught by this.
+- Whether held-out frames may be sent to a model's provider: Sean's decision. Off until then.
 - No live model has judged through this path, and no command constructs a visual observer: nothing
   here can start a paid call. An observer made with the real client is held to the run's spend cap
   (`EXPECTRAIL_SAM_USD_CAP`, merged in #343 while this was being built); a request the cap stops is

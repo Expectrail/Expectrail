@@ -164,6 +164,30 @@ alone. With no visual observer a seeded bug is still rejected and nothing is acc
 say why. The visual observer is not asked about a check the engine's record already fails, since its
 answer could not change the result.
 
+**A pass has to cover the check.** Under `both` the gate counts the frames of the spec's window that
+the replay should have, from the route's ticks (the gate's own input) and the tick rate the trace
+states, never from what an observer returned. Then:
+
+- The engine's record passes only when its log holds every tick of the route and its observations
+  every frame of the window. A log that stops early is needs review ("the engine's record has 20 of
+  240 ticks of the route").
+- The visual observer's pass counts only when the replay captured every frame of the window and the
+  observer's answer holds every one ("the replay captured 5 of 120 frames of the check's window",
+  "the visual observer saw 4 of 120 frames of the check's window"). One exception: an assertion that
+  passes on the frame that shows it (`reaches`) needs the whole capture but not the whole answer.
+- An answer whose `replay.sha256` is not this replay's is no answer.
+- When the gate cannot tell how many frames the route should have, nothing passes.
+
+A failure seen in part of the window is still a failure; only a pass has to cover it. The rule
+`engine-only` is not changed by this: there a log that stops early still passes on the rows it has,
+as on main (#357).
+
+**Held-out frames stay in unless a person says otherwise.** A visual observer over frames sends them
+to the model's provider. Under `both` the held-out routes are replayed without frames and the visual
+observer is not asked about them, so a failure on the engine's record still counts and no held-out
+check passes; the reasons say so. `run_gate(heldout_frames_to_visual=True)` sends them (and keeps no
+answer cache). Nothing passes that flag, and whether anything may is Sean's decision.
+
 `run_gate` takes the rule (`rule="both"`, with `visual=` an `expectrail.observers.FramesObserver`), and
 so does the orchestrator's engine (`GodotGate(rule="both", visual=...)`). The record then has
 `observers` (the rule, and the visual observer's name, provider and model), and every row has
@@ -172,8 +196,11 @@ That answer, an observations document, is in the artifact at
 `observations/<head or base>/<route>/<spec>.visual.json`, with its verdict at
 `verdicts/.../<spec>.visual.json`, so the verdict can be read again without asking the model. The
 reader recomputes every row from `observed`: a record whose row passes without the visual observer's
-pass is refused. Held-out routes are judged by the same rule, and the visual observer keeps no answer
-cache for them. `contracts/examples/findings-both-observers.json` is such a record; it was made with
+pass is refused. It does not check the answer behind that word: the digest is checked for its shape
+only, and nothing reads `observations/.../*.visual.json` back against it or counts its frames again.
+Until the trusted job of #254 does that (`expectrail.gate.verify.visual_gap` is the same question,
+callable on a stored answer), "two observers on every check" rests on the record's word. Held-out
+routes are judged by the same rule (see above for their frames). `contracts/examples/findings-both-observers.json` is such a record; it was made with
 the tests' stand-in replay and stand-in model, not by a live run.
 
 What is and is not in use, as of November 12, 2026:
