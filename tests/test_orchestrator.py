@@ -990,11 +990,53 @@ class LostWorkerTest(Case):
                       sleeper(**{st.JOB_ENV: job[:-1]}), sleeper(NOTE=f"{st.JOB_ENV}={job}"),
                       sleeper(**{"X" + st.JOB_ENV: job})]
         wait_for(lambda: st.processes_of(job) == [mine.pid], what="the marked process showing up")
-        self.assertEqual(st.stop_job(job, grace_seconds=1.0), 1)
+        self.assertEqual(st.stop_job(job, grace_seconds=1.0), (1, 1))
         wait_for(lambda: mine.poll() is not None, what="the marked process stopping")
         time.sleep(0.2)
         self.assertEqual([p.poll() for p in bystanders], [None] * len(bystanders))
         self.assertNotIn(os.getpid(), st.processes_of(job) or [])
+
+    def test_a_call_from_inside_the_job_does_not_stop_its_own_callers(self):
+        # A status or a cancel asked from a script that itself runs inside the job: the script's shell
+        # carries the job's id too, and stopping it would stop the asking (first review of #314).
+        job = self.job()
+        other = subprocess.Popen(["sleep", "600"], env={"PATH": os.environ["PATH"], st.JOB_ENV: job}, start_new_session=True)
+        self.started.append(other)
+        ask = (f"import sys; sys.path.insert(0, {str(REPO)!r}); from expectrail.orchestrator import store as st; "
+               f"print('stopped', st.stop_job({job!r}, grace_seconds=1.0))")
+        done = subprocess.run(["sh", "-c", f'{sys.executable} -c "{ask}"; echo survived'], capture_output=True, text=True,
+                              timeout=30, env={"PATH": os.environ["PATH"], st.JOB_ENV: job})
+        self.assertEqual((done.returncode, done.stdout.split()[-1]), (0, "survived"), done.stdout + done.stderr)
+        self.assertIn("stopped (1, 1)", done.stdout)   # the other process of the job, and not the asking shell
+        wait_for(lambda: other.poll() is not None, what="the job's other process stopping")
+
+    def test_a_process_is_signalled_only_while_it_still_names_the_job(self):
+        # Between the look and the signal a process number can pass to another program. The signal goes
+        # to a handle on the process, after its environment is read again through that hold.
+        job = self.job()
+        proc = subprocess.Popen(["sleep", "600"], env={"PATH": os.environ["PATH"], st.JOB_ENV: job}, start_new_session=True)
+        self.started.append(proc)
+        wait_for(lambda: st.processes_of(job) == [proc.pid], what="the marked process showing up")
+        marker = f"{st.JOB_ENV}={job}".encode()
+        with mock.patch.object(st, "_names_job", return_value=False):   # as if the number now named something else
+            st._signal(proc.pid, marker, signal.SIGKILL)
+        time.sleep(0.2)
+        self.assertIsNone(proc.poll())
+        with mock.patch.object(st.os, "kill", side_effect=AssertionError("signalled by number")):
+            st._signal(proc.pid, marker, signal.SIGKILL)
+        wait_for(lambda: proc.poll() is not None, what="the process stopping through its handle")
+        st._signal(proc.pid, marker, signal.SIGKILL)   # gone: nothing happens, nothing is raised
+
+    def test_what_could_not_be_stopped_is_said_not_counted_as_stopped(self):
+        job = self.job()
+        proc = subprocess.Popen(["sleep", "600"], env={"PATH": os.environ["PATH"], st.JOB_ENV: job}, start_new_session=True)
+        self.started.append(proc)
+        wait_for(lambda: st.processes_of(job) == [proc.pid], what="the marked process showing up")
+        with mock.patch.object(st, "_signal"):   # a process that cannot be signalled
+            self.assertEqual(st.stop_job(job, grace_seconds=0.1), (1, 0))
+            status = self.store.lose(job, "the worker stopped before the job finished", stage="queued", grace_seconds=0.1)
+        self.assertIn("found 1 process(es) it had started and stopped 0; the rest are still running", status["reasons"])
+        self.assertIsNone(proc.poll())
 
     def test_where_processes_cannot_be_looked_for_the_job_says_so(self):
         job = self.job()

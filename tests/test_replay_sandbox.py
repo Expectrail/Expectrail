@@ -665,5 +665,69 @@ class SameReplayTest(unittest.TestCase):
         self.assertEqual(inside["engine"], plain["engine"])
 
 
+class LostWorkerTest(unittest.TestCase):
+    """A verification job whose worker is killed while the game runs in the sandbox: nothing of the
+    job may be left running (#307, gap 3). Needs the real tool and the real engine, so it runs in CI."""
+
+    def test_a_killed_workers_sandboxed_replay_is_stopped(self):
+        import signal
+
+        from expectrail.orchestrator import request as req
+        from expectrail.orchestrator import runner
+        from expectrail.orchestrator import store as st
+
+        godot = real_godot()
+        real_tool(display=True)
+        tmp = Path(tempfile.mkdtemp(prefix="expectrail-lost-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        store = st.JobStore(tmp / "jobs", lease_seconds=2)
+        request = req.build(adapter="godot", head=REPO, game="game/platformer", routes=["harness/routes/smoke.json"],
+                            specs="agents/specs", execution_class="isolated")
+        job = store.create(request)[0]["id"]
+        self.addCleanup(st.stop_job, job)
+        with mock.patch.dict(os.environ, {"EXPECTRAIL_GODOT": str(godot), "EXPECTRAIL_GODOT_CACHE": str(tmp / "cache")}):
+            worker = runner.spawn(store, job)
+
+        def programs() -> list[str]:
+            names = []
+            for pid in st.processes_of(job) or []:
+                try:
+                    names.append(Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")[0].decode().rsplit("/", 1)[-1])
+                except OSError:
+                    pass
+            return sorted(names)
+
+        def replaying() -> bool:
+            """The sandbox tool is running the replay itself (it lasts seconds), not the short import."""
+            for pid in st.processes_of(job) or []:
+                try:
+                    words = Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
+                except OSError:
+                    continue
+                if words[0].endswith(b"bwrap") and b"--write-movie" in words:
+                    return True
+            return False
+
+        deadline = time.monotonic() + 240
+        while not replaying():
+            self.assertIsNone(worker.poll(), f"the worker ended before the sandboxed replay started: {store.status(job)}")
+            self.assertLess(time.monotonic(), deadline, f"no sandboxed replay was started: {programs()}")
+            time.sleep(0.1)
+        os.kill(worker.pid, signal.SIGKILL)   # the worker alone
+        worker.wait(timeout=10)
+        running = programs()
+        self.assertIn("bwrap", running, "the sandbox ended with the worker, so this run shows nothing")
+        deadline = time.monotonic() + 30
+        while (status := store.status(job))["phase"] not in st.FINAL:
+            self.assertLess(time.monotonic(), deadline, "the job was never declared lost")
+            time.sleep(0.2)
+        self.assertEqual((status["phase"], [d["code"] for d in status["diagnostics"]]), ("failed", ["WORKER_LOST"]))
+        self.assertTrue(any(reason.startswith("stopped ") for reason in status["reasons"]), status["reasons"])
+        deadline = time.monotonic() + 10
+        while programs() and time.monotonic() < deadline:
+            time.sleep(0.1)
+        self.assertEqual(programs(), [], f"left running after the job was declared lost (were: {running})")
+
+
 if __name__ == "__main__":
     unittest.main()

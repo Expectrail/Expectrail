@@ -286,8 +286,14 @@ class JobStore:
                                         diagnostics=[diagnostic("WORKER_LOST", stage=stage, detail=detail)])
         if lost_now:
             stopped = stop_job(job_id, grace_seconds=grace_seconds)
-            note = ("what it had started could not be looked for on this system (no /proc)" if stopped is None
-                    else f"stopped {stopped} process(es) it had started" if stopped else None)
+            if stopped is None:
+                note = "what it had started could not be looked for on this system (no /proc)"
+            elif not stopped[0]:
+                note = None
+            elif stopped[0] == stopped[1]:
+                note = f"stopped {stopped[1]} process(es) it had started"
+            else:
+                note = f"found {stopped[0]} process(es) it had started and stopped {stopped[1]}; the rest are still running"
             if note:
                 status = self._note(job_id, note)
         return status
@@ -415,43 +421,80 @@ class JobStore:
         return status
 
 
+def _names_job(pid: int, marker: bytes) -> bool:
+    try:
+        with open(f"/proc/{pid}/environ", "rb") as handle:
+            return marker in handle.read().split(b"\0")
+    except OSError:
+        return False   # gone already, or another user's
+
+
+def _own_line() -> set[int]:
+    """This process and its ancestors: the processes a call from inside a job must never stop,
+    because stopping the shell that asked would stop the asking."""
+    line, pid = set(), os.getpid()
+    while pid > 0 and pid not in line:
+        line.add(pid)
+        try:
+            with open(f"/proc/{pid}/stat", "rb") as handle:
+                pid = int(handle.read().rsplit(b")", 1)[1].split()[1])   # the field after the state
+        except (OSError, ValueError, IndexError):
+            break
+    return line
+
+
 def processes_of(job_id: str) -> list[int] | None:
-    """The processes whose starting environment names this job, other than this one. None where the
-    system has no /proc to ask."""
+    """The processes whose environment names this job, other than this process and its ancestors.
+    None where the system has no /proc to ask.
+
+    What is read is the environment area the process holds now. It is what the process started
+    with unless the process itself wrote over it, so a program that does not want to be found can
+    hide from this; the sandboxed game cannot stay alive that way (it dies with the sandbox tool)."""
     if not Path("/proc/self/environ").exists():
         return None
     marker = f"{JOB_ENV}={job_id}".encode()
+    mine = _own_line()
     found = []
     for entry in os.scandir("/proc"):
-        if not entry.name.isdigit() or int(entry.name) == os.getpid():
-            continue
-        try:
-            with open(f"/proc/{entry.name}/environ", "rb") as handle:
-                names = handle.read().split(b"\0")
-        except OSError:
-            continue   # gone already, or another user's
-        if marker in names:
+        if entry.name.isdigit() and int(entry.name) not in mine and _names_job(int(entry.name), marker):
             found.append(int(entry.name))
     return sorted(found)
 
 
-def stop_job(job_id: str, *, grace_seconds: float = 1.0) -> int | None:
-    """Stop every process that carries this job's id: ask, then make. Returns how many there were,
-    or None where they cannot be looked for."""
+def _signal(pid: int, marker: bytes, sig: int) -> None:
+    """Signal the process that names the job, and only it: the process is held by a handle, its
+    environment is read again through that hold, and the signal goes to the handle. A process
+    number alone could have passed to another program between the look and the signal."""
+    try:
+        handle = os.pidfd_open(pid)
+    except (AttributeError, OSError):
+        return   # gone, or a system without process handles: nothing is signalled by number
+    try:
+        if _names_job(pid, marker):
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                signal.pidfd_send_signal(handle, sig)
+    finally:
+        os.close(handle)
+
+
+def stop_job(job_id: str, *, grace_seconds: float = 1.0) -> tuple[int, int] | None:
+    """Stop every process that names this job: ask, then make. Returns (how many were found, how
+    many of those are gone), or None where they cannot be looked for."""
     first = processes_of(job_id)
     if first is None:
         return None
+    marker = f"{JOB_ENV}={job_id}".encode()
     for sig, wait in ((signal.SIGTERM, grace_seconds), (signal.SIGKILL, 1.0)):
         left = processes_of(job_id) or []
         if not left:
             break
         for pid in left:
-            with contextlib.suppress(ProcessLookupError, PermissionError):
-                os.kill(pid, sig)
+            _signal(pid, marker, sig)
         deadline = time.monotonic() + wait
         while time.monotonic() < deadline and processes_of(job_id):
             time.sleep(0.05)
-    return len(first)
+    still = set(processes_of(job_id) or [])
+    return len(first), len([pid for pid in first if pid not in still])
 
 
 def stop_group(pgid: int, *, grace_seconds: float = 3.0) -> None:
