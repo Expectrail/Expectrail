@@ -37,7 +37,11 @@ from agents.verifier import sam_on, verify
 
 UNAVAILABLE = "sam observations unavailable"  # agents/observations.py, on any vision client error
 # Only what an error says outright: an unknown error keeps the retry (agents.sam_observations.SamError).
-NO_RETRY_KINDS = ("auth", "credit", "budget")   # waiting fixes none of these
+NO_RETRY_KINDS = ("auth", "credit")
+# This run's own SAM spend cap is reached, or none was set (agents/sam_observations.py). A stop that
+# exists to hold spend must not start other spend, and an accept must not come from a judge that
+# was only asked because the money ran out: the ladder ends here, with no retry and no Glimmer.
+STOP_KINDS = ("budget",)
 _KIND = re.compile(r"\(kind=([a-z-]+)\)")
 FALLBACK = "glimmer-engine"
 RETRY_WAIT_ENV = "EXPECTRAIL_JUDGE_RETRY_WAIT"
@@ -59,15 +63,16 @@ def outage_error(verify_dir: Path) -> str | None:
 
 
 def outage_kind(verify_dir: Path) -> str | None:
-    """The kind of outage under ``verify_dir``: auth or credit when any observer error says so (one
-    dead key fails every request, and a passing error may sit beside it), else the first kind found."""
+    """The kind of outage under ``verify_dir``: budget, then auth or credit, when any observer error
+    says so (one dead key or one spent cap fails every request, and a passing error may sit beside
+    it), else the first kind found."""
     kinds = []
     for path in sorted(verify_dir.rglob("observations*-error.txt")):
         try:
             kinds += _KIND.findall(path.read_text(encoding="utf-8", errors="replace"))
         except OSError:
             continue
-    return next((k for k in NO_RETRY_KINDS if k in kinds), kinds[0] if kinds else None)
+    return next((k for k in STOP_KINDS + NO_RETRY_KINDS if k in kinds), kinds[0] if kinds else None)
 
 
 def judge_unavailable(verification: dict, verify_dir: Path) -> bool:
@@ -160,6 +165,10 @@ def judge(request: dict, candidate: Path, verify_dir: Path, *, verify_fn: Callab
     # 1. The same judge again, after a short wait, unless the error says waiting cannot help.
     last_dir = verify_dir
     kind = outage_kind(verify_dir)
+    if kind in STOP_KINDS:
+        steps.append({"judge": first, "retry": True,
+                      "skipped": "this run's SAM spend cap is reached or not set: no judge is asked again"})
+        return verification, verify_dir, {"judgedBy": None, "steps": steps, "stopped": True, "budget": True}
     if kind in NO_RETRY_KINDS:
         steps.append({"judge": first, "retry": True, "skipped": f"{kind} error: waiting does not fix it"})
     else:
@@ -206,6 +215,10 @@ def judge(request: dict, candidate: Path, verify_dir: Path, *, verify_fn: Callab
 
 def report_note(record: dict) -> str | None:
     """The line the morning report carries for a person, or None when the first judge answered."""
+    if record.get("budget"):
+        return ("This run's SAM spend cap was reached, or none was set, so this candidate was not judged: no "
+                "other judge was asked and no further fix was attempted. A person must judge it, or the run "
+                "must be given a cap.")
     if record.get("stopped"):
         tried = "; ".join(f"{s['judge']}: " + (f"skipped ({s['skipped']})" if "skipped" in s else
                                                "no answer" if s.get("unavailable") else s.get("decision", "?"))

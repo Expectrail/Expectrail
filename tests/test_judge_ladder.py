@@ -38,6 +38,10 @@ class Judge:
             (out / "observations-player-always-visible-error.txt").write_text(
                 "sam observations unavailable: HTTP 503 from the model API\n")
             return verdict("needs-review", check="needs-review")
+        if answer == "budget":   # as agents/observations.py writes a SamError of that kind
+            (out / "observations-player-always-visible-error.txt").write_text(
+                "sam observations unavailable (kind=budget): this run's SAM spend cap is reached\n")
+            return verdict("needs-review", check="needs-review")
         return verdict(answer, check={"accept": "pass", "reject": "fail"}.get(answer, "needs-review"))
 
 
@@ -104,6 +108,34 @@ class LadderTest(unittest.TestCase):
         v, _, record = self.run_ladder(Judge("down", "down", "reject"))
         self.assertEqual(v["decision"], "reject")
         self.assertFalse(record["stopped"])
+
+    def test_a_budget_stop_ends_the_ladder_and_asks_no_other_judge(self):
+        # First review of #343: a stop that holds spend must not start other spend, and Glimmer, which
+        # would accept here, must not be asked. Before, the ladder skipped the retry and went on to it.
+        judge = Judge("budget", "accept", "accept")
+        v, where, record = self.run_ladder(judge)
+        self.assertEqual(v["decision"], "needs-review")
+        self.assertEqual(where.name, "attempt-01")
+        self.assertEqual([c["backend"] for c in judge.calls], ["sam"])   # asked once; no retry, no Glimmer
+        self.assertEqual(self.woke, [])                                   # the deployment was not woken
+        self.assertEqual((record["judgedBy"], record["stopped"], record["budget"]), (None, True, True))
+        self.assertNotIn("fallback", record)
+        note = jl.report_note(record)
+        self.assertIn("spend cap", note)
+        self.assertIn("no other judge was asked", note)
+
+    def test_a_budget_stop_beside_a_passing_error_is_still_a_budget_stop(self):
+        # One spent cap fails every later request; an error that waiting would fix may sit beside it.
+        class Both(Judge):
+            def __call__(self, request, candidate, out, **kwargs):
+                result = super().__call__(request, candidate, out, **kwargs)
+                (out / "observations-another-spec-error.txt").write_text(
+                    "sam observations unavailable (kind=rate-limit): slow down\n")
+                return result
+        judge = Both("budget", "accept", "accept")
+        v, _where, record = self.run_ladder(judge)
+        self.assertEqual(jl.outage_kind(self.dir), "budget")
+        self.assertEqual((v["decision"], len(judge.calls), record.get("budget")), ("needs-review", 1, True))
 
     def test_when_no_judge_answers_the_ladder_stops(self):
         v, _, record = self.run_ladder(Judge("down", "down", "down"))

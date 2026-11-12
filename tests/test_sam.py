@@ -365,10 +365,14 @@ class SpendCapTest(unittest.TestCase):
             self.client().segment(self.png, "x")
         self.assertEqual(len(self.sent), 1)
 
-    def test_a_budget_stop_is_an_outage_that_waiting_does_not_fix(self):
+    def test_a_budget_stop_is_written_where_the_judge_ladder_reads_it(self):
+        # The ladder reads the kind from the observer's error file; tests/test_judge_ladder.py runs
+        # the ladder on such a file and holds that it stops there.
         from agents import judge_ladder
-        self.assertIn("budget", judge_ladder.NO_RETRY_KINDS)
-        self.assertEqual(judge_ladder._KIND.findall("SAM unavailable (kind=budget)"), ["budget"])
+        self.assertIn("budget", judge_ladder.STOP_KINDS)
+        self.assertNotIn("budget", judge_ladder.NO_RETRY_KINDS)
+        message = f"sam observations unavailable (kind={sam.SamError('x', kind='budget').kind}): x"
+        self.assertEqual(judge_ladder._KIND.findall(message), ["budget"])
 
     def test_a_video_is_counted_by_its_frames(self):
         with mock.patch.dict(os.environ, {sam.CAP_ENV: "1"}):

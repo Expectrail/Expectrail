@@ -11,14 +11,19 @@ monthly limit needs every run to have a worst case, so this is the first part.
   kind `budget`. A value that is not an amount of 0 or more is an error, never "no cap". The real
   sender refuses to open a connection when no cap is set; a stand-in sender (tests, recorded
   answers) is not held to a cap that was never set.
-- `agents/judge_ladder.py`: `budget` joins the kinds that waiting does not fix, so the ladder does
-  not wait and ask again.
+- `agents/judge_ladder.py`: a `budget` stop ends the ladder. No retry and no Glimmer: the candidate
+  stays needs-review for a person, and the report says why. (The first version only skipped the
+  retry and went on to Glimmer, which is paid, has no cap here and could accept. The merge guard's
+  first review ran it and got an accept "judged by glimmer-engine". Fixed in the same pull request.)
 - `docs/sam.md` says so under "Run it".
 
 ## What was run
-- `python3 -m unittest tests.test_sam`: 73 tests, OK. The 8 new ones use a stand-in sender; with the
+- `python3 -m unittest tests.test_sam`: 73 tests, OK. The 7 new ones use a stand-in sender; with the
   real sender and no cap, a test holds that no connection is opened.
-- `python3 -m unittest discover -s tests -t .` on Python 3.13: 2,223 tests, OK, 26 skipped.
+- `tests.test_judge_ladder`: the ladder run on a budget error with a Glimmer stand-in that would
+  accept: SAM is asked once, Glimmer is not woken and not asked, the result is needs-review. The
+  same with a passing error beside the budget one.
+- `python3 -m unittest discover -s tests -t .` on Python 3.13: 2245 tests, OK, 26 skipped (merged with main at e2a8d22, after the first review's fix).
 - **No live call was made.** Nothing here was run against SAM.
 
 ## Not done
