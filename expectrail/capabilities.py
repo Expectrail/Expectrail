@@ -5,13 +5,17 @@ believe exists. This module reads it, checks it, and renders ``docs/capabilities
 
     python3 -m expectrail.capabilities check     # exit 1 and one line per problem
     python3 -m expectrail.capabilities render    # rewrite docs/capabilities.md
-    python3 -m expectrail.capabilities recheck   # ask GitHub again how every cited run and its jobs ended
+    python3 -m expectrail.capabilities recheck   # ask GitHub again how every cited run and its jobs ended,
+                                                 # and count again what a row ties to a run's notices
 
 ``problems`` is what the test suite runs. It fails when a ``measured`` row has no CI run link, when
 a measured or integrated row cites a run recorded as anything but success (any other row must say why
 such a run is evidence), when a row points at
 a file that is not there, and when the README or the site names a command, a switch, a workflow, a
-doc page or a watched name that no row lists. A run's conclusion is the value recorded in the
+doc page or a watched name that no row lists. It also fails when a count a row ties to its run's
+notices (``counts``) does not stand in the words of the evidence where a count is found, its numbers
+are not the ones the words give, or it counts fewer notices than there are without naming the field
+the others must have. A run's conclusion is the value recorded in the
 ledger when the row was written; ``check``, ``render`` and the test suite never call GitHub. ``recheck``
 does (``expectrail.capability_runs``): it needs the ``gh`` command and the network, so a person or an
 agent runs it, and the suite tests it on saved answers.
@@ -46,6 +50,8 @@ _WORKFLOW = re.compile(r"(?<![A-Za-z0-9_-])([a-z0-9][a-z0-9-]*\.yml)\b")
 _DOC = re.compile(r"\bdocs/([a-z0-9-]+\.md)\b")
 _ONE = {"commands": "command", "switches": "switch", "workflows": "workflow", "docs": "doc"}
 _RUN = re.compile(r"^https://github\.com/Expectrail/Expectrail/actions/runs/[0-9]+(/job/[0-9]+)?$")
+# A count as a row quotes it: "8 of 8", "3 of 12".
+_QUOTED = re.compile(r"(?<![\w.,$])(\d+) of (\d+)(?![\w]|[.,]\d)")
 
 
 class LedgerError(ValueError):
@@ -76,6 +82,142 @@ def _number(run_url: str) -> str:
 def _module_exists(module: str, root: Path) -> bool:
     base = root.joinpath(*module.split("."))
     return base.with_suffix(".py").is_file() or (base / "__init__.py").is_file()
+
+
+def _wordy(ch: str) -> bool:
+    return ch.isalnum() or ch == "_"
+
+
+def _cuts(text: str, at: int) -> bool:
+    """Whether the place between ``text[at - 1]`` and ``text[at]`` is inside a word or a number."""
+    if at <= 0 or at >= len(text):
+        return False
+    before, after = text[at - 1], text[at]
+    if _wordy(before) and _wordy(after):
+        return True
+    # "3.5" and "1,000": the point or comma between two digits is inside the number, on either side of it.
+    if before in ".," and after.isdigit() and at >= 2 and text[at - 2].isdigit():
+        return True
+    return after in ".," and before.isdigit() and at + 1 < len(text) and text[at + 1].isdigit()
+
+
+def places(says: str, shows: str) -> list[tuple[int, int]]:
+    """Where in ``shows`` an entry's words stand, as ``(start, end)``, by the rule that finds a count.
+
+    Words that hold a count ("8 of 8") stand only where ``_QUOTED`` finds that same count in
+    ``shows``, at that place: "8 of 8" is not in "8 of 80". Words that hold none stand only where
+    they touch no count of ``shows``. Either way they do not start or end inside a word or a number.
+    Words that hold two counts stand nowhere: each count is tied on its own.
+    """
+    inner = list(_QUOTED.finditer(says))
+    if len(inner) > 1:
+        return []
+    counts = {found.span() for found in _QUOTED.finditer(shows)}
+    out = []
+    at = shows.find(says)
+    while at != -1:
+        end = at + len(says)
+        whole = not _cuts(shows, at) and not _cuts(shows, end)
+        if inner:
+            fits = (at + inner[0].start(), at + inner[0].end()) in counts
+        else:
+            fits = not any(start < end and at < stop for start, stop in counts)
+        if whole and fits:
+            out.append((at, end))
+        at = shows.find(says, at + 1)
+    return out
+
+
+def _is_field(text: str) -> bool:
+    """Whether a notice could have this as one whole field: no semicolon, no line break, no space at an end."""
+    return bool(text) and text == text.strip() and not any(ch in text for ch in ";\n\r")
+
+
+def tied(ev: dict) -> list[tuple[dict, tuple[int, int] | None, list[str]]]:
+    """Each count of one piece of run evidence: the entry, the place in ``shows`` it is tied to, its problems.
+
+    This is the part that needs no network. ``count_problems`` reports the problems and
+    ``quoted_counts`` calls a count tied only when its entry has none, so the page's tally and the
+    check cannot disagree. Each entry takes the first place its words stand that no earlier entry has.
+    """
+    out = []
+    taken: list[tuple[int, int]] = []
+    said: list[str] = []
+    for count in ev.get("counts", []):
+        says = count["says"]
+        found: list[str] = []
+        quoted = _QUOTED.findall(says)
+        stand = places(says, ev["shows"])
+        place = next((spot for spot in stand
+                      if not any(spot[0] < stop and start < spot[1] for start, stop in taken)), None)
+        if len(quoted) > 1:
+            found.append(f"quotes {len(quoted)} counts; tie each to notices on its own")
+        elif not stand:
+            if says in ev["shows"]:
+                found.append("is tied to notices and the evidence says it only inside a larger number or word, "
+                             "or across another count")
+            else:
+                found.append("is tied to notices and the evidence does not say it")
+        elif place is None:
+            found.append("is tied to notices twice" if says in said
+                         else "is tied to words of the evidence that another count is tied to already")
+        if place is not None:
+            taken.append(place)
+        said.append(says)
+        if len(quoted) == 1 and (int(quoted[0][0]), int(quoted[0][1])) != (count["n"], count["of"]):
+            found.append(f"is recorded as {count['n']} of {count['of']}")
+        if count["n"] > count["of"]:
+            found.append(f": {count['n']} of {count['of']} is more than there are")
+        if "reads" in count and (count["reads"].count("{n}"), count["reads"].count("{of}")) != (1, 1):
+            found.append(": 'reads' must have {n} and {of} once each")
+        for key in ("count", "otherwise", "reads"):
+            if key not in count or _is_field(count[key]):
+                continue
+            if ";" in count[key]:
+                found.append(f": {key!r} is one field of a notice and has a semicolon in it")
+            else:
+                found.append(f": {key!r} is one field of a notice and has a line break in it or a space at an end")
+        if "count" in count:
+            if "otherwise" not in count and count["n"] < count["of"]:
+                found.append(f": {count['n']} of {count['of']} leaves notices that are not counted, and no "
+                             "'otherwise' names the field they must have instead")
+            if count.get("otherwise") == count["count"]:
+                found.append(": 'otherwise' is the same field as 'count'")
+        elif "otherwise" in count:
+            found.append(": 'otherwise' goes with 'count', not with 'reads'")
+        out.append((count, place, found))
+    return out
+
+
+def count_problems(rid: str, ev: dict) -> list[str]:
+    """What is wrong with the counts one piece of run evidence ties to its run's notices.
+
+    This is the part that needs no network: the words stand in the evidence where a count is found,
+    the numbers are the ones the words give, and the entry can be counted at all. Whether the run's
+    notices give the same numbers is ``recheck``'s question.
+    """
+    out: list[str] = []
+    for count, _, found in tied(ev):
+        head = f"{rid}: run {_number(ev['ref'])}: the count {count['says']!r}"
+        out += [head + (line if line.startswith(":") else " " + line) for line in found]
+    return out
+
+
+def quoted_counts(doc: dict) -> tuple[int, int]:
+    """``(quoted, tied)``: the counts ("N of M") quoted beside a run link, and how many are tied to notices.
+
+    A count is tied when an entry with no offline problem stands on it. The same words twice in one
+    sentence are two counts: one entry ties one of them.
+    """
+    quoted = held = 0
+    for row in doc["rows"]:
+        for ev in row["evidence"]:
+            if ev["kind"] != "run":
+                continue
+            quoted += len(_QUOTED.findall(ev["shows"]))
+            held += sum(1 for count, place, found in tied(ev)
+                        if place is not None and not found and _QUOTED.search(count["says"]))
+    return quoted, held
 
 
 def row_problems(doc: dict, root: Path = ROOT) -> list[str]:
@@ -115,6 +257,8 @@ def row_problems(doc: dict, root: Path = ROOT) -> list[str]:
                     elif not ev.get("conclusionNote"):
                         out.append(f"{rid}: cites a run that ended in {ev['conclusion']} without saying why it is "
                                    f"evidence: {ev['ref']}")
+                if _RUN.match(ev["ref"]):
+                    out.extend(count_problems(rid, ev))
             elif not (root / ev["ref"].split("#", 1)[0]).exists():
                 out.append(f"{rid}: evidence file not found: {ev['ref']}")
         for module in row["entryPoints"]:
@@ -223,10 +367,24 @@ def _link(ref: str) -> str:
 def _evidence(ev: dict) -> str:
     if ev["kind"] == "run":
         text = f"[run {_number(ev['ref'])}]({ev['ref']}): {ev['shows']}"
+        if ev.get("counts"):
+            text += ". Counted from the run's notices: " + ", ".join(
+                c["says"] if _QUOTED.search(c["says"])
+                else f"{c['says']} ({c['n']} of {c['of']} with \"{c.get('count', c.get('reads'))}\")"
+                for c in ev["counts"])
         if ev.get("conclusion", "success") != "success":
             text += f". The run ended in {ev['conclusion'].replace('_', ' ')}: {ev.get('conclusionNote', 'no reason given')}"
         return text
     return f"{_link(ev['ref'])}: {ev['shows']}"
+
+
+def _tied(doc: dict) -> str:
+    quoted, tied = quoted_counts(doc)
+    if not quoted:
+        return "No row quotes a count beside a run link."
+    rest = "every one" if tied == quoted else f"{tied}"
+    return (f"Of the {quoted} counts quoted beside a run link, {rest} {'is' if tied == 1 else 'are'} tied to notices; "
+            "any other is as the row's writer wrote it, and no check has compared it with its run.")
 
 
 def _cell(text: str) -> str:
@@ -253,6 +411,11 @@ def render(doc: dict) -> str:
         "test reads that recorded value, not GitHub. A measured or integrated row may cite only runs",
         "recorded as success. Any other row that cites a run that ended another way says so beside the",
         "link, with the reason it is evidence all the same.",
+        "",
+        "A count beside a run link (\"8 of 8\") is checked only where the row ties it to the notices the",
+        "run published, which is where the bench jobs put their public counts. Such evidence ends with",
+        "\"Counted from the run's notices\", and `python3 -m expectrail.capabilities recheck` counts those",
+        f"notices again from GitHub. {_tied(doc)}",
         "",
         f"Last changed {doc['updated']}. {len(doc['rows'])} rows: "
         + ", ".join(f"{counts[s]} {s}" for s in doc["statuses"]) + ". By grade: "
@@ -342,7 +505,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "recheck":
         from expectrail import capability_runs
 
-        found, checked = capability_runs.recheck(doc, capability_runs.github_reader())
+        found, checked = capability_runs.recheck(doc, capability_runs.github_reader(),
+                                                 capability_runs.github_notices())
         for line in checked:
             print(line)
         for line in found:
