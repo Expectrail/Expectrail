@@ -78,6 +78,7 @@ NOT_PACKAGED = {
     "expectrail.capabilities": "the capability ledger's tool: reads docs/",
     "expectrail.capability_runs": "the capability ledger's tool: reads CI runs",
     "expectrail.change_evidence": "evidence of a fix loop's change; the wheel does not repair",
+    "expectrail.observers": "the visual observer: it asks a vision model, and the wheel holds nothing that holds a model key",
     "expectrail.providers": "model provider records; no verification uses a model",
     "expectrail.spec_writer": "drafts specs with a model; no verification uses a model",
 }

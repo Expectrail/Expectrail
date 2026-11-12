@@ -37,12 +37,18 @@ class Result:
 
 class GodotGate:
     """The Godot verification the CI gate runs (expectrail.gate.verify.run_gate): the head, and the
-    base when there is one, replayed on the routes and judged by the approved specs from the base."""
+    base when there is one, replayed on the routes and judged by the approved specs from the base.
+
+    ``rule`` is which observers judge (expectrail.gate.record.RULES). With ``both`` every check
+    needs the engine's record and ``visual`` (an expectrail.observers.FramesObserver) to pass, and
+    with no ``visual`` the engine accepts nothing (#327). The engine registered below still judges
+    ``engine-only``, as the gate does; a job's record has an ``observers`` block when the rule was ``both``."""
 
     name = "godot"
 
-    def __init__(self, replay: Callable | None = None):
+    def __init__(self, replay: Callable | None = None, *, rule: str = "engine-only", visual=None):
         self._replay = replay   # a stand-in for the harness, for tests; None runs Godot
+        self._rule, self._visual = rule, visual
 
     def preflight(self, request: dict) -> list[dict]:
         found: list[dict] = []
@@ -101,7 +107,7 @@ class GodotGate:
             base=Path(base["checkout"]) if base else None,
             # The isolated class: every replay in the sandbox, or the gate refuses and nothing is accepted.
             require_sandbox=request["executionClass"] == "isolated",
-            checks=checks,
+            checks=checks, rule=self._rule, visual=self._visual, on_phase=advance,
             **({"replay": self._replay} if self._replay is not None else {}))
         # The grade stays `diagnostic` even when every replay was sandboxed: the ledger's `isolated`
         # also needs a separate trusted job that judges and signs (#254, #255). What the sandbox did

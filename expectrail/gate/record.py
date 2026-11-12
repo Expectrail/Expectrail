@@ -62,6 +62,67 @@ def finding_id(spec: str, route: str, kind: str) -> str:
     return hashlib.sha256(f"{spec}\n{route}\n{kind}".encode("utf-8")).hexdigest()[:12]
 
 
+# Which observers judged a record's checks (the record's ``observers.rule``).
+# ``both``: Sean's rule of November 12, 2026 (#327). Every check is judged by the engine's record and
+# by a visual observer over the captured frames, and ``combine`` below gives the check's result.
+# ``engine-only``: the engine's record alone, which is how every record was judged before the rule.
+# An engine-only record is written without an ``observers`` block, as records were before the block
+# existed, so a reader older than the block still reads it; no block is read as ``engine-only``.
+BOTH, ENGINE_ONLY = "both", "engine-only"
+RULES = (BOTH, ENGINE_ONLY)
+# What a visual observer said about one check: its verdict, or that it did not answer (no frames,
+# the model failed), or that it was not asked (none was configured, or the engine's record had
+# already failed the check).
+VISUAL_VERDICTS = ("pass", "fail", "needs-review")
+VISUAL_SAID = VISUAL_VERDICTS + ("no-answer", "not-asked")
+
+
+def combine(engine: str, visual: str) -> str:
+    """One check's result from what its two observers said (the rule ``both``):
+
+        the engine's record    the visual observer         the check
+        pass                   pass                        pass
+        fail                   anything                    fail
+        anything               fail                        fail
+        pass                   unsure, no answer, not asked    needs-review
+        needs-review           pass                        needs-review
+
+    So a pass needs both, a failure on either is a failure, and nothing passes on the engine's record
+    alone. A replay that did not finish has no observations at all and stays ``replay-error``.
+    """
+    if engine not in RESULTS:
+        raise ValueError(f"unknown result {engine!r}")
+    if visual not in VISUAL_SAID:
+        raise ValueError(f"unknown visual answer {visual!r}")
+    if engine == "replay-error":
+        return "replay-error"
+    if engine == "fail" or visual == "fail":
+        return "fail"
+    if engine == "pass" and visual == "pass":
+        return "pass"
+    return "needs-review"
+
+
+def rule_of(doc: dict) -> str:
+    """The rule a record was judged by; a record from before the block existed is ``engine-only``."""
+    block = doc.get("observers")
+    return ENGINE_ONLY if block is None else block["rule"]
+
+
+def observers_words(doc: dict) -> str:
+    """One line on which observers judged, for the page and the comment."""
+    block = doc.get("observers")
+    if rule_of(doc) == ENGINE_ONLY:
+        return ("the engine's record only: no visual observer looked at the frames, so read an accept as "
+                "the engine's record passing, not as the full verdict")
+    visual = block["visual"]
+    if visual is None:
+        return ("the engine's record; a visual observer is required for an accept and none was asked, so "
+                "nothing here is accepted")
+    return (f"two observers on every check: the engine's record, and {visual['name']} "
+            f"({visual['model']}, {visual['provider']}) over the captured frames; a check passes only when both pass")
+
+
 def kind_of(after: str) -> str | None:
     """The finding kind for a check's result after the change; None when it passes."""
     if after not in RESULTS:
@@ -507,6 +568,7 @@ def check_consistency(doc: dict) -> None:
                   + -(-(held["passed"] + held["failed"]) // max(1, len(spec_ids))))
         if isolation["replays"] < needed:
             raise RecordError(f"the checks rest on at least {needed} replays and the record counts {isolation['replays']}")
+    check_observers(doc)
     check_repair(doc)
     decision, _reasons = decide(counts, held, isolation, doc.get("checkProblems", 0),
                                 intent=intent_of(doc), repair=doc.get("repair"))
@@ -518,6 +580,42 @@ def check_consistency(doc: dict) -> None:
     generated = doc.get("generatedChecks")
     if generated is not None:
         check_generated(generated)
+
+
+def check_observers(doc: dict) -> None:
+    """What the record says each observer said agrees with each check's result, by ``combine``.
+
+    Under ``both`` every row says what the two observers said on each side that was judged, and its
+    ``before`` and ``after`` are recomputed from that: a row cannot pass without the visual observer's
+    pass, and a visual verdict needs a named observer and the digest of its answer. Under
+    ``engine-only`` (and in a record from before the block) no row carries what observers said."""
+    block = doc.get("observers")
+    rule = rule_of(doc)
+    if rule == ENGINE_ONLY:
+        if block is not None and block["visual"] is not None:
+            raise RecordError("a visual observer is named but the rule is engine-only")
+        if any("observed" in c for c in doc["checks"]):
+            raise RecordError("a check says what observers said but the rule is engine-only")
+        return
+    for n, check in enumerate(doc["checks"]):
+        seen = check.get("observed")
+        if seen is None:
+            raise RecordError(f"checks/{n}: the rule is both observers and the check does not say what each said")
+        for side in ("before", "after"):
+            said, result = seen[side], check[side]
+            if (said is None) != (result is None):
+                raise RecordError(f"checks/{n}: what the observers said {side} is given exactly when that side was judged")
+            if said is None:
+                continue
+            if combine(said["engine"], said["visual"]) != result:
+                raise RecordError(f"checks/{n}: the result {side} does not follow from what the two observers said")
+            answered = said["visual"] in VISUAL_VERDICTS
+            if answered and block["visual"] is None:
+                raise RecordError(f"checks/{n}: a visual verdict is given and the record names no visual observer")
+            if answered != (said["visualAnswerSha256"] is not None):
+                raise RecordError(f"checks/{n}: the digest of the visual observer's answer is given exactly when it gave a verdict")
+            if said["engine"] == "replay-error" and said["visual"] != "not-asked":
+                raise RecordError(f"checks/{n}: a replay that did not finish has nothing for a visual observer to look at")
 
 
 def check_repair(doc: dict) -> None:

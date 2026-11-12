@@ -146,6 +146,31 @@
       "minimum": 0,
       "description": "problems the gate found reading the spec and route files (a file refused or not valid, an id or a name used twice, a limit passed, nothing found where it was told to look), each named in the reasons. Above 0 the decision is never accept: the checks that ran are not all of the project's checks. Absent from records written before November 12, 2026, where such a problem did not change the decision; a reader takes an absent count as 0."
     },
+    "observers": {
+      "type": "object",
+      "required": ["rule", "visual"],
+      "additionalProperties": false,
+      "description": "which observers judged the checks. both: the engine's record and a visual observer over the captured frames judge every check, and no check passes on the engine's record alone (issue #327). engine-only: the engine's record alone. Written under both only: an engine-only record has no block, as before the block existed (November 12, 2026), so an older reader still reads it, and a reader takes an absent block as engine-only.",
+      "properties": {
+        "rule": {"enum": ["both", "engine-only"]},
+        "visual": {
+          "description": "the visual observer that was asked; null when none was (under both, nothing is then accepted)",
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["name", "provider", "model"],
+              "additionalProperties": false,
+              "properties": {
+                "name": {"type": "string", "minLength": 1, "maxLength": 40, "pattern": "^[a-z0-9][a-z0-9-]*$"},
+                "provider": {"type": "string", "minLength": 1, "maxLength": 80},
+                "model": {"type": "string", "minLength": 1, "maxLength": 80}
+              }
+            }
+          ]
+        }
+      }
+    },
     "intent": {
       "enum": ["fix", "change", "none"],
       "description": "What the change was declared as (issue #284). fix: it claims to fix a reported bug, and is accepted only when the repair block shows a demonstration. change: an intended change of behaviour. none: nothing declared. change and none are judged alike, by the rule that held before this field. Written only when it is fix or change: a record with no intent declared nothing, as every record before November 12, 2026 did, and a reader takes an absent intent as none."
@@ -262,6 +287,60 @@
             "type": ["string", "null"],
             "pattern": "^[0-9a-f]{12}$",
             "description": "null when the check passes after the change"
+          },
+          "observed": {
+            "type": "object",
+            "required": ["before", "after"],
+            "additionalProperties": false,
+            "description": "what each of the two observers said about this check, on each side. On every row when observers.rule is both, and then before and after follow from it (expectrail.gate.record.combine): a pass needs both to pass, a failure on either is a failure, anything else needs review. Absent under engine-only.",
+            "properties": {
+              "before": {
+                "description": "null when the base was not replayed",
+                "oneOf": [
+                  {"type": "null"},
+                  {
+                    "type": "object",
+                    "required": ["engine", "visual", "visualAnswerSha256"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "engine": {
+                        "enum": ["pass", "fail", "needs-review", "replay-error"],
+                        "description": "the evaluator's result on the engine's record (the position log)"
+                      },
+                      "visual": {
+                        "enum": ["pass", "fail", "needs-review", "no-answer", "not-asked"],
+                        "description": "the evaluator's result on the visual observer's observations of the captured frames; no-answer when the observer gave none (no frames, the model failed); not-asked when no visual observer was configured, the replay did not finish, or the engine's record had already failed the check"
+                      },
+                      "visualAnswerSha256": {
+                        "type": ["string", "null"],
+                        "pattern": "^[0-9a-f]{64}$",
+                        "description": "the digest of the observations document the visual observer gave (in the artifact under observations/), so its verdict can be read again without asking the model; null unless it gave a verdict"
+                      }
+                    }
+                  }
+                ]
+              },
+              "after": {
+                "type": "object",
+                "required": ["engine", "visual", "visualAnswerSha256"],
+                "additionalProperties": false,
+                "properties": {
+                  "engine": {
+                    "enum": ["pass", "fail", "needs-review", "replay-error"],
+                    "description": "the evaluator's result on the engine's record (the position log)"
+                  },
+                  "visual": {
+                    "enum": ["pass", "fail", "needs-review", "no-answer", "not-asked"],
+                    "description": "the evaluator's result on the visual observer's observations of the captured frames; no-answer when the observer gave none (no frames, the model failed); not-asked when no visual observer was configured, the replay did not finish, or the engine's record had already failed the check"
+                  },
+                  "visualAnswerSha256": {
+                    "type": ["string", "null"],
+                    "pattern": "^[0-9a-f]{64}$",
+                    "description": "the digest of the observations document the visual observer gave (in the artifact under observations/), so its verdict can be read again without asking the model; null unless it gave a verdict"
+                  }
+                }
+              }
+            }
           }
         }
       }

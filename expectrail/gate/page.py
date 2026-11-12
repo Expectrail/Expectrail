@@ -138,8 +138,8 @@ def write_page(out: Path, record: dict, frames: dict[str, dict]) -> Path:
         ("Declared as", rec.repair_words(record)),
         ("Replays in the sandbox", rec.isolation_words(record.get("isolation"))),
         ("Draft specs not used", str(record["drafts"])),
-        ("Replayed by", f"the {ADAPTER.get(record['adapter'], record['adapter'])} harness; judged by the evaluator "
-                        "on the engine's position log"),
+        ("Replayed by", f"the {ADAPTER.get(record['adapter'], record['adapter'])} harness"),
+        ("Judged on", rec.observers_words(record)),
         ("Expectrail", f"{record['expectrail']['version']}"
                        + (f" at {record['expectrail']['commit']}" if record["expectrail"]["commit"] else "")),
         ("Written", record["createdAt"]),
