@@ -669,7 +669,7 @@ class LostWorkerTest(unittest.TestCase):
     """A verification job whose worker is killed while the game runs in the sandbox: nothing of the
     job may be left running (#307, gap 3). Needs the real tool and the real engine, so it runs in CI."""
 
-    def test_a_killed_workers_sandboxed_replay_is_stopped(self):
+    def test_a_killed_workers_sandboxed_replay_dies_with_it(self):
         import signal
 
         from expectrail.orchestrator import request as req
@@ -715,19 +715,21 @@ class LostWorkerTest(unittest.TestCase):
             time.sleep(0.1)
         os.kill(worker.pid, signal.SIGKILL)   # the worker alone
         worker.wait(timeout=10)
-        running = programs()
-        self.assertIn("bwrap", running, "the sandbox ended with the worker, so this run shows nothing")
+        # Nobody is asked to stop anything here: the sandbox tool was started with --die-with-parent,
+        # so the kernel kills it when the worker dies, and everything inside dies with it. (The first
+        # version of this test expected the sandbox to outlive the worker, as an unsandboxed game
+        # does, and real bubblewrap showed otherwise.)
+        deadline = time.monotonic() + 10
+        while programs() and time.monotonic() < deadline:
+            time.sleep(0.1)
+        self.assertEqual(programs(), [], "the sandboxed replay outlived its worker")
         deadline = time.monotonic() + 30
         while (status := store.status(job))["phase"] not in st.FINAL:
             self.assertLess(time.monotonic(), deadline, "the job was never declared lost")
             time.sleep(0.2)
-        self.assertEqual((status["phase"], [d["code"] for d in status["diagnostics"]]), ("failed", ["WORKER_LOST"]))
-        self.assertTrue(any(reason.startswith("stopped ") for reason in status["reasons"]), status["reasons"])
-        deadline = time.monotonic() + 10
-        while programs() and time.monotonic() < deadline:
-            time.sleep(0.1)
-        self.assertEqual(programs(), [], f"left running after the job was declared lost (were: {running})")
-
+        self.assertEqual((status["phase"], status["decision"], [d["code"] for d in status["diagnostics"]]),
+                         ("failed", None, ["WORKER_LOST"]))
+        self.assertEqual(st.processes_of(job), [])
 
 if __name__ == "__main__":
     unittest.main()

@@ -119,8 +119,10 @@ Every job has a folder of its own:
   own ancestors are never stopped, so a status asked from inside a job does not end the asking.
   Where there is no `/proc` to ask (macOS), nothing is stopped and the job says so. One limit: the
   environment read is what the process holds now, so a program that writes over its own environment
-  is not found. The sandboxed game cannot stay alive that way, since it dies with the sandbox tool;
-  an unsandboxed one could.
+  is not found. The sandboxed game cannot stay alive that way: the sandbox tool is started so that
+  the kernel kills it when the worker dies, and everything inside dies with the tool (seen in CI: a
+  worker killed mid-replay left nothing of the job, before anything was asked to stop). An
+  unsandboxed game could.
 - **Out of time is needs-review.** When the limit passes, the job completes as needs-review with
   `EXECUTION_TIMEOUT` and its group is stopped.
 - **No result is never a pass.** A missing tool, an unusable input or a project that is not there

@@ -14,15 +14,19 @@ The merge guard merged #314 and listed five gaps, none worse than before it (whe
   a program that writes over its own environment is not found. `docs/orchestrator.md` says so, and that
   the sandboxed game cannot stay alive that way.
 - **A run with the replay sandboxed.** A test for the real tool and the real engine: a verification of
-  the bundled game in the `isolated` class, its worker killed alone while bubblewrap is running; the
-  job must end `failed` and nothing of it may be left. It runs in CI's `seeded-bugs` job, where the
-  tests that need bubblewrap are required.
+  the bundled game in the `isolated` class, its worker killed alone while bubblewrap is running the
+  replay. It runs in CI's `seeded-bugs` job, where the tests that need bubblewrap are required. Its
+  first run corrected what I expected: I had the sandbox outliving the worker until the store stopped
+  it, as an unsandboxed game does. With real bubblewrap nothing of the job was left the moment the
+  worker died, because the tool is started with `--die-with-parent` and the kernel kills it with the
+  worker. The test now holds that: nothing left without anyone being asked, then `failed` with
+  `WORKER_LOST`.
 
 ## What was run
 - `python3 -m unittest tests.test_orchestrator`: OK; ten tests on lost workers, all with real processes.
 - The full suite: 1,993 tests, OK, 18 skipped (8 need bubblewrap).
-- Not run locally: the sandboxed test (this machine has no bubblewrap). Its first run is this pull
-  request's `seeded-bugs` job; the pull request reports it.
+- Not run locally: the sandboxed test (this machine has no bubblewrap). Its runs are this pull
+  request's `seeded-bugs` jobs; the pull request reports them.
 
 ## Not done
 - Finding a process that has written over its own environment (unsandboxed only). Stated as a limit.
