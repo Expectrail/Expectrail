@@ -221,6 +221,14 @@ jobs:
         env:
           EXPECTRAIL_SANDBOX: require
         run: python -m expectrail.orchestrator --jobs-root runs/orchestrator-sample sample
+      # The same verify command on two Godot projects (#251): the bundled game, and a second project
+      # given by path that shares no file with it (tests/projects/crate-run). Real replays, no model
+      # key. Without the switch these four tests are skipped, as in the `test` job, which has no Godot.
+      - name: One verify command, two Godot projects (the bundled game and a second one by path), each replay sandboxed
+        env:
+          EXPECTRAIL_ENGINE_TESTS: required
+          EXPECTRAIL_SANDBOX: require
+        run: python -m unittest tests.test_second_project -v
       - name: The ground line is logged, and the position log sees a robot resting too low
         run: |
           python -m pip install -r requirements-dev.txt
@@ -725,6 +733,16 @@ jobs:
       - name: The sample from the installed copy (accept, reject, accept)
         working-directory: ${{ runner.temp }}
         run: venv/bin/expectrail --jobs-root "$RUNNER_TEMP/jobs" sample
+      # The installed command on a Godot project that is not the bundled game, given by path (#251):
+      # tests/projects/crate-run, judged by the approved spec that ships, copied unchanged. The step
+      # fails unless the job completes as accept (exit 0).
+      - name: The installed command verifies a second Godot project given by path (accept)
+        run: |
+          mkdir -p "$RUNNER_TEMP/second/specs"
+          cp -r tests/projects/crate-run/project tests/projects/crate-run/routes "$RUNNER_TEMP/second/"
+          cp agents/specs/player-stays-above-ground.json "$RUNNER_TEMP/second/specs/"
+          cd "$RUNNER_TEMP"
+          venv/bin/expectrail --jobs-root "$RUNNER_TEMP/jobs-second" verify --head second --game project --routes routes/walk.json --specs specs
       - name: The engine it used is the one its own script unpacked
         run: test -x "$HOME/.cache/expectrail/godot/Godot_v4.7.2-stable_linux.x86_64"
 
