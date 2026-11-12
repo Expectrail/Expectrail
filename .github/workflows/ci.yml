@@ -680,8 +680,8 @@ jobs:
           retention-days: 14
 
   # OS sandbox trust film (bubblewrap). Does not invent Meta spend.
-  # The package as an outsider gets it (#249): build the wheel, install it with pip into a new virtual
-  # environment that has nothing else, leave the checkout, and run the real sample from the installed
+  # The package as an outsider gets it (#249): build the wheel, install it with pip into a new venv
+  # that has nothing else, leave the checkout, and run the real sample from the installed
   # copy (three verifications with the real engine; accept, reject, accept, or the step fails).
   # Python 3.12 is the lowest version pyproject.toml allows; this job is what shows it.
   package:
@@ -707,7 +707,7 @@ jobs:
           python -m pip install -r requirements-build.txt -r requirements-dev.txt
           python -m unittest tests.test_package -v
           python -m pip wheel . --no-deps --no-build-isolation -w dist
-      - name: Install it with pip into a clean environment
+      - name: Install it with pip into a clean venv
         run: |
           python -m venv "$RUNNER_TEMP/venv"
           "$RUNNER_TEMP/venv/bin/python" -m pip install --no-deps dist/expectrail-*.whl
@@ -721,7 +721,7 @@ jobs:
         run: |
           venv/bin/expectrail --version
           venv/bin/expectrail --version | grep -q "installed package"
-          venv/bin/python -c "import importlib.util as u, sys; sys.exit('the clean environment has jsonschema') if u.find_spec('jsonschema') else print('standard library only')"
+          venv/bin/python -c "import importlib.util as u, sys; sys.exit('the clean venv has jsonschema') if u.find_spec('jsonschema') else print('standard library only')"
       - name: The sample from the installed copy (accept, reject, accept)
         working-directory: ${{ runner.temp }}
         run: venv/bin/expectrail --jobs-root "$RUNNER_TEMP/jobs" sample
