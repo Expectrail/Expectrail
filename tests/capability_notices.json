@@ -1,0 +1,349 @@
+{
+ "about": "The notices the capability ledger's counts rest on, as GitHub's API gave them on November 12, 2026 (repos/Expectrail/Expectrail/check-runs/<job>/annotations, level notice). Kept: every notice whose title matches a count's `titled`, before `not` is applied. Read by tests/test_capability_counts.py so the suite counts the committed ledger without the network.",
+ "runs": {
+  "41003749744": [
+   {
+    "job": "heldout-bench (missing-texture/v5)",
+    "conclusion": "success",
+    "title": "Held-out bench missing-texture/v5",
+    "message": "caught with SAM on: yes; caught with SAM off: no; over 5 routes: engine 5 pass; gameplay 5 pass; hybrid 5 pass; player-always-visible 5 pass; coins-visible 5 fail"
+   },
+   {
+    "job": "heldout-bench (clean)",
+    "conclusion": "success",
+    "title": "Held-out bench clean",
+    "message": "false alarm with SAM on: no; false alarm with SAM off: no; over 5 routes: engine 5 pass; gameplay 5 pass; hybrid 5 pass; player-always-visible 5 pass; coins-visible 5 pass"
+   },
+   {
+    "job": "heldout-bench (layering/v5)",
+    "conclusion": "success",
+    "title": "Held-out bench layering/v5",
+    "message": "caught with SAM on: yes; caught with SAM off: no; over 5 routes: engine 5 pass; gameplay 5 pass; hybrid 5 needs-review; player-always-visible 5 fail; coins-visible 5 pass"
+   },
+   {
+    "job": "heldout-bench (physics-fall-through/v5)",
+    "conclusion": "success",
+    "title": "Held-out bench physics-fall-through/v5",
+    "message": "caught with SAM on: yes; caught with SAM off: yes; over 5 routes: engine 5 fail; gameplay 5 fail; hybrid 5 fail; player-always-visible 5 fail; coins-visible 5 pass"
+   },
+   {
+    "job": "heldout-bench (sinking/v4)",
+    "conclusion": "success",
+    "title": "Held-out bench sinking/v4",
+    "message": "caught with SAM on: yes; caught with SAM off: yes; over 5 routes: engine 5 fail; gameplay 5 pass; hybrid 5 fail; player-always-visible 5 pass; coins-visible 5 pass"
+   },
+   {
+    "job": "heldout-bench (missing-texture/v6)",
+    "conclusion": "success",
+    "title": "Held-out bench missing-texture/v6",
+    "message": "caught with SAM on: yes; caught with SAM off: no; over 5 routes: engine 5 pass; gameplay 5 pass; hybrid 5 pass; player-always-visible 5 pass; coins-visible 5 fail"
+   },
+   {
+    "job": "heldout-bench (sinking/v3)",
+    "conclusion": "success",
+    "title": "Held-out bench sinking/v3",
+    "message": "caught with SAM on: yes; caught with SAM off: yes; over 5 routes: engine 5 fail; gameplay 5 pass; hybrid 5 fail; player-always-visible 3 fail, 2 pass; coins-visible 5 pass"
+   },
+   {
+    "job": "heldout-bench (physics-fall-through/v6)",
+    "conclusion": "success",
+    "title": "Held-out bench physics-fall-through/v6",
+    "message": "caught with SAM on: yes; caught with SAM off: yes; over 5 routes: engine 5 fail; gameplay 5 fail; hybrid 5 fail; player-always-visible 5 fail; coins-visible 5 pass"
+   },
+   {
+    "job": "heldout-bench (layering/v6)",
+    "conclusion": "success",
+    "title": "Held-out bench layering/v6",
+    "message": "caught with SAM on: yes; caught with SAM off: no; over 5 routes: engine 5 pass; gameplay 5 pass; hybrid 5 needs-review; player-always-visible 5 fail; coins-visible 5 pass"
+   }
+  ],
+  "41109233666": [
+   {
+    "job": "heldout-bench (dev/layering/v2)",
+    "conclusion": "success",
+    "title": "Dev bench dev/layering/v2",
+    "message": "caught with SAM on: yes; caught with SAM off: no; over 2 routes: layout 2 pass; behaviour 2 pass; hybrid 2 needs-review; checkout-button-visible 2 fail; logo-visible 2 pass"
+   },
+   {
+    "job": "heldout-bench (dev/fall-through/v2)",
+    "conclusion": "success",
+    "title": "Dev bench dev/fall-through/v2",
+    "message": "caught with SAM on: yes; caught with SAM off: yes; over 2 routes: layout 2 fail; behaviour 2 fail; hybrid 2 needs-review; checkout-button-visible 2 fail; logo-visible 2 pass"
+   },
+   {
+    "job": "heldout-bench (dev/layering/v1)",
+    "conclusion": "success",
+    "title": "Dev bench dev/layering/v1",
+    "message": "caught with SAM on: yes; caught with SAM off: yes; over 2 routes: layout 2 pass; behaviour 2 fail; hybrid 2 needs-review; checkout-button-visible 2 fail; logo-visible 2 pass"
+   },
+   {
+    "job": "heldout-bench (dev/sinking/v2)",
+    "conclusion": "success",
+    "title": "Dev bench dev/sinking/v2",
+    "message": "caught with SAM on: yes; caught with SAM off: no; over 2 routes: layout 2 pass; behaviour 2 pass; hybrid 2 fail; checkout-button-visible 2 pass; logo-visible 2 pass"
+   },
+   {
+    "job": "heldout-bench (dev/missing-texture/v2)",
+    "conclusion": "success",
+    "title": "Dev bench dev/missing-texture/v2",
+    "message": "caught with SAM on: yes; caught with SAM off: no; over 2 routes: layout 2 pass; behaviour 2 pass; hybrid 2 needs-review; checkout-button-visible 2 fail; logo-visible 2 pass"
+   },
+   {
+    "job": "heldout-bench (dev/fall-through/v1)",
+    "conclusion": "success",
+    "title": "Dev bench dev/fall-through/v1",
+    "message": "caught with SAM on: yes; caught with SAM off: yes; over 2 routes: layout 2 fail; behaviour 2 pass; hybrid 2 needs-review; checkout-button-visible 2 fail; logo-visible 2 pass"
+   },
+   {
+    "job": "heldout-bench (dev/missing-texture/v1)",
+    "conclusion": "success",
+    "title": "Dev bench dev/missing-texture/v1",
+    "message": "caught with SAM on: yes; caught with SAM off: no; over 2 routes: layout 2 pass; behaviour 2 pass; hybrid 2 pass; checkout-button-visible 2 pass; logo-visible 2 fail"
+   },
+   {
+    "job": "heldout-bench (dev/sinking/v1)",
+    "conclusion": "success",
+    "title": "Dev bench dev/sinking/v1",
+    "message": "caught with SAM on: yes; caught with SAM off: yes; over 2 routes: layout 2 fail; behaviour 2 pass; hybrid 2 fail; checkout-button-visible 2 pass; logo-visible 2 pass"
+   },
+   {
+    "job": "heldout-bench (clean)",
+    "conclusion": "success",
+    "title": "Held-out bench clean",
+    "message": "false alarm with SAM on: no; false alarm with SAM off: no; over 2 routes: layout 2 pass; behaviour 2 pass; hybrid 2 pass; checkout-button-visible 2 pass; logo-visible 2 pass"
+   }
+  ],
+  "41130091655": [
+   {
+    "job": "heldout-bench (clean)",
+    "conclusion": "success",
+    "title": "Held-out bench clean",
+    "message": "false alarm with SAM on: no; false alarm with SAM off: no; over 2 routes: layout 2 pass; behaviour 2 pass; hybrid 2 pass; checkout-button-visible 2 pass; logo-visible 2 pass"
+   },
+   {
+    "job": "heldout-bench (fall-through/v3)",
+    "conclusion": "success",
+    "title": "Held-out bench fall-through/v3",
+    "message": "caught with SAM on: yes; caught with SAM off: yes; over 2 routes: layout 1 fail, 1 pass; behaviour 2 pass; hybrid 1 needs-review, 1 pass; checkout-button-visible 1 fail, 1 pass; logo-visible 2 pass"
+   },
+   {
+    "job": "heldout-bench (missing-texture/v4)",
+    "conclusion": "success",
+    "title": "Held-out bench missing-texture/v4",
+    "message": "caught with SAM on: yes; caught with SAM off: yes; over 2 routes: layout 2 fail; behaviour 2 pass; hybrid 2 needs-review; checkout-button-visible 2 fail; logo-visible 2 pass"
+   },
+   {
+    "job": "heldout-bench (missing-texture/v3)",
+    "conclusion": "success",
+    "title": "Held-out bench missing-texture/v3",
+    "message": "caught with SAM on: yes; caught with SAM off: no; over 2 routes: layout 2 pass; behaviour 2 pass; hybrid 2 pass; checkout-button-visible 2 pass; logo-visible 2 fail"
+   },
+   {
+    "job": "heldout-bench (layering/v3)",
+    "conclusion": "success",
+    "title": "Held-out bench layering/v3",
+    "message": "caught with SAM on: yes; caught with SAM off: no; over 2 routes: layout 2 pass; behaviour 2 pass; hybrid 2 pass; checkout-button-visible 2 pass; logo-visible 2 fail"
+   }
+  ],
+  "41003751876": [
+   {
+    "job": "heldout-bench (layering/v6)",
+    "conclusion": "success",
+    "title": "Held-out bench layering/v6",
+    "message": "caught with Glimmer+engine (no SAM): yes; caught with SAM off: no; over 5 routes: engine 5 pass; gameplay 5 pass; player-always-visible 5 fail; coins-visible 5 pass"
+   },
+   {
+    "job": "heldout-bench (sinking/v3)",
+    "conclusion": "success",
+    "title": "Held-out bench sinking/v3",
+    "message": "caught with Glimmer+engine (no SAM): yes; caught with SAM off: yes; over 5 routes: engine 5 fail; gameplay 5 pass; player-always-visible 2 fail, 3 pass; coins-visible 5 pass"
+   },
+   {
+    "job": "heldout-bench (layering/v5)",
+    "conclusion": "success",
+    "title": "Held-out bench layering/v5",
+    "message": "caught with Glimmer+engine (no SAM): yes; caught with SAM off: no; over 5 routes: engine 5 pass; gameplay 5 pass; player-always-visible 5 fail; coins-visible 5 pass"
+   },
+   {
+    "job": "heldout-bench (sinking/v4)",
+    "conclusion": "success",
+    "title": "Held-out bench sinking/v4",
+    "message": "caught with Glimmer+engine (no SAM): yes; caught with SAM off: yes; over 5 routes: engine 5 fail; gameplay 5 pass; player-always-visible 5 pass; coins-visible 5 pass"
+   },
+   {
+    "job": "heldout-bench (missing-texture/v6)",
+    "conclusion": "success",
+    "title": "Held-out bench missing-texture/v6",
+    "message": "caught with Glimmer+engine (no SAM): yes; caught with SAM off: no; over 5 routes: engine 5 pass; gameplay 5 pass; player-always-visible 5 pass; coins-visible 5 fail"
+   },
+   {
+    "job": "heldout-bench (physics-fall-through/v5)",
+    "conclusion": "success",
+    "title": "Held-out bench physics-fall-through/v5",
+    "message": "caught with Glimmer+engine (no SAM): yes; caught with SAM off: yes; over 5 routes: engine 5 fail; gameplay 5 fail; player-always-visible 5 fail; coins-visible 5 pass"
+   },
+   {
+    "job": "heldout-bench (clean)",
+    "conclusion": "success",
+    "title": "Held-out bench clean",
+    "message": "false alarm with Glimmer+engine (no SAM): no; false alarm with SAM off: no; over 5 routes: engine 5 pass; gameplay 5 pass; player-always-visible 5 pass; coins-visible 5 pass"
+   },
+   {
+    "job": "heldout-bench (physics-fall-through/v6)",
+    "conclusion": "success",
+    "title": "Held-out bench physics-fall-through/v6",
+    "message": "caught with Glimmer+engine (no SAM): yes; caught with SAM off: yes; over 5 routes: engine 5 fail; gameplay 5 fail; player-always-visible 5 fail; coins-visible 5 pass"
+   },
+   {
+    "job": "heldout-bench (missing-texture/v5)",
+    "conclusion": "success",
+    "title": "Held-out bench missing-texture/v5",
+    "message": "caught with Glimmer+engine (no SAM): yes; caught with SAM off: no; over 5 routes: engine 5 pass; gameplay 5 pass; player-always-visible 5 pass; coins-visible 5 fail"
+   }
+  ],
+  "41230177124": [
+   {
+    "job": "judge-summary",
+    "conclusion": "success",
+    "title": "Judge summary expectrailGlimmer",
+    "message": "good fixes accepted 8 of 8; bad fixes accepted 0 of 7; undecided 0"
+   }
+  ],
+  "40990485265": [
+   {
+    "job": "demo-run (2)",
+    "conclusion": "success",
+    "title": "Demo run 2",
+    "message": "decision accept; attempts 1: accept; triage muse-wonder-1.0; fixer muse; trust ok; verified on harness; signed True; 755.5 s; SAM images 1164"
+   },
+   {
+    "job": "demo-run (1)",
+    "conclusion": "success",
+    "title": "Demo run 1",
+    "message": "decision accept; attempts 1: accept; triage muse-wonder-1.0; fixer muse; trust ok; verified on harness; signed True; 901.2 s; SAM images 1164"
+   },
+   {
+    "job": "demo-run (5)",
+    "conclusion": "success",
+    "title": "Demo run 5",
+    "message": "decision accept; attempts 1: accept; triage muse-wonder-1.0; fixer muse; trust ok; verified on harness; signed True; 693.6 s; SAM images 1164"
+   },
+   {
+    "job": "demo-run (7)",
+    "conclusion": "success",
+    "title": "Demo run 7",
+    "message": "decision accept; attempts 1: accept; triage muse-wonder-1.0; fixer muse; trust ok; verified on harness; signed True; 915.1 s; SAM images 1164"
+   },
+   {
+    "job": "demo-run (9)",
+    "conclusion": "success",
+    "title": "Demo run 9",
+    "message": "decision accept; attempts 1: accept; triage muse-wonder-1.0; fixer muse; trust ok; verified on harness; signed True; 743.5 s; SAM images 1164"
+   },
+   {
+    "job": "demo-run (4)",
+    "conclusion": "success",
+    "title": "Demo run 4",
+    "message": "decision accept; attempts 1: accept; triage muse-wonder-1.0; fixer muse; trust ok; verified on harness; signed True; 925.5 s; SAM images 1164"
+   },
+   {
+    "job": "demo-run (8)",
+    "conclusion": "success",
+    "title": "Demo run 8",
+    "message": "decision accept; attempts 1: accept; triage muse-wonder-1.0; fixer muse; trust ok; verified on harness; signed True; 722.7 s; SAM images 1164"
+   },
+   {
+    "job": "demo-run (6)",
+    "conclusion": "success",
+    "title": "Demo run 6",
+    "message": "decision accept; attempts 1: accept; triage muse-wonder-1.0; fixer muse; trust ok; verified on harness; signed True; 1074.6 s; SAM images 1164"
+   },
+   {
+    "job": "demo-run (10)",
+    "conclusion": "success",
+    "title": "Demo run 10",
+    "message": "decision accept; attempts 1: accept; triage muse-wonder-1.0; fixer muse; trust ok; verified on harness; signed True; 835.0 s; SAM images 1164"
+   },
+   {
+    "job": "demo-run (3)",
+    "conclusion": "success",
+    "title": "Demo run 3",
+    "message": "decision accept; attempts 1: accept; triage muse-wonder-1.0; fixer muse; trust ok; verified on harness; signed True; 1343.0 s; SAM images 1164"
+   }
+  ],
+  "41223748922": [
+   {
+    "job": "demo-run (2)",
+    "conclusion": "success",
+    "title": "Demo run 2 judge",
+    "message": "judged by sam; stopped False; sam: accept"
+   },
+   {
+    "job": "demo-run (2)",
+    "conclusion": "success",
+    "title": "Demo run 2 briefing",
+    "message": "report"
+   },
+   {
+    "job": "demo-run (2)",
+    "conclusion": "success",
+    "title": "Demo run 2 review",
+    "message": "REPAIR DEMONSTRATED; FRESH LIVE; none"
+   },
+   {
+    "job": "demo-run (2)",
+    "conclusion": "success",
+    "title": "Demo run 2",
+    "message": "decision accept; attempts 1: accept; triage muse-wonder-1.0; fixer muse; trust ok; verified on harness; signed True; 694.5 s; SAM images 157"
+   },
+   {
+    "job": "demo-run (3)",
+    "conclusion": "success",
+    "title": "Demo run 3 judge",
+    "message": "judged by sam; stopped False; sam: accept"
+   },
+   {
+    "job": "demo-run (3)",
+    "conclusion": "success",
+    "title": "Demo run 3 briefing",
+    "message": "report"
+   },
+   {
+    "job": "demo-run (3)",
+    "conclusion": "success",
+    "title": "Demo run 3 review",
+    "message": "REPAIR DEMONSTRATED; FRESH LIVE; none"
+   },
+   {
+    "job": "demo-run (3)",
+    "conclusion": "success",
+    "title": "Demo run 3",
+    "message": "decision accept; attempts 1: accept; triage muse-wonder-1.0; fixer muse; trust ok; verified on harness; signed True; 393.2 s; SAM images 157"
+   },
+   {
+    "job": "demo-run (1)",
+    "conclusion": "success",
+    "title": "Demo run 1 judge",
+    "message": "judged by sam; stopped False; sam: accept"
+   },
+   {
+    "job": "demo-run (1)",
+    "conclusion": "success",
+    "title": "Demo run 1 briefing",
+    "message": "report"
+   },
+   {
+    "job": "demo-run (1)",
+    "conclusion": "success",
+    "title": "Demo run 1 review",
+    "message": "REPAIR DEMONSTRATED; FRESH LIVE; none"
+   },
+   {
+    "job": "demo-run (1)",
+    "conclusion": "success",
+    "title": "Demo run 1",
+    "message": "decision accept; attempts 1: accept; triage muse-wonder-1.0; fixer muse; trust ok; verified on harness; signed True; 669.2 s; SAM images 157"
+   }
+  ]
+ }
+}

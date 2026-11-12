@@ -37,6 +37,25 @@
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41003749744",
           "conclusion": "success",
+          "counts": [
+            {
+              "says": "8 of 8",
+              "n": 8,
+              "of": 8,
+              "titled": "Held-out bench *",
+              "not": [
+                "Held-out bench clean"
+              ],
+              "count": "caught with SAM on: yes"
+            },
+            {
+              "says": "no false alarm",
+              "n": 1,
+              "of": 1,
+              "titled": "Held-out bench clean",
+              "count": "false alarm with SAM on: no"
+            }
+          ],
           "shows": "8 of 8 held-out bugs caught with SAM 3.1 on, no false alarm on the clean game"
         },
         {
@@ -60,6 +79,69 @@
         }
       ],
       "limits": "One game, with bugs the team seeded. The replay is not yet sandboxed without network (#253) and no separate trusted job signs the verdict, so nothing here is isolated. The approved specs judge frames 0 to 119 of a route."
+    },
+    {
+      "id": "sam-observer",
+      "mode": "SAM observer: SAM 3.1 finds what a check names in each frame",
+      "profile": "Meta's model API; the Godot game and the checkout page",
+      "observer": "SAM 3.1",
+      "entryPoints": [
+        "agents.sam_observations",
+        "agents.sam_probe"
+      ],
+      "workflows": [
+        "sam-probe.yml"
+      ],
+      "docs": [
+        "docs/sam.md"
+      ],
+      "names": [
+        "SAM 3.1"
+      ],
+      "grade": "diagnostic",
+      "status": "measured",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41003749744",
+          "conclusion": "success",
+          "counts": [
+            {
+              "says": "8 of 8",
+              "n": 8,
+              "of": 8,
+              "titled": "Held-out bench *",
+              "not": [
+                "Held-out bench clean"
+              ],
+              "count": "caught with SAM on: yes"
+            },
+            {
+              "says": "4 of 8",
+              "n": 4,
+              "of": 8,
+              "titled": "Held-out bench *",
+              "not": [
+                "Held-out bench clean"
+              ],
+              "count": "caught with SAM off: yes",
+              "otherwise": "caught with SAM off: no"
+            }
+          ],
+          "shows": "8 of 8 held-out bugs caught with SAM on; 4 of 8 without a vision model"
+        },
+        {
+          "kind": "record",
+          "ref": "bench/judge/README.md",
+          "shows": "0 of 7 fake fixes accepted with SAM, 3 of 7 without"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_sam.py",
+          "shows": "the client on recorded replies: an unrecognised answer is an error, never nothing found"
+        }
+      ],
+      "limits": "SAM does not see the ground, so the ground line always comes from the engine. Needs a Meta key and is paid per image. Measured on one game and one page."
     },
     {
       "id": "mcp-tools",
