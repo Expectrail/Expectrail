@@ -85,6 +85,48 @@ class TheEpisodeKeepsCoinsAndTheCamera(unittest.TestCase):
                 with self.assertRaises(EpisodeError):
                     episode(data)
 
+    def test_only_a_first_row_that_lists_a_coin_says_what_the_level_started_with(self):
+        """Review of #323: coins that first appear on a later tick read as -3 collected, and a null on
+        every row read as a level with no coins. The trace must show the start, or there is no reading."""
+        late = episode(with_fields(10, coins=lambda t: COINS if t >= 5 else []))
+        nulls = with_fields(10)
+        for r in nulls:
+            r["coins"] = None
+        empty_first = with_fields(10, coins=lambda t: COINS)
+        empty_first[0]["coins"] = []
+        null_first = with_fields(10, coins=lambda t: COINS)
+        null_first[0]["coins"] = None
+        absent_first = with_fields(10, coins=lambda t: COINS)
+        del absent_first[0]["coins"]
+        empties = with_fields(10)
+        for r in empties:
+            r["coins"] = []
+        for name, ep in (("late", late), ("null on every row", episode(nulls)), ("empty first", episode(empty_first)),
+                         ("null first", episode(null_first)), ("absent first", episode(absent_first)),
+                         ("empty on every row", episode(empties))):
+            with self.subTest(name):
+                validate_v1(ep, "episode")
+                self.assertEqual(ep["capabilities"]["coins"], "unknown")
+                self.assertTrue(all(s["coins"] is None for s in ep["samples"]))
+                self.assertIsNone(signals.coins_collected(ep))
+
+    def test_a_null_on_a_later_row_reads_as_the_missing_key_does(self):
+        data = with_fields(6, coins=lambda t: COINS)
+        data[4]["coins"] = None
+        ep = episode(data)
+        self.assertEqual(ep["capabilities"]["coins"], "initial-instances")
+        self.assertEqual(ep["samples"][4]["coins"], [])
+
+    def test_true_and_false_are_not_numbers_and_a_bad_coin_is_refused_even_where_coins_are_unknown(self):
+        for name, bad in (("coins", [[True, False]]), ("coins", [[1.0, True]]), ("coins", {"x": 1}), ("coins", "many"),
+                          ("view", [True, False, False, True, False, False]), ("view", [1.0, 0.0, 0.0, 1.0, 0.0, True])):
+            for first_row_has_coins in (True, False):
+                with self.subTest(name=name, bad=bad, known=first_row_has_coins):
+                    data = with_fields(6, coins=(lambda t: COINS) if first_row_has_coins else None, view=follow(walk))
+                    data[3][name] = bad
+                    with self.assertRaises(EpisodeError):
+                        episode(data)
+
     def test_an_episode_written_before_these_fields_still_validates_and_reads_as_no_reading(self):
         ep = episode(with_fields(6, coins=lambda t: COINS, view=follow(walk)))
         del ep["capabilities"]["coins"], ep["capabilities"]["view"]
@@ -123,6 +165,12 @@ class CoinsCollected(unittest.TestCase):
     def test_none_collected_is_zero_and_all_collected_is_all(self):
         self.assertEqual(signals.coins_collected(episode(with_fields(10, coins=lambda t: COINS))), 0)
         self.assertEqual(signals.coins_collected(episode(with_fields(10, coins=lambda t: COINS if t < 5 else []))), 3)
+
+    def test_it_is_never_negative(self):
+        ep = episode(with_fields(10, coins=lambda t: COINS[:1] if t < 5 else COINS))   # more coins later
+        self.assertIsNone(signals.coins_collected(ep))
+        back = episode(with_fields(10, coins=lambda t: COINS if t < 3 else (COINS[:1] if t < 6 else COINS)))
+        self.assertEqual(signals.coins_collected(back), 0)                              # gone and back: not more than the start
 
     def test_no_reading_when_the_trace_never_names_coins(self):
         self.assertIsNone(signals.coins_collected(episode(with_fields(10))))
@@ -173,6 +221,13 @@ class PlayerOnScreen(unittest.TestCase):
         ep = episode(with_fields(60, view=lambda t: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0], player=walk))
         self.assertEqual(len(signals.player_on_screen(ep)), 59)
         self.assertEqual(signals.player_screen_x_range_px(ep), 2.0 * 58)
+
+    def test_an_identity_view_after_a_real_one_is_kept(self):
+        base = follow(walk)
+        snap = lambda t: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0] if t >= 40 else base(t)  # noqa: E731
+        ep = episode(with_fields(60, view=snap, player=walk))
+        self.assertEqual(len(signals.player_on_screen(ep)), 58)                  # only the one leading tick is left out
+        self.assertGreater(signals.player_screen_x_range_px(ep), 100)
 
     def test_a_scaled_view_is_measured_in_frame_pixels(self):
         still = lambda t: [2.0, 0.0, 0.0, 2.0, 0.0, 0.0] if t >= 2 else [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]  # noqa: E731

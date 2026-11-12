@@ -179,10 +179,11 @@ def player_dx_px(ep: dict) -> float | None:
 def coins_collected(ep: dict) -> int | None:
     """Coins in the level on the first tick, less those still there on the last.
 
-    The recorder finds the coins once, at the start, so a coin that appears later is never counted
-    and the number cannot be negative. None when the trace does not say whether the level has coins."""
+    The recorder finds the coins once, at the start, so the count can only fall. None when the trace
+    does not say what the level started with, and None when a later tick lists more coins than the
+    first: that is not a trace this recorder writes, and a negative count would mean nothing."""
     counts = [len(s["coins"]) for s in ep["samples"] if s.get("coins") is not None]
-    if not counts:
+    if not counts or max(counts) > counts[0]:
         return None
     return counts[0] - counts[-1]
 
@@ -199,7 +200,9 @@ def player_on_screen(ep: dict) -> list[tuple[int, float, float]]:
     The engine applies the camera when it draws its first frame: until then the view is the identity
     (on the bundled game, the first two rows), and the player would seem to jump across the screen
     when the camera arrives. Those leading ticks are left out when a real view follows them; a trace
-    whose view is the identity throughout has no camera, and all of it is kept."""
+    whose view is the identity throughout has no camera, and all of it is kept. Only the leading run
+    is left out: an identity view after a real one is kept and counted, since a camera that snaps
+    back to the origin mid-replay is something a player would see."""
     points = []
     samples = ep["samples"]
     for a, b in zip(samples, samples[1:]):

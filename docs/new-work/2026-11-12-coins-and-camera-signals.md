@@ -89,3 +89,23 @@ drop changed by a hundredth of a pixel). This is step 4 of the issue for those t
 - `contracts/episode.v1.schema.json`, `contracts/trace-spec.v1.schema.json`
 - `tests/test_trace_camera_coins.py`
 - `docs/jit.md`, `docs/contracts.md`, `bench/jit/public/README.md`
+
+## Second round, after the merge guard's review (November 12)
+The guard found no reason to send the change back and listed four traces, none of which the
+recorder writes today, where the reading was not what the text promised. Three are changed; the
+approach changed for the first two, as the guard proposed: the episode says what the trace shows and
+nothing more.
+
+- **Coins that first appear on a later tick read as -3 collected; `"coins": null` on every row read
+  as a level that started with none.** The collection is now "initial-instances" only when the first
+  row lists at least one coin. Anything else is "unknown" and gives no reading. `coins_collected`
+  also gives no reading when a later tick lists more coins than the first, so it is never negative.
+- **`true` and `false` were accepted as numbers** in a coin and in a view. They are refused, and a
+  coin that is there and malformed is refused even where the collection is unknown.
+- **An identity view after a real one** is kept and counted, as before; the guard called either
+  choice defensible. The docstring now says so and why, and a test holds it.
+
+Run: `python3 -m unittest tests.test_trace_camera_coins`, 33 tests, OK (28 before; each of the
+guard's four traces is a test). The three signals computed again from the 650 kept replays read the
+same on every probe and build as in the table above. The system prompt's SHA-256 is unchanged. The
+full suite on the branch merged with main `6a9516c`: in the pull request.

@@ -12,9 +12,12 @@ its enemies and bullets were only written when there were some, so an empty tick
 none were there, and those collections are "unknown".
 
 Coins and the camera (added November 12, 2026, issue #285). The recorder finds the level's coins once,
-on its first row, and then writes ``coins`` on every row that still has one. So when any row has
-``coins``, a row without it has none left, and the collection is "initial-instances"; when no row
-has it, the trace cannot say whether the level has coins, and every sample's ``coins`` is None. The
+on its first row, and then writes ``coins`` on every row that still has one. The episode says what
+the trace shows and nothing more: the collection is "initial-instances" only when the first row
+lists at least one coin, and then a later row without the key has none left. Anything else (no
+row names coins, the first row does not, or its list is empty or null) cannot say what the level
+started with: the collection is "unknown" and every sample's ``coins`` is None. A coin or a view
+that is there and is not plain numbers is refused either way; true and false are not numbers. The
 camera (``view``) is kept as the recorder wrote it; a sample without one has None.
 """
 from __future__ import annotations
@@ -39,6 +42,22 @@ def _finite(*values) -> bool:
 
 def _sha_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def _plain(*values) -> bool:
+    """Finite numbers, and not booleans (which Python counts as integers)."""
+    return all(not isinstance(v, bool) for v in values) and _finite(*values)
+
+
+def _coins(raw, tick: int) -> list:
+    if not isinstance(raw, (list, tuple)):
+        raise EpisodeError(f"tick {tick}: malformed coins {raw!r}")
+    out = []
+    for item in raw:
+        if not (isinstance(item, (list, tuple)) and len(item) == 2 and _plain(*item)):
+            raise EpisodeError(f"tick {tick}: malformed coins entry {item!r}")
+        out.append([float(item[0]), float(item[1])])
+    return out
 
 
 def _collection(rows: list[dict], key: str, declared: str | None) -> str:
@@ -81,7 +100,8 @@ def normalize(trace: dict, route: dict, *, episode_id: str, trace_bytes: bytes |
         "facing": any("facing" in r for r in rows),
         "enemies": enemies_cap,
         "projectiles": projectiles_cap,
-        "coins": "initial-instances" if any("coins" in r for r in rows) else "unknown",
+        "coins": "initial-instances" if isinstance(rows[0].get("coins"), (list, tuple)) and rows[0]["coins"]
+                 else "unknown",
         "view": any(r.get("view") is not None for r in rows),
     }
     samples = []
@@ -109,16 +129,12 @@ def normalize(trace: dict, route: dict, *, episode_id: str, trace_bytes: bytes |
 
         view = r.get("view")
         if view is not None:
-            if not (isinstance(view, (list, tuple)) and len(view) == 6 and _finite(*view)):
+            if not (isinstance(view, (list, tuple)) and len(view) == 6 and _plain(*view)):
                 raise EpisodeError(f"tick {tick}: malformed view {view!r}")
             view = [float(v) for v in view]
-        coins = None
-        if caps["coins"] == "initial-instances":
-            coins = []
-            for item in r.get("coins") or []:
-                if not (isinstance(item, (list, tuple)) and len(item) == 2 and _finite(*item)):
-                    raise EpisodeError(f"tick {tick}: malformed coins entry {item!r}")
-                coins.append([float(item[0]), float(item[1])])
+        coins = _coins(r["coins"], tick) if r.get("coins") is not None else []   # read, so a bad one is refused
+        if caps["coins"] != "initial-instances":
+            coins = None
         samples.append({"tick": tick, "player": player, "onFloor": on_floor, "facing": facing,
                         "enemies": collection("enemies", enemies_cap),
                         "projectiles": collection("projectiles", projectiles_cap),
