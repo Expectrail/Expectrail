@@ -114,6 +114,81 @@ What the table shows, and what it does not:
 
 Those hand replays were made once and are not kept as tests.
 
+## Reach: routes for what no library probe does
+
+Added November 12, 2026 ([`expectrail/repro/reach.py`](../../../expectrail/repro/reach.py), issue #285 step 3).
+The library never presses two different actions close together, except moving while firing. Reach
+lists every pair of actions in the game's own catalog that no library route uses together and
+makes two short routes for each pair: hold one for half a second and tap the other three times
+meanwhile, and the other way round. On this game the pairs are left with right, left with jump,
+right with jump, and jump with shoot: eight probes of 160 ticks. No model is asked. The rule was
+fixed before any of them was replayed, and is not written for one bug; it was built because
+`no-shooting-in-air` showed the gap, so that defect should be read as one this was developed on.
+
+The bug report only orders the probes (the pair it names comes first) and can add nothing. With
+eight or fewer to make, every report gets the same eight.
+
+```
+python3 -m expectrail.repro reach --report bench/jit/public/no-shooting-in-air/report.txt    # prints the probes; no engine
+python3 -m expectrail.repro visibility --reach --out runs/repro-reach --jobs 2               # replays them; no model, no key
+python3 -m expectrail.repro render bench/jit/public/visibility-reach.json
+```
+
+The same measurement as above, on the eight reach probes in place of the library's 25:
+
+<!-- reach:start -->
+24 defects, 8 probes, Godot 4.7.2-stable, no model. A signal moves: 14. The record differs and no signal does: 0. The record is the same on every probe: 10.
+
+| Defect | Family | Author expected | Measured | Signals that moved: largest move, clean to defect (probes) | Record fields that differ |
+| --- | --- | --- | --- | --- | --- |
+| `air-jump` | movement-input | both | signal | `air_jumps` 2 to 3 (2), `airborne_ticks` 61 to 89 (2), `max_rise_px` 108.17 to 160.58 (1), `player_dx_px` 204.39 to 273.8 (1) | `onFloor`, `player`, `view` |
+| `gun-cooldown` | timing-cooldowns | both | signal | `min_projectile_interval_ticks` no reading to 16 (1), `projectile_count` 1 to 3 (1) | `projectiles` |
+| `body-flip` | movement-input | both | signal | `facing_flips` 1 to 79 (3), `facing_mismatch_fraction` 0 to 0.67 (3) | `facing`, `player` |
+| `enemy-ledge` | spawning-enemies | both | signal | `min_enemy_extent_px` 11.92 to 28.97 (8) | `enemies`, `projectiles` |
+| `bullet-through-enemy` | collision-physics | both | signal | `min_enemy_extent_px` 11.92 to 29.15 (1) | `enemies`, `projectiles` |
+| `platforms-not-solid` | collision-physics | both | signal | `air_jumps` 1 to 0 (2), `airborne_ticks` 82 to 64 (2), `max_rise_px` 108.17 to 106.8 (1) | `onFloor`, `player`, `view` |
+| `floaty-fall` | collision-physics | both | signal | `airborne_ticks` 64 to 83 (6) | `onFloor`, `player`, `view` |
+| `jump-always-full` | movement-input | both | signal | `air_jumps` 2 to 1 (1), `airborne_ticks` 61 to 95 (3), `max_rise_px` 108.17 to 199.05 (2) | `onFloor`, `player`, `view` |
+| `slow-left` | movement-input | both | signal | `player_dx_px` -196.67 to -88.14 (2) | `player`, `view` |
+| `slides-after-stop` | movement-input | both | signal | `air_jumps` 1 to 0 (1), `airborne_ticks` 82 to 50 (1), `player_dx_px` 128 to 301.62 (5) | `onFloor`, `player`, `view` |
+| `no-shooting-in-air` | movement-input | both | signal | `projectile_count` 1 to 0 (1) | `projectiles` |
+| `jump-needs-rest` | movement-input | both | signal | `air_jumps` 2 to 0 (2), `airborne_ticks` 70 to 1 (2), `max_rise_px` 108.17 to 0 (2), `player_dx_px` 204.39 to 150 (2) | `onFloor`, `player`, `view` |
+| `double-jump-once` | state-counters | both | none | none | none |
+| `coin-stays` | state-counters | both | none | none | none |
+| `coin-counts-twice` | state-counters | screen | none | none | none |
+| `coin-counter-stuck` | hud-text | screen | none | none | none |
+| `gun-cooldown-long` | timing-cooldowns | both | none | none | none |
+| `enemy-missing` | spawning-enemies | both | signal | `enemies_at_end` 3 to 2 (8) | `enemies`, `projectiles` |
+| `enemy-fast-left` | spawning-enemies | both | none | none | none |
+| `enemy-slides-when-shot` | spawning-enemies | both | signal | `min_enemy_extent_px` 11.92 to 29.15 (1) | `enemies`, `projectiles` |
+| `enemy-walks-backwards` | visibility-rendering | screen | none | none | none |
+| `camera-stops-right` | camera-viewport | both | none | none | none |
+| `camera-cut-top` | camera-viewport | both | none | none | none |
+| `bullet-behind-scenery` | layering-draw-order | screen | none | none | none |
+<!-- reach:end -->
+
+The record is [`visibility-reach.json`](visibility-reach.json), made in a cloud container on
+November 12, 2026, with the pinned Godot 4.7.2 and no model, with four builds replaying at once on
+two cores. It was not run in CI. Nothing differed between the two replays of the clean game, and no
+replay had to be made again.
+
+What it shows, and what it does not:
+
+- **`no-shooting-in-air` is reached.** On `reach-jump-with-shoot` the clean game fires 1 bullet and
+  the defect build 0. With the library's 25 probes and these 8 together, a signal moves on 18 of
+  the 24 defects where it was 17.
+- **It adds one defect, not more.** The other 13 defects a reach probe shows are ones the library
+  already showed. Ten are unchanged on every reach probe: the five the library also leaves
+  unchanged less `no-shooting-in-air`, both camera defects, and four the library does show
+  (`double-jump-once`, `coin-stays`, `gun-cooldown-long`, `enemy-fast-left`). Reach probes are
+  short, and add to the library; they do not replace it.
+- **They are not offered to the generator.** Generated checks still draw on the library alone, so
+  a live run on this bench, the baseline included, is the same with or without this. Offering them
+  is a later change, to be made after the baseline is recorded.
+- **It is not a reproduction rate**, for the same reasons as the table above.
+- **A reach probe is a route.** This table reads the engine's record along it because that needs
+  no model. The same route can be captured with frames for a visual observer; none was here.
+
 ## What changed while building it
 
 Four defects in the first draft were replaced after replaying them: two camera defects edited

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://expectrail.tech/contracts/repro-visibility.v1.schema.json",
   "title": "expectrail.repro-visibility/v1",
-  "description": "What each defect of the public reproduction bench changes in the engine's record, on the library probes generated checks may use today. Made by replaying the clean game and each defect build with no model. It says what those probes can see and is never a reproduction rate: on a library probe a signal must move for a generated check to fail on the defect, and that is not enough. The model may also propose probes of its own, which this does not replay. Written and read by expectrail.repro.visibility.",
+  "description": "What each defect of the public reproduction bench changes in the engine's record, on the probes the record names: the library probes generated checks may use today (bench/jit/public/visibility.json), or the reach probes of expectrail.repro.reach, which generated checks are not offered yet (bench/jit/public/visibility-reach.json). Made by replaying the clean game and each defect build with no model. It says what those probes can see and is never a reproduction rate: on a probe a signal must move for a generated check to fail on the defect, and that is not enough. The model may also propose probes of its own, which this does not replay. Written and read by expectrail.repro.visibility.",
   "type": "object",
   "additionalProperties": false,
   "required": ["format", "benchSha256", "engine", "probes", "replaysPerBuild", "engineRetries", "unstable", "defects", "totals"],
