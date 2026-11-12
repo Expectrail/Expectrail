@@ -36,19 +36,22 @@ bundled game.
 **November 12, 2026, after two fixes: both projects, unchanged, are needs-review.** No wrong reject
 is left, and neither project is accepted.
 
-[Run 43278306020](https://github.com/Expectrail/Expectrail/actions/runs/43278306020/job/131392534912),
+[Run 43289338556](https://github.com/Expectrail/Expectrail/actions/runs/43289338556/job/131431091194),
 on the pull request for #348 merged with main (which has #346), every replay in the sandbox:
 
 | Project | Verdict | Seconds | What the check said |
 | --- | --- | --- | --- |
-| kinematic-character | needs-review (exit 2) | 12.7 | "no violation in 99 frames judged, but an object was not found in 21 frames (first 0); a missing object is never a pass" |
-| dodge-the-creeps | needs-review (exit 2) | 12.1 | "no violation in 0 frames judged, but an object was not found in 120 frames (first 0); a missing object is never a pass" |
+| kinematic-character | needs-review (exit 2) | 9.2 | "no violation in 77 frames judged, but an object was not found in 43 frames (first 0); a missing object is never a pass" |
+| dodge-the-creeps | needs-review (exit 2) | 11.9 | "no violation in 0 frames judged, but an object was not found in 120 frames (first 0); a missing object is never a pass" |
 
 - Dodge the Creeps has no ground, and the check now says it cannot tell (#346).
-- On the platformer the player is judged above its ground in the 99 frames that have a ground
-  line, the frames beside the step included (#348). In 21 frames there is no ground line: the
-  player starts in the air (at tick 0 it is not on a floor and nothing is logged under it). Whether
-  the other frames are in the air or on a platform that is a body and not a tile was not looked at.
+- On the platformer the player is judged above its ground in the 77 frames that have a ground
+  line, the frames beside the step included: the ground's edge columns are now the player's own
+  width, 14 px, and not the bundled robot's (#348). In 43 frames nothing is logged under the
+  player. It starts in the air; the rest were not looked at (in the air, or on a platform that is
+  a body and not a tile).
+- An earlier head of the same pull request, with a rule that was withdrawn, gave needs-review with
+  99 frames judged ([run 43278306020](https://github.com/Expectrail/Expectrail/actions/runs/43278306020/job/131392534912)).
 - Needs-review is the honest answer for both and it is not a pass: no check written and approved
   for either game exists, a broken version of either has not been tried, and no vision model was
   asked. No outside project counts as verified.
