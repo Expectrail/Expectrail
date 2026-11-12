@@ -1,0 +1,324 @@
+{
+  "base": "clean",
+  "tolerance": 6.0,
+  "lift": 14.0,
+  "results": [
+    {
+      "run": "missing-texture_v1",
+      "result": "fail",
+      "reason": "1 of 13 compared frames differ from the unchanged game, first frame 100: width 113 against 58.5 unchanged; height 91 against 60.5 unchanged; below 59 against 28 unchanged",
+      "judged": 13,
+      "in": 12,
+      "out": 1,
+      "moved": 0,
+      "no-base": 0,
+      "no-answer": 0,
+      "not-asked": 0,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 10,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 20,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 30,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 40,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 50,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 60,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 70,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 80,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 90,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 100,
+          "state": "out",
+          "why": [
+            "width 113 against 58.5 unchanged",
+            "height 91 against 60.5 unchanged",
+            "below 59 against 28 unchanged"
+          ]
+        },
+        {
+          "frame": 110,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 119,
+          "state": "in",
+          "why": []
+        }
+      ]
+    },
+    {
+      "run": "layering_v1",
+      "result": "fail",
+      "reason": "8 of 13 compared frames differ from the unchanged game, first frame 0: height 28 against 59 unchanged; above 8 against 29 unchanged; below 20 against 30 unchanged",
+      "judged": 13,
+      "in": 5,
+      "out": 8,
+      "moved": 0,
+      "no-base": 0,
+      "no-answer": 0,
+      "not-asked": 0,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "out",
+          "why": [
+            "height 28 against 59 unchanged",
+            "above 8 against 29 unchanged",
+            "below 20 against 30 unchanged"
+          ]
+        },
+        {
+          "frame": 10,
+          "state": "out",
+          "why": [
+            "height 16.5 against 58 unchanged",
+            "above 6 against 28.5 unchanged",
+            "below 10.5 against 29.5 unchanged"
+          ]
+        },
+        {
+          "frame": 20,
+          "state": "out",
+          "why": [
+            "width 114 against 48.5 unchanged",
+            "height 122 against 107.5 unchanged",
+            "above 38 against 26.5 unchanged"
+          ]
+        },
+        {
+          "frame": 30,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 40,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 50,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 60,
+          "state": "out",
+          "why": [
+            "width 19.5 against 59.5 unchanged",
+            "height 18 against 61 unchanged",
+            "above 6 against 36.5 unchanged",
+            "below 12 against 24.5 unchanged"
+          ]
+        },
+        {
+          "frame": 70,
+          "state": "out",
+          "why": [
+            "width 55 against 43 unchanged",
+            "height 24 against 57.5 unchanged",
+            "above 9 against 28 unchanged",
+            "below 15 against 29.5 unchanged"
+          ]
+        },
+        {
+          "frame": 80,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 90,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 100,
+          "state": "out",
+          "why": [
+            "width 155.5 against 58.5 unchanged",
+            "height 123.5 against 60.5 unchanged",
+            "above 64 against 32.5 unchanged",
+            "below 59.5 against 28 unchanged"
+          ]
+        },
+        {
+          "frame": 110,
+          "state": "out",
+          "why": [
+            "height 30.5 against 53.5 unchanged",
+            "above 12.5 against 28.5 unchanged",
+            "below 18 against 25 unchanged"
+          ]
+        },
+        {
+          "frame": 119,
+          "state": "out",
+          "why": [
+            "width 83 against 31 unchanged",
+            "height 25.5 against 57 unchanged",
+            "above 7.5 against 27 unchanged",
+            "below 18 against 30 unchanged"
+          ]
+        }
+      ]
+    },
+    {
+      "run": "sinking_v2",
+      "result": "fail",
+      "reason": "13 of 13 compared frames differ from the unchanged game, first frame 0: above 3 against 29 unchanged; below 56 against 30 unchanged",
+      "judged": 13,
+      "in": 0,
+      "out": 13,
+      "moved": 0,
+      "no-base": 0,
+      "no-answer": 0,
+      "not-asked": 0,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "out",
+          "why": [
+            "above 3 against 29 unchanged",
+            "below 56 against 30 unchanged"
+          ]
+        },
+        {
+          "frame": 10,
+          "state": "out",
+          "why": [
+            "above 2.5 against 28.5 unchanged",
+            "below 55 against 29.5 unchanged"
+          ]
+        },
+        {
+          "frame": 20,
+          "state": "out",
+          "why": [
+            "height 88 against 107.5 unchanged",
+            "above 4 against 26.5 unchanged"
+          ]
+        },
+        {
+          "frame": 30,
+          "state": "out",
+          "why": [
+            "above 6.5 against 32 unchanged",
+            "below 54.5 against 29 unchanged"
+          ]
+        },
+        {
+          "frame": 40,
+          "state": "out",
+          "why": [
+            "above 2 against 26 unchanged",
+            "below 57.5 against 37 unchanged"
+          ]
+        },
+        {
+          "frame": 50,
+          "state": "out",
+          "why": [
+            "above 7 against 33 unchanged",
+            "below 54.5 against 28.5 unchanged"
+          ]
+        },
+        {
+          "frame": 60,
+          "state": "out",
+          "why": [
+            "above 10 against 36.5 unchanged",
+            "below 50.5 against 24.5 unchanged"
+          ]
+        },
+        {
+          "frame": 70,
+          "state": "out",
+          "why": [
+            "above 8 against 28 unchanged",
+            "below 55.5 against 29.5 unchanged"
+          ]
+        },
+        {
+          "frame": 80,
+          "state": "out",
+          "why": [
+            "above 1.5 against 27 unchanged",
+            "below 62 against 36 unchanged"
+          ]
+        },
+        {
+          "frame": 90,
+          "state": "out",
+          "why": [
+            "above 7.5 against 34.5 unchanged",
+            "below 53.5 against 27 unchanged"
+          ]
+        },
+        {
+          "frame": 100,
+          "state": "out",
+          "why": [
+            "width 112.5 against 58.5 unchanged",
+            "above 6.5 against 32.5 unchanged",
+            "below 59 against 28 unchanged"
+          ]
+        },
+        {
+          "frame": 110,
+          "state": "out",
+          "why": [
+            "above 2.5 against 28.5 unchanged",
+            "below 50.5 against 25 unchanged"
+          ]
+        },
+        {
+          "frame": 119,
+          "state": "out",
+          "why": [
+            "above 1.5 against 27 unchanged",
+            "below 56 against 30 unchanged"
+          ]
+        }
+      ]
+    }
+  ]
+}

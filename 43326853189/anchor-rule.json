@@ -1,0 +1,415 @@
+{
+  "calibration": {
+    "from": "clean",
+    "frames": [
+      0,
+      10,
+      20,
+      30,
+      40,
+      50,
+      60,
+      70,
+      80,
+      90,
+      100,
+      110,
+      119
+    ],
+    "pad": 2.0,
+    "lift": 14.0,
+    "ranges": {
+      "width": [
+        29.0,
+        61.5
+      ],
+      "height": [
+        51.5,
+        109.5
+      ],
+      "above": [
+        24.0,
+        38.5
+      ],
+      "below": [
+        22.5,
+        83.0
+      ]
+    }
+  },
+  "results": [
+    {
+      "run": "clean",
+      "result": "pass",
+      "reason": "all 13 judged frames are inside the clean range",
+      "judged": 13,
+      "in": 13,
+      "out": 0,
+      "no-answer": 0,
+      "not-asked": 0,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 10,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 20,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 30,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 40,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 50,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 60,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 70,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 80,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 90,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 100,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 110,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 119,
+          "state": "in",
+          "why": []
+        }
+      ]
+    },
+    {
+      "run": "missing-texture_v1",
+      "result": "fail",
+      "reason": "1 of 13 judged frames are outside the clean range, first frame 100: width 113 (clean 29 to 61.5)",
+      "judged": 13,
+      "in": 12,
+      "out": 1,
+      "no-answer": 0,
+      "not-asked": 0,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 10,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 20,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 30,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 40,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 50,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 60,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 70,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 80,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 90,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 100,
+          "state": "out",
+          "why": [
+            "width 113 (clean 29 to 61.5)"
+          ]
+        },
+        {
+          "frame": 110,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 119,
+          "state": "in",
+          "why": []
+        }
+      ]
+    },
+    {
+      "run": "layering_v1",
+      "result": "fail",
+      "reason": "8 of 13 judged frames are outside the clean range, first frame 0: height 28 (clean 51.5 to 109.5); above 8 (clean 24 to 38.5); below 20 (clean 22.5 to 83)",
+      "judged": 13,
+      "in": 5,
+      "out": 8,
+      "no-answer": 0,
+      "not-asked": 0,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "out",
+          "why": [
+            "height 28 (clean 51.5 to 109.5)",
+            "above 8 (clean 24 to 38.5)",
+            "below 20 (clean 22.5 to 83)"
+          ]
+        },
+        {
+          "frame": 10,
+          "state": "out",
+          "why": [
+            "height 16.5 (clean 51.5 to 109.5)",
+            "above 6 (clean 24 to 38.5)",
+            "below 10.5 (clean 22.5 to 83)"
+          ]
+        },
+        {
+          "frame": 20,
+          "state": "out",
+          "why": [
+            "width 114 (clean 29 to 61.5)",
+            "height 122 (clean 51.5 to 109.5)",
+            "below 84 (clean 22.5 to 83)"
+          ]
+        },
+        {
+          "frame": 30,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 40,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 50,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 60,
+          "state": "out",
+          "why": [
+            "width 19.5 (clean 29 to 61.5)",
+            "height 18 (clean 51.5 to 109.5)",
+            "above 6 (clean 24 to 38.5)",
+            "below 12 (clean 22.5 to 83)"
+          ]
+        },
+        {
+          "frame": 70,
+          "state": "out",
+          "why": [
+            "height 24 (clean 51.5 to 109.5)",
+            "above 9 (clean 24 to 38.5)",
+            "below 15 (clean 22.5 to 83)"
+          ]
+        },
+        {
+          "frame": 80,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 90,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 100,
+          "state": "out",
+          "why": [
+            "width 155.5 (clean 29 to 61.5)",
+            "height 123.5 (clean 51.5 to 109.5)",
+            "above 64 (clean 24 to 38.5)"
+          ]
+        },
+        {
+          "frame": 110,
+          "state": "out",
+          "why": [
+            "height 30.5 (clean 51.5 to 109.5)",
+            "above 12.5 (clean 24 to 38.5)",
+            "below 18 (clean 22.5 to 83)"
+          ]
+        },
+        {
+          "frame": 119,
+          "state": "out",
+          "why": [
+            "width 83 (clean 29 to 61.5)",
+            "height 25.5 (clean 51.5 to 109.5)",
+            "above 7.5 (clean 24 to 38.5)",
+            "below 18 (clean 22.5 to 83)"
+          ]
+        }
+      ]
+    },
+    {
+      "run": "sinking_v2",
+      "result": "fail",
+      "reason": "13 of 13 judged frames are outside the clean range, first frame 0: above 3 (clean 24 to 38.5)",
+      "judged": 13,
+      "in": 0,
+      "out": 13,
+      "no-answer": 0,
+      "not-asked": 0,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "out",
+          "why": [
+            "above 3 (clean 24 to 38.5)"
+          ]
+        },
+        {
+          "frame": 10,
+          "state": "out",
+          "why": [
+            "above 2.5 (clean 24 to 38.5)"
+          ]
+        },
+        {
+          "frame": 20,
+          "state": "out",
+          "why": [
+            "above 4 (clean 24 to 38.5)",
+            "below 84 (clean 22.5 to 83)"
+          ]
+        },
+        {
+          "frame": 30,
+          "state": "out",
+          "why": [
+            "width 62.5 (clean 29 to 61.5)",
+            "above 6.5 (clean 24 to 38.5)"
+          ]
+        },
+        {
+          "frame": 40,
+          "state": "out",
+          "why": [
+            "above 2 (clean 24 to 38.5)"
+          ]
+        },
+        {
+          "frame": 50,
+          "state": "out",
+          "why": [
+            "above 7 (clean 24 to 38.5)"
+          ]
+        },
+        {
+          "frame": 60,
+          "state": "out",
+          "why": [
+            "above 10 (clean 24 to 38.5)"
+          ]
+        },
+        {
+          "frame": 70,
+          "state": "out",
+          "why": [
+            "above 8 (clean 24 to 38.5)"
+          ]
+        },
+        {
+          "frame": 80,
+          "state": "out",
+          "why": [
+            "above 1.5 (clean 24 to 38.5)"
+          ]
+        },
+        {
+          "frame": 90,
+          "state": "out",
+          "why": [
+            "above 7.5 (clean 24 to 38.5)"
+          ]
+        },
+        {
+          "frame": 100,
+          "state": "out",
+          "why": [
+            "width 112.5 (clean 29 to 61.5)",
+            "above 6.5 (clean 24 to 38.5)"
+          ]
+        },
+        {
+          "frame": 110,
+          "state": "out",
+          "why": [
+            "above 2.5 (clean 24 to 38.5)"
+          ]
+        },
+        {
+          "frame": 119,
+          "state": "out",
+          "why": [
+            "above 1.5 (clean 24 to 38.5)"
+          ]
+        }
+      ]
+    }
+  ]
+}
