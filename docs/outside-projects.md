@@ -33,8 +33,40 @@ bundled game.
 
 ## Results
 
-None recorded yet. The first run is the one on the pull request that added this page; its numbers
-go here with the run's link, and nothing goes here without one.
+**November 12, 2026: both projects, unchanged, are rejected.** These are clean projects from the
+Godot organisation with no change made to them. A reject of a clean game is a wrong verdict, and
+it is the first thing Expectrail said about a game the team did not write.
+
+[Run 43265350277](https://github.com/Expectrail/Expectrail/actions/runs/43265350277/job/131347312568),
+every replay in the replay sandbox, the one approved check the repository has (written for the
+bundled game, copied unchanged), one route of ours for each project:
+
+| Project | Verdict | Seconds | What the check said |
+| --- | --- | --- | --- |
+| kinematic-character | reject (exit 1) | 13.4 | "player is 70.017px past the boundary (above 272.5, tolerance 20) (first at frame 92, 28 frames)" |
+| dodge-the-creeps | reject (exit 1) | 12.4 | "player is 450px past the boundary (above 0, tolerance 20) (first at frame 10, 110 frames)" |
+
+The first run, [43264589901](https://github.com/Expectrail/Expectrail/actions/runs/43264589901/job/131344660031),
+gave the same two verdicts in 7.9 and 9.1 seconds.
+
+What this shows, and what it does not:
+
+- **Dodge the Creeps has no ground, and the check read "no ground" as a ground at 0.** A measurement
+  that cannot be made must be needs-review. Here it became a boundary, and a clean game was
+  rejected on it. That is a fault in the verifier, whatever game it is pointed at.
+- **The platformer's ground line is wrong for that level.** The player is reported 70 px below a
+  ground at 272.5 while walking and jumping on a level that has moving and one-way platforms. Why
+  is not known yet: the record was not read beyond this line.
+- **The check was never approved for these games.** It was written and approved for the bundled
+  game, and the trial copies it unchanged, as the tests of a second project do. A stranger's
+  project has no approved check at all, and the right answer for it today is needs-review ("no
+  checks ran"). So this run is not what a stranger would see first; it is what happens when the
+  only check the product has meets a game it was not written for. It rejects where it should say
+  it cannot tell.
+- Both games started, were driven by a route and replayed inside the sandbox in under 15 seconds.
+  Dodge the Creeps starts from a button's shortcut, which could not be pressed before #338.
+- Not shown: a broken version of either project being caught, a harmless change being accepted, or
+  anything about the time a person would need. No outside project counts as verified.
 
 ## What reading the projects already showed
 
