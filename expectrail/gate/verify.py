@@ -58,6 +58,7 @@ EXIT = {"accept": 0, "reject": 1, "needs-review": 2}
 MAX_SPECS = 64
 MAX_ROUTES = 64
 MAX_REASONS = 20
+MAX_UNLISTED = 5   # folders that cannot be listed, named one by one in the reasons
 MAX_REASON = 300
 SPEC_CAP = 256 * 1024
 ROUTE_CAP = 1024 * 1024
@@ -146,7 +147,7 @@ def segment_matches(name: str, part: str) -> bool:
     return fnmatch.fnmatchcase(name, part)
 
 
-def pattern_matches(root: Path, pattern: str) -> set[Path]:
+def pattern_matches(root: Path, pattern: str, unlisted: set[Path] | None = None) -> set[Path]:
     """Every path below ``root`` that a route pattern names. The gate's own matcher, so the files
     that judge a change are the same on every Python: ``Path.glob`` gives a pattern that ends in
     ``**`` the files below on Python 3.13 and none of them on 3.12.
@@ -157,19 +158,30 @@ def pattern_matches(root: Path, pattern: str) -> set[Path]:
       below as well. It never passes through a link to a folder.
     - Any other part matches one name with ``segment_matches``. Such a part may name a link to a
       folder and continue below it (the caller keeps a file only when it is inside the checkout).
-    - A folder that cannot be listed has nothing in it.
+    - A folder that cannot be listed is never passed over in silence. A part that is a plain name
+      (no ``*``, ``?`` or ``[``) needs no listing: the one name is tried, so a route named in full
+      is found in a folder that can be entered but not listed. Any other part, and ``**``, cannot
+      know what is there: the folder is added to ``unlisted``, for the caller to report.
     """
     parts = [p for p in pattern.split("/") if p not in ("", ".")]
     found: set[Path] = set()
     if not parts:
         return found
 
-    def listing(folder: str) -> list[os.DirEntry]:
+    def listing(folder: str) -> list[os.DirEntry] | None:
         try:
             with os.scandir(folder) as entries:
                 return sorted(entries, key=lambda e: e.name)
         except OSError:
+            return None
+
+    def listed(folder: str) -> list[os.DirEntry]:
+        entries = listing(folder)
+        if entries is None:
+            if unlisted is not None:
+                unlisted.add(Path(folder))
             return []
+        return entries
 
     def is_folder(entry: os.DirEntry, through_links: bool) -> bool:
         try:
@@ -188,15 +200,29 @@ def pattern_matches(root: Path, pattern: str) -> set[Path]:
         seen.add(at)
         folder, i = at
         if i > last:  # only after a last "**": everything below, and no link to a folder is entered
-            for entry in listing(folder):
+            for entry in listed(folder):
                 found.add(Path(entry.path))
                 if is_folder(entry, False):
                     work.append((entry.path, i))
         elif parts[i] == "**":
             work.append((folder, i + 1))
-            work.extend((entry.path, i) for entry in listing(folder) if is_folder(entry, False))
+            work.extend((entry.path, i) for entry in listed(folder) if is_folder(entry, False))
         else:
-            for entry in listing(folder):
+            entries = listing(folder)
+            if entries is None:
+                if any(c in parts[i] for c in "*?["):
+                    listed(folder)  # recorded: what the part matches in there cannot be known
+                    continue
+                # A plain name in a folder that cannot be listed: go to the name. (Here the file
+                # system compares the name, so one that ignores case ignores it for this part.)
+                named = os.path.join(folder, parts[i])
+                if i == last:
+                    if os.path.lexists(named):
+                        found.add(Path(named))
+                elif os.path.isdir(named):
+                    work.append((named, i + 1))
+                continue
+            for entry in entries:
                 if not segment_matches(entry.name, parts[i]):
                     continue
                 if i == last:
@@ -206,11 +232,12 @@ def pattern_matches(root: Path, pattern: str) -> set[Path]:
     return found
 
 
-def find_routes(root: Path, patterns: list[str]) -> list[Path]:
-    """The route files the patterns name: regular files inside the checkout, never a link."""
+def find_routes(root: Path, patterns: list[str], unlisted: set[Path] | None = None) -> list[Path]:
+    """The route files the patterns name: regular files inside the checkout, never a link. Folders
+    that could not be listed while looking are added to ``unlisted``."""
     files: set[Path] = set()
     for pattern in patterns:
-        for match in pattern_matches(root, pattern):
+        for match in pattern_matches(root, pattern, unlisted):
             if match.is_file() and not match.is_symlink() and _inside(root, match):
                 files.add(match)
     return sorted(files)
@@ -315,9 +342,17 @@ def read_checks(root: Path, specs: str, patterns: list[str], checks_from: str = 
             approved = []
 
     # Routes: [(name, bytes, sha256)] and problems, from every matching file that is not a link.
-    route_files = find_routes(root, patterns)
+    unlisted: set[Path] = set()
+    route_files = find_routes(root, patterns, unlisted)
     if not route_files:
         problems.append(f"no route files match {', '.join(patterns)} ({checks_from})")
+    # Never silence: a route in a folder the gate could not list would judge nothing and nobody
+    # would know. Named, so the result is needs-review and says where.
+    for folder in sorted(unlisted)[:MAX_UNLISTED]:
+        shown = folder.relative_to(root).as_posix() if folder != root else "(the checkout itself)"
+        problems.append(f"cannot list the folder {shown} while looking for routes ({checks_from})")
+    if len(unlisted) > MAX_UNLISTED:
+        problems.append(f"and {len(unlisted) - MAX_UNLISTED} more folders that cannot be listed ({checks_from})")
     route_problems: list[str] = []
     routes: list[tuple[str, bytes, str]] = []
     schema = _schema("route")
