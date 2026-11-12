@@ -65,8 +65,9 @@ that off first (`kernel.apparmor_restrict_unprivileged_userns=0`), as the fixer'
 - The process limit (4,096) is the kernel's per-user count, which includes that user's processes
   outside the sandbox. A user already running more than that gets "could not start a sandbox" without
   the limit being named; `auto` records it and `require` refuses.
-- The fixer's sandbox (`agents/sandbox.py`) is a separate one and still shares its starter's terminal
-  (#309).
+- The fixer's sandbox (`agents/sandbox.py`) is a separate one. Since November 12 it also runs in a
+  session of its own with no input, so the agent cannot open the terminal the loop was started from
+  (#309); it has none of this sandbox's other limits.
 - Godot only. The Unity player and the web replay are not sandboxed yet.
 - No verdict is graded `isolated` by it. The gate records it and can require it (below); the grade
   also needs a separate trusted job that judges and signs (#254, #255).
