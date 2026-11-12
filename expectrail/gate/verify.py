@@ -527,8 +527,14 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
              base: Path | None = None, heldout: Path | None = None, pr: dict | None = None,
              expectrail_commit: str | None = None, replay: Replay = harness_replay,
              generated_checks: Path | None = None, require_sandbox: bool = False,
-             checks: Checks | None = None) -> dict:
+             checks: Checks | None = None, intent: str = "none") -> dict:
     """Run the gate and write the artifact in ``out``; returns the findings record.
+
+    ``intent`` is what the change says it is for (``fix``, ``change`` or ``none``; issue #284). For
+    ``fix`` an accept also needs a check that failed on the base and passes on the head. Each such
+    check is replayed twice more on each side, and only one that fails on the base and passes on the
+    head all three times demonstrates the repair; with none the decision is needs-review. For
+    ``change`` and ``none`` nothing more is replayed and the rule is as it was.
 
     ``checks`` is the checks as a caller has already read them (``read_checks``). The gate then
     judges with exactly those and reads no spec or route file itself. Without it the gate reads them
@@ -543,6 +549,8 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     ``generated_checks`` is the advisory block a check-generation step wrote (docs/jit.md). It is read
     as untrusted data after the decision is made, and nothing in it can change the decision."""
     repo = repo.resolve()
+    if intent not in rec.INTENTS:
+        raise ConfigError("the intent must be one of: " + ", ".join(rec.INTENTS))
     problems: list[str] = []
     if require_sandbox and replay is harness_replay:
         from harness import sandbox as box
@@ -664,8 +672,25 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     afters = [c["after"] for c in checks]
     counts = {"checks": len(afters), "passed": afters.count("pass"), "failed": afters.count("fail"),
               "needsReview": len(afters) - afters.count("pass") - afters.count("fail")}
+    repair = None
+    if intent == "fix":
+        # A check that failed on the base and passes on the head may demonstrate the repair. One
+        # failure on the base could be a flaky check, so its route is replayed again on both sides
+        # until each side has REPAIR_RUNS results; only a row that fails every time on the base and
+        # passes every time on the head counts (rec.row_counts). Nothing else is replayed again.
+        claimed = [c for c in checks if c["comparison"] == "REPAIRED"]
+        again = [r for r in route_list if r[0] in {c["route"] for c in claimed}]
+        runs = {(c["spec"], c["route"]): {"base": [c["before"]], "head": [c["after"]]} for c in claimed}
+        for n in range(2, rec.REPAIR_RUNS + 1):
+            for side, folder in (("base", base_game), ("head", head_game)):
+                more = judge_arm(folder, again, spec_docs, work / f"{side}-run{n}", replay, label=side) if again else {}
+                for key, kept in runs.items():
+                    kept[side].append(more[key]["result"])
+        repair = rec.repair_block([{"spec": c["spec"], "route": c["route"], **runs[(c["spec"], c["route"])]}
+                                   for c in claimed])
     isolation = rec.isolation_summary(accounts, require_sandbox)
-    decision, reasons = rec.decide(counts, held, isolation, check_problems)
+    decision, reasons = rec.decide(counts, held, isolation, check_problems, intent=intent, repair=repair,
+                                   base_judged=any(c["before"] is not None for c in checks))
     if checks_from == "base" and (changed["specs"] or changed["routes"]):
         reasons.append(f"this change edits {changed['specs']} spec and {changed['routes']} route files; "
                        "they judge changes once it merges")
@@ -683,6 +708,10 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         "specs": [{"id": s["id"], "sha256": digest(s), "instruction": _clip(s["instruction"])} for s in spec_docs],
         "drafts": drafts,
         "checkProblems": check_problems,
+        # Written only when something was declared, so a record of an undeclared change is the record
+        # it was before the field existed and a reader older than the field still reads it.
+        **({"intent": intent} if intent != "none" else {}),
+        **({"repair": repair} if repair is not None else {}),
         # The record lists the routes that were judged, so its checks are every spec on every route.
         "routes": [{"name": n, "sha256": sha} for n, _p, sha in route_list] if head else [],
         "counts": counts,
@@ -727,11 +756,14 @@ def read_generated(path: Path) -> dict:
 
 
 def stopped_record(reason: str, *, pr: dict | None, game: str | None, checks_from: str,
-                   expectrail_commit: str | None, require_sandbox: bool = False) -> dict:
-    """A valid record for a run that could not finish: needs review, and why."""
+                   expectrail_commit: str | None, require_sandbox: bool = False, intent: str = "none") -> dict:
+    """A valid record for a run that could not finish: needs review, and why. An intent that is not
+    one of the three is recorded as ``fix``, the stricter reading; the reason given says what was wrong."""
     held = {"status": "not-used", **HELD_ZERO}
     counts = {"checks": 0, "passed": 0, "failed": 0, "needsReview": 0}
-    decision, reasons = rec.decide(counts, held)
+    intent = intent if intent in rec.INTENTS else "fix"
+    repair = rec.repair_block([]) if intent == "fix" else None
+    decision, reasons = rec.decide(counts, held, intent=intent, repair=repair, base_judged=False)
     try:
         game_path = safe_relative(game, "game-path", root_ok=True)
     except ConfigError:
@@ -740,6 +772,7 @@ def stopped_record(reason: str, *, pr: dict | None, game: str | None, checks_fro
         "format": rec.FORMAT, "decision": decision, "reasons": [_clip(reason)] + reasons, "adapter": "godot",
         "pullRequest": pr, "game": {"path": game_path, "headTree": None, "baseTree": None},
         "checksFrom": checks_from, "checksChanged": {"specs": 0, "routes": 0}, "specs": [], "drafts": 0, "checkProblems": 0,
+        **({"intent": intent} if intent != "none" else {}), **({"repair": repair} if repair is not None else {}),
         "routes": [], "counts": counts, "checks": [], "findings": [], "heldOut": held,
         "isolation": rec.isolation_summary([], require_sandbox), "reviewPage": None,
         "expectrail": {"version": __version__,
@@ -779,6 +812,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--require-sandbox", action="store_true",
                    help="refuse to replay the game outside the replay sandbox (docs/replay-sandbox.md): "
                         "where bubblewrap cannot run, nothing is replayed and the decision is needs-review")
+    p.add_argument("--intent", default="none",
+                   help="what the change says it is for: fix, change or none (default). A fix is accepted only "
+                        "when a check failed before the change and passes after it, three times of three "
+                        "(docs/ci-gate.md); anything else typed here is read as fix, the stricter path")
     args = p.parse_args(argv)
     out = args.out.resolve()
     if out.exists() and any(out.iterdir()):
@@ -796,16 +833,16 @@ def main(argv: list[str] | None = None) -> int:
         document = run_gate(repo=args.repo, game=args.game, routes=re.split(r"[\s,]+", args.routes),
                             specs=args.specs, out=out, work=work, base=args.base, heldout=args.heldout, pr=pr,
                             expectrail_commit=commit, generated_checks=args.generated_checks,
-                            require_sandbox=args.require_sandbox)
+                            require_sandbox=args.require_sandbox, intent=args.intent)
     except ConfigError as exc:
         document = stopped_record(f"the gate's inputs cannot be used: {exc}", pr=pr, game=args.game,
                                   checks_from=checks_from, expectrail_commit=commit,
-                                  require_sandbox=args.require_sandbox)
+                                  require_sandbox=args.require_sandbox, intent=args.intent)
     except Exception as exc:  # noqa: BLE001 - a crash still leaves a record, so the comment says so
         traceback.print_exc()
         document = stopped_record(f"the gate stopped ({type(exc).__name__}); see the verify job's log", pr=pr,
                                   game=args.game, checks_from=checks_from, expectrail_commit=commit,
-                                  require_sandbox=args.require_sandbox)
+                                  require_sandbox=args.require_sandbox, intent=args.intent)
     if not (out / "findings.json").is_file():
         out.mkdir(parents=True, exist_ok=True)
         (out / "findings.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
