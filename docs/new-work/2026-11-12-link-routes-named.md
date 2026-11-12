@@ -21,8 +21,10 @@ has been named and refused since #321.)
 
 ## What was run
 - `tests.test_route_patterns` on Python 3.12 and 3.13: 12 tests, OK on both.
-- `tests.test_orchestrator` and `tests.test_ci_gate`: OK.
-- Full suite and the real sample: see the pull request.
+- `tests.test_ci_gate`: a route that is a link, and one reached through a link out of the checkout,
+  each beside two good routes: needs-review, `checkProblems` 1, the two good routes played and
+  nothing outside. On main both are accept with no reason.
+- Full suite on Python 3.13, merged with main at e2a8d22: 2238 tests, OK, 26 skipped.
 
 ## Not done
 - A link to nothing where a route would be is not named: it is no file, as for specs.
