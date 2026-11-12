@@ -1,0 +1,13 @@
+{
+  "mode": "probe",
+  "every": "10",
+  "frames": "15,16,17,18,19,20,21,22,23,24,25",
+  "spec": "specs/player-stays-above-ground.json",
+  "runs": "clean-traversal",
+  "anchor": true,
+  "clean_routes": "traversal",
+  "lift": "14",
+  "sam_usd_cap": "0.50",
+  "candidate": "agents/fixtures/fix-collision-mask.patch",
+  "judge": "sam"
+}

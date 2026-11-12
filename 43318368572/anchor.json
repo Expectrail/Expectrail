@@ -1,0 +1,424 @@
+{
+  "model": "sam-3.1",
+  "lift": 14.0,
+  "stats": {
+    "calls": 11,
+    "seconds": 13.77,
+    "reservedUsd": 0.0275
+  },
+  "stopped": null,
+  "runs": [
+    {
+      "run": "clean-traversal",
+      "framesProbed": [
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25
+      ],
+      "frames": [
+        {
+          "frame": 15,
+          "world": [
+            121.28,
+            616.79
+          ],
+          "point": [
+            805,
+            713
+          ],
+          "asked": true,
+          "box": [
+            743.0,
+            660.0,
+            850.0,
+            786.0
+          ],
+          "score": 0.8515625,
+          "holdsPoint": true,
+          "size": [
+            107.0,
+            126.0
+          ],
+          "worldSize": [
+            53.5,
+            63.0
+          ],
+          "aboveOrigin": 26.5,
+          "belowOrigin": 36.5,
+          "frameShare": 0.0088
+        },
+        {
+          "frame": 16,
+          "world": [
+            126.28,
+            605.44
+          ],
+          "point": [
+            805,
+            690
+          ],
+          "asked": true,
+          "box": [
+            745.0,
+            638.0,
+            842.0,
+            776.0
+          ],
+          "score": 0.66015625,
+          "holdsPoint": true,
+          "size": [
+            97.0,
+            138.0
+          ],
+          "worldSize": [
+            48.5,
+            69.0
+          ],
+          "aboveOrigin": 26.0,
+          "belowOrigin": 43.0,
+          "frameShare": 0.0087
+        },
+        {
+          "frame": 17,
+          "world": [
+            131.28,
+            594.66
+          ],
+          "point": [
+            805,
+            669
+          ],
+          "asked": true,
+          "box": [
+            746.0,
+            615.0,
+            844.0,
+            778.0
+          ],
+          "score": 0.8359375,
+          "holdsPoint": true,
+          "size": [
+            98.0,
+            163.0
+          ],
+          "worldSize": [
+            49.0,
+            81.5
+          ],
+          "aboveOrigin": 27.0,
+          "belowOrigin": 54.5,
+          "frameShare": 0.0104
+        },
+        {
+          "frame": 18,
+          "world": [
+            136.28,
+            584.48
+          ],
+          "point": [
+            805,
+            648
+          ],
+          "asked": true,
+          "box": [
+            746.0,
+            594.0,
+            843.0,
+            775.0
+          ],
+          "score": 0.7734375,
+          "holdsPoint": true,
+          "size": [
+            97.0,
+            181.0
+          ],
+          "worldSize": [
+            48.5,
+            90.5
+          ],
+          "aboveOrigin": 27.0,
+          "belowOrigin": 63.5,
+          "frameShare": 0.0114
+        },
+        {
+          "frame": 19,
+          "world": [
+            141.28,
+            574.87
+          ],
+          "point": [
+            805,
+            629
+          ],
+          "asked": true,
+          "box": [
+            745.0,
+            574.0,
+            843.0,
+            767.0
+          ],
+          "score": 0.828125,
+          "holdsPoint": true,
+          "size": [
+            98.0,
+            193.0
+          ],
+          "worldSize": [
+            49.0,
+            96.5
+          ],
+          "aboveOrigin": 27.5,
+          "belowOrigin": 69.0,
+          "frameShare": 0.0123
+        },
+        {
+          "frame": 20,
+          "world": [
+            146.28,
+            565.85
+          ],
+          "point": [
+            805,
+            611
+          ],
+          "asked": true,
+          "box": [
+            746.0,
+            558.0,
+            843.0,
+            773.0
+          ],
+          "score": 0.86328125,
+          "holdsPoint": true,
+          "size": [
+            97.0,
+            215.0
+          ],
+          "worldSize": [
+            48.5,
+            107.5
+          ],
+          "aboveOrigin": 26.5,
+          "belowOrigin": 81.0,
+          "frameShare": 0.0136
+        },
+        {
+          "frame": 21,
+          "world": [
+            151.28,
+            557.41
+          ],
+          "point": [
+            805,
+            594
+          ],
+          "asked": true,
+          "box": [
+            741.0,
+            539.0,
+            843.0,
+            773.0
+          ],
+          "score": 0.875,
+          "holdsPoint": true,
+          "size": [
+            102.0,
+            234.0
+          ],
+          "worldSize": [
+            51.0,
+            117.0
+          ],
+          "aboveOrigin": 27.5,
+          "belowOrigin": 89.5,
+          "frameShare": 0.0155
+        },
+        {
+          "frame": 22,
+          "world": [
+            156.28,
+            549.56
+          ],
+          "point": [
+            805,
+            579
+          ],
+          "asked": true,
+          "box": [
+            726.0,
+            523.0,
+            843.0,
+            777.0
+          ],
+          "score": 0.828125,
+          "holdsPoint": true,
+          "size": [
+            117.0,
+            254.0
+          ],
+          "worldSize": [
+            58.5,
+            127.0
+          ],
+          "aboveOrigin": 28.0,
+          "belowOrigin": 99.0,
+          "frameShare": 0.0193
+        },
+        {
+          "frame": 23,
+          "world": [
+            161.28,
+            542.29
+          ],
+          "point": [
+            805,
+            564
+          ],
+          "asked": true,
+          "box": [
+            718.0,
+            507.0,
+            843.0,
+            777.0
+          ],
+          "score": 0.8828125,
+          "holdsPoint": true,
+          "size": [
+            125.0,
+            270.0
+          ],
+          "worldSize": [
+            62.5,
+            135.0
+          ],
+          "aboveOrigin": 28.5,
+          "belowOrigin": 106.5,
+          "frameShare": 0.022
+        },
+        {
+          "frame": 24,
+          "world": [
+            166.28,
+            535.6
+          ],
+          "point": [
+            805,
+            551
+          ],
+          "asked": true,
+          "box": [
+            710.0,
+            494.0,
+            844.0,
+            775.0
+          ],
+          "score": 0.91796875,
+          "holdsPoint": true,
+          "size": [
+            134.0,
+            281.0
+          ],
+          "worldSize": [
+            67.0,
+            140.5
+          ],
+          "aboveOrigin": 28.5,
+          "belowOrigin": 112.0,
+          "frameShare": 0.0245
+        },
+        {
+          "frame": 25,
+          "world": [
+            171.28,
+            529.5
+          ],
+          "point": [
+            805,
+            538
+          ],
+          "asked": true,
+          "box": [
+            745.0,
+            481.0,
+            843.0,
+            606.0
+          ],
+          "score": 0.89453125,
+          "holdsPoint": true,
+          "size": [
+            98.0,
+            125.0
+          ],
+          "worldSize": [
+            49.0,
+            62.5
+          ],
+          "aboveOrigin": 28.5,
+          "belowOrigin": 34.0,
+          "frameShare": 0.008
+        }
+      ],
+      "summary": {
+        "frames": 11,
+        "asked": 11,
+        "notAsked": 0,
+        "answered": 11,
+        "unreadable": 0,
+        "holdsPoint": 11,
+        "scored": 11,
+        "score": {
+          "min": 0.66,
+          "median": 0.85,
+          "max": 0.92
+        },
+        "worldWidth": {
+          "min": 48.5,
+          "median": 49.0,
+          "max": 67.0
+        },
+        "worldHeight": {
+          "min": 62.5,
+          "median": 96.5,
+          "max": 140.5
+        },
+        "aboveOrigin": {
+          "min": 26.0,
+          "median": 27.5,
+          "max": 28.5
+        },
+        "belowOrigin": {
+          "min": 34.0,
+          "median": 69.0,
+          "max": 112.0
+        },
+        "frameShare": {
+          "min": 0.008,
+          "median": 0.0123,
+          "max": 0.0245
+        }
+      },
+      "images": [
+        "runs/sam-probe/clean-traversal/f00000015.png",
+        "runs/sam-probe/clean-traversal/f00000016.png",
+        "runs/sam-probe/clean-traversal/f00000017.png",
+        "runs/sam-probe/clean-traversal/f00000018.png",
+        "runs/sam-probe/clean-traversal/f00000019.png",
+        "runs/sam-probe/clean-traversal/f00000020.png",
+        "runs/sam-probe/clean-traversal/f00000021.png",
+        "runs/sam-probe/clean-traversal/f00000022.png",
+        "runs/sam-probe/clean-traversal/f00000023.png",
+        "runs/sam-probe/clean-traversal/f00000024.png",
+        "runs/sam-probe/clean-traversal/f00000025.png",
+        "runs/sam-probe/clean-traversal-sheet.png"
+      ]
+    }
+  ]
+}
