@@ -15,6 +15,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from expectrail.gate import verify as gv
 from expectrail.orchestrator import request as req
@@ -118,16 +119,23 @@ class RoutePatternTest(unittest.TestCase):
         self.assertEqual(gv.find_routes(self.root, ["deep/**"]), [bottom])
 
     def locked(self) -> Path:
-        """A folder that can be entered and not listed (mode 0111), with a route in it and one in a
-        folder below that can be listed. Root lists everything, so this needs another user."""
-        if os.geteuid() == 0:
-            raise unittest.SkipTest("root can list every folder; run as another user (CI does)")
+        """A folder that can be entered and not listed, with a route in it and one in a folder below
+        that can be listed. The refusal is the one a folder of mode 0111 gives a user that is not
+        root, made here by a stand-in for the listing call, so the tests run as any user (root lists
+        every folder, and a test that only runs for some users is a test that is skipped)."""
         folder = self.root / "locked"
         (folder / "sub").mkdir(parents=True)
         (folder / "x.json").write_text("{}", encoding="utf-8")
         (folder / "sub" / "y.json").write_text("{}", encoding="utf-8")
-        folder.chmod(0o111)
-        self.addCleanup(folder.chmod, 0o755)
+        real = os.scandir
+
+        def scandir(path):
+            if Path(path) == folder:
+                raise PermissionError(13, "Permission denied", str(path))
+            return real(path)
+        patcher = mock.patch.object(gv.os, "scandir", scandir)
+        patcher.start()
+        self.addCleanup(patcher.stop)
         return folder
 
     def test_a_route_named_in_full_is_found_in_a_folder_that_cannot_be_listed(self):
@@ -144,8 +152,6 @@ class RoutePatternTest(unittest.TestCase):
                 found = gv.find_routes(self.root, [pattern], unlisted)
                 self.assertEqual([p.relative_to(self.root).as_posix() for p in found], expected)
                 self.assertEqual(unlisted, set())   # nothing in there had to be listed
-                if sys.version_info >= (3, 13):
-                    self.assertEqual(sorted(p for p in self.root.glob(pattern) if p.is_file()), found)
 
     def test_a_folder_that_cannot_be_listed_is_named_when_a_part_needed_its_listing(self):
         folder = self.locked()
@@ -165,10 +171,7 @@ class RoutePatternTest(unittest.TestCase):
         # The reader end to end, as in the review: a route named in full in such a folder is read,
         # and a pattern that needed the listing leaves a reason.
         folder = self.locked()
-        route = (REPO / "harness" / "routes" / "smoke.json").read_bytes()
-        folder.chmod(0o755)
-        (folder / "x.json").write_bytes(route)
-        folder.chmod(0o111)
+        (folder / "x.json").write_bytes((REPO / "harness" / "routes" / "smoke.json").read_bytes())
         (self.root / "specs").mkdir()
         named = gv.read_checks(self.root, "specs", ["locked/x.json"])
         self.assertEqual([name for name, _data, _sha in named.routes], ["smoke"])

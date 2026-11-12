@@ -32,10 +32,12 @@ merge guard's note on #307 was the first sign: one property test counted 421 mat
   leads to (the merge guard's suggestion on #321).
 
 ## What was run
-- `python3.12 -m unittest tests.test_route_patterns` and the same on 3.13: 11 tests, OK on both, run
-  as a user that is not root (as root the three tests of a folder that cannot be listed skip). The
-  module imports the standard library only, so it runs on 3.12 here, where `jsonschema` is not
-  installed.
+- `python3.12 -m unittest tests.test_route_patterns` and the same on 3.13: 11 tests, OK on both, none
+  skipped. The module imports the standard library only, so it runs on 3.12 here, where `jsonschema`
+  is not installed. The three tests of a folder that cannot be listed make the refusal with a
+  stand-in for the listing call, so they run as any user. With a real folder of mode 0111 they were
+  run by hand as a user that is not root, on both Pythons, before the stand-in replaced the skip
+  they needed as root: OK, and on 3.13 each plain-name pattern gave what `Path.glob` gives.
 - The review's own case through `read_checks`, as a user that is not root, Python 3.13: routes
   `['coins', 'smoke']`, no problem, digest `f439c3e96bcd`, the three values the review gives for
   main. With `routes/*.json` in place of the full name: `['coins']` and the reason "cannot list the
