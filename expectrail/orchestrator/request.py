@@ -169,7 +169,8 @@ def policy_digest(checks_root: Path, project: dict) -> str | None:
 def pattern_reaches(pattern: str, folder: str) -> bool:
     """Whether a route pattern could match a file somewhere below ``folder`` (both relative to the
     same checkout, with ``/``). Errs towards yes: it is used to keep the jobs folder out of where
-    routes are looked for."""
+    routes are looked for. Names are compared without regard to case, because on a file system that
+    ignores case (macOS by default) ``RUNS/**`` does reach ``runs/jobs``."""
     def reach(parts: list[str], below: list[str]) -> bool:
         if not below:
             return bool(parts)
@@ -177,7 +178,7 @@ def pattern_reaches(pattern: str, folder: str) -> bool:
             return False
         if parts[0] == "**":
             return reach(parts[1:], below) or reach(parts, below[1:])
-        return fnmatch.fnmatchcase(below[0], parts[0]) and reach(parts[1:], below[1:])
+        return fnmatch.fnmatchcase(below[0].casefold(), parts[0].casefold()) and reach(parts[1:], below[1:])
 
     return reach([p for p in pattern.split("/") if p not in ("", ".")], [p for p in folder.split("/") if p not in ("", ".")])
 

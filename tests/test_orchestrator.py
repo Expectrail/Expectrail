@@ -764,7 +764,9 @@ class TreeTest(Case):
                 ("**/*.json", "runs/jobs", True), ("*.json", "runs/jobs", False), ("routes/*.json", "runs/jobs", False),
                 ("routes/*.json", "routes", True), ("routes/*.json", "routes/jobs", False), ("routes/**", "routes/jobs", True),
                 ("r*/**/*.json", "runs/jobs", True), ("runs/jobs/a/request.json", "runs/jobs", True),
-                ("harness/routes/smoke.json", "runs/jobs", False), ("**", "x", True), ("*/*/*/*.json", "runs/jobs", True)):
+                ("harness/routes/smoke.json", "runs/jobs", False), ("**", "x", True), ("*/*/*/*.json", "runs/jobs", True),
+                # Without regard to case: on a file system that ignores it, RUNS/** is runs/**.
+                ("RUNS/**", "runs/jobs", True), ("runs/JOBS/*/request.json", "runs/jobs", True), ("Routes/*.json", "runs/jobs", False)):
             with self.subTest(pattern=pattern, folder=folder):
                 self.assertEqual(req.pattern_reaches(pattern, folder), reaches)
 
@@ -1002,13 +1004,15 @@ class EvidenceTest(Case):
                 self.assertTrue((self.store.paths(job).output / "evidence.txt").is_file())
 
     def test_an_empty_evidence_folder_is_not_evidence(self):
-        for layout in ("empty", "folders only", "a link"):
+        for layout in ("empty", "folders only", "a link", "an empty file"):
             with self.subTest(layout=layout):
                 job = self.job()
                 staging = self.store.paths(job).staging
                 staging.mkdir()
                 if layout == "folders only":
                     (staging / "verdicts" / "head").mkdir(parents=True)
+                if layout == "an empty file":
+                    (staging / "findings.json").write_bytes(b"")
                 if layout == "a link":
                     (staging / "findings.json").symlink_to(self.head / "specs" / "player-stays-above-ground.json")
                 status = self.store.finish(job, "completed", decision="accept", publish=True)
