@@ -77,6 +77,18 @@ request number and head commit are placeholders.
 route files. Above 0 the decision is never accept, and the reader that recomputes the decision from
 the record holds it to that. A record written before the field existed has none and reads as 0.
 
+`intent` and `repair` (added November 12, #284). `intent` is what the change was declared as:
+`fix`, `change` or `none`; it is written only when it is not `none`, so the record of an undeclared
+change is what it was. For a `fix` the record carries `repair`: one row for every check that
+failed on the base and passes after the change, with its result on each of three runs a side, and
+whether the row counts (the base failed and the head passed on all three). A fix is accepted only
+when a row counts; otherwise the decision is needs-review with a reason that starts
+`repair-not-demonstrated:`. The reader recomputes which rows count and their number, holds the
+rows to the checks, and holds the decision to both. What a reader cannot check: that the stated
+intent is the pull request's, since the verify job writes it. The example
+[`findings-fix-not-demonstrated.json`](../contracts/examples/findings-fix-not-demonstrated.json) is
+a fix where no check failed on the base, from the tests' stand-in replay, not from the engine.
+
 | Record | Written by | Read by |
 | --- | --- | --- |
 | `findings` | the gate's verify step (`expectrail.gate.verify`), untrusted | the gate's comment step (`expectrail.gate.comment`), which treats it as data |

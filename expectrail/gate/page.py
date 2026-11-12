@@ -112,6 +112,11 @@ def write_page(out: Path, record: dict, frames: dict[str, dict]) -> Path:
         f"<h1>Expectrail gate {_badge(decision)}</h1>",
         f"<p>{esc(DECISION_MEANS[decision])}</p>",
     ]
+    if decision == "needs-review" and rec.unverified_fix(record):
+        parts.append("<p><strong>No check reproduced the reported bug, so this fix is not verified.</strong> "
+                     f"No check failed before the change {rec.REPAIR_RUNS} times of {rec.REPAIR_RUNS} and passed "
+                     "after it, so the checks passing now says nothing about the bug. Add a check that fails on the "
+                     "bug, or let Expectrail propose one.</p>")
     if record["reasons"]:
         parts.append("<ul>" + "".join(f"<li>{esc(r)}</li>" for r in record["reasons"]) + "</ul>")
     counts, held = record["counts"], record["heldOut"]
@@ -130,6 +135,7 @@ def write_page(out: Path, record: dict, frames: dict[str, dict]) -> Path:
          "could not be judged" if held["status"] == "unavailable" else
          f"{held['routes']} routes, {held['checks']} checks: {held['passed']} pass, {held['failed']} fail, "
          f"{held['needsReview']} need review (counts only)"),
+        ("Declared as", rec.repair_words(record)),
         ("Replays in the sandbox", rec.isolation_words(record.get("isolation"))),
         ("Draft specs not used", str(record["drafts"])),
         ("Replayed by", f"the {ADAPTER.get(record['adapter'], record['adapter'])} harness; judged by the evaluator "
