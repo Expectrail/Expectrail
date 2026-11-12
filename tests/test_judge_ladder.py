@@ -137,6 +137,38 @@ class LadderTest(unittest.TestCase):
         self.assertEqual(jl.outage_kind(self.dir), "budget")
         self.assertEqual((v["decision"], len(judge.calls), record.get("budget")), ("needs-review", 1, True))
 
+    def test_a_budget_stop_on_the_retry_ends_the_ladder_too(self):
+        # Second review of #343: the kind was read from the first try only. A first try that fails
+        # for a reason waiting may fix is asked again, the retry meets the cap (every try counts
+        # against it), and the ladder went on to Glimmer and accepted.
+        judge = Judge("down", "budget", "accept")
+        v, where, record = self.run_ladder(judge)
+        self.assertEqual(v["decision"], "needs-review")
+        self.assertEqual(where.name, "attempt-01-retry")
+        self.assertEqual([c["backend"] for c in judge.calls], ["sam", "sam"])   # asked twice; Glimmer not asked
+        self.assertEqual(self.woke, [])
+        self.assertEqual((record["judgedBy"], record["stopped"], record["budget"]), (None, True, True))
+        self.assertNotIn("fallback", record)
+        self.assertIn("spend cap", jl.report_note(record))
+
+    def test_a_budget_stop_on_the_retry_beside_a_passing_error_ends_it_too(self):
+        class Both(Judge):
+            def __call__(self, request, candidate, out, **kwargs):
+                result = super().__call__(request, candidate, out, **kwargs)
+                if out.name.endswith("-retry"):
+                    (out / "observations-another-spec-error.txt").write_text(
+                        "sam observations unavailable (kind=rate-limit): slow down\n")
+                return result
+        judge = Both("down", "budget", "accept")
+        v, _where, record = self.run_ladder(judge)
+        self.assertEqual((v["decision"], len(judge.calls), self.woke, record.get("budget")), ("needs-review", 2, [], True))
+
+    def test_an_outage_with_no_budget_stop_still_reaches_glimmer(self):
+        # The rule is about the cap only: two plain outages go on to Glimmer as before.
+        judge = Judge("down", "down", "accept")
+        v, _where, record = self.run_ladder(judge)
+        self.assertEqual((v["decision"], record.get("budget"), len(self.woke)), ("accept", None, 1))
+
     def test_when_no_judge_answers_the_ladder_stops(self):
         v, _, record = self.run_ladder(Judge("down", "down", "down"))
         self.assertEqual(v["decision"], "needs-review")

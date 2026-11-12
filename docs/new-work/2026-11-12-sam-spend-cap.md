@@ -15,6 +15,9 @@ monthly limit needs every run to have a worst case, so this is the first part.
   stays needs-review for a person, and the report says why. (The first version only skipped the
   retry and went on to Glimmer, which is paid, has no cap here and could accept. The merge guard's
   first review ran it and got an accept "judged by glimmer-engine". Fixed in the same pull request.)
+  The question is asked before every step that asks a judge again or asks another one, of every
+  attempt so far and not only the first: the second review showed a budget stop arriving on the
+  retry still went on to Glimmer.
 - `docs/sam.md` says so under "Run it".
 
 ## What was run
@@ -22,7 +25,9 @@ monthly limit needs every run to have a worst case, so this is the first part.
   real sender and no cap, a test holds that no connection is opened.
 - `tests.test_judge_ladder`: the ladder run on a budget error with a Glimmer stand-in that would
   accept: SAM is asked once, Glimmer is not woken and not asked, the result is needs-review. The
-  same with a passing error beside the budget one.
+  same with a passing error beside the budget one, and the same when the budget stop arrives on
+  the retry after a first try that failed for another reason (SAM asked twice, Glimmer not asked).
+  Two plain outages still reach Glimmer.
 - `python3 -m unittest discover -s tests -t .` on Python 3.13: 2245 tests, OK, 26 skipped (merged with main at e2a8d22, after the first review's fix).
 - **No live call was made.** Nothing here was run against SAM.
 

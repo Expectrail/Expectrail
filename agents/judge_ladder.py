@@ -162,19 +162,32 @@ def judge(request: dict, candidate: Path, verify_dir: Path, *, verify_fn: Callab
     if not down:
         return verification, verify_dir, {"judgedBy": first, "steps": steps, "stopped": False}
 
+    # Before any step that asks a judge again or asks another one: has any attempt so far stopped on
+    # this run's spend cap? Asked of every attempt's folder, not only the first, because the cap is
+    # most often met on a later try (every try counts against it, failed ones too). A step added to
+    # this ladder later must ask the same question first.
+    attempts = [verify_dir]
+
+    def budget_stop(where: Path) -> tuple[dict, Path, dict] | None:
+        if not any(outage_kind(folder) in STOP_KINDS for folder in attempts):
+            return None
+        steps.append({"judge": first, "skipped": "this run's SAM spend cap is reached or not set: "
+                                                 "no judge is asked again and no other judge is asked"})
+        return verification, where, {"judgedBy": None, "steps": steps, "stopped": True, "budget": True}
+
     # 1. The same judge again, after a short wait, unless the error says waiting cannot help.
     last_dir = verify_dir
+    stop = budget_stop(verify_dir)
+    if stop:
+        return stop
     kind = outage_kind(verify_dir)
-    if kind in STOP_KINDS:
-        steps.append({"judge": first, "retry": True,
-                      "skipped": "this run's SAM spend cap is reached or not set: no judge is asked again"})
-        return verification, verify_dir, {"judgedBy": None, "steps": steps, "stopped": True, "budget": True}
     if kind in NO_RETRY_KINDS:
         steps.append({"judge": first, "retry": True, "skipped": f"{kind} error: waiting does not fix it"})
     else:
         sleep(_seconds(RETRY_WAIT_ENV, DEFAULT_RETRY_WAIT_S))
         retry_dir = verify_dir.with_name(verify_dir.name + "-retry")
         verification = verify_fn(request, candidate, retry_dir, **verify_kwargs)
+        attempts.append(retry_dir)
         down = judge_unavailable(verification, retry_dir)
         steps.append({"judge": first, "retry": True, "decision": verification["decision"], "unavailable": down})
         if down:
@@ -185,6 +198,9 @@ def judge(request: dict, candidate: Path, verify_dir: Path, *, verify_fn: Callab
 
     # 2. Glimmer checked against the engine, never Glimmer alone, and only if it is not the judge
     #    that just failed to answer.
+    stop = budget_stop(last_dir)
+    if stop:
+        return stop
     if first != FALLBACK:
         problem = glimmer_problem()
         if problem is None:
