@@ -1,0 +1,635 @@
+{
+ "benchSha256": "216fa355f94cc9d6478867b69b90e5ef3ca6f7503b89e5674e21f68b3ceed355",
+ "defects": [
+  {
+   "id": "air-jump",
+   "patchSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679",
+   "probesRecordChanged": 5,
+   "probesScreenChanged": 5,
+   "recordFields": [
+    "onFloor",
+    "player",
+    "view"
+   ],
+   "screen": {
+    "atFrame": 63,
+    "box": [
+     736,
+     459,
+     854,
+     785
+    ],
+    "examined": 8,
+    "firstFrame": 50,
+    "frames": 90,
+    "of": 140,
+    "pixels": 12968,
+    "probe": "jump-w40-x8"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "gun-cooldown",
+   "patchSha256": "df744001c53910625c520667e40bd7465de5ff026fc9e22420aefb50795fa6cf",
+   "probesRecordChanged": 2,
+   "probesScreenChanged": 2,
+   "recordFields": [
+    "projectiles"
+   ],
+   "screen": {
+    "atFrame": 68,
+    "box": [
+     373,
+     667,
+     840,
+     806
+    ],
+    "examined": 8,
+    "firstFrame": 27,
+    "frames": 96,
+    "of": 123,
+    "pixels": 18610,
+    "probe": "shoot-left-every12"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "body-flip",
+   "patchSha256": "52dcc966811716720fc6d3648c58b52aa7a646c975c0ffe788a5fc9c76eb526a",
+   "probesRecordChanged": 8,
+   "probesScreenChanged": 8,
+   "recordFields": [
+    "enemies",
+    "facing",
+    "player",
+    "projectiles",
+    "view"
+   ],
+   "screen": {
+    "atFrame": 99,
+    "box": [
+     621,
+     0,
+     1599,
+     884
+    ],
+    "examined": 8,
+    "firstFrame": 5,
+    "frames": 165,
+    "of": 170,
+    "pixels": 13254,
+    "probe": "hold-left"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "enemy-ledge",
+   "patchSha256": "644ad443ede20eea4630f2e5aa85e8ef20123e46dd1418289eb928aebbfdd856",
+   "probesRecordChanged": 25,
+   "probesScreenChanged": 3,
+   "recordFields": [
+    "enemies",
+    "projectiles"
+   ],
+   "screen": {
+    "atFrame": 100,
+    "box": [
+     928,
+     604,
+     1473,
+     806
+    ],
+    "examined": 8,
+    "firstFrame": 33,
+    "frames": 68,
+    "of": 158,
+    "pixels": 22789,
+    "probe": "move-fire-right"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "bullet-through-enemy",
+   "patchSha256": "204e5d1cbe8fafcd5c2ab855fcd9928510174d051bf7b110cbd72c4da76f5161",
+   "probesRecordChanged": 3,
+   "probesScreenChanged": 3,
+   "recordFields": [
+    "enemies",
+    "projectiles"
+   ],
+   "screen": {
+    "atFrame": 68,
+    "box": [
+     945,
+     624,
+     1545,
+     805
+    ],
+    "examined": 8,
+    "firstFrame": 33,
+    "frames": 125,
+    "of": 158,
+    "pixels": 25100,
+    "probe": "move-fire-right"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "platforms-not-solid",
+   "patchSha256": "10fe6444adced5d9939aa88f924da8675bdadb44a06eb0cc0984056065befa00",
+   "probesRecordChanged": 2,
+   "probesScreenChanged": 2,
+   "recordFields": [
+    "onFloor",
+    "player",
+    "view"
+   ],
+   "screen": {
+    "atFrame": 90,
+    "box": [
+     0,
+     0,
+     1600,
+     960
+    ],
+    "examined": 8,
+    "firstFrame": 47,
+    "frames": 87,
+    "of": 140,
+    "pixels": 973045,
+    "probe": "jump-l40-x8"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "floaty-fall",
+   "patchSha256": "ef2763dd8d0e39b5f7a6ca595450c417d6d79d3037ec4610f9baf9484b45ae32",
+   "probesRecordChanged": 14,
+   "probesScreenChanged": 14,
+   "recordFields": [
+    "onFloor",
+    "player",
+    "view"
+   ],
+   "screen": {
+    "atFrame": 128,
+    "box": [
+     736,
+     501,
+     854,
+     785
+    ],
+    "examined": 8,
+    "firstFrame": 92,
+    "frames": 86,
+    "of": 180,
+    "pixels": 12956,
+    "probe": "jump-w120-x8"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "jump-always-full",
+   "patchSha256": "ff24312117d44af205e7b9fbd7ef5b9dc7b56ff7fa1e62085bbcb687cbc28ab7",
+   "probesRecordChanged": 15,
+   "probesScreenChanged": 15,
+   "recordFields": [
+    "onFloor",
+    "player",
+    "view"
+   ],
+   "screen": {
+    "atFrame": 124,
+    "box": [
+     0,
+     0,
+     1600,
+     960
+    ],
+    "examined": 8,
+    "firstFrame": 33,
+    "frames": 107,
+    "of": 140,
+    "pixels": 1009949,
+    "probe": "jump-l40-x8"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "slow-left",
+   "patchSha256": "c0184f820a786c63290aba04c351d33fdd08ec147fea6d9be1b2493877527077",
+   "probesRecordChanged": 8,
+   "probesScreenChanged": 8,
+   "recordFields": [
+    "facing",
+    "player",
+    "projectiles",
+    "view"
+   ],
+   "screen": {
+    "atFrame": 55,
+    "box": [
+     0,
+     0,
+     1600,
+     960
+    ],
+    "examined": 8,
+    "firstFrame": 10,
+    "frames": 160,
+    "of": 170,
+    "pixels": 828819,
+    "probe": "hold-left"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "slides-after-stop",
+   "patchSha256": "5ceb20d16be32522de154b01ccbc8d432aebf141d385b323c5fcdfd2af10c454",
+   "probesRecordChanged": 19,
+   "probesScreenChanged": 19,
+   "recordFields": [
+    "coins",
+    "enemies",
+    "ground",
+    "onFloor",
+    "player",
+    "projectiles",
+    "view"
+   ],
+   "screen": {
+    "atFrame": 126,
+    "box": [
+     0,
+     0,
+     1600,
+     960
+    ],
+    "examined": 8,
+    "firstFrame": 45,
+    "frames": 115,
+    "of": 160,
+    "pixels": 1193708,
+    "probe": "jump-w80-x8"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "no-shooting-in-air",
+   "patchSha256": "c7f7952bb67993262344711c218be2d1b730ab7de890117096764228b3b494aa",
+   "probesRecordChanged": 0,
+   "probesScreenChanged": 0,
+   "recordFields": [],
+   "screen": null,
+   "sees": "neither"
+  },
+  {
+   "id": "jump-needs-rest",
+   "patchSha256": "9f1e976329828265adb8d167213f1ad7bd79680721687b3021274a4de4c29d57",
+   "probesRecordChanged": 12,
+   "probesScreenChanged": 12,
+   "recordFields": [
+    "onFloor",
+    "player",
+    "view"
+   ],
+   "screen": {
+    "atFrame": 108,
+    "box": [
+     0,
+     0,
+     1600,
+     960
+    ],
+    "examined": 8,
+    "firstFrame": 30,
+    "frames": 110,
+    "of": 140,
+    "pixels": 997248,
+    "probe": "jump-l40-x8"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "double-jump-once",
+   "patchSha256": "0215b0f96da9ce696b170d66fc71249449d1db93ec0791d5f2bc565f328d890b",
+   "probesRecordChanged": 5,
+   "probesScreenChanged": 5,
+   "recordFields": [
+    "onFloor",
+    "player",
+    "view"
+   ],
+   "screen": {
+    "atFrame": 81,
+    "box": [
+     0,
+     0,
+     1600,
+     960
+    ],
+    "examined": 8,
+    "firstFrame": 71,
+    "frames": 69,
+    "of": 140,
+    "pixels": 1004579,
+    "probe": "jump-l40-x8"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "coin-stays",
+   "patchSha256": "8892eb10ced0cc35258e4edfa551d43e7550547233519dc1ba7a572efc5e508d",
+   "probesRecordChanged": 10,
+   "probesScreenChanged": 12,
+   "recordFields": [
+    "coins",
+    "enemies"
+   ],
+   "screen": {
+    "atFrame": 70,
+    "box": [
+     399,
+     628,
+     871,
+     720
+    ],
+    "examined": 8,
+    "firstFrame": 26,
+    "frames": 153,
+    "of": 180,
+    "pixels": 7442,
+    "probe": "jump-w120-x8"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "coin-counts-twice",
+   "patchSha256": "5ab3f89edba809c1189d0693505b4b1b668a76d836a3b6d7b49caba4bd79ff77",
+   "probesRecordChanged": 0,
+   "probesScreenChanged": 0,
+   "recordFields": [],
+   "screen": null,
+   "sees": "neither"
+  },
+  {
+   "id": "coin-counter-stuck",
+   "patchSha256": "2af3947288f662b936dc51f74df2579206cc1b3dddec445e58b96ea0c19b20c0",
+   "probesRecordChanged": 0,
+   "probesScreenChanged": 0,
+   "recordFields": [],
+   "screen": null,
+   "sees": "neither"
+  },
+  {
+   "id": "gun-cooldown-long",
+   "patchSha256": "44d5f4790887353d431cbefb509f6213838455d41c8641adc42c5daf04c3b6e5",
+   "probesRecordChanged": 6,
+   "probesScreenChanged": 6,
+   "recordFields": [
+    "enemies",
+    "projectiles"
+   ],
+   "screen": {
+    "atFrame": 82,
+    "box": [
+     686,
+     666,
+     840,
+     806
+    ],
+    "examined": 8,
+    "firstFrame": 25,
+    "frames": 133,
+    "of": 158,
+    "pixels": 10192,
+    "probe": "move-fire-left"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "enemy-missing",
+   "patchSha256": "08bb6bcf5027403f00b509f06ce72100f687d333e8ca97ff9586a078407fb7ac",
+   "probesRecordChanged": 25,
+   "probesScreenChanged": 1,
+   "recordFields": [
+    "enemies",
+    "player",
+    "projectiles",
+    "view"
+   ],
+   "screen": {
+    "atFrame": 103,
+    "box": [
+     673,
+     8,
+     1600,
+     884
+    ],
+    "examined": 8,
+    "firstFrame": 76,
+    "frames": 94,
+    "of": 170,
+    "pixels": 6078,
+    "probe": "hold-left"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "enemy-fast-left",
+   "patchSha256": "cbb51750ca7830469517a6a0c11f57ad2da913bc1cc89092542e11a88c95119c",
+   "probesRecordChanged": 1,
+   "probesScreenChanged": 1,
+   "recordFields": [
+    "enemies"
+   ],
+   "screen": {
+    "atFrame": 564,
+    "box": [
+     1392,
+     187,
+     1600,
+     281
+    ],
+    "examined": 8,
+    "firstFrame": 501,
+    "frames": 74,
+    "of": 575,
+    "pixels": 8608,
+    "probe": "wait-long"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "enemy-slides-when-shot",
+   "patchSha256": "4ff66239fc83121921b31e0c5953f765430c866fd52468394465099e334e3694",
+   "probesRecordChanged": 3,
+   "probesScreenChanged": 3,
+   "recordFields": [
+    "enemies",
+    "projectiles"
+   ],
+   "screen": {
+    "atFrame": 100,
+    "box": [
+     928,
+     604,
+     1473,
+     806
+    ],
+    "examined": 8,
+    "firstFrame": 33,
+    "frames": 68,
+    "of": 158,
+    "pixels": 22789,
+    "probe": "move-fire-right"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "enemy-walks-backwards",
+   "patchSha256": "d5f98a8deb2af9da727330d119c1755cae4f00d436aa59e818610c20d789080b",
+   "probesRecordChanged": 0,
+   "probesScreenChanged": 25,
+   "recordFields": [],
+   "screen": {
+    "atFrame": 77,
+    "box": [
+     973,
+     185,
+     1600,
+     792
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 180,
+    "of": 180,
+    "pixels": 16972,
+    "probe": "jump-w120-x8"
+   },
+   "sees": "screen-only"
+  },
+  {
+   "id": "camera-stops-right",
+   "patchSha256": "24d5d8636d7b5c71bc148d06550549b08e6ac036c81179e8ed7e012dda8c3f28",
+   "probesRecordChanged": 6,
+   "probesScreenChanged": 6,
+   "recordFields": [
+    "view"
+   ],
+   "screen": {
+    "atFrame": 179,
+    "box": [
+     0,
+     0,
+     1600,
+     960
+    ],
+    "examined": 8,
+    "firstFrame": 52,
+    "frames": 128,
+    "of": 180,
+    "pixels": 899960,
+    "probe": "jump-w120-x8"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "camera-cut-top",
+   "patchSha256": "58aa8ecdbfa68434dde777cd3229da2f73afc6a34e145509e24402a5e3875b62",
+   "probesRecordChanged": 1,
+   "probesScreenChanged": 1,
+   "recordFields": [
+    "view"
+   ],
+   "screen": {
+    "atFrame": 113,
+    "box": [
+     0,
+     0,
+     1600,
+     960
+    ],
+    "examined": 8,
+    "firstFrame": 72,
+    "frames": 61,
+    "of": 140,
+    "pixels": 980517,
+    "probe": "jump-l40-x8"
+   },
+   "sees": "record-and-screen"
+  },
+  {
+   "id": "bullet-behind-scenery",
+   "patchSha256": "52c90da34798edd5624fbd52980b8f5a2ef1a8253b78623c4ef93296122f5cf5",
+   "probesRecordChanged": 0,
+   "probesScreenChanged": 6,
+   "recordFields": [],
+   "screen": {
+    "atFrame": 27,
+    "box": [
+     516,
+     671,
+     824,
+     806
+    ],
+    "examined": 8,
+    "firstFrame": 5,
+    "frames": 153,
+    "of": 158,
+    "pixels": 8079,
+    "probe": "move-fire-left"
+   },
+   "sees": "screen-only"
+  }
+ ],
+ "engine": "Godot 4.7.2-stable",
+ "engineRetries": 0,
+ "format": "expectrail.repro-screen/v1",
+ "frame": {
+  "height": 960,
+  "width": 1600
+ },
+ "maxFramesExamined": 8,
+ "probes": [
+  "wait-long",
+  "hold-right",
+  "hold-left",
+  "reverse",
+  "jump-w0-x1",
+  "jump-w0-x2",
+  "jump-w0-x8",
+  "jump-w40-x1",
+  "jump-w40-x2",
+  "jump-w40-x8",
+  "jump-w80-x1",
+  "jump-w80-x2",
+  "jump-w80-x8",
+  "jump-w120-x1",
+  "jump-w120-x2",
+  "jump-w120-x8",
+  "shoot-right-every48",
+  "shoot-right-every12",
+  "shoot-left-every48",
+  "shoot-left-every12",
+  "move-fire-right",
+  "move-fire-left",
+  "jump-l40-x1",
+  "jump-l40-x2",
+  "jump-l40-x8"
+ ],
+ "renderer": "Mesa - llvmpipe (LLVM 20.1.2, 256 bits)",
+ "replaysPerBuild": {
+  "clean": 2,
+  "defect": 1
+ },
+ "totals": {
+  "defects": 24,
+  "error": 0,
+  "neither": 3,
+  "record-and-screen": 19,
+  "record-only": 0,
+  "screen-only": 2
+ },
+ "unstable": []
+}
