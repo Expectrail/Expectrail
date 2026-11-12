@@ -52,6 +52,7 @@ SETTLE_TICKS = 30
 MAX_PROBES = 8       # bounded in count; each is HOLD_TICKS + SETTLE_TICKS plus the compiler's lead and tail
 MAX_ACTIONS = 16     # a catalog larger than this is not paired at all
 MAX_REPORT_CHARS = 8000
+MAX_ID_CHARS = 60    # a probe name in a visibility record (contracts/repro-visibility.v1.schema.json)
 FAMILY = "reach"
 NAME = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
 
@@ -152,6 +153,8 @@ def reach(report, actions, probes: list[dict], limit: int = MAX_PROBES) -> dict:
             probe = _probe(held, tapped)
             if probe["id"] in taken:
                 raise ReachError(f"a probe is already called {probe['id']}")
+            if len(probe["id"]) > MAX_ID_CHARS:
+                raise ReachError(f"the probe name for {held} with {tapped} is over {MAX_ID_CHARS} characters")
             compile_route(probe["program"], name=probe["id"], description=probe["description"], actions=names)
             taken.add(probe["id"])
             made.append(probe)

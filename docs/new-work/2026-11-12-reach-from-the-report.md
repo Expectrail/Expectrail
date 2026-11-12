@@ -37,7 +37,7 @@ visual observer) is the caller's choice; the module reads neither.
   showed, so with both sets a signal moves on 18 of 24 where it was 17.
 - The same command again with `--only no-shooting-in-air --only air-jump --jobs 2`: the two rows
   are identical to the stored record's.
-- `python3 -m unittest tests.test_repro_reach`: 45 tests, OK. They cover what counts as used
+- `python3 -m unittest tests.test_repro_reach`: 47 tests, OK. They cover what counts as used
   together, what the library misses, the probes (count, length, names, the taps inside the hold),
   that a report only orders (a hostile one, a very long one, values that are not text), the limit,
   catalogs that are refused, the commands, a simulated game where no library probe sees a "cannot

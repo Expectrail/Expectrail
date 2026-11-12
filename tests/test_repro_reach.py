@@ -159,6 +159,15 @@ class TheProbes(unittest.TestCase):
         for limit, want in ((0, 0), (3, 3), (8, 8), (100, 8), (-5, 0)):
             self.assertEqual(len(reach.reach("", ACTIONS, self.library, limit=limit)["probes"]), want)
 
+    def test_two_pairs_that_would_share_a_probe_name_are_refused(self):
+        with self.assertRaises(reach.ReachError):
+            reach.reach("", ["a", "b_with_c", "a_with_b", "c"], [])
+
+    def test_a_probe_name_too_long_for_a_record_is_refused(self):
+        with self.assertRaises(reach.ReachError):
+            reach.reach("", ["a" * 30, "b" * 30], [])
+        self.assertEqual(len(reach.reach("", ["a" * 20, "b" * 20], [])["probes"]), 2)
+
     def test_a_probe_name_that_is_taken_is_refused(self):
         taken = {"id": "reach-jump-with-shoot", "description": "d", "program": {"op": "wait", "durationTicks": 5}}
         with self.assertRaises(reach.ReachError):
