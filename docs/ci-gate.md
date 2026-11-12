@@ -124,7 +124,8 @@ also checks out the base commit. It then does this:
    check gets the review's comparison words ([review.md](review.md)): `REPAIRED`, `PRESERVED`,
    `REGRESSION`, `UNRESOLVED` or `INCONCLUSIVE`.
 4. Replays the held-out routes on the head, if configured, and keeps counts only.
-5. Decides. **Accept** only when at least one check ran and every public and held-out check passes.
+5. Decides. **Accept** only when at least one check ran and every public and held-out check passes
+   (and, for a change declared a fix, a check demonstrated the repair: see below).
    **Reject** when any check fails after the change. **Needs review** otherwise: a check that could not
    be decided, a replay that did not finish, held-out routes that could not be read, a spec or route
    file the gate could not use, or no checks at all. Accepted means this change passed these checks
@@ -136,6 +137,46 @@ also checks out the base commit. It then does this:
    are then not all of the project's checks, so their passing is needs review and never accept.
    (Until November 12, 2026 it was an accept with the problem added to the reasons, which the
    comment does not show on an accept.) A draft spec is not a problem: it is counted in `drafts`.
+
+### A change declared a fix
+
+Added November 12, 2026 (issue #284). "No check failed" is not "the fix is good" when no check
+touches the bug: on blind set 3 the gate accepted eight wrong fixes that way. So a change can be
+declared, and a fix is held to more:
+
+    python3 -m expectrail.gate.verify ... --intent fix        # or change, or none (the default)
+
+- **`fix`**: the change says it fixes a reported bug. Accept also needs **the repair
+  demonstrated**: at least one check that failed on the base and passes on the head, on the same
+  route. One failure on the base could be a flaky check, so each such check's route is replayed
+  twice more on each side, and the check counts only when it fails on the base three times of three
+  and passes on the head three times of three. With no check that counts the decision is needs
+  review, its first reason starts `repair-not-demonstrated:`, and the comment and the review page
+  lead with "No check reproduced the reported bug, so this fix is not verified", then how to get a
+  check. A check that still fails after the change rejects, as always.
+- **`change`** (an intended change of behaviour) and **`none`** are judged by the rule above,
+  unchanged, and nothing is replayed again.
+- Declaring `fix` can only take an accept away. Anything typed that is not one of the three stops
+  the run as needs review and is recorded as `fix`.
+
+The record carries `intent`, and for a fix a `repair` block: one row for every check that claims a
+repair, with its result on each of the three runs a side and whether it counts. A reader
+recomputes which rows count and holds the decision to them, so a record cannot call a repair
+demonstrated that its own runs do not show. A record from before the field reads as `none`.
+
+What this does not do yet:
+
+- **Nothing reads the intent from the pull request.** The two actions take no `intent` input, so
+  on a pull request the gate still runs with `none`. Reading it from a label or a line in the
+  description, and treating a pull request that links a bug issue as a fix, is the next change.
+- **The intent is written by the verify job**, the untrusted half. A pull request that edits its
+  own workflow can declare `none`. Until the trusted side reads the declaration itself, the rule
+  protects against a wrong fix, not against a dishonest declaration.
+- **Only approved checks can demonstrate a repair.** A generated check cannot count yet (#271), so
+  for most reported bugs today the honest answer is needs review.
+- The three runs are three replays of the same route on the same machine. That shows the check is
+  not flaky there; it does not show the check is about the reported bug. A check that fails before
+  and passes after for another reason would count.
 
 A finding is a check that does not pass after the change. Its id is the first 12 hex digits of
 `sha256(spec + "\n" + route + "\n" + kind)`, where kind is `fail`, `needs-review` or `replay-error`.

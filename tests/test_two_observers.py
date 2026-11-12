@@ -315,6 +315,20 @@ class BothObserversTest(Case):
         self.assertEqual((doc["decision"], self.row(doc)["comparison"]), ("reject", "REGRESSION"))
         self.assertTrue((self.out / "observations" / "base" / "smoke" / f"{SPEC_ID}.visual.json").is_file())
 
+    def test_a_declared_fix_is_demonstrated_by_both_observers_on_every_run(self):
+        # The rule of #284 (merged while this was in review) replays a repaired check twice more on
+        # each side. Under `both` those runs are judged by both observers too.
+        doc = self.gate(repo(self.tmp / "head"), base=repo(self.tmp / "base", "BUG"), intent="fix")
+        self.assertEqual((doc["decision"], doc["repair"]["demonstrated"]), ("accept", 1))
+        self.assertEqual(doc["repair"]["rows"][0]["head"], ["pass", "pass", "pass"])
+        self.assertEqual([frames for _route, look, frames in self.game.replays if look == "clean"], [True] * 3)
+        rec.read_record(self.out / "findings.json")
+        # With no visual observer no run on the head is a pass, so nothing is demonstrated or accepted.
+        doc = self.gate(repo(self.tmp / "head2"), base=repo(self.tmp / "base2", "BUG"), intent="fix", visual=None)
+        self.assertEqual(doc["decision"], "needs-review")
+        self.assertEqual(self.row(doc)["observed"]["after"]["visual"], "not-asked")
+        rec.read_record(self.out / "findings.json")
+
     def test_held_out_checks_need_both_observers_too_and_leave_no_cache(self):
         seen = []
 

@@ -230,8 +230,16 @@ def _summary(record: dict) -> str:
     if decision == "reject":
         return f"**{failed} of {_n(total, 'check')} {'fails' if failed == 1 else 'fail'} after this change.**"
     if decision == "accept":
-        return (f"**{'The' if total == 1 else 'All'} {_n(total, 'check')} {'passes' if total == 1 else 'pass'} after this change.** Accepted means this change passed these "
+        shown = (f" **The repair is demonstrated:** {(record.get('repair') or {}).get('demonstrated', 0)} of them failed "
+                 f"before the change {rec.REPAIR_RUNS} times of {rec.REPAIR_RUNS}." if rec.intent_of(record) == "fix" else "")
+        return (f"**{'The' if total == 1 else 'All'} {_n(total, 'check')} {'passes' if total == 1 else 'pass'} after this change.**{shown} Accepted means this change passed these "
                 "checks on these routes, not that the game is correct.")
+    if rec.unverified_fix(record):
+        # Issue #284: for a change that says it fixes a bug, "no check failed" is not "the fix is good".
+        return ("**No check reproduced the reported bug, so this fix is not verified.** No check failed before "
+                f"the change {rec.REPAIR_RUNS} times of {rec.REPAIR_RUNS} and passed after it, so the checks passing "
+                "now says nothing about the bug. To get a verdict, add a check that fails on the bug: write a spec "
+                "for what the report describes, or let Expectrail propose one (generated checks, `docs/jit.md`).")
     if not total:
         return "**No check ran**, so the gate cannot accept."
     if unclear:
@@ -344,7 +352,8 @@ def _body(record: dict, ctx: Context, *, previous: list[str], touched: list[str]
             lines.append(f"\n{len(checks) - check_rows} more checks are listed in the artifact's findings.json.")
         lines += ["", "</details>", ""]
 
-    lines += [_held_line(record["heldOut"], fork), "", _checks_line(record), "",
+    lines += [f"**Declared as:** {md(rec.repair_words(record), 400)}.", "",
+              _held_line(record["heldOut"], fork), "", _checks_line(record), "",
               f"**Replays in the sandbox:** {md(rec.isolation_words(record.get('isolation')), 400)}.", ""]
     # Which observers judged: until a visual observer judges pull requests (#254, #327), every
     # verdict here says it rests on the engine's record only.
