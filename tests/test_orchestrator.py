@@ -602,12 +602,24 @@ class GodotEngineTest(Case):
         project = self.request()["project"]
         before = req.policy_digest(self.head, project)
         self.assertEqual(before, gate.read_checks(self.head, "specs", ["routes/*.json"]).digest)
-        # A route that is a link is not read by the gate (find_routes), so it is not in the digest.
-        (self.head / "routes" / "linked.json").symlink_to("smoke.json")
-        # A file that only looks like a check is neither read nor digested.
+        # A file that only looks like a check is neither read nor digested, and neither is a link
+        # to nothing or to a folder where a route would be.
         (self.head / "specs" / "notes.txt").write_text("not a spec\n", encoding="utf-8")
         (self.head / "specs" / "deeper").mkdir()
         (self.head / "specs" / "deeper" / "nested.json").write_text("{}", encoding="utf-8")
+        (self.head / "routes" / "nowhere.json").symlink_to("missing.json")
+        (self.head / "routes" / "folder.json").symlink_to(".")
+        self.assertEqual(req.policy_digest(self.head, project), before)
+        # A route that is a link to a file is in the digest by its name and its refusal, as a spec
+        # that is a link is (#340; until then it was left out and nothing said so). What it leads
+        # to is not in the digest.
+        (self.head / "routes" / "linked.json").symlink_to("smoke.json")
+        route_linked = req.policy_digest(self.head, project)
+        self.assertNotEqual(route_linked, before)
+        (self.head / "routes" / "linked.json").unlink()
+        (self.head / "routes" / "linked.json").symlink_to("combat.json")
+        self.assertEqual(req.policy_digest(self.head, project), route_linked)
+        (self.head / "routes" / "linked.json").unlink()
         self.assertEqual(req.policy_digest(self.head, project), before)
         # A draft is read by the gate (and counted), so it is in the digest.
         with_draft = make_repo(self.tmp / "with-draft", draft=True)

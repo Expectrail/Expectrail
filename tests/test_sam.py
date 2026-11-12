@@ -804,12 +804,42 @@ class EngineGroundTest(unittest.TestCase):
         ground_spec = load(REPO / "agents" / "specs" / "player-stays-above-ground.json", "test-spec")
         self.assertEqual(evaluate(ground_spec, from_trace_synthetic(ground_trace()))["result"], "pass")
         self.assertEqual(evaluate(ground_spec, from_trace_synthetic(ground_trace(sink=26)))["result"], "fail")
-        # Without the ground line (older traces) the floor comes from the player itself and a uniform
-        # sink is invisible: that is the gap the ground line closes.
+        # An older trace has neither the ground line nor the camera: the floor then comes from the
+        # player itself and a uniform sink is invisible. That is the gap the ground line closes.
         old = ground_trace(sink=26)
         for row in old["rows"]:
             row.pop("ground")
+            row.pop("view")
         self.assertEqual(evaluate(ground_spec, from_trace_synthetic(old))["result"], "pass")
+
+    def test_a_game_with_no_ground_to_measure_is_never_judged_against_a_guessed_one(self):
+        # Today's harness logs the camera in every row and the ground line only where there is tile
+        # collision under the player. Until November 12, 2026 a trace with no ground line anywhere
+        # was taken for an older trace and given a floor guessed from the player; with no on-floor
+        # row the guess was the player's first position or 0. Godot's Dodge the Creeps, unchanged,
+        # was rejected that way: "player is 450px past the boundary (above 0, tolerance 20)" (#263).
+        from agents.observations import from_trace_synthetic
+        ground_spec = load(REPO / "agents" / "specs" / "player-stays-above-ground.json", "test-spec")
+        rows = [{"tick": t, "frame": t, "player": [240.0 + (t % 50), 450.0 if t >= 10 else 0.0], "onFloor": False,
+                 "view": [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]} for t in range(300)]
+        top_down = {"format": "expectrail.trace/v0", "ticks": 300, "physicsTicksPerSecond": 60, "rows": rows}
+        doc = from_trace_synthetic(top_down)
+        self.assertEqual([f["objects"]["ground"] for f in doc["frames"]], [[]] * len(doc["frames"]))
+        self.assertTrue(all(f["objects"]["player"] for f in doc["frames"]))
+        self.assertIn("not measured", doc["model"]["ground"])
+        verdict = evaluate(ground_spec, doc)
+        self.assertEqual(verdict["result"], "needs-review")
+        self.assertIn("a missing object is never a pass", verdict["reason"])
+        # A level with ground in some places and none in others: judged where it is measured, and
+        # the frames without it keep the result from a pass.
+        partly = ground_trace()
+        for row in partly["rows"][100:140]:
+            row.pop("ground")
+        self.assertEqual(evaluate(ground_spec, from_trace_synthetic(partly))["result"], "needs-review")
+        sunk = ground_trace(sink=26)
+        for row in sunk["rows"][100:140]:
+            row.pop("ground")
+        self.assertEqual(evaluate(ground_spec, from_trace_synthetic(sunk))["result"], "fail")   # a real fail still rejects
 
     def test_hybrid_asks_sam_for_the_robot_only_and_judges_it_against_the_engine_line(self):
         from agents.observations import engine_ground_by_frame

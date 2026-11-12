@@ -371,6 +371,28 @@ class VerifyTest(GateCase):
                     self.assertIn("needs review", body)
                     self.assertIn("problem", body)
 
+    def test_a_route_that_is_a_link_or_outside_the_checkout_never_leaves_an_accept(self):
+        # The last row of #340's table: both were left out of the routes and nothing said so.
+        outside = self.tmp / "elsewhere"
+        outside.mkdir()
+        shutil.copy(ROUTES / "coins.json", outside / "coins.json")
+        breakers = {
+            "a route that is a link to a file": lambda r: (r / "routes" / "linked.json").symlink_to("smoke.json"),
+            "a route reached through a link out of the checkout": lambda r: (r / "routes" / "away").symlink_to(outside),
+        }
+        for n, (label, breaker) in enumerate(breakers.items()):
+            with self.subTest(label):
+                head = make_repo(self.tmp / f"head-{n}")
+                breaker(head)
+                with contextlib.redirect_stdout(io.StringIO()):
+                    doc = gv.run_gate(repo=head, game="game/platformer", routes=["routes/*.json", "routes/*/*.json"],
+                                      specs="specs", out=self.tmp / f"out-{n}", work=self.tmp / f"work-{n}", base=None,
+                                      heldout=None, pr={"number": 7, "headSha": HEAD, "baseSha": None}, replay=self.replay)
+                self.assertEqual((doc["decision"], doc["checkProblems"]), ("needs-review", 1))
+                self.assertEqual(sorted(r["name"] for r in doc["routes"]), ["combat", "smoke"])   # nothing outside was played
+                self.assertEqual(doc["counts"]["passed"], doc["counts"]["checks"])
+                self.assertIn("is not read" if n else "a symlink is refused", doc["reasons"][1])
+
     def test_a_failing_check_still_rejects_beside_a_check_file_that_cannot_be_used(self):
         head = make_repo(self.tmp / "head", bug=True)
         (head / "routes" / "broken.json").write_text("{not json")

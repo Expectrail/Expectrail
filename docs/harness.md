@@ -127,8 +127,11 @@ reaches a game from a player, and sends it on at once so it arrives in the tick 
 - **The action has a key or a pad button bound to it:** that key or button is pressed, the first one
   the project lists. Every way of reading input sees it: the action's state in a tick
   (`Input.is_action_pressed`), `_input`, `_unhandled_input`, `_unhandled_key_input`, and a button
-  whose shortcut is the action. Any other action bound to the same key is pressed with it, as it is
-  for the player.
+  whose shortcut is the action. Any other action bound to the same key is pressed with it and
+  released with it, as it is for the player. So a route that holds two actions sharing their first
+  key over each other does not do what it says: releasing one lets go of the other, and nothing
+  reports it yet. In the bundled game `jump`, `move_left` and `move_right` share their first key
+  with the player-two actions, which only matter in split screen, where no route goes.
 - **It has none** (nothing bound, or only a mouse button or a stick): an action event is sent. The
   action's state, `_input` and `_unhandled_input` see it. A button's shortcut does not: the engine
   offers only key and pad-button events to shortcuts.
