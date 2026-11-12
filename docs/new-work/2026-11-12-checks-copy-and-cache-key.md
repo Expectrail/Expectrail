@@ -1,4 +1,4 @@
-# The verifier judges from a digested copy of the checks, and an import cache is stored only under the key of what it was built from (#307)
+# One reader and one source for the checks that judge, and an import cache is stored only under the key of what it was built from (#307)
 
 ## What changed
 
@@ -21,6 +21,11 @@ compared the two, and the two did not read alike.
   its work folder. Before, each route file was read three times (to parse, to hash, to replay).
 - After the run the worker holds the digest the engine judged with against the job's, as it does
   the game's trees.
+- With a base, the count of check files a change edits (`checksChanged`) compares the head's listing
+  with the base's, both made by that reader. My rework first compared the head's files, read the
+  old way, with only the base files the reader had accepted, so a refused file that was the same on
+  both sides counted as an edit on every pull request and a removed one did not count (the guard's
+  second review).
 
 My first version of this copied the checks into the job's folder with a reader of its own and gave
 the gate that folder. The merge guard's review showed the two ways that fails: the copy followed
@@ -39,7 +44,7 @@ copy and the replay's copy are all held to one reading.
 
 ## What was run
 
-- `python3 -m unittest discover -s tests -t .`: 2,053 tests, OK, 22 skipped (bubblewrap and Unity, as on main).
+- `python3 -m unittest discover -s tests -t .`: 2,054 tests, OK, 22 skipped (bubblewrap and Unity, as on main).
 - New tests in `tests/test_orchestrator.py`:
   - a replay stand-in that spoils every spec and deletes every route in the checkout during the run:
     the job still gets the decision and the record the gate gave on the checkout as it was, and
@@ -52,6 +57,11 @@ copy and the replay's copy are all held to one reading.
     audit hook on every `open` in the process shows the target was never opened;
   - the digest: unchanged by a route that is a link and by files that only look like checks, changed
     by a draft, changed by a spec that is a link but not by what the link leads to.
+- New test in `tests/test_ci_gate.py`: twelve pairs of head and base (the same link, the same
+  over-the-cap spec and route on both sides; a link removed and added; a spec and a route added,
+  removed and edited; nothing different) give the counts main gives, and the sentence about edited
+  checks appears exactly when a count is not zero. Against the head before this fix, four of the
+  twelve fail.
 - New test in `tests/test_harness.py`: with the game changed for the moment of the cache's copy,
   nothing is imported and no cache or key is stored; with the folder still, a cache is stored under
   the key of what was copied.

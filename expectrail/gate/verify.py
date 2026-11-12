@@ -174,8 +174,9 @@ class Checks:
     problems: list
     routes: list            # [(name, the file's bytes, sha256)], sorted by name
     found_routes: bool      # whether any route file matched at all
-    spec_bytes: dict        # path inside the checkout -> bytes, for each spec file that was read
-    route_bytes: dict       # the same for route files
+    spec_entries: dict      # path inside the checkout -> what the digest holds for it, for every spec
+                            # file listed: the sha256 of the bytes read, or `refused: <the reason>`
+    route_entries: dict     # the same for every route file listed
     digest: str | None      # None when there is no spec file and no route file
 
 
@@ -198,20 +199,18 @@ def read_checks(root: Path, specs: str, patterns: list[str], checks_from: str = 
     that it was refused, never by what it leads to, which is not opened."""
     import hashlib
 
-    listed: dict[str, str] = {}
     problems: list[str] = []
-    spec_bytes: dict[str, bytes] = {}
-    route_bytes: dict[str, bytes] = {}
+    spec_entries: dict[str, str] = {}
+    route_entries: dict[str, str] = {}
 
-    def read(path: Path, cap: int, label: str, into: dict) -> bytes | None:
+    def read(path: Path, cap: int, label: str, entries: dict) -> bytes:
         name = path.relative_to(root).as_posix()
         try:
             data = rec.read_bytes_capped(path, cap, label)
         except rec.RecordError as exc:
-            listed[name] = f"refused: {exc}"
+            entries[name] = f"refused: {exc}"
             raise
-        listed[name] = hashlib.sha256(data).hexdigest()
-        into[name] = data
+        entries[name] = hashlib.sha256(data).hexdigest()
         return data
 
     # Specs: (approved specs, drafts, problems) from every *.json in the folder.
@@ -225,7 +224,7 @@ def read_checks(root: Path, specs: str, patterns: list[str], checks_from: str = 
         schema = _schema("test-spec")
         for path in spec_files(folder):
             try:
-                doc = _parse(read(path, SPEC_CAP, path.name, spec_bytes), path.name)
+                doc = _parse(read(path, SPEC_CAP, path.name, spec_entries), path.name)
             except rec.RecordError as exc:
                 spec_problems.append(f"spec {path.name}: {exc}")
                 continue
@@ -255,7 +254,7 @@ def read_checks(root: Path, specs: str, patterns: list[str], checks_from: str = 
     for path in route_files:
         shown = path.relative_to(root).as_posix() if _inside(root, path) else path.name
         try:
-            data = read(path, ROUTE_CAP, shown, route_bytes)
+            data = read(path, ROUTE_CAP, shown, route_entries)
             doc = _parse(data, shown)
         except rec.RecordError as exc:
             route_problems.append(f"route {shown}: {exc}")
@@ -274,20 +273,19 @@ def read_checks(root: Path, specs: str, patterns: list[str], checks_from: str = 
         route_problems.append(f"{len(routes)} routes, over the gate's limit of {MAX_ROUTES}")
         routes = []
 
+    listed = {**route_entries, **spec_entries}
     h = hashlib.sha256()
     for name in sorted(listed):
         h.update(name.encode() + b"\0" + listed[name].encode() + b"\n")
     return Checks(specs=sorted(approved, key=lambda s: s["id"]), drafts=drafts,
                   problems=problems + spec_problems + route_problems, routes=sorted(routes),
-                  found_routes=bool(route_files), spec_bytes=spec_bytes, route_bytes=route_bytes,
+                  found_routes=bool(route_files), spec_entries=spec_entries, route_entries=route_entries,
                   digest=h.hexdigest() if listed else None)
 
 
-def _files_by_name(paths: list[Path], root: Path) -> dict[str, bytes]:
-    return {p.relative_to(root).as_posix(): p.read_bytes() for p in paths if _inside(root, p)}
-
-
-def changed_count(head: dict[str, bytes], base: dict[str, bytes]) -> int:
+def changed_count(head: dict, base: dict) -> int:
+    """How many names differ between two listings of check files (``Checks.spec_entries`` or
+    ``route_entries``): added, removed, or with another entry."""
     return sum(1 for name in set(head) | set(base) if head.get(name) != base.get(name))
 
 
@@ -457,10 +455,13 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     route_list = [(name, routes_dir / f"{name}.json", sha) for name, _data, sha in checks.routes]
     changed = {"specs": 0, "routes": 0}
     if base is not None:
-        head_specs = sorted(p for p in (repo / specs_rel).glob("*.json") if p.is_file()) \
-            if (repo / specs_rel).is_dir() else []
-        changed["specs"] = changed_count(_files_by_name(head_specs, repo), checks.spec_bytes)
-        changed["routes"] = changed_count(_files_by_name(find_routes(repo, patterns), repo), checks.route_bytes)
+        # What the change does to the check files, counted from one kind of reading on both sides:
+        # the head's checks are listed by the same reader as the base's. A file the reader refuses
+        # compares by its name and its refusal, so one that is the same on both sides is not counted
+        # and one that the change removes is. (The head's checks judge nothing here.)
+        mine = read_checks(repo, specs_rel, patterns, "head")
+        changed["specs"] = changed_count(mine.spec_entries, checks.spec_entries)
+        changed["routes"] = changed_count(mine.route_entries, checks.route_entries)
 
     head_game = repo / game_rel
     base_game = (checks_root / game_rel) if base is not None else None
