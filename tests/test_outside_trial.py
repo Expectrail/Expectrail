@@ -134,5 +134,50 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("python -m tools.outside_trial --fetch --execution-class isolated", code)
 
 
+class ProbeWorkflowTest(unittest.TestCase):
+    """`outside-sam-probe.yml`: the model key and the outside code never meet."""
+
+    def setUp(self):
+        text = (REPO / ".github" / "workflows" / "outside-sam-probe.yml").read_text(encoding="utf-8")
+        code = "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("#"))
+        head, jobs = code.split("\njobs:\n", 1)
+        self.head = head
+        self.capture, self.probe = jobs.split("\n  probe:\n", 1)
+        self.assertTrue(self.capture.startswith("  capture:\n"))
+
+    def test_it_is_started_by_a_person_only(self):
+        self.assertIn("on:\n  workflow_dispatch:", self.head)
+        for trigger in ("pull_request", "push:", "schedule", "workflow_run"):
+            self.assertNotIn(trigger, self.head)
+        self.assertIn("permissions:\n  contents: read\n", self.head)
+
+    def test_the_job_that_starts_outside_code_holds_no_secret(self):
+        self.assertNotIn("secrets.", self.capture)
+        self.assertNotIn("environment:", self.capture)
+        self.assertIn("python -m tools.outside_trial --fetch --capture", self.capture)
+        self.assertIn("persist-credentials: false", self.capture)
+
+    def test_the_job_that_holds_the_key_never_fetches_or_starts_outside_code(self):
+        self.assertIn("environment: main-only", self.probe)
+        self.assertIn("needs: capture", self.probe)
+        for word in ("outside_trial", "harness.run", "get-godot", "git fetch", "git clone", "godot", "xvfb", "bubblewrap"):
+            self.assertNotIn(word, self.probe)
+        self.assertIn("actions/download-artifact@", self.probe)
+        self.assertIn("python -m agents.sam_probe", self.probe)
+
+    def test_the_probe_cannot_run_without_a_cap_or_with_one_above_two_dollars(self):
+        self.assertIn('export EXPECTRAIL_SAM_USD_CAP="$CAP"', self.probe)
+        self.assertLess(self.probe.index('export EXPECTRAIL_SAM_USD_CAP="$CAP"'), self.probe.index("python -m agents.sam_probe"))
+        self.assertIn("if not 0 < float(sys.argv[1]) <= 2:", self.probe)
+        self.assertIn("group: sam-spend", self.head)
+
+    def test_the_capture_always_requires_the_sandbox(self):
+        import inspect
+        self.assertEqual(inspect.signature(trial.capture).parameters["sandbox"].default, "require")
+        source = inspect.getsource(trial.main)
+        self.assertIn("capture(project, lay_out(project, source, work / \"checkouts\"), args.out, args.timeout)", source)
+        self.assertNotIn("sandbox=", source)
+
+
 if __name__ == "__main__":
     unittest.main()

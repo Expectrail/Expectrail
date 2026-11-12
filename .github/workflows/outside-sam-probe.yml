@@ -1,0 +1,154 @@
+# Can SAM find the player in a game it has never seen? A probe, not a verdict (#263, #327, #330).
+#
+# Two jobs, so that the model key and the outside code never meet:
+#   capture  no secret. Fetches one outside project at its pinned commit, replays our route on it
+#            in the replay sandbox, and uploads the frames and the trace. Nothing is judged.
+#   probe    holds the key. Downloads those frames from this same run and asks SAM what it sees in
+#            every Nth one. It never fetches, checks out or starts the outside project: frames are
+#            pictures and the trace is numbers.
+# The probe costs one image per frame and prompt (13 frames a run at the default), and the run stops
+# at the cap given when it is started. Started by a person only.
+name: Outside SAM probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: The outside project (a name in tests/outside/projects.json)
+        type: choice
+        options: [kinematic-character, dodge-the-creeps]
+        default: kinematic-character
+      prompt:
+        description: What to ask SAM for as the player, in plain words (letters, digits, spaces and hyphens)
+        default: player character
+      sweep:
+        description: Or several prompts to compare, separated by | (up to 9); leave empty for the one above
+        default: ''
+      every:
+        description: Probe every Nth frame of the first 120 (10 means 13 frames)
+        default: '10'
+      sam_usd_cap:
+        description: The most this run may spend on SAM, in US dollars (at most 2)
+        default: '0.50'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sam-spend
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+      - name: Install a virtual display, software OpenGL and bubblewrap
+        uses: ./.github/actions/apt-install
+        with:
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch bubblewrap
+      - name: Download Godot 4.7.2 and check its SHA-512
+        uses: ./.github/actions/get-godot
+      - name: Allow unprivileged user namespaces for bubblewrap
+        run: |
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          fi
+          if [ -f /proc/sys/kernel/unprivileged_userns_clone ]; then
+            echo 1 | sudo tee /proc/sys/kernel/unprivileged_userns_clone
+          fi
+      - name: Replay our route on the project, in the sandbox, and keep the frames
+        env:
+          PROJECT: ${{ inputs.project }}
+        run: |
+          [[ "$PROJECT" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "::error::project must be a plain name"; exit 1; }
+          python -m tools.outside_trial --fetch --capture --only "$PROJECT" --out runs/outside-frames
+      - name: Hand the frames and traces to the probe job
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: outside-frames
+          path: runs/outside-frames/
+          retention-days: 7
+
+  probe:
+    needs: capture
+    environment: main-only
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SAM_KEY_SET: ${{ secrets.MODEL_API_KEY != '' || secrets.META_API_KEY != '' }}
+    steps:
+      - name: Require a Meta Model API key secret
+        if: env.SAM_KEY_SET != 'true'
+        run: |
+          echo "::error::Set MODEL_API_KEY (or META_API_KEY) in the main-only environment first."
+          exit 1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt pillow==12.3.0
+      - name: Fetch the frames the capture job made in this run
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: outside-frames
+          path: runs/outside-frames
+      - name: Ask SAM 3.1 what it sees
+        env:
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY || secrets.META_API_KEY }}
+          EXPECTRAIL_SAM_CACHE: 'off'
+          PROJECT: ${{ inputs.project }}
+          PROMPT: ${{ inputs.prompt }}
+          SWEEP: ${{ inputs.sweep }}
+          EVERY: ${{ inputs.every }}
+          CAP: ${{ inputs.sam_usd_cap }}
+        run: |
+          word="[A-Za-z0-9 -]+"
+          [[ "$PROJECT" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "::error::project must be a plain name"; exit 1; }
+          [[ "$PROMPT" =~ ^$word$ ]] || { echo "::error::prompt must be letters, digits, spaces and hyphens"; exit 1; }
+          [[ -z "$SWEEP" || "$SWEEP" =~ ^$word(\|$word){0,8}$ ]] || { echo "::error::sweep must look like robot|player|small character, up to 9"; exit 1; }
+          [[ "$EVERY" =~ ^[1-9][0-9]{0,2}$ ]] || { echo "::error::every must be a number from 1 to 999"; exit 1; }
+          [[ "$CAP" =~ ^[0-9]+(\.[0-9]{1,2})?$ ]] || { echo "::error::sam_usd_cap must be an amount like 0.50"; exit 1; }
+          python - "$CAP" <<'PY'
+          import sys
+          if not 0 < float(sys.argv[1]) <= 2:
+              sys.exit("::error::sam_usd_cap must be above 0 and at most 2")
+          PY
+          export EXPECTRAIL_SAM_USD_CAP="$CAP"
+          echo "::notice title=SAM budget::reserved \$$CAP for an outside probe of $PROJECT, month $(date -u +%Y-%m)"
+          runs=()
+          names=()
+          for dir in runs/outside-frames/"$PROJECT"/*/; do
+            [ -d "$dir/frames" ] || continue
+            runs+=("${dir%/}")
+            names+=("$(basename "$dir")")
+          done
+          [ "${#runs[@]}" -gt 0 ] || { echo "::error::the capture job left no frames for $PROJECT"; exit 1; }
+          clean=$(IFS=,; echo "${names[*]}")
+          args=(--spec specs/player-always-visible.json --every "$EVERY" --clean "$clean" --out runs/sam-probe --runs "${runs[@]}")
+          if [[ -n "$SWEEP" ]]; then args+=(--sweep "player=$SWEEP"); else args+=(--set "player=$PROMPT"); fi
+          python -m agents.sam_probe "${args[@]}" --dry-run
+          python -m agents.sam_probe "${args[@]}"
+      - name: What SAM saw, in the summary
+        if: always()
+        run: |
+          {
+            echo "## Outside SAM probe: ${{ inputs.project }}"
+            echo
+            if [ -f runs/sam-probe/probe.md ]; then cat runs/sam-probe/probe.md; else echo "No probe result was made."; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the probe's overlays
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: outside-sam-probe
+          path: runs/sam-probe/
+          retention-days: 14
