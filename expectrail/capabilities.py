@@ -14,8 +14,10 @@ such a run is evidence), when a row points at
 a file that is not there, and when the README or the site names a command, a switch, a workflow, a
 doc page or a watched name that no row lists. It also fails when a count a row ties to its run's
 notices (``counts``) does not stand in the words of the evidence where a count is found, its numbers
-are not the ones the words give, or it counts fewer notices than there are without naming the field
-the others must have. A run's conclusion is the value recorded in the
+are not the ones the words give (words that hold no number speak of every notice counted, so their
+``n`` is their ``of``), it counts fewer notices than there are without naming the field the others
+must have, or its ``reads`` could be filled the same by two different counts. A run's conclusion is
+the value recorded in the
 ledger when the row was written; ``check``, ``render`` and the test suite never call GitHub. ``recheck``
 does (``expectrail.capability_runs``): it needs the ``gh`` command and the network, so a person or an
 agent runs it, and the suite tests it on saved answers.
@@ -29,6 +31,7 @@ import re
 import sys
 from pathlib import Path
 
+from expectrail.capability_runs import members
 from expectrail.timing import not_finite
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -52,6 +55,7 @@ _ONE = {"commands": "command", "switches": "switch", "workflows": "workflow", "d
 _RUN = re.compile(r"^https://github\.com/Expectrail/Expectrail/actions/runs/[0-9]+(/job/[0-9]+)?$")
 # A count as a row quotes it: "8 of 8", "3 of 12".
 _QUOTED = re.compile(r"(?<![\w.,$])(\d+) of (\d+)(?![\w]|[.,]\d)")
+_PLACE = re.compile(r"\{n\}|\{of\}")
 
 
 class LedgerError(ValueError):
@@ -168,8 +172,12 @@ def tied(ev: dict) -> list[tuple[dict, tuple[int, int] | None, list[str]]]:
             found.append(f"is recorded as {count['n']} of {count['of']}")
         if count["n"] > count["of"]:
             found.append(f": {count['n']} of {count['of']} is more than there are")
-        if "reads" in count and (count["reads"].count("{n}"), count["reads"].count("{of}")) != (1, 1):
-            found.append(": 'reads' must have {n} and {of} once each")
+        if not quoted and count["n"] != count["of"]:
+            found.append(f": words that hold no count say something of every notice counted, and {count['n']} of "
+                         f"{count['of']} is recorded; tie a count the evidence quotes, or record all of them")
+        if "reads" in count:
+            found += _reads_problems(count["reads"])
+        found += _member_problems(count)
         for key in ("count", "otherwise", "reads"):
             if key not in count or _is_field(count[key]):
                 continue
@@ -186,6 +194,42 @@ def tied(ev: dict) -> list[tuple[dict, tuple[int, int] | None, list[str]]]:
         elif "otherwise" in count:
             found.append(": 'otherwise' goes with 'count', not with 'reads'")
         out.append((count, place, found))
+    return out
+
+
+def _reads_problems(reads: str) -> list[str]:
+    """Why a ``reads`` field could be filled in by more than one pair of numbers, or by none."""
+    if (reads.count("{n}"), reads.count("{of}")) != (1, 1):
+        return [": 'reads' must have {n} and {of} once each"]
+    # "{n}{of}" is filled the same by 1 of 11 and 11 of 1, and "{n}0 of {of}" by 1 and by 10: a number
+    # ends only where something that is not a digit follows it.
+    for place in _PLACE.finditer(reads):
+        around = reads[max(place.start() - 1, 0):place.start()] + reads[place.end():place.end() + 1]
+        if any(ch.isdigit() or ch in "{}" for ch in around):
+            return [": 'reads' has a digit or the other number right beside " + place.group(0)
+                    + ", so more than one count would fill it the same"]
+    return []
+
+
+def _member_problems(count: dict) -> list[str]:
+    """What is wrong with the members a count read from JSON notices names (``has``, ``where``)."""
+    out = []
+    if "where" in count and "has" not in count:
+        out.append(": 'where' goes with 'has'")
+    for key in ("has", "where"):
+        for name, wanted in count.get(key, {}).items():
+            values = wanted if isinstance(wanted, list) else [wanted]
+            kinds = {type(value) for value in values}
+            if len(kinds) != 1 or not kinds <= {bool, int, str}:
+                out.append(f": {key!r} gives {name!r} values that are not all true or false, all whole numbers "
+                           "or all text")
+            elif isinstance(wanted, list) and (key == "has" or len(set(values)) != len(values) or len(values) < 2
+                                               or kinds == {bool}):
+                out.append(f": {key!r} gives {name!r} a list; only 'where' takes one, of two or more different "
+                           "values that are text or whole numbers")
+    both = sorted(set(count.get("has", {})) & set(count.get("where", {})))
+    if both:
+        out.append(f": 'has' and 'where' both name the member {both[0]!r}")
     return out
 
 
@@ -370,12 +414,19 @@ def _evidence(ev: dict) -> str:
         if ev.get("counts"):
             text += ". Counted from the run's notices: " + ", ".join(
                 c["says"] if _QUOTED.search(c["says"])
-                else f"{c['says']} ({c['n']} of {c['of']} with \"{c.get('count', c.get('reads'))}\")"
+                else f"{c['says']} ({c['n']} of {c['of']} with {_how(c)})"
                 for c in ev["counts"])
         if ev.get("conclusion", "success") != "success":
             text += f". The run ended in {ev['conclusion'].replace('_', ' ')}: {ev.get('conclusionNote', 'no reason given')}"
         return text
     return f"{_link(ev['ref'])}: {ev['shows']}"
+
+
+def _how(count: dict) -> str:
+    """What a count's notices must have, as the page says it."""
+    if "has" in count:
+        return members(count["has"]) + (f", of those with {members(count['where'])}" if "where" in count else "")
+    return f"\"{count.get('count', count.get('reads'))}\""
 
 
 def _tied(doc: dict) -> str:

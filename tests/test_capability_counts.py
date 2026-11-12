@@ -255,6 +255,145 @@ class ReadsTest(_Counted):
                                  "count read from one notice takes exactly one"])
 
 
+def _blind(name: str, kind: str = "defect", flagged=False, **more) -> dict:
+    return {"title": f"Blind {name}", "message": json.dumps({"id": name, "kind": kind, "flagged": flagged, **more})}
+
+
+class JsonNoticesTest(_Counted):
+    """A count read from notices whose message is one JSON object (``has``, ``where``)."""
+
+    SET = {
+        "a": [_blind("a", flagged=True), {"title": "Blind time a", "message": "12 s"}],
+        "b": [_blind("b"), {"title": "Blind time b", "message": "9 s"}],
+        "c": [_blind("c", flagged=True, results={"fail": 4})],
+        "d": [_blind("d", "intentional")],
+        "clean": [_blind("clean", "clean")],
+    }
+
+    def entry(self, says: str = "2 of 3", n: int = 2, of: int = 3, **more) -> dict:
+        out = {"says": says, "n": n, "of": of, "titled": "Blind *", "not": ["Blind time *"],
+               "where": {"kind": "defect"}, "has": {"flagged": True}, **more}
+        return {key: value for key, value in out.items() if value is not None}
+
+    def one(self, *counts: dict, notices: dict | None = None) -> str:
+        found = self.check(*counts, notices=self.SET if notices is None else notices)
+        self.assertEqual(len(found), 1, found)
+        return found[0]
+
+    def swapped(self, key: str, *notices: dict) -> dict:
+        return dict(self.SET, **{key: list(notices)})
+
+    def test_a_count_the_json_notices_give_has_no_problem(self):
+        healthy = self.entry("no healthy build flagged", 2, 2, where={"kind": ["clean", "intentional"]},
+                             has={"flagged": False})
+        self.assertEqual(self.check(self.entry(), healthy, self.entry("1 of 5", 1, 5, where=None, has={"id": "a"}),
+                                    notices=self.SET), [])
+
+    def test_a_count_the_notices_do_not_give_is_a_problem_that_says_both(self):
+        self.assertEqual(self.one(self.entry("3 of 3", 3, 3)),
+                         "mode: run 1: '3 of 3': 3 of 3 is recorded and the run's notices give 2 of 3 (titled "
+                         "'Blind *', where \"kind\": \"defect\", with \"flagged\": true)")
+        self.assertIn("give 2 of 3", self.one(self.entry("2 of 4", 2, 4)))
+        self.assertIn("give 2 of 5 (titled 'Blind *', with", self.one(self.entry("2 of 3", where=None)))
+
+    def test_a_message_that_is_not_one_json_object_is_cannot_tell(self):
+        for message, said in (
+            ("flagged: true", "is not JSON"), ("", "is not JSON"), ("[1, 2]", "is JSON and not an object"),
+            ("true", "is JSON and not an object"), ('"x"', "is JSON and not an object"),
+            ('{"id":"b","kind":"defect","flagged":false,"flagged":true}', "cannot be counted: the member 'flagged' is there twice"),
+            ('{"kind":"defect","flagged":true,"results":{"a":1,"a":2}}', "cannot be counted: the member 'a' is there twice"),
+            ('{"kind":"defect","flagged":true,"seconds":NaN}', "cannot be counted: NaN is not a JSON number"),
+            ('{"kind":"defect","flagged":true} trailing', "is not JSON"),
+            ("[" * 100000, "is not JSON"),
+        ):
+            found = self.one(self.entry(), notices=self.swapped("b", {"title": "Blind b", "message": message}))
+            self.assertIn("'2 of 3': cannot tell: the message of the notice 'Blind b' " + said, found, message)
+
+    def test_a_notice_left_in_by_the_title_must_be_json_too(self):
+        # Without `not`, the "Blind time" notices have the title, and "12 s" is not an object: not a quiet 2 of 3.
+        self.assertIn("cannot tell: the message of the notice 'Blind time a' is not JSON",
+                      self.one(self.entry(**{"not": None})))
+
+    def test_a_notice_without_the_member_is_not_a_no(self):
+        bare = {"title": "Blind b", "message": json.dumps({"id": "b", "kind": "defect"})}
+        self.assertIn("cannot tell: the notice 'Blind b' has no member 'flagged'",
+                      self.one(self.entry(), notices=self.swapped("b", bare)))
+        # A notice that does not say which set it is in is not left out of `of` quietly either.
+        unsorted = {"title": "Blind d", "message": json.dumps({"id": "d", "flagged": False})}
+        self.assertIn("cannot tell: the notice 'Blind d' has no member 'kind'",
+                      self.one(self.entry(), notices=self.swapped("d", unsorted)))
+
+    def test_a_member_of_another_kind_is_cannot_tell_never_equal_and_never_a_no(self):
+        for flagged in ("true", 1, 0, None, [True], {"value": True}, 1.0):
+            found = self.one(self.entry(), notices=self.swapped("b", _blind("b", flagged=flagged)))
+            self.assertIn("has the member 'flagged' as", found, flagged)
+            self.assertIn("which is not true or false", found, flagged)
+        found = self.one(self.entry(), notices=self.swapped("d", _blind("d", kind=3)))
+        self.assertIn("has the member 'kind' as 3, which is not text", found)
+        # The other way round: the entry asks for a whole number and the notice has true.
+        counted = self.entry("2 of 3", has={"reproduced": 1})
+        found = self.one(counted, notices=self.swapped("b", _blind("b", reproduced=True)))
+        self.assertIn("cannot tell", found)
+
+    def test_no_notice_kept_by_where_is_cannot_tell(self):
+        self.assertEqual(self.one(self.entry("0 of 1", 0, 1, where={"kind": "regression"})),
+                         "mode: run 1: '0 of 1': cannot tell: the run published no notice titled 'Blind *', where "
+                         "\"kind\": \"regression\"")
+
+    def test_every_member_named_must_hold(self):
+        both = self.entry("1 of 3", 1, 3, has={"flagged": True, "id": "a"})
+        self.assertEqual(self.check(both, notices=self.SET), [])
+        narrowed = self.entry("1 of 1", 1, 1, where={"kind": "defect", "id": "c"})
+        self.assertEqual(self.check(narrowed, notices=self.SET), [])
+
+    def test_the_same_notice_twice_and_a_failed_job_are_still_problems(self):
+        twice = self.swapped("b", _blind("b"), _blind("b", flagged=True))
+        self.assertIn("cannot tell: the run published the notice 'Blind b' 2 times", self.one(self.entry(), notices=twice))
+        found = self.check(self.entry(), notices=self.SET, endings={"c": "failure"})
+        self.assertEqual(len(found), 1)
+        self.assertIn("from job 'bench (c)', which ended in failure", found[0])
+
+    def test_generated_notices_a_count_passes_only_when_it_is_the_count(self):
+        rng = random.Random(244)
+        for _ in range(300):
+            notices, defects, flagged = {}, 0, 0
+            for index in range(rng.randint(1, 9)):
+                kind = rng.choice(("defect", "defect", "intentional", "clean"))
+                flag = rng.random() < 0.5
+                defects += kind == "defect"
+                flagged += kind == "defect" and flag
+                notices[f"j{index}"] = [_blind(f"v{index}", kind, flag)]
+            if not defects:
+                continue
+            self.assertEqual(self.check(self.entry(f"{flagged} of {defects}", flagged, defects), notices=notices), [])
+            for n, of in ((flagged + 1, defects), (flagged, defects + 1), (flagged - 1, defects), (flagged, defects - 1)):
+                if n < 0 or of < 1:
+                    continue
+                self.assertEqual(len(self.check(self.entry(f"{n} of {of}", n, of), notices=notices)), 1, (n, of))
+
+
+class NoticesThatAreNotTextTest(_Counted):
+    """The merge guard's case on #315: whatever a notices reader returns, an unread notice is "cannot tell"."""
+
+    def test_a_title_or_a_message_that_is_not_text_is_cannot_tell_for_every_way_of_counting(self):
+        entries = (_count(), {"says": "2 of 3", "n": 2, "of": 3, "titled": "Held-out bench *", "reads": "{n} of {of}"},
+                   {"says": "2 of 3", "n": 2, "of": 3, "titled": "Held-out bench *", "has": {"flagged": True}})
+        for bad in ({"title": None, "message": "x"}, {"title": "Held-out bench a", "message": None},
+                    {"title": 7, "message": "x"}, {"title": "Held-out bench a", "message": {"flagged": True}},
+                    {"title": "Held-out bench a", "message": b"x"}, {"title": "Held-out bench a"}, {"message": "x"},
+                    "Held-out bench a", None, ["Held-out bench a", "x"]):
+            for entry in entries:
+                found = self.check(entry, notices=dict(THREE, a=[bad]))
+                self.assertEqual(len(found), 1, (bad, entry))
+                self.assertIn("cannot tell: job 'bench (a)': a notice's title or message is not text", found[0])
+
+    def test_notices_that_are_not_a_list_are_cannot_tell(self):
+        for bad in (None, "x", {"title": "Held-out bench a", "message": "x"}, 7):
+            found = self.check(_count(), notices=dict(THREE, a=bad))
+            self.assertEqual(len(found), 1, bad)
+            self.assertIn("cannot tell: job 'bench (a)': the notices are not a list", found[0])
+
+
 class ReadOnceTest(unittest.TestCase):
     def test_notices_are_read_once_a_run_and_only_for_a_run_with_counts(self):
         asked: list[str] = []
@@ -328,7 +467,8 @@ class LedgerCountsTest(unittest.TestCase):
 
     def test_every_count_tied_to_notices_is_the_count_the_saved_notices_give(self):
         self.assertEqual(self.counted(self.doc), [])
-        self.assertGreaterEqual(len(self.entries(self.doc)), 15)
+        self.assertGreaterEqual(len(self.entries(self.doc)), 20)
+        self.assertGreaterEqual(sum(1 for _, count in self.entries(self.doc) if "has" in count), 4)
         for ev, _ in self.entries(self.doc):
             self.assertIn(runs._split(ev["ref"])[0], SAVED_NOTICES)
 
@@ -345,7 +485,7 @@ class LedgerCountsTest(unittest.TestCase):
     def test_the_ledger_has_no_offline_count_problem_and_says_how_many_counts_are_tied(self):
         self.assertEqual(cap.row_problems(self.doc), [])
         quoted, tied = cap.quoted_counts(self.doc)
-        self.assertGreaterEqual(tied, 11)
+        self.assertGreaterEqual(tied, 13)
         self.assertLessEqual(tied, quoted)
         self.assertIn(f"Of the {quoted} counts quoted beside a run link, "
                       f"{'every one' if tied == quoted else tied} are tied to notices", cap.render(self.doc))
@@ -403,7 +543,7 @@ class OfflineTest(unittest.TestCase):
     def test_words_without_a_count_do_not_start_or_end_inside_a_word_or_touch_a_count(self):
         shows = "2 of 3 caught, no false alarm in 1.5 s"
         for says in ("c", "aught", "no false al", "of", "of 3 caught", "3 caught", "5 s", "in 1"):
-            found = self.problems(shows, _count(says, 2, 3))
+            found = self.problems(shows, _count(says, 3, 3, otherwise=None))
             self.assertEqual(len(found), 1, says)
             self.assertIn("only inside a larger number or word", found[0])
         for says in ("caught", "no false alarm", "in 1.5 s"):
@@ -515,6 +655,67 @@ class OfflineTest(unittest.TestCase):
         self.assertEqual(self.problems("2 of 3 caught", entry),
                          ["mode: run 1: the count '2 of 3': 'reads' must have {n} and {of} once each"])
 
+    def test_words_that_hold_no_count_cannot_carry_numbers_nobody_reads(self):
+        # The merge guard's case on #315: "8 of 8 caught", and an entry on the word "caught" recorded as 5 of 9.
+        entry = {"says": "caught", "n": 5, "of": 9, "titled": "Held-out bench *", "count": "caught: yes",
+                 "otherwise": "caught: no"}
+        found = self.problems("8 of 8 caught", entry)
+        self.assertEqual(len(found), 1)
+        self.assertIn("words that hold no count say something of every notice counted, and 5 of 9 is recorded",
+                      found[0])
+        self.assertEqual(self.problems("8 of 8 caught", dict(entry, n=9)), [])
+        for way in ({"reads": "{n} of {of} caught"}, {"has": {"caught": True}}):
+            base = {"says": "caught", "of": 9, "titled": "Summary", **way}
+            self.assertEqual(len(self.problems("8 of 8 caught", dict(base, n=0))), 1, way)
+            self.assertEqual(self.problems("8 of 8 caught", dict(base, n=9)), [], way)
+
+    def test_reads_that_two_different_counts_would_fill_the_same_is_a_problem(self):
+        # The merge guard's case on #315: "{n}{of}" is "111" for 1 of 11 and for 11 of 1.
+        for reads in ("{n}{of}", "{of}{n}", "caught {n}{of}", "{n}0 of {of}", "{n} of 1{of}", "x1{n} of {of}",
+                      "{n} of {of}0", "{n} of {of}{", "}{n} of {of}"):
+            entry = {"says": "2 of 3", "n": 2, "of": 3, "titled": "Summary", "reads": reads}
+            found = self.problems("2 of 3 caught", entry)
+            self.assertEqual(len(found), 1, reads)
+            self.assertIn("so more than one count would fill it the same", found[0])
+        for reads in ("{n} of {of}", "({n}/{of})", "caught {n} of {of} bugs", "{of} seen, {n} caught", "{n}-{of}"):
+            entry = {"says": "2 of 3", "n": 2, "of": 3, "titled": "Summary", "reads": reads}
+            self.assertEqual(self.problems("2 of 3 caught", entry), [], reads)
+
+    def test_members_a_json_count_names_must_be_plain_values_and_named_once(self):
+        def found(**more) -> list[str]:
+            entry = {"says": "2 of 3", "n": 2, "of": 3, "titled": "Blind *", "has": {"flagged": True}, **more}
+            return self.problems("2 of 3 caught", entry)
+        self.assertEqual(found(), [])
+        self.assertEqual(found(where={"kind": "defect"}), [])
+        self.assertEqual(found(where={"kind": ["clean", "intentional"], "tries": [1, 2]}), [])
+        for more, said in (
+            ({"has": {"flagged": 1.0}}, "'has' gives 'flagged' values that are not all"),
+            ({"has": {"flagged": None}}, "'has' gives 'flagged' values that are not all"),
+            ({"has": {"flagged": {"a": 1}}}, "'has' gives 'flagged' values that are not all"),
+            ({"has": {"flagged": [True, False]}}, "'has' gives 'flagged' a list"),
+            ({"has": {"kind": ["a", "b"]}}, "'has' gives 'kind' a list"),
+            ({"where": {"kind": ["a"]}}, "'where' gives 'kind' a list"),
+            ({"where": {"kind": ["a", "a"]}}, "'where' gives 'kind' a list"),
+            ({"where": {"kind": [True, False]}}, "'where' gives 'kind' a list"),
+            ({"where": {"kind": ["a", 1]}}, "'where' gives 'kind' values that are not all"),
+            ({"where": {"kind": [1, True]}}, "'where' gives 'kind' values that are not all"),
+            ({"where": {"kind": []}}, "'where' gives 'kind' values that are not all"),
+            ({"where": {"flagged": True}}, "'has' and 'where' both name the member 'flagged'"),
+        ):
+            got = found(**more)
+            self.assertEqual(len(got), 1, more)
+            self.assertIn(said, got[0])
+        orphan = {"says": "2 of 3", "n": 2, "of": 3, "titled": "Blind *", "reads": "{n} of {of}", "where": {"a": "b"}}
+        self.assertEqual(self.problems("2 of 3 caught", orphan), ["mode: run 1: the count '2 of 3': 'where' goes with 'has'"])
+
+    def test_the_page_says_what_a_json_count_was_counted_by(self):
+        row = {"kind": "run", "ref": RUN + "1", "shows": "no healthy build flagged", "counts": [
+            {"says": "no healthy build flagged", "n": 3, "of": 3, "titled": "Blind *",
+             "where": {"kind": ["clean", "intentional"]}, "has": {"flagged": False}}]}
+        self.assertTrue(cap._evidence(row).endswith(
+            'Counted from the run\'s notices: no healthy build flagged (3 of 3 with "flagged": false, of those '
+            'with "kind": "clean" or "intentional")'))
+
     def test_row_problems_reports_a_bad_count_in_the_ledger(self):
         doc = copy.deepcopy(cap.load())
         row = next(r for r in doc["rows"] if r["id"] == "sam-observer")
@@ -573,8 +774,32 @@ class SchemaTest(unittest.TestCase):
             lambda run, test: run.update(counts=[dict(entry, reads="{n} of {of}", otherwise="b")]),
             lambda run, test: run.update(counts=[dict(entry, reads="{n} of {of}; x")]),
             lambda run, test: run.update(counts=[dict(entry, reads="{n} of\n{of}")]),
+            lambda run, test: run.update(counts=[dict(entry, reads="{n}{of}")]),
+            lambda run, test: run.update(counts=[dict(entry, reads="{of}{n}")]),
+            lambda run, test: run.update(counts=[dict(entry, reads="{n}0 of {of}")]),
+            lambda run, test: run.update(counts=[dict(entry, reads="{n} of {of}0")]),
+            lambda run, test: run.update(counts=[dict(entry, reads="1{n} of {of}")]),
+            lambda run, test: run.update(counts=[dict(entry, has={})]),
+            lambda run, test: run.update(counts=[dict(entry, has={"flagged": True}, count="x")]),
+            lambda run, test: run.update(counts=[dict(entry, has={"flagged": True}, reads="{n} of {of}")]),
+            lambda run, test: run.update(counts=[dict(entry, has={"flagged": True}, otherwise="x")]),
+            lambda run, test: run.update(counts=[dict(entry, has={"flagged": [True, False]})]),
+            lambda run, test: run.update(counts=[dict(entry, has={"flagged": None})]),
+            lambda run, test: run.update(counts=[dict(entry, has={"flagged": 0.5})]),
+            lambda run, test: run.update(counts=[dict(entry, has={"flagged": {"is": True}})]),
+            lambda run, test: run.update(counts=[dict(entry, count="x", where={"kind": "defect"})]),
+            lambda run, test: run.update(counts=[dict(entry, has={"flagged": True}, where={})]),
+            lambda run, test: run.update(counts=[dict(entry, has={"flagged": True}, where={"kind": ["defect"]})]),
+            lambda run, test: run.update(counts=[dict(entry, has={"flagged": True}, where={"kind": ["a", "a"]})]),
+            lambda run, test: run.update(counts=[dict(entry, has={"flagged": True}, where={"kind": [True, False]})]),
+            lambda run, test: run.update(counts=[dict(entry, has={"flagged": True}, where={"kind": ["a", 1]})]),
         ):
             self.assertTrue(self.errors(change))
+        for fine in (dict(entry, reads="{n} of {of}"), dict(entry, reads="caught ({n}/{of})"),
+                     dict(entry, has={"flagged": True}), dict(entry, has={"flagged": True, "tries": 1, "id": "a"}),
+                     dict(entry, has={"flagged": True}, where={"kind": "defect"}),
+                     dict(entry, has={"flagged": True}, where={"kind": ["clean", "intentional"], "tries": [1, 2]})):
+            self.assertEqual(self.errors(lambda run, test: run.update(counts=[fine])), [], fine)
 
 
 if __name__ == "__main__":
