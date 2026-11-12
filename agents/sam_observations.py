@@ -338,6 +338,29 @@ def point_prompt(points: list[tuple[int, int]], size: tuple[int, int]) -> str:
     return "<0f>" + ",".join(parts)
 
 
+def box_prompt(boxes: list[tuple[int, int, int, int]], size: tuple[int, int]) -> str:
+    """The text of an object prompt for one image: one box per object, under the ids 1, 2, ...
+
+    The same grammar as point_prompt (https://dev.meta.ai/docs/sam/segmenting, read November 12,
+    2026): ``<0f>1<|box;x1=..;y1=..;x2=..;y2=..;w=..;h=..|>``. A box asks for the object inside
+    it. Boxes here are half-open ``(x0, y0, x1, y1)`` like every box in this code; on the wire the
+    far corner is the last pixel inside, so x2 = x1 - 1. A box that is empty or reaches outside
+    the image is refused here first, and nothing is sent or paid for.
+    """
+    width, height = size
+    if not boxes:
+        raise ValueError("an object prompt needs at least one box")
+    parts = []
+    for n, box in enumerate(boxes, start=1):
+        if len(box) != 4 or any(isinstance(v, bool) or not isinstance(v, int) for v in box):
+            raise ValueError(f"a box is four whole pixel numbers, not {box!r}")
+        x0, y0, x1, y1 = box
+        if not (0 <= x0 < x1 <= width and 0 <= y0 < y1 <= height):
+            raise ValueError(f"the box {tuple(box)} is empty or outside the {width}x{height} image")
+        parts.append(f"{n}<|box;x1={x0};y1={y0};x2={x1 - 1};y2={y1 - 1};w={width};h={height}|>")
+    return "<0f>" + ",".join(parts)
+
+
 def png_size(path: Path) -> tuple[int, int]:
     with open(path, "rb") as fh:
         head = fh.read(24)
@@ -455,16 +478,25 @@ class MetaSamClient:
         not asked for, or two records for one point, is an error and never a pick.
         """
         size = png_size(png)
-        raw, content_type = self._call(request_body(point_prompt(points, size), data_url(png), self.model))
+        return self._objects(png, point_prompt(points, size), len(points), size)
+
+    def segment_in(self, png: Path, boxes: list[tuple[int, int, int, int]]) -> list[dict | None]:
+        """What is drawn inside each of ``boxes`` (half-open, frame pixels) in one frame, as segment_at
+        gives it: ``{"box", "score"}`` or None, in the boxes' order. One request, counted like any image."""
+        size = png_size(png)
+        return self._objects(png, box_prompt(boxes, size), len(boxes), size)
+
+    def _objects(self, png: Path, text: str, asked: int, size: tuple[int, int]) -> list[dict | None]:
+        raw, content_type = self._call(request_body(text, data_url(png), self.model))
         found: dict[int, dict] = {}
         for record in parse_output(output_text(raw, content_type), frame_size=size):
             n = record["id"]
-            if not 1 <= n <= len(points):
-                raise SamError(f"sam-3.1 answered for object {n}, and {len(points)} were asked for")
+            if not 1 <= n <= asked:
+                raise SamError(f"sam-3.1 answered for object {n}, and {asked} were asked for")
             if n in found:
-                raise SamError(f"sam-3.1 gave two boxes for object {n}; one point is one object")
+                raise SamError(f"sam-3.1 gave two boxes for object {n}; one prompt is one object")
             found[n] = {"box": record["box"], "score": record["score"]}
-        return [found.get(n) for n in range(1, len(points) + 1)]
+        return [found.get(n) for n in range(1, asked + 1)]
 
 
 _warned_shared_key = threading.Event()

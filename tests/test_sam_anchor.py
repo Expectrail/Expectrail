@@ -21,7 +21,7 @@ from unittest import mock
 
 import agents.sam_observations as sam
 from agents import sam_anchor as anchor
-from agents.sam_observations import MetaSamClient, SamError, point_prompt
+from agents.sam_observations import MetaSamClient, SamError, box_prompt, point_prompt
 from tests.test_sam import box_token, png_bytes
 
 W, H = 160, 96
@@ -97,6 +97,26 @@ class PointPromptTest(unittest.TestCase):
                 point_prompt(points, (W, H))
 
 
+class BoxPromptTest(unittest.TestCase):
+    def test_a_half_open_box_goes_on_the_wire_with_its_last_pixel_inside(self):
+        self.assertEqual(box_prompt([(20, 30, 44, 60)], (W, H)), "<0f>1<|box;x1=20;y1=30;x2=43;y2=59;w=160;h=96|>")
+        self.assertEqual(box_prompt([(0, 0, 160, 96)], (W, H)), "<0f>1<|box;x1=0;y1=0;x2=159;y2=95;w=160;h=96|>")
+
+    def test_each_box_is_its_own_object(self):
+        self.assertEqual(box_prompt([(0, 0, 2, 2), (10, 10, 12, 12)], (W, H)),
+                         "<0f>1<|box;x1=0;y1=0;x2=1;y2=1;w=160;h=96|>,2<|box;x1=10;y1=10;x2=11;y2=11;w=160;h=96|>")
+
+    def test_an_empty_box_or_one_outside_the_image_is_refused_before_anything_is_sent(self):
+        for box in ((20, 30, 20, 60), (20, 30, 44, 30), (44, 30, 20, 60), (-1, 0, 5, 5), (0, 0, 161, 5), (0, 0, 5, 97)):
+            with self.subTest(box=box), self.assertRaises(ValueError):
+                box_prompt([box], (W, H))
+
+    def test_a_box_is_four_whole_numbers_and_there_is_at_least_one(self):
+        for boxes in ([], [(1, 2, 3)], [(1.5, 2, 3, 4)], [(True, 2, 3, 4)]):
+            with self.subTest(boxes=boxes), self.assertRaises(ValueError):
+                box_prompt(boxes, (W, H))
+
+
 class SegmentAtTest(TempCase):
     def setUp(self):
         super().setUp()
@@ -148,6 +168,21 @@ class SegmentAtTest(TempCase):
         self.assertIn("cannot segment", str(failed.exception))
         self.assertEqual((failed.exception.kind, failed.exception.status), ("unknown", None))
 
+    def test_a_box_is_asked_the_same_way_and_counted_the_same(self):
+        client = self.client("<0f>" + box_token(1, (22, 31, 40, 58), 0.88))
+        self.assertEqual(client.segment_in(self.png, [(20, 30, 44, 60)]), [{"box": [22.0, 31.0, 40.0, 58.0], "score": 0.88}])
+        self.assertEqual(self.bodies[0]["input"][0]["content"][0]["text"], "<0f>1<|box;x1=20;y1=30;x2=43;y2=59;w=160;h=96|>")
+        self.assertEqual(self.client("").segment_in(self.png, [(20, 30, 44, 60)]), [None])
+        with self.assertRaises(SamError):
+            self.client("<0f>" + box_token(2, (22, 31, 40, 58), 0.9)).segment_in(self.png, [(20, 30, 44, 60)])
+        sam._usage["reservedUsd"] = 0.0                      # the three requests above were counted too
+        with mock.patch.dict(os.environ, {sam.CAP_ENV: "0.0025"}):
+            capped = self.client("<0f>" + box_token(1, (22, 31, 40, 58), 0.9))
+            capped.segment_in(self.png, [(20, 30, 44, 60)])
+            with self.assertRaises(SamError) as stopped:
+                capped.segment_in(self.png, [(20, 30, 44, 60)])
+        self.assertEqual(stopped.exception.kind, "budget")
+
     def test_it_is_counted_against_the_runs_cap_like_any_image(self):
         with mock.patch.dict(os.environ, {sam.CAP_ENV: "0.0025"}):
             client = self.client("<0f>" + box_token(1, (20, 30, 44, 60), 0.9))
@@ -194,6 +229,16 @@ class AnchorsTest(unittest.TestCase):
                 self.assertEqual(anchor.anchors(trace(player=lambda t: player), (W, H), [5])[5]["why"],
                                  "the player is outside the picture")
 
+    def test_a_box_in_game_pixels_is_centred_on_the_point_and_cut_to_the_picture(self):
+        # Scale 2: a box of 12 x 20 game px is 24 x 40 in the frame, centred on (52, 40).
+        where = anchor.anchors(trace(), (W, H), [5], box=(12.0, 20.0))[5]
+        self.assertEqual((where["point"], where["promptBox"]), ([52, 40], [40, 20, 64, 60]))
+        # A box taller than the picture allows is cut at its edges, top and bottom.
+        self.assertEqual(anchor.anchors(trace(), (W, H), [5], box=(12.0, 80.0))[5]["promptBox"], [40, 0, 64, 96])
+        # A player outside the picture gets no box and is not asked about.
+        self.assertNotIn("promptBox", anchor.anchors(trace(player=lambda t: (200.0, 30.0)), (W, H), [5], box=(12.0, 20.0))[5])
+        self.assertNotIn("promptBox", anchor.anchors(trace(), (W, H), [5])[5])
+
     def test_no_player_no_camera_or_no_row_is_said_and_never_guessed(self):
         self.assertEqual(anchor.anchors(trace(player=lambda t: None), (W, H), [5])[5],
                          {"why": "the engine logged no player"})
@@ -224,6 +269,18 @@ class MeasureTest(unittest.TestCase):
     def test_a_box_the_size_of_the_frame_shows_as_the_whole_frame(self):
         row = anchor.measure(self.WHERE, {"box": [0.0, 0.0, 160.0, 96.0], "score": 0.8}, (W, H))
         self.assertEqual((row["frameShare"], row["holdsPoint"]), (1.0, True))
+
+    def test_with_a_box_asked_the_answer_is_also_held_against_that_box(self):
+        asked = {**self.WHERE, "promptBox": [20, 20, 40, 60]}                    # 20 x 40 = 800 px
+        row = anchor.measure(asked, {"box": [20.0, 30.0, 40.0, 50.0], "score": 0.9}, (W, H))
+        self.assertEqual((row["promptBox"], row["insidePrompt"], row["fillsPrompt"]), ([20, 20, 40, 60], 1.0, 0.5))
+        spills = anchor.measure(asked, {"box": [20.0, 40.0, 40.0, 80.0], "score": 0.9}, (W, H))      # half below the box
+        self.assertEqual((spills["insidePrompt"], spills["fillsPrompt"]), (0.5, 0.5))
+        apart = anchor.measure(asked, {"box": [100.0, 0.0, 120.0, 10.0], "score": 0.9}, (W, H))
+        self.assertEqual((apart["insidePrompt"], apart["fillsPrompt"]), (0.0, 0.0))
+        nothing = anchor.measure(asked, None, (W, H))
+        self.assertEqual((nothing["promptBox"], nothing["note"]), ([20, 20, 40, 60], "nothing came back for the box"))
+        self.assertNotIn("insidePrompt", anchor.measure(self.WHERE, {"box": [20.0, 30.0, 40.0, 50.0], "score": 0.9}, (W, H)))
 
     def test_nothing_back_is_a_row_with_no_box(self):
         row = anchor.measure(self.WHERE, None, (W, H))
@@ -288,6 +345,19 @@ class ProbeRunTest(TempCase):
         self.assertEqual(stopped.exception.kind, "budget")
         self.assertEqual([r["frame"] for r in stopped.exception.partial["frames"]], [0, 10])
         self.assertEqual(len(run.sent), 2)
+
+    def test_with_a_box_every_frame_is_asked_with_its_box_and_not_its_point(self):
+        run = Run(self.tmp, doc=trace())
+        result = anchor.probe_run(run.dir, [0, 10], 10, 120, 0.0,
+                                  self.client(run, lambda n: reply("<0f>" + box_token(1, (12, 22, 30, 58), 0.9))), None,
+                                  (12.0, 20.0))
+        # Frame 0's point is (22, 40): the box is 24 x 40 around it, cut at the picture's left edge to 10.
+        self.assertEqual(run.sent, [(0, "<0f>1<|box;x1=10;y1=20;x2=33;y2=59;w=160;h=96|>"),
+                                    (10, "<0f>1<|box;x1=70;y1=20;x2=93;y2=59;w=160;h=96|>")])
+        first, second = result["frames"]
+        self.assertEqual((first["promptBox"], first["insidePrompt"], first["holdsPoint"]), ([10, 20, 34, 60], 1.0, True))
+        self.assertEqual((second["promptBox"], second["insidePrompt"], second["holdsPoint"]), ([70, 20, 94, 60], 0.0, False))
+        self.assertEqual(result["summary"]["insidePrompt"], {"min": 0.0, "median": 0.5, "max": 1.0})
 
     def test_the_route_a_run_replayed_is_recorded_when_its_replay_says(self):
         run = Run(self.tmp, doc=trace())
@@ -357,6 +427,28 @@ class MainTest(TempCase):
         self.assertIn("**Stopped early:** clean:", (self.tmp / "out" / "anchor.md").read_text(encoding="utf-8"))
         self.assertIn("::error title=SAM anchor probe stopped::", out)
 
+    def test_a_box_is_planned_recorded_and_titled(self):
+        run = Run(self.tmp, doc=trace())
+        code, out, _, made = self.run_main(["--runs", run.dir, "--box", "12x20", "--frames", "0,10", "--dry-run"])
+        self.assertEqual((code, made), (0, []))
+        self.assertIn("clean: f0@10,20,34,60 f10@70,20,94,60", out)
+        transport = lambda body: (run.frame_of(body), reply("<0f>" + box_token(1, (12, 22, 30, 58), 0.9)))[1]  # noqa: E731
+        code, _, _, _ = self.run_main(["--runs", run.dir, "--box", "12x20", "--frames", "0,10", "--out", self.tmp / "out"], transport)
+        self.assertEqual(code, 0)
+        report = json.loads((self.tmp / "out" / "anchor.json").read_text(encoding="utf-8"))
+        self.assertEqual((report["box"], report["lift"]), ([12.0, 20.0], 0.0))
+        self.assertTrue((self.tmp / "out" / "anchor.md").read_text(encoding="utf-8").startswith(
+            "# SAM asked with a box of 12 x 20 game px at the engine's player position"))
+        for bad in ("12", "0x20", "12x", "wide"):
+            with self.subTest(box=bad), self.assertRaises(SystemExit):
+                self.run_main(["--runs", run.dir, "--box", bad, "--dry-run"])
+
+    def test_a_report_made_with_a_point_says_so(self):
+        run = Run(self.tmp, doc=trace())
+        transport = lambda body: (run.frame_of(body), reply("<0f>" + box_token(1, (10, 30, 150, 60), 0.9)))[1]  # noqa: E731
+        self.run_main(["--runs", run.dir, "--frames", "0", "--out", self.tmp / "out"], transport)
+        self.assertIsNone(json.loads((self.tmp / "out" / "anchor.json").read_text(encoding="utf-8"))["box"])
+
     def test_another_vision_backend_is_refused(self):
         run = Run(self.tmp, doc=trace())
         with mock.patch.dict(os.environ, {sam.BACKEND_ENV: "glimmer"}):
@@ -402,6 +494,9 @@ class WorkflowTest(unittest.TestCase):
                       'python -m agents.sam_probe "${args[@]}"'):
             self.assertLess(cap, job.index(asked), asked)
         self.assertIn('[[ "$ANCHOR" == "true" || "$ANCHOR" == "false" ]]', job)
+        self.assertIn('[[ -z "$BOX" || "$BOX" =~ ^[1-9][0-9]{0,3}x[1-9][0-9]{0,3}$ ]]', job)
+        self.assertIn('[[ -n "$BOX" ]] && anchor+=(--box "$BOX")', job)
+        self.assertLess(job.index('[[ -n "$BOX" ]] && anchor+=(--box "$BOX")'), job.index('python -m agents.sam_anchor "${anchor[@]}" --dry-run'))
         self.assertIn('[[ "$LIFT" =~ ^[0-9]{1,3}$ ]]', job)
         self.assertIn('anchor=(--every "$EVERY" --lift "$LIFT" --out runs/sam-probe --runs "${dirs[@]}")', job)
 
