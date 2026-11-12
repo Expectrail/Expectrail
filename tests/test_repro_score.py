@@ -438,9 +438,9 @@ class TheBugBuildsRunsAreRead(Fixture):
         self.put("sig-one", [good, bad], catches=[catch_of(good)])
         self.assertEqual(self.row("sig-one")["outcome"], "no-result")
 
-    def test_the_whole_pipeline_writes_the_catch_the_scorer_reads(self):
-        # OneWholeRun below scores a record the real job wrote on the simulated game; this checks the
-        # fixture here has the same shape as that record's catch.
+    def test_the_fixtures_catch_has_the_keys_the_scorer_reads(self):
+        # This reads the fixture's own catch entry, not the pipeline's. OneWholeRun below is what
+        # scores a record the real job wrote on the simulated game.
         row = check("jit-a")
         entry = catch_of(row)
         self.assertEqual(set(entry), {"specId", "statement", "claimId", "strength", "probeIds", "candidate", "base", "killed"})
@@ -501,6 +501,75 @@ class FreeTextIsOneLine(Fixture):
         self.assertEqual(record["source"], "run 1 | injected | row | # heading x")
         self.assert_page_is_sound(score.render(record).splitlines())
         self.assertIsNone(self.score(source=" \n\t ")["source"])
+
+    def test_one_line_gives_the_same_text_when_run_again_wherever_the_cut_falls(self):
+        # Review of #322: the cut was made after the collapse, so it could end on a space, and the
+        # reader (text == one_line(text)) then refused what the writer had written.
+        for limit in (200, 300):
+            for at in range(limit - 3, limit + 3):
+                for gap in (" ", "  ", " \n ", "\u2028", "\t\x00 "):
+                    for tail in ("more", "", " ", "\n"):
+                        text = "x" * at + gap + tail
+                        with self.subTest(limit=limit, at=at, gap=repr(gap), tail=repr(tail)):
+                            once = score.one_line(text, limit)
+                            self.assertEqual(score.one_line(once, limit), once)
+                            self.assertLessEqual(len(once), limit)
+                            self.assertEqual(once, once.strip())
+                            self.assertNotIn("  ", once)
+        for text in ("", " ", "\n", " a ", "a" * 299 + " " * 5, " " * 400, ("ab " * 200)):
+            for limit in (200, 300):
+                once = score.one_line(text, limit)
+                self.assertEqual(score.one_line(once, limit), once, repr(text))
+
+    def test_a_source_cut_on_a_space_is_a_record_the_reader_accepts(self):
+        for n in (197, 198, 199, 200, 201):
+            with self.subTest(n):
+                record = self.score(source="s" * n + " and more")
+                self.assertEqual(score.problems(record), [])
+                self.assertLessEqual(len(record["source"]), 200)
+                self.assertFalse(record["source"].endswith(" "))
+                path = self.tmp / "scored.json"
+                path.write_text(json.dumps(record), encoding="utf-8")
+                self.assertEqual(score.load(path)["source"], record["source"])
+        self.assertEqual(self.score(source="s" * 250)["source"], "s" * 200)
+
+    def test_a_long_check_id_in_a_disagreement_gives_no_result_not_an_error(self):
+        # The record's schema allows an id this long. "the record disagrees with itself: <id> is listed
+        # as failing ..." is then over 300 characters, and for some lengths the cut fell on a space.
+        for n in range(185, 205):
+            with self.subTest(n):
+                self.put("sig-one", [check("j" * n)], catches=[])
+                record = self.score()
+                row = next(r for r in record["rows"] if r["id"] == "sig-one")
+                self.assertEqual((row["outcome"], row["spendUsd"]), ("no-result", None))
+                self.assertIn("disagrees with itself", row["why"])
+                self.assertEqual(row["why"], score.one_line(row["why"]))
+                self.assertEqual(score.problems(record), [])
+
+    def test_every_free_text_the_writer_can_write_is_one_the_reader_accepts(self):
+        # The same class from the other side: long reasons whose cut falls on a space, in each place
+        # a reason is written.
+        for n in range(280, 300):
+            with self.subTest(n):
+                self.put("cam", status="nothing-generated", reason="OUT_OF_BUDGET " + "b" * (n - 14) + " ")
+                self.put("sig-two", status="nothing-generated", reason="M" * (n - 19) + " and so on")
+                self.put("sig-one", [check("f" * (n - 250), candidate=["fail", "pass", "fail"]),
+                                     check("g" * 40, candidate=["fail", "pass", "fail"])])
+                record = self.score()
+                self.assertEqual(score.problems(record), [])
+                for r in record["rows"]:
+                    for key in ("why", "evidence"):
+                        if r[key] is not None:
+                            self.assertEqual(r[key], score.one_line(r[key]))
+
+    def test_no_text_in_a_code_span_gives_a_dash_and_not_two_backticks(self):
+        for empty in ("", " ", "\n\t"):
+            self.assertEqual(score._code(empty), "-")
+        record = self.score()
+        record["rows"][3]["why"] = ""
+        lines = score.render(record).splitlines()
+        self.assert_page_is_sound(lines)
+        self.assertNotIn("``", "\n".join(lines))
 
     def test_text_from_a_record_is_a_code_span_so_nothing_in_it_is_rendered(self):
         reason = "OUT_OF_BUDGET [click](https://example.invalid) <img src=x> @someone ![i](https://example.invalid/i) `x` **b**"

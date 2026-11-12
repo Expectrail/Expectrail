@@ -26,6 +26,14 @@ are closed here.
    a row changed to `reproduced` with the totals redone reads as well as a true one. What ties a
    row to runs is its `recordSha256`; to trust a rate, score the run's records again.
 
+4. **After the merge guard's review of #322: what the writer writes, the reader accepts.**
+   `one_line` cut after it collapsed, so a cut could end on a space, and the reader (which holds a
+   text to `text == one_line(text)`) refused the record the writer had just made: a `--source` of
+   199 characters, a space and more gave an error where main gives a record, and so did a
+   disagreement that names a check id of 193 or 199 characters. `one_line` now cuts and then
+   strips, so running it again changes nothing. An empty text in a code span gives a dash, not two
+   backticks. One test was renamed to say what it reads (the fixture's catch, not the pipeline's).
+
 ## What was run
 - `python3 -m unittest tests.test_repro_score`: 72 tests, OK (61 before). New: the reviewer's case
   and 16 kinds of line break, control and format character in a budget reason and in another
@@ -38,6 +46,13 @@ are closed here.
   the air-jump case as reproduced: the record the job writes has the catch the scorer now reads.
 - The full suite, `python3 -m unittest discover -s tests -t .`, on the branch, which is cut from
   current main (`b76d90c`): 2,039 tests, OK, 22 skipped.
+
+- After the review of #322: `python3 -m unittest tests.test_repro_score`: 77 tests, OK. New: running
+  `one_line` twice gives the same text for a gap at each of six places around the cut, for 200 and
+  300; a source cut on a space reads back; a check id of 185 to 204 characters in a disagreement
+  gives no result and a record the reader accepts; long reasons in each place one is written; the
+  empty code span. With `.rstrip()` taken out again, three of the new tests fail (15 cases); put
+  back, the file passes. The full suite on the branch merged with main is in the pull request.
 
 ## Not done
 - No live run. The scorer has still read no record from one, and there is still no reproduction

@@ -162,10 +162,14 @@ def _read(defect: dict, path: Path, root: Path) -> tuple[dict | None, str | None
 
 
 def one_line(text, limit: int = TEXT_MAX) -> str:
-    """Free text as one line: every run of whitespace or control characters becomes one space."""
+    """Free text as one line: every run of whitespace or control characters becomes one space.
+
+    A fixed point: ``one_line(one_line(x)) == one_line(x)``. The reader holds each text to
+    ``text == one_line(text)``, so the cut is made first and what it leaves is stripped; a cut that
+    ended on a space would be a text the writer wrote and the reader refused."""
     flat = "".join(" " if (ch.isspace() or unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp")) else ch
                    for ch in str(text))
-    return " ".join(flat.split())[:limit]
+    return " ".join(flat.split())[:limit].rstrip()
 
 
 def score_one(defect: dict, record_path: Path, visible: str | None, root: Path = REPO) -> dict:
@@ -398,8 +402,10 @@ def _share(n: int, of: int) -> str:
 
 def _code(text) -> str:
     """Text from a record as a code span on one line: no link, image, HTML or mention is rendered in one,
-    and it cannot end the table cell or the span."""
-    return "`" + one_line(text).replace("`", "'").replace("|", "/") + "`"
+    and it cannot end the table cell or the span. No text gives a dash: an empty code span is not one,
+    GitHub shows its two backticks."""
+    flat = one_line(text).replace("`", "'").replace("|", "/")
+    return f"`{flat}`" if flat else "-"
 
 
 def render(record: dict) -> str:
