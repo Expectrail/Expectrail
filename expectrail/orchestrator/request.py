@@ -114,17 +114,24 @@ def tree_digest(root: Path, checkout: Path | None = None) -> str | None:
     return tree.digest(root, within=checkout, skip=tree.GODOT_SKIP)
 
 
+def read_checks(doc: dict):
+    """The checks that will judge the change, read once by the gate's own reader
+    (``expectrail.gate.verify.read_checks``), from where they come from: the base when there is one."""
+    from expectrail.gate import verify as gate
+
+    checks_root = Path(doc["base"]["checkout"]) if doc["base"] is not None else Path(doc["head"]["checkout"])
+    return gate.read_checks(checks_root.resolve(), doc["project"]["specs"], doc["project"]["routes"],
+                            "base" if doc["base"] is not None else "head")
+
+
 def policy_digest(checks_root: Path, project: dict) -> str | None:
-    """A digest of the spec and route files that will judge the change, read from where the checks come
-    from (the base when there is one). None when none can be read; the verifier then says so itself."""
-    files: list[Path] = []
-    specs = checks_root / project["specs"]
-    if specs.is_dir():
-        files += [p for p in specs.glob("*.json") if p.is_file()]
-    for pattern in project["routes"]:
-        files += [p for p in checks_root.glob(pattern) if p.is_file()]
-    inside = [p for p in set(files) if checks_root.resolve() in p.resolve().parents]
-    return _files_digest(inside, checks_root) if inside else None
+    """A digest of the spec and route files that will judge the change, as the gate's reader reads
+    them (``expectrail.gate.verify.read_checks``): no link is followed, and a file it refuses is in
+    the digest as refused. None when there is no spec file and no route file; the verifier then
+    says so itself."""
+    from expectrail.gate import verify as gate
+
+    return gate.read_checks(Path(checks_root).resolve(), project["specs"], project["routes"]).digest
 
 
 def pattern_reaches(pattern: str, folder: str) -> bool:

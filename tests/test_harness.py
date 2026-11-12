@@ -1,3 +1,5 @@
+import contextlib
+import io
 import os
 import shutil
 import subprocess
@@ -116,6 +118,51 @@ class HarnessTest(unittest.TestCase):
             self.assertNotEqual(found, game / ".godot")
             self.assertEqual(len([c for c in calls if "--import" in c]), 1)
             self.assertTrue((found / "imported" / "x.ctex").is_file())
+
+    def test_a_cache_is_not_stored_under_a_key_its_copy_does_not_match(self):
+        # The key is taken from one reading of the game and the cache is imported from a copy made
+        # by a second. If the folder changed in between (and back), a cache built from game B used
+        # to be stored under game A's key, and a later replay of A reused it (review of #318).
+        from harness import run as hr
+        from harness import tree
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            game = self._game(root)
+            (game / "level.tscn").write_text("game A\n", encoding="utf-8")
+            godot = root / "fake-godot"
+            godot.touch()
+            calls = []
+            real_copy = tree.copy
+
+            def game_b_for_a_moment(src, dest, **kwargs):
+                (game / "level.tscn").write_text("game B\n", encoding="utf-8")
+                try:
+                    return real_copy(src, dest, **kwargs)
+                finally:
+                    (game / "level.tscn").write_text("game A\n", encoding="utf-8")
+
+            cache = root / "cache" / ".godot"
+            with mock.patch.dict(os.environ, {"EXPECTRAIL_GODOT_CACHE": str(root / "cache")}), \
+                    mock.patch("subprocess.run", side_effect=self._fake_godot_import(calls)):
+                with mock.patch.object(tree, "copy", side_effect=game_b_for_a_moment), \
+                        contextlib.redirect_stderr(io.StringIO()) as said:
+                    self.assertIsNone(ensure_import_cache(game, godot, {}))
+                self.assertIn("changed while its import cache was being made", said.getvalue())
+                self.assertFalse(cache.exists())
+                self.assertFalse(hr._key_file(cache).exists())
+                self.assertEqual([c for c in calls if "--import" in c], [])   # nothing was imported from game B
+                # With the folder still, the same call stores a cache, under the key of what it copied.
+                self.assertEqual(ensure_import_cache(game, godot, {}), cache)
+                stored = hr._key_file(cache).read_text(encoding="utf-8")
+                self.assertEqual(stored.strip(), hr.cache_key(game, godot))
+                # A digest the caller took earlier is the one the copy is held to: the folder is
+                # game C now, the caller read something else, and the stored cache is left as it was.
+                (game / "level.tscn").write_text("game C\n", encoding="utf-8")
+                with contextlib.redirect_stderr(io.StringIO()):
+                    self.assertIsNone(ensure_import_cache(game, godot, {}, game_tree="0" * 64))
+                self.assertEqual(hr._key_file(cache).read_text(encoding="utf-8"), stored)
+                self.assertEqual(len([c for c in calls if "--import" in c]), 1)
 
     def test_matching_key_reuses_cache_and_a_changed_game_rewarms_it(self):
         with tempfile.TemporaryDirectory() as tmp:

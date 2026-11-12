@@ -75,7 +75,7 @@ def get_cache_dir() -> Path:
     return tools_dir() / "godot_cache" / ".godot"
 
 
-def cache_key(game: Path, godot: Path, within: Path | None = None) -> str:
+def cache_key(game: Path, godot: Path, within: Path | None = None, game_tree: str | None = None) -> str:
     """Identify what an import cache was built from: the Godot binary and the exact game files.
 
     A cache built by another Godot build (another version, or the macOS editor) or from a game
@@ -84,7 +84,7 @@ def cache_key(game: Path, godot: Path, within: Path | None = None) -> str:
     st = godot.resolve().stat()
     h = hashlib.sha256()
     h.update(f"{GODOT_VERSION}\0{godot.resolve()}\0{st.st_size}\0{st.st_mtime_ns}\0".encode())
-    h.update(tree_digest(game, within).encode())
+    h.update((game_tree or tree_digest(game, within)).encode())
     return h.hexdigest()
 
 
@@ -109,7 +109,7 @@ def godot_import(godot: Path, project: Path, env: dict, tool: box.Tool | None = 
 
 
 def ensure_import_cache(game: Path, godot: Path, env: dict, tool: box.Tool | None = None,
-                        within: Path | None = None) -> Path | None:
+                        within: Path | None = None, game_tree: str | None = None) -> Path | None:
     """Return an import cache built from exactly this game and Godot binary, warming it if needed.
 
     Only the external cache directory is used, and only when its key matches. An import folder
@@ -117,9 +117,15 @@ def ensure_import_cache(game: Path, godot: Path, env: dict, tool: box.Tool | Non
     Warming happens in a private staging folder and is swapped in at the end, so parallel runs
     cannot see a half-built cache; any failure falls back to a normal full import (slower, same
     frames).
+
+    ``game_tree`` is the game's digest when the caller has already taken it (a replay has): the key
+    is made from it, and a cache is stored only when the copy it was imported from is that tree. If
+    the folder changed between the digest and the copy, the cache would hold another game's imports
+    under this game's key and a later replay would reuse it; it is thrown away instead.
     """
     cache_dir = get_cache_dir()
-    key = cache_key(game, godot, within)
+    game_tree = game_tree or tree_digest(game, within)
+    key = cache_key(game, godot, within, game_tree)
     key_file = _key_file(cache_dir)
     if (cache_dir / "imported").is_dir() and key_file.is_file() \
             and key_file.read_text(encoding="utf-8").strip() == key:
@@ -130,7 +136,10 @@ def ensure_import_cache(game: Path, godot: Path, env: dict, tool: box.Tool | Non
         cache_dir.parent.mkdir(parents=True, exist_ok=True)
         staging = Path(tempfile.mkdtemp(prefix="staging-", dir=cache_dir.parent))
         copy = staging / "game"
-        tree.copy(game, copy, within=within, skip=tree.GODOT_SKIP)
+        if tree.copy(game, copy, within=within, skip=tree.GODOT_SKIP) != game_tree:
+            print("harness: warning: the game folder changed while its import cache was being made; "
+                  "no cache is stored and this run imports directly", file=sys.stderr)
+            return None
         godot_import(godot, copy, env, tool)
         if not (copy / ".godot" / "imported").is_dir():
             return None
@@ -247,7 +256,7 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
     # Wall time per step, for the verifier's timing.json (expectrail.timing); nothing here reads it back.
     timing.count_run()
     with timing.phase("import-cache"):
-        cache = ensure_import_cache(game, godot, env, tool, within)
+        cache = ensure_import_cache(game, godot, env, tool, within, game_tree)
     staging = out / "sandbox"  # the one folder the sandboxed game can write to, besides its own copy
     with timing.phase("prepare"):
         try:
