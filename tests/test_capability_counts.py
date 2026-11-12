@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import copy
 import json
+import random
 import unittest
 
 from expectrail import capabilities as cap
@@ -16,7 +17,9 @@ def _count(says: str = "2 of 3", n: int = 2, of: int = 3, **more) -> dict:
     out = {"says": says, "n": n, "of": of, **BENCH, **more}
     if "reads" not in out:
         out.setdefault("count", "caught with SAM on: yes")
-    return out
+        if out["count"].endswith(": yes"):
+            out.setdefault("otherwise", out["count"][:-len("yes")] + "no")
+    return {key: value for key, value in out.items() if value is not None}
 
 
 def _cite(*counts: dict, number: str = "1", shows: str = "2 of 3 held-out bugs caught") -> dict:
@@ -71,16 +74,30 @@ class CountTest(_Counted):
     def test_a_notice_left_out_by_not_is_not_counted(self):
         # With the clean game's notice counted there would be four.
         self.assertEqual(self.check(_count()), [])
+        # The clean game's notice says nothing about "caught", so it is not a fourth "no".
         found = self.check({"says": "2 of 3", "n": 2, "of": 3, "titled": "Held-out bench *",
-                            "count": "caught with SAM on: yes"})
-        self.assertIn("give 2 of 4", found[0])
+                            "count": "caught with SAM on: yes", "otherwise": "caught with SAM on: no"})
+        self.assertEqual(found, ["mode: run 1: '2 of 3': cannot tell: the notice 'Held-out bench clean' has neither "
+                                 "the field 'caught with SAM on: yes' nor the field 'caught with SAM on: no'"])
+        found = self.check({"says": "2 of 3", "n": 2, "of": 3, "titled": "Held-out bench *",
+                            "count": "over 5 routes: engine 5 pass", "otherwise": "over 5 routes: engine 5 fail"},
+                           notices={key: THREE[key] for key in "abc"})
+        self.assertEqual(found, [])
+        found = self.check({"says": "2 of 3", "n": 2, "of": 3, "titled": "*", "not": ["Bench time *", "* clean"],
+                            "count": "over 5 routes: engine 5 pass", "otherwise": "over 5 routes: engine 5 fail"})
+        self.assertEqual(found, [])
 
     def test_a_field_is_matched_whole_never_as_part_of_another(self):
         notices = {"a": [_notice("x", "not caught with SAM on: yes; caught with SAM on: yes!")],
                    "b": [_notice("y", "caught with SAM on: yes, twice")],
                    "c": [_notice("z", "  caught with SAM on: yes  ;other")]}
-        found = self.check(_count("3 of 3", 3, 3), notices=notices)
-        self.assertIn("give 1 of 3", found[0])
+        self.assertEqual(runs.fields(notices["c"][0]["message"]), ["caught with SAM on: yes", "other"])
+        self.assertEqual([runs._stated([item[0]], "caught with SAM on: yes", "caught with SAM on: no")[0]
+                          for item in notices.values()], [0, 0, 1])
+        # Two of the three have neither field: that is "cannot tell", not one of three.
+        found = self.check(_count("1 of 3", 1, 3), notices=notices)
+        self.assertEqual(found, ["mode: run 1: '1 of 3': cannot tell: the notice 'Held-out bench x' has neither the "
+                                 "field 'caught with SAM on: yes' nor the field 'caught with SAM on: no' (and 1 more)"])
 
     def test_a_title_is_matched_whole_and_only_the_star_is_special(self):
         self.assertTrue(runs.matches("Demo run *", "Demo run 2"))
@@ -130,6 +147,88 @@ class CountTest(_Counted):
         doc = _ledger(_cite(_count()))
         found = runs.recheck(doc, {"1": _run(status="in_progress", conclusion=None)}.__getitem__, lambda job: [])[0]
         self.assertEqual(found, ["mode: run 1: cannot tell: the run is in_progress, not completed"])
+
+
+class EveryNoticeSaysWhichTest(_Counted):
+    """The merge guard's first reason on #315: a notice that lacks the field is not a "no"."""
+
+    MISSED = {"count": "missed with SAM on: yes"}
+
+    def test_a_zero_is_not_confirmed_by_a_field_no_notice_has(self):
+        # The reviewer's case: no notice has a field about "missed", and "0 of 3" passed.
+        found = self.check(_count("0 of 3", 0, 3, otherwise=None, **self.MISSED))
+        self.assertEqual(found, ["mode: run 1: '0 of 3': cannot tell: the notice 'Held-out bench sinking/v1' has no "
+                                 "field 'missed with SAM on: yes', and the count names no field ('otherwise') that a "
+                                 "notice not counted must have (and 2 more)"])
+        found = self.check(_count("0 of 3", 0, 3, otherwise="missed with SAM on: no", **self.MISSED))
+        self.assertEqual(len(found), 1)
+        self.assertIn("cannot tell: the notice 'Held-out bench sinking/v1' has neither the field", found[0])
+
+    def test_a_misspelt_field_is_cannot_tell_whatever_the_number(self):
+        for n in range(4):
+            found = self.check(_count(f"{n} of 3", n, 3, count="caught with SAM on:yes"))
+            self.assertEqual(len(found), 1, n)
+            self.assertIn("cannot tell", found[0])
+
+    def test_a_notice_with_both_fields_is_cannot_tell_not_a_yes(self):
+        notices = dict(THREE, c=[_notice("fall/v1", "caught with SAM on: yes; caught with SAM on: no")])
+        for n in (2, 3):
+            found = self.check(_count(f"{n} of 3", n, 3), notices=notices)
+            self.assertEqual(found, [f"mode: run 1: '{n} of 3': cannot tell: the notice 'Held-out bench fall/v1' has "
+                                     "both the field 'caught with SAM on: yes' and the field 'caught with SAM on: no'"])
+
+    def test_a_field_twice_in_one_notice_is_cannot_tell(self):
+        notices = dict(THREE, c=[_notice("fall/v1", "caught with SAM on: yes; caught with SAM on: yes")])
+        found = self.check(_count("3 of 3", 3, 3), notices=notices)
+        self.assertEqual(found, ["mode: run 1: '3 of 3': cannot tell: the notice 'Held-out bench fall/v1' has the "
+                                 "field 'caught with SAM on: yes' 2 times"])
+
+    def test_a_notice_that_printed_nothing_for_the_field_is_not_a_no(self):
+        notices = dict(THREE, c=[_notice("fall/v1", "over 5 routes: engine 5 pass")])
+        found = self.check(_count(), notices=notices)
+        self.assertEqual(len(found), 1)
+        self.assertIn("cannot tell: the notice 'Held-out bench fall/v1' has neither", found[0])
+
+    def test_without_otherwise_every_notice_must_have_the_field(self):
+        self.assertEqual(self.check(_count("3 of 3", 3, 3, count="caught with SAM off: no", otherwise=None),
+                                    notices={key: [_notice(key, "caught with SAM off: no")] for key in "abc"}), [])
+        found = self.check(_count("2 of 3", 2, 3, otherwise=None))
+        self.assertEqual(len(found), 1)
+        self.assertIn("cannot tell: the notice 'Held-out bench fall/v1' has no field", found[0])
+
+    def test_otherwise_that_is_the_counted_field_does_not_turn_a_missing_field_into_a_no(self):
+        found = self.check(_count("2 of 3", 2, 3, otherwise="caught with SAM on: yes"))
+        self.assertEqual(len(found), 1)
+        self.assertIn("cannot tell: 'otherwise' is the same field as 'count'", found[0])
+
+    FRAGMENTS = ("caught: yes", "caught: no", "caught: yse", "caught:yes", "Caught: yes", "not caught: yes",
+                 "caught: yes!", "routes 5", "", " caught: yes ", "caught: no ", "missed: no")
+
+    def test_generated_notices_a_count_that_passes_is_one_every_notice_states(self):
+        """Whenever recheck passes an entry, every chosen notice states exactly one of its two fields and
+        n is the number stating the first. The oracle below splits the message itself."""
+        rng = random.Random(315)
+        passed = refused = 0
+        for _ in range(4000):
+            messages = [";".join(rng.choice(self.FRAGMENTS) for _ in range(rng.randint(0, 3)))
+                        for _ in range(rng.randint(1, 4))]
+            notices = {f"j{i}": [_notice(f"v{i}", message)] for i, message in enumerate(messages)}
+            otherwise = rng.choice(("caught: no", "caught: no", None, "missed: no", "caught: yes"))
+            n, of = rng.randint(0, 4), rng.randint(1, 4)
+            entry = _count(f"{n} of {of}", n, of, count="caught: yes", otherwise=otherwise)
+            found = self.check(entry, notices=notices)
+            if found:
+                refused += 1
+                continue
+            passed += 1
+            stated = [[part.strip() for part in message.split(";")] for message in messages]
+            for got in stated:
+                yes = got.count("caught: yes")
+                no = got.count(otherwise) if otherwise not in (None, "caught: yes") else 0
+                self.assertEqual(yes + no, 1, (entry, messages))
+            self.assertEqual((n, of), (sum(got.count("caught: yes") for got in stated), len(messages)), (entry, messages))
+        self.assertGreater(passed, 20)
+        self.assertGreater(refused, 1000)
 
 
 class ReadsTest(_Counted):
@@ -260,6 +359,135 @@ class OfflineTest(unittest.TestCase):
         self.assertEqual(self.problems("2 of 3 held-out bugs caught, no false alarm", _count(),
                                        _count("no false alarm", 1, 1, titled="Held-out bench clean")), [])
 
+    def test_words_found_only_inside_a_larger_number_are_a_problem(self):
+        # The merge guard's second reason on #315: "8 of 8" was found in "8 of 80".
+        inside = ("the count {!r} is tied to notices and the evidence says it only inside a larger number or word, "
+                  "or across another count")
+        for shows, says, n, of in (("8 of 80 held-out bugs caught", "8 of 8", 8, 8),
+                                   ("12 of 30 caught", "2 of 3", 2, 3),
+                                   ("2 of 3.5 caught", "2 of 3", 2, 3),
+                                   ("2 of 3,000 caught", "2 of 3", 2, 3),
+                                   ("version 2 of 3x", "2 of 3", 2, 3),
+                                   ("$2 of 3 spent", "2 of 3", 2, 3),
+                                   ("1.2 of 3 caught", "2 of 3", 2, 3)):
+            self.assertEqual(self.problems(shows, _count(says, n, of)),
+                             ["mode: run 1: " + inside.format(says)], shows)
+            row = {"id": "mode", "evidence": [_cite(_count(says, n, of), shows=shows)]}
+            self.assertEqual(cap.quoted_counts({"rows": [row]})[1], 0, shows)
+
+    def test_the_reviewers_ledger_cases_are_problems(self):
+        doc = copy.deepcopy(cap.load())
+        ev = next(r for r in doc["rows"] if r["id"] == "sam-observer")["evidence"][0]
+        before = cap.quoted_counts(doc)[1]
+        ev["shows"] = "8 of 80 held-out bugs caught with SAM on; 4 of 8 without a vision model"
+        found = cap.row_problems(doc)
+        self.assertEqual(len(found), 1)
+        self.assertIn("sam-observer: run 41003749744: the count '8 of 8' is tied to notices and the evidence says it "
+                      "only inside a larger number", found[0])
+        self.assertEqual(cap.quoted_counts(doc)[1], before - 1)
+        doc = copy.deepcopy(cap.load())
+        ev = next(r for r in doc["rows"] if r["id"] == "sam-observer")["evidence"][0]
+        ev["shows"] = "8 of 8 held-out bugs caught with SAM on; 0 of 8 missed"
+        ev["counts"][1] = {"says": "0 of 8", "n": 0, "of": 8, "titled": "Held-out bench *",
+                           "not": ["Held-out bench clean"], "count": "missed with SAM on: yes"}
+        self.assertEqual(cap.row_problems(doc), [
+            "sam-observer: run 41003749744: the count '0 of 8': 0 of 8 leaves notices that are not counted, and no "
+            "'otherwise' names the field they must have instead"])
+        helper = LedgerRunsTest()
+        helper.doc = doc
+        found = runs.recheck(doc, helper.answers().__getitem__, saved_notices)[0]
+        self.assertEqual(len(found), 1)
+        self.assertIn("'0 of 8': cannot tell: the notice", found[0])
+        self.assertIn("has no field 'missed with SAM on: yes'", found[0])
+
+    def test_words_without_a_count_do_not_start_or_end_inside_a_word_or_touch_a_count(self):
+        shows = "2 of 3 caught, no false alarm in 1.5 s"
+        for says in ("c", "aught", "no false al", "of", "of 3 caught", "3 caught", "5 s", "in 1"):
+            found = self.problems(shows, _count(says, 2, 3))
+            self.assertEqual(len(found), 1, says)
+            self.assertIn("only inside a larger number or word", found[0])
+        for says in ("caught", "no false alarm", "in 1.5 s"):
+            self.assertEqual(self.problems(shows, _count(says, 1, 1, otherwise=None)), [], says)
+
+    def test_two_wordings_cannot_tie_the_same_count(self):
+        self.assertEqual(self.problems("2 of 3 caught", _count(), _count("2 of 3 caught")),
+                         ["mode: run 1: the count '2 of 3 caught' is tied to words of the evidence that another count "
+                          "is tied to already"])
+        # The same words twice in the evidence are two counts, and two entries may tie them.
+        self.assertEqual(self.problems("2 of 3 on, 2 of 3 off", _count(), _count()), [])
+        row = {"id": "mode", "evidence": [_cite(_count(), _count(), shows="2 of 3 on, 2 of 3 off")]}
+        self.assertEqual(cap.quoted_counts({"rows": [row]}), (2, 2))
+
+    def test_fewer_than_all_needs_the_field_the_others_must_have(self):
+        self.assertEqual(self.problems("2 of 3 caught", _count(otherwise=None)),
+                         ["mode: run 1: the count '2 of 3': 2 of 3 leaves notices that are not counted, and no "
+                          "'otherwise' names the field they must have instead"])
+        self.assertEqual(self.problems("3 of 3 caught", _count("3 of 3", 3, 3, otherwise=None)), [])
+        self.assertEqual(self.problems("2 of 3 caught", _count(otherwise="caught with SAM on: yes")),
+                         ["mode: run 1: the count '2 of 3': 'otherwise' is the same field as 'count'"])
+        entry = {"says": "2 of 3", "n": 2, "of": 3, "titled": "Summary", "reads": "{n} of {of}", "otherwise": "x"}
+        self.assertEqual(self.problems("2 of 3 caught", entry),
+                         ["mode: run 1: the count '2 of 3': 'otherwise' goes with 'count', not with 'reads'"])
+
+    def test_a_field_with_a_line_break_or_a_space_at_an_end_is_a_problem(self):
+        for key, value in (("count", "caught:\nyes"), ("count", " caught: yes"), ("otherwise", "caught: no ")):
+            found = self.problems("2 of 3 caught", _count(**{"otherwise": "caught: no", key: value}))
+            self.assertEqual(len(found), 1, value)
+            self.assertIn(f"{key!r} is one field of a notice and has a line break in it or a space at an end", found[0])
+
+    NUMBERS = ("8", "80", "2", "3", "12", "30", "3.5", "1,000", "0", "08")
+    GLUE = (" ", " ", " ", "", ".", ",", ", ", "; ", "$", "x", " x", "-", "(", ") ", "\n")
+    WORDS = ("caught", "bugs", "of", "of", "no", "version", "s")
+
+    def test_generated_words_a_count_that_passes_is_one_the_page_would_count_at_that_place(self):
+        """Whenever count_problems passes an entry whose words hold a count, _QUOTED finds that count in
+        the evidence at that place, and quoted_counts calls a count tied exactly when the check passes."""
+        rng = random.Random(3150)
+        passed = refused = 0
+        for _ in range(6000):
+            parts = []
+            for _ in range(rng.randint(1, 4)):
+                parts += [rng.choice(self.NUMBERS), " of ", rng.choice(self.NUMBERS), rng.choice(self.GLUE),
+                          rng.choice(self.WORDS), rng.choice(self.GLUE)]
+            shows = "".join(parts)
+            pick = rng.random()
+            if pick < 0.4:
+                at = 6 * rng.randrange(len(parts) // 6)
+                says = "".join(parts[at:at + 3])
+            elif pick < 0.7:
+                start = rng.randrange(len(shows))
+                says = shows[start:start + rng.randint(1, 12)]
+            else:
+                says = f"{rng.choice(self.NUMBERS)} of {rng.choice(self.NUMBERS)}"
+            inner = list(cap._QUOTED.finditer(says))
+            if len(inner) != 1:
+                continue
+            n, of = int(inner[0].group(1)), int(inner[0].group(2))
+            if n > of or of < 1:
+                continue
+            entry = _count(says, n, of, otherwise="caught with SAM on: no")
+            found = cap.count_problems("mode", _cite(entry, shows=shows))
+            row = {"id": "mode", "evidence": [_cite(entry, shows=shows)]}
+            tied = cap.quoted_counts({"rows": [row]})[1]
+            self.assertEqual(tied, 0 if found else 1, (shows, says, found))
+            if found:
+                refused += 1
+                continue
+            passed += 1
+            spans = {m.span(): m for m in cap._QUOTED.finditer(shows)}
+            at = [p for p in range(len(shows)) if shows.startswith(says, p)
+                  and (p + inner[0].start(), p + inner[0].end()) in spans]
+            self.assertTrue(at, (shows, says))
+            match = spans[(at[0] + inner[0].start(), at[0] + inner[0].end())]
+            self.assertEqual((int(match.group(1)), int(match.group(2))), (n, of))
+            # Read without the pattern: the count is not part of a longer number or word on either side.
+            before, after = shows[:match.start()], shows[match.end():]
+            self.assertFalse(before[-1:].isalnum() or before[-1:] in (".", ",", "$", "_"), (shows, says))
+            self.assertFalse(after[:1].isalnum() or after[:1] == "_", (shows, says))
+            self.assertFalse(after[:1] in (".", ",") and after[1:2].isdigit(), (shows, says))
+        self.assertGreater(passed, 300)
+        self.assertGreater(refused, 300)
+
     def test_words_the_evidence_does_not_say_are_a_problem(self):
         self.assertEqual(self.problems("3 of 3 caught", _count()),
                          ["mode: run 1: the count '2 of 3' is tied to notices and the evidence does not say it"])
@@ -278,7 +506,7 @@ class OfflineTest(unittest.TestCase):
                          ["mode: run 1: the count '2 of 3' is tied to notices twice"])
 
     def test_a_field_with_a_semicolon_can_never_match_and_is_a_problem(self):
-        self.assertEqual(len(self.problems("2 of 3 caught", _count(count="a: yes; b: no"))), 1)
+        self.assertEqual(len(self.problems("2 of 3 caught", _count(count="a: yes; b: no", otherwise="a: no"))), 1)
         entry = {"says": "2 of 3", "n": 2, "of": 3, "titled": "Summary", "reads": "{n} of {of}; undecided 0"}
         self.assertEqual(len(self.problems("2 of 3 caught", entry)), 1)
 
@@ -321,8 +549,11 @@ class SchemaTest(unittest.TestCase):
         return list(validator.iter_errors(doc))
 
     def test_the_schema_takes_counts_on_a_run_only_and_one_way_of_counting(self):
-        self.assertEqual(self.errors(lambda run, test: None), [])
         entry = {"says": "8 of 8", "n": 8, "of": 8, "titled": "Held-out bench *"}
+        self.assertEqual(self.errors(lambda run, test: None), [])
+        self.assertEqual(self.errors(lambda run, test: run.update(counts=[dict(
+            entry, n=4, count="caught with SAM off: yes", otherwise="caught with SAM off: no")])), [])
+        self.assertEqual(self.errors(lambda run, test: run.update(counts=[dict(entry, count="x")])), [])
         for change in (
             lambda run, test: test.update(counts=[dict(entry, count="x")]),
             lambda run, test: run.update(counts=[]),
@@ -334,6 +565,14 @@ class SchemaTest(unittest.TestCase):
             lambda run, test: run.update(counts=[dict(entry, count="x", n="8")]),
             lambda run, test: run.update(counts=[dict(entry, count="x", pattern=".*")]),
             lambda run, test: run.update(counts=[dict(entry, count="x", **{"not": []})]),
+            lambda run, test: run.update(counts=[dict(entry, count="a\nb")]),
+            lambda run, test: run.update(counts=[dict(entry, count="a; b")]),
+            lambda run, test: run.update(counts=[dict(entry, count=" a")]),
+            lambda run, test: run.update(counts=[dict(entry, count="a", otherwise="b ")]),
+            lambda run, test: run.update(counts=[dict(entry, count="a", otherwise="b;c")]),
+            lambda run, test: run.update(counts=[dict(entry, reads="{n} of {of}", otherwise="b")]),
+            lambda run, test: run.update(counts=[dict(entry, reads="{n} of {of}; x")]),
+            lambda run, test: run.update(counts=[dict(entry, reads="{n} of\n{of}")]),
         ):
             self.assertTrue(self.errors(change))
 

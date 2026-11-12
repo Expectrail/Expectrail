@@ -268,7 +268,8 @@
               "n": 4,
               "of": 8,
               "titled": "Dev bench *",
-              "count": "caught with SAM off: yes"
+              "count": "caught with SAM off: yes",
+              "otherwise": "caught with SAM off: no"
             },
             {
               "says": "no false alarm",
@@ -303,7 +304,8 @@
               "not": [
                 "Held-out bench clean"
               ],
-              "count": "caught with SAM off: yes"
+              "count": "caught with SAM off: yes",
+              "otherwise": "caught with SAM off: no"
             }
           ],
           "shows": "4 of 4 private bugs caught with SAM on, 2 of 4 with SAM off"
@@ -365,7 +367,8 @@
               "not": [
                 "Held-out bench clean"
               ],
-              "count": "caught with SAM off: yes"
+              "count": "caught with SAM off: yes",
+              "otherwise": "caught with SAM off: no"
             }
           ],
           "shows": "8 of 8 held-out bugs caught with SAM on; 4 of 8 without a vision model"

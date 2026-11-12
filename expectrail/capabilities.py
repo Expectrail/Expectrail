@@ -13,8 +13,9 @@ a measured or integrated row cites a run recorded as anything but success (any o
 such a run is evidence), when a row points at
 a file that is not there, and when the README or the site names a command, a switch, a workflow, a
 doc page or a watched name that no row lists. It also fails when a count a row ties to its run's
-notices (``counts``) is not in the words of the evidence, or its numbers are not the ones the words
-give. A run's conclusion is the value recorded in the
+notices (``counts``) does not stand in the words of the evidence where a count is found, its numbers
+are not the ones the words give, or it counts fewer notices than there are without naming the field
+the others must have. A run's conclusion is the value recorded in the
 ledger when the row was written; ``check``, ``render`` and the test suite never call GitHub. ``recheck``
 does (``expectrail.capability_runs``): it needs the ``gh`` command and the network, so a person or an
 agent runs it, and the suite tests it on saved answers.
@@ -83,52 +84,140 @@ def _module_exists(module: str, root: Path) -> bool:
     return base.with_suffix(".py").is_file() or (base / "__init__.py").is_file()
 
 
-def count_problems(rid: str, ev: dict) -> list[str]:
-    """What is wrong with the counts one piece of run evidence ties to its run's notices.
+def _wordy(ch: str) -> bool:
+    return ch.isalnum() or ch == "_"
 
-    This is the part that needs no network: the words are in the evidence, the numbers are the ones
-    the words give, and the entry can be counted at all. Whether the run's notices give the same
-    numbers is ``recheck``'s question.
+
+def _cuts(text: str, at: int) -> bool:
+    """Whether the place between ``text[at - 1]`` and ``text[at]`` is inside a word or a number."""
+    if at <= 0 or at >= len(text):
+        return False
+    before, after = text[at - 1], text[at]
+    if _wordy(before) and _wordy(after):
+        return True
+    # "3.5" and "1,000": the point or comma between two digits is inside the number, on either side of it.
+    if before in ".," and after.isdigit() and at >= 2 and text[at - 2].isdigit():
+        return True
+    return after in ".," and before.isdigit() and at + 1 < len(text) and text[at + 1].isdigit()
+
+
+def places(says: str, shows: str) -> list[tuple[int, int]]:
+    """Where in ``shows`` an entry's words stand, as ``(start, end)``, by the rule that finds a count.
+
+    Words that hold a count ("8 of 8") stand only where ``_QUOTED`` finds that same count in
+    ``shows``, at that place: "8 of 8" is not in "8 of 80". Words that hold none stand only where
+    they touch no count of ``shows``. Either way they do not start or end inside a word or a number.
+    Words that hold two counts stand nowhere: each count is tied on its own.
     """
-    out: list[str] = []
+    inner = list(_QUOTED.finditer(says))
+    if len(inner) > 1:
+        return []
+    counts = {found.span() for found in _QUOTED.finditer(shows)}
+    out = []
+    at = shows.find(says)
+    while at != -1:
+        end = at + len(says)
+        whole = not _cuts(shows, at) and not _cuts(shows, end)
+        if inner:
+            fits = (at + inner[0].start(), at + inner[0].end()) in counts
+        else:
+            fits = not any(start < end and at < stop for start, stop in counts)
+        if whole and fits:
+            out.append((at, end))
+        at = shows.find(says, at + 1)
+    return out
+
+
+def _is_field(text: str) -> bool:
+    """Whether a notice could have this as one whole field: no semicolon, no line break, no space at an end."""
+    return bool(text) and text == text.strip() and not any(ch in text for ch in ";\n\r")
+
+
+def tied(ev: dict) -> list[tuple[dict, tuple[int, int] | None, list[str]]]:
+    """Each count of one piece of run evidence: the entry, the place in ``shows`` it is tied to, its problems.
+
+    This is the part that needs no network. ``count_problems`` reports the problems and
+    ``quoted_counts`` calls a count tied only when its entry has none, so the page's tally and the
+    check cannot disagree. Each entry takes the first place its words stand that no earlier entry has.
+    """
+    out = []
+    taken: list[tuple[int, int]] = []
     said: list[str] = []
     for count in ev.get("counts", []):
         says = count["says"]
-        head = f"{rid}: run {_number(ev['ref'])}: the count {says!r}"
-        if says not in ev["shows"]:
-            out.append(f"{head} is tied to notices and the evidence does not say it")
-        if says in said:
-            out.append(f"{head} is tied to notices twice")
-        said.append(says)
+        found: list[str] = []
         quoted = _QUOTED.findall(says)
+        stand = places(says, ev["shows"])
+        place = next((spot for spot in stand
+                      if not any(spot[0] < stop and start < spot[1] for start, stop in taken)), None)
         if len(quoted) > 1:
-            out.append(f"{head} quotes {len(quoted)} counts; tie each to notices on its own")
-        elif quoted and (int(quoted[0][0]), int(quoted[0][1])) != (count["n"], count["of"]):
-            out.append(f"{head} is recorded as {count['n']} of {count['of']}")
+            found.append(f"quotes {len(quoted)} counts; tie each to notices on its own")
+        elif not stand:
+            if says in ev["shows"]:
+                found.append("is tied to notices and the evidence says it only inside a larger number or word, "
+                             "or across another count")
+            else:
+                found.append("is tied to notices and the evidence does not say it")
+        elif place is None:
+            found.append("is tied to notices twice" if says in said
+                         else "is tied to words of the evidence that another count is tied to already")
+        if place is not None:
+            taken.append(place)
+        said.append(says)
+        if len(quoted) == 1 and (int(quoted[0][0]), int(quoted[0][1])) != (count["n"], count["of"]):
+            found.append(f"is recorded as {count['n']} of {count['of']}")
         if count["n"] > count["of"]:
-            out.append(f"{head}: {count['n']} of {count['of']} is more than there are")
+            found.append(f": {count['n']} of {count['of']} is more than there are")
         if "reads" in count and (count["reads"].count("{n}"), count["reads"].count("{of}")) != (1, 1):
-            out.append(f"{head}: 'reads' must have {{n}} and {{of}} once each")
-        if "count" in count and ";" in count["count"]:
-            out.append(f"{head}: 'count' is one field of a notice and has a semicolon in it")
-        if "reads" in count and ";" in count["reads"]:
-            out.append(f"{head}: 'reads' is one field of a notice and has a semicolon in it")
+            found.append(": 'reads' must have {n} and {of} once each")
+        for key in ("count", "otherwise", "reads"):
+            if key not in count or _is_field(count[key]):
+                continue
+            if ";" in count[key]:
+                found.append(f": {key!r} is one field of a notice and has a semicolon in it")
+            else:
+                found.append(f": {key!r} is one field of a notice and has a line break in it or a space at an end")
+        if "count" in count:
+            if "otherwise" not in count and count["n"] < count["of"]:
+                found.append(f": {count['n']} of {count['of']} leaves notices that are not counted, and no "
+                             "'otherwise' names the field they must have instead")
+            if count.get("otherwise") == count["count"]:
+                found.append(": 'otherwise' is the same field as 'count'")
+        elif "otherwise" in count:
+            found.append(": 'otherwise' goes with 'count', not with 'reads'")
+        out.append((count, place, found))
+    return out
+
+
+def count_problems(rid: str, ev: dict) -> list[str]:
+    """What is wrong with the counts one piece of run evidence ties to its run's notices.
+
+    This is the part that needs no network: the words stand in the evidence where a count is found,
+    the numbers are the ones the words give, and the entry can be counted at all. Whether the run's
+    notices give the same numbers is ``recheck``'s question.
+    """
+    out: list[str] = []
+    for count, _, found in tied(ev):
+        head = f"{rid}: run {_number(ev['ref'])}: the count {count['says']!r}"
+        out += [head + (line if line.startswith(":") else " " + line) for line in found]
     return out
 
 
 def quoted_counts(doc: dict) -> tuple[int, int]:
-    """``(quoted, tied)``: the counts ("N of M") quoted beside a run link, and how many are tied to notices."""
-    quoted = tied = 0
+    """``(quoted, tied)``: the counts ("N of M") quoted beside a run link, and how many are tied to notices.
+
+    A count is tied when an entry with no offline problem stands on it. The same words twice in one
+    sentence are two counts: one entry ties one of them.
+    """
+    quoted = held = 0
     for row in doc["rows"]:
         for ev in row["evidence"]:
             if ev["kind"] != "run":
                 continue
-            backed = [count["says"] for count in ev.get("counts", [])]
-            texts = [found.group(0) for found in _QUOTED.finditer(ev["shows"])]
-            quoted += len(texts)
-            # The same words twice in one sentence are two counts: one entry ties one of them.
-            tied += sum(min(texts.count(text), sum(1 for says in backed if text in says)) for text in set(texts))
-    return quoted, tied
+            quoted += len(_QUOTED.findall(ev["shows"]))
+            held += sum(1 for count, place, found in tied(ev)
+                        if place is not None and not found and _QUOTED.search(count["says"]))
+    return quoted, held
 
 
 def row_problems(doc: dict, root: Path = ROOT) -> list[str]:

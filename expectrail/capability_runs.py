@@ -24,7 +24,10 @@ the evidence ties it to notices; any other count a row quotes is still as its wr
 A count is tied to notices in one of two ways. ``count``: of the notices whose title matches ``titled``
 (``*`` stands for any text; titles matching a pattern under ``not`` are left out), ``of`` is how many
 there are and ``n`` is how many have ``count`` as one whole field of their message, the fields being
-what lies between semicolons. ``reads``: exactly one notice has the title, and one of its fields is
+what lies between semicolons. Every such notice must say which side it is on: it has ``count``, or it
+has the field the entry names under ``otherwise``, once and not both. A notice with neither is not a
+"no"; the count is then "cannot tell". An entry without ``otherwise`` needs every notice to have
+``count``. ``reads``: exactly one notice has the title, and one of its fields is
 ``reads`` with ``{n}`` and ``{of}`` filled in. Nothing is matched as a pattern inside a message: a
 field is equal or it is not.
 
@@ -192,6 +195,38 @@ def _run_notices(run: dict, notices: Notices | None) -> list:
     return out
 
 
+def _stated(chosen: list, field: str, otherwise: str | None) -> tuple[int, list[str]]:
+    """``(having, unclear)``: how many notices state ``field``, and why any notice cannot be counted.
+
+    A notice is counted only when it says which side it is on: it has ``field`` once, or it has
+    ``otherwise`` once, and not both. A notice with neither (a job that printed nothing for it, a
+    field spelt another way), with both, or with one of them twice is not a "no": it is in ``unclear``,
+    and the count is "cannot tell". Without ``otherwise`` every notice must have ``field``.
+    """
+    having = 0
+    unclear = []
+    for item in chosen:
+        got = fields(item["message"])
+        yes = got.count(field)
+        no = got.count(otherwise) if otherwise is not None and otherwise != field else 0
+        if yes + no == 1:
+            having += yes
+        elif yes and no:
+            unclear.append(f"the notice {item['title']!r} has both the field {field!r} and the field {otherwise!r}")
+        elif yes + no > 1:
+            unclear.append(f"the notice {item['title']!r} has the field {field if yes else otherwise!r} "
+                           f"{yes + no} times")
+        elif otherwise is None:
+            unclear.append(f"the notice {item['title']!r} has no field {field!r}, and the count names no field "
+                           "('otherwise') that a notice not counted must have")
+        elif otherwise == field:
+            unclear.append(f"'otherwise' is the same field as 'count' ({field!r})")
+        else:
+            unclear.append(f"the notice {item['title']!r} has neither the field {field!r} nor the field "
+                           f"{otherwise!r}")
+    return having, unclear
+
+
 def _counts(cite: dict, head: str, noticed: list | RunUnreadable) -> list[str]:
     """What is wrong with each count the evidence ties to the run's notices."""
     out = []
@@ -216,8 +251,11 @@ def _counts(cite: dict, head: str, noticed: list | RunUnreadable) -> list[str]:
                        "times, and a count takes each once")
             continue
         if "count" in count:
-            having = sum(1 for item in chosen if count["count"] in fields(item["message"]))
-            if (having, len(chosen)) != (count["n"], count["of"]):
+            having, unclear = _stated(chosen, count["count"], count.get("otherwise"))
+            if unclear:
+                more = f" (and {len(unclear) - 1} more)" if len(unclear) > 1 else ""
+                out.append(f"{what}: cannot tell: {unclear[0]}{more}")
+            elif (having, len(chosen)) != (count["n"], count["of"]):
                 out.append(f"{what}: {count['n']} of {count['of']} is recorded and the run's notices give "
                            f"{having} of {len(chosen)} (titled {count['titled']!r}, with the field {count['count']!r})")
         elif len(chosen) != 1:
