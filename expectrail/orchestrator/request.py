@@ -178,7 +178,11 @@ def pattern_reaches(pattern: str, folder: str) -> bool:
             return False
         if parts[0] == "**":
             return reach(parts[1:], below) or reach(parts, below[1:])
-        return fnmatch.fnmatchcase(below[0].casefold(), parts[0].casefold()) and reach(parts[1:], below[1:])
+        # The exact comparison, or the one without regard to case: the second is added to the first,
+        # never in its place, because folding a pattern's case changes what a range such as [S-s] holds.
+        return ((fnmatch.fnmatchcase(below[0], parts[0])
+                 or fnmatch.fnmatchcase(below[0].casefold(), parts[0].casefold()))
+                and reach(parts[1:], below[1:]))
 
     return reach([p for p in pattern.split("/") if p not in ("", ".")], [p for p in folder.split("/") if p not in ("", ".")])
 

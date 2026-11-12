@@ -14,11 +14,16 @@ orchestrator), none of which made an accept easier than before those merged.
 - **The verify action changes the runner's kernel setting only when `require-sandbox` is `true`.** It
   did so on every run. On a self-hosted runner the setting stays until reboot; the docs say so.
 - **An empty file is not evidence.** An accept or a reject needs a file with something in it.
-- **The jobs-folder check ignores case**, since on macOS `RUNS/**` reaches `runs/jobs`.
+- **The jobs-folder check also compares without regard to case**, since on macOS `RUNS/**` reaches
+  `runs/jobs`. The first version of this change replaced the exact comparison with the case-folded
+  one, which the merge guard showed to be a regression: folding a pattern's case changes what a range
+  such as `[S-s]` holds, so `[S-s]uns/**` was no longer refused. The folded comparison is now added to
+  the exact one, and a test holds the property over about ten thousand generated patterns: every one
+  whose real glob finds a file below the jobs folder is reported as reaching it.
 
 ## What was run
 - `python3 -m unittest tests.test_ci_gate tests.test_orchestrator tests.test_jit_rules`: OK.
-- The full suite: 1,985 tests, OK, 17 skipped (7 need bubblewrap).
+- The full suite, merged with main: 1,993 tests, OK, 17 skipped (7 need bubblewrap).
 - One test's fixture changed: the comment-size test builds a record with 64 routes and kept the
   example's count of 6 replays, which the new rule refuses; it now counts 130.
 - Not run: the action's changed step on a self-hosted runner.

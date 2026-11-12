@@ -44,7 +44,21 @@ class Slow(Instant):
         return Result("accept", ["too late"])
 
 
-ENGINES = {"instant": Instant(), "slow": Slow()}
+class Detached(Slow):
+    """Like Slow, but its child leaves the worker's process group, as a program that starts its own
+    session does (the sandboxed game is one)."""
+
+    def execute(self, request, paths, advance):
+        child = subprocess.Popen(["sleep", "600"], start_new_session=True)
+        (paths.work / "child.pid").write_text(str(child.pid), encoding="utf-8")
+        paths.staging.mkdir()
+        (paths.staging / "evidence.txt").write_text("half written", encoding="utf-8")
+        (paths.work / "running").write_text("1", encoding="utf-8")
+        time.sleep(600)
+        return Result("accept", ["too late"])
+
+
+ENGINES = {"instant": Instant(), "slow": Slow(), "detached": Detached()}
 
 
 if __name__ == "__main__":

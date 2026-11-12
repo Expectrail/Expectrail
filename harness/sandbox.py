@@ -131,8 +131,12 @@ def limits() -> None:
 def run(tool: Tool, argv: list[str], *, timeout: float, **binds) -> subprocess.CompletedProcess:
     """Run ``argv`` in the sandbox (see ``command``) and return the finished process. The sandbox
     dies with this process, and everything in it dies with the sandbox."""
+    # The sandbox tool itself gets nothing from this process's environment but the job's id, which
+    # is how the orchestrator finds it if its worker is killed; the game's environment is built by
+    # `command` from `env`.
+    own = {"PATH": "/usr/bin:/bin", **{k: v for k, v in os.environ.items() if k == "EXPECTRAIL_JOB"}}
     return subprocess.run(command(tool, argv, **binds), capture_output=True, text=True, timeout=timeout,
-                          stdin=subprocess.DEVNULL, env={"PATH": "/usr/bin:/bin"}, preexec_fn=limits)
+                          stdin=subprocess.DEVNULL, env=own, preexec_fn=limits)
 
 
 @functools.lru_cache(maxsize=None)
