@@ -243,11 +243,12 @@ and searches every output file, the log and the comment for its route names.
   every file system. `**` alone stands for no folder or any number of them, and as the last part
   for every file below; it never passes through a link to a folder. Any other part may name a link
   to a folder and continue below it. A route is a regular file inside the checkout: a link to a file
-  is not a route, and neither is a file reached through a link that leaves the checkout. A folder
-  the gate cannot list is never passed over in silence: a route named in full is still found there
-  (a plain name needs no listing), and when a part with `*`, `?`, `[` or `**` needed the listing,
-  the reasons say "cannot list the folder ... while looking for routes". That reason does not by
-  itself change the decision today (#340).
+  is not a route, and neither is a file reached through a link that leaves the checkout. Neither is
+  read, and neither is passed over in silence: each is named in the reasons and listed in the
+  digest by its name and the refusal. A folder the gate cannot list is named too: a route named in
+  full is still found there (a plain name needs no listing), and when a part with `*`, `?`, `[` or
+  `**` needed the listing, the reasons say "cannot list the folder ... while looking for routes".
+  Each of these is a problem with the check files, so the result is never accept (see step 5 above).
 - **Held-out routes and pull request code share a job.** If you pass `heldout-token`, the pull
   request's code runs in the job that holds the held-out routes. Inside the replay sandbox the game
   sees only the one route it is playing, not the folder; a replay outside the sandbox, and any other
