@@ -1001,7 +1001,9 @@ class TreeTest(Case):
             for combo in combos:
                 pattern = "/".join(combo)
                 checked += 1
-                really = any(below in found.resolve().parents for found in root.glob(pattern) if found.is_file())
+                # What the gate would find as routes: its own matcher, the same on every Python
+                # (Path.glob is not: on 3.12 a last "**" gives no file, and this count was 421).
+                really = any(below in found.resolve().parents for found in gate.find_routes(root, [pattern]))
                 if really:
                     matched += 1
                     self.assertTrue(req.pattern_reaches(pattern, "runs/jobs"), pattern)

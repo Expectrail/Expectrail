@@ -32,8 +32,10 @@ written at all.
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import functools
 import json
+import os
 import re
 import shutil
 import sys
@@ -138,10 +140,77 @@ def _inside(root: Path, path: Path) -> bool:
         return False
 
 
+def segment_matches(name: str, part: str) -> bool:
+    """Whether one name matches one part of a route pattern (`*`, `?`, `[...]`), as written: the
+    case of the name counts on every file system."""
+    return fnmatch.fnmatchcase(name, part)
+
+
+def pattern_matches(root: Path, pattern: str) -> set[Path]:
+    """Every path below ``root`` that a route pattern names. The gate's own matcher, so the files
+    that judge a change are the same on every Python: ``Path.glob`` gives a pattern that ends in
+    ``**`` the files below on Python 3.13 and none of them on 3.12.
+
+    The rules, part by part between the slashes:
+
+    - ``**`` alone stands for no folder or any number of them, and as the last part for everything
+      below as well. It never passes through a link to a folder.
+    - Any other part matches one name with ``segment_matches``. Such a part may name a link to a
+      folder and continue below it (the caller keeps a file only when it is inside the checkout).
+    - A folder that cannot be listed has nothing in it.
+    """
+    parts = [p for p in pattern.split("/") if p not in ("", ".")]
+    found: set[Path] = set()
+    if not parts:
+        return found
+
+    def listing(folder: str) -> list[os.DirEntry]:
+        try:
+            with os.scandir(folder) as entries:
+                return sorted(entries, key=lambda e: e.name)
+        except OSError:
+            return []
+
+    def is_folder(entry: os.DirEntry, through_links: bool) -> bool:
+        try:
+            return entry.is_dir(follow_symlinks=through_links)
+        except OSError:
+            return False
+
+    # A list of work, not recursion: a checkout may nest folders deeper than Python nests calls.
+    seen: set[tuple[str, int]] = set()
+    work: list[tuple[str, int]] = [(str(root), 0)]
+    last = len(parts) - 1
+    while work:
+        at = work.pop()
+        if at in seen:
+            continue
+        seen.add(at)
+        folder, i = at
+        if i > last:  # only after a last "**": everything below, and no link to a folder is entered
+            for entry in listing(folder):
+                found.add(Path(entry.path))
+                if is_folder(entry, False):
+                    work.append((entry.path, i))
+        elif parts[i] == "**":
+            work.append((folder, i + 1))
+            work.extend((entry.path, i) for entry in listing(folder) if is_folder(entry, False))
+        else:
+            for entry in listing(folder):
+                if not segment_matches(entry.name, parts[i]):
+                    continue
+                if i == last:
+                    found.add(Path(entry.path))
+                elif is_folder(entry, True):
+                    work.append((entry.path, i + 1))
+    return found
+
+
 def find_routes(root: Path, patterns: list[str]) -> list[Path]:
+    """The route files the patterns name: regular files inside the checkout, never a link."""
     files: set[Path] = set()
     for pattern in patterns:
-        for match in root.glob(pattern):
+        for match in pattern_matches(root, pattern):
             if match.is_file() and not match.is_symlink() and _inside(root, match):
                 files.add(match)
     return sorted(files)

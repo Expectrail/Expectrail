@@ -90,7 +90,7 @@ Both use the actions from the checked-out repository (`./.github/actions/...`) i
 | Action | Input | Default | What it does |
 | --- | --- | --- | --- |
 | verify | `game-path` | required | The Godot project folder, relative to the repository root |
-| verify | `routes` | required | Route files, one path or glob per line |
+| verify | `routes` | required | Route files, one path or pattern per line ([how a pattern is read](#route-patterns)) |
 | verify | `specs` | required | The folder of test specs; only specs with an `approval` judge a change |
 | verify | `compare-base` | `true` | Also replay the pull request's base commit, and read the specs and routes from it |
 | verify | `heldout-repository` | empty | `owner/name` of a private repository of held-out routes (a `manifest.json` listing `routes[].file`) |
@@ -234,6 +234,17 @@ and searches every output file, the log and the comment for its route names.
   a link and up to a size cap (256 KiB a spec, 1 MiB a route), and says so in the reasons when it
   refuses one. Each replay plays a copy of its route written from the bytes that were read, in the
   gate's work folder, so the route a replay plays is the route the record names by its sha256.
+  A spec that is a link is counted by its name and never by what it leads to, so `checksChanged`
+  does not move when only the file a link leads to changes.
+- <a id="route-patterns"></a>**A route pattern finds the same files on every machine.** The gate
+  matches patterns itself (`expectrail.gate.verify.pattern_matches`) and does not use Python's
+  `Path.glob`, which gives a pattern ending in `**` the files below on Python 3.13 and none on 3.12.
+  Between the slashes, `*`, `?` and `[...]` match within one name, and the case of a name counts on
+  every file system. `**` alone stands for no folder or any number of them, and as the last part
+  for every file below; it never passes through a link to a folder. Any other part may name a link
+  to a folder and continue below it. A route is a regular file inside the checkout: a link to a file
+  is not a route, and neither is a file reached through a link that leaves the checkout. A folder
+  the gate cannot list counts as empty, with no reason given.
 - **Held-out routes and pull request code share a job.** If you pass `heldout-token`, the pull
   request's code runs in the job that holds the held-out routes. Inside the replay sandbox the game
   sees only the one route it is playing, not the folder; a replay outside the sandbox, and any other

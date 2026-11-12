@@ -694,6 +694,14 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
+      # The oldest Python the package says it supports (pyproject.toml), and every other job runs
+      # on 3.13: the whole suite here, before the engine is downloaded, so it is the `test` job's
+      # run on the older Python. (A route pattern ending in "**" found no route on 3.12 and nothing ran there.)
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Fetch the baseline commit (the discovery freeze and the mutation registration are checked against it)
+        run: git fetch --no-tags --depth=1 origin c169a5e0da304773587304ed47bc8aabcec80da7
+      - name: The whole suite on Python 3.12
+        run: python -m unittest discover -s tests -t .
       - name: Install a virtual display and software OpenGL
         uses: ./.github/actions/apt-install
         with:
