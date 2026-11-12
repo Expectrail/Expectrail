@@ -141,6 +141,11 @@
       "minimum": 0,
       "description": "spec files without a person's approval, which never judge a change"
     },
+    "checkProblems": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "problems the gate found reading the spec and route files (a file refused or not valid, an id or a name used twice, a limit passed, nothing found where it was told to look), each named in the reasons. Above 0 the decision is never accept: the checks that ran are not all of the project's checks. Absent from records written before November 12, 2026, where such a problem did not change the decision; a reader takes an absent count as 0."
+    },
     "routes": {
       "type": "array",
       "maxItems": 64,

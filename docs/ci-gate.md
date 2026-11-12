@@ -126,8 +126,16 @@ also checks out the base commit. It then does this:
 4. Replays the held-out routes on the head, if configured, and keeps counts only.
 5. Decides. **Accept** only when at least one check ran and every public and held-out check passes.
    **Reject** when any check fails after the change. **Needs review** otherwise: a check that could not
-   be decided, a replay that did not finish, held-out routes that could not be read, or no checks at
-   all. Accepted means this change passed these checks on these routes, not that the game is correct.
+   be decided, a replay that did not finish, held-out routes that could not be read, a spec or route
+   file the gate could not use, or no checks at all. Accepted means this change passed these checks
+   on these routes, not that the game is correct.
+
+   A spec or route file the gate could not use is one it refused (a link, a file over the size cap),
+   one that is not valid, an id or a route name used by two files, or more files than its limits.
+   Each is named in the reasons and counted in the record's `checkProblems`. The checks that ran
+   are then not all of the project's checks, so their passing is needs review and never accept.
+   (Until November 12, 2026 it was an accept with the problem added to the reasons, which the
+   comment does not show on an accept.) A draft spec is not a problem: it is counted in `drafts`.
 
 A finding is a check that does not pass after the change. Its id is the first 12 hex digits of
 `sha256(spec + "\n" + route + "\n" + kind)`, where kind is `fail`, `needs-review` or `replay-error`.

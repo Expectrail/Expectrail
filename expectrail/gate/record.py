@@ -125,13 +125,15 @@ def isolation_words(isolation: dict | None) -> str:
     return f"{inside} of {total}. Outside it the game ran as the job's user, with the network: {why}"
 
 
-def decide(counts: dict, held: dict, isolation: dict | None = None) -> tuple[str, list[str]]:
+def decide(counts: dict, held: dict, isolation: dict | None = None, check_problems: int = 0) -> tuple[str, list[str]]:
     """accept, reject or needs-review, and why.
 
     Accept only when at least one check ran and every public and held-out check passed. Any failure
     rejects. Anything unclear (a check that needs review, a replay that did not finish, held-out
     routes that could not be read) needs review: it is never read as a pass. When the sandbox was
-    required, a replay outside it is unclear too: an accept never rests on one.
+    required, a replay outside it is unclear too: an accept never rests on one. A spec or route file
+    the gate could not use (``check_problems``) is unclear in the same way: the checks that ran are
+    then not all of the project's checks, so their passing is not an accept.
     """
     reasons = []
     if counts["failed"]:
@@ -142,6 +144,9 @@ def decide(counts: dict, held: dict, isolation: dict | None = None) -> tuple[str
         return "reject", reasons
     if not counts["checks"]:
         return "needs-review", ["no checks ran"]
+    if check_problems:
+        reasons.append(f"{check_problems} problem{'s' if check_problems != 1 else ''} with the spec and route files, "
+                       "so the checks that ran are not all of the project's checks")
     if counts["needsReview"]:
         reasons.append(f"{counts['needsReview']} of {counts['checks']} public checks could not be decided")
     if held["status"] == "unavailable":
@@ -434,7 +439,7 @@ def check_consistency(doc: dict) -> None:
                   + -(-(held["passed"] + held["failed"]) // max(1, len(spec_ids))))
         if isolation["replays"] < needed:
             raise RecordError(f"the checks rest on at least {needed} replays and the record counts {isolation['replays']}")
-    decision, _reasons = decide(counts, held, isolation)
+    decision, _reasons = decide(counts, held, isolation, doc.get("checkProblems", 0))
     if doc["decision"] != decision:
         raise RecordError(f"the decision should be {decision} from these counts")
     pr = doc["pullRequest"]
