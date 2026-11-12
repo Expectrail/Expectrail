@@ -337,7 +337,11 @@ class EngineOnlyTest(Case):
     def test_the_old_rule_still_judges_as_it_did_and_the_record_names_it(self):
         doc = self.gate(repo(self.tmp / "head"), rule=rec.ENGINE_ONLY, visual=None)
         self.assertEqual((doc["decision"], doc["reasons"]), ("accept", ["all 1 checks pass"]))
-        self.assertEqual(doc["observers"], {"rule": "engine-only", "visual": None})
+        # No block: the record is what it was before the rule existed, so the comment job's reader
+        # on main, which may be older than the writer, still reads it. Without the block it reads
+        # as engine-only.
+        self.assertNotIn("observers", doc)
+        self.assertEqual(rec.rule_of(doc), rec.ENGINE_ONLY)
         self.assertNotIn("observed", self.row(doc))
         self.assertEqual(self.game.asked, [])
         self.assertFalse((self.out / "observations").exists())
@@ -350,12 +354,24 @@ class EngineOnlyTest(Case):
             self.gate(repo(self.tmp / "head2"), rule="visual-only", visual=None)
         self.assertEqual(self.game.asked, [])
 
-    def test_a_record_from_before_the_block_reads_as_engine_only(self):
-        doc = self.gate(repo(self.tmp / "head"), rule=rec.ENGINE_ONLY, visual=None)
-        del doc["observers"]
-        rec.check_record(doc)
-        self.assertEqual(rec.rule_of(doc), rec.ENGINE_ONLY)
+    def test_an_engine_only_record_is_one_a_reader_from_before_the_block_accepts(self):
+        # The schema as it is on main before this change: no `observers`, no `observed`.
+        old = copy.deepcopy(rec.schema())
+        del old["properties"]["observers"]
+        del old["properties"]["checks"]["items"]["properties"]["observed"]
+        for look in ("clean", "BUG"):
+            doc = self.gate(repo(self.tmp / look, look), rule=rec.ENGINE_ONLY, visual=None)
+            self.assertEqual(rec.errors(doc, old), [])
+        stopped = gv.stopped_record("stopped", pr=None, game="game", checks_from="head", expectrail_commit=None)
+        self.assertEqual(rec.errors(stopped, old), [])
         self.assertIn("the engine's record only", rec.observers_words(doc))
+        self.assertEqual(gv.stopped_record("stopped", pr=None, game="game", checks_from="head", expectrail_commit=None,
+                                           rule=rec.BOTH)["observers"], {"rule": "both", "visual": None})
+
+    def test_an_explicit_engine_only_block_is_read_too(self):
+        doc = self.gate(repo(self.tmp / "head"), rule=rec.ENGINE_ONLY, visual=None)
+        doc["observers"] = {"rule": "engine-only", "visual": None}
+        rec.check_record(doc)
 
 
 class ReaderTest(Case):
@@ -518,6 +534,7 @@ class EngineTest(Case):
                 self.assertEqual(gate["decision"], want)
                 self.assertEqual(record["checks"], gate["checks"])
                 self.assertEqual(record["observers"], gate["observers"])
+                self.assertEqual(record["observers"]["rule"], "both")
 
     def test_the_job_passes_through_observing_and_evaluating(self):
         status, _record = self.work(repo(self.tmp / "head"),
@@ -528,7 +545,8 @@ class EngineTest(Case):
     def test_the_registered_engine_is_engine_only_and_its_record_says_so(self):
         self.assertEqual(engines.ENGINES["godot"]._rule, rec.ENGINE_ONLY)
         _status, record = self.work(repo(self.tmp / "head"), engines.GodotGate(replay=self.game.replay))
-        self.assertEqual((record["decision"], record["observers"]), ("accept", {"rule": "engine-only", "visual": None}))
+        self.assertEqual((record["decision"], rec.rule_of(record)), ("accept", rec.ENGINE_ONLY))
+        self.assertNotIn("observers", record)
 
     def test_the_sample_without_a_visual_observer_rejects_the_bug_and_accepts_nothing(self):
         from tests.test_orchestrator import PatchedReplay

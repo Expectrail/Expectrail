@@ -181,7 +181,7 @@ alike; a test holds that on the gate tests' stand-in replay.
 The engine tells the job when it moves on: `observing` when a replay starts, `evaluating` when its
 checks are judged. It takes the gate's rule for which observers judge (`GodotGate(rule="both",
 visual=...)`, [ci-gate.md](ci-gate.md), "Two observers, one rule"). The engine registered for `godot`
-still judges by `engine-only`, and each job's `findings.json` says which rule judged it.
+still judges by `engine-only`; a job's `findings.json` has an `observers` block when the rule was `both`.
 
 ## A second Godot project
 

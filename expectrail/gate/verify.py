@@ -26,7 +26,8 @@ That is the rule ``engine-only``, which this command line still runs: the job th
 request's code holds no model key (#254). ``run_gate`` also takes the rule ``both`` (#327): every
 check is then judged by the engine's record and by a visual observer over the captured frames
 (``expectrail.observers``), a check passes only when both pass, and with no visual observer nothing
-is accepted. The record's ``observers`` block says which rule judged it.
+is accepted. A record judged that way says so in its ``observers`` block; a record without the
+block was judged ``engine-only``.
 
 ``--heldout`` points at a checkout of private routes (``manifest.json`` listing ``routes[].file``).
 They are replayed on the head without frames, every spec is judged on each, and only counts leave:
@@ -613,7 +614,8 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     check with the engine's record and with ``visual`` (an ``expectrail.observers.FramesObserver``)
     over the captured frames: a check passes only when both pass, a failure on either rejects, and
     with ``visual`` None, or an observer that cannot be set up or does not answer, nothing is
-    accepted. The record's ``observers`` block names the rule and the observer, each row says what
+    accepted. The record's ``observers`` block (written under ``both`` only; without it a record
+    reads as ``engine-only``) names the rule and the observer, each row says what
     each observer said, and the visual observer's observations are written under ``observations/``
     with their digest in the row, so its verdict can be read again without asking the model.
 
@@ -802,7 +804,10 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         "specs": [{"id": s["id"], "sha256": digest(s), "instruction": _clip(s["instruction"])} for s in spec_docs],
         "drafts": drafts,
         "checkProblems": check_problems,
-        "observers": {"rule": rule, "visual": observer if rule == rec.BOTH else None},
+        # Written under the rule both only. An engine-only record stays as it was before the block
+        # existed, so a reader from before it (the comment job runs main's) can still read it; a
+        # reader takes a record without the block as engine-only.
+        **({"observers": {"rule": rule, "visual": observer}} if rule == rec.BOTH else {}),
         # The record lists the routes that were judged, so its checks are every spec on every route.
         "routes": [{"name": n, "sha256": sha} for n, _p, sha in route_list] if head else [],
         "counts": counts,
@@ -867,7 +872,7 @@ def stopped_record(reason: str, *, pr: dict | None, game: str | None, checks_fro
         "format": rec.FORMAT, "decision": decision, "reasons": [_clip(reason)] + reasons, "adapter": "godot",
         "pullRequest": pr, "game": {"path": game_path, "headTree": None, "baseTree": None},
         "checksFrom": checks_from, "checksChanged": {"specs": 0, "routes": 0}, "specs": [], "drafts": 0, "checkProblems": 0,
-        "observers": {"rule": rule if rule in rec.RULES else rec.ENGINE_ONLY, "visual": None},
+        **({"observers": {"rule": rec.BOTH, "visual": None}} if rule == rec.BOTH else {}),
         "routes": [], "counts": counts, "checks": [], "findings": [], "heldOut": held,
         "isolation": rec.isolation_summary([], require_sandbox), "reviewPage": None,
         "expectrail": {"version": __version__,

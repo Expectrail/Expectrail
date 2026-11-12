@@ -178,8 +178,10 @@ the tests' stand-in replay and stand-in model, not by a live run.
 
 What is and is not in use, as of November 12, 2026:
 
-- The pull-request gate and `expectrail verify` still judge by the rule `engine-only`, and every record
-  they write says so (`observers.rule`). The job that runs a pull request's code must not hold a model
+- The pull-request gate and `expectrail verify` still judge by the rule `engine-only`. Their records
+  have no `observers` block, exactly as before, so the comment job's reader on main reads them
+  whichever side is newer; a record without the block is read as `engine-only`, and the comment and
+  the review page say so. The job that runs a pull request's code must not hold a model
   key, so vision on pull requests waits for the two-job action (#254).
 - No command constructs a visual observer yet, so nothing in this repository can start a paid model
   call through the gate. An observer made with the real client is held to the run's spend cap

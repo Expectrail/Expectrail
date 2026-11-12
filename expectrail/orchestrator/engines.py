@@ -42,7 +42,7 @@ class GodotGate:
     ``rule`` is which observers judge (expectrail.gate.record.RULES). With ``both`` every check
     needs the engine's record and ``visual`` (an expectrail.observers.FramesObserver) to pass, and
     with no ``visual`` the engine accepts nothing (#327). The engine registered below still judges
-    ``engine-only``, as the gate does; the record of every job says which rule judged it."""
+    ``engine-only``, as the gate does; a job's record has an ``observers`` block when the rule was ``both``."""
 
     name = "godot"
 

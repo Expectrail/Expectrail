@@ -66,7 +66,8 @@ def finding_id(spec: str, route: str, kind: str) -> str:
 # ``both``: Sean's rule of November 12, 2026 (#327). Every check is judged by the engine's record and
 # by a visual observer over the captured frames, and ``combine`` below gives the check's result.
 # ``engine-only``: the engine's record alone, which is how every record was judged before the rule.
-# A record with no ``observers`` block was written before it existed and is read as ``engine-only``.
+# An engine-only record is written without an ``observers`` block, as records were before the block
+# existed, so a reader older than the block still reads it; no block is read as ``engine-only``.
 BOTH, ENGINE_ONLY = "both", "engine-only"
 RULES = (BOTH, ENGINE_ONLY)
 # What a visual observer said about one check: its verdict, or that it did not answer (no frames,

@@ -20,22 +20,26 @@ takes a rule for which observers judge.
   check and the SHA256 of the visual observer's answer (`observed`). The answer itself is written to
   `observations/<arm>/<route>/<spec>.visual.json`. The reader recomputes each row from `observed` and
   refuses a row that passes without the visual observer's pass. A record without the block is read as
-  `engine-only`.
+  `engine-only`, and an `engine-only` record is written without it. The first push wrote the block
+  on every record, and this pull request's own gate comment came back "the evidence could not be
+  used: a property is not allowed here": the comment job runs main's reader, which did not know the
+  block. An engine-only record is now byte-for-byte what it was, so a reader older than the writer
+  reads it.
 - **The rule `engine-only`** is what the gate did before, unchanged, and is still the default: the
-  pull-request gate and `expectrail verify` use it. Every record now names it, and the comment and the
+  pull-request gate and `expectrail verify` use it. The comment and the
   review page have a "Judged on" line that says a verdict rests on the engine's record only.
 - The orchestrator's engine takes the rule and the observer (`GodotGate(rule=, visual=)`) and tells the
   job its `observing` and `evaluating` phases.
 
 ## What was run
-- `python3 -m unittest tests.test_two_observers`: 36 tests, OK (inside the full run below). They use a stand-in replay (a position
+- `python3 -m unittest tests.test_two_observers`: 37 tests, OK (inside the full run below). They use a stand-in replay (a position
   log with the ground line and the camera, and real PNG frames) and a stand-in model that answers in
   SAM 3.1's wire format, as `tests/test_sam.py` does. These are scripted answers, not recordings of the
   live model. The real observations code, evaluator and record reader judge them.
 - With the rule loosened on purpose (a pass when the visual observer was not asked), 11 of the
   first 35 tests fail (run before the spend-cap test was added).
 - The full suite, `python3 -m unittest discover -s tests -t .`, on the branch rebased on main 25d8585:
-  2,294 tests, 26 skipped, OK.
+  2,295 tests, 26 skipped, OK (after the second push's change; 2,294 before it).
 
 ## Not done
 - No live model has judged through this path, and no command constructs a visual observer: nothing

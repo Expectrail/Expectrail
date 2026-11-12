@@ -73,10 +73,10 @@ comment ([ci-gate.md](ci-gate.md)). The example is a real local run: the clean g
 game with `bugs/physics-fall-through/v1.patch` as the head, and a stand-in held-out set. Its pull
 request number and head commit are placeholders.
 
-Since November 12, 2026 a record says which observers judged it (`observers`), and under the rule
-`both` every row says what the engine's record and the visual observer each said (`observed`), with
+Since November 12, 2026 a record judged by the rule `both` says so (`observers`), and every row says what the engine's record and the visual observer each said (`observed`), with
 the digest of the visual observer's answer ([ci-gate.md](ci-gate.md), "Two observers, one rule"). A
-record without the block is from before it and is read as `engine-only`; the first example is one.
+record without the block was judged `engine-only`, which writes none, so that a reader older than the
+block still reads it; the first example is one.
 `contracts/examples/findings-both-observers.json` is a record under `both`, made with the tests'
 stand-in replay and stand-in model, not by a live run.
 
