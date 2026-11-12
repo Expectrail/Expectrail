@@ -18,8 +18,8 @@ its size and its reach inside the range a clean run sets, confidence left out.
   is missing.
 
 ## What was run
-- `python3 -m unittest tests.test_anchor_rule`: 24 tests, OK. Six of them are over the recorded
-  answers.
+- `python3 -m unittest tests.test_anchor_rule`: 26 tests, OK. Six of them are over the recorded
+  answers and two over the workflow file.
 - The rule over the recorded answers for pads 0, 2, 4, 6, 8, set on clean and set on
   missing-texture v1: sinking v2 is out in 13 of 13 frames in every case; layering in 9 of 13 up to
   pad 4 and 7 of 13 from pad 6; clean set on missing-texture v1 has 1 frame out at pad 0 and none
