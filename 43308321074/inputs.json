@@ -1,0 +1,10 @@
+{
+  "mode": "probe",
+  "every": "10",
+  "spec": "specs/player-stays-above-ground.json",
+  "anchor": true,
+  "lift": "0",
+  "sam_usd_cap": "0.50",
+  "candidate": "agents/fixtures/fix-collision-mask.patch",
+  "judge": "sam"
+}
