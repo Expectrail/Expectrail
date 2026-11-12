@@ -37,8 +37,13 @@
   2,074 tests, 26 skipped, OK. Four of the skips are the real-Godot tests above, which the suite
   leaves out without the switch; the others are as on main here (no bubblewrap).
 - `python3 -m tools.merge_guard --base origin/main --head HEAD`: `nothing to report`.
-- The two new CI steps (the tests with the sandbox required; the installed command): not run when
-  this was written.
+- The two new CI steps, on 4ccc8f7 (run 43173241682): the jobs `seeded-bugs` and `package` and both
+  new steps ended in success.
+- After the merge guard's review of 4ccc8f7, on this branch merged with main at 6a9516c (#321 had
+  removed `gate.load_specs`, which one test called): the test reads
+  the folder with the gate's one reader, `gate.read_checks`; the full suite is 2,134 tests, 26
+  skipped, OK; the real-Godot tests are 12, OK, 48 s. The sentence in `docs/orchestrator.md` now
+  carries the exception this file lists under "Not done": `harness.run.run` keeps its fallback.
 
 ## Not done
 - **A spec approved for this project.** The tests judge it with the bundled approved spec

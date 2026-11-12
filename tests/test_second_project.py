@@ -29,6 +29,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 import jsonschema
@@ -89,8 +90,10 @@ class ProjectFilesTest(Case):
     def test_its_own_spec_is_a_draft_nobody_approved(self):
         for path in (PROJECT / "specs").glob("*.json"):
             self.assertNotIn("approval", json.loads(path.read_text(encoding="utf-8")), path.name)
-        approved, drafts, problems = gate.load_specs(PROJECT / "specs", "specs")
-        self.assertEqual((approved, drafts, problems), ([], 1, []))
+        # Read as the gate reads a checkout (the one reader), so this moves with the gate.
+        checks = gate.read_checks(PROJECT, "specs", ["routes/*.json"])
+        self.assertEqual((checks.specs, checks.drafts, checks.problems), ([], 1, []))
+        self.assertEqual([route[0] for route in checks.routes], ["walk"])
 
     def test_it_shares_nothing_with_the_bundled_game(self):
         for path in PROJECT.rglob("*"):
