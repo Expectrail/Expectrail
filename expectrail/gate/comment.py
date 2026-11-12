@@ -236,10 +236,10 @@ def _summary(record: dict) -> str:
                 "checks on these routes, not that the game is correct.")
     if rec.unverified_fix(record):
         # Issue #284: for a change that says it fixes a bug, "no check failed" is not "the fix is good".
-        return ("**No check reproduced the reported bug, so this fix is not verified.** The checks that ran "
-                "did not fail before the change, so their passing after it says nothing about the bug. To get a "
-                "verdict, add a check that fails on the bug: write a spec for what the report describes, or let "
-                "Expectrail propose one (generated checks, `docs/jit.md`).")
+        return ("**No check reproduced the reported bug, so this fix is not verified.** No check failed before "
+                f"the change {rec.REPAIR_RUNS} times of {rec.REPAIR_RUNS} and passed after it, so the checks passing "
+                "now says nothing about the bug. To get a verdict, add a check that fails on the bug: write a spec "
+                "for what the report describes, or let Expectrail propose one (generated checks, `docs/jit.md`).")
     if not total:
         return "**No check ran**, so the gate cannot accept."
     if unclear:

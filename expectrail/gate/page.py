@@ -114,8 +114,9 @@ def write_page(out: Path, record: dict, frames: dict[str, dict]) -> Path:
     ]
     if decision == "needs-review" and rec.unverified_fix(record):
         parts.append("<p><strong>No check reproduced the reported bug, so this fix is not verified.</strong> "
-                     "The checks that ran did not fail before the change, so their passing after it says nothing "
-                     "about the bug. Add a check that fails on the bug, or let Expectrail propose one.</p>")
+                     f"No check failed before the change {rec.REPAIR_RUNS} times of {rec.REPAIR_RUNS} and passed "
+                     "after it, so the checks passing now says nothing about the bug. Add a check that fails on the "
+                     "bug, or let Expectrail propose one.</p>")
     if record["reasons"]:
         parts.append("<ul>" + "".join(f"<li>{esc(r)}</li>" for r in record["reasons"]) + "</ul>")
     counts, held = record["counts"], record["heldOut"]
