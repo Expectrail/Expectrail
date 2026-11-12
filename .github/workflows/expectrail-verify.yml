@@ -45,3 +45,5 @@ jobs:
             harness/routes/smoke.json
             harness/routes/combat.json
           specs: agents/specs
+          # The pull request's game never runs outside the replay sandbox here (#253).
+          require-sandbox: 'true'

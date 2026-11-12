@@ -36,6 +36,13 @@ inputs:
   fail-on:
     description: Fail the job on reject (default), on needs-review (or reject), or never.
     default: reject
+  require-sandbox:
+    description: >
+      'true' refuses to replay the game outside the replay sandbox (bubblewrap: no network, the
+      game's own files only; docs/replay-sandbox.md). Where the runner cannot provide it nothing is
+      replayed and the decision is needs-review. 'false' (default) sandboxes the game where the
+      runner can and says in the record how many replays were.
+    default: 'false'
   artifact-name:
     description: The name of the evidence artifact; the comment action must use the same name.
     default: expectrail-gate
@@ -58,6 +65,7 @@ runs:
         EVENT: ${{ github.event_name }}
         FAIL_ON: ${{ inputs.fail-on }}
         COMPARE_BASE: ${{ inputs.compare-base }}
+        REQUIRE_SANDBOX: ${{ inputs.require-sandbox }}
         ARTIFACT: ${{ inputs.artifact-name }}
         HELDOUT_REPOSITORY: ${{ inputs.heldout-repository }}
       run: |
@@ -68,6 +76,7 @@ runs:
         esac
         case "$FAIL_ON" in reject|needs-review|never) ;; *) echo "::error title=Expectrail verify::fail-on must be reject, needs-review or never"; exit 1 ;; esac
         case "$COMPARE_BASE" in true|false) ;; *) echo "::error title=Expectrail verify::compare-base must be true or false"; exit 1 ;; esac
+        case "$REQUIRE_SANDBOX" in true|false) ;; *) echo "::error title=Expectrail verify::require-sandbox must be true or false"; exit 1 ;; esac
         [[ "$ARTIFACT" =~ ^[A-Za-z0-9._-]{1,64}$ ]] || { echo "::error title=Expectrail verify::artifact-name may use letters, digits and . _ - only"; exit 1; }
         if [ -n "$HELDOUT_REPOSITORY" ] && ! [[ "$HELDOUT_REPOSITORY" =~ ^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$ ]]; then
           echo "::error title=Expectrail verify::heldout-repository must be owner/name"; exit 1
@@ -92,9 +101,20 @@ runs:
     - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
       with:
         python-version: '3.13'
-    - name: Install a virtual display and software OpenGL
+    - name: Install a virtual display, software OpenGL and the sandbox tool
       shell: bash
-      run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 patch
+      run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 patch bubblewrap
+    - name: Let the replay sandbox start (Ubuntu 24.04 keeps unprivileged user namespaces off)
+      shell: bash
+      # Best effort: on a runner where this is not allowed the sandbox cannot start, the record says
+      # why, and with require-sandbox the gate refuses to replay.
+      run: |
+        if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+          echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns > /dev/null || true
+        fi
+        if [ -f /proc/sys/kernel/unprivileged_userns_clone ]; then
+          echo 1 | sudo tee /proc/sys/kernel/unprivileged_userns_clone > /dev/null || true
+        fi
     - name: Download Godot 4.7.2 and check its SHA-512
       shell: bash
       run: bash "$GITHUB_ACTION_PATH/../../../harness/get_godot.sh"
@@ -113,6 +133,7 @@ runs:
         EXPECTRAIL_REF: ${{ github.action_ref }}
         HELDOUT_FETCHED: ${{ steps.heldout.outcome == 'success' }}
         GENERATED_CHECKS: ${{ inputs.generated-checks }}
+        REQUIRE_SANDBOX: ${{ inputs.require-sandbox }}
       run: |
         root="$(cd "$GITHUB_ACTION_PATH/../../.." && pwd)"
         out="$RUNNER_TEMP/expectrail-gate"
@@ -133,6 +154,9 @@ runs:
         fi
         if [ -n "$GENERATED_CHECKS" ]; then
           args+=(--generated-checks "$(realpath -m "$GENERATED_CHECKS")")
+        fi
+        if [ "$REQUIRE_SANDBOX" = "true" ]; then
+          args+=(--require-sandbox)
         fi
         rmdir "$GITHUB_WORKSPACE/.expectrail" 2> /dev/null || true
         # The binary the previous step downloaded and checked (already there, so this only prints it).

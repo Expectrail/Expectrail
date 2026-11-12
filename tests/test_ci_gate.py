@@ -17,6 +17,7 @@ import tempfile
 import unittest
 import urllib.error
 from pathlib import Path
+from unittest import mock
 
 import jsonschema
 import yaml
@@ -422,6 +423,165 @@ class VerifyTest(GateCase):
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(gv.main(["--repo", str(head), "--game", "game", "--routes", "r", "--specs", "s",
                                       "--out", str(self.tmp / "cli")]), 3)  # never overwrites a record
+
+
+INSIDE = {"sandbox": {"tool": "bubblewrap", "version": "0.9.0"}, "mode": "require", "reason": None, "network": "none",
+          "filesystem": "confined", "processes": "own", "environment": "allowlist",
+          "limits": {"scratchBytes": 1, "fileBytes": 1, "processes": 1}}
+OUTSIDE = {"sandbox": None, "mode": "auto", "reason": "bubblewrap (bwrap) is not installed", "network": "host",
+           "filesystem": "host", "processes": "host", "environment": "allowlist", "limits": None}
+
+
+class Accounting(FakeReplay):
+    """FakeReplay whose replays also say what the game could reach, as harness_replay's do: one
+    account per replay, taken in turn from ``accounts`` (the last one repeats)."""
+
+    def __init__(self, *accounts):
+        super().__init__()
+        self.accounts = list(accounts)
+
+    def __call__(self, route, game, out, frames):
+        run = super().__call__(route, game, out, frames)
+        account = self.accounts[min(len(self.calls) - 1, len(self.accounts) - 1)]
+        return run if account is None else dict(run, isolation=account)
+
+
+class IsolationTest(GateCase):
+    """The record says whether the game ran in the replay sandbox, and the sandbox can be required (#253)."""
+
+    def test_every_finished_replay_is_counted_head_base_and_held_out(self):
+        self.replay = Accounting(INSIDE)
+        doc = self.gate(make_repo(self.tmp / "head"), base=make_repo(self.tmp / "base"),
+                        heldout=make_heldout(self.tmp / "held"), require_sandbox=True)
+        held = doc["heldOut"]["routes"]
+        self.assertEqual(doc["isolation"], {"replays": 4 + held, "sandboxed": 4 + held, "required": True,
+                                            "sandbox": {"tool": "bubblewrap", "version": "0.9.0"}, "reasons": []})
+        self.assertEqual(len(self.replay.calls), 4 + held)
+        self.assertEqual(doc["decision"], "accept")
+        rec.check_record(rec.read_record(self.tmp / "out" / "findings.json"))
+        page = (self.tmp / "out" / "review" / "index.html").read_text(encoding="utf-8")
+        self.assertIn(f"all {4 + held}, in bubblewrap 0.9.0", page)
+
+    def test_a_replay_that_says_nothing_is_counted_as_outside(self):
+        doc = self.gate(make_repo(self.tmp / "head"))
+        self.assertEqual(doc["isolation"], {"replays": 2, "sandboxed": 0, "required": False, "sandbox": None,
+                                            "reasons": [rec.NOT_SAID]})
+        self.assertEqual(doc["decision"], "accept")   # not required: recorded, and the decision is as before
+        self.assertIn("0 of 2", rec.isolation_words(doc["isolation"]))
+
+    def test_the_reason_a_replay_ran_outside_is_kept_once(self):
+        self.replay = Accounting(INSIDE, OUTSIDE)
+        doc = self.gate(make_repo(self.tmp / "head"), base=make_repo(self.tmp / "base"))
+        self.assertEqual((doc["isolation"]["replays"], doc["isolation"]["sandboxed"], doc["isolation"]["reasons"]),
+                         (4, 1, ["bubblewrap (bwrap) is not installed"]))
+        self.assertEqual(doc["decision"], "accept")
+
+    def test_naming_the_tool_is_not_enough(self):
+        for label, account in (("network", dict(INSIDE, network="host")), ("files", dict(INSIDE, filesystem="host")),
+                               ("processes", dict(INSIDE, processes="host")), ("no tool", dict(INSIDE, sandbox=None)),
+                               ("a word", "sandboxed"), ("a list", [INSIDE])):
+            with self.subTest(label):
+                self.assertEqual(rec.isolation_summary([account], True)["sandboxed"], 0)
+        self.assertEqual(rec.isolation_summary([INSIDE], True)["sandboxed"], 1)
+
+    def test_required_and_outside_is_never_an_accept(self):
+        for label, replay in (("says nothing", FakeReplay()), ("says outside", Accounting(OUTSIDE)),
+                              ("one of two outside", Accounting(INSIDE, OUTSIDE))):
+            with self.subTest(label):
+                self.replay = replay
+                doc = self.gate(make_repo(self.tmp / label / "head"), out_name=f"out-{label}", require_sandbox=True)
+                self.assertEqual(doc["decision"], "needs-review")
+                self.assertTrue(any("ran outside the sandbox, which was required" in r for r in doc["reasons"]), doc["reasons"])
+                rec.check_record(doc)
+                self.assertRaises(rec.RecordError, rec.check_record, dict(doc, decision="accept"))
+
+    def test_required_does_not_turn_a_failing_check_into_needs_review(self):
+        doc = self.gate(make_repo(self.tmp / "head", bug=True), base=make_repo(self.tmp / "base"), require_sandbox=True)
+        self.assertEqual(doc["decision"], "reject")
+
+    def test_a_replay_that_did_not_finish_is_not_counted(self):
+        self.replay = Accounting(INSIDE)
+        doc = self.gate(make_repo(self.tmp / "head", crash=True), require_sandbox=True)
+        self.assertEqual((doc["isolation"]["replays"], doc["decision"]), (0, "needs-review"))
+
+    def test_required_where_the_machine_cannot_sandbox_replays_nothing(self):
+        from harness import sandbox as box
+
+        head = make_repo(self.tmp / "head")
+        with mock.patch.object(box, "probe", return_value=(None, "bubblewrap (bwrap) is not installed")), \
+                mock.patch("harness.run.run", side_effect=AssertionError("the game was replayed")):
+            with self.assertRaisesRegex(gv.ConfigError, "required and this machine cannot provide it: bubblewrap"):
+                gv.run_gate(repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
+                            out=self.tmp / "o", work=self.tmp / "w", require_sandbox=True)
+            with contextlib.redirect_stdout(io.StringIO()) as log:
+                code = gv.main(["--repo", str(head), "--game", "game/platformer", "--routes", "routes/*.json", "--specs",
+                                "specs", "--out", str(self.tmp / "cli"), "--require-sandbox"])
+        doc = rec.read_record(self.tmp / "cli" / "findings.json")
+        self.assertEqual((code, doc["decision"], doc["checks"]), (2, "needs-review", []))
+        self.assertEqual(doc["isolation"], {"replays": 0, "sandboxed": 0, "required": True, "sandbox": None, "reasons": []})
+        self.assertIn("cannot provide it", doc["reasons"][0])
+        self.assertIn("no replay ran (the sandbox was required)", log.getvalue())
+
+    def test_required_tells_the_harness_to_refuse_and_auto_leaves_it_to_choose(self):
+        from harness import sandbox as box
+
+        head = make_repo(self.tmp / "head")
+        asked = []
+
+        def run(route, out, game=None, capture_frames=True, sandbox=None):
+            asked.append(sandbox)
+            raise SystemExit("stop here: only the argument matters")
+
+        for required, expected in ((True, "require"), (False, None)):
+            with self.subTest(required=required), mock.patch.object(box, "probe", return_value=(object(), None)), \
+                    mock.patch("harness.run.run", side_effect=run), contextlib.redirect_stdout(io.StringIO()):
+                asked.clear()
+                gv.run_gate(repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
+                            out=self.tmp / f"o{required}", work=self.tmp / f"w{required}", require_sandbox=required)
+                self.assertEqual(asked, [expected])
+
+    def test_a_record_that_contradicts_itself_is_refused(self):
+        good = example()
+        rec.check_record(good)
+        for label, change in (("more sandboxed than ran", dict(sandboxed=9)),
+                              ("a tool with none sandboxed", dict(sandboxed=0, reasons=["x"])),
+                              ("none sandboxed and no reason", dict(sandboxed=0, sandbox=None)),
+                              ("all sandboxed and no tool", dict(sandbox=None)),
+                              ("all sandboxed and a reason", dict(reasons=["x"])),
+                              ("an unknown tool", dict(sandbox={"tool": "docker", "version": "1"})),
+                              ("a seventh field", dict(grade="isolated"))):
+            with self.subTest(label), self.assertRaises(rec.RecordError):
+                rec.check_record(dict(good, isolation=dict(good["isolation"], **change)))
+
+    def test_a_record_from_before_the_sandbox_still_reads_and_is_not_called_isolated(self):
+        old = example()
+        del old["isolation"]
+        rec.check_record(old)
+        self.assertIn("not recorded", rec.isolation_words(None))
+        self.assertIn("not sandboxed", rec.isolation_words(None))
+
+    def test_the_comment_says_it_and_a_reason_from_the_record_is_inert(self):
+        body = gc.render(head_example(), ctx())
+        self.assertIn("**Replays in the sandbox:** all 6, in bubblewrap 0.9.0", body)
+        hostile = head_example()
+        hostile["isolation"] = {"replays": 6, "sandboxed": 0, "required": False, "sandbox": None, "reasons": [HOSTILE[:300]]}
+        body = gc.render(hostile, ctx())
+        self.assertIn("**Replays in the sandbox:** 0 of 6", body)
+        for raw in ("<script>", "@octocat", "](https://evil.example", "\n## heading"):
+            self.assertNotIn(raw, body)
+
+    def test_the_action_can_require_it_and_this_repository_does(self):
+        action = yaml.safe_load(VERIFY_ACTION.read_text(encoding="utf-8"))
+        self.assertEqual(action["inputs"]["require-sandbox"]["default"], "false")
+        text = VERIFY_ACTION.read_text(encoding="utf-8")
+        self.assertIn('case "$REQUIRE_SANDBOX" in true|false) ;;', text)
+        self.assertIn("args+=(--require-sandbox)", text)
+        self.assertIn("bubblewrap", text)
+        uses = [line.strip() for line in text.splitlines() if "inputs.require-sandbox" in line]
+        self.assertEqual(uses, ["REQUIRE_SANDBOX: ${{ inputs.require-sandbox }}"] * 2)   # through env only, never in a script
+        workflow = yaml.safe_load(VERIFY_WF.read_text(encoding="utf-8"))
+        step = next(s for s in workflow["jobs"]["verify"]["steps"] if "expectrail-verify" in str(s.get("uses")))
+        self.assertEqual(step["with"]["require-sandbox"], "true")
 
 
 def rec_digest(doc: dict) -> str:

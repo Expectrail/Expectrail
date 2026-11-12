@@ -344,7 +344,8 @@ def _body(record: dict, ctx: Context, *, previous: list[str], touched: list[str]
             lines.append(f"\n{len(checks) - check_rows} more checks are listed in the artifact's findings.json.")
         lines += ["", "</details>", ""]
 
-    lines += [_held_line(record["heldOut"], fork), "", _checks_line(record), ""]
+    lines += [_held_line(record["heldOut"], fork), "", _checks_line(record), "",
+              f"**Replays in the sandbox:** {md(rec.isolation_words(record.get('isolation')), 400)}.", ""]
     lines += _generated_lines(record)
     page = "the review page (`review/index.html`), " if record["reviewPage"] else ""
     lines += [f"**Evidence:** {page}the verdicts and findings.json are in the `{ctx.artifact}` artifact of "

@@ -302,6 +302,72 @@
         }
       }
     },
+    "isolation": {
+      "description": "Whether the game ran in the replay sandbox (docs/replay-sandbox.md), over every replay this record rests on: head, base and held-out. Counts and the tool only. Absent from records written before November 12, 2026, which a reader treats as not isolated.",
+      "type": "object",
+      "required": [
+        "replays",
+        "sandboxed",
+        "required",
+        "sandbox",
+        "reasons"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "replays": {
+          "description": "Replays that finished and were judged.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "sandboxed": {
+          "description": "How many of them ran inside the sandbox: no network, own process tree, only the game's own files.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "required": {
+          "description": "True when the gate was told to refuse to replay outside the sandbox.",
+          "type": "boolean"
+        },
+        "sandbox": {
+          "description": "The tool that isolated the sandboxed replays; null when none was.",
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "tool",
+                "version"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "tool": {
+                  "enum": [
+                    "bubblewrap"
+                  ]
+                },
+                "version": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                }
+              }
+            }
+          ]
+        },
+        "reasons": {
+          "description": "Why replays ran outside the sandbox, each distinct reason once.",
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        }
+      }
+    },
     "generatedChecks": {
       "type": "object",
       "description": "Optional and advisory (docs/jit.md): checks generated for this change. The decision rule never reads it; the decision follows from counts and heldOut alone.",

@@ -59,7 +59,7 @@
           "shows": "the decision rule on recorded observations"
         }
       ],
-      "limits": "One game, with bugs the team seeded. The replay is sandboxed only where bubblewrap can run (see replay-sandbox), no verdict is graded by it yet (#253) and no separate trusted job signs the verdict, so nothing here is isolated. The approved specs judge frames 0 to 119 of a route."
+      "limits": "One game, with bugs the team seeded. The replay is sandboxed only where bubblewrap can run (see replay-sandbox); the gate's record says how many replays were and the gate can refuse to run without it, but no separate trusted job judges and signs the verdict (#254, #255), so nothing here is graded isolated. The approved specs judge frames 0 to 119 of a route."
     },
     {
       "id": "godot-harness",
@@ -151,7 +151,7 @@
           "shows": "finding ids that stay the same across pushes, and that the comment job's reader refuses a malformed or oversized artifact"
         }
       ],
-      "limits": "On blind set 3 the approved checks covered none of the eight defects: what the gate catches is bounded by the checks a project has. This row cites no run on a project the team did not write (#263). The candidate job does not install bubblewrap, so its replay is not sandboxed, and the findings record does not yet say whether it was (#253) and the verdict is not signed (#255). No catch rate or runtime is published for it."
+      "limits": "On blind set 3 the approved checks covered none of the eight defects: what the gate catches is bounded by the checks a project has. This row cites no run on a project the team did not write (#263). The action sandboxes the game where the runner can and the findings record says how many replays ran in the sandbox; refusing to run outside it is an input (require-sandbox) that this repository's own workflow sets and other users must set themselves. The verdict is still computed in the job that runs the pull request's code (#254) and is not signed (#255). No catch rate or runtime is published for it."
     },
     {
       "id": "unity-harness",
@@ -696,24 +696,35 @@
       "observer": "None",
       "entryPoints": [
         "harness.sandbox",
-        "harness.run"
+        "harness.run",
+        "expectrail.gate.verify"
       ],
       "workflows": [
-        "ci.yml"
+        "ci.yml",
+        "expectrail-verify.yml"
       ],
       "names": [
         "bubblewrap"
       ],
       "grade": "diagnostic",
-      "status": "implemented",
+      "status": "integrated",
       "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43115035122",
+          "conclusion": "success",
+          "jobs": [
+            "seeded-bugs"
+          ],
+          "shows": "CI on main (0356aef), job seeded-bugs, bubblewrap 0.9.0: the 34 sandbox tests with none skipped, every seeded-bug replay with the sandbox required, and three verifications through the gate and the orchestrator's worker with the sandbox required (accept, reject, accept)"
+        },
         {
           "kind": "test",
           "ref": "tests/test_replay_sandbox.py",
           "shows": "inside, a program and the real game each fail to open a socket, write outside, read a check or the verifier, and read the starting process's environment, while the same attempts succeed outside; a link left as the trace is refused; the clean game's frame and trace hashes are the same with and without"
         }
       ],
-      "limits": "No run on main yet: the row moves when the seeded-bugs job has run there. Godot only: the Unity player and the web replay are not sandboxed. The gate and the orchestrator do not yet read the isolation block or grade a verdict by it. A namespace sandbox on the host's kernel, not a virtual machine. Total disk use of the work copy and the output folder is not limited, only each file; CPU and memory are limited only by the replay's time limit. On Ubuntu 24.04 the runner must allow unprivileged user namespaces first."
+      "limits": "Godot only: the Unity player and the web replay are not sandboxed. The gate records how many replays were sandboxed and can require it, and the orchestrator's isolated class requires it; no verdict is graded isolated by it, because that grade also needs a trusted job that judges and signs (#254, #255). Not shown in the real tool: that the terminal was reachable before the sandbox got a session of its own. A namespace sandbox on the host's kernel, not a virtual machine. Total disk use of the work copy and the output folder is not limited, only each file; CPU and memory are limited only by the replay's time limit. On Ubuntu 24.04 the runner must allow unprivileged user namespaces first."
     },
     {
       "id": "key-gateway",
@@ -982,20 +993,31 @@
       "entryPoints": [
         "expectrail.orchestrator"
       ],
-      "workflows": [],
+      "workflows": [
+        "ci.yml"
+      ],
       "docs": [
         "docs/orchestrator.md"
       ],
       "grade": "diagnostic",
-      "status": "implemented",
+      "status": "integrated",
       "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43115035122",
+          "conclusion": "success",
+          "jobs": [
+            "seeded-bugs"
+          ],
+          "shows": "CI on main (0356aef), job seeded-bugs: the sample command ran three real Godot verifications as jobs, each in a worker of its own with the replay sandbox required: accept for the game as it is, reject for the seeded bug, accept for the repair"
+        },
         {
           "kind": "test",
           "ref": "tests/test_orchestrator.py",
           "shows": "two jobs keep to their own folders; a cancelled job stays cancelled and what it started is stopped; a killed worker leaves a failed job; a job out of time is needs-review; a missing tool is a diagnostic and needs-review; the Godot engine decides as the gate does, on a stand-in replay"
         }
       ],
-      "limits": "No CI run yet: the real Godot runs behind it (a fix accepted, a regression rejected, a job cancelled mid-run) were local. The isolated execution class is refused until the replay sandbox exists (#253). One host."
+      "limits": "Only the sample command and tests call it: the gate's action and the site do not go through it yet. The isolated execution class runs every replay with the sandbox required and refuses where the machine cannot; its evidence grade stays diagnostic, because the ledger's isolated grade also needs a trusted job that judges and signs (#254, #255). A killed worker's children run on until their own time limit, and files can change between the worker's last read and the gate's copy (#307). One host."
     }
   ],
   "notModes": {

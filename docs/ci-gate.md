@@ -97,6 +97,7 @@ Both use the actions from the checked-out repository (`./.github/actions/...`) i
 | verify | `heldout-ref` | empty | Its branch, tag or commit |
 | verify | `heldout-token` | empty | A token that can read it; see "Held-out routes" below before passing one |
 | verify | `fail-on` | `reject` | Fail the job on `reject`, on `needs-review` (or reject), or `never` |
+| verify | `require-sandbox` | `false` | `true` refuses to replay the game outside the replay sandbox ([replay-sandbox.md](replay-sandbox.md)): where the runner cannot provide it nothing is replayed and the decision is needs-review. `false` sandboxes the game where the runner can; the record and the comment say how many replays were |
 | verify | `artifact-name` | `expectrail-gate` | The evidence artifact's name |
 | verify | `generated-checks` | empty | An advisory block of checks generated for this change ([jit.md](jit.md)), shown in the comment and the review page; it never changes the decision, and one that cannot be read shows as "no generated checks" |
 | comment | `github-token` | the run's token | Reads the verify run's artifact and writes the comment |
@@ -213,14 +214,20 @@ and searches every output file, the log and the comment for its route names.
   same user as the gate, so it could rewrite files the gate reads before the upload. The comment
   job checks the record's shape, the commit it names and the workflow behind it, and says so when the
   pull request changes that workflow. It cannot prove that the verification itself was not tampered
-  with. Use the comment as evidence for a reviewer. The harness now runs the game in a sandbox wherever
-  bubblewrap can run ([replay-sandbox.md](replay-sandbox.md)): no network, writes only to its own copy
-  and one output folder, no view of the checks or of the gate's processes. The verify workflow does not
-  install bubblewrap yet and the findings record does not say whether the replay was isolated, so this
-  limit stands until both are done (#253).
+  with. Use the comment as evidence for a reviewer.
+  What the sandbox changes: the action installs bubblewrap and runs the game in the replay sandbox
+  ([replay-sandbox.md](replay-sandbox.md)) where the runner allows it: no network, writes only to its
+  own copy and one output folder, no view of the checks, the gate's files or its processes. With
+  `require-sandbox: 'true'` (set in this repository's workflow) the game never runs outside it. The
+  record's `isolation` block and a line in the comment say how many replays ran inside, and with which
+  tool. So the game itself can no longer rewrite what the gate reads. What it does not change: the
+  workflow and, in this repository, the action's own code are still the pull request's copy, and the
+  record is written by that job. A separate trusted job that judges is #254; a signed receipt is #255.
 - **Held-out routes and pull request code share a job.** If you pass `heldout-token`, the pull
-  request's game runs in the job that holds the held-out routes and can read them while it runs.
-  Pass it only when the people and agents who open pull requests may see the held-out set anyway.
+  request's code runs in the job that holds the held-out routes. Inside the replay sandbox the game
+  sees only the one route it is playing, not the folder; a replay outside the sandbox, and any other
+  step of the pull request's workflow, can read them all. Pass it only when the people and agents who
+  open pull requests may see the held-out set anyway, and set `require-sandbox: 'true'` with it.
   This repository does not pass it on pull requests (OBAAF-GHA-001). A fork's pull request never gets
   it, because GitHub gives forks no secrets and the action checks the head repository too.
 - **The position log is the only observer.** No model key is used, so SAM 3.1 does not judge. The

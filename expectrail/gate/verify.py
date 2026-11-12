@@ -32,6 +32,7 @@ written at all.
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import re
 import shutil
@@ -62,7 +63,8 @@ SAFE_PATH = re.compile(r"[A-Za-z0-9_][A-Za-z0-9._/-]*")
 SAFE_GLOB = re.compile(r"[A-Za-z0-9_*?\[][A-Za-z0-9._/*?\[\]-]*")
 SHA40 = re.compile(r"[0-9a-f]{40}")
 
-# (route file, game folder, run folder, capture frames) -> {"trace", "replaySha256", "framesDir"}
+# (route file, game folder, run folder, capture frames) -> {"trace", "replaySha256", "framesDir"}, and
+# "isolation": the replay's own account of what the game could reach (replay.json's block), when it has one.
 Replay = Callable[[Path, Path, Path, bool], dict]
 
 
@@ -70,15 +72,16 @@ class ConfigError(ValueError):
     """An input the workflow gave cannot be used."""
 
 
-def harness_replay(route: Path, game: Path, out: Path, frames: bool) -> dict:
+def harness_replay(route: Path, game: Path, out: Path, frames: bool, sandbox: str | None = None) -> dict:
     """One replay through the Godot harness (``harness.run``), which gives Godot only the display
-    and rendering variables from the environment."""
+    and rendering variables from the environment and runs it in the replay sandbox where the
+    machine can (``sandbox``: auto, require or off; default $EXPECTRAIL_SANDBOX, else auto)."""
     from harness.run import run, sha256_file
 
-    run(route, out, game=game, capture_frames=frames)
+    replay = run(route, out, game=game, capture_frames=frames, sandbox=sandbox)
     trace = json.loads((out / "trace.json").read_text(encoding="utf-8"))
     return {"trace": trace, "replaySha256": sha256_file(out / "replay.json"),
-            "framesDir": (out / "frames") if frames else None}
+            "framesDir": (out / "frames") if frames else None, "isolation": replay.get("isolation")}
 
 
 def observations(trace: dict, replay_sha256: str) -> dict:
@@ -303,13 +306,33 @@ def _game_ok(game: Path) -> bool:
 def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path, work: Path,
              base: Path | None = None, heldout: Path | None = None, pr: dict | None = None,
              expectrail_commit: str | None = None, replay: Replay = harness_replay,
-             generated_checks: Path | None = None) -> dict:
+             generated_checks: Path | None = None, require_sandbox: bool = False) -> dict:
     """Run the gate and write the artifact in ``out``; returns the findings record.
+
+    ``require_sandbox`` refuses to replay the game outside the replay sandbox: where the machine
+    cannot provide it nothing is replayed (ConfigError), and a replay that ran outside it anyway
+    keeps the decision from being accept. Without it the game is sandboxed where possible, and the
+    record's ``isolation`` block says how many replays were.
 
     ``generated_checks`` is the advisory block a check-generation step wrote (docs/jit.md). It is read
     as untrusted data after the decision is made, and nothing in it can change the decision."""
     repo = repo.resolve()
     problems: list[str] = []
+    if require_sandbox and replay is harness_replay:
+        from harness import sandbox as box
+
+        tool, why = box.probe(True)
+        if tool is None:
+            raise ConfigError(f"the replay sandbox is required and this machine cannot provide it: {why}")
+        replay = functools.partial(harness_replay, sandbox="require")
+    accounts: list = []   # each finished replay's own account of its isolation
+    one_replay = replay
+
+    def replay(route: Path, game: Path, out: Path, frames: bool) -> dict:  # noqa: F811 - the same call, recorded
+        run = one_replay(route, game, out, frames)
+        accounts.append(run.get("isolation"))
+        return run
+
     game_rel = safe_relative(game, "game-path", root_ok=True)
     specs_rel = safe_relative(specs, "specs")
     patterns = [safe_relative(p, "routes", glob=True) for p in routes if str(p).strip()]
@@ -378,7 +401,8 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     afters = [c["after"] for c in checks]
     counts = {"checks": len(afters), "passed": afters.count("pass"), "failed": afters.count("fail"),
               "needsReview": len(afters) - afters.count("pass") - afters.count("fail")}
-    decision, reasons = rec.decide(counts, held)
+    isolation = rec.isolation_summary(accounts, require_sandbox)
+    decision, reasons = rec.decide(counts, held, isolation)
     if checks_from == "base" and (changed["specs"] or changed["routes"]):
         reasons.append(f"this change edits {changed['specs']} spec and {changed['routes']} route files; "
                        "they judge changes once it merges")
@@ -402,6 +426,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         "checks": checks,
         "findings": findings,
         "heldOut": held,
+        "isolation": isolation,
         "reviewPage": "review/index.html",
         **({"generatedChecks": read_generated(generated_checks)} if generated_checks is not None else {}),
         "expectrail": {"version": __version__,
@@ -439,7 +464,7 @@ def read_generated(path: Path) -> dict:
 
 
 def stopped_record(reason: str, *, pr: dict | None, game: str | None, checks_from: str,
-                   expectrail_commit: str | None) -> dict:
+                   expectrail_commit: str | None, require_sandbox: bool = False) -> dict:
     """A valid record for a run that could not finish: needs review, and why."""
     held = {"status": "not-used", **HELD_ZERO}
     counts = {"checks": 0, "passed": 0, "failed": 0, "needsReview": 0}
@@ -452,7 +477,8 @@ def stopped_record(reason: str, *, pr: dict | None, game: str | None, checks_fro
         "format": rec.FORMAT, "decision": decision, "reasons": [_clip(reason)] + reasons, "adapter": "godot",
         "pullRequest": pr, "game": {"path": game_path, "headTree": None, "baseTree": None},
         "checksFrom": checks_from, "checksChanged": {"specs": 0, "routes": 0}, "specs": [], "drafts": 0,
-        "routes": [], "counts": counts, "checks": [], "findings": [], "heldOut": held, "reviewPage": None,
+        "routes": [], "counts": counts, "checks": [], "findings": [], "heldOut": held,
+        "isolation": rec.isolation_summary([], require_sandbox), "reviewPage": None,
         "expectrail": {"version": __version__,
                        "commit": expectrail_commit if expectrail_commit and SHA40.fullmatch(expectrail_commit) else None},
         "createdAt": _now(),
@@ -487,6 +513,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--expectrail-commit", help="the Expectrail commit this action was pinned to")
     p.add_argument("--generated-checks", type=Path,
                    help="the advisory generated-checks block (docs/jit.md); it never changes the decision")
+    p.add_argument("--require-sandbox", action="store_true",
+                   help="refuse to replay the game outside the replay sandbox (docs/replay-sandbox.md): "
+                        "where bubblewrap cannot run, nothing is replayed and the decision is needs-review")
     args = p.parse_args(argv)
     out = args.out.resolve()
     if out.exists() and any(out.iterdir()):
@@ -503,21 +532,25 @@ def main(argv: list[str] | None = None) -> int:
     try:
         document = run_gate(repo=args.repo, game=args.game, routes=re.split(r"[\s,]+", args.routes),
                             specs=args.specs, out=out, work=work, base=args.base, heldout=args.heldout, pr=pr,
-                            expectrail_commit=commit, generated_checks=args.generated_checks)
+                            expectrail_commit=commit, generated_checks=args.generated_checks,
+                            require_sandbox=args.require_sandbox)
     except ConfigError as exc:
         document = stopped_record(f"the gate's inputs cannot be used: {exc}", pr=pr, game=args.game,
-                                  checks_from=checks_from, expectrail_commit=commit)
+                                  checks_from=checks_from, expectrail_commit=commit,
+                                  require_sandbox=args.require_sandbox)
     except Exception as exc:  # noqa: BLE001 - a crash still leaves a record, so the comment says so
         traceback.print_exc()
         document = stopped_record(f"the gate stopped ({type(exc).__name__}); see the verify job's log", pr=pr,
-                                  game=args.game, checks_from=checks_from, expectrail_commit=commit)
+                                  game=args.game, checks_from=checks_from, expectrail_commit=commit,
+                                  require_sandbox=args.require_sandbox)
     if not (out / "findings.json").is_file():
         out.mkdir(parents=True, exist_ok=True)
         (out / "findings.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
     counts, held = document["counts"], document["heldOut"]
     print(f"::notice title=Expectrail gate {document['decision']}::{counts['checks']} public checks: "
           f"{counts['passed']} pass, {counts['failed']} fail, {counts['needsReview']} need review; held-out "
-          f"{held['status']} ({held['checks']} checks, {held['failed']} fail); {len(document['findings'])} findings")
+          f"{held['status']} ({held['checks']} checks, {held['failed']} fail); {len(document['findings'])} findings; "
+          f"replays in the sandbox: {rec.isolation_words(document.get('isolation'))}")
     return EXIT[document["decision"]]
 
 

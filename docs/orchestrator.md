@@ -133,9 +133,12 @@ alike; a test holds that on the gate tests' stand-in replay.
 - **Files that change during the run.** The worker reads the inputs again just before it runs them,
   but between that read and the gate's own copy of the game they can still change. Closing it needs
   the gate's record and the request to name the tree the same way (#303, #307).
-- **The isolated execution class.** It needs the replay sandbox (#253). Until then a request for it
-  completes as needs-review with `TOOL_MISSING` and nothing is run unsandboxed in its place. Every
-  run is graded `diagnostic`.
+- **A grade above `diagnostic`.** The `isolated` execution class is built: every replay runs in the
+  replay sandbox ([replay-sandbox.md](replay-sandbox.md)) or the job does not run (`TOOL_MISSING`,
+  needs-review, nothing replayed unsandboxed), and a replay that does not say it ran inside keeps the
+  job from accept. Its evidence is still graded `diagnostic`: the ledger's `isolated` grade also needs
+  a separate trusted job that judges and signs (#254, #255). What the sandbox did is in the evidence
+  (`findings.json`, `isolation`).
 - **`observing` and `evaluating` as separate phases for Godot.** The gate replays and judges in one
   call, so a Godot job goes from `executing` to its end. The phases are in the contract for the
   verifier split in #251.
