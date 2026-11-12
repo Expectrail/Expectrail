@@ -289,15 +289,78 @@ far it reaches above and below the player's origin, its confidence when one is g
 holds the point, and how much of the frame it covers. It is a probe: it decides nothing and no
 verdict reads it. From GitHub: **Outside SAM probe** with `anchor` ticked for an outside project,
 **SAM probe** in probe mode with `anchor` ticked for the bundled game and its seeded bugs. Both
-take `sam_usd_cap`, at most 2. One image a frame: 13 a run, 117 for the bundled game's nine runs
-at the list price of an image ($0.29).
+take `sam_usd_cap`, at most 2. One image a frame: 13 a run at most, 95 for the bundled game's nine
+runs ($0.24 at the list price of an image), because the fall-through runs leave the picture.
 
-What is not known until it has run once against the service:
+### What the first live runs showed (November 12)
 
-- what comes back when nothing is drawn at the point (an empty reply is reported as "nothing came
-  back", a reply that cannot be read is written down with its text, and neither becomes a box);
-- whether a point's box comes with a confidence (a box without one is kept and shown as unscored);
-- what a point request is billed at. The page gives no price for it; the cap counts it as an image.
+Five runs, 308 images, $0.77 counted at the list price of an image. Every answer came with a
+confidence. The second bundled run repeated the first by accident (the `lift` field was left at
+0): all 95 of its answers are the same as the first run's, to the pixel and to the last digit of
+the confidence.
+
+**The two outside games, clean, point at the origin.**
+
+| Run | Project | Asked | Box holds the point | Box (game px) | Confidence |
+| --- | --- | --- | --- | --- | --- |
+| [43304967915](https://github.com/Expectrail/Expectrail/actions/runs/43304967915) | kinematic-character | 13 of 13 | 13 | 16 x 16 or 16 x 17 in every frame (the sprite is 16 x 16) | 0.91 to 0.95 |
+| [43305243223](https://github.com/Expectrail/Expectrail/actions/runs/43305243223) | dodge-the-creeps | 10 of 13 | 10 | 30 or 31 wide, 31 or 32 tall in 9 frames | 0.73 to 0.92 in those 9 |
+
+- In Dodge the Creeps' frame 0 the game has not started and its player is hidden. SAM answered
+  with a box over the whole frame (480 x 720) at confidence 0.012. That is what "nothing is drawn
+  here" looked like, once.
+- Three Dodge frames were not asked about: the game holds its player at x = 480, the picture's
+  width, and the probe called a point on the edge "outside". Fixed since: the last pixel inside is
+  asked.
+- So the Dodge capture is not blank, which the word runs could not show.
+
+**The bundled game and its eight seeded bugs**, published on the `sam-probe-results` branch
+(`anchor.json`, `anchor.md` and a contact sheet a run): runs
+[43306507436](https://github.com/Expectrail/Expectrail/actions/runs/43306507436) and 43308321074 with
+the point at the origin, which is in the robot's lower legs, and
+[43310237299](https://github.com/Expectrail/Expectrail/actions/runs/43310237299) with the point
+14 game pixels higher, at mid-body. "Outside the clean range" below means the box's width, height,
+or its reach above or below the point is outside the smallest and largest value of the clean run's
+own 13 frames **in the same run**.
+
+| Run | What the bug is | Frames outside the clean range, point at the origin | The same, 14 px higher | Confidence under 0.8, 14 px higher |
+| --- | --- | --- | --- | --- |
+| clean | none | 0 of 13 | 0 of 13 | 3 of 13 (0.50, 0.72, 0.75) |
+| missing-texture v1, v2 | the coins' texture is missing | 2 of 13 | 0 of 13 | 2 of 13 |
+| layering v1, v2 | the robot is drawn behind the level | 6 of 13 | 9 of 13 | 7 of 13 |
+| sinking v1 | the robot stands lower, and the engine says so | 5 of 13 | 4 of 13 | 3 of 13 |
+| sinking v2 | the robot is drawn 26 px lower than the engine says | 13 of 13 | 13 of 13 | 7 of 13 |
+| physics-fall-through v1, v2 | the robot falls out of the picture | 2 of 2 asked | 1 of 2 asked | 0 of 2 |
+
+What that says:
+
+- **At the origin the clean run itself is unsteady.** In 2 of 13 clean frames SAM answered with a
+  small part of the robot (19 x 24.5 and 12.5 x 7.5 game px, confidence 0.28 and 0.48), so the clean
+  range there is 7.5 to 63.5 px tall and means little. Frame 0 of clean and of sinking v1 have the
+  point at the same pixel; one got the whole robot and the other a 7 px part.
+- **At mid-body every clean frame is the robot:** 30.5 to 59 px wide, 52 to 64.5 px tall.
+- **Sinking v2 is outside the clean range in every frame at both points.** Its trace is the same as
+  the clean game's, so the engine's record cannot see it. 14 px higher, its box reaches 50.5 to
+  68.5 px below the point; the clean run's reaches 25.5 to 37.5.
+- **Layering shows in 9 of 13 frames** at mid-body: slivers 16.5 to 46 px tall where the robot is
+  behind the ground, and a box 140 to 154 px wide around a tree it is behind (seen on the contact
+  sheet). In 4 frames where it is in the air it is inside the clean range.
+- **Missing texture looks clean, as it should from here:** the texture is the coins'. A point on
+  each coin would be the test for it; that was not run.
+- **Sinking v1 and fall-through are the engine's to catch.** The robot and the engine's position
+  move together, so a box measured from the point looks much the same.
+- **Confidence does not separate anything frame by frame.** The clean run dips to 0.50, and sinking
+  v2 scores up to 0.92.
+
+What it does not say:
+
+- The clean range was set on the same 13 frames it is then held against. No clean route it was not
+  set on has been asked about, so nothing here is a false-alarm rate.
+- 13 frames a run, one route, one game with broken copies. No outside game has a broken copy.
+- 14 is this robot's number. The two outside games worked at 0 because their origin is the middle
+  of the sprite. The general form is a point at the middle of the player's collision body, which
+  the harness does not log yet.
+- What a point request is billed at is still not known; the counts above price it as an image.
 
 What it leans on: the point is the engine's. A game that lies about where its player is sends the
 question to the wrong place, so this can never be the only evidence that a player is where the
