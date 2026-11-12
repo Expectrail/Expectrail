@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Expectrail/Expectrail/contracts/doctor.v1.schema.json",
+  "title": "Doctor: what `expectrail doctor --json` found on one machine",
+  "description": "Written by expectrail.doctor.document and read by expectrail.doctor.problems. It says what a verification needs on this machine and whether each piece is there. It is not a verdict on any change. No value of any key or other secret is in it: the vision key is `present` or `absent`, with the names of the environment variables that are set.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "expectrail",
+    "ok",
+    "checks"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.doctor/v1"
+    },
+    "expectrail": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40,
+      "description": "The version of Expectrail that ran the checks."
+    },
+    "ok": {
+      "type": "boolean",
+      "description": "True exactly when no check that is required has a status other than ok. A reader recomputes it from the checks."
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "what",
+          "status",
+          "required",
+          "found",
+          "fix"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,39}$"
+          },
+          "what": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "What is needed."
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "missing",
+              "skipped",
+              "present",
+              "absent"
+            ],
+            "description": "ok or missing for a piece that was checked; skipped when it could not be tried (what it needs is missing, or this platform is not checked); present or absent for the vision key."
+          },
+          "required": {
+            "type": "boolean",
+            "description": "A required piece that is not ok makes `ok` false and the command exit 3."
+          },
+          "found": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "What was found, or what is wrong."
+          },
+          "fix": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 600,
+            "description": "What to do about it. Null exactly when the status is ok, present or absent."
+          }
+        }
+      }
+    }
+  }
+}

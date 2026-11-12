@@ -260,10 +260,38 @@ class InstalledTest(Case):
         self.assertIn("no Godot project", status["diagnostics"][0]["detail"])
 
     def test_a_command_that_is_not_built_says_so_and_gives_no_verdict(self):
-        done = self.run_installed("doctor")
+        # `doctor` was the example here until it was built (#333).
+        done = self.run_installed("trust-check")
         self.assertEqual(done.returncode, 5, done.stdout + done.stderr)
-        self.assertIn("not built yet (#249)", done.stderr)
+        self.assertIn("not built yet (#255)", done.stderr)
         self.assertEqual(done.stdout, "")
+
+    def test_doctor_runs_from_the_installed_copy_and_fetches_nothing_when_told_not_to(self):
+        # The installed copy carries doctor, its schema and the harness modules it asks. With
+        # --no-fetch and an empty home there is no engine, so it is missing, with the fix: exit 3.
+        done = self.run_installed("doctor", "--no-fetch", "--json")
+        self.assertEqual(done.returncode, 3, done.stdout + done.stderr)
+        doc = json.loads(done.stdout)
+        found = {c["id"]: c for c in doc["checks"]}
+        self.assertEqual(list(found), ["python", "godot", "display", "opengl", "disk", "sandbox", "patch", "curl", "unzip",
+                                       "vision-key"])
+        self.assertEqual((doc["ok"], found["python"]["status"], found["godot"]["status"], found["opengl"]["status"]),
+                         (False, "ok", "missing", "skipped"))
+        self.assertIn("--no-fetch was given", found["godot"]["found"])
+        self.assertFalse((self.elsewhere / "home" / ".cache" / "expectrail" / "godot").exists())
+        # The installed copy reads its own record with its own schema.
+        check = self.run_installed(code=(
+            "import json, sys\nfrom expectrail import doctor\n"
+            f"print(json.dumps([doctor.problems(json.loads({done.stdout!r})), str(doctor.SCHEMA)]))\n"))
+        self.assertEqual(check.returncode, 0, check.stderr)
+        problems, schema = json.loads(check.stdout)
+        self.assertEqual(problems, [])
+        self.assertIn("_bundle", schema)
+
+    def test_a_usage_error_from_the_installed_command_exits_5(self):
+        done = self.run_installed("verify", "--head", ".")
+        self.assertEqual((done.returncode, done.stdout), (5, ""), done.stderr)
+        self.assertIn("the following arguments are required", done.stderr)
 
 
 class CommandTest(unittest.TestCase):

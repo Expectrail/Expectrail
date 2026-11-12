@@ -25,10 +25,14 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.13'
-      - run: python -m pip install -r requirements-dev.txt
+      # requirements-build.txt is what builds the wheel, so the package tests (tests/test_package.py)
+      # run in this required check and not only in `package` (#333). Required: a skip here fails.
+      - run: python -m pip install -r requirements-build.txt -r requirements-dev.txt
       - name: Fetch the baseline commit (the discovery freeze and the mutation registration are checked against it)
         run: git fetch --no-tags --depth=1 origin c169a5e0da304773587304ed47bc8aabcec80da7
-      - run: python -m unittest discover -s tests -t . -v
+      - env:
+          EXPECTRAIL_PACKAGE_TESTS: required
+        run: python -m unittest discover -s tests -t . -v
       - name: Export scan of the public repository (keys and signing keys; private names are checked by private-scan.yml and on main)
         run: python -m agents.export_scan bench docs README.md apps --paths error
 
@@ -750,6 +754,21 @@ jobs:
           venv/bin/expectrail --version
           venv/bin/expectrail --version | grep -q "installed package"
           venv/bin/python -c "import importlib.util as u, sys; sys.exit('the clean venv has jsonschema') if u.find_spec('jsonschema') else print('standard library only')"
+      # `expectrail doctor` from the installed copy (#333): it passes on this runner and names what it
+      # checked; with the engine taken away it exits 3 and names the fix; and a command line that
+      # cannot be read exits 5, not 2 (2 is needs-review).
+      - name: doctor from the installed copy (passes; fails with the engine taken away; a usage error is exit 5)
+        working-directory: ${{ runner.temp }}
+        run: |
+          venv/bin/expectrail doctor
+          code=0; EXPECTRAIL_GODOT="$RUNNER_TEMP/no-such-engine" venv/bin/expectrail doctor > doctor-missing.txt || code=$?
+          cat doctor-missing.txt
+          test "$code" = 3
+          grep -q "MISSING   Godot" doctor-missing.txt
+          grep -q "fix: " doctor-missing.txt
+          code=0; venv/bin/expectrail verify --head . > usage.txt 2>&1 || code=$?
+          cat usage.txt
+          test "$code" = 5
       - name: The sample from the installed copy (accept, reject, accept)
         working-directory: ${{ runner.temp }}
         run: venv/bin/expectrail --jobs-root "$RUNNER_TEMP/jobs" sample

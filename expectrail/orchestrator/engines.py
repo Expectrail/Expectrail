@@ -11,8 +11,6 @@ An engine has two parts:
 from __future__ import annotations
 
 import json
-import shutil
-import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -69,19 +67,13 @@ class GodotGate:
 
     @staticmethod
     def _tools() -> list[dict]:
-        from harness.run import find_godot
+        """What every run needs and this machine lacks: the list `expectrail doctor` reports
+        (expectrail.doctor.for_run), checked by the same functions, so `doctor` and a run cannot
+        disagree about a tool. Each diagnostic names the fix."""
+        from expectrail import doctor
 
-        found = []
-        try:
-            godot = find_godot()
-            if not Path(godot).is_file():
-                raise FileNotFoundError(str(godot))
-        except Exception as exc:  # noqa: BLE001 - whatever stops Godot being found is the same diagnostic
-            found.append(st.diagnostic("TOOL_MISSING", stage="preparing",
-                                       detail=f"Godot could not be found or downloaded ({type(exc).__name__})"))
-        if sys.platform.startswith("linux") and shutil.which("xvfb-run") is None:
-            found.append(st.diagnostic("TOOL_MISSING", stage="preparing", detail="xvfb-run is not installed"))
-        return found
+        return [st.diagnostic("TOOL_MISSING", stage="preparing", detail=f"{c.found}. Fix: {c.fix}")
+                for c in doctor.missing(doctor.for_run())]
 
     def execute(self, request: dict, paths: st.JobPaths, advance: Callable[[str], object]) -> Result:
         from expectrail.gate import verify as gate

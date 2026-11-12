@@ -3,14 +3,18 @@
     expectrail verify --head . --game game/platformer --routes 'routes/*.json' --specs specs [--base ../base]
     expectrail status JOB | cancel JOB | report JOB
     expectrail sample              three real verifications of the bundled game: as it is, broken, repaired
+    expectrail doctor [--json]     does this machine have what a verification needs?
     expectrail --version
 
 `verify`, `status`, `cancel`, `report` and `sample` are the orchestrator's own commands
 (``expectrail.orchestrator.cli``): the same functions, the same options and the same exit codes as
 ``python3 -m expectrail.orchestrator``. Nothing is implemented twice here.
 
+`doctor` is ``expectrail.doctor``: it checks the machine, exits 0 or 3, and is not a verdict.
+
 Commands that are planned and not built say so, name the issue, and exit 5 (the command could not
-be carried out). They never print a verdict.
+be carried out). They never print a verdict. A command line that cannot be read (a missing or
+unknown option) exits 5 too, never 2: 2 is needs-review.
 """
 from __future__ import annotations
 
@@ -21,7 +25,6 @@ from expectrail import __version__, resources
 ORCHESTRATOR = ("verify", "status", "cancel", "report", "sample")
 # name -> (what it will do, the issue that builds it)
 PLANNED = {
-    "doctor": ("check that this machine has what a verification needs", 249),
     "trust-check": ("check a receipt against a trust store", 255),
     "repair": ("run the fix loop on a failing check", 249),
 }
@@ -35,7 +38,8 @@ def usage() -> str:
         ("status", "show a job's status"),
         ("cancel", "cancel a job and stop what it started"),
         ("report", "show a finished job's result and where its evidence is"),
-        ("sample", "three real verifications of the bundled game: as it is, broken, repaired"))]
+        ("sample", "three real verifications of the bundled game: as it is, broken, repaired"),
+        ("doctor", "check that this machine has what a verification needs, and name the fix for what is missing"))]
     lines += [f"  {name:<12} not built yet (#{issue}): {text}" for name, (text, issue) in PLANNED.items()]
     lines += ["", "  --version    print the version and where this copy's files are",
               "", "`expectrail COMMAND --help` shows a command's options."]
@@ -67,6 +71,13 @@ def main(argv: list[str] | None = None) -> int:
         text, issue = PLANNED[command]
         print(f"expectrail: `{command}` is not built yet (#{issue}): it will {text}. Nothing was run.", file=sys.stderr)
         return EXIT_USAGE
+    if command == "doctor":
+        if args[0] != "doctor":
+            print("expectrail: `doctor` takes no option before it. Nothing was checked.", file=sys.stderr)
+            return EXIT_USAGE
+        from expectrail import doctor
+
+        return doctor.main(args[1:])
     if command not in ORCHESTRATOR:
         shown = f"no command named {command!r}" if command else "no command given"
         print(f"expectrail: {shown}.\n\n{usage()}", file=sys.stderr)
