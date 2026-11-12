@@ -56,15 +56,15 @@ one, and that shape's columns are the same on this one.
 - The 14 tests on main's harness: 8 fail and the script test errors. On the head before this one
   (`fced308`): 6 fail (every test of a changed body but the disabled shape) and the script test
   errors. On the first attempt: 4 of the first 7 failed (the ledge, the step, the gap, the slope).
-- The bundled game on `tests/routes/slope.json`, main's harness and this one: all 420 rows are the
-  same. On the slope the robot's feet are 1.15 to 1.38 px above the logged ground in every one of
-  120 on-floor rows.
+- On the slope route the robot's feet are 1.15 to 1.38 px above the logged ground in every one of
+  120 on-floor rows, as on main.
 - The bundled game, routes `smoke`, `coins`, `combat`, `traversal` and the slope route, main's
   harness against this head: no row of any trace differs (240, 240, 180, 360 and 420 rows), and
   every frame's sha256 is the same (120, 120, 90, 180 and 210 frames).
 - `EXPECTRAIL_ENGINE_TESTS=required python3 -m unittest tests.test_ground_under`: 14 tests, OK.
-- The real sample: accept, reject, accept, each as expected.
-- `python3 -m unittest discover -s tests -t .` on Python 3.13, merged with main at 25d8585: 2265 tests, OK, 26 skipped.
+- `python3 -m harness.check_seeded`: 8 of 8 ok.
+- The real sample, merged with main at 13b5f63: accept, reject, accept, each as expected.
+- `python3 -m unittest discover -s tests -t .` on Python 3.13, merged with main at 13b5f63: 2277 tests, OK, 26 skipped.
 
 ## Not done
 - The check still takes the feet to be 13.25 px below the origin (#259). The kinematic demo's are
@@ -72,10 +72,15 @@ one, and that shape's columns are the same on this one.
 - Platforms that are bodies and not tiles have no ground line.
 - A player whose collision shapes change size while it plays is measured with the shapes it has in
   that tick. Not tested.
-- Not run here after the rework: `harness.check_seeded`; CI's `seeded-bugs` job runs it.
+- A rotated capsule or circle is measured by the corners of its box, a little wider than it is.
+- Collision that is not a direct child of the player (a shape on a child body) is not measured.
+- The outside projects were not run here (outside code is not run in this session). The trial's
+  numbers in `docs/outside-projects.md` are from run 43289338556, on the commit before the ends
+  were measured in the world; the kinematic demo's player is not scaled, so they should not move,
+  and the trial's run on this head is the check.
 
 ## Files
-`harness/godot/expectrail_harness.gd`, `tests/projects/stepped-ground/` (`project/project.godot`,
+`harness/godot/expectrail_harness.gd`, `agents/observations.py` (a comment), `tests/projects/stepped-ground/` (`project/project.godot`,
 `project/main.tscn`, `project/main.gd`, `routes/walk.json`), `tests/routes/slope.json`,
 `tests/test_ground_under.py`, `.github/workflows/ci.yml`, `docs/harness.md`,
 `docs/outside-projects.md`
