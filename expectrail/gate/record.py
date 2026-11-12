@@ -20,7 +20,11 @@ import stat
 from pathlib import Path
 
 FORMAT = "expectrail.findings/v0"
-SCHEMA_PATH = Path(__file__).resolve().parent.parent.parent / "contracts" / "findings.schema.json"
+# Where Expectrail's own files are: beside the package in a clone, inside it (`_bundle`) in an
+# installed copy. The same rule as expectrail.resources, worked out here because this module is
+# trusted code that imports the standard library and nothing else (the comment job runs it).
+_PACKAGE = Path(__file__).resolve().parent.parent
+SCHEMA_PATH = (_PACKAGE / "_bundle" if (_PACKAGE / "_bundle").is_dir() else _PACKAGE.parent) / "contracts" / "findings.schema.json"
 RESULTS = ("pass", "fail", "needs-review", "replay-error")
 KINDS = ("fail", "needs-review", "replay-error")
 DECISIONS = ("accept", "reject", "needs-review")

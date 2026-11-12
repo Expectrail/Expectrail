@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Puts the pinned Godot editor binary in tools/godot and prints its path.
+# Puts the pinned Godot editor binary in tools/godot and prints its path. The folder that holds
+# godot/ and godot_cache/ is $EXPECTRAIL_TOOLS when set (harness.run sets it: an installed copy keeps
+# them in the user's cache folder), else tools/ beside this harness.
 #
 # The download is checked against the official SHA-512 every time it is used, whether it came from
 # the network just now or from tools/godot_cache (which CI restores from its cache, see
@@ -11,8 +13,9 @@ ZIP="Godot_v${VERSION}_linux.x86_64.zip"
 SHA512="9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65"
 URL="https://github.com/godotengine/godot/releases/download/${VERSION}/${ZIP}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-DIR="$ROOT/tools/godot"
-CACHE="$ROOT/tools/godot_cache"
+TOOLS="${EXPECTRAIL_TOOLS:-$ROOT/tools}"
+DIR="$TOOLS/godot"
+CACHE="$TOOLS/godot_cache"
 BIN="$DIR/Godot_v${VERSION}_linux.x86_64"
 ATTEMPTS="${GODOT_DOWNLOAD_ATTEMPTS:-5}"
 PAUSE="${GODOT_DOWNLOAD_PAUSE_SECONDS:-5}"

@@ -15,12 +15,13 @@ import time
 import traceback
 from pathlib import Path
 
+from expectrail import resources
 from expectrail import diagnostics as diag
 from expectrail.orchestrator import engines as eng
 from expectrail.orchestrator import request as req
 from expectrail.orchestrator import store as st
 
-EXPECTRAIL_ROOT = Path(__file__).resolve().parent.parent.parent
+EXPECTRAIL_ROOT = resources.ROOT
 # A failure with one of these codes is a known reason there is no result: the job completes as
 # needs-review and says why. Anything else is the orchestrator's own failure.
 EXPLAINED = ("INPUT_INVALID", "TOOL_MISSING", "PRIVATE_SUITE_UNAVAILABLE", "PROVIDER_FAILED",

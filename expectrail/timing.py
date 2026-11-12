@@ -29,8 +29,10 @@ import sys
 import time
 from pathlib import Path
 
+from expectrail import resources
+
 FORMAT = "expectrail.verify-timing/v1"
-SCHEMA = Path(__file__).resolve().parent.parent / "contracts" / "verify-timing.v1.schema.json"
+SCHEMA = resources.ROOT / "contracts" / "verify-timing.v1.schema.json"
 CLOCK = "time.perf_counter"
 # The harness's own steps, in the order it takes them, and the summary phase each is counted under.
 HARNESS_PHASES = {
