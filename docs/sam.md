@@ -526,21 +526,36 @@ pixels, 17 px above the origin.
   unchanged game's for the same frame. Over every recorded harmless pair (52 frames, point and
   box) the largest fall is 0.031.
 
-**What has to hold next, written before the run that tests it.** One route, 13 frames a run and
-one harmless change is what this rests on, and the 0.1 was chosen after seeing it. The test is the
-same question on frames nobody has looked at: the smoke route with all eight seeded bugs, and the
-clean game on coins, combat and traversal, asked with the same box (probe mode, `anchor` ticked,
-`lift` 17, `box` 48x68, `clean_routes` coins,combat,traversal; 131 images, $0.33). If the box is
-what it looked like here:
+**Tested on frames nobody had looked at: three of four predictions held, and the fourth half
+held.** One route, 13 frames a run and one harmless change is what the box rested on, and the 0.1
+was chosen after seeing it. So four things were written down before the next run existed (in pull
+request #364 and to Sean), and then
+[run 43337979278](https://github.com/Expectrail/Expectrail/actions/runs/43337979278) asked the same
+question of the smoke route's nine runs and of the clean game on coins, combat and traversal (131
+images, $0.33).
 
-1. Every frame of the four clean runs has a confidence of 0.8 or more.
-2. Both missing-texture runs pass the pairs against the smoke route's clean run: no frame differs.
-3. Sinking v2 fails the pairs in every compared frame.
-4. Both layering runs fail the pairs, and every frame of theirs that differs has a confidence
-   under 0.7.
+| Written before the run | How it fell |
+| --- | --- |
+| 1. Every frame of the four clean runs has a confidence of 0.8 or more | **Held.** 49 frames, the lowest 0.867 |
+| 2. Both missing-texture runs pass the pairs against the smoke route's clean run | **Held.** 0 of 13 frames differ in each; boxes within 1 px; confidence fell by 0.008 at most (and rose by 0.023 at most) |
+| 3. Sinking v2 fails the pairs in every compared frame | **Held.** 13 of 13 |
+| 4. Both layering runs fail the pairs, and every frame of theirs that differs has a confidence under 0.7 | **Half.** Both fail, 8 of 13 frames each. One frame that differs is at 0.82 |
 
-If any of the four fails, it is written here as it fell, and the box is not fit for a verdict
-either.
+- **The half that fell:** frame 30 of layering, the robot half hidden behind a coin. SAM is fairly
+  sure of what it sees (0.82). The pairs still call it out: its box is 13.5 px narrower than the
+  clean game's, and its confidence 0.102 lower, which is over the 0.1 allowed by a hair. The size
+  is what holds that frame, not the confidence.
+- **A floor on the confidence alone would be wrong.** One frame of sinking v2 is at 0.72 and that
+  layering frame at 0.82, against the clean game's lowest of 0.867. The fall against the same frame
+  of the unchanged game has room: 0.008 at most for a harmless change in this run, 0.22 at least
+  for sinking v2.
+- **No false alarm with a box so far.** Over the two runs: 101 clean-looking frames (62 of the
+  clean game, 39 of the harmless change), none under 0.86; 39 harmless frame pairs, none differing.
+- Sinking v1 and fall-through are needs-review as before: the engine has the player elsewhere, and
+  that is the engine's to say. The other routes' clean runs are not paired with the smoke route.
+
+What it still is not: one game, a box size typed in by hand, two kinds of drawing bug, every tenth
+frame, and no verdict reads it.
 
 What a box leans on, beyond what a point does: the engine for the player's size as well as its
 place. In the runs above the size was typed in by hand.
