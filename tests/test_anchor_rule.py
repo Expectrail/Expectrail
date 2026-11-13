@@ -496,6 +496,17 @@ class MainTest(unittest.TestCase):
                     self.assertIn("a box of 48 x 68 and the other report with a point", err)
             code, _, _ = self.run_main(["--pair", f"{boxed}:clean", "--judge", boxed])
             self.assertEqual(code, 0)
+            # The player's own box is another question again, and so is the same box with another pad.
+            own, wider = Path(tmp) / "own.json", Path(tmp) / "wider.json"
+            own.write_text(json.dumps({**doc, "box": "body", "pad": 4.0}), encoding="utf-8")
+            wider.write_text(json.dumps({**doc, "box": "body", "pad": 8.0}), encoding="utf-8")
+            code, _, err = self.run_main(["--pair", f"{own}:clean", "--judge", boxed])
+            self.assertEqual(code, 2)
+            self.assertIn("a box of 48 x 68 and the other report with the player's own box widened by 4", err)
+            code, _, err = self.run_main(["--pair", f"{own}:clean", "--judge", wider])
+            self.assertEqual(code, 2)
+            self.assertIn("widened by 8 and the other report with the player's own box widened by 4", err)
+            self.assertEqual(self.run_main(["--pair", f"{own}:clean", "--judge", own])[0], 0)
 
     def test_a_run_name_that_is_not_there_or_not_given_is_an_error(self):
         code, _, err = self.run_main(["--calibrate", f"{MID_BODY}:tidy", "--judge", MID_BODY])

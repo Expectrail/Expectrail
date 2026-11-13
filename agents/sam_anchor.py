@@ -60,13 +60,23 @@ def route_of(run: Path) -> dict | None:
         return None
 
 
+# ``box`` may be this word in place of a size: the box is then the player's own collision box as the
+# harness logged it in that tick (the trace's ``body``), widened by ``pad`` game pixels each way, and
+# the point is its middle. Nothing about the player's size is typed in.
+BODY = "body"
+DEFAULT_PAD = 4.0
+
+
 def anchors(trace: dict, frame_size: tuple[int, int], frames: list[int], lift: float = 0.0,
-            fps: int = 60, box: tuple[float, float] | None = None) -> dict[int, dict]:
+            fps: int = 60, box: tuple[float, float] | str | None = None, pad: float = DEFAULT_PAD) -> dict[int, dict]:
     """Where to point in each frame: the engine's player origin, ``lift`` game pixels up, in frame pixels.
 
     {frame: {"world": [x, y], "point": [px, py], "scale": [sx, sy]}} for a frame that can be asked
     about, or {"why": reason} when it cannot: no row for that frame, no player in it, no camera, or
     the player is outside the picture. Timing and camera are the verifier's (_frame_tick, _view_at).
+    With ``box`` a size (width, height in game pixels) the entry gains ``promptBox``, a box of that
+    size centred on the point; with ``box`` BODY the box is the logged body box widened by ``pad``
+    and the point is its middle, and a tick with no body box logged is not asked about.
     """
     rows = list(trace.get("rows") or [])
     step = max(int(trace.get("physicsTicksPerSecond") or 120) // fps, 1)
@@ -85,6 +95,14 @@ def anchors(trace: dict, frame_size: tuple[int, int], frames: list[int], lift: f
             out[n] = {"why": "the engine logged no camera"}
             continue
         wx, wy = float(player[0]), float(player[1]) - lift
+        size = box
+        if box == BODY:
+            body = rows[tick].get("body")
+            if not body:
+                out[n] = {"why": "the engine logged no body box for the player"}
+                continue
+            wx, wy = (float(body[0]) + float(body[2])) / 2, (float(body[1]) + float(body[3])) / 2
+            size = (float(body[2]) - float(body[0]) + 2 * pad, float(body[3]) - float(body[1]) + 2 * pad)
         fx, fy = _to_frame(view, wx, wy)
         if not (math.isfinite(fx) and math.isfinite(fy)):
             out[n] = {"why": "the player's place in the frame is not a number", "world": [wx, wy]}
@@ -100,9 +118,9 @@ def anchors(trace: dict, frame_size: tuple[int, int], frames: list[int], lift: f
                  "scale": [round(math.hypot(view[0], view[1]), 4), round(math.hypot(view[2], view[3]), 4)]}
         if not (0 <= px < width and 0 <= py < height):
             entry["why"] = "the player is outside the picture"
-        elif box is not None:
-            # A box of the given size in game pixels, centred on the point, cut to the picture.
-            half_w, half_h = box[0] * entry["scale"][0] / 2, box[1] * entry["scale"][1] / 2
+        elif size is not None:
+            # A box of that size in game pixels, centred on the point, cut to the picture.
+            half_w, half_h = size[0] * entry["scale"][0] / 2, size[1] * entry["scale"][1] / 2
             x0, y0 = max(0, int(math.floor(fx - half_w))), max(0, int(math.floor(fy - half_h)))
             x1, y1 = min(width, int(math.ceil(fx + half_w))), min(height, int(math.ceil(fy + half_h)))
             entry["promptBox"] = [x0, y0, x1, y1]
@@ -175,7 +193,7 @@ def summarise(rows: list[dict]) -> dict:
 
 
 def plan(run: Path, picked: list[int] | None, every: int, first: int, lift: float,
-         box: tuple[float, float] | None = None) -> tuple[dict, list[int], dict]:
+         box: tuple[float, float] | str | None = None, pad: float = DEFAULT_PAD) -> tuple[dict, list[int], dict]:
     """(frame files, chosen frames, anchors) for one run, with nothing sent."""
     frames = frame_files(run / "frames")
     if not frames:
@@ -184,15 +202,15 @@ def plan(run: Path, picked: list[int] | None, every: int, first: int, lift: floa
     chosen = [i for i in (picked or sample(indices, every)) if i in frames]
     if not chosen:
         raise SamError(f"{run.name}: none of the frames asked for was captured")
-    return frames, chosen, anchors(load_trace(run), png_size(frames[chosen[0]]), chosen, lift, box=box)
+    return frames, chosen, anchors(load_trace(run), png_size(frames[chosen[0]]), chosen, lift, box=box, pad=pad)
 
 
 def probe_run(run: Path, picked: list[int] | None, every: int, first: int, lift: float, client,
-              out: Path | None, box: tuple[float, float] | None = None) -> dict:
+              out: Path | None, box: tuple[float, float] | str | None = None, pad: float = DEFAULT_PAD) -> dict:
     """Ask about every chosen frame of one run. A stop (see STOP_KINDS) is raised with the rows so far.
     With ``box`` (width, height in game pixels) the question is a box of that size centred on the
     point, "what is the object inside this", and not the point alone."""
-    frames, chosen, where = plan(run, picked, every, first, lift, box)
+    frames, chosen, where = plan(run, picked, every, first, lift, box, pad)
     rows = []
     result = {"run": run.name, "route": route_of(run), "framesProbed": chosen, "frames": rows}
     for n in chosen:
@@ -355,9 +373,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--first", type=int, default=120, help="only the first N frames of each run (default 120)")
     p.add_argument("--lift", type=float, default=0.0,
                    help="point this many game pixels above the player's origin (default 0: the origin itself)")
-    p.add_argument("--box", metavar="WxH",
-                   help="ask with a box of this size in game pixels, centred on the point, and not with the point "
-                        "alone (e.g. 48x68 for the bundled robot at --lift 17)")
+    p.add_argument("--box", metavar="WxH|body",
+                   help="ask with a box and not with the point alone: 'body' is the player's own collision box "
+                        "as the harness logged it, widened by --pad; WxH is a typed size in game pixels centred "
+                        "on the point (e.g. 48x68 for the bundled robot at --lift 17)")
+    p.add_argument("--pad", type=float, default=DEFAULT_PAD,
+                   help=f"with --box body, widen the body box by this many game pixels each way (default {DEFAULT_PAD:g})")
     p.add_argument("--out", type=Path, default=Path("runs/sam-anchor"))
     p.add_argument("--dry-run", action="store_true", help="print the frames and points, send nothing")
     args = p.parse_args(argv)
@@ -365,14 +386,20 @@ def main(argv: list[str] | None = None) -> int:
     if args.every < 1 or args.first < 1:
         p.error("--every and --first must be 1 or more")
     box = None
-    if args.box:
+    if args.box and args.box.lower() == BODY:
+        box = BODY
+        if args.lift:
+            p.error("--lift moves a point; the body box has its own middle, so give one or the other")
+        if not 0 <= args.pad < 1000:
+            p.error("--pad is a number of game pixels, 0 or more")
+    elif args.box:
         try:
             w, _, h = args.box.lower().partition("x")
             box = (float(w), float(h))
         except ValueError:
             box = (0.0, 0.0)
         if not (0 < box[0] < 10000 and 0 < box[1] < 10000):
-            p.error("--box is a width and a height in game pixels, like 48x68")
+            p.error("--box is 'body', or a width and a height in game pixels like 48x68")
 
     picked = [int(x) for x in args.frames.split(",")] if args.frames else None
     runs = [r for r in args.runs if (r / "frames").is_dir()]
@@ -384,7 +411,7 @@ def main(argv: list[str] | None = None) -> int:
         total = 0
         try:
             for run in runs:
-                _, chosen, where = plan(run, picked, args.every, args.first, args.lift, box)
+                _, chosen, where = plan(run, picked, args.every, args.first, args.lift, box, args.pad)
                 ask = [n for n in chosen if "why" not in where[n]]
                 total += len(ask)
 
@@ -410,7 +437,7 @@ def main(argv: list[str] | None = None) -> int:
     results, stopped = [], None
     for run in runs:
         try:
-            results.append(probe_run(run, picked, args.every, args.first, args.lift, client, args.out, box))
+            results.append(probe_run(run, picked, args.every, args.first, args.lift, client, args.out, box, args.pad))
         except SamError as exc:
             stopped = f"{run.name}: {exc}"
             partial = getattr(exc, "partial", None)
@@ -422,11 +449,14 @@ def main(argv: list[str] | None = None) -> int:
     after = sam_usage()
     stats = {"calls": client.calls, "seconds": round(client.seconds, 2),
              "reservedUsd": round(after["reservedUsd"] - before["reservedUsd"], 4)}
-    report = {"model": client.model, "lift": args.lift, "box": list(box) if box else None, "stats": stats,
-              "stopped": stopped, "runs": results}
+    report = {"model": client.model, "lift": args.lift, "box": BODY if box == BODY else list(box) if box else None,
+              "pad": args.pad if box == BODY else None, "stats": stats, "stopped": stopped, "runs": results}
     (args.out / "anchor.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     page = markdown(results, client.model, stats, stopped)
-    if box:
+    if box == BODY:
+        page = page.replace("# SAM asked with a point at the engine's player position",
+                            f"# SAM asked with the player's own collision box, widened by {args.pad:g} game px", 1)
+    elif box:
         page = page.replace("# SAM asked with a point at the engine's player position",
                             f"# SAM asked with a box of {box[0]:g} x {box[1]:g} game px at the engine's player position", 1)
     (args.out / "anchor.md").write_text(page, encoding="utf-8")

@@ -543,7 +543,23 @@ If any of the four fails, it is written here as it fell, and the box is not fit 
 either.
 
 What a box leans on, beyond what a point does: the engine for the player's size as well as its
-place. The size here is typed in by hand; a game's own would have to come from its bindings (#259).
+place. In the runs above the size was typed in by hand.
+
+**The box can now be the game's own.** The harness logs the player's collision box in every row
+(`body`, [harness.md](harness.md)), and `--box body` asks with that box widened by 4 game px each
+way (`--pad`), its middle as the point:
+
+```sh
+python3 -m agents.sam_anchor --runs runs/seeded/* --box body --out runs/sam-anchor
+```
+
+For the bundled robot that box is 50.5 by 62.5 game px around a point 14 px above the origin, where
+the typed one was 48 by 68 around a point 17 px above it. It is a different question, so the
+recorded answers do not carry over and the rule refuses to mix them: **nothing has been asked with
+the body's own box yet.** The first run with it (probe mode, `anchor` ticked, `box` body,
+`clean_routes` coins,combat,traversal; 131 images, $0.33) has to show what the typed box showed:
+no clean frame under 0.8, both missing-texture runs passing the pairs, sinking v2 failing in every
+compared frame, both layering runs failing.
 
 Also not shown for the pairs: a change that moves the player a little and changes nothing else
 (every frame is then "moved", and the pairs are silent), and any game but this one.

@@ -125,6 +125,12 @@ jobs:
         env:
           EXPECTRAIL_ENGINE_TESTS: required
         run: python -m unittest tests.test_ground_under -v
+      # The player's own collision box is in every row of the position log, as big as the body
+      # stands in the world, and absent when there is none to measure (#259).
+      - name: The position log carries the player's own box
+        env:
+          EXPECTRAIL_ENGINE_TESTS: required
+        run: python -m unittest tests.test_body_box -v
       - name: A candidate's game code cannot read the verifier's environment
         env:
           EXPECTRAIL_CANARY: canary-${{ github.run_id }}

@@ -136,6 +136,30 @@ itself uses (#259). The kinematic demo's feet are 7.2 px below its origin, so th
 line. A rotated capsule or circle is measured by the corners of its box, a little wider
 than it is.
 
+## The player's own box
+
+Since November 12, 2026 each row of the position log may carry `body`: the world box
+`[left, top, right, bottom]` of the player's own collision in that tick. It is measured as the
+ground's columns are (the `CollisionShape2D` and `CollisionPolygon2D` children that are not
+disabled, where the body stands in the world, so a scaled or mirrored body is logged as it is),
+on both axes and without the 1.25 px the columns are pulled in by. A player with no collision to
+measure has no `body`, and a reader never makes one up.
+
+It is how big the engine says the player is, and where. Two things can read it and neither is
+wired to a verdict yet:
+
+- A visual observer can be asked about that box and not about a typed size
+  (`python3 -m agents.sam_anchor --box body`, [sam.md](sam.md)).
+- Its bottom is the player's feet. For the bundled robot that is 13.25 px below the origin, the
+  number the ground check has as a constant (`FEET_OFFSET`); for Godot's kinematic character demo
+  the constant is wrong by 6 px (#259). The ground check does not read `body` yet.
+
+Measured with the real engine (`tests/test_body_box.py`): the test level's 24 by 16 shape as
+authored, at scale 2, off to one side, mirrored, as a polygon and disabled; and the bundled robot,
+whose box is 42.5 by 54.5, from 41.25 px above its origin to 13.25 below, in all 240 rows of the
+smoke route. The bundled game's other fields and its frames are the same as before on its four
+routes and the slope route.
+
 ## How a press is sent
 
 A route names actions. The harness sends each press and release as an input event, the way one

@@ -8,6 +8,9 @@ extends Node
 ## Each trace row also carries, when the level has tile layers:
 ##   ground: world y of the solid tile surface under the player (see _ground_under), from the
 ##           level's tile geometry, never from the player's own collision shape;
+##   body:   the world box [left, top, right, bottom] of the player's own collision in this tick
+##           (see _body_extent): how big the engine says the player is, and where. Left out when the
+##           player has no collision to measure;
 ##   view:   the transform from world coordinates to captured-frame pixels, [xx, xy, yx, yy, ox, oy],
 ##           so a world point (x, y) lands at (xx*x + yx*y + ox, xy*x + yy*y + oy) in the frame.
 ##           It is read in the physics tick, so it is the camera of the frame drawn before it.
@@ -167,6 +170,13 @@ func record() -> void:
 		var ground = _ground_under(_player.global_position)
 		if ground != null:
 			row["ground"] = snappedf(ground, 0.001)
+		# The world box of the player's own collision: how big the engine says the player is, and
+		# where. Left out when there is no collision to measure, never guessed.
+		var extent = _body_extent(_player)
+		if extent != null:
+			var at := _player.global_position
+			row["body"] = [snappedf(at.x + extent[0], 0.001), snappedf(at.y + extent[1], 0.001),
+				snappedf(at.x + extent[2], 0.001), snappedf(at.y + extent[3], 0.001)]
 		if _sprite == null:
 			_sprite = _player.find_child(_sprite_name, true, false) as Node2D
 		if _sprite != null:
@@ -294,33 +304,50 @@ func _ground_under(origin: Vector2) -> Variant:
 func _body_span(body: Node2D) -> Vector2:
 	"""Where the player's body is asked about, in world pixels from its origin: (left, right).
 
-	The two ends of its own collision (CollisionShape2D and CollisionPolygon2D children that are
-	not disabled), measured where the body is in the world, so its scale, a scaled parent and a
-	mirrored body count. Each end is pulled in by EDGE_INSET so that a wall the body touches is not
-	counted as under it. (-BODY_HALF_WIDTH, BODY_HALF_WIDTH) when there is nothing to measure.
+	The two ends of its own collision (see _body_extent), each pulled in by EDGE_INSET so that a wall
+	the body touches is not counted as under it. (-BODY_HALF_WIDTH, BODY_HALF_WIDTH) when there is
+	nothing to measure.
 	"""
-	var left := INF
-	var right := -INF
-	if body != null:
-		var to_world := body.global_transform
-		for child in body.get_children():
-			var points := PackedVector2Array()
-			var shape_node := child as CollisionShape2D
-			var polygon_node := child as CollisionPolygon2D
-			if shape_node != null and shape_node.shape != null and not shape_node.disabled:
-				var rect: Rect2 = shape_node.shape.get_rect()
-				points = PackedVector2Array([rect.position, rect.end,
-					Vector2(rect.position.x, rect.end.y), Vector2(rect.end.x, rect.position.y)])
-			elif polygon_node != null and not polygon_node.disabled:
-				points = polygon_node.polygon
-			for point in points:
-				# The body's rotation and scale without its position, so no precision is lost to a far-off x.
-				var x: float = to_world.basis_xform((child as Node2D).transform * point).x
-				left = minf(left, x)
-				right = maxf(right, x)
-	if right - left <= 2.0 * EDGE_INSET:
+	var extent = _body_extent(body)
+	if extent == null or extent[2] - extent[0] <= 2.0 * EDGE_INSET:
 		return Vector2(-BODY_HALF_WIDTH, BODY_HALF_WIDTH)
-	return Vector2(left + EDGE_INSET, right - EDGE_INSET)
+	return Vector2(extent[0] + EDGE_INSET, extent[2] - EDGE_INSET)
+
+
+func _body_extent(body: Node2D) -> Variant:
+	"""[left, top, right, bottom] of the player's own collision, in world pixels from its origin, or null.
+
+	Its CollisionShape2D and CollisionPolygon2D children that are not disabled, measured where the
+	body is in the world, so its scale, a scaled parent and a mirrored body count. Null when there is
+	nothing to measure (none, or all disabled).
+	"""
+	if body == null:
+		return null
+	var left := INF
+	var top := INF
+	var right := -INF
+	var bottom := -INF
+	var to_world := body.global_transform
+	for child in body.get_children():
+		var points := PackedVector2Array()
+		var shape_node := child as CollisionShape2D
+		var polygon_node := child as CollisionPolygon2D
+		if shape_node != null and shape_node.shape != null and not shape_node.disabled:
+			var rect: Rect2 = shape_node.shape.get_rect()
+			points = PackedVector2Array([rect.position, rect.end,
+				Vector2(rect.position.x, rect.end.y), Vector2(rect.end.x, rect.position.y)])
+		elif polygon_node != null and not polygon_node.disabled:
+			points = polygon_node.polygon
+		for point in points:
+			# The body's rotation and scale without its position, so no precision is lost to a far-off x.
+			var at: Vector2 = to_world.basis_xform((child as Node2D).transform * point)
+			left = minf(left, at.x)
+			right = maxf(right, at.x)
+			top = minf(top, at.y)
+			bottom = maxf(bottom, at.y)
+	if left == INF:
+		return null
+	return [left, top, right, bottom]
 
 
 func _highest_surface(x: float, min_y: float) -> Variant:
