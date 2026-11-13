@@ -74,7 +74,6 @@ class ReleaseWorkflowTest(unittest.TestCase):
                 self.assertRegex(uses, r"@[0-9a-f]{40}$")
 
 
-@unittest.skipUnless(shutil.which("bash"), "needs bash")
 class VersionStepTest(unittest.TestCase):
     """The version step, run in bash from a copy of the checkout's expectrail/__init__.py."""
 
