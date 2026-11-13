@@ -1,0 +1,220 @@
+{
+ "format": "expectrail.gate-known-bench/v1",
+ "casesSha256": "8d1b7f2cebc65eef4616d1c49db36cb719dc29fe4fc2a6369ddcb84141661a45",
+ "engine": "Godot 4.7.2-stable",
+ "rule": "engine-only",
+ "routes": [
+  "harness/routes/smoke.json",
+  "harness/routes/combat.json"
+ ],
+ "specs": [
+  "agents/specs/player-stays-above-ground.json"
+ ],
+ "specsSha256": "6c228b5cd1db6370f085746d337e04948686b7afe0d3597a4c2e201ff16f9fea",
+ "rows": [
+  {
+   "case": "known-air-jump-comment-only",
+   "bug": "air-jump",
+   "label": "wrong",
+   "tunedOn": true,
+   "baseSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679",
+   "candidateSha256": "8656be3d8452f9859c62410e71659592a863d7a47f72bd926b3331ba29b881ac",
+   "none": {
+    "decision": "accept",
+    "firstReason": "all 2 checks pass",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   },
+   "fix": {
+    "decision": "needs-review",
+    "firstReason": "repair-not-demonstrated: this change is declared as a fix, and none of the 2 checks that ran failed before the change, so no check reproduced the reported bug and nothing shows it is fixed",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   }
+  },
+  {
+   "case": "known-air-jump-undo",
+   "bug": "air-jump",
+   "label": "correct",
+   "tunedOn": true,
+   "baseSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679",
+   "candidateSha256": "4d14ccb441c0dde278ae6c521c1f635506d81b64cab38983af8e90a5cd96c1eb",
+   "none": {
+    "decision": "accept",
+    "firstReason": "all 2 checks pass",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   },
+   "fix": {
+    "decision": "needs-review",
+    "firstReason": "repair-not-demonstrated: this change is declared as a fix, and none of the 2 checks that ran failed before the change, so no check reproduced the reported bug and nothing shows it is fixed",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   }
+  },
+  {
+   "case": "known-gun-cooldown-comment-only",
+   "bug": "gun-cooldown",
+   "label": "wrong",
+   "tunedOn": false,
+   "baseSha256": "df744001c53910625c520667e40bd7465de5ff026fc9e22420aefb50795fa6cf",
+   "candidateSha256": "1757efde62576de61420f9d271de02ab8dbad49715ba0844c874a218a1f4265d",
+   "none": {
+    "decision": "accept",
+    "firstReason": "all 2 checks pass",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   },
+   "fix": {
+    "decision": "needs-review",
+    "firstReason": "repair-not-demonstrated: this change is declared as a fix, and none of the 2 checks that ran failed before the change, so no check reproduced the reported bug and nothing shows it is fixed",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   }
+  },
+  {
+   "case": "known-gun-cooldown-undo",
+   "bug": "gun-cooldown",
+   "label": "correct",
+   "tunedOn": false,
+   "baseSha256": "df744001c53910625c520667e40bd7465de5ff026fc9e22420aefb50795fa6cf",
+   "candidateSha256": "9f306ff05bf93a17d33c37aa550b0322b6307160166b8482979673f7bf3cfdd2",
+   "none": {
+    "decision": "accept",
+    "firstReason": "all 2 checks pass",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   },
+   "fix": {
+    "decision": "needs-review",
+    "firstReason": "repair-not-demonstrated: this change is declared as a fix, and none of the 2 checks that ran failed before the change, so no check reproduced the reported bug and nothing shows it is fixed",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   }
+  },
+  {
+   "case": "known-body-flip-comment-only",
+   "bug": "body-flip",
+   "label": "wrong",
+   "tunedOn": false,
+   "baseSha256": "52dcc966811716720fc6d3648c58b52aa7a646c975c0ffe788a5fc9c76eb526a",
+   "candidateSha256": "da8379887263234cd5de145cbdf1b2c93ed701004cca73c0fc2750ffa43dc13a",
+   "none": {
+    "decision": "accept",
+    "firstReason": "all 2 checks pass",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   },
+   "fix": {
+    "decision": "needs-review",
+    "firstReason": "repair-not-demonstrated: this change is declared as a fix, and none of the 2 checks that ran failed before the change, so no check reproduced the reported bug and nothing shows it is fixed",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   }
+  },
+  {
+   "case": "known-body-flip-undo",
+   "bug": "body-flip",
+   "label": "correct",
+   "tunedOn": false,
+   "baseSha256": "52dcc966811716720fc6d3648c58b52aa7a646c975c0ffe788a5fc9c76eb526a",
+   "candidateSha256": "9238810cade5ea3ff19b0b9fad3566d0ad806b9f4dd17cbcb69a4f07b91cbd87",
+   "none": {
+    "decision": "accept",
+    "firstReason": "all 2 checks pass",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   },
+   "fix": {
+    "decision": "needs-review",
+    "firstReason": "repair-not-demonstrated: this change is declared as a fix, and none of the 2 checks that ran failed before the change, so no check reproduced the reported bug and nothing shows it is fixed",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   }
+  },
+  {
+   "case": "known-enemy-ledge-comment-only",
+   "bug": "enemy-ledge",
+   "label": "wrong",
+   "tunedOn": false,
+   "baseSha256": "644ad443ede20eea4630f2e5aa85e8ef20123e46dd1418289eb928aebbfdd856",
+   "candidateSha256": "fc6ffa214294e94ad25392e765c3cc3857e88ffa379de7a0b1691edcf242d75e",
+   "none": {
+    "decision": "accept",
+    "firstReason": "all 2 checks pass",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   },
+   "fix": {
+    "decision": "needs-review",
+    "firstReason": "repair-not-demonstrated: this change is declared as a fix, and none of the 2 checks that ran failed before the change, so no check reproduced the reported bug and nothing shows it is fixed",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   }
+  },
+  {
+   "case": "known-enemy-ledge-undo",
+   "bug": "enemy-ledge",
+   "label": "correct",
+   "tunedOn": false,
+   "baseSha256": "644ad443ede20eea4630f2e5aa85e8ef20123e46dd1418289eb928aebbfdd856",
+   "candidateSha256": "62175bca4224c1dfb5448582b6f4282feda96e9fc9ca0d566d26104ffcb00497",
+   "none": {
+    "decision": "accept",
+    "firstReason": "all 2 checks pass",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   },
+   "fix": {
+    "decision": "needs-review",
+    "firstReason": "repair-not-demonstrated: this change is declared as a fix, and none of the 2 checks that ran failed before the change, so no check reproduced the reported bug and nothing shows it is fixed",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   }
+  }
+ ],
+ "totals": {
+  "none": {
+   "wrong": {
+    "accept": 4,
+    "reject": 0,
+    "needs-review": 0
+   },
+   "correct": {
+    "accept": 4,
+    "reject": 0,
+    "needs-review": 0
+   }
+  },
+  "fix": {
+   "wrong": {
+    "accept": 0,
+    "reject": 0,
+    "needs-review": 4
+   },
+   "correct": {
+    "accept": 0,
+    "reject": 0,
+    "needs-review": 4
+   }
+  },
+  "wrongAcceptToNeedsReview": 4,
+  "correctAcceptToNeedsReview": 4
+ }
+}

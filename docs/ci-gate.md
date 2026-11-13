@@ -193,6 +193,14 @@ than declared. The comment job needs no new permission for this: the pull reques
 carries its labels and description. "Expectrail verify" also runs on `labeled`, `unlabeled` and
 `edited`, so a declaration added after a push is judged by a new run.
 
+**Measured on the known-bugs bench** (added November 13, 2026):
+[`bench/jit/known/gate.md`](../bench/jit/known/gate.md) is the gate on the four reported bugs, each
+with a wrong fix (a comment only) and the correct fix (the exact undo), judged with no stated intent
+and declared a fix, on the gate's own routes and approved specs, the engine's record only
+(`python3 -m expectrail.gate.known_bench run`; `show` checks the stored record and prints it). The
+reader recomputes the totals from the rows and refuses a record where a declared fix is accepted
+without a demonstrated repair.
+
 What this does not do yet:
 
 - **A pull request that links a bug issue is not yet treated as a fix.** The description says
