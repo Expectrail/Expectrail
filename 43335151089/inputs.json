@@ -1,0 +1,13 @@
+{
+  "mode": "probe",
+  "every": "10",
+  "spec": "specs/player-stays-above-ground.json",
+  "runs": "clean,missing-texture_v1,layering_v1,sinking_v2",
+  "anchor": true,
+  "route": "traversal",
+  "lift": "17",
+  "box": "48x68",
+  "sam_usd_cap": "0.50",
+  "candidate": "agents/fixtures/fix-collision-mask.patch",
+  "judge": "sam"
+}
