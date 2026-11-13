@@ -137,6 +137,12 @@ jobs:
         env:
           EXPECTRAIL_ENGINE_TESTS: required
         run: python -m unittest tests.test_body_box -v
+      # A first route made from the project's input map (#329): on the bundled game and crate-run it
+      # replays to three identical traces and the player moves; an unseeded random source is refused.
+      - name: A first route from the input map replays three times identically
+        env:
+          EXPECTRAIL_ENGINE_TESTS: required
+        run: python -m unittest tests.test_auto_route_engine -v
       - name: A candidate's game code cannot read the verifier's environment
         env:
           EXPECTRAIL_CANARY: canary-${{ github.run_id }}
