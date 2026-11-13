@@ -565,7 +565,7 @@ typed box showed:
 | Prediction | Body box |
 | --- | --- |
 | No clean-looking frame under 0.8 | Held: 75 frames asked, lowest 0.879 (traversal frame 100) |
-| Both missing-texture runs pass the pairs | Held: 13 of 13 agree in each; the largest confidence fall is 0.008 (typed box: 0.031) |
+| Both missing-texture runs pass the pairs | Held: 13 of 13 agree in each; confidence fell by 0.008 at most, the same as the typed box in run 43337979278 |
 | Sinking v2 differs in every compared frame | Held: 13 of 13 (sinking v1: 12 of 12, one frame moved) |
 | Both layering runs fail | Held: 8 of 13 differ in each, the same frames as the typed box |
 
