@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Expectrail evidence: Accepted</title><style>
+:root{--bg:#fafaf7;--fg:#14161a;--muted:#4b5049;--line:#dcdcd5;--card:#fff;
+--good-bg:#dff3e4;--good:#14532d;--bad-bg:#fde2e1;--bad:#7f1d1d;--warn-bg:#fdf1d6;--warn:#78350f;--quiet-bg:#eceee9;--quiet:#3f4540;
+--over:#c0362c;--ok:#2f6f4f;--gap:#9a9a90;--limit:#7a5a00;--cursor:#1d4ed8}
+@media (prefers-color-scheme:dark){:root{--bg:#131512;--fg:#e8e8e3;--muted:#a7aca3;--line:#33362f;--card:#1b1d19;
+--good-bg:#173823;--good:#b7ebc6;--bad-bg:#4a1d1b;--bad:#ffc9c4;--warn-bg:#47360f;--warn:#fde3a7;--quiet-bg:#2a2d27;--quiet:#d0d4cc;
+--over:#ff7a6e;--ok:#7fd4a4;--gap:#77776f;--limit:#e0b44a;--cursor:#7aa2ff}}
+*{box-sizing:border-box}
+body{font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;margin:0;color:var(--fg);background:var(--bg)}
+main{max-width:1180px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}h3{font-size:15px;margin:16px 0 6px}
+a{color:var(--cursor)}
+.banner{border-radius:8px;padding:14px 16px;margin:8px 0 16px}
+.good{background:var(--good-bg);color:var(--good)}.bad{background:var(--bad-bg);color:var(--bad)}
+.warn{background:var(--warn-bg);color:var(--warn)}.quiet{background:var(--quiet-bg);color:var(--quiet)}
+.badge{display:inline-block;padding:1px 8px;border-radius:4px;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.facts td:first-child{width:34%;color:var(--muted)}
+td{overflow-wrap:anywhere}
+.scroll{overflow-x:auto}
+code,pre{font:13px ui-monospace,SFMono-Regular,Menlo,monospace}
+pre{background:var(--card);border:1px solid var(--line);padding:10px;overflow-x:auto;white-space:pre-wrap;word-break:break-all}
+.findings{list-style:none;padding:0;margin:0}.findings li{margin:0 0 6px}
+.findings button{font:inherit;text-align:left;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--fg);cursor:pointer}
+.findings button[aria-pressed=true]{outline:2px solid var(--cursor)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:640px){.pair{grid-template-columns:1fr}}
+figure{margin:0}figcaption{font-size:13px;color:var(--muted);margin-top:4px}
+.stage{position:relative;background:#000;border:1px solid var(--line);min-height:80px}
+.stage img{display:block;width:100%;height:auto}
+.stage svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.hole{padding:40px 12px;color:#ddd;text-align:center;font-size:14px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.controls button,.controls label{font:inherit;font-size:14px}
+.controls button{padding:4px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--fg);cursor:pointer}
+.controls input[type=range]{flex:1 1 200px}
+.timeline svg{width:100%;height:120px;display:block;background:var(--card);border:1px solid var(--line)}
+.legend{font-size:12px;color:var(--muted)}
+.keys{font-size:13px;color:var(--muted)}kbd{font:12px ui-monospace,monospace;border:1px solid var(--line);border-radius:3px;padding:0 4px}
+.muted{color:var(--muted)}
+</style></head><body><main>
+<p class="muted">Expectrail evidence viewer</p>
+<div class="banner good" role="status" data-state="accept"><h1>Accepted</h1><p>Every approved check passed on every route after this change. That is these checks on these routes, not proof that the game is correct.</p></div>
+<p class="muted" data-export="1">Offline copy: 0 frames embedded in this file.</p>
+<h2>Why</h2><ul><li>all 1 checks pass</li></ul>
+<h2>Inspect</h2><p class="keys">Keys: <kbd>&larr;</kbd> <kbd>&rarr;</kbd> step a frame (<kbd>Shift</kbd> for five), <kbd>Home</kbd> <kbd>End</kbd>, <kbd>f</kbd> first failure, <kbd>o</kbd> overlays on or off, <kbd>n</kbd> <kbd>p</kbd> next or previous finding.</p><section id="inspector" aria-label="frames and timeline"><noscript>The frame inspector needs scripts; everything else on this page reads without them.</noscript></section>
+<h2>Run</h2><div class="scroll"><table class="facts"><tr><td>Job</td><td>bdb16096965dd083f73cfa807570e549: completed</td></tr><tr><td>Evidence grade</td><td>diagnostic</td></tr><tr><td>Finished</td><td>2026-11-13T21:50:34.962911Z</td></tr><tr><td>Head</td><td>commit unknown, game tree 6a273587d64e10a7</td></tr><tr><td>Base</td><td>commit not replayed, game tree not replayed</td></tr><tr><td>Game</td><td>game/platformer</td></tr><tr><td>Policy</td><td>1 approved spec from the head commit; policy digest 4f5b61fc02e10312</td></tr><tr><td>Judged on</td><td>two observers on every check: the engine&#x27;s record, and sam-recorded (sam-3.1, meta-model-api (recorded 2026-11-13, run 43508479160)) over the captured frames; a check passes only when both pass</td></tr><tr><td>Public checks</td><td>1: 1 pass, 0 fail, 0 need review</td></tr><tr><td>Held-out routes</td><td>not used</td></tr><tr><td>Declared as</td><td>nothing declared: judged as a change that should break no check</td></tr><tr><td>Replays in the sandbox</td><td>all 1, in bubblewrap 0.9.0: no network, the game&#x27;s own files only (required)</td></tr><tr><td>Expectrail</td><td>0.1.0</td></tr></table></div>
+<h2>Not tested</h2><ul><li>no held-out routes: only the public routes were replayed</li><li>the build before the change: nothing was compared with it</li><li>anything outside these routes, these checks and this game build</li></ul>
+<h2>Every check</h2><div class="scroll"><table><tr><th>Spec</th><th>Route</th><th>Before</th><th>After</th><th>Comparison</th></tr><tr><td>player-stays-above-ground</td><td>smoke</td><td>not run</td><td>pass</td><td>INCONCLUSIVE</td></tr></table></div>
+<h2>Reproduce</h2>
+<p>The same verification, run again from the same checkouts (the paths are the machine's that ran it):</p><pre>expectrail verify --adapter godot --head /tmp/expectrail-runit-8647y0zo/clean --game game/platformer --routes harness/routes/smoke.json --specs agents/specs</pre>
+<p class="muted">The decision on this page is the verifier's. The timeline is measured from the same observations the evaluator judged and is shown only when it agrees with the evaluator; it decides nothing. Held-out routes appear as counts only.</p>
+<script type="application/json" id="evidence">{"format":"expectrail.viewer/v0","state":"accept","decision":"accept","reasons":["all 1 checks pass"],"record":{"format":"expectrail.findings/v0","decision":"accept","reasons":["all 1 checks pass"],"adapter":"godot","pullRequest":null,"game":{"path":"game/platformer","headTree":"6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280","baseTree":null},"checksFrom":"head","checksChanged":{"specs":0,"routes":0},"specs":[{"id":"player-stays-above-ground","sha256":"4829b493e18b84208fcf9790004d822b775d12c3cb3505b4063b3ba2a6585d55","instruction":"The player never falls through the ground."}],"drafts":0,"checkProblems":0,"observers":{"rule":"both","visual":{"name":"sam-recorded","provider":"meta-model-api (recorded 2026-11-13, run 43508479160)","model":"sam-3.1"}},"routes":[{"name":"smoke","sha256":"0db750ef7ab79124ccd80c63c03f117d84c579281f7ca487f0877f829660f02d"}],"counts":{"checks":1,"passed":1,"failed":0,"needsReview":0},"checks":[{"spec":"player-stays-above-ground","route":"smoke","before":null,"after":"pass","comparison":"INCONCLUSIVE","findingId":null,"observed":{"before":null,"after":{"engine":"pass","visual":"pass","visualAnswerSha256":"854d0f05add35e482964628426c39ff20b0b30021c2baefe447a060cee235d87"}}}],"findings":[],"heldOut":{"status":"not-used","routes":0,"checks":0,"passed":0,"failed":0,"needsReview":0},"isolation":{"replays":1,"sandboxed":1,"required":true,"sandbox":{"tool":"bubblewrap","version":"0.9.0"},"reasons":[]},"reviewPage":"review/index.html","expectrail":{"version":"0.1.0","commit":null},"createdAt":"2026-11-13T21:50:34Z"},"views":[{"spec":"player-stays-above-ground","route":"smoke","before":null,"after":"pass","comparison":"INCONCLUSIVE","findingId":null,"firstFrame":null,"reason":null,"frames":{"after":[],"before":[]},"series":{"after":{"kind":"never-crosses","object":"player","limit":20,"unit":"px","label":"px of player past the boundary (above)","points":[{"frame":0,"value":0.0,"state":"ok","boxes":{"player":[760.0,660.0,840.0,780.0],"ground":[-3200.0,780.0,4800.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":1,"value":0.0,"state":"ok","boxes":{"player":[760.0,660.0,840.0,780.0],"ground":[-3200.0,780.0,4800.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":2,"value":0.0,"state":"ok","boxes":{"player":[760.0,660.0,840.0,780.0],"ground":[-3200.0,780.0,4800.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":3,"value":0.0,"state":"ok","boxes":{"player":[760.0,660.0,840.0,780.0],"ground":[-3200.0,780.0,4800.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":4,"value":0.0,"state":"ok","boxes":{"player":[760.0,660.0,840.0,780.0],"ground":[-3200.0,780.0,4800.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":5,"value":-0.008000000000038199,"state":"ok","boxes":{"player":[760.5,659.992,840.5,779.992],"ground":[-3199.5,780.0,4800.5,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":6,"value":-0.009999999999990905,"state":"ok","boxes":{"player":[761.0,659.99,841.0,779.99],"ground":[-3199.0,780.0,4801.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":7,"value":-0.009999999999990905,"state":"ok","boxes":{"player":[761.5,659.99,841.5,779.99],"ground":[-3198.5,780.0,4801.5,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":8,"value":-0.0019999999999527063,"state":"ok","boxes":{"player":[762.0,659.998,842.0,779.998],"ground":[-3198.0,780.0,4802.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":9,"value":-0.0019999999999527063,"state":"ok","boxes":{"player":[762.5,659.998,842.5,779.998],"ground":[-3197.5,780.0,4802.5,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":10,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[763.0,659.996,843.0,779.996],"ground":[-3197.0,780.0,4803.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":11,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[763.5,659.996,843.5,779.996],"ground":[-3196.5,780.0,4803.5,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":12,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[764.0,659.996,844.0,779.996],"ground":[-3196.0,780.0,4804.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":13,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[764.5,659.996,844.5,779.996],"ground":[-3195.5,780.0,4804.5,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":14,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":15,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":16,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":17,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":18,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":19,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":20,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":21,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":22,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":23,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":24,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":25,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":26,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":27,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":28,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":29,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":30,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":31,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":32,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":33,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":34,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":35,"value":-11.919999999999959,"state":"ok","boxes":{"player":[765.052,648.08,845.052,768.08],"ground":[-3194.948,780.0,4805.052,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":36,"value":-34.62800000000004,"state":"ok","boxes":{"player":[765.0,625.372,845.0,745.372],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":37,"value":-56.16999999999996,"state":"ok","boxes":{"player":[765.0,603.83,845.0,723.83],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":38,"value":-76.54399999999998,"state":"ok","boxes":{"player":[765.0,583.456,845.0,703.456],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":39,"value":-95.75199999999995,"state":"ok","boxes":{"player":[765.0,564.248,845.0,684.248],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":40,"value":-113.79399999999998,"state":"ok","boxes":{"player":[765.0,546.206,845.0,666.206],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":41,"value":-130.66999999999996,"state":"ok","boxes":{"player":[765.0,529.33,845.0,649.33],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":42,"value":-146.37800000000004,"state":"ok","boxes":{"player":[765.0,513.622,845.0,633.622],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":43,"value":-154.75199999999995,"state":"ok","boxes":{"player":[765.0,505.248,845.0,625.248],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":44,"value":-161.96000000000004,"state":"ok","boxes":{"player":[765.0,498.04,845.0,618.04],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":45,"value":-168.00199999999995,"state":"ok","boxes":{"player":[765.0,491.998,845.0,611.998],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":46,"value":-172.87800000000004,"state":"ok","boxes":{"player":[765.0,487.122,845.0,607.122],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":47,"value":-176.586,"state":"ok","boxes":{"player":[765.0,483.414,845.0,603.414],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":48,"value":-179.12800000000004,"state":"ok","boxes":{"player":[765.0,480.872,845.0,600.872],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":49,"value":-180.50199999999995,"state":"ok","boxes":{"player":[765.0,479.498,845.0,599.498],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":50,"value":-180.71000000000004,"state":"ok","boxes":{"player":[765.0,479.29,845.0,599.29],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":51,"value":-179.75199999999995,"state":"ok","boxes":{"player":[765.0,480.248,845.0,600.248],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":52,"value":-177.62800000000004,"state":"ok","boxes":{"player":[765.0,482.372,845.0,602.372],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":53,"value":-174.336,"state":"ok","boxes":{"player":[765.0,485.664,845.0,605.664],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":54,"value":-169.87800000000004,"state":"ok","boxes":{"player":[765.0,490.122,845.0,610.122],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":55,"value":-164.25199999999995,"state":"ok","boxes":{"player":[765.0,495.748,845.0,615.748],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":56,"value":-157.46000000000004,"state":"ok","boxes":{"player":[765.0,502.54,845.0,622.54],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":57,"value":-149.50199999999995,"state":"ok","boxes":{"player":[765.0,510.498,845.0,630.498],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":58,"value":-140.37800000000004,"state":"ok","boxes":{"player":[765.0,519.622,845.0,639.622],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":59,"value":-130.086,"state":"ok","boxes":{"player":[765.0,529.914,845.0,649.914],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":60,"value":-118.62800000000004,"state":"ok","boxes":{"player":[765.0,541.372,845.0,661.372],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":61,"value":-106.00199999999995,"state":"ok","boxes":{"player":[765.0,553.998,845.0,673.998],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":62,"value":-92.21000000000004,"state":"ok","boxes":{"player":[765.0,567.79,845.0,687.79],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":63,"value":-77.25199999999995,"state":"ok","boxes":{"player":[765.0,582.748,845.0,702.748],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":64,"value":-61.12800000000004,"state":"ok","boxes":{"player":[765.0,598.872,845.0,718.872],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":65,"value":-43.83600000000001,"state":"ok","boxes":{"player":[765.0,616.164,845.0,736.164],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":66,"value":-25.378000000000043,"state":"ok","boxes":{"player":[765.0,634.622,845.0,754.622],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":67,"value":-5.751999999999953,"state":"ok","boxes":{"player":[765.0,654.248,845.0,774.248],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":68,"value":-0.009999999999990905,"state":"ok","boxes":{"player":[765.0,659.99,845.0,779.99],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":69,"value":-0.004000000000019099,"state":"ok","boxes":{"player":[765.0,659.996,845.0,779.996],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":70,"value":-11.919999999999959,"state":"ok","boxes":{"player":[765.052,648.08,845.052,768.08],"ground":[-3194.948,780.0,4805.052,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":71,"value":-34.62800000000004,"state":"ok","boxes":{"player":[765.0,625.372,845.0,745.372],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":72,"value":-56.16999999999996,"state":"ok","boxes":{"player":[765.0,603.83,845.0,723.83],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":73,"value":-76.54399999999998,"state":"ok","boxes":{"player":[765.0,583.456,845.0,703.456],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":74,"value":-95.75199999999995,"state":"ok","boxes":{"player":[765.0,564.248,845.0,684.248],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":75,"value":-113.79399999999998,"state":"ok","boxes":{"player":[765.0,546.206,845.0,666.206],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":76,"value":-130.66999999999996,"state":"ok","boxes":{"player":[765.0,529.33,845.0,649.33],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":77,"value":-146.37800000000004,"state":"ok","boxes":{"player":[765.0,513.622,845.0,633.622],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":78,"value":-160.91999999999996,"state":"ok","boxes":{"player":[765.0,499.08,845.0,619.08],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":79,"value":-166.558,"state":"ok","boxes":{"player":[765.0,493.442,845.0,613.442],"ground":[-3195.0,780.0,4805.0,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":80,"value":-165.10000000000002,"state":"ok","boxes":{"player":[764.999,494.9,844.999,614.9],"ground":[-3195.001,780.0,4804.999,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":81,"value":-162.47400000000005,"state":"ok","boxes":{"player":[764.999,497.526,844.999,617.526],"ground":[-3195.001,780.0,4804.999,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":82,"value":-158.68399999999997,"state":"ok","boxes":{"player":[764.999,501.316,844.999,621.316],"ground":[-3195.001,780.0,4804.999,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":83,"value":-153.72400000000005,"state":"ok","boxes":{"player":[764.999,506.276,844.999,626.276],"ground":[-3195.001,780.0,4804.999,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":84,"value":-147.60000000000002,"state":"ok","boxes":{"player":[764.999,512.4,844.999,632.4],"ground":[-3195.001,780.0,4804.999,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":85,"value":-140.308,"state":"ok","boxes":{"player":[764.999,519.692,844.999,639.692],"ground":[-3195.001,780.0,4804.999,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":86,"value":-131.85000000000002,"state":"ok","boxes":{"player":[764.999,528.15,844.999,648.15],"ground":[-3195.001,780.0,4804.999,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":87,"value":-122.22400000000005,"state":"ok","boxes":{"player":[764.999,537.776,844.999,657.776],"ground":[-3195.001,780.0,4804.999,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":88,"value":-111.43399999999997,"state":"ok","boxes":{"player":[764.999,548.566,844.999,668.566],"ground":[-3195.001,780.0,4804.999,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":89,"value":-99.47400000000005,"state":"ok","boxes":{"player":[764.999,560.526,844.999,680.526],"ground":[-3195.001,780.0,4804.999,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":90,"value":-86.35000000000002,"state":"ok","boxes":{"player":[764.999,573.65,844.999,693.65],"ground":[-3195.001,780.0,4804.999,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":91,"value":-72.20600000000002,"state":"ok","boxes":{"player":[764.999,587.794,844.999,707.794],"ground":[-3195.001,780.0,4804.999,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":92,"value":-72.154,"state":"ok","boxes":{"player":[765.367,587.846,845.367,707.846],"ground":[-3194.633,780.0,4805.367,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":93,"value":-72.154,"state":"ok","boxes":{"player":[765.367,587.846,845.367,707.846],"ground":[-3194.633,780.0,4805.367,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":94,"value":-72.154,"state":"ok","boxes":{"player":[765.366,587.846,845.366,707.846],"ground":[-3194.634,780.0,4805.366,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":95,"value":-72.154,"state":"ok","boxes":{"player":[765.366,587.846,845.366,707.846],"ground":[-3194.634,780.0,4805.366,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":96,"value":-72.154,"state":"ok","boxes":{"player":[765.367,587.846,845.367,707.846],"ground":[-3194.633,780.0,4805.367,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":97,"value":-72.154,"state":"ok","boxes":{"player":[765.368,587.846,845.368,707.846],"ground":[-3194.632,780.0,4805.368,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":98,"value":-72.154,"state":"ok","boxes":{"player":[765.366,587.846,845.366,707.846],"ground":[-3194.634,780.0,4805.366,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":99,"value":-72.154,"state":"ok","boxes":{"player":[765.367,587.846,845.367,707.846],"ground":[-3194.633,780.0,4805.367,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":100,"value":-72.154,"state":"ok","boxes":{"player":[764.867,587.846,844.867,707.846],"ground":[-3195.133,780.0,4804.867,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":101,"value":-72.154,"state":"ok","boxes":{"player":[764.366,587.846,844.366,707.846],"ground":[-3195.634,780.0,4804.366,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":102,"value":-72.154,"state":"ok","boxes":{"player":[763.867,587.846,843.867,707.846],"ground":[-3196.133,780.0,4803.867,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":103,"value":-71.65599999999995,"state":"ok","boxes":{"player":[763.36,588.344,843.36,708.344],"ground":[-3196.64,780.0,4803.36,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":104,"value":-70.36400000000003,"state":"ok","boxes":{"player":[762.823,589.636,842.823,709.636],"ground":[-3197.177,780.0,4802.823,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":105,"value":-68.74800000000005,"state":"ok","boxes":{"player":[762.269,591.252,842.269,711.252],"ground":[-3197.731,780.0,4802.269,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":106,"value":-67.15599999999995,"state":"ok","boxes":{"player":[761.751,592.844,841.751,712.844],"ground":[-3198.249,780.0,4801.751,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":107,"value":-66.02200000000005,"state":"ok","boxes":{"player":[761.276,593.978,841.276,713.978],"ground":[-3198.724,780.0,4801.276,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":108,"value":-65.22799999999995,"state":"ok","boxes":{"player":[760.846,594.772,840.846,714.772],"ground":[-3199.154,780.0,4800.846,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":109,"value":-64.82600000000002,"state":"ok","boxes":{"player":[760.366,595.174,840.366,715.174],"ground":[-3199.634,780.0,4800.366,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":110,"value":-64.82600000000002,"state":"ok","boxes":{"player":[760.367,595.174,840.367,715.174],"ground":[-3199.633,780.0,4800.367,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":111,"value":-64.82600000000002,"state":"ok","boxes":{"player":[760.368,595.174,840.368,715.174],"ground":[-3199.632,780.0,4800.368,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":112,"value":-64.82600000000002,"state":"ok","boxes":{"player":[760.366,595.174,840.366,715.174],"ground":[-3199.634,780.0,4800.366,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":113,"value":-64.82600000000002,"state":"ok","boxes":{"player":[760.367,595.174,840.367,715.174],"ground":[-3199.633,780.0,4800.367,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":114,"value":-64.82600000000002,"state":"ok","boxes":{"player":[760.367,595.174,840.367,715.174],"ground":[-3199.633,780.0,4800.367,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":115,"value":-64.82600000000002,"state":"ok","boxes":{"player":[760.366,595.174,840.366,715.174],"ground":[-3199.634,780.0,4800.366,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":116,"value":-64.82600000000002,"state":"ok","boxes":{"player":[760.367,595.174,840.367,715.174],"ground":[-3199.633,780.0,4800.367,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":117,"value":-64.82600000000002,"state":"ok","boxes":{"player":[760.367,595.174,840.367,715.174],"ground":[-3199.633,780.0,4800.367,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":118,"value":-64.82600000000002,"state":"ok","boxes":{"player":[760.366,595.174,840.366,715.174],"ground":[-3199.634,780.0,4800.366,1580.0]},"line":{"axis":"y","at":780.0}},{"frame":119,"value":-64.82600000000002,"state":"ok","boxes":{"player":[761.1,595.174,841.1,715.174],"ground":[-3198.9,780.0,4801.1,1580.0]},"line":{"axis":"y","at":780.0}}],"truncated":false,"source":"the engine's record"},"before":null},"notes":[]}],"job":{"id":"bdb16096965dd083f73cfa807570e549","phase":"completed","decision":"accept","reasons":["all 1 checks pass"],"diagnostics":[],"evidenceGrade":"diagnostic","executionClass":"isolated","inputs":{"requestDigest":"657b4d92da7a5fa7667134912a98126a28cc2191b8a8d5ccd64159dc8c72b529","headTree":"6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280","baseTree":null,"policyDigest":"4f5b61fc02e10312a32276feda81d0a3e78b986a0882c4edbcf7f3a85295b553"},"history":[{"phase":"queued","at":"2026-11-13T21:50:13.002352Z"},{"phase":"preparing","at":"2026-11-13T21:50:13.010179Z"},{"phase":"executing","at":"2026-11-13T21:50:19.106532Z"},{"phase":"observing","at":"2026-11-13T21:50:19.147530Z"},{"phase":"evaluating","at":"2026-11-13T21:50:34.912288Z"},{"phase":"completed","at":"2026-11-13T21:50:34.962911Z"}],"finishedAt":"2026-11-13T21:50:34.962911Z"},"reproduce":"expectrail verify --adapter godot --head /tmp/expectrail-runit-8647y0zo/clean --game game/platformer --routes harness/routes/smoke.json --specs agents/specs","export":{"framesEmbedded":0,"framesLeftOut":{}}}</script>
+<script>
+(function(){
+"use strict";
+var data = JSON.parse(document.getElementById("evidence").textContent);
+var root = document.getElementById("inspector");
+if (!root) return;
+var views = (data.views || []).filter(function(v){ return v && typeof v === "object"; });
+var findings = views.filter(function(v){ return v.findingId; });
+findings.sort(function(a, b){
+  var fa = typeof a.firstFrame === "number" ? a.firstFrame : Infinity;
+  var fb = typeof b.firstFrame === "number" ? b.firstFrame : Infinity;
+  return fa - fb || String(a.findingId).localeCompare(String(b.findingId));
+});
+var shown = findings.length ? findings : views;
+var state = {i: 0, frame: 0, overlays: true};
+function el(tag, attrs, text){
+  var e = document.createElement(tag);
+  for (var k in (attrs || {})) e.setAttribute(k, attrs[k]);
+  if (text !== undefined && text !== null) e.textContent = String(text);
+  return e;
+}
+function svg(tag, attrs){
+  var e = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (var k in (attrs || {})) e.setAttribute(k, attrs[k]);
+  return e;
+}
+function framesOf(v){
+  var set = {};
+  ["after", "before"].forEach(function(side){
+    ((v.frames || {})[side] || []).forEach(function(f){ if (typeof f.frame === "number") set[f.frame] = 1; });
+    var s = (v.series || {})[side];
+    if (s && s.points) s.points.forEach(function(p){ if (typeof p.frame === "number") set[p.frame] = 1; });
+  });
+  return Object.keys(set).map(Number).sort(function(a, b){ return a - b; });
+}
+function framedOf(v){
+  var set = {};
+  ["after", "before"].forEach(function(side){
+    ((v.frames || {})[side] || []).forEach(function(f){ if (typeof f.frame === "number") set[f.frame] = 1; });
+  });
+  return Object.keys(set).map(Number).sort(function(a, b){ return a - b; });
+}
+function pointAt(s, n){
+  if (!s || !s.points) return null;
+  for (var i = 0; i < s.points.length; i++) if (s.points[i].frame === n) return s.points[i];
+  return null;
+}
+var COLORS = ["#ffd400", "#00e0ff", "#ff5cf0", "#7dff6a"];
+function stage(v, side, n){
+  var fig = el("figure");
+  var box = el("div", {"class": "stage"});
+  var f = ((v.frames || {})[side] || []).filter(function(x){ return x.frame === n; })[0];
+  var label = side === "after" ? "After the change" : "Before the change";
+  if (!f) {
+    box.appendChild(el("div", {"class": "hole"}, "No " + (side === "after" ? "after" : "before") + " frame " + n + " in this evidence"));
+    fig.appendChild(box);
+    fig.appendChild(el("figcaption", null, label + ", frame " + n));
+    return fig;
+  }
+  var img = el("img", {src: f.path, alt: label + ", frame " + n});
+  box.appendChild(img);
+  var p = pointAt((v.series || {})[side], n);
+  if (state.overlays && p) {
+    var o = svg("svg", {"aria-hidden": "true", preserveAspectRatio: "none"});
+    function draw(){
+      var w = img.naturalWidth || 1, h = img.naturalHeight || 1;
+      o.setAttribute("viewBox", "0 0 " + w + " " + h);
+      var names = Object.keys(p.boxes || {});
+      names.forEach(function(name, k){
+        var b = p.boxes[name];
+        if (!b || b.length !== 4) return;
+        o.appendChild(svg("rect", {x: b[0], y: b[1], width: Math.max(0, b[2] - b[0]), height: Math.max(0, b[3] - b[1]),
+          fill: "none", stroke: COLORS[k % COLORS.length], "stroke-width": Math.max(2, w / 400)}));
+        var t = svg("text", {x: b[0] + 4, y: Math.max(14, b[1] - 4), fill: COLORS[k % COLORS.length], "font-size": Math.max(14, w / 60)});
+        t.textContent = name;
+        o.appendChild(t);
+      });
+      if (p.line && typeof p.line.at === "number") {
+        var a = p.line.axis === "x"
+          ? {x1: p.line.at, x2: p.line.at, y1: 0, y2: h}
+          : {x1: 0, x2: w, y1: p.line.at, y2: p.line.at};
+        a.stroke = "#ff3b30"; a["stroke-width"] = Math.max(2, w / 500); a["stroke-dasharray"] = "8 6";
+        o.appendChild(svg("line", a));
+      }
+    }
+    if (img.complete) draw(); else img.addEventListener("load", draw);
+    box.appendChild(o);
+  }
+  fig.appendChild(box);
+  var cap = label + ", frame " + n + ", sha256 " + String(f.sha256 || "").slice(0, 16);
+  if (p && p.value !== null && p.value !== undefined) cap += ". Measured " + p.value + ((v.series[side] || {}).unit || "") + " (" + p.state + ")";
+  else if (p) cap += ". " + p.state;
+  fig.appendChild(el("figcaption", null, cap));
+  return fig;
+}
+function timeline(v, side, n){
+  var s = (v.series || {})[side];
+  var wrap = el("div", {"class": "timeline"});
+  wrap.appendChild(el("h3", null, (side === "after" ? "After the change" : "Before the change") + ": " + (s ? s.label + ", measured from " + (s.source || "the observations") : "no timeline")));
+  if (!s || !s.points || !s.points.length) {
+    var why = (v.notes || []).filter(function(t){ return t.indexOf(side === "after" ? "after" : "before") === 0; })[0];
+    wrap.appendChild(el("p", {"class": "muted"}, why || "No measurements for this side."));
+    return wrap;
+  }
+  var pts = s.points, W = 1000, H = 120, pad = 8;
+  var lo = pts[0].frame, hi = pts[pts.length - 1].frame;
+  var vals = pts.filter(function(p){ return typeof p.value === "number"; }).map(function(p){ return p.value; });
+  if (typeof s.limit === "number") vals.push(s.limit);
+  var vmin = Math.min.apply(null, vals.concat([0])), vmax = Math.max.apply(null, vals.concat([1]));
+  if (vmax === vmin) vmax = vmin + 1;
+  function X(f){ return pad + (hi === lo ? 0.5 : (f - lo) / (hi - lo)) * (W - 2 * pad); }
+  function Y(val){ return H - pad - (val - vmin) / (vmax - vmin) * (H - 2 * pad - 14); }
+  var g = svg("svg", {viewBox: "0 0 " + W + " " + H, preserveAspectRatio: "none", role: "img",
+    "aria-label": s.label + ", frames " + lo + " to " + hi});
+  pts.forEach(function(p){
+    if (p.state === "missing" || p.state === "not-applicable") {
+      g.appendChild(svg("rect", {x: X(p.frame) - 2, y: H - pad - 10, width: 4, height: 10,
+        fill: p.state === "missing" ? "var(--gap)" : "var(--line)"}));
+    }
+  });
+  if (typeof s.limit === "number") {
+    g.appendChild(svg("line", {x1: pad, x2: W - pad, y1: Y(s.limit), y2: Y(s.limit), stroke: "var(--limit)",
+      "stroke-dasharray": "6 4", "stroke-width": 1.5}));
+  }
+  var d = "", pen = false;
+  pts.forEach(function(p){
+    if (typeof p.value !== "number") { pen = false; return; }
+    d += (pen ? " L" : " M") + X(p.frame).toFixed(1) + " " + Y(p.value).toFixed(1); pen = true;
+  });
+  if (d) g.appendChild(svg("path", {d: d, fill: "none", stroke: "var(--ok)", "stroke-width": 1.5}));
+  pts.forEach(function(p){
+    if (p.state === "over") g.appendChild(svg("circle", {cx: X(p.frame), cy: Y(p.value), r: 3.5, fill: "var(--over)"}));
+  });
+  g.appendChild(svg("line", {x1: X(n), x2: X(n), y1: 0, y2: H, stroke: "var(--cursor)", "stroke-width": 2}));
+  wrap.appendChild(g);
+  g.style.cursor = "pointer";
+  g.addEventListener("click", function(e){
+    var r = g.getBoundingClientRect();
+    var f = lo + Math.round((e.clientX - r.left) / r.width * (hi - lo));
+    var all = framesOf(v), best = all[0];
+    all.forEach(function(x){ if (Math.abs(x - f) < Math.abs(best - f)) best = x; });
+    state.frame = best; draw();
+  });
+  var over = pts.filter(function(p){ return p.state === "over"; }).length;
+  var miss = pts.filter(function(p){ return p.state === "missing"; }).length;
+  var na = pts.filter(function(p){ return p.state === "not-applicable"; }).length;
+  var leg = "Frames " + lo + " to " + hi + ". " + (typeof s.limit === "number" ? "Dashed line: the tolerance, " + s.limit + s.unit + ". " : "") +
+    over + " past the limit (red), " + miss + " with an object not found (grey marks), " + na + " with nothing to compare (light marks)." +
+    (s.truncated ? " Only the first points are shown." : "") + " Blue line: the frame shown above.";
+  wrap.appendChild(el("p", {"class": "legend"}, leg));
+  return wrap;
+}
+function draw(){
+  root.textContent = "";
+  if (!shown.length) { root.appendChild(el("p", null, "There is nothing to inspect: no check has evidence in this folder.")); return; }
+  var v = shown[state.i];
+  var all = framesOf(v);
+  if (all.length && all.indexOf(state.frame) < 0) {
+    var best = all[0]; all.forEach(function(x){ if (Math.abs(x - state.frame) < Math.abs(best - state.frame)) best = x; });
+    state.frame = best;
+  }
+  var title = el("h3", null, v.spec + " on " + v.route + ": " + v.comparison);
+  root.appendChild(title);
+  if (v.reason) root.appendChild(el("p", null, v.reason));
+  var c = el("div", {"class": "controls"});
+  function btn(text, label, fn){ var b = el("button", {type: "button", "aria-label": label}, text); b.addEventListener("click", fn); c.appendChild(b); return b; }
+  btn("← Frame", "previous frame", function(){ step(-1); });
+  var range = el("input", {type: "range", min: 0, max: Math.max(0, all.length - 1), value: Math.max(0, all.indexOf(state.frame)), "aria-label": "frame"});
+  range.addEventListener("input", function(){ state.frame = all[Number(range.value)]; draw(); document.querySelector("#inspector input[type=range]").focus(); });
+  c.appendChild(range);
+  btn("Frame →", "next frame", function(){ step(1); });
+  c.appendChild(el("span", {"aria-live": "polite"}, "Frame " + state.frame + (v.firstFrame === state.frame ? " (first failing frame)" : "")));
+  var ov = btn(state.overlays ? "Hide overlays" : "Show overlays", "toggle overlays", function(){ state.overlays = !state.overlays; draw(); });
+  ov.setAttribute("aria-pressed", String(state.overlays));
+  if (typeof v.firstFrame === "number") btn("First failure", "go to the first failing frame", function(){ state.frame = v.firstFrame; draw(); });
+  root.appendChild(c);
+  var framed = framedOf(v);
+  if (framed.length) {
+    var pair = el("div", {"class": "pair"});
+    pair.appendChild(stage(v, "before", state.frame));
+    pair.appendChild(stage(v, "after", state.frame));
+    root.appendChild(pair);
+    if (framed.indexOf(state.frame) < 0) root.appendChild(el("p", {"class": "muted"}, "Frames are kept for frames " + framed[0] + " to " + framed[framed.length - 1] + " around the first failure; this frame has measurements only."));
+  } else {
+    root.appendChild(el("p", {"class": "muted"}, "No frames were kept for this check."));
+  }
+  root.appendChild(timeline(v, "after", state.frame));
+  root.appendChild(timeline(v, "before", state.frame));
+  (v.notes || []).forEach(function(t){ root.appendChild(el("p", {"class": "muted"}, t)); });
+  document.querySelectorAll("[data-view]").forEach(function(b){ b.setAttribute("aria-pressed", String(Number(b.getAttribute("data-view")) === state.i)); });
+}
+function step(d){
+  var all = framesOf(shown[state.i]); if (!all.length) return;
+  var k = all.indexOf(state.frame); k = Math.min(all.length - 1, Math.max(0, (k < 0 ? 0 : k) + d));
+  state.frame = all[k]; draw();
+}
+function pick(i){
+  state.i = Math.max(0, Math.min(shown.length - 1, i));
+  var v = shown[state.i];
+  var all = framesOf(v);
+  state.frame = typeof v.firstFrame === "number" ? v.firstFrame : (all[0] || 0);
+  draw();
+}
+document.querySelectorAll("[data-view]").forEach(function(b){
+  b.addEventListener("click", function(){
+    var id = b.getAttribute("data-finding");
+    for (var i = 0; i < shown.length; i++) if (shown[i].findingId === id) { pick(i); break; }
+    root.scrollIntoView({block: "start"});
+  });
+});
+document.addEventListener("keydown", function(e){
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  var t = e.target && e.target.tagName;
+  if (t === "INPUT" && e.target.type !== "range") return;
+  if (t === "TEXTAREA" || t === "SELECT") return;
+  if (e.key === "ArrowRight") { step(e.shiftKey ? 5 : 1); e.preventDefault(); }
+  else if (e.key === "ArrowLeft") { step(e.shiftKey ? -5 : -1); e.preventDefault(); }
+  else if (e.key === "Home") { var a = framesOf(shown[state.i]); if (a.length) { state.frame = a[0]; draw(); } e.preventDefault(); }
+  else if (e.key === "End") { var b = framesOf(shown[state.i]); if (b.length) { state.frame = b[b.length - 1]; draw(); } e.preventDefault(); }
+  else if (e.key === "o" || e.key === "O") { state.overlays = !state.overlays; draw(); }
+  else if (e.key === "n" || e.key === "j") { pick(state.i + 1); }
+  else if (e.key === "p" || e.key === "k") { pick(state.i - 1); }
+  else if (e.key === "f" || e.key === "F") { var v = shown[state.i]; if (typeof v.firstFrame === "number") { state.frame = v.firstFrame; draw(); } }
+});
+pick(0);
+})();
+</script>
+</main></body></html>

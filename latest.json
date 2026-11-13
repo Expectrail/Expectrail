@@ -1,0 +1,9 @@
+{
+ "format": "expectrail.run-it-latest/v1",
+ "samples": {
+  "clean": {
+   "finishedAt": "2026-11-13T21:50:35Z",
+   "requestId": "builder1-recorded-clean"
+  }
+ }
+}
