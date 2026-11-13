@@ -135,7 +135,9 @@ jobs:
             fi
             if [[ -e "$REQUEST_ID" ]]; then echo "::error::a run with this request id is already published"; exit 1; fi
             cp -r "$INCOMING/$REQUEST_ID" "$REQUEST_ID"
-            git add -A "$REQUEST_ID" && git commit -q -m "Run it: $REQUEST_ID"
+            # latest.json: the page's index of the latest run of each sample (main's code, run from main's checkout).
+            (cd "$GITHUB_WORKSPACE" && python -m expectrail.runit_site latest "$RUNNER_TEMP/results" "$REQUEST_ID")
+            git add -A "$REQUEST_ID" latest.json && git commit -q -m "Run it: $REQUEST_ID"
             if git push -q "$url" HEAD:run-it-results; then exit 0; fi
             sleep $((attempt * 3))
           done
