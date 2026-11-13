@@ -1113,11 +1113,28 @@ def read_generated(path: Path) -> dict:
                 "proposed": 0, "valid": 0, "strong": 0, "weak": 0, "catches": [], "runSha256": None}
 
 
+def _adapter_name(adapter) -> str:
+    """The name a stopped record gives its adapter: the registry's name for a registered adapter
+    (with or without a verify path), else ``unknown``. Never an exception: a stopped record is
+    written because something already went wrong."""
+    try:
+        from harness import adapters
+        if isinstance(adapter, adapters.Adapter):
+            return adapter.name
+        if isinstance(adapter, str) and adapter in adapters.names():
+            return adapters.resolve(adapter).name
+    except Exception:  # noqa: BLE001 - a registry that cannot be read leaves the name unknown
+        pass
+    return "unknown"
+
+
 def stopped_record(reason: str, *, pr: dict | None, game: str | None, checks_from: str,
                    expectrail_commit: str | None, require_sandbox: bool = False,
-                   rule: str = rec.ENGINE_ONLY, intent: str = "none") -> dict:
+                   rule: str = rec.ENGINE_ONLY, intent: str = "none", adapter: str = DEFAULT_ADAPTER) -> dict:
     """A valid record for a run that could not finish: needs review, and why. An intent that is not
-    one of the three is recorded as ``fix``, the stricter reading; the reason given says what was wrong."""
+    one of the three is recorded as ``fix``, the stricter reading; the reason given says what was wrong.
+    The record names the adapter the run asked for when the registry holds it, and ``unknown``
+    otherwise: a run on an engine that is not Godot is never recorded as a Godot run."""
     held = {"status": "not-used", **HELD_ZERO}
     counts = {"checks": 0, "passed": 0, "failed": 0, "needsReview": 0}
     intent = intent if intent in rec.INTENTS else "fix"
@@ -1129,7 +1146,7 @@ def stopped_record(reason: str, *, pr: dict | None, game: str | None, checks_fro
         game_path = "unknown"
     document = {
         # For a fix the repair-not-demonstrated reason stays first, as on every other record.
-        "format": rec.FORMAT, "decision": decision, "adapter": "godot",
+        "format": rec.FORMAT, "decision": decision, "adapter": _adapter_name(adapter),
         "reasons": reasons[:1] + [_clip(reason)] + reasons[1:] if intent == "fix" else [_clip(reason)] + reasons,
         "pullRequest": pr, "game": {"path": game_path, "headTree": None, "baseTree": None},
         "checksFrom": checks_from, "checksChanged": {"specs": 0, "routes": 0}, "specs": [], "drafts": 0, "checkProblems": 0,
@@ -1158,7 +1175,10 @@ def _pull_request(number: str | None, head_sha: str | None, base_sha: str | None
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--repo", type=Path, required=True, help="the checkout of the pull request")
-    p.add_argument("--game", required=True, help="the Godot project folder, relative to --repo")
+    p.add_argument("--game", required=True, help="the project folder, relative to --repo")
+    p.add_argument("--adapter", default=DEFAULT_ADAPTER,
+                   help=f"the engine adapter (harness/adapters.py) to verify on (default: {DEFAULT_ADAPTER}); "
+                        "one with no verify path stops before anything is replayed, and the record says why")
     p.add_argument("--routes", required=True, help="route files or globs, relative to --repo, one per line")
     p.add_argument("--specs", required=True, help="the folder of test specs, relative to --repo")
     p.add_argument("--out", type=Path, required=True, help="the artifact folder (must not exist yet)")
@@ -1195,16 +1215,16 @@ def main(argv: list[str] | None = None) -> int:
         document = run_gate(repo=args.repo, game=args.game, routes=re.split(r"[\s,]+", args.routes),
                             specs=args.specs, out=out, work=work, base=args.base, heldout=args.heldout, pr=pr,
                             expectrail_commit=commit, generated_checks=args.generated_checks,
-                            require_sandbox=args.require_sandbox, intent=args.intent)
+                            require_sandbox=args.require_sandbox, intent=args.intent, adapter=args.adapter)
     except ConfigError as exc:
         document = stopped_record(f"the gate's inputs cannot be used: {exc}", pr=pr, game=args.game,
                                   checks_from=checks_from, expectrail_commit=commit,
-                                  require_sandbox=args.require_sandbox, intent=args.intent)
+                                  require_sandbox=args.require_sandbox, intent=args.intent, adapter=args.adapter)
     except Exception as exc:  # noqa: BLE001 - a crash still leaves a record, so the comment says so
         traceback.print_exc()
         document = stopped_record(f"the gate stopped ({type(exc).__name__}); see the verify job's log", pr=pr,
                                   game=args.game, checks_from=checks_from, expectrail_commit=commit,
-                                  require_sandbox=args.require_sandbox, intent=args.intent)
+                                  require_sandbox=args.require_sandbox, intent=args.intent, adapter=args.adapter)
     if not (out / "findings.json").is_file():
         out.mkdir(parents=True, exist_ok=True)
         (out / "findings.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
