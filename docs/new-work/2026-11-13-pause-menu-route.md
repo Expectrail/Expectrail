@@ -34,7 +34,8 @@
   tap), the difference in the top-left corner; `hold-left-then-toggle-pause` shows nothing; two
   clean replays identical; no engine retries.
 - `python3 -m unittest tests.test_repro_menu`: 25 tests, OK.
-- The full suite on the branch merged with main: see the pull request.
+- Full suite on the branch (main da06323 plus this change), Godot present and a virtual display, so
+  the engine tests ran: `python3 -m unittest discover -s tests -t .`, 3,021 tests, OK, 27 skipped.
 
 ## Not done
 - No offer gives menu probes to the generator: a check about the counter would have to speak about
