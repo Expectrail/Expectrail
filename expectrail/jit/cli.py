@@ -11,6 +11,10 @@ In CI the model call and the replays are separate steps, so the key and the chan
     python -m expectrail.jit.cli run --report-file r.txt --candidate c.patch --out runs/jit \
         --proposal runs/jit-proposal/jit-proposal.json [--game path/to/the/reference/game]
 
+Every step of one change takes the same ``--offer`` (expectrail/jit/offer.py): ``baseline``, the default,
+is the generator as it was before issue #285's steps 3 and 4; ``signals-reach`` also offers the three
+held-back signals and the reach probes. A proposal is replayed only under the offer it was made with.
+
 ``run`` always exits 0 once it has written a record: a run that generated nothing is a result, and
 nothing here accepts or rejects a change. Bad arguments exit 2.
 """
@@ -22,6 +26,8 @@ import sys
 from pathlib import Path
 
 from expectrail.contracts import load_strict
+from expectrail.jit.offer import DEFAULT as DEFAULT_OFFER, OFFERS
+from expectrail.jit.offer import library as offered_library
 from expectrail.jit.run import DEFAULT_BUDGET_USD, RECORD_NAME, gate_summary, generate
 
 PROFILE = Path(__file__).resolve().parents[2] / "discovery" / "platformer.profile.json"
@@ -137,6 +143,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--run-id")
     r.add_argument("--proposal", type=Path, help="replay a saved proposal instead of calling the model")
     r.add_argument("--game", type=Path, help="the reference game (default: game/platformer in this checkout)")
+    r.add_argument("--offer", choices=OFFERS, default=DEFAULT_OFFER,
+                    help="what the generator is offered (expectrail/jit/offer.py); the same for every step")
     pp = sub.add_parser("propose")
     pp.add_argument("--profile", type=Path, default=PROFILE)
     pp.add_argument("--report-file", type=Path, required=True)
@@ -148,6 +156,8 @@ def main(argv: list[str] | None = None) -> int:
     pp.add_argument("--base", type=Path, action="append", default=[],
                     help="the bug's patches, read only to check the measurements were taken against them")
     pp.add_argument("--measurements", type=Path, help="jit-measurements.json from the measure command")
+    pp.add_argument("--offer", choices=OFFERS, default=DEFAULT_OFFER,
+                    help="what the generator is offered (expectrail/jit/offer.py); the same for every step")
     rv = sub.add_parser("revise")
     rv.add_argument("--profile", type=Path, default=PROFILE)
     rv.add_argument("--report-file", type=Path, required=True)
@@ -161,11 +171,17 @@ def main(argv: list[str] | None = None) -> int:
     rv.add_argument("--base", type=Path, action="append", default=[])
     rv.add_argument("--measurements", type=Path)
     rv.add_argument("--github-output", type=Path, help="append revised=true|false here (a workflow's GITHUB_OUTPUT)")
+    rv.add_argument("--offer", choices=OFFERS, default=DEFAULT_OFFER,
+                    help="what the generator is offered (expectrail/jit/offer.py); the same for every step")
     ms = sub.add_parser("measure")
     ms.add_argument("--profile", type=Path, default=PROFILE)
     ms.add_argument("--base", type=Path, action="append", default=[])
     ms.add_argument("--out", type=Path, required=True)
     ms.add_argument("--game", type=Path, help="the reference game (default: game/platformer in this checkout)")
+    ms.add_argument("--offer", choices=OFFERS, default=DEFAULT_OFFER,
+                    help="what the generator is offered (expectrail/jit/offer.py); the same for every step")
+    ms.add_argument("--report-file", type=Path,
+                    help="the bug report; with --offer signals-reach it only orders the reach probes")
     bp = sub.add_parser("bench-pins", help="print the pins a bench registration records")
     bc = sub.add_parser("bench-check", help="exit 1 unless the bench registration is signed and its pins hold")
     bc.add_argument("--prereg", type=Path)
@@ -193,10 +209,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "measure":
         from expectrail.jit.measure import measure
-        from expectrail.jit.probes import jit_library
 
         profile = load_strict(args.profile, "mechanics-profile")
-        doc = measure(profile, args.base, args.out, probes=jit_library(profile["actions"]), game=args.game)
+        report = args.report_file.read_text(encoding="utf-8", errors="replace") if args.report_file else ""
+        doc = measure(profile, args.base, args.out, probes=offered_library(profile["actions"], args.offer, report),
+                      game=args.game)
         print(json.dumps({"probes": len(doc["probes"]), "bugBuild": bool(args.base)}))
         return 0
     if args.cmd in ("bench-pins", "bench-check", "bench-score"):
@@ -220,17 +237,17 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "revise":
         from expectrail.jit.intent import IntentUnavailable, revise_to_file, spark_intent
-        from expectrail.jit.probes import jit_library
 
         profile = load_strict(args.profile, "mechanics-profile")
         if args.budget_usd < 0:
             ap.error("budget must not be negative")
         prices = {k: v for k, v in (("sparkUsdPerMTokIn", args.spark_usd_per_mtok_in),
                                     ("sparkUsdPerMTokOut", args.spark_usd_per_mtok_out)) if v is not None}
-        probes = jit_library(profile["actions"])
+        report = args.report_file.read_text(encoding="utf-8", errors="replace")
+        probes = offered_library(profile["actions"], args.offer, report)
         notes = attach_measurements(probes, args.measurements, args.base)
         try:
-            doc = revise_to_file(spark_intent(), args.report_file.read_text(encoding="utf-8", errors="replace"),
+            doc = revise_to_file(spark_intent(offer=args.offer), report,
                                  args.candidate.read_bytes().decode("utf-8", errors="replace"), profile, probes,
                                  args.proposal, args.record, args.out, budget_usd=args.budget_usd, prices=prices,
                                  notes=notes)
@@ -245,16 +262,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "propose":
         from expectrail.jit.intent import propose_to_file, spark_intent
-        from expectrail.jit.probes import jit_library
 
         profile = load_strict(args.profile, "mechanics-profile")
         if args.budget_usd < 0:
             ap.error("budget must not be negative")
         prices = {k: v for k, v in (("sparkUsdPerMTokIn", args.spark_usd_per_mtok_in),
                                     ("sparkUsdPerMTokOut", args.spark_usd_per_mtok_out)) if v is not None}
-        probes = jit_library(profile["actions"])
+        report = args.report_file.read_text(encoding="utf-8", errors="replace")
+        probes = offered_library(profile["actions"], args.offer, report)
         notes = attach_measurements(probes, args.measurements, args.base)
-        doc = propose_to_file(spark_intent(), args.report_file.read_text(encoding="utf-8", errors="replace"),
+        doc = propose_to_file(spark_intent(offer=args.offer), report,
                               args.candidate.read_bytes().decode("utf-8", errors="replace"), profile,
                               probes, args.out, budget_usd=args.budget_usd, prices=prices, notes=notes)
         print(json.dumps({"error": doc["error"], "candidates": len(doc["candidates"]), "probes": len(doc["probes"]),
@@ -269,17 +286,17 @@ def main(argv: list[str] | None = None) -> int:
             from expectrail.jit.intent import IntentUnavailable, from_proposal
 
             try:
-                intent = from_proposal(args.proposal)
+                intent = from_proposal(args.proposal, offer=args.offer)
             except IntentUnavailable as exc:
                 reason = str(exc)
 
                 def intent(*_a, _reason=reason):
                     raise IntentUnavailable(_reason)
-                intent.model, intent.system = None, ""
+                intent.model, intent.system, intent.offer = None, "", args.offer
         elif args.model == "spark":
             from expectrail.jit.intent import spark_intent
 
-            intent = spark_intent()
+            intent = spark_intent(offer=args.offer)
         prices = {}
         if args.spark_usd_per_mtok_in is not None:
             prices["sparkUsdPerMTokIn"] = args.spark_usd_per_mtok_in
@@ -288,7 +305,7 @@ def main(argv: list[str] | None = None) -> int:
         report = args.report_file.read_text(encoding="utf-8", errors="replace")
         doc = generate(args.profile, report, args.candidate, args.base, args.out, intent=intent,
                        budget_usd=args.budget_usd, prices=prices, reps=args.reps, variant_limit=args.variant_limit,
-                       run_id=args.run_id, game=args.game)
+                       run_id=args.run_id, game=args.game, offer=args.offer)
         (args.out / "jit-report.md").write_text(render(doc) + "\n", encoding="utf-8")
         print(json.dumps({"status": doc["status"], "reason": doc["reason"], "counts": doc["counts"],
                           "spendUsd": doc["spend"]["usd"], "record": str(args.out / RECORD_NAME)}))

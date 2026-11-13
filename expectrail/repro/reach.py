@@ -30,8 +30,9 @@ and ``reach`` says how many.
 A reach probe is a route, not a judgement. Whatever watches the game along it (the engine's record,
 frames for a visual observer) is the caller's choice; nothing here reads either.
 
-Not wired into generated checks yet: ``expectrail.jit.run`` still draws on ``jit_library`` alone, so a
-live run on the bench is unchanged by this module (the issue asks for the baseline first).
+Offered to generated checks only under ``--offer signals-reach`` (expectrail/jit/offer.py). Under the
+default, ``baseline``, ``expectrail.jit.run`` draws on ``jit_library`` alone and never imports this
+module, so a live run on the bench is unchanged by it (the issue asks for the baseline first).
 """
 from __future__ import annotations
 

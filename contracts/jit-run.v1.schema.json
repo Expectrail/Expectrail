@@ -33,7 +33,9 @@
       "properties": {
         "reps": {"type": "integer", "minimum": 1},
         "variantLimit": {"type": "integer", "minimum": 0},
-        "budgetUsd": {"type": "number", "minimum": 0}
+        "budgetUsd": {"type": "number", "minimum": 0},
+        "offer": {"enum": ["baseline", "signals-reach"],
+                  "description": "What the generator was offered (expectrail/jit/offer.py). Absent in records written before the setting existed, which were made under baseline."}
       }
     },
     "diffMap": {
@@ -72,7 +74,7 @@
       }}},
     "probes": {"type": "array", "items": {
       "type": "object", "additionalProperties": false, "required": ["id", "source", "routeSha256"],
-      "properties": {"id": {"$ref": "#/$defs/id"}, "source": {"enum": ["library", "jit"]},
+      "properties": {"id": {"$ref": "#/$defs/id"}, "source": {"enum": ["library", "reach", "jit"]},
                      "routeSha256": {"$ref": "#/$defs/sha256"}}}},
     "variants": {"type": "array", "items": {
       "type": "object", "additionalProperties": false, "required": ["id", "kind", "file", "line", "patchSha256"],

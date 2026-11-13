@@ -7,6 +7,7 @@ import json
 import sys
 from pathlib import Path
 
+from expectrail.jit.offer import DEFAULT as DEFAULT_OFFER, OFFERS
 from expectrail.repro import bench, evidence, reach, score, screen, visibility
 
 PROFILE = bench.REPO / "discovery" / "platformer.profile.json"
@@ -80,6 +81,8 @@ def main(argv: list[str] | None = None) -> int:
                    help="the visibility record a miss's reason is read from")
     s.add_argument("--no-visibility", action="store_true")
     s.add_argument("--source", default=None, help="where the records came from, for example 'run 123456'")
+    s.add_argument("--offer", choices=OFFERS, default=DEFAULT_OFFER,
+                   help="count only records made with this setting (expectrail/jit/offer.py)")
     sr = sub.add_parser("score-render", help="print a score record as a page")
     sr.add_argument("record", type=Path)
     sr.add_argument("--bench", type=Path, default=bench.BENCH)
@@ -96,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.cmd == "score":
             record = score.score(doc, args.records, visibility_path=None if args.no_visibility else args.visibility,
-                                 source=args.source, bench_path=args.bench)
+                                 source=args.source, bench_path=args.bench, offer=args.offer)
             score.write(record, args.out)
             print(json.dumps(record["totals"]))
             return 0
