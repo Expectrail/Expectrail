@@ -1274,6 +1274,45 @@
       "evidence": [
         {
           "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43514147344",
+          "conclusion": "success",
+          "jobs": [
+            "verify",
+            "publish"
+          ],
+          "shows": "run-it.yml dispatched by hand on main (ccc54d5) for the sample clean: verify replayed the real game and decided accept, as the sample expects, with 120 of 120 vision questions answered from the recording of November 13 and none left unanswered; publish checked the folder and committed it to run-it-results"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43514430601",
+          "conclusion": "success",
+          "jobs": [
+            "verify",
+            "publish"
+          ],
+          "shows": "run-it.yml dispatched by hand on main (ccc54d5) for the sample fall-through-repair: verify replayed the real game and decided accept, as the sample expects, with 135 of 135 vision questions answered from the recording of November 13 and none left unanswered; publish checked the folder and committed it to run-it-results"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43514715045",
+          "conclusion": "success",
+          "jobs": [
+            "verify",
+            "publish"
+          ],
+          "shows": "run-it.yml dispatched by hand on main (ccc54d5) for the sample fall-through-bug: verify replayed the real game and decided reject, as the sample expects, with 135 of 135 vision questions answered from the recording of November 13 and none left unanswered; publish checked the folder and committed it to run-it-results"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43513054013",
+          "conclusion": "success",
+          "jobs": [
+            "seeded-bugs"
+          ],
+          "shows": "CI on main (ccc54d5), job seeded-bugs: the same command offline on each sample with real sandboxed replays decided accept, reject, accept, each with the vision answers recorded on 2026-11-13, and the publish check passed on each folder"
+        },
+        {
+          "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43453709805",
           "conclusion": "success",
           "jobs": [
@@ -1293,7 +1332,7 @@
           "shows": "the home page and the README link the Run it page, and the page and its script are there"
         }
       ],
-      "limits": "Visitors cannot start a run yet: the service that starts runs (apps/run-it-edge) is written and tested against a local stub but not deployed, and no sample has its vision answers recorded, so no sample can be accepted. Until then the page says it cannot start runs. Receipts are not signed (#255)."
+      "limits": "Visitors cannot start a run yet: the service that starts runs (apps/run-it-edge) is written and tested against a local stub but not deployed, so the page says it cannot start runs. The runs cited were dispatched by hand. Each sample's vision answers are one recording (November 13): a frame the recording does not hold gets no answer and the sample needs review until it is recorded again. Receipts are not signed (#255)."
     }
   ],
   "notModes": {

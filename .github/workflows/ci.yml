@@ -244,8 +244,8 @@ jobs:
           EXPECTRAIL_SANDBOX: require
         run: python -m expectrail.orchestrator --jobs-root runs/orchestrator-sample sample
       # "Run it" offline (#265; docs/run-it.md): the command the site's workflow runs, on each sample,
-      # with real replays, each sandboxed, then the publishing job's allowlist check on each folder. No
-      # vision answers are recorded yet, so a sample that would accept needs review (--expect knows).
+      # with real replays, each sandboxed, then the publishing job's allowlist check on each folder. The
+      # vision answers come from each sample's recording (docs/run-it/vision/); no model is called.
       - name: Run it, offline, on each sample (real replays, sandboxed), and the publish check on each folder
         env:
           EXPECTRAIL_SANDBOX: require

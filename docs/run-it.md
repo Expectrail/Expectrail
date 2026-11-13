@@ -34,10 +34,15 @@ run and the checks are live on every visit, and the vision answers come from one
   run <id>)", and `status.json` carries the date, so the page can say "vision answers recorded on
   <date>" beside every verdict.
 
-**No sample has a recording yet.** Until Sean dispatches the one live recording run per sample (about
-$0.33 a sample by [sam.md](sam.md), about $1 in all), `clean` and `fall-through-repair` decide
-needs-review, and `fall-through-bug` still rejects, because a check the engine's record sees failing is
-a failure under the two-observer rule. That is the honest result, and `--expect` treats it as expected.
+**Every sample has its recording** (`docs/run-it/vision/<sample>.json`), from Sean's three recording
+runs of November 13: `clean` from run 43508479160, `fall-through-bug` from run 43508788240 and
+`fall-through-repair` from run 43509232715, merged as #403, #404 and #405. Before they existed, `clean`
+and `fall-through-repair` decided needs-review and `fall-through-bug` still rejected, because a check the
+engine's record sees failing is a failure under the two-observer rule. `--expect` still knows that
+reading for a sample whose recording is missing, and `tests/test_runit.py` fails if a sample in the
+manifest has no usable recording. A recording answers only the frames it holds: if the game or the
+capture ever changes what a frame looks like, those frames get no answer and the sample needs review
+until it is recorded again.
 
 ## The same run offline
 
