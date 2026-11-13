@@ -55,6 +55,17 @@ FEET = 13.25    # the bundled robot's feet below its origin (agents/observations
 
 
 class ScriptTest(unittest.TestCase):
+    def test_platforms_exclude_the_player_its_parts_enemies_projectiles_and_rigid_bodies(self):
+        code = SCRIPT.read_text(encoding="utf-8")
+        body = code[code.index("func _platform_bodies("):code.index("func _platform_shapes(")]
+        for needed in ("node is RigidBody2D", "node == _player", "_player.is_ancestor_of(node)",
+                       "_is_class(node, _enemy_class)", "_is_class(node, _projectile_class)",
+                       "node is StaticBody2D or node is AnimatableBody2D or node is CharacterBody2D"):
+            self.assertIn(needed, body)
+        shapes = code[code.index("func _platform_shapes("):code.index("static func _highest_in_polygons(")]
+        self.assertIn("not shape_node.disabled", shapes)
+        self.assertIn("not polygon_node.disabled", shapes)
+
     def test_the_three_columns_are_asked_and_the_edges_are_the_players_own(self):
         code = SCRIPT.read_text(encoding="utf-8")
         body = code[code.index("func _ground_under("):code.index("func _body_span(")]
@@ -78,9 +89,14 @@ def ground_by_x(tmp: Path, name: str, scene=None) -> dict:
         changed = scene(text)
         assert changed != text, "the scene was not changed"
         (game / "main.tscn").write_text(changed, encoding="utf-8")
+    return {x: g for x, (g, _from) in ground_and_source(tmp, name, game).items()}
+
+
+def ground_and_source(tmp: Path, name: str, game: Path) -> dict:
     hr.run(PROJECT / "routes" / "walk.json", tmp / name / "run", game=game, godot=real_godot(), capture_frames=False)
     trace = json.loads((tmp / name / "run" / "trace.json").read_text(encoding="utf-8"))
-    return {row["player"][0]: row.get("ground") for row in trace["rows"]}
+    ground_and_source.header = {k: v for k, v in trace.items() if k != "rows"}
+    return {row["player"][0]: (row.get("ground"), row.get("groundFrom")) for row in trace["rows"]}
 
 
 def swap(old: str, new: str):
@@ -134,6 +150,69 @@ class GroundUnderTest(unittest.TestCase):
     def test_with_nothing_under_the_body_there_is_no_ground(self):
         # The gap is x 192 to 256; between x = 204 and 244 neither edge nor the centre is over a tile.
         self.assertEqual(self.at(204, 246), {None})
+
+
+BRIDGE_SHAPE = '[sub_resource type="RectangleShape2D" id="2"]\nsize = Vector2(24, 16)\n'
+
+
+def bridge(kind: str, extra: str = "", shape_extra: str = ""):
+    """A body 64 by 16 over the gap (x 192 to 256), its top at y = 320, as a platform in a game whose
+    platforms are bodies (Godot's kinematic_character demo: CharacterBody2D and StaticBody2D)."""
+    def change(text: str) -> str:
+        text = text.replace(BRIDGE_SHAPE, BRIDGE_SHAPE + '\n[sub_resource type="RectangleShape2D" id="3"]\nsize = Vector2(64, 16)\n')
+        return text + (f'\n[node name="Bridge" type="{kind}" parent="."]\nposition = Vector2(224, 328)\n{extra}'
+                       f'\n[node name="CollisionShape2D" type="CollisionShape2D" parent="Bridge"]\n'
+                       f'shape = SubResource("3")\n{shape_extra}')
+    return change
+
+
+class PlatformBodyTest(unittest.TestCase):
+    """Platforms that are bodies are ground (#259, November 13, 2026). Without a body over it the gap
+    from x = 204 to 246 has no ground (GroundUnderTest); with one, its top is the ground there."""
+
+    @classmethod
+    def setUpClass(cls):
+        real_godot()
+        cls.tmp = Path(tempfile.mkdtemp(prefix="expectrail-platform-"))
+        cls.addClassCleanup(shutil.rmtree, cls.tmp, True)
+
+    def walk(self, name: str, scene) -> dict:
+        game = self.tmp / name / "project"
+        shutil.copytree(PROJECT / "project", game)
+        text = (game / "main.tscn").read_text(encoding="utf-8")
+        changed = scene(text)
+        self.assertNotEqual(changed, text)
+        (game / "main.tscn").write_text(changed, encoding="utf-8")
+        return ground_and_source(self.tmp, name, game)
+
+    def over_gap(self, ground: dict) -> set:
+        return {v for x, v in ground.items() if 204 <= x < 246}
+
+    def test_a_static_body_over_the_gap_is_the_ground_there_and_says_so(self):
+        ground = self.walk("static", bridge("StaticBody2D"))
+        self.assertEqual(self.over_gap(ground), {(320.0, "body")})
+        # Over the floor the tiles are still the ground, and named as tiles.
+        self.assertEqual({v for x, v in ground.items() if 102 <= x < 190}, {(320.0, "tile")})
+        self.assertEqual(ground_and_source.header["capabilities"]["groundSources"], {"tiles": True, "bodies": 1})
+
+    def test_a_character_body_platform_counts_as_the_demos_platforms_do(self):
+        self.assertEqual(self.over_gap(self.walk("character", bridge("CharacterBody2D"))), {(320.0, "body")})
+
+    def test_an_animatable_body_counts(self):
+        self.assertEqual(self.over_gap(self.walk("animatable", bridge("AnimatableBody2D"))), {(320.0, "body")})
+
+    def test_a_platform_switched_off_is_not_ground(self):
+        # A platform whose collision is disabled (one that crumbles on purpose, or a bug) is not a
+        # surface the player should stand on: no ground, so the check needs review, never a reject.
+        ground = self.walk("disabled", bridge("StaticBody2D", shape_extra="disabled = true\n"))
+        self.assertEqual(self.over_gap(ground), {(None, None)})
+
+    def test_a_rigid_body_and_an_area_are_not_ground(self):
+        for kind, extra in (("RigidBody2D", "freeze = true\n"), ("Area2D", "")):
+            with self.subTest(kind=kind):
+                ground = self.walk(kind.lower(), bridge(kind, extra))
+                self.assertEqual(self.over_gap(ground), {(None, None)})
+                self.assertEqual(ground_and_source.header["capabilities"]["groundSources"]["bodies"], 0)
 
 
 class BodyInTheWorldTest(unittest.TestCase):

@@ -6,8 +6,10 @@ extends Node
 ## User arguments (after `--`): --route=<path> --trace=<path> [--seed=<int>] [--player=<node name>]
 ##
 ## Each trace row also carries, when the level has tile layers:
-##   ground: world y of the solid tile surface under the player (see _ground_under), from the
-##           level's tile geometry, never from the player's own collision shape;
+##   ground: world y of the solid surface under the player (see _ground_under), from the level's
+##           tile geometry and the authored collision shapes of its platforms (bodies), never from
+##           the player's own collision shape;
+##   groundFrom: "tile" or "body", which of the two the ground came from (written with ground);
 ##   body:   the world box [left, top, right, bottom] of the player's own collision in this tick
 ##           (see _body_extent): how big the engine says the player is, and where. Left out when the
 ##           player has no collision to measure;
@@ -44,6 +46,8 @@ var _player: Node2D = null
 var _recorder: Node = null
 var _layers: Array = []          # every TileMapLayer in the level, found on the first record
 var _layers_searched := false
+var _platforms: Array = []       # the level's bodies that count as ground (see _platform_bodies)
+var _platforms_searched := false
 var _coin_class: StringName = &"Coin"
 var _coins: Array = []           # every coin node, found on the first record
 var _coins_searched := false
@@ -169,7 +173,8 @@ func record() -> void:
 			row["onFloor"] = body.is_on_floor()
 		var ground = _ground_under(_player.global_position)
 		if ground != null:
-			row["ground"] = snappedf(ground, 0.001)
+			row["ground"] = snappedf(ground[0], 0.001)
+			row["groundFrom"] = ground[1]
 		# The world box of the player's own collision: how big the engine says the player is, and
 		# where. Left out when there is no collision to measure, never guessed.
 		var extent = _body_extent(_player)
@@ -208,7 +213,9 @@ func _finish() -> void:
 			# in the scene when it is first searched (later spawns are not tracked); bullets are every
 			# node of the projectile class added to the tree.
 			"capabilities": {"enemies": "initial-instances", "projectiles": "complete",
-				"facing": _sprite != null, "onFloor": _player is CharacterBody2D}}
+				"facing": _sprite != null, "onFloor": _player is CharacterBody2D,
+				# Where a row's ground may come from: tiles, and the platforms counted (see _platform_bodies).
+				"groundSources": {"tiles": not _layers.is_empty(), "bodies": _platforms.size()}}}
 		var surfaces := _level_surfaces()
 		if not surfaces.is_empty():
 			out["levelSurfaces"] = surfaces
@@ -275,10 +282,14 @@ func _tracked_positions(tracked: Array) -> Array:
 
 
 func _ground_under(origin: Vector2) -> Variant:
-	"""World y of the highest solid tile surface under the player's body, or null.
+	"""[world y, "tile" or "body"] of the highest solid surface under the player's body, or null.
 
-	Only surfaces at or below origin.y - SINK_WINDOW count. The surfaces are read from each tile's
+	Only surfaces at or below origin.y - SINK_WINDOW count. Tile surfaces are read from each tile's
 	authored collision polygons, so they stay put when a bug switches the level's collision off.
+	Platform surfaces are read from the authored collision shapes of the level's bodies (see
+	_platform_bodies), where they are in this tick, so a moving platform counts where it is.
+	Until November 13, 2026 only tiles counted: in a game whose platforms are bodies (Godot's
+	kinematic_character demo) the player had no ground in 43 of 120 frames (#259).
 	Where the body is asked about is the candidate's own (see _body_span): a change that makes the
 	player's collision narrower or wider moves the columns, and with them the ground that is logged.
 	"""
@@ -294,10 +305,73 @@ func _ground_under(origin: Vector2) -> Variant:
 	# had a column inside the step, and the step's top was read as the ground under it (#348).
 	var span := _body_span(_player)
 	var best = null
+	var source := ""
+	var shapes := _platform_shapes()
 	for dx in [span.x, (span.x + span.y) / 2.0, span.y]:
 		var surface = _highest_surface(origin.x + dx, origin.y - SINK_WINDOW)
 		if surface != null and (best == null or surface < best):
 			best = surface
+			source = "tile"
+		var top = _highest_in_polygons(shapes, origin.x + dx, origin.y - SINK_WINDOW)
+		if top != null and (best == null or top < best):
+			best = top
+			source = "body"
+	return null if best == null else [best, source]
+
+
+func _platform_bodies() -> Array:
+	"""The level's bodies that count as ground, found once: every StaticBody2D, AnimatableBody2D and
+	CharacterBody2D in the scene, except the player and anything under it, and nodes of the enemy
+	or projectile class. A RigidBody2D (a crate, a bullet) and an Area2D (a trigger) are not ground."""
+	if not _platforms_searched and _player != null:
+		var scene := get_tree().current_scene
+		if scene != null:
+			_platforms_searched = true
+			for node in scene.find_children("*", "PhysicsBody2D", true, false):
+				if node is RigidBody2D or node == _player or _player.is_ancestor_of(node) or node.is_ancestor_of(_player):
+					continue
+				if _is_class(node, _enemy_class) or _is_class(node, _projectile_class):
+					continue
+				if node is StaticBody2D or node is AnimatableBody2D or node is CharacterBody2D:
+					_platforms.append(node)
+	return _platforms
+
+
+func _platform_shapes() -> Array:
+	"""The world polygons of every platform's collision that is not disabled, in this tick. A shape
+	is its bounding rectangle (exact for rectangles, the usual platform; the box round a circle or a
+	capsule). A platform switched off on purpose is not ground, so a bug that switches one off reads
+	as no ground under the player (needs review), never as a surface it should have stood on."""
+	var out := []
+	for node in _platform_bodies():
+		if not is_instance_valid(node) or not node.is_inside_tree():
+			continue
+		for child in node.get_children():
+			var shape_node := child as CollisionShape2D
+			var polygon_node := child as CollisionPolygon2D
+			var points := PackedVector2Array()
+			if shape_node != null and shape_node.shape != null and not shape_node.disabled:
+				var r: Rect2 = shape_node.shape.get_rect()
+				points = PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])
+			elif polygon_node != null and not polygon_node.disabled:
+				points = polygon_node.polygon
+			if points.is_empty():
+				continue
+			var to_world: Transform2D = (child as Node2D).global_transform
+			var world := PackedVector2Array()
+			for point in points:
+				world.append(to_world * point)
+			out.append(world)
+	return out
+
+
+static func _highest_in_polygons(polygons: Array, x: float, min_y: float) -> Variant:
+	"""World y of the highest polygon top in the column x at or below min_y, or null."""
+	var best = null
+	for polygon in polygons:
+		var top = _polygon_top(polygon, x)
+		if top != null and top >= min_y and (best == null or top < best):
+			best = top
 	return best
 
 
