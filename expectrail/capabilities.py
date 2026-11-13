@@ -467,6 +467,9 @@ def render(doc: dict) -> str:
         "run published, which is where the bench jobs put their public counts. Such evidence ends with",
         "\"Counted from the run's notices\", and `python3 -m expectrail.capabilities recheck` counts those",
         f"notices again from GitHub. {_tied(doc)}",
+        "Across all rows citing one run, its entries must together account for every notice their title",
+        "rules select. A notice selected by no entry is a problem. Entries may overlap; an entry without",
+        "`where` includes every notice its title rules select.",
         "",
         f"Last changed {doc['updated']}. {len(doc['rows'])} rows: "
         + ", ".join(f"{counts[s]} {s}" for s in doc["statuses"]) + ". By grade: "

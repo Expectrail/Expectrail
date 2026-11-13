@@ -52,6 +52,28 @@ record) and `DIR/viewer/` (the evidence viewer, #264). `check` is what the publi
 is the live recording run: it needs a model key and `EXPECTRAIL_SAM_USD_CAP`, spends money, and is
 Sean's to dispatch. All three run from a clone of the repository (the manifest is under `docs/`).
 
+## Recording the vision answers (run-it-record.yml)
+
+Sean records a sample from the Actions tab, with no terminal:
+[`.github/workflows/run-it-record.yml`](../.github/workflows/run-it-record.yml), "Run it record", with
+the sample picked from a list and a spend cap (default $1.00, at most $2). It runs on main only.
+
+- **record** (`main-only` environment, so Sean approves each run; `MODEL_API_KEY`; `contents: read`;
+  30 minutes): replays the sample with every replay in the sandbox, runs `expectrail.runit record`
+  with `EXPECTRAIL_SAM_USD_CAP` set to the cap, and uploads the recording. It prints the spend at list
+  price (requests sent, images answered), even when the recording fails.
+- **propose** (`contents: write`, no environment, no secret, 5 minutes): never runs the game, the
+  harness or anything from the sample. It downloads the recording outside its checkout, checks it with
+  main's `expectrail.runit check-recording` (a usable recording, for this sample, with at least one
+  answer), commits it to a new branch `run-it-vision/<sample>-<run id>`, and puts a link in the run's
+  summary that opens the pull request with the run and the spend in its description. It never pushes
+  to main.
+
+The link is there instead of a pull request opened by the workflow because a pull request opened with
+the workflow's own token starts no workflow, so its required checks would never run. A pull request
+Sean opens from the link runs them as any other. Sean's whole part: dispatch it once per sample (about
+$1 in all), approve each run, open the three pull requests from their links and merge them.
+
 ## The workflow
 
 [`.github/workflows/run-it.yml`](../.github/workflows/run-it.yml), dispatched on main only:

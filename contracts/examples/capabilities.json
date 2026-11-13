@@ -229,7 +229,7 @@
               }
             }
           ],
-          "shows": "blind, fresh set 1: 4 of 8 defects flagged, no healthy build flagged"
+          "shows": "blind, fresh set 1: 4 of 8 defects flagged, no healthy build flagged; together these entries cover every build notice"
         },
         {
           "kind": "test",

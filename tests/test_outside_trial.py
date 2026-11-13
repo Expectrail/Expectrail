@@ -197,8 +197,14 @@ class AroundTest(unittest.TestCase):
             reason = ("player-stays-above-ground on walk: no violation in 115 frames judged, but an object was not found "
                       "in 5 frames (first 38); a missing object is never a pass")
             script = tmp / "say.py"
+            # As the gate writes it: the decision's reason is general, the finding says where.
             script.write_text("import json, sys\nprint(json.dumps({'decision': 'needs-review', 'reasons': "
-                              f"[{reason!r}]}}))\nsys.exit(2)\n", encoding="utf-8")
+                              "['1 of 1 public checks could not be decided']}))\nsys.exit(2)\n", encoding="utf-8")
+            record = tmp / "out" / "jobs" / "kc" / "abc" / "output" / "findings.json"
+            record.parent.mkdir(parents=True)
+            record.write_text(json.dumps({"counts": {"checks": 1}, "findings": [
+                {"spec": "player-stays-above-ground", "route": "walk", "reason": reason.split(": ", 1)[1]}]}),
+                encoding="utf-8")
             project = {**trial.load_list()[0], "name": "kc"}
             row = trial.verify(project, tmp / "checkout", tmp / "out", [sys.executable, str(script)], 60)
             self.assertEqual(row["verdict"], "needs-review")

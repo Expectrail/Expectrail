@@ -38,6 +38,10 @@ value. A member is equal only to a value of its own kind: ``true`` is not ``1`` 
 another kind of value is not a "no": the count is then "cannot tell". The message is parsed as JSON by
 Python's ``json`` and by nothing else; no text is searched.
 
+Across all rows citing one run, its entries must together include every notice their title rules
+select in at least one entry's ``of``. A notice selected by no entry's ``where`` is "cannot tell".
+Overlapping entries are allowed; ``has`` decides ``n``, not whether the notice is accounted for.
+
 A re-run replaces a run's conclusion and jobs on GitHub. The latest attempt is what is read, and what
 a row is held to.
 """
@@ -321,6 +325,31 @@ def _stated(chosen: list, field: str, otherwise: str | None) -> tuple[int, list[
     return having, unclear
 
 
+def _titled(count: dict, item: dict) -> bool:
+    return matches(count["titled"], item["title"]) and not any(
+        matches(left_out, item["title"]) for left_out in count.get("not", []))
+
+
+def _unaccounted(counts: list[dict], noticed: list, number: str) -> list[str]:
+    """Notices selected by title but by no entry's `where`, across one run's citations."""
+    out = []
+    for item in noticed:
+        entries = [count for count in counts if _titled(count, item)]
+        if not entries:
+            continue
+        for count in entries:
+            if "has" not in count:
+                break  # `count` and `reads` take every notice their title rules select.
+            _, kept, unclear = _held([item], count.get("where", {}), {})
+            if kept or unclear:
+                # An unreadable selection already has a per-entry "cannot tell" problem.
+                break
+        else:
+            out.append(f"run {number}: cannot tell: the notice {item['title']!r} from job {item['job']!r} "
+                       "is counted by no entry")
+    return out
+
+
 def _counts(cite: dict, head: str, noticed: list | RunUnreadable) -> list[str]:
     """What is wrong with each count the evidence ties to the run's notices."""
     out = []
@@ -329,8 +358,7 @@ def _counts(cite: dict, head: str, noticed: list | RunUnreadable) -> list[str]:
         if isinstance(noticed, RunUnreadable):
             out.append(f"{what}: cannot tell: {noticed}")
             continue
-        chosen = [item for item in noticed if matches(count["titled"], item["title"])
-                  and not any(matches(left_out, item["title"]) for left_out in count.get("not", []))]
+        chosen = [item for item in noticed if _titled(count, item)]
         if not chosen:
             out.append(f"{what}: cannot tell: the run published no notice titled {count['titled']!r}")
             continue
@@ -438,7 +466,10 @@ def recheck(doc: dict, read: Reader, notices: Notices | None = None) -> tuple[li
     checked: list[str] = []
     answers: dict[str, dict | RunUnreadable] = {}
     noticed: dict[str, list | RunUnreadable] = {}
-    counted = {_split(cite["ref"])[0] for cite in cited(doc) if cite.get("counts")}
+    counted: dict[str, list[dict]] = {}
+    for cite in cited(doc):
+        if cite.get("counts"):
+            counted.setdefault(_split(cite["ref"])[0], []).extend(cite["counts"])
     for cite in cited(doc):
         number, _ = _split(cite["ref"])
         if number not in answers:
@@ -467,4 +498,7 @@ def recheck(doc: dict, read: Reader, notices: Notices | None = None) -> tuple[li
             problems.extend(_one(cite, answer))
             if cite.get("counts") and number in noticed:
                 problems.extend(_counts(cite, f"{cite['where']}: run {number}", noticed[number]))
+    for number, entries in counted.items():
+        if isinstance(noticed.get(number), list):
+            problems.extend(_unaccounted(entries, noticed[number], number))
     return problems, checked

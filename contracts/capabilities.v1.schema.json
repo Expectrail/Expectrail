@@ -52,7 +52,7 @@
               { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "type": "integer" } }
             ]
           },
-          "description": "With `has`: the members a notice with the title must have, each equal to the value given or to one of a list of values, to be counted in `of`. Every notice with the title must have each of these members with a value of the same kind, or the count cannot be told."
+          "description": "With `has`: the members a notice with the title must have, each equal to the value given or to one of a list of values, to be counted in `of`. Every notice with the title must have each of these members with a value of the same kind, or the count cannot be told. Across all rows citing one run, the entries must together include every notice their title rules select in at least one entry's `of`; `recheck` reports an uncounted notice as cannot tell. Entries may overlap. Without `where`, an entry includes every notice its title rules select."
         }
       },
       "oneOf": [ { "required": ["count"] }, { "required": ["reads"] }, { "required": ["has"] } ],
