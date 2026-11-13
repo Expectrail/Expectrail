@@ -144,7 +144,7 @@ phases do not add up to the whole.
 
 ## The public reproduction bench (added November 11)
 
-Five records for issue #285, all about public defects only.
+Six records for issue #285, all about public defects only.
 
 | Record | Written by | Read by |
 | --- | --- | --- |
@@ -153,6 +153,7 @@ Five records for issue #285, all about public defects only.
 | `repro-screen` (`expectrail.repro-screen/v1`, [`contracts/repro-screen.v1.schema.json`](../contracts/repro-screen.v1.schema.json); the committed record [`bench/jit/public/screen.json`](../bench/jit/public/screen.json) is the example) | `python3 -m expectrail.repro screen` (added November 12) | `expectrail.repro.screen.load`, `python3 -m expectrail.repro screen-render` |
 | `repro-evidence` (`expectrail.repro-evidence/v1`, [`contracts/repro-evidence.v1.schema.json`](../contracts/repro-evidence.v1.schema.json), example [`repro-evidence.json`](../contracts/examples/repro-evidence.json), a recorded run; the committed records `bench/jit/public/evidence-<defect>.json`) | `python3 -m expectrail.repro evidence` (added November 12) | `expectrail.repro.evidence.load`, `python3 -m expectrail.repro evidence-render` |
 | `repro-score` (`expectrail.repro-score/v1`, [`contracts/repro-score.v1.schema.json`](../contracts/repro-score.v1.schema.json), example [`repro-score.json`](../contracts/examples/repro-score.json), made-up rows) | `python3 -m expectrail.repro score`, from a live run's `jit-run` records | `expectrail.repro.score.load`, `python3 -m expectrail.repro score-render` |
+| `repro-hand-reasons` (`expectrail.repro-hand-reasons/v1`, [`contracts/repro-hand-reasons.v1.schema.json`](../contracts/repro-hand-reasons.v1.schema.json); the committed record [`bench/jit/public/hand-reasons.json`](../bench/jit/public/hand-reasons.json) is the example) | By hand (added November 13): the findings of November 12 for the defects no record can classify | `expectrail.repro.breakdown.load`, `python3 -m expectrail.repro breakdown` |
 
 A bench entry is a defect id, its family, a patch against the clean game, a bug report, where its
 author expects it to show, and whether probes or signals were designed around it. The reader refuses
@@ -217,8 +218,16 @@ ties a row to runs is its `recordSha256` and the `jit-run` record it names; to t
 the run's records again and compare. The writer counts a check as reproducing only when the
 `jit-run` record's catch entry for it shows three fails on the bug build, and writes free text
 (`why`, `evidence`, `source`) as one line; the reader refuses free text that is not. It has no
-decision field: nothing reads it to accept or reject a change. No score record is committed, because
-no live run has been made.
+decision field: nothing reads it to accept or reject a change.
+
+A hand-reasons record lists, for defects of the bench, one of the two reasons of the issue's
+vocabulary that no record can separate (`route-never-reaches`, `probe-language`) and what was seen,
+in one line. The reader refuses any other reason, a defect listed twice and free text that is not
+one line. `expectrail.repro.breakdown` uses a finding only where the scorer's reason is
+`undetermined`; it never replaces a reason read from the records and never changes an outcome.
+
+No score record is committed yet. The first live run (November 13, run 43465090517) wrote one into
+its `repro-score` artifact, which the session that published the result could not download.
 
 ## What `doctor` found (added November 12)
 

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/repro-hand-reasons.v1.schema.json",
+  "title": "expectrail.repro-hand-reasons/v1",
+  "description": "Hand findings for defects of the public reproduction bench whose miss no run's records can classify (issue #285, step 2): why the defect leaves the engine's record unchanged on every library probe. Written by hand, read by expectrail.repro.breakdown. A finding replaces only a scorer's 'undetermined' and never changes whether a defect was reproduced.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "written", "rows"],
+  "properties": {
+    "format": { "const": "expectrail.repro-hand-reasons/v1" },
+    "written": {
+      "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "The date the findings were made. Not checked."
+    },
+    "rows": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "reason", "basis"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 60, "description": "A defect id of the bench." },
+          "reason": {
+            "enum": ["route-never-reaches", "probe-language"],
+            "description": "Only the two reasons of the issue's vocabulary that no record separates. The others are the scorer's."
+          },
+          "basis": {
+            "type": "string", "minLength": 1, "maxLength": 300,
+            "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]*$",
+            "description": "What was seen, in one line."
+          }
+        }
+      }
+    }
+  }
+}

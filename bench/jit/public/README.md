@@ -5,10 +5,11 @@ fails on the buggy build 3 times of 3 and passes on the clean game 3 times of 3.
 bench that number will be measured on. Everything in it is public, and reproduction is developed on
 it and on nothing else: never on a blind set, its logs or its counts.
 
-**No reproduction rate has been measured.** That takes a live run from main, which calls a paid
-model, and none has been made on this bench. What is here is the bench, two measurements that
-need no model (what each defect changes in the engine's record, and what it changes on the screen),
-and the scorer that will read a live run's records when there is one.
+**One reproduction rate has been measured: the baseline, 17 of 24 (71%), on November 13, 2026**
+([below](#the-baseline-17-of-24-reproduced-november-13-2026), run 43465090517, offer `baseline`). A
+live run calls a paid model and is dispatched from main by a person. What else is here is the bench,
+two measurements that need no model (what each defect changes in the engine's record, and what it
+changes on the screen), the scorer that reads a live run's records, and the miss breakdown.
 
 ## What is in it
 
@@ -469,9 +470,7 @@ What these show, and what they do not:
 
 ## How a live run on this bench is made and scored
 
-Built November 11, 2026. **It has not been run**: the workflow mode below has never been
-dispatched, and the scorer has only read records from the simulated game and records written by
-hand in tests.
+Built November 11, 2026. First run on November 13, 2026: the baseline below.
 
 **The case.** The generator judges a candidate change, and reproduction has none: the check has to
 come from the bug build and the report alone, so that a fix cannot shape the check that later
@@ -528,9 +527,101 @@ The score also gives the rate over the defects that change the engine's record o
 (`signal` or `trace-only` in the table, 19 of the 24), which is the set the issue's 70% target is
 about, the rate over the 20 defects nothing was tuned on, and spend per defect against the cap.
 
+## The baseline: 17 of 24 reproduced (November 13, 2026)
+
+Run [43465090517](https://github.com/Expectrail/Expectrail/actions/runs/43465090517): `jit.yml`
+dispatched by Sean from `main` at 1e60550, mode `repro`, offer `baseline` (the generator as it was
+before steps 3 and 4: none of the three signals of November 12, no reach probe, no evidence). Every
+job succeeded: 24 measure, 24 propose, 24 replay, 24 revise, 24 final replay and the score.
+
+**Where these numbers were read.** The score job's log prints the scorer's totals, and each final
+replay job's log prints that defect's counts and spend. Both are copied below as they were printed.
+The score file itself (`repro-score.json`, with the 24 records) is in the run's `repro-score`
+artifact, which could not be downloaded from the session that wrote this page: the artifact store's
+host was refused by that session's network policy. So no score record is committed yet, and which
+defect carries which reason is worked out from the per-defect counts and the visibility table above,
+not read from the score's rows. Every total below agrees with both.
+
+The scorer's totals, from the score job's log:
+
+```
+{"defects": 24, "reproduced": 17, "notReproduced": 7, "noResult": 0, "untuned": 20, "reproducedUntuned": 13, "traceVisible": 19, "reproducedTraceVisible": 16, "keptChecks": 91, "misses": {"no-signal": 2, "wrong-predicate": 1, "undetermined": 4}, "spendUsd": 2.0492, "maxSpendUsd": 0.1722, "overCap": 0}
+```
+
+- **Reproduced: 17 of 24 (71%).** Of the 19 defects that change the engine's record on a library
+  probe (the issue's target set): **16 of 19 (84%)**, above the 70% target. Of the 20 nothing was
+  tuned on: 13 of 20 (65%).
+- No result: 0. Flaky: 0. A kept check passed on the clean game 3 times of 3 by definition, so no
+  kept check failed on the clean build.
+- Spend: $2.0492 for all 24 defects, at most $0.1722 for one (`slow-left`), none over the $2 cap.
+- `no-shooting-in-air` was reproduced although no library probe shows it (one check kept of two
+  proposed). The model may add up to four probes of its own; whether that is how is in its record,
+  which was not read.
+
+| Defect | Library probes see | Proposed | Kept | Catches | Outcome | Spend |
+| --- | --- | --- | --- | --- | --- | --- |
+| `air-jump` | signal | 6 | 6 | 6 | reproduced | $0.0655 |
+| `gun-cooldown` | signal | 6 | 6 | 6 | reproduced | $0.0439 |
+| `body-flip` | signal | 7 | 7 | 7 | reproduced | $0.0662 |
+| `enemy-ledge` | signal | 6 | 6 | 6 | reproduced | $0.0783 |
+| `bullet-through-enemy` | signal | 4 | 4 | 4 | reproduced | $0.0589 |
+| `platforms-not-solid` | signal | 5 | 5 | 5 | reproduced | $0.1490 |
+| `floaty-fall` | signal | 5 | 5 | 5 | reproduced | $0.0715 |
+| `jump-always-full` | signal | 6 | 6 | 6 | reproduced | $0.1013 |
+| `slow-left` | signal | 5 | 5 | 5 | reproduced | $0.1722 |
+| `slides-after-stop` | signal | 6 | 6 | 6 | reproduced | $0.0794 |
+| `no-shooting-in-air` | none | 2 | 1 | 1 | reproduced | $0.0546 |
+| `jump-needs-rest` | signal | 8 | 8 | 8 | reproduced | $0.0703 |
+| `double-jump-once` | signal | 4 | 4 | 4 | reproduced | $0.0681 |
+| `coin-stays` | signal | 7 | 0 | 0 | not reproduced | $0.1199 |
+| `coin-counts-twice` | none | 6 | 0 | 0 | not reproduced | $0.0778 |
+| `coin-counter-stuck` | none | 6 | 0 | 0 | not reproduced | $0.0815 |
+| `gun-cooldown-long` | signal | 6 | 6 | 6 | reproduced | $0.0496 |
+| `enemy-missing` | signal | 6 | 6 | 6 | reproduced | $0.1183 |
+| `enemy-fast-left` | signal | 6 | 6 | 6 | reproduced | $0.1167 |
+| `enemy-slides-when-shot` | signal | 4 | 4 | 4 | reproduced | $0.0836 |
+| `enemy-walks-backwards` | none | 6 | 0 | 0 | not reproduced | $0.0361 |
+| `camera-stops-right` | trace-only | 6 | 0 | 0 | not reproduced | $0.1485 |
+| `camera-cut-top` | trace-only | 6 | 0 | 0 | not reproduced | $0.0517 |
+| `bullet-behind-scenery` | none | 8 | 0 | 0 | not reproduced | $0.0863 |
+
+"Kept" and "Catches" are the record's `valid` and `strong` counts from each final replay's log. A
+catch failed 3 of 3 on the bug build with the no-fix candidate; the 17 defects with a catch are the
+scorer's 17, and the kept counts add up to its 91.
+
+### Why the 7 misses were missed
+
+The scorer gives a reason only where the records show one, and `undetermined` where they cannot. For
+those, the hand findings of November 12, written before this run, take its place
+([`hand-reasons.json`](hand-reasons.json), `expectrail.repro-hand-reasons/v1`;
+`python3 -m expectrail.repro breakdown --score <repro-score.json>` prints this table from a score
+file). A hand finding never replaces a reason read from the records and never changes an outcome.
+
+| Reason | Misses | Of them by hand | Defects |
+| --- | --- | --- | --- |
+| `route-never-reaches` | 2 | 2 | `coin-counts-twice`, `coin-counter-stuck`: the counter is drawn only in the pause menu, which no action opens |
+| `no-signal` | 2 | 0 | `camera-stops-right`, `camera-cut-top`: the record's `view` has it and no baseline signal reads it |
+| `probe-language` | 2 | 2 | `enemy-walks-backwards`, `bullet-behind-scenery`: screen only; the check language reads only the engine's record |
+| `wrong-predicate` | 1 | 0 | `coin-stays`: a signal moves, by a hundredth of a pixel; the record's `coins` changes only from tick 174, and the picture from frame 26 |
+
+The hand file also has a finding for `no-shooting-in-air` (no library probe shoots while airborne).
+It was reproduced, so the finding is not used.
+
+What this says about the order of the next steps:
+
+1. **Signals first.** The three signals of November 12 read exactly the fields behind three of the
+   seven misses: `player_screen_x_range_px` and `player_screen_y_range_px` (`view`, the two camera
+   defects) and `coins_collected` (`coins`, `coin-stays`; it sees the pick-up a second late and
+   misses it on a probe shorter than that). They are on offer under `signals-reach`.
+2. **Pixel predicates (#286)** for the two screen-only defects.
+3. **A route into the pause menu** for the two coin-counter defects. The action catalog is move,
+   jump and shoot; reaching them needs a pause action in the game's catalog, which nothing in this
+   chain adds today.
+
 ## What comes next (issue #285)
 
-1. The baseline reproduction rate, from a dispatch of `jit.yml` in mode `repro` on main (a person
-   starts it; it costs money).
-2. The reason for every miss, from that run's score and, where the records cannot say, by hand.
-3. Then reach, signals and proposal quality, in the order the misses decide.
+1. Commit the baseline's score file and records from the `repro-score` artifact of run 43465090517,
+   so a test can score them again and the breakdown above is printed from the file, not transcribed.
+2. The same run with offer `signals-reach` (a person dispatches it; about the same cost, $2.05 here,
+   hard cap $48), then `signals-reach-evidence`. Each is the "after" of a step.
+3. Then pixel predicates (#286) and a pause route, in that order.

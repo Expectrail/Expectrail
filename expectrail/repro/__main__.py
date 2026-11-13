@@ -1,5 +1,5 @@
 """python3 -m expectrail.repro check | visibility | render | screen | screen-render | evidence | evidence-render
-| reach | cases | score | score-render"""
+| reach | cases | score | score-render | breakdown"""
 from __future__ import annotations
 
 import argparse
@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from expectrail.jit.offer import DEFAULT as DEFAULT_OFFER, OFFERS
-from expectrail.repro import bench, evidence, reach, score, screen, visibility
+from expectrail.repro import bench, breakdown, evidence, reach, score, screen, visibility
 
 PROFILE = bench.REPO / "discovery" / "platformer.profile.json"
 
@@ -83,6 +83,10 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--source", default=None, help="where the records came from, for example 'run 123456'")
     s.add_argument("--offer", choices=OFFERS, default=DEFAULT_OFFER,
                    help="count only records made with this setting (expectrail/jit/offer.py)")
+    bd = sub.add_parser("breakdown", help="print a score's misses by reason, with the hand findings; no model, no engine")
+    bd.add_argument("--score", type=Path, required=True, help="a repro-score.json")
+    bd.add_argument("--hand", type=Path, default=breakdown.HAND, help="the hand findings (expectrail.repro-hand-reasons/v1)")
+    bd.add_argument("--bench", type=Path, default=bench.BENCH)
     sr = sub.add_parser("score-render", help="print a score record as a page")
     sr.add_argument("record", type=Path)
     sr.add_argument("--bench", type=Path, default=bench.BENCH)
@@ -102,6 +106,13 @@ def main(argv: list[str] | None = None) -> int:
                                  source=args.source, bench_path=args.bench, offer=args.offer)
             score.write(record, args.out)
             print(json.dumps(record["totals"]))
+            return 0
+        if args.cmd == "breakdown":
+            record = score.load(args.score)
+            hand = breakdown.load(args.hand)
+            for line in score.stale(record, doc, bench_path=args.bench) + breakdown.unknown(hand, doc):
+                print(f"repro breakdown: stale: {line}", file=sys.stderr)
+            sys.stdout.write(breakdown.render(record, hand))
             return 0
         if args.cmd == "score-render":
             record = score.load(args.record)
@@ -209,7 +220,7 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write(visibility.render(record, doc))
         return 0
     except (bench.BenchError, visibility.VisibilityError, screen.ScreenError, score.ScoreError, reach.ReachError,
-            evidence.EvidenceError, OSError) as exc:
+            evidence.EvidenceError, breakdown.BreakdownError, OSError) as exc:
         print(f"repro: {exc}", file=sys.stderr)
         return 1
 
