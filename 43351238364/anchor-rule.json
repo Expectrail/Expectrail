@@ -1,0 +1,1095 @@
+{
+  "calibration": {
+    "from": "clean",
+    "frames": [
+      0,
+      10,
+      20,
+      30,
+      40,
+      50,
+      60,
+      70,
+      80,
+      90,
+      100,
+      110,
+      119
+    ],
+    "pad": 2.0,
+    "lift": 0.0,
+    "ranges": {
+      "width": [
+        29.0,
+        61.0
+      ],
+      "height": [
+        50.0,
+        64.5
+      ],
+      "above": [
+        24.0,
+        38.0
+      ],
+      "below": [
+        23.5,
+        38.5
+      ]
+    }
+  },
+  "results": [
+    {
+      "run": "clean-coins",
+      "result": "pass",
+      "reason": "all 13 judged frames are inside the clean range",
+      "judged": 13,
+      "in": 13,
+      "out": 0,
+      "no-answer": 0,
+      "not-asked": 0,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 10,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 20,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 30,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 40,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 50,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 60,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 70,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 80,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 90,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 100,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 110,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 119,
+          "state": "in",
+          "why": []
+        }
+      ]
+    },
+    {
+      "run": "clean-combat",
+      "result": "fail",
+      "reason": "1 of 10 judged frames are outside the clean range, first frame 50: height 66.5 (clean 50 to 64.5)",
+      "judged": 10,
+      "in": 9,
+      "out": 1,
+      "no-answer": 0,
+      "not-asked": 0,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 10,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 20,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 30,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 40,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 50,
+          "state": "out",
+          "why": [
+            "height 66.5 (clean 50 to 64.5)"
+          ]
+        },
+        {
+          "frame": 60,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 70,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 80,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 89,
+          "state": "in",
+          "why": []
+        }
+      ]
+    },
+    {
+      "run": "clean-traversal",
+      "result": "pass",
+      "reason": "all 13 judged frames are inside the clean range",
+      "judged": 13,
+      "in": 13,
+      "out": 0,
+      "no-answer": 0,
+      "not-asked": 0,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 10,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 20,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 30,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 40,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 50,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 60,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 70,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 80,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 90,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 100,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 110,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 119,
+          "state": "in",
+          "why": []
+        }
+      ]
+    },
+    {
+      "run": "clean",
+      "result": "pass",
+      "reason": "all 13 judged frames are inside the clean range",
+      "judged": 13,
+      "in": 13,
+      "out": 0,
+      "no-answer": 0,
+      "not-asked": 0,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 10,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 20,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 30,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 40,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 50,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 60,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 70,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 80,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 90,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 100,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 110,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 119,
+          "state": "in",
+          "why": []
+        }
+      ]
+    },
+    {
+      "run": "layering_v1",
+      "result": "fail",
+      "reason": "7 of 13 judged frames are outside the clean range, first frame 0: height 30.5 (clean 50 to 64.5); above 10 (clean 24 to 38); below 20.5 (clean 23.5 to 38.5)",
+      "judged": 13,
+      "in": 6,
+      "out": 7,
+      "no-answer": 0,
+      "not-asked": 0,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "out",
+          "why": [
+            "height 30.5 (clean 50 to 64.5)",
+            "above 10 (clean 24 to 38)",
+            "below 20.5 (clean 23.5 to 38.5)"
+          ]
+        },
+        {
+          "frame": 10,
+          "state": "out",
+          "why": [
+            "height 26 (clean 50 to 64.5)",
+            "above 5.5 (clean 24 to 38)",
+            "below 20.5 (clean 23.5 to 38.5)"
+          ]
+        },
+        {
+          "frame": 20,
+          "state": "out",
+          "why": [
+            "width 69 (clean 29 to 61)"
+          ]
+        },
+        {
+          "frame": 30,
+          "state": "out",
+          "why": [
+            "height 47 (clean 50 to 64.5)",
+            "below 20.5 (clean 23.5 to 38.5)"
+          ]
+        },
+        {
+          "frame": 40,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 50,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 60,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 70,
+          "state": "out",
+          "why": [
+            "height 45.5 (clean 50 to 64.5)",
+            "below 19.5 (clean 23.5 to 38.5)"
+          ]
+        },
+        {
+          "frame": 80,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 90,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 100,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 110,
+          "state": "out",
+          "why": [
+            "the box does not hold the point",
+            "height 27.5 (clean 50 to 64.5)",
+            "above -3 (clean 24 to 38)"
+          ]
+        },
+        {
+          "frame": 119,
+          "state": "out",
+          "why": [
+            "height 31 (clean 50 to 64.5)",
+            "above 1 (clean 24 to 38)"
+          ]
+        }
+      ]
+    },
+    {
+      "run": "layering_v2",
+      "result": "fail",
+      "reason": "7 of 13 judged frames are outside the clean range, first frame 0: height 30.5 (clean 50 to 64.5); above 10 (clean 24 to 38); below 20.5 (clean 23.5 to 38.5)",
+      "judged": 13,
+      "in": 6,
+      "out": 7,
+      "no-answer": 0,
+      "not-asked": 0,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "out",
+          "why": [
+            "height 30.5 (clean 50 to 64.5)",
+            "above 10 (clean 24 to 38)",
+            "below 20.5 (clean 23.5 to 38.5)"
+          ]
+        },
+        {
+          "frame": 10,
+          "state": "out",
+          "why": [
+            "height 26 (clean 50 to 64.5)",
+            "above 5.5 (clean 24 to 38)",
+            "below 20.5 (clean 23.5 to 38.5)"
+          ]
+        },
+        {
+          "frame": 20,
+          "state": "out",
+          "why": [
+            "width 69 (clean 29 to 61)"
+          ]
+        },
+        {
+          "frame": 30,
+          "state": "out",
+          "why": [
+            "height 47 (clean 50 to 64.5)",
+            "below 20.5 (clean 23.5 to 38.5)"
+          ]
+        },
+        {
+          "frame": 40,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 50,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 60,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 70,
+          "state": "out",
+          "why": [
+            "height 45.5 (clean 50 to 64.5)",
+            "below 19.5 (clean 23.5 to 38.5)"
+          ]
+        },
+        {
+          "frame": 80,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 90,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 100,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 110,
+          "state": "out",
+          "why": [
+            "the box does not hold the point",
+            "height 27.5 (clean 50 to 64.5)",
+            "above -3 (clean 24 to 38)"
+          ]
+        },
+        {
+          "frame": 119,
+          "state": "out",
+          "why": [
+            "height 31 (clean 50 to 64.5)",
+            "above 1 (clean 24 to 38)"
+          ]
+        }
+      ]
+    },
+    {
+      "run": "missing-texture_v1",
+      "result": "pass",
+      "reason": "all 13 judged frames are inside the clean range",
+      "judged": 13,
+      "in": 13,
+      "out": 0,
+      "no-answer": 0,
+      "not-asked": 0,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 10,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 20,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 30,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 40,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 50,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 60,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 70,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 80,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 90,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 100,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 110,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 119,
+          "state": "in",
+          "why": []
+        }
+      ]
+    },
+    {
+      "run": "missing-texture_v2",
+      "result": "pass",
+      "reason": "all 13 judged frames are inside the clean range",
+      "judged": 13,
+      "in": 13,
+      "out": 0,
+      "no-answer": 0,
+      "not-asked": 0,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 10,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 20,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 30,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 40,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 50,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 60,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 70,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 80,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 90,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 100,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 110,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 119,
+          "state": "in",
+          "why": []
+        }
+      ]
+    },
+    {
+      "run": "physics-fall-through_v1",
+      "result": "pass",
+      "reason": "all 2 judged frames are inside the clean range",
+      "judged": 2,
+      "in": 2,
+      "out": 0,
+      "no-answer": 0,
+      "not-asked": 11,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 10,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 20,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 30,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 40,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 50,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 60,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 70,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 80,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 90,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 100,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 110,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 119,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        }
+      ]
+    },
+    {
+      "run": "physics-fall-through_v2",
+      "result": "pass",
+      "reason": "all 2 judged frames are inside the clean range",
+      "judged": 2,
+      "in": 2,
+      "out": 0,
+      "no-answer": 0,
+      "not-asked": 11,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 10,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 20,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 30,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 40,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 50,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 60,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 70,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 80,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 90,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 100,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 110,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        },
+        {
+          "frame": 119,
+          "state": "not-asked",
+          "why": [
+            "the player is outside the picture"
+          ]
+        }
+      ]
+    },
+    {
+      "run": "sinking_v1",
+      "result": "fail",
+      "reason": "10 of 13 judged frames are outside the clean range, first frame 0: height 47 (clean 50 to 64.5); above 11.5 (clean 24 to 38)",
+      "judged": 13,
+      "in": 3,
+      "out": 10,
+      "no-answer": 0,
+      "not-asked": 0,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "out",
+          "why": [
+            "height 47 (clean 50 to 64.5)",
+            "above 11.5 (clean 24 to 38)"
+          ]
+        },
+        {
+          "frame": 10,
+          "state": "out",
+          "why": [
+            "height 75 (clean 50 to 64.5)"
+          ]
+        },
+        {
+          "frame": 20,
+          "state": "out",
+          "why": [
+            "width 79 (clean 29 to 61)",
+            "height 71.5 (clean 50 to 64.5)"
+          ]
+        },
+        {
+          "frame": 30,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 40,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 50,
+          "state": "out",
+          "why": [
+            "height 66 (clean 50 to 64.5)"
+          ]
+        },
+        {
+          "frame": 60,
+          "state": "out",
+          "why": [
+            "above 20 (clean 24 to 38)"
+          ]
+        },
+        {
+          "frame": 70,
+          "state": "out",
+          "why": [
+            "height 67 (clean 50 to 64.5)"
+          ]
+        },
+        {
+          "frame": 80,
+          "state": "out",
+          "why": [
+            "height 42.5 (clean 50 to 64.5)",
+            "above 7.5 (clean 24 to 38)"
+          ]
+        },
+        {
+          "frame": 90,
+          "state": "out",
+          "why": [
+            "height 45.5 (clean 50 to 64.5)",
+            "above 10 (clean 24 to 38)"
+          ]
+        },
+        {
+          "frame": 100,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 110,
+          "state": "out",
+          "why": [
+            "height 66 (clean 50 to 64.5)"
+          ]
+        },
+        {
+          "frame": 119,
+          "state": "out",
+          "why": [
+            "height 47.5 (clean 50 to 64.5)",
+            "above 11 (clean 24 to 38)"
+          ]
+        }
+      ]
+    },
+    {
+      "run": "sinking_v2",
+      "result": "fail",
+      "reason": "11 of 13 judged frames are outside the clean range, first frame 0: below 22.5 (clean 23.5 to 38.5)",
+      "judged": 13,
+      "in": 2,
+      "out": 11,
+      "no-answer": 0,
+      "not-asked": 0,
+      "frames": [
+        {
+          "frame": 0,
+          "state": "out",
+          "why": [
+            "below 22.5 (clean 23.5 to 38.5)"
+          ]
+        },
+        {
+          "frame": 10,
+          "state": "out",
+          "why": [
+            "width 71 (clean 29 to 61)",
+            "height 79 (clean 50 to 64.5)",
+            "above 40.5 (clean 24 to 38)"
+          ]
+        },
+        {
+          "frame": 20,
+          "state": "out",
+          "why": [
+            "width 68.5 (clean 29 to 61)"
+          ]
+        },
+        {
+          "frame": 30,
+          "state": "out",
+          "why": [
+            "below 39.5 (clean 23.5 to 38.5)"
+          ]
+        },
+        {
+          "frame": 40,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 50,
+          "state": "out",
+          "why": [
+            "height 66 (clean 50 to 64.5)"
+          ]
+        },
+        {
+          "frame": 60,
+          "state": "out",
+          "why": [
+            "above 20 (clean 24 to 38)"
+          ]
+        },
+        {
+          "frame": 70,
+          "state": "out",
+          "why": [
+            "height 67 (clean 50 to 64.5)"
+          ]
+        },
+        {
+          "frame": 80,
+          "state": "out",
+          "why": [
+            "height 42.5 (clean 50 to 64.5)",
+            "above 7.5 (clean 24 to 38)"
+          ]
+        },
+        {
+          "frame": 90,
+          "state": "out",
+          "why": [
+            "height 45.5 (clean 50 to 64.5)",
+            "above 10 (clean 24 to 38)"
+          ]
+        },
+        {
+          "frame": 100,
+          "state": "in",
+          "why": []
+        },
+        {
+          "frame": 110,
+          "state": "out",
+          "why": [
+            "height 66 (clean 50 to 64.5)"
+          ]
+        },
+        {
+          "frame": 119,
+          "state": "out",
+          "why": [
+            "height 47.5 (clean 50 to 64.5)",
+            "above 11 (clean 24 to 38)"
+          ]
+        }
+      ]
+    }
+  ]
+}
