@@ -93,6 +93,9 @@ def adapter_for(name: str):
     nothing is replayed on an engine that was not asked for."""
     from harness import adapters
 
+    if not isinstance(name, (str, adapters.Adapter)):
+        raise ConfigError(f"an adapter is named by a string, not {type(name).__name__}; registered: "
+                          f"{', '.join(adapters.names())}")
     try:
         engine = adapters.resolve(name)
     except KeyError:

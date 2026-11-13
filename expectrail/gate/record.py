@@ -392,6 +392,52 @@ IMPLEMENTED = frozenset({
 })
 
 
+_PATTERNS: dict[str, re.Pattern] = {}
+
+
+def schema_pattern(pattern: str) -> re.Pattern:
+    r"""A schema's ``pattern``, compiled to match as JSON Schema means it (ECMA-262, no flags).
+
+    The difference that matters: Python's ``$`` also matches before a final newline, so ``^[a-z]+$``
+    would pass ``"godot\n"``; in a schema ``$`` is the end of the string. Every ``$`` outside a
+    character class and not escaped becomes ``\Z``. And ``\d`` and ``\w`` are ASCII in a schema, so
+    the pattern is compiled with ``re.ASCII`` (Python's would take any Unicode digit for ``\d``)."""
+    got = _PATTERNS.get(pattern)
+    if got is not None:
+        return got
+    out, i, in_class = [], 0, False
+    while i < len(pattern):
+        ch = pattern[i]
+        if ch == "\\":
+            out.append(pattern[i:i + 2])
+            i += 2
+            continue
+        if in_class:
+            in_class = ch != "]"
+        elif ch == "[":
+            in_class = True
+            # a "]" first in a class is a member, not its end
+            if pattern[i + 1:i + 2] == "^":
+                out.append("[^")
+                i += 2
+                if pattern[i:i + 1] == "]":
+                    out.append("]")
+                    i += 1
+                continue
+            if pattern[i + 1:i + 2] == "]":
+                out.append("[]")
+                i += 2
+                continue
+        elif ch == "$":
+            out.append("\\Z")
+            i += 1
+            continue
+        out.append(ch)
+        i += 1
+    got = _PATTERNS[pattern] = re.compile("".join(out), re.ASCII)
+    return got
+
+
 class SchemaError(Exception):
     """The schema uses a keyword this validator does not implement."""
 
@@ -448,7 +494,7 @@ def errors(value, rule: dict, where: str = "") -> list[str]:
             out.append(f"{here}: shorter than {rule['minLength']}")
         if "maxLength" in rule and len(value) > rule["maxLength"]:
             out.append(f"{here}: longer than {rule['maxLength']}")
-        if "pattern" in rule and re.search(rule["pattern"], value) is None:
+        if "pattern" in rule and schema_pattern(rule["pattern"]).search(value) is None:
             out.append(f"{here}: does not match its pattern")
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         if "minimum" in rule and value < rule["minimum"]:
