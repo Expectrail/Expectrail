@@ -54,6 +54,15 @@ inputs:
       (python -m expectrail.jit.cli gate-summary, docs/jit.md). It is shown in the comment and the
       review page and never changes the decision; a file that cannot be read shows as "no generated checks".
     default: ''
+  intent:
+    description: >
+      What the change is for: fix, change, none, or from-pull-request (default). from-pull-request
+      reads a label intent:fix, intent:change or intent:none, or a description line
+      "Expectrail-Intent: fix", from the pull_request event; nothing declared is none, the strictest
+      declaration wins, and an unknown value is fix (python -m expectrail.gate.intent). A fix is
+      accepted only when a check failed before the change and passes after it, three times of three
+      (docs/ci-gate.md). On any other event from-pull-request is none.
+    default: from-pull-request
 outputs:
   decision:
     description: accept, reject or needs-review
@@ -70,6 +79,7 @@ runs:
         REQUIRE_SANDBOX: ${{ inputs.require-sandbox }}
         ARTIFACT: ${{ inputs.artifact-name }}
         HELDOUT_REPOSITORY: ${{ inputs.heldout-repository }}
+        INTENT: ${{ inputs.intent }}
       run: |
         case "$EVENT" in
           pull_request_target|workflow_run|issue_comment)
@@ -79,6 +89,7 @@ runs:
         case "$FAIL_ON" in reject|needs-review|never) ;; *) echo "::error title=Expectrail verify::fail-on must be reject, needs-review or never"; exit 1 ;; esac
         case "$COMPARE_BASE" in true|false) ;; *) echo "::error title=Expectrail verify::compare-base must be true or false"; exit 1 ;; esac
         case "$REQUIRE_SANDBOX" in true|false) ;; *) echo "::error title=Expectrail verify::require-sandbox must be true or false"; exit 1 ;; esac
+        case "$INTENT" in fix|change|none|from-pull-request) ;; *) echo "::error title=Expectrail verify::intent must be fix, change, none or from-pull-request"; exit 1 ;; esac
         [[ "$ARTIFACT" =~ ^[A-Za-z0-9._-]{1,64}$ ]] || { echo "::error title=Expectrail verify::artifact-name may use letters, digits and . _ - only"; exit 1; }
         if [ -n "$HELDOUT_REPOSITORY" ] && ! [[ "$HELDOUT_REPOSITORY" =~ ^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$ ]]; then
           echo "::error title=Expectrail verify::heldout-repository must be owner/name"; exit 1
@@ -138,6 +149,7 @@ runs:
         HELDOUT_FETCHED: ${{ steps.heldout.outcome == 'success' }}
         GENERATED_CHECKS: ${{ inputs.generated-checks }}
         REQUIRE_SANDBOX: ${{ inputs.require-sandbox }}
+        INTENT: ${{ inputs.intent }}
       run: |
         root="$(cd "$GITHUB_ACTION_PATH/../../.." && pwd)"
         out="$RUNNER_TEMP/expectrail-gate"
@@ -169,6 +181,18 @@ runs:
         # Python runs from this action's folder, never the workspace, so nothing in the pull request
         # can stand in for an Expectrail module.
         cd "$root"
+        # The intent: as given, or read from the pull request's labels and description in the event
+        # file (data; an unreadable file is read as fix). The trusted comment job reads the pull
+        # request again and refuses a record judged less strictly than it declares.
+        intent="$INTENT"
+        if [ "$intent" = "from-pull-request" ]; then
+          if [ "$EVENT" = "pull_request" ]; then
+            intent="$(python -m expectrail.gate.intent --event "$GITHUB_EVENT_PATH")"
+          else
+            intent=none
+          fi
+        fi
+        args+=(--intent "$intent")
         code=0
         python -m expectrail.gate.verify "${args[@]}" || code=$?
         if [ "$code" -gt 2 ]; then exit "$code"; fi

@@ -1080,7 +1080,9 @@ def stopped_record(reason: str, *, pr: dict | None, game: str | None, checks_fro
     except ConfigError:
         game_path = "unknown"
     document = {
-        "format": rec.FORMAT, "decision": decision, "reasons": [_clip(reason)] + reasons, "adapter": "godot",
+        # For a fix the repair-not-demonstrated reason stays first, as on every other record.
+        "format": rec.FORMAT, "decision": decision, "adapter": "godot",
+        "reasons": reasons[:1] + [_clip(reason)] + reasons[1:] if intent == "fix" else [_clip(reason)] + reasons,
         "pullRequest": pr, "game": {"path": game_path, "headTree": None, "baseTree": None},
         "checksFrom": checks_from, "checksChanged": {"specs": 0, "routes": 0}, "specs": [], "drafts": 0, "checkProblems": 0,
         **({"observers": {"rule": rec.BOTH, "visual": None}} if rule == rec.BOTH else {}),

@@ -34,6 +34,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from expectrail.gate import intent as declared_intent
 from expectrail.gate import record as rec
 
 MARKER = "<!-- expectrail-gate:v0 -->"
@@ -403,6 +404,21 @@ def render_unreadable(problem: str, ctx: Context, *, touched: list[str] | None =
 
 # --- the run -------------------------------------------------------------------------------------
 
+def stricter_than_judged(declared: "declared_intent.Declared", judged: str, decision: str) -> str | None:
+    """Why a record cannot be used when the pull request, read here, declares a fix and the record
+    was judged as something else; None when it can. The verify job runs the pull request's own copy
+    of the verify action, which could drop the declaration; this job reads it from the pull request
+    it fetched itself, so a change that declares a fix is never shown an accept that was not held to
+    the fix rule. A record judged more strictly than declared is shown: that can only take an accept
+    away, and so is a reject, which the fix rule never changes. ``change`` and ``none`` are judged by
+    the same rule, so a difference between them is not a problem."""
+    if declared.intent == "fix" and judged != "fix" and decision != "reject":
+        return (f"this pull request is {declared.words()}, and the verify run judged it as {judged}, so the "
+                "rule for a fix was not applied. Run the verify job again (a label or description change "
+                "made after it ran is read only by a new run)")
+    return None
+
+
 def run(api: Api, ctx: Context, evidence: Path | None, watch: list[str] | None = None) -> dict:
     """Post or update the comment. Returns {"action": created|updated|skipped, ...}."""
     if ctx.run_event != "pull_request":
@@ -427,6 +443,10 @@ def run(api: Api, ctx: Context, evidence: Path | None, watch: list[str] | None =
         named = record["pullRequest"]
         if named is None or named["number"] != number or named["headSha"] != ctx.head_sha:
             problem, record = "the record names a different pull request or commit than this run", None
+    if record is not None:
+        problem = stricter_than_judged(declared_intent.of_pull_request(pr), rec.intent_of(record), record["decision"])
+        if problem:
+            record = None
     touched = touched_files(api, ctx, number, watch or [])
     comment, previous = find_comment(api, ctx, number)
     body = render(record, ctx, previous=previous, touched=touched, fork=fork) if record is not None \
