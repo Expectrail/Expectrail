@@ -48,6 +48,10 @@
           "onFloor": {"type": "boolean"},
           "facing": {"enum": [-1, 1]},
           "ground": {"type": "number", "description": "World y of the level surface under the player, from the level's geometry, never from the player's own collider."},
+          "body": {
+            "description": "Added Nov 12, 2026 by the Godot harness: the world box [left, top, right, bottom] of the player's own collision in this tick (its collision shapes and polygons that are not disabled, as they stand in the world: scaled, mirrored). How big the engine says the player is, and where. Left out when the player has no collision to measure; a reader never guesses one.",
+            "type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4
+          },
           "coins": {"type": "array", "items": {"$ref": "#/$defs/point"}},
           "enemies": {"type": "array", "items": {"$ref": "#/$defs/tracked"}},
           "projectiles": {"type": "array", "items": {"$ref": "#/$defs/tracked"}},

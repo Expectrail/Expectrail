@@ -239,6 +239,25 @@ class AnchorsTest(unittest.TestCase):
         self.assertNotIn("promptBox", anchor.anchors(trace(player=lambda t: (200.0, 30.0)), (W, H), [5], box=(12.0, 20.0))[5])
         self.assertNotIn("promptBox", anchor.anchors(trace(), (W, H), [5])[5])
 
+    def test_the_players_own_box_is_the_box_and_its_middle_the_point(self):
+        # The harness logs the body's world box in each row. Frame 5 shows tick 11: the player is at
+        # (82, 30) and its body is 20 x 30 game px around (82, 25). Scale 2, camera of tick 12 (-112, -20):
+        # the middle lands on (52, 30), and the box widened by 4 each way is 56 x 76 in the frame.
+        doc = trace()
+        for row in doc["rows"]:
+            x, y = row["player"]
+            row["body"] = [x - 10, y - 20, x + 10, y + 10]
+        where = anchor.anchors(doc, (W, H), [5], box=anchor.BODY)[5]
+        self.assertEqual((where["world"], where["point"], where["promptBox"]), ([82.0, 25.0], [52, 30], [24, 0, 80, 68]))
+        # No pad: the box is the body's own, 40 x 60 in the frame.
+        self.assertEqual(anchor.anchors(doc, (W, H), [5], box=anchor.BODY, pad=0)[5]["promptBox"], [32, 0, 72, 60])
+        # A lift is a point's business: it does not move the body's box.
+        self.assertEqual(anchor.anchors(doc, (W, H), [5], lift=9.0, box=anchor.BODY)[5]["point"], [52, 30])
+
+    def test_a_tick_with_no_body_box_logged_is_not_asked_about(self):
+        self.assertEqual(anchor.anchors(trace(), (W, H), [5], box=anchor.BODY)[5],
+                         {"why": "the engine logged no body box for the player"})
+
     def test_no_player_no_camera_or_no_row_is_said_and_never_guessed(self):
         self.assertEqual(anchor.anchors(trace(player=lambda t: None), (W, H), [5])[5],
                          {"why": "the engine logged no player"})
@@ -443,6 +462,33 @@ class MainTest(TempCase):
             with self.subTest(box=bad), self.assertRaises(SystemExit):
                 self.run_main(["--runs", run.dir, "--box", bad, "--dry-run"])
 
+    def test_the_bodys_own_box_is_planned_recorded_and_titled(self):
+        doc = trace()
+        for row in doc["rows"]:
+            x, y = row["player"]
+            row["body"] = [x - 10, y - 20, x + 10, y + 10]
+        run = Run(self.tmp, doc=doc)
+        code, out, _, made = self.run_main(["--runs", run.dir, "--box", "body", "--frames", "0,10", "--dry-run"])
+        self.assertEqual((code, made), (0, []))
+        self.assertIn("clean: f0@0,0,50,68 f10@54,0,110,68", out)
+        transport = lambda body: (run.frame_of(body), reply("<0f>" + box_token(1, (12, 22, 30, 58), 0.9)))[1]  # noqa: E731
+        code, _, _, _ = self.run_main(["--runs", run.dir, "--box", "body", "--pad", "0", "--frames", "0", "--out", self.tmp / "out"], transport)
+        self.assertEqual(code, 0)
+        report = json.loads((self.tmp / "out" / "anchor.json").read_text(encoding="utf-8"))
+        self.assertEqual((report["box"], report["pad"], report["lift"]), ("body", 0.0, 0.0))
+        self.assertEqual(run.sent[-1], (0, "<0f>1<|box;x1=2;y1=0;x2=41;y2=59;w=160;h=96|>"))
+        self.assertTrue((self.tmp / "out" / "anchor.md").read_text(encoding="utf-8").startswith(
+            "# SAM asked with the player's own collision box, widened by 0 game px"))
+        with self.assertRaises(SystemExit):                       # a lift and the body's own middle do not go together
+            self.run_main(["--runs", run.dir, "--box", "body", "--lift", "5", "--dry-run"])
+
+    def test_a_run_whose_trace_has_no_body_box_is_asked_nothing_with_the_bodys_box(self):
+        run = Run(self.tmp, doc=trace())
+        code, out, _, _ = self.run_main(["--runs", run.dir, "--box", "body", "--frames", "0,10", "--dry-run"])
+        self.assertEqual(code, 0)
+        self.assertIn("f0(not asked: the engine logged no body box for the player)", out)
+        self.assertIn("0 requests at most", out)
+
     def test_a_report_made_with_a_point_says_so(self):
         run = Run(self.tmp, doc=trace())
         transport = lambda body: (run.frame_of(body), reply("<0f>" + box_token(1, (10, 30, 150, 60), 0.9)))[1]  # noqa: E731
@@ -494,7 +540,7 @@ class WorkflowTest(unittest.TestCase):
                       'python -m agents.sam_probe "${args[@]}"'):
             self.assertLess(cap, job.index(asked), asked)
         self.assertIn('[[ "$ANCHOR" == "true" || "$ANCHOR" == "false" ]]', job)
-        self.assertIn('[[ -z "$BOX" || "$BOX" =~ ^[1-9][0-9]{0,3}x[1-9][0-9]{0,3}$ ]]', job)
+        self.assertIn('[[ -z "$BOX" || "$BOX" =~ ^(body|[1-9][0-9]{0,3}x[1-9][0-9]{0,3})$ ]]', job)
         self.assertIn('[[ -n "$BOX" ]] && anchor+=(--box "$BOX")', job)
         self.assertLess(job.index('[[ -n "$BOX" ]] && anchor+=(--box "$BOX")'), job.index('python -m agents.sam_anchor "${anchor[@]}" --dry-run'))
         self.assertIn('[[ "$LIFT" =~ ^[0-9]{1,3}$ ]]', job)

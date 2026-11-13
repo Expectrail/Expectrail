@@ -332,11 +332,14 @@ def main(argv: list[str] | None = None) -> int:
 
 def _same_question(file, doc: dict, report: dict) -> None:
     """Answers to a point and answers to a box, or to boxes of two sizes, are not the same question."""
-    if doc.get("box") != report.get("box"):
-        def said(b):
+    if (doc.get("box"), doc.get("pad")) != (report.get("box"), report.get("pad")):
+        def said(d):
+            b = d.get("box")
+            if b == "body":
+                return f"the player's own box widened by {d.get('pad'):g}"
             return "a point" if not b else f"a box of {b[0]:g} x {b[1]:g}"
-        raise RuleError(f"{file} was asked with {said(doc.get('box'))} and the other report with "
-                        f"{said(report.get('box'))}: answers to different questions cannot be compared")
+        raise RuleError(f"{file} was asked with {said(doc)} and the other report with "
+                        f"{said(report)}: answers to different questions cannot be compared")
 
 
 def _main_pairs(args) -> int:
