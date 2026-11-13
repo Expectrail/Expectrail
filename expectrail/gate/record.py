@@ -423,6 +423,82 @@ IMPLEMENTED = frozenset({
 })
 
 
+class SchemaPattern:
+    r"""A schema ``pattern`` that never accepts a value Python's own reading of it refuses.
+
+    ``search`` matches only when both readings match: the JSON Schema reading (``translated``) and the
+    pattern as Python reads it (``python``). So the translation can only make the validator stricter;
+    if it misreads a construct, the Python reading still refuses what it always refused."""
+
+    __slots__ = ("pattern", "translated", "python")
+
+    def __init__(self, pattern: str, translated: re.Pattern, python: re.Pattern):
+        self.pattern, self.translated, self.python = pattern, translated, python
+
+    def search(self, value: str):
+        got = self.translated.search(value)
+        if got is None or self.python.search(value) is None:
+            return None
+        return got
+
+
+_PATTERNS: dict[str, SchemaPattern] = {}
+
+# In ECMA-262 these classes are ASCII; Python's are Unicode. \s and \S stay as they are: in a
+# schema they are Unicode whitespace, as in Python.
+_OUTSIDE = {"d": "[0-9]", "D": "[^0-9]", "w": "[A-Za-z0-9_]", "W": "[^A-Za-z0-9_]"}
+_INSIDE = {"d": "0-9", "w": "A-Za-z0-9_"}  # \D and \W inside a class keep Python's meaning
+
+
+def schema_pattern(pattern: str) -> SchemaPattern:
+    r"""A schema's ``pattern``, read as JSON Schema means it (ECMA-262, no flags), never looser than Python.
+
+    Python's ``$`` also matches before a final newline, so ``^[a-z]+$`` would pass ``"godot\n"``; in a
+    schema ``$`` is the end of the string, so every ``$`` outside a character class and not escaped
+    becomes ``\Z``. ``\d``, ``\D``, ``\w`` and ``\W`` are ASCII in a schema and are rewritten as
+    ASCII classes (``\D`` and ``\W`` inside a class are left alone). ``\s`` and ``\S`` are Unicode in
+    both and are left alone. The result is checked together with Python's own reading of the pattern
+    (``SchemaPattern``), so where the two differ the stricter wins: a pattern can refuse a non-ASCII
+    digit for ``\D`` that JSON Schema would take, and that is the intended direction."""
+    got = _PATTERNS.get(pattern)
+    if got is not None:
+        return got
+    out, i, in_class = [], 0, False
+    while i < len(pattern):
+        ch = pattern[i]
+        if ch == "\\":
+            pair = pattern[i:i + 2]
+            letter = pair[1:]
+            table = _INSIDE if in_class else _OUTSIDE
+            out.append(table.get(letter, pair))
+            i += 2
+            continue
+        if in_class:
+            in_class = ch != "]"
+        elif ch == "[":
+            in_class = True
+            # a "]" first in a class is a member, not its end
+            if pattern[i + 1:i + 2] == "^":
+                out.append("[^")
+                i += 2
+                if pattern[i:i + 1] == "]":
+                    out.append("]")
+                    i += 1
+                continue
+            if pattern[i + 1:i + 2] == "]":
+                out.append("[]")
+                i += 2
+                continue
+        elif ch == "$":
+            out.append("\\Z")
+            i += 1
+            continue
+        out.append(ch)
+        i += 1
+    got = _PATTERNS[pattern] = SchemaPattern(pattern, re.compile("".join(out)), re.compile(pattern))
+    return got
+
+
 class SchemaError(Exception):
     """The schema uses a keyword this validator does not implement."""
 
@@ -479,7 +555,7 @@ def errors(value, rule: dict, where: str = "") -> list[str]:
             out.append(f"{here}: shorter than {rule['minLength']}")
         if "maxLength" in rule and len(value) > rule["maxLength"]:
             out.append(f"{here}: longer than {rule['maxLength']}")
-        if "pattern" in rule and re.search(rule["pattern"], value) is None:
+        if "pattern" in rule and schema_pattern(rule["pattern"]).search(value) is None:
             out.append(f"{here}: does not match its pattern")
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         if "minimum" in rule and value < rule["minimum"]:
