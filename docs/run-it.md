@@ -1,8 +1,9 @@
 # Run it
 
 "Run it" on expectrail.tech lets a visitor verify one of Expectrail's sample changes, live, without a
-terminal or GitHub (#265). This page describes slice 1: the workflow, the samples, the recorded vision
-answers and the same run offline. The page itself (slice 2) and the edge function (slice 3) come next.
+terminal or GitHub (#265). This page describes slice 1 (the workflow, the samples, the recorded vision
+answers and the same run offline) and slice 2 (the page, `docs/run-it/`, and a local stub of the edge
+function). The edge function itself (slice 3) comes next.
 
 ## What a visitor chooses
 
@@ -70,6 +71,60 @@ Sean's to dispatch. All three run from a clone of the repository (the manifest i
 The check is an allowlist, not a sanitizer: the page (slice 2) still shows the viewer inside a
 sandboxed frame.
 
+## The page (slice 2)
+
+[`docs/run-it/`](run-it/) is the Run it page: `index.html` and `run-it.js`, static, served by GitHub
+Pages at expectrail.tech/run-it/. It lists the samples from `samples.json`, asks the service to start
+a run, follows it through its phases (waiting for a runner; playing the game and judging each check;
+checking and publishing the evidence), and then shows the run's published folder:
+
+- **The verdict is `status.json`'s decision**, and only an accept backed by recorded vision answers
+  (every question answered from the recording) is shown as accepted, in green. A failed or cancelled
+  run says "no verdict"; a result the page cannot read says "cannot tell". The page never shows more
+  than the verifier decided.
+- Beside every verdict: "vision answers recorded on <date>", or that none are recorded yet; whether
+  the run ended as the sample is expected to; the receipt, "not signed yet (#255)"; when it ran.
+- **The evidence** is the viewer's one-file export (`viewer/evidence.html`, frames embedded), shown in
+  a frame sandboxed with `allow-scripts` only, so it has no origin of its own and cannot reach the
+  page. It can also be downloaded as one file.
+- **The latest finished run of each sample** is listed from `latest.json` at the root of the
+  `run-it-results` branch (`expectrail.run-it-latest/v1`, an index only, never a verdict), and is
+  always labelled as an earlier run with its time. When the service refuses (busy, quota, daily cap,
+  circuit breaker, switched off) or cannot be reached, the page says which and when it resets, and
+  shows the latest run of the sample instead. The publish job writes `latest.json` with main's
+  `python -m expectrail.runit_site latest` after `expectrail.runit check` passed.
+- The page talks only to itself, `https://api.expectrail.tech` and `raw.githubusercontent.com`
+  (its Content-Security-Policy's `connect-src`). No link can point it at another service.
+
+### The service's contract
+
+`contracts/run-it-api.v1.schema.json` (`expectrail.run-it-api/v1`): every body the service sends.
+
+| Request | Answer |
+| --- | --- |
+| `GET /api/health` | `health`: `open`, and `standIn` (true only on the stub with stand-in replays) |
+| `POST /api/run` `{"sample": id}` | `accepted` (202) with a request id the service mints, or `refused` |
+| `GET /api/status/<request id>` | `status`: `queued`, `running`, `publishing`, `published`, `failed` or `cancelled`; or `refused` (404) |
+
+A refusal names its `reason` (`bad-request`, `unknown-sample`, `unknown-request`, `busy` 409,
+`visitor-quota` 429, `daily-cap` 429, `circuit-open` 503, `disabled` 503), a sentence, and when it
+resets. The service never sends a verdict: the page reads the published `status.json` itself.
+
+### The local stub
+
+```
+python3 -m tools.runit_stub                                 real runs (needs Godot, as `runit run` does)
+python3 -m tools.runit_stub --stand-in --stand-in-recorded  stand-in replays, no Godot
+```
+
+then open http://127.0.0.1:8765/run-it/. The stub binds 127.0.0.1 only, serves `docs/` and the
+published folders under `/results/`, and does what the workflow does in the same order: run, main's
+`expectrail.runit check`, publish only a folder that passes, update `latest.json`. It holds the limits
+the edge function will hold: one run at a time, 3 runs per visitor per day (a salted hash of the
+address, never the address), 40 a day in all, and a circuit breaker after 3 failed runs in a row
+(`--per-visitor`, `--daily-cap`, `--breaker`, `--closed` to switch it off). With `--stand-in` the runs
+do not play the game, and the page says so in a banner.
+
 ## The token, plainly
 
 A fine-grained token cannot be limited to one workflow: "Actions: write" can dispatch or cancel any
@@ -81,4 +136,5 @@ so a stolen token cannot spend without Sean.
 
 - Review and merge this workflow's `permissions` (`contents: write` on the publish job).
 - Dispatch the one live recording run per sample, about $1 in all.
-- Later (slice 3): the edge-function account, the token, DNS for an `api.` subdomain.
+- Later (slice 3): the edge-function account, the token, DNS for an `api.` subdomain
+  (`api.expectrail.tech`, the address the page calls).

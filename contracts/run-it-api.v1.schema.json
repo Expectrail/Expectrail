@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/run-it-api.v1.schema.json",
+  "title": "expectrail.run-it-api/v1",
+  "description": "Every body the Run it service sends to the page: the edge function (slice 3) and its local stand-in, tools/runit_stub.py. GET /api/health is a health body; POST /api/run {\"sample\": id} is an accepted body (202) or a refused one; GET /api/status/<request id> is a status body or a refused one (404, unknown-request). A refusal always says which limit and, when it resets on its own, when. The service never sends a verdict: the verdict is the published status.json (expectrail.run-it-result/v1), which the page reads itself.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "kind",
+        "open",
+        "standIn"
+      ],
+      "properties": {
+        "format": {
+          "const": "expectrail.run-it-api/v1"
+        },
+        "kind": {
+          "const": "health"
+        },
+        "open": {
+          "type": "boolean",
+          "description": "false: no run can start now (the service is switched off or its circuit breaker is open)."
+        },
+        "standIn": {
+          "type": "boolean",
+          "description": "true only for the local stub running stand-in replays: its runs are not real runs of the game."
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "kind",
+        "requestId",
+        "sample"
+      ],
+      "properties": {
+        "format": {
+          "const": "expectrail.run-it-api/v1"
+        },
+        "kind": {
+          "const": "accepted"
+        },
+        "requestId": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]{1,40}$",
+          "description": "Minted by the service, never by the visitor."
+        },
+        "sample": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]{1,40}$"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "kind",
+        "reason",
+        "detail",
+        "resetsAt",
+        "retryAfterSeconds"
+      ],
+      "properties": {
+        "format": {
+          "const": "expectrail.run-it-api/v1"
+        },
+        "kind": {
+          "const": "refused"
+        },
+        "reason": {
+          "enum": [
+            "bad-request",
+            "unknown-sample",
+            "unknown-request",
+            "busy",
+            "visitor-quota",
+            "daily-cap",
+            "circuit-open",
+            "disabled"
+          ]
+        },
+        "detail": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "resetsAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+        },
+        "retryAfterSeconds": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 86400
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "kind",
+        "requestId",
+        "sample",
+        "state",
+        "updatedAt",
+        "standIn"
+      ],
+      "properties": {
+        "format": {
+          "const": "expectrail.run-it-api/v1"
+        },
+        "kind": {
+          "const": "status"
+        },
+        "requestId": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]{1,40}$"
+        },
+        "sample": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]{1,40}$"
+        },
+        "state": {
+          "enum": [
+            "queued",
+            "running",
+            "publishing",
+            "published",
+            "failed",
+            "cancelled"
+          ],
+          "description": "published: the run's folder is on the results branch and its status.json says what the verifier decided. failed and cancelled: nothing was published, so there is no verdict."
+        },
+        "updatedAt": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+        },
+        "standIn": {
+          "type": "boolean"
+        }
+      }
+    }
+  ]
+}

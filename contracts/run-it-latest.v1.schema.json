@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/run-it-latest.v1.schema.json",
+  "title": "expectrail.run-it-latest/v1",
+  "description": "latest.json at the root of the run-it-results branch: for each sample, the most recent published run. It is an index only: the page reads the run's own status.json for what the verifier decided, so this file never carries a verdict. Written by expectrail.runit_site.update_latest in the publish job, after expectrail.runit check passed on the folder.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "samples"],
+  "properties": {
+    "format": {"const": "expectrail.run-it-latest/v1"},
+    "samples": {
+      "type": "object",
+      "maxProperties": 40,
+      "propertyNames": {"pattern": "^[a-z0-9-]{1,40}$"},
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId", "finishedAt"],
+        "properties": {
+          "requestId": {"type": "string", "pattern": "^[a-z0-9-]{1,40}$"},
+          "finishedAt": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"}
+        }
+      }
+    }
+  }
+}
