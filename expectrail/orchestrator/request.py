@@ -98,19 +98,35 @@ def _files_digest(files: list[Path], root: Path) -> str:
 TreeProblem = tree.TreeProblem
 
 
-def tree_files(root: Path, checkout: Path) -> list[tuple[str, Path]]:
+def engine_folders(adapter: str | None = None) -> tuple[str, ...]:
+    """The folders the engine writes for itself, which are no part of a game: the adapter's own list
+    (``harness.adapters``, ``ignore``), so a job's trees are taken the way the gate and the replay
+    take them. Without a name it is Godot's, as before requests named an adapter here. A name the
+    registry does not hold leaves nothing out: that job is refused before anything runs, and until
+    then its digest covers every file."""
+    if adapter is None:
+        return tree.GODOT_SKIP
+    from harness import adapters
+
+    try:
+        return tuple(adapters.get(adapter).ignore)
+    except KeyError:
+        return ()
+
+
+def tree_files(root: Path, checkout: Path, adapter: str | None = None) -> list[tuple[str, Path]]:
     """Every file a replay's copy of ``root`` holds, as (path inside the game, file to read), sorted:
     ``harness.tree.files`` with the checkout as the folder a link may lead into."""
-    return tree.files(root, within=checkout, skip=tree.GODOT_SKIP)
+    return tree.files(root, within=checkout, skip=engine_folders(adapter))
 
 
-def tree_digest(root: Path, checkout: Path | None = None) -> str | None:
+def tree_digest(root: Path, checkout: Path | None = None, adapter: str | None = None) -> str | None:
     """A digest of what a replay of the game at ``root`` reads; None when the folder is not there.
     Raises TreeProblem for a link that leaves ``checkout`` (default: ``root`` itself) or loops."""
     root = Path(root)
     if not root.is_dir():
         return None
-    return tree.digest(root, within=checkout, skip=tree.GODOT_SKIP)
+    return tree.digest(root, within=checkout, skip=engine_folders(adapter))
 
 
 def read_checks(doc: dict):
@@ -169,7 +185,7 @@ def _trees(doc: dict) -> tuple[dict, list[str]]:
         if checkout is None:
             continue
         try:
-            trees[key] = tree_digest(checkout / game, checkout)
+            trees[key] = tree_digest(checkout / game, checkout, doc["project"]["adapter"])
         except TreeProblem as exc:
             # Named, never hashed and never skipped: the tree stays null, the worker refuses the job
             # on the reason (`problems`), and the reason is part of what the request means.

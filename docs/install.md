@@ -77,7 +77,7 @@ usage on stderr and "Nothing was run". It was 2 until November 12, 2026, which i
 The wheel holds what a verification runs, and nothing that could not work from an installed copy.
 
 - **In it:** the gate and the orchestrator (`expectrail.gate`, `expectrail.orchestrator`) and the
-  modules they import; four harness modules (`run`, `sandbox`, `tree` and the package's own); the
+  modules they import; five harness modules (`run`, `sandbox`, `tree`, `adapters` and the package's own); the
   reader of the engine's position log; the contract schemas; the bundled Godot game, the smoke
   route, one approved spec and one seeded bug, which are what `sample` runs.
 - **Not in it:** the fixer, the fix loop and everything that reads a model key; the benches and the

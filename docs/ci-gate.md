@@ -105,10 +105,14 @@ Both use the actions from the checked-out repository (`./.github/actions/...`) i
 | comment | `watch` | empty | More paths the verdict depends on, one per line (end a folder with `/`); the comment warns when the pull request changes one |
 | comment | `bot-login` | `github-actions[bot]` | The only author whose comment is ever updated |
 
-The adapter boundary (a separate workstream) will add an `adapter` input to the verify action, with
-`godot` as its default. The record already carries `"adapter": "godot"`, and the only place that
-replays a route is `harness_replay` in [`expectrail/gate/verify.py`](../expectrail/gate/verify.py), so
-another engine plugs in there. Until then, the gate supports Godot only.
+The gate takes its engine from the adapter registry ([harness.md](harness.md), "Adapters"):
+`run_gate(adapter=...)` asks the adapter for the replay, for the file that marks a project folder, for
+the folders left out of the game's digest and for the capture rate, and names no engine itself. The
+record's `adapter` is that adapter's name. `godot` is the default and the only adapter with a verify
+path today, so the gate still supports Godot only; a name the registry does not hold, or an adapter
+with no verify path, stops the gate before anything is replayed. The verify action has no `adapter`
+input yet. The gate reads the engine's record as a position log of the player and the ground line
+(`expectrail.trace/v0`), so an engine's harness has to write that log to be judged by it.
 
 ## What the gate decides
 

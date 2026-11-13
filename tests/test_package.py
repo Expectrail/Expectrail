@@ -86,6 +86,13 @@ NOT_PACKAGED = {
 NOT_ON_A_VERIFICATION = {
     "agents.sam_observations": "only when the SAM observer is asked for; the gate reads the engine's position log "
                                "and never asks (expectrail.gate.verify.observations)",
+    # harness.adapters is in the wheel: the verify path takes its engine from the registry. The
+    # registry also lists the web and Unity adapters, whose runners are imported only inside their
+    # own `run`. Neither adapter has a verify path, so no verification can reach those imports.
+    "harness.web": "only inside the web adapter's run; the adapter has no verify path (harness.adapters.verifying)",
+    "harness.web.run": "the same import: the web adapter's runner",
+    "harness.unity": "only inside the Unity adapter's run; the adapter has no verify path",
+    "harness.unity.run": "the same import: the Unity adapter's runner",
 }
 
 

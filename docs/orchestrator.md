@@ -179,6 +179,15 @@ into the job's `staging/` and returns a decision. `godot` is the CI gate's verif
 alike; a test holds that on the gate tests' stand-in replay. Its preflight's tool check is the part
 of `expectrail doctor`'s list every run needs ([install.md](install.md)), so the two cannot disagree.
 
+The engines are picked through the adapter registry ([harness.md](harness.md), "Adapters"):
+there is one for every registered adapter that has a verify path, and it takes the replay, the file
+that marks a project folder, the folders left out of the game's digest and the list of what a run
+needs from that adapter. A job's trees are taken with the same adapter's folders, so the job and
+its evidence name a game the same way. A job that names an adapter the registry does not hold
+completes as needs-review with `INPUT_INVALID` ("no adapter named ..."), and so does one whose
+adapter has no verify path ("the adapter 'unity' has no verify path yet; those that have one:
+godot"). Nothing runs in either case. Today `godot` is the only adapter with a verify path.
+
 The engine tells the job when it moves on: `observing` when a replay starts, `evaluating` when its
 checks are judged. It takes the gate's rule for which observers judge (`GodotGate(rule="both",
 visual=...)`, [ci-gate.md](ci-gate.md), "Two observers, one rule"). The engine registered for `godot`

@@ -1,6 +1,11 @@
 """What runs a job's verification, per adapter. An engine verifies; none of them starts a fixer or
 reads saved data in place of a run.
 
+The engines are picked through the adapter registry (``harness.adapters``): ``ENGINES`` has one for
+every registered adapter that has a verify path (``verify_run``), and no other. A request that names
+an adapter the registry does not hold, or one with no verify path, completes as needs-review with
+``INPUT_INVALID`` and nothing runs.
+
 An engine has two parts:
 
 - ``preflight(request)`` returns the diagnostics that stop the job before anything runs (a missing
@@ -12,6 +17,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Callable
 
@@ -33,28 +39,46 @@ class Result:
     policy: str | None = None
 
 
-class GodotGate:
-    """The Godot verification the CI gate runs (expectrail.gate.verify.run_gate): the head, and the
-    base when there is one, replayed on the routes and judged by the approved specs from the base.
+class Gate:
+    """The verification the CI gate runs (expectrail.gate.verify.run_gate), on one engine adapter:
+    the head, and the base when there is one, replayed on the routes and judged by the approved
+    specs from the base.
+
+    Everything about the engine comes from the adapter's entry in the registry (harness.adapters):
+    the replay, how a project folder is recognised, what a run needs on this machine. The entry is
+    read when it is used, so the engine follows the registry.
 
     ``rule`` is which observers judge (expectrail.gate.record.RULES). With ``both`` every check
     needs the engine's record and ``visual`` (an expectrail.observers.FramesObserver) to pass, and
-    with no ``visual`` the engine accepts nothing (#327). The engine registered below still judges
+    with no ``visual`` the engine accepts nothing (#327). The engines registered below still judge
     ``engine-only``, as the gate does; a job's record has an ``observers`` block when the rule was ``both``."""
 
-    name = "godot"
-
-    def __init__(self, replay: Callable | None = None, *, rule: str = "engine-only", visual=None):
-        self._replay = replay   # a stand-in for the harness, for tests; None runs Godot
+    def __init__(self, adapter: str = "godot", replay: Callable | None = None, *, rule: str = "engine-only",
+                 visual=None):
+        self.name = adapter
+        self._replay = replay   # a stand-in for the harness, for tests; None runs the adapter's
         self._rule, self._visual = rule, visual
+
+    def _adapter(self):
+        from harness import adapters
+
+        return adapters.get(self.name)
 
     def preflight(self, request: dict) -> list[dict]:
         found: list[dict] = []
+        try:
+            adapter = self._adapter()
+        except KeyError:
+            adapter = None
+        if adapter is None or not adapter.can_verify():
+            # The registry changed after this engine was made. Nothing is run on a guess.
+            return [st.diagnostic("INPUT_INVALID", stage="preparing", detail=why_not(self.name))]
         head = Path(request["head"]["checkout"])
         game = head / request["project"]["game"]
-        if not (game.is_dir() and (game / "project.godot").is_file()):
+        if not adapter.is_project(game):
             found.append(st.diagnostic("INPUT_INVALID", stage="preparing",
-                                       detail=f"no Godot project at {request['project']['game']} in the head checkout"))
+                                       detail=f"no {adapter.label()} project at {request['project']['game']} "
+                                              f"in the head checkout"))
         base = request["base"]
         if base is not None and not Path(base["checkout"]).is_dir():
             found.append(st.diagnostic("INPUT_INVALID", stage="preparing", detail="the base checkout is not a folder"))
@@ -71,15 +95,10 @@ class GodotGate:
             found += self._tools()
         return found
 
-    @staticmethod
-    def _tools() -> list[dict]:
-        """What every run needs and this machine lacks: the list `expectrail doctor` reports
-        (expectrail.doctor.for_run), checked by the same functions, so `doctor` and a run cannot
-        disagree about a tool. Each diagnostic names the fix."""
-        from expectrail import doctor
-
-        return [st.diagnostic("TOOL_MISSING", stage="preparing", detail=f"{c.found}. Fix: {c.fix}")
-                for c in doctor.missing(doctor.for_run())]
+    def _tools(self) -> list[dict]:
+        """What every run on this engine needs and this machine lacks, by the adapter's own account
+        (``missing``). Each diagnostic names the fix."""
+        return _tools(self.name)
 
     def execute(self, request: dict, paths: st.JobPaths, advance: Callable[[str], object]) -> Result:
         from expectrail.gate import verify as gate
@@ -99,7 +118,7 @@ class GodotGate:
             base=Path(base["checkout"]) if base else None,
             # The isolated class: every replay in the sandbox, or the gate refuses and nothing is accepted.
             require_sandbox=request["executionClass"] == "isolated",
-            checks=checks, rule=self._rule, visual=self._visual, on_phase=advance,
+            checks=checks, rule=self._rule, visual=self._visual, on_phase=advance, adapter=self.name,
             **({"replay": self._replay} if self._replay is not None else {}))
         # The grade stays `diagnostic` even when every replay was sandboxed: the ledger's `isolated`
         # also needs a separate trusted job that judges and signs (#254, #255). What the sandbox did
@@ -110,4 +129,64 @@ class GodotGate:
                       policy=checks.digest)
 
 
-ENGINES = {GodotGate.name: GodotGate()}
+def _tools(adapter: str) -> list[dict]:
+    from harness import adapters
+
+    missing = adapters.get(adapter).missing
+    return [st.diagnostic("TOOL_MISSING", stage="preparing", detail=line) for line in (missing() if missing else [])]
+
+
+class GodotGate(Gate):
+    """The gate's verification on the ``godot`` adapter."""
+
+    name = "godot"
+
+    def __init__(self, replay: Callable | None = None, *, rule: str = "engine-only", visual=None):
+        super().__init__("godot", replay, rule=rule, visual=visual)
+
+    @staticmethod
+    def _tools() -> list[dict]:
+        """What every run needs and this machine lacks: the list `expectrail doctor` reports
+        (expectrail.doctor.for_run), which the adapter asks by the same functions, so `doctor` and a
+        run cannot disagree about a tool. Each diagnostic names the fix."""
+        return _tools("godot")
+
+
+def why_not(name: str) -> str:
+    """Why no engine verifies with the adapter ``name``, in one sentence for a diagnostic."""
+    from harness import adapters
+
+    if name not in adapters.names():
+        return f"no adapter named {name!r}"
+    return (f"the adapter {name!r} has no verify path yet; those that have one: "
+            f"{', '.join(adapters.verifying()) or 'none'}")
+
+
+class Engines(Mapping):
+    """The engines, picked through the adapter registry (harness.adapters): one for every adapter
+    that has a verify path, and none for any other name. The registry is read at each lookup, so an
+    adapter registered later has an engine and one that was removed has none."""
+
+    def __init__(self):
+        self._made: dict[str, Gate] = {}
+
+    def _names(self) -> tuple[str, ...]:
+        from harness import adapters
+
+        return adapters.verifying()
+
+    def __getitem__(self, name: str) -> Gate:
+        if not isinstance(name, str) or name not in self._names():
+            raise KeyError(name)
+        if name not in self._made:
+            self._made[name] = GodotGate() if name == GodotGate.name else Gate(name)
+        return self._made[name]
+
+    def __iter__(self):
+        return iter(self._names())
+
+    def __len__(self) -> int:
+        return len(self._names())
+
+
+ENGINES = Engines()

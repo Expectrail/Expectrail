@@ -62,7 +62,7 @@ def work(store: st.JobStore, job_id: str, engines: dict | None = None, *, own_gr
         engine = engines.get(request["project"]["adapter"])
         if engine is None:
             return _needs_review(store, job_id, [st.diagnostic(
-                "INPUT_INVALID", stage="preparing", detail=f"no adapter named {request['project']['adapter']!r}")])
+                "INPUT_INVALID", stage="preparing", detail=eng.why_not(request["project"]["adapter"]))])
         status = store.advance(job_id, "preparing")
         # The files are read again here, by the process that will run them. A link that leaves the
         # checkout stops the job, and so does a game or a check that changed since the job was

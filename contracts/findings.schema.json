@@ -42,8 +42,9 @@
       }
     },
     "adapter": {
-      "enum": ["godot"],
-      "description": "how the game was replayed; the Godot harness is the only one until the adapter boundary lands"
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,31}$",
+      "description": "how the game was replayed: the name of the engine adapter in the registry (harness/adapters.py), as the verify request names it. The gate writes a record only for an adapter that has a verify path; godot is the one that has today"
     },
     "pullRequest": {
       "oneOf": [

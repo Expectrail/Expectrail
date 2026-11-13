@@ -256,6 +256,18 @@ rate, the trace format, a default route and the seeded bugs.
 
 The Godot adapter's tree digest is byte-identical to `harness.run.tree_digest` on the game.
 
+The verify path asks four more things of an adapter, and each has a default that means "no verify
+path":
+
+| Field | What it says | `godot` | `web`, `unity` |
+| :--- | :--- | :--- | :--- |
+| `verify_run` | The replay a verification makes: `verify_run(route, out, *, game, capture_frames, sandbox=None, within=None)`. The game is always given; `sandbox` is the replay sandbox's mode and `within` the checkout a link in the game may lead into | `harness.run.run` | none |
+| `project_file` | The file at the root of every project, which is how a project folder is recognised | `project.godot` | none |
+| `title` | The engine's name in a sentence a person reads | Godot | none |
+| `missing` | What a run needs and this machine lacks, each with its fix | the list `expectrail doctor` reports | none |
+
+`adapters.verifying()` lists the adapters that have a verify path. Today that is `godot` alone.
+
 What takes an adapter:
 
 - `agents/fixer.py`, `agents/escalation.py`, `agents/assurance/proposal.py` and
@@ -267,6 +279,9 @@ What takes an adapter:
 - `--adapter` on `harness.replay_check` and `harness.check_seeded` (default `godot`; both also run
   `--adapter web`), and on `agents.web_bench` and `agents.web_fix` (default `web`; they accept any
   adapter whose replays write the web trace).
+- The verify path: `expectrail.gate.verify.run_gate(adapter=...)` (the CI gate and `expectrail verify`)
+  and the orchestrator's engines (`expectrail/orchestrator/engines.py`), which has one engine for
+  every adapter with a verify path and none for any other name.
 - Not yet: `agents/verifier.py`, the Godot verifier, still calls `harness.run` itself, and so does
   everything built on it (`agents/loop.py`, `agents/heldout_bench.py`, `agents/matrix.py`,
   `agents/judge_bench.py`). An `--adapter` on those would switch some of their replays and not others.
