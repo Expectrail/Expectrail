@@ -1,5 +1,5 @@
 """python3 -m expectrail.repro check | visibility | render | screen | screen-render | evidence | evidence-render
-| reach | cases | score | score-render | breakdown"""
+| reach | menu | cases | score | score-render | breakdown"""
 from __future__ import annotations
 
 import argparse
@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from expectrail.jit.offer import DEFAULT as DEFAULT_OFFER, OFFERS
-from expectrail.repro import bench, breakdown, evidence, reach, score, screen, visibility
+from expectrail.repro import bench, breakdown, evidence, menu, reach, score, screen, visibility
 
 PROFILE = bench.REPO / "discovery" / "platformer.profile.json"
 
@@ -31,6 +31,12 @@ def main(argv: list[str] | None = None) -> int:
     g.add_argument("--bench", type=Path, default=bench.BENCH)
     g.add_argument("--profile", type=Path, default=PROFILE)
     g.add_argument("--report", type=Path, default=None, help="a bug report; it only orders the probes")
+    m = sub.add_parser("menu", help="print the menu probes: a library walk, then the game's menu opened; no model, "
+                                    "no engine")
+    m.add_argument("--bench", type=Path, default=bench.BENCH)
+    m.add_argument("--profile", type=Path, default=PROFILE)
+    m.add_argument("--menu-action", action="append", required=True,
+                   help="an input action that opens the game's menu (repeatable); the game must declare it")
     r = sub.add_parser("render", help="print a visibility record as a table")
     r.add_argument("record", type=Path)
     r.add_argument("--bench", type=Path, default=bench.BENCH)
@@ -57,6 +63,10 @@ def main(argv: list[str] | None = None) -> int:
     ev.add_argument("--jobs", type=int, default=1)
     ev.add_argument("--probe", action="append", default=[], help="a probe id (repeatable); default: all")
     ev.add_argument("--reach", action="store_true", help="the reach probes as well as the library probes")
+    ev.add_argument("--menu-action", action="append", default=[],
+                    help="an input action that opens the game's menu (repeatable): add the menu probes "
+                         "(expectrail/repro/menu.py); the game must declare it")
+    ev.add_argument("--menu-only", action="store_true", help="with --menu-action: the menu probes alone")
     ev.add_argument("--recorded-answers", type=Path, default=None,
                     help="a folder of a visual observer's recorded answers to read; nothing is ever asked")
     ev.add_argument("--object", action="append", default=[], metavar="NAME=PROMPT",
@@ -135,6 +145,13 @@ def main(argv: list[str] | None = None) -> int:
             report = args.report.read_text(encoding="utf-8", errors="replace") if args.report else ""
             print(json.dumps(reach.reach(report, profile["actions"], jit_library(profile["actions"])), indent=1))
             return 0
+        if args.cmd == "menu":
+            from expectrail.contracts import load_strict
+            from expectrail.jit.probes import jit_library
+
+            profile = load_strict(args.profile, "mechanics-profile")
+            print(json.dumps(_menu_probes(profile, jit_library(profile["actions"]), args.menu_action), indent=1))
+            return 0
         if args.cmd == "evidence-render":
             record = evidence.load(args.record)
             if args.for_proposer:
@@ -166,6 +183,12 @@ def main(argv: list[str] | None = None) -> int:
             probes = jit_library(profile["actions"])
             if args.reach:
                 probes = probes + reach.reach_probes(profile["actions"], probes)
+            if args.menu_only and not args.menu_action:
+                raise evidence.EvidenceError("--menu-only needs at least one --menu-action")
+            if args.menu_action:
+                made = _menu_probes(profile, jit_library(profile["actions"]), args.menu_action)
+                probes = made if args.menu_only else probes + made
+                profile = menu.with_menu_actions(profile, args.menu_action)
             if args.probe:
                 unknown = sorted(set(args.probe) - {p["id"] for p in probes})
                 if unknown:
@@ -220,9 +243,18 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write(visibility.render(record, doc))
         return 0
     except (bench.BenchError, visibility.VisibilityError, screen.ScreenError, score.ScoreError, reach.ReachError,
-            evidence.EvidenceError, breakdown.BreakdownError, OSError) as exc:
+            evidence.EvidenceError, breakdown.BreakdownError, menu.MenuError, OSError) as exc:
         print(f"repro: {exc}", file=sys.stderr)
         return 1
+
+
+def _menu_probes(profile: dict, library: list[dict], menu_actions: list[str]) -> list[dict]:
+    """The menu probes for the profile's game, its menu actions checked against the game's own project file."""
+    game = bench.REPO / profile["game"]["path"]
+    if not game.resolve().is_relative_to(bench.REPO.resolve()):
+        raise menu.MenuError("the profile's game is outside the repository")
+    declared = menu.declared_actions(game / "project.godot")
+    return menu.menu_probes(library, menu_actions, profile["actions"], declared)
 
 
 if __name__ == "__main__":

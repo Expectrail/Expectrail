@@ -270,6 +270,19 @@ the game along it, the engine's record or frames for a visual observer, is the c
 generator is offered"); under the default, `baseline`, they draw on the library alone, so the
 baseline run is unchanged.
 
+**Menu probes** (November 13, 2026, issue #285 step 3; [`expectrail/repro/menu.py`](../expectrail/repro/menu.py)).
+The bundled game draws its coin counter only on the pause menu, and two bench defects break the
+counter. Two things kept every route away from it. The harness was paused with the game, so a route
+that pressed the pause key never reached its last tick; it now keeps running while the tree is paused
+(`harness/godot/expectrail_harness.gd`, held by the engine test `tests/test_pause_input.py`). And
+the action catalog has no pause action: a menu probe is a library walk, then one tap of a menu action
+the caller names and the game's `project.godot` declares, then 90 ticks with the menu drawn. The
+action is not added to the mechanics profile, so no offer's prompt or probe list changes, and **no
+offer uses menu probes**. Replayed on the real engine with no model, both coin-counter defects change
+the screen from the frame the menu opens on, in the corner where the count is drawn, and nothing in
+the engine's record; the records and the table are on the bench's page. Like the two other
+screen-only defects, they wait on checks that can speak about what is drawn (#286).
+
 **What each defect changes on the screen** (November 12, 2026; [`expectrail/repro/screen.py`](../expectrail/repro/screen.py),
 `expectrail.repro-screen/v1`). Every library probe was replayed with its frames captured, on the
 clean game twice and on each defect build once (650 replays on the real engine, in a cloud

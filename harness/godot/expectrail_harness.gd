@@ -1,7 +1,8 @@
 extends Node
 ## Expectrail harness. The runner adds this script to a copy of the game as an autoload; the game
 ## itself is never edited. It presses input actions on exact physics ticks, as a route file says,
-## and records where the player is after every tick, then quits.
+## and records where the player is after every tick, then quits. It keeps running while the game
+## pauses its scene tree (a pause menu), so a route can open a menu and close it again.
 ##
 ## User arguments (after `--`): --route=<path> --trace=<path> [--seed=<int>] [--player=<node name>]
 ##
@@ -89,6 +90,11 @@ func _ready() -> void:
 	var args := _parse_args(OS.get_cmdline_user_args())
 	if not args.has("route"):
 		return  # Not a harness run: behave as if absent.
+	# Keep pressing and recording while the game pauses its tree, as a player's keys keep working on a
+	# pause menu. Inherited from the root, the harness was paused with the game: no press reached the
+	# menu, no row was recorded, and a route that paused never reached its last tick. The recorder
+	# below inherits this. A game that never pauses is not affected.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	seed(int(args.get("seed", "1")))
 	_trace_path = args.get("trace", "")
 	_player_name = args.get("player", "Player")
