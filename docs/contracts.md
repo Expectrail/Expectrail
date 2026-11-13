@@ -137,13 +137,14 @@ phases do not add up to the whole.
 
 ## The public reproduction bench (added November 11)
 
-Four records for issue #285, all about public defects only.
+Five records for issue #285, all about public defects only.
 
 | Record | Written by | Read by |
 | --- | --- | --- |
 | `repro-bench` (`expectrail.repro-bench/v1`, [`contracts/repro-bench.v1.schema.json`](../contracts/repro-bench.v1.schema.json), example [`repro-bench.json`](../contracts/examples/repro-bench.json)) | By hand: [`bench/jit/public/defects.json`](../bench/jit/public/defects.json) | `expectrail.repro.bench.load`, `python3 -m expectrail.repro check` |
 | `repro-visibility` (`expectrail.repro-visibility/v1`, [`contracts/repro-visibility.v1.schema.json`](../contracts/repro-visibility.v1.schema.json); the committed records [`bench/jit/public/visibility.json`](../bench/jit/public/visibility.json), on the library probes, and [`visibility-reach.json`](../bench/jit/public/visibility-reach.json), on the reach probes, are the examples) | `python3 -m expectrail.repro visibility`, with `--reach` for the reach probes | `expectrail.repro.visibility.load`, `python3 -m expectrail.repro render` |
 | `repro-screen` (`expectrail.repro-screen/v1`, [`contracts/repro-screen.v1.schema.json`](../contracts/repro-screen.v1.schema.json); the committed record [`bench/jit/public/screen.json`](../bench/jit/public/screen.json) is the example) | `python3 -m expectrail.repro screen` (added November 12) | `expectrail.repro.screen.load`, `python3 -m expectrail.repro screen-render` |
+| `repro-evidence` (`expectrail.repro-evidence/v1`, [`contracts/repro-evidence.v1.schema.json`](../contracts/repro-evidence.v1.schema.json), example [`repro-evidence.json`](../contracts/examples/repro-evidence.json), a recorded run; the committed records `bench/jit/public/evidence-<defect>.json`) | `python3 -m expectrail.repro evidence` (added November 12) | `expectrail.repro.evidence.load`, `python3 -m expectrail.repro evidence-render` |
 | `repro-score` (`expectrail.repro-score/v1`, [`contracts/repro-score.v1.schema.json`](../contracts/repro-score.v1.schema.json), example [`repro-score.json`](../contracts/examples/repro-score.json), made-up rows) | `python3 -m expectrail.repro score`, from a live run's `jit-run` records | `expectrail.repro.score.load`, `python3 -m expectrail.repro score-render` |
 
 A bench entry is a defect id, its family, a patch against the clean game, a bug report, where its
@@ -172,6 +173,29 @@ that does not fit its own numbers (more frames than were captured, a rectangle o
 more pixels than the rectangle holds). What a reader cannot check from the record: it holds no
 frames, so the counts are as good as the run that made them, and they are exact only for the
 renderer it names. It has no field for a rate, and no visual observer's answer is in it.
+
+An evidence record is about one bug build, not the bench: what it changes against the clean game
+along each probe, from the same three replays (the clean game twice, the bug build once, every frame
+captured). A row has the fields of the engine's record that differ with the first tick and how
+many, the signals that read differently, the frames that differ with the first one and the size and
+place of the difference, and one of `record-and-screen`, `screen-only`, `record-only`, `neither` or
+`error`. Where a folder of a visual observer's recorded answers was given, a row also has what the
+observer answered on the differing frames of both builds, per named object: on how many frames it
+found the object in each, on how many in one only, and how far its surest box moved. The writer
+looks answers up and cannot ask for one (`"source": "recorded-answers"` is the only value the schema
+has), and a frame with no recorded answer is counted as not answered. The reader recomputes each
+label and the totals and refuses a row that disagrees with itself: a signal that is not a trace
+signal or did not move, a field counted on more ticks than follow its first, an observer's reading
+on a row where no frame differs, and observer counts that cannot all be true at once. What a reader
+cannot check: the record holds no frames and no answers, so its numbers are as good as the run that
+made them; the observer's numbers are whatever the answers folder held, and nothing ties that folder
+to a model's real output. It has no verdict and no threshold: it never says an observer saw the
+bug. `for_proposer` is the bounded summary a prompt could carry. Its names come from its caller,
+not from the record, which is untrusted data and whose probe ids and object names only have to fit
+the schema's pattern: the caller gives its own probe ids and object names; a row for any other
+probe, an observed object under any other name, and a record field that is not one of the trace's
+own are counted and not named; a signal that is not a trace signal refuses the record. A number
+that is not finite is refused too, in a file or in a record built in memory. Nothing reads it yet.
 
 A score record has one row per defect of the bench: `reproduced`, `not-reproduced` or `no-result`;
 the checks that reproduced it; for a miss, a reason from a closed list and the evidence for it; what

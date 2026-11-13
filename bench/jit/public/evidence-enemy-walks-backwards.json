@@ -1,0 +1,683 @@
+{
+ "basePatchSha256": [
+  "d5f98a8deb2af9da727330d119c1755cae4f00d436aa59e818610c20d789080b"
+ ],
+ "engine": "Godot 4.7.2-stable",
+ "engineRetries": 0,
+ "format": "expectrail.repro-evidence/v1",
+ "frame": {
+  "height": 960,
+  "width": 1600
+ },
+ "framesPerSecond": 60,
+ "maxFramesExamined": 8,
+ "observer": null,
+ "probes": [
+  "wait-long",
+  "hold-right",
+  "hold-left",
+  "reverse",
+  "jump-w0-x1",
+  "jump-w0-x2",
+  "jump-w0-x8",
+  "jump-w40-x1",
+  "jump-w40-x2",
+  "jump-w40-x8",
+  "jump-w80-x1",
+  "jump-w80-x2",
+  "jump-w80-x8",
+  "jump-w120-x1",
+  "jump-w120-x2",
+  "jump-w120-x8",
+  "shoot-right-every48",
+  "shoot-right-every12",
+  "shoot-left-every48",
+  "shoot-left-every12",
+  "move-fire-right",
+  "move-fire-left",
+  "jump-l40-x1",
+  "jump-l40-x2",
+  "jump-l40-x8"
+ ],
+ "renderer": "Mesa - llvmpipe (LLVM 20.1.2, 256 bits)",
+ "replaysPerBuild": {
+  "bugBuild": 1,
+  "clean": 2
+ },
+ "rows": [
+  {
+   "observer": null,
+   "probe": "wait-long",
+   "record": null,
+   "screen": {
+    "atFrame": 15,
+    "box": [
+     1527,
+     660,
+     1600,
+     792
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 107,
+    "of": 575,
+    "pixels": 3543
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "hold-right",
+   "record": null,
+   "screen": {
+    "atFrame": 72,
+    "box": [
+     808,
+     187,
+     1600,
+     793
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 170,
+    "of": 170,
+    "pixels": 17126
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "hold-left",
+   "record": null,
+   "screen": {
+    "atFrame": 5,
+    "box": [
+     1531,
+     660,
+     1600,
+     790
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 17,
+    "of": 170,
+    "pixels": 3262
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "reverse",
+   "record": null,
+   "screen": {
+    "atFrame": 72,
+    "box": [
+     1169,
+     190,
+     1600,
+     793
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 170,
+    "of": 170,
+    "pixels": 17126
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w0-x1",
+   "record": null,
+   "screen": {
+    "atFrame": 14,
+    "box": [
+     1527,
+     660,
+     1600,
+     793
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 50,
+    "of": 50,
+    "pixels": 3568
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w0-x2",
+   "record": null,
+   "screen": {
+    "atFrame": 8,
+    "box": [
+     1525,
+     660,
+     1600,
+     792
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 60,
+    "of": 60,
+    "pixels": 3653
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w0-x8",
+   "record": null,
+   "screen": {
+    "atFrame": 15,
+    "box": [
+     1527,
+     660,
+     1600,
+     792
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 107,
+    "of": 120,
+    "pixels": 3543
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w40-x1",
+   "record": null,
+   "screen": {
+    "atFrame": 49,
+    "box": [
+     1347,
+     185,
+     1600,
+     793
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 70,
+    "of": 70,
+    "pixels": 16079
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w40-x2",
+   "record": null,
+   "screen": {
+    "atFrame": 68,
+    "box": [
+     1344,
+     187,
+     1600,
+     793
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 80,
+    "of": 80,
+    "pixels": 14881
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w40-x8",
+   "record": null,
+   "screen": {
+    "atFrame": 79,
+    "box": [
+     1347,
+     189,
+     1600,
+     793
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 140,
+    "of": 140,
+    "pixels": 14251
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w80-x1",
+   "record": null,
+   "screen": {
+    "atFrame": 76,
+    "box": [
+     1167,
+     189,
+     1600,
+     793
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 90,
+    "of": 90,
+    "pixels": 16908
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w80-x2",
+   "record": null,
+   "screen": {
+    "atFrame": 71,
+    "box": [
+     1172,
+     189,
+     1600,
+     793
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 100,
+    "of": 100,
+    "pixels": 16446
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w80-x8",
+   "record": null,
+   "screen": {
+    "atFrame": 136,
+    "box": [
+     1169,
+     185,
+     1600,
+     792
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 160,
+    "of": 160,
+    "pixels": 16908
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w120-x1",
+   "record": null,
+   "screen": {
+    "atFrame": 78,
+    "box": [
+     974,
+     185,
+     1600,
+     792
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 110,
+    "of": 110,
+    "pixels": 17070
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w120-x2",
+   "record": null,
+   "screen": {
+    "atFrame": 51,
+    "box": [
+     982,
+     187,
+     1600,
+     792
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 120,
+    "of": 120,
+    "pixels": 16862
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w120-x8",
+   "record": null,
+   "screen": {
+    "atFrame": 77,
+    "box": [
+     973,
+     185,
+     1600,
+     792
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 180,
+    "of": 180,
+    "pixels": 16972
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "shoot-right-every48",
+   "record": null,
+   "screen": {
+    "atFrame": 15,
+    "box": [
+     1527,
+     660,
+     1600,
+     792
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 109,
+    "of": 117,
+    "pixels": 3543
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "shoot-right-every12",
+   "record": null,
+   "screen": {
+    "atFrame": 15,
+    "box": [
+     1527,
+     660,
+     1600,
+     792
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 109,
+    "of": 117,
+    "pixels": 3543
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "shoot-left-every48",
+   "record": null,
+   "screen": {
+    "atFrame": 0,
+    "box": [
+     1534,
+     660,
+     1600,
+     781
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 53,
+    "of": 123,
+    "pixels": 3059
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "shoot-left-every12",
+   "record": null,
+   "screen": {
+    "atFrame": 0,
+    "box": [
+     1534,
+     660,
+     1600,
+     781
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 53,
+    "of": 123,
+    "pixels": 3059
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "move-fire-right",
+   "record": null,
+   "screen": {
+    "atFrame": 45,
+    "box": [
+     947,
+     185,
+     1600,
+     793
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 158,
+    "of": 158,
+    "pixels": 15749
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "move-fire-left",
+   "record": null,
+   "screen": {
+    "atFrame": 5,
+    "box": [
+     1531,
+     660,
+     1600,
+     790
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 17,
+    "of": 158,
+    "pixels": 3262
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-l40-x1",
+   "record": null,
+   "screen": {
+    "atFrame": 5,
+    "box": [
+     1531,
+     660,
+     1600,
+     790
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 17,
+    "of": 70,
+    "pixels": 3262
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-l40-x2",
+   "record": null,
+   "screen": {
+    "atFrame": 5,
+    "box": [
+     1531,
+     660,
+     1600,
+     790
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 17,
+    "of": 80,
+    "pixels": 3262
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-l40-x8",
+   "record": null,
+   "screen": {
+    "atFrame": 5,
+    "box": [
+     1531,
+     660,
+     1600,
+     790
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 17,
+    "of": 140,
+    "pixels": 3262
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  }
+ ],
+ "ticksPerSecond": 120,
+ "totals": {
+  "error": 0,
+  "neither": 0,
+  "probes": 25,
+  "record-and-screen": 0,
+  "record-only": 0,
+  "screen-only": 25
+ }
+}
