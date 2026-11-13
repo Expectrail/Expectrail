@@ -14,9 +14,9 @@ correct, and no status authorizes a merge or a release.
 
 | Status | When | Exit |
 | --- | --- | --- |
-| `REPAIR DEMONSTRATED` | The verifier accepts, every required check passes after the change, every requested check could be compared and passes after, and at least one requested check went from FAIL to PASS. A live review also needs fresh replays and the private routes. | 0 |
+| `REPAIR DEMONSTRATED` | The verifier accepts, every required check passes after the change, every requested check could be compared and passes after, and at least one requested check went from FAIL to PASS three times of three on each side (the gate's rule, below). A live review also needs fresh replays and the private routes. | 0 |
 | `REJECTED` | The verifier rejects, a required check fails after the change, or the patch edits paths the request does not allow. | 1 |
-| `NO REPAIR DEMONSTRATED` | Everything passes after the change, but no requested check was failing before it. A check that passed before and after (`PRESERVED`) shows nothing was repaired; an optional check changing never counts. | 1 |
+| `NO REPAIR DEMONSTRATED` | Everything passes after the change, but no requested check was failing before it, or one was but not on every run. A check that passed before and after (`PRESERVED`) shows nothing was repaired; an optional check changing never counts. The first reason starts `repair-not-demonstrated:`, the gate's name for it. | 1 |
 | `INCONCLUSIVE` | Something needed is missing: an arm did not finish, an observation is missing or needs review, the two arms were judged differently, or a live review lacks the private routes. | 2 |
 
 Each check gets one comparison: `REPAIRED` (fail before, pass after), `PRESERVED` (pass, pass),
@@ -24,6 +24,28 @@ Each check gets one comparison: `REPAIRED` (fail before, pass after), `PRESERVED
 missing or needs-review result on either side). A check the request names as failing is
 *requested*; only requested checks can show a repair. The others are guards: they must pass after
 the change.
+
+### Three runs of three: the gate's rule
+
+A review and the CI gate say the same thing about the same runs (issue #284). A requested check
+that went from FAIL to PASS on the first run is replayed on the public route twice more on each side,
+by the same code (`agents.verifier.public_route_checks`), and the repair counts only when the check
+failed on the base and passed on the candidate on all three runs: `expectrail.gate.record.row_counts`,
+the function the gate's `decide` uses for a change declared as a fix. A base that fails once and
+then passes is a flaky check, and a flaky failure demonstrates nothing. A run judged another way
+(another observer, evaluator or route) is recorded as missing and never counts. If a replay crashes
+while this is being done, the review is `INCONCLUSIVE`, never a repair.
+
+Nothing is replayed again when no repair can be claimed from the first run, or when a live review
+cannot claim one anyway (no private routes): those reviews cost what they cost before. With SAM on,
+each further run is observed by SAM as the first was.
+
+The record carries the runs in a `repair` block of the gate's shape (`runs`, `demonstrated`, and one
+row per claim with its `base` and `head` results and whether it `counts`), and the reader
+(`expectrail.change_evidence.load_record`) recomputes it: a row's first runs must be the claim's own
+before and after, `counts` and `demonstrated` must follow from the runs, and `REPAIR DEMONSTRATED`
+needs a row that counts. A record written before this (no `repair` block, such as the three kept
+under `docs/review/`) is read as it was written, and its page says each check was judged once a side.
 
 The evidence label comes from what each arm recorded, never from the mode asked for:
 
