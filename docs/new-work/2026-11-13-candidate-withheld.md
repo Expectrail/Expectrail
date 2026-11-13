@@ -31,7 +31,7 @@ under #271. Until now the proposer was always given the candidate patch and the 
   refused. The example is valid and rebuilds from the simulated game. The CLI passes the setting only
   when the flag is given.
 - `python3 -m unittest discover -s tests -t .` on the branch (main c5d1e53 plus this change), after the pinned fetch: 3,112 tests, OK, 27 skipped.
-- Nothing was dispatched. No model was called, nothing was spent, and Godot was not run.
+- Nothing was dispatched. No model was called and nothing was spent. The new tests use the simulated game; Godot ran only in the suite's existing engine tests.
 
 ## Not done
 - `jit.yml` has no input for it yet, so no live run can use it. That is the next slice: a `candidate`
