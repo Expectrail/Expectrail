@@ -57,12 +57,14 @@ the baseline has not been run.
   another command): for the three defects both measured on the same probes, the count of probes
   whose frames differ, the count whose record differs, the fields, and the whole row of the probe
   where most frames differ are equal. `tests.test_repro_evidence.TheRecordedEvidence` holds it.
-- `python3 -m unittest tests.test_repro_evidence`: 51 tests, OK. They use the simulated game; the
+- `python3 -m unittest tests.test_repro_evidence`: 52 tests, OK. They use the simulated game; the
   observer's part reads answers the tests wrote into a cache folder, with the network calls
   replaced by ones that fail the test.
-- Full suite on the branch (one commit on main 40b3939), `python3 -m unittest discover -s tests -t .`:
-  SUITE-RESULT
-- `python3 -m tools.merge_guard --base origin/main --head HEAD`: GUARD-RESULT
+- Full suite on the branch merged with main 2f7e35a, `python3 -m unittest discover -s tests -t .`:
+  2,617 tests, OK, 27 skipped. This container has no bubblewrap; the reason for each skip was not
+  listed.
+- `python3 -m tools.merge_guard --base origin/main --head HEAD`: "nothing to report in 13 file(s)"
+  (before this file's last edit).
 
 ## Not done
 - **No answer of SAM or any other model was read.** None has been recorded for the bench's frames.
