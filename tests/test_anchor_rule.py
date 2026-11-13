@@ -23,6 +23,7 @@ DATA = Path(__file__).resolve().parent / "data" / "sam-anchor"
 AT_ORIGIN = DATA / "bundled-lift-0.json"
 MID_BODY = DATA / "bundled-lift-14.json"
 OTHER_CLEAN = DATA / "bundled-lift-14-other-clean-routes.json"      # run 43316420400: coins, combat, traversal
+BOXED = DATA / "bundled-box-48x68-traversal-seeded.json"            # run 43335151089: the same four runs, asked with a box
 ON_TRAVERSAL = DATA / "bundled-lift-14-traversal-seeded.json"       # run 43326853189: clean and three bugs on traversal
 NEAR_THE_SLIP = DATA / "bundled-lift-14-traversal-frames-15-25.json"  # run 43318368572: traversal, frames 15 to 25
 
@@ -149,6 +150,18 @@ class PairTest(unittest.TestCase):
         self.assertEqual(self.one(row(5), row(5, world=(100.04, 200.0)))["state"], "in")       # the trace's last digit
         self.assertEqual(self.one(row(5), row(5, world=(100.19, 200.0)))["state"], "moved")
 
+    def test_a_fall_in_confidence_is_out_and_a_rise_is_not(self):
+        def scored(score):
+            return {**row(5), "score": score}
+        self.assertEqual(self.one(scored(0.93), scored(0.49))["why"], ["confidence 0.49 against 0.93 unchanged"])
+        self.assertEqual(self.one(scored(0.93), scored(0.83))["state"], "in")          # a fall of exactly 0.1 is allowed
+        self.assertEqual(self.one(scored(0.93), scored(0.82))["state"], "out")
+        self.assertEqual(self.one(scored(0.50), scored(0.93))["state"], "in")          # easier to see is not a fault here
+        self.assertEqual(rule.pair_frame(scored(0.93), scored(0.49), 6.0, drop=0.5)["state"], "in")
+        # A missing confidence is not a zero: nothing is compared, and nothing is made up.
+        self.assertEqual(self.one(scored(0.93), scored(None))["state"], "in")
+        self.assertEqual(self.one(scored(None), scored(0.2))["state"], "in")
+
     def test_no_box_in_either_game_and_frames_not_asked(self):
         empty = {"frame": 5, "asked": True, "box": None, "world": [100.0, 200.0], "note": "nothing came back for the point"}
         self.assertEqual(self.one(row(5), empty)["state"], "no-answer")
@@ -198,9 +211,11 @@ class PairTest(unittest.TestCase):
         # A run that does not say its route is compared: older reports did not record it.
         self.assertEqual(rule.pair(base, self.run_of(row(0)))["result"], "pass")
 
-    def test_a_negative_tolerance_is_refused(self):
+    def test_a_negative_tolerance_or_drop_is_refused(self):
         with self.assertRaises(rule.RuleError):
             rule.pair(self.run_of(row(0)), self.run_of(row(0)), tolerance=-1)
+        with self.assertRaises(rule.RuleError):
+            rule.pair(self.run_of(row(0)), self.run_of(row(0)), drop=-0.1)
 
 
 class RecordedPairsTest(unittest.TestCase):
@@ -259,6 +274,45 @@ class RecordedPairsTest(unittest.TestCase):
         self.assertEqual((rows["clean"][20]["worldSize"][1], rows["missing-texture_v1"][20]["worldSize"][1]), (107.5, 106.5))
         self.assertEqual((rows["clean"][100]["score"], rows["missing-texture_v1"][100]["score"]), (0.69140625, 0.66015625))
         self.assertEqual({r["route"]["name"] for r in report["runs"]}, {"traversal"})
+
+    def test_asked_with_a_box_the_harmless_change_passes_and_both_false_alarms_are_gone(self):
+        # Run 43335151089, November 12, 2026: the same four runs on traversal, asked with a box of
+        # 48 x 68 game px around the robot's body and not with a point.
+        got = self.paired(BOXED)
+        self.assertEqual({n: (r["result"], r["out"], r["judged"]) for n, r in got.items()}, {
+            "missing-texture_v1": ("pass", 0, 13), "layering_v1": ("fail", 7, 13), "sinking_v2": ("fail", 13, 13)})
+        rows = {r["run"]: {f["frame"]: f for f in r["frames"]} for r in rule.load_report(BOXED)["runs"]}
+        # Frame 20, where a point got the robot and a tree trunk as one object 107.5 px tall:
+        self.assertEqual((rows["clean"][20]["worldSize"], rows["missing-texture_v1"][20]["worldSize"]), ([48.5, 62.5], [48.5, 62.5]))
+        # Frame 100, where a point got the robot in one game and robot and enemy in the other:
+        self.assertEqual((rows["clean"][100]["worldSize"], rows["missing-texture_v1"][100]["worldSize"]), ([57.5, 60.5], [57.5, 60.5]))
+
+    def test_asked_with_a_box_the_confidence_tells_the_bugs_from_the_clean_game(self):
+        rows = {r["run"]: {f["frame"]: f for f in r["frames"]} for r in rule.load_report(BOXED)["runs"]}
+        clean = [f["score"] for f in rows["clean"].values()] + [f["score"] for f in rows["missing-texture_v1"].values()]
+        self.assertGreaterEqual(min(clean), 0.86)                               # 26 clean-looking frames
+        self.assertLessEqual(max(f["score"] for f in rows["sinking_v2"].values()), 0.70)      # all 13
+        # The robot behind the level: under 0.63 in the 7 frames it is hidden in, as the clean game in the other 6.
+        hidden = sorted(n for n, f in rows["layering_v1"].items() if f["score"] < 0.8)
+        self.assertEqual(hidden, [0, 10, 20, 70, 100, 110, 119])
+        self.assertLessEqual(max(rows["layering_v1"][n]["score"] for n in hidden), 0.63)
+        self.assertGreaterEqual(min(f["score"] for n, f in rows["layering_v1"].items() if n not in hidden), 0.91)
+        # By size alone (no fall in confidence allowed for), a box misses frames a point did not:
+        by_size = {n: rule.pair(rule.load_run(BOXED, "clean")[1], rule.load_run(BOXED, n)[1], drop=1.0)["out"]
+                   for n in ("layering_v1", "sinking_v2")}
+        self.assertEqual(by_size, {"layering_v1": 6, "sinking_v2": 12})
+
+    def test_a_harmless_change_never_lowered_the_confidence_by_more_than_0_031(self):
+        worst = 0.0
+        for path, names in ((MID_BODY, ("missing-texture_v1", "missing-texture_v2")), (ON_TRAVERSAL, ("missing-texture_v1",)),
+                            (BOXED, ("missing-texture_v1",))):
+            report = rule.load_report(path)
+            runs = {r["run"]: {f["frame"]: f for f in r["frames"]} for r in report["runs"]}
+            for name in names:
+                for n, f in runs[name].items():
+                    worst = max(worst, runs["clean"][n]["score"] - f["score"])
+        self.assertEqual(round(worst, 5), 0.03125)
+        self.assertLess(worst, rule.DEFAULT_DROP)
 
     def test_other_routes_clean_runs_are_refused_not_judged(self):
         _, clean = rule.load_run(MID_BODY, "clean")
@@ -413,11 +467,11 @@ class MainTest(unittest.TestCase):
             self.assertEqual(code, 0)
             page = (Path(tmp) / "anchor-pairs.md").read_text(encoding="utf-8")
             doc = json.loads((Path(tmp) / "anchor-pairs.json").read_text(encoding="utf-8"))
-        self.assertIn("Unchanged game: `clean`. Tolerance 6 game px, point 14 px above the origin.", page)
+        self.assertIn("Unchanged game: `clean`. Tolerance 6 game px, confidence may fall by 0.1, point 14 px above the origin.", page)
         self.assertIn("| sinking_v2 | fail | 13 | 13 | 0 | 0 | 0 | 0 |", page)
         self.assertIn("| clean-combat | needs-review | 0 | 0 | 0 | 0 | 0 | 0 | a different route (combat against smoke)", page)
         self.assertNotIn("| clean |", page)                       # the unchanged game is not paired with itself
-        self.assertEqual((doc["base"], doc["tolerance"], len(doc["results"])), ("clean", 6.0, 11))
+        self.assertEqual((doc["base"], doc["tolerance"], doc["drop"], doc["box"], len(doc["results"])), ("clean", 6.0, 0.1, None, 11))
         self.assertIn("::notice title=Anchored pairs sinking_v2::fail: 13 of 13 compared frames differ", out)
 
     def test_pairs_asked_at_another_point_are_not_compared_and_one_way_must_be_chosen(self):
