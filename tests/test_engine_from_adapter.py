@@ -338,6 +338,62 @@ class GateTest(Case):
                 rec.check_record(dict(record, adapter=name))
 
 
+class CommandLineTest(Case):
+    """``python3 -m expectrail.gate.verify --adapter`` reaches the registry, and a run that stops
+    records the adapter it asked for, never Godot in its place."""
+
+    def main(self, head: Path, *extra: str) -> tuple[int, dict]:
+        self.n += 1
+        out = self.tmp / f"cli{self.n}"
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            code = gv.main(["--repo", str(head), "--game", "app", "--routes", "routes/*.json", "--specs", "specs",
+                            "--out", str(out), *extra])
+        document = json.loads((out / "findings.json").read_text(encoding="utf-8"))
+        rec.check_record(document)
+        return code, document
+
+    def test_the_command_verifies_on_the_adapter_it_is_given(self):
+        probe = self.register()
+        head, base = probe_repo(self.tmp / "head"), probe_repo(self.tmp / "base")
+        code, document = self.main(head, "--adapter", NAME, "--base", str(base))
+        self.assertEqual((document["decision"], document["adapter"], code), ("accept", NAME, gv.EXIT["accept"]))
+        self.assertEqual(len(probe.calls), 2)
+
+    def test_the_command_rejects_a_second_engines_bug(self):
+        self.register()
+        head, base = probe_repo(self.tmp / "head", bug=True), probe_repo(self.tmp / "base")
+        code, document = self.main(head, "--adapter", NAME, "--base", str(base))
+        self.assertEqual((document["decision"], document["adapter"], code), ("reject", NAME, gv.EXIT["reject"]))
+
+    def test_an_adapter_with_no_verify_path_stops_and_the_record_names_it(self):
+        head = probe_repo(self.tmp / "head")
+        for name in ("web", "unity"):
+            with self.subTest(adapter=name):
+                code, document = self.main(head, "--adapter", name)
+                self.assertEqual((document["decision"], document["adapter"]), ("needs-review", name))
+                self.assertEqual(code, gv.EXIT["needs-review"])
+                self.assertTrue(any("has no verify path yet" in r for r in document["reasons"]), document["reasons"])
+
+    def test_a_name_the_registry_does_not_hold_is_recorded_as_unknown_and_not_as_godot(self):
+        head = probe_repo(self.tmp / "head")
+        for name in ("nope", "Godot", "godot\n", "x" * 60):
+            with self.subTest(adapter=name):
+                code, document = self.main(head, "--adapter", name)
+                self.assertEqual((document["decision"], document["adapter"]), ("needs-review", "unknown"))
+
+    def test_a_stopped_record_names_the_adapter_and_defaults_to_godot(self):
+        probe = self.register()
+        stop = lambda **kw: gv.stopped_record("x", pr=None, game="app", checks_from="head",  # noqa: E731
+                                              expectrail_commit=None, **kw)
+        self.assertEqual(stop()["adapter"], "godot")
+        self.assertEqual(stop(adapter=NAME)["adapter"], NAME)
+        self.assertEqual(stop(adapter=probe.adapter)["adapter"], NAME)
+        self.assertEqual(stop(adapter="web")["adapter"], "web")
+        for bad in ("nope", None, ["godot"], 3):
+            with self.subTest(adapter=bad):
+                self.assertEqual(stop(adapter=bad)["adapter"], "unknown")
+
+
 class WindowTest(unittest.TestCase):
     """A spec's window is counted at the adapter's capture rate, or not at all."""
 

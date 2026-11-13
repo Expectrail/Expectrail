@@ -1,0 +1,98 @@
+{
+ "basePatchSha256": [
+  "2af3947288f662b936dc51f74df2579206cc1b3dddec445e58b96ea0c19b20c0"
+ ],
+ "engine": "Godot 4.7.2-stable",
+ "engineRetries": 0,
+ "format": "expectrail.repro-evidence/v1",
+ "frame": {
+  "height": 960,
+  "width": 1600
+ },
+ "framesPerSecond": 60,
+ "maxFramesExamined": 8,
+ "observer": null,
+ "probes": [
+  "hold-right-then-toggle-pause",
+  "hold-left-then-toggle-pause",
+  "reverse-then-toggle-pause"
+ ],
+ "renderer": "Mesa - llvmpipe (LLVM 20.1.2, 256 bits)",
+ "replaysPerBuild": {
+  "bugBuild": 1,
+  "clean": 2
+ },
+ "rows": [
+  {
+   "observer": null,
+   "probe": "hold-right-then-toggle-pause",
+   "record": null,
+   "screen": {
+    "atFrame": 166,
+    "box": [
+     148,
+     34,
+     188,
+     66
+    ],
+    "examined": 8,
+    "firstFrame": 155,
+    "frames": 77,
+    "of": 232,
+    "pixels": 383
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "hold-left-then-toggle-pause",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "reverse-then-toggle-pause",
+   "record": null,
+   "screen": {
+    "atFrame": 155,
+    "box": [
+     148,
+     26,
+     180,
+     74
+    ],
+    "examined": 8,
+    "firstFrame": 155,
+    "frames": 77,
+    "of": 232,
+    "pixels": 911
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  }
+ ],
+ "ticksPerSecond": 120,
+ "totals": {
+  "error": 0,
+  "neither": 1,
+  "probes": 3,
+  "record-and-screen": 0,
+  "record-only": 0,
+  "screen-only": 2
+ }
+}

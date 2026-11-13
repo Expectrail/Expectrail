@@ -615,8 +615,73 @@ What this says about the order of the next steps:
    misses it on a probe shorter than that). They are on offer under `signals-reach`.
 2. **Pixel predicates (#286)** for the two screen-only defects.
 3. **A route into the pause menu** for the two coin-counter defects. The action catalog is move,
-   jump and shoot; reaching them needs a pause action in the game's catalog, which nothing in this
-   chain adds today.
+   jump and shoot. Done on November 13 for measurement (below): with the menu open both defects
+   change the screen only, so after the route they wait on #286 too.
+
+## A route into the pause menu (November 13, 2026)
+
+The two coin-counter defects were missed by the baseline because no route reached what they break:
+the bundled game draws its coin counter only on the pause menu, and the action catalog is move,
+jump and shoot. Two things stood in the way, and both are changed:
+
+- **The harness was paused with the game.** It is an autoload and inherited the root's process mode,
+  so when a route pressed the pause key the harness stopped too: no further press was sent, no row
+  was recorded, and the replay never reached its last tick (measured on a 70-tick route of a test
+  project: no trace after two minutes). It now keeps running while the tree is paused
+  (`harness/godot/expectrail_harness.gd`; `tests/test_pause_input.py`, an engine test in the
+  `capture-smoke` job). A game that never pauses is not affected: nothing else in the harness changed.
+- **Menu probes** (`expectrail/repro/menu.py`): each library walk (`hold-right`, `hold-left`,
+  `reverse`), then 30 ticks of waiting, one tap of the menu action and 90 ticks with the menu drawn.
+  The menu action is named on the command line and refused unless the game's `project.godot`
+  declares it; it is not added to the mechanics profile, so the baseline's prompt and the reach
+  probes are unchanged. **No offer of the generator uses these probes.**
+
+`python3 -m expectrail.repro evidence --defect <id> --menu-action toggle_pause --menu-only --jobs 3`,
+Godot 4.7.2 in a cloud container under a virtual display, no model, not in CI; 9 replays a defect
+(the clean game twice and the bug build once on each probe), about 3 minutes and 20 seconds a defect:
+
+**`coin-counter-stuck`** ([`menu-evidence-coin-counter-stuck.json`](menu-evidence-coin-counter-stuck.json))
+
+<!-- menu-evidence:coin-counter-stuck:start -->
+3 probes, Godot 4.7.2-stable, frames of 1600 x 960, 120 ticks and 60 frames a second, no model asked. The record and the screen both differ: 0. Only the screen differs: 2. Only the record differs: 0. Nothing differs: 1.
+
+No visual observer was read: no recorded answers were given.
+
+| Probe | Sees | Record fields that differ: first tick, ticks | Signals that moved, clean to bug build | Frames that differ | Most pixels in one frame | Where (left, top, right, bottom) | Observer |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `hold-right-then-toggle-pause` | screen-only | none | none | 77 of 232, from frame 155 | 383 (frame 166) | 148, 34, 188, 66 | not read |
+| `reverse-then-toggle-pause` | screen-only | none | none | 77 of 232, from frame 155 | 911 (frame 155) | 148, 26, 180, 74 | not read |
+
+Nothing differs on: `hold-left-then-toggle-pause`.
+<!-- menu-evidence:coin-counter-stuck:end -->
+
+**`coin-counts-twice`** ([`menu-evidence-coin-counts-twice.json`](menu-evidence-coin-counts-twice.json))
+
+<!-- menu-evidence:coin-counts-twice:start -->
+3 probes, Godot 4.7.2-stable, frames of 1600 x 960, 120 ticks and 60 frames a second, no model asked. The record and the screen both differ: 0. Only the screen differs: 2. Only the record differs: 0. Nothing differs: 1.
+
+No visual observer was read: no recorded answers were given.
+
+| Probe | Sees | Record fields that differ: first tick, ticks | Signals that moved, clean to bug build | Frames that differ | Most pixels in one frame | Where (left, top, right, bottom) | Observer |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `hold-right-then-toggle-pause` | screen-only | none | none | 77 of 232, from frame 155 | 1274 (frame 166) | 124, 26, 188, 74 | not read |
+| `reverse-then-toggle-pause` | screen-only | none | none | 77 of 232, from frame 155 | 703 (frame 155) | 148, 26, 180, 74 | not read |
+
+Nothing differs on: `hold-left-then-toggle-pause`.
+<!-- menu-evidence:coin-counts-twice:end -->
+
+What it shows:
+
+- **Both defects change the screen once the menu is open, and nothing in the engine's record.** On
+  `hold-right` and `reverse` the frames differ from frame 155, the frame of the tick (310) the menu
+  is opened on, to the end: 77 of 232. The box of the difference is in the top-left corner, where
+  the menu draws the coin count. Two clean replays were identical on every probe.
+- **`hold-left` shows nothing** for either: walking left from the start collects no coin, and 0
+  counted once or twice is 0.
+- So both are now in the same place as the two screen-only defects: reached by a route, visible
+  only on the screen. A generated check cannot speak about them until it can speak about what is
+  drawn (#286). The hand findings for the baseline (`route-never-reaches`) still describe the
+  baseline run, whose routes never opened the menu, and are left as written.
 
 ## What comes next (issue #285)
 
@@ -624,4 +689,5 @@ What this says about the order of the next steps:
    so a test can score them again and the breakdown above is printed from the file, not transcribed.
 2. The same run with offer `signals-reach` (a person dispatches it; about the same cost, $2.05 here,
    hard cap $48), then `signals-reach-evidence`. Each is the "after" of a step.
-3. Then pixel predicates (#286) and a pause route, in that order.
+3. Then pixel predicates (#286): four defects of the bench are now reached and visible only on the
+   screen (the two above, and the two coin-counter defects through the pause menu).

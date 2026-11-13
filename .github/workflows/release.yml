@@ -1,0 +1,102 @@
+# Release (#333): build the wheel for a version tag and attach it to the run.
+#
+# A tag named v<version> builds the wheel from that commit. The tag must equal the package's own
+# version (expectrail/__init__.py), or nothing is built. The wheel is installed into a clean venv,
+# its command must say "installed package", and the wheel goes up as an artifact of this run with its
+# SHA-256. A dispatch from main builds the same wheel without a tag, to try the workflow.
+#
+# It publishes nowhere. Publishing to PyPI or a container registry needs an account and a token, which
+# only a person sets up; so does pushing a tag. It holds no secret and reads only.
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  wheel:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: The tag is the package's version (a dispatch must come from main)
+        id: version
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          version=$(python -c "import ast, pathlib; t = ast.parse(pathlib.Path('expectrail/__init__.py').read_text()); print(next(n.value.value for n in t.body if isinstance(n, ast.Assign) and n.targets[0].id == '__version__'))")
+          echo "package version: $version"
+          if [ "$REF_TYPE" = tag ]; then
+            if [ "$REF_NAME" != "v$version" ]; then
+              echo "::error::the tag is $REF_NAME and the package says $version: tag v$version, or change expectrail/__init__.py first. Nothing was built."
+              exit 1
+            fi
+          elif [ "$REF_NAME" != main ]; then
+            echo "::error::a dispatch builds from main only; this is $REF_NAME. Nothing was built."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Build the wheel
+        run: |
+          python -m pip install -r requirements-build.txt
+          python -m pip wheel . --no-deps --no-build-isolation -w dist
+          ls -l dist
+      - name: Install it into a clean venv and ask it its version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          test "$(ls dist/*.whl | wc -l)" = 1
+          test -f "dist/expectrail-$VERSION-py3-none-any.whl"
+          python -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/python" -m pip install --no-deps "dist/expectrail-$VERSION-py3-none-any.whl"
+          cd "$RUNNER_TEMP"
+          venv/bin/expectrail --version | tee version.txt
+          grep -q "installed package" version.txt
+          grep -q "$VERSION" version.txt
+      - name: Checksum
+        working-directory: dist
+        run: |
+          sha256sum ./*.whl > SHA256SUMS
+          cat SHA256SUMS
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: expectrail-${{ steps.version.outputs.version }}-wheel
+          path: |
+            dist/*.whl
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 90
+      - name: Summary
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          {
+            echo "### Expectrail $VERSION, wheel built"
+            echo
+            echo "From $REF_TYPE \`$REF_NAME\` at \`$GITHUB_SHA\`. Download it from this run's artifacts, then:"
+            echo
+            echo '```'
+            echo "python3 -m pip install expectrail-$VERSION-py3-none-any.whl"
+            echo "expectrail doctor"
+            echo "expectrail sample"
+            echo '```'
+            echo
+            echo "SHA-256: \`$(cut -d' ' -f1 dist/SHA256SUMS)\`. Not published to PyPI."
+          } >> "$GITHUB_STEP_SUMMARY"

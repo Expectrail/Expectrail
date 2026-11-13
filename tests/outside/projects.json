@@ -13,8 +13,8 @@
       "changes": [
         {"name": "broken", "patch": "tests/outside/kinematic-character/changes/broken.patch", "expect": "reject",
          "what": "the player's collision mask is emptied, so it falls through the floor"},
-        {"name": "harmless", "patch": "tests/outside/kinematic-character/changes/harmless.patch", "expect": "needs-review",
-         "what": "the player's sprite is tinted; nothing it does changes (needs-review, as the project unchanged is, until a check written for this game is approved)"}
+        {"name": "harmless", "patch": "tests/outside/kinematic-character/changes/harmless.patch", "expect": "accept",
+         "what": "the player's sprite is tinted; nothing it does changes (accept on the engine's record, as the project unchanged is; Sean withdrew call 4 for the engine's record on November 13, 2026, and an outside project counts as verified only after a run with vision)"}
       ]
     },
     {

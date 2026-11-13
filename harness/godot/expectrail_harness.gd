@@ -1,7 +1,8 @@
 extends Node
 ## Expectrail harness. The runner adds this script to a copy of the game as an autoload; the game
 ## itself is never edited. It presses input actions on exact physics ticks, as a route file says,
-## and records where the player is after every tick, then quits.
+## and records where the player is after every tick, then quits. It keeps running while the game
+## pauses its scene tree (a pause menu), so a route can open a menu and close it again.
 ##
 ## User arguments (after `--`): --route=<path> --trace=<path> [--seed=<int>] [--player=<node name>]
 ##
@@ -72,7 +73,6 @@ const PLATFORM_SINK := 4.0
 # EDGE_INSET (see _body_span): the bundled robot's shape is 42.5 px wide, so 21.25 - 1.25 = 20.
 const BODY_HALF_WIDTH := 20.0
 const EDGE_INSET := 1.25
-const SEARCH_ROWS := 16
 # The tile-art render (_render_level_art): a visibility layer no game node uses, and the largest
 # render it makes (world pixels a side); a bigger level is rendered in tiles of this size.
 const ART_LAYER_BIT := 1 << 19
@@ -89,6 +89,11 @@ func _ready() -> void:
 	var args := _parse_args(OS.get_cmdline_user_args())
 	if not args.has("route"):
 		return  # Not a harness run: behave as if absent.
+	# Keep pressing and recording while the game pauses its tree, as a player's keys keep working on a
+	# pause menu. Inherited from the root, the harness was paused with the game: no press reached the
+	# menu, no row was recorded, and a route that paused never reached its last tick. The recorder
+	# below inherits this. A game that never pauses is not affected.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	seed(int(args.get("seed", "1")))
 	_trace_path = args.get("trace", "")
 	_player_name = args.get("player", "Player")
@@ -553,7 +558,12 @@ func _surface_in_column(layer: TileMapLayer, world_x: float, min_y: float) -> Va
 		return null
 	var start := layer.local_to_map(layer.to_local(Vector2(world_x, min_y)))
 	var physics_layers := layer.tile_set.get_physics_layers_count()
-	for row in range(start.y, start.y + SEARCH_ROWS):
+	# Every row down to the level's last, as platforms that are bodies are found at any depth. Until
+	# November 13, 2026 only 16 rows were read: over a pit in Godot's kinematic_character demo the
+	# floor 194 px below the player was row 29 and the search ended at row 27, so 5 frames had no
+	# ground and the clean game could only be needs-review (outside trial on #397, #263).
+	var last := layer.get_used_rect().end.y
+	for row in range(start.y, last):
 		var cell := Vector2i(start.x, row)
 		var data := layer.get_cell_tile_data(cell)
 		if data == null:
