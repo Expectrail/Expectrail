@@ -125,6 +125,24 @@ class ManifestTest(Case):
                     runit.read_manifest(self.root)
 
 
+class ShippedRecordingsTest(unittest.TestCase):
+    """The recordings on main (Sean's three recording runs, November 13): every sample in the manifest
+    has one that the recording workflow's own check lets through. Without it a sample that should
+    accept can only need review."""
+
+    def test_every_sample_in_the_manifest_has_a_usable_recording(self):
+        root = Path(runit.ROOT)
+        samples = runit.read_manifest(root)["samples"]
+        self.assertEqual(sorted(s["id"] for s in samples), ["clean", "fall-through-bug", "fall-through-repair"])
+        for sample in samples:
+            with self.subTest(sample=sample["id"]):
+                path = root / sample["vision"]
+                self.assertEqual(runit.check_recording(path, sample_id=sample["id"], root=root), [])
+                doc = recorded.read_recording(path)
+                self.assertRegex(doc["run"], r"^[0-9]+$")   # the recording run it came from
+                self.assertEqual(runit.expected_now(sample, True), sample["expected"])
+
+
 class WithoutRecordingTest(Case):
     def test_nothing_is_accepted_without_recorded_vision_answers(self):
         for sample, want in (("clean", "needs-review"), ("fall-through-bug", "reject"),
