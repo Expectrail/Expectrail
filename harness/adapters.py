@@ -24,6 +24,16 @@ web harness's ``WebHarnessError`` into SystemExit, chained, so the original stay
 
 A new engine plugs in by building an ``Adapter`` in its own module and calling ``register``; the
 shared verifier (``agents.domain_verifier``), the fixer and the harness tools then take it by name.
+
+The verify path (``expectrail verify``, the CI gate, the orchestrator's engines) takes its engine
+from here too. An adapter that can be verified gives ``verify_run``, the replay a verification makes,
+which also takes the sandbox mode and the checkout a link in the game may lead into::
+
+    verify_run(route, out, *, game, capture_frames, sandbox=None, within=None) -> replay document
+
+and ``project_file``, ``title`` and ``missing``, which say how a project folder is recognised, how
+a message names the engine, and what a run on this machine lacks. An adapter without ``verify_run``
+has no verify path: asked to verify with it, the gate and the orchestrator refuse and run nothing.
 """
 from __future__ import annotations
 
@@ -96,10 +106,42 @@ class Adapter:
     """The public seeded bugs, ``<bugs>/<family>/vN.patch``."""
     trace_state: Callable[[dict], object]
     """The part of one trace row two replays of a route must agree on (harness.replay_check)."""
+    # What the verify path asks. Each has a default, so an adapter that says nothing has no verify path.
+    verify_run: Callable[..., dict] | None = None
+    """``verify_run(route, out, *, game, capture_frames, sandbox=None, within=None) -> replay``: the
+    replay a verification makes. ``game`` is always given (no default project). It writes
+    ``trace.json`` and ``replay.json`` in ``out`` and the frames under ``frame_pattern``; the document
+    it returns says which tree it ran (``game.tree``) and how it was isolated (``isolation``). None
+    when nothing verifies on this engine yet."""
+    project_file: str | None = None
+    """The file every project of this engine has at its root (``project.godot``): how the verify
+    path tells a project folder from any other folder. None when no one file says so."""
+    title: str = ""
+    """The engine's name in a sentence a person reads: "no Godot project at ...". Empty: ``name``."""
+    missing: Callable[[], list[str]] | None = None
+    """``missing() -> [sentence]``: what a verification needs and this machine lacks, each with its
+    fix, checked the way a run uses it. None when the adapter cannot tell, and then nothing is
+    reported before the run."""
 
-    def tree_digest(self, root: Path | None = None) -> str:
-        """The digest that names the project a replay ran: ``root`` (default ``game_root``)."""
-        return tree_digest(self.game_root if root is None else root, self.ignore)
+    def can_verify(self) -> bool:
+        """Whether the verify path can run on this engine."""
+        return self.verify_run is not None
+
+    def is_project(self, root: Path) -> bool:
+        """Whether ``root`` is a project of this engine: a folder that holds ``project_file``. An
+        adapter with no ``project_file`` recognises no folder: it is never guessed."""
+        root = Path(root)
+        return self.project_file is not None and root.is_dir() and (root / self.project_file).is_file()
+
+    def label(self) -> str:
+        """How a sentence names the engine."""
+        return self.title or self.name
+
+    def tree_digest(self, root: Path | None = None, within: Path | None = None) -> str:
+        """The digest that names the project a replay ran: ``root`` (default ``game_root``).
+        ``within`` is the folder a link in the project may lead into (default: ``root`` itself);
+        ``harness.tree.TreeProblem`` for a link that leaves it, loops or leads nowhere."""
+        return _tree.digest(Path(self.game_root if root is None else root), within=within, skip=tuple(self.ignore))
 
     def frames(self, out: Path) -> list[Path]:
         """A replay's frames in ``out``, in order."""
@@ -117,6 +159,24 @@ def _godot_run(route: Path, out: Path, patches: list[Path] | None = None, *, gam
     # harness.run.run is looked up at call time, so a test can replace it.
     return _godot.run(Path(route), Path(out), patches=None if patches is None else list(patches), game=game,
                       fps=GODOT_CAPTURE_FPS if fps is None else fps, capture_frames=capture_frames)
+
+
+def _godot_verify_run(route: Path, out: Path, *, game: Path, capture_frames: bool, sandbox: str | None = None,
+                      within: Path | None = None) -> dict:
+    # The same runner as _godot_run, looked up at call time, with what a verification adds: the
+    # sandbox mode and the checkout a link may lead into. The game is the caller's, never a default.
+    if game is None:
+        raise ValueError("a verification names its game; there is no default project")
+    return _godot.run(Path(route), Path(out), game=Path(game), capture_frames=capture_frames, sandbox=sandbox,
+                      within=within)
+
+
+def _godot_missing() -> list[str]:
+    # The list `expectrail doctor` reports, checked by the same functions (expectrail.doctor.for_run),
+    # so `doctor` and a run cannot disagree about a tool.
+    from expectrail import doctor
+
+    return [f"{c.found}. Fix: {c.fix}" for c in doctor.missing(doctor.for_run())]
 
 
 def _godot_state(row: dict) -> object:
@@ -140,6 +200,10 @@ GODOT = Adapter(
     default_route=REPO / "harness" / "routes" / "smoke.json",
     bugs=REPO / "bugs",
     trace_state=_godot_state,
+    verify_run=_godot_verify_run,
+    project_file="project.godot",
+    title="Godot",
+    missing=_godot_missing,
 )
 
 
@@ -251,6 +315,11 @@ def get(name: str) -> Adapter:
 
 def names() -> tuple[str, ...]:
     return tuple(sorted(_REGISTRY))
+
+
+def verifying() -> tuple[str, ...]:
+    """The adapters the verify path can run on, by name."""
+    return tuple(name for name in names() if _REGISTRY[name].can_verify())
 
 
 def resolve(adapter: str | Adapter) -> Adapter:

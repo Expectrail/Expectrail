@@ -84,19 +84,41 @@ class ConfigError(ValueError):
     """An input the workflow gave cannot be used."""
 
 
+DEFAULT_ADAPTER = "godot"   # what a caller that names no adapter gets: the gate's first engine
+
+
+def adapter_for(name: str):
+    """The engine adapter a verification runs on, from the registry (``harness.adapters``).
+    ConfigError for a name the registry does not hold and for an adapter with no verify path:
+    nothing is replayed on an engine that was not asked for."""
+    from harness import adapters
+
+    try:
+        engine = adapters.resolve(name)
+    except KeyError:
+        raise ConfigError(f"no adapter named {str(name)[:40]!r}; registered: {', '.join(adapters.names())}") from None
+    if not engine.can_verify():
+        raise ConfigError(f"the adapter {engine.name!r} has no verify path yet; those that have one: "
+                          f"{', '.join(adapters.verifying()) or 'none'}")
+    return engine
+
+
 def harness_replay(route: Path, game: Path, out: Path, frames: bool, sandbox: str | None = None,
-                   checkouts: tuple[Path, ...] = ()) -> dict:
-    """One replay through the Godot harness (``harness.run``), which gives Godot only the display
-    and rendering variables from the environment and runs it in the replay sandbox where the
-    machine can (``sandbox``: auto, require or off; default $EXPECTRAIL_SANDBOX, else auto).
+                   checkouts: tuple[Path, ...] = (), adapter: str = DEFAULT_ADAPTER) -> dict:
+    """One replay through the adapter's harness (``harness.adapters``, ``verify_run``; for Godot that
+    is ``harness.run``, which gives Godot only the display and rendering variables from the
+    environment and runs it in the replay sandbox where the machine can). ``sandbox`` is auto,
+    require or off (default $EXPECTRAIL_SANDBOX, else auto).
     ``checkouts`` are the folders a link in a game may lead into: the one that holds ``game``
     is used, and without one a link may not leave the game folder."""
-    from harness.run import run, sha256_file
+    from harness.adapters import sha256_file
 
-    replay = run(route, out, game=game, capture_frames=frames, sandbox=sandbox, within=_checkout_of(game, checkouts))
+    engine = adapter_for(adapter)
+    replay = engine.verify_run(route, out, game=game, capture_frames=frames, sandbox=sandbox,
+                               within=_checkout_of(game, checkouts))
     trace = json.loads((out / "trace.json").read_text(encoding="utf-8"))
     return {"trace": trace, "replaySha256": sha256_file(out / "replay.json"),
-            "framesDir": (out / "frames") if frames else None, "isolation": replay.get("isolation"),
+            "framesDir": (out / engine.frame_pattern).parent if frames else None, "isolation": replay.get("isolation"),
             # The digest of the copy this replay ran (harness.tree.copy), for the gate to hold
             # against the tree its record names.
             "tree": replay["game"]["tree"]}
@@ -441,7 +463,8 @@ def _why(text) -> str:
     return _clip(str(text), 160)
 
 
-CAPTURE_FPS = 60   # what the harness captures at (harness.run), and what a spec's window counts in
+CAPTURE_FPS = 60   # what the Godot harness captures at (harness.run), and what a spec's window counts in;
+#                    a caller that verifies on another engine gives its adapter's rate (run_gate does)
 FRAME_FILE = re.compile(r"f(\d+)\.png")   # a captured frame: f00000000.png, f00000001.png, ...
 PASSES_ON_ONE_FRAME = ("reaches",)   # a pass that rests on the frame that shows it, not on every frame
 
@@ -455,21 +478,24 @@ def route_ticks(path: Path) -> int | None:
     return ticks if isinstance(ticks, int) and not isinstance(ticks, bool) and ticks >= 0 else None
 
 
-def window_frames(spec: dict, ticks: int | None, trace: dict | None) -> list[int] | None:
+def window_frames(spec: dict, ticks: int | None, trace: dict | None,
+                  capture_fps: int | None = CAPTURE_FPS) -> list[int] | None:
     """The frames of the spec's window that a finished replay of a route of ``ticks`` ticks has.
 
     Counted from the route (the gate's own input) and the tick rate the trace states, never from
     what an observer returned: an observer that saw five frames cannot say the window is five frames
-    long. None when it cannot be told (no tick count, no tick rate, a window that is not numbers)."""
+    long. ``capture_fps`` is the frames the engine's harness captures per second of game time (the
+    adapter's ``capture_fps``). None when it cannot be told (no tick count, no tick rate, no capture
+    rate, a window that is not numbers)."""
     tps = (trace or {}).get("physicsTicksPerSecond")
     whole = lambda v: isinstance(v, int) and not isinstance(v, bool)   # noqa: E731
-    if not whole(ticks) or ticks < 0 or not whole(tps) or tps < 1:
+    if not whole(ticks) or ticks < 0 or not whole(tps) or tps < 1 or not whole(capture_fps) or capture_fps < 1:
         return None
     window = spec.get("window") or {}
     lo, hi = window.get("fromFrame", 0), window.get("toFrame")
     if not whole(lo) or (hi is not None and not whole(hi)):
         return None
-    total = ticks // max(tps // CAPTURE_FPS, 1)
+    total = ticks // max(tps // capture_fps, 1)
     return list(range(max(lo, 0), total if hi is None else min(hi + 1, total)))
 
 
@@ -489,12 +515,12 @@ def captured_frames(frames_dir) -> set[int]:
     return {int(m.group(1)) for m in map(FRAME_FILE.fullmatch, names) if m}
 
 
-def engine_gap(spec: dict, run: dict, ticks: int | None) -> str | None:
+def engine_gap(spec: dict, run: dict, ticks: int | None, capture_fps: int | None = CAPTURE_FPS) -> str | None:
     """Why the engine's record cannot carry a pass under the rule ``both``, or None when it can: the
     log must hold every tick of the route, and its observations every frame of the check's window.
     A log that stops early says nothing about the ticks it does not have."""
     trace = run.get("trace") or {}
-    want = window_frames(spec, ticks, trace)
+    want = window_frames(spec, ticks, trace, capture_fps)
     if want is None:
         return "the gate cannot tell how many frames this route should have"
     rows = trace.get("rows")
@@ -508,7 +534,8 @@ def engine_gap(spec: dict, run: dict, ticks: int | None) -> str | None:
     return None
 
 
-def visual_gap(spec: dict, seen: dict, run: dict, ticks: int | None) -> str | None:
+def visual_gap(spec: dict, seen: dict, run: dict, ticks: int | None,
+               capture_fps: int | None = CAPTURE_FPS) -> str | None:
     """Why the visual observer's passing answer cannot carry a pass, or None when it can.
 
     A pass counts only when the replay captured every frame of the check's window and the observer's
@@ -516,7 +543,7 @@ def visual_gap(spec: dict, seen: dict, run: dict, ticks: int | None) -> str | No
     shows it (``reaches``): there the answer need not hold every frame, but the replay must still
     have captured the whole window. (That the answer is about this replay at all is checked before
     any verdict is read from it: ``judge_run``.)"""
-    want = window_frames(spec, ticks, run.get("trace"))
+    want = window_frames(spec, ticks, run.get("trace"), capture_fps)
     if want is None:
         return "the gate cannot tell how many frames this route should have"
     on_disk = captured_frames(run.get("framesDir"))
@@ -533,7 +560,7 @@ def visual_gap(spec: dict, seen: dict, run: dict, ticks: int | None) -> str | No
 
 
 def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None, keep: bool = True,
-              ticks: int | None = None) -> dict:
+              ticks: int | None = None, capture_fps: int | None = CAPTURE_FPS) -> dict:
     """One approved spec on one finished replay, by the rule.
 
     ``engine-only``: the evaluator on the engine's record, as the gate always judged. ``both``: that,
@@ -548,7 +575,8 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
     window the replay should have. An engine's record that stops short of the route, a replay that
     captured only part of the window, or a visual answer that holds only part of it is needs-review
     with the count in the reason (``engine_gap``, ``visual_gap``); a visual answer that names
-    another replay is no answer. Without ``ticks`` the gate cannot tell, and nothing passes."""
+    another replay is no answer. Without ``ticks`` the gate cannot tell, and nothing passes; the same
+    holds without ``capture_fps``, the frames the engine's harness captures per second of game time."""
     try:
         verdict = evaluate(spec, run["engineObservations"])
     except Exception as exc:  # noqa: BLE001 - a crash is recorded, never read as a pass
@@ -564,7 +592,7 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
     if rule == rec.ENGINE_ONLY:
         return result
     if engine == "pass":
-        gap = engine_gap(spec, run, ticks)
+        gap = engine_gap(spec, run, ticks, capture_fps)
         if gap:
             engine, engine_reason = "needs-review", f"{gap}, so its pass is not counted"
     said, why, seen, seen_verdict, answer, part = "not-asked", None, None, None, None, None
@@ -580,7 +608,7 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
             seen_verdict = evaluate(spec, seen)
             said = seen_verdict["result"] if seen_verdict["result"] in rec.VISUAL_VERDICTS else "needs-review"
             if said == "pass":
-                part = visual_gap(spec, seen, run, ticks)
+                part = visual_gap(spec, seen, run, ticks, capture_fps)
                 if part:
                     said = "needs-review"
         except NoAnswer as exc:
@@ -614,7 +642,8 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
 
 def judge_arm(game: Path, routes: list[tuple[str, Path, str]], specs: list[dict], out: Path,
               replay: Replay, *, label: str, rule: str = rec.ENGINE_ONLY, visual=None,
-              on_phase: Callable[[str], object] | None = None) -> dict[tuple[str, str], dict]:
+              on_phase: Callable[[str], object] | None = None,
+              capture_fps: int | None = CAPTURE_FPS) -> dict[tuple[str, str], dict]:
     """{(spec id, route name): result} for one game tree."""
     results: dict[tuple[str, str], dict] = {}
     not_run = {"observed": {"engine": "replay-error", "visual": "not-asked", "visualAnswerSha256": None}} \
@@ -639,7 +668,8 @@ def judge_arm(game: Path, routes: list[tuple[str, Path, str]], specs: list[dict]
             on_phase("evaluating")
         ticks = route_ticks(path) if rule == rec.BOTH else None
         for spec in specs:
-            results[(spec["id"], name)] = judge_run(spec, run, rule=rule, visual=visual, ticks=ticks)
+            results[(spec["id"], name)] = judge_run(spec, run, rule=rule, visual=visual, ticks=ticks,
+                                                    capture_fps=capture_fps)
     return results
 
 
@@ -652,7 +682,8 @@ HELD_ZERO = {"routes": 0, "checks": 0, "passed": 0, "failed": 0, "needsReview": 
 
 
 def judge_heldout(root: Path | None, game: Path, specs: list[dict], replay: Replay, *,
-                  rule: str = rec.ENGINE_ONLY, visual=None, frames_to_visual: bool = False) -> dict:
+                  rule: str = rec.ENGINE_ONLY, visual=None, frames_to_visual: bool = False,
+                  capture_fps: int | None = CAPTURE_FPS) -> dict:
     """Counts only. Nothing from the held-out set is printed, returned or left on disk.
 
     Under the rule ``both`` each held-out check needs both observers, as a public check does: a
@@ -691,8 +722,8 @@ def judge_heldout(root: Path | None, game: Path, specs: list[dict], replay: Repl
                 run = replay(path, game, scratch / f"r{n:02d}", visual is not None)
                 run = dict(run, engineObservations=observations(run["trace"], run["replaySha256"]))
                 ticks = route_ticks(path) if rule == rec.BOTH else None
-                results = [judge_run(spec, run, rule=rule, visual=visual, keep=False, ticks=ticks)["result"]
-                           for spec in specs]
+                results = [judge_run(spec, run, rule=rule, visual=visual, keep=False, ticks=ticks,
+                                     capture_fps=capture_fps)["result"] for spec in specs]
             except (Exception, SystemExit):  # noqa: BLE001
                 results = ["needs-review"] * len(specs)
             counts["checks"] += len(results)
@@ -709,18 +740,17 @@ def _checkout_of(game: Path, checkouts: tuple[Path, ...]) -> Path | None:
     return next((c for c in (Path(c).resolve() for c in checkouts) if c == game or c in game.parents), None)
 
 
-def game_tree(root: Path, within: Path | None = None) -> str:
-    """The digest of the game the record names: ``harness.run.tree_digest``, which is taken over the
-    files a replay's copy holds (``harness.tree``). The same function writes replay.json's
-    ``game.tree``, so the record and its replays name a tree the same way. Raises
-    ``harness.tree.TreeProblem`` for a link that leaves ``within``, loops or leads nowhere."""
-    from harness.run import tree_digest
+def game_tree(root: Path, within: Path | None = None, adapter: str = DEFAULT_ADAPTER) -> str:
+    """The digest of the game the record names, taken over the files a replay's copy holds
+    (``harness.tree``), leaving out the folders the adapter says are the engine's own. For Godot it
+    is ``harness.run.tree_digest``, the function that writes replay.json's ``game.tree``, so the
+    record and its replays name a tree the same way. Raises ``harness.tree.TreeProblem`` for a link
+    that leaves ``within``, loops or leads nowhere."""
+    return adapter_for(adapter).tree_digest(root, within)
 
-    return tree_digest(root, within)
 
-
-def _game_ok(game: Path) -> bool:
-    return game.is_dir() and (game / "project.godot").is_file()
+def _game_ok(game: Path, adapter: str = DEFAULT_ADAPTER) -> bool:
+    return adapter_for(adapter).is_project(game)
 
 
 def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path, work: Path,
@@ -729,8 +759,14 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
              generated_checks: Path | None = None, require_sandbox: bool = False,
              checks: Checks | None = None, rule: str = rec.ENGINE_ONLY, visual=None,
              on_phase: Callable[[str], object] | None = None, heldout_frames_to_visual: bool = False,
-             intent: str = "none") -> dict:
+             intent: str = "none", adapter: str = DEFAULT_ADAPTER) -> dict:
     """Run the gate and write the artifact in ``out``; returns the findings record.
+
+    ``adapter`` names the engine, and everything about the engine comes from its entry in the
+    registry (``harness.adapters``): the replay (``verify_run``), how a project folder is recognised,
+    which folders are left out of the game's digest, and the capture rate a spec's window is counted
+    in. A name the registry does not hold, or an adapter with no verify path, is a ConfigError and
+    nothing runs. A ``replay`` given by the caller is used in place of the adapter's.
 
     ``rule`` is which observers judge (``rec.RULES``). ``engine-only`` is the engine's record alone,
     as the pull-request gate runs until its two-job form exists (#254). ``both`` (#327) judges every
@@ -770,6 +806,8 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     ``generated_checks`` is the advisory block a check-generation step wrote (docs/jit.md). It is read
     as untrusted data after the decision is made, and nothing in it can change the decision."""
     repo = repo.resolve()
+    engine = adapter_for(adapter)
+    game_ok = engine.is_project
     if intent not in rec.INTENTS:
         raise ConfigError("the intent must be one of: " + ", ".join(rec.INTENTS))
     problems: list[str] = []
@@ -788,13 +826,16 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         except Exception as exc:  # noqa: BLE001 - an observer that cannot say what it is does not judge
             problems.append(f"the visual observer could not be used ({type(exc).__name__})")
             observer = visual = None
-    if require_sandbox and replay is harness_replay:
-        from harness import sandbox as box
+    if replay is harness_replay:
+        mine = {"adapter": engine.name}
+        if require_sandbox:
+            from harness import sandbox as box
 
-        tool, why = box.probe(True)
-        if tool is None:
-            raise ConfigError(f"the replay sandbox is required and this machine cannot provide it: {why}")
-        replay = functools.partial(harness_replay, sandbox="require")
+            tool, why = box.probe(True)
+            if tool is None:
+                raise ConfigError(f"the replay sandbox is required and this machine cannot provide it: {why}")
+            mine["sandbox"] = "require"
+        replay = functools.partial(harness_replay, **mine)
     if getattr(replay, "func", replay) is harness_replay:
         # A link in a game may lead anywhere inside its own checkout, and nowhere else.
         replay = functools.partial(replay, checkouts=tuple(c for c in (repo, base) if c is not None))
@@ -844,13 +885,13 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
 
     head_game = repo / game_rel
     base_game = (checks_root / game_rel) if base is not None else None
-    if not _game_ok(head_game):
-        problems.append(f"no Godot project (project.godot) at {game_rel}")
+    if not game_ok(head_game):
+        problems.append(f"no {engine.label()} project ({engine.project_file}) at {game_rel}")
         route_list_for_head: list = []
     else:
         route_list_for_head = route_list
-    if base_game is not None and not _game_ok(base_game):
-        problems.append(f"the base commit has no Godot project at {game_rel}, so nothing is compared")
+    if base_game is not None and not game_ok(base_game):
+        problems.append(f"the base commit has no {engine.label()} project at {game_rel}, so nothing is compared")
         base_game = None
     # The trees are taken now, before anything is copied or replayed, by the walk the replay's copy
     # uses. A game that cannot be described (a link that leaves its checkout, loops or leads nowhere)
@@ -858,7 +899,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     from harness.tree import TreeProblem
 
     trees: dict = {"head": None, "base": None}
-    for side, folder, checkout in (("head", head_game if _game_ok(head_game) else None, repo), ("base", base_game, base)):
+    for side, folder, checkout in (("head", head_game if game_ok(head_game) else None, repo), ("base", base_game, base)):
         if folder is None:
             continue
         for label, place in (("output", out), ("work", work)):
@@ -866,7 +907,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
             if place == folder.resolve() or folder.resolve() in place.parents:
                 raise ConfigError(f"the {label} folder is inside the {side} game folder ({game_rel}); keep it outside the game")
         try:
-            trees[side] = game_tree(folder, checkout)
+            trees[side] = game_tree(folder, checkout, engine.name)
         except TreeProblem as exc:
             raise ConfigError(f"the {side} game cannot be verified as it stands: {exc}") from exc
         named[Path(folder)] = trees[side]
@@ -875,7 +916,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     for name, data, _sha in checks.routes:
         (routes_dir / f"{name}.json").write_bytes(data)
 
-    how = {"rule": rule, "visual": visual, "on_phase": on_phase}
+    how = {"rule": rule, "visual": visual, "on_phase": on_phase, "capture_fps": engine.capture_fps}
     held_back = False   # under `both`: the held-out frames were kept from the visual observer
     head = judge_arm(head_game, route_list_for_head, spec_docs, work / "head", replay, label="head", **how) \
         if route_list_for_head and spec_docs else {}
@@ -883,11 +924,11 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         if base_game is not None and route_list_for_head and spec_docs else {}
     if heldout is None or not spec_docs:
         held = {"status": "not-used", **HELD_ZERO}
-    elif not _game_ok(head_game):
+    elif not game_ok(head_game):
         held = {"status": "unavailable", **HELD_ZERO}
     else:
         held = judge_heldout(heldout.resolve(), head_game, spec_docs, replay, rule=rule, visual=visual,
-                             frames_to_visual=heldout_frames_to_visual)
+                             frames_to_visual=heldout_frames_to_visual, capture_fps=engine.capture_fps)
         if rule == rec.BOTH and visual is not None and not heldout_frames_to_visual:
             held_back = True
 
@@ -928,7 +969,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
             for side, folder in (("base", base_game), ("head", head_game)):
                 # By the same rule as the first run: under `both` a run passes only with both observers.
                 more = judge_arm(folder, again, spec_docs, work / f"{side}-run{n}", replay, label=side,
-                                 rule=rule, visual=visual) if again else {}
+                                 rule=rule, visual=visual, capture_fps=engine.capture_fps) if again else {}
                 for key, kept in runs.items():
                     kept[side].append(more[key]["result"])
         repair = rec.repair_block([{"spec": c["spec"], "route": c["route"], **runs[(c["spec"], c["route"])]}
@@ -959,7 +1000,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         "format": rec.FORMAT,
         "decision": decision,
         "reasons": reasons,
-        "adapter": "godot",
+        "adapter": engine.name,
         "pullRequest": pr,
         "game": {"path": game_rel, "headTree": trees["head"], "baseTree": trees["base"]},
         "checksFrom": checks_from,
