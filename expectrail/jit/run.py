@@ -155,8 +155,16 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
              runner=None, intent=None, variants_fn=None, game: Path | None = None,
              budget_usd: float = DEFAULT_BUDGET_USD, prices: dict | None = None, reps: int = assess.REPS,
              variant_limit: int = 8, approved_claims: frozenset[str] = frozenset(),
-             run_id: str | None = None, clock=time.monotonic, offer: str = offer_mod.BASELINE) -> dict:
+             run_id: str | None = None, clock=time.monotonic, offer: str = offer_mod.BASELINE,
+             candidate_to_model: str = "shown") -> dict:
+    """One change: propose, replay, judge. ``candidate_to_model`` is ``shown`` (the default) or
+    ``withheld``: under ``withheld`` the intent is given no byte of the candidate patch and no diff map made
+    from it (issue #285, step 6), and the record says so in ``settings.candidate``. The candidate is
+    still what the record judges."""
+    from expectrail.jit.intent import check_candidate
+
     offer_mod.check(offer)
+    check_candidate(candidate_to_model)
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     runner = runner or _default_runner(game)
@@ -174,7 +182,8 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
     status, reason = "complete", None
     try:
         _pipeline(profile, report, cand_bytes, Path(candidate), list(base_patches), out, runner, intent,
-                  variants_fn, game, spend, reps, variant_limit, approved_claims, state, diagnostics, clock, offer)
+                  variants_fn, game, spend, reps, variant_limit, approved_claims, state, diagnostics, clock, offer,
+                  candidate_to_model)
     except (PatchError, NothingGenerated) as exc:
         status, reason = "nothing-generated", " ".join(str(exc).split())[:300]
     except Exception as exc:  # noqa: BLE001 - rule 3: anything unexpected is "nothing generated", never a pass
@@ -189,7 +198,8 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
         "status": status,
         "reason": reason,
         "inputs": dict(inputs, model=state["model"], promptSha256=state["promptSha256"]),
-        "settings": {"reps": reps, "variantLimit": variant_limit, "budgetUsd": float(budget_usd), "offer": offer},
+        "settings": {"reps": reps, "variantLimit": variant_limit, "budgetUsd": float(budget_usd), "offer": offer,
+                     "candidate": candidate_to_model},
         "diffMap": state["diffMap"],
         "proposed": state["proposed"],
         "probes": state["probes"],
@@ -216,11 +226,21 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
 
 def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner, intent, variants_fn, game,
               spend: Spend, reps, variant_limit, approved_claims, state, diagnostics, clock,
-              offer: str = offer_mod.BASELINE) -> None:
+              offer: str = offer_mod.BASELINE, candidate_to_model: str = "shown") -> None:
+    from expectrail.jit.diff_map import withheld_map
+
     probes = offer_mod.library(profile["actions"], offer, report)
     for p in probes:
         p["source"] = "reach" if p.get("family") == "reach" else "library"
-    dmap = diff_map(cand_bytes.decode("utf-8", errors="replace"), profile, probes)
+    withheld = candidate_to_model == "withheld"
+    # What the intent is given about the candidate: all of it, or (withheld) nothing. The candidate's own
+    # bytes are still replayed and judged below.
+    shown_text = "" if withheld else cand_bytes.decode("utf-8", errors="replace")
+    if withheld:
+        diff_map(cand_bytes.decode("utf-8", errors="replace"), profile, probes)  # still refuses a non-patch
+        dmap = withheld_map(probes)
+    else:
+        dmap = diff_map(shown_text, profile, probes)
     state["diffMap"] = {k: v for k, v in dmap.items() if not k.startswith("_")}
 
     # Intent: one model call, reserved against the budget before it is made.
@@ -232,13 +252,19 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
     told = getattr(intent, "offer", None)
     if told is not None and told != offer:
         raise NothingGenerated(f"OFFER_MISMATCH: the intent was given offer {str(told)[:40]!r}, and this run is {offer!r}")
+    # The same for the candidate: an intent that would put the patch in its prompt cannot serve a run that
+    # records it as withheld, nor the other way round. One that states nothing is a test double.
+    saw = getattr(intent, "candidate", None)
+    if saw is not None and saw != candidate_to_model:
+        raise NothingGenerated(f"CANDIDATE_MISMATCH: the intent has the candidate {str(saw)[:20]!r}, "
+                               f"and this run has it {candidate_to_model!r}")
     from expectrail.jit import intent as intent_mod
 
     est_prompt = intent_mod.estimate_prompt_tokens(getattr(intent, "system", ""), intent_mod.prompt(
-        report, cand_bytes.decode("utf-8", errors="replace"), dmap, profile, probes, offer=offer))
+        report, shown_text, dmap, profile, probes, offer=offer, candidate=candidate_to_model))
     spend.reserve(spend.spark_cost(est_prompt, intent_mod.RESERVED_COMPLETION_TOKENS), "the intent call")
     try:
-        answer = intent(report, cand_bytes.decode("utf-8", errors="replace"), dmap, profile, probes)
+        answer = intent(report, shown_text, dmap, profile, probes)
     except intent_mod.IntentUnavailable as exc:
         spend.add_spark(est_prompt, 0)  # a failed call is charged for its prompt, conservatively
         raise NothingGenerated(str(exc)) from exc
@@ -435,3 +461,29 @@ def gate_summary(doc: dict | None, *, max_rows: int = 10) -> dict:
             "catches": [{"specId": c["specId"], "statement": c["statement"][:200], "strength": c["strength"]}
                         for c in order[:max_rows]],
             "runSha256": digest_v1(doc)}
+
+
+def from_base_alone(doc: dict) -> dict:
+    """Which of a record's checks reproduce the reported bug, and whether they were derived without the
+    candidate (issue #285, step 6; the first condition of #271).
+
+    ``candidate`` is the record's ``settings.candidate`` (``shown`` when the record predates it).
+    ``reproducing`` lists the checks that passed on the clean game ``reps`` times of ``reps`` and failed
+    on the bug build as many times (the base near miss in the check's ``killed``, which holds only a
+    near miss every run of which failed). ``fromBaseAlone`` lists those of them proposed with the
+    candidate withheld: with the candidate shown it is empty, whatever the checks did, because the fix
+    could have shaped them. A record that did not complete reproduces nothing.
+
+    Read from the record's rows, never its counts; the record is checked against its schema first."""
+    from expectrail.jit.intent import of_record_candidate
+
+    validate_v1(doc, "jit-run")
+    candidate = of_record_candidate(doc["settings"].get("candidate"))
+    reps = doc["settings"]["reps"]
+    base_ids = {v["id"] for v in doc["variants"] if v["kind"] == "base"}
+    reproducing = []
+    if doc["status"] == "complete" and base_ids:
+        reproducing = sorted(v["specId"] for v in doc["validity"]
+                             if assess.all_of(v["reference"], "pass", reps) and base_ids & set(v["killed"]))
+    return {"candidate": candidate, "reproducing": reproducing,
+            "fromBaseAlone": reproducing if candidate == "withheld" else []}
