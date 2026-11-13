@@ -15,6 +15,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from tests.tool_requirements import require_tool
 from agents import guard
 from agents.fixer import run_fixer
 from agents.orchestrator import build_repair_request
@@ -182,12 +183,9 @@ class BwrapGuardTest(unittest.TestCase):
             self.assertEqual(cmd[i + 1], str(home))  # a fresh, writable home
 
     def test_muse_can_create_its_session_dir_under_bwrap(self):
-        from agents.sandbox import _bwrap_cmd, _bwrap_usable
+        from agents.sandbox import _bwrap_cmd
 
-        if not _bwrap_usable():
-            if os.environ.get("EXPECTRAIL_REQUIRE_BWRAP") == "1":
-                self.fail("bubblewrap is required here but not usable")
-            self.skipTest("bubblewrap not usable here")
+        require_tool('Bubblewrap')
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp) / "home"
             (home / ".local" / "share" / "godot").mkdir(parents=True)
@@ -203,12 +201,9 @@ class BwrapGuardTest(unittest.TestCase):
             self.assertIn("host=hidden", proc.stdout, proc.stdout + proc.stderr)
 
     def test_shell_cannot_rewrite_guard_under_bwrap(self):
-        from agents.sandbox import _bwrap_cmd, _bwrap_usable
+        from agents.sandbox import _bwrap_cmd
 
-        if not _bwrap_usable():
-            if os.environ.get("EXPECTRAIL_REQUIRE_BWRAP") == "1":
-                self.fail("bubblewrap is required here but not usable")
-            self.skipTest("bubblewrap not usable here")
+        require_tool('Bubblewrap')
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp) / "fixer-work"
             (work / "player").mkdir(parents=True)
@@ -372,12 +367,7 @@ class BwrapSessionTest(unittest.TestCase):
         self.work.mkdir()
 
     def need_bwrap(self):
-        from agents.sandbox import _bwrap_usable
-
-        if not _bwrap_usable():
-            if os.environ.get("EXPECTRAIL_REQUIRE_BWRAP") == "1":
-                self.fail("bubblewrap is required here but not usable")
-            self.skipTest("bubblewrap not usable here")
+        require_tool('Bubblewrap')
 
     def from_a_terminal(self, start) -> str:
         """Run ``start`` (which returns a finished process) in a child that has a terminal of its own,

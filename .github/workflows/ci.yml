@@ -32,6 +32,7 @@ jobs:
         run: git fetch --no-tags --depth=1 origin c169a5e0da304773587304ed47bc8aabcec80da7
       - env:
           EXPECTRAIL_PACKAGE_TESTS: required
+          EXPECTRAIL_GATEWAY_TESTS: required
         run: python -m unittest discover -s tests -t . -v
       - name: Export scan of the public repository (keys and signing keys; private names are checked by private-scan.yml and on main)
         run: python -m agents.export_scan bench docs README.md apps --paths error
@@ -191,6 +192,8 @@ jobs:
           python -m unittest tests.test_check_pages -v
           python -m agents.check_pages docs
       - name: Web adapter tests, including two byte-identical replays
+        env:
+          EXPECTRAIL_WEB_TESTS: required
         run: python -m unittest tests.test_web -v
       - name: Every variant on both routes, layout and behaviour only
         run: |
@@ -756,6 +759,8 @@ jobs:
       - name: Fetch the baseline commit (the discovery freeze and the mutation registration are checked against it)
         run: git fetch --no-tags --depth=1 origin c169a5e0da304773587304ed47bc8aabcec80da7
       - name: The whole suite on Python 3.12
+        env:
+          EXPECTRAIL_GATEWAY_TESTS: required
         run: python -m unittest discover -s tests -t .
       - name: Install a virtual display and software OpenGL
         uses: ./.github/actions/apt-install
