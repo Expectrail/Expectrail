@@ -1,6 +1,6 @@
 """What the generator is offered: one named setting, the same in every step of one change.
 
-    python -m expectrail.jit.cli measure|propose|revise|run ... --offer baseline|signals-reach
+    python -m expectrail.jit.cli measure|propose|revise|run ... --offer baseline|signals-reach|signals-reach-evidence
 
 Issue #285 asks for the reproduction rate on the public bench "before changing anything", and then
 after each step. Steps 3 and 4 were built before that baseline was run, so they are held back from
@@ -15,6 +15,14 @@ baseline stays what it was:
 - ``signals-reach``: also the three signals of #323 (``coins_collected``,
   ``player_screen_x_range_px``, ``player_screen_y_range_px``) and the reach probes of #336, the short
   routes that press two actions together where no library probe does.
+- ``signals-reach-evidence``: everything ``signals-reach`` offers, and step 5's evidence
+  (expectrail/repro/evidence.py): along each probe, what the bug build changes against the clean
+  game in the engine's record (which fields, from which tick) and **on the screen** (how many frames
+  differ, from which frame, where). The measure step makes it by replaying every probe with frames
+  (the clean game twice, the bug build once); the propose and revise steps put the summary that
+  ``evidence.for_proposer`` makes on at most six probes of the prompt (``differs``). Like the
+  measurements, it comes from the clean game and the bug build only, never the candidate (#285, step 6).
+  No visual observer is asked or read for it.
 
 Nothing about what decides a check changes: a check is kept or dropped by replays only
 (expectrail/jit/assess.py), under either setting.
@@ -36,7 +44,8 @@ from __future__ import annotations
 
 BASELINE = "baseline"
 SIGNALS_REACH = "signals-reach"
-OFFERS = (BASELINE, SIGNALS_REACH)
+EVIDENCE = "signals-reach-evidence"
+OFFERS = (BASELINE, SIGNALS_REACH, EVIDENCE)
 DEFAULT = BASELINE
 
 
@@ -55,6 +64,11 @@ def of_record(value) -> str:
     return DEFAULT if value is None else check(value)
 
 
+def shows_evidence(offer) -> bool:
+    """Whether the proposer is given step 5's evidence (what the bug build changes, record and screen)."""
+    return check(offer) == EVIDENCE
+
+
 def meanings(offer: str) -> dict[str, str]:
     """{signal: what it measures} for the signals the generator is told about under ``offer``."""
     from expectrail.jit.intent import NOT_YET_OFFERED, SIGNAL_MEANINGS
@@ -68,7 +82,7 @@ def signals(offer: str) -> tuple[str, ...]:
 
 
 def library(actions, offer: str, report: str = "") -> list[dict]:
-    """The probes the generator may use under ``offer``: the jit library, then (``signals-reach``) the
+    """The probes the generator may use under ``offer``: the jit library, then (any setting but ``baseline``) the
     reach probes for the pairs of actions it never presses together, ordered by the report.
 
     The report only orders the reach probes and, when there are more than the reach limit, decides
@@ -83,3 +97,53 @@ def library(actions, offer: str, report: str = "") -> list[dict]:
     from expectrail.repro.reach import reach
 
     return probes + reach(report if isinstance(report, str) else "", actions, probes)["probes"]
+
+
+def attach_evidence(probes: list[dict], path, base: list, offer: str) -> list[str]:
+    """Under ``signals-reach-evidence``, put step 5's evidence (expectrail/repro/evidence.py) on the probes
+    it shows, as ``differs``. Returns diagnostics, like ``expectrail.jit.cli.attach_measurements``: empty when it was
+    attached; otherwise why not, and the proposal goes ahead without it.
+
+    The record is read as untrusted data: ``evidence.load`` checks it against its schema and itself and
+    that it was made for these base patches, and ``evidence.for_proposer`` keeps only this library's
+    probe ids, the trace's own fields and signals, and numbers. Under any other setting nothing is
+    attached, and a file given anyway is said and not read."""
+    if not shows_evidence(offer):
+        return [] if path is None else [f"evidence: not used: the offer {offer} does not offer it"]
+    if path is None:
+        return ["evidence: none given"]
+    from expectrail.repro.evidence import EvidenceError, for_proposer, load
+
+    try:
+        summary = for_proposer(load(path, base_patches=base), probes=[p["id"] for p in probes])
+    except (EvidenceError, OSError) as exc:
+        return [" ".join(f"evidence: not used: {exc}".split())[:200]]
+    header = {"ticksPerSecond": summary["ticksPerSecond"], "framesPerSecond": summary["framesPerSecond"],
+              "frame": summary["frame"]}
+    shown = {e["probe"]: e for e in summary["probes"]}
+    for p in probes:
+        p.pop("differs", None)
+        if p["id"] in shown:
+            p["differs"] = {**header, "record": shown[p["id"]]["record"], "screen": shown[p["id"]]["screen"]}
+    notes = []
+    if summary["probesNotCompared"]:
+        notes.append(f"evidence: {summary['probesNotCompared']} probes could not be compared")
+    if summary["probesNotKnown"]:
+        notes.append(f"evidence: {summary['probesNotKnown']} probes that differ are not in this library")
+    return notes
+
+
+def make_evidence(profile: dict, probes: list[dict], base: list, out, *, game=None,
+                  jobs: int = 1, runner=None) -> dict:
+    """The measure step's second record under ``signals-reach-evidence``: ``out/repro-evidence.json``.
+    Replays every probe with frames, the clean game twice and the bug build once. No model, no key."""
+    from expectrail.repro.evidence import evidence
+
+    if runner is None:
+        from functools import partial
+        from pathlib import Path
+
+        from harness.run import run as harness_run
+
+        runner = partial(harness_run, capture_frames=True, **({"game": Path(game)} if game else {}))
+    return evidence(profile, probes, base, out, runner=runner, jobs=jobs)
