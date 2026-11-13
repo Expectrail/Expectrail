@@ -237,7 +237,8 @@ def _not_demonstrated(counts: dict, repair: dict | None, base_judged: bool) -> s
 
 
 def decide(counts: dict, held: dict, isolation: dict | None = None, check_problems: int = 0, *,
-           intent: str = "none", repair: dict | None = None, base_judged: bool = True) -> tuple[str, list[str]]:
+           intent: str = "none", repair: dict | None = None, base_judged: bool = True,
+           anchor: dict | None = None) -> tuple[str, list[str]]:
     """accept, reject or needs-review, and why.
 
     Accept only when at least one check ran and every public and held-out check passed. Any failure
@@ -255,6 +256,10 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
     for ``change`` and ``none`` the rule is the one above, unchanged. ``base_judged`` only words the
     reason: whether any check has a result on the base. For an unverified fix the
     ``repair-not-demonstrated`` reason is always the first, whatever else is wrong.
+
+    ``anchor`` is the record's ``anchor`` block (the player's place asked of the vision model on both
+    sides; issue #327, decision B). A route that differs, or a frame with no answer, keeps the
+    decision from being accept (``anchor_effect``). It never rejects and never makes an accept.
     """
     if intent not in INTENTS:
         raise ValueError(f"unknown intent {intent!r}")
@@ -280,6 +285,9 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
     if isolation is not None and isolation["required"] and isolation["sandboxed"] != isolation["replays"]:
         outside = isolation["replays"] - isolation["sandboxed"]
         reasons.append(f"{outside} of {isolation['replays']} replays ran outside the sandbox, which was required")
+    stands = anchor_effect(anchor)
+    if stands:
+        reasons.append(stands)
     if unverified:
         reasons.insert(0, _not_demonstrated(counts, repair, base_judged))
     if reasons:
@@ -290,6 +298,29 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
         return "accept", [f"all {total} checks pass, and {shown} of them failed before the change "
                           f"{REPAIR_RUNS} times of {REPAIR_RUNS}: the repair is demonstrated"]
     return "accept", [f"all {total} checks pass"]
+
+
+def anchor_effect(anchor: dict | None) -> str | None:
+    """Why the ``anchor`` block keeps a decision from being accept, or None when it does not (#327,
+    decision B): a route where the vision model sees something different at the player's place than
+    on the base, a route with frames it gave no answer for, or asking that stopped before every route.
+    An absent block, or one that was not asked, says nothing."""
+    if not anchor or anchor.get("status") == "not-asked":
+        return None
+    differ = [r for r in anchor["routes"] if r["result"] == "differ"]
+    if differ:
+        first = differ[0]
+        return (f"the vision model sees something different at the player's place on {len(differ)} "
+                f"route{'s' if len(differ) != 1 else ''} (first {first['route']}, frame "
+                f"{next((f['frame'] for f in first['frames'] if f['state'] == 'out'), '?')}); a person compares the "
+                "base and head frames side by side (anchor/ in the artifact)")
+    quiet = [r for r in anchor["routes"] if r["result"] == "no-answer"]
+    if quiet:
+        return (f"the vision model gave no answer about the player's place on {len(quiet)} "
+                f"route{'s' if len(quiet) != 1 else ''}, so this is not an accept")
+    if anchor.get("status") == "stopped":
+        return f"{anchor['stopped']} before every route was asked about the player's place, so this is not an accept"
+    return None
 
 
 # --- reading a record as data ---------------------------------------------------------------------
@@ -572,7 +603,7 @@ def check_consistency(doc: dict) -> None:
     check_observers(doc)
     check_repair(doc)
     decision, _reasons = decide(counts, held, isolation, doc.get("checkProblems", 0),
-                                intent=intent_of(doc), repair=doc.get("repair"))
+                                intent=intent_of(doc), repair=doc.get("repair"), anchor=doc.get("anchor"))
     if doc["decision"] != decision:
         raise RecordError(f"the decision should be {decision} from these counts")
     pr = doc["pullRequest"]
@@ -581,6 +612,33 @@ def check_consistency(doc: dict) -> None:
     generated = doc.get("generatedChecks")
     if generated is not None:
         check_generated(generated)
+
+
+def check_anchor(doc: dict, rule: str) -> None:
+    """The ``anchor`` block agrees with itself: it is written under ``both`` only and with a base,
+    each route's result follows from its counts, and the frames it keeps are frames it found out."""
+    anchor = doc.get("anchor")
+    if anchor is None:
+        return
+    if rule != BOTH:
+        raise RecordError("the player's place was asked of the vision model and the rule is not both")
+    if doc["checksFrom"] != "base":
+        raise RecordError("the player's place is compared with the base, and this record judged no base")
+    if anchor["status"] == "not-asked" and anchor["routes"]:
+        raise RecordError("the anchor block was not asked and lists routes")
+    if (anchor["status"] == "asked") != (anchor["stopped"] is None):
+        raise RecordError("the anchor block says why it stopped exactly when it stopped or was not asked")
+    for n, row in enumerate(anchor["routes"]):
+        want = ("differ" if row["out"] else "no-answer" if row["noAnswer"] else "agree" if row["in"] else None)
+        if want is None and row["result"] not in ("silent", "no-answer"):
+            raise RecordError(f"anchor/routes/{n}: nothing was compared, so the result cannot be {row['result']}")
+        if want is not None and row["result"] != want:
+            raise RecordError(f"anchor/routes/{n}: the result should be {want} from these counts")
+        outs = {f["frame"] for f in row["frames"] if f["state"] == "out"}
+        if not set(row["kept"]) <= outs:
+            raise RecordError(f"anchor/routes/{n}: a kept frame is not one that differs")
+        if row["out"] and not outs:
+            raise RecordError(f"anchor/routes/{n}: frames differ and none is listed")
 
 
 def check_observers(doc: dict) -> None:
@@ -592,6 +650,7 @@ def check_observers(doc: dict) -> None:
     ``engine-only`` (and in a record from before the block) no row carries what observers said."""
     block = doc.get("observers")
     rule = rule_of(doc)
+    check_anchor(doc, rule)
     if rule == ENGINE_ONLY:
         if block is not None and block["visual"] is not None:
             raise RecordError("a visual observer is named but the rule is engine-only")

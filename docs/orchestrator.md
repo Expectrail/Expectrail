@@ -12,6 +12,9 @@ python3 -m expectrail.orchestrator cancel JOB
 python3 -m expectrail.orchestrator report JOB
 ```
 
+`report` also writes the job's evidence viewer, `jobs/<id>/viewer/index.html`, and prints its path
+(docs/viewer.md). `report --json` prints the status alone.
+
 `sample` is the quickest way to see it work. It copies the bundled game twice, once as it is and once
 with the seeded fall-through bug, and runs three real verifications with no model key: the game as
 it is (accept), the change that breaks it (reject) and the change that repairs it (accept). It exits

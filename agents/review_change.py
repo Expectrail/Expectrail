@@ -8,6 +8,8 @@ The failing base is the request's seed patch alone; the candidate is seed plus t
 judged on the request's public route by the same code (agents.verifier.public_route_checks), and
 the candidate also goes through the full verifier (clean game, private routes). The review then
 pairs the public checks claim by claim (expectrail.change_evidence) and writes change-evidence.json.
+A requested claim that went from FAIL to PASS is then replayed on the public route twice more on each
+side, and the repair counts only when it held on every run, three of three: the gate's rule (#284).
 
 Exit 0: REPAIR DEMONSTRATED. Exit 1: REJECTED or NO REPAIR DEMONSTRATED. Exit 2: INCONCLUSIVE.
 No status authorizes a merge or a release; each describes the evidence and its limits.
@@ -165,6 +167,7 @@ def review(
     from expectrail import change_evidence
     from agents import verifier
 
+    record_repair = change_evidence.repair_block([], {})
     if mode not in ("live", "sample"):
         raise ValueError(f"mode must be live or sample, not {mode!r}")
     out.mkdir(parents=True, exist_ok=True)
@@ -185,6 +188,7 @@ def review(
         "evidenceLabel": "MIXED OR INCOMPLETE",
         "status": "INCONCLUSIVE",
         "reasons": [],
+        "repair": record_repair,
     }
     seed = request.get("base", {}).get("patch")
     rerun = ["python3", "-m", "agents.review_change", "--request", "<request.json>", "--candidate",
@@ -245,7 +249,7 @@ def review(
             row["status"] = "failed"
             diagnostics.extend(_diag(code, "preflight", detail, fix, out) for code, detail, fix in problems)
     if problems:
-        for name in ("base", "candidate", "compare"):
+        for name in ("base", "candidate", "compare", "repeat"):
             stages.skip(name, "preflight failed")
         status = "REJECTED" if scope else "INCONCLUSIVE"
         return finish(status, [d["detail"] for d in diagnostics])
@@ -326,16 +330,64 @@ def review(
     record["evidenceLabel"] = evidence_label(base_arm, verification, mode)
     if base_checks is None or verification is None:
         stages.skip("compare", "an arm did not complete")
+        stages.skip("repeat", "an arm did not complete")
         return finish("INCONCLUSIVE", [d["detail"] for d in diagnostics] or ["an arm did not complete"])
 
     with stages.run("compare"):
         cand_checks = [c for c in verification["checks"] if c["kind"] in PUBLIC_KINDS]
         record["rows"] = change_evidence.pair(base_checks, cand_checks, primary=primary,
                                               base_ids=base_arm["identity"], candidate_ids=cand_identity)
-        status, reasons = change_evidence.review_status(record["rows"], verification)
+        claims = change_evidence.repair_claims(record["rows"])
+        runs = {(c["spec"], c["route"]): {"base": [c["before"]], "head": [c["after"]]} for c in claims}
+        # Whether the status could be REPAIR DEMONSTRATED if every claim held on every run: only then are
+        # the claims replayed again, so a review that cannot claim a repair costs no more than before.
+        hopeful = {key: {"base": ["fail"] * change_evidence.REPAIR_RUNS, "head": ["pass"] * change_evidence.REPAIR_RUNS}
+                   for key in runs}
+        could, _ = change_evidence.review_status(record["rows"], verification,
+                                                 change_evidence.repair_block(record["rows"], hopeful))
+    # Live mode needs fresh replays and the private routes before it may claim a repair at all.
+    blocked = mode == "live" and record["evidenceLabel"] != "FRESH LIVE"
+    repeat_failed = False
+    if could != "REPAIR DEMONSTRATED":
+        stages.skip("repeat", "no repair can be claimed from the first run, so nothing is replayed again")
+    elif blocked:
+        stages.skip("repeat", "live mode cannot claim a repair from this evidence, so nothing is replayed again")
+    else:
+        # The gate's rule (expectrail.gate.record.row_counts): a claim demonstrates the repair only when
+        # it fails on the base and passes on the candidate REPAIR_RUNS times of REPAIR_RUNS. The first
+        # run is the one above; the public route is replayed again on each side by the same code
+        # (verifier.public_route_checks; tests/test_base_arm.py holds it to verify()'s public checks).
+        with stages.run("repeat") as row:
+            try:
+                arms = (("base", [REPO / seed], base_observations, base_arm["identity"]),
+                        ("candidate", [REPO / seed, candidate], observations, cand_identity))
+                for n in range(2, change_evidence.REPAIR_RUNS + 1):
+                    for side, patches, obs, identity in arms:
+                        checks, arm = verifier.public_route_checks(request, patches, out / f"{side}-run{n}",
+                                                                   observations_path=obs)
+                        same = change_evidence.mismatch(identity, arm["identity"]) == []
+                        got = {(c["spec"], c["route"]): c["result"] for c in checks}
+                        for key, kept in runs.items():
+                            # A run judged another way (another observer, evaluator or route) is no run of
+                            # this claim: it is recorded as missing, and a missing run never counts.
+                            kept["base" if side == "base" else "head"].append(got.get(key) if same else None)
+            except BaseException as exc:  # noqa: BLE001 - SystemExit from the verifier included
+                if isinstance(exc, KeyboardInterrupt):
+                    raise
+                row["status"] = "failed"
+                repeat_failed = True
+                (out / "repeat-error.txt").write_text(traceback.format_exc(), encoding="utf-8")
+                diagnostics.append(_classify(exc, "repeat", out))
+    record["repair"] = change_evidence.repair_block(record["rows"], runs)
+    status, reasons = change_evidence.review_status(record["rows"], verification, record["repair"])
     reasons = list(reasons)
-    if mode == "live" and status == "REPAIR DEMONSTRATED" and record["evidenceLabel"] != "FRESH LIVE":
+    if repeat_failed:
         status = "INCONCLUSIVE"
+        reasons = [f"the claimed repair could not be replayed {change_evidence.REPAIR_RUNS} times on each side: "
+                   + diagnostics[-1]["detail"]]
+    elif could == "REPAIR DEMONSTRATED" and blocked:
+        # Why nothing was replayed again is the reason, not the single run it left.
+        status, reasons = "INCONCLUSIVE", []
         reasons.append(f"live mode needs fresh replays and the private routes; the evidence is "
                        f"{record['evidenceLabel'].lower()} (private routes: {record['private']['source']})")
         diagnostics.append(_diag("PRIVATE_SUITE_UNAVAILABLE"

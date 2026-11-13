@@ -31,6 +31,7 @@ from expectrail.orchestrator import request as req
 from expectrail.orchestrator import runner
 from expectrail.orchestrator import sample as smp
 from expectrail.orchestrator import store as st
+from expectrail import viewer
 
 EXIT = {"accept": 0, "reject": 1, "needs-review": 2}
 EXIT_FAILED, EXIT_CANCELLED, EXIT_USAGE, EXIT_UNFINISHED = 3, 4, 5, 6
@@ -152,9 +153,21 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
             if status["phase"] not in st.FINAL:
                 print(f"job {status['id']} is {status['phase']}; there is no result yet", file=sys.stderr)
                 return EXIT_UNFINISHED
+            # The evidence viewer (#264): one folder that opens from disk, written for every final job,
+            # so a job with no result (cancelled, failed, could not be carried out) has its page too.
+            try:
+                page = viewer.write_job(store, status["id"])
+            except Exception as exc:  # noqa: BLE001 - the viewer never changes the job's result or exit code
+                page = None
+                print(f"expectrail: the evidence viewer was not written ({type(exc).__name__})", file=sys.stderr)
+            # --json prints the status as it is (expectrail.verify-job/v1); the viewer is always at
+            # <job>/viewer/index.html.
             _show(status, args.json)
-            if not args.json and status["output"]:
-                print(f"  evidence: {store.paths(status['id']).output}")
+            if not args.json:
+                if status["output"]:
+                    print(f"  evidence: {store.paths(status['id']).output}")
+                if page:
+                    print(f"  viewer: {page}")
             return exit_code(status)
         _show(status, args.json)
         return exit_code(status)

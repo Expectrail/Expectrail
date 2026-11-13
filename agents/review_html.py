@@ -17,14 +17,14 @@ import shutil
 import sys
 from pathlib import Path
 
-from expectrail.change_evidence import load_record
+from expectrail.change_evidence import load_record, pre_repair_rule
 from expectrail.diagnostics import redact
 
 STATUS_TONE = {"REPAIR DEMONSTRATED": "good", "REJECTED": "bad", "NO REPAIR DEMONSTRATED": "warn",
                "INCONCLUSIVE": "warn"}
 STATUS_MEANS = {
     "REPAIR DEMONSTRATED": "A requested check failed on the game before the change and passes after it, "
-                           "every required check passes, and the verifier accepted.",
+                           "three times of three on each side, every required check passes, and the verifier accepted.",
     "REJECTED": "The change fails a required check, or the verifier rejected it.",
     "NO REPAIR DEMONSTRATED": "Every check passes after the change, but no requested check was failing "
                               "before it, so nothing here shows a repair.",
@@ -82,6 +82,21 @@ def _frame(arm_name: str, arm: dict | None, run_id: str, src_dir: Path, out: Pat
             f'<figcaption>{caption}</figcaption></figure>'), None
 
 
+def _runs_line(record: dict) -> str:
+    """How many times each claimed repair was replayed, from the record's ``repair`` block (#284)."""
+    if pre_repair_rule(record):
+        return ("This review was recorded before reviews replayed a claimed repair: each check was judged once "
+                "on each side, which the gate's rule today does not count as a demonstration.")
+    repair = record["repair"]
+    if not repair["rows"]:
+        return "No requested check went from failing to passing, so nothing was replayed again."
+    parts = [f'<code>{esc(r["spec"])}</code> before {esc(", ".join(_word(x) for x in r["base"]))}; '
+             f'after {esc(", ".join(_word(x) for x in r["head"]))}: '
+             f'{"counts" if r["counts"] else "does not count"}' for r in repair["rows"]]
+    return (f'A claimed repair counts only when the check fails before the change and passes after it '
+            f'{repair["runs"]} times of {repair["runs"]}. ' + "; ".join(parts) + ".")
+
+
 def build(record: dict, src_dir: Path, out: Path, recorded: str | None = None) -> str:
     status, label = record["status"], record["evidenceLabel"]
     as_written = label
@@ -110,6 +125,8 @@ def build(record: dict, src_dir: Path, out: Path, recorded: str | None = None) -
         figures.append(fig)
         if warning:
             warnings.append(warning)
+
+    runs_line = _runs_line(record)
 
     private = record["private"]
     private_line = (f'{private["checks"]} check{"s" if private["checks"] != 1 else ""} on the private routes: '
@@ -191,6 +208,7 @@ dt {{ color:var(--quiet); }} dd {{ margin:0; overflow-wrap:anywhere; }}
 <div class="card table-wrap"><table>
 <thead><tr><th>Check</th><th>Role</th><th>Before</th><th>After</th><th>Result</th></tr></thead>
 <tbody>{table}</tbody></table>
+<p class="small">{runs_line}</p>
 <p class="small">Before is the game with the reported bug and no fix; after is the same game with the candidate.
 A requested check is one the repair request names as failing; only those can show a repair.
 Guards must pass after the change. The verifier also checked the clean game, separately.</p></div>

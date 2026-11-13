@@ -172,6 +172,40 @@
         }
       }
     },
+    "anchor": {
+      "type": "object",
+      "required": ["format", "observer", "box", "pad", "every", "tolerance", "drop", "status", "stopped", "routes"],
+      "additionalProperties": false,
+      "description": "The player's place, asked of the vision model on the base and the head (issue #327, decision B of November 12, 2026). Written under the rule both when a base was replayed. For each route, sampled frames of both replays are asked what is drawn inside the player's own collision box, and each head frame is compared with the same base frame where the engine has the player in the same place. A route that differs, or a frame asked about with no answer, makes an accept needs-review, with the differing frames kept under anchor/<route>/ as base-NNNNNN.png and head-NNNNNN.png. It never rejects and never makes anything an accept. A reader takes an absent block as not asked.",
+      "properties": {
+        "format": {"const": "expectrail.anchor/v0"},
+        "observer": {"description": "the visual observer whose model was asked, as in observers.visual; null when none was", "oneOf": [{"type": "null"}, {"type": "object", "required": ["name", "provider", "model"], "additionalProperties": false, "properties": {"name": {"type": "string", "minLength": 1, "maxLength": 40, "pattern": "^[a-z0-9][a-z0-9-]*$"}, "provider": {"type": "string", "minLength": 1, "maxLength": 80}, "model": {"type": "string", "minLength": 1, "maxLength": 80}}}]},
+        "box": {"const": "body", "description": "the player's own collision box from the trace, widened by pad game pixels each way"},
+        "pad": {"type": "number", "minimum": 0, "maximum": 64},
+        "every": {"type": "integer", "minimum": 1, "maximum": 1000, "description": "every this-many captured frames of a route are asked about, and its last"},
+        "tolerance": {"type": "number", "minimum": 0, "maximum": 1000, "description": "game pixels a width, height, reach above or reach below may differ by"},
+        "drop": {"type": "number", "minimum": 0, "maximum": 1, "description": "how far the model's confidence may fall"},
+        "status": {"enum": ["asked", "stopped", "not-asked"]},
+        "stopped": {"description": "why the asking stopped or never started", "oneOf": [{"type": "null"}, {"type": "string", "maxLength": 300}]},
+        "routes": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "object",
+            "required": ["route", "result", "reason", "in", "out", "moved", "noBase", "noAnswer", "notAsked", "frames", "kept"],
+            "additionalProperties": false,
+            "properties": {
+              "route": {"type": "string", "minLength": 1, "maxLength": 200},
+              "result": {"enum": ["agree", "differ", "no-answer", "silent"], "description": "differ: some compared frame differs. no-answer: none differs and some frame got no answer. agree: frames were compared and all agree. silent: nothing could be compared"},
+              "reason": {"type": "string", "maxLength": 300},
+              "in": {"type": "integer", "minimum": 0, "maximum": 100000}, "out": {"type": "integer", "minimum": 0, "maximum": 100000}, "moved": {"type": "integer", "minimum": 0, "maximum": 100000}, "noBase": {"type": "integer", "minimum": 0, "maximum": 100000}, "noAnswer": {"type": "integer", "minimum": 0, "maximum": 100000}, "notAsked": {"type": "integer", "minimum": 0, "maximum": 100000},
+              "frames": {"type": "array", "maxItems": 32, "description": "frames not in agreement, with why", "items": {"type": "object", "required": ["frame", "state", "why"], "additionalProperties": false, "properties": {"frame": {"type": "integer", "minimum": 0}, "state": {"enum": ["out", "moved", "no-base", "no-answer", "not-asked"]}, "why": {"type": "array", "maxItems": 6, "items": {"type": "string", "maxLength": 160}}}}},
+              "kept": {"type": "array", "maxItems": 8, "items": {"type": "integer", "minimum": 0}, "description": "frames whose base and head pictures are kept under anchor/<route>/"}
+            }
+          }
+        }
+      }
+    },
     "intent": {
       "enum": ["fix", "change", "none"],
       "description": "What the change was declared as (issue #284). fix: it claims to fix a reported bug, and is accepted only when the repair block shows a demonstration. change: an intended change of behaviour. none: nothing declared. change and none are judged alike, by the rule that held before this field. Written only when it is fix or change: a record with no intent declared nothing, as every record before November 12, 2026 did, and a reader takes an absent intent as none."
