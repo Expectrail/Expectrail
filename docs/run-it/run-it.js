@@ -273,6 +273,7 @@
       "daily-cap": "Run it has started its most runs for today.",
       "circuit-open": "Run it stopped starting runs after several failed runs in a row. A person has to look first.",
       "disabled": "Run it is switched off right now.",
+      "unavailable": "Run it could not start a run just now.",
       "unknown-sample": "That is not one of the samples Run it offers.",
       "bad-request": "Run it did not accept the request."
     }[doc.reason] || "Run it refused the request.";
