@@ -9,6 +9,10 @@ name: Expectrail verify
 
 on:
   pull_request:
+    # labeled, unlabeled and edited as well as the default three: the change's declared intent is a
+    # label or a line of the description (docs/ci-gate.md), and a verdict judged before it changed
+    # is refused by the comment job.
+    types: [opened, synchronize, reopened, labeled, unlabeled, edited]
     paths:
       - 'game/**'
       - 'agents/specs/**'

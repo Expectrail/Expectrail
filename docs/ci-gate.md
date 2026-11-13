@@ -100,6 +100,7 @@ Both use the actions from the checked-out repository (`./.github/actions/...`) i
 | verify | `require-sandbox` | `false` | `true` refuses to replay the game outside the replay sandbox ([replay-sandbox.md](replay-sandbox.md)): where the runner cannot provide it nothing is replayed and the decision is needs-review. To let the sandbox start, `true` also sets `kernel.apparmor_restrict_unprivileged_userns=0` on the runner (Ubuntu 24.04 ships it on); on a hosted runner that ends with the job, on a self-hosted runner it stays until reboot. `false` changes no setting and sandboxes the game only where the runner already allows it; the record and the comment say how many replays were |
 | verify | `artifact-name` | `expectrail-gate` | The evidence artifact's name |
 | verify | `generated-checks` | empty | An advisory block of checks generated for this change ([jit.md](jit.md)), shown in the comment and the review page; it never changes the decision, and one that cannot be read shows as "no generated checks" |
+| verify | `intent` | `from-pull-request` | What the change is for: `fix`, `change` or `none`, or `from-pull-request`, which reads a label `intent:...` or a description line `Expectrail-Intent: ...` from the event ([a change declared a fix](#a-change-declared-a-fix)); on any other event it is `none` |
 | comment | `github-token` | the run's token | Reads the verify run's artifact and writes the comment |
 | comment | `artifact-name` | `expectrail-gate` | Must match the verify action's |
 | comment | `watch` | empty | More paths the verdict depends on, one per line (end a folder with `/`); the comment warns when the pull request changes one |
@@ -155,7 +156,9 @@ declared, and a fix is held to more:
   route. One failure on the base could be a flaky check, so each such check's route is replayed
   twice more on each side, and the check counts only when it fails on the base three times of three
   and passes on the head three times of three. With no check that counts the decision is needs
-  review, its first reason starts `repair-not-demonstrated:`, and the comment and the review page
+  review, its first reason starts `repair-not-demonstrated:` (also when no check ran or the run
+  stopped; until November 13, 2026 "no checks ran" or the stop reason came first in those two
+  cases), and the comment and the review page
   lead with "No check reproduced the reported bug, so this fix is not verified", then how to get a
   check. A check that still fails after the change rejects, as always.
 - **`change`** (an intended change of behaviour) and **`none`** are judged by the rule above,
@@ -168,14 +171,34 @@ repair, with its result on each of the three runs a side and whether it counts. 
 recomputes which rows count and holds the decision to them, so a record cannot call a repair
 demonstrated that its own runs do not show. A record from before the field reads as `none`.
 
+**On a pull request** (added November 13, 2026) the intent is read from the pull request itself:
+
+- a label `intent:fix`, `intent:change` or `intent:none`, or
+- a line of the description that starts `Expectrail-Intent:` followed by `fix`, `change` or `none`
+  and nothing else, for example `Expectrail-Intent: fix`.
+
+Nothing declared is `none`. With several declarations the strictest wins (`fix`, then `change`,
+then `none`), and a value that is not one of the three (`intent:bugfix`, `Expectrail-Intent: maybe`)
+is a fix. So adding a label or a line can only move a change towards the stricter path, never away
+from it (`python3 -m expectrail.gate.intent`).
+
+Both halves read it. The verify action's `intent` input defaults to `from-pull-request`: it reads the
+declaration from the `pull_request` event file and passes it to the gate (an event file that cannot
+be read is a fix). That half runs the pull request's own copy of the action, so a pull request could
+edit it to declare `none`; the trusted comment job therefore reads the declaration again from the
+pull request it fetched itself, and when the pull request declares a fix and the record was judged
+as anything else, the comment says the evidence could not be used, instead of showing the verdict.
+A reject is still shown (the fix rule never changes one), and so is a record judged more strictly
+than declared. The comment job needs no new permission for this: the pull request it already reads
+carries its labels and description. "Expectrail verify" also runs on `labeled`, `unlabeled` and
+`edited`, so a declaration added after a push is judged by a new run.
+
 What this does not do yet:
 
-- **Nothing reads the intent from the pull request.** The two actions take no `intent` input, so
-  on a pull request the gate still runs with `none`. Reading it from a label or a line in the
-  description, and treating a pull request that links a bug issue as a fix, is the next change.
-- **The intent is written by the verify job**, the untrusted half. A pull request that edits its
-  own workflow can declare `none`. Until the trusted side reads the declaration itself, the rule
-  protects against a wrong fix, not against a dishonest declaration.
+- **A pull request that links a bug issue is not yet treated as a fix.** The description says
+  "Closes #N", not whether #N is a bug, and reading the linked issue's labels from the trusted job
+  would need the `issues: read` permission, which only a person may add. `declared(...,
+  links_bug=True)` is there for a caller that knows; neither half of the gate passes it today.
 - **Only approved checks can demonstrate a repair.** A generated check cannot count yet (#271), so
   for most reported bugs today the honest answer is needs review.
 - The three runs are three replays of the same route on the same machine. That shows the check is

@@ -100,8 +100,10 @@ class TheRule(GateCase):
         self.assertIn("1 check failed before the change and passed after it once, but not 3 times of 3",
                       said(repair=block((["fail", "pass", "pass"], PASS3)))[0])
         none_ran = said(counts={"checks": 0, "passed": 0, "failed": 0, "needsReview": 0}, repair=block())
-        self.assertEqual(none_ran[0], "no checks ran")
-        self.assertIn("repair-not-demonstrated: ", none_ran[1])
+        # The repair reason is first here too (the merge guard's correction on #355): every unverified
+        # fix's first reason starts repair-not-demonstrated, whatever else is wrong.
+        self.assertTrue(none_ran[0].startswith("repair-not-demonstrated: "), none_ran)
+        self.assertEqual(none_ran[1], "no checks ran")
 
     def test_an_intent_that_is_not_one_of_the_three_is_refused(self):
         for bad in ("Fix", "", "bugfix", None):
@@ -227,7 +229,8 @@ class TheGate(GateCase):
                                  "nonsense": gv.EXIT["needs-review"]})
         stopped = json.loads((self.tmp / "out-nonsense" / "findings.json").read_text())
         self.assertEqual(stopped["intent"], "fix")
-        self.assertIn("the intent must be one of", stopped["reasons"][0])
+        self.assertTrue(stopped["reasons"][0].startswith("repair-not-demonstrated: "), stopped["reasons"])
+        self.assertIn("the intent must be one of", stopped["reasons"][1])
 
 
 class TheRecord(GateCase):

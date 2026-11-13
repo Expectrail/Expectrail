@@ -253,7 +253,8 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
     the decision is needs-review with the reason ``repair-not-demonstrated``: "no check failed" is not
     "the fix is good" when no check touched the bug. It never turns a reject into anything else, and
     for ``change`` and ``none`` the rule is the one above, unchanged. ``base_judged`` only words the
-    reason: whether any check has a result on the base.
+    reason: whether any check has a result on the base. For an unverified fix the
+    ``repair-not-demonstrated`` reason is always the first, whatever else is wrong.
     """
     if intent not in INTENTS:
         raise ValueError(f"unknown intent {intent!r}")
@@ -266,7 +267,7 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
     if reasons:
         return "reject", reasons
     if not counts["checks"]:
-        return "needs-review", ["no checks ran"] + ([_not_demonstrated(counts, repair, base_judged)] if unverified else [])
+        return "needs-review", ([_not_demonstrated(counts, repair, base_judged)] if unverified else []) + ["no checks ran"]
     if check_problems:
         reasons.append(f"{check_problems} problem{'s' if check_problems != 1 else ''} with the spec and route files, "
                        "so the checks that ran are not all of the project's checks")
