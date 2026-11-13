@@ -49,6 +49,10 @@ def describe(status: dict) -> str:
     lines = [f"job {status['id']}: {status['phase']}" + (f", {status['decision']}" if status["decision"] else "")]
     lines += [f"  {reason}" for reason in status["reasons"]]
     lines += [f"  {d['code']} ({d['stage']}): {d['detail']} Fix: {d['fix']}" for d in status["diagnostics"]]
+    if "observers" in status:
+        from expectrail.gate.record import observers_words
+
+        lines.append(f"  Judged on: {observers_words(status)}")
     if status["evidenceGrade"]:
         lines.append(f"  evidence grade: {status['evidenceGrade']}")
     return "\n".join(lines)

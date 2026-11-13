@@ -52,7 +52,7 @@ class HTTPTest(unittest.TestCase):
         self.after = make_repo(self.root / 'after')
         self.store = JobStore(self.root / 'jobs')
         self.workers = []
-        self.engine = engines.GodotGate(replay=FakeReplay())
+        self.engine = engines.GodotGate(replay=FakeReplay(), rule='engine-only')
         self.starter = None
         self.server = app.create_server(self.store, start=self.start)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -227,7 +227,7 @@ class HTTPTest(unittest.TestCase):
             self.assertIsNone(result['report'])
 
     def test_missing_tools_needs_review_without_a_report(self):
-        self.engine = engines.GodotGate(replay=FakeReplay())
+        self.engine = engines.GodotGate(replay=FakeReplay(), rule='engine-only')
         with mock.patch.object(self.engine, 'preflight', return_value=[
                 diagnostic('TOOL_MISSING', stage='preparing', detail='Install the missing engine.')]):
             result = self.finished(self.create())

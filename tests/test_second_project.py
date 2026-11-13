@@ -116,7 +116,7 @@ class VerifyPathTest(Case):
         request = req.build(adapter="godot", head=head, base=base, game="project", routes=["routes/*.json"],
                             specs="specs")
         status, _ = store.create(request)
-        return runner.work(store, status["id"], engines={"godot": engines.GodotGate(replay=replay)}), replay
+        return runner.work(store, status["id"], engines={"godot": engines.GodotGate(rule="engine-only", replay=replay)}), replay
 
     def test_the_game_replayed_is_the_one_the_arguments_name(self):
         head = checkout(self.tmp / "head")

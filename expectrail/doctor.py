@@ -12,7 +12,8 @@ One list (``checks``) of what a run needs, each piece checked the way a run uses
     sandbox   bubblewrap, by the probe a replay uses (needed only for the isolated class)
     patch     for `expectrail sample` and seeded bugs
     curl, unzip   to fetch the engine, when it is not here yet
-    vision-key    present or absent in the environment; its value is never read past "is it empty"
+    vision-key    required MODEL_API_KEY, presence only; its value is never returned
+    vision-cap    required EXPECTRAIL_SAM_USD_CAP, a finite nonnegative USD amount
 
 The engine's preflight (``expectrail.orchestrator.engines.GodotGate._tools``) asks this module for the
 pieces every run needs (``for_run``), by the same functions, so `doctor` and a real run cannot
@@ -46,13 +47,8 @@ MIN_PYTHON = (3, 12)
 # and keeps the frames. This is room for a few routes, not a measured need.
 MIN_FREE_BYTES = 1024 ** 3
 EXIT_OK, EXIT_MISSING, EXIT_USAGE = 0, 3, 5
-# The environment names a visual observer's key can have (agents.sam_observations.KEY_ENV,
-# agents.glimmer_client.KEY_ENVS, the bring-your-own backend). Those modules are not in the wheel,
-# so the names are repeated here; tests/test_doctor.py holds them against the modules in a clone.
-VISION_KEYS = ("MODEL_API_KEY", "EXPECTRAIL_GLIMMER_API_KEY", "FIREWORKS_API_KEY", "EXPECTRAIL_VLM_API_KEY")
-NO_KEY = ("Today `expectrail verify` and `sample` judge on the engine's record only and use no key. "
-          "Under the two-observer rule (#327) a run without a key still rejects a failing change and "
-          "accepts nothing: an accept needs the visual observer's evidence.")
+VISION_KEYS = ("MODEL_API_KEY",)
+NO_KEY = "Without MODEL_API_KEY or EXPECTRAIL_SAM_USD_CAP, verification sends nothing and ends needs-review."
 APT = "sudo apt-get install"
 
 
@@ -242,16 +238,31 @@ def program(name: str, why: str, *, required: bool, package: str | None = None) 
 
 
 def vision_key(env: dict | None = None) -> Check:
-    """Present or absent. Only whether a value is empty is looked at; no value is returned or printed."""
+    """Report presence only; never return or print the key's value."""
     env = os.environ if env is None else env
-    names = [n for n in VISION_KEYS if str(env.get(n) or "").strip()]
-    what = "a key for a visual observer (a vision model over the captured frames)"
-    if names:
-        return Check("vision-key", what, "present", False,
-                     f"set in the environment: {', '.join(names)} (the value is not read). No command uses it yet: "
-                     "`verify` and `sample` judge on the engine's record only until the two-observer rule is the default (#327)",
-                     None)
-    return Check("vision-key", what, "absent", False, f"none of {', '.join(VISION_KEYS)} is set. {NO_KEY}", None)
+    what = "a key for a visual observer (MODEL_API_KEY)"
+    if str(env.get("MODEL_API_KEY") or "").strip():
+        return _ok("vision-key", what, "MODEL_API_KEY is present (value withheld)")
+    return _missing("vision-key", what, "MODEL_API_KEY is missing. " + NO_KEY,
+                    "set MODEL_API_KEY in the verifier's environment to its vision model key; never put it in a file")
+
+
+def vision_cap(env: dict | None = None) -> Check:
+    env = os.environ if env is None else env
+    raw = str(env.get("EXPECTRAIL_SAM_USD_CAP") or "").strip()
+    try:
+        cap = float(raw)
+    except ValueError:
+        cap = float("nan")
+    what = "a vision spend cap (EXPECTRAIL_SAM_USD_CAP)"
+    if 0 <= cap < float("inf"):
+        return _ok("vision-cap", what, f"EXPECTRAIL_SAM_USD_CAP is ${cap:g} per run")
+    return _missing("vision-cap", what, "EXPECTRAIL_SAM_USD_CAP is missing or invalid. " + NO_KEY,
+                    "set EXPECTRAIL_SAM_USD_CAP to the most this run may spend in US dollars (a finite amount, 0 or more)")
+
+
+def vision_checks(env: dict | None = None) -> list[Check]:
+    return [vision_key(env), vision_cap(env)]
 
 
 def for_run() -> list[Check]:
@@ -270,7 +281,7 @@ def checks(*, isolated: bool = False, fetch: bool = True, env: dict | None = Non
     return [python(), engine, shown, opengl(path, shown), disk(), sandbox(isolated),
             program("patch", "`expectrail sample` and seeded bugs put a patch on a copy of the game", required=True),
             program("curl", fetching, required=False), program("unzip", fetching, required=False),
-            vision_key(env)]
+            *vision_checks(env)]
 
 
 def missing(found: list[Check]) -> list[Check]:

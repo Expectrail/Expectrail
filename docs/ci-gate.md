@@ -279,19 +279,31 @@ callable on a stored answer), "two observers on every check" rests on the record
 routes are judged by the same rule (see above for their frames). `contracts/examples/findings-both-observers.json` is such a record; it was made with
 the tests' stand-in replay and stand-in model, not by a live run.
 
-What is and is not in use, as of November 12, 2026:
+What is and is not in use, as of November 13, 2026:
 
-- The pull-request gate and `expectrail verify` still judge by the rule `engine-only`. Their records
-  have no `observers` block, exactly as before, so the comment job's reader on main reads them
-  whichever side is newer; a record without the block is read as `engine-only`, and the comment and
-  the review page say so. The job that runs a pull request's code must not hold a model
-  key, so vision on pull requests waits for the two-job action (#254).
-- No command constructs a visual observer yet, so nothing in this repository can start a paid model
-  call through the gate. An observer made with the real client is held to the run's spend cap
-  (`EXPECTRAIL_SAM_USD_CAP`, [sam.md](sam.md)): with none set nothing is sent, and a request the cap
-  stops is "no answer", so the check needs review. The month's total is not built (#267).
-- The rule has been run only against a stand-in model that answers in SAM 3.1's wire format
-  (`tests/test_two_observers.py`). No live model has judged through this path.
+- The orchestrator (`verify`, `sample`, and the app through verify) constructs a `FramesObserver`
+  and uses `both`. Its findings record and job status carry the `observers` block; `report` says
+  which observers judged in plain words.
+- The pull-request gate still uses `engine-only`. A job running a pull request's code must not
+  hold a model key; the separate trusted vision job is #254, outside #379.
+- No live model was asked to test this change. Tests use scripted SAM 3.1 wire-format answers.
+- Decision B (#327) remains: an anchored-box difference needs review, never a reject. #373 is
+  still open at the start of this work; this change does not implement or alter that check.
+
+Verification (`expectrail verify`, `expectrail sample`, and the app through verify) needs
+`MODEL_API_KEY` and `EXPECTRAIL_SAM_USD_CAP` in the verifier's environment. It judges with both the
+engine's record and a `FramesObserver`; an accept needs both. Without either setting, nothing is
+sent to the model and the job ends **needs-review**, with a diagnostic naming the setting and its
+fix. There is no command option for an engine-only accept. `expectrail doctor` checks both settings
+without printing the key, and `expectrail report` names the observers that judged.
+
+Cost depends on frames, checks and cached answers. [The recorded costs in sam.md](sam.md)
+describe **up to $0.60 for both prompts over one 120-frame run**, at $2.50 per 1,000 images.
+More routes or checks add work; cached answers reduce it. This is not a price guarantee for another project. The spend cap is
+the most one run may send, in US dollars; reaching it gives no answer, never an accept on silence.
+
+The replay's environment excludes the model key, including the sandbox's final allowlist.
+The monthly aggregate limit remains separate work (#267).
 
 ### The player's place on both sides
 

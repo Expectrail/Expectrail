@@ -724,9 +724,10 @@ class EngineTest(Case):
         self.assertEqual([h["phase"] for h in status["history"]],
                          ["queued", "preparing", "executing", "observing", "evaluating", "completed"])
 
-    def test_the_registered_engine_is_engine_only_and_its_record_says_so(self):
-        self.assertEqual(engines.ENGINES["godot"]._rule, rec.ENGINE_ONLY)
-        _status, record = self.work(repo(self.tmp / "head"), engines.GodotGate(replay=self.game.replay))
+    def test_the_registered_engine_uses_both_and_explicit_engine_only_still_works(self):
+        self.assertEqual(engines.ENGINES["godot"]._rule, rec.BOTH)
+        self.assertIsInstance(engines.ENGINES["godot"]._visual, FramesObserver)
+        _status, record = self.work(repo(self.tmp / "head"), engines.GodotGate(rule="engine-only", replay=self.game.replay))
         self.assertEqual((record["decision"], rec.rule_of(record)), ("accept", rec.ENGINE_ONLY))
         self.assertNotIn("observers", record)
 
@@ -738,7 +739,7 @@ class EngineTest(Case):
         tscn = (REPO / smp.GAME / "player" / "player.tscn").read_bytes()
         self.game.look_of = lambda game: "clean" if (game / "player" / "player.tscn").read_bytes() == tscn else "BUG"
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            results = smp.run(self.store, engines={"godot": engines.GodotGate(replay=self.game.replay, rule=rec.BOTH)})
+            results = smp.run(self.store, engines={"godot": engines.GodotGate(replay=self.game.replay, rule=rec.BOTH, visual=None)})
         self.assertEqual([r["status"]["decision"] for r in results], ["needs-review", "reject", "needs-review"])
         for r in (results[0], results[2]):
             self.assertTrue(any("no visual observer was asked" in why for why in r["status"]["reasons"]), r["status"]["reasons"])
@@ -746,7 +747,7 @@ class EngineTest(Case):
         # Under `both` that is not the engine's pass, so nothing is accepted on them either.
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             short = smp.run(st.JobStore(self.tmp / "jobs2", lease_seconds=5),
-                            engines={"godot": engines.GodotGate(replay=PatchedReplay(), rule=rec.BOTH)})
+                            engines={"godot": engines.GodotGate(replay=PatchedReplay(), rule=rec.BOTH, visual=None)})
         self.assertEqual([r["status"]["decision"] for r in short], ["needs-review", "reject", "needs-review"])
 
 

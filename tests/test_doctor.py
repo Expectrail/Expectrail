@@ -55,7 +55,7 @@ class Machine(unittest.TestCase):
         self.free = 50 * 1024 ** 3
         self.sandbox = True
         env = {k: v for k, v in os.environ.items() if k not in doctor.VISION_KEYS}
-        env.update(EXPECTRAIL_GODOT=str(self.engine), EXPECTRAIL_TOOLS=str(self.tmp / "tools"))
+        env.update(MODEL_API_KEY=SECRET, EXPECTRAIL_SAM_USD_CAP="0.50", EXPECTRAIL_GODOT=str(self.engine), EXPECTRAIL_TOOLS=str(self.tmp / "tools"))
         for patch in (
                 mock.patch.dict(os.environ, env, clear=True),
                 mock.patch.object(doctor.shutil, "which", lambda name, *a, **k: f"/usr/bin/{name}" if name in self.programs else None),
@@ -96,7 +96,7 @@ class DoctorTest(Machine):
         self.assertIn("the engine drew a frame with Mesa - llvmpipe", out)
         self.assertNotIn("MISSING", out)
         self.assertEqual([c.id for c in doctor.checks()],
-                         ["python", "godot", "display", "opengl", "disk", "sandbox", "patch", "curl", "unzip", "vision-key"])
+                         ["python", "godot", "display", "opengl", "disk", "sandbox", "patch", "curl", "unzip", "vision-key", "vision-cap"])
 
     def test_each_required_tool_removed_fails_and_names_the_fix(self):
         for gone, check, fix in (("xvfb-run", "display", "sudo apt-get install xvfb"),
@@ -208,29 +208,32 @@ class DoctorTest(Machine):
         self.assertEqual((found.status, found.found), ("missing", "Python 3.11.9"))
         self.assertIn("3.12 or later", found.fix)
 
-    def test_the_vision_key_is_present_or_absent_and_never_printed(self):
-        code, out, _ = self.run_doctor()
-        self.assertEqual(code, 0)   # no key is not a missing piece
-        self.assertIn("absent    a key for a visual observer", out)
-        self.assertIn("a run without a key still rejects a failing change and accepts nothing", out)
-        self.assertIn("judge on the engine's record only and use no key", out)
-        for name in doctor.VISION_KEYS:
-            with self.subTest(name=name), mock.patch.dict(os.environ, {name: SECRET}):
+    def test_the_vision_key_is_required_and_never_printed_or_stored(self):
+        for value, want in ((SECRET, "ok"), ("", "missing"), ("   ", "missing")):
+            with self.subTest(present=bool(value.strip())), mock.patch.dict(os.environ, {"MODEL_API_KEY": value}):
                 for argv in ((), ("--json",)):
                     code, out, err = self.run_doctor(*argv)
-                    self.assertEqual(code, 0)
+                    self.assertEqual(code, 0 if want == "ok" else 3)
                     self.assertNotIn(SECRET, out + err)
-                    self.assertIn(name, out)
-                self.assertEqual(self.by_id()["vision-key"].status, "present")
-        with mock.patch.dict(os.environ, {"MODEL_API_KEY": "   "}):
-            self.assertEqual(self.by_id()["vision-key"].status, "absent")
+                    self.assertIn("MODEL_API_KEY", out)
+                found = doctor.checks()
+                self.assertNotIn(SECRET, json.dumps(doctor.document(found)))
+                self.assertEqual(self.by_id()["vision-key"].status, want)
+                self.assertTrue(self.by_id()["vision-key"].required)
 
-    def test_the_key_names_are_the_ones_the_observers_read(self):
-        from agents import glimmer_client, sam_observations
+    def test_vision_cap_is_required_and_reports_its_value(self):
+        for value in ("", "nan", "inf", "-1", "not-an-amount"):
+            with self.subTest(value=value), mock.patch.dict(os.environ, {"EXPECTRAIL_SAM_USD_CAP": value}):
+                code, out, _ = self.run_doctor()
+                self.assertEqual(code, 3)
+                self.assertIn("EXPECTRAIL_SAM_USD_CAP", out)
+                self.assertIn("fix:", out)
+        self.assertIn("$0.5 per run", doctor.vision_cap().found)
 
-        self.assertIn(sam_observations.KEY_ENV, doctor.VISION_KEYS)
-        for name in glimmer_client.KEY_ENVS:
-            self.assertIn(name, doctor.VISION_KEYS)
+    def test_the_key_name_is_the_one_the_observer_reads(self):
+        from agents import sam_observations
+
+        self.assertEqual(doctor.VISION_KEYS, (sam_observations.KEY_ENV,))
 
 
 class RecordTest(Machine):
@@ -250,7 +253,7 @@ class RecordTest(Machine):
         doc = json.loads(EXAMPLE.read_text(encoding="utf-8"))
         self.assertEqual(doctor.problems(doc), [])
         self.assertFalse(doc["ok"])
-        self.assertEqual({c["status"] for c in doc["checks"]}, {"ok", "missing", "skipped", "absent"})
+        self.assertEqual({c["status"] for c in doc["checks"]}, {"ok", "missing", "skipped"})
 
     def test_a_reader_does_not_take_the_summarys_word(self):
         self.programs -= {"patch"}

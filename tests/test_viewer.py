@@ -367,7 +367,7 @@ class JobViewerTest(Base):
     def test_a_rejected_job_gets_a_viewer_with_frames_and_a_reproduction_command(self):
         job = self.job(make_repo(self.tmp / "h", bug=True), make_repo(self.tmp / "b"))
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=FakeReplay())})
+            status = runner.work(self.store, job, engines={"godot": engines.GodotGate(rule="engine-only", replay=FakeReplay())})
         self.assertEqual(status["decision"], "reject")
         code, out = self.report(job)
         self.assertEqual(code, 1)
@@ -387,7 +387,7 @@ class JobViewerTest(Base):
     def test_jobs_with_no_result_get_their_own_page_and_keep_their_exit_codes(self):
         bad = self.job(make_repo(self.tmp / "h"))
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            status = runner.work(self.store, bad, engines={"godot": engines.GodotGate(replay=FakeReplay())})
+            status = runner.work(self.store, bad, engines={"godot": engines.GodotGate(rule="engine-only", replay=FakeReplay())})
         self.assertEqual(status["decision"], "accept")
         self.assertEqual(self.report(bad)[0], 0)
         self.assertEqual(banner_state((self.store.paths(bad).root / "viewer" / "index.html").read_text()), "accept")
@@ -395,7 +395,7 @@ class JobViewerTest(Base):
         missing = self.store.create(req.build(adapter="godot", head=self.tmp / "h", game="game/missing",
                                               routes=["routes/*.json"], specs="specs"))[0]["id"]
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            runner.work(self.store, missing, engines={"godot": engines.GodotGate(replay=FakeReplay())})
+            runner.work(self.store, missing, engines={"godot": engines.GodotGate(rule="engine-only", replay=FakeReplay())})
         self.assertEqual(self.report(missing)[0], 2)
         page = (self.store.paths(missing).root / "viewer" / "index.html").read_text()
         self.assertEqual(banner_state(page), "unsupported-project")
@@ -409,7 +409,7 @@ class JobViewerTest(Base):
     def test_report_json_is_still_the_status_alone(self):
         job = self.job(make_repo(self.tmp / "h"))
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=FakeReplay())})
+            runner.work(self.store, job, engines={"godot": engines.GodotGate(rule="engine-only", replay=FakeReplay())})
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             ocli.main(["--jobs-root", str(self.store.root), "report", job, "--json"])

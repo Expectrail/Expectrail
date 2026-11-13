@@ -111,7 +111,9 @@ def command(tool: Tool, argv: list[str], *, game: Path, out: Path, inputs: dict[
         cmd += ["--ro-bind", str(Path(path).resolve()), f"{INPUTS}/{name}"]
     if engine is not None:
         cmd += ["--ro-bind", str(Path(engine).resolve()), ENGINE_BINARY]
-    inner = {k: v for k, v in (env or {}).items()
+    from harness.run import game_env
+
+    inner = {k: v for k, v in game_env(env or {}).items()
              if k not in ENV_DROP and not k.startswith(ENV_DROP_PREFIXES)}
     inner.update(HOME=HOME, PATH="/usr/bin:/bin", TMPDIR="/tmp")
     for key in sorted(inner):

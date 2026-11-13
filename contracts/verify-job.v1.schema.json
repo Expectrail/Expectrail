@@ -314,6 +314,58 @@
           "maxLength": 32
         }
       }
+    },
+    "observers": {
+      "type": "object",
+      "required": [
+        "rule",
+        "visual"
+      ],
+      "additionalProperties": false,
+      "description": "which observers judged the checks. both: the engine's record and a visual observer over the captured frames judge every check, and no check passes on the engine's record alone (issue #327). engine-only: the engine's record alone. Written under both only: an engine-only record has no block, as before the block existed (November 12, 2026), so an older reader still reads it, and a reader takes an absent block as engine-only.",
+      "properties": {
+        "rule": {
+          "enum": [
+            "both",
+            "engine-only"
+          ]
+        },
+        "visual": {
+          "description": "the visual observer that was asked; null when none was (under both, nothing is then accepted)",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "name",
+                "provider",
+                "model"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40,
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "provider": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "model": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            }
+          ]
+        }
+      }
     }
   }
 }

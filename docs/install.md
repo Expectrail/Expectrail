@@ -41,12 +41,20 @@ It checks the machine and is not a verdict on any change. Each piece is checked 
 | The replay sandbox | bubblewrap, by the probe a replay uses | only with `--isolated` |
 | `patch` | on the PATH: `sample` and seeded bugs put a patch on a copy of the game | yes |
 | `curl`, `unzip` | on the PATH: they fetch the engine | no; when the engine cannot be fetched, the engine's own line names them |
-| A vision key | present or absent in the environment (`MODEL_API_KEY`, `EXPECTRAIL_GLIMMER_API_KEY`, `FIREWORKS_API_KEY`, `EXPECTRAIL_VLM_API_KEY`). Only "is it empty" is looked at; the value is never printed. A `.env` file is not read | no |
+| A vision key | `MODEL_API_KEY` is present in the environment; its value is never printed. A `.env` file is not read | yes |
+| A vision spend cap | `EXPECTRAIL_SAM_USD_CAP`, a finite amount in US dollars, 0 or more; doctor reports its value | yes |
 
-**Without a vision key.** Today `expectrail verify` and `sample` judge on the engine's record only and
-use no key, so the key changes nothing yet. Under the two-observer rule (#327) a run without a key
-still rejects a failing change and accepts nothing: an accept needs the visual observer's evidence.
-`doctor` says this on its last check.
+Verification (`expectrail verify`, `expectrail sample`, and the app through verify) needs
+`MODEL_API_KEY` and `EXPECTRAIL_SAM_USD_CAP` in the verifier's environment. It judges with both the
+engine's record and a `FramesObserver`; an accept needs both. Without either setting, nothing is
+sent to the model and the job ends **needs-review**, with a diagnostic naming the setting and its
+fix. There is no command option for an engine-only accept. `expectrail doctor` checks both settings
+without printing the key, and `expectrail report` names the observers that judged.
+
+Cost depends on frames, checks and cached answers. [The recorded costs in sam.md](sam.md)
+describe **up to $0.60 for both prompts over one 120-frame run**, at $2.50 per 1,000 images.
+More routes or checks add work; cached answers reduce it. This is not a price guarantee for another project. The spend cap is
+the most one run may send, in US dollars; reaching it gives no answer, never an accept on silence.
 
 **`doctor` and a run cannot disagree about a tool.** The engine's preflight
 (`GodotGate._tools`) asks `expectrail.doctor.for_run()`, the part of the same list every run needs
@@ -78,9 +86,9 @@ The wheel holds what a verification runs, and nothing that could not work from a
 
 - **In it:** the gate and the orchestrator (`expectrail.gate`, `expectrail.orchestrator`) and the
   modules they import; five harness modules (`run`, `sandbox`, `tree`, `adapters` and the package's own); the
-  reader of the engine's position log; the contract schemas; the bundled Godot game, the smoke
+  reader of the engine's position log, the frame observer and its model clients; the contract schemas; the bundled Godot game, the smoke
   route, one approved spec and one seeded bug, which are what `sample` runs.
-- **Not in it:** the fixer, the fix loop and everything that reads a model key; the benches and the
+- **Not in it:** the fixer, the fix loop and the dotenv key loader; the benches and the
   check generator (`expectrail.discovery`, `jit`, `repro`); every other seeded bug; anything
   held out. `tests/test_package.py` lists each part of `expectrail` that is left out, with why.
 - **No dependencies.** A verification imports the standard library only. `jsonschema` is an extra

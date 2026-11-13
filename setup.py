@@ -1,21 +1,18 @@
 """The one thing pyproject.toml cannot say: which modules of a package go in the wheel.
 
-The verification command and app need selected top-level modules of `expectrail` (beside its `gate` and `orchestrator`
-packages, which go in whole), five harness modules (the adapter registry among them: the verify path
-takes its engine from it), and one from the agents lane (the reader of the engine's position log).
-The fixer, the loop and everything that holds a model key stay out of the package: it verifies, it
-does not repair. tests/test_package.py reads the built wheel and checks
-that every module in it can import everything it asks for.
+A verification ships the local app, the gate, orchestrator, replay harness, visual observer and its model clients.
+The fixer, loop and dotenv key loader stay out. A verification reads its vision key only from the
+environment. tests/test_package.py checks the wheel's complete import chain.
 """
 from setuptools import setup
 from setuptools.command.build_py import build_py
 
 BUNDLED_MODULES = {
     # The top-level modules a verification imports. Left out: the capability ledger's tools (they read
-    # docs/), the spec writer and the provider records (model-side), change evidence (the fix loop's).
-    "expectrail": {"__init__", "app", "app_page", "cli", "contracts", "diagnostics", "doctor", "evaluator", "legacy", "resources", "timing", "viewer"},
+    # docs/), the spec writer (model-side) and change evidence (the fix loop's).
+    "expectrail": {"__init__", "app", "app_page", "cli", "contracts", "diagnostics", "doctor", "evaluator", "legacy", "observers", "providers", "resources", "timing", "viewer"},
     "expectrail._bundle.harness": {"__init__", "adapters", "run", "sandbox", "tree"},
-    "expectrail._bundle.agents": {"__init__", "observations"},
+    "expectrail._bundle.agents": {"__init__", "anchor_rule", "observations", "sam_anchor", "sam_observations", "glimmer_client", "byo_vision", "engine_check"},
     # Data only: no module of these folders is packaged.
     "expectrail._bundle.contracts": set(),
     "expectrail._bundle.game": set(),

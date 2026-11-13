@@ -384,7 +384,10 @@
           "shows": "the client on recorded replies: an unrecognised answer is an error, never nothing found"
         }
       ],
-      "limits": "SAM does not see the ground, so the ground line always comes from the engine. Needs a Meta key and is paid per image. Measured on one game and one page."
+      "limits": "SAM does not see the ground, so the ground line always comes from the engine. Needs a Meta key and is paid per image. Measured on one game and one page.",
+      "switches": [
+        "EXPECTRAIL_SAM_USD_CAP"
+      ]
     },
     {
       "id": "glimmer-observer",
@@ -1219,7 +1222,7 @@
       "id": "orchestrator",
       "mode": "Verification as a job: verify, status, cancel and report, with a folder and a status file per job",
       "profile": "The Godot game, through the CI gate's verification",
-      "observer": "The engine's record; no vision model",
+      "observer": "The engine's record and a FramesObserver, under the rule both",
       "entryPoints": [
         "expectrail.orchestrator"
       ],
@@ -1250,9 +1253,14 @@
           "kind": "test",
           "ref": "tests/test_tree.py",
           "shows": "one walk of a game folder makes every digest and every copy: the copy holds exactly the files the digest covers; the bundled games keep their digests; a link that leaves the checkout, a loop or a pipe stops a replay before anything is copied; a replay of another tree than the record names is not used"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_verify_vision.py",
+          "shows": "scripted SAM 3.1 answers; both observers required, missing key or cap ends needs-review, and the replay never receives the key"
         }
       ],
-      "limits": "Only the sample command and tests call it: the gate's action and the site do not go through it yet. The isolated execution class runs every replay with the sandbox required and refuses where the machine cannot; its evidence grade stays diagnostic, because the ledger's isolated grade also needs a trusted job that judges and signs (#254, #255). The game is held to the tree the job asked about (the worker's read, the gate's record and each replay's copy must agree, or the job is needs-review), and the verifier judges with the one reading of the specs and routes whose digest is the job's. On a system without /proc a killed worker's children are not found and run on to their own time limit. One host."
+      "limits": "Only the sample command and tests call it: the gate's action and the site do not go through it yet. The isolated execution class runs every replay with the sandbox required and refuses where the machine cannot; its evidence grade stays diagnostic, because the ledger's isolated grade also needs a trusted job that judges and signs (#254, #255). The game is held to the tree the job asked about (the worker's read, the gate's record and each replay's copy must agree, or the job is needs-review), and the verifier judges with the one reading of the specs and routes whose digest is the job's. On a system without /proc a killed worker's children are not found and run on to their own time limit. One host. The cited live run predates the vision default; vision in the orchestrator is tested offline only. Requires MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP."
     }
   ],
   "notModes": {
