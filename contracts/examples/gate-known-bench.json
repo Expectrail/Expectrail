@@ -1,0 +1,88 @@
+{
+ "format": "expectrail.gate-known-bench/v1",
+ "casesSha256": "8d1b7f2cebc65eef4616d1c49db36cb719dc29fe4fc2a6369ddcb84141661a45",
+ "engine": "Godot 4.7.2-stable",
+ "rule": "engine-only",
+ "routes": [
+  "harness/routes/smoke.json",
+  "harness/routes/combat.json"
+ ],
+ "specs": [
+  "agents/specs/player-stays-above-ground.json"
+ ],
+ "specsSha256": "6c228b5cd1db6370f085746d337e04948686b7afe0d3597a4c2e201ff16f9fea",
+ "rows": [
+  {
+   "case": "known-air-jump-comment-only",
+   "bug": "air-jump",
+   "label": "wrong",
+   "tunedOn": true,
+   "baseSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679",
+   "candidateSha256": "8656be3d8452f9859c62410e71659592a863d7a47f72bd926b3331ba29b881ac",
+   "none": {
+    "decision": "accept",
+    "firstReason": "all 1 checks pass",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   },
+   "fix": {
+    "decision": "needs-review",
+    "firstReason": "repair-not-demonstrated: this change is declared as a fix, and none of the 2 checks that ran failed before the change, so no check reproduced the reported bug and nothing shows it is fixed",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   }
+  },
+  {
+   "case": "known-air-jump-undo",
+   "bug": "air-jump",
+   "label": "correct",
+   "tunedOn": true,
+   "baseSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679",
+   "candidateSha256": "4d14ccb441c0dde278ae6c521c1f635506d81b64cab38983af8e90a5cd96c1eb",
+   "none": {
+    "decision": "accept",
+    "firstReason": "all 1 checks pass",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   },
+   "fix": {
+    "decision": "needs-review",
+    "firstReason": "repair-not-demonstrated: this change is declared as a fix, and none of the 2 checks that ran failed before the change, so no check reproduced the reported bug and nothing shows it is fixed",
+    "checks": 2,
+    "failedBefore": 0,
+    "repairsDemonstrated": 0
+   }
+  }
+ ],
+ "totals": {
+  "none": {
+   "wrong": {
+    "accept": 1,
+    "reject": 0,
+    "needs-review": 0
+   },
+   "correct": {
+    "accept": 1,
+    "reject": 0,
+    "needs-review": 0
+   }
+  },
+  "fix": {
+   "wrong": {
+    "accept": 0,
+    "reject": 0,
+    "needs-review": 1
+   },
+   "correct": {
+    "accept": 0,
+    "reject": 0,
+    "needs-review": 1
+   }
+  },
+  "wrongAcceptToNeedsReview": 1,
+  "correctAcceptToNeedsReview": 1
+ }
+}

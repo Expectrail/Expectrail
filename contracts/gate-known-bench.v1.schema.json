@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/gate-known-bench.v1.schema.json",
+  "title": "expectrail.gate-known-bench/v1",
+  "description": "The CI gate on the known-bugs bench (bench/jit/known/cases.json), each case judged twice: with no stated intent (today's rule) and declared as a fix (accepted only when a check fails on the base and passes on the head three times of three, #284). The base is the bug build, the head the bug build plus the candidate, on the gate's own routes and approved specs, the engine's record only; no model, no generated check. The totals are recomputed by the reader from the rows. Written and read by expectrail.gate.known_bench (bench/jit/known/gate.json).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "casesSha256", "engine", "rule", "routes", "specs", "specsSha256", "rows", "totals"],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "name": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,60}$" },
+    "path": { "type": "string", "maxLength": 200, "pattern": "^[a-z0-9][a-z0-9._/-]*$" },
+    "count": { "type": "integer", "minimum": 0, "maximum": 1000 },
+    "decision": { "enum": ["accept", "reject", "needs-review"] },
+    "judged": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "firstReason", "checks", "failedBefore", "repairsDemonstrated"],
+      "properties": {
+        "decision": { "$ref": "#/$defs/decision" },
+        "firstReason": { "type": "string", "maxLength": 300, "description": "The gate's first reason, cut at 300 characters; empty when it gave none." },
+        "checks": { "$ref": "#/$defs/count", "description": "Checks (spec and route) the gate judged." },
+        "failedBefore": { "$ref": "#/$defs/count", "description": "Of those, how many failed on the base build." },
+        "repairsDemonstrated": { "$ref": "#/$defs/count", "description": "The findings record's repair.demonstrated; 0 when no intent was stated." }
+      }
+    },
+    "split": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accept", "reject", "needs-review"],
+      "properties": {
+        "accept": { "$ref": "#/$defs/count" },
+        "reject": { "$ref": "#/$defs/count" },
+        "needs-review": { "$ref": "#/$defs/count" }
+      }
+    },
+    "byLabel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wrong", "correct"],
+      "properties": { "wrong": { "$ref": "#/$defs/split" }, "correct": { "$ref": "#/$defs/split" } }
+    }
+  },
+  "properties": {
+    "format": { "const": "expectrail.gate-known-bench/v1" },
+    "casesSha256": { "$ref": "#/$defs/sha256", "description": "The cases file the bench was read from." },
+    "engine": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "rule": { "const": "engine-only", "description": "Which observers judged: the engine's record alone." },
+    "routes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/path" } },
+    "specs": { "type": "array", "items": { "$ref": "#/$defs/path" }, "description": "The approved spec files, as listed when the bench ran." },
+    "specsSha256": { "$ref": "#/$defs/sha256", "description": "One digest over the spec files' names and contents." },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["case", "bug", "label", "tunedOn", "baseSha256", "candidateSha256", "none", "fix"],
+        "properties": {
+          "case": { "$ref": "#/$defs/name" },
+          "bug": { "$ref": "#/$defs/name" },
+          "label": { "enum": ["wrong", "correct"] },
+          "tunedOn": { "type": "boolean" },
+          "baseSha256": { "$ref": "#/$defs/sha256", "description": "The bug's patch." },
+          "candidateSha256": { "$ref": "#/$defs/sha256", "description": "The candidate fix's patch." },
+          "none": { "$ref": "#/$defs/judged", "description": "Judged with no stated intent." },
+          "fix": { "$ref": "#/$defs/judged", "description": "Judged declared as a fix." }
+        }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["none", "fix", "wrongAcceptToNeedsReview", "correctAcceptToNeedsReview"],
+      "properties": {
+        "none": { "$ref": "#/$defs/byLabel" },
+        "fix": { "$ref": "#/$defs/byLabel" },
+        "wrongAcceptToNeedsReview": { "$ref": "#/$defs/count", "description": "Wrong fixes accepted with no stated intent and needs-review declared as a fix." },
+        "correctAcceptToNeedsReview": { "$ref": "#/$defs/count", "description": "Correct fixes accepted with no stated intent and needs-review declared as a fix: the price of the rule." }
+      }
+    }
+  }
+}
