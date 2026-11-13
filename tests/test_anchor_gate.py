@@ -19,6 +19,7 @@ import json
 import shutil
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 from agents.sam_observations import Cache, MetaSamClient
@@ -38,7 +39,13 @@ from tests.test_two_observers import FEET, PLAYER_PROMPT
 #   QUIET: the model gives no answer for the player's box
 #   MOVED: the engine has the player 10 px further on, so no frame is in the same place
 #   NOBODY: the engine logs no body box (a harness from before #369)
-LOOKS = ("clean", "HALF", "QUIET", "MOVED", "NOBODY")
+#   LATE:  the engine has the player 10 px further on until frame 80, then in the same place and
+#          drawn half hidden: many frames moved before the first difference
+LOOKS = ("clean", "HALF", "QUIET", "MOVED", "NOBODY", "LATE")
+
+
+def x_at(look: str, frame: int) -> int:
+    return 80 if look == "MOVED" or (look == "LATE" and frame < 80) else 70
 BODY = (-10.0, -20.75, 10.0, 13.25)   # left, top, right, bottom of the body box from the origin
 
 
@@ -54,10 +61,10 @@ class Game:
     def replay(self, route: Path, game: Path, out: Path, frames: bool) -> dict:
         look = look_of(game)
         ticks = json.loads(route.read_text(encoding="utf-8"))["ticks"]
-        x = 80.0 if look == "MOVED" else 70.0
         y = GROUND_TOP - FEET
         rows = []
         for t in range(ticks):
+            x = float(x_at(look, t // 2))
             row = {"tick": t, "player": [x, y], "onFloor": True, "ground": float(GROUND_TOP),
                    "view": [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]}
             if look != "NOBODY":
@@ -79,7 +86,7 @@ class Game:
         content = body["input"][0]["content"]
         look, i = self.index[content[1]["image_url"].split(",", 1)[1]]
         text = content[0]["text"]
-        x = 80 if look == "MOVED" else 70
+        x = x_at(look, i)
         if text == PLAYER_PROMPT:
             answer = box_token(0, (x - 10, GROUND_TOP - 20, x + 10, GROUND_TOP), 0.91)
         elif text.startswith("<0f>1<|box;"):
@@ -87,7 +94,7 @@ class Game:
             top = int(GROUND_TOP - FEET + BODY[1])
             if look == "QUIET":
                 answer = ""
-            elif look == "HALF" and i >= 20:
+            elif (look == "HALF" and i >= 20) or (look == "LATE" and i >= 80):
                 answer = box_token(1, (x - 10, top + 17, x + 10, GROUND_TOP), 0.6)
             else:
                 answer = box_token(1, (x - 10, top, x + 10, GROUND_TOP), 0.93)
@@ -157,6 +164,18 @@ class DecisionBTest(Case):
             self.assertTrue((self.out / "anchor" / "smoke" / f"{side}-{first:06d}.png").is_file())
         self.assertNotEqual((self.out / "anchor" / "smoke" / f"base-{first:06d}.png").read_bytes(),
                             (self.out / "anchor" / "smoke" / f"head-{first:06d}.png").read_bytes())
+
+    def test_many_frames_moved_before_the_first_difference_still_give_a_record_the_reader_accepts(self):
+        # Every other frame: 40 moved frames (0 to 78) before the first difference at 80, more than
+        # the 32 frames a route may list. The differing frames are listed first.
+        doc = self.gate("LATE", anchor_every=2)
+        route = doc["anchor"]["routes"][0]
+        self.assertEqual((route["result"], route["moved"], route["out"]), ("differ", 40, 21))
+        self.assertEqual(doc["decision"], "needs-review")
+        self.assertEqual(route["kept"], [80, 82, 84, 86, 88, 90, 92, 94])
+        self.assertEqual(len(route["frames"]), ga.MAX_LISTED)
+        self.assertTrue(any("frame 80" in r for r in doc["reasons"]), doc["reasons"])
+        self.assertTrue((self.out / "anchor" / "smoke" / "head-000080.png").is_file())
 
     def test_a_difference_never_rejects(self):
         self.assertNotEqual(self.gate("HALF")["decision"], "reject")
@@ -270,6 +289,27 @@ class BlockTest(unittest.TestCase):
 
     def test_an_absent_block_says_nothing(self):
         self.assertIsNone(rec.anchor_effect(None))
+
+    def test_every_cap_the_writer_has_is_one_the_reader_accepts(self):
+        # The writer's limits agree with the schema's, so a full block is never refused.
+        props = rec.schema()["properties"]["anchor"]["properties"]
+        row = props["routes"]["items"]["properties"]
+        self.assertEqual(props["routes"]["maxItems"], ga.MAX_ROUTES)
+        self.assertEqual(row["frames"]["maxItems"], ga.MAX_LISTED)
+        self.assertEqual(row["kept"]["maxItems"], ga.MAX_KEPT)
+        self.assertLessEqual(ga.MAX_KEPT, ga.MAX_LISTED)
+
+    def test_more_routes_than_the_record_holds_stop_the_asking_and_are_not_an_accept(self):
+        class Never:
+            def segment_in(self, *a):
+                raise AssertionError("not asked")
+
+        found = ga.block([("r", {}, {})] * 3, Never(), None)   # no frames: each route is silent
+        self.assertEqual((found["status"], len(found["routes"])), ("asked", 3))
+        with unittest.mock.patch.object(ga, "MAX_ROUTES", 2):
+            found = ga.block([("r", {}, {})] * 3, Never(), None)
+        self.assertEqual((found["status"], len(found["routes"])), ("stopped", 2))
+        self.assertIn("not an accept", rec.anchor_effect(found))
 
     def test_route_names_that_are_not_plain_file_names_get_no_folder(self):
         tmp = Path(tempfile.mkdtemp())

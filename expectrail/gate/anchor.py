@@ -37,6 +37,7 @@ FORMAT = "expectrail.anchor/v0"
 DEFAULT_EVERY = 10   # the same as expectrail.gate.verify.ANCHOR_EVERY
 MAX_KEPT = 8        # differing frames whose pictures are kept per route
 MAX_LISTED = 32     # frames listed per route in the record
+MAX_ROUTES = 256    # routes in the record (the schema's maxItems)
 SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 STATES = ("in", "out", "moved", "no-base", "no-answer", "not-asked")
 
@@ -97,9 +98,13 @@ def compare(route: str, base: dict, head: dict, client, *, every: int = DEFAULT_
     judged = [anchor_rule.pair_frame(base_rows.get(r["frame"]), r, tolerance, drop) for r in head_rows]
     for one in judged:
         row[_key(one["state"])] += 1
+    # The frames that differ are listed first, so every kept frame and the first difference are
+    # always in the list the reader checks them against, however many other frames came before.
+    outs = [f for f in judged if f["state"] == "out"]
+    others = [f for f in judged if f["state"] not in ("in", "out")]
     row["frames"] = [{"frame": f["frame"], "state": f["state"], "why": [w[:160] for w in f["why"]][:6]}
-                     for f in judged if f["state"] != "in"][:MAX_LISTED]
-    row["kept"] = [f["frame"] for f in judged if f["state"] == "out"][:MAX_KEPT]
+                     for f in (outs + others)[:MAX_LISTED]]
+    row["kept"] = [f["frame"] for f in outs][:min(MAX_KEPT, MAX_LISTED)]
     first = next((f for f in judged if f["state"] == "out"), None)
     if first is not None:
         row["result"] = "differ"
@@ -135,7 +140,12 @@ def block(pairs: list[tuple[str, dict, dict]], client, observer: dict | None, *,
            "status": "asked", "stopped": None, "routes": []}
     if client is None:
         return {**out, "status": "not-asked", "stopped": "no vision model that answers box prompts was given"}
-    for route, base, head in pairs:
+    for n, (route, base, head) in enumerate(pairs):
+        if n == MAX_ROUTES or len(route) > 200:
+            # The record holds at most MAX_ROUTES routes, and names of at most 200 characters: past
+            # that the asking stops, and a block that stopped is never an accept.
+            out["status"], out["stopped"] = "stopped", "more routes, or a longer route name, than the record holds"
+            break
         try:
             out["routes"].append(compare(route, base, head, client, every=every, pad=pad))
         except Stop as exc:

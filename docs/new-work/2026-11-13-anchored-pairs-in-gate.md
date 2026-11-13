@@ -32,6 +32,13 @@ base frame (`agents.anchor_rule.pair_frame`).
 
 No live model was asked through this path.
 
+- After the guard's review of cc317f7: the frames that differ are listed first, so a route with
+  more than 32 moved or unbased frames before its first difference still gives a block the reader
+  accepts (a test with 40 moved frames, then 21 differing); routes past the schema's 256, or with
+  names longer than 200 characters, stop the asking (never an accept); a test holds the writer's
+  caps equal to the schema's. `tests.test_anchor_gate`: 22 tests. Full suite merged with main:
+  2741 tests OK, 27 skipped.
+
 ## Not done
 
 - The review page does not show the kept frames side by side yet; they are in the artifact.
