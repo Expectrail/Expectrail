@@ -9,7 +9,7 @@ the site from ``docs/``, so the Run it page can be opened and used without GitHu
                                                 the stand-ins with vision answers recorded from the
                                                 scripted stand-in model, so a sample can be accepted
 
-then open http://127.0.0.1:8765/run-it/.
+then open http://127.0.0.1:8765/run-it/#local (the fragment tells the page to use this stub).
 
     GET  /api/health                 {"kind": "health", "open": ..., "standIn": ...}
     POST /api/run   {"sample": id}   202 accepted, with a request id the stub mints; or refused
@@ -297,7 +297,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path.startswith("/api/"):
             return self._json(404, refusal("bad-request", "No such endpoint."))
         if path == "/":
-            return self._send(302, b"", "text/plain", {"Location": "/run-it/"})
+            return self._send(302, b"", "text/plain", {"Location": "/run-it/#local"})
         parts = [unquote(p) for p in path.split("/") if p]
         if parts and parts[0] == "results":
             return self._file(self.service.results, parts[1:])
@@ -348,7 +348,7 @@ def main(argv: list[str] | None = None) -> int:
     service = Service(results, runner, root, open_=not args.closed, stand_in=args.stand_in,
                       limits=Limits(per_visitor=args.per_visitor, daily_cap=args.daily_cap, breaker=args.breaker))
     server = serve(service, args.port)
-    print(f"Run it, local stub: http://127.0.0.1:{server.server_address[1]}/run-it/  (results in {results})")
+    print(f"Run it, local stub: http://127.0.0.1:{server.server_address[1]}/run-it/#local  (results in {results})")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

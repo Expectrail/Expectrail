@@ -12,9 +12,11 @@
 
 (function () {
   var LOOPBACK = ["localhost", "127.0.0.1", "[::1]", "::1"];
-  var LOCAL = LOOPBACK.indexOf(location.hostname) !== -1;
-  // On the local stub, the service and the results are served by the stub itself. On expectrail.tech
-  // the service is the edge function and the results are the run-it-results branch.
+  // The local stub (tools/runit_stub.py) opens the page as /run-it/#local on 127.0.0.1. Only then are
+  // the service and the results the stub's own; anywhere else, including a plain local copy of docs/,
+  // they are the edge function and the run-it-results branch. The fragment can switch to the page's
+  // own origin on loopback only, never to another address.
+  var LOCAL = LOOPBACK.indexOf(location.hostname) !== -1 && location.hash === "#local";
   var API = LOCAL ? "/api" : "https://api.expectrail.tech";
   var RESULTS = LOCAL ? "/results" : "https://raw.githubusercontent.com/Expectrail/Expectrail/run-it-results";
   var API_FORMAT = "expectrail.run-it-api/v1";

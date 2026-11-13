@@ -39,6 +39,13 @@
   disabled. No console errors after the first run (before one, `latest.json` is a 404, as expected).
   These were stand-in replays, not the game.
 
+- CI's `web-capture` job (`python -m agents.check_pages docs`) failed on the first push: it serves a
+  plain copy of `docs/` on 127.0.0.1, and the page then called the stub's `/api/health` and
+  `/results/latest.json`, which a plain copy does not have. The page now uses the stub only when it is
+  opened as `/run-it/#local` on loopback (the link the stub prints and redirects to). After the fix,
+  `python3 -m agents.check_pages docs` here: 6 pages, 0 problems; the browser look above was repeated
+  against the stub at `#local` with the same results.
+
 ## Not done
 - The edge function (slice 3) and its burst test; the page calls `https://api.expectrail.tech`,
   which does not exist until Sean creates the account, the token and DNS. Until then the page on

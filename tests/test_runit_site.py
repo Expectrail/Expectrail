@@ -323,6 +323,8 @@ class PageTest(unittest.TestCase):
     def test_the_local_service_is_used_only_on_loopback(self):
         self.assertIn('var API = LOCAL ? "/api" : "https://api.expectrail.tech";', self.script)
         self.assertIn('["localhost", "127.0.0.1", "[::1]", "::1"]', self.script)
+        # Only the stub's own link turns it on, so a plain local copy of docs/ (CI's page check) calls nothing local.
+        self.assertIn('LOOPBACK.indexOf(location.hostname) !== -1 && location.hash === "#local"', self.script)
         self.assertNotIn("location.search", self.script)   # no link can point the page at another service
 
 

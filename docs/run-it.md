@@ -117,7 +117,8 @@ python3 -m tools.runit_stub                                 real runs (needs God
 python3 -m tools.runit_stub --stand-in --stand-in-recorded  stand-in replays, no Godot
 ```
 
-then open http://127.0.0.1:8765/run-it/. The stub binds 127.0.0.1 only, serves `docs/` and the
+then open http://127.0.0.1:8765/run-it/#local (the fragment tells the page to use the stub; it
+switches only to the page's own origin, on loopback). The stub binds 127.0.0.1 only, serves `docs/` and the
 published folders under `/results/`, and does what the workflow does in the same order: run, main's
 `expectrail.runit check`, publish only a folder that passes, update `latest.json`. It holds the limits
 the edge function will hold: one run at a time, 3 runs per visitor per day (a salted hash of the
