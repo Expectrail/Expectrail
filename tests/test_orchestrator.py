@@ -820,6 +820,44 @@ class CliTest(Case):
         self.assertEqual(code, 5)
         self.assertIn("no job", err)
 
+    def bare_cli(self, *argv) -> tuple[int, str, str]:
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = cli.main(["--lease-seconds", "0.6", *argv])
+        return code, out.getvalue(), err.getvalue()
+
+    def test_jobs_root_is_taken_after_the_command_as_after_app(self):
+        # #383: `expectrail verify ... --jobs-root DIR` exited 5 with "unrecognized arguments".
+        root = str(self.store.root)
+        job = self.job()
+        for argv in (("status", job, "--json", "--jobs-root", root), ("status", "--jobs-root", root, job, "--json"),
+                     ("--jobs-root", root, "status", job, "--json"), ("--jobs-root", root, "status", job, "--jobs-root", root)):
+            with self.subTest(argv=argv):
+                code, out, err = self.bare_cli(*argv)
+                self.assertEqual(code, 6, err)   # queued: found in this store, not finished
+        code, out, _ = self.bare_cli("verify", "--head", str(self.head), "--game", "game/missing", "--routes",
+                                     "routes/*.json", "--specs", "specs", "--detach", "--jobs-root", root)
+        self.assertEqual(code, 0)
+        made = out.strip()
+        self.assertTrue(self.store.paths(made).status.is_file())   # the job is in the folder named after the command
+        runner.wait(self.store, made)
+        self.assertEqual(self.bare_cli("report", made, "--jobs-root", root)[0], 2)
+        self.assertEqual(self.bare_cli("cancel", "--jobs-root", root, "0" * 32)[0], 5)
+
+    def test_jobs_root_after_the_command_is_not_overridden_or_lost_and_two_folders_are_refused(self):
+        job = self.job()
+        other = self.tmp / "elsewhere"
+        # A folder given only before the command is not dropped by the command's own option.
+        self.assertEqual(self.bare_cli("--jobs-root", str(self.store.root), "status", job)[0], 6)
+        # Given after the command, it is the folder used: the job is not in `elsewhere`.
+        code, _, err = self.bare_cli("status", job, "--jobs-root", str(other))
+        self.assertEqual(code, 5)
+        self.assertIn("no job", err)
+        code, _, err = self.bare_cli("--jobs-root", str(self.store.root), "status", job, "--jobs-root", str(other))
+        self.assertEqual(code, 5)
+        self.assertIn("--jobs-root was given twice", err)
+        self.assertIn("Nothing was run.", err)
+
     def test_the_same_key_with_other_inputs_is_refused_at_the_command_line(self):
         args = ("verify", "--head", str(self.head), "--game", "game/missing", "--routes", "routes/*.json",
                 "--specs", "specs", "--idempotency-key", "k", "--detach")

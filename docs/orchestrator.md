@@ -42,7 +42,10 @@ Exit code, the same for `verify`, `status`, `cancel` and `report`:
 `verify --detach` exits 0 when the job was started, which says nothing about its result, and `sample`
 exits 0 when all three of its runs were as expected.
 
-Jobs are kept under `--jobs-root` (default `$EXPECTRAIL_JOBS`, else `runs/jobs`). The jobs folder may
+Jobs are kept under `--jobs-root` (default `$EXPECTRAIL_JOBS`, else `runs/jobs`). It goes after the
+command (`expectrail verify ... --jobs-root DIR`, as with `expectrail app --jobs-root DIR`) or before it
+(`expectrail --jobs-root DIR verify ...`); given in both places with different folders, nothing is run
+and the exit is 5. The jobs folder may
 not be inside the game folder or the specs folder, or anywhere a route pattern looks: a job's own
 `request.json` would be read as part of the game or as a check. With `--routes '**/*.json'` the default
 folder is refused; name the routes' own folder (`routes/*.json`) or keep the jobs elsewhere.
