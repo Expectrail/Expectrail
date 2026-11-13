@@ -367,9 +367,11 @@ class PredictionsTest(unittest.TestCase):
         for name in ("missing-texture_v1", "missing-texture_v2"):
             with self.subTest(run=name):
                 self.assertEqual((self.pairs[name]["result"], self.pairs[name]["out"], self.pairs[name]["judged"]), ("pass", 0, 13))
-        # And with room: the confidence fell by 0.008 at most where 0.1 is allowed.
+        # And with room: the confidence fell by 0.008 at most where 0.1 is allowed,
+        # and rose by 0.023 at most (frame 60, both runs).
         falls = [self.scores("clean")[n] - s for name in ("missing-texture_v1", "missing-texture_v2") for n, s in self.scores(name).items()]
         self.assertLess(max(falls), 0.01)
+        self.assertLess(max(-f for f in falls), 0.03)
 
     def test_3_sinking_v2_fails_the_pairs_in_every_compared_frame_held(self):
         got = self.pairs["sinking_v2"]

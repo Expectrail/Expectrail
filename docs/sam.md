@@ -537,7 +537,7 @@ images, $0.33).
 | Written before the run | How it fell |
 | --- | --- |
 | 1. Every frame of the four clean runs has a confidence of 0.8 or more | **Held.** 49 frames, the lowest 0.867 |
-| 2. Both missing-texture runs pass the pairs against the smoke route's clean run | **Held.** 0 of 13 frames differ in each; boxes within 1 px, confidence within 0.008 |
+| 2. Both missing-texture runs pass the pairs against the smoke route's clean run | **Held.** 0 of 13 frames differ in each; boxes within 1 px; confidence fell by 0.008 at most (and rose by 0.023 at most) |
 | 3. Sinking v2 fails the pairs in every compared frame | **Held.** 13 of 13 |
 | 4. Both layering runs fail the pairs, and every frame of theirs that differs has a confidence under 0.7 | **Half.** Both fail, 8 of 13 frames each. One frame that differs is at 0.82 |
 
