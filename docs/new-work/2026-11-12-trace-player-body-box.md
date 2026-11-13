@@ -16,6 +16,8 @@ somebody typed.
   box widened by 4 game px each way, its middle as the point. A tick with no `body` is not asked
   about. The report says `"box": "body"` and its pad, and `agents/anchor_rule.py` refuses to
   compare it with answers to a typed box or to another pad.
+- `expectrail/repro/evidence.py`: `body` joins the trace fields a proposer may name (#363, merged
+  while this was open, holds that list equal to the trace contract's row fields).
 - `.github/workflows/sam-probe.yml`: the `box` input also takes `body`. `.github/workflows/ci.yml`:
   one step in `capture-smoke` runs the new engine tests with a skip counted as a failure. No
   secret, environment or permission is added to either.
@@ -60,5 +62,5 @@ somebody typed.
 ## Files
 `contracts/trace.schema.json`, `contracts/examples/trace.json`,
 `harness/godot/expectrail_harness.gd`, `agents/sam_anchor.py`, `agents/anchor_rule.py`,
-`tests/test_body_box.py`, `tests/test_sam_anchor.py`, `tests/test_anchor_rule.py`,
+`expectrail/repro/evidence.py`, `tests/test_body_box.py`, `tests/test_sam_anchor.py`, `tests/test_anchor_rule.py`,
 `.github/workflows/ci.yml`, `.github/workflows/sam-probe.yml`, `docs/harness.md`, `docs/sam.md`
