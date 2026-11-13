@@ -256,6 +256,32 @@ def record(sample_id: str, target: Path, *, run_id: str, client=None, root: Path
     return recorded.write_recording(target, recording)
 
 
+# --- what the recording workflow lets through ------------------------------------------------------
+
+def check_recording(path: Path, *, sample_id: str, root: Path = ROOT) -> list[str]:
+    """Every reason not to propose the recording at ``path`` for ``sample_id``; empty when it may be.
+    It must be a usable recording (expectrail.recorded.read_recording), for this sample, from a
+    sample in the manifest, and hold at least one answer: an empty recording answers nothing."""
+    from expectrail import recorded
+
+    if not valid_id(sample_id):
+        return ["the sample is not a sample id"]
+    try:
+        find_sample(read_manifest(root), sample_id)
+    except RunItError as exc:
+        return [str(exc)]
+    try:
+        doc = recorded.read_recording(Path(path))
+    except recorded.RecordingError as exc:
+        return [f"the recording cannot be used: {exc}"]
+    problems = []
+    if doc["sample"] != sample_id:
+        problems.append(f"the recording is for {doc['sample']!r}, not {sample_id!r}")
+    if not doc["answers"]:
+        problems.append("the recording holds no answers")
+    return problems
+
+
 # --- what the publishing job lets through ----------------------------------------------------------
 
 def check(folder: Path, *, sample_id: str, request_id: str, root: Path = ROOT) -> list[str]:
@@ -378,6 +404,10 @@ def main(argv: list[str] | None = None) -> int:
     p_rec.add_argument("--out", required=True, type=Path)
     p_rec.add_argument("--run", required=True, help="the recording run's id, written into the recording")
     p_rec.add_argument("--require-sandbox", action="store_true")
+    p_chk = sub.add_parser("check-recording",
+                           help="check a recording before it is proposed: its schema, its rules and its sample")
+    p_chk.add_argument("file", type=Path)
+    p_chk.add_argument("--sample", required=True)
     args = parser.parse_args(argv)
     try:
         if args.command == "run":
@@ -400,9 +430,29 @@ def main(argv: list[str] | None = None) -> int:
             if not problems:
                 print("the folder may be published")
             return 1 if problems else 0
+        if args.command == "check-recording":
+            problems = check_recording(args.file, sample_id=args.sample)
+            for p in problems:
+                print(f"refused: {p}", file=sys.stderr)
+            if not problems:
+                doc = json.loads(args.file.read_text(encoding="utf-8"))
+                print(f"the recording may be proposed: {len(doc['answers'])} answers for {doc['sample']}, "
+                      f"recorded on {doc['recordedAt']}, run {doc['run']}")
+            return 1 if problems else 0
         if not re.fullmatch(r"[A-Za-z0-9._-]{1,64}", args.run):
             raise RunItError("--run is letters, digits, dots, hyphens and underscores, at most 64")
-        path = record(args.sample, args.out, run_id=args.run, require_sandbox=args.require_sandbox)
+        from agents.sam_observations import sam_usage
+
+        before = sam_usage()
+        try:
+            path = record(args.sample, args.out, run_id=args.run, require_sandbox=args.require_sandbox)
+        finally:
+            # What was sent is printed whether or not the recording was written: money spent on a
+            # failed recording is still spent.
+            used = sam_usage()
+            print(f"spend: ${used['reservedUsd'] - before['reservedUsd']:.4f} at list price, "
+                  f"{used['requests'] - before['requests']} requests, "
+                  f"{used['images'] - before['images']} images answered")
         print(f"recorded: {path}")
         return 0
     except RunItError as exc:

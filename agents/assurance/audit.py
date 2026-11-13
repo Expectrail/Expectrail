@@ -84,6 +84,10 @@ PERCEPTION = frozenset({
     # Reported-bug bench: SAM on frames of public bugs, only when dispatched from main with sam on
     # (the keyless reported-bench job judges from traces and holds no key).
     ".github/workflows/reported-bench.yml#reported-bench-sam",
+    # Run it: the one recording run per sample (#265). SAM on frames of the bundled game and the
+    # seeded bug, replayed in the sandbox; dispatched by Sean on main, approved in main-only, capped
+    # at $2. The job that writes the recording to a branch holds no key.
+    ".github/workflows/run-it-record.yml#record",
 })
 LANE_LINE = re.compile(r"^(?P<job>\S+#\S+): (?P<lane>[a-z]+) \(")
 
