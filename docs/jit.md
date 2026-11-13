@@ -224,7 +224,15 @@ which a generated check fails on the bug build 3 times of 3 and passes on the cl
 game, the 4 reported bugs and 20 written for it, each a patch and a bug report in a player's words
 (`expectrail.repro-bench/v1`, read by [`expectrail/repro/bench.py`](../expectrail/repro/bench.py)).
 
-**No reproduction rate has been measured on it.** What has been measured needs no model
+**The baseline, November 13, 2026: 17 of 24 reproduced (71%); 16 of the 19 defects that change the
+engine's record on a library probe (84%, the issue's target set is 70%); $2.05 in all, at most $0.17
+for one defect.** Run 43465090517, dispatched by Sean from main, offer `baseline`. The 7 misses: 2
+`no-signal` (both camera defects), 1 `wrong-predicate` (`coin-stays`), and 4 the records cannot
+classify, which the hand findings of November 12 call `probe-language` (2, screen only) and
+`route-never-reaches` (2, the pause menu). These were read from the run's job logs; the score file is
+not committed yet. The bench's page has the table and the source of each number.
+
+Before that run, what was measured needed no model
 ([`expectrail/repro/visibility.py`](../expectrail/repro/visibility.py)): every probe was replayed on
 the clean game and on each defect build, and each defect sorted by what changed in the engine's
 record. A signal reads differently on some probe for 17 of the 24 (for one of them only by a
@@ -234,7 +242,7 @@ check could fail on at most 17 of the 24, before the model has proposed anything
 up to four probes of its own, which this does not replay. The table, the command and what was and
 was not shown are on the bench's page. That run was made in a cloud container, not in CI.
 
-Built and not yet run: a `repro` mode in `jit.yml` (from main only) that sends each defect through
+Built November 11 and first run on November 13: a `repro` mode in `jit.yml` (from main only) that sends each defect through
 the live jobs with one stand-in candidate for all, a comment line in the game's README that
 changes nothing ([`no-fix.patch`](../bench/jit/public/no-fix.patch)), so a check comes from the bug
 build and the report alone; and the scorer that reads the run's records

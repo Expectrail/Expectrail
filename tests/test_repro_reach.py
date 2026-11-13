@@ -334,7 +334,8 @@ class TheRecordedReachMeasurement(unittest.TestCase):
 
     def test_the_page_and_the_docs_say_what_it_is_not(self):
         page = (PUBLIC / "README.md").read_text(encoding="utf-8")
-        self.assertIn("No reproduction rate has been measured", page)
+        reach_section = page.split("## Reach:", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("It is not a reproduction rate", reach_section)
         self.assertIn("not offered to the generator", page)
         self.assertIn("expectrail/repro/reach.py", (REPO / "docs" / "jit.md").read_text(encoding="utf-8"))
 

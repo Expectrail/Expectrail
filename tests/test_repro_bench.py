@@ -443,7 +443,9 @@ class TheRecordedMeasurement(unittest.TestCase):
 
     def test_the_page_and_the_docs_say_this_is_not_a_reproduction_rate(self):
         page = (PUBLIC / "README.md").read_text(encoding="utf-8")
-        self.assertIn("No reproduction rate has been measured", page)
+        # Since the baseline run of November 13 the page carries a rate; the visibility table still says
+        # it is not one.
+        self.assertIn("It is what the library probes can see, not a rate.", page)
         self.assertIn("bench/jit/public", (REPO / "docs" / "jit.md").read_text(encoding="utf-8"))
 
 
