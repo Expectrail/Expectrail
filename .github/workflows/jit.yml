@@ -20,6 +20,11 @@ name: Generated checks
 # comment line in the game's README (bench/jit/public/no-fix.patch), so the checks come from the bug
 # build and the report alone. The cases come from the committed bench and nothing typed at dispatch.
 # repro-score reads the final records and writes the reproduction rate (expectrail/repro/score.py).
+#
+# offer (expectrail/jit/offer.py): what the generator is offered, the same in every job of one run and
+# written into each proposal and record. baseline, the default, is the generator as it was before
+# issue #285's steps 3 and 4; signals-reach also offers the three held-back signals and the reach
+# probes. The known-bugs bench is registered under baseline and refuses any other.
 on:
   pull_request:
     paths:
@@ -49,6 +54,11 @@ on:
       budget_usd:
         description: Spend cap per change, in US dollars (bench mode uses the registration's)
         default: '2'
+      offer:
+        description: What the generator is offered (expectrail/jit/offer.py); bench mode takes baseline only
+        type: choice
+        options: ['baseline', 'signals-reach']
+        default: 'baseline'
 
 permissions:
   contents: read
@@ -132,8 +142,10 @@ jobs:
     outputs:
       cases: ${{ steps.plan.outputs.cases }}
       budget: ${{ steps.plan.outputs.budget }}
+      offer: ${{ steps.plan.outputs.offer }}
     env:
       MODE: ${{ inputs.mode }}
+      OFFER: ${{ inputs.offer || 'baseline' }}
       CASE: ${{ inputs.case }}
       BASE: ${{ inputs.base_patch }}
       CANDIDATE: ${{ inputs.candidate_patch }}
@@ -150,8 +162,11 @@ jobs:
       - name: Plan the cases
         id: plan
         run: |
+          [[ "$OFFER" =~ ^(baseline|signals-reach)$ ]] || { echo "::error::offer must be baseline or signals-reach"; exit 1; }
+          echo "offer=$OFFER" >> "$GITHUB_OUTPUT"
           if [[ "$MODE" == "bench" ]]; then
             [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "::error::the bench runs only from main"; exit 1; }
+            [[ "$OFFER" == "baseline" ]] || { echo "::error::the known-bugs bench is registered under the baseline offer"; exit 1; }
             python -m expectrail.jit.cli bench-check
             python - >> "$GITHUB_OUTPUT" <<'EOF'
           import json
@@ -192,6 +207,8 @@ jobs:
     timeout-minutes: 30
     env:
       BASE: ${{ matrix.c.base }}
+      REPORT: ${{ matrix.c.report }}
+      OFFER: ${{ needs.plan.outputs.offer }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -210,7 +227,7 @@ jobs:
         run: |
           export PATH="$PWD/tools/godot:$PATH"
           base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
-          python -m expectrail.jit.cli measure "${base[@]}" --out runs/jit-measure
+          python -m expectrail.jit.cli measure "${base[@]}" --out runs/jit-measure --offer "$OFFER" --report-file "$REPORT"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jit-measurements-${{ matrix.c.case }}
@@ -236,6 +253,7 @@ jobs:
       CANDIDATE: ${{ matrix.c.candidate }}
       REPORT: ${{ matrix.c.report }}
       BUDGET: ${{ needs.plan.outputs.budget }}
+      OFFER: ${{ needs.plan.outputs.offer }}
       KEY_SET: ${{ secrets.MODEL_API_KEY != '' || secrets.META_API_KEY != '' }}
     steps:
       - name: Check the key
@@ -257,7 +275,7 @@ jobs:
         run: |
           base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
           python -m expectrail.jit.cli propose --report-file "$REPORT" --candidate "$CANDIDATE" --out runs/jit-proposal \
-            --budget-usd "$BUDGET" "${base[@]}" --measurements runs/jit-measure/jit-measurements.json
+            --budget-usd "$BUDGET" "${base[@]}" --measurements runs/jit-measure/jit-measurements.json --offer "$OFFER"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jit-proposal-${{ matrix.c.case }}
@@ -281,6 +299,7 @@ jobs:
       CANDIDATE: ${{ matrix.c.candidate }}
       REPORT: ${{ matrix.c.report }}
       BUDGET: ${{ needs.plan.outputs.budget }}
+      OFFER: ${{ needs.plan.outputs.offer }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -305,7 +324,7 @@ jobs:
           base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
           python -m expectrail.jit.cli run --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
             --proposal runs/jit-proposal/jit-proposal.json --out "runs/jit/$CASE" --budget-usd "$BUDGET" \
-            --run-id "ci-${GITHUB_RUN_ID}-$CASE-round1"
+            --run-id "ci-${GITHUB_RUN_ID}-$CASE-round1" --offer "$OFFER"
           echo "::notice title=Generated checks ${CASE} (round 1)::$(python -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['status'], d['counts'], 'spend', d['spend']['usd'])" "runs/jit/$CASE/jit-run.json")"
       - name: Keep the record
         if: always()
@@ -340,6 +359,7 @@ jobs:
       CANDIDATE: ${{ matrix.c.candidate }}
       REPORT: ${{ matrix.c.report }}
       BUDGET: ${{ needs.plan.outputs.budget }}
+      OFFER: ${{ needs.plan.outputs.offer }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -370,7 +390,7 @@ jobs:
           python -m expectrail.jit.cli revise --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
             --proposal runs/jit-proposal/jit-proposal.json --record runs/jit-round1/jit-run.json \
             --measurements runs/jit-measure/jit-measurements.json --out runs/jit-proposal-2 \
-            --budget-usd "$BUDGET" --github-output runs/jit-proposal-2/revised.txt \
+            --budget-usd "$BUDGET" --github-output runs/jit-proposal-2/revised.txt --offer "$OFFER" \
             || { echo "::warning::the revision failed; the first round stands"; echo "revised=false" > runs/jit-proposal-2/revised.txt; }
           [[ -f runs/jit-proposal-2/jit-proposal.json ]] || echo "revised=false" > runs/jit-proposal-2/revised.txt
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -397,6 +417,7 @@ jobs:
       CANDIDATE: ${{ matrix.c.candidate }}
       REPORT: ${{ matrix.c.report }}
       BUDGET: ${{ needs.plan.outputs.budget }}
+      OFFER: ${{ needs.plan.outputs.offer }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -428,7 +449,7 @@ jobs:
             base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
             python -m expectrail.jit.cli run --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
               --proposal runs/jit-proposal-2/jit-proposal.json --out "runs/jit/$CASE" --budget-usd "$BUDGET" \
-              --run-id "ci-${GITHUB_RUN_ID}-$CASE"
+              --run-id "ci-${GITHUB_RUN_ID}-$CASE" --offer "$OFFER"
           else
             cp runs/jit-round1/jit-run.json "runs/jit/$CASE/jit-run.json"
           fi
@@ -501,6 +522,8 @@ jobs:
           pattern: jit-repro-*
           path: runs/artifacts
       - name: Score the reproduction bench
+        env:
+          OFFER: ${{ needs.plan.outputs.offer }}
         run: |
           mkdir -p runs/repro
           for d in runs/artifacts/jit-repro-*; do
@@ -509,7 +532,7 @@ jobs:
             [[ -f "$d/jit-run.json" ]] && mkdir -p "runs/repro/$name" && cp "$d/jit-run.json" "runs/repro/$name/"
           done
           python -m expectrail.repro score --records runs/repro --out runs/repro-score \
-            --source "jit.yml run ${GITHUB_RUN_ID}, attempt ${GITHUB_RUN_ATTEMPT}, at ${GITHUB_SHA}"
+            --source "jit.yml run ${GITHUB_RUN_ID}, attempt ${GITHUB_RUN_ATTEMPT}, at ${GITHUB_SHA}" --offer "$OFFER"
           cat runs/repro-score/repro-score.md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

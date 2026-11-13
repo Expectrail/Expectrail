@@ -4,6 +4,7 @@
  "noFixSha256": "96f6aa972c0ea9d9dc84c4843ec04b1b850e908fd26b6798d63f24d67b9f8d33",
  "visibilitySha256": null,
  "source": "An example with made-up rows. Not a measured run.",
+ "offer": "baseline",
  "reps": 3,
  "capUsd": 2.0,
  "rows": [

@@ -58,6 +58,12 @@ page writes every such cell as a code span, where GitHub renders no link, image,
 record separates them from the others. A person, or a later measurement, has to.
 
 A defect with no usable record is ``no-result``: counted in the bench, never as reproduced.
+
+**One offer per score.** What the generator was offered is a setting of the run (expectrail/jit/offer.py,
+``settings.offer`` in each record). A score counts the records of one setting, ``baseline`` unless it is
+told another, and a record made with another setting is ``no-result`` with that reason. So a rate
+measured with the held-back signals and reach probes on offer is never read as the baseline, nor the
+other way round, and the score record and its page name the setting.
 """
 from __future__ import annotations
 
@@ -67,6 +73,7 @@ import unicodedata
 from pathlib import Path
 
 from expectrail.contracts import ContractError, load_strict, strict_loads
+from expectrail.jit import offer as offer_mod
 from expectrail.repro import bench
 
 REPO = bench.REPO
@@ -141,7 +148,7 @@ def _all(runs: list[str], outcome: str) -> bool:
     return len(runs) >= REPS and all(r == outcome for r in runs[:REPS])
 
 
-def _read(defect: dict, path: Path, root: Path) -> tuple[dict | None, str | None]:
+def _read(defect: dict, path: Path, root: Path, offer: str = offer_mod.BASELINE) -> tuple[dict | None, str | None]:
     """The defect's record, or why there is none to score."""
     try:
         if path.stat().st_size > MAX_BYTES:
@@ -156,6 +163,9 @@ def _read(defect: dict, path: Path, root: Path) -> tuple[dict | None, str | None
         return None, "the record is for another defect"
     if inputs["reportSha256"] != _sha_text(root / defect["report"]):
         return None, "the record is for another report"
+    made = record["settings"].get("offer", offer_mod.BASELINE)
+    if made != offer:
+        return None, f"the record was made with offer {made}, and this score counts offer {offer}"
     if record["settings"]["reps"] != REPS:
         return None, f"the record ran each check {record['settings']['reps']} times, and the bench counts {REPS} of {REPS}"
     return record, None
@@ -172,9 +182,10 @@ def one_line(text, limit: int = TEXT_MAX) -> str:
     return " ".join(flat.split())[:limit].rstrip()
 
 
-def score_one(defect: dict, record_path: Path, visible: str | None, root: Path = REPO) -> dict:
+def score_one(defect: dict, record_path: Path, visible: str | None, root: Path = REPO,
+              offer: str = offer_mod.BASELINE) -> dict:
     """One defect's row. Its free text (``why``, ``evidence``) is made one line here, whatever set it."""
-    row = _score_one(defect, record_path, visible, root)
+    row = _score_one(defect, record_path, visible, root, offer)
     for key in ("why", "evidence"):
         if row[key] is not None:
             row[key] = one_line(row[key])
@@ -189,12 +200,12 @@ def _bug_build_runs(record: dict, spec_id: str, candidate: list[str]) -> list[st
     return entries[0]["base"]
 
 
-def _score_one(defect: dict, record_path: Path, visible: str | None, root: Path) -> dict:
+def _score_one(defect: dict, record_path: Path, visible: str | None, root: Path, offer: str) -> dict:
     row = {"id": defect["id"], "family": defect["family"], "tunedOn": defect["tunedOn"],
            "patchSha256": bench.sha256(root / defect["patch"]), "visibility": visible,
            "outcome": "no-result", "why": None, "proposed": 0, "kept": 0, "reproducing": [],
            "missReason": None, "evidence": None, "spendUsd": None, "recordSha256": None}
-    record, why = _read(defect, Path(record_path), root)
+    record, why = _read(defect, Path(record_path), root, offer)
     if record is None:
         row["why"] = why
         return row
@@ -284,11 +295,16 @@ def totals(rows: list[dict]) -> dict:
 
 
 def score(doc: dict, records_dir: Path, *, visibility_path: Path | None = None, source: str | None = None,
-          root: Path = REPO, bench_path: Path = bench.BENCH) -> dict:
-    """The score record, from ``records_dir/repro-<id>/jit-run.json`` for each defect of the bench.
+          root: Path = REPO, bench_path: Path = bench.BENCH, offer: str = offer_mod.BASELINE) -> dict:
+    """The score record, from ``records_dir/repro-<id>/jit-run.json`` for each defect of the bench,
+    counting only records made with ``offer``.
 
     With a visibility record, each row says what the library probes see of its defect, and a miss can
     be given a reason from it. A visibility record made for another bench is refused."""
+    try:
+        offer_mod.check(offer)
+    except offer_mod.OfferError as exc:
+        raise ScoreError(str(exc)) from exc
     found = no_fix_problems(doc, root)
     if found:
         raise ScoreError("; ".join(found))
@@ -304,11 +320,11 @@ def score(doc: dict, records_dir: Path, *, visibility_path: Path | None = None, 
         if old:
             raise ScoreError("the visibility record does not describe this bench: " + "; ".join(old)[:240])
         seen = {r["id"]: r["visibility"] for r in visibility_record["defects"] if r["visibility"] != "error"}
-    rows = [score_one(d, Path(records_dir) / (CASE_PREFIX + d["id"]) / "jit-run.json", seen.get(d["id"]), root)
-            for d in doc["defects"]]
+    rows = [score_one(d, Path(records_dir) / (CASE_PREFIX + d["id"]) / "jit-run.json", seen.get(d["id"]), root,
+                      offer) for d in doc["defects"]]
     record = {"format": FORMAT, "benchSha256": bench.sha256(bench_path), "noFixSha256": bench.sha256(root / NO_FIX),
               "visibilitySha256": bench.sha256(Path(visibility_path)) if visibility_path is not None else None,
-              "source": (one_line(source, 200) or None) if source else None,
+              "source": (one_line(source, 200) or None) if source else None, "offer": offer,
               "reps": REPS, "capUsd": CAP_USD, "rows": rows, "totals": totals(rows)}
     found = problems(record)
     if found:
@@ -412,6 +428,9 @@ def render(record: dict) -> str:
     """The score as a page: the rate first, then what it does not cover, then one row per defect."""
     t = record["totals"]
     lines = [f"# Reproduction on the public bench: {_share(t['reproduced'], t['defects'])}", "",
+             f"Generator offered: `{record['offer']}` (expectrail/jit/offer.py)."
+             + (" This is the generator as it was before steps 3 and 4 of issue #285." if record["offer"] == "baseline"
+                else "") + " A record made with another setting is counted as no result.", "",
              f"From {_code(record['source']) if record['source'] else 'records with no named source'}. "
              f"A defect is reproduced when a generated "
              f"check passed on the clean game {REPS} times of {REPS} and failed on the bug build {REPS} times of "
