@@ -18,6 +18,9 @@ A count beside a run link ("8 of 8") is checked only where the row ties it to th
 run published, which is where the bench jobs put their public counts. Such evidence ends with
 "Counted from the run's notices", and `python3 -m expectrail.capabilities recheck` counts those
 notices again from GitHub. Of the 17 counts quoted beside a run link, 13 are tied to notices; any other is as the row's writer wrote it, and no check has compared it with its run.
+Across all rows citing one run, its entries must together account for every notice their title
+rules select. A notice selected by no entry is a problem. Entries may overlap; an entry without
+`where` includes every notice its title rules select.
 
 Last changed 2026-11-12. 26 rows: 3 implemented, 13 integrated, 7 measured, 3 experimental. By grade: 4 fixture, 22 diagnostic, 0 isolated, 0 protected.
 

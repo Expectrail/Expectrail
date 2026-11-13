@@ -275,9 +275,16 @@ class JsonNoticesTest(_Counted):
                "where": {"kind": "defect"}, "has": {"flagged": True}, **more}
         return {key: value for key, value in out.items() if value is not None}
 
-    def one(self, *counts: dict, notices: dict | None = None) -> str:
+    def uncovered(self, *keys: str, notices: dict | None = None) -> list[str]:
+        notices = self.SET if notices is None else notices
+        return [f"run 1: cannot tell: the notice {notices[key][0]['title']!r} from job 'bench ({key})' "
+                "is counted by no entry" for key in keys]
+
+    def one(self, *counts: dict, notices: dict | None = None, uncounted=("d", "clean")) -> str:
         found = self.check(*counts, notices=self.SET if notices is None else notices)
-        self.assertEqual(len(found), 1, found)
+        # These tests supply a single entry. Its old problem is followed by coverage problems.
+        self.assertEqual(len(found), 1 + len(uncounted), found)
+        self.assertEqual(found[1:], self.uncovered(*uncounted, notices=notices))
         return found[0]
 
     def swapped(self, key: str, *notices: dict) -> dict:
@@ -294,7 +301,7 @@ class JsonNoticesTest(_Counted):
                          "mode: run 1: '3 of 3': 3 of 3 is recorded and the run's notices give 2 of 3 (titled "
                          "'Blind *', where \"kind\": \"defect\", with \"flagged\": true)")
         self.assertIn("give 2 of 3", self.one(self.entry("2 of 4", 2, 4)))
-        self.assertIn("give 2 of 5 (titled 'Blind *', with", self.one(self.entry("2 of 3", where=None)))
+        self.assertIn("give 2 of 5 (titled 'Blind *', with", self.one(self.entry("2 of 3", where=None), uncounted=()))
 
     def test_a_message_that_is_not_one_json_object_is_cannot_tell(self):
         for message, said in (
@@ -321,14 +328,14 @@ class JsonNoticesTest(_Counted):
         # A notice that does not say which set it is in is not left out of `of` quietly either.
         unsorted = {"title": "Blind d", "message": json.dumps({"id": "d", "flagged": False})}
         self.assertIn("cannot tell: the notice 'Blind d' has no member 'kind'",
-                      self.one(self.entry(), notices=self.swapped("d", unsorted)))
+                      self.one(self.entry(), notices=self.swapped("d", unsorted), uncounted=("clean",)))
 
     def test_a_member_of_another_kind_is_cannot_tell_never_equal_and_never_a_no(self):
         for flagged in ("true", 1, 0, None, [True], {"value": True}, 1.0):
             found = self.one(self.entry(), notices=self.swapped("b", _blind("b", flagged=flagged)))
             self.assertIn("has the member 'flagged' as", found, flagged)
             self.assertIn("which is not true or false", found, flagged)
-        found = self.one(self.entry(), notices=self.swapped("d", _blind("d", kind=3)))
+        found = self.one(self.entry(), notices=self.swapped("d", _blind("d", kind=3)), uncounted=("clean",))
         self.assertIn("has the member 'kind' as 3, which is not text", found)
         # The other way round: the entry asks for a whole number and the notice has true.
         counted = self.entry("2 of 3", has={"reproduced": 1})
@@ -336,40 +343,109 @@ class JsonNoticesTest(_Counted):
         self.assertIn("cannot tell", found)
 
     def test_no_notice_kept_by_where_is_cannot_tell(self):
-        self.assertEqual(self.one(self.entry("0 of 1", 0, 1, where={"kind": "regression"})),
+        self.assertEqual(self.one(self.entry("0 of 1", 0, 1, where={"kind": "regression"}),
+                                  uncounted=("a", "b", "c", "d", "clean")),
                          "mode: run 1: '0 of 1': cannot tell: the run published no notice titled 'Blind *', where "
                          "\"kind\": \"regression\"")
 
     def test_every_member_named_must_hold(self):
         both = self.entry("1 of 3", 1, 3, has={"flagged": True, "id": "a"})
-        self.assertEqual(self.check(both, notices=self.SET), [])
+        self.assertEqual(self.check(both, notices=self.SET), self.uncovered("d", "clean"))
         narrowed = self.entry("1 of 1", 1, 1, where={"kind": "defect", "id": "c"})
-        self.assertEqual(self.check(narrowed, notices=self.SET), [])
+        self.assertEqual(self.check(narrowed, notices=self.SET), self.uncovered("a", "b", "d", "clean"))
 
     def test_the_same_notice_twice_and_a_failed_job_are_still_problems(self):
         twice = self.swapped("b", _blind("b"), _blind("b", flagged=True))
         self.assertIn("cannot tell: the run published the notice 'Blind b' 2 times", self.one(self.entry(), notices=twice))
         found = self.check(self.entry(), notices=self.SET, endings={"c": "failure"})
-        self.assertEqual(len(found), 1)
+        self.assertEqual(len(found), 3)
         self.assertIn("from job 'bench (c)', which ended in failure", found[0])
+        self.assertEqual(found[1:], self.uncovered("d", "clean"))
 
     def test_generated_notices_a_count_passes_only_when_it_is_the_count(self):
         rng = random.Random(244)
         for _ in range(300):
             notices, defects, flagged = {}, 0, 0
+            uncounted = []
             for index in range(rng.randint(1, 9)):
                 kind = rng.choice(("defect", "defect", "intentional", "clean"))
                 flag = rng.random() < 0.5
                 defects += kind == "defect"
                 flagged += kind == "defect" and flag
                 notices[f"j{index}"] = [_blind(f"v{index}", kind, flag)]
+                if kind != "defect":
+                    uncounted.append(f"j{index}")
             if not defects:
                 continue
-            self.assertEqual(self.check(self.entry(f"{flagged} of {defects}", flagged, defects), notices=notices), [])
+            coverage = self.uncovered(*uncounted, notices=notices)
+            self.assertEqual(self.check(self.entry(f"{flagged} of {defects}", flagged, defects), notices=notices),
+                             coverage)
             for n, of in ((flagged + 1, defects), (flagged, defects + 1), (flagged - 1, defects), (flagged, defects - 1)):
                 if n < 0 or of < 1:
                     continue
-                self.assertEqual(len(self.check(self.entry(f"{n} of {of}", n, of), notices=notices)), 1, (n, of))
+                found = self.check(self.entry(f"{n} of {of}", n, of), notices=notices)
+                self.assertEqual(len(found), 1 + len(coverage), (n, of))
+                self.assertIn(f"{n} of {of} is recorded and the run's notices give {flagged} of {defects}", found[0])
+                self.assertEqual(found[1:], coverage)
+
+
+class NoticeCoverageTest(_Counted):
+    NOTICES = {"a": [_blind("a", flagged=True)], "b": [_blind("b", "clean")]}
+    DEFECT = {"says": "1 of 1", "n": 1, "of": 1, "titled": "Blind *",
+              "where": {"kind": "defect"}, "has": {"flagged": True}}
+    HEALTHY = {"says": "no healthy build flagged", "n": 1, "of": 1, "titled": "Blind *",
+               "where": {"kind": ["clean", "intentional"]}, "has": {"flagged": False}}
+
+    def test_a_notice_selected_by_no_entry_is_reported(self):
+        for kind in ("healthy", "Defect", ""):
+            for flagged in (False, True):
+                with self.subTest(kind=kind, flagged=flagged):
+                    notices = dict(self.NOTICES, c=[_blind("c", kind, flagged)])
+                    self.assertEqual(self.check(self.DEFECT, self.HEALTHY, notices=notices), [
+                        "run 1: cannot tell: the notice 'Blind c' from job 'bench (c)' is counted by no entry"])
+
+    def test_no_notices_is_still_cannot_tell(self):
+        self.assertEqual(self.check(self.DEFECT, self.HEALTHY, notices={}), [
+            "mode: run 1: '1 of 1': cannot tell: the run published no notice titled 'Blind *'",
+            "mode: run 1: 'no healthy build flagged': cannot tell: the run published no notice titled 'Blind *'"])
+
+    def test_every_notice_counted_has_no_problem(self):
+        notices = dict(self.NOTICES, c=[_blind("c", "intentional")])
+        self.assertEqual(self.check(self.DEFECT, dict(self.HEALTHY, n=2, of=2), notices=notices), [])
+
+    def test_a_notice_may_be_counted_by_two_entries(self):
+        # Both entries include the defect in `of`, though it satisfies only one `has`.
+        other = dict(self.DEFECT, says="0 of 1", n=0, has={"flagged": False})
+        self.assertEqual(self.check(self.DEFECT, self.HEALTHY, other, notices=self.NOTICES), [])
+
+    def test_an_entry_without_where_counts_every_title_it_selects(self):
+        all_notices = {key: value for key, value in self.DEFECT.items() if key != "where"}
+        all_notices.update(says="1 of 2", of=2)
+        self.assertEqual(self.check(all_notices, notices=self.NOTICES), [])
+
+    def test_title_exclusions_and_unrelated_titles_need_no_entry(self):
+        notices = dict(self.NOTICES, time=[{"title": "Blind time a", "message": "12 s"}],
+                       other=[{"title": "Other", "message": "not JSON"}])
+        entries = [dict(entry, **{"not": ["Blind time *"]}) for entry in (self.DEFECT, self.HEALTHY)]
+        self.assertEqual(self.check(*entries, notices=notices), [])
+
+    def test_coverage_is_shared_across_rows_of_one_run_but_not_across_runs(self):
+        doc = _ledger(_cite(self.DEFECT))
+        doc["rows"].append({"id": "other", "evidence": [_cite(self.HEALTHY, number="1/job/7")]})
+        run = _run(_job("bench"))
+        notices = lambda job: [item for items in self.NOTICES.values() for item in items]
+        self.assertEqual(runs.recheck(doc, lambda number: run, notices)[0], [])
+        doc["rows"][1]["evidence"][0]["ref"] = RUN + "2/job/7"
+        self.assertEqual(runs.recheck(doc, lambda number: run, notices)[0], [
+            "run 1: cannot tell: the notice 'Blind b' from job 'bench' is counted by no entry",
+            "run 2: cannot tell: the notice 'Blind a' from job 'bench' is counted by no entry"])
+
+    def test_another_entry_must_match_the_notice_title_to_cover_it(self):
+        healthy = dict(self.HEALTHY, titled="Elsewhere *")
+        found = self.check(self.DEFECT, healthy, notices=self.NOTICES)
+        self.assertEqual(found, [
+            "mode: run 1: 'no healthy build flagged': cannot tell: the run published no notice titled 'Elsewhere *'",
+            "run 1: cannot tell: the notice 'Blind b' from job 'bench (b)' is counted by no entry"])
 
 
 class NoticesThatAreNotTextTest(_Counted):
@@ -471,6 +547,9 @@ class LedgerCountsTest(unittest.TestCase):
         self.assertGreaterEqual(sum(1 for _, count in self.entries(self.doc) if "has" in count), 4)
         for ev, _ in self.entries(self.doc):
             self.assertIn(runs._split(ev["ref"])[0], SAVED_NOTICES)
+
+    def test_the_contract_example_accounts_for_its_saved_notices(self):
+        self.assertEqual(self.counted(cap.load(cap.ROOT / "contracts" / "examples" / "capabilities.json")), [])
 
     def test_each_count_fails_when_its_number_is_changed(self):
         for index, (_, count) in enumerate(self.entries(self.doc)):
