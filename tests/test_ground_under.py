@@ -155,12 +155,12 @@ class GroundUnderTest(unittest.TestCase):
 BRIDGE_SHAPE = '[sub_resource type="RectangleShape2D" id="2"]\nsize = Vector2(24, 16)\n'
 
 
-def bridge(kind: str, extra: str = "", shape_extra: str = ""):
+def bridge(kind: str, extra: str = "", shape_extra: str = "", y: float = 328):
     """A body 64 by 16 over the gap (x 192 to 256), its top at y = 320, as a platform in a game whose
     platforms are bodies (Godot's kinematic_character demo: CharacterBody2D and StaticBody2D)."""
     def change(text: str) -> str:
         text = text.replace(BRIDGE_SHAPE, BRIDGE_SHAPE + '\n[sub_resource type="RectangleShape2D" id="3"]\nsize = Vector2(64, 16)\n')
-        return text + (f'\n[node name="Bridge" type="{kind}" parent="."]\nposition = Vector2(224, 328)\n{extra}'
+        return text + (f'\n[node name="Bridge" type="{kind}" parent="."]\nposition = Vector2(224, {y:g})\n{extra}'
                        f'\n[node name="CollisionShape2D" type="CollisionShape2D" parent="Bridge"]\n'
                        f'shape = SubResource("3")\n{shape_extra}')
     return change
@@ -200,6 +200,17 @@ class PlatformBodyTest(unittest.TestCase):
 
     def test_an_animatable_body_counts(self):
         self.assertEqual(self.over_gap(self.walk("animatable", bridge("AnimatableBody2D"))), {(320.0, "body")})
+
+    def test_a_platform_above_the_players_feet_is_beside_it_not_under_it(self):
+        # The body's feet are at y = 320. A platform with its top at 300 is beside the body (or one it
+        # is jumping up through), not under it. With the 64 px window tiles have, the first version
+        # counted it and rejected the clean kinematic_character demo (outside trial on #388).
+        ground = self.walk("beside", bridge("StaticBody2D", y=308))
+        self.assertEqual(self.over_gap(ground), {(None, None)})
+
+    def test_a_platform_a_little_below_the_feet_is_under_them(self):
+        # Its top at 322: 2 px under the feet, as a body resting on it is.
+        self.assertEqual(self.over_gap(self.walk("below", bridge("StaticBody2D", y=330))), {(322.0, "body")})
 
     def test_a_platform_switched_off_is_not_ground(self):
         # A platform whose collision is disabled (one that crumbles on purpose, or a bug) is not a

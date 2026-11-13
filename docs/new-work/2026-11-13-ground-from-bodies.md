@@ -33,6 +33,16 @@ All with Godot 4.7.2 in this session:
   accept, as expected.
 - Full suite on this branch: 2874 tests OK, 27 skipped.
 
+- **The first outside trial on the pull request found a wrong reject**
+  ([run 43422746940](https://github.com/Expectrail/Expectrail/actions/runs/43422746940)): the clean
+  kinematic_character demo was rejected, "player is 21.121px past the boundary (above 304.5)" from
+  frame 80, and so was the harmless change. The engine's log shows the player falling past a one-way
+  platform (top 304) beside it: its edge column crossed the platform, and with the 64 px window that
+  tiles use, a platform 21 px above the player's origin counted as the ground under it. Fixed:
+  a platform counts only at or below the player's feet, less 4 px (`PLATFORM_SINK`); tiles keep the
+  64 px window. Two new engine tests: a platform 20 px above the feet is not ground; one 2 px below
+  them is. `tests.test_ground_under`: 22 OK. Full suite: OK.
+
 ## Not done
 
 - No outside project was run here. The outside trial on the pull request shows whether

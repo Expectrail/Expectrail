@@ -64,6 +64,8 @@ var _next_id := 0
 # a robot sunk into the ground by less than this is measured against the surface it sank into.
 # Platforms over the robot's head are at least about 95 px above its origin, so they never count.
 const SINK_WINDOW := 64.0
+# How far above the player's feet a platform's top may be and still be under it (see _ground_under).
+const PLATFORM_SINK := 4.0
 # How far either side of the player's origin to look for the highest surface under the whole body,
 # not just its centre (the body rests on the highest point beneath it, e.g. on a slope or a ledge),
 # when the player has no collision shape to measure. With one, its own half width is used, less
@@ -307,12 +309,20 @@ func _ground_under(origin: Vector2) -> Variant:
 	var best = null
 	var source := ""
 	var shapes := _platform_shapes()
+	# A platform counts only at or below the player's feet (less PLATFORM_SINK): a small platform
+	# beside the player, or a one-way platform it is jumping up through, is not under it. Tiles keep
+	# the 64 px window, which lets a robot sunk into the floor be measured against it; a platform the
+	# player sinks into reads as no ground (needs review). The first version used the 64 px window for
+	# platforms too and rejected the clean kinematic_character demo: its edge column crossed a one-way
+	# platform 21 px above its origin as it fell past (outside trial on #388).
+	var extent = _body_extent(_player)
+	var feet: float = origin.y + (extent[3] if extent != null else 0.0)
 	for dx in [span.x, (span.x + span.y) / 2.0, span.y]:
 		var surface = _highest_surface(origin.x + dx, origin.y - SINK_WINDOW)
 		if surface != null and (best == null or surface < best):
 			best = surface
 			source = "tile"
-		var top = _highest_in_polygons(shapes, origin.x + dx, origin.y - SINK_WINDOW)
+		var top = _highest_in_polygons(shapes, origin.x + dx, feet - PLATFORM_SINK)
 		if top != null and (best == null or top < best):
 			best = top
 			source = "body"
