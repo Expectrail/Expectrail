@@ -1257,7 +1257,7 @@
         {
           "kind": "test",
           "ref": "tests/test_verify_vision.py",
-          "shows": "scripted SAM 3.1 answers; both observers required, missing key or cap ends needs-review, and the replay never receives the key"
+          "shows": "scripted SAM 3.1 answers; both observers required, missing key or cap still replays: engine failures reject and passing engine checks need review, and the replay never receives the key"
         }
       ],
       "limits": "Only the sample command and tests call it: the gate's action and the site do not go through it yet. The isolated execution class runs every replay with the sandbox required and refuses where the machine cannot; its evidence grade stays diagnostic, because the ledger's isolated grade also needs a trusted job that judges and signs (#254, #255). The game is held to the tree the job asked about (the worker's read, the gate's record and each replay's copy must agree, or the job is needs-review), and the verifier judges with the one reading of the specs and routes whose digest is the job's. On a system without /proc a killed worker's children are not found and run on to their own time limit. One host. The cited live run predates the vision default; vision in the orchestrator is tested offline only. Requires MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP."

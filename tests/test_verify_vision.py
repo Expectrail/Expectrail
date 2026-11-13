@@ -17,9 +17,9 @@ from tests.test_two_observers import Game, repo
 
 
 class VerifyVisionTest(unittest.TestCase):
-    def work(self, root, engine):
+    def work(self, root, engine, look='clean'):
         jobs = store.JobStore(root / 'jobs')
-        req = request.build(adapter='godot', head=repo(root / 'head'), game='game/platformer',
+        req = request.build(adapter='godot', head=repo(root / 'head', look), game='game/platformer',
                             routes=['routes/*.json'], specs='specs')
         status, _ = jobs.create(req)
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
@@ -37,9 +37,50 @@ class VerifyVisionTest(unittest.TestCase):
                 self.assertEqual((status['phase'], status['decision']), ('completed', 'needs-review'))
                 self.assertIn(missing, json.dumps(status['diagnostics']))
                 self.assertIn('set ' + missing, json.dumps(status['diagnostics']))
-                self.assertEqual(game.replays, [])
+                self.assertTrue(game.replays)
+                doc = record.read_record(jobs.paths(status['id']).output / 'findings.json')
+                self.assertEqual(doc['observers'], {'rule': 'both', 'visual': None})
+                self.assertTrue(doc['checks'])
+                self.assertTrue(all(c['observed']['after']['engine'] == 'pass' for c in doc['checks']))
+                self.assertEqual({d['code'] for d in status['diagnostics']}, {'PROVIDER_FAILED'})
                 sent.assert_not_called()
                 self.assertNotIn('test-secret-379', json.dumps(status))
+
+    def test_engine_failure_rejects_without_key_cap_or_both(self):
+        for absent in (('MODEL_API_KEY',), ('EXPECTRAIL_SAM_USD_CAP',),
+                       ('MODEL_API_KEY', 'EXPECTRAIL_SAM_USD_CAP')):
+            with self.subTest(absent=absent), tempfile.TemporaryDirectory() as tmp:
+                env = {'MODEL_API_KEY': 'test-secret-379', 'EXPECTRAIL_SAM_USD_CAP': '0.50'}
+                env.update({key: '' for key in absent})
+                game = Game()
+                with mock.patch.dict(os.environ, env), mock.patch('urllib.request.urlopen') as sent:
+                    jobs, status = self.work(Path(tmp), engines.GodotGate(replay=game.replay), 'BUG')
+                self.assertEqual((status['phase'], status['decision']), ('completed', 'reject'))
+                self.assertTrue(game.replays)
+                doc = record.read_record(jobs.paths(status['id']).output / 'findings.json')
+                self.assertEqual(doc['decision'], 'reject')
+                self.assertEqual(doc['observers'], {'rule': 'both', 'visual': None})
+                self.assertTrue(any(c['observed']['after']['engine'] == 'fail' for c in doc['checks']))
+                self.assertTrue(all(c['observed']['after']['visual'] == 'not-asked' for c in doc['checks']))
+                self.assertEqual(len(status['diagnostics']), len(absent))
+                for key in absent:
+                    self.assertIn(key, json.dumps(status['diagnostics']))
+                self.assertEqual({d['code'] for d in status['diagnostics']}, {'PROVIDER_FAILED'})
+                self.assertIn('vision did not run', ' '.join(status['reasons']))
+                sent.assert_not_called()
+                self.assertNotIn('test-secret-379', json.dumps(status))
+
+    def test_invalid_cap_still_replays_and_never_accepts(self):
+        for cap in ('', '-1', 'nan', 'inf', 'invalid'):
+            with self.subTest(cap=cap), tempfile.TemporaryDirectory() as tmp:
+                game = Game()
+                with mock.patch.dict(os.environ, {'MODEL_API_KEY': 'test-secret-379', 'EXPECTRAIL_SAM_USD_CAP': cap}), \
+                        mock.patch('urllib.request.urlopen') as sent:
+                    _, status = self.work(Path(tmp), engines.GodotGate(replay=game.replay))
+                self.assertEqual(status['decision'], 'needs-review')
+                self.assertTrue(game.replays)
+                self.assertIn('EXPECTRAIL_SAM_USD_CAP', json.dumps(status['diagnostics']))
+                sent.assert_not_called()
 
     def test_default_rule_uses_frames_and_status_and_report_name_both_observers(self):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {

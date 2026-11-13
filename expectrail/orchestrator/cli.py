@@ -127,7 +127,7 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
             return 0
         if args.command == "sample":
             if not args.json:
-                print("Expectrail sample: three real runs on the bundled game and a seeded bug. No model key is used.")
+                print("Expectrail sample: three real runs on the bundled game and a seeded bug. Acceptance needs vision.")
             results = smp.run(store, timeout_seconds=args.timeout,
                               on_case=None if args.json else (lambda r: print(smp.line(r), flush=True)))
             if args.json:

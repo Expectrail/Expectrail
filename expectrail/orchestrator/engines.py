@@ -42,6 +42,7 @@ class Result:
     # the job's policyDigest the same way.
     policy: str | None = None
     observers: dict | None = None
+    diagnostics: list[dict] = field(default_factory=list)
 
 
 class Gate:
@@ -99,14 +100,6 @@ class Gate:
                                            detail=f"the isolated execution class needs the replay sandbox and this "
                                                   f"machine cannot provide it ({why}); nothing was run unsandboxed "
                                                   f"in its place"))
-        if not found and self._rule == "both" and self._needs_vision_settings:
-            from expectrail import doctor
-
-            for check in doctor.vision_checks():
-                if doctor.missing([check]):
-                    diagnostic = st.diagnostic("PROVIDER_FAILED", stage="preparing", detail=check.found)
-                    diagnostic["fix"] = check.fix
-                    found.append(diagnostic)
         if self._replay is None and not found:
             found += self._tools()
         return found
@@ -128,21 +121,36 @@ class Gate:
         named = json.loads(paths.status.read_text(encoding="utf-8"))["inputs"]["policyDigest"]
         if checks.digest != named:
             raise gate.ConfigError("the checks changed after the job was created; ask again")
+        diagnostics = []
+        if self._rule == "both" and self._needs_vision_settings:
+            from expectrail import doctor
+
+            for check in doctor.vision_checks():
+                if doctor.missing([check]):
+                    diagnostic = st.diagnostic("PROVIDER_FAILED", stage="observing", detail=check.found)
+                    diagnostic["fix"] = check.fix
+                    diagnostics.append(diagnostic)
+        # A missing provider cannot hide an engine failure. Keep the rule `both`: without a
+        # visual answer the gate can reject, but cannot accept. Recheck settings for each job.
+        visual = None if diagnostics else self._visual
         document = gate.run_gate(
             repo=Path(request["head"]["checkout"]), game=project["game"], routes=project["routes"],
             specs=project["specs"], out=paths.staging, work=paths.work / "gate",
             base=Path(base["checkout"]) if base else None,
             # The isolated class: every replay in the sandbox, or the gate refuses and nothing is accepted.
             require_sandbox=request["executionClass"] == "isolated",
-            checks=checks, rule=self._rule, visual=self._visual, on_phase=advance, adapter=self.name,
+            checks=checks, rule=self._rule, visual=visual, on_phase=advance, adapter=self.name,
             **({"replay": self._replay} if self._replay is not None else {}))
         # The grade stays `diagnostic` even when every replay was sandboxed: the ledger's `isolated`
         # also needs a separate trusted job that judges and signs (#254, #255). What the sandbox did
         # is in the evidence: findings.json, `isolation`.
         game = document.get("game") or {}
-        return Result(document["decision"], list(document.get("reasons", [])),
+        reasons = list(document.get("reasons", []))
+        if diagnostics:
+            reasons.append("vision did not run; see the PROVIDER_FAILED diagnostics for the missing settings")
+        return Result(document["decision"], reasons,
                       trees={"headTree": game.get("headTree"), "baseTree": game.get("baseTree")},
-                      policy=checks.digest, observers=document.get("observers"))
+                      policy=checks.digest, observers=document.get("observers"), diagnostics=diagnostics)
 
 
 def _tools(adapter: str) -> list[dict]:

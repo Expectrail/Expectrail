@@ -48,7 +48,8 @@ MIN_PYTHON = (3, 12)
 MIN_FREE_BYTES = 1024 ** 3
 EXIT_OK, EXIT_MISSING, EXIT_USAGE = 0, 3, 5
 VISION_KEYS = ("MODEL_API_KEY",)
-NO_KEY = "Without MODEL_API_KEY or EXPECTRAIL_SAM_USD_CAP, verification sends nothing and ends needs-review."
+NO_KEY = ("No vision request is sent. Engine checks still run: a failure rejects; "
+          "otherwise the result is needs-review.")
 APT = "sudo apt-get install"
 
 

@@ -237,12 +237,16 @@ jobs:
           EXPECTRAIL_SANDBOX: require
         run: python -m harness.check_seeded --out runs/seeded-check
       # Three real verifications through the orchestrator (docs/orchestrator.md): the bundled game as it
-      # is (accept), with the seeded fall-through bug (reject), and the repair (accept). No model key.
-      # The step fails unless all three decide that way.
-      - name: Verification as a job, on the bundled game (accept, reject, accept), each replay sandboxed
+      # is (needs-review), with the seeded fall-through bug (reject), and the repair (needs-review).
+      # No vision settings: engine failures reject, but passing engine checks cannot accept.
+      - name: Verification as a job, on the bundled game (needs-review, reject, needs-review), each replay sandboxed
         env:
           EXPECTRAIL_SANDBOX: require
-        run: python -m expectrail.orchestrator --jobs-root runs/orchestrator-sample sample
+        run: |
+          mkdir -p runs
+          code=0; python -m expectrail.orchestrator --jobs-root runs/orchestrator-sample sample --json > runs/orchestrator-sample.json || code=$?
+          test "$code" = 3
+          python -m tools.check_no_vision runs/orchestrator-sample.json runs/orchestrator-sample --sample
       # "Run it" offline (#265; docs/run-it.md): the command the site's workflow runs, on each sample,
       # with real replays, each sandboxed, then the publishing job's allowlist check on each folder. No
       # vision answers are recorded yet, so a sample that would accept needs review (--expect knows).
@@ -754,9 +758,17 @@ jobs:
       - name: Install a virtual display and software OpenGL
         uses: ./.github/actions/apt-install
         with:
-          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch bubblewrap
       - name: Download Godot 4.7.2 and check its SHA-512
         uses: ./.github/actions/get-godot
+      - name: Allow unprivileged user namespaces for bubblewrap
+        run: |
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          fi
+          if [ -f /proc/sys/kernel/unprivileged_userns_clone ]; then
+            echo 1 | sudo tee /proc/sys/kernel/unprivileged_userns_clone
+          fi
       - name: Build the wheel and check what is in it
         env:
           EXPECTRAIL_PACKAGE_TESTS: required
@@ -807,19 +819,28 @@ jobs:
           code=0; venv/bin/expectrail verify --head . > usage.txt 2>&1 || code=$?
           cat usage.txt
           test "$code" = 5
-      - name: The sample from the installed copy (accept, reject, accept)
+      - name: The sample from the installed copy (needs-review, reject, needs-review), each replay sandboxed
         working-directory: ${{ runner.temp }}
-        run: venv/bin/expectrail --jobs-root "$RUNNER_TEMP/jobs" sample
+        env:
+          EXPECTRAIL_SANDBOX: require
+        run: |
+          code=0; venv/bin/expectrail --jobs-root "$RUNNER_TEMP/jobs" sample --json > sample.json || code=$?
+          test "$code" = 3
+          venv/bin/python "$GITHUB_WORKSPACE/tools/check_no_vision.py" sample.json "$RUNNER_TEMP/jobs" --sample
       # The installed command on a Godot project that is not the bundled game, given by path (#251):
       # tests/projects/crate-run, judged by the approved spec that ships, copied unchanged. The step
-      # fails unless the job completes as accept (exit 0).
-      - name: The installed command verifies a second Godot project given by path (accept)
+      # fails unless engine checks run in the sandbox and complete as needs-review (exit 2).
+      - name: The installed command verifies a second Godot project given by path (needs-review)
+        env:
+          EXPECTRAIL_SANDBOX: require
         run: |
           mkdir -p "$RUNNER_TEMP/second/specs"
           cp -r tests/projects/crate-run/project tests/projects/crate-run/routes "$RUNNER_TEMP/second/"
           cp agents/specs/player-stays-above-ground.json "$RUNNER_TEMP/second/specs/"
           cd "$RUNNER_TEMP"
-          venv/bin/expectrail --jobs-root "$RUNNER_TEMP/jobs-second" verify --head second --game project --routes routes/walk.json --specs specs
+          code=0; venv/bin/expectrail --jobs-root "$RUNNER_TEMP/jobs-second" verify --head second --game project --routes routes/walk.json --specs specs --json > second.json || code=$?
+          test "$code" = 2
+          venv/bin/python "$GITHUB_WORKSPACE/tools/check_no_vision.py" second.json "$RUNNER_TEMP/jobs-second"
       - name: The engine it used is the one its own script unpacked
         run: test -x "$HOME/.cache/expectrail/godot/Godot_v4.7.2-stable_linux.x86_64"
 
