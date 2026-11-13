@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/vision-recording.v1.schema.json",
+  "title": "expectrail.vision-recording/v1",
+  "description": "The vision model's answers for one Run it sample, recorded once by a person-dispatched live run (#265, Option A). Each answer is keyed by the SHA256 of the frame's PNG bytes and the exact text asked; a frame or question not listed gets no answer.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "sample",
+    "recordedAt",
+    "run",
+    "model",
+    "answers"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.vision-recording/v1"
+    },
+    "sample": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]{1,40}$"
+    },
+    "recordedAt": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "The UTC date of the recording run."
+    },
+    "run": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]{1,64}$",
+      "description": "The recording run: a GitHub Actions run id, or a name for a local recording."
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "provider"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
+      }
+    },
+    "answers": {
+      "type": "array",
+      "maxItems": 50000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "frameSha256",
+          "prompt",
+          "detections"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "segment",
+              "segment-in"
+            ],
+            "description": "segment: every match for a prompt; segment-in: what is inside each of the asked boxes, in their order (null for none)."
+          },
+          "frameSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "prompt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "description": "The exact text sent with the frame."
+          },
+          "detections": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "box",
+                    "score"
+                  ],
+                  "properties": {
+                    "box": {
+                      "type": "array",
+                      "minItems": 4,
+                      "maxItems": 4,
+                      "items": {
+                        "type": "number",
+                        "minimum": -1000000,
+                        "maximum": 1000000
+                      }
+                    },
+                    "score": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

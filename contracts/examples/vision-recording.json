@@ -1,0 +1,13 @@
+{
+  "format": "expectrail.vision-recording/v1",
+  "sample": "clean",
+  "recordedAt": "2026-11-13",
+  "run": "local-example",
+  "model": {"name": "sam-3.1", "provider": "meta-model-api"},
+  "answers": [
+    {"kind": "segment", "frameSha256": "3f1a9c0d2b4e6f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708", "prompt": "robot",
+     "detections": [{"box": [60.0, 214.0, 80.0, 234.0], "score": 0.91}]},
+    {"kind": "segment-in", "frameSha256": "3f1a9c0d2b4e6f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708", "prompt": "<the exact box prompt sent>",
+     "detections": [null]}
+  ]
+}

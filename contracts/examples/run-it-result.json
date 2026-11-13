@@ -1,0 +1,17 @@
+{
+  "format": "expectrail.run-it-result/v1",
+  "requestId": "0f6c1b2e-5d3a-4b7c-9e21-6a8f0d4c2b19",
+  "sample": {"id": "fall-through-bug", "title": "A change that breaks it", "expected": "reject"},
+  "phase": "completed",
+  "decision": "reject",
+  "asExpected": true,
+  "diagnostics": [],
+  "vision": {"recorded": true, "recordedAt": "2026-11-13", "run": "19283746501", "model": "sam-3.1",
+             "asked": 412, "answered": 412, "notRecorded": 0, "why": null},
+  "receipt": {"signed": false, "why": "not signed yet (#255)"},
+  "startedAt": "2026-11-20T15:02:11Z",
+  "finishedAt": "2026-11-20T15:05:47Z",
+  "expectrailCommit": "36a7a8a0c4b1e2d3f4a5b6c7d8e9f0a1b2c3d4e5",
+  "viewer": "viewer/index.html",
+  "findings": "findings.json"
+}

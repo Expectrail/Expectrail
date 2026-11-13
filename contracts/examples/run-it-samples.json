@@ -1,0 +1,36 @@
+{
+  "format": "expectrail.run-it-samples/v1",
+  "game": "game/platformer",
+  "route": "harness/routes/smoke.json",
+  "specs": "agents/specs",
+  "bug": "bugs/physics-fall-through/v1.patch",
+  "samples": [
+    {
+      "id": "clean",
+      "title": "The game as it is",
+      "summary": "The bundled platformer, unchanged, replayed on its smoke route and judged by the approved check.",
+      "head": "clean",
+      "base": null,
+      "expected": "accept",
+      "vision": "docs/run-it/vision/clean.json"
+    },
+    {
+      "id": "fall-through-bug",
+      "title": "A change that breaks it",
+      "summary": "The seeded fall-through bug: the robot sinks through the floor. Compared with the game as it is.",
+      "head": "bug",
+      "base": "clean",
+      "expected": "reject",
+      "vision": "docs/run-it/vision/fall-through-bug.json"
+    },
+    {
+      "id": "fall-through-repair",
+      "title": "The change that repairs it",
+      "summary": "The repair of the fall-through bug: the game as it is, compared with the bug.",
+      "head": "clean",
+      "base": "bug",
+      "expected": "accept",
+      "vision": "docs/run-it/vision/fall-through-repair.json"
+    }
+  ]
+}

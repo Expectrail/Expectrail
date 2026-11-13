@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/run-it-samples.v1.schema.json",
+  "title": "expectrail.run-it-samples/v1",
+  "description": "The samples a visitor may run on expectrail.tech (#265). A visitor chooses one id from this list and nothing else.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "game",
+    "route",
+    "specs",
+    "bug",
+    "samples"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.run-it-samples/v1"
+    },
+    "game": {
+      "const": "game/platformer"
+    },
+    "route": {
+      "const": "harness/routes/smoke.json"
+    },
+    "specs": {
+      "const": "agents/specs"
+    },
+    "bug": {
+      "const": "bugs/physics-fall-through/v1.patch"
+    },
+    "samples": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "summary",
+          "head",
+          "base",
+          "expected",
+          "vision"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{1,40}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "head": {
+            "enum": [
+              "clean",
+              "bug"
+            ],
+            "description": "The game after the change: as it ships, or with the seeded bug."
+          },
+          "base": {
+            "enum": [
+              "clean",
+              "bug",
+              null
+            ],
+            "description": "The game before the change; null for no base."
+          },
+          "expected": {
+            "enum": [
+              "accept",
+              "reject",
+              "needs-review"
+            ],
+            "description": "The decision a working install gives once the sample's vision answers are recorded."
+          },
+          "vision": {
+            "type": "string",
+            "pattern": "^docs/run-it/vision/[a-z0-9-]{1,40}\\.json$",
+            "description": "Where the sample's recorded vision answers are kept, whether or not they exist yet."
+          }
+        }
+      }
+    }
+  }
+}

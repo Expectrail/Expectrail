@@ -243,6 +243,25 @@ jobs:
         env:
           EXPECTRAIL_SANDBOX: require
         run: python -m expectrail.orchestrator --jobs-root runs/orchestrator-sample sample
+      # "Run it" offline (#265; docs/run-it.md): the command the site's workflow runs, on each sample,
+      # with real replays, each sandboxed, then the publishing job's allowlist check on each folder. No
+      # vision answers are recorded yet, so a sample that would accept needs review (--expect knows).
+      - name: Run it, offline, on each sample (real replays, sandboxed), and the publish check on each folder
+        env:
+          EXPECTRAIL_SANDBOX: require
+        run: |
+          for s in clean fall-through-bug fall-through-repair; do
+            python -m expectrail.runit run --sample "$s" --request-id "ci-$s" --out "runs/run-it/$s" --require-sandbox --expect
+            python -m expectrail.runit check "runs/run-it/$s" --sample "$s" --request-id "ci-$s"
+          done
+      - name: Keep the Run it folders (what the site would publish)
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: run-it-offline
+          path: runs/run-it
+          if-no-files-found: ignore
+          retention-days: 7
       # The same verify command on two Godot projects (#251): the bundled game, and a second project
       # given by path that shares no file with it (tests/projects/crate-run). Real replays, no model
       # key. Without the switch these four tests are skipped, as in the `test` job, which has no Godot.
