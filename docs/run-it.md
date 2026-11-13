@@ -2,8 +2,8 @@
 
 "Run it" on expectrail.tech lets a visitor verify one of Expectrail's sample changes, live, without a
 terminal or GitHub (#265). This page describes slice 1 (the workflow, the samples, the recorded vision
-answers and the same run offline) and slice 2 (the page, `docs/run-it/`, and a local stub of the edge
-function). The edge function itself (slice 3) comes next.
+answers and the same run offline), slice 2 (the page, `docs/run-it/`, and a local stub of the edge
+function) and slice 3 (the edge function, `apps/run-it-edge/`, and a scripted burst).
 
 ## What a visitor chooses
 
@@ -107,8 +107,8 @@ checking and publishing the evidence), and then shows the run's published folder
 | `GET /api/status/<request id>` | `status`: `queued`, `running`, `publishing`, `published`, `failed` or `cancelled`; or `refused` (404) |
 
 A refusal names its `reason` (`bad-request`, `unknown-sample`, `unknown-request`, `busy` 409,
-`visitor-quota` 429, `daily-cap` 429, `circuit-open` 503, `disabled` 503), a sentence, and when it
-resets. The service never sends a verdict: the page reads the published `status.json` itself.
+`visitor-quota` 429, `daily-cap` 429, `circuit-open` 503, `disabled` 503, `unavailable` 502 when
+GitHub could not be reached and nothing was started or counted), a sentence, and when it resets. The service never sends a verdict: the page reads the published `status.json` itself.
 
 ### The local stub
 
@@ -126,6 +126,53 @@ address, never the address), 40 a day in all, and a circuit breaker after 3 fail
 (`--per-visitor`, `--daily-cap`, `--breaker`, `--closed` to switch it off). With `--stand-in` the runs
 do not play the game, and the page says so in a banner.
 
+## The edge function (slice 3)
+
+[`apps/run-it-edge/`](../apps/run-it-edge/) is the service the page calls at
+`https://api.expectrail.tech` (`/health`, `/run`, `/status/<id>`; the stub's `/api/...` paths work
+too). `service.js` holds everything and uses only web-standard APIs, with its storage, clock and fetch
+passed in; `worker.js` adapts it to a Workers-style runtime with one Durable Object named `run-it`,
+so every request sees the same strongly consistent state, and requests inside it are handled one at a
+time.
+
+- **What a visitor can send:** `{"sample": id}`, from the page's origin (`ALLOWED_ORIGINS`, default
+  `https://expectrail.tech`), at most 1,024 bytes, with an id from the three samples. Anything else is
+  refused before GitHub is called. The request id is a UUID minted here.
+- **What it calls:** the dispatch of `run-it.yml` on `main` with the two inputs, the list of
+  `run-it.yml`'s runs, one run and its jobs, and the published `status.json` on `run-it-results`.
+  Nothing else; a test reads the source for any other address, and the JavaScript tests fail on any
+  other endpoint. `run-it.yml` now names each run `Run it <request id>`, which is how the function
+  finds the run it dispatched.
+- **One run at a time:** a start while the last run is queued, running or publishing is refused as
+  busy. A run GitHub has not listed after 5 minutes, or still going after 30, is failed.
+- **Quotas:** 3 runs per visitor per day (`PER_VISITOR`), counted by a SHA-256 of `VISITOR_SALT` and
+  the address (`CF-Connecting-IP`), never the address itself; 40 a day in all (`DAILY_CAP`). Both
+  reset at midnight UTC and the refusal says so. A start GitHub refuses is not counted.
+- **Circuit breaker:** after 3 failed runs in a row (`BREAKER`) it starts nothing and says why. A run
+  counts as failed when it fails, is cancelled, is lost, or publishes a `status.json` whose phase is
+  not completed; a published run whose `status.json` cannot be read neither counts nor resets. A
+  person closes the breaker by changing `BREAKER_EPOCH` to any new value.
+- **Closed by default:** it starts runs only with `RUN_IT_OPEN` set to `true` and every setting
+  valid; a missing token or salt says "not set up yet".
+- **Status reads are cached** for 10 seconds per run, so visitors polling cannot use up the token's
+  rate limit.
+- It never sends a verdict.
+
+### The scripted burst
+
+```
+python3 -m tools.runit_burst http://127.0.0.1:8765/api --count 50     the local stub
+node apps/run-it-edge/local.mjs                                        the edge function, with a pretend GitHub
+python3 -m tools.runit_burst http://127.0.0.1:8787 --count 50
+python3 -m tools.runit_burst https://api.expectrail.tech --count 20   the deployed one (starts at most one real run)
+```
+
+It sends the requests at the same moment and fails unless at most one run is accepted, every refusal
+names its limit, and every answer is a body of the contract. The suite runs it against the stub and
+against the edge function served locally (`tests/test_runit_edge.py`); the JavaScript tests add a
+burst of 200 at once and a day of bursts with runs finishing, holding every limit
+(`apps/run-it-edge/test/service.test.mjs`, `node --test`).
+
 ## The token, plainly
 
 A fine-grained token cannot be limited to one workflow: "Actions: write" can dispatch or cancel any
@@ -137,5 +184,18 @@ so a stolen token cannot spend without Sean.
 
 - Review and merge this workflow's `permissions` (`contents: write` on the publish job).
 - Dispatch the one live recording run per sample, about $1 in all.
-- Later (slice 3): the edge-function account, the token, DNS for an `api.` subdomain
-  (`api.expectrail.tech`, the address the page calls).
+- Put the edge function online. Everything below is Sean's (AGENTS.md: accounts, secrets, DNS), and
+  none of it is in the repository:
+  1. **Pick the host and create the account.** The code is written for Cloudflare Workers with a
+     Durable Object; `apps/run-it-edge/wrangler.toml.example` is a starting configuration. Another
+     host needs its own adapter in place of `worker.js` (a store with strongly consistent get, put and
+     delete, and one instance for all requests).
+  2. **Create a fine-grained token**: resource owner Expectrail, only the repository
+     Expectrail/Expectrail, repository permission **Actions: Read and write** and nothing else
+     (Metadata: read comes with it). Set an expiry and a reminder to rotate it.
+  3. **Set two secrets on the function**: `GITHUB_TOKEN` (the token) and `VISITOR_SALT` (32 random
+     characters or more). Set the variable `RUN_IT_OPEN` to `true` when ready; until then every start
+     is refused as switched off.
+  4. **DNS**: `api.expectrail.tech` pointing at the function (with Cloudflare, a custom domain on the
+     worker, which needs the zone on Cloudflare; otherwise the host's own instructions).
+  5. Then a burst against the deployed function, which starts at most one real run.

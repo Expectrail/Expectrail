@@ -14,6 +14,8 @@
 # One run at a time: GitHub keeps one pending run per concurrency group and cancels the rest, so the
 # edge function refuses a request while one is queued or running.
 name: Run it
+# The edge function finds the run it dispatched by this name (apps/run-it-edge/service.js).
+run-name: Run it ${{ inputs.request_id }}
 
 on:
   workflow_dispatch:

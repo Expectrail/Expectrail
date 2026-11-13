@@ -323,7 +323,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
 def serve(service: Service, port: int = 8765, docs: Path | None = None) -> http.server.ThreadingHTTPServer:
     """A server bound to 127.0.0.1 (port 0: any free port). The caller runs ``serve_forever``."""
     handler = type("BoundHandler", (Handler,), {"service": service, "docs": Path(docs or ROOT / "docs")})
-    server = http.server.ThreadingHTTPServer(("127.0.0.1", port), handler)
+    # A listen queue deeper than the default 5, so a burst of visitors is answered, not reset
+    # (tools/runit_burst.py found that).
+    server_class = type("Server", (http.server.ThreadingHTTPServer,), {"request_queue_size": 128})
+    server = server_class(("127.0.0.1", port), handler)
     server.daemon_threads = True
     return server
 

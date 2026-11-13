@@ -84,8 +84,10 @@
             "visitor-quota",
             "daily-cap",
             "circuit-open",
-            "disabled"
-          ]
+            "disabled",
+            "unavailable"
+          ],
+          "description": "unavailable: the service could not reach GitHub or hit an error; nothing was started and nothing was counted."
         },
         "detail": {
           "type": "string",
