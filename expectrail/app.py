@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
 from http.cookies import SimpleCookie, CookieError
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -11,13 +13,48 @@ import secrets
 import stat
 import sys
 import threading
+import tempfile
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from expectrail import app_page
+from expectrail import app_page, viewer
+from expectrail.gate import record as rec
 from expectrail.orchestrator import request as req, runner
 from expectrail.orchestrator.store import JobStore, StoreError, UnknownJob, FINAL
 
 LIMIT = 64 * 1024
+OUTCOMES = {
+    'accept': 'Accept — the verifier accepted this change under the checks used.',
+    'reject': 'Reject — the verifier rejected this change.',
+    'needs-review': 'Needs review — the verifier could not accept this change.',
+    'failed': 'Failed — verification failed. There is no verdict.',
+    'cancelled': 'Cancelled — no verdict was issued.',
+    'running': 'Verification is unfinished. No verdict yet.',
+}
+
+
+def judged_by(doc, record):
+    block = doc.get('observers') or (record or {}).get('observers') or {}
+    if doc['phase'] != 'completed':
+        words = 'No completed judgement is recorded.'
+    elif block.get('rule') == 'both':
+        words = ("The engine's record and the vision model judged every check."
+                 if 'visual' not in block or block['visual'] is not None else
+                 'This run required both observers, but the vision model was not available. No full accept is possible.')
+    else:
+        words = ("Only the engine's record judged; Expectrail's rule is that an accept needs the vision model too, "
+                 'so this result is diagnostic.')
+        if not record and not doc.get('output'):
+            words = 'No completed judgement is recorded. An accept needs the engine and the vision model too.'
+    if doc['decision'] == 'needs-review':
+        diagnostics = json.dumps(doc.get('diagnostics', []))
+        for name, help_text in (
+            ('MODEL_API_KEY', 'the secret key from your vision model provider'),
+            ('EXPECTRAIL_SAM_USD_CAP', 'the maximum amount in US dollars you allow the vision model to spend on a run'),
+        ):
+            if name in diagnostics:
+                words += (f' Vision setup needs {name}. Ask the person who starts the app to set {name} '
+                          f'to {help_text} before starting the app, then verify again.')
+    return words
 
 
 def field(body, name, default=None):
@@ -101,20 +138,62 @@ class App:
             self.waiters.append(waiter)
         return self.status(job_id)
 
-    def status(self, job_id):
-        self.own(job_id)
+    def status(self, job_id, *, past=False):
+        if not past:
+            self.own(job_id)
         doc = self.store.status(job_id)  # validates the record; unfinished/empty is never success
         phase = doc['phase']
         state = doc['decision'] if phase == 'completed' else phase if phase in FINAL else 'running'
         report = None
-        if phase == 'completed' and doc['output']:
+        if job_id in self.owned and phase == 'completed' and doc['output']:
             try:
                 self.report(job_id, ['index.html'])
                 report = f'/reports/{job_id}/index.html'
             except (OSError, UnknownJob):
                 pass
-        return {key: doc[key] for key in ('id', 'phase', 'decision', 'history', 'reasons', 'diagnostics')} | {
-            'state': state, 'report': report}
+        request = self.store.request(job_id)
+        return {key: doc[key] for key in ('id', 'phase', 'decision', 'history', 'reasons', 'diagnostics', 'createdAt')} | {
+            'state': state, 'summary': OUTCOMES[state], 'sessionOwned': job_id in self.owned, 'report': report,
+            'before': (request['base'] or {}).get('checkout'), 'after': request['head']['checkout'],
+            'judgedBy': judged_by(doc, self.findings(job_id, doc)),
+            'viewer': f'/viewers/{job_id}/index.html' if job_id in self.owned and phase in FINAL else None}
+
+    def history(self):
+        jobs = self.store.root / 'jobs'
+        rows = []
+        if jobs.exists():
+            for folder in jobs.iterdir():
+                if folder.is_dir() and not folder.is_symlink():
+                    rows.append(self.status(folder.name, past=True))
+        return {'jobs': sorted(rows, key=lambda row: (row['createdAt'], row['id']), reverse=True)}
+
+    def findings(self, job_id, doc):
+        if doc['phase'] == 'completed' and doc['output']:
+            try:
+                record = rec.strict_loads(self.read_file(job_id, ['output', 'findings.json']).decode('utf-8'))
+                rec.check_record(record)
+                return record
+            except (OSError, UnicodeError, rec.RecordError):
+                pass
+        return None
+
+    def viewer_file(self, job_id, parts):
+        self.own(job_id)
+        doc = self.store.status(job_id)
+        if doc['phase'] not in FINAL or not (parts in (['index.html'], [viewer.EXPORT_NAME])
+                                            or viewer.FRAME_NAME.fullmatch('/'.join(parts))):
+            raise UnknownJob('No such finished viewer file.')
+        if doc['output']:
+            try:
+                return self.read_file(job_id, ['output', 'viewer', *parts])
+            except FileNotFoundError:
+                pass
+        if len(parts) != 1:
+            raise UnknownJob('No such viewer frame.')
+        # Jobs without a gate viewer still use the existing viewer's state rules. No job files are written.
+        with tempfile.TemporaryDirectory(prefix='expectrail-app-viewer-') as folder:
+            viewer.write(Path(folder), self.findings(job_id, doc), status=doc, request=self.store.request(job_id))
+            return (Path(folder) / parts[0]).read_bytes()
 
     def report(self, job_id, parts):
         self.own(job_id)
@@ -126,9 +205,15 @@ class App:
         if not (parts == ['index.html'] or len(parts) == 2 and parts[0] == 'assets'
                 and parts[1].endswith('.png')) or any(p in ('', '.', '..') or '/' in p or '\\' in p for p in parts):
             raise UnknownJob('No such report file.')
+        return self.read_file(job_id, ['output', 'review', *parts])
+
+    def read_file(self, job_id, parts):
+        self.store.paths(job_id)  # validate the identifier before walking directories
+        if any(p in ('', '.', '..') or '/' in p or '\\' in p for p in parts):
+            raise UnknownJob('No such file.')
         fd = os.open(self.store.root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
         try:
-            for part in ['jobs', job_id, 'output', 'review', *parts[:-1]]:
+            for part in ['jobs', job_id, *parts[:-1]]:
                 child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
                 os.close(fd)
                 fd = child
@@ -172,7 +257,7 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass  # Never log the opening URL or its token.
 
-    def reply(self, code, data, content_type='application/json; charset=utf-8', *, cookie=False, report=False):
+    def reply(self, code, data, content_type='application/json; charset=utf-8', *, cookie=False, report=False, evidence=False):
         if isinstance(data, dict):
             data = json.dumps(data).encode()
         self.send_response(code)
@@ -185,6 +270,10 @@ class Handler(BaseHTTPRequestHandler):
                   "style-src 'unsafe-inline'; img-src 'self'; " if report else
                   f"default-src 'none'; script-src 'nonce-{self.server.nonce}'; "
                   f"style-src 'nonce-{self.server.nonce}'; connect-src 'self'; ")
+        if evidence:
+            digest = base64.b64encode(hashlib.sha256(viewer.SCRIPT.encode()).digest()).decode()
+            policy = (f"default-src 'none'; script-src 'sha256-{digest}'; "
+                      "style-src 'unsafe-inline'; img-src 'self' data:; ")
         self.send_header('Content-Security-Policy', policy + "base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
         if cookie:
             self.send_header('Set-Cookie', f'{self.server.cookie}={self.server.token}; Path=/; HttpOnly; SameSite=Strict')
@@ -268,8 +357,18 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(200, app.status(job_id))
             if self.command != 'GET':
                 return self.problem(405, 'Use GET to read.')
+            if path == '/api/history':
+                return self.reply(200, app.history())
             if path.startswith('/api/jobs/'):
                 return self.reply(200, app.status(path.removeprefix('/api/jobs/')))
+            if path.startswith('/viewers/'):
+                job_id, *parts = path.removeprefix('/viewers/').split('/')
+                try:
+                    data = app.viewer_file(job_id, parts)
+                except OSError:
+                    raise UnknownJob('No such viewer file.') from None
+                return self.reply(200, data, 'text/html; charset=utf-8' if len(parts) == 1 else 'image/png',
+                                  evidence=True)
             if path.startswith('/reports/'):
                 job_id, *parts = path.removeprefix('/reports/').split('/')
                 try:
