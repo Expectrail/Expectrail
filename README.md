@@ -4,6 +4,7 @@
 
 [Demo video](https://youtu.be/BlWOiweL8Lc) · [expectrail.tech](https://expectrail.tech) ·
 [Interactive demo](https://expectrail.tech/demo/) ·
+[Run it: start a check from your browser](https://expectrail.tech/run-it/) ·
 [A rejected fix, frame by frame](https://expectrail.tech/review/sinking-fix/)
 
 ![Two fixes for the same bug, frame 5 of each replay. Left: Muse Code's fix, the robot standing on the floor's edge, accepted. Right: a fix that only looks right, the robot drawn with its legs inside the floor, rejected.](docs/assets/frames/fix-pair.png)
