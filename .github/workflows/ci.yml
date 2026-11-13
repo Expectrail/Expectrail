@@ -779,13 +779,26 @@ jobs:
           venv/bin/expectrail --version
           venv/bin/expectrail --version | grep -q "installed package"
           venv/bin/python -c "import importlib.util as u, sys; sys.exit('the clean venv has jsonschema') if u.find_spec('jsonschema') else print('standard library only')"
-      # `expectrail doctor` from the installed copy (#333): it passes on this runner and names what it
-      # checked; with the engine taken away it exits 3 and names the fix; and a command line that
+      # `expectrail doctor` from the installed copy (#333): only the two vision settings are missing;
+      # with the engine taken away it exits 3 and names the fix; and a command line that
       # cannot be read exits 5, not 2 (2 is needs-review).
-      - name: doctor from the installed copy (passes; fails with the engine taken away; a usage error is exit 5)
+      - name: doctor from the installed copy (only vision settings missing; a usage error is exit 5)
         working-directory: ${{ runner.temp }}
         run: |
-          venv/bin/expectrail doctor
+          code=0; venv/bin/expectrail doctor --json > doctor.json || code=$?
+          test "$code" = 3
+          venv/bin/python - <<'PY'
+          import json
+          from expectrail import doctor
+          with open("doctor.json") as source:
+              doc = json.load(source)
+          problems = doctor.problems(doc)
+          assert not problems, problems
+          missing = sorted((c["id"], c["status"]) for c in doc["checks"] if c["required"] and c["status"] != "ok")
+          assert missing == [("vision-cap", "missing"), ("vision-key", "missing")], missing
+          assert doc["ok"] is False, doc
+          print("doctor: exactly vision-key and vision-cap are missing; vision is still required")
+          PY
           code=0; EXPECTRAIL_GODOT="$RUNNER_TEMP/no-such-engine" venv/bin/expectrail doctor > doctor-missing.txt || code=$?
           cat doctor-missing.txt
           test "$code" = 3
