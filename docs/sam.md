@@ -570,11 +570,36 @@ python3 -m agents.sam_anchor --runs runs/seeded/* --box body --out runs/sam-anch
 
 For the bundled robot that box is 50.5 by 62.5 game px around a point 14 px above the origin, where
 the typed one was 48 by 68 around a point 17 px above it. It is a different question, so the
-recorded answers do not carry over and the rule refuses to mix them: **nothing has been asked with
-the body's own box yet.** The first run with it (probe mode, `anchor` ticked, `box` body,
-`clean_routes` coins,combat,traversal; 131 images, $0.33) has to show what the typed box showed:
-no clean frame under 0.8, both missing-texture runs passing the pairs, sinking v2 failing in every
-compared frame, both layering runs failing.
+recorded answers do not carry over and the rule refuses to mix them.
+
+**The first run with the body's own box** (run 43351238364 on main at 27f0809, after #369 merged;
+probe mode, `anchor` ticked, `box` body, `lift` 0, `clean_routes` coins,combat,traversal; 131 calls,
+$0.33 reserved; results on the `sam-probe-results` branch under `43351238364/`) was held to what the
+typed box showed:
+
+| Prediction | Body box |
+| --- | --- |
+| No clean-looking frame under 0.8 | Held: 75 frames asked, lowest 0.879 (traversal frame 100) |
+| Both missing-texture runs pass the pairs | Held: 13 of 13 agree in each; confidence fell by 0.008 at most, the same as the typed box in run 43337979278 |
+| Sinking v2 differs in every compared frame | Held: 13 of 13 (sinking v1: 12 of 12, one frame moved) |
+| Both layering runs fail | Held: 8 of 13 differ in each, the same frames as the typed box |
+
+Every bug frame that differs falls by 0.109 or more in confidence, or is caught by size. Layering
+frame 30 is again the closest: confidence 0.82 against 0.93, caught because it is 33 px wide against
+46.5 unchanged. So "every differing layering frame under 0.7" still half holds, as with the typed box.
+
+**One false alarm, on the range rule, not on the pairs.** The range rule set from the 13 smoke frames
+alone fails clean combat frame 50: the robot is 66.5 px tall there, against 50 to 64.5 on smoke
+(confidence 0.93, the point inside, so it is the robot in a taller pose). The typed box had no such
+alarm over 101 frames because its range was set on more poses. The pairs (Sean's decision B on #327)
+do not see it, because they compare a frame only with the same frame of the unchanged game on the
+same route; the clean extra routes were not paired here because the unchanged game was run on smoke
+only. The range rule is not the one the gate will use, and a range set on one route is too narrow:
+this is the reason it is not.
+
+What this shows: the body box from the engine asks as well as the hand-typed one on this game, so
+the gate check can use it and nobody has to type a size per game. What it does not show: any game
+but this one, and pairs on routes other than smoke.
 
 Also not shown for the pairs: a change that moves the player a little and changes nothing else
 (every frame is then "moved", and the pairs are silent), and any game but this one.
