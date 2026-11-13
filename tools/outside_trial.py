@@ -185,7 +185,9 @@ def verify(project: dict, checkout: Path, out: Path, command: list[str], timeout
             pass
     # A check that could not be decided names the first frame where an object was not found; the
     # engine's log around it is what a person (or a check written for the game) has to judge.
-    for reason in row["reasons"]:
+    # The finding's own reason carries it ("<spec> on <route>: ..."), not the decision's reasons: the
+    # first version read only the decision's and printed nothing on the run it was written for (#393).
+    for reason in row["reasons"] + row["failures"]:
         unseen = UNSEEN.search(reason)
         if unseen and len(row["around"]) < 3:
             row["around"].append(around(jobs, {"spec": unseen["spec"], "route": unseen["route"],
