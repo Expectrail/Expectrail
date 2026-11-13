@@ -28,6 +28,10 @@ class DoctorStepTest(unittest.TestCase):
         for check in self.doc['checks']:
             if check['id'] not in ('vision-key', 'vision-cap'):
                 check.update(status='ok', fix=None)
+            if check['id'] == 'display':
+                # The package job runs on Linux, where doctor makes the virtual display required. The
+                # contract example (#391) shows it as a non-Linux machine does: skipped, not required.
+                check.update(required=True)
         self.assertEqual(doctor.problems(self.doc), [])
 
     def run_step(self, doc, code=3):
