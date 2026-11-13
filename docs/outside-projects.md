@@ -55,6 +55,25 @@ frames have nothing logged under the player (it starts in the air, and moving pl
 not tiles). That needs a check written for this game and approved by a person. The patch is ours:
 this is a seeded bug, not one found in the wild.
 
+**Platforms that are bodies now count as ground (#388).** [Run 43428126877](https://github.com/Expectrail/Expectrail/actions/runs/43428126877),
+with the harness reading the ground from the level's platform bodies as well as its tiles (a platform
+counts only at or below the player's feet):
+
+| kinematic-character | Verdict | Frames judged | Frames with no ground |
+| --- | --- | --- | --- |
+| as pinned | needs-review | 115 of 120 (was 77) | 5, from frame 38 (was 43, from frame 0) |
+| broken | **reject**, the same as before: 71.7 px past the surface at 304.5 from frame 44 | | |
+| harmless | needs-review, the same as the project as pinned | 115 of 120 | 5 |
+
+No violation in the 115 frames judged of the clean game. The first version of this change, which let
+a platform up to 64 px above the player's origin count, rejected the clean game
+([run 43422746940](https://github.com/Expectrail/Expectrail/actions/runs/43422746940)): a wrong reject
+found by this trial and fixed before merging. Dodge the Creeps is unchanged: it is seen from above and
+has no ground at all, so a ground check never applies to it.
+
+The five frames left are the player in the air past the level's edge or over a gap with nothing under
+it; a ground check written for this game decides what they mean.
+
 It is a trial, not a gate. A needs-review or a reject is a finding to read; the job fails only when
 a project cannot be fetched as pinned or the command ends with no verdict.
 

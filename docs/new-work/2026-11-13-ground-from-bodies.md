@@ -43,10 +43,12 @@ All with Godot 4.7.2 in this session:
   64 px window. Two new engine tests: a platform 20 px above the feet is not ground; one 2 px below
   them is. `tests.test_ground_under`: 22 OK. Full suite: OK.
 
+- The trial after the fix ([run 43428126877](https://github.com/Expectrail/Expectrail/actions/runs/43428126877)):
+  kinematic-character as pinned needs-review, no violation in 115 frames judged (was 77), no ground
+  in 5 (was 43); broken still reject (71.7 px past 304.5, frame 44); harmless the same as pinned.
+
 ## Not done
 
-- No outside project was run here. The outside trial on the pull request shows whether
-  kinematic-character, as pinned and with the harmless change, becomes judgeable.
 - A platform shape that is a circle or capsule is measured by its bounding box.
 - Bodies added to the level after the first record are not counted (the search runs once).
 
