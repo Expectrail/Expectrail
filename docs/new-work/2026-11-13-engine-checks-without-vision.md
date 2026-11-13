@@ -59,3 +59,6 @@ The handover includes logs, both patch bases and a checked ledger-resolution hel
 
 ## Architect run (Linux)
 On a266c91: before 2910 tests OK, after 2914 tests OK (27 skipped each). Focused `test_verify_vision test_no_vision_ci test_ci_vision`: 11 OK.
+
+## The outside trial without vision (architect, after #401 merged)
+`tests/outside/projects.json` now expects needs-review for kinematic_character harmless: with no vision key in CI, a pass by the engine is needs-review (#379). docs/outside-projects.md says so.
