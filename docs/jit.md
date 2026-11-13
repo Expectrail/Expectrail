@@ -258,8 +258,9 @@ in CI), `reach-jump-with-shoot` reads `projectile_count` 1 on the clean game and
 `no-shooting-in-air`; a signal moves on a reach probe for 14 of the 24 defects, 13 of which the
 library already showed. The table is on the bench's page. A reach probe is a route: what watches
 the game along it, the engine's record or frames for a visual observer, is the caller's choice.
-**Generated checks are not offered these probes yet**: `expectrail/jit/run.py` still draws on the
-library alone, so the baseline run is unchanged.
+**Generated checks are offered these probes only under `--offer signals-reach`** (below, "What the
+generator is offered"); under the default, `baseline`, they draw on the library alone, so the
+baseline run is unchanged.
 
 **What each defect changes on the screen** (November 12, 2026; [`expectrail/repro/screen.py`](../expectrail/repro/screen.py),
 `expectrail.repro-screen/v1`). Every library probe was replayed with its frames captured, on the
@@ -283,11 +284,47 @@ given, what the observer answered on those frames of both builds. It is made wit
 observer's answers are looked up and never asked for. `evidence.for_proposer` is the bounded
 summary a prompt could carry; it shows only probes and objects its caller names, so nothing a
 record says can put a new string in a prompt. Four records made on the real engine are on the bench's page.
-**Nothing generated checks run on reads it**: the prompt is unchanged, and offering it is a later
-change, after the baseline.
+It is offered to the generator only under the third setting below, `signals-reach-evidence`; under
+the other two the prompt is unchanged.
+
+**What the generator is offered** (November 13, 2026; [`expectrail/jit/offer.py`](../expectrail/jit/offer.py)).
+Steps 3 and 4 were built before the baseline was run, so they are held back. One setting, the same
+in every step of one change, says what the generator is given:
+
+- `baseline`, the default: the eleven signals and the jit probe library, as before steps 3 and 4.
+  The system prompt and the user prompt are the same bytes as before the setting existed; a test
+  holds their digests as computed on main before the change.
+- `signals-reach`: also the three signals of step 4 and the eight reach probes of step 3. The bug
+  report only orders the reach probes.
+- `signals-reach-evidence` (added later on November 13): everything `signals-reach` offers, and step 5's
+  evidence. The measure job also replays every probe with frames, the clean game twice and the bug
+  build once (`--evidence-jobs` at a time), and uploads `repro-evidence.json` beside the
+  measurements; under this setting it installs a virtual display and software OpenGL and may run
+  75 minutes instead of 30. The propose and revise jobs read the file with `--evidence`, re-check it
+  as untrusted data (schema, its own sums, made for these base patches), and put
+  `evidence.for_proposer`'s summary on at most six probes of the prompt as `differs`: the record
+  fields that differ with their first tick, the signals that moved, and on how many frames the
+  picture differs, from which frame, where. No observer is read for it. The system prompt is
+  `signals-reach`'s with one paragraph more, which says checks still read only signals (the closed
+  language has no pixel predicate until #286). A run under this setting that cannot make the
+  evidence stops in the measure job; a propose step given none says so in the proposal's
+  diagnostics. `expectrail/jit/offer.py` is the one file under `expectrail/jit` that reads the
+  evidence module.
+
+`jit.yml` takes it as the `offer` input (default `baseline`) and passes it to measure, propose,
+revise, both replays and the reproduction score; the known-bugs bench refuses anything but
+`baseline`, the setting it was registered under. The setting is written into each proposal
+(`offer`) and each run record (`settings.offer`). A saved proposal is replayed only under the
+setting it was made with, a revision only under the setting of its first round, and the
+reproduction score counts only the records of the setting it is given and names that setting on its
+page (`offer` in `expectrail.repro-score/v1`); a record of another setting is a row with no result.
+A proposal or record written before the setting existed states none and is read as `baseline`.
+Nothing about what keeps or drops a check changes.
 
 Not done: the live baseline itself, which a person dispatches, and so the rate and the breakdown
-of misses.
+of misses; and the `signals-reach` and `signals-reach-evidence` runs after it. The measure job's
+frames under `signals-reach-evidence` have not been captured in CI yet: the capture smoke job
+renders with the same packages, but this job has not been dispatched with them.
 
 ### Three signals for what the record showed and no signal read
 
@@ -323,10 +360,9 @@ player's jump shows on screen. A check on it needs a threshold between two measu
 anything changes, and that run has not been made. So the model gets the same signal names, meanings
 and measurements as before (`NOT_YET_OFFERED` in [`intent.py`](../expectrail/jit/intent.py)); a
 check it proposes on one of the three is dropped and said, and a saved proposal with one is
-refused. The system prompt is the same text as before, byte for byte. Offering them is moving three
-entries from one table to the other, after the baseline is recorded, and the visibility table on the bench's page is measured again
-then. No live run has used these signals, and nothing here says the model will propose a check
-on them.
+refused. The system prompt is the same text as before, byte for byte. They are offered only under
+`--offer signals-reach` (above, "What the generator is offered"). No live run has used these
+signals, and nothing here says the model will propose a check on them.
 
 ## What this does not claim
 

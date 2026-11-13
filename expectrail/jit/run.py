@@ -39,8 +39,8 @@ from expectrail.contracts import digest_v1, load_strict, validate_v1
 from expectrail.discovery.route_compiler import ProgramError, compile_route
 from expectrail.discovery.templates import applies_to
 from expectrail.jit import assess
+from expectrail.jit import offer as offer_mod
 from expectrail.jit.diff_map import PatchError, diff_map
-from expectrail.jit.probes import jit_library
 from expectrail.trace.evaluator import evaluate
 from expectrail.trace.normalize import from_run_dir
 
@@ -155,7 +155,8 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
              runner=None, intent=None, variants_fn=None, game: Path | None = None,
              budget_usd: float = DEFAULT_BUDGET_USD, prices: dict | None = None, reps: int = assess.REPS,
              variant_limit: int = 8, approved_claims: frozenset[str] = frozenset(),
-             run_id: str | None = None, clock=time.monotonic) -> dict:
+             run_id: str | None = None, clock=time.monotonic, offer: str = offer_mod.BASELINE) -> dict:
+    offer_mod.check(offer)
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     runner = runner or _default_runner(game)
@@ -173,7 +174,7 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
     status, reason = "complete", None
     try:
         _pipeline(profile, report, cand_bytes, Path(candidate), list(base_patches), out, runner, intent,
-                  variants_fn, game, spend, reps, variant_limit, approved_claims, state, diagnostics, clock)
+                  variants_fn, game, spend, reps, variant_limit, approved_claims, state, diagnostics, clock, offer)
     except (PatchError, NothingGenerated) as exc:
         status, reason = "nothing-generated", " ".join(str(exc).split())[:300]
     except Exception as exc:  # noqa: BLE001 - rule 3: anything unexpected is "nothing generated", never a pass
@@ -188,7 +189,7 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
         "status": status,
         "reason": reason,
         "inputs": dict(inputs, model=state["model"], promptSha256=state["promptSha256"]),
-        "settings": {"reps": reps, "variantLimit": variant_limit, "budgetUsd": float(budget_usd)},
+        "settings": {"reps": reps, "variantLimit": variant_limit, "budgetUsd": float(budget_usd), "offer": offer},
         "diffMap": state["diffMap"],
         "proposed": state["proposed"],
         "probes": state["probes"],
@@ -214,20 +215,27 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
 
 
 def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner, intent, variants_fn, game,
-              spend: Spend, reps, variant_limit, approved_claims, state, diagnostics, clock) -> None:
-    probes = jit_library(profile["actions"])
+              spend: Spend, reps, variant_limit, approved_claims, state, diagnostics, clock,
+              offer: str = offer_mod.BASELINE) -> None:
+    probes = offer_mod.library(profile["actions"], offer, report)
     for p in probes:
-        p["source"] = "library"
+        p["source"] = "reach" if p.get("family") == "reach" else "library"
     dmap = diff_map(cand_bytes.decode("utf-8", errors="replace"), profile, probes)
     state["diffMap"] = {k: v for k, v in dmap.items() if not k.startswith("_")}
 
     # Intent: one model call, reserved against the budget before it is made.
     if intent is None:
         raise NothingGenerated("MODEL_UNAVAILABLE: no intent model configured")
+    # One setting per change (expectrail/jit/offer.py): a model told about more than this run offers, or
+    # less, would make the record say one thing and the prompt another. An intent that states none is a
+    # test double or predates the setting.
+    told = getattr(intent, "offer", None)
+    if told is not None and told != offer:
+        raise NothingGenerated(f"OFFER_MISMATCH: the intent was given offer {str(told)[:40]!r}, and this run is {offer!r}")
     from expectrail.jit import intent as intent_mod
 
     est_prompt = intent_mod.estimate_prompt_tokens(getattr(intent, "system", ""), intent_mod.prompt(
-        report, cand_bytes.decode("utf-8", errors="replace"), dmap, profile, probes))
+        report, cand_bytes.decode("utf-8", errors="replace"), dmap, profile, probes, offer=offer))
     spend.reserve(spend.spark_cost(est_prompt, intent_mod.RESERVED_COMPLETION_TOKENS), "the intent call")
     try:
         answer = intent(report, cand_bytes.decode("utf-8", errors="replace"), dmap, profile, probes)

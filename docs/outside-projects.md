@@ -12,6 +12,68 @@ repository), lays out a checkout with our own routes and the bundled approved sp
 `expectrail verify` on it. The job holds no secret, has a read-only token, and requires the replay
 sandbox for every replay, because the projects' code is not ours.
 
+A project may also list **changes**: small patches of ours under `tests/outside/<project>/changes/`,
+each with the verdict it should get. For each one the project as pinned is the base and a patched
+copy is the head, and `expectrail verify --base` judges the change as it would judge a pull request.
+The table shows the expected verdict beside the one given. kinematic-character has two:
+
+| Change | What it does | Expected | Why |
+| --- | --- | --- | --- |
+| `broken` | empties the player's collision mask, so it falls through the floor | reject | a real bug in a game we did not write; the approved check should see the player go below the ground |
+| `harmless` | tints the player's sprite; nothing it does changes | needs-review | the same as the project unchanged, until a check written for this game is approved (the product manager's call 4) |
+
+**The first run did not test either change.** [Run 43398657245](https://github.com/Expectrail/Expectrail/actions/runs/43398657245)
+on PR #385 gave all three kinematic-character rows the same verdict, needs-review, with the same
+numbers ("no violation in 77 frames judged, but an object was not found in 43 frames"). The broken
+copy should have been rejected. The cause was in the trial, not in the verifier: CI lays the
+checkouts out inside this repository, and `git apply` run there read the patch's paths from the
+repository's top, skipped the file, and exited 0 with nothing changed. So the "broken" and
+"harmless" heads were the project unchanged. The trial now keeps `git apply` from finding a
+repository above the checkout, and proves each patch took by applying it in reverse as a check; a
+test reproduces the case inside a repository.
+
+**The run after the fix: the broken copy is rejected, the first outside verdict that is not
+needs-review.** [Run 43404391367](https://github.com/Expectrail/Expectrail/actions/runs/43404391367),
+every replay in the sandbox, the bundled approved check copied unchanged:
+
+| kinematic-character | Verdict | Expected | Seconds | What the check said |
+| --- | --- | --- | --- | --- |
+| as pinned | needs-review (exit 2) | - | 14.8 | "no violation in 77 frames judged, but an object was not found in 43 frames (first 0)" |
+| broken: the player's collision mask emptied | **reject** (exit 1) | reject | 13.4 | "player is 71.749px past the boundary (above 304.5, tolerance 20) (first at frame 44, 10 frames)" |
+| harmless: the player's sprite tinted | needs-review (exit 2) | needs-review | 13.3 | the same as the project as pinned |
+
+What the engine logged around frame 44 of the broken copy: the player falling at about 3 px a tick
+(y 341.6 at tick 82 to 372.0 at tick 92) through a surface the engine reports at y 304 under it, and
+never on the floor. The ground line under the player moves between 464 and 304 as it passes the
+columns of a platform, and the check measures from the surface in its own column. So the reject is
+for the right reason: the player went through something solid.
+
+What this shows and what it does not: a bug we planted in a game we did not write is rejected by a
+check written for another game. It does not show that a correct change to this game can be
+accepted. The harmless change and the project as pinned are both needs-review, because 43 of 120
+frames have nothing logged under the player (it starts in the air, and moving platforms are bodies,
+not tiles). That needs a check written for this game and approved by a person. The patch is ours:
+this is a seeded bug, not one found in the wild.
+
+**Platforms that are bodies now count as ground (#388).** [Run 43428126877](https://github.com/Expectrail/Expectrail/actions/runs/43428126877),
+with the harness reading the ground from the level's platform bodies as well as its tiles (a platform
+counts only at or below the player's feet):
+
+| kinematic-character | Verdict | Frames judged | Frames with no ground |
+| --- | --- | --- | --- |
+| as pinned | needs-review | 115 of 120 (was 77) | 5, from frame 38 (was 43, from frame 0) |
+| broken | **reject**, the same as before: 71.7 px past the surface at 304.5 from frame 44 | | |
+| harmless | needs-review, the same as the project as pinned | 115 of 120 | 5 |
+
+No violation in the 115 frames judged of the clean game. The first version of this change, which let
+a platform up to 64 px above the player's origin count, rejected the clean game
+([run 43422746940](https://github.com/Expectrail/Expectrail/actions/runs/43422746940)): a wrong reject
+found by this trial and fixed before merging. Dodge the Creeps is unchanged: it is seen from above and
+has no ground at all, so a ground check never applies to it.
+
+The five frames left are the player in the air past the level's edge or over a gap with nothing under
+it; a ground check written for this game decides what they mean.
+
 It is a trial, not a gate. A needs-review or a reject is a finding to read; the job fails only when
 a project cannot be fetched as pinned or the command ends with no verdict.
 

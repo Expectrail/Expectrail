@@ -9,6 +9,11 @@ each one a checkout is laid out (the project as `project/`, our routes, the bund
 copied unchanged, as the tests of a second project do) and the installed command is run on it as a
 stranger would run it. Nothing is approved here and no model is called.
 
+A project may list `changes`: small patches of ours against its folder (`tests/outside/<name>/changes/`),
+each with the verdict it should get. For each, the project unchanged is the base and the patched copy
+is the head, and `expectrail verify --base` judges the change, as it would judge a pull request. The
+row says the expected verdict beside the one given; a mismatch is a finding, not a failure of the trial.
+
 This is a trial, not a test: it does not fail when a verdict is needs-review or reject. It fails
 when a project cannot be fetched at its commit, or when the command ends with a code that is no
 verdict (3 failed, 4 cancelled, 5 could not be carried out, 6 not finished). What it writes
@@ -65,6 +70,22 @@ def load_list(path: Path = LIST) -> list[dict]:
                 raise TrialError(f"{p['name']}: {key} must be a plain path inside its repository")
         if not p["routes"].startswith("tests/outside/"):
             raise TrialError(f"{p['name']}: routes are ours and live under tests/outside/")
+        changes = p.get("changes", [])
+        if not isinstance(changes, list):
+            raise TrialError(f"{p['name']}: changes must be a list")
+        names = set()
+        for c in changes:
+            if not isinstance(c, dict) or not all(isinstance(c.get(k), str) for k in ("name", "patch", "expect", "what")):
+                raise TrialError(f"{p['name']}: a change needs a name, a patch, an expected verdict and what it does")
+            if not _NAME.match(c["name"]) or c["name"] in names:
+                raise TrialError(f"{p['name']}: change name {c['name']!r} is not a plain name used once")
+            names.add(c["name"])
+            if c["expect"] not in VERDICTS.values():
+                raise TrialError(f"{p['name']}/{c['name']}: expect must be one of {', '.join(VERDICTS.values())}")
+            folder = f"tests/outside/{p['name']}/changes/"
+            if (not _PATH.match(c["patch"]) or ".." in c["patch"].split("/") or not c["patch"].startswith(folder)
+                    or not c["patch"].endswith(".patch")):
+                raise TrialError(f"{p['name']}/{c['name']}: the patch is ours and lives under {folder}")
     return doc["projects"]
 
 
@@ -94,29 +115,44 @@ def fetch(project: dict, into: Path) -> Path:
     return clone
 
 
-def lay_out(project: dict, source: Path, work: Path) -> Path:
-    """A checkout for one project: its folder as `project/`, our routes, the bundled approved spec."""
+def lay_out(project: dict, source: Path, work: Path, change: dict | None = None) -> Path:
+    """A checkout for one project: its folder as `project/`, our routes, the bundled approved spec.
+    With ``change``, the checkout is named after it and its patch is applied to `project/`."""
     folder = source / project["path"]
     if not (folder / "project.godot").is_file():
         raise TrialError(f"{project['name']}: no project.godot at {project['path']} in the source")
-    checkout = work / project["name"]
+    checkout = work / (project["name"] if change is None else f"{project['name']}+{change['name']}")
     if checkout.exists():
         shutil.rmtree(checkout)
     shutil.copytree(folder, checkout / "project", symlinks=True)
     shutil.copytree(REPO / project["routes"], checkout / "routes")
     (checkout / "specs").mkdir()
     shutil.copy(SPEC, checkout / "specs" / SPEC.name)
+    if change is not None:
+        # git apply refuses a patch that reaches outside the folder it runs in. It must not find a
+        # repository above that folder: inside one (CI lays checkouts out inside this repository)
+        # it reads paths from the repository's top and silently skips every file outside the folder
+        # it runs in, exits 0 and changes nothing. That happened on the first run (PR #385).
+        patch = str(REPO / change["patch"])
+        env = {**os.environ, "GIT_CEILING_DIRECTORIES": str(checkout.resolve())}
+        for args, why in ((["apply", "--whitespace=nowarn", patch], "the patch does not apply"),
+                          # Proof that it took: the change can be taken back out of the copy.
+                          (["apply", "--check", "--reverse", patch], "the patch did not change the copy")):
+            done = subprocess.run(["git", *args], cwd=checkout / "project", capture_output=True, text=True,
+                                  timeout=60, env=env)
+            if done.returncode:
+                raise TrialError(f"{project['name']}/{change['name']}: {why}: {done.stderr.strip()[-300:]}")
     return checkout
 
 
 def verify(project: dict, checkout: Path, out: Path, command: list[str], timeout: int,
-           execution_class: str = "diagnostic") -> dict:
-    jobs = out / "jobs" / project["name"]
+           execution_class: str = "diagnostic", base: Path | None = None, change: dict | None = None) -> dict:
+    jobs = out / "jobs" / (project["name"] if change is None else f"{project['name']}+{change['name']}")
     started = time.monotonic()
     try:
         done = subprocess.run([*command, "--jobs-root", str(jobs), "verify", "--head", str(checkout), "--game", "project",
                                "--routes", "routes/*.json", "--specs", "specs", "--execution-class", execution_class,
-                               "--json"],
+                               "--json", *(["--base", str(base)] if base is not None else [])],
                               capture_output=True, text=True, timeout=timeout)
         code, stdout, stderr = done.returncode, done.stdout, done.stderr
     except subprocess.TimeoutExpired as late:
@@ -125,7 +161,9 @@ def verify(project: dict, checkout: Path, out: Path, command: list[str], timeout
     row = {"name": project["name"], "repository": project["repository"], "commit": project["commit"],
            "path": project["path"], "licence": project["licence"], "kind": project["kind"],
            "exit": code, "verdict": VERDICTS.get(code), "seconds": seconds, "decision": None, "reasons": [],
-           "checks": None, "routes": [], "failures": [], "isolation": None, "around": []}
+           "checks": None, "routes": [], "failures": [], "isolation": None, "around": [],
+           "change": None if change is None else change["name"], "what": None if change is None else change["what"],
+           "expect": None if change is None else change["expect"]}
     try:
         status = json.loads(stdout)
         row["decision"] = status.get("decision")
@@ -145,7 +183,19 @@ def verify(project: dict, checkout: Path, out: Path, command: list[str], timeout
             row["around"] = [around(jobs, f) for f in doc.get("findings", [])[:3] if isinstance(f.get("frame"), int)]
         except (OSError, ValueError):
             pass
+    # A check that could not be decided names the first frame where an object was not found; the
+    # engine's log around it is what a person (or a check written for the game) has to judge.
+    for reason in row["reasons"]:
+        unseen = UNSEEN.search(reason)
+        if unseen and len(row["around"]) < 3:
+            row["around"].append(around(jobs, {"spec": unseen["spec"], "route": unseen["route"],
+                                                "frame": int(unseen["frame"])}, after=6))
     return row
+
+
+# "player-stays-above-ground on walk: no violation in 115 frames judged, but an object was not found
+# in 5 frames (first 38); ..." (expectrail.evaluator)
+UNSEEN = re.compile(r"(?P<spec>[A-Za-z0-9._-]+) on (?P<route>[A-Za-z0-9._-]+): .*?not found in \d+ frames? \(first (?P<frame>\d+)\)")
 
 
 def capture(project: dict, checkout: Path, out: Path, timeout: int, sandbox: str = "require") -> list[dict]:
@@ -191,6 +241,7 @@ def around(jobs: Path, finding: dict, before: int = 3, after: int = 3) -> dict:
         tick = finding["frame"] * step
         out["ticksPerFrame"] = step
         out["rows"] = [{"tick": r.get("tick"), "player": r.get("player"), "ground": r.get("ground"),
+                        "groundFrom": r.get("groundFrom"), "body": r.get("body"),
                         "onFloor": r.get("onFloor"), "view": r.get("view")}
                        for r in rows[max(0, tick - before * step):tick + after * step + 1:step]]
         out["first"] = {k: rows[0].get(k) for k in ("player", "ground", "onFloor")} if rows else None
@@ -199,12 +250,15 @@ def around(jobs: Path, finding: dict, before: int = 3, after: int = 3) -> dict:
 
 
 def markdown(rows: list[dict]) -> str:
-    lines = ["| Project | Kind | Exit | Verdict | Seconds | Checks | Reasons |", "| --- | --- | --- | --- | --- | --- | --- |"]
+    lines = ["| Project | Change | Exit | Verdict | Expected | Seconds | Checks | Reasons |",
+             "| --- | --- | --- | --- | --- | --- | --- | --- |"]
     for r in rows:
         checks = "none" if not r["checks"] else f"{r['checks'].get('passed')} of {r['checks'].get('checks')} pass"
         reasons = "; ".join((r["reasons"] or r.get("diagnostics") or [r.get("output", "")]) + r.get("failures", [])) or "none"
-        lines.append(f"| {r['name']} (`{r['commit'][:7]}`, {r['licence']}) | {r['kind']} | {r['exit']} | "
-                     f"{r['verdict'] or 'no verdict'} | {r['seconds']} | {checks} | {reasons.replace('|', '/')} |")
+        change = "none (the project as pinned)" if not r.get("change") else f"{r['change']}: {r['what']}"
+        expected = "-" if not r.get("expect") else (r["expect"] + (" (as expected)" if r["verdict"] == r["expect"] else " (DIFFERS)"))
+        lines.append(f"| {r['name']} (`{r['commit'][:7]}`, {r['licence']}) | {change.replace('|', '/')} | {r['exit']} | "
+                     f"{r['verdict'] or 'no verdict'} | {expected} | {r['seconds']} | {checks} | {reasons.replace('|', '/')} |")
     for r in rows:
         for a in r.get("around", []):
             lines += ["", f"What the engine logged for {r['name']} around frame {a['frame']} of `{a['route']}` "
@@ -251,6 +305,12 @@ def main(argv: list[str] | None = None) -> int:
             checkout = lay_out(project, source, args.out / "checkouts")
             rows.append(verify(project, checkout, args.out, args.command.split(), args.timeout, args.execution_class))
             print(f"{project['name']}: exit {rows[-1]['exit']} ({rows[-1]['verdict'] or 'no verdict'}) in {rows[-1]['seconds']} s", flush=True)
+            for change in project.get("changes", []):
+                head = lay_out(project, source, args.out / "checkouts", change)
+                rows.append(verify(project, head, args.out, args.command.split(), args.timeout, args.execution_class,
+                                   base=checkout, change=change))
+                print(f"{project['name']}+{change['name']}: exit {rows[-1]['exit']} ({rows[-1]['verdict'] or 'no verdict'}; "
+                      f"expected {change['expect']}) in {rows[-1]['seconds']} s", flush=True)
     except TrialError as err:
         print(f"outside trial: {err}", file=sys.stderr)
         return 5

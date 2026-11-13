@@ -295,7 +295,7 @@ class ProposeCommandTest(unittest.TestCase):
 
         from expectrail.jit import cli, intent
 
-        def unavailable():
+        def unavailable(offer="baseline"):
             def propose(*_a, **_k):
                 raise intent.IntentUnavailable("no model in tests")
             propose.model, propose.system = "test", ""

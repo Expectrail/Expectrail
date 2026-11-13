@@ -7,7 +7,8 @@
     "enemies": "complete",
     "projectiles": "complete",
     "facing": true,
-    "onFloor": true
+    "onFloor": true,
+    "groundSources": {"tiles": true, "bodies": 1}
   },
   "levelSurfaces": [
     [
@@ -59,7 +60,7 @@
       ],
       "onFloor": true,
       "facing": 1,
-      "ground": -896.0, "body": [1516.0, -1088.0, 1556.0, -1016.0],
+      "ground": -896.0, "groundFrom": "tile", "body": [1516.0, -1088.0, 1556.0, -1016.0],
       "coins": [
         [
           2240.0,

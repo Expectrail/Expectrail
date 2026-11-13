@@ -121,7 +121,7 @@ class Prompt(unittest.TestCase):
     def test_the_proposal_records_why_it_had_no_measurements(self):
         from unittest import mock
 
-        def unavailable():
+        def unavailable(offer="baseline"):
             def propose(*_a, **_k):
                 return {"probes": [], "candidates": [], "diagnostics": [], "usage": {}, "promptSha256": None}
             propose.model, propose.system = "test", ""

@@ -5,7 +5,8 @@
   "description": "The reproduction rate of one live run on the public reproduction bench: per defect, whether a generated check passed on the clean game 3 times of 3 and failed on the bug build 3 times of 3, read from that run's jit-run records. Every defect runs with the same stand-in candidate, a comment line that changes nothing, so the check comes from the bug build and the report alone. A defect with no usable record is no-result and never counts as reproduced. A miss carries a reason only where the records can show one. Written and read by expectrail.repro.score.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["format", "benchSha256", "noFixSha256", "visibilitySha256", "source", "reps", "capUsd", "rows", "totals"],
+  "required": ["format", "benchSha256", "noFixSha256", "visibilitySha256", "source", "offer", "reps", "capUsd",
+               "rows", "totals"],
   "$defs": {
     "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "count": { "type": "integer", "minimum": 0 },
@@ -26,6 +27,10 @@
     "source": {
       "type": ["string", "null"], "maxLength": 200, "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]*$",
       "description": "Where the jit-run records came from, as the person who scored them said: a CI run, for example. Not checked. One line: no control character."
+    },
+    "offer": {
+      "enum": ["baseline", "signals-reach", "signals-reach-evidence"],
+      "description": "What the generator was offered in the records this score counts (expectrail/jit/offer.py). A record made with another setting is a row with no result."
     },
     "reps": { "const": 3 },
     "capUsd": { "const": 2.0 },

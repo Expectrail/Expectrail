@@ -152,7 +152,8 @@ def godot(fetch: bool = True) -> tuple[Check, Path | None]:
 def display() -> Check:
     what = "a virtual display (xvfb-run)"
     if not sys.platform.startswith("linux"):
-        return Check("display", what, "skipped", False, "not Linux: the engine uses this system's own display; not checked",
+        return Check("display", what, "skipped", False,
+                     "xvfb-run does not apply outside Linux; this system's own display was not checked",
                      None, True)
     if shutil.which("xvfb-run") is None:
         return _missing("display", what, "xvfb-run is not installed", f"{APT} xvfb", run=True)
@@ -302,7 +303,8 @@ def problems(doc) -> list[str]:
     if len(set(ids)) != len(ids):
         found.append("doctor: a check is listed twice")
     for c in doc["checks"]:
-        if (c["status"] in ("ok", "present", "absent")) != (c["fix"] is None):
+        not_applicable = c["status"] == "skipped" and not c["required"] and c["fix"] is None
+        if not not_applicable and (c["status"] in ("ok", "present", "absent")) != (c["fix"] is None):
             found.append(f"doctor: {c['id']}: a fix is given exactly when something is missing or was not tried")
     want = not any(c["required"] and c["status"] != "ok" for c in doc["checks"])
     if doc["ok"] != want:

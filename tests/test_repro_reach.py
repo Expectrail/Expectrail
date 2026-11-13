@@ -7,6 +7,8 @@ import contextlib
 import io
 import json
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -267,14 +269,29 @@ class Command(unittest.TestCase):
 
 
 class NotOfferedToTheGeneratorYet(unittest.TestCase):
-    """Issue #285 asks for the baseline before anything changes: generated checks still draw on the
-    library alone, so a live run on the bench is the same with this module in the tree."""
+    """Issue #285 asks for the baseline before anything changes: under the default offer, generated
+    checks still draw on the library alone, so a live run on the bench is the same with this module in
+    the tree. Only ``--offer signals-reach`` (expectrail/jit/offer.py) adds the reach probes, and
+    offer.py is the one file under expectrail/jit that may name this module."""
 
-    def test_nothing_under_jit_reads_the_reach_module(self):
+    def test_nothing_under_jit_but_the_offer_reads_the_reach_module(self):
         for path in sorted((REPO / "expectrail" / "jit").glob("*.py")):
+            if path.name == "offer.py":
+                continue
             text = path.read_text(encoding="utf-8")
             for word in ("expectrail.repro", "reach_probes", "reach-"):
                 self.assertNotIn(word, text, f"{path.name}: {word}")
+
+    def test_the_baseline_offer_is_the_library_alone_and_never_imports_this_module(self):
+        from expectrail.jit import offer
+
+        self.assertEqual(offer.library(ACTIONS, offer.BASELINE, "jump and shoot"), jit_library(ACTIONS))
+        code = ("import sys\n"
+                "from expectrail.jit import offer\n"
+                "offer.library(['move_left', 'move_right', 'jump', 'shoot'], 'baseline', 'jump and shoot')\n"
+                "print('expectrail.repro.reach' in sys.modules)\n")
+        got = subprocess.run([sys.executable, "-c", code], cwd=REPO, capture_output=True, text=True, check=True)
+        self.assertEqual(got.stdout.strip(), "False")
 
     def test_the_library_has_no_reach_probe(self):
         self.assertFalse([p["id"] for p in jit_library(ACTIONS) if p["id"].startswith("reach") or p["family"] == "reach"])
