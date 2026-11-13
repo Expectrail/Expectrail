@@ -31,8 +31,13 @@ class ListTest(unittest.TestCase):
                     doc = json.loads(route.read_text(encoding="utf-8"))
                     self.assertEqual(doc["format"], "expectrail.route/v0")
                     self.assertTrue(all(0 <= e["tick"] < doc["ticks"] for e in doc["events"]))
-                # Nothing of the project itself is in this repository.
-                self.assertEqual([f for f in (REPO / "tests" / "outside" / p["name"]).rglob("*") if f.is_file()], routes)
+                # Nothing of the project itself is in this repository: our routes, and our patches
+                # for the changes it lists (small diffs, a few lines of context each), and no other file.
+                patches = sorted(REPO / c["patch"] for c in p.get("changes", []))
+                for patch in patches:
+                    self.assertLess(patch.stat().st_size, 2048, patch.name)
+                self.assertEqual(sorted(f for f in (REPO / "tests" / "outside" / p["name"]).rglob("*") if f.is_file()),
+                                 sorted(routes + patches))
 
     def test_a_list_that_does_not_pin_what_runs_is_refused(self):
         good = json.loads(trial.LIST.read_text(encoding="utf-8"))
@@ -44,7 +49,14 @@ class ListTest(unittest.TestCase):
                     ("a local path", {"repository": "/tmp/somewhere.git"}),
                     ("a path that climbs out", {"path": "2d/../../etc"}), ("an absolute path", {"path": "/etc"}),
                     ("routes that are not ours", {"routes": "2d/routes"}), ("a name with a slash", {"name": "a/b"}),
-                    ("no licence", {"licence": None})):
+                    ("no licence", {"licence": None}),
+                    ("a patch that is not ours", {"changes": [{"name": "x", "patch": "2d/x.patch", "expect": "reject", "what": "w"}]}),
+                    ("a patch that climbs out", {"changes": [{"name": "x", "expect": "reject", "what": "w",
+                                                              "patch": "tests/outside/kinematic-character/changes/../../../x.patch"}]}),
+                    ("a verdict that is not one", {"changes": [{"name": "x", "expect": "pass", "what": "w",
+                                                                "patch": "tests/outside/kinematic-character/changes/x.patch"}]}),
+                    ("a change that says nothing", {"changes": [{"name": "x", "expect": "reject",
+                                                                 "patch": "tests/outside/kinematic-character/changes/x.patch"}]})):
                 with self.subTest(label):
                     doc = json.loads(json.dumps(good))
                     doc["projects"][0].update(change)
@@ -100,6 +112,49 @@ class TrialTest(unittest.TestCase):
                 row = trial.verify(self.project, checkout, self.tmp / "out", self.command(code, "it broke"), 60)
                 self.assertEqual((row["exit"], row["verdict"], row["output"]), (code, None, "it broke"))
                 self.assertIn("no verdict", trial.markdown([row]))
+
+
+class ChangeTest(TrialTest):
+    def setUp(self):
+        super().setUp()
+        (self.tmp / "source" / self.project["path"] / "main.gd").write_text('extends Node\n\nvar speed = 1\n', encoding="utf-8")
+        self.patch = REPO / "tests" / "outside" / self.project["name"] / "changes" / "test-only.patch"
+        self.patch.write_text("diff --git a/main.gd b/main.gd\n--- a/main.gd\n+++ b/main.gd\n@@ -1,3 +1,3 @@\n extends Node\n \n"
+                              "-var speed = 1\n+var speed = 2\n", encoding="utf-8")
+        self.addCleanup(self.patch.unlink)
+        self.change = {"name": "faster", "patch": str(self.patch.relative_to(REPO)), "expect": "reject", "what": "speed 2"}
+
+    def test_the_change_is_applied_to_a_copy_and_the_project_unchanged_is_the_base(self):
+        base = trial.lay_out(self.project, self.tmp / "source", self.tmp / "work")
+        head = trial.lay_out(self.project, self.tmp / "source", self.tmp / "work", self.change)
+        self.assertEqual(head.name, f"{self.project['name']}+faster")
+        self.assertIn("speed = 2", (head / "project" / "main.gd").read_text(encoding="utf-8"))
+        self.assertIn("speed = 1", (base / "project" / "main.gd").read_text(encoding="utf-8"))
+        args = self.tmp / "args.txt"
+        script = self.tmp / "record.py"
+        script.write_text(f"import sys, json\nopen({str(args)!r}, 'w').write(json.dumps(sys.argv[1:]))\n"
+                          "print(json.dumps({'decision': 'reject', 'reasons': ['a check fails']}))\nsys.exit(1)\n", encoding="utf-8")
+        row = trial.verify(self.project, head, self.tmp / "out", [sys.executable, str(script)], 60, base=base, change=self.change)
+        given = json.loads(args.read_text(encoding="utf-8"))
+        self.assertEqual(given[given.index("--base") + 1], str(base))
+        self.assertEqual(given[given.index("--head") + 1], str(head))
+        self.assertEqual((row["change"], row["expect"], row["verdict"]), ("faster", "reject", "reject"))
+        self.assertIn("reject (as expected)", trial.markdown([row]))
+        row["verdict"] = "needs-review"
+        self.assertIn("reject (DIFFERS)", trial.markdown([row]))
+
+    def test_a_patch_that_does_not_apply_stops_the_trial_and_says_so(self):
+        self.patch.write_text("diff --git a/main.gd b/main.gd\n--- a/main.gd\n+++ b/main.gd\n@@ -1,1 +1,1 @@\n-nothing like this\n+x\n",
+                              encoding="utf-8")
+        with self.assertRaisesRegex(trial.TrialError, "does not apply"):
+            trial.lay_out(self.project, self.tmp / "source", self.tmp / "work", self.change)
+
+    def test_a_patch_cannot_reach_outside_the_project(self):
+        self.patch.write_text("diff --git a/../escape.gd b/../escape.gd\nnew file mode 100644\n--- /dev/null\n+++ b/../escape.gd\n"
+                              "@@ -0,0 +1 @@\n+x\n", encoding="utf-8")
+        with self.assertRaises(trial.TrialError):
+            trial.lay_out(self.project, self.tmp / "source", self.tmp / "work", self.change)
+        self.assertFalse((self.tmp / "work" / f"{self.project['name']}+faster" / "escape.gd").exists())
 
 
 class AroundTest(unittest.TestCase):

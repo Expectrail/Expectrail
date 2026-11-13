@@ -12,6 +12,19 @@ repository), lays out a checkout with our own routes and the bundled approved sp
 `expectrail verify` on it. The job holds no secret, has a read-only token, and requires the replay
 sandbox for every replay, because the projects' code is not ours.
 
+A project may also list **changes**: small patches of ours under `tests/outside/<project>/changes/`,
+each with the verdict it should get. For each one the project as pinned is the base and a patched
+copy is the head, and `expectrail verify --base` judges the change as it would judge a pull request.
+The table shows the expected verdict beside the one given. kinematic-character has two:
+
+| Change | What it does | Expected | Why |
+| --- | --- | --- | --- |
+| `broken` | empties the player's collision mask, so it falls through the floor | reject | a real bug in a game we did not write; the approved check should see the player go below the ground |
+| `harmless` | tints the player's sprite; nothing it does changes | needs-review | the same as the project unchanged, until a check written for this game is approved (the product manager's call 4) |
+
+No result for either is recorded here yet: the first run of the workflow on the pull request that
+added them is where it will come from.
+
 It is a trial, not a gate. A needs-review or a reject is a finding to read; the job fails only when
 a project cannot be fetched as pinned or the command ends with no verdict.
 

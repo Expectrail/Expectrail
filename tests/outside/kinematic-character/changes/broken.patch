@@ -1,0 +1,11 @@
+diff --git a/player/player.tscn b/player/player.tscn
+--- a/player/player.tscn
++++ b/player/player.tscn
+@@ -8,6 +8,7 @@ size = Vector2(14, 14)
+ 
+ [node name="Player" type="CharacterBody2D" unique_id=214142706]
+ script = ExtResource("1")
++collision_mask = 0
+ 
+ [node name="Sprite2D" type="Sprite2D" parent="." unique_id=766118642]
+ texture = ExtResource("2")

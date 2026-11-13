@@ -9,7 +9,13 @@
       "path": "2d/kinematic_character",
       "licence": "MIT",
       "kind": "platformer with moving and one-way platforms; CharacterBody2D player; 530 by 495; 120 ticks a second",
-      "routes": "tests/outside/kinematic-character/routes"
+      "routes": "tests/outside/kinematic-character/routes",
+      "changes": [
+        {"name": "broken", "patch": "tests/outside/kinematic-character/changes/broken.patch", "expect": "reject",
+         "what": "the player's collision mask is emptied, so it falls through the floor"},
+        {"name": "harmless", "patch": "tests/outside/kinematic-character/changes/harmless.patch", "expect": "needs-review",
+         "what": "the player's sprite is tinted; nothing it does changes (needs-review, as the project unchanged is, until a check written for this game is approved)"}
+      ]
     },
     {
       "name": "dodge-the-creeps",
