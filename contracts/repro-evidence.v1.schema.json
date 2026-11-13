@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/repro-evidence.v1.schema.json",
+  "title": "expectrail.repro-evidence/v1",
+  "description": "The evidence for one bug build: what it changes against the clean game along each probe, in the engine's record and on the screen, from the same replays (the clean game twice, the bug build once, every frame captured). Per probe: the record fields that differ with the first tick and how many, the signals that read differently, the frames that differ with the first one and the size and place of the difference, and, where recorded answers of a visual observer were given, what it answered on the differing frames of both builds. No model is asked anything by the writer: an observer's answers are looked up, and a frame with none recorded is counted as not answered. It draws no conclusion from the observer and is never a reproduction rate. Written and read by expectrail.repro.evidence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "engine", "renderer", "frame", "ticksPerSecond", "framesPerSecond", "basePatchSha256", "probes", "replaysPerBuild", "maxFramesExamined", "engineRetries", "observer", "rows", "totals"],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "name": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,60}$" },
+    "count": { "type": "integer", "minimum": 0 },
+    "reading": { "type": ["number", "null"], "description": "A signal's value on one replay; null is no reading." }
+  },
+  "properties": {
+    "format": { "const": "expectrail.repro-evidence/v1" },
+    "engine": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "renderer": {
+      "type": ["string", "null"],
+      "maxLength": 120,
+      "description": "The device the engine said it drew with, when every compared probe named the same one. Frames are compared exactly, so another renderer can give other pixel counts."
+    },
+    "frame": {
+      "type": ["object", "null"],
+      "description": "The size of a captured frame, when every compared probe had the same one.",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1, "maximum": 16384 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 16384 }
+      }
+    },
+    "ticksPerSecond": { "type": ["integer", "null"], "minimum": 1, "maximum": 1000, "description": "Physics ticks a second, as the trace states it. A tick number is not a frame number." },
+    "framesPerSecond": { "type": ["integer", "null"], "minimum": 1, "maximum": 1000, "description": "Captured frames a second, as the replay record states it." },
+    "basePatchSha256": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/sha256" },
+      "description": "The patches that make the bug build, in order. Never a candidate fix."
+    },
+    "probes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/name" } },
+    "replaysPerBuild": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clean", "bugBuild"],
+      "properties": {
+        "clean": { "const": 2, "description": "The clean game is replayed twice; whatever differs between the two is unstable on that probe and never counted." },
+        "bugBuild": { "const": 1 }
+      }
+    },
+    "maxFramesExamined": { "type": "integer", "minimum": 1, "maximum": 64, "description": "Of a probe's differing frames, at most this many are decoded to measure the difference, and at most this many are looked up in the observer's recorded answers: the first, the last and evenly between." },
+    "engineRetries": { "$ref": "#/$defs/count" },
+    "observer": {
+      "type": ["object", "null"],
+      "description": "Whose recorded answers were read, and for which objects. null: no observer was read.",
+      "additionalProperties": false,
+      "required": ["source", "model", "prompts"],
+      "properties": {
+        "source": { "const": "recorded-answers", "description": "The writer looks answers up and cannot ask for one." },
+        "model": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[^\\n\\r]*$" },
+        "prompts": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 8,
+          "propertyNames": { "$ref": "#/$defs/name" },
+          "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 120, "pattern": "^[^\\n\\r]*$" }
+        }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["probe", "sees", "record", "screen", "observer", "unstable"],
+        "properties": {
+          "probe": { "$ref": "#/$defs/name" },
+          "sees": { "enum": ["record-and-screen", "screen-only", "record-only", "neither", "error"] },
+          "record": {
+            "type": ["object", "null"],
+            "description": "null: no field of the engine's record differs on this probe.",
+            "additionalProperties": false,
+            "required": ["fields", "signals"],
+            "properties": {
+              "fields": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["name", "firstTick", "ticks", "of"],
+                  "properties": {
+                    "name": { "$ref": "#/$defs/name" },
+                    "firstTick": { "$ref": "#/$defs/count", "description": "The first tick on which the field differs." },
+                    "ticks": { "type": "integer", "minimum": 1, "description": "On how many ticks it differs." },
+                    "of": { "type": "integer", "minimum": 1 }
+                  }
+                }
+              },
+              "signals": {
+                "type": "object",
+                "propertyNames": { "$ref": "#/$defs/name" },
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["clean", "bugBuild"],
+                  "properties": { "clean": { "$ref": "#/$defs/reading" }, "bugBuild": { "$ref": "#/$defs/reading" } }
+                }
+              }
+            }
+          },
+          "screen": {
+            "type": ["object", "null"],
+            "description": "null: every frame of this probe is the same picture on both builds.",
+            "additionalProperties": false,
+            "required": ["frames", "of", "firstFrame", "examined", "pixels", "atFrame", "box"],
+            "properties": {
+              "frames": { "type": "integer", "minimum": 1, "description": "How many frames differ in any pixel." },
+              "of": { "type": "integer", "minimum": 1 },
+              "firstFrame": { "$ref": "#/$defs/count" },
+              "examined": { "type": "integer", "minimum": 1 },
+              "pixels": { "type": "integer", "minimum": 1, "description": "The most pixels that differ in one of the frames examined." },
+              "atFrame": { "$ref": "#/$defs/count" },
+              "box": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": { "$ref": "#/$defs/count" },
+                "description": "[left, top, right, bottom] in frame pixels, right and bottom one past the last: the smallest rectangle that holds every differing pixel of the frames examined."
+              }
+            }
+          },
+          "observer": {
+            "type": ["object", "null"],
+            "description": "null: no observer was read, or no frame differs on this probe.",
+            "additionalProperties": false,
+            "required": ["frames", "objects"],
+            "properties": {
+              "frames": { "type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": { "$ref": "#/$defs/count" }, "description": "The differing frames whose recorded answers were looked up, on both builds." },
+              "objects": {
+                "type": "object",
+                "minProperties": 1,
+                "propertyNames": { "$ref": "#/$defs/name" },
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["asked", "answered", "seenClean", "seenBugBuild", "inOneOnly", "firstInOneOnly", "largestMovePx"],
+                  "properties": {
+                    "asked": { "type": "integer", "minimum": 1 },
+                    "answered": { "$ref": "#/$defs/count", "description": "Frames with a recorded answer for both builds. The rest count for nothing." },
+                    "seenClean": { "$ref": "#/$defs/count", "description": "Answered frames where the observer found the object on the clean game." },
+                    "seenBugBuild": { "$ref": "#/$defs/count" },
+                    "inOneOnly": { "$ref": "#/$defs/count", "description": "Answered frames where it found the object on one build and not the other." },
+                    "firstInOneOnly": { "type": ["integer", "null"], "minimum": 0 },
+                    "largestMovePx": { "type": ["number", "null"], "minimum": 0, "description": "The most any edge of the observer's surest box moved between the builds, over the frames where it found the object on both. A number, not a judgement: the observer's own answers wobble by some pixels on the same picture." }
+                  }
+                }
+              }
+            }
+          },
+          "unstable": {
+            "type": "object",
+            "description": "What differed between the two replays of the clean game on this probe, and so is counted for nothing.",
+            "additionalProperties": false,
+            "required": ["frames", "fields", "signals"],
+            "properties": {
+              "frames": { "$ref": "#/$defs/count" },
+              "fields": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/name" } },
+              "signals": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/name" } }
+            }
+          },
+          "error": { "type": "string", "minLength": 1, "maxLength": 280, "pattern": "^[^\\n\\r]*$", "description": "Why this probe could not be replayed or compared. Only on an error row." }
+        }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["probes", "record-and-screen", "screen-only", "record-only", "neither", "error"],
+      "properties": {
+        "probes": { "$ref": "#/$defs/count" },
+        "record-and-screen": { "$ref": "#/$defs/count" },
+        "screen-only": { "$ref": "#/$defs/count" },
+        "record-only": { "$ref": "#/$defs/count" },
+        "neither": { "$ref": "#/$defs/count" },
+        "error": { "$ref": "#/$defs/count" }
+      }
+    }
+  }
+}
