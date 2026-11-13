@@ -50,6 +50,9 @@ on:
       lift:
         description: probe mode with anchor, point this many game pixels above the player's origin (0 is the origin itself)
         default: '0'
+      box:
+        description: probe mode with anchor, ask with a box of this size in game pixels centred on the point, e.g. 48x68 with lift 17 for the robot (empty asks with the point alone)
+        default: ''
       sam_usd_cap:
         description: probe mode, the most this run may spend on SAM, in US dollars (at most 2). Every run of 13 frames is about $0.03 a prompt
         default: '0.50'
@@ -126,6 +129,7 @@ jobs:
           ENGINE_GROUND: ${{ inputs.engine_ground }}
           ANCHOR: ${{ inputs.anchor }}
           LIFT: ${{ inputs.lift }}
+          BOX: ${{ inputs.box }}
           CAP: ${{ inputs.sam_usd_cap }}
         run: |
           word="[A-Za-z0-9 -]+"
@@ -133,6 +137,7 @@ jobs:
           [[ "$EVERY" =~ ^[0-9]+$ ]] || { echo "::error::every must be a number"; exit 1; }
           [[ "$ANCHOR" == "true" || "$ANCHOR" == "false" ]] || { echo "::error::anchor must be true or false"; exit 1; }
           [[ "$LIFT" =~ ^[0-9]{1,3}$ ]] || { echo "::error::lift must be a whole number from 0 to 999"; exit 1; }
+          [[ -z "$BOX" || "$BOX" =~ ^[1-9][0-9]{0,3}x[1-9][0-9]{0,3}$ ]] || { echo "::error::box must look like 48x68"; exit 1; }
           [[ "$CAP" =~ ^[0-9]+(\.[0-9]{1,2})?$ ]] || { echo "::error::sam_usd_cap must be an amount like 0.50"; exit 1; }
           python - "$CAP" <<'PY'
           import sys
@@ -160,6 +165,7 @@ jobs:
           if [[ "$ANCHOR" == "true" ]]; then
             anchor=(--every "$EVERY" --lift "$LIFT" --out runs/sam-probe --runs "${dirs[@]}")
             [[ -n "$FRAMES" ]] && anchor+=(--frames "$FRAMES")
+            [[ -n "$BOX" ]] && anchor+=(--box "$BOX")
             python -m agents.sam_anchor "${anchor[@]}" --dry-run
             python -m agents.sam_anchor "${anchor[@]}"
             # The rule over those answers, set on the smoke route's clean run. It decides nothing:

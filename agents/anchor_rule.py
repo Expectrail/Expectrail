@@ -293,6 +293,7 @@ def main(argv: list[str] | None = None) -> int:
             if doc.get("lift") != report.get("lift"):
                 raise RuleError(f"{file} was asked {doc.get('lift')} px above the origin and the range was set at "
                                 f"{report.get('lift')}: a reach measured from another point cannot be compared")
+            _same_question(file, doc, report)
             results += [judge(run, calibration) for run in doc["runs"]]
     except RuleError as exc:
         print(f"anchored rule: {exc}", file=sys.stderr)
@@ -316,6 +317,15 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _same_question(file, doc: dict, report: dict) -> None:
+    """Answers to a point and answers to a box, or to boxes of two sizes, are not the same question."""
+    if doc.get("box") != report.get("box"):
+        def said(b):
+            return "a point" if not b else f"a box of {b[0]:g} x {b[1]:g}"
+        raise RuleError(f"{file} was asked with {said(doc.get('box'))} and the other report with "
+                        f"{said(report.get('box'))}: answers to different questions cannot be compared")
+
+
 def _main_pairs(args) -> int:
     path, _, name = args.pair.partition(":")
     try:
@@ -326,6 +336,7 @@ def _main_pairs(args) -> int:
             if doc.get("lift") != report.get("lift"):
                 raise RuleError(f"{file} was asked {doc.get('lift')} px above the origin and the unchanged game "
                                 f"{report.get('lift')}: boxes asked at different points cannot be compared")
+            _same_question(file, doc, report)
             same_file = Path(file).resolve() == Path(path).resolve()
             results += [pair(base, run, args.tolerance) for run in doc["runs"]
                         if not (same_file and run.get("run") == base.get("run"))]
