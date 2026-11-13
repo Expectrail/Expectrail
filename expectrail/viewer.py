@@ -4,6 +4,7 @@ failed, where and when, expected against measured, how sure, and how to reproduc
     <folder>/index.html     the viewer: inline style and script, the evidence embedded as data
     <folder>/views.json     the same views, for a later viewer (the job viewer) to read again
     <folder>/frames/*.png   captured frames around each finding, from the replays that made them
+    <folder>/evidence.html  the same page as one file, frames embedded, to keep or send (``export``)
 
 It opens from disk (file://) as well as from a web site: the evidence is embedded in the page, so
 nothing is fetched, and a Content-Security-Policy forbids every request but the page's own frames.
@@ -23,6 +24,8 @@ Rules this file holds:
 """
 from __future__ import annotations
 
+import base64
+import copy
 import hashlib
 import html
 import json
@@ -41,6 +44,8 @@ MAX_FRAMED_FINDINGS = 5      # findings that get frames; every finding is listed
 MAX_VIEWS = 200              # checks that get a timeline
 MAX_POINTS = 4000            # points in one timeline
 MAX_VIEWS_BYTES = 8 * 1024 * 1024
+MAX_EXPORT_FRAME_BYTES = 32 * 1024 * 1024   # frames embedded in evidence.html, before base64
+EXPORT_NAME = "evidence.html"
 FRAME_NAME = re.compile(r"frames/(after|before)-[0-9a-z-]{1,80}-\d{8}\.png")
 
 # state -> (title, tone, what it means). The title never says more than the verifier decided.
@@ -377,7 +382,66 @@ def write(folder: Path, record: dict | None, views: list[dict] | None = None, *,
     })
     page = folder / "index.html"
     page.write_text(render(payload), encoding="utf-8")
+    export(folder, payload)
     return page
+
+
+def export(folder: Path, payload: dict) -> Path:
+    """``folder``/evidence.html: the page as one file that opens offline, every frame embedded as a
+    data: URI. Only the folder's own frame files are read (the name ``FRAME_NAME`` allows, a regular
+    file, not a link) and only when their bytes still have the sha256 the view recorded. A frame that
+    fails either test, or that would pass ``MAX_EXPORT_FRAME_BYTES``, is left out, and the page says
+    how many were left out and why. The decision, the state and the reasons are the payload's,
+    unchanged: the export carries the same evidence, it never says more."""
+    folder = Path(folder)
+    out = copy.deepcopy(payload)
+    embedded, left_out, budget = 0, {"over the size cap": 0, "missing or changed on disk": 0}, MAX_EXPORT_FRAME_BYTES
+    for view in out.get("views") or []:
+        frames = view.get("frames") if isinstance(view, dict) else None
+        if not isinstance(frames, dict):
+            continue
+        for side in ("after", "before"):
+            kept = []
+            for f in frames.get(side) or []:
+                data = _frame_bytes(folder, f)
+                if data is None:
+                    left_out["missing or changed on disk"] += 1
+                    continue
+                if len(data) > budget:
+                    left_out["over the size cap"] += 1
+                    continue
+                budget -= len(data)
+                kept.append(dict(f, path="data:image/png;base64," + base64.b64encode(data).decode("ascii")))
+                embedded += 1
+            frames[side] = kept
+    out["export"] = {"framesEmbedded": embedded,
+                     "framesLeftOut": {k: v for k, v in left_out.items() if v}}
+    target = folder / EXPORT_NAME
+    target.write_text(render(out), encoding="utf-8")
+    return target
+
+
+def _frame_bytes(folder: Path, f) -> bytes | None:
+    if not isinstance(f, dict):
+        return None
+    path = f.get("path")
+    if not isinstance(path, str) or not FRAME_NAME.fullmatch(path):
+        return None
+    src = folder / path
+    if src.is_symlink() or not src.is_file():
+        return None
+    try:
+        if src.stat().st_size > MAX_EXPORT_FRAME_BYTES:
+            return None
+        data = src.read_bytes()
+    except OSError:
+        return None
+    if not data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return None
+    want = f.get("sha256")
+    if not isinstance(want, str) or hashlib.sha256(data).hexdigest() != want:
+        return None
+    return data
 
 
 def write_gate(out: Path, record: dict, frames: dict[str, dict], timelines: dict[tuple[str, str], dict]) -> Path:
@@ -779,6 +843,16 @@ def render(payload: dict) -> str:
         f'<div class="banner {tone}" role="status" data-state="{esc(state)}"><h1>{esc(title)}</h1>'
         f"<p>{esc(means)}</p></div>",
     ]
+    exported = payload.get("export")
+    if exported is None:
+        parts.append(f'<p class="muted"><a href="{EXPORT_NAME}" download>Download this evidence as one file</a> '
+                     "(frames included; it opens offline).</p>")
+    else:
+        gone = exported.get("framesLeftOut") or {}
+        note = (f"Offline copy: {exported.get('framesEmbedded', 0)} frames embedded in this file.")
+        if gone:
+            note += " Left out: " + "; ".join(f"{n} {why}" for why, n in gone.items()) + "."
+        parts.append(f'<p class="muted" data-export="1">{esc(note)}</p>')
     if payload["reasons"]:
         parts.append("<h2>Why</h2><ul>" + "".join(f"<li>{esc(r)}</li>" for r in payload["reasons"]) + "</ul>")
     if job and job.get("diagnostics"):
