@@ -29,27 +29,43 @@ The app serves its own page without downloading scripts, styles or fonts.
    When the job has an existing report, the page links to it. Missing tools are reported by
    the verifier, with its suggested fix.
 
-These are diagnostic, engine-record runs, as with the command's default. They make no model
-calls and do not independently judge screenshots. Only run games you trust: this slice does
-not offer isolated execution. The verifier still needs its usual Godot and machine tools
-when it runs a real game. The app has not removed those requirements.
+The result says which observers judged, from the job's own status or findings. With `both`,
+the engine's record and the vision model judge every check. If that rule records no visual
+observer, the page says the model was unavailable. An absent observers block or `engine-only`
+means an engine diagnostic: Expectrail's rule is that an accept needs vision too. This app
+does not select or change the verifier's observer rule. A needs-review diagnostic naming
+`MODEL_API_KEY` or `EXPECTRAIL_SAM_USD_CAP` explains the provider key or spending cap to set
+before starting the app again. No key is entered on this page.
+
+Only run games you trust: this slice does not offer isolated execution. The verifier still
+needs its usual Godot and machine tools when it runs a real game. The app has not removed those requirements.
 
 Jobs are stored at `~/.local/share/expectrail/app-jobs`. To choose another folder outside
-both games, use `expectrail app --jobs-root /path/to/jobs`. The app only exposes jobs created
-in its current session. It serves each finished report's `index.html` and copied PNG assets,
-not project files, logs, arbitrary output files or jobs from another session. Reports cannot
-run scripts. Existing report links to documentation are external links, opened only if chosen.
+both games, use `expectrail app --jobs-root /path/to/jobs`.
+
+**Past runs** lists jobs in this store, newest first, with their folders, recorded result and
+creation time in UTC. **Open run** shows that job's result; **Refresh past runs** reads it again.
+A running job has no verdict. Opening an unfinished job owned by this session resumes status
+updates and its Cancel button. Finish or cancel the current job before opening another.
+
+Only jobs created in the current app session can open reports or the **Evidence viewer**.
+Older jobs show their result but no file links. Finished jobs link to the existing viewer,
+including its offline evidence export and copied frames. When no gate viewer exists, the
+existing viewer renderer shows the job's status without inventing evidence. Report pages
+cannot run scripts; viewer pages allow only the viewer's own script by its SHA-256 hash.
+File reads refuse symbolic links and traversal and expose only the named HTML pages and
+PNG assets, not project files, logs or arbitrary output files. Existing report links to
+documentation are external links, opened only if chosen.
 
 The opening token is removed from the address bar and stored for the page. API requests use
 `X-Expectrail-Token`; they cannot authenticate with a URL or cookie. A port-specific, HttpOnly,
-SameSite=Strict cookie carries the token for page reloads and report images. Every request
+SameSite=Strict cookie carries the token for page reloads, reports and viewer frames. Every request
 checks the exact loopback Host and the token. No CORS access is enabled.
 
 If the connection fails after starting a job, it may still be running. Use **Retry status**
 or **Cancel**. Reloading the page clears the selected job from the screen; it does not cancel
-it. Stop the app with Ctrl+C to cancel unfinished jobs. A restart uses a new token and does
-not list past jobs.
+it. Stop the app with Ctrl+C to cancel unfinished jobs. A restart uses a new token and
+lists the same stored jobs without granting access to their report or viewer files.
 
-The evidence viewer has a named placeholder. The viewer, past runs, an installer, a trial
-with a person unfamiliar with terminals, and tests on real games are later slices. This page
-has not been looked at in a browser.
+An installer, a trial with a person unfamiliar with terminals, and tests of this app on real
+games are not done in this slice. This page was not looked at in a browser.
