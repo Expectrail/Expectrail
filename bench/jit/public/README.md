@@ -328,7 +328,10 @@ python3 -m expectrail.repro evidence-render runs/evidence/coin-stays/repro-evide
 
 Each probe is replayed with frames on the clean game twice and on the bug build once. What differs
 between the two clean replays counts for nothing. `--for-proposer` prints the bounded summary a
-prompt could carry: at most six probes, numbers, and names from closed lists only.
+prompt could carry: at most six probes, numbers, and names the caller already has. The record is
+not believed about names: a probe that is not one of the caller's own (here, the library's and the
+reach probes) is counted and not shown, and an observed object the caller did not name is counted
+and not named.
 
 Four were recorded on the real engine on November 12 and 13, 2026 (pinned Godot 4.7.2 drawing in
 software, a cloud container, no model, not in CI; 249 replays in all), and are committed beside

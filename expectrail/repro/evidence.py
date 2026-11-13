@@ -308,6 +308,19 @@ def evidence(profile: dict, probes: list[dict], base_patches: list[Path], out: P
     return record
 
 
+def _finite(value) -> bool:
+    """No NaN and no infinity anywhere: a schema's "number" lets both through on a record built in memory."""
+    import math
+
+    if isinstance(value, float):
+        return math.isfinite(value)
+    if isinstance(value, dict):
+        return all(_finite(v) for v in value.values())
+    if isinstance(value, list):
+        return all(_finite(v) for v in value)
+    return True
+
+
 # --- the record ---------------------------------------------------------------------------------------------
 
 def problems(record) -> list[str]:
@@ -322,6 +335,8 @@ def problems(record) -> list[str]:
         return [f"repro-evidence: {'/'.join(str(p) for p in e.path) or '(root)'}: {e.message}"[:300]
                 for e in errors[:10]]
     out = []
+    if not _finite(record):
+        return ["repro-evidence: a number that is not finite"]
     if [r["probe"] for r in record["rows"]] != record["probes"]:
         out.append("repro-evidence: the rows are not one for each probe, in the probes' order")
     names = sorted(record["observer"]["prompts"]) if record["observer"] else None
@@ -398,20 +413,33 @@ def load(path: Path, *, base_patches: list[Path] | None = None) -> dict:
 
 # --- what a proposer could be given -------------------------------------------------------------------------
 
-def for_proposer(record: dict, limit: int = MAX_SHOWN) -> dict:
+def for_proposer(record: dict, *, probes, objects=(), limit: int = MAX_SHOWN) -> dict:
     """The bounded summary a prompt could carry: at most ``limit`` probes on which the bug build differs.
 
-    Numbers, and names from closed lists only: probe ids the record lists, trace signals, the trace's
-    own row fields (any other field is counted under ``otherFields``, not named) and the observer's
-    object names. No free text: no error reason, no prompt, no renderer. Probes where the record
-    and the screen both differ come first, then those with more signals moved, then those with
-    the larger share of frames differing. Nothing reads this yet."""
+    Numbers, and names the caller already has. ``probes`` is the caller's own list of probe ids (its
+    library and reach probes) and ``objects`` its own object names: the record is untrusted data and
+    is not believed about either. A row whose probe is not in ``probes`` is counted under
+    ``probesNotKnown`` and not shown; an observed object not in ``objects`` is counted under
+    ``otherObjects`` and not named; a record field that is not one of the trace's own row fields is
+    counted under ``otherFields``. Signals are the trace's signals or the record is refused. So
+    every string in the summary is a key of this function's own, one of ``probes``, one of
+    ``objects``, a trace field or a trace signal. No free text: no error reason, no prompt, no
+    model, no renderer.
+
+    Probes where the record and the screen both differ come first, then those with more signals
+    moved, then those with the larger share of frames differing. Nothing reads this yet."""
     if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 25:
         raise EvidenceError("the summary shows between 1 and 25 probes")
+    if isinstance(probes, (str, bytes)) or isinstance(objects, (str, bytes)):
+        raise EvidenceError("the probes and the objects are lists of names, not one name")
+    probes, objects = set(probes), set(objects)
+    if not all(isinstance(x, str) for x in probes | objects):
+        raise EvidenceError("the probes and the objects are lists of names")
     found = problems(record)     # a prompt is built from a record that holds together, or from nothing
     if found:
         raise EvidenceError("; ".join(found))
     differing = [r for r in record["rows"] if r["sees"] not in ("neither", "error")]
+    known_rows = [r for r in differing if r["probe"] in probes]
 
     def order(r):
         s = r["screen"]
@@ -419,7 +447,7 @@ def for_proposer(record: dict, limit: int = MAX_SHOWN) -> dict:
                 -(s["frames"] / s["of"]) if s else 0.0, r["probe"])
 
     shown = []
-    for r in sorted(differing, key=order)[:limit]:
+    for r in sorted(known_rows, key=order)[:limit]:
         entry = {"probe": r["probe"], "record": None, "screen": None, "observer": None}
         if r["record"]:
             known = {f["name"]: {k: f[k] for k in ("firstTick", "ticks", "of")}
@@ -430,12 +458,16 @@ def for_proposer(record: dict, limit: int = MAX_SHOWN) -> dict:
         if r["screen"]:
             entry["screen"] = {k: r["screen"][k] for k in ("frames", "of", "firstFrame", "pixels", "atFrame", "box")}
         if r["observer"]:
+            seen = r["observer"]["objects"]
+            other = sum(k not in objects for k in seen)
             entry["observer"] = {"frames": list(r["observer"]["frames"]),
-                                 "objects": {k: dict(v) for k, v in r["observer"]["objects"].items()}}
+                                 "objects": {k: dict(v) for k, v in seen.items() if k in objects},
+                                 **({"otherObjects": other} if other else {})}
         shown.append(entry)
     return {"ticksPerSecond": record["ticksPerSecond"], "framesPerSecond": record["framesPerSecond"],
             "frame": dict(record["frame"]) if record["frame"] else None,
-            "probesThatDiffer": len(differing), "probesNotCompared": record["totals"]["error"],
+            "probesThatDiffer": len(known_rows), "probesNotKnown": len(differing) - len(known_rows),
+            "probesNotCompared": record["totals"]["error"],
             "observerRead": record["observer"] is not None, "probes": shown}
 
 

@@ -281,7 +281,8 @@ record fields that differ with the first tick, the signals that moved, the frame
 the first one and the place of the difference, and, where a visual observer's recorded answers are
 given, what the observer answered on those frames of both builds. It is made with no model; an
 observer's answers are looked up and never asked for. `evidence.for_proposer` is the bounded
-summary a prompt could carry. Four records made on the real engine are on the bench's page.
+summary a prompt could carry; it shows only probes and objects its caller names, so nothing a
+record says can put a new string in a prompt. Four records made on the real engine are on the bench's page.
 **Nothing generated checks run on reads it**: the prompt is unchanged, and offering it is a later
 change, after the baseline.
 

@@ -190,9 +190,12 @@ on a row where no frame differs, and observer counts that cannot all be true at 
 cannot check: the record holds no frames and no answers, so its numbers are as good as the run that
 made them; the observer's numbers are whatever the answers folder held, and nothing ties that folder
 to a model's real output. It has no verdict and no threshold: it never says an observer saw the
-bug. `for_proposer` is the bounded summary a prompt could carry (numbers, and names from closed
-lists; a record field that is not one of the trace's own is counted, not named). Nothing reads it
-yet.
+bug. `for_proposer` is the bounded summary a prompt could carry. Its names come from its caller,
+not from the record, which is untrusted data and whose probe ids and object names only have to fit
+the schema's pattern: the caller gives its own probe ids and object names; a row for any other
+probe, an observed object under any other name, and a record field that is not one of the trace's
+own are counted and not named; a signal that is not a trace signal refuses the record. A number
+that is not finite is refused too, in a file or in a record built in memory. Nothing reads it yet.
 
 A score record has one row per defect of the bench: `reproduced`, `not-reproduced` or `no-result`;
 the checks that reproduced it; for a miss, a reason from a closed list and the evidence for it; what

@@ -66,6 +66,9 @@ def main(argv: list[str] | None = None) -> int:
     evr.add_argument("record", type=Path)
     evr.add_argument("--bench", type=Path, default=bench.BENCH)
     evr.add_argument("--for-proposer", action="store_true")
+    evr.add_argument("--profile", type=Path, default=PROFILE)
+    evr.add_argument("--object", action="append", default=[], metavar="NAME",
+                     help="with --for-proposer: an object name the summary may show (repeatable); any other is counted")
     k = sub.add_parser("cases", help="the cases a live run on the bench covers: each defect with the no-fix candidate")
     k.add_argument("--bench", type=Path, default=bench.BENCH)
     k.add_argument("--github-output", action="store_true", help="print cases= and budget= lines for a workflow step")
@@ -121,7 +124,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "evidence-render":
             record = evidence.load(args.record)
             if args.for_proposer:
-                print(json.dumps(evidence.for_proposer(record), indent=1))
+                from expectrail.contracts import load_strict
+                from expectrail.jit.probes import jit_library
+
+                # The names a summary may show are this command's own, never the record's.
+                profile = load_strict(args.profile, "mechanics-profile")
+                library = jit_library(profile["actions"])
+                known = [p["id"] for p in library + reach.reach_probes(profile["actions"], library)]
+                print(json.dumps(evidence.for_proposer(record, probes=known, objects=args.object), indent=1))
             else:
                 sys.stdout.write(evidence.render(record))
             return 0
