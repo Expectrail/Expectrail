@@ -86,6 +86,10 @@ NOT_PACKAGED = {
 NOT_ON_A_VERIFICATION = {
     "agents.sam_observations": "only when the SAM observer is asked for; the gate reads the engine's position log "
                                "and never asks (expectrail.gate.verify.observations)",
+    # expectrail.gate.anchor asks the vision model about the player's place on both sides (#327); it is
+    # imported only inside run_gate when a visual observer was given, as agents.sam_observations is.
+    "agents.anchor_rule": "only when a visual observer is given to the gate (expectrail.gate.anchor, #327)",
+    "agents.sam_anchor": "only when a visual observer is given to the gate (expectrail.gate.anchor, #327)",
     # harness.adapters is in the wheel: the verify path takes its engine from the registry. The
     # registry also lists the web and Unity adapters, whose runners are imported only inside their
     # own `run`. Neither adapter has a verify path, so no verification can reach those imports.

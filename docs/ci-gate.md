@@ -285,6 +285,34 @@ What is and is not in use, as of November 12, 2026:
 - The rule has been run only against a stand-in model that answers in SAM 3.1's wire format
   (`tests/test_two_observers.py`). No live model has judged through this path.
 
+### The player's place on both sides
+
+Under `both` with a base, the gate also asks the visual observer's model what is drawn inside the
+player's own collision box (the trace's `body`, [harness.md](harness.md), widened by 4 game px) in
+every tenth captured frame of each route and its last, on the base and on the head
+(`expectrail/gate/anchor.py`). Each head frame is compared with the same base frame where the engine
+has the player in the same place: a width, height, or reach above or below more than 6 game px apart,
+the box no longer holding the player's point, or the model's confidence falling by more than 0.1 is a
+difference.
+
+By Sean's decision B on #327 (November 12, 2026):
+
+| What the frames show | What it does to the decision |
+| --- | --- |
+| A difference in any compared frame | An accept becomes needs-review; the differing frames are kept as `anchor/<route>/base-NNNNNN.png` and `head-NNNNNN.png` |
+| A frame asked about with no answer, or asking that stopped | An accept becomes needs-review |
+| All compared frames agree | Nothing |
+| Nothing compared (the engine moved the player, no body box logged, nothing asked) | Nothing |
+
+It never rejects and never makes anything an accept: an accept still needs every check to pass on
+both observers. It rejects only once blind test 4 has given it a false-alarm rate. The record's
+`anchor` block says what was asked and found, and the reader recomputes the decision from it. Each
+frame asked about is a paid image: 26 for one of the bundled game's 120-frame routes.
+
+What it rests on: two live runs on the bundled game (docs/sam.md: no false alarm in 26 harmless
+pairs; sinking v2 and both layering bugs differ), and stand-ins in `tests/test_anchor_gate.py`. The
+review page does not show the kept frames yet; they are in the artifact.
+
 The evidence artifact holds `findings.json` (the record, [`contracts/findings.schema.json`](../contracts/findings.schema.json)),
 `verdicts/head/<route>/<spec>.json` and `verdicts/base/...` (the evaluator's verdicts), and
 `review/index.html`. The review page opens from disk with no scripts. It shows every check, and for

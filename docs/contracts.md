@@ -86,6 +86,13 @@ block still reads it; the first example is one.
 `contracts/examples/findings-both-observers.json` is a record under `both`, made with the tests'
 stand-in replay and stand-in model, not by a live run.
 
+Since November 13, 2026 a record under `both` that judged a base can carry `anchor`: the player's
+place asked of the vision model on both sides (#327, decision B; [ci-gate.md](ci-gate.md), "The
+player's place on both sides"). A route that differs, or a frame with no answer, keeps the decision
+from accept, and the reader holds a record to that. It never rejects. A record without the block reads
+as not asked. `contracts/examples/findings-anchor-differs.json` is one, made with the stand-ins of
+`tests/test_anchor_gate.py`, not by a live run.
+
 `checkProblems` (added November 12, #340) counts the problems the gate found reading the spec and
 route files. Above 0 the decision is never accept, and the reader that recomputes the decision from
 the record holds it to that. A record written before the field existed has none and reads as 0.

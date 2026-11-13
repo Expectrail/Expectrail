@@ -1,0 +1,237 @@
+{
+  "format": "expectrail.findings/v0",
+  "decision": "needs-review",
+  "reasons": [
+    "the vision model sees something different at the player's place on 1 route (first smoke, frame 20); a person compares the base and head frames side by side (anchor/ in the artifact)"
+  ],
+  "adapter": "godot",
+  "pullRequest": {
+    "number": 7,
+    "headSha": "1111111111111111111111111111111111111111",
+    "baseSha": "2222222222222222222222222222222222222222"
+  },
+  "game": {
+    "path": "game/platformer",
+    "headTree": "e0fbe07c2d34189564e751e13d62f0f33e3aad00f3861c4c0df69094e52645f7",
+    "baseTree": "696d3a2911d4b812223555e8da870c23381bdbe3b382c0e4f603518d7fbab55c"
+  },
+  "checksFrom": "base",
+  "checksChanged": {
+    "specs": 0,
+    "routes": 0
+  },
+  "specs": [
+    {
+      "id": "player-stays-above-ground",
+      "sha256": "4829b493e18b84208fcf9790004d822b775d12c3cb3505b4063b3ba2a6585d55",
+      "instruction": "The player never falls through the ground."
+    }
+  ],
+  "drafts": 0,
+  "checkProblems": 0,
+  "observers": {
+    "rule": "both",
+    "visual": {
+      "name": "sam",
+      "provider": "meta-model-api",
+      "model": "sam-3.1"
+    }
+  },
+  "anchor": {
+    "format": "expectrail.anchor/v0",
+    "observer": {
+      "name": "sam",
+      "provider": "meta-model-api",
+      "model": "sam-3.1"
+    },
+    "box": "body",
+    "pad": 4.0,
+    "every": 10,
+    "tolerance": 6.0,
+    "drop": 0.1,
+    "status": "asked",
+    "stopped": null,
+    "routes": [
+      {
+        "route": "smoke",
+        "in": 2,
+        "out": 11,
+        "moved": 0,
+        "noBase": 0,
+        "noAnswer": 0,
+        "notAsked": 0,
+        "frames": [
+          {
+            "frame": 20,
+            "state": "out",
+            "why": [
+              "height 17 against 34 unchanged",
+              "above 0 against 17 unchanged",
+              "confidence 0.60 against 0.93 unchanged"
+            ]
+          },
+          {
+            "frame": 30,
+            "state": "out",
+            "why": [
+              "height 17 against 34 unchanged",
+              "above 0 against 17 unchanged",
+              "confidence 0.60 against 0.93 unchanged"
+            ]
+          },
+          {
+            "frame": 40,
+            "state": "out",
+            "why": [
+              "height 17 against 34 unchanged",
+              "above 0 against 17 unchanged",
+              "confidence 0.60 against 0.93 unchanged"
+            ]
+          },
+          {
+            "frame": 50,
+            "state": "out",
+            "why": [
+              "height 17 against 34 unchanged",
+              "above 0 against 17 unchanged",
+              "confidence 0.60 against 0.93 unchanged"
+            ]
+          },
+          {
+            "frame": 60,
+            "state": "out",
+            "why": [
+              "height 17 against 34 unchanged",
+              "above 0 against 17 unchanged",
+              "confidence 0.60 against 0.93 unchanged"
+            ]
+          },
+          {
+            "frame": 70,
+            "state": "out",
+            "why": [
+              "height 17 against 34 unchanged",
+              "above 0 against 17 unchanged",
+              "confidence 0.60 against 0.93 unchanged"
+            ]
+          },
+          {
+            "frame": 80,
+            "state": "out",
+            "why": [
+              "height 17 against 34 unchanged",
+              "above 0 against 17 unchanged",
+              "confidence 0.60 against 0.93 unchanged"
+            ]
+          },
+          {
+            "frame": 90,
+            "state": "out",
+            "why": [
+              "height 17 against 34 unchanged",
+              "above 0 against 17 unchanged",
+              "confidence 0.60 against 0.93 unchanged"
+            ]
+          },
+          {
+            "frame": 100,
+            "state": "out",
+            "why": [
+              "height 17 against 34 unchanged",
+              "above 0 against 17 unchanged",
+              "confidence 0.60 against 0.93 unchanged"
+            ]
+          },
+          {
+            "frame": 110,
+            "state": "out",
+            "why": [
+              "height 17 against 34 unchanged",
+              "above 0 against 17 unchanged",
+              "confidence 0.60 against 0.93 unchanged"
+            ]
+          },
+          {
+            "frame": 119,
+            "state": "out",
+            "why": [
+              "height 17 against 34 unchanged",
+              "above 0 against 17 unchanged",
+              "confidence 0.60 against 0.93 unchanged"
+            ]
+          }
+        ],
+        "kept": [
+          20,
+          30,
+          40,
+          50,
+          60,
+          70,
+          80,
+          90
+        ],
+        "result": "differ",
+        "reason": "11 of 13 compared frames show something different at the player's place than the unchanged game, first frame 20: height 17 against 34 unchanged; above 0 against 17 unchanged; confidence 0.60 against 0.93 unchanged"
+      }
+    ]
+  },
+  "routes": [
+    {
+      "name": "smoke",
+      "sha256": "0db750ef7ab79124ccd80c63c03f117d84c579281f7ca487f0877f829660f02d"
+    }
+  ],
+  "counts": {
+    "checks": 1,
+    "passed": 1,
+    "failed": 0,
+    "needsReview": 0
+  },
+  "checks": [
+    {
+      "spec": "player-stays-above-ground",
+      "route": "smoke",
+      "before": "pass",
+      "after": "pass",
+      "comparison": "PRESERVED",
+      "findingId": null,
+      "observed": {
+        "before": {
+          "engine": "pass",
+          "visual": "pass",
+          "visualAnswerSha256": "cdc39161f729078410ab5405ff811ea09661c76c9445524f2d006f47b9fc97f6"
+        },
+        "after": {
+          "engine": "pass",
+          "visual": "pass",
+          "visualAnswerSha256": "69a7e3aa34249ed35530195a751ffa313673af4fce60fc4607524fee6fb12a96"
+        }
+      }
+    }
+  ],
+  "findings": [],
+  "heldOut": {
+    "status": "not-used",
+    "routes": 0,
+    "checks": 0,
+    "passed": 0,
+    "failed": 0,
+    "needsReview": 0
+  },
+  "isolation": {
+    "replays": 2,
+    "sandboxed": 0,
+    "required": false,
+    "sandbox": null,
+    "reasons": [
+      "the replay did not say whether it was sandboxed"
+    ]
+  },
+  "reviewPage": "review/index.html",
+  "expectrail": {
+    "version": "0.1.0",
+    "commit": null
+  },
+  "createdAt": "2026-11-13T03:35:53Z"
+}
