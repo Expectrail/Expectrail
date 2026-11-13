@@ -461,16 +461,62 @@ So the two bugs that are only in the drawing fail, the two the engine's record a
 left to it, and the harmless change passes. The tolerance has room both ways on this data: the
 missing-texture run passes from 5 px up, and sinking v2 differs in all 13 frames up to 25 px.
 
-What this has not shown, and it is the point of the idea: **a harmless change on a route where the
-unchanged game slips.** If the missing-texture game on the traversal route gets the same
-robot-and-trunk boxes in frames 16 to 24 as the clean game does, the pair agrees and the false
-alarm is gone. If the different coins tip SAM into a different answer there, it is not. The SAM
-probe workflow can make that run: probe mode, `anchor` ticked, `lift` 14, `route` `traversal`,
-`runs` `clean,missing-texture_v1,layering_v1,sinking_v2` (52 images, $0.13), and for the frames
-around the slip, `frames` `14,15,16,17,18,19,20,21,22,23,24,25,26`.
+**On a route where the unchanged game slips: the slip cancels, and another frame fails.**
+[Run 43326853189](https://github.com/Expectrail/Expectrail/actions/runs/43326853189) (November 12,
+52 images, $0.13): the clean game, the missing-texture game, layering and sinking v2 on the
+traversal route, each against the clean run.
 
-Also not shown: a change that moves the player a little and changes nothing else (every frame is
-then "moved", and this rule is silent), and any game but this one.
+| Run on traversal | Result | Frames that differ of those compared |
+| --- | --- | --- |
+| missing-texture v1 (harmless for the player) | **fail** | 1 of 13: frame 100 |
+| layering v1 | fail | 8 of 13 |
+| sinking v2 | fail | 13 of 13 |
+
+- **Frame 20, the slip the pairs were built for, agrees:** the robot and the trunk as one object,
+  107.5 px tall in the clean game and 106.5 in the harmless change.
+- **Frame 100 is a new false alarm.** The robot is touching an enemy. The clean game got the robot
+  alone (58.5 by 60.5) and the harmless change got robot and enemy as one object (113 by 91), at
+  confidence 0.69 and 0.66. On the contact sheets nothing near the robot differs between the two
+  pictures; a coin far to the right does.
+- So when the robot touches another object, what a bare point gets back is close to a toss-up, and
+  pixels far away tip it. Comparing answers cannot fix an answer that is not steady. **The pairs
+  are not fit for a verdict either.**
+
+### Asking with a box (built, not run against the service)
+
+A point says where. It does not say how big, and the unsteady answers are all about extent: robot
+or robot and trunk, robot or robot and enemy. The engine knows roughly how big the player is. The
+Model API takes a box as a prompt ("the object inside this"), so `agents/sam_anchor.py --box WxH`
+asks with a box of that size in game pixels, centred on the point:
+
+```sh
+python3 -m agents.sam_anchor --runs runs/seeded/* --lift 17 --box 48x68 --out runs/sam-anchor
+```
+
+For the bundled robot, 17 px above the origin is the middle of its body and 48 by 68 is the body
+with 4 px to spare each way. On the real frames the box frames the robot on the clean game and
+leaves most of the enemy of frame 100 outside it; on sinking v2 the robot hangs out of the bottom of it
+(looked at with a stand-in answer; nothing was sent). The report adds, per frame, how much of the
+answer lies inside the box that was asked about and how much of that box the answer fills. The
+rule refuses to compare answers to a point with answers to a box.
+
+What could go wrong, and why it is measured before anything is built on it:
+
+- **The hidden robot.** With the robot behind the level, the object inside the box is scenery.
+  If SAM answers with a piece of ground that fills the box, layering looks like the clean game by
+  size, and this is worse than the point.
+- **The sunk drawing.** Whether SAM answers with the part of the robot inside the box or the whole
+  robot spilling out of it is not known. Either differs from the clean game; which, decides the
+  rule.
+- A box leans on the engine for the player's size as well as its place. The size here is typed in
+  by hand; a game's own would have to come from its bindings (#259).
+
+The run that measures it, from the SAM probe workflow: probe mode, `anchor` ticked, `lift` 17,
+`box` 48x68, `route` traversal, `runs` clean,missing-texture_v1,layering_v1,sinking_v2 (52 images,
+$0.13).
+
+Also not shown for the pairs: a change that moves the player a little and changes nothing else
+(every frame is then "moved", and the pairs are silent), and any game but this one.
 
 What it leans on: the point is the engine's. A game that lies about where its player is sends the
 question to the wrong place, so this can never be the only evidence that a player is where the

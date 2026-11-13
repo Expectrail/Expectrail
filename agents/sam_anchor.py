@@ -61,7 +61,7 @@ def route_of(run: Path) -> dict | None:
 
 
 def anchors(trace: dict, frame_size: tuple[int, int], frames: list[int], lift: float = 0.0,
-            fps: int = 60) -> dict[int, dict]:
+            fps: int = 60, box: tuple[float, float] | None = None) -> dict[int, dict]:
     """Where to point in each frame: the engine's player origin, ``lift`` game pixels up, in frame pixels.
 
     {frame: {"world": [x, y], "point": [px, py], "scale": [sx, sy]}} for a frame that can be asked
@@ -100,6 +100,12 @@ def anchors(trace: dict, frame_size: tuple[int, int], frames: list[int], lift: f
                  "scale": [round(math.hypot(view[0], view[1]), 4), round(math.hypot(view[2], view[3]), 4)]}
         if not (0 <= px < width and 0 <= py < height):
             entry["why"] = "the player is outside the picture"
+        elif box is not None:
+            # A box of the given size in game pixels, centred on the point, cut to the picture.
+            half_w, half_h = box[0] * entry["scale"][0] / 2, box[1] * entry["scale"][1] / 2
+            x0, y0 = max(0, int(math.floor(fx - half_w))), max(0, int(math.floor(fy - half_h)))
+            x1, y1 = min(width, int(math.ceil(fx + half_w))), min(height, int(math.ceil(fy + half_h)))
+            entry["promptBox"] = [x0, y0, x1, y1]
         out[n] = entry
     return out
 
@@ -107,8 +113,10 @@ def anchors(trace: dict, frame_size: tuple[int, int], frames: list[int], lift: f
 def measure(anchor: dict, answer: dict | None, frame_size: tuple[int, int]) -> dict:
     """One frame's row: the answer measured against the point it was asked about."""
     row = {"world": anchor["world"], "point": anchor["point"], "asked": True, "box": None, "score": None}
+    if anchor.get("promptBox"):
+        row["promptBox"] = anchor["promptBox"]
     if answer is None:
-        row["note"] = "nothing came back for the point"
+        row["note"] = "nothing came back for the box" if anchor.get("promptBox") else "nothing came back for the point"
         return row
     x0, y0, x1, y1 = answer["box"]
     px, py = anchor["point"]
@@ -125,6 +133,14 @@ def measure(anchor: dict, answer: dict | None, frame_size: tuple[int, int]) -> d
         "belowOrigin": round((y1 - py) / sy, 1),
         "frameShare": round(max(0.0, x1 - x0) * max(0.0, y1 - y0) / (width * height), 4),
     })
+    if anchor.get("promptBox"):
+        # How much of the answer lies inside the box that was asked about, and how much of that box
+        # the answer fills. An answer that spills out of the box, or a sliver in it, shows here.
+        bx0, by0, bx1, by1 = anchor["promptBox"]
+        inside = max(0.0, min(x1, bx1) - max(x0, bx0)) * max(0.0, min(y1, by1) - max(y0, by0))
+        area, asked = max(0.0, x1 - x0) * max(0.0, y1 - y0), (bx1 - bx0) * (by1 - by0)
+        row["insidePrompt"] = round(inside / area, 3) if area else 0.0
+        row["fillsPrompt"] = round(inside / asked, 3) if asked else 0.0
     return row
 
 
@@ -153,10 +169,13 @@ def summarise(rows: list[dict]) -> dict:
         "aboveOrigin": _spread([r["aboveOrigin"] for r in answered]),
         "belowOrigin": _spread([r["belowOrigin"] for r in answered]),
         "frameShare": _spread([r["frameShare"] for r in answered], 4),
+        "insidePrompt": _spread([r.get("insidePrompt") for r in answered], 3),
+        "fillsPrompt": _spread([r.get("fillsPrompt") for r in answered], 3),
     }
 
 
-def plan(run: Path, picked: list[int] | None, every: int, first: int, lift: float) -> tuple[dict, list[int], dict]:
+def plan(run: Path, picked: list[int] | None, every: int, first: int, lift: float,
+         box: tuple[float, float] | None = None) -> tuple[dict, list[int], dict]:
     """(frame files, chosen frames, anchors) for one run, with nothing sent."""
     frames = frame_files(run / "frames")
     if not frames:
@@ -165,13 +184,15 @@ def plan(run: Path, picked: list[int] | None, every: int, first: int, lift: floa
     chosen = [i for i in (picked or sample(indices, every)) if i in frames]
     if not chosen:
         raise SamError(f"{run.name}: none of the frames asked for was captured")
-    return frames, chosen, anchors(load_trace(run), png_size(frames[chosen[0]]), chosen, lift)
+    return frames, chosen, anchors(load_trace(run), png_size(frames[chosen[0]]), chosen, lift, box=box)
 
 
 def probe_run(run: Path, picked: list[int] | None, every: int, first: int, lift: float, client,
-              out: Path | None) -> dict:
-    """Ask about every chosen frame of one run. A stop (see STOP_KINDS) is raised with the rows so far."""
-    frames, chosen, where = plan(run, picked, every, first, lift)
+              out: Path | None, box: tuple[float, float] | None = None) -> dict:
+    """Ask about every chosen frame of one run. A stop (see STOP_KINDS) is raised with the rows so far.
+    With ``box`` (width, height in game pixels) the question is a box of that size centred on the
+    point, "what is the object inside this", and not the point alone."""
+    frames, chosen, where = plan(run, picked, every, first, lift, box)
     rows = []
     result = {"run": run.name, "route": route_of(run), "framesProbed": chosen, "frames": rows}
     for n in chosen:
@@ -182,14 +203,18 @@ def probe_run(run: Path, picked: list[int] | None, every: int, first: int, lift:
             continue
         size = png_size(frames[n])
         try:
-            answer = client.segment_at(frames[n], [tuple(anchor["point"])])[0]
+            if box is not None:
+                answer = client.segment_in(frames[n], [tuple(anchor["promptBox"])])[0]
+            else:
+                answer = client.segment_at(frames[n], [tuple(anchor["point"])])[0]
         except SamError as exc:
             if exc.kind in STOP_KINDS or exc.status is not None:
                 result["summary"] = summarise(rows)
                 exc.partial = result
                 raise
             rows.append({"frame": n, "world": anchor["world"], "point": anchor["point"], "asked": True, "box": None,
-                         "score": None, "error": str(exc)[:300]})
+                         "score": None, "error": str(exc)[:300],
+                         **({"promptBox": anchor["promptBox"]} if anchor.get("promptBox") else {})})
             continue
         rows.append({"frame": n, **measure(anchor, answer, size)})
     result["summary"] = summarise(rows)
@@ -215,6 +240,8 @@ def draw(run_name: str, frames: dict[int, Path], rows: list[dict], out: Path) ->
             score = "no score" if row["score"] is None else f"{row['score']:.2f}"
             pen.rectangle(row["box"], outline="#00e05a", width=3)
             pen.text((row["box"][0] + 4, max(0, row["box"][1] - 14)), score, fill="#00e05a")
+        if row.get("promptBox"):
+            pen.rectangle(row["promptBox"], outline="#ff4fd8", width=1)
         if row.get("point"):
             x, y = row["point"]
             pen.line((x - 14, y, x + 14, y), fill="#ff4fd8", width=3)
@@ -303,6 +330,8 @@ def annotations(runs: list[dict], stats: dict, stopped: str | None) -> list[str]
                  f"game px w {_range(s['worldWidth'])} h {_range(s['worldHeight'])}",
                  f"below origin {_range(s['belowOrigin'])}", f"above origin {_range(s['aboveOrigin'])}",
                  f"frame share {_range(s['frameShare'])}"]
+        if s.get("insidePrompt"):
+            parts.append(f"inside the asked box {_range(s['insidePrompt'])}; fills it {_range(s['fillsPrompt'])}")
         for r in run["frames"]:
             if r.get("box"):
                 parts.append(f"f{r['frame']} pt {r['point'][0]},{r['point'][1]} box "
@@ -326,12 +355,24 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--first", type=int, default=120, help="only the first N frames of each run (default 120)")
     p.add_argument("--lift", type=float, default=0.0,
                    help="point this many game pixels above the player's origin (default 0: the origin itself)")
+    p.add_argument("--box", metavar="WxH",
+                   help="ask with a box of this size in game pixels, centred on the point, and not with the point "
+                        "alone (e.g. 48x68 for the bundled robot at --lift 17)")
     p.add_argument("--out", type=Path, default=Path("runs/sam-anchor"))
     p.add_argument("--dry-run", action="store_true", help="print the frames and points, send nothing")
     args = p.parse_args(argv)
     load_dotenv()
     if args.every < 1 or args.first < 1:
         p.error("--every and --first must be 1 or more")
+    box = None
+    if args.box:
+        try:
+            w, _, h = args.box.lower().partition("x")
+            box = (float(w), float(h))
+        except ValueError:
+            box = (0.0, 0.0)
+        if not (0 < box[0] < 10000 and 0 < box[1] < 10000):
+            p.error("--box is a width and a height in game pixels, like 48x68")
 
     picked = [int(x) for x in args.frames.split(",")] if args.frames else None
     runs = [r for r in args.runs if (r / "frames").is_dir()]
@@ -343,12 +384,17 @@ def main(argv: list[str] | None = None) -> int:
         total = 0
         try:
             for run in runs:
-                _, chosen, where = plan(run, picked, args.every, args.first, args.lift)
+                _, chosen, where = plan(run, picked, args.every, args.first, args.lift, box)
                 ask = [n for n in chosen if "why" not in where[n]]
                 total += len(ask)
+
+                def spot(n):
+                    if box is not None:
+                        return f"f{n}@" + ",".join(str(v) for v in where[n]["promptBox"])
+                    return f"f{n}@{where[n]['point'][0]},{where[n]['point'][1]}"
+
                 print(f"{run.name}: " + " ".join(
-                    f"f{n}@{where[n]['point'][0]},{where[n]['point'][1]}" if n in ask else f"f{n}(not asked: {where[n]['why']})"
-                    for n in chosen))
+                    spot(n) if n in ask else f"f{n}(not asked: {where[n]['why']})" for n in chosen))
         except SamError as exc:
             print(f"cannot plan the probe: {exc}", file=sys.stderr)
             return 2
@@ -364,7 +410,7 @@ def main(argv: list[str] | None = None) -> int:
     results, stopped = [], None
     for run in runs:
         try:
-            results.append(probe_run(run, picked, args.every, args.first, args.lift, client, args.out))
+            results.append(probe_run(run, picked, args.every, args.first, args.lift, client, args.out, box))
         except SamError as exc:
             stopped = f"{run.name}: {exc}"
             partial = getattr(exc, "partial", None)
@@ -376,9 +422,14 @@ def main(argv: list[str] | None = None) -> int:
     after = sam_usage()
     stats = {"calls": client.calls, "seconds": round(client.seconds, 2),
              "reservedUsd": round(after["reservedUsd"] - before["reservedUsd"], 4)}
-    report = {"model": client.model, "lift": args.lift, "stats": stats, "stopped": stopped, "runs": results}
+    report = {"model": client.model, "lift": args.lift, "box": list(box) if box else None, "stats": stats,
+              "stopped": stopped, "runs": results}
     (args.out / "anchor.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    (args.out / "anchor.md").write_text(markdown(results, client.model, stats, stopped), encoding="utf-8")
+    page = markdown(results, client.model, stats, stopped)
+    if box:
+        page = page.replace("# SAM asked with a point at the engine's player position",
+                            f"# SAM asked with a box of {box[0]:g} x {box[1]:g} game px at the engine's player position", 1)
+    (args.out / "anchor.md").write_text(page, encoding="utf-8")
     print(f"wrote {args.out / 'anchor.md'}")
     if on_github:
         for line in annotations(results, stats, stopped):

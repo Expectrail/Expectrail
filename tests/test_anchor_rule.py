@@ -23,6 +23,7 @@ DATA = Path(__file__).resolve().parent / "data" / "sam-anchor"
 AT_ORIGIN = DATA / "bundled-lift-0.json"
 MID_BODY = DATA / "bundled-lift-14.json"
 OTHER_CLEAN = DATA / "bundled-lift-14-other-clean-routes.json"      # run 43316420400: coins, combat, traversal
+ON_TRAVERSAL = DATA / "bundled-lift-14-traversal-seeded.json"       # run 43326853189: clean and three bugs on traversal
 NEAR_THE_SLIP = DATA / "bundled-lift-14-traversal-frames-15-25.json"  # run 43318368572: traversal, frames 15 to 25
 
 
@@ -240,6 +241,25 @@ class RecordedPairsTest(unittest.TestCase):
         self.assertEqual((got["missing-texture_v1"]["result"], got["missing-texture_v1"]["out"]), ("fail", 1))
         self.assertEqual(got["sinking_v2"]["out"], 13)
 
+    def test_on_traversal_the_first_slip_cancels_and_another_frame_is_a_new_false_alarm(self):
+        # The run the pairs were built for (November 12, 2026). Frame 20, the robot and the trunk as one
+        # object: 107.5 px tall in the clean game and 106.5 in the harmless change, so it agrees. Frame
+        # 100, the robot touching an enemy: the clean game got the robot alone and the harmless change
+        # got robot and enemy as one object, at confidence 0.69 and 0.66. Nothing near the robot differs
+        # between the two pictures. This test holds that fault in view; it changes when the probe does.
+        got = self.paired(ON_TRAVERSAL)
+        self.assertEqual({n: (r["result"], r["out"], r["judged"], r["moved"]) for n, r in got.items()}, {
+            "missing-texture_v1": ("fail", 1, 13, 0), "layering_v1": ("fail", 8, 13, 0), "sinking_v2": ("fail", 13, 13, 0)})
+        harmless = {f["frame"]: f for f in got["missing-texture_v1"]["frames"]}
+        self.assertEqual(harmless[20]["state"], "in")
+        self.assertEqual(harmless[100]["why"], ["width 113 against 58.5 unchanged", "height 91 against 60.5 unchanged",
+                                               "below 59 against 28 unchanged"])
+        report = rule.load_report(ON_TRAVERSAL)
+        rows = {r["run"]: {f["frame"]: f for f in r["frames"]} for r in report["runs"]}
+        self.assertEqual((rows["clean"][20]["worldSize"][1], rows["missing-texture_v1"][20]["worldSize"][1]), (107.5, 106.5))
+        self.assertEqual((rows["clean"][100]["score"], rows["missing-texture_v1"][100]["score"]), (0.69140625, 0.66015625))
+        self.assertEqual({r["route"]["name"] for r in report["runs"]}, {"traversal"})
+
     def test_other_routes_clean_runs_are_refused_not_judged(self):
         _, clean = rule.load_run(MID_BODY, "clean")
         for run in rule.load_report(OTHER_CLEAN)["runs"]:
@@ -408,6 +428,20 @@ class MainTest(unittest.TestCase):
             self.run_main(["--judge", MID_BODY])
         with self.assertRaises(SystemExit):
             self.run_main(["--pair", f"{MID_BODY}:clean", "--calibrate", f"{MID_BODY}:clean", "--judge", MID_BODY])
+
+    def test_answers_to_a_point_and_to_a_box_are_not_compared(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            boxed = Path(tmp) / "boxed.json"
+            doc = json.loads(MID_BODY.read_text(encoding="utf-8"))
+            doc["box"] = [48.0, 68.0]
+            boxed.write_text(json.dumps(doc), encoding="utf-8")
+            for how in ("--pair", "--calibrate"):
+                with self.subTest(how=how):
+                    code, _, err = self.run_main([how, f"{MID_BODY}:clean", "--judge", boxed])
+                    self.assertEqual(code, 2)
+                    self.assertIn("a box of 48 x 68 and the other report with a point", err)
+            code, _, _ = self.run_main(["--pair", f"{boxed}:clean", "--judge", boxed])
+            self.assertEqual(code, 0)
 
     def test_a_run_name_that_is_not_there_or_not_given_is_an_error(self):
         code, _, err = self.run_main(["--calibrate", f"{MID_BODY}:tidy", "--judge", MID_BODY])
