@@ -303,9 +303,11 @@ What takes an adapter:
 - `--adapter` on `harness.replay_check` and `harness.check_seeded` (default `godot`; both also run
   `--adapter web`), and on `agents.web_bench` and `agents.web_fix` (default `web`; they accept any
   adapter whose replays write the web trace).
-- The verify path: `expectrail.gate.verify.run_gate(adapter=...)` (the CI gate and `expectrail verify`)
-  and the orchestrator's engines (`expectrail/orchestrator/engines.py`), which has one engine for
-  every adapter with a verify path and none for any other name.
+- The verify path: `expectrail.gate.verify.run_gate(adapter=...)` (the CI gate and `expectrail verify`;
+  `python3 -m expectrail.gate.verify --adapter NAME`, default `godot`) and the orchestrator's engines (`expectrail/orchestrator/engines.py`), which has one engine for
+  every adapter with a verify path and none for any other name. A run that stops before it can judge
+  records the adapter it asked for, or `unknown` for a name the registry does not hold, never `godot`
+  in its place. The verify action (`.github/actions/expectrail-verify`) installs Godot and runs `godot`.
 - Not yet: `agents/verifier.py`, the Godot verifier, still calls `harness.run` itself, and so does
   everything built on it (`agents/loop.py`, `agents/heldout_bench.py`, `agents/matrix.py`,
   `agents/judge_bench.py`). An `--adapter` on those would switch some of their replays and not others.
