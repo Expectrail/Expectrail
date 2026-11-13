@@ -92,6 +92,21 @@ reader as `agents.observations`, so the wheel carries them inside the package, u
 first on the module path. `expectrail.resources.ROOT` is the one name for "where Expectrail's own
 files are" in a clone and in an installed copy.
 
+## A release
+
+`.github/workflows/release.yml` builds the wheel for a version tag and attaches it to the run:
+
+- A tag `v<version>` builds from that commit, and only when it is the package's own version
+  (`expectrail/__init__.py`); any other tag builds nothing and says why. A dispatch builds from main
+  only, to try the workflow.
+- The wheel is installed into a clean venv and its command must say "installed package" and the
+  version. The wheel and its SHA-256 go up as the run's artifact `expectrail-<version>-wheel`, kept 90 days.
+- It reads only and holds no secret. It publishes nowhere: PyPI or a container registry needs an
+  account and a token, and pushing the tag is a person's step too.
+
+It has not run yet: no tag has been pushed and it has not been dispatched.
+`tests/test_release_workflow.py` runs its version step in bash and checks its shape.
+
 ## Limits
 
 - **`import harness` and `import agents` belong to Expectrail inside a process that has imported
@@ -105,4 +120,4 @@ files are" in a clone and in an installed copy.
   2026, 5.6 s); CI does not do it: it hands the installed copy the download it already holds, and
   the copy's own script unpacks and checks it.
 - `doctor` was not run in a clean container, on macOS, or on a machine with another OpenGL device.
-- No runner image and no release workflow yet (#333).
+- No runner image yet. The release workflow has not run (see below).

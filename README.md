@@ -15,6 +15,31 @@ log and Muse Code's own screenshot review accept both. Real frames from the reco
 ([left](docs/review/report-first-run-1/), [right](docs/review/sinking-fix/)); the yellow line is
 drawn here at the floor's edge, the verdicts are the runs' own.
 
+## Use it
+
+**In your browser:** [Run it](https://expectrail.tech/run-it/) starts a real check of one of three
+sample changes to the bundled game and shows the verdict and its evidence. The page says whether it
+can start a run right now.
+
+**On a Linux machine** (Python 3.12+, a virtual display and Mesa; not on PyPI yet):
+
+```sh
+python3 -m pip install .     # in a clone of this repository
+expectrail doctor            # what this machine has for a verification, and the fix for what is missing
+expectrail sample            # three real verifications of the bundled game: accept, reject, accept
+```
+
+- `expectrail doctor` checks the machine, fetches Godot 4.7.2 on first use (SHA-512 checked) and exits
+  0, or 3 with the fix named. It is not a verdict on any change.
+- `expectrail sample` replays the bundled game as it is, with a seeded bug, and with its repair, each
+  as a job of its own. It uses no model key today, so it gives the same three decisions with or without
+  one: it judges on the engine's record. Judging with the vision model by default is being built
+  (#379); after that, a run without a key still rejects the bug and accepts nothing.
+- CI installs the wheel into a clean venv and runs both on every push to main, plus `expectrail verify`
+  on a second Godot project given by path
+  ([run 43476504903](https://github.com/Expectrail/Expectrail/actions/runs/43476504903), job `package`).
+- Everything the package holds, the exit codes and the limits: [docs/install.md](docs/install.md).
+
 > **The whole project in three minutes**
 >
 > **Start with the demo video: [https://youtu.be/BlWOiweL8Lc](https://youtu.be/BlWOiweL8Lc)**

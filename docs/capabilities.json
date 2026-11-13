@@ -1255,6 +1255,47 @@
       "limits": "Only the sample command and tests call it: the gate's action and the site do not go through it yet. The isolated execution class runs every replay with the sandbox required and refuses where the machine cannot; its evidence grade stays diagnostic, because the ledger's isolated grade also needs a trusted job that judges and signs (#254, #255). The game is held to the tree the job asked about (the worker's read, the gate's record and each replay's copy must agree, or the job is needs-review), and the verifier judges with the one reading of the specs and routes whose digest is the job's. On a system without /proc a killed worker's children are not found and run on to their own time limit. One host."
     },
     {
+      "id": "installed-command",
+      "mode": "The installed expectrail command: doctor checks the machine, sample runs three real verifications of the bundled game, verify takes a Godot project by path",
+      "profile": "A wheel built from the repository and installed with pip into a clean venv on a hosted Linux runner; the bundled Godot game and a second Godot project",
+      "observer": "The engine's record; no vision model (sample and verify use no key today)",
+      "entryPoints": [
+        "expectrail.cli",
+        "expectrail.doctor"
+      ],
+      "workflows": [
+        "ci.yml",
+        "release.yml"
+      ],
+      "docs": [
+        "docs/install.md"
+      ],
+      "grade": "diagnostic",
+      "status": "integrated",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43476504903",
+          "conclusion": "success",
+          "jobs": [
+            "package"
+          ],
+          "shows": "CI on main (eba2518), job package: the wheel was built and installed into a clean venv; the installed doctor passed, exited 3 and named the fix with the engine taken away, and a usage error exited 5; the installed sample decided accept, reject, accept; the installed verify accepted a second Godot project given by path"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_package.py",
+          "shows": "what the wheel holds and leaves out; the installed command runs outside the checkout; doctor's checks and its JSON document"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_release_workflow.py",
+          "shows": "a version tag builds the wheel and attaches it to the run only when the tag is the package's version; the workflow reads only, holds no secret and publishes nowhere"
+        }
+      ],
+      "limits": "Not on PyPI: publishing needs an account and a token, which a person sets up. The release workflow has not run: it runs on a tag, and pushing a tag is a person's step. Linux only as packaged. sample and verify judge on the engine's record and use no key; the vision model by default is #379."
+    },
+    {
       "id": "run-it",
       "mode": "Run it: a visitor starts a check of one of three sample changes from expectrail.tech and sees the verdict and its evidence",
       "profile": "The bundled Godot game on a hosted Linux runner, through run-it.yml; the page and its service on expectrail.tech",
