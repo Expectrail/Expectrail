@@ -98,16 +98,37 @@ class BundledRobotTest(unittest.TestCase):
         from agents.observations import FEET_OFFSET
         self.assertEqual({round(r["body"][3] - r["player"][1], 3) for r in self.rows}, {FEET_OFFSET})
 
-    def test_the_log_validates_against_the_trace_contract(self):
-        from expectrail.contracts import validate
-        trace = json.loads((self.tmp / "smoke" / "run" / "trace.json").read_text(encoding="utf-8"))
-        validate(trace, "trace")
+    def test_every_body_box_has_the_contracts_shape(self):
+        # Four numbers, left of right and above bottom. The schema itself is checked with jsonschema
+        # in TraceContractTest, which runs in the suite's job; this job has the engine and not jsonschema.
+        for row in self.rows:
+            box = row["body"]
+            self.assertEqual(len(box), 4)
+            self.assertTrue(all(isinstance(v, (int, float)) for v in box))
+            self.assertLess(box[0], box[2])
+            self.assertLess(box[1], box[3])
+
+
+class TraceContractTest(unittest.TestCase):
+    """The contract's `body`: no engine needed."""
+
+    def test_the_schema_and_its_example_carry_body_and_the_example_validates(self):
         schema = json.loads((REPO / "contracts" / "trace.schema.json").read_text(encoding="utf-8"))
         body = schema["properties"]["rows"]["items"]["properties"]["body"]
         self.assertEqual((body["type"], body["minItems"], body["maxItems"]), ("array", 4, 4))
         example = json.loads((REPO / "contracts" / "examples" / "trace.json").read_text(encoding="utf-8"))
-        self.assertEqual(len(example["rows"][0]["body"]), 4)
-
+        self.assertEqual(example["rows"][0]["body"], [1516.0, -1088.0, 1556.0, -1016.0])
+        try:
+            import jsonschema  # noqa: F401
+        except ImportError:
+            # The engine job (`capture-smoke`) has no jsonschema; the suite's jobs have it and validate.
+            return
+        from expectrail.contracts import validate
+        validate(example, "trace")
+        bad = json.loads(json.dumps(example))
+        bad["rows"][0]["body"] = [1.0, 2.0, 3.0]
+        with self.assertRaises(Exception):
+            validate(bad, "trace")
 
 if __name__ == "__main__":
     unittest.main()

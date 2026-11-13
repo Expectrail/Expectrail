@@ -22,7 +22,11 @@ somebody typed.
 - `docs/harness.md` ("The player's own box") and `docs/sam.md`.
 
 ## What was run (Godot 4.7.2)
-- `EXPECTRAIL_ENGINE_TESTS=required python3 -m unittest tests.test_body_box`: 8 tests, OK. The test
+- `EXPECTRAIL_ENGINE_TESTS=required python3 -m unittest tests.test_body_box`: 9 tests, OK (and on
+  Python 3.12 without jsonschema, as in CI's `capture-smoke`: 9 tests, OK; there the schema test
+  checks the schema's shape and the example by hand and does not validate).
+  The first push failed `capture-smoke`: its contract test needed jsonschema, which that job does
+  not install. The schema is now checked in a test that needs no engine, in the suite's job. The test
   level's 24 by 16 shape is logged as (-12, -8, 12, 8) around its origin; at scale 2 as
   (-24, -16, 24, 16); 10 px to one side as (-2, -8, 22, 8), and mirrored as (-22, -8, 2, 8); a
   polygon the same as the shape; a disabled shape gives no `body` in any row. The bundled robot is
