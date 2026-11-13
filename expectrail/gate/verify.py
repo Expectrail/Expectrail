@@ -58,6 +58,7 @@ from expectrail import __version__
 from expectrail.contracts import digest
 from expectrail.gate import record as rec
 from expectrail.gate.page import write_page
+from expectrail import viewer
 
 EXPECTRAIL_ROOT = resources.ROOT
 CONTRACTS = EXPECTRAIL_ROOT / "contracts"
@@ -668,8 +669,11 @@ def judge_arm(game: Path, routes: list[tuple[str, Path, str]], specs: list[dict]
             on_phase("evaluating")
         ticks = route_ticks(path) if rule == rec.BOTH else None
         for spec in specs:
-            results[(spec["id"], name)] = judge_run(spec, run, rule=rule, visual=visual, ticks=ticks,
-                                                    capture_fps=capture_fps)
+            result = judge_run(spec, run, rule=rule, visual=visual, ticks=ticks, capture_fps=capture_fps)
+            # The evidence viewer's timeline (expectrail.viewer): measured from the engine's record the
+            # evaluator judged, kept only when it agrees with that verdict. It decides nothing.
+            result["timeline"] = viewer.check_series(spec, run, result.get("verdict"))
+            results[(spec["id"], name)] = result
     return results
 
 
@@ -1045,6 +1049,13 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
     write_page(out, document, frames)
+    timelines = {key: {"after": result.get("timeline"), "before": (before.get(key) or {}).get("timeline")}
+                 for key, result in head.items()}
+    try:
+        viewer.write_gate(out, document, frames, timelines)
+    except Exception as exc:  # noqa: BLE001 - the viewer shows the decision; it never changes or blocks it
+        print(f"::warning title=Expectrail gate::the evidence viewer was not written ({type(exc).__name__}); "
+              "the review page and findings.json are")
     (out / "findings.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
     return document
 
