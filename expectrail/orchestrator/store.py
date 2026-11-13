@@ -28,6 +28,7 @@ import secrets
 import select
 import shutil
 import signal
+import subprocess
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -420,8 +421,16 @@ class JobStore:
         # worker that recorded itself a moment before is in it, and one that comes later finds the
         # job final and does nothing (`claim`).
         status, cancelled_now = self._finish(job_id, "cancelled", reasons=["cancelled on request"])
-        if cancelled_now and status["worker"] is not None:
-            stop_group(status["worker"]["pgid"], grace_seconds=grace_seconds)
+        if cancelled_now and status["worker"] is not None and Path("/proc/self/environ").exists():
+            # On Linux keep the group stop, followed by the marker sweep below. Without /proc,
+            # only signal individually rechecked same-user markers: a recorded group may be stale.
+            try:
+                stop_group(status["worker"]["pgid"], grace_seconds=grace_seconds)
+            except (OSError, StoreError) as exc:
+                # A denied group is not a stopped group, and a stop error cannot undo cancellation
+                # or turn its command's exit code from 4 into 5. Still try the marker sweep.
+                status = self._note(job_id, f"could not stop worker process group {status['worker']['pgid']}: "
+                                    f"{type(exc).__name__}: {exc}")
         if cancelled_now:
             # And anything of the job's that had left the group. A cancel that leaves something
             # running says so; one that stopped everything says nothing more.
@@ -431,7 +440,78 @@ class JobStore:
         return status
 
 
+def _ps_table(*, environment: bool = False) -> dict[int, tuple[int, str, str]]:
+    """Own-user Darwin ps rows: pid -> (parent, state, command). No output leaves memory.
+
+    -U restricts selection to our real uid (and the returned uid is checked too); -ww prevents
+    truncation. ps itself must not inherit the job marker or become part of its own search.
+    Errors contain no command/environment output, which could hold credentials.
+    """
+    uid = os.getuid()
+    cmd = ["ps", "-ww", "-U", str(uid), "-o", "pid=,ppid=,uid=,stat=,command="]
+    if environment:
+        cmd.insert(1, "-E")
+    try:
+        done = subprocess.run(cmd, capture_output=True, text=True, timeout=5,
+                              env={k: v for k, v in os.environ.items() if k != JOB_ENV})
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise StoreError(f"could not look for this user's processes with ps ({type(exc).__name__})") from None
+    if done.returncode:
+        raise StoreError(f"could not look for this user's processes with ps (exit {done.returncode})")
+    rows = {}
+    for line in done.stdout.splitlines():
+        fields = line.split(None, 4)
+        if len(fields) != 5:
+            raise StoreError("could not read this user's process list from ps")
+        try:
+            pid, parent, owner = map(int, fields[:3])
+        except ValueError:
+            raise StoreError("could not read this user's process numbers from ps") from None
+        if owner == uid and pid > 0:
+            rows[pid] = (parent, fields[3], fields[4])
+    return rows
+
+
+def _ps_jobs() -> tuple[dict[int, tuple[int, str, str]], dict[int, list[str]]]:
+    """Read arguments separately from arguments-plus-environment so argv is never a job marker.
+
+    A changing command or parent between the two looks is not safe to classify. Refuse the
+    inspection instead of counting an unreadable process as stopped. ps's environment is the
+    view the OS exposes, not a guarantee against a process overwriting its own environment.
+    """
+    commands = _ps_table()
+    expanded = _ps_table(environment=True)
+    environments = {}
+    for pid, (parent, state, full) in expanded.items():
+        plain = commands.get(pid)
+        if plain is None or state.startswith("Z"):
+            continue   # new since the first snapshot, or already exited: a later sweep finds it
+        if plain[0] != parent:
+            raise StoreError("could not confirm a process's identity between ps snapshots")
+        command = plain[2]
+        if full == command:
+            environments[pid] = []
+        elif full.startswith(command + " "):
+            environments[pid] = full[len(command) + 1:].split()
+        else:
+            raise StoreError("could not separate a process's command and environment in ps")
+    return commands, environments
+
+
+def _ps_own_line(rows: dict[int, tuple[int, str, str]]) -> set[int]:
+    line, pid = set(), os.getpid()
+    while pid > 0 and pid not in line:
+        line.add(pid)
+        if pid not in rows:
+            break
+        pid = rows[pid][0]
+    return line
+
+
 def _names_job(pid: int, marker: bytes) -> bool:
+    if not Path("/proc/self/environ").exists():
+        _rows, environments = _ps_jobs()
+        return marker.decode() in environments.get(pid, [])
     try:
         with open(f"/proc/{pid}/environ", "rb") as handle:
             return marker in handle.read().split(b"\0")
@@ -442,6 +522,8 @@ def _names_job(pid: int, marker: bytes) -> bool:
 def _own_line() -> set[int]:
     """This process and its ancestors: the processes a call from inside a job must never stop,
     because stopping the shell that asked would stop the asking."""
+    if not Path("/proc/self/environ").exists():
+        return _ps_own_line(_ps_table())
     line, pid = set(), os.getpid()
     while pid > 0 and pid not in line:
         line.add(pid)
@@ -455,13 +537,17 @@ def _own_line() -> set[int]:
 
 def processes_of(job_id: str) -> list[int] | None:
     """The processes whose environment names this job, other than this process and its ancestors.
-    None where the system has no /proc to ask.
+    Linux reads /proc; without it, Darwin ps reads only this user's processes and environments.
+    A failed ps inspection raises StoreError. No group-number guess replaces a missing marker.
 
     What is read is the environment area the process holds now. It is what the process started
     with unless the process itself wrote over it, so a program that does not want to be found can
     hide from this; the sandboxed game cannot stay alive that way (it dies with the sandbox tool)."""
     if not Path("/proc/self/environ").exists():
-        return None
+        rows, environments = _ps_jobs()
+        mine = _ps_own_line(rows)
+        marker = f"{JOB_ENV}={job_id}"
+        return sorted(pid for pid, env in environments.items() if pid not in mine and marker in env)
     marker = f"{JOB_ENV}={job_id}".encode()
     mine = _own_line()
     found = []
@@ -517,6 +603,17 @@ def _signal(pid: int, marker: bytes, sig: int) -> str | None:
     older kernel), a container that refuses it, a handle that cannot be asked or signalled. Only
     "no such process" ends it, since then there is nothing to stop. So there is no failure of the
     better way that leaves a lost job's processes running where the older way would stop them."""
+    if not Path("/proc/self/environ").exists():
+        # macOS has no pidfd. Re-read the same-user environment immediately before signalling.
+        if _names_job(pid, marker):
+            try:
+                os.kill(pid, sig)
+                return "number"
+            except ProcessLookupError:
+                return None
+            except PermissionError:
+                raise StoreError(f"could not stop process {pid}: permission denied; it may still be running") from None
+        return None
     try:
         return "handle" if _by_handle(pid, marker, sig) else None
     except ProcessLookupError:
@@ -540,8 +637,7 @@ def _stopped_note(job_id: str, stopped: tuple[int, int] | None, ways: frozenset 
     own = sum(1 for pid in _own_line() if _names_job(pid, marker))
     parts = []
     if stopped is None:
-        if not only_if_left:
-            parts.append("what it had started could not be looked for on this system (no /proc)")
+        parts.append("what it had started could not be looked for on this system; could not confirm it stopped")
     elif stopped[0] != stopped[1]:
         parts.append(f"found {stopped[0]} process(es) it had started and stopped {stopped[1]}; the rest are still running")
     elif stopped[0] and not only_if_left:
@@ -555,11 +651,64 @@ def _stopped_note(job_id: str, stopped: tuple[int, int] | None, ways: frozenset 
     return "; ".join(parts) or None
 
 
+def _stop_job_without_proc(job_id: str, *, grace_seconds: float, ways: set | None) -> tuple[int, int]:
+    """A missing marker is not proof of exit. On ps, confirm every seen pid has actually exited;
+    a still-live process whose marker disappeared is left alone and reported as still running.
+    Any unavailable inspection raises and the job says that cleanup could not be confirmed.
+    """
+    first = processes_of(job_id)
+    if first is None:
+        raise StoreError("could not look for the job's processes; could not confirm they stopped")
+    seen = set(first)
+    marker = f"{JOB_ENV}={job_id}".encode()
+    for sig, wait in ((signal.SIGTERM, grace_seconds), (signal.SIGKILL, 1.0)):
+        left = processes_of(job_id)
+        if left is None:
+            raise StoreError("could not look for the job's processes; could not confirm they stopped")
+        seen.update(left)
+        if not left:
+            break
+        for pid in left:
+            how = _signal(pid, marker, sig)
+            if how and ways is not None:
+                ways.add(how)
+        deadline = time.monotonic() + wait
+        while time.monotonic() < deadline:
+            left = processes_of(job_id)
+            if left is None:
+                raise StoreError("could not look for the job's processes; could not confirm they stopped")
+            seen.update(left)
+            if not left:
+                break
+            time.sleep(0.05)
+    final = processes_of(job_id)
+    if final is None:
+        raise StoreError("could not look for the job's processes; could not confirm they stopped")
+    seen.update(final)
+    rows = _ps_table()
+    gone = 0
+    for pid in seen:
+        if pid in rows:
+            gone += rows[pid][1].startswith("Z")
+            continue
+        # Absence from our user's ps table alone is not proof of exit: a process could have
+        # changed uid. Signal 0 reads no other user's environment and cannot stop a process.
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            gone += 1
+        except PermissionError:
+            pass   # still exists, but we cannot signal it; never count it as stopped
+    return len(seen), gone
+
+
 def stop_job(job_id: str, *, grace_seconds: float = 1.0, ways: set | None = None) -> tuple[int, int] | None:
     """Stop every process that names this job: ask, then make. Returns (how many were found, how
     many of those are gone), or None where they cannot be looked for. A process the job started
     after the first look is found by a later one and counted too. ``ways`` collects how the signals
     were sent (``handle``, ``number``)."""
+    if not Path("/proc/self/environ").exists():
+        return _stop_job_without_proc(job_id, grace_seconds=grace_seconds, ways=ways)
     first = processes_of(job_id)
     if first is None:
         return None
@@ -590,11 +739,24 @@ def stop_group(pgid: int, *, grace_seconds: float = 3.0) -> None:
         try:
             os.killpg(pgid, sig)
         except ProcessLookupError:
-            return
+            return   # the group is gone; there is nothing left to signal in it
+        except PermissionError:
+            try:
+                os.killpg(pgid, 0)
+            except ProcessLookupError:
+                return   # gone between the signal and the permission check
+            except PermissionError:
+                raise StoreError(f"permission denied for process group {pgid}: the caller does not have "
+                                 "permission to signal that group; it may still be running") from None
+            raise StoreError(f"permission denied stopping process group {pgid}: the group still exists; "
+                             "it may still be running") from None
         deadline = time.monotonic() + wait
         while time.monotonic() < deadline:
             try:
                 os.killpg(pgid, 0)
             except ProcessLookupError:
                 return
+            except PermissionError:
+                raise StoreError(f"could not confirm process group {pgid} stopped: permission denied; "
+                                 "it may still be running") from None
             time.sleep(0.05)
