@@ -24,7 +24,9 @@ name: Generated checks
 # offer (expectrail/jit/offer.py): what the generator is offered, the same in every job of one run and
 # written into each proposal and record. baseline, the default, is the generator as it was before
 # issue #285's steps 3 and 4; signals-reach also offers the three held-back signals and the reach
-# probes. The known-bugs bench is registered under baseline and refuses any other.
+# probes; signals-reach-evidence also gives the proposer step 5's evidence, which the measure job makes
+# by replaying every probe with frames (repro-evidence.json). The known-bugs bench is registered under
+# baseline and refuses any other.
 on:
   pull_request:
     paths:
@@ -57,7 +59,7 @@ on:
       offer:
         description: What the generator is offered (expectrail/jit/offer.py); bench mode takes baseline only
         type: choice
-        options: ['baseline', 'signals-reach']
+        options: ['baseline', 'signals-reach', 'signals-reach-evidence']
         default: 'baseline'
 
 permissions:
@@ -162,7 +164,7 @@ jobs:
       - name: Plan the cases
         id: plan
         run: |
-          [[ "$OFFER" =~ ^(baseline|signals-reach)$ ]] || { echo "::error::offer must be baseline or signals-reach"; exit 1; }
+          [[ "$OFFER" =~ ^(baseline|signals-reach|signals-reach-evidence)$ ]] || { echo "::error::offer must be baseline, signals-reach or signals-reach-evidence"; exit 1; }
           echo "offer=$OFFER" >> "$GITHUB_OUTPUT"
           if [[ "$MODE" == "bench" ]]; then
             [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "::error::the bench runs only from main"; exit 1; }
@@ -204,7 +206,8 @@ jobs:
       matrix:
         c: ${{ fromJSON(needs.plan.outputs.cases) }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # signals-reach-evidence adds three replays with frames a probe (expectrail/repro/evidence.py).
+    timeout-minutes: ${{ needs.plan.outputs.offer == 'signals-reach-evidence' && 75 || 30 }}
     env:
       BASE: ${{ matrix.c.base }}
       REPORT: ${{ matrix.c.report }}
@@ -217,21 +220,24 @@ jobs:
         with:
           python-version: '3.13'
       - run: python -m pip install -r requirements-dev.txt
-      - name: Install patch
+      - name: Install patch (and, for the evidence's frames, a virtual display and software OpenGL)
         uses: ./.github/actions/apt-install
         with:
-          packages: patch
+          packages: ${{ needs.plan.outputs.offer == 'signals-reach-evidence' && 'patch xvfb libgl1-mesa-dri libglx-mesa0' || 'patch' }}
       - name: Download Godot 4.7.2 and check its SHA-512
         uses: ./.github/actions/get-godot
       - name: Measure every probe on the clean game and the bug build
         run: |
           export PATH="$PWD/tools/godot:$PATH"
           base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
-          python -m expectrail.jit.cli measure "${base[@]}" --out runs/jit-measure --offer "$OFFER" --report-file "$REPORT"
+          python -m expectrail.jit.cli measure "${base[@]}" --out runs/jit-measure --offer "$OFFER" --report-file "$REPORT" \
+            --evidence-jobs 2
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jit-measurements-${{ matrix.c.case }}
-          path: runs/jit-measure/jit-measurements.json
+          path: |
+            runs/jit-measure/jit-measurements.json
+            runs/jit-measure/repro-evidence.json
           retention-days: 14
 
   propose:
@@ -274,8 +280,9 @@ jobs:
           MODEL_API_KEY: ${{ secrets.MODEL_API_KEY || secrets.META_API_KEY }}
         run: |
           base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
+          ev=(); if [[ -f runs/jit-measure/repro-evidence.json ]]; then ev=(--evidence runs/jit-measure/repro-evidence.json); fi
           python -m expectrail.jit.cli propose --report-file "$REPORT" --candidate "$CANDIDATE" --out runs/jit-proposal \
-            --budget-usd "$BUDGET" "${base[@]}" --measurements runs/jit-measure/jit-measurements.json --offer "$OFFER"
+            --budget-usd "$BUDGET" "${base[@]}" --measurements runs/jit-measure/jit-measurements.json --offer "$OFFER" "${ev[@]}"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jit-proposal-${{ matrix.c.case }}
@@ -386,8 +393,9 @@ jobs:
         run: |
           mkdir -p runs/jit-proposal-2
           base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
+          ev=(); if [[ -f runs/jit-measure/repro-evidence.json ]]; then ev=(--evidence runs/jit-measure/repro-evidence.json); fi
           # Any failure here leaves the first round standing; it can never become a pass or a catch.
-          python -m expectrail.jit.cli revise --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
+          python -m expectrail.jit.cli revise --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" "${ev[@]}" \
             --proposal runs/jit-proposal/jit-proposal.json --record runs/jit-round1/jit-run.json \
             --measurements runs/jit-measure/jit-measurements.json --out runs/jit-proposal-2 \
             --budget-usd "$BUDGET" --github-output runs/jit-proposal-2/revised.txt --offer "$OFFER" \
