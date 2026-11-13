@@ -132,6 +132,12 @@ of how far each advertised mode is proven: [`docs/capabilities.json`](capabiliti
 | --- | --- | --- |
 | `capabilities` | a person or an agent, by hand, in the pull request that changes what a mode has shown | `expectrail.capabilities` (`check`, `render`, `recheck`) and `tests/test_capabilities.py` |
 
+Across all rows citing one run, its entries must together include every notice their `titled` and
+`not` rules select in at least one entry's `of`. A notice selected by no entry's `where` is reported
+as "cannot tell", with its title and job. Entries may overlap; `has` determines `n`, not coverage.
+An entry without `where` includes every notice its title rules select. Titles excluded by every
+entry are outside this check. The example's two discovery entries cover all its build notices.
+
 It is not in `expectrail.contracts.KINDS`. The schema fixes the shape, the four statuses and the four
 grades. `expectrail.capabilities.problems` checks what a schema cannot: a `measured` row links a CI
 run, a measured or integrated row cites only runs whose recorded `conclusion` is success, every file a
