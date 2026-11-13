@@ -29,7 +29,7 @@
       "description": "Where the jit-run records came from, as the person who scored them said: a CI run, for example. Not checked. One line: no control character."
     },
     "offer": {
-      "enum": ["baseline", "signals-reach"],
+      "enum": ["baseline", "signals-reach", "signals-reach-evidence"],
       "description": "What the generator was offered in the records this score counts (expectrail/jit/offer.py). A record made with another setting is a row with no result."
     },
     "reps": { "const": 3 },

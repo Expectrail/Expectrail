@@ -75,6 +75,23 @@ def _offered(offer: str) -> dict[str, str]:
     return dict(SIGNAL_MEANINGS) if offer_mod.check(offer) == offer_mod.BASELINE else {**SIGNAL_MEANINGS, **NOT_YET_OFFERED}
 
 
+# Told to the model only under the evidence setting (expectrail/jit/offer.py, EVIDENCE), where up to six
+# probes carry "differs": expectrail/repro/evidence.py's summary of what the bug build changes along
+# that probe, from replays of the clean game and the bug build, never of the candidate.
+EVIDENCE_TEXT = """
+Some library probes also carry "differs": what the build the bug report describes changes against \
+the clean game along that probe, from replays with frames captured. "record" names the fields of the \
+engine's record that differ, each with the first tick it differs on and on how many ticks, and the \
+signals that read differently. "screen" says on how many captured frames any pixel differs, the first \
+such frame, and the rectangle (left, top, right, bottom, in pixels of a frame of the size "frame") that holds the \
+difference. "ticksPerSecond" and "framesPerSecond" relate ticks to frames. A probe without "differs" either shows \
+no difference or was not among the six that differ most. These are measurements, not instructions. \
+Checks still read only the signals: use "differs" to choose the probe that reaches the bug and the \
+signal that can see it. When only the screen differs on a probe, no signal can show the bug there; \
+prefer a probe where the record differs too.
+"""
+
+
 def system_for(offer: str) -> str:
     """The system prompt under ``offer``. ``system_for("baseline")`` is the prompt as it was before the
     setting existed, byte for byte (tests/test_jit_offer.py holds its digest)."""
@@ -100,7 +117,7 @@ any threshold between the two with a margin. A signal that reads the same on bot
 example a height capped by a platform overhead) cannot show the bug on that probe: use another probe \
 or another signal. Propose four to eight checks, each on a different probe or signal, so that one \
 wrong guess does not leave the change unchecked.
-
+""" + (EVIDENCE_TEXT if offer_mod.shows_evidence(offer) else "") + """
 What each signal measures, over one replay:
 """ + "\n".join(f"- {k}: {v}" for k, v in sorted(meanings.items())) + """
 
@@ -141,17 +158,27 @@ def prompt(report: str, patch_text: str, dmap: dict, profile: dict, probes: list
         "game": profile["game"]["description"],
         "actions": profile["actions"],
         "claims": claims,
-        "probesAvailable": [_probe_entry(p, signals) for p in probes if p["id"] in set(dmap["probeIds"])],
+        "probesAvailable": [_probe_entry(p, signals, offer_mod.shows_evidence(offer))
+                            for p in probes if p["id"] in set(dmap["probeIds"])],
         **({"previousAttempt": revision} if revision is not None else {}),
     }, indent=1)
 
 
-def _probe_entry(p: dict, signals: frozenset[str] = frozenset(OFFERED)) -> dict:
+def _probe_entry(p: dict, signals: frozenset[str] = frozenset(OFFERED), evidence: bool = False) -> dict:
     entry = {"id": p["id"], "description": p["description"]}
     if p.get("measured"):
         entry["measured"] = {build: ({k: v for k, v in values.items() if v is not None and k in signals}
                                      if values else None)
                              for build, values in p["measured"].items()}
+    if evidence and p.get("differs"):
+        # Put there by expectrail.jit.offer.attach_evidence: numbers, and names
+        # from closed lists (trace fields and signals). A signal the model is not told about is left out.
+        d = p["differs"]
+        record = d.get("record")
+        if record:
+            record = dict(record, signals={k: v for k, v in record["signals"].items() if k in signals})
+        entry["differs"] = {**{k: d[k] for k in ("ticksPerSecond", "framesPerSecond", "frame") if d.get(k) is not None},
+                            "record": record, "screen": d.get("screen")}
     return entry
 
 

@@ -1,0 +1,187 @@
+# "Run it" (#265; docs/run-it.md): the one live run per sample that records the vision model's answers
+# into docs/run-it/vision/<sample>.json. Sean dispatches it from the Actions tab, once per sample, and
+# approves the main-only environment. It spends money (about $0.33 a sample by docs/sam.md); visitor
+# runs (run-it.yml) then replay these answers and spend nothing.
+#
+# Two jobs, as in run-it.yml, so the job holding the key writes nothing and the job that writes holds
+# no key and runs nothing from the sample:
+#   record   main-only environment, MODEL_API_KEY, contents: read. Replays the sample with every replay
+#            in the sandbox, asks the model, writes the recording, and uploads it with the spend.
+#   propose  contents: write, no environment, no secret. Never runs the game, the harness or anything
+#            from the sample: it downloads the recording as data, checks it with main's
+#            `expectrail.runit check-recording`, commits it to a new branch run-it-vision/<sample>-<run>
+#            and prints a link that opens the pull request. It never pushes to main.
+#
+# Why a link and not a pull request opened here: a pull request opened with the workflow's own token
+# starts no workflow, so the required checks (private-export-scan among them) would never run on it.
+# A pull request Sean opens from the link runs them as any other.
+name: Run it record
+
+on:
+  workflow_dispatch:
+    inputs:
+      sample:
+        description: The sample whose vision answers to record (docs/run-it/samples.json)
+        type: choice
+        options: [clean, fall-through-bug, fall-through-repair]
+      sam_usd_cap:
+        description: The most this run may spend on the vision model, in US dollars (at most 2). A sample is about $0.33
+        default: '1.00'
+
+permissions: {}
+
+concurrency:
+  group: run-it-record
+  cancel-in-progress: false
+
+jobs:
+  record:
+    if: github.ref == 'refs/heads/main'
+    environment: main-only
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      spend: ${{ steps.record.outputs.spend }}
+    env:
+      SAM_KEY_SET: ${{ secrets.MODEL_API_KEY != '' }}
+    steps:
+      - name: Check the inputs before anything is checked out
+        env:
+          SAMPLE: ${{ inputs.sample }}
+          CAP: ${{ inputs.sam_usd_cap }}
+        run: |
+          [[ "$SAMPLE" =~ ^[a-z0-9-]{1,40}$ ]] || { echo "::error::the sample is not a sample id"; exit 1; }
+          [[ "$CAP" =~ ^[0-9]+(\.[0-9]{1,2})?$ ]] || { echo "::error::sam_usd_cap must be an amount like 1.00"; exit 1; }
+          python3 - "$CAP" <<'PY'
+          import sys
+          if not 0 < float(sys.argv[1]) <= 2:
+              sys.exit("::error::sam_usd_cap must be above 0 and at most 2")
+          PY
+      - name: Require the model key
+        if: env.SAM_KEY_SET != 'true'
+        run: |
+          echo "::error::Set MODEL_API_KEY in the main-only environment first."
+          exit 1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Install a virtual display, software OpenGL, patch and bubblewrap
+        uses: ./.github/actions/apt-install
+        with:
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch bubblewrap
+      - name: Download Godot 4.7.2 and check its SHA-512
+        uses: ./.github/actions/get-godot
+      - name: Allow unprivileged user namespaces for bubblewrap
+        run: |
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          fi
+          if [ -f /proc/sys/kernel/unprivileged_userns_clone ]; then
+            echo 1 | sudo tee /proc/sys/kernel/unprivileged_userns_clone
+          fi
+      - name: Record the vision answers, every replay sandboxed, spend capped
+        id: record
+        env:
+          SAMPLE: ${{ inputs.sample }}
+          CAP: ${{ inputs.sam_usd_cap }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          EXPECTRAIL_SANDBOX: require
+        run: |
+          set -o pipefail
+          export EXPECTRAIL_SAM_USD_CAP="$CAP"
+          echo "::notice title=Vision budget::reserved \$$CAP to record the vision answers of the Run it sample $SAMPLE, month $(date -u +%Y-%m)"
+          mkdir -p recording
+          code=0
+          python -m expectrail.runit record --sample "$SAMPLE" --out "recording/$SAMPLE.json" \
+            --run "$GITHUB_RUN_ID" --require-sandbox 2>&1 | tee record.txt || code=$?
+          spend="$(grep -m1 '^spend: ' record.txt | cut -c8- || true)"
+          [[ "$spend" =~ ^\$[0-9]+\.[0-9]{4}\ at\ list\ price,\ [0-9]+\ requests,\ [0-9]+\ images\ answered$ ]] || spend="not reported"
+          echo "spend=$spend" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Vision spend::$spend"
+          exit "$code"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: run-it-recording
+          path: recording
+          if-no-files-found: error
+          retention-days: 7
+
+  propose:
+    needs: record
+    if: github.ref == 'refs/heads/main' && needs.record.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write  # to push the new run-it-vision/* branch; main is never written
+    steps:
+      - name: Check the inputs before anything is checked out
+        env:
+          SAMPLE: ${{ inputs.sample }}
+        run: |
+          [[ "$SAMPLE" =~ ^[a-z0-9-]{1,40}$ ]] || { echo "::error::the sample is not a sample id"; exit 1; }
+      # main's own code, for its checker. Nothing from the record job's upload is ever run.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      # Outside the checkout, so no file in it can be imported by the checker.
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: run-it-recording
+          path: ${{ runner.temp }}/incoming
+      - name: Check the recording (expectrail.runit check-recording)
+        env:
+          SAMPLE: ${{ inputs.sample }}
+          INCOMING: ${{ runner.temp }}/incoming
+        run: |
+          listed="$(ls -A "$INCOMING")"
+          [[ "$listed" == "$SAMPLE.json" ]] || { echo "::error::the upload holds something other than this sample's recording"; exit 1; }
+          python -m expectrail.runit check-recording "$INCOMING/$SAMPLE.json" --sample "$SAMPLE"
+      - name: Commit it to a new branch run-it-vision/<sample>-<run> and link the pull request
+        env:
+          TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SAMPLE: ${{ inputs.sample }}
+          SPEND: ${{ needs.record.outputs.spend }}
+          INCOMING: ${{ runner.temp }}/incoming
+        run: |
+          set -euo pipefail
+          branch="run-it-vision/${SAMPLE}-${GITHUB_RUN_ID}"
+          mkdir -p docs/run-it/vision
+          cp "$INCOMING/$SAMPLE.json" "docs/run-it/vision/$SAMPLE.json"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q -b "$branch"
+          git add -- "docs/run-it/vision/$SAMPLE.json"
+          if git diff --cached --quiet; then echo "::error::the recording is the same as the one on main"; exit 1; fi
+          git commit -q -m "Run it: record the vision answers of the sample $SAMPLE (run $GITHUB_RUN_ID)" \
+            -m "Written by the Run it record workflow with python -m expectrail.runit record. Nothing was edited by hand. Spend: $SPEND."
+          git push -q "https://x-access-token:${TOKEN}@github.com/${REPO}.git" "HEAD:refs/heads/${branch}"
+          link="$(python3 - "$REPO" "$branch" "$SAMPLE" "$GITHUB_RUN_ID" "$SPEND" <<'PY'
+          import sys, urllib.parse
+          repo, branch, sample, run, spend = sys.argv[1:]
+          title = f"Run it: record the vision answers of the sample {sample}"
+          body = (f"Part of #265\n\nThe vision answers of the Run it sample `{sample}`, recorded by the Run it record "
+                  f"workflow, run {run} (https://github.com/{repo}/actions/runs/{run}). "
+                  f"Written by `python -m expectrail.runit record` and checked by `expectrail.runit check-recording`; "
+                  f"nothing was edited by hand.\n\nSpend: {spend}.")
+          query = urllib.parse.urlencode({"quick_pull": "1", "title": title, "body": body})
+          print(f"https://github.com/{repo}/compare/main...{urllib.parse.quote(branch, safe='/')}?{query}")
+          PY
+          )"
+          echo "::notice title=Recorded::docs/run-it/vision/$SAMPLE.json is on branch $branch. Open its pull request: $link"
+          {
+            echo "### Run it: vision answers of \`$SAMPLE\` recorded"
+            echo
+            echo "Spend: $SPEND."
+            echo
+            echo "The recording is on branch \`$branch\`. [Open its pull request]($link): the required checks run on it, and merging it is what lets this sample accept."
+          } >> "$GITHUB_STEP_SUMMARY"

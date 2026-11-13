@@ -755,15 +755,93 @@ class TheContract(unittest.TestCase):
         self.assertEqual(tuple(schema["$defs"]["reason"]["enum"]), score.MISS_REASONS)
 
 
-class NoRateYet(unittest.TestCase):
-    """No live run has been made on the bench. Until one is, no page may carry a rate."""
+class BaselineAsPublished(unittest.TestCase):
+    """The baseline run of November 13 (run 43465090517) is published on the bench's page, transcribed
+    from its job logs: the score file is not committed yet. Until it is, the page must agree with
+    itself: its per-defect table with the scorer's totals line it quotes, and its miss breakdown with
+    the visibility record and the hand findings by the breakdown's rule."""
 
-    def test_no_score_record_is_committed_and_the_pages_say_none_was_measured(self):
+    RUN = "43465090517"
+    PAGE = REPO / "bench" / "jit" / "public" / "README.md"
+
+    def section(self):
+        page = self.PAGE.read_text(encoding="utf-8")
+        return page.split("## The baseline: ", 1)[1].split("\n## ", 1)[0]
+
+    def table(self):
+        found = re.findall(r"^\| `([a-z-]+)` \| (signal|trace-only|none) \| (\d+) \| (\d+) \| (\d+) \| "
+                           r"(reproduced|not reproduced) \| \$([\d.]+) \|$", self.section(), re.M)
+        return [{"id": i, "visibility": v, "proposed": int(p), "kept": int(k), "catches": int(c),
+                 "reproduced": o == "reproduced", "spend": float(sp)} for i, v, p, k, c, o, sp in found]
+
+    def totals(self):
+        line = re.search(r"^(\{\"defects\".*\})$", self.section(), re.M)
+        self.assertIsNotNone(line)
+        return json.loads(line.group(1))
+
+    def test_still_no_score_record_and_the_rate_names_its_run_and_offer(self):
+        # The day a score file is committed, this test gives way to one that scores its records again.
         self.assertEqual(sorted(p.name for p in (REPO / "bench" / "jit" / "public").glob("*score*")), [])
-        page = (REPO / "bench" / "jit" / "public" / "README.md").read_text(encoding="utf-8")
-        self.assertIn("No reproduction rate has been measured", page)
-        self.assertIn("No reproduction rate has been measured", (REPO / "docs" / "jit.md").read_text(encoding="utf-8"))
-        self.assertIsNone(re.search(r"reproduc\w+ (rate )?(is|was|of) \d+ ?%", page))
+        head = self.section().split("\n", 1)[0]
+        self.assertEqual(head, "17 of 24 reproduced (November 13, 2026)")
+        self.assertIn(f"actions/runs/{self.RUN}", self.section())
+        self.assertIn("offer `baseline`", self.section())
+        jit = (REPO / "docs" / "jit.md").read_text(encoding="utf-8")
+        self.assertIn(f"Run {self.RUN}", jit)
+        self.assertIn("17 of 24 reproduced", jit)
+
+    def test_the_table_has_every_defect_once_in_bench_order_with_its_visibility(self):
+        rows = self.table()
+        self.assertEqual([r["id"] for r in rows], [d["id"] for d in bench.load()["defects"]])
+        seen = {r["id"]: r["visibility"] for r in visibility.load(visibility.RECORD)["defects"]}
+        for r in rows:
+            self.assertEqual(r["visibility"], seen[r["id"]], r["id"])
+            self.assertEqual(r["reproduced"], r["catches"] > 0, r["id"])
+            self.assertLessEqual(r["catches"], r["kept"], r["id"])
+            self.assertLessEqual(r["kept"], r["proposed"], r["id"])
+
+    def test_the_table_adds_up_to_the_scorers_totals(self):
+        rows, t = self.table(), self.totals()
+        tuned = {d["id"]: d["tunedOn"] for d in bench.load()["defects"]}
+        done = [r for r in rows if r["reproduced"]]
+        self.assertEqual(t["defects"], len(rows))
+        self.assertEqual(t["reproduced"], len(done))
+        self.assertEqual(t["notReproduced"] + t["noResult"], len(rows) - len(done))
+        self.assertEqual(t["keptChecks"], sum(r["kept"] for r in rows))
+        self.assertEqual(t["traceVisible"], sum(r["visibility"] in score.TRACE_VISIBLE for r in rows))
+        self.assertEqual(t["reproducedTraceVisible"], sum(r["visibility"] in score.TRACE_VISIBLE for r in done))
+        self.assertEqual(t["untuned"], sum(not tuned[r["id"]] for r in rows))
+        self.assertEqual(t["reproducedUntuned"], sum(not tuned[r["id"]] for r in done))
+        self.assertAlmostEqual(t["spendUsd"], sum(r["spend"] for r in rows), places=4)
+        self.assertAlmostEqual(t["maxSpendUsd"], max(r["spend"] for r in rows), places=4)
+        self.assertEqual(t["overCap"], sum(r["spend"] > score.CAP_USD for r in rows))
+
+    def test_the_misses_follow_from_visibility_as_the_scorer_assigns_them(self):
+        # No miss was flaky or out of budget (the totals say so), so the scorer's reason for each miss
+        # follows from the visibility record alone; the counts it printed must be what that gives.
+        rows, t = self.table(), self.totals()
+        by_vis = {"signal": "wrong-predicate", "trace-only": "no-signal", "none": "undetermined"}
+        derived = {}
+        for r in rows:
+            if not r["reproduced"]:
+                derived[by_vis[r["visibility"]]] = derived.get(by_vis[r["visibility"]], 0) + 1
+        self.assertNotIn("flaky", t["misses"])
+        self.assertNotIn("budget", t["misses"])
+        self.assertEqual(t["misses"], derived)
+
+    def test_the_breakdown_on_the_page_is_the_rule_applied(self):
+        from expectrail.repro import breakdown
+
+        rows = self.table()
+        by_vis = {"signal": "wrong-predicate", "trace-only": "no-signal", "none": "undetermined"}
+        scored = {"rows": [{"id": r["id"], "outcome": "reproduced" if r["reproduced"] else "not-reproduced",
+                            "missReason": None if r["reproduced"] else by_vis[r["visibility"]]} for r in rows]}
+        counted = breakdown.counts(breakdown.breakdown(scored, breakdown.load()))
+        section = self.section()
+        for reason, v in counted.items():
+            self.assertRegex(section, rf"(?m)^\| `{reason}` \| {v['misses']} \| {v['byHand']} \| ", reason)
+        self.assertEqual(sum(v["misses"] for v in counted.values()), len(rows) - sum(r["reproduced"] for r in rows))
+        self.assertNotIn("undetermined", counted)
 
 
 class Workflow(unittest.TestCase):

@@ -59,7 +59,7 @@
               "present",
               "absent"
             ],
-            "description": "ok or missing for a piece that was checked; skipped when it could not be tried (what it needs is missing, or this platform is not checked); present or absent for the vision key."
+            "description": "ok or missing for a piece that was checked; skipped when it could not be tried. A skipped check with required false and fix null does not apply on this system; it is not an ok check. Other skipped checks name what to fix before trying them. present or absent for the vision key."
           },
           "required": {
             "type": "boolean",
@@ -77,9 +77,29 @@
               "null"
             ],
             "maxLength": 600,
-            "description": "What to do about it. Null exactly when the status is ok, present or absent."
+            "description": "What to do about it. Null for ok, present or absent, and for an optional skipped check that does not apply. Missing checks (even optional ones) and required skipped checks must name a non-empty fix. An applicable optional skipped check can also name a fix."
           }
-        }
+        },
+        "anyOf": [
+          {
+            "properties": {
+              "status": { "enum": ["ok", "present", "absent"] }
+            }
+          },
+          {
+            "properties": {
+              "status": { "enum": ["missing", "skipped"] },
+              "fix": { "type": "string", "minLength": 1 }
+            }
+          },
+          {
+            "properties": {
+              "status": { "const": "skipped" },
+              "required": { "const": false },
+              "fix": { "type": "null" }
+            }
+          }
+        ]
       }
     }
   }

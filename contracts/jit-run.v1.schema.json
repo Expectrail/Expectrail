@@ -34,7 +34,7 @@
         "reps": {"type": "integer", "minimum": 1},
         "variantLimit": {"type": "integer", "minimum": 0},
         "budgetUsd": {"type": "number", "minimum": 0},
-        "offer": {"enum": ["baseline", "signals-reach"],
+        "offer": {"enum": ["baseline", "signals-reach", "signals-reach-evidence"],
                   "description": "What the generator was offered (expectrail/jit/offer.py). Absent in records written before the setting existed, which were made under baseline."}
       }
     },

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- The evidence viewer is shown in a sandboxed frame built from its one-file export (srcdoc), and a
+     srcdoc frame inherits this policy, so inline script and style are allowed here for it. This page's
+     own code is run-it.js, which never writes HTML from data. connect-src is what matters: the page
+     talks only to itself, the Run it service and the results branch. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.expectrail.tech https://raw.githubusercontent.com; frame-src 'self' blob:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Run it: Expectrail</title>
+<meta name="description" content="Pick a change to Expectrail's sample game. Expectrail plays the game with it, watches, and says whether the change holds. Nothing to install.">
+<link rel="canonical" href="https://expectrail.tech/run-it/">
+<link rel="icon" href="../brand/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#16133A">
+<style>
+@font-face { font-family:"TG Adventor"; src:url("../assets/fonts/texgyreadventor-regular.woff") format("woff"); font-weight:400; font-display:swap; }
+@font-face { font-family:"TG Adventor"; src:url("../assets/fonts/texgyreadventor-bold.woff") format("woff"); font-weight:700; font-display:swap; }
+@font-face { font-family:"Lora"; src:url("../assets/fonts/Lora-Variable.woff") format("woff"); font-weight:400 700; font-style:normal; font-display:swap; }
+:root {
+  --ink:#16133A; --paper:#F6F7FB; --rail:#FFC928; --stone:#4B4178; --mist:#E4E3F0;
+  --pass:#157F4E; --fail:#C2303A; --review:#8A5A00; --card:#FFFFFF;
+  --sans:"TG Adventor", "Century Gothic", "Avenir Next", system-ui, sans-serif;
+  --serif:"Lora", Georgia, "Times New Roman", serif;
+  --wrap:1040px; --gutter:clamp(16px, 4vw, 40px);
+}
+* { box-sizing:border-box; }
+[hidden] { display:none !important; }
+html { -webkit-text-size-adjust:100%; }
+body { margin:0; background:var(--paper); color:var(--ink); font:400 1.0625rem/1.6 var(--serif); }
+a { color:inherit; text-decoration-color:var(--rail); text-decoration-thickness:3px; text-underline-offset:3px; }
+a:hover { text-decoration-color:currentColor; }
+:focus-visible { outline:3px solid var(--rail); outline-offset:3px; border-radius:2px; }
+.skip { position:absolute; left:-999px; top:8px; background:var(--ink); color:var(--paper); padding:8px 12px; font-family:var(--sans); }
+.skip:focus { left:8px; }
+.wrap { max-width:var(--wrap); margin:0 auto; padding:0 var(--gutter); }
+h1, h2, h3, .sans, button { font-family:var(--sans); letter-spacing:-0.01em; }
+h1 { font-size:clamp(2rem, 1.4rem + 2.4vw, 2.8rem); line-height:1.1; margin:0.2em 0 0.3em; }
+h2 { font-size:1.5rem; line-height:1.2; margin:0 0 0.5em; }
+h3 { font-size:1.1rem; line-height:1.25; margin:0 0 0.3em; }
+p { margin:0 0 0.9em; max-width:68ch; }
+.lede { font-size:1.2rem; color:var(--stone); }
+.muted { color:var(--stone); font-size:0.95rem; }
+.top { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:20px 0; flex-wrap:wrap; }
+.top img { height:32px; width:auto; display:block; }
+.top nav { display:flex; gap:20px; font:700 0.95rem/1 var(--sans); }
+.top nav a { text-decoration:none; padding:6px 0; border-bottom:3px solid transparent; }
+.top nav a:hover { border-bottom-color:var(--rail); }
+.service { font:700 0.95rem/1.4 var(--sans); padding:10px 14px; border-radius:4px; background:var(--mist); margin:18px 0 26px; max-width:none; }
+.service[data-open="yes"] { background:#E3F1EA; }
+.service[data-open="no"] { background:#FBEFD9; }
+.standin { background:var(--rail); color:var(--ink); font:700 0.95rem/1.4 var(--sans); padding:10px 14px; border-radius:4px; margin:0 0 18px; max-width:none; }
+.samples { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px; padding:0; margin:0 0 36px; list-style:none; }
+.sample { background:var(--card); border:1px solid var(--mist); border-radius:6px; padding:18px; display:flex; flex-direction:column; gap:8px; }
+.sample p { margin:0; font-size:0.98rem; }
+.sample .expect { font:400 0.9rem/1.4 var(--sans); color:var(--stone); }
+.sample .actions { margin-top:auto; display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding-top:8px; }
+button { font-weight:700; font-size:1rem; line-height:1; padding:13px 18px; border-radius:4px; border:2px solid var(--ink); background:var(--ink); color:var(--paper); cursor:pointer; }
+button:hover:not(:disabled) { background:var(--stone); border-color:var(--stone); }
+button:disabled { opacity:0.45; cursor:not-allowed; }
+button.quiet { background:transparent; color:var(--ink); font-size:0.92rem; padding:9px 12px; }
+button.quiet:hover:not(:disabled) { background:var(--mist); color:var(--ink); border-color:var(--ink); }
+.latest-line { font:400 0.88rem/1.4 var(--sans); color:var(--stone); }
+#run { background:var(--card); border:1px solid var(--mist); border-radius:6px; padding:clamp(16px, 3vw, 28px); margin:0 0 40px; }
+#run[hidden] { display:none; }
+.when { font:700 0.85rem/1.3 var(--sans); text-transform:uppercase; letter-spacing:0.04em; color:var(--stone); margin:0 0 6px; }
+.phases { list-style:none; padding:0; margin:12px 0 0; display:grid; gap:8px; font:400 1rem/1.4 var(--sans); }
+.phases li { display:flex; gap:10px; align-items:center; color:var(--stone); }
+.phases li::before { content:""; width:14px; height:14px; border-radius:50%; border:2px solid var(--mist); flex:none; }
+.phases li[data-at="done"] { color:var(--ink); }
+.phases li[data-at="done"]::before { background:var(--ink); border-color:var(--ink); }
+.phases li[data-at="now"] { color:var(--ink); font-weight:700; }
+.phases li[data-at="now"]::before { border-color:var(--ink); border-top-color:var(--rail); animation:spin 1s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) { .phases li[data-at="now"]::before { animation:none; background:var(--rail); } }
+.verdict { border-left:8px solid var(--stone); padding:14px 16px; background:var(--paper); border-radius:0 4px 4px 0; margin:6px 0 16px; }
+.verdict h2 { margin:0 0 4px; }
+.verdict p { margin:0; }
+.verdict[data-tone="pass"] { border-color:var(--pass); }
+.verdict[data-tone="pass"] h2 { color:var(--pass); }
+.verdict[data-tone="fail"] { border-color:var(--fail); }
+.verdict[data-tone="fail"] h2 { color:var(--fail); }
+.verdict[data-tone="review"] { border-color:var(--review); }
+.verdict[data-tone="review"] h2 { color:var(--review); }
+.facts { display:grid; grid-template-columns:max-content 1fr; gap:6px 16px; margin:0 0 16px; font-size:0.97rem; }
+.facts dt { font:700 0.9rem/1.5 var(--sans); color:var(--stone); }
+.facts dd { margin:0; overflow-wrap:anywhere; }
+.diagnostics { margin:0 0 16px; padding-left:1.2em; }
+.evidence-head { display:flex; flex-wrap:wrap; gap:8px 16px; align-items:baseline; justify-content:space-between; margin:20px 0 8px; }
+.evidence-head h3 { margin:0; }
+.evidence-links { display:flex; flex-wrap:wrap; gap:14px; font:400 0.95rem/1.4 var(--sans); }
+iframe.viewer { width:100%; height:min(80vh, 900px); border:1px solid var(--mist); border-radius:4px; background:#fff; display:block; }
+.notice { font:400 0.95rem/1.5 var(--sans); background:#FBEFD9; padding:10px 14px; border-radius:4px; max-width:none; }
+footer { border-top:1px solid var(--mist); padding:22px 0 40px; font:400 0.9rem/1.5 var(--sans); color:var(--stone); }
+@media (max-width:560px) {
+  .facts { grid-template-columns:1fr; gap:0 0; }
+  .facts dd { margin-bottom:8px; }
+  .top nav { gap:14px; }
+  iframe.viewer { height:75vh; }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to Run it</a>
+<div class="wrap">
+  <header class="top">
+    <a href="../" aria-label="Expectrail, home"><img src="../brand/expectrail-logo.svg" alt="Expectrail" width="137" height="32"></a>
+    <nav aria-label="Sections">
+      <a href="../">Home</a>
+      <a href="../#how">How it works</a>
+      <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/run-it.md">About Run it</a>
+    </nav>
+  </header>
+</div>
+
+<main id="main" class="wrap">
+  <h1>Run it</h1>
+  <p class="lede">Pick a change to Expectrail's sample game. Expectrail plays the game with that change, watches it, and says whether the change holds. Nothing to install.</p>
+  <p class="muted">The game run and the checks are live on every visit. The vision model's answers are recorded once for each sample, so a visit spends nothing: a frame that is not in the recording gets no answer, and the run then says it needs review rather than guess. A sample whose answers are not recorded yet cannot be accepted, and its result says so.</p>
+
+  <p id="service" class="service" role="status" aria-live="polite">Checking whether Run it can start a run…</p>
+  <p id="standin" class="standin" hidden>Local stub with stand-in replays: these runs do not play the real game. They are for looking at this page.</p>
+
+  <h2 id="samples-title">The samples</h2>
+  <ul id="samples" class="samples" aria-labelledby="samples-title">
+    <li class="sample"><p class="muted">Loading the samples…</p></li>
+  </ul>
+
+  <section id="run" hidden aria-labelledby="run-title" tabindex="-1">
+    <p id="run-when" class="when"></p>
+    <h2 id="run-title"></h2>
+    <p id="run-message" role="status" aria-live="polite"></p>
+    <ol id="phases" class="phases" hidden>
+      <li data-phase="queued">Waiting for a runner</li>
+      <li data-phase="running">Playing the game and judging each check</li>
+      <li data-phase="publishing">Checking and publishing the evidence</li>
+    </ol>
+    <div id="result" hidden>
+      <div id="verdict" class="verdict" data-tone="review"><h2 id="verdict-title"></h2><p id="verdict-means"></p></div>
+      <dl id="facts" class="facts"></dl>
+      <ul id="diagnostics" class="diagnostics" hidden></ul>
+      <div class="evidence-head">
+        <h3>The evidence</h3>
+        <div id="evidence-links" class="evidence-links"></div>
+      </div>
+      <p id="evidence-note" class="notice" hidden></p>
+      <iframe id="viewer" class="viewer" title="Evidence viewer" sandbox="allow-scripts" referrerpolicy="no-referrer" hidden></iframe>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Accepted means a change passed these checks on this route, judged by the engine's record and the recorded vision answers. It does not mean the game is correct. Receipts are not signed yet (#255).</p>
+    <p><a href="https://github.com/Expectrail/Expectrail">Expectrail on GitHub</a></p>
+  </div>
+</footer>
+<script src="run-it.js"></script>
+</body>
+</html>

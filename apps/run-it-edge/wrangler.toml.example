@@ -1,0 +1,20 @@
+# An example for Cloudflare Workers, if that is the host Sean picks (#265). It holds no secret: set
+# GITHUB_TOKEN and VISITOR_SALT with `wrangler secret put`, never in this file.
+name = "expectrail-run-it"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+
+routes = [{ pattern = "api.expectrail.tech", custom_domain = true }]
+
+[vars]
+RUN_IT_OPEN = "false"
+BREAKER_EPOCH = "0"
+ALLOWED_ORIGINS = "https://expectrail.tech"
+
+[[durable_objects.bindings]]
+name = "RUN_IT"
+class_name = "RunIt"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RunIt"]

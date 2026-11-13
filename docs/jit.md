@@ -224,7 +224,15 @@ which a generated check fails on the bug build 3 times of 3 and passes on the cl
 game, the 4 reported bugs and 20 written for it, each a patch and a bug report in a player's words
 (`expectrail.repro-bench/v1`, read by [`expectrail/repro/bench.py`](../expectrail/repro/bench.py)).
 
-**No reproduction rate has been measured on it.** What has been measured needs no model
+**The baseline, November 13, 2026: 17 of 24 reproduced (71%); 16 of the 19 defects that change the
+engine's record on a library probe (84%, the issue's target set is 70%); $2.05 in all, at most $0.17
+for one defect.** Run 43465090517, dispatched by Sean from main, offer `baseline`. The 7 misses: 2
+`no-signal` (both camera defects), 1 `wrong-predicate` (`coin-stays`), and 4 the records cannot
+classify, which the hand findings of November 12 call `probe-language` (2, screen only) and
+`route-never-reaches` (2, the pause menu). These were read from the run's job logs; the score file is
+not committed yet. The bench's page has the table and the source of each number.
+
+Before that run, what was measured needed no model
 ([`expectrail/repro/visibility.py`](../expectrail/repro/visibility.py)): every probe was replayed on
 the clean game and on each defect build, and each defect sorted by what changed in the engine's
 record. A signal reads differently on some probe for 17 of the 24 (for one of them only by a
@@ -234,7 +242,7 @@ check could fail on at most 17 of the 24, before the model has proposed anything
 up to four probes of its own, which this does not replay. The table, the command and what was and
 was not shown are on the bench's page. That run was made in a cloud container, not in CI.
 
-Built and not yet run: a `repro` mode in `jit.yml` (from main only) that sends each defect through
+Built November 11 and first run on November 13: a `repro` mode in `jit.yml` (from main only) that sends each defect through
 the live jobs with one stand-in candidate for all, a comment line in the game's README that
 changes nothing ([`no-fix.patch`](../bench/jit/public/no-fix.patch)), so a check comes from the bug
 build and the report alone; and the scorer that reads the run's records
@@ -284,8 +292,8 @@ given, what the observer answered on those frames of both builds. It is made wit
 observer's answers are looked up and never asked for. `evidence.for_proposer` is the bounded
 summary a prompt could carry; it shows only probes and objects its caller names, so nothing a
 record says can put a new string in a prompt. Four records made on the real engine are on the bench's page.
-**Nothing generated checks run on reads it**: the prompt is unchanged, and offering it is a later
-change, after the baseline.
+It is offered to the generator only under the third setting below, `signals-reach-evidence`; under
+the other two the prompt is unchanged.
 
 **What the generator is offered** (November 13, 2026; [`expectrail/jit/offer.py`](../expectrail/jit/offer.py)).
 Steps 3 and 4 were built before the baseline was run, so they are held back. One setting, the same
@@ -296,6 +304,20 @@ in every step of one change, says what the generator is given:
   holds their digests as computed on main before the change.
 - `signals-reach`: also the three signals of step 4 and the eight reach probes of step 3. The bug
   report only orders the reach probes.
+- `signals-reach-evidence` (added later on November 13): everything `signals-reach` offers, and step 5's
+  evidence. The measure job also replays every probe with frames, the clean game twice and the bug
+  build once (`--evidence-jobs` at a time), and uploads `repro-evidence.json` beside the
+  measurements; under this setting it installs a virtual display and software OpenGL and may run
+  75 minutes instead of 30. The propose and revise jobs read the file with `--evidence`, re-check it
+  as untrusted data (schema, its own sums, made for these base patches), and put
+  `evidence.for_proposer`'s summary on at most six probes of the prompt as `differs`: the record
+  fields that differ with their first tick, the signals that moved, and on how many frames the
+  picture differs, from which frame, where. No observer is read for it. The system prompt is
+  `signals-reach`'s with one paragraph more, which says checks still read only signals (the closed
+  language has no pixel predicate until #286). A run under this setting that cannot make the
+  evidence stops in the measure job; a propose step given none says so in the proposal's
+  diagnostics. `expectrail/jit/offer.py` is the one file under `expectrail/jit` that reads the
+  evidence module.
 
 `jit.yml` takes it as the `offer` input (default `baseline`) and passes it to measure, propose,
 revise, both replays and the reproduction score; the known-bugs bench refuses anything but
@@ -305,11 +327,12 @@ setting it was made with, a revision only under the setting of its first round, 
 reproduction score counts only the records of the setting it is given and names that setting on its
 page (`offer` in `expectrail.repro-score/v1`); a record of another setting is a row with no result.
 A proposal or record written before the setting existed states none and is read as `baseline`.
-Nothing about what keeps or drops a check changes. The evidence records of step 5 are not part of
-any setting yet: they need frames, which the measure job does not capture.
+Nothing about what keeps or drops a check changes.
 
 Not done: the live baseline itself, which a person dispatches, and so the rate and the breakdown
-of misses; and the `signals-reach` run after it.
+of misses; and the `signals-reach` and `signals-reach-evidence` runs after it. The measure job's
+frames under `signals-reach-evidence` have not been captured in CI yet: the capture smoke job
+renders with the same packages, but this job has not been dispatched with them.
 
 ### Three signals for what the record showed and no signal read
 

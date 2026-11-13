@@ -1,0 +1,16 @@
+{
+ "format": "expectrail.repro-hand-reasons/v1",
+ "written": "2026-11-12",
+ "rows": [
+  {"id": "no-shooting-in-air", "reason": "route-never-reaches",
+   "basis": "No library probe shoots while airborne. On a route that jumps and shoots at once, replayed once per build, the clean game fired 1 bullet and the defect build 0."},
+  {"id": "enemy-walks-backwards", "reason": "probe-language",
+   "basis": "Screen only: on a route that walks right and fires three times, all 130 frames differ from the clean game's, and the engine's record has no field for it."},
+  {"id": "bullet-behind-scenery", "reason": "probe-language",
+   "basis": "Screen only: on a route that walks right and fires three times, 100 frames differ from the clean game's, and the engine's record has no field for it."},
+  {"id": "coin-counts-twice", "reason": "route-never-reaches",
+   "basis": "The coin counter is drawn only in the pause menu, and the action catalog (move, jump, shoot) cannot open it. No run has shown this defect change anything."},
+  {"id": "coin-counter-stuck", "reason": "route-never-reaches",
+   "basis": "The coin counter is drawn only in the pause menu, and the action catalog (move, jump, shoot) cannot open it. No run has shown this defect change anything."}
+ ]
+}

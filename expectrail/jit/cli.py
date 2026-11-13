@@ -13,7 +13,9 @@ In CI the model call and the replays are separate steps, so the key and the chan
 
 Every step of one change takes the same ``--offer`` (expectrail/jit/offer.py): ``baseline``, the default,
 is the generator as it was before issue #285's steps 3 and 4; ``signals-reach`` also offers the three
-held-back signals and the reach probes. A proposal is replayed only under the offer it was made with.
+held-back signals and the reach probes; the evidence setting (``offer.EVIDENCE``) also gives the proposer step 5's
+evidence, which ``measure`` makes (replays with frames, expectrail/jit/offer.py) and ``propose`` and
+``revise`` read with ``--evidence``. A proposal is replayed only under the offer it was made with.
 
 ``run`` always exits 0 once it has written a record: a run that generated nothing is a result, and
 nothing here accepts or rejects a change. Bad arguments exit 2.
@@ -28,6 +30,7 @@ from pathlib import Path
 from expectrail.contracts import load_strict
 from expectrail.jit.offer import DEFAULT as DEFAULT_OFFER, OFFERS
 from expectrail.jit.offer import library as offered_library
+from expectrail.jit.offer import attach_evidence, make_evidence, shows_evidence
 from expectrail.jit.run import DEFAULT_BUDGET_USD, RECORD_NAME, gate_summary, generate
 
 PROFILE = Path(__file__).resolve().parents[2] / "discovery" / "platformer.profile.json"
@@ -156,6 +159,8 @@ def main(argv: list[str] | None = None) -> int:
     pp.add_argument("--base", type=Path, action="append", default=[],
                     help="the bug's patches, read only to check the measurements were taken against them")
     pp.add_argument("--measurements", type=Path, help="jit-measurements.json from the measure command")
+    pp.add_argument("--evidence", type=Path,
+                    help="the evidence file the measure command wrote; read only under the evidence setting")
     pp.add_argument("--offer", choices=OFFERS, default=DEFAULT_OFFER,
                     help="what the generator is offered (expectrail/jit/offer.py); the same for every step")
     rv = sub.add_parser("revise")
@@ -170,6 +175,8 @@ def main(argv: list[str] | None = None) -> int:
     rv.add_argument("--spark-usd-per-mtok-out", type=float)
     rv.add_argument("--base", type=Path, action="append", default=[])
     rv.add_argument("--measurements", type=Path)
+    rv.add_argument("--evidence", type=Path,
+                    help="the evidence file the measure command wrote; read only under the evidence setting")
     rv.add_argument("--github-output", type=Path, help="append revised=true|false here (a workflow's GITHUB_OUTPUT)")
     rv.add_argument("--offer", choices=OFFERS, default=DEFAULT_OFFER,
                     help="what the generator is offered (expectrail/jit/offer.py); the same for every step")
@@ -182,6 +189,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="what the generator is offered (expectrail/jit/offer.py); the same for every step")
     ms.add_argument("--report-file", type=Path,
                     help="the bug report; with --offer signals-reach it only orders the reach probes")
+    ms.add_argument("--evidence-jobs", type=int, default=1,
+                    help="replays at once for the evidence (the evidence setting only)")
     bp = sub.add_parser("bench-pins", help="print the pins a bench registration records")
     bc = sub.add_parser("bench-check", help="exit 1 unless the bench registration is signed and its pins hold")
     bc.add_argument("--prereg", type=Path)
@@ -212,9 +221,17 @@ def main(argv: list[str] | None = None) -> int:
 
         profile = load_strict(args.profile, "mechanics-profile")
         report = args.report_file.read_text(encoding="utf-8", errors="replace") if args.report_file else ""
-        doc = measure(profile, args.base, args.out, probes=offered_library(profile["actions"], args.offer, report),
-                      game=args.game)
-        print(json.dumps({"probes": len(doc["probes"]), "bugBuild": bool(args.base)}))
+        if not 1 <= args.evidence_jobs <= 8:
+            ap.error("--evidence-jobs is between 1 and 8")
+        probes = offered_library(profile["actions"], args.offer, report)
+        doc = measure(profile, args.base, args.out, probes=probes, game=args.game)
+        made = None
+        if shows_evidence(args.offer) and args.base:
+            # Under this setting the evidence is part of what is offered: a run that cannot make it
+            # stops here instead of proposing as if it had been offered.
+            made = make_evidence(profile, probes, args.base, args.out, game=args.game,
+                                 jobs=args.evidence_jobs)["totals"]
+        print(json.dumps({"probes": len(doc["probes"]), "bugBuild": bool(args.base), "evidence": made}))
         return 0
     if args.cmd in ("bench-pins", "bench-check", "bench-score"):
         from expectrail.jit import bench
@@ -246,6 +263,7 @@ def main(argv: list[str] | None = None) -> int:
         report = args.report_file.read_text(encoding="utf-8", errors="replace")
         probes = offered_library(profile["actions"], args.offer, report)
         notes = attach_measurements(probes, args.measurements, args.base)
+        notes += attach_evidence(probes, args.evidence, args.base, args.offer)
         try:
             doc = revise_to_file(spark_intent(offer=args.offer), report,
                                  args.candidate.read_bytes().decode("utf-8", errors="replace"), profile, probes,
@@ -271,11 +289,14 @@ def main(argv: list[str] | None = None) -> int:
         report = args.report_file.read_text(encoding="utf-8", errors="replace")
         probes = offered_library(profile["actions"], args.offer, report)
         notes = attach_measurements(probes, args.measurements, args.base)
+        measured = not notes
+        notes += attach_evidence(probes, args.evidence, args.base, args.offer)
         doc = propose_to_file(spark_intent(offer=args.offer), report,
                               args.candidate.read_bytes().decode("utf-8", errors="replace"), profile,
                               probes, args.out, budget_usd=args.budget_usd, prices=prices, notes=notes)
         print(json.dumps({"error": doc["error"], "candidates": len(doc["candidates"]), "probes": len(doc["probes"]),
-                          "measured": not notes}))
+                          "measured": measured,
+                          "evidence": any("differs" in p for p in probes)}))
         return 0
 
     if args.cmd == "run":

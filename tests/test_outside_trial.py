@@ -176,12 +176,43 @@ class AroundTest(unittest.TestCase):
             shown = trial.around(Path(tmp) / "jobs", {"spec": "s", "route": "walk", "frame": 92})
             self.assertEqual(shown["ticksPerFrame"], 2)
             self.assertEqual([r["tick"] for r in shown["rows"]], [178, 180, 182, 184, 186, 188, 190])   # frame 92 is tick 184
-            self.assertEqual(shown["rows"][3], {"tick": 184, "player": [184.0, 300.0], "ground": 272.5, "onFloor": True,
-                                                "view": [1, 0, 0, 1, 0, 0]})
+            self.assertEqual(shown["rows"][3], {"tick": 184, "player": [184.0, 300.0], "ground": 272.5, "groundFrom": None,
+                                                "body": None, "onFloor": True, "view": [1, 0, 0, 1, 0, 0]})
             self.assertEqual(trial.around(Path(tmp) / "jobs", {"spec": "s", "route": "other", "frame": 1})["rows"], [])
             row = {"name": "x", "commit": "b" * 40, "licence": "MIT", "kind": "k", "exit": 1, "verdict": "reject",
                    "seconds": 1, "checks": None, "reasons": ["r"], "failures": [], "around": [shown]}
             self.assertIn('"tick": 184', trial.markdown([row]))
+
+
+    def test_a_check_that_could_not_be_decided_shows_the_first_frame_with_nothing_found(self):
+        # Run 43428126877: kinematic-character was needs-review, "an object was not found in 5 frames
+        # (first 38)", and nothing showed what the engine logged there.
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            folder = tmp / "out" / "jobs" / "kc" / "abc" / "work" / "gate" / "head" / "walk"
+            folder.mkdir(parents=True)
+            rows = [{"tick": t, "player": [float(t), 300.0], "ground": None if 76 <= t < 86 else 320.0,
+                     "groundFrom": None if 76 <= t < 86 else "body", "onFloor": False} for t in range(240)]
+            (folder / "trace.json").write_text(json.dumps({"physicsTicksPerSecond": 120, "rows": rows}), encoding="utf-8")
+            reason = ("player-stays-above-ground on walk: no violation in 115 frames judged, but an object was not found "
+                      "in 5 frames (first 38); a missing object is never a pass")
+            script = tmp / "say.py"
+            # As the gate writes it: the decision's reason is general, the finding says where.
+            script.write_text("import json, sys\nprint(json.dumps({'decision': 'needs-review', 'reasons': "
+                              "['1 of 1 public checks could not be decided']}))\nsys.exit(2)\n", encoding="utf-8")
+            record = tmp / "out" / "jobs" / "kc" / "abc" / "output" / "findings.json"
+            record.parent.mkdir(parents=True)
+            record.write_text(json.dumps({"counts": {"checks": 1}, "findings": [
+                {"spec": "player-stays-above-ground", "route": "walk", "reason": reason.split(": ", 1)[1]}]}),
+                encoding="utf-8")
+            project = {**trial.load_list()[0], "name": "kc"}
+            row = trial.verify(project, tmp / "checkout", tmp / "out", [sys.executable, str(script)], 60)
+            self.assertEqual(row["verdict"], "needs-review")
+            self.assertEqual([(a["route"], a["frame"]) for a in row["around"]], [("walk", 38)])
+            shown = row["around"][0]["rows"]
+            self.assertEqual([r["tick"] for r in shown], list(range(70, 89, 2)))   # 3 frames before, 6 after
+            self.assertEqual(shown[3]["ground"], None)
+            self.assertEqual(shown[0]["groundFrom"], "body")
 
 
 class WorkflowTest(unittest.TestCase):

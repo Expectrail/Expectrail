@@ -397,5 +397,105 @@ class RealEngineTest(unittest.TestCase):
         self.assertEqual(engines.GodotGate._tools(), [])
 
 
+class DisplayApplicabilityTest(Machine):
+    """An inapplicable display check is not a successful or a failed probe (#377)."""
+
+    def test_non_linux_documents_are_readable_with_or_without_an_engine(self):
+        self.programs.discard("xvfb-run")
+        for platform in ("darwin", "win32"):
+            for engine_here in (True, False):
+                with self.subTest(platform=platform, engine_here=engine_here), \
+                        mock.patch.object(doctor.sys, "platform", platform), \
+                        mock.patch.dict(os.environ, EXPECTRAIL_GODOT=str(self.engine if engine_here else self.tmp / "missing")):
+                    checks = doctor.checks(fetch=False, env={})
+                    doc = doctor.document(checks)
+                    self.assertEqual(doctor.problems(doc), [])
+                    shown = next(c for c in doc["checks"] if c["id"] == "display")
+                    self.assertEqual((shown["status"], shown["required"], shown["fix"]), ("skipped", False, None))
+                    self.assertIn("does not apply", shown["found"])
+                    self.assertNotIn(f"  {'ok':<9} {shown['what']}", doctor.text(checks))
+                    if not engine_here:
+                        self.assertFalse(doc["ok"])
+
+    def test_linux_display_still_requires_xvfb_run(self):
+        for installed in (True, False):
+            with self.subTest(installed=installed):
+                self.programs = set(EVERYTHING) if installed else set(EVERYTHING) - {"xvfb-run"}
+                shown = doctor.display()
+                self.assertTrue(shown.required)
+                self.assertEqual(shown.status, "ok" if installed else "missing")
+                self.assertEqual(shown.fix, None if installed else "sudo apt-get install xvfb")
+                doc = doctor.document([shown])
+                self.assertEqual(doc["ok"], installed)
+                self.assertEqual(doctor.problems(doc), [])
+
+    def test_a_required_skipped_check_still_blocks_readiness(self):
+        with mock.patch.object(doctor.sys, "platform", "darwin"):
+            shown = doctor.display()
+        waiting = doctor.Check("opengl", "OpenGL", "skipped", True, "not tried", "install the engine")
+        checks = [shown, waiting]
+        doc = doctor.document(checks)
+        self.assertFalse(doc["ok"])
+        self.assertEqual(doctor.missing(checks), [waiting])
+        self.assertEqual(doctor.problems(doc), [])
+        with mock.patch.object(doctor, "checks", return_value=checks):
+            code, out, _ = self.run_doctor()
+        self.assertEqual(code, 3)
+        self.assertNotIn("Everything a verification needs is here.", out)
+        doc["ok"] = True
+        self.assertIn("doctor: `ok` does not follow from the checks", doctor.problems(doc))
+        doc["ok"] = False
+        doc["checks"][1]["fix"] = None
+        self.assertTrue(doctor.problems(doc))
+
+    def test_missing_checks_still_need_a_fix_even_when_optional(self):
+        for required in (False, True):
+            for fix in (None, ""):
+                with self.subTest(required=required, fix=fix):
+                    check = doctor.Check("display", "a display", "missing", required, "not installed", fix)
+                    self.assertTrue(doctor.problems(doctor.document([check])))
+
+    def test_a_failed_probe_with_no_fix_is_still_refused(self):
+        self.set_engine(draws="the drawing probe failed", code=1)
+        failed = self.by_id(fetch=False)["opengl"]
+        self.assertEqual(failed.status, "missing")
+        self.assertTrue(failed.fix)
+        self.assertEqual(doctor.problems(doctor.document([failed])), [])
+        failed.fix = None
+        self.assertTrue(doctor.problems(doctor.document([failed])))
+
+    def test_an_optional_skipped_check_can_still_name_a_fix(self):
+        check = doctor.Check("probe", "an optional probe", "skipped", False, "not tried", "install its tool")
+        self.assertEqual(doctor.problems(doctor.document([check])), [])
+
+    def test_the_schema_requires_fixes_for_missing_and_required_skipped_checks(self):
+        from jsonschema import Draft202012Validator
+
+        schema = json.loads(doctor.SCHEMA.read_text(encoding="utf-8"))
+        validator = Draft202012Validator(schema)
+        for status, required in (("missing", False), ("missing", True), ("skipped", True)):
+            for fix in (None, ""):
+                with self.subTest(status=status, required=required, fix=fix):
+                    check = doctor.Check("probe", "a probe", status, required, "not available", fix)
+                    doc = doctor.document([check])
+                    self.assertTrue(list(validator.iter_errors(doc)))
+                    self.assertTrue(doctor.problems(doc))
+                    doc["checks"][0]["fix"] = "install its tool"
+                    validator.validate(doc)
+                    self.assertEqual(doctor.problems(doc), [])
+
+    def test_the_example_has_an_inapplicable_display_and_validates(self):
+        from jsonschema import Draft202012Validator
+
+        schema = json.loads(doctor.SCHEMA.read_text(encoding="utf-8"))
+        Draft202012Validator.check_schema(schema)
+        doc = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+        Draft202012Validator(schema).validate(doc)
+        self.assertEqual(doctor.problems(doc), [])
+        shown = next(c for c in doc["checks"] if c["id"] == "display")
+        self.assertEqual((shown["status"], shown["required"], shown["fix"]), ("skipped", False, None))
+        self.assertFalse(doc["ok"])
+
+
 if __name__ == "__main__":
     unittest.main()

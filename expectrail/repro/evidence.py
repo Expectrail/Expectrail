@@ -31,9 +31,10 @@ It reports numbers and draws no conclusion from the observer: there is no thresh
 observer saw the bug". Whether a box that moved 4 px is the bug or the model's own wobble is for
 whoever reads it, with the anchored rule's measurements (agents/anchor_rule.py) to go by.
 
-**It is not offered to the generator.** ``for_proposer`` makes the bounded summary a prompt could
-carry, and nothing under ``expectrail/jit/`` reads it: issue #285 asks for the baseline reproduction
-rate before anything changes, and that run has not been made.
+**Offered under one setting only.** ``for_proposer`` makes the bounded summary a prompt carries under
+``--offer signals-reach-evidence`` (expectrail/jit/offer.py, the one file under ``expectrail/jit/`` that
+reads this module). Under ``baseline`` and ``signals-reach`` nothing reads it: issue #285 asks for the
+baseline reproduction rate before anything changes, and that run has not been made.
 """
 from __future__ import annotations
 
@@ -427,7 +428,8 @@ def for_proposer(record: dict, *, probes, objects=(), limit: int = MAX_SHOWN) ->
     model, no renderer.
 
     Probes where the record and the screen both differ come first, then those with more signals
-    moved, then those with the larger share of frames differing. Nothing reads this yet."""
+    moved, then those with the larger share of frames differing. Read by
+    expectrail.jit.offer.attach_evidence under the evidence setting only."""
     if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 25:
         raise EvidenceError("the summary shows between 1 and 25 probes")
     if isinstance(probes, (str, bytes)) or isinstance(objects, (str, bytes)):

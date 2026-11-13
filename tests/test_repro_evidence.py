@@ -681,15 +681,30 @@ class Commands(Base):
 
 
 class HeldBack(unittest.TestCase):
-    def test_nothing_generated_checks_run_on_reads_the_evidence(self):
-        # The issue asks for the baseline before anything changes: a live run must be the same with
-        # or without this module, as with reach, the three signals and the screen measurement.
+    def test_only_the_offer_reads_the_evidence_and_only_under_its_own_setting(self):
+        # The issue asks for the baseline before anything changes: a live run under the default offer
+        # must be the same with or without this module, as with reach, the three signals and the
+        # screen measurement. Since #285's eighth slice it is offered under signals-reach-evidence, and
+        # expectrail/jit/offer.py is the one file under expectrail/jit that may read it
+        # (tests/test_jit_offer_evidence.py holds what it does there).
         for path in sorted((REPO / "expectrail" / "jit").glob("*.py")):
+            if path.name == "offer.py":
+                continue
             text = path.read_text(encoding="utf-8")
             for word in ("repro.evidence", "repro import", "repro-evidence", "for_proposer"):
                 self.assertNotIn(word, text, f"{path.name}: {word}")
         for path in sorted((REPO / ".github" / "workflows").glob("*.yml")):
             self.assertNotIn("repro evidence", path.read_text(encoding="utf-8"), path.name)
+        code = ("import sys\n"
+                "from expectrail.jit import offer\n"
+                "probes = offer.library(['left', 'right', 'jump', 'shoot'], 'baseline')\n"
+                "assert offer.attach_evidence(probes, None, [], 'baseline') == []\n"
+                "assert offer.attach_evidence(probes, 'x.json', [], 'signals-reach')[0].startswith('evidence: not used')\n"
+                "assert 'expectrail.repro.evidence' not in sys.modules, 'read under another setting'\n")
+        import subprocess
+        import sys
+
+        subprocess.run([sys.executable, "-c", code], check=True, cwd=REPO)
 
     def test_it_has_no_way_to_ask_an_observer_or_a_model(self):
         text = (REPO / "expectrail" / "repro" / "evidence.py").read_text(encoding="utf-8")
