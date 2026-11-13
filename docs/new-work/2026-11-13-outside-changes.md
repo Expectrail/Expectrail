@@ -37,9 +37,13 @@ that reaches outside the project folder, and a patch that does not apply stops t
   proven in place by a reverse `--check`. A new test lays the checkout out inside a repository; it
   fails on the first version of the code and passes now. `tests.test_outside_trial`: 19 OK.
 
+- The run after the fix ([43404391367](https://github.com/Expectrail/Expectrail/actions/runs/43404391367)):
+  kinematic-character as pinned needs-review; **broken: reject**, "player is 71.749px past the
+  boundary (above 304.5, tolerance 20) (first at frame 44, 10 frames)"; harmless: needs-review. Both
+  changes got the verdict they were expected to get.
+
 ## Not done
 
-- The verdicts of the two changes: the workflow's run on the pull request records them.
 - A check written for kinematic-character and approved by Sean, so the harmless change can be
   accepted. That waits for the traces this run produces.
 

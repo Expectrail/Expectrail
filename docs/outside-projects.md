@@ -30,8 +30,30 @@ checkouts out inside this repository, and `git apply` run there read the patch's
 repository's top, skipped the file, and exited 0 with nothing changed. So the "broken" and
 "harmless" heads were the project unchanged. The trial now keeps `git apply` from finding a
 repository above the checkout, and proves each patch took by applying it in reverse as a check; a
-test reproduces the case inside a repository. The verdicts of the two changes come from the next
-run.
+test reproduces the case inside a repository.
+
+**The run after the fix: the broken copy is rejected, the first outside verdict that is not
+needs-review.** [Run 43404391367](https://github.com/Expectrail/Expectrail/actions/runs/43404391367),
+every replay in the sandbox, the bundled approved check copied unchanged:
+
+| kinematic-character | Verdict | Expected | Seconds | What the check said |
+| --- | --- | --- | --- | --- |
+| as pinned | needs-review (exit 2) | - | 14.8 | "no violation in 77 frames judged, but an object was not found in 43 frames (first 0)" |
+| broken: the player's collision mask emptied | **reject** (exit 1) | reject | 13.4 | "player is 71.749px past the boundary (above 304.5, tolerance 20) (first at frame 44, 10 frames)" |
+| harmless: the player's sprite tinted | needs-review (exit 2) | needs-review | 13.3 | the same as the project as pinned |
+
+What the engine logged around frame 44 of the broken copy: the player falling at about 3 px a tick
+(y 341.6 at tick 82 to 372.0 at tick 92) through a surface the engine reports at y 304 under it, and
+never on the floor. The ground line under the player moves between 464 and 304 as it passes the
+columns of a platform, and the check measures from the surface in its own column. So the reject is
+for the right reason: the player went through something solid.
+
+What this shows and what it does not: a bug we planted in a game we did not write is rejected by a
+check written for another game. It does not show that a correct change to this game can be
+accepted. The harmless change and the project as pinned are both needs-review, because 43 of 120
+frames have nothing logged under the player (it starts in the air, and moving platforms are bodies,
+not tiles). That needs a check written for this game and approved by a person. The patch is ours:
+this is a seeded bug, not one found in the wild.
 
 It is a trial, not a gate. A needs-review or a reject is a finding to read; the job fails only when
 a project cannot be fetched as pinned or the command ends with no verdict.
