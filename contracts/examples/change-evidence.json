@@ -98,6 +98,12 @@
       "endedAt": "2026-10-30T17:44:21Z"
     },
     {
+      "stage": "repeat",
+      "status": "completed",
+      "startedAt": "2026-10-30T17:44:21Z",
+      "endedAt": "2026-10-30T17:44:21Z"
+    },
+    {
       "stage": "export",
       "status": "completed",
       "startedAt": "2026-10-30T17:44:21Z",
@@ -108,5 +114,26 @@
   "evidenceLabel": "SAMPLE",
   "status": "REPAIR DEMONSTRATED",
   "reasons": [],
-  "rerun": "python3 -m agents.review_change --request <request.json> --candidate <candidate.patch> --mode sample --out <new folder> --base-observations agents/fixtures/obs-fallthrough.json --observations agents/fixtures/obs-fixed.json"
+  "rerun": "python3 -m agents.review_change --request <request.json> --candidate <candidate.patch> --mode sample --out <new folder> --base-observations agents/fixtures/obs-fallthrough.json --observations agents/fixtures/obs-fixed.json",
+  "repair": {
+    "runs": 3,
+    "demonstrated": 1,
+    "rows": [
+      {
+        "spec": "player-stays-above-ground",
+        "route": "smoke",
+        "base": [
+          "fail",
+          "fail",
+          "fail"
+        ],
+        "head": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "counts": true
+      }
+    ]
+  }
 }

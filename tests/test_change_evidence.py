@@ -6,7 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from expectrail.change_evidence import compare, load_record, mismatch, pair, review_status
+from expectrail.change_evidence import (compare, load_record, mismatch, pair, repair_block, repair_claims,
+                                       review_status)
 from expectrail.contracts import ContractError, validate
 from harness.run import REPO
 
@@ -20,8 +21,11 @@ def check(spec: str, result: str, kind: str = "regression", sha: str = "c" * 64)
 
 
 def status(base: list[dict], cand: list[dict], decision: str = "accept", primary=(GROUND,), cand_ids=IDS):
+    """The status when every claim that went from FAIL to PASS held three times of three on each side
+    (the gate's rule, #284; tests/test_review_repair_rule.py covers the runs themselves)."""
     rows = pair(base, cand, primary=set(primary), base_ids=IDS, candidate_ids=cand_ids)
-    return rows, review_status(rows, {"decision": decision, "reasons": ["a check failed"]})
+    held = {(r["spec"], r["route"]): {"base": ["fail"] * 3, "head": ["pass"] * 3} for r in repair_claims(rows)}
+    return rows, review_status(rows, {"decision": decision, "reasons": ["a check failed"]}, repair_block(rows, held))
 
 
 class CompareTest(unittest.TestCase):

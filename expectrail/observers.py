@@ -46,6 +46,22 @@ class FramesObserver:
             self._client = default_client(verdict=True)
         return self._client
 
+    def segmenter(self):
+        """The model client, for questions about a box in a frame (``segment_in``); the gate asks it
+        about the player's place on both sides (``expectrail.gate.anchor``). Raises NoAnswer when no
+        client can be made."""
+        try:
+            from agents.sam_observations import SamError
+        except ImportError as exc:
+            raise NoAnswer("this copy of Expectrail does not carry the vision adapter") from exc
+        try:
+            client = self._model()
+        except SamError as exc:
+            raise NoAnswer(f"no visual observer could be set up ({getattr(exc, 'kind', 'unknown')})") from exc
+        if not callable(getattr(client, "segment_in", None)):
+            raise NoAnswer("this vision model cannot be asked about a box")
+        return client
+
     def describe(self) -> dict:
         """{"name", "provider", "model"} for the record. Raises NoAnswer when no client can be made."""
         try:

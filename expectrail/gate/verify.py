@@ -58,10 +58,12 @@ from expectrail import __version__
 from expectrail.contracts import digest
 from expectrail.gate import record as rec
 from expectrail.gate.page import write_page
+from expectrail import viewer
 
 EXPECTRAIL_ROOT = resources.ROOT
 CONTRACTS = EXPECTRAIL_ROOT / "contracts"
 EXIT = {"accept": 0, "reject": 1, "needs-review": 2}
+ANCHOR_EVERY = 10   # the player's place is asked about in every this-many captured frames (expectrail.gate.anchor)
 MAX_SPECS = 64
 MAX_ROUTES = 64
 MAX_REASONS = 20
@@ -646,8 +648,9 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
 def judge_arm(game: Path, routes: list[tuple[str, Path, str]], specs: list[dict], out: Path,
               replay: Replay, *, label: str, rule: str = rec.ENGINE_ONLY, visual=None,
               on_phase: Callable[[str], object] | None = None,
-              capture_fps: int | None = CAPTURE_FPS) -> dict[tuple[str, str], dict]:
-    """{(spec id, route name): result} for one game tree."""
+              capture_fps: int | None = CAPTURE_FPS, runs: dict | None = None) -> dict[tuple[str, str], dict]:
+    """{(spec id, route name): result} for one game tree. ``runs``, when given, is filled with each
+    finished replay by route name (the player's place is compared between the two sides from them)."""
     results: dict[tuple[str, str], dict] = {}
     not_run = {"observed": {"engine": "replay-error", "visual": "not-asked", "visualAnswerSha256": None}} \
         if rule == rec.BOTH else {}
@@ -657,6 +660,8 @@ def judge_arm(game: Path, routes: list[tuple[str, Path, str]], specs: list[dict]
                 on_phase("observing")
             run = replay(path, game, out / name, True)
             run = dict(run, engineObservations=observations(run["trace"], run["replaySha256"]))
+            if runs is not None:
+                runs[name] = run
         except (Exception, SystemExit) as exc:  # noqa: BLE001 - the harness exits on a failed replay
             # The gate's own sentence when it is the gate that refused the replay; otherwise only the
             # kind of error, since a message could carry text from the game.
@@ -671,8 +676,11 @@ def judge_arm(game: Path, routes: list[tuple[str, Path, str]], specs: list[dict]
             on_phase("evaluating")
         ticks = route_ticks(path) if rule == rec.BOTH else None
         for spec in specs:
-            results[(spec["id"], name)] = judge_run(spec, run, rule=rule, visual=visual, ticks=ticks,
-                                                    capture_fps=capture_fps)
+            result = judge_run(spec, run, rule=rule, visual=visual, ticks=ticks, capture_fps=capture_fps)
+            # The evidence viewer's timeline (expectrail.viewer): measured from the engine's record the
+            # evaluator judged, kept only when it agrees with that verdict. It decides nothing.
+            result["timeline"] = viewer.check_series(spec, run, result.get("verdict"))
+            results[(spec["id"], name)] = result
     return results
 
 
@@ -762,7 +770,8 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
              generated_checks: Path | None = None, require_sandbox: bool = False,
              checks: Checks | None = None, rule: str = rec.ENGINE_ONLY, visual=None,
              on_phase: Callable[[str], object] | None = None, heldout_frames_to_visual: bool = False,
-             intent: str = "none", adapter: str = DEFAULT_ADAPTER) -> dict:
+             intent: str = "none", adapter: str = DEFAULT_ADAPTER,
+             anchor_every: int = ANCHOR_EVERY) -> dict:
     """Run the gate and write the artifact in ``out``; returns the findings record.
 
     ``adapter`` names the engine, and everything about the engine comes from its entry in the
@@ -805,6 +814,13 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     cannot provide it nothing is replayed (ConfigError), and a replay that ran outside it anyway
     keeps the decision from being accept. Without it the game is sandboxed where possible, and the
     record's ``isolation`` block says how many replays were.
+
+    Under ``both`` with a base, the player's place is asked of the visual observer's model on both
+    sides as well (``expectrail.gate.anchor``; #327, decision B): every ``anchor_every``-th captured
+    frame of each route and its last, inside the player's own collision box. A route where the head
+    shows something different from the base, or a frame with no answer, keeps the decision from
+    accept, and the record's ``anchor`` block says why, with the frames kept under ``anchor/``. It
+    never rejects and never accepts. Each frame asked about is a paid image.
 
     ``generated_checks`` is the advisory block a check-generation step wrote (docs/jit.md). It is read
     as untrusted data after the decision is made, and nothing in it can change the decision."""
@@ -921,10 +937,12 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
 
     how = {"rule": rule, "visual": visual, "on_phase": on_phase, "capture_fps": engine.capture_fps}
     held_back = False   # under `both`: the held-out frames were kept from the visual observer
-    head = judge_arm(head_game, route_list_for_head, spec_docs, work / "head", replay, label="head", **how) \
-        if route_list_for_head and spec_docs else {}
-    before = judge_arm(base_game, route_list, spec_docs, work / "base", replay, label="base", **how) \
-        if base_game is not None and route_list_for_head and spec_docs else {}
+    head_runs: dict = {}
+    base_runs: dict = {}
+    head = judge_arm(head_game, route_list_for_head, spec_docs, work / "head", replay, label="head",
+                     runs=head_runs, **how) if route_list_for_head and spec_docs else {}
+    before = judge_arm(base_game, route_list, spec_docs, work / "base", replay, label="base",
+                       runs=base_runs, **how) if base_game is not None and route_list_for_head and spec_docs else {}
     if heldout is None or not spec_docs:
         held = {"status": "not-used", **HELD_ZERO}
     elif not game_ok(head_game):
@@ -978,8 +996,27 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         repair = rec.repair_block([{"spec": c["spec"], "route": c["route"], **runs[(c["spec"], c["route"])]}
                                    for c in claimed])
     isolation = rec.isolation_summary(accounts, require_sandbox)
+    anchor_doc = None
+    if rule == rec.BOTH and before:
+        # The player's place, asked of the vision model on both sides (#327, decision B): a route that
+        # differs keeps the decision from accept and its frames are kept side by side. With no visual
+        # observer, or one whose model cannot be asked about a box, the block says it was not asked.
+        pairs = [(n, base_runs[n], head_runs[n]) for n, _p, _s in route_list if n in base_runs and n in head_runs]
+        try:
+            from expectrail.gate import anchor as anchor_check
+        except ImportError:   # a copy without the vision adapter; with no visual observer nothing is accepted anyway
+            anchor_check = None
+        if anchor_check is not None:
+            segmenter = getattr(visual, "segmenter", None) if visual is not None else None
+            try:
+                client = segmenter() if callable(segmenter) else None
+            except Exception:  # noqa: BLE001 - a model that cannot be set up is not asked
+                client = None
+            found = anchor_check.block(pairs, client, observer if client is not None else None, every=anchor_every)
+            out.mkdir(parents=True, exist_ok=True)
+            anchor_doc = anchor_check.keep_pictures(found, out)
     decision, reasons = rec.decide(counts, held, isolation, check_problems, intent=intent, repair=repair,
-                                   base_judged=any(c["before"] is not None for c in checks))
+                                   base_judged=any(c["before"] is not None for c in checks), anchor=anchor_doc)
     if rule == rec.BOTH:
         # Why a check the engine's record passes is not a pass, in the record's own words.
         said = [c["observed"]["after"] for c in checks if c["after"] == "needs-review"
@@ -1015,6 +1052,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         # existed, so a reader from before it (the comment job runs main's) can still read it; a
         # reader takes a record without the block as engine-only.
         **({"observers": {"rule": rule, "visual": observer}} if rule == rec.BOTH else {}),
+        **({"anchor": anchor_doc} if anchor_doc is not None else {}),
         # Written only when something was declared, so a record of an undeclared change is the record
         # it was before the field existed and a reader older than the field still reads it.
         **({"intent": intent} if intent != "none" else {}),
@@ -1048,6 +1086,13 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
     write_page(out, document, frames)
+    timelines = {key: {"after": result.get("timeline"), "before": (before.get(key) or {}).get("timeline")}
+                 for key, result in head.items()}
+    try:
+        viewer.write_gate(out, document, frames, timelines)
+    except Exception as exc:  # noqa: BLE001 - the viewer shows the decision; it never changes or blocks it
+        print(f"::warning title=Expectrail gate::the evidence viewer was not written ({type(exc).__name__}); "
+              "the review page and findings.json are")
     (out / "findings.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
     return document
 

@@ -23,6 +23,7 @@ DATA = Path(__file__).resolve().parent / "data" / "sam-anchor"
 AT_ORIGIN = DATA / "bundled-lift-0.json"
 MID_BODY = DATA / "bundled-lift-14.json"
 OTHER_CLEAN = DATA / "bundled-lift-14-other-clean-routes.json"      # run 43316420400: coins, combat, traversal
+BOXED_HELD_OUT = DATA / "bundled-box-48x68-smoke-and-clean-routes.json"   # run 43337979278: the run the predictions were for
 BOXED = DATA / "bundled-box-48x68-traversal-seeded.json"            # run 43335151089: the same four runs, asked with a box
 ON_TRAVERSAL = DATA / "bundled-lift-14-traversal-seeded.json"       # run 43326853189: clean and three bugs on traversal
 NEAR_THE_SLIP = DATA / "bundled-lift-14-traversal-frames-15-25.json"  # run 43318368572: traversal, frames 15 to 25
@@ -338,6 +339,73 @@ class RecordedPairsTest(unittest.TestCase):
         twenty = rule.pair(every_tenth, {"run": "again", "route": near["route"],
                                          "frames": [r for r in near["frames"] if r["frame"] == 20]}, tolerance=0)
         self.assertEqual((twenty["result"], twenty["judged"]), ("pass", 1))
+
+
+class PredictionsTest(unittest.TestCase):
+    """Four things written down before run 43337979278 existed (docs/sam.md, pull request #364), and how each fell.
+
+    The box had been seen on one route and the 0.1 fall chosen after seeing it. This run asked the
+    same question on the smoke route's nine runs and on the clean game on three other routes.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        report = rule.load_report(BOXED_HELD_OUT)
+        cls.runs = {r["run"]: r for r in report["runs"]}
+        cls.pairs = {n: rule.pair(cls.runs["clean"], r) for n, r in cls.runs.items() if n != "clean"}
+
+    def scores(self, name):
+        return {f["frame"]: f["score"] for f in self.runs[name]["frames"] if f.get("box")}
+
+    def test_1_every_frame_of_the_four_clean_runs_has_a_confidence_of_0_8_or_more_held(self):
+        clean = [s for n in ("clean", "clean-coins", "clean-combat", "clean-traversal") for s in self.scores(n).values()]
+        self.assertEqual(len(clean), 49)
+        self.assertGreaterEqual(min(clean), 0.8)
+        self.assertEqual(round(min(clean), 3), 0.867)
+
+    def test_2_both_missing_texture_runs_pass_the_pairs_held(self):
+        for name in ("missing-texture_v1", "missing-texture_v2"):
+            with self.subTest(run=name):
+                self.assertEqual((self.pairs[name]["result"], self.pairs[name]["out"], self.pairs[name]["judged"]), ("pass", 0, 13))
+        # And with room: the confidence fell by 0.008 at most where 0.1 is allowed,
+        # and rose by 0.023 at most (frame 60, both runs).
+        falls = [self.scores("clean")[n] - s for name in ("missing-texture_v1", "missing-texture_v2") for n, s in self.scores(name).items()]
+        self.assertLess(max(falls), 0.01)
+        self.assertLess(max(-f for f in falls), 0.03)
+
+    def test_3_sinking_v2_fails_the_pairs_in_every_compared_frame_held(self):
+        got = self.pairs["sinking_v2"]
+        self.assertEqual((got["result"], got["out"], got["judged"]), ("fail", 13, 13))
+
+    def test_4_both_layering_runs_fail_held_but_not_every_frame_that_differs_is_under_0_7(self):
+        for name in ("layering_v1", "layering_v2"):
+            with self.subTest(run=name):
+                got = self.pairs[name]
+                self.assertEqual((got["result"], got["out"], got["judged"]), ("fail", 8, 13))
+                differing = {f["frame"]: self.scores(name)[f["frame"]] for f in got["frames"] if f["state"] == "out"}
+                # The half that fell: frame 30, the robot half hidden behind a coin, at 0.82.
+                self.assertEqual({n: round(s, 2) for n, s in differing.items() if s >= 0.7}, {30: 0.82})
+                # It differs all the same: 13.5 px narrower than the clean game's, and 0.102 less sure
+                # (0.9258 against 0.8242), which is over the 0.1 allowed by a hair. The size is what holds it.
+                why = next(f["why"] for f in got["frames"] if f["frame"] == 30)
+                self.assertIn("width 33 against 46.5 unchanged", why)
+                self.assertIn("confidence 0.82 against 0.93 unchanged", why)
+
+    def test_a_floor_on_the_confidence_alone_would_have_been_wrong(self):
+        # One frame of the sinking bug is at 0.72 and one of layering at 0.82: no floor between the
+        # clean game's 0.867 and those leaves much room. The fall against the same frame does.
+        self.assertEqual(round(max(self.scores("sinking_v2").values()), 2), 0.72)
+        bug_falls = [self.scores("clean")[f["frame"]] - self.scores(n)[f["frame"]]
+                     for n in ("sinking_v2", "layering_v1") for f in self.pairs[n]["frames"] if f["state"] == "out"]
+        self.assertEqual(round(min(bug_falls), 4), 0.1016)          # frame 30 of layering: a hair over the 0.1 allowed
+
+    def test_the_other_routes_clean_runs_are_not_paired_with_the_smoke_route(self):
+        for name in ("clean-coins", "clean-combat", "clean-traversal"):
+            self.assertEqual((self.pairs[name]["result"], self.pairs[name]["judged"]), ("needs-review", 0))
+
+    def test_the_bugs_the_engine_already_shows_are_left_to_it(self):
+        self.assertEqual((self.pairs["sinking_v1"]["result"], self.pairs["sinking_v1"]["moved"]), ("needs-review", 13))
+        self.assertEqual((self.pairs["physics-fall-through_v1"]["result"], self.pairs["physics-fall-through_v1"]["moved"]), ("needs-review", 2))
 
 
 class RecordedAnswersTest(unittest.TestCase):
