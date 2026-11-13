@@ -29,6 +29,14 @@ that reaches outside the project folder, and a patch that does not apply stops t
 - The full suite on this branch: 2814 tests OK, 27 skipped.
 - No outside project was started here. The real run is `outside-trial.yml` on this pull request.
 
+- The first workflow run on the pull request ([43398657245](https://github.com/Expectrail/Expectrail/actions/runs/43398657245))
+  gave all three kinematic-character rows the same needs-review with the same numbers: the patches
+  had not been applied. `git apply` inside a repository (CI's checkouts are inside this one) reads
+  paths from the repository's top and skips files outside its folder with exit 0. Fixed: no
+  repository is discovered above the checkout (`GIT_CEILING_DIRECTORIES`), and each patch is
+  proven in place by a reverse `--check`. A new test lays the checkout out inside a repository; it
+  fails on the first version of the code and passes now. `tests.test_outside_trial`: 19 OK.
+
 ## Not done
 
 - The verdicts of the two changes: the workflow's run on the pull request records them.

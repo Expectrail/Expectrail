@@ -129,11 +129,19 @@ def lay_out(project: dict, source: Path, work: Path, change: dict | None = None)
     (checkout / "specs").mkdir()
     shutil.copy(SPEC, checkout / "specs" / SPEC.name)
     if change is not None:
-        # git apply refuses a patch that reaches outside the folder it runs in.
-        done = subprocess.run(["git", "apply", "--whitespace=nowarn", str(REPO / change["patch"])],
-                              cwd=checkout / "project", capture_output=True, text=True, timeout=60)
-        if done.returncode:
-            raise TrialError(f"{project['name']}/{change['name']}: the patch does not apply: {done.stderr.strip()[-300:]}")
+        # git apply refuses a patch that reaches outside the folder it runs in. It must not find a
+        # repository above that folder: inside one (CI lays checkouts out inside this repository)
+        # it reads paths from the repository's top and silently skips every file outside the folder
+        # it runs in, exits 0 and changes nothing. That happened on the first run (PR #385).
+        patch = str(REPO / change["patch"])
+        env = {**os.environ, "GIT_CEILING_DIRECTORIES": str(checkout.resolve())}
+        for args, why in ((["apply", "--whitespace=nowarn", patch], "the patch does not apply"),
+                          # Proof that it took: the change can be taken back out of the copy.
+                          (["apply", "--check", "--reverse", patch], "the patch did not change the copy")):
+            done = subprocess.run(["git", *args], cwd=checkout / "project", capture_output=True, text=True,
+                                  timeout=60, env=env)
+            if done.returncode:
+                raise TrialError(f"{project['name']}/{change['name']}: {why}: {done.stderr.strip()[-300:]}")
     return checkout
 
 

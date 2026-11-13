@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -142,6 +143,13 @@ class ChangeTest(TrialTest):
         self.assertIn("reject (as expected)", trial.markdown([row]))
         row["verdict"] = "needs-review"
         self.assertIn("reject (DIFFERS)", trial.markdown([row]))
+
+    def test_a_checkout_inside_a_repository_is_still_changed(self):
+        # The first run on PR #385 laid checkouts out inside this repository, and `git apply` read the
+        # patch's paths from the repository's top, skipped the file, and exited 0 with nothing changed.
+        subprocess.run(["git", "init", "-q", str(self.tmp)], check=True)
+        head = trial.lay_out(self.project, self.tmp / "source", self.tmp / "work" / "inside", self.change)
+        self.assertIn("speed = 2", (head / "project" / "main.gd").read_text(encoding="utf-8"))
 
     def test_a_patch_that_does_not_apply_stops_the_trial_and_says_so(self):
         self.patch.write_text("diff --git a/main.gd b/main.gd\n--- a/main.gd\n+++ b/main.gd\n@@ -1,1 +1,1 @@\n-nothing like this\n+x\n",

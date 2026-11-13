@@ -22,8 +22,16 @@ The table shows the expected verdict beside the one given. kinematic-character h
 | `broken` | empties the player's collision mask, so it falls through the floor | reject | a real bug in a game we did not write; the approved check should see the player go below the ground |
 | `harmless` | tints the player's sprite; nothing it does changes | needs-review | the same as the project unchanged, until a check written for this game is approved (the product manager's call 4) |
 
-No result for either is recorded here yet: the first run of the workflow on the pull request that
-added them is where it will come from.
+**The first run did not test either change.** [Run 43398657245](https://github.com/Expectrail/Expectrail/actions/runs/43398657245)
+on PR #385 gave all three kinematic-character rows the same verdict, needs-review, with the same
+numbers ("no violation in 77 frames judged, but an object was not found in 43 frames"). The broken
+copy should have been rejected. The cause was in the trial, not in the verifier: CI lays the
+checkouts out inside this repository, and `git apply` run there read the patch's paths from the
+repository's top, skipped the file, and exited 0 with nothing changed. So the "broken" and
+"harmless" heads were the project unchanged. The trial now keeps `git apply` from finding a
+repository above the checkout, and proves each patch took by applying it in reverse as a check; a
+test reproduces the case inside a repository. The verdicts of the two changes come from the next
+run.
 
 It is a trial, not a gate. A needs-review or a reject is a finding to read; the job fails only when
 a project cannot be fetched as pinned or the command ends with no verdict.
