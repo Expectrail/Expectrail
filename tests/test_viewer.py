@@ -4,8 +4,10 @@ evaluator or is left out, that it fetches nothing, that held-out routes never re
 viewer `expectrail report` writes. No Godot: the gate tests' stand-in replay."""
 from __future__ import annotations
 
+import base64
 import contextlib
 import copy
+import hashlib
 import io
 import json
 import re
@@ -259,6 +261,91 @@ class GateViewerTest(Base):
         self.assertTrue((self.tmp / "o" / "findings.json").is_file())
 
 
+# --- the single-file export ------------------------------------------------------------------------
+
+def embedded(page: str) -> dict:
+    return json.loads(re.search(r'<script type="application/json" id="evidence">(.*?)</script>', page, re.S).group(1))
+
+
+class ExportTest(Base):
+    def failing(self) -> Path:
+        self.gate(make_repo(self.tmp / "h", bug=True), make_repo(self.tmp / "b"))
+        return self.tmp / "out" / "viewer"
+
+    def test_the_export_carries_every_frame_and_the_same_decision(self):
+        folder = self.failing()
+        index, single = (folder / "index.html").read_text(encoding="utf-8"), \
+            (folder / viewer.EXPORT_NAME).read_text(encoding="utf-8")
+        a, b = embedded(index), embedded(single)
+        for key in ("state", "decision", "reasons", "record", "reproduce", "job"):
+            self.assertEqual(a[key], b[key], key)
+        self.assertEqual(banner_state(index), banner_state(single))
+        on_disk = sum(len(v["frames"][s]) for v in a["views"] for s in ("after", "before"))
+        self.assertGreater(on_disk, 0)
+        self.assertEqual(b["export"], {"framesEmbedded": on_disk, "framesLeftOut": {}})
+        for va, vb in zip(a["views"], b["views"]):
+            for side in ("after", "before"):
+                for fa, fb in zip(va["frames"][side], vb["frames"][side]):
+                    self.assertTrue(fb["path"].startswith("data:image/png;base64,"))
+                    raw = base64.b64decode(fb["path"].split(",", 1)[1])
+                    self.assertEqual(raw, (folder / fa["path"]).read_bytes())
+                    self.assertEqual(hashlib.sha256(raw).hexdigest(), fa["sha256"])
+        self.assertIn(f'href="{viewer.EXPORT_NAME}"', index)
+        self.assertNotIn(f'href="{viewer.EXPORT_NAME}"', single)
+        self.assertIn("Offline copy:", single)
+
+    def test_the_export_fetches_nothing(self):
+        single = (self.failing() / viewer.EXPORT_NAME).read_text(encoding="utf-8")
+        self.assertIn("default-src 'none'", single)
+        self.assertEqual(single.count("</script>"), 2)
+        for url in re.findall(r'(?:src|href)="([^"]+)"', single):
+            self.fail(f"the export refers to {url}")
+        for view in embedded(single)["views"]:
+            for side in ("after", "before"):
+                for f in view["frames"][side]:
+                    self.assertTrue(f["path"].startswith("data:image/png;base64,"), f["path"][:40])
+
+    def test_a_frame_that_changed_moved_or_is_a_link_is_left_out_and_counted(self):
+        folder = self.failing()
+        payload = embedded((folder / "index.html").read_text(encoding="utf-8"))
+        frames = [f for v in payload["views"] for s in ("after", "before") for f in v["frames"][s]]
+        self.assertGreaterEqual(len(frames), 4)
+        (folder / frames[0]["path"]).write_bytes(b"\x89PNG\r\n\x1a\nchanged")      # bytes no longer match
+        (folder / frames[1]["path"]).unlink()                                     # gone
+        link = folder / frames[2]["path"]
+        link.unlink()
+        link.symlink_to(folder / frames[3]["path"])                               # a link to another frame
+        payload["views"][0]["frames"]["after"].append({"frame": 1, "path": "../../etc/passwd", "sha256": "0" * 64})
+        single = viewer.export(folder, payload).read_text(encoding="utf-8")
+        got = embedded(single)["export"]
+        self.assertEqual(got["framesEmbedded"], len(frames) - 3)
+        self.assertEqual(got["framesLeftOut"], {"missing or changed on disk": 4})
+        self.assertIn("4 missing or changed on disk", single)
+        self.assertNotIn("root:", single)
+
+    def test_frames_past_the_cap_are_left_out_and_said(self):
+        from unittest import mock
+
+        folder = self.failing()
+        payload = embedded((folder / "index.html").read_text(encoding="utf-8"))
+        first = next(f for v in payload["views"] for f in v["frames"]["after"])
+        size = (folder / first["path"]).stat().st_size
+        with mock.patch.object(viewer, "MAX_EXPORT_FRAME_BYTES", size):
+            got = embedded(viewer.export(folder, payload).read_text(encoding="utf-8"))["export"]
+        self.assertGreaterEqual(got["framesEmbedded"], 1)
+        self.assertGreater(got["framesLeftOut"].get("over the size cap", 0), 0)
+
+    def test_an_empty_result_exports_as_not_success(self):
+        folder = self.tmp / "empty"
+        viewer.write(folder, None, [], status={"id": "j1", "phase": "completed", "decision": None, "reasons": [],
+                                                "diagnostics": [], "evidenceGrade": None, "inputs": {},
+                                                "history": [], "finishedAt": None})
+        single = (folder / viewer.EXPORT_NAME).read_text(encoding="utf-8")
+        self.assertNotEqual(banner_state(single), "accept")
+        self.assertEqual(banner_state(single), banner_state((folder / "index.html").read_text(encoding="utf-8")))
+        self.assertEqual(embedded(single)["export"], {"framesEmbedded": 0, "framesLeftOut": {}})
+
+
 # --- the job viewer `expectrail report` writes ----------------------------------------------------
 
 class JobViewerTest(Base):
@@ -286,6 +373,10 @@ class JobViewerTest(Base):
         self.assertEqual(code, 1)
         page_path = self.store.paths(job).root / "viewer" / "index.html"
         self.assertIn(f"viewer: {page_path}", out)
+        self.assertIn(f"one file to keep or send: {page_path.parent / viewer.EXPORT_NAME}", out)
+        single = embedded((page_path.parent / viewer.EXPORT_NAME).read_text(encoding="utf-8"))
+        self.assertEqual(single["decision"], "reject")
+        self.assertGreater(single["export"]["framesEmbedded"], 0)
         page = page_path.read_text(encoding="utf-8")
         self.assertEqual(banner_state(page), "behaviour-failure")
         self.assertIn("expectrail verify --adapter godot --head", page)

@@ -161,13 +161,16 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
                 page = None
                 print(f"expectrail: the evidence viewer was not written ({type(exc).__name__})", file=sys.stderr)
             # --json prints the status as it is (expectrail.verify-job/v1); the viewer is always at
-            # <job>/viewer/index.html.
+            # <job>/viewer/index.html, and the same page as one file at <job>/viewer/evidence.html.
             _show(status, args.json)
             if not args.json:
                 if status["output"]:
                     print(f"  evidence: {store.paths(status['id']).output}")
                 if page:
                     print(f"  viewer: {page}")
+                    single = page.parent / viewer.EXPORT_NAME
+                    if single.is_file():
+                        print(f"  one file to keep or send: {single}")
             return exit_code(status)
         _show(status, args.json)
         return exit_code(status)
