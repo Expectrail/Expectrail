@@ -1,0 +1,78 @@
+{
+  "format": "expectrail.findings/v0",
+  "decision": "needs-review",
+  "reasons": [
+    "not-exercised: 1 required route(s) were not selected or run"
+  ],
+  "adapter": "godot",
+  "pullRequest": null,
+  "game": {
+    "path": "game/platformer",
+    "headTree": "696d3a2911d4b812223555e8da870c23381bdbe3b382c0e4f603518d7fbab55c",
+    "baseTree": null
+  },
+  "checksFrom": "head",
+  "checksChanged": {
+    "specs": 0,
+    "routes": 0
+  },
+  "specs": [
+    {
+      "id": "player-stays-above-ground",
+      "sha256": "1d3405589bb7cf443fcbfd2c591cb9aeef6559f1d0652ac68a8b6ed81aecb9e0",
+      "instruction": "The player never falls through the ground.",
+      "routes": [
+        "smoke",
+        "checkpoint-route"
+      ]
+    }
+  ],
+  "drafts": 0,
+  "checkProblems": 0,
+  "routes": [
+    {
+      "name": "smoke",
+      "sha256": "0db750ef7ab79124ccd80c63c03f117d84c579281f7ca487f0877f829660f02d"
+    }
+  ],
+  "counts": {
+    "checks": 1,
+    "passed": 1,
+    "failed": 0,
+    "needsReview": 0
+  },
+  "checks": [
+    {
+      "spec": "player-stays-above-ground",
+      "route": "smoke",
+      "before": null,
+      "after": "pass",
+      "comparison": "INCONCLUSIVE",
+      "findingId": null
+    }
+  ],
+  "findings": [],
+  "heldOut": {
+    "status": "not-used",
+    "routes": 0,
+    "checks": 0,
+    "passed": 0,
+    "failed": 0,
+    "needsReview": 0
+  },
+  "isolation": {
+    "replays": 1,
+    "sandboxed": 0,
+    "required": false,
+    "sandbox": null,
+    "reasons": [
+      "the replay did not say whether it was sandboxed"
+    ]
+  },
+  "reviewPage": "review/index.html",
+  "expectrail": {
+    "version": "0.1.0",
+    "commit": null
+  },
+  "createdAt": "2026-11-13T00:00:00Z"
+}

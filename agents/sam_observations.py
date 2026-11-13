@@ -45,7 +45,7 @@ from concurrent.futures import FIRST_EXCEPTION, ThreadPoolExecutor, wait
 from pathlib import Path
 from typing import Callable
 
-from expectrail.evaluator import evaluate
+from expectrail.evaluator import evaluate, _assertion_verdict
 
 API_BASE = os.environ.get("EXPECTRAIL_MODEL_API_BASE", "https://api.meta.ai/v1")
 MODEL = os.environ.get("EXPECTRAIL_SAM_MODEL", "sam-3.1")
@@ -702,6 +702,9 @@ def sampling_plan(spec: dict | None, every: int) -> int:
     """
     if not spec:
         return every
+    # Explicit count/share obligations must not be defeated by an early sampled witness.
+    if any(key in spec.get("coverage", {}) for key in ("minFrames", "minFraction")):
+        return 1
     assertion = spec.get("assertion", {})
     kind = assertion.get("type")
     if kind in SAMPLE_SAFE or kind == "reaches":
@@ -736,9 +739,9 @@ def refine_targets(indices: list[int], looked: set[int], verdict: dict, passed: 
 
 
 def passing_frames(spec: dict, doc: dict) -> set[int]:
-    """Frames whose own observations pass the spec: judged, and nothing wrong."""
+    """Frames with no assertion violation, for sampling only; not covered final verdicts."""
     return {frame["frame"] for frame in doc["frames"]
-            if evaluate(spec, dict(doc, frames=[frame]))["result"] == "pass"}
+            if _assertion_verdict(spec, dict(doc, frames=[frame]))["result"] == "pass"}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -900,14 +903,14 @@ def _from_replay(frames_dir, replay_sha256, *, spec, prompts, every, refine, con
     if refine and spec and rate > 1:
         doc = doc_of([])
         kind = spec.get("assertion", {}).get("type")
-        refined = refine_targets(indices, set(observed), evaluate(spec, doc), passing_frames(spec, doc), kind)
+        refined = refine_targets(indices, set(observed), _assertion_verdict(spec, doc), passing_frames(spec, doc), kind)
         if refined:
             observed.update(look(refined))
     confirmed: list[int] = []
     # "reaches" passes on the frame that reaches the goal, so more frames cannot change its pass.
     if confirm and spec and rate > 1 and spec.get("assertion", {}).get("type") != "reaches":
         doc = doc_of(refined)
-        if evaluate(spec, doc)["result"] == "pass":
+        if _assertion_verdict(spec, doc)["result"] == "pass":
             # Sampling finds failures cheaply; a pass has to hold on every frame.
             confirmed = [i for i in indices if i not in observed]
             if confirmed:

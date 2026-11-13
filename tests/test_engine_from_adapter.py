@@ -29,6 +29,7 @@ from expectrail.orchestrator import request as req
 from expectrail.orchestrator import store as st
 from harness import adapters
 from harness import tree
+from tests.coverage_replays import complete_trace
 from tests.test_ci_gate import FIXTURES, ROUTES, SPEC, FakeReplay, make_repo
 
 REPO = Path(__file__).resolve().parent.parent
@@ -56,7 +57,8 @@ class Probe:
             raise SystemExit("the probe engine stopped")
         name = "trace-fallthrough.json" if (Path(game) / "BUG").exists() else "trace-fixed.json"
         out.mkdir(parents=True, exist_ok=True)
-        shutil.copy(FIXTURES / name, out / "trace.json")
+        trace = complete_trace(json.loads((FIXTURES / name).read_text()), json.loads(route.read_text())["ticks"])
+        (out / "trace.json").write_text(json.dumps(trace))
         if capture_frames:
             (out / "frames").mkdir(exist_ok=True)
             for n in range(40):

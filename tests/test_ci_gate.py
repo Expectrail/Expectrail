@@ -25,6 +25,7 @@ import yaml
 from expectrail.gate import comment as gc
 from expectrail.gate import record as rec
 from expectrail.gate import verify as gv
+from tests.coverage_replays import complete_trace
 
 REPO = Path(__file__).resolve().parent.parent
 EXAMPLE = REPO / "contracts" / "examples" / "findings.json"
@@ -59,7 +60,8 @@ class FakeReplay:
             raise SystemExit("godot failed (139); see godot.log")
         name = "trace-fallthrough.json" if (game / "BUG").exists() else "trace-fixed.json"
         out.mkdir(parents=True, exist_ok=True)
-        trace = json.loads((FIXTURES / name).read_text(encoding="utf-8"))
+        trace = complete_trace(json.loads((FIXTURES / name).read_text(encoding="utf-8")),
+                               json.loads(route.read_text(encoding="utf-8"))["ticks"])
         frames_dir = None
         if frames:
             frames_dir = out / "frames"

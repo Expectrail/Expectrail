@@ -13,7 +13,9 @@
   ],
   "properties": {
     "format": {
-      "enum": ["expectrail.verdict/v0"]
+      "enum": [
+        "expectrail.verdict/v0"
+      ]
     },
     "spec": {
       "type": "object",
@@ -48,7 +50,8 @@
       "enum": [
         "pass",
         "fail",
-        "needs-review"
+        "needs-review",
+        "not-applicable"
       ]
     },
     "reason": {
@@ -105,6 +108,52 @@
         },
         "version": {
           "type": "string"
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "semanticResult",
+        "framesObserved",
+        "framesExpected",
+        "framesRequired",
+        "completeWindow"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "exercised",
+            "not-exercised",
+            "not-applicable",
+            "not-reached",
+            "insufficient-observation"
+          ]
+        },
+        "semanticResult": {
+          "enum": [
+            "pass",
+            "fail",
+            "not_exercised",
+            "insufficient_observation"
+          ]
+        },
+        "framesObserved": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "framesExpected": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "framesRequired": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "completeWindow": {
+          "type": "boolean"
         }
       }
     }

@@ -17,6 +17,7 @@ from pathlib import Path
 
 from expectrail import __version__
 from expectrail.contracts import digest, load
+from expectrail.coverage import assess
 
 EVALUATOR = {"name": "expectrail.evaluator", "version": __version__}
 DEFAULT_MIN_SCORE = 0.5
@@ -53,7 +54,7 @@ def _frames(spec, observations):
             yield frame
 
 
-def evaluate(spec: dict, observations: dict) -> dict:
+def _assertion_verdict(spec: dict, observations: dict) -> dict:
     assertion = spec["assertion"]
     kind = assertion["type"]
     scores = {name: obj.get("minScore", DEFAULT_MIN_SCORE) for name, obj in spec["objects"].items()}
@@ -125,8 +126,8 @@ def evaluate(spec: dict, observations: dict) -> dict:
                 continue
             judged += 1
             if _distance(obj["box"], goal["box"]) <= assertion.get("distancePx", 0):
-                reached = n
-                break
+                if reached is None:
+                    reached = n
         else:
             raise ValueError(f"unsupported assertion type: {kind}")
 
@@ -177,6 +178,26 @@ def evaluate(spec: dict, observations: dict) -> dict:
     }
 
 
+def evaluate(spec: dict, observations: dict, *, route: str | None = None, trace: dict | None = None,
+             expected_frames: list[int] | None = None) -> dict:
+    """Judge the unchanged assertion, then require exercised coverage before counting its pass."""
+    # A duplicated observation is not another judged frame.
+    frames = observations.get("frames", [])
+    if len({f["frame"] for f in frames}) != len(frames):
+        raise ValueError("observations contain duplicate frame numbers")
+    verdict = _assertion_verdict(spec, observations)
+    coverage, detail = assess(spec, observations, verdict["framesJudged"], counterexample=verdict["result"] == "fail",
+                              route=route, trace=trace, expected_frames=expected_frames)
+    verdict["coverage"] = coverage
+    if coverage["status"] == "not-applicable":
+        verdict.update(result="not-applicable", reason="not-applicable: this spec does not apply to this route",
+                       firstFrame=None, evidence=[], framesJudged=0)
+    elif coverage["semanticResult"] not in ("pass", "fail"):
+        verdict.update(result="needs-review", reason="not-exercised: " + detail + "; " + verdict["reason"],
+                       firstFrame=None)
+    return verdict
+
+
 REQUIRED_CHECK_KINDS = frozenset({"regression", "gameplay", "held-out", "clean"})
 
 
@@ -186,6 +207,7 @@ def decide(checks: list[dict]) -> tuple[str, list[str]]:
     Order: empty → any fail (reject) → missing required kinds (needs-review) →
     any needs-review → accept. Kind completeness is a set, not a row count.
     """
+    checks = [c for c in checks if c["result"] != "not-applicable"]
     fails = [c for c in checks if c["result"] == "fail"]
     unclear = [c for c in checks if c["result"] == "needs-review"]
     if not checks:
@@ -206,13 +228,16 @@ def main(argv=None) -> int:
     p.add_argument("--spec", type=Path, required=True)
     p.add_argument("--observations", type=Path, required=True)
     p.add_argument("--out", type=Path)
+    p.add_argument("--route", help="route name for coverage applicability")
+    p.add_argument("--trace", type=Path, help="engine trace for declared route checkpoints")
     args = p.parse_args(argv)
-    verdict = evaluate(load(args.spec, "test-spec"), load(args.observations, "observations"))
+    trace = json.loads(args.trace.read_text(encoding="utf-8")) if args.trace else None
+    verdict = evaluate(load(args.spec, "test-spec"), load(args.observations, "observations"), route=args.route, trace=trace)
     text = json.dumps(verdict, indent=2) + "\n"
     if args.out:
         args.out.write_text(text, encoding="utf-8")
     print(f"{verdict['result']}: {verdict['reason']}")
-    return {"pass": 0, "fail": 1, "needs-review": 2}[verdict["result"]]
+    return {"pass": 0, "fail": 1, "needs-review": 2, "not-applicable": 2}[verdict["result"]]
 
 
 if __name__ == "__main__":

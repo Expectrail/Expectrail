@@ -1,0 +1,40 @@
+{
+  "format": "expectrail.test-spec/v0",
+  "id": "player-above-ground-after-checkpoint",
+  "instruction": "The player stays above the measured ground, and the route must reach the floor at or after tick 20.",
+  "objects": {
+    "player": {
+      "prompt": "robot player"
+    },
+    "ground": {
+      "prompt": "ground"
+    }
+  },
+  "assertion": {
+    "type": "never-crosses",
+    "object": "player",
+    "boundary": {
+      "relativeTo": "ground",
+      "edge": "top",
+      "side": "above",
+      "tolerancePx": 20
+    }
+  },
+  "window": {
+    "fromFrame": 0,
+    "toFrame": 119
+  },
+  "coverage": {
+    "minFrames": 30,
+    "minFraction": 0.5,
+    "routes": [
+      "smoke"
+    ],
+    "reached": [
+      {
+        "type": "on-floor",
+        "fromTick": 20
+      }
+    ]
+  }
+}

@@ -19,7 +19,7 @@ REVIEW_DOC = "https://github.com/Expectrail/Expectrail/blob/main/docs/review.md"
 GATE_DOC = "https://github.com/Expectrail/Expectrail/blob/main/docs/ci-gate.md"
 MAX_FRAMED_FINDINGS = 20
 DECISION_MEANS = {
-    "accept": "Every approved check passes on every route after this change. Accepted means this change "
+    "accept": "Every required approved check passes on its applicable routes after this change. Accepted means this change "
               "passed these checks on these routes, not that the game is correct.",
     "reject": "At least one check fails after this change.",
     "needs-review": "Some evidence is missing or could not be decided, so the gate does not accept. A person "
@@ -27,7 +27,7 @@ DECISION_MEANS = {
 }
 ADAPTER = {"godot": "Godot"}
 WORD = {"pass": "pass", "fail": "fail", "needs-review": "needs review", "replay-error": "replay error",
-        None: "not run"}
+        "not-applicable": "not applicable", None: "not run"}
 TONE = {"accept": "good", "reject": "bad", "needs-review": "warn", "REPAIRED": "good", "PRESERVED": "quiet",
         "REGRESSION": "bad", "UNRESOLVED": "bad", "INCONCLUSIVE": "warn"}
 CSS = """

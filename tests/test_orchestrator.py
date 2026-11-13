@@ -1617,6 +1617,8 @@ class PatchedReplay:
         bug = (game / "player" / "player.tscn").read_bytes() != (REPO / smp.GAME / "player" / "player.tscn").read_bytes()
         out.mkdir(parents=True, exist_ok=True)
         trace = json.loads((FIXTURES / ("trace-fallthrough.json" if bug else "trace-fixed.json")).read_text(encoding="utf-8"))
+        from tests.coverage_replays import complete_trace
+        trace = complete_trace(trace, json.loads(route.read_text(encoding="utf-8"))["ticks"])
         frames_dir = None
         if frames:
             frames_dir = out / "frames"

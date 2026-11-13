@@ -75,7 +75,7 @@ STATES = {
 }
 UNSUPPORTED_CODES = ("INPUT_INVALID", "PATCH_SCOPE_BLOCKED")
 WORD = {"pass": "pass", "fail": "fail", "needs-review": "needs review", "replay-error": "did not finish",
-        None: "not run"}
+        "not-applicable": "not applicable", None: "not run"}
 
 
 # --- what the page says ---------------------------------------------------------------------------
@@ -113,7 +113,7 @@ def state_of(record: dict | None, status: dict | None = None) -> tuple[str, str 
         return "nothing-checked", None, reasons or ["there is no evidence to show"]
     decision = record["decision"]
     reasons = reasons or list(record.get("reasons") or [])
-    afters = [c["after"] for c in record.get("checks") or []]
+    afters = [c["after"] for c in record.get("checks") or [] if c["after"] != "not-applicable"]
     if decision == "reject":
         return "behaviour-failure", decision, reasons
     if not afters or not record["counts"]["checks"]:

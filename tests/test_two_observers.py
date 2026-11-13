@@ -509,10 +509,11 @@ class CoverageTest(Case):
         self.assertIn("captured 119 of 120 frames", gv.visual_gap(reaches, some, run, TICKS))
 
     def test_the_engine_only_rule_is_not_changed_by_any_of_this(self):
-        # What main does today, kept as it is (the same question for that rule is #357).
+        # #357: a short engine record cannot support a pass under engine-only either.
         self.game.log_ticks = 20
         doc = self.gate(repo(self.tmp / "head", "BUG"), rule=rec.ENGINE_ONLY, visual=None)
-        self.assertEqual(doc["decision"], "accept")
+        self.assertEqual(doc["decision"], "needs-review")
+        self.assertIn("20 of 240 ticks", doc["findings"][0]["reason"])
 
 
 class EngineOnlyTest(Case):

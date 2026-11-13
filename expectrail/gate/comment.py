@@ -62,7 +62,7 @@ WATCH_RE = re.compile(r"[A-Za-z0-9._][A-Za-z0-9._/-]{0,200}")
 NAME_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,63}")
 WORDS = {"accept": "accept", "reject": "reject", "needs-review": "needs review"}
 RESULT = {"pass": "pass", "fail": "fail", "needs-review": "needs review", "replay-error": "replay error",
-          None: "not run"}
+          "not-applicable": "not applicable", None: "not run"}
 
 Api = Callable[..., object]
 
