@@ -15,7 +15,12 @@
         "enemies": {"enum": ["complete", "initial-instances", "absent"]},
         "projectiles": {"enum": ["complete", "initial-instances", "absent"]},
         "facing": {"type": "boolean"},
-        "onFloor": {"type": "boolean"}
+        "onFloor": {"type": "boolean"},
+        "groundSources": {
+          "description": "Added Nov 13, 2026 by the Godot harness: where a row's ground may come from. tiles: the level has tile layers; bodies: how many of its bodies count as platforms (StaticBody2D, AnimatableBody2D and CharacterBody2D other than the player, enemies and projectiles).",
+          "type": "object",
+          "properties": {"tiles": {"type": "boolean"}, "bodies": {"type": "integer", "minimum": 0}}
+        }
       }
     },
     "levelSurfaces": {
@@ -47,7 +52,8 @@
           "player": {"$ref": "#/$defs/point"},
           "onFloor": {"type": "boolean"},
           "facing": {"enum": [-1, 1]},
-          "ground": {"type": "number", "description": "World y of the level surface under the player, from the level's geometry, never from the player's own collider."},
+          "ground": {"type": "number", "description": "World y of the level surface under the player, from the level's geometry (tiles, and since Nov 13, 2026 the authored collision of its platforms), never from the player's own collider."},
+          "groundFrom": {"enum": ["tile", "body"], "description": "Added Nov 13, 2026 by the Godot harness, with ground: whether the surface is a tile's or a platform body's."},
           "body": {
             "description": "Added Nov 12, 2026 by the Godot harness: the world box [left, top, right, bottom] of the player's own collision in this tick (its collision shapes and polygons that are not disabled, as they stand in the world: scaled, mirrored). How big the engine says the player is, and where. Left out when the player has no collision to measure; a reader never guesses one.",
             "type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4

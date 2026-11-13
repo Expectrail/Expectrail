@@ -57,7 +57,7 @@ MAX_PROMPT_CHARS = 120
 # The fields a row of expectrail.trace/v0 may have (contracts/trace.schema.json), less tick and frame.
 # The summary for a proposer names these and no other: a field the game added under another name is
 # counted, not named.
-FIELDS = ("body", "coins", "enemies", "facing", "ground", "objects", "onFloor", "player", "projectiles", "view")
+FIELDS = ("body", "coins", "enemies", "facing", "ground", "groundFrom", "objects", "onFloor", "player", "projectiles", "view")
 _ABSENT = object()
 
 
