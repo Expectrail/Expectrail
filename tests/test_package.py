@@ -252,6 +252,27 @@ class InstalledTest(Case):
         self.assertEqual(found["tools"], f"{home}/.cache/expectrail")
         self.assertTrue(found["cache"].startswith(f"{home}/.cache/expectrail/"), found)
 
+    def test_app_runs_from_installed_copy_without_external_packages(self):
+        done = self.run_installed("app", "--help")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("127.0.0.1", done.stdout)
+        done = self.run_installed(code=(
+            "import http.client, threading\n"
+            "from expectrail.app import create_server\n"
+            "server = create_server()\n"
+            "thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start()\n"
+            "try:\n"
+            "    client = http.client.HTTPConnection('127.0.0.1', server.server_port)\n"
+            "    client.request('GET', '/?token=' + server.token)\n"
+            "    response = client.getresponse(); page = response.read()\n"
+            "    assert response.status == 200, response.status\n"
+            "    assert b'Evidence viewer' in page and b'X-Expectrail-Token' in page\n"
+            "    client.close(); print('installed app: HTTP 200, bundled page')\n"
+            "finally:\n"
+            "    server.shutdown(); thread.join(); server.server_close()\n"))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(done.stdout.strip(), "installed app: HTTP 200, bundled page")
+
     def test_a_verification_runs_as_a_job_from_the_installed_copy(self):
         # A real job with a real worker process, on a checkout that has no game: the answer is
         # needs-review with the reason, exit 2. No engine is needed to get that far, and every

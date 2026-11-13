@@ -1,6 +1,6 @@
 """The one thing pyproject.toml cannot say: which modules of a package go in the wheel.
 
-A verification needs nine top-level modules of `expectrail` (beside its `gate` and `orchestrator`
+The verification command and app need selected top-level modules of `expectrail` (beside its `gate` and `orchestrator`
 packages, which go in whole), five harness modules (the adapter registry among them: the verify path
 takes its engine from it), and one from the agents lane (the reader of the engine's position log).
 The fixer, the loop and everything that holds a model key stay out of the package: it verifies, it
@@ -13,7 +13,7 @@ from setuptools.command.build_py import build_py
 BUNDLED_MODULES = {
     # The top-level modules a verification imports. Left out: the capability ledger's tools (they read
     # docs/), the spec writer and the provider records (model-side), change evidence (the fix loop's).
-    "expectrail": {"__init__", "cli", "contracts", "diagnostics", "doctor", "evaluator", "legacy", "resources", "timing"},
+    "expectrail": {"__init__", "app", "app_page", "cli", "contracts", "diagnostics", "doctor", "evaluator", "legacy", "resources", "timing"},
     "expectrail._bundle.harness": {"__init__", "adapters", "run", "sandbox", "tree"},
     "expectrail._bundle.agents": {"__init__", "observations"},
     # Data only: no module of these folders is packaged.

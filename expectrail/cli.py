@@ -39,6 +39,7 @@ def usage() -> str:
         ("cancel", "cancel a job and stop what it started"),
         ("report", "show a finished job's result and where its evidence is"),
         ("sample", "three real verifications of the bundled game: as it is, broken, repaired"),
+        ("app", "open the local browser app"),
         ("doctor", "check that this machine has what a verification needs, and name the fix for what is missing"))]
     lines += [f"  {name:<12} not built yet (#{issue}): {text}" for name, (text, issue) in PLANNED.items()]
     lines += ["", "  --version    print the version and where this copy's files are",
@@ -71,6 +72,13 @@ def main(argv: list[str] | None = None) -> int:
         text, issue = PLANNED[command]
         print(f"expectrail: `{command}` is not built yet (#{issue}): it will {text}. Nothing was run.", file=sys.stderr)
         return EXIT_USAGE
+    if command == "app":
+        if args[0] != "app":
+            print("expectrail: put app options after `app`. Nothing was run.", file=sys.stderr)
+            return EXIT_USAGE
+        from expectrail import app
+
+        return app.main(args[1:])
     if command == "doctor":
         if args[0] != "doctor":
             print("expectrail: `doctor` takes no option before it. Nothing was checked.", file=sys.stderr)
