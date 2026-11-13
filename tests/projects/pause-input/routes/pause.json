@@ -1,0 +1,15 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "pause",
+  "description": "Hold right from tick 2, pause at tick 20, unpause at tick 40, release right at tick 60.",
+  "ticks": 70,
+  "seed": 1,
+  "events": [
+    {"tick": 2, "action": "right", "pressed": true},
+    {"tick": 20, "action": "pause", "pressed": true},
+    {"tick": 22, "action": "pause", "pressed": false},
+    {"tick": 40, "action": "pause", "pressed": true},
+    {"tick": 42, "action": "pause", "pressed": false},
+    {"tick": 60, "action": "right", "pressed": false}
+  ]
+}
