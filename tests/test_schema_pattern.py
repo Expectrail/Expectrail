@@ -139,6 +139,10 @@ def contract_patterns() -> dict[str, str]:
 
 # pattern: (a value that matches it, whether that value plus "\n" must be refused)
 SAMPLES = {
+    "^[A-Z_]{1,40}$": ("TOOL_MISSING", True),
+    "^[A-Za-z0-9._-]{1,64}$": ("19283746501", True),
+    "^[a-z0-9-]{1,40}$": ("fall-through-bug", True),
+    "^docs/run-it/vision/[a-z0-9-]{1,40}\\.json$": ("docs/run-it/vision/clean.json", True),
     "(^|/)\\.\\.?(/|$)": ("a/..", True),
     "(^|[^0-9{}])\\{n\\}[^0-9{}](.*[^0-9{}])?\\{of\\}([^0-9{}]|$)|(^|[^0-9{}])\\{of\\}[^0-9{}](.*[^0-9{}])?\\{n\\}([^0-9{}]|$)":
         ("{n} of {of}", False),  # "\n" is itself a separator here, so a trailing one still matches

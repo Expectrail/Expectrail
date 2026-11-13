@@ -81,6 +81,8 @@ NOT_PACKAGED = {
     "expectrail.observers": "the visual observer: it asks a vision model, and the wheel holds nothing that holds a model key",
     "expectrail.providers": "model provider records; no verification uses a model",
     "expectrail.spec_writer": "drafts specs with a model; no verification uses a model",
+    "expectrail.runit": "the site's Run it samples (#265): reads docs/run-it/ in a clone of the repository",
+    "expectrail.recorded": "recorded vision answers for the Run it samples (#265); built on expectrail.observers",
 }
 # Imports a packaged module makes only on a path a verification never takes.
 NOT_ON_A_VERIFICATION = {
