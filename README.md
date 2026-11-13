@@ -607,7 +607,7 @@ under [Results](#results) and in [`bench/`](bench).
 
 ## Try it
 
-Requires Python 3.10+, and for capture, Linux with `xvfb-run` and Mesa (no GPU needed).
+Requires Python 3.12+, and for capture, Linux with `xvfb-run` and Mesa (no GPU needed).
 
 ```sh
 python3 -m pip install -r requirements-dev.txt
