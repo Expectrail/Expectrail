@@ -5,6 +5,10 @@
    "finishedAt": "2026-11-13T21:50:35Z",
    "requestId": "builder1-recorded-clean"
   },
+  "fall-through-bug": {
+   "finishedAt": "2026-11-13T21:54:50Z",
+   "requestId": "builder1-recorded-bug"
+  },
   "fall-through-repair": {
    "finishedAt": "2026-11-13T21:53:05Z",
    "requestId": "builder1-recorded-repair"
