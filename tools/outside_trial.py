@@ -183,7 +183,19 @@ def verify(project: dict, checkout: Path, out: Path, command: list[str], timeout
             row["around"] = [around(jobs, f) for f in doc.get("findings", [])[:3] if isinstance(f.get("frame"), int)]
         except (OSError, ValueError):
             pass
+    # A check that could not be decided names the first frame where an object was not found; the
+    # engine's log around it is what a person (or a check written for the game) has to judge.
+    for reason in row["reasons"]:
+        unseen = UNSEEN.search(reason)
+        if unseen and len(row["around"]) < 3:
+            row["around"].append(around(jobs, {"spec": unseen["spec"], "route": unseen["route"],
+                                                "frame": int(unseen["frame"])}, after=6))
     return row
+
+
+# "player-stays-above-ground on walk: no violation in 115 frames judged, but an object was not found
+# in 5 frames (first 38); ..." (expectrail.evaluator)
+UNSEEN = re.compile(r"(?P<spec>[A-Za-z0-9._-]+) on (?P<route>[A-Za-z0-9._-]+): .*?not found in \d+ frames? \(first (?P<frame>\d+)\)")
 
 
 def capture(project: dict, checkout: Path, out: Path, timeout: int, sandbox: str = "require") -> list[dict]:
@@ -229,6 +241,7 @@ def around(jobs: Path, finding: dict, before: int = 3, after: int = 3) -> dict:
         tick = finding["frame"] * step
         out["ticksPerFrame"] = step
         out["rows"] = [{"tick": r.get("tick"), "player": r.get("player"), "ground": r.get("ground"),
+                        "groundFrom": r.get("groundFrom"), "body": r.get("body"),
                         "onFloor": r.get("onFloor"), "view": r.get("view")}
                        for r in rows[max(0, tick - before * step):tick + after * step + 1:step]]
         out["first"] = {k: rows[0].get(k) for k in ("player", "ground", "onFloor")} if rows else None
