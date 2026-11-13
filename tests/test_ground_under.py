@@ -152,6 +152,36 @@ class GroundUnderTest(unittest.TestCase):
         self.assertEqual(self.at(204, 246), {None})
 
 
+
+class FarFloorTest(unittest.TestCase):
+    """A floor far under the gap is the ground there, however far down (#263, November 13, 2026).
+
+    Until then the harness read 16 tile rows down from 64 px above the feet. Over a pit in Godot's
+    kinematic_character demo the floor was row 29 and the search ended at row 27, so the player had
+    no ground for 5 frames and the clean game could only be needs-review. Here one tile is added under
+    the gap at row 25 (its top at y = 1600), 21 rows below where the search starts (row 3)."""
+
+    @classmethod
+    def setUpClass(cls):
+        real_godot()
+        cls.tmp = Path(tempfile.mkdtemp(prefix="expectrail-far-floor-"))
+        cls.addClassCleanup(shutil.rmtree, cls.tmp, True)
+        game = cls.tmp / "far" / "project"
+        shutil.copytree(PROJECT / "project", game)
+        script = game / "main.gd"
+        text = script.read_text(encoding="utf-8")
+        old = "\tadd_child(layer)\n"
+        assert text.count(old) == 1, "main.gd changed: the far tile has nowhere to go"
+        script.write_text(text.replace(old, "\tlayer.set_cell(Vector2i(3, 25), id, Vector2i.ZERO)\n" + old), encoding="utf-8")
+        cls.ground = ground_and_source(cls.tmp, "far", game)
+
+    def test_the_far_floor_under_the_gap_is_the_ground_and_a_tile(self):
+        self.assertEqual({v for x, v in self.ground.items() if 204 <= x < 246}, {(1600.0, "tile")})
+
+    def test_the_near_floor_is_still_the_ground_beside_the_gap(self):
+        self.assertEqual({v for x, v in self.ground.items() if 102 <= x < 190}, {(320.0, "tile")})
+
+
 BRIDGE_SHAPE = '[sub_resource type="RectangleShape2D" id="2"]\nsize = Vector2(24, 16)\n'
 
 

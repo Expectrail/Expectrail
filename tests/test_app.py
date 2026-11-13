@@ -347,6 +347,156 @@ class HTTPTest(unittest.TestCase):
                 self.assertNotIn(b'must not be served', data if isinstance(data, bytes) else str(data).encode())
 
 
+    def test_viewer_owned_finished_files_and_security(self):
+        from expectrail import viewer
+        import base64
+        import hashlib
+        (self.after / 'game/platformer/BUG').write_text('1')
+        job_id = self.create()
+        result = self.finished(job_id)
+        url = result['viewer']
+        code, page, headers = self.http('GET', url)
+        self.assertEqual(code, 200)
+        self.assertIn(b'Expectrail evidence viewer', page)
+        digest = base64.b64encode(hashlib.sha256(viewer.SCRIPT.encode()).digest()).decode()
+        self.assertIn("script-src 'sha256-" + digest + "'", headers['Content-Security-Policy'])
+        self.assertNotIn("script-src 'unsafe-inline'", headers['Content-Security-Policy'])
+        self.assertNotIn("script-src 'self'", headers['Content-Security-Policy'])
+        folder = self.store.paths(job_id).output / 'viewer'
+        self.assertEqual(page, (folder / 'index.html').read_bytes())
+        frame = next((folder / 'frames').glob('*.png'))
+        prefix = f'/viewers/{job_id}/'
+        _, _, opening = self.http('GET', '/?token=' + self.token, token=False)
+        cookie = {'Cookie': opening['Set-Cookie'].split(';')[0]}
+        self.assertEqual(self.http('GET', prefix + 'frames/' + frame.name, token=False,
+                                  headers=cookie)[1], frame.read_bytes())
+        self.assertEqual(self.http('GET', prefix + viewer.EXPORT_NAME)[0], 200)
+        other, _ = self.store.create(self.store.request(job_id))
+        leak = folder / 'frames/after-leak-00000000.png'
+        leak.symlink_to(self.root / 'private.txt')
+        (self.root / 'private.txt').write_text('private marker')
+        for path in (f'/viewers/{other["id"]}/index.html', prefix + 'frames/' + leak.name,
+                     prefix + '../request.json', prefix + '%2e%2e/request.json',
+                     prefix + '%252e%252e/request.json', prefix + 'frames/../../request.json',
+                     prefix + 'views.json', prefix + 'extra.js', prefix + 'frames/x.png'):
+            with self.subTest(path=path):
+                self.assertEqual(self.http('GET', path)[0], 404)
+        for name in ('index.html', viewer.EXPORT_NAME):
+            target = folder / name
+            saved = target.read_bytes()
+            target.unlink()
+            target.symlink_to(self.root / 'private.txt')
+            self.assertEqual(self.http('GET', prefix + name)[0], 404)
+            target.unlink()
+            target.write_bytes(saved)
+        frames = folder / 'frames'
+        frames.rename(folder / 'saved-frames')
+        frames.symlink_to(folder / 'saved-frames', target_is_directory=True)
+        self.assertEqual(self.http('GET', prefix + 'frames/' + frame.name)[0], 404)
+        frames.unlink()
+        (folder / 'saved-frames').rename(frames)
+        folder.rename(folder.with_name('saved-viewer'))
+        folder.symlink_to(folder.with_name('saved-viewer'), target_is_directory=True)
+        self.assertEqual(self.http('GET', url)[0], 404)
+
+    def test_page_connects_history_and_record_wording(self):
+        page = self.http('GET', '/')[1].decode()
+        for text in ('/api/history', 'Past runs', 'Open run', 'data.judgedBy', 'data.viewer', 'row.createdAt',
+                     'row.before', 'row.after', 'row.summary', 'row.sessionOwned'):
+            self.assertIn(text, page)
+        self.assertNotIn('This is a diagnostic run using', page)
+        self.assertNotIn('It is not included in this slice', page)
+
+    def test_history_and_viewer_require_token_host_and_read_methods(self):
+        for path in ('/api/history', '/viewers/unknown/index.html'):
+            for token in (False, 'bad'):
+                self.assertEqual(self.http('GET', path, token=token)[0], 401)
+            self.assertEqual(self.http('GET', path, headers={'Host': 'evil.example'})[0], 403)
+            self.assertEqual(self.http('POST', path, {})[0], 405)
+        _, _, opening = self.http('GET', '/?token=' + self.token, token=False)
+        self.assertEqual(self.http('GET', '/api/history?token=' + self.token, token=False,
+                        headers={'Cookie': opening['Set-Cookie'].split(';')[0]})[0], 401)
+
+    def test_history_orders_all_jobs_and_never_upgrades_their_states(self):
+        ids, states = [], []
+        for expected in ('accept', 'reject', 'needs-review', 'failed'):
+            if expected == 'reject':
+                (self.after / 'game/platformer/BUG').write_text('1')
+            if expected == 'needs-review':
+                (self.after / 'game/platformer/CRASH').write_text('1')
+            if expected == 'failed':
+                self.engine = Broken()
+            job_id = self.create()
+            self.assertEqual(self.finished(job_id)['state'], expected)
+            ids.append(job_id)
+            states.append(expected)
+        self.starter = lambda store, job_id: None
+        for state in ('cancelled', 'running'):
+            job_id = self.create()
+            if state == 'cancelled':
+                self.http('POST', f'/api/jobs/{job_id}/cancel', {})
+            ids.append(job_id)
+            states.append(state)
+        code, data, _ = self.http('GET', '/api/history')
+        self.assertEqual(code, 200)
+        self.assertEqual([row['id'] for row in data['jobs']], ids[::-1])
+        self.assertEqual([row['state'] for row in data['jobs']], states[::-1])
+        for row in data['jobs']:
+            self.assertEqual((row['before'], row['after']), (str(self.before), str(self.after)))
+            self.assertEqual(row['createdAt'], self.store.status(row['id'])['createdAt'])
+            self.assertTrue(row['summary'])
+            if row['state'] in ('running', 'cancelled', 'failed'):
+                self.assertNotIn('accepted', row['summary'].lower())
+                self.assertIsNone(row['decision'])
+            if row['state'] == 'running':
+                self.assertIsNone(row['viewer'])
+                self.assertEqual(self.http('GET', f'/viewers/{row["id"]}/index.html')[0], 404)
+            else:
+                self.assertEqual(self.http('GET', row['viewer'])[0], 200)
+        # Simulate a new app session: metadata remains, artifact access does not transfer.
+        self.server.app.owned.clear()
+        rows = self.http('GET', '/api/history')[1]['jobs']
+        self.assertEqual([row['id'] for row in rows], ids[::-1])
+        self.assertTrue(all(row['viewer'] is None and row['report'] is None for row in rows))
+        self.assertEqual(self.http('GET', '/viewers/' + ids[0] + '/index.html')[0], 404)
+        self.store.cancel(ids[-1])
+
+    def test_observer_words_follow_findings_and_missing_observers_are_diagnostic(self):
+        result = self.finished(self.create())
+        self.assertIn("Only the engine's record judged", result['judgedBy'])
+        self.assertIn('an accept needs the vision model too', result['judgedBy'])
+        self.assertIn('diagnostic', result['judgedBy'])
+        from tests.test_two_observers import Game
+        game = Game()
+        self.engine = engines.GodotGate(replay=game.replay, rule='both', visual=game.observer())
+        result = self.finished(self.create())
+        self.assertEqual(result['state'], 'accept', result)
+        self.assertIn("engine's record and the vision model judged every check", result['judgedBy'])
+        self.engine = engines.GodotGate(replay=FakeReplay(), rule='both')
+        result = self.finished(self.create())
+        self.assertEqual(result['state'], 'needs-review')
+        self.assertIn('vision model was not available', result['judgedBy'])
+        self.assertNotIn('judged every check', result['judgedBy'])
+
+    def test_status_observer_block_and_missing_settings_words(self):
+        job_id = self.create()
+        self.finished(job_id)
+        original = self.store.status
+        for block in ({'rule': 'engine-only'}, {'rule': 'both', 'visual': {'name': 'test'}}):
+            with mock.patch.object(self.store, 'status', side_effect=lambda key: original(key) | {'observers': block}):
+                result = self.http('GET', '/api/jobs/' + job_id)[1]
+            self.assertIn('diagnostic' if block['rule'] == 'engine-only' else 'judged every check', result['judgedBy'])
+        for name in ('MODEL_API_KEY', 'EXPECTRAIL_SAM_USD_CAP'):
+            self.engine = engines.GodotGate(replay=FakeReplay(), rule='both')
+            with mock.patch.object(self.engine, 'preflight', return_value=[
+                    diagnostic('TOOL_MISSING', stage='preparing', detail=f'Missing {name}')]):
+                result = self.finished(self.create())
+            self.assertEqual(result['state'], 'needs-review')
+            self.assertIn(name, result['judgedBy'])
+            self.assertIn('before starting the app', result['judgedBy'])
+            self.assertIn('secret key' if name == 'MODEL_API_KEY' else 'US dollars', result['judgedBy'])
+
+
 class Empty:
     def preflight(self, doc):
         return []

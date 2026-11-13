@@ -20,7 +20,7 @@ The table shows the expected verdict beside the one given. kinematic-character h
 | Change | What it does | Expected | Why |
 | --- | --- | --- | --- |
 | `broken` | empties the player's collision mask, so it falls through the floor | reject | a real bug in a game we did not write; the approved check should see the player go below the ground |
-| `harmless` | tints the player's sprite; nothing it does changes | needs-review | the same as the project unchanged, until a check written for this game is approved (the product manager's call 4) |
+| `harmless` | tints the player's sprite; nothing it does changes | accept | the same as the project unchanged, on the engine's record. Until November 13, 2026 this was needs-review (the product manager's call 4); Sean withdrew call 4 for the engine's record then, and an outside project counts as verified only after a run with vision |
 
 **The first run did not test either change.** [Run 43398657245](https://github.com/Expectrail/Expectrail/actions/runs/43398657245)
 on PR #385 gave all three kinematic-character rows the same verdict, needs-review, with the same
@@ -71,8 +71,27 @@ a platform up to 64 px above the player's origin count, rejected the clean game
 found by this trial and fixed before merging. Dodge the Creeps is unchanged: it is seen from above and
 has no ground at all, so a ground check never applies to it.
 
-The five frames left are the player in the air past the level's edge or over a gap with nothing under
-it; a ground check written for this game decides what they mean.
+The five frames left (ticks 76 to 86) turned out not to be over nothing: the player is in the air over
+a pit whose floor is tile row 29, and the harness read only 16 tile rows down, so its search ended at
+row 27 (the engine rows printed on #397, run 43476562502). See the next section.
+
+**The ground is read down to the level's last row (#398).** [Run 43484520696](https://github.com/Expectrail/Expectrail/actions/runs/43484520696/job/132089304010),
+with the tile search going to the last row each layer uses instead of 16 rows (platforms that are
+bodies already had no depth limit):
+
+| kinematic-character | Verdict | Expected |
+| --- | --- | --- |
+| as pinned | **accept**, all checks pass | - |
+| broken | **reject**: 71.7 px past the surface at 304.5 from frame 44, 10 frames | reject |
+| harmless | **accept**, all checks pass | accept |
+
+Dodge the Creeps is still needs-review, correctly: no frame has a ground. These are the first accepts
+on a game the team did not write. They are accepts on the engine's record, from one generic public
+check (`player-stays-above-ground`) on one route, with no vision model asked. On November 13, 2026
+Sean withdrew the product manager's call 4 (needs-review until a check written for the game is
+approved) for the engine's record, and set the bar for "verified": an outside project counts as
+verified only after a run in which vision has looked at it too (#327, #379). That run has not been
+made, so **no outside project counts as verified yet**.
 
 It is a trial, not a gate. A needs-review or a reject is a finding to read; the job fails only when
 a project cannot be fetched as pinned or the command ends with no verdict.
