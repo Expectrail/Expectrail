@@ -482,7 +482,7 @@ traversal route, each against the clean run.
   pixels far away tip it. Comparing answers cannot fix an answer that is not steady. **The pairs
   are not fit for a verdict either.**
 
-### Asking with a box (built, not run against the service)
+### Asking with a box
 
 A point says where. It does not say how big, and the unsteady answers are all about extent: robot
 or robot and trunk, robot or robot and enemy. The engine knows roughly how big the player is. The
@@ -500,20 +500,50 @@ leaves most of the enemy of frame 100 outside it; on sinking v2 the robot hangs 
 answer lies inside the box that was asked about and how much of that box the answer fills. The
 rule refuses to compare answers to a point with answers to a box.
 
-What could go wrong, and why it is measured before anything is built on it:
+**Measured: with a box, both false alarms are gone and the confidence means something.**
+[Run 43335151089](https://github.com/Expectrail/Expectrail/actions/runs/43335151089) (November 12,
+52 images, $0.13): the same four runs on the traversal route, asked with a box of 48 by 68 game
+pixels, 17 px above the origin.
 
-- **The hidden robot.** With the robot behind the level, the object inside the box is scenery.
-  If SAM answers with a piece of ground that fills the box, layering looks like the clean game by
-  size, and this is worse than the point.
-- **The sunk drawing.** Whether SAM answers with the part of the robot inside the box or the whole
-  robot spilling out of it is not known. Either differs from the clean game; which, decides the
-  rule.
-- A box leans on the engine for the player's size as well as its place. The size here is typed in
-  by hand; a game's own would have to come from its bindings (#259).
+| Run on traversal | Pairs against clean | Confidence, lowest to highest |
+| --- | --- | --- |
+| clean | (the yardstick) | 0.87 to 0.95 |
+| missing-texture v1 (harmless) | **pass**, 0 of 13 differ | 0.86 to 0.95 |
+| layering v1 | fail, 7 of 13 | 0.34 to 0.62 in the 7 frames the robot is hidden in; 0.91 to 0.95 in the other 6 |
+| sinking v2 | fail, 13 of 13 | 0.36 to 0.69 |
 
-The run that measures it, from the SAM probe workflow: probe mode, `anchor` ticked, `lift` 17,
-`box` 48x68, `route` traversal, `runs` clean,missing-texture_v1,layering_v1,sinking_v2 (52 images,
-$0.13).
+- **Frame 20** (a point got the robot and a trunk, 107.5 px tall): 48.5 by 62.5 in both games.
+- **Frame 100** (a point got the robot in one game, robot and enemy in the other): 57.5 by 60.5 in
+  both games.
+- The harmless change's 13 boxes are within 0.5 px of the clean game's, and its confidences within
+  0.01.
+- **The fear was half right.** With the robot hidden, SAM does answer with scenery about the size
+  of the box (49 by 57 where the robot is 38.5 by 59.5), and by size alone a box catches fewer
+  frames than a point did: 6 of 13 for layering, 12 of 13 for sinking v2. But the confidence falls
+  in exactly the frames where something is wrong: by 0.32 to 0.53 where the robot is hidden, by
+  0.23 to 0.56 in every frame of sinking v2, and by 0.03 at most where the robot is in plain view.
+- So the pairs now also read the confidence: a frame is out when it falls more than 0.1 below the
+  unchanged game's for the same frame. Over every recorded harmless pair (52 frames, point and
+  box) the largest fall is 0.031.
+
+**What has to hold next, written before the run that tests it.** One route, 13 frames a run and
+one harmless change is what this rests on, and the 0.1 was chosen after seeing it. The test is the
+same question on frames nobody has looked at: the smoke route with all eight seeded bugs, and the
+clean game on coins, combat and traversal, asked with the same box (probe mode, `anchor` ticked,
+`lift` 17, `box` 48x68, `clean_routes` coins,combat,traversal; 131 images, $0.33). If the box is
+what it looked like here:
+
+1. Every frame of the four clean runs has a confidence of 0.8 or more.
+2. Both missing-texture runs pass the pairs against the smoke route's clean run: no frame differs.
+3. Sinking v2 fails the pairs in every compared frame.
+4. Both layering runs fail the pairs, and every frame of theirs that differs has a confidence
+   under 0.7.
+
+If any of the four fails, it is written here as it fell, and the box is not fit for a verdict
+either.
+
+What a box leans on, beyond what a point does: the engine for the player's size as well as its
+place. The size here is typed in by hand; a game's own would have to come from its bindings (#259).
 
 Also not shown for the pairs: a change that moves the player a little and changes nothing else
 (every frame is then "moved", and the pairs are silent), and any game but this one.
