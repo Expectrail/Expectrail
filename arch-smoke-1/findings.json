@@ -1,0 +1,115 @@
+{
+  "format": "expectrail.findings/v0",
+  "decision": "reject",
+  "reasons": [
+    "1 of 1 public checks fail after the change"
+  ],
+  "adapter": "godot",
+  "pullRequest": null,
+  "game": {
+    "path": "game/platformer",
+    "headTree": "324ff38667195158a6cd9676a53e591b8686a22c959e3a8565feb9bedcbdc25b",
+    "baseTree": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280"
+  },
+  "checksFrom": "base",
+  "checksChanged": {
+    "specs": 0,
+    "routes": 0
+  },
+  "specs": [
+    {
+      "id": "player-stays-above-ground",
+      "sha256": "4829b493e18b84208fcf9790004d822b775d12c3cb3505b4063b3ba2a6585d55",
+      "instruction": "The player never falls through the ground."
+    }
+  ],
+  "drafts": 0,
+  "checkProblems": 0,
+  "observers": {
+    "rule": "both",
+    "visual": null
+  },
+  "anchor": {
+    "format": "expectrail.anchor/v0",
+    "observer": null,
+    "box": "body",
+    "pad": 4.0,
+    "every": 10,
+    "tolerance": 6.0,
+    "drop": 0.1,
+    "status": "not-asked",
+    "stopped": "no vision model that answers box prompts was given",
+    "routes": []
+  },
+  "routes": [
+    {
+      "name": "smoke",
+      "sha256": "0db750ef7ab79124ccd80c63c03f117d84c579281f7ca487f0877f829660f02d"
+    }
+  ],
+  "counts": {
+    "checks": 1,
+    "passed": 0,
+    "failed": 1,
+    "needsReview": 0
+  },
+  "checks": [
+    {
+      "spec": "player-stays-above-ground",
+      "route": "smoke",
+      "before": "needs-review",
+      "after": "fail",
+      "comparison": "INCONCLUSIVE",
+      "findingId": "d53dfb482f64",
+      "observed": {
+        "before": {
+          "engine": "pass",
+          "visual": "not-asked",
+          "visualAnswerSha256": null
+        },
+        "after": {
+          "engine": "fail",
+          "visual": "not-asked",
+          "visualAnswerSha256": null
+        }
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "d53dfb482f64",
+      "spec": "player-stays-above-ground",
+      "route": "smoke",
+      "kind": "fail",
+      "before": "needs-review",
+      "after": "fail",
+      "comparison": "INCONCLUSIVE",
+      "reason": "player is 22.25px past the boundary (above 780, tolerance 20) (first at frame 5, 21 frames)",
+      "frame": 5
+    }
+  ],
+  "heldOut": {
+    "status": "not-used",
+    "routes": 0,
+    "checks": 0,
+    "passed": 0,
+    "failed": 0,
+    "needsReview": 0
+  },
+  "isolation": {
+    "replays": 2,
+    "sandboxed": 2,
+    "required": true,
+    "sandbox": {
+      "tool": "bubblewrap",
+      "version": "0.9.0"
+    },
+    "reasons": []
+  },
+  "reviewPage": "review/index.html",
+  "expectrail": {
+    "version": "0.1.0",
+    "commit": null
+  },
+  "createdAt": "2026-11-13T15:33:53Z"
+}
