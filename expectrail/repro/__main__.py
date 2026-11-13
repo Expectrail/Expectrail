@@ -1,4 +1,5 @@
-"""python3 -m expectrail.repro check | visibility | render | screen | screen-render | reach | cases | score | score-render"""
+"""python3 -m expectrail.repro check | visibility | render | screen | screen-render | evidence | evidence-render
+| reach | cases | score | score-render"""
 from __future__ import annotations
 
 import argparse
@@ -6,7 +7,7 @@ import json
 import sys
 from pathlib import Path
 
-from expectrail.repro import bench, reach, score, screen, visibility
+from expectrail.repro import bench, evidence, reach, score, screen, visibility
 
 PROFILE = bench.REPO / "discovery" / "platformer.profile.json"
 
@@ -44,6 +45,27 @@ def main(argv: list[str] | None = None) -> int:
     scr = sub.add_parser("screen-render", help="print a screen record as a table")
     scr.add_argument("record", type=Path)
     scr.add_argument("--bench", type=Path, default=bench.BENCH)
+    ev = sub.add_parser("evidence", help="replay every probe on the clean game and on one bug build with frames, and "
+                                         "write what differs in the record and on the screen; no model, no key")
+    ev.add_argument("--bench", type=Path, default=bench.BENCH)
+    ev.add_argument("--profile", type=Path, default=PROFILE)
+    ev.add_argument("--defect", default=None, help="a defect id of the bench: its patch makes the bug build")
+    ev.add_argument("--patch", type=Path, action="append", default=[],
+                    help="a patch that makes the bug build (repeatable), in place of --defect")
+    ev.add_argument("--out", type=Path, required=True)
+    ev.add_argument("--jobs", type=int, default=1)
+    ev.add_argument("--probe", action="append", default=[], help="a probe id (repeatable); default: all")
+    ev.add_argument("--reach", action="store_true", help="the reach probes as well as the library probes")
+    ev.add_argument("--recorded-answers", type=Path, default=None,
+                    help="a folder of a visual observer's recorded answers to read; nothing is ever asked")
+    ev.add_argument("--object", action="append", default=[], metavar="NAME=PROMPT",
+                    help="an object to read recorded answers for, with the prompt it was recorded under (repeatable)")
+    ev.add_argument("--keep-frames", action="store_true", help="leave the captured frames under <out>/work")
+    evr = sub.add_parser("evidence-render", help="print an evidence record as a table, or with --for-proposer the "
+                                                 "bounded summary a prompt could carry")
+    evr.add_argument("record", type=Path)
+    evr.add_argument("--bench", type=Path, default=bench.BENCH)
+    evr.add_argument("--for-proposer", action="store_true")
     k = sub.add_parser("cases", help="the cases a live run on the bench covers: each defect with the no-fix candidate")
     k.add_argument("--bench", type=Path, default=bench.BENCH)
     k.add_argument("--github-output", action="store_true", help="print cases= and budget= lines for a workflow step")
@@ -96,6 +118,48 @@ def main(argv: list[str] | None = None) -> int:
             report = args.report.read_text(encoding="utf-8", errors="replace") if args.report else ""
             print(json.dumps(reach.reach(report, profile["actions"], jit_library(profile["actions"])), indent=1))
             return 0
+        if args.cmd == "evidence-render":
+            record = evidence.load(args.record)
+            if args.for_proposer:
+                print(json.dumps(evidence.for_proposer(record), indent=1))
+            else:
+                sys.stdout.write(evidence.render(record))
+            return 0
+        if args.cmd == "evidence":
+            from expectrail.contracts import load_strict
+            from expectrail.jit.probes import jit_library
+
+            if bool(args.defect) == bool(args.patch):
+                raise evidence.EvidenceError("give the bug build as --defect or as --patch, one of the two")
+            if args.defect:
+                found = [d for d in doc["defects"] if d["id"] == args.defect]
+                if not found:
+                    raise evidence.EvidenceError(f"no defect {args.defect[:60]!r} in the bench")
+                patches = [bench.REPO / found[0]["patch"]]
+            else:
+                patches = args.patch
+            profile = load_strict(args.profile, "mechanics-profile")
+            probes = jit_library(profile["actions"])
+            if args.reach:
+                probes = probes + reach.reach_probes(profile["actions"], probes)
+            if args.probe:
+                unknown = sorted(set(args.probe) - {p["id"] for p in probes})
+                if unknown:
+                    raise evidence.EvidenceError(f"no probe {unknown[0][:60]!r}")
+                probes = [p for p in probes if p["id"] in args.probe]
+            recorded = None
+            if args.recorded_answers is not None or args.object:
+                if args.recorded_answers is None or not args.object or any("=" not in o for o in args.object):
+                    raise evidence.EvidenceError("recorded answers are read with --recorded-answers and at least one "
+                                                 "--object NAME=PROMPT")
+                pairs = [o.split("=", 1) for o in args.object]
+                if len({name for name, _prompt in pairs}) != len(pairs):
+                    raise evidence.EvidenceError("an --object is named twice")
+                recorded = evidence.Recorded(args.recorded_answers, dict(pairs))
+            record = evidence.evidence(profile, probes, patches, args.out, jobs=args.jobs, recorded=recorded,
+                                       keep_frames=args.keep_frames)
+            print(json.dumps(record["totals"]))
+            return 1 if record["totals"]["error"] else 0
         if args.cmd == "screen":
             from expectrail.contracts import load_strict
             from expectrail.jit.probes import jit_library
@@ -132,7 +196,7 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write(visibility.render(record, doc))
         return 0
     except (bench.BenchError, visibility.VisibilityError, screen.ScreenError, score.ScoreError, reach.ReachError,
-            OSError) as exc:
+            evidence.EvidenceError, OSError) as exc:
         print(f"repro: {exc}", file=sys.stderr)
         return 1
 

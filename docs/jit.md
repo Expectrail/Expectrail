@@ -272,6 +272,19 @@ Nothing differed between the two clean replays. This compares pixels exactly and
 observer anything: it says where a difference could be shown, not that an observer reports it. The
 table and its limits are on the bench's page. **Nothing generated checks run on reads it.**
 
+**Evidence for one bug build** (November 13, 2026; [`expectrail/repro/evidence.py`](../expectrail/repro/evidence.py),
+`expectrail.repro-evidence/v1`; issue #285, step 5). The proposer is given each probe's signals on
+the clean game and on the bug build (`measured`, above) and nothing else. A signal is a reading of
+the engine's record, so a bug that only shows on the screen gives the proposer nothing to build on.
+An evidence record is what it could be given instead: for one bug build, along every probe, the
+record fields that differ with the first tick, the signals that moved, the frames that differ with
+the first one and the place of the difference, and, where a visual observer's recorded answers are
+given, what the observer answered on those frames of both builds. It is made with no model; an
+observer's answers are looked up and never asked for. `evidence.for_proposer` is the bounded
+summary a prompt could carry. Four records made on the real engine are on the bench's page.
+**Nothing generated checks run on reads it**: the prompt is unchanged, and offering it is a later
+change, after the baseline.
+
 Not done: the live baseline itself, which a person dispatches, and so the rate and the breakdown
 of misses.
 

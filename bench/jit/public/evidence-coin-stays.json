@@ -1,0 +1,680 @@
+{
+ "basePatchSha256": [
+  "8892eb10ced0cc35258e4edfa551d43e7550547233519dc1ba7a572efc5e508d"
+ ],
+ "engine": "Godot 4.7.2-stable",
+ "engineRetries": 0,
+ "format": "expectrail.repro-evidence/v1",
+ "frame": {
+  "height": 960,
+  "width": 1600
+ },
+ "framesPerSecond": 60,
+ "maxFramesExamined": 8,
+ "observer": null,
+ "probes": [
+  "wait-long",
+  "hold-right",
+  "hold-left",
+  "reverse",
+  "jump-w0-x1",
+  "jump-w0-x2",
+  "jump-w0-x8",
+  "jump-w40-x1",
+  "jump-w40-x2",
+  "jump-w40-x8",
+  "jump-w80-x1",
+  "jump-w80-x2",
+  "jump-w80-x8",
+  "jump-w120-x1",
+  "jump-w120-x2",
+  "jump-w120-x8",
+  "shoot-right-every48",
+  "shoot-right-every12",
+  "shoot-left-every48",
+  "shoot-left-every12",
+  "move-fire-right",
+  "move-fire-left",
+  "jump-l40-x1",
+  "jump-l40-x2",
+  "jump-l40-x8"
+ ],
+ "renderer": "Mesa - llvmpipe (LLVM 20.1.2, 256 bits)",
+ "replaysPerBuild": {
+  "bugBuild": 1,
+  "clean": 2
+ },
+ "rows": [
+  {
+   "observer": null,
+   "probe": "wait-long",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "hold-right",
+   "record": {
+    "fields": [
+     {
+      "firstTick": 174,
+      "name": "coins",
+      "of": 340,
+      "ticks": 166
+     }
+    ],
+    "signals": {
+     "coins_collected": {
+      "bugBuild": 0,
+      "clean": 5
+     }
+    }
+   },
+   "screen": {
+    "atFrame": 68,
+    "box": [
+     197,
+     622,
+     875,
+     720
+    ],
+    "examined": 8,
+    "firstFrame": 26,
+    "frames": 143,
+    "of": 170,
+    "pixels": 7175
+   },
+   "sees": "record-and-screen",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "hold-left",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "reverse",
+   "record": {
+    "fields": [
+     {
+      "firstTick": 174,
+      "name": "coins",
+      "of": 340,
+      "ticks": 166
+     }
+    ],
+    "signals": {
+     "coins_collected": {
+      "bugBuild": 0,
+      "clean": 4
+     }
+    }
+   },
+   "screen": {
+    "atFrame": 47,
+    "box": [
+     551,
+     630,
+     1147,
+     720
+    ],
+    "examined": 8,
+    "firstFrame": 26,
+    "frames": 143,
+    "of": 170,
+    "pixels": 5648
+   },
+   "sees": "record-and-screen",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w0-x1",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w0-x2",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w0-x8",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w40-x1",
+   "record": null,
+   "screen": {
+    "atFrame": 44,
+    "box": [
+     799,
+     662,
+     872,
+     720
+    ],
+    "examined": 8,
+    "firstFrame": 26,
+    "frames": 44,
+    "of": 70,
+    "pixels": 1802
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w40-x2",
+   "record": null,
+   "screen": {
+    "atFrame": 49,
+    "box": [
+     799,
+     660,
+     872,
+     720
+    ],
+    "examined": 8,
+    "firstFrame": 26,
+    "frames": 54,
+    "of": 80,
+    "pixels": 1965
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w40-x8",
+   "record": {
+    "fields": [
+     {
+      "firstTick": 174,
+      "name": "coins",
+      "of": 280,
+      "ticks": 106
+     }
+    ],
+    "signals": {
+     "coins_collected": {
+      "bugBuild": 0,
+      "clean": 1
+     }
+    }
+   },
+   "screen": {
+    "atFrame": 42,
+    "box": [
+     799,
+     666,
+     872,
+     720
+    ],
+    "examined": 8,
+    "firstFrame": 26,
+    "frames": 114,
+    "of": 140,
+    "pixels": 1817
+   },
+   "sees": "record-and-screen",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w80-x1",
+   "record": {
+    "fields": [
+     {
+      "firstTick": 174,
+      "name": "coins",
+      "of": 180,
+      "ticks": 6
+     }
+    ],
+    "signals": {
+     "coins_collected": {
+      "bugBuild": 0,
+      "clean": 1
+     }
+    }
+   },
+   "screen": {
+    "atFrame": 54,
+    "box": [
+     599,
+     636,
+     871,
+     720
+    ],
+    "examined": 8,
+    "firstFrame": 26,
+    "frames": 63,
+    "of": 90,
+    "pixels": 6650
+   },
+   "sees": "record-and-screen",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w80-x2",
+   "record": {
+    "fields": [
+     {
+      "firstTick": 174,
+      "name": "coins",
+      "of": 200,
+      "ticks": 26
+     }
+    ],
+    "signals": {
+     "coins_collected": {
+      "bugBuild": 0,
+      "clean": 3
+     }
+    }
+   },
+   "screen": {
+    "atFrame": 58,
+    "box": [
+     599,
+     631,
+     872,
+     720
+    ],
+    "examined": 8,
+    "firstFrame": 26,
+    "frames": 73,
+    "of": 100,
+    "pixels": 6739
+   },
+   "sees": "record-and-screen",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w80-x8",
+   "record": {
+    "fields": [
+     {
+      "firstTick": 174,
+      "name": "coins",
+      "of": 320,
+      "ticks": 146
+     }
+    ],
+    "signals": {
+     "coins_collected": {
+      "bugBuild": 0,
+      "clean": 4
+     }
+    }
+   },
+   "screen": {
+    "atFrame": 65,
+    "box": [
+     600,
+     634,
+     871,
+     720
+    ],
+    "examined": 8,
+    "firstFrame": 26,
+    "frames": 133,
+    "of": 160,
+    "pixels": 6239
+   },
+   "sees": "record-and-screen",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w120-x1",
+   "record": {
+    "fields": [
+     {
+      "firstTick": 174,
+      "name": "coins",
+      "of": 220,
+      "ticks": 46
+     }
+    ],
+    "signals": {
+     "coins_collected": {
+      "bugBuild": 0,
+      "clean": 4
+     }
+    }
+   },
+   "screen": {
+    "atFrame": 62,
+    "box": [
+     399,
+     624,
+     871,
+     720
+    ],
+    "examined": 8,
+    "firstFrame": 26,
+    "frames": 83,
+    "of": 110,
+    "pixels": 7198
+   },
+   "sees": "record-and-screen",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w120-x2",
+   "record": {
+    "fields": [
+     {
+      "firstTick": 174,
+      "name": "coins",
+      "of": 240,
+      "ticks": 66
+     }
+    ],
+    "signals": {
+     "coins_collected": {
+      "bugBuild": 0,
+      "clean": 4
+     }
+    }
+   },
+   "screen": {
+    "atFrame": 66,
+    "box": [
+     400,
+     631,
+     871,
+     720
+    ],
+    "examined": 8,
+    "firstFrame": 26,
+    "frames": 93,
+    "of": 120,
+    "pixels": 7454
+   },
+   "sees": "record-and-screen",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-w120-x8",
+   "record": {
+    "fields": [
+     {
+      "firstTick": 174,
+      "name": "coins",
+      "of": 360,
+      "ticks": 186
+     },
+     {
+      "firstTick": 343,
+      "name": "enemies",
+      "of": 360,
+      "ticks": 15
+     }
+    ],
+    "signals": {
+     "coins_collected": {
+      "bugBuild": 0,
+      "clean": 5
+     },
+     "max_enemy_drop_px": {
+      "bugBuild": 0.46,
+      "clean": 0.47
+     }
+    }
+   },
+   "screen": {
+    "atFrame": 70,
+    "box": [
+     399,
+     628,
+     871,
+     720
+    ],
+    "examined": 8,
+    "firstFrame": 26,
+    "frames": 153,
+    "of": 180,
+    "pixels": 7442
+   },
+   "sees": "record-and-screen",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "shoot-right-every48",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "shoot-right-every12",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "shoot-left-every48",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "shoot-left-every12",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "move-fire-right",
+   "record": {
+    "fields": [
+     {
+      "firstTick": 174,
+      "name": "coins",
+      "of": 316,
+      "ticks": 142
+     },
+     {
+      "firstTick": 247,
+      "name": "enemies",
+      "of": 316,
+      "ticks": 15
+     }
+    ],
+    "signals": {
+     "coins_collected": {
+      "bugBuild": 0,
+      "clean": 5
+     }
+    }
+   },
+   "screen": {
+    "atFrame": 63,
+    "box": [
+     399,
+     628,
+     871,
+     720
+    ],
+    "examined": 8,
+    "firstFrame": 26,
+    "frames": 132,
+    "of": 158,
+    "pixels": 7124
+   },
+   "sees": "record-and-screen",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "move-fire-left",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-l40-x1",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-l40-x2",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "jump-l40-x8",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  }
+ ],
+ "ticksPerSecond": 120,
+ "totals": {
+  "error": 0,
+  "neither": 13,
+  "probes": 25,
+  "record-and-screen": 10,
+  "record-only": 0,
+  "screen-only": 2
+ }
+}

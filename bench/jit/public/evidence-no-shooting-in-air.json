@@ -1,0 +1,165 @@
+{
+ "basePatchSha256": [
+  "c7f7952bb67993262344711c218be2d1b730ab7de890117096764228b3b494aa"
+ ],
+ "engine": "Godot 4.7.2-stable",
+ "engineRetries": 0,
+ "format": "expectrail.repro-evidence/v1",
+ "frame": {
+  "height": 960,
+  "width": 1600
+ },
+ "framesPerSecond": 60,
+ "maxFramesExamined": 8,
+ "observer": null,
+ "probes": [
+  "reach-move-left-with-move-right",
+  "reach-move-right-with-move-left",
+  "reach-move-left-with-jump",
+  "reach-jump-with-move-left",
+  "reach-move-right-with-jump",
+  "reach-jump-with-move-right",
+  "reach-jump-with-shoot",
+  "reach-shoot-with-jump"
+ ],
+ "renderer": "Mesa - llvmpipe (LLVM 20.1.2, 256 bits)",
+ "replaysPerBuild": {
+  "bugBuild": 1,
+  "clean": 2
+ },
+ "rows": [
+  {
+   "observer": null,
+   "probe": "reach-move-left-with-move-right",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "reach-move-right-with-move-left",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "reach-move-left-with-jump",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "reach-jump-with-move-left",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "reach-move-right-with-jump",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "reach-jump-with-move-right",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "reach-jump-with-shoot",
+   "record": {
+    "fields": [
+     {
+      "firstTick": 19,
+      "name": "projectiles",
+      "of": 160,
+      "ticks": 141
+     }
+    ],
+    "signals": {
+     "projectile_count": {
+      "bugBuild": 0,
+      "clean": 1
+     }
+    }
+   },
+   "screen": {
+    "atFrame": 21,
+    "box": [
+     736,
+     459,
+     1600,
+     717
+    ],
+    "examined": 8,
+    "firstFrame": 9,
+    "frames": 30,
+    "of": 80,
+    "pixels": 11109
+   },
+   "sees": "record-and-screen",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "observer": null,
+   "probe": "reach-shoot-with-jump",
+   "record": null,
+   "screen": null,
+   "sees": "neither",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  }
+ ],
+ "ticksPerSecond": 120,
+ "totals": {
+  "error": 0,
+  "neither": 7,
+  "probes": 8,
+  "record-and-screen": 1,
+  "record-only": 0,
+  "screen-only": 0
+ }
+}

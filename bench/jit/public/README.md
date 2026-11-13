@@ -311,6 +311,159 @@ What the table shows, and what it does not:
 - **It is not a reproduction rate**, and nothing generated checks run on reads it: a live run on
   this bench, the baseline included, is the same with or without it.
 
+## Evidence for one bug build: the record and the screen side by side
+
+Added November 13, 2026 ([`expectrail/repro/evidence.py`](../../../expectrail/repro/evidence.py),
+issue #285 step 5). The two measurements above are about the bench: one row a defect, the one probe
+where it shows most. A proposer writing a check for one bug needs the other cut: for that bug
+build, along every probe, what differs from the clean game in the engine's record (which fields,
+from which tick, which signals) and on the screen (how many frames, from which frame, where), from
+the same replays. That is an evidence record (`expectrail.repro-evidence/v1`):
+
+```
+python3 -m expectrail.repro evidence --defect coin-stays --out runs/evidence/coin-stays --jobs 2    # about 16 minutes on two cores
+python3 -m expectrail.repro evidence-render runs/evidence/coin-stays/repro-evidence.json
+python3 -m expectrail.repro evidence-render runs/evidence/coin-stays/repro-evidence.json --for-proposer
+```
+
+Each probe is replayed with frames on the clean game twice and on the bug build once. What differs
+between the two clean replays counts for nothing. `--for-proposer` prints the bounded summary a
+prompt could carry: at most six probes, numbers, and names from closed lists only.
+
+Four were recorded on the real engine on November 12 and 13, 2026 (pinned Godot 4.7.2 drawing in
+software, a cloud container, no model, not in CI; 249 replays in all), and are committed beside
+this page as `evidence-<defect>.json`. Nothing differed between the two clean replays on any probe,
+and no replay had to be made again. Where a row can be compared with the screen measurement above
+(the same defect and probe), it is the same row.
+
+**`no-shooting-in-air`, on the eight reach probes.** The first time a reach probe was captured with
+frames. The one probe that jumps and shoots shows the bug in both: the record has no bullet from
+tick 19, and the picture has none from frame 9 (the same moment to within a frame: 120 ticks and 60
+frames a second). The record goes on differing for 141 ticks and the picture for 30 frames, which
+is 60 ticks; why the record differs for longer was not looked into.
+
+<!-- evidence:no-shooting-in-air:start -->
+8 probes, Godot 4.7.2-stable, frames of 1600 x 960, 120 ticks and 60 frames a second, no model asked. The record and the screen both differ: 1. Only the screen differs: 0. Only the record differs: 0. Nothing differs: 7.
+
+No visual observer was read: no recorded answers were given.
+
+| Probe | Sees | Record fields that differ: first tick, ticks | Signals that moved, clean to bug build | Frames that differ | Most pixels in one frame | Where (left, top, right, bottom) | Observer |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `reach-jump-with-shoot` | record-and-screen | `projectiles` from 19, 141 of 160 | `projectile_count` 1 to 0 | 30 of 80, from frame 9 | 11109 (frame 21) | 736, 459, 1600, 717 | not read |
+
+Nothing differs on: `reach-move-left-with-move-right`, `reach-move-right-with-move-left`, `reach-move-left-with-jump`, `reach-jump-with-move-left`, `reach-move-right-with-jump`, `reach-jump-with-move-right`, `reach-shoot-with-jump`.
+<!-- evidence:no-shooting-in-air:end -->
+
+**`bullet-behind-scenery`, on the library's 25 probes.** Screen only, on the 6 probes that fire. A
+check on the engine's record has nothing to read here; the evidence still says where and when to
+look: a band of the picture between rows 671 and 806, from frame 5, 15 or 21 depending on the probe.
+
+<!-- evidence:bullet-behind-scenery:start -->
+25 probes, Godot 4.7.2-stable, frames of 1600 x 960, 120 ticks and 60 frames a second, no model asked. The record and the screen both differ: 0. Only the screen differs: 6. Only the record differs: 0. Nothing differs: 19.
+
+No visual observer was read: no recorded answers were given.
+
+| Probe | Sees | Record fields that differ: first tick, ticks | Signals that moved, clean to bug build | Frames that differ | Most pixels in one frame | Where (left, top, right, bottom) | Observer |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `shoot-right-every48` | screen-only | none | none | 79 of 117, from frame 15 | 9467 (frame 60) | 788, 686, 1600, 805 | not read |
+| `shoot-right-every12` | screen-only | none | none | 79 of 117, from frame 15 | 9467 (frame 60) | 788, 686, 1600, 805 | not read |
+| `shoot-left-every48` | screen-only | none | none | 102 of 123, from frame 21 | 9560 (frame 79) | 373, 687, 812, 806 | not read |
+| `shoot-left-every12` | screen-only | none | none | 102 of 123, from frame 21 | 9560 (frame 79) | 373, 687, 812, 806 | not read |
+| `move-fire-right` | screen-only | none | none | 130 of 158, from frame 5 | 12820 (frame 60) | 787, 686, 1600, 806 | not read |
+| `move-fire-left` | screen-only | none | none | 153 of 158, from frame 5 | 8079 (frame 27) | 516, 671, 824, 806 | not read |
+
+Nothing differs on: `wait-long`, `hold-right`, `hold-left`, `reverse`, `jump-w0-x1`, `jump-w0-x2`, `jump-w0-x8`, `jump-w40-x1`, `jump-w40-x2`, `jump-w40-x8`, `jump-w80-x1`, `jump-w80-x2`, `jump-w80-x8`, `jump-w120-x1`, `jump-w120-x2`, `jump-w120-x8`, `jump-l40-x1`, `jump-l40-x2`, `jump-l40-x8`.
+<!-- evidence:bullet-behind-scenery:end -->
+
+**`enemy-walks-backwards`, on the library's 25 probes.** Screen only, on every probe, from the first
+frame. On 13 of them the difference is a strip at most 75 px wide at the right edge of the picture,
+and on 5 of those only 17 frames differ.
+
+<!-- evidence:enemy-walks-backwards:start -->
+25 probes, Godot 4.7.2-stable, frames of 1600 x 960, 120 ticks and 60 frames a second, no model asked. The record and the screen both differ: 0. Only the screen differs: 25. Only the record differs: 0. Nothing differs: 0.
+
+No visual observer was read: no recorded answers were given.
+
+| Probe | Sees | Record fields that differ: first tick, ticks | Signals that moved, clean to bug build | Frames that differ | Most pixels in one frame | Where (left, top, right, bottom) | Observer |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `wait-long` | screen-only | none | none | 107 of 575, from frame 0 | 3543 (frame 15) | 1527, 660, 1600, 792 | not read |
+| `hold-right` | screen-only | none | none | 170 of 170, from frame 0 | 17126 (frame 72) | 808, 187, 1600, 793 | not read |
+| `hold-left` | screen-only | none | none | 17 of 170, from frame 0 | 3262 (frame 5) | 1531, 660, 1600, 790 | not read |
+| `reverse` | screen-only | none | none | 170 of 170, from frame 0 | 17126 (frame 72) | 1169, 190, 1600, 793 | not read |
+| `jump-w0-x1` | screen-only | none | none | 50 of 50, from frame 0 | 3568 (frame 14) | 1527, 660, 1600, 793 | not read |
+| `jump-w0-x2` | screen-only | none | none | 60 of 60, from frame 0 | 3653 (frame 8) | 1525, 660, 1600, 792 | not read |
+| `jump-w0-x8` | screen-only | none | none | 107 of 120, from frame 0 | 3543 (frame 15) | 1527, 660, 1600, 792 | not read |
+| `jump-w40-x1` | screen-only | none | none | 70 of 70, from frame 0 | 16079 (frame 49) | 1347, 185, 1600, 793 | not read |
+| `jump-w40-x2` | screen-only | none | none | 80 of 80, from frame 0 | 14881 (frame 68) | 1344, 187, 1600, 793 | not read |
+| `jump-w40-x8` | screen-only | none | none | 140 of 140, from frame 0 | 14251 (frame 79) | 1347, 189, 1600, 793 | not read |
+| `jump-w80-x1` | screen-only | none | none | 90 of 90, from frame 0 | 16908 (frame 76) | 1167, 189, 1600, 793 | not read |
+| `jump-w80-x2` | screen-only | none | none | 100 of 100, from frame 0 | 16446 (frame 71) | 1172, 189, 1600, 793 | not read |
+| `jump-w80-x8` | screen-only | none | none | 160 of 160, from frame 0 | 16908 (frame 136) | 1169, 185, 1600, 792 | not read |
+| `jump-w120-x1` | screen-only | none | none | 110 of 110, from frame 0 | 17070 (frame 78) | 974, 185, 1600, 792 | not read |
+| `jump-w120-x2` | screen-only | none | none | 120 of 120, from frame 0 | 16862 (frame 51) | 982, 187, 1600, 792 | not read |
+| `jump-w120-x8` | screen-only | none | none | 180 of 180, from frame 0 | 16972 (frame 77) | 973, 185, 1600, 792 | not read |
+| `shoot-right-every48` | screen-only | none | none | 109 of 117, from frame 0 | 3543 (frame 15) | 1527, 660, 1600, 792 | not read |
+| `shoot-right-every12` | screen-only | none | none | 109 of 117, from frame 0 | 3543 (frame 15) | 1527, 660, 1600, 792 | not read |
+| `shoot-left-every48` | screen-only | none | none | 53 of 123, from frame 0 | 3059 (frame 0) | 1534, 660, 1600, 781 | not read |
+| `shoot-left-every12` | screen-only | none | none | 53 of 123, from frame 0 | 3059 (frame 0) | 1534, 660, 1600, 781 | not read |
+| `move-fire-right` | screen-only | none | none | 158 of 158, from frame 0 | 15749 (frame 45) | 947, 185, 1600, 793 | not read |
+| `move-fire-left` | screen-only | none | none | 17 of 158, from frame 0 | 3262 (frame 5) | 1531, 660, 1600, 790 | not read |
+| `jump-l40-x1` | screen-only | none | none | 17 of 70, from frame 0 | 3262 (frame 5) | 1531, 660, 1600, 790 | not read |
+| `jump-l40-x2` | screen-only | none | none | 17 of 80, from frame 0 | 3262 (frame 5) | 1531, 660, 1600, 790 | not read |
+| `jump-l40-x8` | screen-only | none | none | 17 of 140, from frame 0 | 3262 (frame 5) | 1531, 660, 1600, 790 | not read |
+<!-- evidence:enemy-walks-backwards:end -->
+
+**`coin-stays`, on the library's 25 probes.**
+
+**The picture changes a second before the record does.** On every probe that reaches the first
+coin, frames differ from frame 26 (tick 52) and the record's `coins` only from tick 174. By reading
+the scene (`level/coin.tscn`): the clean game plays a pick-up animation when the coin is touched and
+removes the coin from the tree one second, 120 ticks, into it; the record lists the coins still in
+the tree, so it sees the pick-up only then. Two probes (`jump-w40-x1`, `jump-w40-x2`) end before
+tick 174: on those the bug is screen-only, and `coins_collected` reads the same on both builds. On
+the bench's own table this defect is record-and-screen; per probe it is 10 and 2. A proposer shown
+only the record is pointed a second late, and on two probes at nothing.
+
+<!-- evidence:coin-stays:start -->
+25 probes, Godot 4.7.2-stable, frames of 1600 x 960, 120 ticks and 60 frames a second, no model asked. The record and the screen both differ: 10. Only the screen differs: 2. Only the record differs: 0. Nothing differs: 13.
+
+No visual observer was read: no recorded answers were given.
+
+| Probe | Sees | Record fields that differ: first tick, ticks | Signals that moved, clean to bug build | Frames that differ | Most pixels in one frame | Where (left, top, right, bottom) | Observer |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `hold-right` | record-and-screen | `coins` from 174, 166 of 340 | `coins_collected` 5 to 0 | 143 of 170, from frame 26 | 7175 (frame 68) | 197, 622, 875, 720 | not read |
+| `reverse` | record-and-screen | `coins` from 174, 166 of 340 | `coins_collected` 4 to 0 | 143 of 170, from frame 26 | 5648 (frame 47) | 551, 630, 1147, 720 | not read |
+| `jump-w40-x1` | screen-only | none | none | 44 of 70, from frame 26 | 1802 (frame 44) | 799, 662, 872, 720 | not read |
+| `jump-w40-x2` | screen-only | none | none | 54 of 80, from frame 26 | 1965 (frame 49) | 799, 660, 872, 720 | not read |
+| `jump-w40-x8` | record-and-screen | `coins` from 174, 106 of 280 | `coins_collected` 1 to 0 | 114 of 140, from frame 26 | 1817 (frame 42) | 799, 666, 872, 720 | not read |
+| `jump-w80-x1` | record-and-screen | `coins` from 174, 6 of 180 | `coins_collected` 1 to 0 | 63 of 90, from frame 26 | 6650 (frame 54) | 599, 636, 871, 720 | not read |
+| `jump-w80-x2` | record-and-screen | `coins` from 174, 26 of 200 | `coins_collected` 3 to 0 | 73 of 100, from frame 26 | 6739 (frame 58) | 599, 631, 872, 720 | not read |
+| `jump-w80-x8` | record-and-screen | `coins` from 174, 146 of 320 | `coins_collected` 4 to 0 | 133 of 160, from frame 26 | 6239 (frame 65) | 600, 634, 871, 720 | not read |
+| `jump-w120-x1` | record-and-screen | `coins` from 174, 46 of 220 | `coins_collected` 4 to 0 | 83 of 110, from frame 26 | 7198 (frame 62) | 399, 624, 871, 720 | not read |
+| `jump-w120-x2` | record-and-screen | `coins` from 174, 66 of 240 | `coins_collected` 4 to 0 | 93 of 120, from frame 26 | 7454 (frame 66) | 400, 631, 871, 720 | not read |
+| `jump-w120-x8` | record-and-screen | `coins` from 174, 186 of 360, `enemies` from 343, 15 of 360 | `coins_collected` 5 to 0, `max_enemy_drop_px` 0.47 to 0.46 | 153 of 180, from frame 26 | 7442 (frame 70) | 399, 628, 871, 720 | not read |
+| `move-fire-right` | record-and-screen | `coins` from 174, 142 of 316, `enemies` from 247, 15 of 316 | `coins_collected` 5 to 0 | 132 of 158, from frame 26 | 7124 (frame 63) | 399, 628, 871, 720 | not read |
+
+Nothing differs on: `wait-long`, `hold-left`, `jump-w0-x1`, `jump-w0-x2`, `jump-w0-x8`, `shoot-right-every48`, `shoot-right-every12`, `shoot-left-every48`, `shoot-left-every12`, `move-fire-left`, `jump-l40-x1`, `jump-l40-x2`, `jump-l40-x8`.
+<!-- evidence:coin-stays:end -->
+
+What these show, and what they do not:
+
+- **No visual observer was read, so the observer's column is empty in all four.** The record has a
+  place for one: given a folder of an observer's recorded answers (the vision adapter's answer
+  cache) and the objects to read them for, each row also says on how many of the differing frames
+  the observer found each object on the clean game and on the bug build, on how many in one only,
+  and how far its box moved. That part is tested with answers written by the tests, not a model's.
+  **No answer of SAM or any other model has been recorded for these frames**, so whether an observer
+  reports any of these differences is still not shown.
+- **Evidence only reads answers; it cannot ask for one.** A frame with no recorded answer is counted
+  as not answered. Recording answers costs money and is a person's to start.
+- **It says where two builds differ, not that a check exists.** A difference in any pixel counts,
+  and a whole-frame difference is the camera (see above). No threshold is applied anywhere.
+- **The generator is not given any of this.** Nothing under `expectrail/jit/` reads it, so a live
+  run on this bench, the baseline included, is the same with or without it.
+- **It is not a reproduction rate.**
+
 ## How a live run on this bench is made and scored
 
 Built November 11, 2026. **It has not been run**: the workflow mode below has never been
