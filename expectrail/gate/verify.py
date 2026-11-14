@@ -48,13 +48,14 @@ import shutil
 import sys
 import tempfile
 import traceback
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Callable
 
 from expectrail import resources
 from expectrail import __version__
+from expectrail import approval
 from expectrail.contracts import digest
 from expectrail.gate import record as rec
 from expectrail.gate.page import write_page
@@ -327,6 +328,10 @@ class Checks:
                             # file listed: the sha256 of the bytes read, or `refused: <the reason>`
     route_entries: dict     # the same for every route file listed
     digest: str | None      # None when there is no spec file and no route file
+    # One line per spec whose approval is not bound to its content (#420): an approval that does not
+    # match the spec (counted with the drafts) or one from before content binding (still used).
+    # Informational: they go into the record's reasons and never change the decision by themselves.
+    approval_notes: list = field(default_factory=list)
 
 
 def _parse(data: bytes, label: str):
@@ -366,6 +371,7 @@ def read_checks(root: Path, specs: str, patterns: list[str], checks_from: str = 
     folder = root / specs
     spec_problems: list[str] = []
     approved: list[dict] = []
+    approval_notes: list[str] = []
     drafts = 0
     if not folder.is_dir() or folder.is_symlink():
         spec_problems.append(f"no specs folder at {specs} ({checks_from})")
@@ -383,7 +389,16 @@ def read_checks(root: Path, specs: str, patterns: list[str], checks_from: str = 
             elif not doc.get("approval"):
                 drafts += 1  # a draft never judges a change: a person approves every spec first
             else:
-                approved.append(doc)
+                # An approval binds to the spec's content (#420): one that does not match the body
+                # is no approval, so the spec is a draft until a person approves it again.
+                which = approval.state(doc)
+                said = approval.note(doc["id"], which)
+                if said:
+                    approval_notes.append(said)
+                if approval.approved(doc):
+                    approved.append(doc)
+                else:
+                    drafts += 1
         ids = [s["id"] for s in approved]
         twice = sorted({i for i in ids if ids.count(i) > 1})
         if twice:
@@ -441,11 +456,14 @@ def read_checks(root: Path, specs: str, patterns: list[str], checks_from: str = 
     h = hashlib.sha256()
     for name in sorted(listed):
         h.update(name.encode() + b"\0" + listed[name].encode() + b"\n")
+    # An approval that no longer matches its spec first: with many specs, the reasons' cap cuts the
+    # notes about approvals from before content binding, not these.
+    approval_notes.sort(key=lambda line: (not line.endswith(approval.MISMATCH_REASON), line))
     return Checks(specs=sorted(approved, key=lambda s: s["id"]), drafts=drafts,
                   problems=problems + spec_problems + route_problems, routes=sorted(routes),
                   found_routes=bool(route_files or route_links or route_outside), spec_entries=spec_entries,
                   route_entries=route_entries,
-                  digest=h.hexdigest() if listed else None)
+                  digest=h.hexdigest() if listed else None, approval_notes=approval_notes)
 
 
 def changed_count(head: dict, base: dict) -> int:
@@ -963,6 +981,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     if checks is None:
         checks = read_checks(checks_root, specs_rel, patterns, checks_from)
     spec_docs, drafts = checks.specs, checks.drafts
+    approval_notes = list(checks.approval_notes)
     problems += checks.problems
     # Every problem the one reading of the spec and route files found: a file refused or not valid,
     # an id or a name used twice, a limit passed, nothing found where the job said to look. With
@@ -1130,7 +1149,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     if checks_from == "base" and (changed["specs"] or changed["routes"]):
         reasons.append(f"this change edits {changed['specs']} spec and {changed['routes']} route files; "
                        "they judge changes once it merges")
-    reasons = [_clip(r) for r in (reasons + list(input_problems) + problems)][:MAX_REASONS]
+    reasons = [_clip(r) for r in (reasons + list(input_problems) + problems + approval_notes)][:MAX_REASONS]
 
     document = {
         "format": rec.FORMAT,

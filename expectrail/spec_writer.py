@@ -25,6 +25,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
+from expectrail import approval
 from expectrail.contracts import ContractError, schema, validate
 
 API_BASE = os.environ.get("EXPECTRAIL_MODEL_API_BASE", "https://api.meta.ai/v1")
@@ -238,8 +239,17 @@ def approve(path: Path, by: str, at: str | None = None) -> dict:
     problems = lint(doc)
     if problems:
         raise SpecDraftError("; ".join(problems))
-    doc["approval"] = {"by": by, "at": at or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
+    # The approval binds to what was approved (#420): the digest of the spec without its approval,
+    # computed here and never typed. Editing the spec afterwards makes the approval not count.
+    try:
+        content = approval.spec_sha256(doc)
+    except ValueError as err:   # a value canonical JSON cannot hold (NaN, an infinity)
+        raise SpecDraftError(f"the spec cannot be approved: {err}") from err
+    doc["approval"] = {"by": by, "at": at or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                       approval.DIGEST_FIELD: content}
     validate(doc, "test-spec")
+    if approval.state(doc) != approval.BOUND:  # never write an approval that its own readers refuse
+        raise SpecDraftError("the approval written does not match the spec it was written for")
     Path(path).write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
     return doc
 
@@ -292,7 +302,8 @@ def main(argv=None) -> int:
                 print(text, end="")
             return 0
         doc = approve(args.path, args.by)
-        print(f"approved {doc['id']} by {doc['approval']['by']} at {doc['approval']['at']}")
+        print(f"approved {doc['id']} by {doc['approval']['by']} at {doc['approval']['at']} "
+              f"(content sha256 {doc['approval'][approval.DIGEST_FIELD]})")
         return 0
     except (SpecDraftError, ContractError) as err:
         print(f"error: {err}", file=sys.stderr)

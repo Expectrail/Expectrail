@@ -272,6 +272,7 @@
     },
     "approval": {
       "type": "object",
+      "description": "A person's approval. Written by `python3 -m expectrail.spec_writer approve`, never by hand and never by an agent. With specSha256 the approval binds to the spec's content (issue #420): a reader that finds the digest does not match the body treats the spec as not approved. An approval without specSha256 was written before content binding; it still counts, and readers name it so.",
       "required": [
         "by",
         "at"
@@ -282,6 +283,11 @@
         },
         "at": {
           "type": "string"
+        },
+        "specSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "SHA-256 of the spec's canonical JSON with approval removed: keys sorted, separators ',' and ':', no ASCII escaping, UTF-8 (expectrail.approval.spec_sha256)."
         }
       }
     },

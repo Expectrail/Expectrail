@@ -22,6 +22,7 @@ from unittest import mock
 import jsonschema
 import yaml
 
+from expectrail import approval
 from expectrail.gate import comment as gc
 from expectrail.gate import record as rec
 from expectrail.gate import verify as gv
@@ -368,7 +369,9 @@ class VerifyTest(GateCase):
                     self.assertRegex(doc["reasons"][0], r"^\d+ problems? with the spec and route files")
                     # The sentence, then each problem by name (with a base, also the line that
                     # says this change edits the check files: the head does not hold the broken one).
-                    self.assertEqual(len(doc["reasons"]), 1 + doc["checkProblems"] + (1 if with_base else 0))
+                    # The line naming the spec's approval from before content binding (#420) is not counted.
+                    said = [r for r in doc["reasons"] if not approval.is_note(r)]
+                    self.assertEqual(len(said), 1 + doc["checkProblems"] + (1 if with_base else 0))
                     self.assertEqual(rec.read_record(self.tmp / f"out-{n}-{with_base}" / "findings.json"), doc)
                     body = gc.render(doc, ctx())
                     self.assertIn("needs review", body)

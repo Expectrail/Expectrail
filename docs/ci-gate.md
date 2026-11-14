@@ -72,7 +72,17 @@ so one pinned SHA covers both.
 You need a Godot project that runs in Godot 4.7.2 (the version the harness pins), at least one route
 (`expectrail.route/v0`, see [contracts.md](contracts.md)) and at least one approved test spec
 (`expectrail.test-spec/v0` with an `approval`). The harness adds its autoload to a copy of the
-project. A route presses the game's own input actions on exact physics ticks, and the position log
+project.
+
+An approval binds to the spec's content (#420). `python3 -m expectrail.spec_writer approve SPEC --by
+NAME` writes `approval.specSha256`, the SHA-256 of the spec's canonical JSON without its approval
+(keys sorted, separators `,` and `:`, UTF-8). If the spec is edited afterwards, the digest no longer
+matches: the gate counts the spec with the drafts, never lets it judge, and says in the record's
+reasons and the comment that a person must approve it again. If it was the only spec, nothing is
+accepted. Whitespace and key order do not change the digest. An approval written before this has no
+digest: it still counts, and the record and the comment name it "approved before content binding"
+until someone approves it again. The merge guard asks for a person when a pull request edits an
+approved spec without a new approval bound to the new content. A route presses the game's own input actions on exact physics ticks, and the position log
 follows the node named `Player`. Add two workflow files. Replace `COMMIT_SHA` with the full SHA of an Expectrail commit on
 `main` that contains `.github/actions/` (for example from
 `git ls-remote https://github.com/Expectrail/Expectrail refs/heads/main`). Pin both files to the same
