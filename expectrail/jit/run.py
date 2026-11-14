@@ -522,7 +522,16 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
             pairs = []
             for n in range(1, reps + 1):
                 replay(name, patches, pid, n, with_runner=frame_runner)
-                setting, run, images = pixel.observe(observer, out / "jit-replays" / name / f"{pid}-{n}", route)
+                try:
+                    setting, run, images = pixel.observe(observer, out / "jit-replays" / name / f"{pid}-{n}", route)
+                except pixel.PixelError as exc:
+                    # An observer that stops part way has still sent what it sent: charge it, then stop.
+                    sent = getattr(exc, "images", 0)
+                    if isinstance(sent, int) and not isinstance(sent, bool) and sent > 0:
+                        spend.sam_images += sent
+                        spend.sam_usd += sent * price
+                        held = max(0.0, held - sent * price)
+                    raise
                 spend.sam_images += images
                 spend.sam_usd += images * price
                 held = max(0.0, held - images * price)
