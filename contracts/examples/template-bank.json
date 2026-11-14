@@ -1,0 +1,70 @@
+{
+  "format": "expectrail.template-bank/v0",
+  "config": {
+    "algorithm": "expectrail.template-ncc/v2",
+    "coordinates": "captured-frame pixels; origin top-left; xyxy half-open; y down",
+    "matchThreshold": 0.9,
+    "agreementIoU": 0.5,
+    "searchMarginPx": 8,
+    "scales": [
+      0.75,
+      1,
+      1.5
+    ],
+    "stridePx": 1,
+    "sampleSide": 12,
+    "minimumContrast": 8.0
+  },
+  "clean": {
+    "gameTree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "replaySha256": "97fb3463b6a614d7eded6b1f64255237e859977709fdbe0723afd8436748e432",
+    "traceSha256": "5b20bfb87f3a06bd242d2eb038067a03a27ec46f06165b7fa2786d96f252ff16"
+  },
+  "templates": [
+    {
+      "object": "player",
+      "frame": 0,
+      "frameSha256": "cba22875da47539d8d1f300d5d5c7162a5b9d52e571b0e50ea3219fc334f30c8",
+      "box": [
+        24,
+        20,
+        36,
+        36
+      ],
+      "predictedBox": [
+        24,
+        20,
+        36,
+        36
+      ],
+      "sourceReplaySha256": "97fb3463b6a614d7eded6b1f64255237e859977709fdbe0723afd8436748e432",
+      "mirrorX": false,
+      "width": 12,
+      "height": 16,
+      "pixels": "ZNWcfItrcGnpTt0VxqaqT99+Pztln9lGpbbZZZc2zxmYg8YlFOVedIWBz6xf4WGgSky9XF9ZkDqtYRo6jzyOd969vlobI8uPGivp6qfBmyIX5ndJ1Eodj4fPwYzovqN2TBZ152Dej1CBQXzAsuR0abDHkRe4ci7eT3Q8wFXEiWjlmDbOaS5AzCKWzVtrKz8WU6GwT0Y8w5YXdCKtMW5IemlUgmcabWg1d4K4PHlg4S6ySS1sNyq4qEaNrLQXWGc6",
+      "pixelsSha256": "4e4bd51b93cc127b974a58e94c2bcb0176e75db499e61414f9556678a5f355f1"
+    }
+  ],
+  "sources": [
+    {
+      "gameTree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "replaySha256": "97fb3463b6a614d7eded6b1f64255237e859977709fdbe0723afd8436748e432",
+      "traceSha256": "5b20bfb87f3a06bd242d2eb038067a03a27ec46f06165b7fa2786d96f252ff16"
+    }
+  ],
+  "calibration": {
+    "selection": "explicit-frames",
+    "selectionSimilarity": 1.0,
+    "sourceFrames": 1,
+    "eligibleFrames": 1,
+    "mirrored": false,
+    "thresholdFloor": 0.9,
+    "thresholdSelected": 0.9,
+    "validationReplaySha256": null,
+    "positives": 0,
+    "negatives": 0,
+    "positiveMatches": 0,
+    "negativeMatches": 0,
+    "status": "not-run"
+  }
+}
