@@ -1,0 +1,27 @@
+{
+  "format": "expectrail.repair-run/v1",
+  "parent": {
+    "job": "6fdec1770e3c4a2b9d1e5f7a8b9c0d1e",
+    "decision": "reject",
+    "headTree": "e02fec02ad12faeceb2b991a3302f820ac45271611b12a25fa8b9729d02bff23",
+    "failing": [{"spec": "player-stays-above-ground", "route": "smoke"}]
+  },
+  "fixer": {"source": "fixture", "sandboxed": false},
+  "budget": {"attempts": 3, "usdCap": null},
+  "attempts": [
+    {
+      "n": 1,
+      "patch": "attempt-1/candidate.patch",
+      "patchSha256": "0d79ef693fe9a149cf0f04f4a1953d0c457f96095169b63ec7f380e84738b8a6",
+      "job": "1a2b3c4d5e6f708192a3b4c5d6e7f809",
+      "decision": "accept",
+      "reasons": ["all 1 checks pass"]
+    }
+  ],
+  "stop": {"reason": "accepted", "detail": "a fresh verify job accepted attempt 1"},
+  "result": {"decision": "accept", "patch": "attempt-1/candidate.patch", "job": "1a2b3c4d5e6f708192a3b4c5d6e7f809"},
+  "machineWritten": true,
+  "review": "Written by Expectrail's sandboxed fixer and accepted on the approved checks by an independent verification. A person must review it before merging; Expectrail never merges it.",
+  "startedAt": "2026-11-14T08:00:00Z",
+  "finishedAt": "2026-11-14T08:03:10Z"
+}
