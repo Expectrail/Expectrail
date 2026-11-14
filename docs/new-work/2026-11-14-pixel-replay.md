@@ -25,7 +25,7 @@ checks instead of refusing the setting.
 
 ## What was run
 - `python3 -m unittest tests.test_jit_pixel_replay` and the other jit, contract and score tests: OK.
-- Full suite on the branch (main a5b7d95 plus this change): see the pull request for the count.
+- Full suite on the branch (main a5b7d95 plus this change): `python3 -m unittest discover -s tests -t .`, 3,325 tests, OK, 31 skipped. A first full run found one failure (`tests.test_repro_reach`: the word "reach-" in a docstring of `run.py`, which only `offer.py` may name); the docstring was reworded and the second full run passed.
 - Nothing was dispatched. No model and no observer was called. The tests use SAM's recorded answers on
   the bundled game's smoke route (run 43337979278), stamped with the replayed probe's name by a test
   double. They test the plumbing and the rules, not SAM on bench probes.
