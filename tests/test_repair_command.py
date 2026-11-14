@@ -1,6 +1,7 @@
 """The real seeded bug and fixture patch, judged in fresh jobs with offline observers."""
 import contextlib
 import io
+import html
 import json
 import os
 import shutil
@@ -74,6 +75,24 @@ class RepairCommandTest(unittest.TestCase):
         self.assertIn(doc["review"], text)
         findings = json.loads((self.jobs.paths(a["job"]).output / "findings.json").read_text())
         self.assertGreater(findings["repair"]["demonstrated"], 0)
+
+    def test_viewer_reads_the_record_and_patch_written_by_fixture_repair(self):
+        from expectrail import viewer
+
+        code, output = self.invoke()
+        self.assertEqual(code, 0, output)
+        path, written = self.record()
+        opened = viewer.read_repair(path)
+        self.assertEqual(opened["run"], written)
+        self.assertEqual(opened["diff"].encode("utf-8"), FIX.read_bytes())
+        self.assertEqual(self.jobs.status(written["parent"]["job"])["decision"], "reject")
+        self.assertEqual(self.jobs.status(written["result"]["job"])["decision"], "accept")
+        self.assertNotEqual(written["result"]["job"], self.parent)
+        self.assertEqual(written["stop"]["reason"], "accepted")
+        self.assertEqual(written["fixer"]["source"], "fixture")
+        page = html.unescape(viewer.write_repair(path, self.tmp / "viewer").read_text())
+        for text in (written["review"], opened["diff"], "Attempt 1", "accepted", "No live fixer ran"):
+            self.assertIn(text, page)
 
     def test_each_rejection_retries_from_original_and_gets_only_public_feedback(self):
         bad = self.tmp / "still-buggy.patch"

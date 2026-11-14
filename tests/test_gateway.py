@@ -62,6 +62,7 @@ class GatewayTest(unittest.TestCase):
         self.tmp = Path(tmp.name)
         self.mitm = _write_exec(self.tmp / "mitmdump", FAKE_MITMDUMP)
         self.env = {"EXPECTRAIL_MUSE_GATEWAY": "on", "EXPECTRAIL_MITMDUMP": str(self.mitm), "META_API_KEY": REAL,
+                    "EXPECTRAIL_MUSE_USD_CAP": "1000",
                     "PATH": os.environ["PATH"]}
 
     def test_off_unless_turned_on(self):
@@ -149,7 +150,8 @@ class GatewayTest(unittest.TestCase):
         bindir.mkdir()
         _write_exec(bindir / "muse", FAKE_MUSE)
         with mock.patch.dict(os.environ, {"PATH": f"{bindir}{os.pathsep}{os.environ['PATH']}",
-                                          "EXPECTRAIL_MUSE_GATEWAY": "off"}):
+                                          "EXPECTRAIL_MUSE_GATEWAY": "off",
+                                          "EXPECTRAIL_MUSE_USD_CAP": "1000"}):
             proc, meta = sandbox.run_muse("hi", work=self.tmp, env={"META_API_KEY": "k", "PATH": os.environ["PATH"]},
                                           timeout=30, sandboxed=False)
         self.assertIn("key=k proxy= ", proc.stdout)
@@ -181,7 +183,7 @@ class TimeoutTest(unittest.TestCase):
             _write_exec(bindir / "muse", "#!/bin/sh\n[ \"$1\" = \"--version\" ] && exit 0\nsleep 5\n")
             mitm = _write_exec(tmp / "mitmdump", FAKE_MITMDUMP)
             env = {"EXPECTRAIL_MUSE_GATEWAY": "on", "EXPECTRAIL_MITMDUMP": str(mitm), "META_API_KEY": REAL,
-                   "PATH": f"{bindir}{os.pathsep}{os.environ['PATH']}"}
+                   "PATH": f"{bindir}{os.pathsep}{os.environ['PATH']}", "EXPECTRAIL_MUSE_USD_CAP": "1000"}
             with mock.patch.dict(os.environ, env):
                 sandbox._WARMED.clear()
                 with self.assertRaises(subprocess.TimeoutExpired) as caught:

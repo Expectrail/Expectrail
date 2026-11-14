@@ -555,3 +555,24 @@ Locally, with Godot from `./harness/get_godot.sh`:
 The head was the same game with `bugs/physics-fall-through/v1.patch` applied. A stand-in held-out set
 was made from two public routes. Its pull request number and head commit are placeholders. The result
 was reject: `REGRESSION` on both routes, first failing frame 5, and both held-out checks failed.
+
+## Request a fixture repair on a pull request
+
+Set the repository variable `EXPECTRAIL_CI_AUTOFIX` to `true` to enable fixture repairs.
+After **Expectrail clearance** publishes **reject**, someone with write access can add
+the `expectrail-autofix` label. The public repository's check must come from the app
+identified by `EXPECTRAIL_CHECKS_APP_ID` and match the current head and capture. If
+the label also starts a new capture and the clearance is pending, wait for its result
+and rerun the fixture repair job. A newer accept or needs-review stops the repair.
+
+The job runs in pull-request context. It checks out the base tools and replays the two
+revisions in isolation. Only a reproduced reject starts repair. The patch comes from
+the base checkout. Set `EXPECTRAIL_CI_AUTOFIX_FIXTURE` to choose it (default
+`agents/fixtures/fix-collision-mask.patch`), and `EXPECTRAIL_CI_AUTOFIX_ATTEMPTS`
+for the attempt limit (1–10, default 3). Each candidate gets a fresh isolated verify
+using the base's recorded frame answers. A missing answer cannot establish an accept.
+
+Open the job summary for the outcome and instructions. The artifact contains
+`repair-run.json` and, only for an accepted repair, its patch. A person reviews and
+applies it. This workflow uses no live fixer or model key, including on forks. It
+never pushes, comments, opens a pull request or changes the published clearance.

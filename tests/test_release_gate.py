@@ -124,6 +124,35 @@ class SummaryTest(unittest.TestCase):
         self.assertFalse(rg.failed(s, require=False))
         self.assertTrue(rg.failed(s, require=True))
 
+    def test_a_class_skipped_as_a_whole_is_not_run_and_one_that_failed_to_set_up_is_failed(self):
+        # unittest reports a skipped or failed setUpClass once, on a placeholder, and never the tests.
+        egress = controls.by_id()["network-egress"]["tests"]
+        private = controls.by_id()["private-path-read"]["tests"]
+        found = outcomes()
+        for t in egress + private:
+            del found[t]
+        skipped_cls, failed_cls = egress[0].rsplit(".", 1)[0], private[0].rsplit(".", 1)[0]
+        found[f"setUpClass ({skipped_cls})"] = {"outcome": rg.SKIPPED, "seconds": 0.0, "detail": "no sandbox here"}
+        found[f"setUpClass ({failed_cls})"] = {"outcome": rg.ERROR, "seconds": 0.0,
+                                               "detail": "Traceback\nAssertionError: required and missing"}
+        filled = rg.fill_unreported(found, set(controls.all_tests()))
+        self.assertFalse([k for k in filled if "setUpClass" in k])
+        self.assertEqual({filled[t]["outcome"] for t in egress}, {rg.SKIPPED})
+        self.assertEqual(filled[egress[0]]["detail"], "no sandbox here")
+        self.assertEqual({filled[t]["outcome"] for t in private}, {rg.ERROR})
+        self.assertIn("required and missing", filled[private[0]]["detail"])
+        s = summary(filled)
+        self.assertEqual(self.row(s, "network-egress")["status"], rg.NOT_RUN)
+        self.assertEqual(self.row(s, "network-egress")["note"].count("no sandbox here"), 1)   # each reason once
+        self.assertEqual(self.row(s, "private-path-read")["status"], rg.FAILED)
+        self.assertTrue(rg.failed(s, require=False))
+
+    def test_a_test_that_never_reported_and_has_no_placeholder_is_an_error(self):
+        t = controls.by_id()["retry"]["tests"][0]
+        found = outcomes()
+        del found[t]
+        self.assertEqual(rg.fill_unreported(found, set(controls.all_tests()))[t]["outcome"], rg.ERROR)
+
     def test_a_failure_or_an_error_is_failed(self):
         t = controls.by_id()["cancellation"]["tests"][0]
         for outcome in (rg.FAILURE, rg.ERROR):

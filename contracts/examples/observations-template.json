@@ -1,0 +1,174 @@
+{
+  "format": "expectrail.observations/v0",
+  "replay": {
+    "sha256": "ebf2c1b7523808daa2abf8fdac9ee0466ab6b870a0f3a891dc3028ba2db5c6a6"
+  },
+  "model": {
+    "name": "expectrail.template-ncc/v2",
+    "prompts": {
+      "player": "player"
+    },
+    "sensor": {
+      "config": {
+        "algorithm": "expectrail.template-ncc/v2",
+        "coordinates": "captured-frame pixels; origin top-left; xyxy half-open; y down",
+        "matchThreshold": 0.9,
+        "agreementIoU": 0.5,
+        "searchMarginPx": 8,
+        "scales": [
+          0.75,
+          1,
+          1.5
+        ],
+        "stridePx": 1,
+        "sampleSide": 12,
+        "minimumContrast": 8.0
+      },
+      "bankSha256": "bce20d1fc65eeef1c325070aca2a719d0417e978958015ab4ed665469b0c14f0",
+      "clean": {
+        "gameTree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "replaySha256": "97fb3463b6a614d7eded6b1f64255237e859977709fdbe0723afd8436748e432",
+        "traceSha256": "5b20bfb87f3a06bd242d2eb038067a03a27ec46f06165b7fa2786d96f252ff16"
+      },
+      "capabilities": [
+        "presence",
+        "position",
+        "shape"
+      ],
+      "limitations": [
+        "Colour is discarded (luminance matching).",
+        "No text, semantic identity, or animation correctness.",
+        "Normalized correlation ignores uniform brightness/contrast changes; sampling loses fine detail.",
+        "No segmentation: boxes locate the calibrated crop, which may include background.",
+        "No rotation, nonuniform scale, or partial-occlusion invariance.",
+        "Search is local to the engine prediction; an object outside it is not located.",
+        "Similar art or background can match; scores are similarity, not probabilities."
+      ],
+      "sources": [
+        {
+          "gameTree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "replaySha256": "97fb3463b6a614d7eded6b1f64255237e859977709fdbe0723afd8436748e432",
+          "traceSha256": "5b20bfb87f3a06bd242d2eb038067a03a27ec46f06165b7fa2786d96f252ff16"
+        }
+      ],
+      "calibration": {
+        "selection": "explicit-frames",
+        "selectionSimilarity": 1.0,
+        "sourceFrames": 1,
+        "eligibleFrames": 1,
+        "mirrored": false,
+        "thresholdFloor": 0.9,
+        "thresholdSelected": 0.9,
+        "validationReplaySha256": null,
+        "positives": 0,
+        "negatives": 0,
+        "positiveMatches": 0,
+        "negativeMatches": 0,
+        "status": "not-run"
+      },
+      "captureFps": 60,
+      "physicsTicksPerSecond": 120
+    }
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "objects": {
+        "player": []
+      },
+      "sensor": {
+        "player": {
+          "status": "not-found",
+          "reason": "no template reached the pixel similarity threshold",
+          "predictedBox": [
+            24,
+            20,
+            36,
+            36
+          ],
+          "searchBox": [
+            16,
+            12,
+            44,
+            44
+          ],
+          "rawBox": [
+            16,
+            12,
+            25,
+            24
+          ],
+          "score": 0.0,
+          "templateFrame": 0,
+          "scale": 0.75
+        }
+      }
+    },
+    {
+      "frame": 1,
+      "objects": {
+        "player": []
+      },
+      "sensor": {
+        "player": {
+          "status": "not-found",
+          "reason": "no template reached the pixel similarity threshold",
+          "predictedBox": [
+            24,
+            20,
+            36,
+            36
+          ],
+          "searchBox": [
+            16,
+            12,
+            44,
+            44
+          ],
+          "rawBox": [
+            16,
+            12,
+            25,
+            24
+          ],
+          "score": 0.0,
+          "templateFrame": 0,
+          "scale": 0.75
+        }
+      }
+    },
+    {
+      "frame": 2,
+      "objects": {
+        "player": []
+      },
+      "sensor": {
+        "player": {
+          "status": "not-found",
+          "reason": "no template reached the pixel similarity threshold",
+          "predictedBox": [
+            24,
+            20,
+            36,
+            36
+          ],
+          "searchBox": [
+            16,
+            12,
+            44,
+            44
+          ],
+          "rawBox": [
+            16,
+            12,
+            25,
+            24
+          ],
+          "score": 0.0,
+          "templateFrame": 0,
+          "scale": 0.75
+        }
+      }
+    }
+  ]
+}

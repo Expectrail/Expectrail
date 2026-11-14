@@ -1,0 +1,295 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "expectrail.template-bank/v0"
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "expectrail.template-ncc/v2"
+        },
+        "coordinates": {
+          "const": "captured-frame pixels; origin top-left; xyxy half-open; y down"
+        },
+        "matchThreshold": {
+          "type": "number",
+          "maximum": 1,
+          "minimum": 1e-06
+        },
+        "agreementIoU": {
+          "type": "number",
+          "maximum": 1,
+          "minimum": 1e-06
+        },
+        "searchMarginPx": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "scales": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0.25,
+            "maximum": 4
+          },
+          "minItems": 1,
+          "maxItems": 9
+        },
+        "stridePx": {
+          "const": 1
+        },
+        "sampleSide": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 32
+        },
+        "minimumContrast": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 128
+        }
+      },
+      "required": [
+        "algorithm",
+        "coordinates",
+        "matchThreshold",
+        "agreementIoU",
+        "searchMarginPx",
+        "scales",
+        "stridePx",
+        "sampleSide",
+        "minimumContrast"
+      ]
+    },
+    "clean": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "gameTree": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "replaySha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "traceSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "gameTree",
+        "replaySha256",
+        "traceSha256"
+      ]
+    },
+    "templates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "object": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "frame": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "frameSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "box": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 4,
+            "maxItems": 4
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 4,
+            "maximum": 512
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 4,
+            "maximum": 512
+          },
+          "pixels": {
+            "type": "string",
+            "maxLength": 350000
+          },
+          "pixelsSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "predictedBox": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 4,
+            "maxItems": 4
+          },
+          "sourceReplaySha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "mirrorX": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "object",
+          "frame",
+          "frameSha256",
+          "box",
+          "width",
+          "height",
+          "pixels",
+          "pixelsSha256",
+          "predictedBox",
+          "sourceReplaySha256",
+          "mirrorX"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 2048
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "gameTree": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "replaySha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "traceSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "gameTree",
+          "replaySha256",
+          "traceSha256"
+        ]
+      }
+    },
+    "calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "selection": {
+          "enum": [
+            "explicit-frames",
+            "all-clean-crops"
+          ]
+        },
+        "selectionSimilarity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "sourceFrames": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eligibleFrames": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mirrored": {
+          "type": "boolean"
+        },
+        "thresholdFloor": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "thresholdSelected": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "validationReplaySha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "positives": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "negatives": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "positiveMatches": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "negativeMatches": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "enum": [
+            "not-run",
+            "met",
+            "unmet"
+          ]
+        }
+      },
+      "required": [
+        "selection",
+        "selectionSimilarity",
+        "sourceFrames",
+        "eligibleFrames",
+        "mirrored",
+        "thresholdFloor",
+        "thresholdSelected",
+        "validationReplaySha256",
+        "positives",
+        "negatives",
+        "positiveMatches",
+        "negativeMatches",
+        "status"
+      ]
+    }
+  },
+  "required": [
+    "format",
+    "config",
+    "clean",
+    "templates",
+    "sources",
+    "calibration"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Clean-build template bank; provenance is pinned by the caller, not an approval"
+}

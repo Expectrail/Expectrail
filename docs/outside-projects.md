@@ -226,24 +226,31 @@ spec, whose player prompt is "blue robot". Kinematic-character's player is a gre
 model found it in 0 of 120 frames (run 43559500793). Words cannot name a player nobody described.
 
 **What the judge asks now.** `tools/outside_vision.py judge` uses `expectrail/anchored.py`: in each
-frame the model is asked what is drawn inside the engine's collision box for the player (the trace's
-`body`, widened 4 px). It is told where to look, never what it should find, and the spec's assertion
-is judged on the box it answers with. A frame with no answer is a missing player: needs-review.
+frame the model is asked what is drawn at the middle of the engine's collision box for the player
+(the trace's `body`). A point carries no size the answer could copy. The spec's assertion is judged
+on the box the model answers with, and a frame with no answer is a missing player: needs-review.
 
-**When it is used.** Only for a game whose clean run passes three rules fixed on November 14, 2026,
-before any live answer for an outside game was seen (`RULES` in `expectrail/anchored.py`):
+**When it is used.** Only for a game whose clean run passes these rules (`RULES` in
+`expectrail/anchored.py`), set by Sean on November 14, 2026 after the first live calibration:
 
 | Rule | Threshold |
 | --- | --- |
-| Found: a box holding the asked place | at least 90% of asked frames |
-| Size: that box within 25% of the engine's collision box | at least 90% of found frames |
-| Stable: asked with a box twice as large, the same size comes back | at least 90% of found frames |
+| Found: a box holding the asked point | at least 90% of asked frames |
+| Size: that box within 25% or 4 px of the engine's collision box, whichever is larger | at least 90% of found frames |
+| Stable: a point nudged 3 px, still inside the collision box, gives the same box (within 25% or 3 px) | at least 90% of found frames |
 | Frames asked | at least 8 (every tenth clean frame) |
 
-The stable rule is the guard against a model that only repeats the box it was given. A game that
-fails any rule keeps no visual observer, and its verdicts stay needs-review. The calibration
+The stable rule is the guard against a model that answers with whatever is near the point. A game
+that fails any rule keeps no visual observer, and its verdicts stay needs-review. The calibration
 (`calibration.json`, `expectrail.vision-calibration/v1`) is published with every run, and a
 calibration whose verdict does not follow from its own frames, or that uses other rules, is refused.
+
+**The first live calibration** ([run 43609849950](https://github.com/Expectrail/Expectrail/actions/runs/43609849950),
+$0.095, 38 images) asked with a box (the collision box widened 4 px) and tested stability with a
+box twice as large. It found the player in 19 of 19 frames, and the answers were 16 to 19 px for a
+16 px sprite over a 14 px collision box. But the larger box took in the tiles around the player
+(30 to 62 px), and 25% of 14 px is 3.5 px, so it was not used (size 42%, stable 0%). That led to the
+point question and the pixel floors above.
 
 **Recorded once (Option A).** The live judge wraps the model in a recorder and leaves
 `vision-recording.json` in the run's artifact. `judge --recording FILE` replays those answers with no

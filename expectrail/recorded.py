@@ -25,7 +25,7 @@ import json
 import threading
 from pathlib import Path
 
-from agents.sam_observations import SamError, box_prompt, png_size, sha256_bytes
+from agents.sam_observations import SamError, box_prompt, point_prompt, png_size, sha256_bytes
 from expectrail import resources
 from expectrail.gate import record as rec
 from expectrail.observers import FramesObserver
@@ -33,7 +33,7 @@ from expectrail.observers import FramesObserver
 FORMAT = "expectrail.vision-recording/v1"
 SCHEMA_PATH = resources.ROOT / "contracts" / "vision-recording.v1.schema.json"
 MAX_BYTES = 16 * 1024 * 1024
-SEGMENT, SEGMENT_IN = "segment", "segment-in"
+SEGMENT, SEGMENT_IN, SEGMENT_AT = "segment", "segment-in", "segment-at"
 NAME = "sam-recorded"
 
 
@@ -138,6 +138,12 @@ class RecordedClient:
             raise SamError("the recording answers for another number of boxes", kind="not-recorded")
         return found
 
+    def segment_at(self, png: Path, points: list[tuple[int, int]]) -> list[dict | None]:
+        found = self._answer(SEGMENT_AT, png, point_prompt(points, png_size(Path(png))))
+        if len(found) != len(points):
+            raise SamError("the recording answers for another number of points", kind="not-recorded")
+        return found
+
 
 class RecordingClient:
     """Wraps a live client for the one recording run of a sample and keeps every answer it gave."""
@@ -166,6 +172,11 @@ class RecordingClient:
     def segment_in(self, png: Path, boxes: list[tuple[int, int, int, int]]) -> list[dict | None]:
         found = self._inner.segment_in(png, boxes)
         self._keep(SEGMENT_IN, png, box_prompt(boxes, png_size(Path(png))), found)
+        return found
+
+    def segment_at(self, png: Path, points: list[tuple[int, int]]) -> list[dict | None]:
+        found = self._inner.segment_at(png, points)
+        self._keep(SEGMENT_AT, png, point_prompt(points, png_size(Path(png))), found)
         return found
 
     def recording(self, *, sample: str, recorded_at: str, run: str) -> dict:
