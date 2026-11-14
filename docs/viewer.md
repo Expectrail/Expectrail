@@ -33,9 +33,42 @@ its own frame files. "Run it" on expectrail.tech (#265) and the local app (#370)
   from the same engine's record the evaluator judged, by the evaluator's rules, and it is shown only
   when it agrees with the evaluator's verdict (its first failing frame is the verdict's; a pass has
   none). Otherwise it is left out and the page says so. It decides nothing.
+- **The visual observer has its own timelines.** A public check's saved visual observations and
+  verdict must match the observation digest in its findings row and the spec digest. Missing,
+  changed or linked evidence is left out with a note. Engine measurements never stand in for
+  visual measurements. If vision alone found the failure, its overlays are selected first;
+  the measurement-source button switches between engine and vision boxes.
+- **Gaps and coverage.** A frame absent from the observations is a grey band and a break in the
+  line. An observed frame with no object is marked separately. Frames with no overlapping
+  reference are marked as not exercised. The recorded coverage status is shown without changing
+  the verdict. Points are capped; a truncated timeline says so.
+- **When vision did not run.** The page says so, including `PROVIDER_FAILED` when the job records
+  it. A recorded engine failure remains a reject. A provider which was called but returned no
+  usable answer is described that way, rather than as never called.
 - **Run facts and what was not tested:** head and base, the policy (which checks, from which
   commit), which observers judged, the sandbox, held-out routes as counts only.
-- **The reproduction command**, from the job's request (the job viewer only).
+- **The reproduction command**, from the job's request. Run it supplies its public sample id, so
+  those viewers show `python3 -m expectrail.runit run --sample NAME --out NAME-run`, not temporary
+  checkout paths. That command reuses recorded vision answers and makes no model call.
+
+## Offline export and real examples
+
+Every folder also has `evidence.html`: the same viewer with its checked PNG frames embedded.
+It opens offline without a server or neighbouring files. The CSP is unchanged.
+
+- [The supplied clean run: accept](viewer-samples/clean.html).
+- [The supplied fall-through run: reject](viewer-samples/fall-through-bug.html).
+- [Source records and provenance](viewer-samples/provenance.json).
+
+Sean supplied these real Run it outputs from the architect's Linux run with Godot 4.7.2 and
+xvfb-run, described in the supplied README as made on #416's branch. Their status records name
+commit `c5d1e53344b0f484c0d1c082aa60f41507932fc8`; that value is preserved. This slice changes their
+presentation and reproduction command, not the recorded verdicts, job facts or frame bytes.
+The clean export has no kept images; the rejecting export embeds 24 frames. Both contain engine
+measurements and recorded visual results, but neither includes raw visual measurements. Their
+visual panels say that those measurements were not supplied; no timeline was reconstructed or
+guessed from a pass/fail label. New gate runs include the visual timelines when their saved
+observations and verdicts can be verified.
 
 ## Keys
 
@@ -44,6 +77,7 @@ overlays on or off, `n` `p` the next or previous finding. Clicking a timeline ju
 
 ## Not yet
 
-A single-file export that opens offline, a model-written explanation linked to evidence ids, the
-viewer for a real failing and a real passing run published under `docs/`, and the two-minute trial
-with one person who has not seen the run.
+The two-minute trial with one person who has not seen the run remains to be done. This slice was
+not looked at in a browser. Keyboard tests execute the actual viewer script against a DOM
+stand-in, including the supplied real exports; that is not a browser or usability test.
+No model-written explanation is included.
