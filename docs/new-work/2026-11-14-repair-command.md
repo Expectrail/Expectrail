@@ -13,7 +13,7 @@ Every candidate gets a new verify job against the original head with the repair 
 - The first full run found a usage test that required repair to stay planned. Its exact command-list assertion was updated for the built command.
 - The six initial command tests failed before implementation.
 - The fixture observation in the handover used the bundled fall-through bug and its repair patch. The stand-in observers recorded three failures on the bug and three passes on the fixed copy. The first candidate was accepted and its patch matched the supplied fixture.
-- A separate offline compatibility check on #436 stopped at a zero Muse cap before starting Muse. The resulting record says spend-cap and needs-review.
+- A local check by the builder only, not reproduced in this pull request: on #436's branch, with a zero Muse cap, repair stopped before starting Muse and wrote a spend-cap, needs-review record. No test here exercises #436's meter; the live fixer cannot start from main until #436 lands (`_live_budget` refuses without it).
 
 ## Not done
 
