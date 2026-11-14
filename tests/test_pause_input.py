@@ -19,6 +19,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.tool_requirements import require_tool
 from harness import run as hr
 from tests.test_event_input import real_godot
 
@@ -48,6 +49,7 @@ class HarnessScriptTest(unittest.TestCase):
 class PauseInputTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        require_tool('xvfb-run')
         godot = real_godot()
         cls.tmp = Path(tempfile.mkdtemp(prefix="expectrail-pause-input-"))
         cls.addClassCleanup(shutil.rmtree, cls.tmp, True)

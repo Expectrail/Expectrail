@@ -18,6 +18,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from tests.tool_requirements import require_tool
 from agents import gateway as gw
 from agents import sandbox
 from harness.run import REPO
@@ -77,6 +78,7 @@ class GatewayTest(unittest.TestCase):
             pass
 
     def test_muse_gets_the_placeholder_and_the_proxy_never_the_key(self):
+        require_tool('AF_UNIX')
         with mock.patch.dict(os.environ, self.env), gw.muse_gateway() as g:
             host = g.muse_env({"PATH": "/usr/bin", "META_API_KEY": REAL, "NO_PROXY": "meta.ai"}, in_sandbox=False)
             box = g.muse_env({"PATH": "/usr/bin", "META_API_KEY": REAL}, in_sandbox=True)
@@ -92,6 +94,7 @@ class GatewayTest(unittest.TestCase):
         self.assertFalse(directory.exists())  # stopped and cleaned up on exit
 
     def test_the_unix_socket_reaches_the_proxy(self):
+        require_tool('AF_UNIX')
         with (mock.patch.dict(os.environ, self.env), gw.muse_gateway() as g,
               socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as c):
             c.settimeout(5)
@@ -100,6 +103,7 @@ class GatewayTest(unittest.TestCase):
             self.assertEqual(c.recv(1024), b"proxy saw:CONNECT api.meta.ai:443")
 
     def test_the_bridge_runs_the_command_behind_a_local_port(self):
+        require_tool('AF_UNIX')
         sock_path = self.tmp / "s.sock"
         server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         server.bind(str(sock_path))
@@ -126,6 +130,7 @@ class GatewayTest(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
 
     def test_muse_on_the_host_sees_only_the_placeholder_through_run_muse(self):
+        require_tool('AF_UNIX')
         bindir = self.tmp / "bin"
         bindir.mkdir()
         _write_exec(bindir / "muse", FAKE_MUSE)
@@ -168,6 +173,7 @@ class EvidenceTest(unittest.TestCase):
 
 class TimeoutTest(unittest.TestCase):
     def test_a_run_that_times_out_keeps_what_the_gateway_saw(self):
+        require_tool('AF_UNIX')
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
             bindir = tmp / "bin"

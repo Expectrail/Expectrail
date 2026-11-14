@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from tests.tool_requirements import require_tool
 from agents import web_bench
 from expectrail.contracts import load, validate
 from expectrail.evaluator import evaluate
@@ -158,26 +159,29 @@ class BenchTest(unittest.TestCase):
                                 "match min 0.77 (3 frames), other max 0.60"])
 
 
-@unittest.skipUnless(__import__("importlib").util.find_spec("playwright"), "playwright is not installed")
 class ReplayTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        require_tool('Playwright Chromium')
+
     def test_two_replays_are_byte_identical_and_the_clean_page_submits(self):
         from harness.web.run import run
 
         route = REPO / "harness" / "web" / "routes" / "checkout-desktop.json"
         with tempfile.TemporaryDirectory() as tmp:
-            try:
-                a = run(route, Path(tmp) / "a")
-            except Exception as exc:  # noqa: BLE001 - no browser on this machine
-                self.skipTest(f"chromium unavailable: {exc}")
+            a = run(route, Path(tmp) / "a")
             b = run(route, Path(tmp) / "b")
         self.assertEqual(a["frameSha256"], b["frameSha256"])
         self.assertEqual(a["capture"]["frames"], 14)
         self.assertTrue(a["trace"]["outcome"]["submitted"])
 
 
-@unittest.skipUnless(__import__("importlib").util.find_spec("playwright"), "playwright is not installed")
 class FixLoopTest(unittest.TestCase):
     """agents.web_fix offline: the game's fixer and the verifier's contract and decision, on the page."""
+
+    @classmethod
+    def setUpClass(cls):
+        require_tool('Playwright Chromium')
 
     def reverse_fix(self, key: str, tmp: Path) -> Path:
         import difflib
@@ -206,11 +210,8 @@ class FixLoopTest(unittest.TestCase):
             held.mkdir(parents=True)
             (held / "a.json").write_text((REPO / "harness" / "web" / "routes" / "checkout-desktop.json").read_text())
             with mock.patch.dict("os.environ", {"EXPECTRAIL_HELDOUT_DIR": str(tmp / "held"), "EXPECTRAIL_OBS_PROVIDER": "trace"}):
-                try:
-                    row = run_case("dev/layering/v1", "expectrail", tmp / "out", live=False,
-                                   fixture=self.reverse_fix("dev/layering/v1", tmp))
-                except Exception as exc:  # noqa: BLE001 - no browser on this machine
-                    self.skipTest(f"chromium unavailable: {exc}")
+                row = run_case("dev/layering/v1", "expectrail", tmp / "out", live=False,
+                               fixture=self.reverse_fix("dev/layering/v1", tmp))
             self.assertEqual(row["detected"], "fail")
             self.assertEqual(row["outcome"], "fixed", row)
             v = json.loads((tmp / "out" / "dev_layering_v1" / "expectrail" / "verify" / "attempt-01" / "verification.json").read_text())
@@ -241,10 +242,7 @@ class FixLoopTest(unittest.TestCase):
             (routes / "b.json").write_text(json.dumps(short))
             (routes / "c.json").write_text("{}")
             with mock.patch.dict("os.environ", {"EXPECTRAIL_HELDOUT_DIR": str(tmp / "held")}):
-                try:
-                    lines = check_held_out(tmp / "out")
-                except Exception as exc:  # noqa: BLE001 - no browser on this machine
-                    self.skipTest(f"chromium unavailable: {exc}")
+                lines = check_held_out(tmp / "out")
         self.assertEqual(lines, ["held-out r0: the clean page passes",
                                  "held-out r1: the clean page fails layout "
                                  "(layout: checkout-button-inside-form, checkout-button-visible, logo-visible)",
