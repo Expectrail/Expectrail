@@ -1,60 +1,88 @@
-# The Expectrail gate on this repository's own pull requests, trusted half (docs/ci-gate.md).
-#
-# GitHub runs this from the default branch's copy of the file whenever "Expectrail verify" finishes
-# (workflow_run), so a pull request cannot change it. It downloads that run's evidence artifact as
-# data and posts or updates one comment on the pull request.
-#
-# It never checks out or runs the pull request's code. The one checkout is this repository's default
-# branch (the commit this file comes from), sparse, only to use main's copy of the comment action,
-# which runs standard-library Python in isolated mode and reads one JSON file from the artifact. It
-# installs nothing and holds no secret beyond the run's token, whose permissions are listed below.
 name: Expectrail comment
-
 on:
   workflow_run:
     workflows: [Expectrail verify]
-    types: [completed]
-
+    types: [in_progress, completed]
 permissions: {}
-
 concurrency:
-  group: expectrail-comment-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+  group: expectrail-judge-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
   cancel-in-progress: false
-
 jobs:
-  comment:
-    # Only the verify workflow at its own path (a pull request can add another workflow with the same
-    # name), only for pull requests, and not for a run a newer push cancelled.
+  judge:
     if: >-
       github.event.workflow_run.event == 'pull_request' &&
-      github.event.workflow_run.path == '.github/workflows/expectrail-verify.yml' &&
-      github.event.workflow_run.conclusion != 'cancelled' &&
-      github.event.workflow_run.conclusion != 'skipped'
+      github.event.workflow_run.path == '.github/workflows/expectrail-verify.yml'
+    environment: main-only
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 30
     permissions:
       actions: read
       contents: read
       pull-requests: write
     steps:
-      - name: Check out the default branch's comment action (never the pull request)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Load the trusted check publisher
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.event.repository.default_branch }}
+          ref: ${{ github.workflow_sha }}
           persist-credentials: false
-          sparse-checkout: |
-            .github/actions/expectrail-comment
-            expectrail
-            contracts
-      - name: Post or update the one comment
-        uses: ./.github/actions/expectrail-comment
+      - name: Issue a token for the clearance publisher
+        id: publisher
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349
         with:
-          # Paths the verdict depends on here: the verify workflow runs this repository's own copy of
-          # the action and the gate's code, so a pull request that edits them is flagged.
-          watch: |
-            .github/actions/
-            expectrail/
-            harness/
-            agents/observations.py
-            agents/export_scan.py
-            contracts/findings.schema.json
+          app-id: ${{ vars.EXPECTRAIL_CHECKS_APP_ID }}
+          private-key: ${{ secrets.EXPECTRAIL_CHECKS_PRIVATE_KEY }}
+          permission-checks: write
+      - name: Start the checks and identify the base
+        id: start
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECKS_TOKEN: ${{ steps.publisher.outputs.token }}
+          CHECKS_APP: ${{ steps.publisher.outputs.app-slug }}
+        run: python3 -m tools.ci_checks start
+      - if: steps.start.outputs.base != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ steps.start.outputs.base }}
+          path: policy
+          persist-credentials: false
+      - if: steps.start.outputs.base != ''
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+      - if: steps.start.outputs.base != ''
+        run: python -m pip install jsonschema==4.26.0 pillow==12.3.0
+      - name: Fetch the published capture and verify its digest
+        if: steps.start.outputs.base != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -m tools.ci_checks download
+      - name: Evaluate the saved runs from the base commit
+        if: steps.start.outputs.base != ''
+        id: judge
+        working-directory: policy
+        env:
+          GAME: game/platformer
+          SPECS: agents/specs
+          ROUTES: |
+            harness/routes/smoke.json
+            harness/routes/combat.json
+          RECORDING: docs/run-it/vision/clean.json
+        run: python -m tools.ci_checks judge
+      # #255 will write its receipt here from the trusted result.
+      - name: Publish the trusted report
+        if: always() && steps.start.outputs.matched == 'true'
+        id: report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: expectrail-report
+          path: ${{ runner.temp }}/expectrail-report
+          retention-days: 14
+          if-no-files-found: error
+      - name: Complete the head checks and update the bounded comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECKS_TOKEN: ${{ steps.publisher.outputs.token }}
+          REPORT_URL: ${{ steps.report.outputs.artifact-url }}
+          REPORT_READY: ${{ steps.judge.outcome == 'success' && steps.report.outcome == 'success' && !cancelled() }}
+        run: python3 -m tools.ci_checks finish

@@ -827,7 +827,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
              checks: Checks | None = None, rule: str = rec.ENGINE_ONLY, visual=None,
              on_phase: Callable[[str], object] | None = None, heldout_frames_to_visual: bool = False,
              intent: str = "none", adapter: str = DEFAULT_ADAPTER,
-             anchor_every: int = ANCHOR_EVERY) -> dict:
+             anchor_every: int = ANCHOR_EVERY, changed_checks: dict | None = None) -> dict:
     """Run the gate and write the artifact in ``out``; returns the findings record.
 
     ``adapter`` names the engine, and everything about the engine comes from its entry in the
@@ -951,7 +951,11 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     routes_dir = Path(work) / "checks" / "routes"
     route_list = [(name, routes_dir / f"{name}.json", sha) for name, _data, sha in checks.routes]
     changed = {"specs": 0, "routes": 0}
-    if base is not None:
+    if changed_checks is not None:
+        if saved is None:
+            raise ConfigError("changed check counts require saved replays")
+        changed = changed_checks
+    elif base is not None:
         # What the change does to the check files, counted from one kind of reading on both sides:
         # the head's checks are listed by the same reader as the base's. A file the reader refuses
         # compares by its name and its refusal, so one that is the same on both sides is not counted

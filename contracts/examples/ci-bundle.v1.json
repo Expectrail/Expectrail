@@ -1,0 +1,27 @@
+{
+  "format": "expectrail.ci-bundle/v1",
+  "writerRef": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "pullRequest": {
+    "number": 1,
+    "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "intent": "none",
+  "checksSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "changed": {
+    "specs": 0,
+    "routes": 0
+  },
+  "runs": [
+    {
+      "group": "base-1",
+      "route": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "replay": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    {
+      "group": "head-1",
+      "route": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "replay": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    }
+  ]
+}
