@@ -37,8 +37,9 @@ answer as untrusted data); and the keep rule decides. The rows go into the run r
 ``pixelChecks`` (``record_row``), and ``kept_rows`` reads them back, deciding from the runs, never from a
 row's own status.
 
-What this is not, yet: nothing here calls an observer. No SAM observer is wired into the workflow or
-the command line, and no reproduction rate has been measured with pixel checks. The tests judge
+What this is not, yet: nothing here calls an observer. The SAM observer is expectrail/jit/sam_observer.py;
+it is not wired into the workflow or the command line, and no reproduction rate has been measured with
+pixel checks. The tests judge
 recorded SAM answers (tests/data/sam-anchor/), which are one answer per frame per build: three "runs" of a recording are
 the same answers three times, so they test the rule, not the observer's repeatability.
 """
@@ -246,7 +247,11 @@ def setting_of(doc: dict) -> dict:
     """How the observer was asked. Two runs are compared only under the same setting: on the same
     clean game, SAM's lowest score was 0.5 asked with a point and 0.87 asked with a box."""
     setting = {"model": doc.get("model")}
-    if doc.get("box") is not None:
+    if isinstance(doc.get("box"), str):
+        # agents/sam_anchor.py --box body: the logged body box, widened by ``pad`` (expectrail/jit/sam_observer.py).
+        setting["box"] = doc["box"]
+        setting["pad"] = doc.get("pad")
+    elif doc.get("box") is not None:
         setting["box"] = list(doc["box"])
     setting["lift"] = doc.get("lift")
     return setting
