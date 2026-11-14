@@ -4,6 +4,7 @@ specification says must be refused before any game code runs.
 The OBAAF checks run when ``obaaf`` is installed (the obaaf-audit CI job installs it from the
 reviewed revision); normalization and Expectrail's own allowlist always run.
 """
+import copy
 import json
 import os
 import shutil
@@ -12,7 +13,7 @@ import unittest
 from pathlib import Path
 
 from agents.assurance import proposal as ap
-from harness.run import REPO
+from harness.run import REPO, tree_digest
 
 SEED = REPO / "bugs" / "physics-fall-through" / "v1.patch"
 FIX = REPO / "agents" / "fixtures" / "fix-collision-mask.patch"
@@ -20,43 +21,64 @@ HAS_OBAAF = bool(ap.obaaf_bin())
 
 
 class NormalizeTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # These three tests inspect the same successful normalization without
+        # editing it. The repeatability, relative-path and refusal tests below
+        # still call normalize independently in their own disposable directories.
+        tmp = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        cls.source = root / "source"
+        # Normalization needs real Git history and the complete real game, not
+        # unrelated docs, recordings and benchmark artifacts in the repository.
+        shutil.copytree(REPO / ap.GAME_ROOT, cls.source / ap.GAME_ROOT,
+                        ignore=shutil.ignore_patterns(".godot"))
+        assert tree_digest(cls.source / ap.GAME_ROOT) == tree_digest(REPO / ap.GAME_ROOT)
+        (cls.source / "README.md").write_text("Unrelated project file; the fix must not change it.\n")
+        ap._git(["init", "--quiet"], cls.source)
+        ap._git(["add", "--all"], cls.source)
+        ap._git(["commit", "--quiet", "--no-verify", "-m", "normalization test source"], cls.source)
+        cls.normalized = root / "normalized"
+        cls.record = ap.normalize(FIX, [SEED], cls.normalized, source=cls.source)
+
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.out = Path(tmp.name)
 
     def test_the_real_fix_becomes_a_repository_relative_git_diff(self):
-        record = ap.normalize(FIX, [SEED], self.out)
-        diff = (self.out / "proposal" / "patch.diff").read_text()
+        record = self.record
+        diff = (self.normalized / "proposal" / "patch.diff").read_text()
         self.assertTrue(diff.startswith("diff --git a/game/platformer/player/player.tscn "
                                         "b/game/platformer/player/player.tscn\n"))
         self.assertIn("-collision_mask = 14\n+collision_mask = 30", diff)
         self.assertEqual(record["changedPaths"], ["game/platformer/player/player.tscn"])
-        self.assertEqual(sorted(p.name for p in (self.out / "proposal").iterdir()), ["meta.json", "patch.diff"])
+        self.assertEqual(sorted(p.name for p in (self.normalized / "proposal").iterdir()), ["meta.json", "patch.diff"])
         self.assertEqual((record["mode"], record["lineage"]), ("audit", "benchmark"))
-        self.assertEqual(record["bundleDigest"], ap.bundle_digest(self.out / "proposal"))
+        self.assertEqual(record["bundleDigest"], ap.bundle_digest(self.normalized / "proposal"))
         self.assertEqual(ap.editable_problems(record["changedPaths"], ap.DEFAULT_EDITABLE), [])
 
     def test_the_same_inputs_give_the_same_trees_and_bundle(self):
-        first = ap.normalize(FIX, [SEED], self.out / "one")
-        second = ap.normalize(FIX, [SEED], self.out / "two")
+        first = self.record
+        second = ap.normalize(FIX, [SEED], self.out / "two", source=self.source)
         for key in ("candidateTree", "patchFileSha256", "bundleDigest"):
             self.assertEqual(first[key], second[key])
         self.assertEqual(first["base"]["tree"], second["base"]["tree"])
 
     def test_the_base_is_a_disposable_clone_with_the_defect_committed(self):
-        record = ap.normalize(FIX, [SEED], self.out)
+        record = self.record
         self.assertNotEqual(record["base"]["commit"], record["base"]["sourceCommit"])  # the seed is a commit
-        tscn = (self.out / "base" / ap.GAME_ROOT / "player" / "player.tscn").read_text()
+        tscn = (self.normalized / "base" / ap.GAME_ROOT / "player" / "player.tscn").read_text()
         self.assertIn("collision_mask = 14", tscn)  # the base carries the defect, not the fix
-        self.assertNotIn(str(self.out), json.dumps(record))  # no local paths in the record
+        self.assertNotIn(str(self.normalized), json.dumps(record))  # no local paths in the record
 
     def test_a_relative_output_directory_works(self):
         # CI passes --out runs/...; git runs from inside it, so every path must be absolute by then.
         cwd = os.getcwd()
         os.chdir(self.out)
         try:
-            record = ap.normalize(FIX, [SEED], Path("relative") / "out")
+            record = ap.normalize(FIX, [SEED], Path("relative") / "out", source=self.source)
         finally:
             os.chdir(cwd)
         self.assertEqual(record["changedPaths"], ["game/platformer/player/player.tscn"])
@@ -64,11 +86,11 @@ class NormalizeTest(unittest.TestCase):
 
     def test_a_candidate_that_does_not_apply_or_changes_nothing_is_an_error(self):
         with self.assertRaises(ap.ProposalError):
-            ap.normalize(SEED, [SEED], self.out / "twice")  # the seed again: already applied
+            ap.normalize(SEED, [SEED], self.out / "twice", source=self.source)  # the seed again: already applied
         empty = self.out / "empty.patch"
         empty.write_text("")
         with self.assertRaises(ap.ProposalError):
-            ap.normalize(empty, [SEED], self.out / "empty")
+            ap.normalize(empty, [SEED], self.out / "empty", source=self.source)
 
     def test_the_editable_allowlist_is_expectrails_own_rule(self):
         problems = ap.editable_problems(["game/platformer/gui/pause_menu.gd", "README.md",
@@ -161,12 +183,19 @@ if __name__ == "__main__":
 class LaneInventoryTest(unittest.TestCase):
     """agents/assurance/audit.py: the declarations in .github/obaaf.yml must match what holds model keys."""
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         from agents.assurance import audit
-        self.audit = audit
-        self.declared = audit.declared_agents()
-        self.probes = audit.declared_probes()
-        self.models = audit.model_jobs()
+        cls.audit = audit
+        cls._declared = audit.declared_agents()
+        cls._probes = audit.declared_probes()
+        cls._models = audit.model_jobs()
+
+    def setUp(self):
+        # The repository inputs are fixed; each policy test still owns its data.
+        self.declared = copy.deepcopy(self._declared)
+        self.probes = copy.deepcopy(self._probes)
+        self.models = copy.deepcopy(self._models)
 
     def lanes(self, **overrides):
         jobs = set(self.models) | self.declared | self.probes

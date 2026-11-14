@@ -2112,7 +2112,11 @@ class CleanPromptEnvHonestyTest(unittest.TestCase):
                     return doc
                 return real_verify(request, candidate, out, **kwargs)
 
-            with mock.patch("agents.loop.run_fixer", side_effect=fake_fixer):
+            # This test exercises retry/verification, not screenshot capture. Keep a real
+            # report frame so report-first still runs, without starting Godot for the briefing.
+            with mock.patch("agents.loop.run_fixer", side_effect=fake_fixer), \
+                    mock.patch("agents.loop.render_report", return_value={
+                        "bug-report/screenshots/frame-000.png": BEFORE_FRAME}):
                 with mock.patch("agents.loop.verify", side_effect=fake_verify):
                     result = one_run(
                         root / "run",

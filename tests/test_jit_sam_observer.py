@@ -11,6 +11,7 @@ answers on a bench probe: none has been recorded."""
 from __future__ import annotations
 
 import hashlib
+from functools import lru_cache
 import json
 import shutil
 import struct
@@ -41,8 +42,9 @@ DRAWN = {"id": "player-drawn", "statement": "On hold-right the player is drawn w
          "predicate": {"type": "visible", "minScore": 0.8}}
 
 
-def png(path: Path, size, seed: int) -> None:
-    """A real PNG of ``size``, its first pixel set from ``seed`` so every frame has its own digest."""
+@lru_cache(maxsize=256)
+def _png_bytes(size, seed: int) -> bytes:
+    """Compress each immutable fixture once; retain its exact pixels, encoding and digest."""
     w, h = size
     row = b"\x00" + bytes([seed % 256, (seed // 256) % 256, 7]) + b"\x00" * (3 * w - 3)
     raw = row + (b"\x00" + b"\x00" * 3 * w) * (h - 1)
@@ -50,8 +52,13 @@ def png(path: Path, size, seed: int) -> None:
     def chunk(kind, data):
         return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
 
-    path.write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
-                     + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
+
+
+def png(path: Path, size, seed: int) -> None:
+    """A full-size real PNG in a fresh file: changing one replay cannot change another."""
+    path.write_bytes(_png_bytes(tuple(size), seed))
 
 
 def rows_from(run: dict, ticks: int, body: bool = False) -> list[dict]:
