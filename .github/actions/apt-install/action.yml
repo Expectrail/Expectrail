@@ -22,6 +22,9 @@
 name: apt install
 description: Install Ubuntu packages from the image, a cache, the live mirror, an independent mirror or the snapshot archive, in that order.
 inputs:
+  restore-only:
+    description: Read the cache and leave cache publication to other jobs.
+    default: 'false'
   packages:
     description: Package names, separated by spaces.
     required: true
@@ -62,7 +65,7 @@ runs:
         CACHE_DIR: ${{ steps.key.outputs.dir }}
         ACTION_PATH: ${{ github.action_path }}
       run: bash "$ACTION_PATH/install.sh" "$CACHE_DIR" $PACKAGES
-    - if: steps.install.outputs.fetched == 'true'
+    - if: inputs.restore-only != 'true' && steps.install.outputs.fetched == 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.key.outputs.dir }}
