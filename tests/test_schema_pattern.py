@@ -141,6 +141,7 @@ def contract_patterns() -> dict[str, str]:
 SAMPLES = {
     r"^repair-[a-z0-9_]{8}/repair-run\.json$": ("repair-sample01/repair-run.json", True),
     "^[A-Z_]{1,40}$": ("TOOL_MISSING", True),
+    "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$": ("Expectrail/Expectrail", True),
     "^[a-z0-9][a-z0-9-]{0,63}$": ("player-stays-above-ground", True),
     "^attempt-[0-9]{1,2}/candidate\\.patch$": ("attempt-1/candidate.patch", True),
     "^[A-Za-z0-9._-]{1,64}$": ("19283746501", True),
