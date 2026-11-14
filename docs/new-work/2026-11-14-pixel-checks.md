@@ -30,8 +30,9 @@
   missing-texture bugs and `sinking_v1`. It is `needs-review` on both physics-fall-through bugs (11
   frames not asked: the player is outside the picture). The same check fails on the clean game
   when SAM was asked with a point (lowest score 0.5) instead of a box.
-- The full suite, on the branch (main 32ea4bc plus this change): see the pull request for the count
-  and result.
+- The full suite, `python3 -m unittest discover -s tests -t .`, on the branch (main 32ea4bc plus this
+  change), in a cloud container: 3,197 tests, OK, 31 skipped. The four skips beyond the usual 27 were
+  already there on the first run of this branch, before the last fix.
 - No model, no observer and no engine was called. Nothing was dispatched and nothing was spent.
 
 ## Not done
