@@ -70,6 +70,7 @@ PERCEPTION = frozenset({
     # has no secret and is the only one that fetches and starts the outside project; this job
     # never does (tests/test_outside_trial.py holds that against the workflow file).
     ".github/workflows/outside-sam-probe.yml#probe",
+    ".github/workflows/outside-vision.yml#judge",  # SAM on the capture job's verified files
     # The web detection bench: SAM on frames of the checkout page. Chromium runs the page's (patched)
     # scripts with the game's environment allowlist and every request outside the page's own origin
     # aborted (harness/web/run.py), so the key never reaches the page and the page reaches nothing.

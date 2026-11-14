@@ -106,6 +106,33 @@ a project cannot be fetched as pinned or the command ends with no verdict.
 python -m tools.outside_trial --fetch --execution-class isolated --out runs/outside
 ```
 
+## Reading an outside vision run
+
+Sean starts **Outside vision** from the Actions tab on main, chooses a project and sets one
+positive dollar cap for the whole run (at most $2). The capture job fetches the pinned commit,
+applies each listed change to its own copy and requires the replay sandbox for every route.
+The `outside-captures` artifact holds the replay records, traces and frames for `pinned` and
+each change. The capture job passes a digest of those records to the judge as a job output.
+
+Only the judge receives the model key. It checks the capture digest, route bytes, sandbox
+record, trace and frame hashes before asking SAM. It reads the spec and routes from Expectrail's
+own checkout. A missing capture, a changed frame or a bad hash stops judgement.
+
+Read the job summary one row at a time. The pinned row judges the original project. Each change
+is compared with that same pinned base. **Verdict** is the gate's decision. **Expected** comes
+from the trial list, including expectations written for the earlier run without a vision key.
+A difference is a result to investigate. Open `outside-vision-findings` for each variant's
+`findings.json`. Its `checks[].observed` entries say what the engine and vision actually saw.
+A failure on either rejects. An engine failure can reject before vision is asked about that
+check. An accept needs both observers to pass the applicable checks. Missing vision evidence
+keeps an engine pass at needs-review. The summary and `spend.json` report the requests,
+images answered and amount reserved at list price, including tries that failed.
+
+For #263, “verified” needs a recorded run on the pinned outside project in which vision
+actually judged the evidence. Read the observer entries and verdicts for the pinned project
+and its changes. A successful workflow alone establishes no project result. Sean records the
+first kinematic-character run and its verdicts on #263 and decides the public wording.
+
 ## The projects
 
 | Project | From | Kind | Why it was chosen |

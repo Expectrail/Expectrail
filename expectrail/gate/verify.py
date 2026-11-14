@@ -808,6 +808,18 @@ def _game_ok(game: Path, adapter: str = DEFAULT_ADAPTER) -> bool:
     return adapter_for(adapter).is_project(game)
 
 
+@dataclass(frozen=True)
+class SavedReplays:
+    """Prechecked runs keyed by logical game folder and SHA-256 of the trusted route bytes."""
+    trees: dict[Path, str]
+    runs: dict[tuple[Path, str], dict]
+
+    def __call__(self, route: Path, game: Path, out: Path, frames: bool) -> dict:
+        import hashlib
+
+        return self.runs[game, hashlib.sha256(route.read_bytes()).hexdigest()]
+
+
 def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path, work: Path,
              base: Path | None = None, heldout: Path | None = None, pr: dict | None = None,
              expectrail_commit: str | None = None, replay: Replay = harness_replay,
@@ -870,7 +882,9 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     as untrusted data after the decision is made, and nothing in it can change the decision."""
     repo = repo.resolve()
     engine = adapter_for(adapter)
-    game_ok = engine.is_project
+    saved = replay if isinstance(replay, SavedReplays) else None
+    # A saved run names the tree captured on the other machine. No game is installed here.
+    game_ok = engine.is_project if saved is None else saved.trees.__contains__
     if intent not in rec.INTENTS:
         raise ConfigError("the intent must be one of: " + ", ".join(rec.INTENTS))
     problems: list[str] = []
@@ -970,7 +984,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
             if place == folder.resolve() or folder.resolve() in place.parents:
                 raise ConfigError(f"the {label} folder is inside the {side} game folder ({game_rel}); keep it outside the game")
         try:
-            trees[side] = game_tree(folder, checkout, engine.name)
+            trees[side] = game_tree(folder, checkout, engine.name) if saved is None else saved.trees[folder]
         except TreeProblem as exc:
             raise ConfigError(f"the {side} game cannot be verified as it stands: {exc}") from exc
         named[Path(folder)] = trees[side]
