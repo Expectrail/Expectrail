@@ -103,3 +103,14 @@ What was run: `python3` on PATH is 3.10.22 and has no tomllib, so the suite was 
 `OK (skipped=55)`. Not run: nothing was pushed, and no pull request or GitHub comment was opened.
 #260 was not started.
 
+
+## Architect run (gate reads the base config)
+
+Linux. The patch applied cleanly on `80c8bb3` as `af202e0`. Main (`191cc3d`, 48 commits ahead, #436 included) was then merged in as `76afcfa`, with one registry conflict in `setup.py`'s bundled modules, resolved by keeping this branch's `project_config` and main's `auto_fix` and `spend`. Godot 4.7.2 from `harness/get_godot.sh`, under `xvfb-run`.
+
+- The three new tests in `tests.test_ci_gate.VerifyTest`, against `80c8bb3`'s `verify.py`, `harness/run.py` and `harness/adapters.py`: `FAILED (failures=2, errors=1)`. With the fix: `Ran 3 tests`, `OK`.
+- `python -m harness.check_seeded --out runs/seeded-check`: exit 0 (not sandboxed here: no bubblewrap). CI's sinking step over those traces: `{'clean': 'pass', 'sinking_v1': 'fail', 'sinking_v2': 'pass'}`.
+- `EXPECTRAIL_ENGINE_TESTS=required` on `tests.test_body_box`, `test_event_input`, `test_ground_under`, `test_pause_input`, `test_second_project`, `test_auto_route_engine`, `test_unknown_actions`: `Ran 80 tests`, `OK`.
+- `python3 -m unittest discover -s tests -t .` on the merged result: `Ran 3587 tests`, `OK (skipped=31)`.
+
+Not run: hosted CI (runs on push), the release gate suite. No model was called and nothing was spent.
