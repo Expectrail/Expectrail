@@ -43,6 +43,7 @@ from expectrail.gate import record as rec
 ROOT = resources.ROOT
 MANIFEST = "docs/run-it/samples.json"
 SAMPLES_SCHEMA = "contracts/run-it-samples.v1.schema.json"
+REPAIR_RECORD = "docs/run-it/repair/repair-run.json"
 RESULT_SCHEMA = "contracts/run-it-result.v1.schema.json"
 RESULT_FORMAT = "expectrail.run-it-result/v1"
 ID = re.compile(r"[a-z0-9-]{1,40}")
@@ -85,6 +86,8 @@ def read_manifest(root: Path = ROOT) -> dict:
     if len(set(ids)) != len(ids):
         raise RunItError(f"{MANIFEST} lists a sample twice")
     for s in doc["samples"]:
+        if s["head"] == "recorded-fix" and s["base"] != "bug":
+            raise RunItError("a recorded fix must be compared with the seeded bug")
         if s["vision"] != f"docs/run-it/vision/{s['id']}.json":
             raise RunItError(f"{MANIFEST}: sample {s['id']}'s recording is not at docs/run-it/vision/{s['id']}.json")
     return doc
@@ -170,6 +173,22 @@ def run(sample_id: str, out: Path, *, request_id: str | None = None, root: Path 
     out = Path(out)
     if out.is_symlink() or (out.exists() and (not out.is_dir() or any(out.iterdir()))):
         raise RunItError(f"{out} is not an empty folder")
+    repair = None
+    if sample["head"] == "recorded-fix":
+        if record_with is not None:
+            raise RunItError("this sample uses recorded answers only")
+        path = root / REPAIR_RECORD
+        if not path.exists() and not path.is_symlink():
+            raise RunItError("fix not recorded yet")
+        try:
+            repair = viewer.read_repair(path)
+        except (ValueError, OSError) as exc:
+            raise RunItError(f"repair recording cannot be used: {exc}") from exc
+        fixer = repair["run"]["fixer"]
+        if not fixer["sandboxed"] or fixer["source"] in ("fixture", "recorded"):
+            raise RunItError("this sample needs the original live sandboxed repair recording")
+        if repair["diff"] is None:
+            raise RunItError("the recorded repair has no accepted patch to replay")
     started = _now()
     if record_with is not None:
         recorder = recorded.RecordingClient(record_with)
@@ -185,6 +204,21 @@ def run(sample_id: str, out: Path, *, request_id: str | None = None, root: Path 
                 trees["bug"] = smp.checkout(tmp / "bug", bug=True, root=root)
         except smp.SampleError as exc:
             raise RunItError(str(exc)) from exc
+        if repair is not None:
+            from agents.patchutil import apply_patch
+
+            bug = trees["bug"]
+            if req.tree_digest(bug / manifest["game"], bug, "godot") != repair["run"]["parent"]["headTree"]:
+                raise RunItError("the recorded parent game tree differs from the seeded bug")
+            fixed = tmp / "fixed"
+            shutil.copytree(bug, fixed)
+            patch = tmp / "candidate.patch"
+            patch.write_bytes(repair["diff"].encode("utf-8"))
+            try:
+                apply_patch(fixed / manifest["game"], patch)
+            except (OSError, subprocess.CalledProcessError) as exc:
+                raise RunItError("the recorded patch could not be applied to the seeded bug") from exc
+            trees["recorded-fix"] = fixed
         store = st.JobStore(tmp / "jobs")
         request = req.build(adapter="godot", head=trees[sample["head"]],
                             base=trees[sample["base"]] if sample["base"] else None,
@@ -192,9 +226,10 @@ def run(sample_id: str, out: Path, *, request_id: str | None = None, root: Path 
                             execution_class="isolated" if require_sandbox else "diagnostic",
                             timeout_seconds=timeout_seconds, idempotency_key=f"run-it-{request_id}"[:64])
         status, _ = store.create(request)
-        engine = engines.GodotGate(replay=replay, rule=rec.BOTH, visual=observer)
+        engine = engines.GodotGate(replay=replay, rule=rec.BOTH, visual=observer,
+                                  intent="fix" if repair is not None else "none")
         status = runner.work(store, status["id"], engines={"godot": engine})
-        viewer.write_job(store, status["id"], sample=sample_id)
+        viewer.write_job(store, status["id"], sample=sample_id, repair=repair)
         folder = store.paths(status["id"]).root / "viewer"
         out.mkdir(parents=True, exist_ok=True)
         shutil.copytree(folder, out / "viewer")
@@ -244,6 +279,8 @@ def record(sample_id: str, target: Path, *, run_id: str, client=None, root: Path
     ``client`` defaults to the live model client, which needs a key and a spend cap."""
     from expectrail import recorded
 
+    if find_sample(read_manifest(root), sample_id)["head"] == "recorded-fix":
+        raise RunItError("this sample uses recorded answers only")
     if client is None:
         from agents.sam_observations import default_client
 

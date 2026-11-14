@@ -146,7 +146,30 @@
       li.setAttribute("data-sample", s.id);
       li.appendChild(el("h3", s.title));
       li.appendChild(el("p", s.summary || ""));
-      if (s.expected) li.appendChild(el("p", "A working install decides: " + s.expected + ".", "expect"));
+      if (s.head === "recorded-fix") {
+        li.id = "recorded-fix";
+        // Only a published recording can enable this card. No fixture or predicted verdict.
+        var availability = el("p", "Checking for a recorded fix…", "expect");
+        li.appendChild(availability);
+        // samples.json says whether a repair has been recorded; until then nothing is requested.
+        if (s.repairRecorded !== true) {
+          availability.textContent = "fix not recorded yet";
+        } else getJson("repair/repair-run.json").then(function (r) {
+          var d = r.doc;
+          if (r.status === 404) {
+            availability.textContent = "fix not recorded yet";
+          } else if (r.status === 200 && isObj(d) && d.format === "expectrail.repair-run/v1"
+                     && isObj(d.fixer) && d.fixer.sandboxed === true
+                     && ["muse", "claude", "codex", "aider", "llm-patch"].includes(d.fixer.source)
+                     && isObj(d.result) && d.result.decision === "accept" && d.result.patch && d.result.job) {
+            availability.textContent = "A patch was recorded. Run it to verify the change again.";
+            li.dataset.available = "yes";
+            renderButtons();
+          } else {
+            availability.textContent = "No usable recorded fix is available.";
+          }
+        }).catch(function () { availability.textContent = "Could not check for a recorded fix."; });
+      } else if (s.expected) li.appendChild(el("p", "A working install decides: " + s.expected + ".", "expect"));
       var line = el("p", "", "latest-line");
       line.setAttribute("data-latest", s.id);
       li.appendChild(line);
@@ -172,8 +195,10 @@
   function renderButtons() {
     var buttons = document.querySelectorAll("button[data-run]");
     for (var i = 0; i < buttons.length; i++) {
-      buttons[i].disabled = !open || busy;
-      buttons[i].title = !open ? "Run it is not starting runs right now" : (busy ? "Your run is going" : "");
+      var card = buttons[i].closest(".sample");
+      var missing = card.id === "recorded-fix" && card.dataset.available !== "yes";
+      buttons[i].disabled = !open || busy || missing;
+      buttons[i].title = missing ? "No recorded fix is available to replay" : !open ? "Run it is not starting runs right now" : (busy ? "Your run is going" : "");
     }
   }
 
@@ -196,7 +221,7 @@
       var show = document.querySelector('[data-show="' + s.id + '"]');
       if (!line || !show) return;
       var row = latest[s.id];
-      if (!row) { line.textContent = "No finished run of this sample yet."; show.hidden = true; return; }
+      if (!row) { line.textContent = s.head === "recorded-fix" ? "" : "No finished run of this sample yet."; show.hidden = true; return; }
       line.textContent = "Latest run: " + when(row.finishedAt) + ".";
       show.hidden = false;
       getJson(RESULTS + "/" + row.requestId + "/status.json").then(function (res) {

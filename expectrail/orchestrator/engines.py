@@ -60,9 +60,10 @@ class Gate:
     Engine-only is available only to code explicitly constructing a Gate for development."""
 
     def __init__(self, adapter: str = "godot", replay: Callable | None = None, *, rule: str = "both",
-                 visual=_AUTO_VISUAL):
+                 visual=_AUTO_VISUAL, intent: str = "none"):
         self.name = adapter
         self._replay = replay   # a stand-in for the harness, for tests; None runs the adapter's
+        self._intent = intent
         self._rule = rule
         self._visual = (FramesObserver() if rule == "both" else None) if visual is _AUTO_VISUAL else visual
 
@@ -139,7 +140,7 @@ class Gate:
             base=Path(base["checkout"]) if base else None,
             # The isolated class: every replay in the sandbox, or the gate refuses and nothing is accepted.
             require_sandbox=request["executionClass"] == "isolated",
-            checks=checks, rule=self._rule, visual=visual, on_phase=advance, adapter=self.name,
+            checks=checks, intent=self._intent, rule=self._rule, visual=visual, on_phase=advance, adapter=self.name,
             **({"replay": self._replay} if self._replay is not None else {}))
         # The grade stays `diagnostic` even when every replay was sandboxed: the ledger's `isolated`
         # also needs a separate trusted job that judges and signs (#254, #255). What the sandbox did
@@ -165,8 +166,8 @@ class GodotGate(Gate):
 
     name = "godot"
 
-    def __init__(self, replay: Callable | None = None, *, rule: str = "both", visual=_AUTO_VISUAL):
-        super().__init__("godot", replay, rule=rule, visual=visual)
+    def __init__(self, replay: Callable | None = None, *, rule: str = "both", visual=_AUTO_VISUAL, intent: str = "none"):
+        super().__init__("godot", replay, rule=rule, visual=visual, intent=intent)
 
     @staticmethod
     def _tools() -> list[dict]:
