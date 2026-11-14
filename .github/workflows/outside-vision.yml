@@ -1,0 +1,106 @@
+name: Outside vision
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: Outside project from tests/outside/projects.json
+        type: choice
+        options: [kinematic-character, dodge-the-creeps]
+        required: true
+      sam_usd_cap:
+        description: Maximum total vision spend in dollars, up to 2
+        default: '1.00'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sam-spend
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      digest: ${{ steps.capture.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt
+      - uses: ./.github/actions/apt-install
+        with:
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch bubblewrap
+      - uses: ./.github/actions/get-godot
+      - name: Allow Bubblewrap to create namespaces
+        run: |
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+          if [ -f /proc/sys/kernel/unprivileged_userns_clone ]; then
+            sudo sysctl -w kernel.unprivileged_userns_clone=1
+          fi
+      - name: Capture pinned project and listed changes
+        id: capture
+        env:
+          PROJECT: ${{ inputs.project }}
+          EXPECTRAIL_SANDBOX: require
+        run: python -m tools.outside_vision capture --project "$PROJECT" --out "$RUNNER_TEMP/captures"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: outside-captures
+          path: ${{ runner.temp }}/captures
+          if-no-files-found: error
+          retention-days: 7
+
+  judge:
+    if: github.ref == 'refs/heads/main'
+    needs: capture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: main-only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt pillow==12.3.0
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: outside-captures
+          path: ${{ runner.temp }}/incoming
+      - name: Judge saved runs
+        env:
+          PROJECT: ${{ inputs.project }}
+          DIGEST: ${{ needs.capture.outputs.digest }}
+          EXPECTRAIL_SAM_USD_CAP: ${{ inputs.sam_usd_cap }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+        run: |
+          python -m tools.outside_vision judge --project "$PROJECT" --digest "$DIGEST" \
+            --data "$RUNNER_TEMP/incoming" --out "$RUNNER_TEMP/findings"
+      - name: Report verdicts and spend
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/findings/outside-trial.md" ]; then
+            cat "$RUNNER_TEMP/findings/outside-trial.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f "$RUNNER_TEMP/findings/spend.json" ]; then
+            python -c 'import json, sys; s=json.load(open(sys.argv[1])); print("\nSpend at list price: ${reservedUsd:.4f}, {requests} requests, {images} images answered.".format(**s))' "$RUNNER_TEMP/findings/spend.json" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: outside-vision-findings
+          path: |
+            ${{ runner.temp }}/findings/*/findings.json
+            ${{ runner.temp }}/findings/spend.json
+            ${{ runner.temp }}/findings/outside-trial.md
+          retention-days: 14
