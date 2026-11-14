@@ -127,11 +127,37 @@ def checked_capture(root):
     return replay
 
 
+def frozen_bank(out, progress, calibrate):
+    """Save calibration once. Check its original bytes before reusing it."""
+    path = out / 'templates.json'
+    if progress['bankSha256'] is None:
+        bank = calibrate()
+        atomic_json(path, bank)
+        progress['bankSha256'] = sensor.sha(path)
+        atomic_json(out / 'progress.json', progress)
+        print(f"calibration frozen: {len(bank['templates'])} templates, threshold {bank['config']['matchThreshold']}", flush=True)
+    elif sensor.sha(path) != progress['bankSha256']:
+        raise sensor.SensorError('frozen calibration changed; refusing resume')
+    return path
+
+
+def read_checkpoint(path, identity):
+    """Return only frames and timings belonging to the same bank and replay."""
+    if not path.exists():
+        return dict(identity=identity, frames={}, seconds={})
+    checkpoint = json.loads(path.read_bytes())
+    if checkpoint['identity'] != identity:
+        raise sensor.SensorError('frame checkpoint belongs to different evidence')
+    if (set(checkpoint['frames']) != set(checkpoint['seconds']) or any(
+            str(frame['frame']) != key or not math.isfinite(checkpoint['seconds'][key]) or checkpoint['seconds'][key] < 0
+            for key, frame in checkpoint['frames'].items())):
+        raise sensor.SensorError('invalid frame checkpoint identity or timing')
+    return checkpoint
+
+
 def measure(out, *, godot, game=None, run_replay=None, config=None, evidence='real engine', resume=False):
     import os
     import time
-    import numpy as np
-    import PIL
     out,game=Path(out).resolve(),Path(game or ROOT/'game/platformer').resolve()
     if out==game or game in out.parents:
         raise sensor.SensorError('measurement output must be outside the source game')
@@ -144,19 +170,21 @@ def measure(out, *, godot, game=None, run_replay=None, config=None, evidence='re
     if settings['matchThreshold']<0.90:
         raise sensor.SensorError('the threshold floor cannot be lowered below 0.90')
     plans=calibration_routes()
+    progress_path=out/'progress.json'
+    if resume and not progress_path.exists():
+        raise sensor.SensorError('no v2 progress manifest; old banks cannot be resumed with a new algorithm')
+    import numpy as np
+    import PIL
     plan=dict(format='expectrail.template-progress/v1',cleanTree=clean_tree,config=settings,
               calibrationRoutes=plans,cases=[dict(name=n,routeSha256=sensor.sha(ROOT/f'harness/routes/{r}.json'),
                   patches=[sensor.sha(ROOT/p) for p in patches]) for n,r,patches in CASES],
               runtime=dict(numpy=np.__version__,pillow=PIL.__version__,threadEnvironment={
                   name:os.environ[name] for name in ('OPENBLAS_NUM_THREADS','OMP_NUM_THREADS','MKL_NUM_THREADS','BLIS_NUM_THREADS')
                   if name in os.environ}),evidence=evidence)
-    progress_path=out/'progress.json'
     if progress_path.exists():
         progress=json.loads(progress_path.read_text())
         if progress.get('plan')!=plan:
             raise sensor.SensorError('resume inputs/configuration changed; use a new output directory')
-    elif resume:
-        raise sensor.SensorError('no v2 progress manifest; old banks cannot be resumed with a new algorithm')
     else:
         progress=dict(plan=plan,captures={},bankSha256=None,completed=[])
         atomic_json(progress_path,progress)
@@ -179,17 +207,9 @@ def measure(out, *, godot, game=None, run_replay=None, config=None, evidence='re
         atomic_json(path,route)
         target,_=capture(route['name'],path)
         calibration.append(target)
-    bank_path=out/'templates.json'
-    if progress['bankSha256'] is not None:
-        bank=sensor.load_bank(bank_path)
-        if sensor.sha(bank_path)!=progress['bankSha256']:
-            raise sensor.SensorError('frozen calibration changed; refusing resume')
-    else:
-        bank=sensor.calibrate_routes(calibration[:-1],calibration[-1],clean_tree=clean_tree,config=settings)
-        atomic_json(bank_path,bank)
-        progress['bankSha256']=sensor.sha(bank_path)
-        atomic_json(progress_path,progress)
-        print(f"calibration frozen: {len(bank['templates'])} templates, threshold {bank['config']['matchThreshold']}",flush=True)
+    bank_path = frozen_bank(out, progress, lambda: sensor.calibrate_routes(
+        calibration[:-1], calibration[-1], clean_tree=clean_tree, config=settings))
+    bank = sensor.load_bank(bank_path)
     report=dict(format='expectrail.template-measurement/v0',evidence=evidence,config=bank['config'],
                 cleanTree=clean_tree,bankSha256=digest(bank),calibrationFrames=sorted({t['frame'] for t in bank['templates']}),
                 calibration=bank['calibration'],templateCount=len(bank['templates']),runtime=plan['runtime'],runs=[])
@@ -197,16 +217,7 @@ def measure(out, *, godot, game=None, run_replay=None, config=None, evidence='re
         target,replay=capture(name,ROOT/f'harness/routes/{route}.json',[ROOT/p for p in patches])
         checkpoint_path=target/'sensor-progress.json'
         identity=dict(bankSha256=digest(bank),replaySha256=sensor.sha(target/'replay.json'))
-        if checkpoint_path.exists():
-            checkpoint=json.loads(checkpoint_path.read_text())
-            if checkpoint['identity']!=identity:
-                raise sensor.SensorError('frame checkpoint belongs to different evidence')
-            if (set(checkpoint['frames']) != set(checkpoint['seconds']) or any(
-                    str(frame['frame']) != key or not math.isfinite(checkpoint['seconds'][key]) or checkpoint['seconds'][key] < 0
-                    for key,frame in checkpoint['frames'].items())):
-                raise sensor.SensorError('invalid frame checkpoint identity or timing')
-        else:
-            checkpoint=dict(identity=identity,frames={},seconds={})
+        checkpoint = read_checkpoint(checkpoint_path, identity)
         def saved(frame,seconds):
             key=str(frame['frame']);checkpoint['frames'][key]=frame;checkpoint['seconds'][key]=seconds
             atomic_json(checkpoint_path,checkpoint)

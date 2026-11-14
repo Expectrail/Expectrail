@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import copy
-import hashlib
 import json
 import random
 import tempfile
@@ -10,7 +9,25 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from PIL import Image
+try:
+    from PIL import Image
+except ModuleNotFoundError as exc:
+    if exc.name != 'PIL':
+        raise
+    Image = None
+
+try:
+    import numpy as np
+except ModuleNotFoundError as exc:
+    if exc.name != 'numpy':
+        raise
+    np = None
+
+missing = [name for name, library in [('Pillow', Image), ('NumPy', np)] if library is None]
+needs_pixels = unittest.skipIf(bool(missing), 'pixel matching needs ' + ' and '.join(missing))
+needs_pillow = unittest.skipIf(Image is None, 'image decoding needs Pillow')
+EXAMPLES = Path(__file__).resolve().parents[1] / 'contracts/examples'
+
 
 from agents import template_observations as ts
 from agents import template_sensor_bench as bench
@@ -40,7 +57,7 @@ def picture(*, hidden=False, location=(24, 20), scale=1):
     return image
 
 
-def replay(root, *, hidden=False, location=(24, 20), scale=1, tree=TREE, patched=False, count=3):
+def replay(root, *, hidden=False, location=(24, 20), scale=1, tree=TREE, patched=False, count=3, frame_bytes=None):
     root.mkdir(parents=True)
     (root/'frames').mkdir()
     rows=[]
@@ -48,7 +65,10 @@ def replay(root, *, hidden=False, location=(24, 20), scale=1, tree=TREE, patched
     box=[24,20,24+12*scale,20+16*scale]
     for n in range(count):
         path=root/'frames'/f'f{n:08d}.png'
-        picture(hidden=hidden,location=location,scale=scale).save(path)
+        if frame_bytes is None:
+            picture(hidden=hidden,location=location,scale=scale).save(path)
+        else:
+            path.write_bytes(frame_bytes)  # Digest-only tests never decode these bytes.
         hashes.append(ts.sha(path))
         for tick in (n*2,n*2+1):
             rows.append(dict(tick=tick,body=box,player=[30,30],view=[1,0,0,1,0,0]))
@@ -61,6 +81,7 @@ def replay(root, *, hidden=False, location=(24, 20), scale=1, tree=TREE, patched
     return dict(trace=trace,framesDir=root/'frames',replaySha256=ts.sha(root/'replay.json'))
 
 
+@needs_pixels
 class SensorTest(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory()
@@ -157,12 +178,6 @@ class SensorTest(unittest.TestCase):
         observer=ts.TemplateObserver(self.bank)
         self.assertEqual(observer.describe()['provider'],'local')
         self.assertEqual(observer.look(SPEC,self.clean,keep=False),self.observe())
-        with self.assertRaisesRegex(NoAnswer,'colour'):
-            ts.TemplateObserver(self.bank,required_capabilities=['colour']).look(SPEC,self.clean)
-        colour=copy.deepcopy(SPEC)
-        colour['assertion']['type']='colour-is'
-        with self.assertRaises(NoAnswer):
-            observer.look(colour,self.clean)
         self.assertIn('Colour',self.observe()['model']['sensor']['limitations'][0])
 
     def test_missing_image_is_unknown_not_invisible_or_a_partial_pass(self):
@@ -215,8 +230,45 @@ class SensorTest(unittest.TestCase):
         with self.assertRaises(ts.SensorError):
             ts.summarize(broken)
 
+    def test_candidate_observation_never_changes_or_recalibrates_the_bank(self):
+        path=self.root/'bank.json'
+        ts.calibrate(self.root/'clean',clean_tree=TREE,frames=[0],config=CONFIG,out=path)
+        original=path.read_bytes()
+        ts.TemplateObserver(path).look(SPEC,replay(self.root/'candidate',hidden=True,patched=True))
+        self.assertEqual(path.read_bytes(),original)
+        with self.assertRaises(FileExistsError):
+            ts.calibrate(self.root/'clean',clean_tree=TREE,frames=[0],config=CONFIG,out=path)
+
+    def test_no_network_is_needed_even_when_observer_runs(self):
+        with patch('socket.socket',side_effect=AssertionError('no network')):
+            doc=ts.TemplateObserver(self.bank).look(SPEC,self.clean)
+            self.assertEqual(ts.summarize(doc)['agreementRate'],1)
+
+
+
+
+class SensorRecordTest(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        self.clean = replay(self.root/'clean', frame_bytes=b'frame')
+        self.bank = json.loads((EXAMPLES/'template-bank.json').read_text())
+
+    def observe(self, run=None, **kwargs):
+        run = run or self.clean
+        return ts.from_replay(run['trace'], replay_sha256=run['replaySha256'],
+                              frames_dir=run['framesDir'], bank=self.bank, spec=SPEC, **kwargs)
+
+    def test_transform_uses_all_four_corners_and_next_tick_camera(self):
+        trace={'ticks':2,'physicsTicksPerSecond':60,'rows':[
+            dict(tick=0,body=[0,0,4,8],view=[1,0,0,1,0,0]),
+            dict(tick=1,body=[0,0,4,8],view=[1,1,-1,1,10,20])]}
+        self.assertEqual(ts.player_predictions(trace,[0,1],60),
+                         {0:{'player':[2,20,14,32]},1:{'player':[2,20,14,32]}})
+
     def test_calibration_refuses_candidate_patches_or_an_untrusted_tree(self):
-        replay(self.root/'candidate',patched=True)
+        replay(self.root/'candidate',patched=True,frame_bytes=b'candidate')
         with self.assertRaisesRegex(ts.SensorError,'pinned clean'):
             ts.calibrate(self.root/'candidate',clean_tree=TREE,frames=[0])
         with self.assertRaisesRegex(ts.SensorError,'pinned clean'):
@@ -229,27 +281,6 @@ class SensorTest(unittest.TestCase):
         (self.root/'clean/trace.json').write_text('{}')
         with self.assertRaisesRegex(ts.SensorError,'trace digest'):
             ts.calibrate(self.root/'clean',clean_tree=TREE,frames=[0])
-
-    def test_candidate_observation_never_changes_or_recalibrates_the_bank(self):
-        path=self.root/'bank.json'
-        ts.calibrate(self.root/'clean',clean_tree=TREE,frames=[0],config=CONFIG,out=path)
-        original=path.read_bytes()
-        ts.TemplateObserver(path).look(SPEC,replay(self.root/'candidate',hidden=True,patched=True))
-        self.assertEqual(path.read_bytes(),original)
-        with self.assertRaises(FileExistsError):
-            ts.calibrate(self.root/'clean',clean_tree=TREE,frames=[0],config=CONFIG,out=path)
-
-    def test_flat_templates_tampered_pixels_and_unknown_versions_are_refused(self):
-        replay(self.root/'flat',hidden=True)
-        with self.assertRaisesRegex(ts.SensorError,'flat template'):
-            ts.calibrate(self.root/'flat',clean_tree=TREE,frames=[0])
-        for edit in ('pixelsSha256','algorithm','threshold'):
-            bank=copy.deepcopy(self.bank)
-            if edit=='pixelsSha256':bank['templates'][0][edit]='0'*64
-            elif edit=='algorithm':bank['config'][edit]='unknown/v99'
-            else:bank['config']['matchThreshold']=float('nan')
-            with self.subTest(edit=edit),self.assertRaises(ts.SensorError):
-                ts.load_bank(bank)
 
     def test_duplicate_frames_ticks_and_invalid_capture_rates_are_refused(self):
         path=self.root/'clean/frames/f0.png'
@@ -264,33 +295,47 @@ class SensorTest(unittest.TestCase):
         with self.assertRaisesRegex(ts.SensorError,'divide'):
             self.observe(fps=59)
 
-    def test_no_network_is_needed_even_when_observer_runs(self):
-        with patch('socket.socket',side_effect=AssertionError('no network')):
-            doc=ts.TemplateObserver(self.bank).look(SPEC,self.clean)
-            self.assertEqual(ts.summarize(doc)['agreementRate'],1)
-
-    def test_transform_uses_all_four_corners_and_next_tick_camera(self):
-        trace={'ticks':2,'physicsTicksPerSecond':60,'rows':[
-            dict(tick=0,body=[0,0,4,8],view=[1,0,0,1,0,0]),
-            dict(tick=1,body=[0,0,4,8],view=[1,1,-1,1,10,20])]}
-        self.assertEqual(ts.player_predictions(trace,[0,1],60),
-                         {0:{'player':[2,20,14,32]},1:{'player':[2,20,14,32]}})
-
     def test_reader_refuses_missing_evidence_or_fabricated_detections(self):
-        original=self.observe()
+        original=json.loads((EXAMPLES/'observations-template.json').read_text())
         for edit in ('missing','invented','duplicate'):
             doc=copy.deepcopy(original)
             if edit=='missing':doc['frames'][0].pop('sensor')
-            elif edit=='invented':doc['frames'][0]['objects']['player'][0]['box']=[0,0,4,4]
+            elif edit=='invented':doc['frames'][0]['objects']['player']=[{'box':[0,0,4,4], 'score':1}]
             else:doc['frames'].append(copy.deepcopy(doc['frames'][0]))
             with self.subTest(edit=edit),self.assertRaises(ts.SensorError):
                 ts.summarize(doc)
+
+    def test_tampered_pixels_and_unknown_versions_are_refused(self):
+        for edit in ('pixelsSha256','algorithm','threshold'):
+            bank=copy.deepcopy(self.bank)
+            if edit=='pixelsSha256':bank['templates'][0][edit]='0'*64
+            elif edit=='algorithm':bank['config'][edit]='unknown/v99'
+            else:bank['config']['matchThreshold']=float('nan')
+            with self.subTest(edit=edit),self.assertRaises(ts.SensorError):
+                ts.load_bank(bank)
+
+    @patch.object(ts, 'load_bank', side_effect=lambda bank: bank)
+    def test_unsupported_capabilities_are_refused_before_matching(self, _load):
+        # The bank's pixels are covered separately. No frame is read for an unsupported assertion.
+        observer=ts.TemplateObserver(self.bank)
+        with self.assertRaisesRegex(NoAnswer,'colour'):
+            ts.TemplateObserver(self.bank,required_capabilities=['colour']).look(SPEC,self.clean)
+        colour=copy.deepcopy(SPEC)
+        colour['assertion']['type']='colour-is'
+        with self.assertRaises(NoAnswer):
+            observer.look(colour,self.clean)
+
+    @needs_pillow
+    def test_flat_templates_are_refused(self):
+        replay(self.root/'flat',hidden=True)
+        with self.assertRaisesRegex(ts.SensorError,'flat template'):
+            ts.calibrate(self.root/'flat',clean_tree=TREE,frames=[0])
 
 
 class MeasurementTest(unittest.TestCase):
     def test_contract_examples_are_synthetic_and_read_by_both_readers(self):
         folder=Path(__file__).resolve().parent.parent/'contracts/examples'
-        bank=ts.load_bank(folder/'template-bank.json')
+        bank=json.loads((folder/'template-bank.json').read_text())
         validate(bank,'template-bank')
         observation=json.loads((folder/'observations-template.json').read_text())
         validate(observation,'observations')
@@ -299,6 +344,23 @@ class MeasurementTest(unittest.TestCase):
         validate(report,'template-measurement')
         self.assertIn('offline stand-in',bench.render(report))
 
+    def test_inconsistent_measurement_totals_are_refused(self):
+        report=json.loads((EXAMPLES/'template-measurement.json').read_text())
+        forged=copy.deepcopy(report)
+        forged['clean']['falseAlarmRate']=1
+        with self.assertRaisesRegex(ts.SensorError,'aggregate'):
+            bench.render(forged)
+        forged=copy.deepcopy(report)
+        forged['runs'][0]['summary']['agreementRate']=0
+        with self.assertRaisesRegex(ts.SensorError,'rates disagree'):
+            bench.render(forged)
+
+    @needs_pillow
+    def test_bank_example_pixels_are_read_by_the_bank_reader(self):
+        bank = json.loads((EXAMPLES/'template-bank.json').read_text())
+        self.assertEqual(ts.load_bank(EXAMPLES/'template-bank.json'), bank)
+
+    @needs_pixels
     def test_linux_measurement_script_with_offline_replay_standins(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d)
@@ -319,14 +381,6 @@ class MeasurementTest(unittest.TestCase):
             hidden=next(kw for name,kw in calls if name=='invisible-player')
             self.assertEqual([p.name for p in hidden['patches']],['v1.patch','fix-but-hide-player.patch'])
             self.assertTrue((root/'out/template-measurement.json').is_file())
-            forged=copy.deepcopy(report)
-            forged['clean']['falseAlarmRate']=1
-            with self.assertRaisesRegex(ts.SensorError,'aggregate'):
-                bench.render(forged)
-            forged=copy.deepcopy(report)
-            forged['runs'][0]['summary']['agreementRate']=0
-            with self.assertRaisesRegex(ts.SensorError,'rates disagree'):
-                bench.render(forged)
             with self.assertRaisesRegex(ts.SensorError,'new output'):
                 bench.measure(root/'out',godot=root/'stand-in',game=game,run_replay=standin)
 

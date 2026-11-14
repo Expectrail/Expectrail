@@ -4,13 +4,11 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
-import numpy as np
-from PIL import Image
 from agents import template_observations as ts
 from agents import template_sensor_bench as bench
-from tests.test_template_sensor import BOX,CONFIG,TREE,replay,SPEC
+from tests.test_template_sensor import BOX, CONFIG, TREE, replay, SPEC, Image, np, needs_pixels, EXAMPLES
 
 
 def poses(root, *, mirror=False, decoy=False, unseen=False):
@@ -34,6 +32,7 @@ class CalibrationTest(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name)
 
+    @needs_pixels
     def test_every_clean_pose_is_considered_and_has_a_mirrored_partner(self):
         poses(self.root/'train');poses(self.root/'validate')
         bank=ts.calibrate_routes([self.root/'train'],self.root/'validate',clean_tree=TREE,config=CONFIG)
@@ -48,15 +47,19 @@ class CalibrationTest(unittest.TestCase):
         self.assertEqual(ts.summarize(result)['counts']['matched'],3)
         self.assertEqual(bank,before)
 
+    @needs_pixels
     def test_unseen_clean_validation_poses_do_not_lower_the_threshold(self):
         poses(self.root/'train');poses(self.root/'validate',unseen=True)
         bank=ts.calibrate_routes([self.root/'train'],self.root/'validate',clean_tree=TREE,config=CONFIG)
         self.assertEqual(bank['calibration']['status'],'unmet')
         self.assertEqual(bank['config']['matchThreshold'],.9)
         self.assertLess(bank['calibration']['positiveMatches'],3)
+
+    def test_validation_refuses_a_lower_threshold(self):
         with self.assertRaisesRegex(ts.SensorError,'floor'):
             ts.calibrate_routes([self.root/'train'],self.root/'validate',clean_tree=TREE,config=dict(CONFIG,matchThreshold=.89))
 
+    @needs_pixels
     def test_negative_calibration_regions_cannot_be_ignored_to_claim_calibration_success(self):
         poses(self.root/'train');poses(self.root/'validate',decoy=True)
         bank=ts.calibrate_routes([self.root/'train'],self.root/'validate',clean_tree=TREE,config=CONFIG)
@@ -65,10 +68,12 @@ class CalibrationTest(unittest.TestCase):
         self.assertGreaterEqual(bank['config']['matchThreshold'],.9)
 
     def test_validation_refuses_a_patched_source(self):
-        poses(self.root/'train');replay(self.root/'candidate',patched=True)
+        replay(self.root/'train',frame_bytes=b'train')
+        replay(self.root/'candidate',patched=True,frame_bytes=b'candidate')
         with self.assertRaisesRegex(ts.SensorError,'unpatched clean'):
             ts.calibrate_routes([self.root/'train'],self.root/'candidate',clean_tree=TREE,config=CONFIG)
 
+    @needs_pixels
     def test_numpy_scores_match_an_independent_scalar_correlation(self):
         run=replay(self.root/'clean')
         bank=ts.calibrate(self.root/'clean',clean_tree=TREE,frames=[0],config=dict(CONFIG,sampleSide=4,scales=[1],searchMarginPx=0))
@@ -86,6 +91,71 @@ class CalibrationTest(unittest.TestCase):
 
 
 class ResumeTest(unittest.TestCase):
+    def test_freeze_reuses_original_bytes_and_refuses_a_changed_bank(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d)
+            bank = json.loads((EXAMPLES/'template-bank.json').read_text())
+            calibrate = Mock(return_value=bank)
+            progress = {'bankSha256': None}
+            path = bench.frozen_bank(out, progress, calibrate)
+            original = path.read_bytes()
+            saved = json.loads((out/'progress.json').read_text())
+            self.assertEqual(saved['bankSha256'], ts.sha(path))
+            self.assertEqual(json.loads(original), bank)
+            self.assertEqual(bench.frozen_bank(out, saved, calibrate).read_bytes(), original)
+            path.write_bytes(original + b' ')
+            with self.assertRaisesRegex(ts.SensorError, 'frozen calibration changed'):
+                bench.frozen_bank(out, saved, calibrate)
+            calibrate.assert_called_once_with()
+
+    def test_saved_checkpoint_keeps_frames_and_timings_bound_to_run_and_bank(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d)/'sensor-progress.json'
+            identity = {'bankSha256': ts.sha(EXAMPLES/'template-bank.json'),
+                        'replaySha256': 'c'*64}
+            checkpoint = bench.read_checkpoint(path, identity)
+            frame = json.loads((EXAMPLES/'observations-template.json').read_text())['frames'][0]
+            checkpoint['frames']['0'] = frame
+            checkpoint['seconds']['0'] = 0.125
+            bench.atomic_json(path, checkpoint)
+            self.assertEqual(bench.read_checkpoint(path, identity), checkpoint)
+            for key in identity:
+                with self.subTest(key=key), self.assertRaisesRegex(ts.SensorError, 'different evidence'):
+                    bench.read_checkpoint(path, {**identity, key: '0'*64})
+            for seconds in ({}, {'0': -1}, {'0': float('nan')}):
+                bench.atomic_json(path, {**checkpoint, 'seconds': seconds})
+                with self.subTest(seconds=seconds), self.assertRaisesRegex(ts.SensorError, 'timing'):
+                    bench.read_checkpoint(path, identity)
+            bench.atomic_json(path, {**checkpoint, 'frames': {'0': {**frame, 'frame': 1}}})
+            with self.assertRaisesRegex(ts.SensorError, 'identity'):
+                bench.read_checkpoint(path, identity)
+
+    def test_resume_rejects_changed_trace_pixels_and_missing_frames(self):
+        with tempfile.TemporaryDirectory() as d:
+            for name, reason in [('trace.json', 'trace changed'), ('frames/f00000001.png', 'pixels changed'),
+                                 ('missing', 'frames are missing')]:
+                run = Path(d)/reason
+                replay(run, frame_bytes=b'opaque frame')
+                self.assertEqual(bench.checked_capture(run), json.loads((run/'replay.json').read_text()))
+                if name == 'missing':
+                    (run/'frames/f00000000.png').unlink()
+                else:
+                    (run/name).write_bytes(b'changed')
+                with self.subTest(name=name), self.assertRaisesRegex(ts.SensorError, reason):
+                    bench.checked_capture(run)
+
+    def test_output_and_resume_preconditions_run_before_pixel_processing(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            game = root/'game'
+            game.mkdir()
+            for out, options, reason in [(game, {}, 'outside'), (root, {}, 'new output'),
+                                         (root, {'resume': True}, 'no v2 progress manifest'),
+                                         (root/'new', {'config': {'matchThreshold': 0.89}}, 'threshold floor')]:
+                with self.subTest(reason=reason), self.assertRaisesRegex(ts.SensorError, reason):
+                    bench.measure(out, godot=root/'unused', game=game, **options)
+
+    @needs_pixels
     def test_interrupt_resume_reuses_frozen_bank_captures_and_completed_frames(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d);game=root/'game';game.mkdir();(game/'project.godot').write_text('[application]\n')

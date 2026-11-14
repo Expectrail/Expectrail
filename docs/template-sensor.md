@@ -83,7 +83,7 @@ select a crop or change a threshold. Clean routes are public and exercise the sa
 measured routes; this is not evidence of generalization to other games or all animation states.
 
 ```sh
-python3 -m pip install -r requirements-dev.txt
+python3 -m pip install -r requirements-dev.txt "numpy==2.3.5" "pillow==12.3.0"
 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 -m agents.template_sensor_bench \
   --godot /absolute/path/to/Godot --out /tmp/expectrail-template-measurement-v2
 # Resume the same v2 evidence directory after an interruption:
@@ -104,8 +104,7 @@ python3 -m agents.template_observations observe \
 
 The standalone `observe` command exits 2 on a disagreement or missing evidence. This is an advisory
 measurement command, not a product verdict. Pixel processing uses the standard library, Pillow and
-NumPy. Both imaging dependencies are pinned in `requirements-dev.txt`; the default verifier has no
-new runtime dependency.
+NumPy. Install the two imaging packages locally for pixel matching. Stock CI runs the record and bookkeeping checks without them.
 
 For explicit integration in a caller that has chosen this observer:
 
@@ -135,7 +134,7 @@ proof that a colour or semantic requirement was checked. Do not use this observe
 ## Measurements and resume
 
 See [the recorded Linux report](template-sensor-measurement.md) and its
-[JSON evidence](template-sensor-measurement.json) for this revision's rates and timing. The contract
+[JSON summary](template-sensor-measurement.json) for rates and timing. The [full measurement from #425](https://github.com/Expectrail/Expectrail/blob/b3ac0adf6d593f268e498dd1d236ff2daaada097/docs/template-sensor-measurement.json) includes each disagreement. The contract
 examples and unit-test images are synthetic and are not included in those real-game counts.
 The previous revision's Linux results supplied by Sean were 53/120 clean-smoke and 32/90
 clean-combat matches, about 3 seconds per frame; its benchmark was stopped before bug cases.

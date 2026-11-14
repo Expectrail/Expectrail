@@ -137,7 +137,6 @@ def load_bank(path_or_doc):
     validate(bank, 'template-bank')
     if bank['config']['matchThreshold'] <= 0 or bank['config']['agreementIoU'] <= 0:
         raise SensorError('match and agreement thresholds must be greater than zero')
-    Image, _, _ = imaging()
     for item in bank['templates']:
         try:
             pixels = base64.b64decode(item['pixels'], validate=True)
@@ -147,6 +146,7 @@ def load_bank(path_or_doc):
             raise SensorError('template pixel length or digest does not match')
         if not finite_box(item['box']) or not finite_box(item['predictedBox']):
             raise SensorError('invalid calibration box')
+        Image, _, _ = imaging()
         image = Image.frombytes('L', (item['width'], item['height']), pixels)
         sample = image.resize((bank['config']['sampleSide'],)*2, Image.Resampling.BOX)
         if min(_contrast(image), _contrast(sample)) < bank['config']['minimumContrast']:
@@ -317,11 +317,18 @@ def calibrate_routes(clean_runs, validation_run, *, clean_tree, config=None, sim
     clean validation route and off-player regions only; it may raise, never lower, the 0.90 floor.
     A failed calibration target is recorded, not hidden by lowering the threshold.
     """
-    import numpy as np
-    Image, _, _ = imaging()
     settings = dict(DEFAULTS, **(config or {}))
     if settings['matchThreshold'] < 0.9:
         raise SensorError('calibration cannot lower the 0.90 threshold floor')
+    validation_root = Path(validation_run)
+    replay_bytes = (validation_root/'replay.json').read_bytes()
+    validation_sha = hashlib.sha256(replay_bytes).hexdigest()
+    replay = json.loads(replay_bytes)
+    trace_bytes = (validation_root/'trace.json').read_bytes()
+    if (replay['game']['tree'] != clean_tree or replay['game'].get('patch') is not None
+            or replay['game'].get('patchSha256') is not None or hashlib.sha256(trace_bytes).hexdigest() != replay['trace']['sha256']):
+        raise SensorError('threshold calibration requires a pinned unpatched clean validation replay')
+    import numpy as np
     selected, features, sources = [], [], []
     source_frames = eligible_frames = 0
     bank = None
@@ -364,14 +371,10 @@ def calibrate_routes(clean_runs, validation_run, *, clean_tree, config=None, sim
     bank['calibration'].update(selection='all-clean-crops',selectionSimilarity=similarity,
                                sourceFrames=source_frames,eligibleFrames=eligible_frames,mirrored=True)
     bank = load_bank(bank)
-    root = Path(validation_run)
-    replay = json.loads((root/'replay.json').read_text())
-    if (replay['game']['tree'] != clean_tree or replay['game'].get('patch') is not None
-            or replay['game'].get('patchSha256') is not None or sha(root/'trace.json') != replay['trace']['sha256']):
-        raise SensorError('threshold calibration requires a pinned unpatched clean validation replay')
-    if sha(root/'replay.json') in {s['replaySha256'] for s in sources}:
+    root = validation_root
+    if validation_sha in {s['replaySha256'] for s in sources}:
         raise SensorError('threshold validation must be a separate clean replay')
-    trace = json.loads((root/'trace.json').read_text())
+    trace = json.loads(trace_bytes)
     files = frame_files(root/'frames')
     predictions = player_predictions(trace,files,replay['capture']['fps'])
     matcher = Matcher(selected,settings)
@@ -401,9 +404,9 @@ def calibrate_routes(clean_runs, validation_run, *, clean_tree, config=None, sim
             chosen,status = threshold,'met'
             break
     bank['config']['matchThreshold'] = chosen
-    bank['sources'].append(dict(gameTree=clean_tree,replaySha256=sha(root/'replay.json'),traceSha256=replay['trace']['sha256']))
+    bank['sources'].append(dict(gameTree=clean_tree,replaySha256=validation_sha,traceSha256=replay['trace']['sha256']))
     bank['calibration'].update(thresholdFloor=floor,thresholdSelected=chosen,
-        validationReplaySha256=sha(root/'replay.json'),positives=len(positives),negatives=len(negatives),
+        validationReplaySha256=validation_sha,positives=len(positives),negatives=len(negatives),
         positiveMatches=sum(s>=chosen for s in positives),negativeMatches=sum(s>=chosen for s in negatives),status=status)
     return load_bank(bank)
 
@@ -414,13 +417,6 @@ def from_replay(trace, *, replay_sha256, frames_dir, bank, spec, fps=60, predict
     Unavailable frames are explicitly marked. TemplateObserver.look refuses to certify a spec
     over any of them. Low-score or displaced matches are negative pixel evidence, not outages.
     """
-    bank = load_bank(bank)
-    config = bank['config']
-    names = list(spec['objects'])
-    by_name = {name: [t for t in bank['templates'] if t['object'] == name] for name in names}
-    if not names or any(not items for items in by_name.values()):
-        raise SensorError('every requested object needs a clean template; no engine-only object is invented')
-    matchers = {name: Matcher(items,config) for name,items in by_name.items()}
     if on_frame is not None and agreeing is not None:
         raise SensorError('frame checkpoints require the built-in agreement rule')
     files = frame_files(frames_dir)
@@ -431,6 +427,13 @@ def from_replay(trace, *, replay_sha256, frames_dir, bank, spec, fps=60, predict
     lo, hi = spec.get('window', {}).get('fromFrame', 0), spec.get('window', {}).get('toFrame', count-1)
     indices = list(range(lo, min(hi, count-1)+1))
     boxes = predicted if predicted is not None else player_predictions(trace, indices, fps)
+    bank = load_bank(bank)
+    config = bank['config']
+    names = list(spec['objects'])
+    by_name = {name: [t for t in bank['templates'] if t['object'] == name] for name in names}
+    if not names or any(not items for items in by_name.values()):
+        raise SensorError('every requested object needs a clean template; no engine-only object is invented')
+    matchers = {name: Matcher(items,config) for name,items in by_name.items()}
     frames = []
     for n in indices:
         if completed is not None and n in completed:
