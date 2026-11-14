@@ -21,13 +21,46 @@
 <tr><th scope="row">needs-review</th><td>There is not enough usable evidence to accept: for example, missing vision settings or no approved checks. This is not a pass.</td></tr>
 </tbody></table></div><p class="source"><a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#orchestrator">Decision rule and tested cases</a></p>
 <p>A failed, cancelled or unfinished job is not a completed accept. Doctor and sample also have their own exit meanings; follow the <a href="quickstart.html">quickstart’s expected results</a> rather than assuming every nonzero exit means a behavior failure. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#orchestrator">Job states</a> · <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#installed-command">Command scope</a>.</p></section>
-<section class="section" id="repair"><h2>Who checks the fix?</h2>
-<figure aria-label="The repair loop"><ol class="repair-loop" role="list">
-<li><span>Reject</span></li><li><span>Sandboxed fixer proposes a patch</span></li>
-<li><span>Fresh independent verification</span></li><li><span>Accept or needs-review</span></li>
-<li><span>A person reviews</span></li></ol>
-<figcaption>The fixer sees the public failure evidence. It never talks to the verifier or the judge. Expectrail never merges a fix.</figcaption></figure>
-<p>If another candidate is rejected, the fixer may try again within its budget. An accept or needs-review stops the loop. If the budget runs out, a person gets the attempts for review.</p><p><a href="run-it/#samples-title">See the recorded fix sample</a></p></section>
+<section class="section" id="repair"><h2>Verify, then repair</h2>
+<p class="repair-intro">The original verdict stays on the change. An accepted fix belongs to a new verification job.</p>
+<figure aria-label="The repair loop"><div class="repair-story">
+<svg class="repair-map" viewBox="0 0 340 366" role="img" aria-labelledby="loop-title loop-desc" xmlns="http://www.w3.org/2000/svg">
+  <title id="loop-title">From a rejected change to a reviewed patch</title>
+  <desc id="loop-desc">Verification comes first. Only an opt-in reject starts repair. A sandboxed fixer proposes a patch on a copy. An independent verifier judges each candidate. An accept offers the patch to a person. Needs-review stops the loop.</desc>
+  <g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+    <path d="M38 58v36m-5-7 5 7 5-7M38 128v30m-5-7 5 7 5-7M38 204v31m-5-7 5 7 5-7M38 281v31m-5-7 5 7 5-7"/>
+    <path d="M298 253h23v-74h-23" stroke-dasharray="3 4"/><path d="m304 174-7 5 7 5"/>
+  </g>
+  <g class="loop-card">
+    <rect x="17" y="15" width="280" height="44" rx="8"/>
+    <rect x="17" y="93" width="280" height="36" rx="18" class="loop-reject"/>
+    <rect x="17" y="159" width="280" height="46" rx="8"/>
+    <rect x="17" y="236" width="280" height="46" rx="8"/>
+    <rect x="17" y="313" width="280" height="40" rx="8" class="loop-human"/>
+  </g>
+  <g class="loop-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M29 37q9-12 18 0-9 12-18 0Z"/><circle cx="38" cy="37" r="2.5"/>
+    <path d="m34 107 8 8m0-8-8 8M30 175l8-4 8 4v10l-8 5-8-5z M30 175l8 5 8-5m-8 5v10"/>
+    <path d="M30 251h16v15H30z m4 7 3 3 5-6"/>
+    <circle cx="38" cy="328" r="3"/><path d="M31 339q1-10 7-7 6-3 7 7"/>
+  </g>
+  <g class="loop-label"><text x="57" y="44">Verify the change</text>
+    <text x="57" y="117">Reject + auto-fix on</text>
+    <text x="57" y="188">Fix a separate copy</text>
+    <text x="57" y="265">Judge the candidate</text>
+    <text x="57" y="339">Review the patch</text></g>
+  <g class="loop-note"><text x="56" y="81">If a check fails</text><text x="56" y="305">Only on accept</text></g>
+</svg>
+<ol class="repair-notes" role="list">
+  <li><span>Reject</span>Run <a href="https://github.com/Expectrail/Expectrail/blob/main/README.md#verify-then-repair"><code>expectrail verify --auto-fix</code></a> to opt in. An accept or needs-review starts no repair. The <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/app.md#auto-fix-checkbox">local app checkbox</a> is off by default.</li>
+  <li><span>Sandboxed fixer proposes a patch</span>The live fixer is designed to work on a separate game copy. It never edits the verifier or approved specs. Today the CLI can apply a <a href="https://github.com/Expectrail/Expectrail/blob/main/tests/test_repair_command.py">fixture patch</a> to the copy.</li>
+  <li><span>Fresh independent verification</span>Each candidate gets a new job with the same approved checks. Another reject can lead to another attempt within the limit. <a href="https://github.com/Expectrail/Expectrail/blob/main/tests/test_auto_fix.py">See the two verdicts in the test.</a></li>
+  <li><span>Accept or needs-review</span>Both stop the loop. Only an accepted candidate offers a patch. <a href="viewer-samples/fixture-repair.html">Inspect the fixture attempt, verdict and diff.</a></li>
+  <li><span>A person reviews</span>Expectrail never merges a fix. The <a href="run-it/#recorded-fix">Run it recorded-fix card</a> is off until a real repair is recorded.</li>
+</ol></div>
+<figcaption>The fixer reads public failure evidence and never talks to the verifier or the judge. The original reject stands. <a href="https://github.com/Expectrail/Expectrail/blob/main/tests/test_repair_command.py">Check the repair tests.</a></figcaption></figure>
+<p class="repair-status">Spend caps are in (#436), but no live repair has been run yet. CI auto-fix (#463) runs only the fixture fixer, when a maintainer labels a rejected pull request, and is off by default. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/new-work/2026-11-14-loop-story.md">Implementation status and evidence</a>.</p>
+</section>
 <section id="vision"><h2>Why an accept needs vision</h2><p>The engine can say the player collides with a floor while the player is drawn in the wrong place or is not visible. The measured verification row includes seeded visual failures; its scope is one game. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#godot-verify">Verification evidence</a> · <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#sam-observer">Pixel-observer evidence</a>.</p>
 <p>The current installed verify/sample path judges under the <code>both</code> rule: a passing engine record needs a visual pass too. No key, no cap, no answer or an unanswered question is not positive visual evidence. An engine failure can already reject. This default is tested offline; the ledger’s cited live orchestrator run predates it. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#orchestrator">Current rule, evidence and limit</a>.</p>
 <p>Vision is still fallible and not wholly independent: the recorded observer needs the engine’s ground line. Do not turn a model’s answer into a claim of protected capture. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#sam-observer">Observer limits</a> · <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#godot-harness">Capture limits</a>.</p></section>

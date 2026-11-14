@@ -69,3 +69,10 @@ lists the same stored jobs without granting access to their report or viewer fil
 
 An installer, a trial with a person unfamiliar with terminals, and tests of this app on real
 games are not done in this slice. This page was not looked at in a browser.
+
+## Auto-fix checkbox
+
+Before selecting **Verify**, open the repair controls by checking **Try to fix the game if verification rejects it**.
+The box starts unchecked. The app asks for the attempt limit and dollar cap. The checkbox requests a live fixer
+and has no fixture picker. Until the Muse spend meter is available, use the [CLI fixture example](../README.md#verify-then-repair)
+to try the loop. [App and budget tests](../tests/test_auto_fix.py).
