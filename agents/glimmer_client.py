@@ -391,7 +391,7 @@ class GlimmerClient(MetaSamClient):
 
     def _call(self, body: dict) -> tuple[bytes, str]:
         delay = 2.0
-        live = self._transport is self._http
+        live = self._live
         for attempt in range(self.retries + 1):
             from expectrail.spend import BudgetStop, hold
             try:

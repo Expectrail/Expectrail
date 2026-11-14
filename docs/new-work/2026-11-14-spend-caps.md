@@ -72,3 +72,8 @@ provider), `agents/sam_observations.py`, `agents/glimmer_client.py`, `agents/san
 
 ## Architect run (Linux, main 1c5bf2bb)
 Applied cleanly (base one day old). Full suite: OK, 31 skipped. Note: `run_muse` now refuses to start without `EXPECTRAIL_MUSE_USD_CAP`, so a live workflow that runs Muse Code stops with that reason until it sets a cap (no workflow sets one yet; workflows are #254's). The month ledger is opt-in (`EXPECTRAIL_VISION_MONTH_LEDGER`) and nothing sets it yet.
+
+## Fix
+The identity check `self._transport is self._http` in `GlimmerClient._call` was always false because each access to the bound method `self._http` creates a new object. `MetaSamClient.__init__` already records `self._live = transport is None` at construction. `_call` now reads that flag, so a real sender (no transport argument) is live: a missing cap records a stop in the job budget, holds nothing, and does not count the call. EngineCheckedGlimmer and BothClient inherit or construct the same way, so they receive the correct flag. No other identity check of a bound method existed; `warm`'s comparison against the module-level `urlopen` is unchanged.
+
+What was run: the two new tests in `tests/test_spend.py` (`test_live_path_with_no_cap_records_stop_and_sends_nothing` and `test_live_path_with_cap_opens_once_and_records_phase`). This machine has only Python 3.11 (package requires >=3.12); the full suite was not reported. No live model call was made.

@@ -223,6 +223,62 @@ class GlimmerCapTest(_SpendCase):
         self.assertEqual(opened, [])
 
 
+
+    def test_live_path_with_no_cap_records_stop_and_sends_nothing(self):
+        """No transport means the real _http path; with no cap the stop is recorded,
+        nothing is opened, and the call is not counted."""
+        opened: list = []
+
+        def never_open(*_args, **_kwargs):
+            opened.append(1)
+            raise AssertionError("urlopen was called")
+
+        with mock.patch.object(gl.urllib.request, "urlopen", side_effect=never_open):
+            client = gl.GlimmerClient(key="test-key-not-real")
+            self.assertTrue(client._live)
+            with self.assertRaises(sam.SamError) as refused:
+                client._call({"model": "test"})
+            self.assertEqual(refused.exception.kind, "budget")
+            self.assertEqual(client.calls, 0)
+            self.assertEqual(opened, [])
+            doc = build_job_budget("probe")
+            phases = [p for p in doc["phases"] if p["role"] == "glimmer"]
+            self.assertEqual(len(phases), 1)
+            self.assertIsNotNone(phases[0]["stopped"])
+            self.assertIn("no spend cap", phases[0]["stopped"])
+            self.assertEqual(phases[0]["requests"], 0)
+
+    def test_live_path_with_cap_opens_once_and_records_phase(self):
+        """With a valid cap the real path is taken, urlopen is called once, and the phase is recorded."""
+        opened: list = []
+
+        class FakeResp:
+            def read(self):
+                return b'{"choices":[{"message":{"content":"{}"}}]}'
+            headers = {"Content-Type": "application/json"}
+            def __enter__(self):
+                return self
+            def __exit__(self, *a):
+                return None
+
+        def once(*_args, **_kwargs):
+            opened.append(1)
+            return FakeResp()
+
+        with mock.patch.object(gl.urllib.request, "urlopen", side_effect=once), \
+                mock.patch.dict(os.environ, {"EXPECTRAIL_GLIMMER_USD_CAP": "1.00"}):
+            client = gl.GlimmerClient(key="test-key-not-real")
+            self.assertTrue(client._live)
+            raw, _ = client._call({"model": "test"})
+            self.assertEqual(client.calls, 1)
+            self.assertEqual(len(opened), 1)
+            doc = build_job_budget("probe-ok")
+            phases = [p for p in doc["phases"] if p["role"] == "glimmer"]
+            self.assertEqual(len(phases), 1)
+            self.assertIsNone(phases[0]["stopped"])
+            self.assertEqual(phases[0]["requests"], 1)
+            self.assertGreater(phases[0]["reservedUsd"], 0)
+
 class MuseCapTest(_SpendCase):
     def test_nothing_starts_without_a_cap_and_the_second_invocation_stops(self):
         from agents.sandbox import run_muse
@@ -470,6 +526,7 @@ class CliTest(_SpendCase):
             )
             self.assertEqual(wrote.returncode, 0, wrote.stderr)
             self.assertEqual(read_job_budget(out)["jobId"], "job-1")
+
 
 
 if __name__ == "__main__":
