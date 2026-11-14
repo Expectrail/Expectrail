@@ -23,6 +23,7 @@ COV = "tests.release_gate.gate_coverage"
 IDN = "tests.release_gate.gate_identity"
 PRV = "tests.release_gate.gate_provider"
 INT = "tests.release_gate.gate_interference"
+ITN = "tests.release_gate.gate_intent"
 
 NEEDS_254 = "not written yet: it needs the trusted job that judges outside the candidate job (#254)"
 NEEDS_255 = "not written yet: it needs the signed receipt (#255)"
@@ -86,9 +87,23 @@ CONTROLS = [
     row(GROUPS[3], "missing-private-suite", "missing private suite",
         [f"{COV}.CoverageTest.test_held_out_routes_that_cannot_be_read_are_not_clearance"]),
     # --- Intent -----------------------------------------------------------------------------------
-    row(GROUPS[4], "intentional-change", "an approved intentional change passes as a contract change", open=NOT_YET),
-    row(GROUPS[4], "weakened-tolerance", "a weakened tolerance", open=NOT_YET),
-    row(GROUPS[4], "misleading-generated-check", "a misleading generated check stays advisory", open=NOT_YET),
+    row(GROUPS[4], "intentional-change", "an approved intentional change passes as a contract change",
+        [f"{ITN}.IntentTest.test_a_change_declared_intended_that_breaks_an_approved_check_is_rejected",
+         f"{ITN}.IntentTest.test_a_change_declared_intended_that_rewrites_the_check_it_breaks_is_judged_by_the_approved_check"],
+        scope="the pull-request gate's command, which reads the declared intent; the orchestrator's command "
+             "takes no intent and judges every change as undeclared. The positive side, a contract change "
+             "approved and merged first and the behaviour after it, is not run: the recorded vision answers "
+             "cover only the samples' frames and checks"),
+    row(GROUPS[4], "weakened-tolerance", "a weakened tolerance",
+        [f"{ITN}.IntentTest.test_a_tolerance_the_change_weakens_in_its_own_check_is_not_the_one_that_judges_it"],
+        scope="runs with a base, where the checks come from the base. Without a base a change's own checks "
+             "judge it, and nothing yet binds an approval to the check's content (#420); such a run is "
+             "needs-review in this suite only because the recorded answers do not cover the edited check"),
+    row(GROUPS[4], "misleading-generated-check", "a misleading generated check stays advisory",
+        [f"{ITN}.IntentTest.test_generated_checks_that_caught_nothing_do_not_clear_a_change_an_approved_check_rejects",
+         f"{ITN}.IntentTest.test_a_generated_block_that_cannot_be_read_changes_nothing"],
+        scope="the pull-request gate's command, the only one that reads a generated block; the orchestrator's "
+             "command never reads one"),
     # --- Operations -------------------------------------------------------------------------------
     row(GROUPS[5], "timeout", "timeout",
         [f"{OPS}.OperationsTest.test_a_job_that_runs_out_of_time_is_not_clearance_and_leaves_nothing_running"]),
@@ -118,6 +133,9 @@ BASELINES = [
     # The provider rows run the real command with its live visual observer against a stand-in provider
     # on this machine: with the stand-in answering from the recorded answers, that command clears.
     f"{PRV}.ProviderBaselineTest.test_with_the_provider_answering_the_live_observer_clears_the_unchanged_game",
+    # The intent rows run the pull-request gate's command (tests.release_gate.pr_gate): it clears the
+    # unchanged game declared an intended change.
+    f"{ITN}.IntentBaselineTest.test_the_pull_request_gate_clears_the_unchanged_game_declared_an_intended_change",
 ]
 
 
