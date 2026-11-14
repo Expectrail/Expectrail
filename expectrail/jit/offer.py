@@ -23,6 +23,15 @@ baseline stays what it was:
   ``evidence.for_proposer`` makes on at most six probes of the prompt (``differs``). Like the
   measurements, it comes from the clean game and the bug build only, never the candidate (#285, step 6).
   No visual observer is asked or read for it.
+- ``signals-reach-evidence-pixel`` (#286): everything the evidence setting offers, and **pixel checks**
+  (expectrail/jit/pixel.py): the proposer may also write checks about what is drawn, in the closed
+  shape ``expectrail.pixel-check/v1``, over the objects the project binds and only with the predicates a
+  trusted observer declares it can tell (``pixel.menu``). Under this setting the proposal carries
+  ``pixelChecks`` beside its trace checks. **The replay step does not judge them yet**: ``run`` and
+  ``revise`` refuse this setting (``replayable``), so no run record and no reproduction score can be
+  made with it, and pixel checks are judged only by ``pixel.assess`` from an observer's recorded
+  answers. It is in ``ALL``, not in ``OFFERS``: the workflow, the run record and the score do not
+  name it.
 
 Nothing about what decides a check changes: a check is kept or dropped by replays only
 (expectrail/jit/assess.py), under either setting.
@@ -45,7 +54,13 @@ from __future__ import annotations
 BASELINE = "baseline"
 SIGNALS_REACH = "signals-reach"
 EVIDENCE = "signals-reach-evidence"
+PIXEL = "signals-reach-evidence-pixel"
+# The settings a replay (``run``, ``revise``), the run record, the score and the workflow accept. PIXEL is
+# not one until the replay judges pixel checks: a record made under it would say the proposer was offered
+# pixel checks and judge none of them. ``measure`` and ``propose`` take every setting (``ALL``).
 OFFERS = (BASELINE, SIGNALS_REACH, EVIDENCE)
+REPLAYABLE = OFFERS
+ALL = (*OFFERS, PIXEL)
 DEFAULT = BASELINE
 
 
@@ -54,8 +69,8 @@ class OfferError(ValueError):
 
 
 def check(offer) -> str:
-    if offer not in OFFERS:
-        raise OfferError(f"unknown offer {str(offer)[:40]!r}: one of {', '.join(OFFERS)}")
+    if offer not in ALL:
+        raise OfferError(f"unknown offer {str(offer)[:40]!r}: one of {', '.join(ALL)}")
     return offer
 
 
@@ -66,7 +81,20 @@ def of_record(value) -> str:
 
 def shows_evidence(offer) -> bool:
     """Whether the proposer is given step 5's evidence (what the bug build changes, record and screen)."""
-    return check(offer) == EVIDENCE
+    return check(offer) in (EVIDENCE, PIXEL)
+
+
+def offers_pixel(offer) -> bool:
+    """Whether the proposer may write pixel checks (#286, expectrail/jit/pixel.py)."""
+    return check(offer) == PIXEL
+
+
+def replayable(offer) -> str:
+    """``offer``, if a replay can be made and recorded under it; otherwise OfferError saying why."""
+    if check(offer) not in REPLAYABLE:
+        raise OfferError(f"the offer {offer} cannot be replayed yet: the replay does not judge pixel checks "
+                         "(#286); judge them with expectrail.jit.pixel.assess from recorded observer answers")
+    return offer
 
 
 def meanings(offer: str) -> dict[str, str]:

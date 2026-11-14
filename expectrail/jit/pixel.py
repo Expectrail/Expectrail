@@ -26,9 +26,13 @@ sees in the frames:
   on six runs is reserved against the per-change cap before anything is asked, and a check that
   cannot be afforded is ``not-run``.
 
-What this is not, yet: no prompt offers pixel checks to the proposer, nothing here calls an observer,
-and no reproduction rate has been measured with it. The tests judge recorded SAM answers
-(tests/data/sam-anchor/), which are one answer per frame per build: three "runs" of a recording are
+Offered to the proposer under the pixel setting only (expectrail/jit/offer.py, ``PIXEL``): ``menu`` is what the prompt says can be judged, ``parse_answer`` reads the model's
+``pixelChecks`` through ``parse_candidate``, and ``assess`` reserves and judges each one from recorded
+observer answers.
+
+What this is not, yet: the replay step does not judge pixel checks (``run`` refuses the pixel offer),
+nothing here calls an observer, and no reproduction rate has been measured with it. The tests judge
+recorded SAM answers (tests/data/sam-anchor/), which are one answer per frame per build: three "runs" of a recording are
 the same answers three times, so they test the rule, not the observer's repeatability.
 """
 from __future__ import annotations
@@ -62,6 +66,12 @@ BUNDLED_BINDINGS = {
     "coins-counter": {"node": "CoinsCounter/Label", "kind": "text"},
 }
 KINDS = ("sprite", "text", "ground")
+
+
+def bindings_for(profile: dict | None = None) -> dict:
+    """The roles a pixel check may name. Until #259's ``expectrail.project/v1`` names a project's
+    objects, every game the generator runs on is the bundled platformer, so this is BUNDLED_BINDINGS."""
+    return BUNDLED_BINDINGS
 
 # What each trusted observer can judge. "cannot" are kinds of thing it cannot tell apart on the
 # screen; "anchored" observers see only roles the engine's record gives a position for, one per
@@ -141,6 +151,76 @@ def parse_candidate(entry, bindings: dict, probe_ids, observers: dict = OBSERVER
     if pred["type"] == "inside-region" and observer.get("anchored") and pred["region"]["engine"] != doc["object"]:
         return None, f"{doc['observer']} has the engine's box of {doc['object']!r} only, not of another object"
     return doc, None
+
+
+# --- what the proposer is offered, and reading its answer ------------------------------------------
+
+MAX_PIXEL_CHECKS = 4
+ID_PREFIX = "jit-px-"
+
+
+def judgeable(role: str, bindings: dict, name: str, observer: dict) -> str | None:
+    """None when ``observer`` can be asked about ``role`` as a check's object, otherwise why not."""
+    if not observer.get("available"):
+        return observer["why"]["available"]
+    kind = bindings[role].get("kind")
+    if kind in observer.get("cannot", ()):
+        return observer["why"][kind]
+    if observer.get("anchored") and bindings[role].get("anchor") != "engine-position":
+        return f"{name} is asked where the engine's record puts an object, and the record gives no position for it"
+    return None
+
+
+def menu(bindings: dict = BUNDLED_BINDINGS, observers: dict = OBSERVERS) -> dict:
+    """What the prompt offers: for each trusted observer that exists, the predicates it can judge and the
+    bound objects it can be asked about; and every bound object no observer can judge, with why.
+
+    Made from the same tables ``parse_candidate`` refuses by, so the model is never offered a check that
+    would be refused, and a refusal it meets anyway names the same reason."""
+    out = {"observers": {}, "notJudgeable": {}}
+    reasons: dict = {role: [] for role in sorted(bindings)}
+    for name, observer in sorted(observers.items()):
+        roles = []
+        for role in sorted(bindings):
+            why = judgeable(role, bindings, name, observer)
+            if why is None:
+                roles.append(role)
+            else:
+                reasons[role].append(f"{name}: {why}")
+        if observer.get("available") and roles:
+            out["observers"][name] = {"predicates": list(observer["predicates"]), "objects": roles}
+            if observer.get("anchored"):
+                out["observers"][name]["note"] = ("asked about one object a frame, at the place the engine puts it: "
+                                                  "an inside-region region names that same object")
+    judged = {r for o in out["observers"].values() for r in o["objects"]}
+    out["notJudgeable"] = {role: "; ".join(why) for role, why in reasons.items() if role not in judged}
+    return out
+
+
+def parse_answer(entries, bindings: dict, probe_ids, observers: dict = OBSERVERS) -> tuple[list[dict], list[str]]:
+    """(checks, diagnostics) from the model's ``pixelChecks``: at most MAX_PIXEL_CHECKS are read, each
+    through ``parse_candidate``, renamed ``jit-px-<id>``; a refused one or a repeated id is dropped and said."""
+    if entries is None:
+        return [], []
+    if not isinstance(entries, list):
+        return [], ["pixelChecks: not a list, none read"]
+    checks, notes, seen = [], [], set()
+    for i, entry in enumerate(entries[:MAX_PIXEL_CHECKS]):
+        check, why = parse_candidate(entry, bindings, probe_ids, observers)
+        label = str(entry.get("id"))[:40] if isinstance(entry, dict) else f"#{i}"
+        if check is None:
+            notes.append(f"dropped pixel check {label!r}: {why}"[:200])
+            continue
+        check["id"] = (ID_PREFIX + check["id"].removeprefix(ID_PREFIX))[:80]
+        if check["id"] in seen:
+            notes.append(f"dropped pixel check {label!r}: its id is used twice")
+            continue
+        seen.add(check["id"])
+        validate_v1(check, KIND)
+        checks.append(check)
+    if len(entries) > MAX_PIXEL_CHECKS:
+        notes.append(f"pixelChecks: {len(entries) - MAX_PIXEL_CHECKS} beyond the first {MAX_PIXEL_CHECKS} not read")
+    return checks, notes
 
 
 # --- recorded observer answers -----------------------------------------------------------------
@@ -294,3 +374,34 @@ def reserve(check: dict, frames_probed, spend) -> dict:
     except OutOfBudget as exc:
         return {"check": check["id"], "status": "not-run", "reason": str(exc), "reservedUsd": 0.0}
     return {"check": check["id"], "status": "reserved", "reason": None, "reservedUsd": round(usd, 4)}
+
+
+# --- judging a proposal's pixel checks -------------------------------------------------------------
+
+def assess(checks: list[dict], clean: list[tuple[dict, dict]], bug: list[tuple[dict, dict]], spend,
+           frames_probed, bindings: dict = BUNDLED_BINDINGS, repeats: int = REPEATS) -> list[dict]:
+    """Each check: its observer calls reserved against the change's cap, together with the checks before it
+    (as ``reserve`` does for one), then the keep rule
+    over the observer's answers (``keep``). A check that cannot be afforded is ``not-run`` and is never
+    judged. ``clean`` and ``bug`` are (setting, run) pairs of answers already recorded: nothing is asked
+    here, so the reservation is what judging would cost if the answers had to be bought, and the caller
+    adds to ``spend`` what was actually sent."""
+    from expectrail.jit.run import OutOfBudget
+
+    # Spend.reserve compares one amount with what is already spent; reservations do not add up by
+    # themselves. So every check is reserved together with the ones before it, and four checks that
+    # each fit under the cap alone cannot together pass it.
+    rows, held = [], 0.0
+    for check in checks:
+        usd = cost(check, frames_probed, spend.prices["samUsdPerImage"])
+        try:
+            spend.reserve(held + usd, f"pixel check {check['id']} ({check['observer']}) with the {len(rows)} before it")
+        except OutOfBudget as exc:
+            rows.append({"check": check["id"], "status": "not-run", "kept": False, "reason": str(exc),
+                         "reservedUsd": 0.0})
+            continue
+        held += usd
+        row = keep(check, clean, bug, bindings, repeats)
+        rows.append({"check": check["id"], "status": "kept" if row["kept"] else "dropped", "kept": row["kept"],
+                     "reason": row["reason"], "reservedUsd": round(usd, 4), "runs": row["runs"]})
+    return rows

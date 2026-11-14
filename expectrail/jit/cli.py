@@ -16,6 +16,8 @@ is the generator as it was before issue #285's steps 3 and 4; ``signals-reach`` 
 held-back signals and the reach probes; the evidence setting (``offer.EVIDENCE``) also gives the proposer step 5's
 evidence, which ``measure`` makes (replays with frames, expectrail/jit/offer.py) and ``propose`` and
 ``revise`` read with ``--evidence``. A proposal is replayed only under the offer it was made with.
+``measure`` and ``propose`` also take the pixel setting (``offer.PIXEL``, #286), under which the proposal
+carries pixel checks; ``run`` and ``revise`` do not take it yet, because the replay does not judge them.
 
 ``--withhold-candidate`` on ``propose``, ``revise`` and ``run`` gives the model no byte of the candidate
 patch (issue #285, step 6): the checks then come from the report and the bug build alone, and a fix
@@ -33,7 +35,7 @@ import sys
 from pathlib import Path
 
 from expectrail.contracts import load_strict
-from expectrail.jit.offer import DEFAULT as DEFAULT_OFFER, OFFERS
+from expectrail.jit.offer import ALL as ALL_OFFERS, DEFAULT as DEFAULT_OFFER, OFFERS
 from expectrail.jit.offer import library as offered_library
 from expectrail.jit.offer import attach_evidence, make_evidence, shows_evidence
 from expectrail.jit.run import DEFAULT_BUDGET_USD, RECORD_NAME, from_base_alone, gate_summary, generate
@@ -188,7 +190,7 @@ def main(argv: list[str] | None = None) -> int:
                     help="the evidence file the measure command wrote; read only under the evidence setting")
     pp.add_argument("--withhold-candidate", action="store_true",
                     help="give the model no byte of the candidate patch (issue #285, step 6)")
-    pp.add_argument("--offer", choices=OFFERS, default=DEFAULT_OFFER,
+    pp.add_argument("--offer", choices=ALL_OFFERS, default=DEFAULT_OFFER,
                     help="what the generator is offered (expectrail/jit/offer.py); the same for every step")
     rv = sub.add_parser("revise")
     rv.add_argument("--profile", type=Path, default=PROFILE)
@@ -214,7 +216,7 @@ def main(argv: list[str] | None = None) -> int:
     ms.add_argument("--base", type=Path, action="append", default=[])
     ms.add_argument("--out", type=Path, required=True)
     ms.add_argument("--game", type=Path, help="the reference game (default: game/platformer in this checkout)")
-    ms.add_argument("--offer", choices=OFFERS, default=DEFAULT_OFFER,
+    ms.add_argument("--offer", choices=ALL_OFFERS, default=DEFAULT_OFFER,
                     help="what the generator is offered (expectrail/jit/offer.py); the same for every step")
     ms.add_argument("--report-file", type=Path,
                     help="the bug report; with --offer signals-reach it only orders the reach probes")
