@@ -136,7 +136,7 @@ class WorkflowTest(unittest.TestCase):
         inputs = self.on["workflow_dispatch"]["inputs"]
         self.assertEqual(set(inputs), {"sample", "sam_usd_cap"})
         manifest = json.loads((REPO / runit.MANIFEST).read_text())
-        self.assertEqual(inputs["sample"]["options"], [s["id"] for s in manifest["samples"]])
+        self.assertEqual(inputs["sample"]["options"], [s["id"] for s in manifest["samples"] if s["head"] != "recorded-fix"])
         self.assertEqual(self.doc["permissions"], {})
         self.assertEqual(self.doc["concurrency"], {"group": "run-it-record", "cancel-in-progress": False})
         for job in self.doc["jobs"].values():

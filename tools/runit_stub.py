@@ -142,6 +142,8 @@ def stand_in_runner(recorded: bool = False):
     if recorded:
         client = MetaSamClient(transport=game.transport, retries=0, sleep=lambda s: None)
         for sample in runit.read_manifest(root)["samples"]:
+            if sample["head"] == "recorded-fix":
+                continue  # Only Sean can supply a live repair.
             runit.record(sample["id"], root / sample["vision"], run_id="stand-in", client=client, root=root,
                          replay=game.replay, recorded_at=utc_now().date().isoformat())
 

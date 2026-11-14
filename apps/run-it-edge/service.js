@@ -23,7 +23,7 @@ export const REPO = "Expectrail/Expectrail";
 export const WORKFLOW = "run-it.yml";
 export const REF = "main";
 // docs/run-it/samples.json's ids. A test holds the two lists equal; the workflow checks again.
-export const SAMPLES = ["clean", "fall-through-bug", "fall-through-repair"];
+export const SAMPLES = ["clean", "fall-through-bug", "fall-through-repair", "recorded-fix"];
 export const ID = /^[a-z0-9-]{1,40}$/;
 export const MAX_BODY_BYTES = 1024;
 // How long a status read from GitHub is reused, so visitors polling cannot spend the token's limit.
