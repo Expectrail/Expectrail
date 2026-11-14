@@ -114,13 +114,48 @@ off to one side gives two different ends, and the middle column is midway betwee
 with no collision to measure is given 20 px either side of its origin. The bundled robot's shape is
 42.5 px wide and centred, which is those same 20 px.
 
+How each kind of shape is measured (#354, November 14, 2026; each held with the real engine in
+`tests/test_ground_under.py`, `ShapesTest`):
+
+- **A circle or a capsule** by points on its curve, 64 to a full turn, so turned it is as wide as it
+  is: a circle of radius 12 turned 45 degrees is 24 px wide, not the 33.9 px of its box's corners.
+  The points lie on the curve, so the measure is never wider than the shape, and at most 0.12 % of
+  the radius narrower. A polygon shape by its own points, a segment by its ends, anything else by
+  its bounding rectangle (exact for a rectangle, the usual player).
+- **A body 2.5 px wide or less** has no room for the 1.25 px on each side: its middle is asked, as
+  all three columns. Until #354 such a body was treated as having no collision and given the
+  robot's 20 px, so a body 2 px wide had a step 18 px away as its ground.
+- **Only the body's direct children** count, because only they collide for it in Godot. A shape on
+  a child area or body (a hitbox, a sensor) belongs to that node and does not widen the columns.
+- **A shape that changes size while the game plays** is measured as it is in each tick.
+
 So the columns belong to the game being measured. A change that makes the player's collision
 narrower or wider moves them, and can move the ground the harness logs. Measured on
 `tests/routes/slope.json` with the robot's shape made 6 px wide and lifted 10 px (the merge guard's
-run on #349): on the slope its feet are 17.2 to 32.8 px below the ground main's harness logged and
-5.9 to 10.0 px below the ground logged now. The gate reads the logged ground. The fix loop's
-verifier does not: it works the ground out again from the clean level with a fixed 20 px
-(`surface_under` in `agents/observations.py`).
+run on #349, measured again on #354): on the slope its feet are 17.2 to 32.8 px below the ground
+read at the robot's 20 px and 5.9 to 10.0 px below the ground read at its own columns, which is
+what is logged. `NarrowedRobotOnSlopeTest` holds those numbers. The gate reads the logged ground.
+The fix loop's verifier does not: it works the ground out again from the clean level with a fixed
+20 px (`surface_under` in `agents/observations.py`).
+
+**Not decided (#354, for Sean): whose collision sets the gate's columns.** No verdict differs today:
+the approved check's window ends at frame 119 and its routes are on flat ground, where the columns
+do not change the ground (650 in every row of `smoke`, `coins`, `combat` and `traversal`). It
+matters from the day a check or a route reaches a slope, a step's edge or a ledge. Two designs:
+
+1. **The candidate's own (today).** The ground is read under the body the change actually has. It
+   is right for a change that legitimately resizes the player. Its risk: a change can move the
+   columns that judge it. The narrowed robot above reads a ground 11 to 23 px lower on the slope, so
+   `player-stays-above-ground` (20 px) passes there where it fails at the robot's columns; a widened
+   body could likewise reach a higher surface.
+2. **The base commit's.** The harness is told the base game's span and reads every candidate's
+   ground at it, as the checks already come from the base commit. A change cannot move what judges
+   it. Its cost: the base span has to be measured on the base game and passed into each replay (a
+   new harness input and a field in the trace header), and a change that resizes the player on
+   purpose is judged at columns its body no longer has, so a correct resize can read as sinking or
+   floating near an edge (needs an intentional-change approval, as any other contract change).
+
+Until Sean chooses, the harness keeps design 1, and this paragraph is the record of the choice.
 
 A row with nothing under the body has no `ground`, and a check against the ground cannot be decided
 there: it is needs-review, never a guess (#346).
@@ -133,8 +168,7 @@ logs the same ground in every row before and after, on its four routes and on a 
 Still the bundled robot's: the 64 px, and the 13.25 px from the origin to the feet that the check
 itself uses (#259). The kinematic demo's feet are 7.2 px below its origin, so the check reads it
 6 px lower than it stands. A platform that is a body and not a tile (one-way, moving) has no ground
-line. A rotated capsule or circle is measured by the corners of its box, a little wider
-than it is.
+line.
 
 ## The player's own box
 

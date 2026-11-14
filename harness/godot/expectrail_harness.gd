@@ -73,6 +73,8 @@ const PLATFORM_SINK := 4.0
 # EDGE_INSET (see _body_span): the bundled robot's shape is 42.5 px wide, so 21.25 - 1.25 = 20.
 const BODY_HALF_WIDTH := 20.0
 const EDGE_INSET := 1.25
+# Points to a full turn when a circle or a capsule in the player's collision is measured (see _shape_outline).
+const ROUND_POINTS := 64
 # The tile-art render (_render_level_art): a visibility layer no game node uses, and the largest
 # render it makes (world pixels a side); a bigger level is rendered in tiles of this size.
 const ART_LAYER_BIT := 1 << 19
@@ -407,12 +409,18 @@ func _body_span(body: Node2D) -> Vector2:
 	"""Where the player's body is asked about, in world pixels from its origin: (left, right).
 
 	The two ends of its own collision (see _body_extent), each pulled in by EDGE_INSET so that a wall
-	the body touches is not counted as under it. (-BODY_HALF_WIDTH, BODY_HALF_WIDTH) when there is
-	nothing to measure.
+	the body touches is not counted as under it. A body 2 * EDGE_INSET wide or less has no room for
+	that: its middle is asked about, as both ends (#354; until November 14, 2026 such a body was
+	treated as having no collision and given the robot's 20 px either side, which read a step 18 px
+	away as the ground under a body 2 px wide). (-BODY_HALF_WIDTH, BODY_HALF_WIDTH) only when there
+	is nothing to measure.
 	"""
 	var extent = _body_extent(body)
-	if extent == null or extent[2] - extent[0] <= 2.0 * EDGE_INSET:
+	if extent == null:
 		return Vector2(-BODY_HALF_WIDTH, BODY_HALF_WIDTH)
+	if extent[2] - extent[0] <= 2.0 * EDGE_INSET:
+		var middle: float = (extent[0] + extent[2]) / 2.0
+		return Vector2(middle, middle)
 	return Vector2(extent[0] + EDGE_INSET, extent[2] - EDGE_INSET)
 
 
@@ -420,8 +428,12 @@ func _body_extent(body: Node2D) -> Variant:
 	"""[left, top, right, bottom] of the player's own collision, in world pixels from its origin, or null.
 
 	Its CollisionShape2D and CollisionPolygon2D children that are not disabled, measured where the
-	body is in the world, so its scale, a scaled parent and a mirrored body count. Null when there is
-	nothing to measure (none, or all disabled).
+	body is in the world, so its scale, a scaled parent and a mirrored body count. Each shape is
+	measured by its outline (see _shape_outline), so a turned circle or capsule is not measured by
+	the corners of its box. Only direct children count, because only they collide for the body in
+	Godot: a shape on a child body or area (a hitbox, a sensor) is that node's, not the player's.
+	Measured every time it is asked, so a shape that changes size while the game plays is measured
+	as it is in that tick. Null when there is nothing to measure (none, or all disabled).
 	"""
 	if body == null:
 		return null
@@ -435,9 +447,7 @@ func _body_extent(body: Node2D) -> Variant:
 		var shape_node := child as CollisionShape2D
 		var polygon_node := child as CollisionPolygon2D
 		if shape_node != null and shape_node.shape != null and not shape_node.disabled:
-			var rect: Rect2 = shape_node.shape.get_rect()
-			points = PackedVector2Array([rect.position, rect.end,
-				Vector2(rect.position.x, rect.end.y), Vector2(rect.end.x, rect.position.y)])
+			points = _shape_outline(shape_node.shape)
 		elif polygon_node != null and not polygon_node.disabled:
 			points = polygon_node.polygon
 		for point in points:
@@ -450,6 +460,50 @@ func _body_extent(body: Node2D) -> Variant:
 	if left == INF:
 		return null
 	return [left, top, right, bottom]
+
+
+static func _shape_outline(shape: Shape2D) -> PackedVector2Array:
+	"""Points on the outline of a collision shape, in the shape's own coordinates.
+
+	A circle and a capsule are sampled on their curve (ROUND_POINTS to a full turn), so turned or
+	scaled with their node they are measured by their curve, not by the corners of their box: until
+	November 14, 2026 a circle of radius 12 turned 45 degrees was measured 33.9 px wide, not 24
+	(#354). The samples lie on the curve, so they are never wider than the shape (at most 0.12 % of
+	the radius narrower). A polygon gives its own points, a segment its two ends; anything else its
+	bounding rectangle, which is exact for a rectangle.
+	"""
+	var points := PackedVector2Array()
+	var circle := shape as CircleShape2D
+	var capsule := shape as CapsuleShape2D
+	var convex := shape as ConvexPolygonShape2D
+	var concave := shape as ConcavePolygonShape2D
+	var segment := shape as SegmentShape2D
+	if circle != null:
+		_append_arc(points, Vector2.ZERO, circle.radius, 0.0, TAU)
+	elif capsule != null:
+		# Godot's capsule stands upright: `height` is the whole height, caps included.
+		var reach := maxf(capsule.height / 2.0 - capsule.radius, 0.0)
+		_append_arc(points, Vector2(0.0, -reach), capsule.radius, PI, TAU)
+		_append_arc(points, Vector2(0.0, reach), capsule.radius, 0.0, PI)
+	elif convex != null:
+		points = convex.points
+	elif concave != null:
+		points = concave.segments
+	elif segment != null:
+		points = PackedVector2Array([segment.a, segment.b])
+	if points.is_empty():
+		var rect: Rect2 = shape.get_rect()
+		points = PackedVector2Array([rect.position, rect.end,
+			Vector2(rect.position.x, rect.end.y), Vector2(rect.end.x, rect.position.y)])
+	return points
+
+
+static func _append_arc(points: PackedVector2Array, centre: Vector2, radius: float, from: float, to: float) -> void:
+	"""Points on a circle's arc from angle `from` to `to`, both ends included, ROUND_POINTS to a full turn."""
+	var steps := maxi(1, int(round(ROUND_POINTS * (to - from) / TAU)))
+	for i in range(steps + 1):
+		var angle := from + (to - from) * i / steps
+		points.append(centre + Vector2(cos(angle), sin(angle)) * radius)
 
 
 func _highest_surface(x: float, min_y: float) -> Variant:
