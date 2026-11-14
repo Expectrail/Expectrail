@@ -29,6 +29,7 @@ import copy
 import hashlib
 import html
 import json
+import math
 import os
 import re
 import shlex
@@ -738,6 +739,11 @@ figure{margin:0}figcaption{font-size:13px;color:var(--muted);margin-top:4px}
 .controls button{padding:4px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--fg);cursor:pointer}
 .controls input[type=range]{flex:1 1 200px}
 .timeline svg{width:100%;height:120px;display:block;background:var(--card);border:1px solid var(--line)}
+.measured{padding:0 0 14px;border-bottom:1px solid var(--line)}
+.measured summary{cursor:pointer;font-weight:600;padding:6px 0}
+.readings-window{max-height:18em;font-variant-numeric:tabular-nums}
+.readings-window th{background:var(--card)}
+.snapshot{display:block;width:100%;height:auto}.missing-frame{padding:18px;background:var(--quiet-bg)}
 .legend{font-size:12px;color:var(--muted)}
 .keys{font-size:13px;color:var(--muted)}kbd{font:12px ui-monospace,monospace;border:1px solid var(--line);border-radius:3px;padding:0 4px}
 .muted{color:var(--muted)}
@@ -752,13 +758,23 @@ var data = JSON.parse(document.getElementById("evidence").textContent);
 var root = document.getElementById("inspector");
 if (!root) return;
 var views = (data.views || []).filter(function(v){ return v && typeof v === "object"; });
+var starts = JSON.parse(root.getAttribute("data-starts") || "[]");
+function difference(v){ return starts[views.indexOf(v)]; }
+function opening(v){ return typeof difference(v) === "number" ? difference(v) : v.firstFrame; }
+function findingObserver(v){ return ((v.observed || {}).after || {}).visual === "fail" ? "vision" : "engine"; }
+function goToDifference(v){
+  if (typeof difference(v) === "number") { state.frame = difference(v); state.observer = "engine"; draw(); }
+}
+function goToFinding(v){
+  if (typeof v.firstFrame === "number") { state.frame = v.firstFrame; state.observer = findingObserver(v); draw(); }
+}
 var findings = views.filter(function(v){ return v.findingId; });
-findings.sort(function(a, b){
-  var fa = typeof a.firstFrame === "number" ? a.firstFrame : Infinity;
-  var fb = typeof b.firstFrame === "number" ? b.firstFrame : Infinity;
+function byOpening(a, b){
+  var fa = typeof opening(a) === "number" ? opening(a) : Infinity;
+  var fb = typeof opening(b) === "number" ? opening(b) : Infinity;
   return fa - fb || String(a.findingId).localeCompare(String(b.findingId));
-});
-var shown = findings.length ? findings : views;
+}
+var shown = findings.sort(byOpening).concat(views.filter(function(v){ return !v.findingId; }).sort(byOpening));
 var state = {i: 0, frame: 0, overlays: true, observer: "engine"};
 function el(tag, attrs, text){
   var e = document.createElement(tag);
@@ -773,6 +789,7 @@ function svg(tag, attrs){
 }
 function framesOf(v){
   var set = {};
+  if (typeof v.firstFrame === "number") set[v.firstFrame] = 1;
   ["after", "before"].forEach(function(side){
     ((v.frames || {})[side] || []).forEach(function(f){ if (typeof f.frame === "number") set[f.frame] = 1; });
     [v.series, v.visualSeries].forEach(function(series){
@@ -931,7 +948,7 @@ function draw(){
   range.addEventListener("input", function(){ state.frame = all[Number(range.value)]; draw(); document.querySelector("#inspector input[type=range]").focus(); });
   c.appendChild(range);
   btn("Frame →", "next frame", function(){ step(1); });
-  c.appendChild(el("span", {"aria-live": "polite"}, "Frame " + state.frame + (v.firstFrame === state.frame ? " (first failing frame)" : "")));
+  c.appendChild(el("span", {"aria-live": "polite"}, all.length ? "Frame " + state.frame + (v.firstFrame === state.frame ? (v.after === "needs-review" ? " (finding frame)" : " (first failing frame)") : "") + (difference(v) === state.frame ? " (first measured difference)" : "") : "No frame recorded"));
   var ov = btn(state.overlays ? "Hide overlays" : "Show overlays", "toggle overlays", function(){ state.overlays = !state.overlays; draw(); });
   ov.setAttribute("aria-pressed", String(state.overlays));
   if (v.visualSeries && (v.visualSeries.before || v.visualSeries.after)) {
@@ -939,7 +956,8 @@ function draw(){
       state.observer = state.observer === "engine" ? "vision" : "engine"; draw();
     });
   }
-  if (typeof v.firstFrame === "number") btn("First failure", "go to the first failing frame", function(){ state.frame = v.firstFrame; draw(); });
+  if (typeof difference(v) === "number") btn("First difference", "go to the first measured difference", function(){ goToDifference(v); });
+  if (typeof v.firstFrame === "number") btn("First failure", "go to the first failing frame", function(){ goToFinding(v); });
   root.appendChild(c);
   var framed = framedOf(v);
   if (framed.length) {
@@ -968,11 +986,18 @@ function pick(i){
   if (!shown.length) { draw(); return; }
   state.i = Math.max(0, Math.min(shown.length - 1, i));
   var v = shown[state.i];
-  state.observer = ((v.observed || {}).after || {}).visual === "fail" ? "vision" : "engine";
+  state.observer = typeof difference(v) === "number" ? "engine" : findingObserver(v);
   var all = framesOf(v);
-  state.frame = typeof v.firstFrame === "number" ? v.firstFrame : (all[0] || 0);
+  state.frame = typeof opening(v) === "number" ? opening(v) : (all[0] || 0);
   draw();
 }
+document.querySelectorAll("[data-step-check]").forEach(function(b){
+  b.hidden = false;
+  b.addEventListener("click", function(){
+    pick(shown.indexOf(views[Number(b.getAttribute("data-step-check"))]));
+    root.scrollIntoView({block: "start"}); root.focus();
+  });
+});
 document.querySelectorAll("[data-view]").forEach(function(b){
   b.addEventListener("click", function(){
     var id = b.getAttribute("data-finding");
@@ -993,7 +1018,8 @@ document.addEventListener("keydown", function(e){
   else if (e.key === "o" || e.key === "O") { state.overlays = !state.overlays; draw(); }
   else if (e.key === "n" || e.key === "j") { pick(state.i + 1); }
   else if (e.key === "p" || e.key === "k") { pick(state.i - 1); }
-  else if (e.key === "f" || e.key === "F") { var v = shown[state.i]; if (typeof v.firstFrame === "number") { state.frame = v.firstFrame; draw(); } }
+  else if (e.key === "d" || e.key === "D") goToDifference(shown[state.i]);
+  else if (e.key === "f" || e.key === "F") goToFinding(shown[state.i]);
 });
 pick(0);
 })();
@@ -1088,6 +1114,127 @@ def auto_fix_section(job: dict, link: str | None = None, *, download=False) -> s
     return "".join(parts)
 
 
+def _points_by_frame(series):
+    points = series.get("points") if isinstance(series, dict) else None
+    if not isinstance(points, list):
+        return {}
+    return {p["frame"]: p for p in points[:MAX_POINTS]
+            if isinstance(p, dict) and type(p.get("frame")) is int and p["frame"] >= 0}
+
+
+def _reading(point):
+    value = (point or {}).get("value")
+    if (point or {}).get("state") in ("ok", "over", "short", "reached") and type(value) in (float, int):
+        if type(value) is int or math.isfinite(value):
+            return value
+    return None
+
+
+def _first_difference(view):
+    """Compare the same engine quantity at the same tick. Gaps have no numeric value."""
+    sides = view.get("series") or {}
+    before, after = sides.get("before"), sides.get("after")
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        return None, False
+    if before.get("source") != "the engine's record" or not before.get("kind"):
+        return None, False
+    if any(before.get(k) != after.get(k) for k in ("kind", "object", "label", "unit", "limit", "source")):
+        return None, False
+    left, right = _points_by_frame(before), _points_by_frame(after)
+    paired = False
+    for tick in sorted(left.keys() & right.keys()):
+        a, b = _reading(left[tick]), _reading(right[tick])
+        if a is not None and b is not None:
+            paired = True
+            if a != b:
+                return tick, paired
+    return None, paired
+
+
+def _cell(point, *, brief=False):
+    value = _reading(point)
+    if value is not None:
+        if brief and isinstance(value, float):
+            rounded = format(value, ".6g")
+            if float(rounded) != value:
+                return f'≈{rounded}'
+        return esc(value)
+    labels = {"absent": "Not observed", "missing": "Object missing", "not-applicable": "Not exercised"}
+    return labels.get((point or {}).get("state"), "No measurement")
+
+
+def _measurement_table(view, key, observer):
+    sides = view.get(key) or {}
+    rows = [_points_by_frame(sides.get(side)) for side in ("before", "after")]
+    ticks = sorted(rows[0].keys() | rows[1].keys())
+    if not ticks:
+        return f"<p>{observer} measurements were not supplied.</p>"
+    parts = [f'<details class="readings"><summary>{observer} measurements · {len(ticks)} window '
+             'frames</summary>']
+    for side in ("before", "after"):
+        s = sides.get(side) or {}
+        if s:
+            limit = s.get("limit")
+            bound = (f'Bound: {esc(limit)} {esc(s.get("unit"))}'.rstrip() if type(limit) in (int, float)
+                     else "No numeric bound recorded")
+            parts.append(f'<p><b>{side.capitalize()}</b> · {esc(s.get("label"))}. {bound}.'
+                         + (" Series truncated." if s.get("truncated") else "") + "</p>")
+    parts.append('<div class="scroll readings-window" tabindex="0"><table><thead><tr><th>Frame</th>'
+                 '<th>Before</th><th>After</th></tr></thead><tbody>')
+    for tick in ticks:
+        parts.append(f'<tr><th scope="row">{tick}</th><td>{_cell(rows[0].get(tick))}</td>'
+                     f'<td>{_cell(rows[1].get(tick))}</td></tr>')
+    return "".join(parts) + "</tbody></table></div></details>"
+
+
+def _static_pair(view, tick, single_file):
+    parts = ['<div class="pair">']
+    for side in ("before", "after"):
+        frame = next((f for f in (view.get("frames") or {}).get(side, [])
+                      if f.get("frame") == tick), {})
+        path = frame.get("path") or ""
+        label = f"{side.capitalize()} the change, frame {tick}"
+        if single_file and re.fullmatch(r"data:image/png;base64,[a-zA-Z0-9+/]+=*", path):
+            # An HTML character reference preserves the base64 bytes and breaks accidental
+            # token-like words in an image, just as _json_for_script does for the data block.
+            path = path.replace("/", "&#47;").replace("+", "&#43;")
+        elif single_file or not FRAME_NAME.fullmatch(path):
+            parts.append(f'<figure><p class="missing-frame">No {side} frame {tick} in this evidence.</p></figure>')
+            continue
+        parts.append(f'<figure><img class="snapshot" srcset="{path}" alt="{label}">'
+                     f'<figcaption>{label}</figcaption></figure>')
+    return "".join(parts) + "</div>"
+
+
+def _measurements(view, difference, paired, single_file, index):
+    first = view.get("firstFrame")
+    tick = difference if difference is not None else first
+    parts = [f'<article class="measured"><h3>{esc(view.get("spec"))} on {esc(view.get("route"))}</h3>']
+    if difference is not None:
+        sides = view["series"]
+        left, right = (_points_by_frame(sides[side])[tick] for side in ("before", "after"))
+        unit = esc(sides["after"].get("unit"))
+        bound = sides["after"].get("limit")
+        parts.append(f"<p><strong>First measured difference at frame {difference}.</strong> "
+                     f'{esc(sides["after"].get("label"))}.</p>'
+                     f'<p>Before: {_cell(left, brief=True)} {unit} · After: {_cell(right, brief=True)} {unit}'
+                     + (f" · Bound: {esc(bound)} {unit}" if type(bound) in (float, int) else "") + "</p>")
+    else:
+        words = "No difference in the paired engine measurements." if paired else "No paired engine measurements."
+        parts.append(f"<p>{words}</p>")
+    if first is not None:
+        label = "First failing frame" if view.get("after") == "fail" else "Finding frame"
+        parts.append(f"<p>{label}: {esc(first)} (from the finding).</p>")
+    parts.extend((_measurement_table(view, "series", "Engine"), _measurement_table(view, "visualSeries", "Vision")))
+    if type(tick) is int:
+        parts.append(f'<button type="button" hidden data-step-check="{index}">Step through frame {tick}</button>')
+        parts.append(f'<details open><summary>Compare before and after at frame {tick}</summary>'
+                     + _static_pair(view, tick, single_file) + '</details>')
+    elif not any((view.get("frames") or {}).values()):
+        parts.append("<p>No frames were kept for this check.</p>")
+    return "".join(parts) + "</article>"
+
+
 def render(payload: dict) -> str:
     state = payload["state"]
     title, tone, means = STATES[state]
@@ -1149,11 +1296,29 @@ def render(payload: dict) -> str:
                          f'{esc(f["comparison"])}. Before: {esc(WORD.get(f["before"], f["before"]))}; after: '
                          f'{esc(WORD.get(f["after"], f["after"]))}. {esc(f["reason"])}</button></li>')
         parts.append("</ul>")
+    parts.append("<h2>Reproduce</h2>")
+    if payload["reproduce"]:
+        words = ("Run this public sample with its recorded vision answers (no model call):" if payload.get("sample") else
+                 "The same verification, run again from the same checkouts (the paths are the machine's that ran it):")
+        parts.append(f"<p>{words}</p><pre>{esc(payload['reproduce'])}</pre>")
+    else:
+        parts.append("<p>No reproduction command: this folder was written without the job's request.</p>")
     if record is not None:
+        views = payload.get("views") or []
+        comparisons = [_first_difference(v) for v in views]
+        starts = [tick for tick, _ in comparisons]
+        if views:
+            parts.append('<section id="measurements"><h2>Recorded measurements</h2>')
+            def order(i):
+                frame = starts[i] if starts[i] is not None else views[i].get("firstFrame")
+                return not bool(views[i].get("findingId")), frame is None, frame or 0, str(views[i].get("findingId"))
+            for i in sorted(range(len(views)), key=order):
+                parts.append(_measurements(views[i], *comparisons[i], exported is not None, i))
+            parts.append('</section>')
         parts.append('<h2>Inspect</h2><p class="keys">Keys: <kbd>&larr;</kbd> <kbd>&rarr;</kbd> step a frame '
-                     "(<kbd>Shift</kbd> for five), <kbd>Home</kbd> <kbd>End</kbd>, <kbd>f</kbd> first failure, "
+                     "(<kbd>Shift</kbd> for five), <kbd>Home</kbd> <kbd>End</kbd>, <kbd>d</kbd> first measured difference, <kbd>f</kbd> first failure, "
                      "<kbd>o</kbd> overlays on or off, <kbd>n</kbd> <kbd>p</kbd> next or previous finding.</p>"
-                     '<section id="inspector" aria-label="frames and timeline"><noscript>The frame inspector needs '
+                     f'<section id="inspector" data-starts="{json.dumps(starts)}" tabindex="-1" aria-label="frames and timeline"><noscript>Frame stepping and overlays need '
                      "scripts; everything else on this page reads without them.</noscript></section>")
     facts = _facts(payload)
     if facts:
@@ -1167,13 +1332,6 @@ def render(payload: dict) -> str:
                                f"<td>{esc(WORD.get(c['before'], c['before']))}</td><td>{esc(WORD.get(c['after'], c['after']))}</td>"
                                f"<td>{esc(c['comparison'])}</td></tr>" for c in record["checks"])
                      + "</table></div>")
-    parts.append("<h2>Reproduce</h2>")
-    if payload["reproduce"]:
-        words = ("Run this public sample with its recorded vision answers (no model call):" if payload.get("sample") else
-                 "The same verification, run again from the same checkouts (the paths are the machine's that ran it):")
-        parts.append(f"<p>{words}</p><pre>{esc(payload['reproduce'])}</pre>")
-    else:
-        parts.append("<p>No reproduction command: this folder was written without the job's request.</p>")
     parts.append("<p class=\"muted\">The decision on this page is the verifier's. The timeline is measured from the "
                  "same observations the evaluator judged and is shown only when it agrees with the evaluator; it "
                  "decides nothing. Held-out routes appear as counts only.</p>")
