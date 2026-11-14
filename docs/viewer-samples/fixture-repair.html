@@ -1,0 +1,54 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Expectrail repair</title><style>
+.repair-result{display:grid;grid-template-columns:minmax(0,2fr) minmax(9em,1fr);gap:1em}.repair-result pre{overflow:auto}
+@media(max-width:600px){.repair-result{grid-template-columns:minmax(0,1fr)}}
+:root{--bg:#fafaf7;--fg:#14161a;--muted:#4b5049;--line:#dcdcd5;--card:#fff;
+--good-bg:#dff3e4;--good:#14532d;--bad-bg:#fde2e1;--bad:#7f1d1d;--warn-bg:#fdf1d6;--warn:#78350f;--quiet-bg:#eceee9;--quiet:#3f4540;
+--over:#c0362c;--ok:#2f6f4f;--gap:#9a9a90;--limit:#7a5a00;--cursor:#1d4ed8}
+@media (prefers-color-scheme:dark){:root{--bg:#131512;--fg:#e8e8e3;--muted:#a7aca3;--line:#33362f;--card:#1b1d19;
+--good-bg:#173823;--good:#b7ebc6;--bad-bg:#4a1d1b;--bad:#ffc9c4;--warn-bg:#47360f;--warn:#fde3a7;--quiet-bg:#2a2d27;--quiet:#d0d4cc;
+--over:#ff7a6e;--ok:#7fd4a4;--gap:#77776f;--limit:#e0b44a;--cursor:#7aa2ff}}
+*{box-sizing:border-box}
+body{font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;margin:0;color:var(--fg);background:var(--bg)}
+main{max-width:1180px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}h3{font-size:15px;margin:16px 0 6px}
+a{color:var(--cursor)}
+.banner{border-radius:8px;padding:14px 16px;margin:8px 0 16px}
+.good{background:var(--good-bg);color:var(--good)}.bad{background:var(--bad-bg);color:var(--bad)}
+.warn{background:var(--warn-bg);color:var(--warn)}.quiet{background:var(--quiet-bg);color:var(--quiet)}
+.badge{display:inline-block;padding:1px 8px;border-radius:4px;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.facts td:first-child{width:34%;color:var(--muted)}
+td{overflow-wrap:anywhere}
+.scroll{overflow-x:auto}
+code,pre{font:13px ui-monospace,SFMono-Regular,Menlo,monospace}
+pre{background:var(--card);border:1px solid var(--line);padding:10px;overflow-x:auto;white-space:pre-wrap;word-break:break-all}
+.findings{list-style:none;padding:0;margin:0}.findings li{margin:0 0 6px}
+.findings button{font:inherit;text-align:left;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--fg);cursor:pointer}
+.findings button[aria-pressed=true]{outline:2px solid var(--cursor)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:640px){.pair{grid-template-columns:1fr}}
+figure{margin:0}figcaption{font-size:13px;color:var(--muted);margin-top:4px}
+.stage{position:relative;background:#000;border:1px solid var(--line);min-height:80px}
+.stage img{display:block;width:100%;height:auto}
+.stage svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.hole{padding:40px 12px;color:#ddd;text-align:center;font-size:14px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.controls button,.controls label{font:inherit;font-size:14px}
+.controls button{padding:4px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--fg);cursor:pointer}
+.controls input[type=range]{flex:1 1 200px}
+.timeline svg{width:100%;height:120px;display:block;background:var(--card);border:1px solid var(--line)}
+.legend{font-size:12px;color:var(--muted)}
+.keys{font-size:13px;color:var(--muted)}kbd{font:12px ui-monospace,monospace;border:1px solid var(--line);border-radius:3px;padding:0 4px}
+.muted{color:var(--muted)}
+</style></head><body><main><h1>Repair evidence</h1><section aria-label="Recorded repair"><h2>Recorded repair</h2><ol><li>Original verification: <strong>reject</strong></li><li>Attempt 1: <strong>accept</strong></li></ol><p>Stopped: <strong>accepted</strong>. a fresh verify job accepted attempt 1</p><p>Fixture recording for testing. No live fixer ran.</p><div class="repair-result"><div><h3>Recorded fix</h3><p>Written by Expectrail&#x27;s sandboxed fixer and accepted on the approved checks by an independent verification. A person must review it before merging; Expectrail never merges it.</p><pre tabindex="0">--- a/player/player.tscn
++++ b/player/player.tscn
+@@ -187,7 +187,7 @@
+&#32;
+ [node name=&quot;Player&quot; type=&quot;CharacterBody2D&quot; unique_id=457318108]
+ scale = Vector2(0.8, 0.8)
+-collision_mask = 14
++collision_mask = 30
+ floor_constant_speed = true
+ platform_on_leave = 2
+ script = ExtResource(&quot;3&quot;)
+</pre></div><div><h3>Final verdict</h3><p>accept</p></div></div></section></main></body></html>

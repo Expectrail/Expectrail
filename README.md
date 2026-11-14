@@ -14,7 +14,7 @@ it is **not on PyPI**. The [six-step quickstart](https://expectrail.tech/quickst
 installation, `doctor`, `sample` and a project given by path.
 [Install scope and evidence](docs/capabilities.md#installed-command).
 
-[Quickstart](docs/quickstart.html) · [Concepts and limits](docs/concepts.html) ·
+[Quickstart](docs/quickstart.html) · [Verify, then repair](#verify-then-repair) · [Concepts and limits](docs/concepts.html) ·
 [Guides](docs/guides.html) · [Positioning](docs/positioning.html) ·
 [Capability ledger](docs/capabilities.md) · [Source](https://github.com/Expectrail/Expectrail)
 
@@ -70,13 +70,35 @@ nothing. [Demo row](docs/capabilities.md#interactive-demo).
 currently says visitors cannot start runs because the service is not deployed; its cited sample
 runs were dispatched by hand. [Run it row](docs/capabilities.md#run-it).
 
-## Optional repair, separate from verification
+## Verify, then repair
 
-The planned installed `expectrail repair` command is **not built**; it exits 5 and runs nothing.
-[Installed-command limits](docs/capabilities.md#installed-command).
-The historical repository command `python3 -m agents.loop` is the optional fix loop. Its recorded
-repairs are on seeded bugs in one game; verification does not require running a fixer.
-[Fix-loop evidence](docs/capabilities.md#fix-loop) · [Verification jobs](docs/capabilities.md#orchestrator).
+Auto-fix is off by default. Turn it on to try a patch **only after a reject**. The original job keeps its
+reject even if a fresh job accepts the candidate. [Verify and auto-fix tests](tests/test_auto_fix.py).
+
+From a repository checkout, set `BEFORE` and `AFTER` to the two checkout paths. This example uses the
+bundled game layout and its fall-through fixture. To try a different fix, supply a patch for that game.
+
+```sh
+expectrail verify --base "$BEFORE" --head "$AFTER" --game game/platformer \
+  --routes harness/routes/smoke.json --specs agents/specs \
+  --auto-fix --auto-fix-fixture agents/fixtures/fix-collision-mask.patch
+```
+
+To repair an existing reject instead, set `JOB` to its ID in the same job store:
+
+```sh
+expectrail repair "$JOB" --fixture agents/fixtures/fix-collision-mask.patch
+```
+
+The fixer gets a separate game copy and public failure evidence. It never edits the verifier or specs.
+Each candidate gets a fresh verification. A person reviews any winning patch. Expectrail never merges it.
+[Repair tests](tests/test_repair_command.py) · [Fixture result in the evidence viewer](docs/viewer-samples/fixture-repair.html).
+
+The [local app checkbox](docs/app.md#auto-fix-checkbox) requests live repair; spend caps are in (#436), but no live repair has been run yet.
+[CI auto-fix](.github/workflows/expectrail-autofix.yml) runs only the fixture fixer, when a maintainer labels a rejected pull request, and is off by default. The [Run it card](https://expectrail.tech/run-it/#recorded-fix) is off until a real
+repair is recorded. [Status and evidence](docs/new-work/2026-11-14-loop-story.md).
+
+The historical repository command `python3 -m agents.loop` has [recorded repairs on seeded bugs in one game](docs/capabilities.md#fix-loop).
 
 ### Meta models
 

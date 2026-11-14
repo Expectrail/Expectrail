@@ -922,6 +922,44 @@
       "limits": "Without the private routes a review is inconclusive by design, so reviews on pull requests never claim a repair."
     },
     {
+      "id": "repair",
+      "mode": "Verify, then repair: after a reject, and only when the user turns auto-fix on, a fixer proposes a patch on a separate copy and each candidate is judged by a fresh verification; the original reject stands and a person reviews any accepted patch",
+      "profile": "The bundled Godot game, on a developer's machine (expectrail repair, expectrail verify --auto-fix, the local app's checkbox) or on a hosted Linux runner when a maintainer labels a rejected pull request (expectrail-autofix.yml)",
+      "observer": "Each candidate is judged by the same gate as any verification, in a new job; the fixer never talks to the verifier",
+      "entryPoints": [
+        "expectrail.repair",
+        "expectrail.auto_fix",
+        "tools.ci_autofix"
+      ],
+      "workflows": [
+        "expectrail-autofix.yml"
+      ],
+      "docs": [
+        "docs/ci-gate.md",
+        "docs/app.md"
+      ],
+      "grade": "fixture",
+      "status": "implemented",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_repair_command.py",
+          "shows": "With a fixture patch, a rejected job's repair applies the patch to a copy, verifies it in a new job and records an accept; the original job's reject is unchanged"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_auto_fix.py",
+          "shows": "verify --auto-fix starts a repair only on reject, keeps the reject as the verdict, and refuses a live fixer without a spend cap before any call"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_ci_autofix.py",
+          "shows": "The CI workflow runs only on a maintainer's expectrail-autofix label with a published reject for the same head, holds contents: read only, and runs the fixture fixer with isolated replay"
+        }
+      ],
+      "limits": "Only fixture patches have been used: no live fixer has produced a repair yet, in any run. CI auto-fix is off by default and runs only the fixture fixer. Expectrail never merges a repair."
+    },
+    {
       "id": "fixer-sandbox",
       "mode": "Fixer sandbox: the agent reaches only its worktree",
       "profile": "bubblewrap on Linux; a plain worktree without the verifier's files where bubblewrap is missing",
@@ -1310,7 +1348,8 @@
         "release.yml"
       ],
       "docs": [
-        "docs/install.md"
+        "docs/install.md",
+        "docs/app.md"
       ],
       "grade": "diagnostic",
       "status": "integrated",
