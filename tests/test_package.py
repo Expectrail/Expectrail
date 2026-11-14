@@ -355,6 +355,28 @@ class CommandTest(unittest.TestCase):
             self.assertEqual(done.returncode, 5, f"{args}: {done.stdout}{done.stderr}")
         self.assertEqual(self.run_cli("--help").returncode, 0)
 
+    def test_a_usage_error_shows_the_expectrail_command_list_and_not_the_workers_command(self):
+        # #383: an unreadable command line printed the orchestrator's usage, with `_work` and without app or doctor.
+        with tempfile.TemporaryDirectory() as tmp:
+            for args in (("--jobs-root", tmp, "--frobnicate", "status", "0" * 32), ("--jobs-root", tmp, "--lease-seconds")):
+                with self.subTest(args=args):
+                    done = self.run_cli(*args)
+                    self.assertEqual(done.returncode, 5, done.stdout + done.stderr)
+                    for name in ("app", "doctor", "verify", "sample", "--jobs-root DIR"):
+                        self.assertIn(name, done.stderr)
+                    self.assertNotIn("_work", done.stderr)
+                    self.assertIn("Nothing was run.", done.stderr)
+            # A command's own error shows that command's options, and nothing names the worker either.
+            done = self.run_cli("verify", "--jobs-root", tmp, "--head", ".")
+            self.assertEqual(done.returncode, 5)
+            self.assertIn("usage: expectrail verify", done.stderr)
+            self.assertNotIn("_work", done.stderr + self.run_cli("--help").stdout + self.run_cli("verify", "--help").stdout)
+            # And the command found where it goes: after `status`, as after `app`.
+            done = self.run_cli("status", "0" * 32, "--jobs-root", tmp)
+            self.assertEqual(done.returncode, 5)
+            self.assertIn("no job", done.stderr)
+            self.assertNotIn("unrecognized arguments", done.stderr)
+
     def test_a_clone_has_no_bundle_and_one_rule_says_where_the_files_are(self):
         from expectrail import resources
         from expectrail.gate import record

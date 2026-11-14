@@ -63,7 +63,7 @@ entry point work as before, and the engine stays in `tools/`.
 
 | | |
 | --- | --- |
-| `expectrail verify`, `status`, `cancel`, `report` | Verification as a job ([orchestrator.md](orchestrator.md)). The same code, options and exit codes as `python3 -m expectrail.orchestrator`. |
+| `expectrail verify`, `status`, `cancel`, `report` | Verification as a job ([orchestrator.md](orchestrator.md)). The same code, options and exit codes as `python3 -m expectrail.orchestrator`. `--jobs-root DIR` goes after the command, as with `app`. |
 | `expectrail sample` | Three real runs on the bundled game and a seeded bug. Exit 0 only when they decide accept, reject, accept. |
 | `expectrail --version` | The version, whether this copy is a clone or an installed package, and where its files are. |
 | `expectrail doctor` | Checks the machine (above). Exit 0 or 3. Not a verdict. |
