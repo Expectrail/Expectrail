@@ -423,9 +423,33 @@ nothing to ask about. A recording holds one answer per frame per build, so the t
 are the same answers three times. They test the rule, not how repeatable SAM is. These are seeded
 bugs of the bundled game, not public bench defects.
 
-**Not yet:** no prompt offers pixel checks to the proposer, nothing calls an observer during a
-reproduction run, and no reproduction rate has been measured with them. #286 is done when a
-recorded run reproduces a public screen-only defect with one.
+**Offered to the proposer (added November 14, second slice).** Under
+`--offer signals-reach-evidence-pixel` (`offer.PIXEL`), the proposer gets everything the evidence
+setting gives it, and may also write up to four checks in `pixelChecks`:
+
+- The system prompt adds one passage (`intent.PIXEL_TEXT`) with the four predicate shapes. The user
+  prompt adds `pixelChecksOffered` (`pixel.menu`): for each observer that exists, the predicates it
+  judges and the bound objects it can be asked about, and every object no observer can judge, with
+  why. On the bundled game that is SAM, `visible`, `inside-region` and `never-crosses`, about the
+  player only. The menu is made from the same tables as the refusals, and a test checks that
+  everything it offers is accepted and nothing it withholds is.
+- The answer's `pixelChecks` go through `parse_candidate`, are renamed `jit-px-<id>` and carry
+  `model_prior` authority. A refused one, a repeated id, or one past the fourth is dropped and said.
+  An answer with pixel checks and no trace check is usable under this setting only.
+- The proposal file carries `pixelChecks` under this setting only. Read back, each check must come out
+  of `parse_candidate` unchanged; an edited one, or pixel checks in another setting's proposal, is
+  refused.
+- `pixel.assess` judges a proposal's pixel checks from an observer's answers: each check's images are
+  reserved against the cap together with the checks before it, then the keep rule applies.
+
+Every other setting's prompts are byte for byte as before. **The replay does not judge pixel checks
+yet**, so `run` and `revise` refuse this setting, and it is in `offer.ALL` but not in `offer.OFFERS`:
+the workflow, the run record and the score do not name it. Nothing has been proposed under it by a
+live model.
+
+**Not yet:** nothing calls an observer during a reproduction run, and no reproduction rate has been
+measured with pixel checks. #286 is done when a recorded run reproduces a public screen-only defect
+with one.
 
 ## What this does not claim
 

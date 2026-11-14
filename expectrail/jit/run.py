@@ -163,7 +163,7 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
     still what the record judges."""
     from expectrail.jit.intent import check_candidate
 
-    offer_mod.check(offer)
+    offer_mod.replayable(offer)
     check_candidate(candidate_to_model)
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
