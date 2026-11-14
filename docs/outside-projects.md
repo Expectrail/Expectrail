@@ -15,12 +15,13 @@ sandbox for every replay, because the projects' code is not ours.
 A project may also list **changes**: small patches of ours under `tests/outside/<project>/changes/`,
 each with the verdict it should get. For each one the project as pinned is the base and a patched
 copy is the head, and `expectrail verify --base` judges the change as it would judge a pull request.
-The table shows the expected verdict beside the one given. kinematic-character has two:
+The table shows the expected verdict beside the one given. kinematic-character has three:
 
 | Change | What it does | Expected | Why |
 | --- | --- | --- | --- |
 | `broken` | empties the player's collision mask, so it falls through the floor | reject | a real bug in a game we did not write; the approved check should see the player go below the ground |
 | `harmless` | tints the player's sprite; nothing it does changes | needs-review | the engine's checks pass, as on the project unchanged, but CI has no vision key and an accept needs vision (#379). The engine's record alone gave accept on #398/#401, before vision was required; Sean withdrew call 4 for the engine's record, and an outside project counts as verified only after a run with vision |
+| `invisible` | hides the player's sprite; it moves exactly as before | needs-review | a defect only a visual observer can see (#330): the engine's checks pass, as on the project unchanged. Without vision it is needs-review like any accept; with vision it must stay needs-review, because no player is drawn where the engine says it is. If a vision run ever accepts it, the visual observer is not looking |
 
 **The first run did not test either change.** [Run 43398657245](https://github.com/Expectrail/Expectrail/actions/runs/43398657245)
 on PR #385 gave all three kinematic-character rows the same verdict, needs-review, with the same

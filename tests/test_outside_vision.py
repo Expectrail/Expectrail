@@ -23,7 +23,14 @@ class CaptureJudgeTest(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.root = Path(tmp.name)
         self.data = self.root / 'incoming'
-        self.project = trial.load_list()[0]
+        # The two changes these stand-in replays make (the project's list may hold more, such as #330's
+        # invisible player, which needs a real capture).
+        projects = trial.load_list()
+        listed = projects[0]
+        self.project = {**listed, 'changes': [c for c in listed['changes'] if c['name'] in ('broken', 'harmless')]}
+        patcher = mock.patch.object(trial, 'load_list', return_value=[self.project, *projects[1:]])
+        patcher.start()
+        self.addCleanup(patcher.stop)
         self.route = next((trial.REPO / self.project['routes']).glob('*.json'))
         self.model = Game()
         self.trees = {}
@@ -163,12 +170,25 @@ class CaptureJudgeTest(unittest.TestCase):
     def test_cli_writes_verdicts_and_spend_with_the_stand_in_observer(self):
         cli = ['judge', '--project', self.project['name'], '--data', str(self.data),
                '--digest', self.receipt, '--out', str(self.out)]
+        # The live client, built on the stand-in transport: nothing leaves this machine (#330: the judge
+        # now builds the anchored observer from the client, not a FramesObserver).
+        from agents import sam_observations as so
+
+        stand_in = so.MetaSamClient(transport=self.model.transport, retries=0, sleep=lambda s: None)
         with mock.patch.dict(os.environ, {'MODEL_API_KEY': 'stand-in', 'EXPECTRAIL_SAM_USD_CAP': '2'}), \
-                mock.patch('expectrail.observers.FramesObserver', return_value=self.model.observer()):
+                mock.patch.object(so, 'MetaSamClient', return_value=stand_in):
             self.assertEqual(vision.main(cli), 0)
         self.assertEqual(record.read_record(self.out / 'broken/findings.json')['decision'], 'reject')
         self.assertIn('reservedUsd', json.loads((self.out / 'spend.json').read_text()))
         self.assertIn('harmless', (self.out / 'outside-trial.md').read_text())
+        # These stand-in traces log no body box, so no frame can be asked about: the game is not
+        # calibrated, no image is sent, and nothing is accepted.
+        calibration = json.loads((self.out / 'calibration.json').read_text())
+        self.assertFalse(calibration['enabled'])
+        self.assertEqual(calibration['frames']['asked'], 0)
+        self.assertEqual(self.model.asked, [])
+        self.assertNotEqual(record.read_record(self.out / 'harmless/findings.json')['decision'], 'accept')
+        self.assertTrue((self.out / 'vision-recording.json').is_file())
 
     def test_swapping_variant_folders_is_refused(self):
         a, b, tmp = (self.data / v for v in ('broken', 'harmless', 'tmp'))
