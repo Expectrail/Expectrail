@@ -194,6 +194,31 @@ class SummaryTest(unittest.TestCase):
             s = summary(outcomes())
             self.assertEqual(self.row(s, "poisoned-import-cache")["status"], rg.OPEN)
 
+    def test_a_row_with_its_own_positive_control_is_held_only_when_that_control_passed(self):
+        two_job = [c["id"] for c in controls.CONTROLS if c["baselines"]]
+        self.assertEqual(sorted(two_job), ["changed-head", "writes-evidence-or-policy"])
+        self.assertEqual(controls.row_baselines(), controls.TWO_JOB_BASELINES)
+        s = summary(outcomes())
+        self.assertEqual({self.row(s, cid)["status"] for cid in two_job}, {rg.HELD})
+        self.assertIn("own positive controls (the trusted judge clears the unchanged game's capture and rejects "
+                      "the seeded bug's): passed", rg.render(s))
+        for outcome, words in ((rg.FAILURE, "NOT passed"), (rg.SKIPPED, "not run, so those rows are not run")):
+            with self.subTest(outcome):
+                s = summary(outcomes(**{t: outcome for t in controls.TWO_JOB_BASELINES}))
+                for cid in two_job:
+                    self.assertEqual(self.row(s, cid)["status"], rg.NOT_RUN)
+                    self.assertIn("own positive control did not pass", self.row(s, cid)["note"])
+                # The other rows do not depend on the two-job path.
+                self.assertEqual(self.row(s, "poisoned-import-cache")["status"], rg.HELD)
+                self.assertIn(words, rg.render(s))
+
+    def test_the_two_job_rows_say_what_they_do_not_cover(self):
+        for cid in ("changed-head", "writes-evidence-or-policy"):
+            scope = controls.by_id()[cid]["scope"]
+            self.assertIn("#254", scope)
+        self.assertIn("consistent in itself", controls.by_id()["writes-evidence-or-policy"]["scope"])
+        self.assertTrue(controls.by_id()["forged-trace"]["open"].startswith("undefended"))
+
     def test_without_the_positive_control_no_row_is_held(self):
         s = summary(outcomes(**{controls.BASELINES[0]: rg.FAILURE}))
         self.assertEqual(s["counts"][rg.HELD], 0)
