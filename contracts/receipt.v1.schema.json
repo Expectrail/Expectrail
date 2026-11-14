@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Expectrail/Expectrail/contracts/receipt.v1.schema.json",
+  "title": "Receipt v1: attested verification outcome",
+  "description": "A signed statement of what was checked, on which build, under which policy, and what the decision was. Verification uses a trust store of issuer public keys; a key carried only inside the receipt is never trusted. Canonical JSON (sorted keys, no spaces); duplicate keys and non-finite numbers are rejected.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "issuerKeyId",
+    "repository",
+    "baseSha256",
+    "headSha256",
+    "buildSha256",
+    "policySha256",
+    "routeSetSha256",
+    "versions",
+    "evidence",
+    "coverage",
+    "decision",
+    "findings",
+    "cost",
+    "issuedAt",
+    "expiresAt",
+    "algorithm",
+    "publicKey",
+    "signature"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.receipt/v1"
+    },
+    "issuerKeyId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifier of the issuer key in the trust store."
+    },
+    "repository": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+      "description": "OWNER/NAME of the repository the receipt is about."
+    },
+    "baseSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "headSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "buildSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Digest of the build that was exercised."
+    },
+    "policySha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "routeSetSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verifier", "adapter", "observer"],
+      "properties": {
+        "verifier": {"type": "string", "minLength": 1},
+        "adapter": {"type": "string", "minLength": 1},
+        "observer": {"type": "string", "minLength": 1}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["grade", "capabilities", "artifacts"],
+      "properties": {
+        "grade": {
+          "enum": ["full", "partial", "none"]
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        },
+        "artifacts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "description": "Named digests of every evidence artifact."
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "exercised", "results"],
+      "properties": {
+        "required": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        },
+        "exercised": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        },
+        "results": {
+          "type": "object",
+          "additionalProperties": {
+            "enum": ["pass", "fail", "not-exercised", "error"]
+          }
+        }
+      }
+    },
+    "decision": {
+      "enum": ["accept", "reject", "needs-review"]
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "summary": {"type": "string"}
+        }
+      }
+    },
+    "cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["usd"],
+      "properties": {
+        "usd": {"type": "number", "minimum": 0}
+      }
+    },
+    "issuedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "algorithm": {
+      "const": "ed25519"
+    },
+    "publicKey": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Base64 raw Ed25519 public key of the issuer. Present for identification only; never trusted by itself."
+    },
+    "signature": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Base64 Ed25519 signature over the canonical receipt with the signature field omitted."
+    }
+  }
+}
