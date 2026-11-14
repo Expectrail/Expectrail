@@ -21,7 +21,7 @@ from expectrail.contracts import validate_v1
 from expectrail.jit import cli, intent, offer, pixel
 from expectrail.jit.diff_map import diff_map
 from expectrail.jit.run import Spend, generate
-from tests.jit_fixtures import Transport, reply
+from tests.jit_fixtures import PROFILE, Transport, reply
 from tests.test_jit_offer import NO_FIX, PROF, REPORT, SYSTEM_SHA, answer_on, sha
 from tests.test_jit_offer_evidence import REACH_SYSTEM_SHA
 from tests.test_jit_pixel import BOX, POINT
@@ -66,14 +66,17 @@ class TheSetting(unittest.TestCase):
         self.assertEqual([p["id"] for p in offer.library(PROF["actions"], PX, REPORT)],
                          [p["id"] for p in offer.library(PROF["actions"], EV, REPORT)])
 
-    def test_it_is_not_a_setting_a_replay_record_score_or_workflow_names(self):
+    def test_a_replay_takes_it_and_a_revision_the_score_and_the_workflow_do_not(self):
+        # The replay judges pixel checks since #286's third slice (tests/test_jit_pixel_replay.py).
         self.assertEqual(offer.ALL, (*offer.OFFERS, PX))
         self.assertNotIn(PX, offer.OFFERS)
-        self.assertNotIn(PX, offer.REPLAYABLE)
-        with self.assertRaisesRegex(offer.OfferError, "cannot be replayed yet"):
-            offer.replayable(PX)
+        self.assertIn(PX, offer.REPLAYABLE)
+        self.assertEqual(offer.replayable(PX), PX)
+        with self.assertRaisesRegex(offer.OfferError, "cannot be revised yet"):
+            offer.revisable(PX)
         for other in offer.OFFERS:
             self.assertEqual(offer.replayable(other), other)
+            self.assertEqual(offer.revisable(other), other)
 
     def test_the_other_settings_prompts_do_not_move(self):
         self.assertEqual(sha(intent.system_for("baseline")), SYSTEM_SHA)
@@ -284,15 +287,18 @@ class TheProposal(unittest.TestCase):
 
 
 class NotReplayedYet(unittest.TestCase):
-    def test_the_replay_refuses_the_pixel_setting_before_anything_runs(self):
+    def test_the_replay_takes_the_pixel_setting_and_records_it(self):
+        # Since #286's third slice the replay judges pixel checks (tests/test_jit_pixel_replay.py); with no
+        # model it still records nothing generated, under the setting it was given.
         with tempfile.TemporaryDirectory() as tmp:
-            with self.assertRaisesRegex(offer.OfferError, "cannot be replayed yet"):
-                generate(Path("unused"), REPORT, NO_FIX, [], Path(tmp) / "out", offer=PX)
-            self.assertFalse((Path(tmp) / "out").exists())
+            doc = generate(PROFILE, REPORT, NO_FIX, [], Path(tmp) / "out", offer=PX, runner=lambda *a, **k: None)
+            self.assertEqual((doc["status"], doc["settings"]["offer"], doc["pixelChecks"]),
+                             ("nothing-generated", PX, []))
+            self.assertIn("MODEL_UNAVAILABLE", doc["reason"])
 
     def test_revise_refuses_it(self):
         propose = intent.spark_intent(transport=Transport(reply(answer())), offer=PX)
-        with self.assertRaisesRegex(offer.OfferError, "cannot be replayed yet"):
+        with self.assertRaisesRegex(offer.OfferError, "cannot be revised yet"):
             intent.revise_to_file(propose, REPORT, "", PROF, [], Path("p"), Path("r"), Path("o"), budget_usd=1.0)
 
     def test_the_commands(self):
