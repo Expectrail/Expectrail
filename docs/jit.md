@@ -469,9 +469,31 @@ A revision does not carry pixel checks, so `revise` refuses this setting (`offer
 command line's `run`, the workflow and the reproduction score do not name it yet: none of them has an
 observer to give the replay.
 
-**Not yet:** no SAM observer is wired into a run (the tests use SAM's recorded answers on the smoke
-route, stamped with the probe's name), and no reproduction rate has been measured with pixel checks.
-#286 is done when a recorded run reproduces a public screen-only defect with one.
+### SAM as the observer (added November 14)
+
+[`sam_observer.py`](../expectrail/jit/sam_observer.py) is the `sam-3.1-anchor` observer the replay
+asks. On each replay it asks SAM 3.1 what is drawn inside the player's box at the place the engine's
+record puts the player, one image a planned frame (agents/sam_anchor.py asks and measures):
+
+- **The box** is the player's collision box as the harness logged it on that tick, widened by 4 game
+  pixels each way (`box=body`, the default). A sized box with a lift (`box=(48, 68), lift=17`) is the
+  setting SAM was recorded with on the bundled game, kept so those answers can be replayed.
+- **The frames are planned from the route alone**, before any replay, so the budget is reserved for
+  exactly those: every 10th frame and the last one the route's ticks fill, at most 30.
+- **The frames must line up**, or nothing is judged: the replay is of the check's route, captured at
+  the frame and physics rates the plan assumed, with its frames numbered from 0 without a hole and each
+  asked frame matching the digest in `replay.json`. A planned frame the replay did not capture, or a
+  tick with no player, camera or body box logged, is a gap: the check is `needs-review` on that run.
+- **What is charged** is every request the client made, retries included. An observer that stops part
+  way (no key, no credit, the cap) is still charged what it sent.
+- `RecordedSamClient` gives back a recorded answer file, and only for the question SAM was asked: a
+  different box or frame stops the run, and its setting must be the observer's. Through it, SAM's
+  recorded answers on the smoke route replay through the real observer with the same boxes, answers
+  and results (`tests/test_jit_sam_observer.py`, on synthetic replay folders built from the recording).
+
+**Not yet:** the command line's `run` and the workflow do not build this observer, no SAM answer has
+been recorded on a bench probe, and no reproduction rate has been measured with pixel checks. #286 is
+done when a recorded run reproduces a public screen-only defect with one.
 
 ## What this does not claim
 
