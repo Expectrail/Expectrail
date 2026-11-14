@@ -101,22 +101,40 @@ def gate_tests() -> list[str]:
 
 
 def run(stream=None) -> dict[str, dict]:
-    """Run every gate test and return the outcome of each, by id. A test that never reported (its
-    class could not be set up) is an error, never a pass."""
+    """Run every gate test and return the outcome of each, by id. A test that never reported is an
+    error, never a pass, or skipped when its whole class was skipped (``fill_unreported``)."""
     from tests.release_gate import controls
 
     loader = unittest.TestLoader()
     suite = unittest.TestSuite(loader.loadTestsFromModule(importlib.import_module(n)) for n in gate_modules())
     runner = unittest.TextTestRunner(stream=stream or sys.stderr, verbosity=2, resultclass=Collector)
     result = runner.run(suite)
-    outcomes = dict(result.outcomes)
-    class_errors = {k: v for k, v in outcomes.items() if not k.count(".") or "setUpClass" in k}
-    for tid in set(gate_tests()) | set(controls.all_tests()):
-        if tid not in outcomes:
-            why = "; ".join(v["detail"].strip().splitlines()[-1] for v in class_errors.values() if v["detail"]) or \
-                  "the test did not report"
-            outcomes[tid] = {"outcome": ERROR, "seconds": 0.0, "detail": why}
-    return {k: v for k, v in outcomes.items() if k not in class_errors}
+    return fill_unreported(dict(result.outcomes), set(gate_tests()) | set(controls.all_tests()))
+
+
+def fill_unreported(outcomes: dict[str, dict], expected: set[str]) -> dict[str, dict]:
+    """Give every expected test that never reported an outcome, from its class's placeholder (unittest
+    reports a failed or skipped ``setUpClass`` once, as ``setUpClass (module.Class)``). A class that
+    was skipped as a whole makes its tests skipped, so "not run", never held; any other test that did
+    not report is an error. The placeholders themselves are dropped."""
+    placeholders = {k: v for k, v in outcomes.items() if not k.count(".") or "setUpClass" in k}
+
+    def placeholder_for(tid: str) -> dict | None:
+        cls = tid.rsplit(".", 1)[0]
+        return next((v for k, v in placeholders.items() if f"({cls})" in k), None)
+
+    for tid in expected:
+        if tid in outcomes:
+            continue
+        own = placeholder_for(tid)
+        if own is not None and own["outcome"] == SKIPPED:
+            outcomes[tid] = {"outcome": SKIPPED, "seconds": 0.0, "detail": own["detail"]}
+            continue
+        source = [own] if own is not None else list(placeholders.values())
+        why = "; ".join(v["detail"].strip().splitlines()[-1] for v in source if v["detail"].strip()) or \
+              "the test did not report"
+        outcomes[tid] = {"outcome": ERROR, "seconds": 0.0, "detail": why}
+    return {k: v for k, v in outcomes.items() if k not in placeholders}
 
 
 def row_status(control: dict, outcomes: dict[str, dict]) -> tuple[str, str]:
