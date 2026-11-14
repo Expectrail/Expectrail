@@ -660,7 +660,8 @@ class IsolationTest(GateCase):
         head = make_repo(self.tmp / "head")
         asked = []
 
-        def run(route, out, game=None, capture_frames=True, sandbox=None, within=None):
+        def run(route, out, game=None, capture_frames=True, sandbox=None, within=None, fps=None):
+            self.assertIsNone(fps)  # the verify path takes captureFps from the project config, not a fixed 60
             self.assertEqual(within, head.resolve())   # a link in the game may lead into its checkout, no further
             asked.append(sandbox)
             raise SystemExit("stop here: only the argument matters")

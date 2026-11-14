@@ -103,6 +103,7 @@ V1_FORMATS = {
     "expectrail.discovery-run/v1": ("discovery-run", "discovery-run.v1.schema.json"),
     "expectrail.jit-run/v1": ("jit-run", "jit-run.v1.schema.json"),
     "expectrail.pixel-check/v1": ("pixel-check", "pixel-check.v1.schema.json"),
+    "expectrail.project/v1": ("project", "project.v1.schema.json"),
 }
 
 

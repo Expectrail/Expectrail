@@ -1,0 +1,14 @@
+{
+  "format": "expectrail.project/v1",
+  "adapter": "godot",
+  "version": "4.7",
+  "toolchain": {"engine": "godot", "version": "4.7"},
+  "entryScene": "res://main.tscn",
+  "viewport": [640, 360],
+  "physicsTicksPerSecond": 60,
+  "captureFps": 60,
+  "inputActions": ["left", "right", "jump"],
+  "bindings": {
+    "player": {"node": "Player", "texture": "res://crate.svg"}
+  }
+}

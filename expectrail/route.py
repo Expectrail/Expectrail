@@ -63,7 +63,20 @@ def _records(text: str):
 
 
 def input_map(project: Path) -> tuple[list[str], int, bool]:
-    """Return custom actions, physics tick rate, and whether built-ins were needed."""
+    """Return custom actions, physics tick rate, and whether built-ins were needed.
+
+    A project that has ``expectrail.project.json`` is read from that file. A file that is
+    present but not valid stops the route: it is not replaced by ``project.godot``.
+    """
+    from expectrail.project_config import ProjectConfigError, read_game
+
+    try:
+        config = read_game(project)
+    except ProjectConfigError as exc:
+        raise RouteError(str(exc)) from exc
+    if config is not None:
+        actions = list(config["inputActions"])
+        return sorted(actions) or list(FALLBACK_ACTIONS), int(config["physicsTicksPerSecond"]), not bool(actions)
     section, actions, rate = "", set(), 60
     for record in _records((project / "project.godot").read_text(encoding="utf-8-sig")):
         if record.startswith("[") and record.endswith("]"):

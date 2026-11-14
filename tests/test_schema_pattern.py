@@ -171,6 +171,7 @@ SAMPLES = {
     "^[a-z0-9][a-z0-9._/-]*$": ("game/main.tscn", True),
     "^[a-z][a-z0-9-]{0,31}$": ("combat", True),
     "^[a-z][a-z0-9-]{0,39}$": ("combat-2", True),
+    "^(ref:|env:)[A-Za-z0-9_./-]+$": ("env:EXPECTRAIL_VISION", True),
     "^[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)*$": ("player.position_y", True),
     "^assets/[a-z0-9-]+\\.png$": ("assets/run-it.png", True),
     "^docs/[a-z0-9-]+\\.md$": ("docs/review.md", True),
