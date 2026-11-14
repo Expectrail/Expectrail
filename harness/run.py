@@ -226,10 +226,14 @@ def godot_cmd(godot: Path, display: bool) -> list[str]:
     return cmd
 
 
-def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = None, fps: int = 60,
+# The gate passes a config it already read. This default means "read the game folder's own file".
+_FROM_GAME = object()
+
+
+def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = None, fps: int | None = 60,
         godot: Path | None = None, patches: list[Path] | None = None,
         force_import: bool = False, capture_frames: bool = True, sandbox: str | None = None,
-        within: Path | None = None) -> dict:
+        within: Path | None = None, *, project: object = _FROM_GAME) -> dict:
     """Replay one route and write trace.json and replay.json (and the frames, unless capture_frames is
     False: discovery reads only the trace, so it runs headless and skips writing a PNG per frame).
 
@@ -238,8 +242,26 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
 
     ``within`` is the folder a link in the game may lead into (default: the game folder itself; a
     caller that verifies a checkout passes the checkout). A link that leaves it, loops or leads
-    nowhere stops the replay before anything is copied or run."""
+    nowhere stops the replay before anything is copied or run.
+
+    ``project`` is the config to use, already read. The default is to read the game folder's own
+    ``expectrail.project.json``. The gate passes the base checkout's config (or None when the base
+    has none) so a change under test cannot set the capture rate or the bindings by editing its own
+    copy. ``fps`` is None when that rate should come from the config, or 60 when there is none.
+    The bindings go to the harness as values: inside the sandbox the game is a copy, and a path
+    from this machine would not be there."""
     game = game or REPO / "game" / "platformer"
+    from expectrail.project_config import ProjectConfigError, harness_arguments, read_game
+
+    if project is _FROM_GAME:
+        try:
+            config = read_game(game)
+        except ProjectConfigError as exc:
+            raise SystemExit(str(exc)) from exc
+    else:
+        config = project
+    if fps is None:
+        fps = int(config["captureFps"]) if config is not None else 60
     godot = godot or find_godot()
     out.mkdir(parents=True, exist_ok=True)
     work, frames = out / "work", out / "frames"
@@ -307,6 +329,8 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
         cmd = [engine, "--headless", "--path", project, "--audio-driver", "Dummy", "--fixed-fps", str(fps)]
     cmd += ["--disable-vsync", "--", f"--route={route_arg}", f"--trace={trace_arg}",
             f"--seed={route_doc.get('seed', 1)}"]
+    if config is not None:
+        cmd += harness_arguments(config)
     try:
         with timing.phase("replay"):
             if tool is not None:
@@ -368,7 +392,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--patch", type=Path, action="append", default=[],
                    help="patch to apply (repeatable; order is seed then candidate)")
     p.add_argument("--game", type=Path, help="game directory (default: game/platformer)")
-    p.add_argument("--fps", type=int, default=60)
+    p.add_argument("--fps", type=int, default=None,
+                   help="capture frames per second (default: the project config's captureFps, else 60)")
     p.add_argument("--warm-cache", action="store_true",
                    help="warm the .godot/ import cache and exit")
     p.add_argument("--sandbox", choices=box.MODES,

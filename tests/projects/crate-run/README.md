@@ -6,7 +6,7 @@ meant to be a good game.
 
 | Folder | Holds |
 | --- | --- |
-| `project/` | The Godot 4 project: `main.tscn`, `main.gd` (builds the tile floor in code, so there is no image file), `player.gd`. |
+| `project/` | The Godot 4 project: `main.tscn`, `main.gd` (builds the tile floor in code), `player.gd`, `crate.svg` (the texture the player binding names), `expectrail.project.json`. |
 | `routes/walk.json` | One route: walk right, jump twice, stop. 150 ticks at this project's 60 physics ticks a second. |
 | `specs/crate-stays-above-floor.json` | A draft spec. Nobody has approved it, so it judges nothing. |
 
@@ -25,12 +25,12 @@ project's own spec is a draft; approving it is a person's step.
 ## What it has in common with the bundled game, on purpose
 
 The harness finds the player by the node name `Player` and the ground by the collision of
-`TileMapLayer` tiles, so this project has both. The position log draws the player's box at the
-bundled game's size (40 by 60 pixels, bottom 13.25 below the node's origin). The crate is 32 by 32
-with its bottom 16 below its origin, so the box the check sees ends 2.75 pixels above the crate's
-real bottom. The check's tolerance is 20 pixels. Sizes move out of code in #259.
+`TileMapLayer` tiles, so this project has both. `project/expectrail.project.json` names that node
+and the texture `res://crate.svg`, and the project's 60 physics ticks a second. The player's size
+is not in that file: a trace row's `body` is the crate's own collision box. A trace from before
+the harness logged `body` still uses the bundled constants (40 by 60, feet 13.25 below the origin).
 
 ## What is different
 
 Its own input actions (`left`, `right`, `jump`), 60 physics ticks a second where the bundled game
-has 120, a 640 by 360 window, no sprite, no enemies, no coins.
+has 120, a 640 by 360 window, no enemies, no coins. The bundled game has no project config yet.

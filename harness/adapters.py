@@ -162,13 +162,16 @@ def _godot_run(route: Path, out: Path, patches: list[Path] | None = None, *, gam
 
 
 def _godot_verify_run(route: Path, out: Path, *, game: Path, capture_frames: bool, sandbox: str | None = None,
-                      within: Path | None = None) -> dict:
+                      within: Path | None = None, project: object = _godot._FROM_GAME) -> dict:
     # The same runner as _godot_run, looked up at call time, with what a verification adds: the
     # sandbox mode and the checkout a link may lead into. The game is the caller's, never a default.
+    # ``project`` is a config the gate already read from the base checkout. Left at the default, the
+    # runner reads the game folder it plays (the local path, which has no base).
     if game is None:
         raise ValueError("a verification names its game; there is no default project")
-    return _godot.run(Path(route), Path(out), game=Path(game), capture_frames=capture_frames, sandbox=sandbox,
-                      within=within)
+    extra = {} if project is _godot._FROM_GAME else {"project": project}
+    return _godot.run(Path(route), Path(out), game=Path(game), fps=None, capture_frames=capture_frames,
+                      sandbox=sandbox, within=within, **extra)
 
 
 def _godot_missing() -> list[str]:

@@ -82,6 +82,20 @@ description, and its observer is a trusted one that declares what it cannot tell
 that is refused when it is proposed. It has no approval field. No prompt offers it yet
 ([jit.md](jit.md#pixel-checks-what-is-drawn-added-november-14)).
 
+## Project config (added November 14)
+
+| Record | Written by | Read by |
+| --- | --- | --- |
+| `project` (`expectrail.project/v1`, [`contracts/project.v1.schema.json`](../contracts/project.v1.schema.json), example [`project.json`](../contracts/examples/project.json)) | a person, as `expectrail.project.json` next to the game's project file | `expectrail.project_config` (no jsonschema). The route reader, the verify path and the Godot harness take the actions, the tick and capture rates, and the bindings from it |
+
+How Expectrail sees one game (issue #259). A binding is a role mapped to one node path or one
+group, and the texture that object is drawn with. It does not hold sizes: a trace row's `body` is
+the player's collision box for that tick. A provider value is a `ref:` or `env:` name, never a
+secret. Unknown fields, a path that leaves the project, and two roles that name the same node or
+group are refused. A missing file means the game has no config yet (the bundled game, for now). A
+file that is present and not valid stops the run and names the field. See
+[project-config.md](project-config.md).
+
 ## The CI gate's record (added November 9)
 
 `findings` (`expectrail.findings/v0`, [`contracts/findings.schema.json`](../contracts/findings.schema.json))

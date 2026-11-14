@@ -179,14 +179,18 @@ disabled, where the body stands in the world, so a scaled or mirrored body is lo
 on both axes and without the 1.25 px the columns are pulled in by. A player with no collision to
 measure has no `body`, and a reader never makes one up.
 
-It is how big the engine says the player is, and where. Two things can read it and neither is
-wired to a verdict yet:
+It is how big the engine says the player is, and where. Since November 14, 2026 the position-log
+stand-in (`agents/observations.py`) takes the width and height from `body` when the row has one,
+and puts the bottom at the feet (the origin plus `FEET_OFFSET`), not at the collision's own
+bottom. A bug that lifts the collision and leaves the sprite sunk would otherwise stand the box
+on the ground. A row without `body` keeps the bundled constants, so a trace written before the
+harness logged `body` is unchanged. Two other readers are not wired to a verdict from it yet:
 
 - A visual observer can be asked about that box and not about a typed size
   (`python3 -m agents.sam_anchor --box body`, [sam.md](sam.md)).
-- Its bottom is the player's feet. For the bundled robot that is 13.25 px below the origin, the
-  number the ground check has as a constant (`FEET_OFFSET`); for Godot's kinematic character demo
-  the constant is wrong by 6 px (#259). The ground check does not read `body` yet.
+- The ground search does not read `body`. It still uses `FEET_OFFSET`. For the bundled
+  robot the collision's bottom is that same 13.25 px below the origin; for Godot's kinematic
+  character demo the constant is wrong by 6 px (#259).
 
 Measured with the real engine (`tests/test_body_box.py`): the test level's 24 by 16 shape as
 authored, at scale 2, off to one side, mirrored, as a polygon and disabled; and the bundled robot,

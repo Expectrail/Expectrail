@@ -147,7 +147,7 @@ class RegistryTest(Case):
             adapters.GODOT.verify_run(self.tmp / "r.json", self.tmp / "out", game=self.tmp / "g", capture_frames=False,
                                       sandbox="require", within=self.tmp)
         self.assertEqual(seen, {"route": self.tmp / "r.json", "out": self.tmp / "out", "game": self.tmp / "g",
-                                "capture_frames": False, "sandbox": "require", "within": self.tmp})
+                                "fps": None, "capture_frames": False, "sandbox": "require", "within": self.tmp})
 
     def test_the_godot_verify_replay_has_no_default_game(self):
         with mock.patch("harness.run.run", side_effect=AssertionError("nothing may be replayed")):
