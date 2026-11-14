@@ -46,3 +46,7 @@ No live fixer recording or new vision answers. No paid model, real Godot replay 
 - One repair section per page: a page showing a Run it recorded repair does not also get the job's
   auto-fix section. `tests/test_visible_repair.py::test_one_repair_section_per_page` renders one page
   of each kind; it fails without that rule.
+- The release dossier (#455, merged meanwhile) required a recorded result for every Run it sample,
+  so the new `recorded-fix` sample stopped it. `tools/dossier.py` now shows a sample whose
+  `repairRecorded` is false as "not recorded yet" and never counts it; once the flag is true, a
+  missing result stops the dossier again (`tests/test_dossier.py`, new test).

@@ -117,6 +117,17 @@ raise SystemExit(dossier.main(['--root',sys.argv[2],'--out',sys.argv[3],'--commi
         self.assertEqual(status,2)
         self.assertEqual(out.read_text(),'previous dossier')
 
+    def test_an_unpublished_sample_is_shown_as_not_recorded_and_never_counted(self):
+        root=self.fixture();p=root/d.SAMPLES;doc=json.loads(p.read_text())
+        unpublished=[s for s in doc['samples'] if s.get('repairRecorded') is False]
+        self.assertTrue(unpublished)   # the recorded-fix sample, until a live repair is recorded
+        text=d.build(root,self.commit)
+        self.assertIn('not recorded yet',text)
+        for s in unpublished: s['repairRecorded']=True
+        p.write_text(json.dumps(doc))
+        with self.assertRaisesRegex(d.EvidenceError,'missing or ambiguous recorded result'):
+            d.build(root,self.commit)
+
     def test_inconsistent_reproduction_totals_are_refused(self):
         root=self.fixture();p=root/d.PUBLIC
         text=p.read_text();text=text.replace('"reproduced": 17','"reproduced": 18',1);p.write_text(text)
