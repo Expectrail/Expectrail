@@ -9,10 +9,10 @@ This file is written by `python3 -m tools.release_gate` from the results of one 
 hand.
 
 - Run: a local run, not CI
-- Commit: `7838952f6e2f02f40bb5642d1d4609294a8958a2`
-- When: 2026-11-14 01:18 UTC
-- Rows: 35. Held 10, open 25, failed 0, not run 0.
-- Positive control (the same command clears the unchanged game and rejects the seeded bug): passed.
+- Commit: `346f795b3d411773a71f3049f8f0fa8669b46448`
+- When: 2026-11-14 07:13 UTC
+- Rows: 35. Held 12, open 23, failed 0, not run 0.
+- Positive controls (the same command clears the unchanged game and rejects the seeded bug; with a stand-in vision provider that answers, the live visual observer's path clears the unchanged game): passed.
 
 ## Identity and authority
 
@@ -76,24 +76,29 @@ hand.
 | retry | held | 1 real-process test passed |
 | duplicate request | held | 2 real-process tests passed |
 | disk quota | open | undefended: a replay's files are capped one by one, and nothing bounds a job's total disk use yet (#253) |
-| provider outage | open | not written yet: `expectrail verify` asks no vision provider today; the visual observer joins that path with #379 |
-| budget exhausted | open | not written yet: `expectrail verify` spends nothing today; the visual observer and its cap join that path with #379 and #267 |
+| provider outage | held | 1 real-process test passed |
+| budget exhausted | held | 3 real-process tests passed |
 
 ## Tests
 
 | Test | Result | Seconds |
 | --- | --- | --- |
-| `gate_coverage.CoverageTest.test_a_route_pattern_that_matches_no_file_is_not_clearance` | passed | 0.7 |
-| `gate_coverage.CoverageTest.test_a_route_whose_inputs_the_game_does_not_have_is_not_clearance` | expected failure | 18.2 |
-| `gate_coverage.CoverageTest.test_held_out_routes_that_cannot_be_read_are_not_clearance` | passed | 26.8 |
-| `gate_coverage.CoverageTest.test_no_approved_spec_at_all_is_not_clearance` | passed | 0.8 |
-| `gate_coverage.CoverageTest.test_specs_that_are_all_drafts_judge_nothing_and_are_not_clearance` | passed | 0.8 |
-| `gate_coverage.CoverageTest.test_under_two_observers_a_missing_visual_observer_is_not_clearance` | passed | 26.9 |
-| `gate_identity.IdentityTest.test_an_approval_the_change_adds_to_its_own_checks_judges_nothing` | passed | 29.0 |
-| `gate_operations.BaselineTest.test_the_unchanged_game_is_cleared_through_the_same_command` | passed | 49.6 |
+| `gate_coverage.CoverageTest.test_a_route_pattern_that_matches_no_file_is_not_clearance` | passed | 0.9 |
+| `gate_coverage.CoverageTest.test_a_route_whose_inputs_the_game_does_not_have_is_not_clearance` | expected failure | 25.1 |
+| `gate_coverage.CoverageTest.test_held_out_routes_that_cannot_be_read_are_not_clearance` | passed | 40.3 |
+| `gate_coverage.CoverageTest.test_no_approved_spec_at_all_is_not_clearance` | passed | 1.0 |
+| `gate_coverage.CoverageTest.test_specs_that_are_all_drafts_judge_nothing_and_are_not_clearance` | passed | 0.9 |
+| `gate_coverage.CoverageTest.test_under_two_observers_a_missing_visual_observer_is_not_clearance` | passed | 39.9 |
+| `gate_identity.IdentityTest.test_an_approval_the_change_adds_to_its_own_checks_judges_nothing` | passed | 44.8 |
+| `gate_operations.BaselineTest.test_the_unchanged_game_is_cleared_through_the_same_command` | passed | 75.8 |
 | `gate_operations.OperationsTest.test_a_cancelled_job_is_not_clearance_and_leaves_nothing_running` | passed | 1.6 |
-| `gate_operations.OperationsTest.test_a_job_that_runs_out_of_time_is_not_clearance_and_leaves_nothing_running` | passed | 3.3 |
-| `gate_operations.OperationsTest.test_a_key_used_for_one_change_does_not_clear_another` | passed | 14.7 |
-| `gate_operations.OperationsTest.test_a_killed_worker_is_not_clearance_and_leaves_nothing_running` | passed | 1.4 |
-| `gate_operations.OperationsTest.test_asking_again_after_a_lost_worker_returns_the_failure_not_a_new_verdict` | passed | 1.5 |
-| `gate_operations.OperationsTest.test_the_same_request_twice_at_once_is_one_job_with_one_verdict` | passed | 34.7 |
+| `gate_operations.OperationsTest.test_a_job_that_runs_out_of_time_is_not_clearance_and_leaves_nothing_running` | passed | 3.4 |
+| `gate_operations.OperationsTest.test_a_key_used_for_one_change_does_not_clear_another` | passed | 22.0 |
+| `gate_operations.OperationsTest.test_a_killed_worker_is_not_clearance_and_leaves_nothing_running` | passed | 1.3 |
+| `gate_operations.OperationsTest.test_asking_again_after_a_lost_worker_returns_the_failure_not_a_new_verdict` | passed | 1.6 |
+| `gate_operations.OperationsTest.test_the_same_request_twice_at_once_is_one_job_with_one_verdict` | passed | 53.3 |
+| `gate_provider.ProviderBaselineTest.test_with_the_provider_answering_the_live_observer_clears_the_unchanged_game` | passed | 24.2 |
+| `gate_provider.ProviderTest.test_a_cap_of_nothing_sends_nothing_and_is_not_clearance` | passed | 24.6 |
+| `gate_provider.ProviderTest.test_a_cap_spent_part_way_stops_the_requests_and_is_not_clearance` | passed | 23.9 |
+| `gate_provider.ProviderTest.test_a_provider_out_of_credit_is_not_clearance` | passed | 22.2 |
+| `gate_provider.ProviderTest.test_a_provider_outage_is_not_clearance_and_does_not_hide_a_broken_build` | passed | 145.6 |
