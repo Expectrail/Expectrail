@@ -46,6 +46,12 @@ MAX_BODY = 60000  # GitHub refuses a comment over 65,536 characters
 MAX_FINDING_ROWS = 30
 MAX_CHECK_ROWS = 100
 MAX_REASONS = 5
+MAX_APPROVAL_NOTES = 5
+# The endings of the record's reasons that name an approval not bound to its spec's content (#420).
+# The same words as expectrail.approval (MISMATCH_REASON, LEGACY_NOTE); this module imports only the
+# standard library and the record, so they are written out here and a test holds the two together.
+APPROVAL_NOTE_ENDINGS = (": approval does not match the spec's content; a person must approve it again",
+                         ": approved before content binding")
 MAX_TEXT = 200
 MAX_PREVIOUS_IDS = 4096
 MAX_COMMENT_PAGES = 20
@@ -298,6 +304,14 @@ def _checks_line(record: dict) -> str:
     if record["drafts"]:
         line += (f" {_n(record['drafts'], 'draft spec')} without a person's approval "
                  f"{'was' if record['drafts'] == 1 else 'were'} not used.")
+    # Approvals that are not bound to their spec's content (#420), named on every decision: one that
+    # no longer matches its spec (not used), and one written before content binding (still used).
+    notes = [r for r in record["reasons"] if isinstance(r, str) and r.startswith("spec ")
+             and r.endswith(APPROVAL_NOTE_ENDINGS)]
+    if notes:
+        line += " " + " ".join(f"{md(n, MAX_TEXT)}." for n in notes[:MAX_APPROVAL_NOTES])
+        if len(notes) > MAX_APPROVAL_NOTES:
+            line += f" And {len(notes) - MAX_APPROVAL_NOTES} more."
     return line
 
 
