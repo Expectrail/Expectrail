@@ -112,19 +112,21 @@ class GateCase(unittest.TestCase):
         return target
 
     # --- the command --------------------------------------------------------------------------------
-    def command(self, *argv: str, timeout: float = 300) -> tuple[int, str, str]:
+    def command(self, *argv: str, timeout: float = 300, env: dict | None = None) -> tuple[int, str, str]:
+        """The command, with ``env`` added to this process's environment (its workers inherit it)."""
         done = subprocess.run([sys.executable, "-m", "tests.release_gate.worker", "--jobs-root", str(self.jobs),
                                "--lease-seconds", LEASE, *argv],
-                              cwd=REPO, capture_output=True, text=True, timeout=timeout)
+                              cwd=REPO, capture_output=True, text=True, timeout=timeout,
+                              env=None if env is None else {**os.environ, **env})
         return done.returncode, done.stdout, done.stderr
 
     def verify(self, head: Path, *extra: str, base: Path | None = None, routes: str = ROUTE,
-               specs: str = SPECS) -> tuple[int, dict | None, str]:
+               specs: str = SPECS, env: dict | None = None) -> tuple[int, dict | None, str]:
         """``verify --json`` and its exit code and job status (None when it printed none)."""
         argv = ["verify", "--head", str(head), "--game", GAME, "--routes", routes, "--specs", specs, "--json", *extra]
         if base is not None:
             argv += ["--base", str(base)]
-        code, out, err = self.command(*argv)
+        code, out, err = self.command(*argv, env=env)
         try:
             status = json.loads(out)
         except ValueError:
@@ -133,10 +135,10 @@ class GateCase(unittest.TestCase):
             self.watched.append(status["id"])
         return code, status, err
 
-    def start(self, head: Path, *extra: str) -> str:
+    def start(self, head: Path, *extra: str, env: dict | None = None) -> str:
         """``verify --detach``: the job's id, with its worker running."""
         code, out, err = self.command("verify", "--head", str(head), "--game", GAME, "--routes", ROUTE,
-                                      "--specs", SPECS, "--detach", "--json", *extra)
+                                      "--specs", SPECS, "--detach", "--json", *extra, env=env)
         self.assertEqual(code, 0, err)
         job = json.loads(out)["id"]
         self.watched.append(job)
