@@ -1,6 +1,7 @@
 """What the generator is offered: one named setting, the same in every step of one change.
 
     python -m expectrail.jit.cli measure|propose|revise|run ... --offer baseline|signals-reach|signals-reach-evidence
+    python -m expectrail.jit.cli measure|propose|run ... --offer signals-reach-evidence-pixel
 
 Issue #285 asks for the reproduction rate on the public bench "before changing anything", and then
 after each step. Steps 3 and 4 were built before that baseline was run, so they are held back from
@@ -30,9 +31,11 @@ baseline stays what it was:
   ``pixelChecks`` beside its trace checks, and ``run.generate`` replays them with frames, asks the
   observer it is given about each run, keeps a pixel check only by the keep rule, and writes the rows
   in the run record's ``pixelChecks`` (``replayable``). A revision does not carry pixel checks yet, so
-  ``revise`` refuses this setting (``revisable``). It is in ``ALL`` and ``REPLAYABLE``, not in
-  ``OFFERS``: the workflow, the command line's ``run`` and the reproduction score do not name it yet,
-  because no observer is wired into them.
+  ``revise`` refuses this setting (``revisable``). The command line's ``run`` takes it with an observer
+  named on the command line (expectrail/jit/cli.py, ``--observer``), and the reproduction score counts its
+  records, with the pixel checks counted on their own (expectrail/repro/score.py). It is in ``ALL``,
+  ``REPLAYABLE`` and ``SCORED``, not in ``OFFERS``: the workflow does not name it yet, because its replay
+  jobs neither capture frames nor hold the observer's key.
 
 Nothing about what decides a check changes: a check is kept or dropped by replays only
 (expectrail/jit/assess.py), under either setting.
@@ -56,14 +59,15 @@ BASELINE = "baseline"
 SIGNALS_REACH = "signals-reach"
 EVIDENCE = "signals-reach-evidence"
 PIXEL = "signals-reach-evidence-pixel"
-# The settings the workflow, the command line's ``run`` and the reproduction score accept. PIXEL is not one
-# of them yet: they have no observer to judge pixel checks with. ``measure`` and ``propose`` take every
-# setting (``ALL``); ``run.generate`` takes every setting (``REPLAYABLE``), since it judges pixel checks
-# with the observer it is given; a revision takes ``OFFERS`` only (``REVISABLE``), since it does not
-# carry pixel checks to its second round.
+# The settings the workflow accepts. PIXEL is not one of them yet: its replay jobs capture no frames and
+# hold no observer key. ``measure`` and ``propose`` take every setting (``ALL``); ``run.generate`` and the
+# command line's ``run`` take every setting (``REPLAYABLE``), since they judge pixel checks with the
+# observer they are given; the reproduction score counts every setting (``SCORED``); a revision takes
+# ``OFFERS`` only (``REVISABLE``), since it does not carry pixel checks to its second round.
 OFFERS = (BASELINE, SIGNALS_REACH, EVIDENCE)
 ALL = (*OFFERS, PIXEL)
 REPLAYABLE = ALL
+SCORED = ALL
 REVISABLE = OFFERS
 DEFAULT = BASELINE
 
