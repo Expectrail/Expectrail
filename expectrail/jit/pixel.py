@@ -38,8 +38,9 @@ answer as untrusted data); and the keep rule decides. The rows go into the run r
 row's own status.
 
 What this is not, yet: nothing here calls an observer. The SAM observer is expectrail/jit/sam_observer.py;
-it is not wired into the workflow or the command line, and no reproduction rate has been measured with
-pixel checks. The tests judge
+the command line's ``run`` builds it (``--observer``) and the reproduction score counts pixel checks on
+their own (expectrail/repro/score.py), but the workflow does not, and no reproduction rate has been
+measured with pixel checks. The tests judge
 recorded SAM answers (tests/data/sam-anchor/), which are one answer per frame per build: three "runs" of a recording are
 the same answers three times, so they test the rule, not the observer's repeatability.
 """
