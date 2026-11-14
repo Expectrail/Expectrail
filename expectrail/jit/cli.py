@@ -16,8 +16,9 @@ is the generator as it was before issue #285's steps 3 and 4; ``signals-reach`` 
 held-back signals and the reach probes; the evidence setting (``offer.EVIDENCE``) also gives the proposer step 5's
 evidence, which ``measure`` makes (replays with frames, expectrail/jit/offer.py) and ``propose`` and
 ``revise`` read with ``--evidence``. A proposal is replayed only under the offer it was made with.
-``measure``, ``propose`` and ``run`` also take the pixel setting (``offer.PIXEL``, #286), under which the
-proposal carries pixel checks; ``revise`` does not take it yet, because a revision does not carry them.
+``measure``, ``propose``, ``revise`` and ``run`` also take the pixel setting (``offer.PIXEL``, #286), under which
+the proposal carries pixel checks; ``revise`` replaces rejected trace checks only and carries the pixel
+checks to the second round as they are.
 
 **The observer for pixel checks** (``run`` under the pixel setting only; ``observer_from``). ``--observer``
 names it: ``none`` (the default; every pixel check is then ``not-run``, with the reason) or
@@ -42,7 +43,8 @@ code: ``run --observer sam-3.1-anchor --pixel-capture DIR`` replays and keeps th
 rehearse) asks SAM about them and runs no game; ``run --observer sam-3.1-anchor --sam-answers answers.json
 --pixel-replays DIR`` judges the captured frames from those answers. ``--pixel-replays`` never takes
 ``--sam-live``. ``pixel-ask`` exits 0 once it has written the answer file (a stop is in its ``stopped``)
-and 1 when it asked nothing.
+and 1 when it asked nothing. ``pixel-budget --record jit-run.json --budget-usd X`` prints what the asking
+job may spend: the cap less the capture record's spend (expectrail/jit/pixel_jobs.py, ``budget_left``).
 
 ``--withhold-candidate`` on ``propose``, ``revise`` and ``run`` gives the model no byte of the candidate
 patch (issue #285, step 6): the checks then come from the report and the bug build alone, and a fix
@@ -60,7 +62,7 @@ import sys
 from pathlib import Path
 
 from expectrail.contracts import load_strict
-from expectrail.jit.offer import ALL as ALL_OFFERS, DEFAULT as DEFAULT_OFFER, OFFERS, PIXEL, REPLAYABLE
+from expectrail.jit.offer import ALL as ALL_OFFERS, DEFAULT as DEFAULT_OFFER, PIXEL, REPLAYABLE, REVISABLE
 from expectrail.jit.offer import library as offered_library
 from expectrail.jit.offer import attach_evidence, make_evidence, shows_evidence
 from expectrail.jit.run import DEFAULT_BUDGET_USD, RECORD_NAME, from_base_alone, gate_summary, generate
@@ -350,6 +352,9 @@ def main(argv: list[str] | None = None) -> int:
                     help="the recorded run that answers for a build's replays")
     pa.add_argument("--sam-live", action="store_true", help="ask SAM live: spends money (key and cap from the environment)")
     _add_sam_setting(pa)
+    pb = sub.add_parser("pixel-budget", help="print what pixel-ask may spend: the cap less the capture record's spend")
+    pb.add_argument("--record", type=Path, required=True, help="the capture run's jit-run.json")
+    pb.add_argument("--budget-usd", type=float, required=True, help="the change's cap")
     pp = sub.add_parser("propose")
     pp.add_argument("--profile", type=Path, default=PROFILE)
     pp.add_argument("--report-file", type=Path, required=True)
@@ -384,7 +389,7 @@ def main(argv: list[str] | None = None) -> int:
     rv.add_argument("--github-output", type=Path, help="append revised=true|false here (a workflow's GITHUB_OUTPUT)")
     rv.add_argument("--withhold-candidate", action="store_true",
                     help="give the model no byte of the candidate patch (issue #285, step 6)")
-    rv.add_argument("--offer", choices=OFFERS, default=DEFAULT_OFFER,
+    rv.add_argument("--offer", choices=REVISABLE, default=DEFAULT_OFFER,
                     help="what the generator is offered (expectrail/jit/offer.py); the same for every step")
     ms = sub.add_parser("measure")
     ms.add_argument("--profile", type=Path, default=PROFILE)
@@ -503,6 +508,15 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"error": doc["error"], "candidates": len(doc["candidates"]), "probes": len(doc["probes"]),
                           "measured": measured,
                           "evidence": any("differs" in p for p in probes)}))
+        return 0
+
+    if args.cmd == "pixel-budget":
+        from expectrail.jit.pixel_jobs import budget_left
+
+        left, why = budget_left(args.record, args.budget_usd)
+        if why:
+            print(f"pixel-budget: {why}", file=sys.stderr)
+        print(f"{left:.4f}")
         return 0
 
     if args.cmd == "pixel-ask":

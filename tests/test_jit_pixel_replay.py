@@ -271,14 +271,14 @@ class TheRecordAndItsReader(unittest.TestCase):
 
 
 class Settings(unittest.TestCase):
-    def test_a_revision_does_not_take_the_pixel_setting(self):
-        with self.assertRaisesRegex(offer_mod.OfferError, "cannot be revised yet"):
-            offer_mod.revisable(PX)
-        for other in offer_mod.OFFERS:
-            self.assertEqual(offer_mod.revisable(other), other)
+    def test_a_revision_takes_the_pixel_setting(self):
+        # Since #286's seventh slice: it carries the pixel checks (tests/test_jit_pixel_revise.py).
+        for which in offer_mod.ALL:
+            self.assertEqual(offer_mod.revisable(which), which)
 
-    def test_the_workflow_still_does_not_name_it_and_the_command_line_run_and_the_score_do(self):
+    def test_the_workflow_the_command_line_run_and_the_score_name_it(self):
         self.assertNotIn(PX, offer_mod.OFFERS)
+        self.assertIn(PX, offer_mod.WORKFLOW)
         self.assertIn(PX, offer_mod.REPLAYABLE)
         self.assertIn(PX, offer_mod.SCORED)
         score = json.loads((REPO / "contracts" / "repro-score.v1.schema.json").read_text(encoding="utf-8"))
