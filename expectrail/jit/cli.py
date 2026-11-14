@@ -36,6 +36,14 @@ names it: ``none`` (the default; every pixel check is then ``not-run``, with the
 with ``--sam-lift``) and ``--sam-first`` set how SAM is asked, and must be how a recording was asked: an
 observer that asks otherwise than the recording stops at the first replay.
 
+**Pixel checks across three jobs** (expectrail/jit/pixel_jobs.py), so SAM's key never meets the change's
+code: ``run --observer sam-3.1-anchor --pixel-capture DIR`` replays and keeps the frames and asks nothing;
+``pixel-ask --replays DIR --out answers.json --budget-usd X`` (``--sam-live``, or ``--sam-answers`` to
+rehearse) asks SAM about them and runs no game; ``run --observer sam-3.1-anchor --sam-answers answers.json
+--pixel-replays DIR`` judges the captured frames from those answers. ``--pixel-replays`` never takes
+``--sam-live``. ``pixel-ask`` exits 0 once it has written the answer file (a stop is in its ``stopped``)
+and 1 when it asked nothing.
+
 ``--withhold-candidate`` on ``propose``, ``revise`` and ``run`` gives the model no byte of the candidate
 patch (issue #285, step 6): the checks then come from the report and the bug build alone, and a fix
 cannot shape the checks that judge it. Every step of one change takes it or none does; a proposal made
@@ -231,18 +239,36 @@ def observer_from(args):
     (or both ways), or a setting it cannot take, is refused with ObserverArgs and nothing runs."""
     name = getattr(args, "observer", "none")
     sam_args = [a for a in ("sam_answers", "sam_live", "sam_run") if getattr(args, a, None)]
+    capture, stored = getattr(args, "pixel_capture", None), getattr(args, "pixel_replays", None)
     if name == "none":
         if sam_args:
             raise ObserverArgs("--sam-answers, --sam-live and --sam-run need --observer sam-3.1-anchor")
+        if capture or stored:
+            raise ObserverArgs("--pixel-capture and --pixel-replays need --observer sam-3.1-anchor")
         return None
     if args.offer != PIXEL:
         raise ObserverArgs(f"--observer is for pixel checks, which only the {PIXEL} setting offers")
+    if capture and stored:
+        raise ObserverArgs("--pixel-capture and --pixel-replays are different jobs: give one")
+    if capture:
+        # The capture job runs the change's code: it asks nobody, so it is given no way to ask.
+        if sam_args:
+            raise ObserverArgs("--pixel-capture asks nothing: it takes no --sam-answers, --sam-live or --sam-run")
+        return _sam_observer(args, None)
+    if stored and not args.sam_answers:
+        raise ObserverArgs("--pixel-replays judges captured frames from the answers pixel-ask wrote: it needs "
+                           "--sam-answers, never --sam-live (the key would meet the change's code)")
+    return _sam_observer(args, *_sam_client(args))
+
+
+def _sam_client(args) -> tuple:
+    """(client,) from exactly one of ``--sam-answers`` (recorded) and ``--sam-live`` (None: built on first use)."""
     if bool(args.sam_answers) == bool(args.sam_live):
         raise ObserverArgs("--observer sam-3.1-anchor needs exactly one of --sam-answers FILE (recorded answers) "
                            "or --sam-live (a live call that spends money)")
     if args.sam_run and not args.sam_answers:
         raise ObserverArgs("--sam-run picks runs of recorded answers: it needs --sam-answers")
-    from expectrail.jit.sam_observer import RecordedSamClient, SamAnchorObserver
+    from expectrail.jit.sam_observer import RecordedSamClient
 
     client = None
     if args.sam_answers:
@@ -251,11 +277,35 @@ def observer_from(args):
         except (OSError, ValueError, KeyError, TypeError) as exc:
             raise ObserverArgs(f"--sam-answers cannot be read as an answer file ({type(exc).__name__})") from exc
         client.pick = recorded_pick(client.runs, _sam_runs(args.sam_run))
+    return (client,)
+
+
+def _sam_observer(args, client):
+    from expectrail.jit.sam_observer import SamAnchorObserver
+
     try:
         return SamAnchorObserver(client, box=_box(args.sam_box), pad=args.sam_pad, lift=args.sam_lift,
                                  first=args.sam_first)
     except ValueError as exc:
         raise ObserverArgs(str(exc)) from exc
+
+
+def _add_sam_setting(parser) -> None:
+    parser.add_argument("--sam-box", default="body", help="body (the engine's body box), or WIDTHxHEIGHT in game px")
+    parser.add_argument("--sam-pad", type=float, default=4.0, help="game px the body box is widened by")
+    parser.add_argument("--sam-lift", type=float, default=0.0, help="with a sized box: game px above the origin")
+    parser.add_argument("--sam-first", type=int, help="ask about the first N frames only")
+
+
+def _pixel_jobs_kwargs(args) -> dict:
+    """What ``run`` hands ``generate`` for the capture or the judging job (expectrail/jit/pixel_jobs.py)."""
+    if getattr(args, "pixel_capture", None):
+        return {"pixel_capture": args.pixel_capture}
+    if getattr(args, "pixel_replays", None):
+        from expectrail.jit.pixel_jobs import StoredReplays
+
+        return {"frame_runner": StoredReplays(args.pixel_replays)}
+    return {}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -286,10 +336,20 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--sam-run", action="append", default=[], metavar="BUILD=RUN",
                    help="the recorded run that answers for a build's replays")
     r.add_argument("--sam-live", action="store_true", help="ask SAM live: spends money (key and cap from the environment)")
-    r.add_argument("--sam-box", default="body", help="body (the engine's body box), or WIDTHxHEIGHT in game px")
-    r.add_argument("--sam-pad", type=float, default=4.0, help="game px the body box is widened by")
-    r.add_argument("--sam-lift", type=float, default=0.0, help="with a sized box: game px above the origin")
-    r.add_argument("--sam-first", type=int, help="ask about the first N frames only")
+    _add_sam_setting(r)
+    r.add_argument("--pixel-capture", type=Path, metavar="DIR",
+                   help="replay the pixel checks' probes with frames and keep them in DIR for pixel-ask; ask nothing")
+    r.add_argument("--pixel-replays", type=Path, metavar="DIR",
+                   help="judge pixel checks on the frames captured in DIR (with --sam-answers from pixel-ask)")
+    pa = sub.add_parser("pixel-ask", help="ask SAM about the frames a --pixel-capture run kept (no game is run)")
+    pa.add_argument("--replays", type=Path, required=True, help="the --pixel-capture folder")
+    pa.add_argument("--out", type=Path, required=True, help="the answer file to write")
+    pa.add_argument("--budget-usd", type=float, required=True, help="the most the images may cost; checked first")
+    pa.add_argument("--sam-answers", type=Path, help="answer from a recorded answer file instead (sends nothing)")
+    pa.add_argument("--sam-run", action="append", default=[], metavar="BUILD=RUN",
+                    help="the recorded run that answers for a build's replays")
+    pa.add_argument("--sam-live", action="store_true", help="ask SAM live: spends money (key and cap from the environment)")
+    _add_sam_setting(pa)
     pp = sub.add_parser("propose")
     pp.add_argument("--profile", type=Path, default=PROFILE)
     pp.add_argument("--report-file", type=Path, required=True)
@@ -445,6 +505,26 @@ def main(argv: list[str] | None = None) -> int:
                           "evidence": any("differs" in p for p in probes)}))
         return 0
 
+    if args.cmd == "pixel-ask":
+        from expectrail.jit import pixel_jobs
+        from expectrail.jit.run import DEFAULT_PRICES
+
+        try:
+            observer = _sam_observer(args, *_sam_client(args))
+        except ObserverArgs as exc:
+            ap.error(str(exc))
+        try:
+            doc = pixel_jobs.ask(args.replays, observer, args.budget_usd, DEFAULT_PRICES["samUsdPerImage"])
+        except pixel_jobs.pixel.PixelError as exc:
+            print(json.dumps({"asked": False, "reason": " ".join(str(exc).split())[:300]}))
+            return 1
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(json.dumps(doc, indent=1) + "\n", encoding="utf-8")
+        print(json.dumps({"asked": True, "runs": len(doc["runs"]), **doc["stats"], "stopped": doc["stopped"]}))
+        if doc["stopped"]:
+            print(f"pixel-ask stopped: {doc['stopped']}", file=sys.stderr)
+        return 0
+
     if args.cmd == "run":
         if args.budget_usd < 0 or args.reps < 1 or args.variant_limit < 0:
             ap.error("budget, reps and variant limit must not be negative (reps at least 1)")
@@ -478,7 +558,8 @@ def main(argv: list[str] | None = None) -> int:
         doc = generate(args.profile, report, args.candidate, args.base, args.out, intent=intent,
                        budget_usd=args.budget_usd, prices=prices, reps=args.reps, variant_limit=args.variant_limit,
                        run_id=args.run_id, game=args.game, offer=args.offer,
-                       candidate_to_model=_candidate(args), observer=observer)
+                       candidate_to_model=_candidate(args), observer=observer,
+                       **_pixel_jobs_kwargs(args))
         (args.out / "jit-report.md").write_text(render(doc) + "\n", encoding="utf-8")
         print(json.dumps({"status": doc["status"], "reason": doc["reason"], "counts": doc["counts"],
                           "spendUsd": doc["spend"]["usd"], "record": str(args.out / RECORD_NAME)}))
