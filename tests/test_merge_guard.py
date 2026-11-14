@@ -1050,8 +1050,10 @@ class WorkflowAddedLinesAndParsedTest(unittest.TestCase):
         for file in sorted((ROOT / ".github" / "workflows").glob("*.y*ml")):
             text = file.read_text(encoding="utf-8")
             path = f".github/workflows/{file.name}"
-            self.assertIn("runs-on: ", text, file.name)
-            for edited in (text.replace("runs-on: ", "runs-on:  ", 1), text + "# a note\n",
+            # The reusable workflow owns the runner of a caller-only workflow.
+            key = "uses: " if file.name == "expectrail-verify.yml" else "runs-on: "
+            self.assertIn(key, text, file.name)
+            for edited in (text.replace(key, key + " ", 1), text + "# a note\n",
                            text.replace("jobs:\n", "jobs:\n  # a note\n", 1)):
                 self.assertNotEqual(edited, text, file.name)
                 self.assertEqual(self.found(edited, text, path), [], file.name)

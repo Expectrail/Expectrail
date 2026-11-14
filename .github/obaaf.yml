@@ -45,6 +45,32 @@ protected_secrets:
 # Reviewed findings. Each entry says why it does not apply and expires, so it is reviewed again.
 ignore:
   - rule: OBAAF-GHA-001
+    path: .github/workflows/expectrail-comment.yml
+    job: judge
+    reason: >-
+      The trusted judge of the two-job gate (#254). GitHub starts it from the default branch's copy
+      of the file when a pull request's capture finishes, and it reads that capture only as data
+      after checking its workflow revision, run attempt and digest. It checks out the base commit,
+      never the pull request, and its one secret, the checks App key, is used only to publish the
+      evidence and clearance checks.
+    until: 2027-02-14
+  - rule: OBAAF-GHA-018
+    path: .github/workflows/expectrail-comment.yml
+    job: judge
+    reason: >-
+      The Expectrail Checks App's private key goes only to the step that mints a token with checks
+      write. The token goes only to the start and finish steps; the step that evaluates the capture
+      gets neither.
+    until: 2027-02-14
+  - rule: OBAAF-GHA-013
+    path: .github/workflows/expectrail-verify.yml
+    job: verify
+    reason: >-
+      A false finding. This job calls the reusable expectrail-capture.yml, whose job runs on
+      ubuntu-24.04, a GitHub-hosted runner. OBAAF 0.2.0 does not follow the call to read the
+      called job's runs-on.
+    until: 2027-02-14
+  - rule: OBAAF-GHA-001
     path: .github/workflows/unity.yml
     job: build
     reason: >-

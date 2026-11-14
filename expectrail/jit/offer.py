@@ -27,11 +27,12 @@ baseline stays what it was:
   (expectrail/jit/pixel.py): the proposer may also write checks about what is drawn, in the closed
   shape ``expectrail.pixel-check/v1``, over the objects the project binds and only with the predicates a
   trusted observer declares it can tell (``pixel.menu``). Under this setting the proposal carries
-  ``pixelChecks`` beside its trace checks. **The replay step does not judge them yet**: ``run`` and
-  ``revise`` refuse this setting (``replayable``), so no run record and no reproduction score can be
-  made with it, and pixel checks are judged only by ``pixel.assess`` from an observer's recorded
-  answers. It is in ``ALL``, not in ``OFFERS``: the workflow, the run record and the score do not
-  name it.
+  ``pixelChecks`` beside its trace checks, and ``run.generate`` replays them with frames, asks the
+  observer it is given about each run, keeps a pixel check only by the keep rule, and writes the rows
+  in the run record's ``pixelChecks`` (``replayable``). A revision does not carry pixel checks yet, so
+  ``revise`` refuses this setting (``revisable``). It is in ``ALL`` and ``REPLAYABLE``, not in
+  ``OFFERS``: the workflow, the command line's ``run`` and the reproduction score do not name it yet,
+  because no observer is wired into them.
 
 Nothing about what decides a check changes: a check is kept or dropped by replays only
 (expectrail/jit/assess.py), under either setting.
@@ -55,12 +56,15 @@ BASELINE = "baseline"
 SIGNALS_REACH = "signals-reach"
 EVIDENCE = "signals-reach-evidence"
 PIXEL = "signals-reach-evidence-pixel"
-# The settings a replay (``run``, ``revise``), the run record, the score and the workflow accept. PIXEL is
-# not one until the replay judges pixel checks: a record made under it would say the proposer was offered
-# pixel checks and judge none of them. ``measure`` and ``propose`` take every setting (``ALL``).
+# The settings the workflow, the command line's ``run`` and the reproduction score accept. PIXEL is not one
+# of them yet: they have no observer to judge pixel checks with. ``measure`` and ``propose`` take every
+# setting (``ALL``); ``run.generate`` takes every setting (``REPLAYABLE``), since it judges pixel checks
+# with the observer it is given; a revision takes ``OFFERS`` only (``REVISABLE``), since it does not
+# carry pixel checks to its second round.
 OFFERS = (BASELINE, SIGNALS_REACH, EVIDENCE)
-REPLAYABLE = OFFERS
 ALL = (*OFFERS, PIXEL)
+REPLAYABLE = ALL
+REVISABLE = OFFERS
 DEFAULT = BASELINE
 
 
@@ -90,10 +94,17 @@ def offers_pixel(offer) -> bool:
 
 
 def replayable(offer) -> str:
-    """``offer``, if a replay can be made and recorded under it; otherwise OfferError saying why."""
+    """``offer``, if ``run.generate`` can replay and record a change under it; otherwise OfferError."""
     if check(offer) not in REPLAYABLE:
-        raise OfferError(f"the offer {offer} cannot be replayed yet: the replay does not judge pixel checks "
-                         "(#286); judge them with expectrail.jit.pixel.assess from recorded observer answers")
+        raise OfferError(f"the offer {offer} cannot be replayed")
+    return offer
+
+
+def revisable(offer) -> str:
+    """``offer``, if a revision (``intent.revise_to_file``) can be made under it; otherwise OfferError saying why."""
+    if check(offer) not in REVISABLE:
+        raise OfferError(f"the offer {offer} cannot be revised yet: a revision does not carry pixel checks to its "
+                         "second round (#286)")
     return offer
 
 

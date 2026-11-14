@@ -36,14 +36,13 @@ def secret_refs(text: str) -> set[str]:
 
 
 def is_protected(name: str) -> bool:
-    return name.endswith("_API_KEY") or name == "HELDOUT_TOKEN"
+    return name.endswith("_API_KEY") or name in {"HELDOUT_TOKEN", "EXPECTRAIL_CHECKS_PRIVATE_KEY"}
 
 
 # Jobs in main-only that start when another workflow finishes (workflow_run) would run main's copy
-# of the workflow for a run a pull request may have started. None exists: the private scan tried it
-# and GitHub never started the run (#247). One added later is listed here, with tests of its own that
-# it reads the pull request only as data.
-WORKFLOW_RUN_REVIEWED: set[str] = set()
+# of the workflow for a run a pull request may have started. The private scan tried it
+# and GitHub never started the run (#247). The publisher reads the candidate as data, as tested in test_ci_gate.py.
+WORKFLOW_RUN_REVIEWED = {"expectrail-comment.yml:judge"}
 
 
 def workflows():

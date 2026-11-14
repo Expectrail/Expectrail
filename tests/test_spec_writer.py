@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from expectrail import approval
 from expectrail.contracts import validate
 from expectrail.spec_writer import SpecDraftError, approve, draft, lint, request_body
 
@@ -90,7 +91,9 @@ class ApproveTest(unittest.TestCase):
             spec = dict(json.loads(json.dumps(GOOD)), format="expectrail.test-spec/v0", instruction="x")
             path.write_text(json.dumps(spec))
             doc = approve(path, "sean", at="2026-10-27T15:00:00Z")
-            self.assertEqual(doc["approval"], {"by": "sean", "at": "2026-10-27T15:00:00Z"})
+            # The approval carries the digest of what was approved (#420), computed by approve.
+            self.assertEqual(doc["approval"], {"by": "sean", "at": "2026-10-27T15:00:00Z",
+                                               "specSha256": approval.spec_sha256(doc)})
             self.assertEqual(json.loads(path.read_text())["approval"]["by"], "sean")
             spec["objects"]["player"]["prompt"] = "robot on the left"
             path.write_text(json.dumps(spec))

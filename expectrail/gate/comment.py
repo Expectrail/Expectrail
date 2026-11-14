@@ -46,6 +46,12 @@ MAX_BODY = 60000  # GitHub refuses a comment over 65,536 characters
 MAX_FINDING_ROWS = 30
 MAX_CHECK_ROWS = 100
 MAX_REASONS = 5
+MAX_APPROVAL_NOTES = 5
+# The endings of the record's reasons that name an approval not bound to its spec's content (#420).
+# The same words as expectrail.approval (MISMATCH_REASON, LEGACY_NOTE); this module imports only the
+# standard library and the record, so they are written out here and a test holds the two together.
+APPROVAL_NOTE_ENDINGS = (": approval does not match the spec's content; a person must approve it again",
+                         ": approved before content binding")
 MAX_TEXT = 200
 MAX_PREVIOUS_IDS = 4096
 MAX_COMMENT_PAGES = 20
@@ -125,6 +131,7 @@ class Context:
     workflow_path: str
     artifact: str
     bot: str
+    trusted_report: bool = False
 
     @property
     def run_url(self) -> str:
@@ -298,6 +305,14 @@ def _checks_line(record: dict) -> str:
     if record["drafts"]:
         line += (f" {_n(record['drafts'], 'draft spec')} without a person's approval "
                  f"{'was' if record['drafts'] == 1 else 'were'} not used.")
+    # Approvals that are not bound to their spec's content (#420), named on every decision: one that
+    # no longer matches its spec (not used), and one written before content binding (still used).
+    notes = [r for r in record["reasons"] if isinstance(r, str) and r.startswith("spec ")
+             and r.endswith(APPROVAL_NOTE_ENDINGS)]
+    if notes:
+        line += " " + " ".join(f"{md(n, MAX_TEXT)}." for n in notes[:MAX_APPROVAL_NOTES])
+        if len(notes) > MAX_APPROVAL_NOTES:
+            line += f" And {len(notes) - MAX_APPROVAL_NOTES} more."
     return line
 
 
@@ -368,8 +383,9 @@ def _body(record: dict, ctx: Context, *, previous: list[str], touched: list[str]
     lines.append(f"<sub>Commit `{head[:12]}`. Expectrail {md(record['expectrail']['version'], 32)}"
                  + (f" at `{commit[:12]}`" if commit else "")
                  + ". A finding id is the first 12 hex digits of sha256(spec, route, kind), so a failure keeps "
-                 "its id across pushes. The verdict was computed in the pull request's own workflow run; this "
-                 "comment was posted by a separate job that only read it.</sub>")
+                 "its id across pushes. " + ("The trusted job judged the saved replays." if ctx.trusted_report
+                 else "The verdict was computed in the pull request's own workflow run; this comment was posted "
+                      "by a separate job that only read it.") + "</sub>")
     lines.append(f"<!-- expectrail-gate:v0 ids={','.join(now[:MAX_PREVIOUS_IDS])} -->")
     return "\n".join(lines) + "\n"
 
@@ -419,7 +435,8 @@ def stricter_than_judged(declared: "declared_intent.Declared", judged: str, deci
     return None
 
 
-def run(api: Api, ctx: Context, evidence: Path | None, watch: list[str] | None = None) -> dict:
+def run(api: Api, ctx: Context, evidence: Path | None, watch: list[str] | None = None, *,
+        problem_message: str | None = None) -> dict:
     """Post or update the comment. Returns {"action": created|updated|skipped, ...}."""
     if ctx.run_event != "pull_request":
         return {"action": "skipped", "reason": f"the verify run was a {ctx.run_event} run, not a pull request's"}
@@ -431,7 +448,7 @@ def run(api: Api, ctx: Context, evidence: Path | None, watch: list[str] | None =
     fork = ((pr.get("head") or {}).get("repo") or {}).get("full_name") != ctx.repo
     problem, record = None, None
     if evidence is None:
-        problem = f"no {ctx.artifact} artifact was found for the run"
+        problem = problem_message or f"no {ctx.artifact} artifact was found for the run"
     else:
         try:
             record = rec.read_record(Path(evidence) / "findings.json")

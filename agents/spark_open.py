@@ -36,7 +36,7 @@ from pathlib import Path
 from agents import feedback
 from agents.observations import from_trace_synthetic, with_reference_ground
 from harness.run import REPO
-from expectrail import spec_writer
+from expectrail import approval, spec_writer
 from expectrail.contracts import load
 from expectrail.evaluator import evaluate
 
@@ -96,7 +96,7 @@ def approved_specs(specs_dir: Path = SPECS_DIR) -> list[dict]:
     specs = []
     for path in sorted(specs_dir.glob("*.json")):
         spec = load(path, "test-spec")
-        if spec.get("approval"):
+        if approval.approved(spec):  # an approval that does not match the spec's content is none (#420)
             specs.append(spec)
     return specs
 

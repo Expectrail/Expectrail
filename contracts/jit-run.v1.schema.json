@@ -34,7 +34,7 @@
         "reps": {"type": "integer", "minimum": 1},
         "variantLimit": {"type": "integer", "minimum": 0},
         "budgetUsd": {"type": "number", "minimum": 0},
-        "offer": {"enum": ["baseline", "signals-reach", "signals-reach-evidence"],
+        "offer": {"enum": ["baseline", "signals-reach", "signals-reach-evidence", "signals-reach-evidence-pixel"],
                   "description": "What the generator was offered (expectrail/jit/offer.py). Absent in records written before the setting existed, which were made under baseline."},
         "candidate": {"enum": ["shown", "withheld"],
                       "description": "Whether the model that proposed the checks was given the candidate patch (shown) or nothing of it, neither its text nor a diff map made from it (withheld; issue #285, step 6). Only checks proposed with the candidate withheld are derived from the report and the base build alone (expectrail/jit/run.py, from_base_alone). Absent in records written before the setting existed, which were made with the candidate shown."}
@@ -134,12 +134,38 @@
                                   "source": {"enum": ["assumed", "published"]}}}
       }
     },
-    "diagnostics": {"type": "array", "maxItems": 50, "items": {"type": "string"}}
+    "diagnostics": {"type": "array", "maxItems": 50, "items": {"type": "string"}},
+    "pixelChecks": {
+      "description": "Pixel checks (#286), written only under the signals-reach-evidence-pixel setting: one row per pixel check the proposal carried (expectrail/jit/pixel.py). A check is kept only when it passes on every clean run and fails on every run of the bug build, under one observer setting; a kept check that fails on every candidate run is a catch. A reader decides keeping from clean and bug (expectrail.jit.pixel.kept_rows), never from status. These rows are not in catches, counts or the gate summary.",
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["check", "status", "reason", "reservedUsd", "setting", "clean", "bug", "candidate", "outcome"],
+        "properties": {
+          "check": {"type": "object", "required": ["format", "id", "observer", "probe", "authority", "origin"],
+                    "description": "An expectrail.pixel-check/v1 document (contracts/pixel-check.v1.schema.json); a reader validates it against that schema.",
+                    "properties": {"format": {"const": "expectrail.pixel-check/v1"},
+                                   "authority": {"const": "model_prior"}, "origin": {"const": "AUTO_DIFF"}}},
+          "status": {"enum": ["kept", "dropped", "not-run"]},
+          "reason": {"type": ["string", "null"], "maxLength": 300},
+          "reservedUsd": {"type": "number", "minimum": 0},
+          "setting": {"type": ["object", "null"],
+                      "description": "How the observer was asked, the same on every clean and bug run; null when it was not asked, or not asked the same way."},
+          "clean": {"$ref": "#/$defs/pixelRuns"},
+          "bug": {"$ref": "#/$defs/pixelRuns"},
+          "candidate": {"$ref": "#/$defs/pixelRuns"},
+          "outcome": {"enum": ["catch", "no-catch", "needs-review", "not-evaluated"]}
+        }
+      }
+    }
   },
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._/-]*$"},
     "runs": {"type": "array", "items": {"enum": ["pass", "fail", "not_exercised", "insufficient_observation",
-                                                  "execution_error"]}}
+                                                  "execution_error"]}},
+    "pixelRuns": {"type": "array", "maxItems": 20, "items": {"enum": ["pass", "fail", "needs-review"]}}
   }
 }

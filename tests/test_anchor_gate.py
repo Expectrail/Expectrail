@@ -79,7 +79,7 @@ class Game:
                 data = png_bytes(W, H, 5000 + LOOKS.index(look) * 1000 + i)
                 (frames_dir / f"f{i:08d}.png").write_bytes(data)
                 self.index[base64.b64encode(data).decode()] = (look, i)
-        return {"trace": {"physicsTicksPerSecond": 120, "rows": rows},
+        return {"trace": {"physicsTicksPerSecond": 120, "rows": rows, "unknownActions": []},
                 "replaySha256": digest({"look": look, "route": route.name}), "framesDir": frames_dir}
 
     def transport(self, body: dict):

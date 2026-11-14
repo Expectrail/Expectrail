@@ -1,53 +1,14 @@
-# The Expectrail gate on this repository's own pull requests, untrusted half (docs/ci-gate.md).
-#
-# It runs the pull request's code: the game, and this repository's own copy of the verify action.
-# So it has read-only permissions and no secret. It does not pass the held-out token: here a job
-# that runs a pull request's code never sees the private set (OBAAF-GHA-001), and
-# agents-harness-private in ci.yml checks the private routes on main instead. The evidence goes up
-# as the expectrail-gate artifact; expectrail-comment.yml, a separate trusted workflow, posts it.
 name: Expectrail verify
-
 on:
   pull_request:
-    # labeled, unlabeled and edited as well as the default three: the change's declared intent is a
-    # label or a line of the description (docs/ci-gate.md), and a verdict judged before it changed
-    # is refused by the comment job.
     types: [opened, synchronize, reopened, labeled, unlabeled, edited]
-    paths:
-      - 'game/**'
-      - 'agents/specs/**'
-      - 'harness/**'
-      - 'expectrail/**'
-      - 'agents/observations.py'
-      - 'agents/export_scan.py'
-      - 'contracts/**'
-      - '.github/actions/expectrail-*/**'
-      - '.github/workflows/expectrail-*.yml'
-
 permissions:
   contents: read
-
 concurrency:
   group: expectrail-verify-${{ github.event.pull_request.number }}
   cancel-in-progress: true
-
 jobs:
   verify:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
     permissions:
       contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Replay the platformer on two routes, before and after the change
-        uses: ./.github/actions/expectrail-verify
-        with:
-          game-path: game/platformer
-          routes: |
-            harness/routes/smoke.json
-            harness/routes/combat.json
-          specs: agents/specs
-          # The pull request's game never runs outside the replay sandbox here (#253).
-          require-sandbox: 'true'
+    uses: ./.github/workflows/expectrail-capture.yml
