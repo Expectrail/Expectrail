@@ -303,11 +303,17 @@ def warm(*, base: str | None = None, model: str | None = None, key: str | None =
     key = key or api_key()
     if not key:
         raise SamError(f"set one of {', '.join(KEY_ENVS)} for {base}")
+    live = opener is urllib.request.urlopen
     body = json.dumps({"model": model, "max_tokens": 4, "temperature": 0,
                        "messages": [{"role": "user", "content": "Reply with OK."}]}).encode()
     started = clock()
     last = ""
     while True:
+        from expectrail.spend import BudgetStop, hold
+        try:
+            hold("glimmer", live=live)
+        except BudgetStop as exc:
+            raise SamError(str(exc), kind="budget") from exc
         req = urllib.request.Request(f"{base}/chat/completions", data=body, method="POST",
                                      headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
         try:
@@ -371,6 +377,11 @@ class GlimmerClient(MetaSamClient):
         if key == os.environ.get("META_API_KEY", "").strip():
             raise SamError("the Glimmer key is the same as META_API_KEY, which Muse Code (the fixer) "
                            "receives; the verifier's vision key must be its own")
+        from expectrail.spend import BudgetStop, require_cap
+        try:
+            require_cap("glimmer")
+        except BudgetStop as exc:
+            raise SamError(str(exc), kind="budget") from exc
         req = urllib.request.Request(
             f"{self.base}/chat/completions", data=json.dumps(body).encode(), method="POST",
             headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
@@ -380,7 +391,13 @@ class GlimmerClient(MetaSamClient):
 
     def _call(self, body: dict) -> tuple[bytes, str]:
         delay = 2.0
+        live = self._transport is self._http
         for attempt in range(self.retries + 1):
+            from expectrail.spend import BudgetStop, hold
+            try:
+                hold("glimmer", live=live)
+            except BudgetStop as exc:
+                raise SamError(str(exc), kind="budget") from exc
             with self._lock:
                 self.calls += 1
             started = time.monotonic()

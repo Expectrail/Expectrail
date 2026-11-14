@@ -1,0 +1,13 @@
+{
+  "format": "expectrail.vision-month/v1",
+  "month": "2026-11",
+  "limitUsd": 200,
+  "spentUsd": 0.5,
+  "entries": [
+    {
+      "jobId": "example-job",
+      "reservedUsd": 0.5,
+      "at": "2026-11-14T00:00:00+00:00"
+    }
+  ]
+}

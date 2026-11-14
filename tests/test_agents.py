@@ -2483,9 +2483,10 @@ class MuseJudgeTest(unittest.TestCase):
             stderr="",
         )
         with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch("agents.muse_judge.muse_code_ready", return_value=True):
-                with mock.patch("agents.muse_judge.subprocess.run", return_value=fake):
-                    result = run_muse_judge(
+            with mock.patch.dict(os.environ, {"EXPECTRAIL_MUSE_USD_CAP": "1000"}):
+                with mock.patch("agents.muse_judge.muse_code_ready", return_value=True):
+                    with mock.patch("agents.muse_judge.subprocess.run", return_value=fake):
+                        result = run_muse_judge(
                         Path(tmp) / "judge",
                         before=BEFORE_FRAME,
                         after=AFTER_FRAME,

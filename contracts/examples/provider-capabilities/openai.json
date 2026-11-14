@@ -1,0 +1,17 @@
+{
+  "format": "expectrail.provider-capability/v1",
+  "provider": "openai",
+  "protocol": "openai",
+  "roles": [
+    {
+      "role": "triage",
+      "models": [
+        "gpt-4o"
+      ],
+      "capEnv": "EXPECTRAIL_TRIAGE_USD_CAP",
+      "unit": "request",
+      "reserveUsd": 0.05,
+      "basis": "Hold of $0.05 before each triage request. The bill is not known until the provider answers; a recorded Muse call on 2026-10-27 was $0.01 (bench/cost)."
+    }
+  ]
+}

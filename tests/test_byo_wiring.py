@@ -155,7 +155,8 @@ class TriageTest(unittest.TestCase):
         buf = io.StringIO()
         with tempfile.TemporaryDirectory() as tmp, \
                 mock.patch.dict(os.environ, {"EXPECTRAIL_LLM_PROVIDER": "anthropic",
-                                             "ANTHROPIC_API_KEY": "a"}, clear=True), \
+                                             "ANTHROPIC_API_KEY": "a",
+                                             "EXPECTRAIL_TRIAGE_USD_CAP": "1"}, clear=True), \
                 mock.patch("expectrail.providers.resolve_provider", return_value=cfg), \
                 mock.patch("expectrail.providers.chat_completion", return_value={"choices": [
                     {"message": {"content": "   "}}]}), \

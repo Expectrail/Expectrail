@@ -1,0 +1,17 @@
+{
+  "format": "expectrail.provider-capability/v1",
+  "provider": "fireworks",
+  "protocol": "openai",
+  "roles": [
+    {
+      "role": "glimmer",
+      "models": [
+        "accounts/fireworks/models/muse-glimmer-30b"
+      ],
+      "capEnv": "EXPECTRAIL_GLIMMER_USD_CAP",
+      "unit": "request",
+      "reserveUsd": 0.05,
+      "basis": "Hold per request. The deployment itself is about $8 an hour (docs/open-weights.md); this hold is not that bill."
+    }
+  ]
+}
