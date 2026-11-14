@@ -32,6 +32,7 @@ unchanged. `tests/test_two_observers.py` gains three assertions on that text; no
   not one run was cleared.
 - `python3 -m unittest tests.test_two_observers tests.test_release_gate`: OK.
 - The full suite on the branch (main at 8083215 plus this change): 3,272 tests, OK, 31 skipped.
+- The full suite again after merging main at 6993726 (#428): 3,281 tests, OK, 31 skipped.
 - `python3 -m tools.release_gate --require --out docs/release-gate.md` on 346f795 with real Godot:
   19 tests in 560 s, OK (1 expected failure, the #417 probe); held 12, open 23, failed 0, not run 0.
   The previous summary held 10.
