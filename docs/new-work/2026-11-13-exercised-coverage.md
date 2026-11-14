@@ -79,3 +79,6 @@ validate the patch on Linux before pushing and opening the PR.
 
 ## Architect run (Linux, main c5d1e533, Godot 4.7.2)
 Full suite: 3111 tests, OK, 27 skipped. Engine-gated modules with EXPECTRAIL_ENGINE_TESTS=required (body_box, event_input, ground_under, pause_input, second_project): 59 OK. check-real-replays.py: clean pass, bug fail, 240 rows, 120 frames. Unchanged decisions: the three Run it samples accept, reject, accept with their recorded vision answers; the orchestrator sample accept, reject, accept.
+
+## Architect fix after the merge guard (held-out scope)
+The guard found that a spec scoped with `coverage.routes` was judged on no held-out route and the gate accepted with zero held-out checks. Fixed: held-out routes judge the spec without its scope (`verify.unscoped`), and `record.decide` makes a judged held-out set with no checks needs-review. `tests.test_ci_gate.HeldOutScopeTest` holds both; it failed (accept) before the fix.

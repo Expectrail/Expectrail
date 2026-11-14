@@ -276,6 +276,9 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
         return "needs-review", ([_not_demonstrated(counts, repair, base_judged)] if unverified else []) + ["no checks ran"]
     if required_routes_missing:
         reasons.append(f"not-exercised: {required_routes_missing} required route(s) were not selected or run")
+    if held.get("status") == "judged" and held.get("routes", 0) and not held["checks"]:
+        # Held-out routes ran but gave no check a result: that is not an empty pass (merge guard on #416).
+        reasons.append(f"not-exercised: {held['routes']} held-out route(s) ran and judged no check")
     if observers and observers["rule"] == BOTH and observers["visual"] is None and not counts["needsReview"]:
         reasons.append("not-exercised: the required visual observer is disabled")
     # Legacy callers supply only checks/failed/needsReview; persisted records always include passed.

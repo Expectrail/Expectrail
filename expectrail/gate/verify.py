@@ -721,6 +721,15 @@ class GameChanged(RuntimeError):
 HELD_ZERO = {"routes": 0, "checks": 0, "passed": 0, "failed": 0, "needsReview": 0}
 
 
+def unscoped(spec: dict) -> dict:
+    """The spec without its route scope (``coverage.routes``), for judging held-out routes."""
+    coverage = spec.get("coverage")
+    if not isinstance(coverage, dict) or "routes" not in coverage:
+        return spec
+    rest = {k: v for k, v in coverage.items() if k != "routes"}
+    return {k: v for k, v in spec.items() if k != "coverage"} | ({"coverage": rest} if rest else {})
+
+
 def judge_heldout(root: Path | None, game: Path, specs: list[dict], replay: Replay, *,
                   rule: str = rec.ENGINE_ONLY, visual=None, frames_to_visual: bool = False,
                   capture_fps: int | None = CAPTURE_FPS) -> dict:
@@ -762,7 +771,11 @@ def judge_heldout(root: Path | None, game: Path, specs: list[dict], replay: Repl
                 run = replay(path, game, scratch / f"r{n:02d}", visual is not None)
                 run = dict(run, engineObservations=observations(run["trace"], run["replaySha256"]))
                 ticks = route_ticks(path)
-                results = [judge_run(spec, run, rule=rule, visual=visual, keep=False, ticks=ticks,
+                # A spec's coverage.routes names the public routes its author can see. A held-out route
+                # is never among them, so applying the scope here would drop every scoped spec and leave
+                # a judged held-out set with no checks (merge guard on #416). Every approved spec is
+                # judged on every held-out route, as before coverage existed.
+                results = [judge_run(unscoped(spec), run, rule=rule, visual=visual, keep=False, ticks=ticks,
                                      capture_fps=capture_fps, route=rec.read_json(path, ROUTE_CAP, "route")["name"])["result"]
                            for spec in specs]
             except (Exception, SystemExit):  # noqa: BLE001

@@ -74,3 +74,6 @@ python3 -m expectrail.evaluator --spec spec.json --observations observations.jso
 while excluding nonapplicable rows. Old records without the new fields remain readable. Records
 using the new scope/result require this change's writer and reader together; older closed-schema
 readers refuse unknown fields/results rather than silently accepting them.
+
+## Held-out routes
+A spec's `coverage.routes` names the public routes its author can see. It is not applied to held-out routes: every approved spec is judged on every held-out route, as before coverage existed. A held-out set that ran but gave no check a result is needs-review (`not-exercised`), never an empty pass, in the gate and in `check_consistency` alike (merge guard on #416).
