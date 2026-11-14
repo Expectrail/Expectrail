@@ -19,12 +19,12 @@ No change to `jit.yml`: #465 (labelled `needs-sean`) rewrites the same jobs, and
 would leave it a conflict.
 
 ## What was run
-- `python3 -m unittest tests.test_repro_score_withheld`: 13 tests, OK. Among them, the pipeline on the
+- `python3 -m unittest tests.test_repro_score_withheld`: 14 tests, OK. Among them, the pipeline on the
   simulated game with a fake model and the candidate withheld, scored by the command: the air-jump
   defect is reproduced under `--candidate withheld`, the scorer's reproducing checks equal
   `run.from_base_alone(record)["fromBaseAlone"]`, and the same record is no result by default.
-- With the new check in `_read` disabled by hand, 6 of the 13 tests fail (then restored).
-- Full suite on the branch merged with main: see the pull request.
+- With the new check in `_read` disabled by hand, 6 of the 13 tests then in the file failed (then restored).
+- Full suite on the branch rebased on main 89ce6ff: 3,568 tests, OK, 42 skipped.
 - No engine, no model, no dispatch. Nothing was spent.
 
 ## Not done
