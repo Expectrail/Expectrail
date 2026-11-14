@@ -5,6 +5,9 @@ extends Node
 ## pauses its scene tree (a pause menu), so a route can open a menu and close it again.
 ##
 ## User arguments (after `--`): --route=<path> --trace=<path> [--seed=<int>] [--player=<node name>]
+## [--bindings=<json>]  the project's bindings, passed as values (a node or a group, and its texture).
+##                      The runner reads expectrail.project.json and puts only those values here, so
+##                      the path is not one from the host: inside the sandbox the game is a copy.
 ##
 ## Each trace row also carries, when the level has tile layers:
 ##   ground: world y of the solid surface under the player (see _ground_under), from the level's
@@ -43,6 +46,9 @@ var _tick: int = 0
 var _trace: Array = []
 var _trace_path: String = ""
 var _player_name: String = "Player"
+var _player_node: String = ""
+var _player_group: String = ""
+var _bindings: Dictionary = {}
 var _player: Node2D = null
 var _recorder: Node = null
 var _layers: Array = []          # every TileMapLayer in the level, found on the first record
@@ -60,6 +66,7 @@ var _enemies_searched := false
 var _projectile_class: StringName = &"Bullet"
 var _projectiles: Array = []     # [id, node] of every projectile seen entering the tree
 var _next_id := 0
+var _stopped := false
 
 # How far above the player's origin a surface may sit and still count as the ground under it:
 # a robot sunk into the ground by less than this is measured against the surface it sank into.
@@ -101,6 +108,15 @@ func _ready() -> void:
 	_sprite_name = args.get("sprite", "Sprite2D")
 	_enemy_class = StringName(args.get("enemies", "Enemy"))
 	_projectile_class = StringName(args.get("projectiles", "Bullet"))
+	if args.has("bindings"):
+		var parsed = JSON.parse_string(args["bindings"])
+		if typeof(parsed) != TYPE_DICTIONARY:
+			push_error("expectrail: --bindings must be a JSON object of role bindings")
+			get_tree().quit(2)
+			return
+		_bindings = parsed
+		if not _take_player_binding():
+			return
 	get_tree().node_added.connect(_on_node_added)
 	var route = JSON.parse_string(FileAccess.get_file_as_string(args["route"]))
 	if typeof(route) != TYPE_DICTIONARY or not (route.get("format", "") in ROUTE_FORMATS):
@@ -167,11 +183,102 @@ func _event_for(action: StringName, pressed: bool) -> InputEvent:
 	return event
 
 
+func _take_player_binding() -> bool:
+	if not _bindings.has("player"):
+		return true
+	var binding = _bindings["player"]
+	if typeof(binding) != TYPE_DICTIONARY:
+		_stop("expectrail: binding player must be an object with a node or a group")
+		return false
+	var has_node: bool = binding.has("node")
+	var has_group: bool = binding.has("group")
+	if has_node == has_group:
+		_stop("expectrail: binding player needs a node or a group, not both and not neither")
+		return false
+	if has_node:
+		_player_node = str(binding["node"])
+	else:
+		_player_group = str(binding["group"])
+	return true
+
+
+func _stop(message: String) -> void:
+	if _stopped:
+		return
+	_stopped = true
+	push_error(message)
+	get_tree().quit(2)
+
+
+func _node_at(path: String) -> Node:
+	if path.begins_with("/"):
+		return get_node_or_null(path)
+	var scene := get_tree().current_scene
+	if scene == null:
+		return null
+	var direct := scene.get_node_or_null(NodePath(path))
+	if direct != null:
+		return direct
+	if not path.contains("/"):
+		return scene.find_child(path, true, false)
+	return null
+
+
+func _find_player() -> Node2D:
+	var scene := get_tree().current_scene
+	if scene == null:
+		return null
+	if _player_group != "":
+		var found: Array = []
+		for node in get_tree().get_nodes_in_group(_player_group):
+			if node is Node2D:
+				found.append(node)
+		if found.size() == 1:
+			return found[0]
+		_stop("expectrail: player group %s matches %d nodes; it must match one" % [_player_group, found.size()])
+		return null
+	if _player_node != "":
+		var node := _node_at(_player_node)
+		if node == null:
+			_stop("expectrail: player node %s was not found" % _player_node)
+			return null
+		return node as Node2D
+	return scene.find_child(_player_name, true, false) as Node2D
+
+
+func _bound_nodes(role: String) -> Array:
+	var binding: Dictionary = _bindings[role]
+	var out: Array = []
+	if binding.has("group"):
+		for node in get_tree().get_nodes_in_group(str(binding["group"])):
+			if node is Node2D:
+				out.append(node)
+		return out
+	var node := _node_at(str(binding.get("node", "")))
+	if node is Node2D:
+		out.append(node)
+	return out
+
+
+func _matches_binding(node: Node, role: String) -> bool:
+	var binding: Dictionary = _bindings[role]
+	if binding.has("group"):
+		return node.is_in_group(str(binding["group"]))
+	var path := str(binding.get("node", ""))
+	if path.begins_with("/"):
+		return str(node.get_path()) == path
+	if path.contains("/"):
+		return str(node.get_path()).ends_with("/" + path) or str(node.get_path()) == path
+	return node.name == path
+
+
 func record() -> void:
+	if _stopped:
+		return
 	if _player == null:
-		var scene := get_tree().current_scene
-		if scene != null:
-			_player = scene.find_child(_player_name, true, false) as Node2D
+		_player = _find_player()
+		if _stopped:
+			return
 	var row := {"tick": _tick, "frame": Engine.get_frames_drawn()}
 	if _player != null:
 		row["player"] = [snappedf(_player.global_position.x, 0.001), snappedf(_player.global_position.y, 0.001)]
@@ -229,6 +336,8 @@ func _finish() -> void:
 		if not _art.is_empty():
 			out["levelArt"] = _art
 		var file := FileAccess.open(_trace_path, FileAccess.WRITE)
+		if not _bindings.is_empty():
+			out["bindings"] = _bindings
 		file.store_string(JSON.stringify(out, "", false))
 		file.close()
 	get_tree().quit(0)
@@ -241,10 +350,13 @@ func _coin_positions() -> Array:
 		if scene == null:
 			return []
 		_coins_searched = true
-		for node in scene.find_children("*", "Node2D", true, false):
-			var script = node.get_script()
-			if script != null and script.get_global_name() == _coin_class:
-				_coins.append(node)
+		if _bindings.has("coin"):
+			_coins = _bound_nodes("coin")
+		else:
+			for node in scene.find_children("*", "Node2D", true, false):
+				var script = node.get_script()
+				if script != null and script.get_global_name() == _coin_class:
+					_coins.append(node)
 	var out := []
 	for coin in _coins:
 		if is_instance_valid(coin) and coin.is_inside_tree():
@@ -259,9 +371,15 @@ func _is_class(node: Node, cls: StringName) -> bool:
 
 
 func _on_node_added(node: Node) -> void:
-	if node is Node2D and _is_class(node, _projectile_class):
+	if node is Node2D and _is_projectile(node):
 		_projectiles.append([_next_id, node])
 		_next_id += 1
+
+
+func _is_projectile(node: Node) -> bool:
+	if _bindings.has("projectile"):
+		return _matches_binding(node, "projectile")
+	return _is_class(node, _projectile_class)
 
 
 func _enemy_positions() -> Array:
@@ -270,10 +388,15 @@ func _enemy_positions() -> Array:
 		if scene == null:
 			return []
 		_enemies_searched = true
-		for node in scene.find_children("*", "Node2D", true, false):
-			if _is_class(node, _enemy_class):
+		if _bindings.has("enemy"):
+			for node in _bound_nodes("enemy"):
 				_enemies.append([_next_id, node])
 				_next_id += 1
+		else:
+			for node in scene.find_children("*", "Node2D", true, false):
+				if _is_class(node, _enemy_class):
+					_enemies.append([_next_id, node])
+					_next_id += 1
 	return _tracked_positions(_enemies)
 
 

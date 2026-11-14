@@ -226,7 +226,7 @@ def godot_cmd(godot: Path, display: bool) -> list[str]:
     return cmd
 
 
-def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = None, fps: int = 60,
+def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = None, fps: int | None = 60,
         godot: Path | None = None, patches: list[Path] | None = None,
         force_import: bool = False, capture_frames: bool = True, sandbox: str | None = None,
         within: Path | None = None) -> dict:
@@ -240,6 +240,17 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
     caller that verifies a checkout passes the checkout). A link that leaves it, loops or leads
     nowhere stops the replay before anything is copied or run."""
     game = game or REPO / "game" / "platformer"
+    # A config that exists is the game's settings. fps is None when the verify path wants that
+    # rate instead of the number in this file. The bindings go to the harness as values: inside
+    # the sandbox the game is a copy, and a path from this machine would not be there.
+    from expectrail.project_config import ProjectConfigError, harness_arguments, read_game
+
+    try:
+        config = read_game(game)
+    except ProjectConfigError as exc:
+        raise SystemExit(str(exc)) from exc
+    if fps is None:
+        fps = int(config["captureFps"]) if config is not None else 60
     godot = godot or find_godot()
     out.mkdir(parents=True, exist_ok=True)
     work, frames = out / "work", out / "frames"
@@ -307,6 +318,8 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
         cmd = [engine, "--headless", "--path", project, "--audio-driver", "Dummy", "--fixed-fps", str(fps)]
     cmd += ["--disable-vsync", "--", f"--route={route_arg}", f"--trace={trace_arg}",
             f"--seed={route_doc.get('seed', 1)}"]
+    if config is not None:
+        cmd += harness_arguments(config)
     try:
         with timing.phase("replay"):
             if tool is not None:
@@ -368,7 +381,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--patch", type=Path, action="append", default=[],
                    help="patch to apply (repeatable; order is seed then candidate)")
     p.add_argument("--game", type=Path, help="game directory (default: game/platformer)")
-    p.add_argument("--fps", type=int, default=60)
+    p.add_argument("--fps", type=int, default=None,
+                   help="capture frames per second (default: the project config's captureFps, else 60)")
     p.add_argument("--warm-cache", action="store_true",
                    help="warm the .godot/ import cache and exit")
     p.add_argument("--sandbox", choices=box.MODES,

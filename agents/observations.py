@@ -66,6 +66,24 @@ def _player_box(x: float, y: float) -> list[float]:
     return [x - PLAYER_HALF_W, y - PLAYER_H, x + PLAYER_HALF_W, y]
 
 
+def _is_world_box(body) -> bool:
+    return (isinstance(body, list) and len(body) == 4
+            and all(type(v) in (int, float) and math.isfinite(v) for v in body))
+
+
+def _player_world_box(row: dict, x: float, y: float, *, feet: bool) -> list[float]:
+    """The player's box in world pixels.
+
+    A row that carries ``body`` uses that box: the engine's own collision for this tick.
+    A row without one (a trace from before the harness logged it) keeps the bundled constants.
+    """
+    body = row.get("body")
+    if _is_world_box(body):
+        return [float(v) for v in body]
+    return _player_box(x, y + FEET_OFFSET if feet else y)
+
+
+
 def _frame_tick(n: int, step: int) -> int:
     """The physics tick whose state a captured frame shows: the last one before it was drawn."""
     return n * step + step - 1
@@ -102,12 +120,12 @@ def from_trace_synthetic(
     Physics is 120 Hz and capture is 60 fps, so a frame shows the state after every other tick.
 
     Traces from the current harness carry the level's ground line (``ground``) and the camera
-    (``view``): the ground box then sits on that line, the player's box ends at its feet
-    (origin + FEET_OFFSET), and both are in captured-frame pixels like SAM's boxes, so a spec's
-    tolerancePx means the same thing for either provider. A row with no ground line (no tile
-    collision under the player, or a level with none at all) has no ground observation, so a check
-    against the ground cannot be decided there and is needs-review: an unmeasured ground is never
-    stood in for by a guess.
+    (``view``): the ground box then sits on that line, the player's box is the row's ``body`` when
+    the harness logged one and otherwise ends at its feet (origin + FEET_OFFSET), and both are in
+    captured-frame pixels like SAM's boxes, so a spec's tolerancePx means the same thing for either
+    provider. A row with no ground line (no tile collision under the player, or a level with none
+    at all) has no ground observation, so a check against the ground cannot be decided there and is
+    needs-review: an unmeasured ground is never stood in for by a guess.
 
     Traces from before the harness logged the camera fall back to world pixels and a floor taken
     from the player's own on-floor positions, which cannot see a player that rests too low. That
@@ -137,7 +155,7 @@ def from_trace_synthetic(
                     objects["ground"] = [{"box": [round(gx - 4000.0, 3), round(gy, 3), round(gx + 4000.0, 3),
                                                   round(gy + 2 * GROUND_DEPTH, 3)], "score": 0.95, "track": 2}]
                 if y <= floor + 800:  # far below the level: off screen, so not seen
-                    objects["player"] = [{"box": _frame_box(view, _player_box(x, y + FEET_OFFSET)),
+                    objects["player"] = [{"box": _frame_box(view, _player_world_box(row, x, y, feet=True)),
                                           "score": 0.94, "track": 1}]
             frames.append({"frame": n, "objects": objects})
     else:
@@ -151,8 +169,8 @@ def from_trace_synthetic(
             if player is None or float(player[1]) > floor + 800:
                 objects["player"] = []
             else:
-                objects["player"] = [{"box": _player_box(float(player[0]), float(player[1])), "score": 0.94,
-                                      "track": 1}]
+                objects["player"] = [{"box": _player_world_box(row, float(player[0]), float(player[1]), feet=False),
+                                      "score": 0.94, "track": 1}]
             frames.append({"frame": tick // step, "objects": objects})
 
     return {
@@ -325,8 +343,9 @@ def engine_refs_by_frame(trace: dict, frame_size: tuple[int, int], frames: list[
                          fps: int = 60) -> dict[int, dict[str, list[list[float]]]]:
     """Where the engine put each checkable object on each captured frame, as boxes in frame pixels.
 
-    ``player``: the robot's body (origin to feet, as from_trace_synthetic draws it), from the
-    position log. ``coin``: every coin still in the level, from the harness's ``coins`` rows. Both
+    ``player``: the engine's ``body`` box for that tick when the row has one, otherwise the
+    robot's body (origin to feet, as the constants draw it). ``coin``: every coin still in the
+    level, from the harness's ``coins`` rows. Both
     use the camera of that frame (``view``). A frame the trace cannot place (no row, no camera) is
     left out, so a caller can tell "the engine has nothing here" from "no coins here". The frame
     size is accepted for symmetry with engine_ground_by_frame; boxes may lie off the frame.
@@ -346,7 +365,7 @@ def engine_refs_by_frame(trace: dict, frame_size: tuple[int, int], frames: list[
         refs: dict[str, list[list[float]]] = {"player": [], "coin": []}
         if player is not None:
             x, y = float(player[0]), float(player[1])
-            refs["player"] = [_frame_box(view, _player_box(x, y + FEET_OFFSET))]
+            refs["player"] = [_frame_box(view, _player_world_box(row, x, y, feet=True))]
         for cx, cy in row.get("coins") or []:
             refs["coin"].append(_frame_box(view, [float(cx) - COIN_HALF, float(cy) - COIN_HALF,
                                                   float(cx) + COIN_HALF, float(cy) + COIN_HALF]))

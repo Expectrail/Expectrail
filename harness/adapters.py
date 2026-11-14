@@ -167,8 +167,8 @@ def _godot_verify_run(route: Path, out: Path, *, game: Path, capture_frames: boo
     # sandbox mode and the checkout a link may lead into. The game is the caller's, never a default.
     if game is None:
         raise ValueError("a verification names its game; there is no default project")
-    return _godot.run(Path(route), Path(out), game=Path(game), capture_frames=capture_frames, sandbox=sandbox,
-                      within=within)
+    return _godot.run(Path(route), Path(out), game=Path(game), fps=None, capture_frames=capture_frames,
+                      sandbox=sandbox, within=within)
 
 
 def _godot_missing() -> list[str]:

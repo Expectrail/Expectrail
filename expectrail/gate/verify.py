@@ -136,6 +136,27 @@ def observations(trace: dict, replay_sha256: str) -> dict:
     return from_trace_synthetic(trace, replay_sha256=replay_sha256)
 
 
+def capture_rate(engine, game: Path | None) -> int | None:
+    """Frames per second of game time for this verification.
+
+    The adapter's own rate, unless the game has a project config: then the config's
+    ``captureFps``. A config that is present and not valid stops the run.
+    """
+    rate = engine.capture_fps
+    if game is None:
+        return rate
+    from expectrail.project_config import ProjectConfigError, read_game
+
+    try:
+        config = read_game(game)
+    except ProjectConfigError as exc:
+        raise ConfigError(str(exc)) from exc
+    if config is None:
+        return rate
+    return int(config["captureFps"])
+
+
+
 def evaluate(spec: dict, obs: dict, **context) -> dict:
     from expectrail.evaluator import evaluate as _evaluate
 
@@ -993,7 +1014,8 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     for name, data, _sha in checks.routes:
         (routes_dir / f"{name}.json").write_bytes(data)
 
-    how = {"rule": rule, "visual": visual, "on_phase": on_phase, "capture_fps": engine.capture_fps}
+    how = {"rule": rule, "visual": visual, "on_phase": on_phase,
+           "capture_fps": capture_rate(engine, head_game if game_ok(head_game) else None)}
     held_back = False   # under `both`: the held-out frames were kept from the visual observer
     head_runs: dict = {}
     base_runs: dict = {}
@@ -1007,7 +1029,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         held = {"status": "unavailable", **HELD_ZERO}
     else:
         held = judge_heldout(heldout.resolve(), head_game, spec_docs, replay, rule=rule, visual=visual,
-                             frames_to_visual=heldout_frames_to_visual, capture_fps=engine.capture_fps)
+                             frames_to_visual=heldout_frames_to_visual, capture_fps=how["capture_fps"])
         if rule == rec.BOTH and visual is not None and not heldout_frames_to_visual:
             held_back = True
 
@@ -1048,7 +1070,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
             for side, folder in (("base", base_game), ("head", head_game)):
                 # By the same rule as the first run: under `both` a run passes only with both observers.
                 more = judge_arm(folder, again, spec_docs, work / f"{side}-run{n}", replay, label=side,
-                                 rule=rule, visual=visual, capture_fps=engine.capture_fps) if again else {}
+                                 rule=rule, visual=visual, capture_fps=how["capture_fps"]) if again else {}
                 for key, kept in runs.items():
                     kept[side].append(more[key]["result"])
         repair = rec.repair_block([{"spec": c["spec"], "route": c["route"], **runs[(c["spec"], c["route"])]}

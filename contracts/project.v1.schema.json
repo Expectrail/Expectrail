@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Expectrail/Expectrail/contracts/project.v1.schema.json",
+  "title": "Project: how Expectrail sees one game",
+  "description": "Read by expectrail.project_config. It names the project, its rates, its input actions and, per object, the node path or group it is and the texture it is drawn with. It does not hold sizes: a trace row's body is the player's collision box for that tick. A provider value is a ref: or env: name, never a secret. Unknown fields are refused.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "adapter",
+    "entryScene",
+    "viewport",
+    "physicsTicksPerSecond",
+    "captureFps",
+    "inputActions",
+    "bindings"
+  ],
+  "properties": {
+    "format": {"const": "expectrail.project/v1"},
+    "adapter": {"type": "string", "enum": ["godot", "unity"]},
+    "version": {"type": "string", "minLength": 1, "maxLength": 40},
+    "toolchain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "version"],
+      "properties": {
+        "engine": {"type": "string", "minLength": 1, "maxLength": 40},
+        "version": {"type": "string", "minLength": 1, "maxLength": 40}
+      }
+    },
+    "entryScene": {"type": "string", "minLength": 6, "maxLength": 200},
+    "viewport": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"type": "integer", "minimum": 1, "maximum": 10000}
+    },
+    "physicsTicksPerSecond": {"type": "integer", "minimum": 1, "maximum": 1000},
+    "captureFps": {"type": "integer", "minimum": 1, "maximum": 240},
+    "inputActions": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "maxLength": 64}
+    },
+    "bindings": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 32,
+      "propertyNames": {"pattern": "^[a-z][a-z0-9-]{0,39}$"},
+      "additionalProperties": {"$ref": "#/$defs/binding"}
+    },
+    "routes": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {"type": "string", "minLength": 1, "maxLength": 200}
+    },
+    "approvedContracts": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {"type": "string", "minLength": 1, "maxLength": 200}
+    },
+    "providers": {
+      "type": "object",
+      "maxProperties": 8,
+      "propertyNames": {"pattern": "^[a-z][a-z0-9-]{0,39}$"},
+      "additionalProperties": {"type": "string", "pattern": "^(ref:|env:)[A-Za-z0-9_./-]+$"}
+    }
+  },
+  "$defs": {
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["texture"],
+      "properties": {
+        "node": {"type": "string", "minLength": 1, "maxLength": 200},
+        "group": {"type": "string", "minLength": 1, "maxLength": 64},
+        "texture": {"type": "string", "minLength": 6, "maxLength": 200}
+      },
+      "oneOf": [
+        {"required": ["node"], "not": {"required": ["group"]}},
+        {"required": ["group"], "not": {"required": ["node"]}}
+      ]
+    }
+  }
+}
