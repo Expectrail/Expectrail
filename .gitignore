@@ -7,6 +7,7 @@
 !/tools/outside_trial.py
 !/tools/runit_stub.py
 !/tools/runit_burst.py
+!/tools/release_gate.py
 # The private held-out set when checked out locally or in CI (never commit it)
 /heldout-set/
 # Python
