@@ -84,7 +84,8 @@ class VisualTimelineTest(Case):
     def test_engine_failure_says_vision_was_not_asked_not_that_the_provider_failed(self):
         self.gate(repo(self.tmp / 'h', 'BUG'))
         page = (self.out / 'viewer/index.html').read_text()
-        self.assertIn('Vision did not run on 1 after-change check', page)
+        self.assertIn('Vision was not asked about 1 after-change check', page)
+        self.assertIn('already fails it, and a failure from either observer rejects', page)
         self.assertNotIn('Vision did not run (PROVIDER_FAILED)', page)
 
     def test_a_provider_that_was_called_is_not_reported_as_never_run(self):

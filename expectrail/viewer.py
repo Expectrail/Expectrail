@@ -335,7 +335,7 @@ def visual_series(out: Path, spec: dict | None, check: dict, side: str, spec_sha
     said = (check.get("observed") or {}).get(side) or {}
     if said.get("visual") not in rec.VISUAL_VERDICTS:
         return {"series": None, "note": "no visual timeline: vision " +
-                ("did not run" if said.get("visual") == "not-asked" else "gave no usable observations")}
+                ("was not asked" if said.get("visual") == "not-asked" else "gave no usable observations")}
     try:
         if not spec or digest(spec) != spec_sha:
             raise ValueError("the check does not match the record")
@@ -749,7 +749,7 @@ function timeline(v, side, n, visual){
   if (!s || !s.points || !s.points.length) {
     var why = ((visual ? v.visualNotes : v.notes) || []).filter(function(t){ return t.indexOf(side) === 0; })[0];
     var said = (v.observed || {})[side];
-    var missing = visual && said ? (said.visual === "not-asked" ? "Vision did not run for this check." :
+    var missing = visual && said ? (said.visual === "not-asked" ? "Vision was not asked about this check." :
       "Visual measurements are not included in this export. Recorded visual result: " + said.visual + ".") : "No measurements for this side.";
     wrap.appendChild(el("p", {"class": "muted"}, why || missing));
     return wrap;
@@ -953,7 +953,10 @@ def vision_words(record: dict | None, job: dict | None) -> str | None:
         return "Vision did not run (PROVIDER_FAILED) on the after-change checks. An engine failure still rejects."
     n = said.count("not-asked")
     if n:
-        return f"Vision did not run on {n} after-change check{'s' if n != 1 else ''}. An engine failure still rejects."
+        # Not a provider failure: the gate does not ask vision about a check the engine's record already
+        # fails, since a failure from either observer rejects.
+        return (f"Vision was not asked about {n} after-change check{'s' if n != 1 else ''}: the engine's record "
+                "already fails it, and a failure from either observer rejects.")
     return None
 
 

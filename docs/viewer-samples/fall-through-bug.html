@@ -48,7 +48,7 @@ figure{margin:0}figcaption{font-size:13px;color:var(--muted);margin-top:4px}
 <div class="banner bad" role="status" data-state="behaviour-failure"><h1>Rejected: a check fails after this change</h1><p>At least one approved check ran to the end and failed. The earliest failure is shown first.</p></div>
 <p class="muted" data-export="1">Offline copy: 24 frames embedded in this file.</p>
 <h2>Why</h2><ul><li>1 of 1 public checks fail after the change</li></ul>
-<h2>Vision</h2><p>Vision did not run on 1 after-change check. An engine failure still rejects.</p>
+<h2>Vision</h2><p>Vision was not asked about 1 after-change check: the engine&#x27;s record already fails it, and a failure from either observer rejects.</p>
 <h2>Findings, earliest first</h2><ul class="findings">
 <li><button type="button" data-view="0" data-finding="d53dfb482f64"><code>d53dfb482f64</code> <b>player-stays-above-ground</b> on <b>smoke</b>, from frame 5: REGRESSION. Before: pass; after: fail. player is 22.25px past the boundary (above 780, tolerance 20) (first at frame 5, 21 frames)</button></li>
 </ul>
@@ -166,7 +166,7 @@ function timeline(v, side, n, visual){
   if (!s || !s.points || !s.points.length) {
     var why = ((visual ? v.visualNotes : v.notes) || []).filter(function(t){ return t.indexOf(side) === 0; })[0];
     var said = (v.observed || {})[side];
-    var missing = visual && said ? (said.visual === "not-asked" ? "Vision did not run for this check." :
+    var missing = visual && said ? (said.visual === "not-asked" ? "Vision was not asked about this check." :
       "Visual measurements are not included in this export. Recorded visual result: " + said.visual + ".") : "No measurements for this side.";
     wrap.appendChild(el("p", {"class": "muted"}, why || missing));
     return wrap;

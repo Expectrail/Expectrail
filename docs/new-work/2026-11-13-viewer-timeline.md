@@ -72,3 +72,6 @@ No commits, pushes or GitHub writes were made.
 - `docs/viewer-samples/fall-through-bug.html`
 - `docs/viewer-samples/provenance.json`
 - `docs/new-work/2026-11-13-viewer-timeline.md`
+
+## Architect run and one wording fix (Linux, on #416 at f4dc9b4)
+The viewer said "Vision did not run" for a check vision was not asked about. The gate does not ask vision about a check the engine's record already fails, so on the real fall-through sample, which has recorded vision answers, the page read as if vision had failed. It now says "Vision was not asked about 1 after-change check: the engine's record already fails it, and a failure from either observer rejects". PROVIDER_FAILED keeps "did not run". The samples were regenerated with `publish_samples.py` from the same supplied zip: records and frames unchanged. Full suite: 3202 tests, OK, 31 skipped. Rendered in headless Chromium at 1280 and 390 px wide: no console errors.

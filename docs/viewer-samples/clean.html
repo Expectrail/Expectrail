@@ -162,7 +162,7 @@ function timeline(v, side, n, visual){
   if (!s || !s.points || !s.points.length) {
     var why = ((visual ? v.visualNotes : v.notes) || []).filter(function(t){ return t.indexOf(side) === 0; })[0];
     var said = (v.observed || {})[side];
-    var missing = visual && said ? (said.visual === "not-asked" ? "Vision did not run for this check." :
+    var missing = visual && said ? (said.visual === "not-asked" ? "Vision was not asked about this check." :
       "Visual measurements are not included in this export. Recorded visual result: " + said.visual + ".") : "No measurements for this side.";
     wrap.appendChild(el("p", {"class": "muted"}, why || missing));
     return wrap;
