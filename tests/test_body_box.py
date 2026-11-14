@@ -17,6 +17,7 @@ import unittest
 from pathlib import Path
 
 from harness import run as hr
+from tests.geometry_fixture import replay_trace
 from tests.test_ground_under import ASIDE, BODY, PROJECT, REPO, SHAPE, both, real_godot, swap
 
 
@@ -31,9 +32,7 @@ def rows_of(tmp: Path, name: str, scene=None, route: Path | None = None, game: P
             changed = scene(text)
             assert changed != text, "the scene was not changed"
             (game / "main.tscn").write_text(changed, encoding="utf-8")
-    kwargs = {"game": game} if game is not None else {}
-    hr.run(route, tmp / name / "run", godot=real_godot(), capture_frames=False, **kwargs)
-    return json.loads((tmp / name / "run" / "trace.json").read_text(encoding="utf-8"))["rows"]
+    return replay_trace(game or hr.REPO / "game/platformer", route, tmp / name / "run", real_godot())["rows"]
 
 
 def around_the_origin(rows: list[dict]) -> set:

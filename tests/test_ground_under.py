@@ -37,6 +37,7 @@ import unittest
 from pathlib import Path
 
 from harness import run as hr
+from tests.geometry_fixture import replay_trace
 
 REPO = Path(__file__).resolve().parent.parent
 PROJECT = REPO / "tests" / "projects" / "stepped-ground"
@@ -97,8 +98,7 @@ def ground_by_x(tmp: Path, name: str, scene=None) -> dict:
 
 
 def ground_and_source(tmp: Path, name: str, game: Path) -> dict:
-    hr.run(PROJECT / "routes" / "walk.json", tmp / name / "run", game=game, godot=real_godot(), capture_frames=False)
-    trace = json.loads((tmp / name / "run" / "trace.json").read_text(encoding="utf-8"))
+    trace = replay_trace(game, PROJECT / "routes" / "walk.json", tmp / name / "run", real_godot())
     ground_and_source.header = {k: v for k, v in trace.items() if k != "rows"}
     return {row["player"][0]: (row.get("ground"), row.get("groundFrom")) for row in trace["rows"]}
 
