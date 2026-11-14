@@ -183,6 +183,7 @@ def run_fixer(
     allow_empty: bool = False,
     require_sandbox: bool = False,
     prior_reject: dict | None = None,
+    provider_only: bool = False,
     plant_poison: bool = False,
     briefing: dict | None = None,
     adapter: str | Adapter = "godot",
@@ -313,6 +314,7 @@ def run_fixer(
                     timeout=timeout,
                     require_sandbox=require_sandbox,
                     detected=detected,
+                    **({"provider_only": True} if provider_only else {}),
                 )
         except subprocess.TimeoutExpired as exc:
             # The attempt's time is up. Whatever Muse already changed is still diffed below and

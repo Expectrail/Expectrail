@@ -1,0 +1,7 @@
+{
+  "format": "expectrail.trace/v0",
+  "ticks": 1,
+  "physicsTicksPerSecond": 120,
+  "unknownActions": ["teleport_through_wall"],
+  "rows": [{"tick": 0, "player": [90.0, 120.0]}]
+}

@@ -1,0 +1,290 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/vision-calibration.v1.schema.json",
+  "title": "expectrail.vision-calibration/v1",
+  "description": "How well the anchored visual observer sees one game's player, measured on that game's clean replay against rules fixed in advance (#330). The observer is used for the game only when enabled is true.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "game",
+    "replay",
+    "observer",
+    "rules",
+    "frames",
+    "rates",
+    "drawnSize",
+    "enabled",
+    "why",
+    "rows",
+    "machineWritten"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.vision-calibration/v1"
+    },
+    "game": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "commit"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "commit": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      }
+    },
+    "replay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sha256"
+      ],
+      "properties": {
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "observer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "model",
+        "provider",
+        "box",
+        "pad"
+      ],
+      "properties": {
+        "name": {
+          "const": "sam-anchored"
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "box": {
+          "const": "body"
+        },
+        "pad": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 64
+        }
+      }
+    },
+    "rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "found",
+        "size",
+        "stable",
+        "sizeTolerance",
+        "wideFactor",
+        "minFrames"
+      ],
+      "properties": {
+        "found": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "size": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "stable": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "sizeTolerance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "wideFactor": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "minFrames": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        }
+      }
+    },
+    "frames": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "listed",
+        "asked",
+        "found"
+      ],
+      "properties": {
+        "listed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "asked": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "found": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        }
+      }
+    },
+    "rates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "found",
+        "size",
+        "stable"
+      ],
+      "properties": {
+        "found": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "size": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "stable": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "drawnSize": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "width",
+            "height"
+          ],
+          "properties": {
+            "width": {
+              "type": "number",
+              "minimum": 0
+            },
+            "height": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        }
+      ]
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "why": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "string",
+        "maxLength": 200
+      }
+    },
+    "rows": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "frame",
+          "asked"
+        ],
+        "properties": {
+          "frame": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "asked": {
+            "type": "boolean"
+          },
+          "why": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "body": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "size": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "wideSize": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "found": {
+            "type": "boolean"
+          },
+          "sizeAgrees": {
+            "type": "boolean"
+          },
+          "stable": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "machineWritten": {
+      "const": true
+    }
+  }
+}

@@ -9,6 +9,12 @@
     "format": {"const": "expectrail.trace/v0"},
     "ticks": {"type": "integer", "minimum": 0},
     "physicsTicksPerSecond": {"type": "integer", "minimum": 1},
+    "unknownActions": {
+      "description": "Distinct route action names missing from the game input map. An empty list means all were present. An absent field means the harness did not report this information.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string"}
+    },
     "capabilities": {
       "type": "object",
       "properties": {

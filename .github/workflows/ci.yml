@@ -903,6 +903,8 @@ jobs:
           code=0; venv/bin/expectrail --jobs-root "$RUNNER_TEMP/jobs-second" verify --head second --game project --routes routes/walk.json --specs specs --json > second.json || code=$?
           test "$code" = 2
           venv/bin/python "$GITHUB_WORKSPACE/tools/check_no_vision.py" second.json "$RUNNER_TEMP/jobs-second"
+      - name: Execute the published quickstart and check its links (no model credentials)
+        run: python -m tools.quickstart --out "$RUNNER_TEMP/front-door-quickstart"
       - name: The engine it used is the one its own script unpacked
         run: test -x "$HOME/.cache/expectrail/godot/Godot_v4.7.2-stable_linux.x86_64"
 

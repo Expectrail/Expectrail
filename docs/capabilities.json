@@ -1,6 +1,6 @@
 {
   "format": "expectrail.capabilities/v1",
-  "updated": "2026-11-12",
+  "updated": "2026-11-14",
   "statuses": {
     "implemented": "The code is in the repository and its tests pass in CI. It has run only on recorded or synthetic inputs, or has no recorded end-to-end run.",
     "integrated": "Wired into the path a user takes (a command, a workflow or the site) and exercised there by a CI job or a recorded run. No published result rests on it.",
@@ -10,7 +10,7 @@
   "grades": {
     "fixture": "Saved or synthetic data, for demos and tests. Never clears a release.",
     "diagnostic": "A real run: the engine or the browser ran, or a live model answered, on a developer's machine or a CI runner, with isolation as declared. Does not clear a release.",
-    "isolated": "The game ran sandboxed with no network, the checks came from the base commit, and a separate trusted job judged and signed. No row has this grade yet: the replay sandbox (#253), the two-job action (#254) and the receipt (#255) are open.",
+    "isolated": "The game ran sandboxed with no network, the checks came from the base commit, and a separate trusted job judged and signed. No row has this grade yet: the replay sandbox and the two-job Action alone do not establish the full boundary; signed judging and deployment evidence are still needed.",
     "protected": "Isolated, plus capture the game cannot forge. Reserved until the capture spike (#246) shows a way; the check refuses this grade."
   },
   "rows": [
@@ -123,17 +123,14 @@
     },
     {
       "id": "ci-gate",
-      "mode": "CI gate: verify a pull request's game and post the verdict as one comment",
-      "profile": "Godot 4.7.2 projects on GitHub Actions; the runs cited here are on this repository's own pull requests",
+      "mode": "Earlier composite CI gate: verify a pull request’s game and post one verdict comment",
+      "profile": "Godot 4.7.2 projects on GitHub Actions; historical runs of the earlier composite actions on this repository’s pull requests",
       "observer": "The engine's record; no vision model",
       "entryPoints": [
         "expectrail.gate.verify",
         "expectrail.gate.comment"
       ],
-      "workflows": [
-        "expectrail-verify.yml",
-        "expectrail-comment.yml"
-      ],
+      "workflows": [],
       "docs": [
         "docs/ci-gate.md"
       ],
@@ -170,7 +167,44 @@
           "shows": "finding ids that stay the same across pushes, and that the comment job's reader refuses a malformed or oversized artifact"
         }
       ],
-      "limits": "On blind set 3 the approved checks covered none of the eight defects: what the gate catches is bounded by the checks a project has. This row cites no run on a project the team did not write (#263). The action sandboxes the game where the runner can and the findings record says how many replays ran in the sandbox; refusing to run outside it is an input (require-sandbox) that this repository's own workflow sets and other users must set themselves. The verdict is still computed in the job that runs the pull request's code (#254) and is not signed (#255). No catch rate or runtime is published for it."
+      "limits": "On blind set 3 the approved checks covered none of the eight defects: what the gate catches is bounded by the checks a project has. This row cites no run on a project the team did not write (#263). The action sandboxes the game where the runner can and the findings record says how many replays ran in the sandbox; refusing to run outside it is an input (require-sandbox) that callers must set themselves. These earlier composite actions compute the verdict in the candidate job and do not publish the two head checks. The merged split is listed separately in ci-head-clearance. This historical evidence does not validate that newer deployment. No catch rate or runtime is published for it."
+    },
+    {
+      "id": "ci-head-clearance",
+      "mode": "Two-job Action: capture candidate evidence, judge on the base and publish head checks",
+      "profile": "Godot 4.7.2; Linux capture under mandatory Bubblewrap; trusted GitHub Actions publisher; offline stand-ins in the cited tests",
+      "observer": "Engine observations plus recorded base-side visual answers, under the rule both; no paid model calls in either workflow job",
+      "entryPoints": [
+        "tools.ci_bundle",
+        "tools.ci_checks"
+      ],
+      "workflows": [
+        "expectrail-verify.yml",
+        "expectrail-capture.yml",
+        "expectrail-comment.yml"
+      ],
+      "docs": [
+        "docs/ci-gate.md"
+      ],
+      "switches": [
+        "EXPECTRAIL_CHECKS_APP_ID",
+        "EXPECTRAIL_CHECKS_PRIVATE_KEY"
+      ],
+      "grade": "fixture",
+      "status": "implemented",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_ci_gate.py",
+          "shows": "SplitGateTest: six sandbox-required stand-in captures for a fix, base-side both-observer judging, regression rejection, missing visual answer needs-review, interruption and tampering refusal. HeadChecksTest: dedicated publisher, accept-only clearance, current-head/run-attempt/intent checks, workflow identity and artifact digest checks through a simulated API."
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_guides.py",
+          "shows": "The published caller matches the merged workflow; the guide names the publisher’s checks and separates game-repository enforcement from Expectrail’s advisory policy; both new pages are in local link/advertisement checks."
+        }
+      ],
+      "limits": "Merged in #429. No hosted acceptance run is cited for this split: App installation, protected-workflow startup, actual fork/artifact handling and branch-rule enforcement still need deployment validation. The bundled clean recording covers smoke; novel frames and combat can lack answers and need review unless a failure rejects. Require Expectrail clearance from the dedicated App in a game repository; Expectrail evidence is reporting. On Expectrail’s own repository clearance is advisory, per Sean’s November 14, 2026 option C; its merge guard does not wait for it. No private-project deployment, catch rate or runtime measured here. Game-originated capture and a shared host kernel remain limits; bypass permission is outside the guarantee. No promotion to isolated or protected grade."
     },
     {
       "id": "unity-harness",
@@ -1299,6 +1333,11 @@
           "kind": "test",
           "ref": "tests/test_release_workflow.py",
           "shows": "a version tag builds the wheel and attaches it to the run only when the tag is the package's version; the workflow reads only, holds no secret and publishes nowhere"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_quickstart.py",
+          "shows": "the six quickstart command blocks, expected exits, link anchors and the no-credentials evidence checks on offline stand-ins; CI is configured to execute the published blocks with the real engine in the package job"
         }
       ],
       "limits": "Not on PyPI: publishing needs an account and a token, which a person sets up. The release workflow has not run: it runs on a tag, and pushing a tag is a person's step. Linux only as packaged. sample and verify need MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP to accept (#379); without them, as in CI, they still replay and an engine failure rejects, and a pass is needs-review."
@@ -1388,7 +1427,8 @@
     "commands": {
       "pip": "installs the requirements",
       "unittest": "runs the test suite",
-      "http.server": "serves the demo page locally"
+      "http.server": "serves the demo page locally",
+      "venv": "creates a Python virtual environment for the quickstart"
     },
     "switches": {},
     "docs": {
