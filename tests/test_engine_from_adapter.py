@@ -187,7 +187,7 @@ class EnginesTest(Case):
         adapters.register(probe.adapter)
         try:
             engine = engines.ENGINES[NAME]
-            self.assertEqual((engine.name, engine._rule), (NAME, rec.ENGINE_ONLY))
+            self.assertEqual((engine.name, engine._rule), (NAME, rec.BOTH))
             self.assertEqual(sorted(engines.ENGINES), ["godot", NAME])
         finally:
             adapters.unregister(NAME)
@@ -225,7 +225,8 @@ class EnginesTest(Case):
         self.assertEqual([(d["code"], d["detail"]) for d in found], [("TOOL_MISSING", "no engine here. Fix: fetch it")])
         head = make_repo(self.tmp / "head", routes=("smoke",))
         with mock.patch.object(gv, "run_gate", side_effect=AssertionError("ran")):
-            status, _store = self.job(head, "godot", game="game/platformer")
+            status, _store = self.job(head, "godot", game="game/platformer",
+                                      table={"godot": engines.GodotGate(rule="engine-only")})
         self.assertEqual((status["decision"], [d["code"] for d in status["diagnostics"]]), ("needs-review", ["TOOL_MISSING"]))
 
     def test_the_adapters_list_for_godot_is_the_doctors(self):
@@ -427,7 +428,7 @@ class OrchestratorTest(Case):
     def test_a_job_names_its_adapter_and_is_verified_on_it(self):
         probe = self.register()
         head, base = probe_repo(self.tmp / "head"), probe_repo(self.tmp / "base")
-        status, store = self.job(head, NAME, base=base)
+        status, store = self.job(head, NAME, base=base, table={NAME: engines.Gate(NAME, rule="engine-only")})
         self.assertEqual((status["phase"], status["decision"]), ("completed", "accept"), status)
         record = rec.read_record(store.paths(status["id"]).output / "findings.json")
         self.assertEqual(record["adapter"], NAME)
@@ -441,7 +442,7 @@ class OrchestratorTest(Case):
         (head / "app" / OWN / "state").write_text("the engine's own\n", encoding="utf-8")
         (head / "app" / ".godot").mkdir()
         (head / "app" / ".godot" / "file").write_text("a file of this game\n", encoding="utf-8")
-        status, _store = self.job(head, NAME)
+        status, _store = self.job(head, NAME, table={NAME: engines.Gate(NAME, rule="engine-only")})
         # Had the job's tree and the gate's been taken by different lists, the worker would have
         # refused the result as a decision about another tree.
         self.assertEqual((status["phase"], status["decision"]), ("completed", "accept"), status)
@@ -450,7 +451,8 @@ class OrchestratorTest(Case):
 
     def test_a_job_on_the_second_engine_with_a_bug_is_rejected(self):
         self.register()
-        status, _store = self.job(probe_repo(self.tmp / "head", bug=True), NAME, base=probe_repo(self.tmp / "base"))
+        status, _store = self.job(probe_repo(self.tmp / "head", bug=True), NAME, base=probe_repo(self.tmp / "base"),
+                                  table={NAME: engines.Gate(NAME, rule="engine-only")})
         self.assertEqual((status["phase"], status["decision"]), ("completed", "reject"), status)
 
     def test_a_folder_that_is_not_the_adapters_project_stops_the_job(self):

@@ -21,8 +21,12 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Callable
 
+from expectrail.observers import FramesObserver
+
 from expectrail.orchestrator import request as req
 from expectrail.orchestrator import store as st
+
+_AUTO_VISUAL = object()
 
 
 @dataclass(frozen=True)
@@ -37,6 +41,8 @@ class Result:
     # The digest of the checks the verdict was judged with, when the engine knows it. Held against
     # the job's policyDigest the same way.
     policy: str | None = None
+    observers: dict | None = None
+    diagnostics: list[dict] = field(default_factory=list)
 
 
 class Gate:
@@ -50,14 +56,17 @@ class Gate:
 
     ``rule`` is which observers judge (expectrail.gate.record.RULES). With ``both`` every check
     needs the engine's record and ``visual`` (an expectrail.observers.FramesObserver) to pass, and
-    with no ``visual`` the engine accepts nothing (#327). The engines registered below still judge
-    ``engine-only``, as the gate does; a job's record has an ``observers`` block when the rule was ``both``."""
+    with no ``visual`` the engine accepts nothing (#327). The registered engines use both observers.
+    Engine-only is available only to code explicitly constructing a Gate for development."""
 
-    def __init__(self, adapter: str = "godot", replay: Callable | None = None, *, rule: str = "engine-only",
-                 visual=None):
+    def __init__(self, adapter: str = "godot", replay: Callable | None = None, *, rule: str = "both",
+                 visual=_AUTO_VISUAL):
         self.name = adapter
         self._replay = replay   # a stand-in for the harness, for tests; None runs the adapter's
-        self._rule, self._visual = rule, visual
+        self._rule = rule
+        self._visual = (FramesObserver() if rule == "both" else None) if visual is _AUTO_VISUAL else visual
+
+        self._needs_vision_settings = isinstance(self._visual, FramesObserver) and self._visual._client is None
 
     def _adapter(self):
         from harness import adapters
@@ -112,21 +121,36 @@ class Gate:
         named = json.loads(paths.status.read_text(encoding="utf-8"))["inputs"]["policyDigest"]
         if checks.digest != named:
             raise gate.ConfigError("the checks changed after the job was created; ask again")
+        diagnostics = []
+        if self._rule == "both" and self._needs_vision_settings:
+            from expectrail import doctor
+
+            for check in doctor.vision_checks():
+                if doctor.missing([check]):
+                    diagnostic = st.diagnostic("PROVIDER_FAILED", stage="observing", detail=check.found)
+                    diagnostic["fix"] = check.fix
+                    diagnostics.append(diagnostic)
+        # A missing provider cannot hide an engine failure. Keep the rule `both`: without a
+        # visual answer the gate can reject, but cannot accept. Recheck settings for each job.
+        visual = None if diagnostics else self._visual
         document = gate.run_gate(
             repo=Path(request["head"]["checkout"]), game=project["game"], routes=project["routes"],
             specs=project["specs"], out=paths.staging, work=paths.work / "gate",
             base=Path(base["checkout"]) if base else None,
             # The isolated class: every replay in the sandbox, or the gate refuses and nothing is accepted.
             require_sandbox=request["executionClass"] == "isolated",
-            checks=checks, rule=self._rule, visual=self._visual, on_phase=advance, adapter=self.name,
+            checks=checks, rule=self._rule, visual=visual, on_phase=advance, adapter=self.name,
             **({"replay": self._replay} if self._replay is not None else {}))
         # The grade stays `diagnostic` even when every replay was sandboxed: the ledger's `isolated`
         # also needs a separate trusted job that judges and signs (#254, #255). What the sandbox did
         # is in the evidence: findings.json, `isolation`.
         game = document.get("game") or {}
-        return Result(document["decision"], list(document.get("reasons", [])),
+        reasons = list(document.get("reasons", []))
+        if diagnostics:
+            reasons.append("vision did not run; see the PROVIDER_FAILED diagnostics for the missing settings")
+        return Result(document["decision"], reasons,
                       trees={"headTree": game.get("headTree"), "baseTree": game.get("baseTree")},
-                      policy=checks.digest)
+                      policy=checks.digest, observers=document.get("observers"), diagnostics=diagnostics)
 
 
 def _tools(adapter: str) -> list[dict]:
@@ -141,7 +165,7 @@ class GodotGate(Gate):
 
     name = "godot"
 
-    def __init__(self, replay: Callable | None = None, *, rule: str = "engine-only", visual=None):
+    def __init__(self, replay: Callable | None = None, *, rule: str = "both", visual=_AUTO_VISUAL):
         super().__init__("godot", replay, rule=rule, visual=visual)
 
     @staticmethod

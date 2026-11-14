@@ -90,7 +90,8 @@ def work(store: st.JobStore, job_id: str, engines: dict | None = None, *, own_gr
                 detail=f"the {' and the '.join(moved)} changed while the job was running; what was "
                        f"verified is not what was asked. Ask again")])
         return store.finish(job_id, "completed", decision=result.decision, reasons=result.reasons,
-                            evidence_grade=result.evidence_grade, publish=True)
+                            evidence_grade=result.evidence_grade, publish=True, observers=result.observers,
+                            diagnostics=result.diagnostics)
     except BaseException as exc:  # noqa: BLE001 - whatever happens, the job ends in a final phase
         if isinstance(exc, KeyboardInterrupt):
             raise

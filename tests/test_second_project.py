@@ -11,9 +11,11 @@ What these tests hold, with no game started (the gate tests' stand-in replay):
 With ``EXPECTRAIL_ENGINE_TESTS=required`` (the CI job that has Godot sets it), real Godot replays
 through the one command, ``expectrail verify`` (run here as ``python3 -m expectrail.cli verify``, the
 module the installed command starts):
-- the bundled game: accept;
-- the second project, given by path: accept, and the evidence names that project's tree;
-- the second project with its collision broken, compared with it as it is: reject;
+- the bundled game: needs-review, its engine check passing, because CI has no vision settings and an
+  accept needs vision (#379);
+- the second project, given by path: the same, and the evidence names that project's tree;
+- the second project with its collision broken, compared with it as it is: reject (an engine failure
+  rejects without vision);
 - the second project with only its own draft spec: needs-review.
 
 The approved spec that judges the second project in these tests is the bundled one
@@ -116,7 +118,7 @@ class VerifyPathTest(Case):
         request = req.build(adapter="godot", head=head, base=base, game="project", routes=["routes/*.json"],
                             specs="specs")
         status, _ = store.create(request)
-        return runner.work(store, status["id"], engines={"godot": engines.GodotGate(replay=replay)}), replay
+        return runner.work(store, status["id"], engines={"godot": engines.GodotGate(rule="engine-only", replay=replay)}), replay
 
     def test_the_game_replayed_is_the_one_the_arguments_name(self):
         head = checkout(self.tmp / "head")
@@ -189,21 +191,31 @@ class RealGodotTest(Case):
         store = st.JobStore(self.tmp / "jobs")
         return json.loads((store.paths(status["id"]).output / "findings.json").read_text(encoding="utf-8"))
 
-    def test_the_bundled_game_is_accepted(self):
+    def no_vision(self, status: dict) -> None:
+        # Until #379 these ran engine-only and accepted. CI has no vision settings, so an engine pass is
+        # needs-review that says so; the replay and the engine's check still ran.
+        self.assertIn("the engine's record passes 1 check that no visual observer was asked about, so this is "
+                      "not an accept: an accept needs the visual observer's evidence", status["reasons"])
+        self.assertEqual(sorted(d["code"] for d in status["diagnostics"]), ["PROVIDER_FAILED", "PROVIDER_FAILED"])
+        self.assertEqual(status["observers"], {"rule": "both", "visual": None})
+
+    def test_the_bundled_game_passes_the_engine_and_needs_vision_to_accept(self):
         head = smp.checkout(self.tmp / "bundled", bug=False)
         code, status = self.verify(head, game=smp.GAME, routes=smp.ROUTE, specs=smp.SPECS)
-        self.assertEqual((code, status["phase"], status["decision"]), (0, "completed", "accept"), status)
+        self.assertEqual((code, status["phase"], status["decision"]), (2, "completed", "needs-review"), status)
+        self.no_vision(status)
 
-    def test_the_second_project_is_accepted_and_the_evidence_names_its_tree(self):
+    def test_the_second_project_passes_the_engine_and_the_evidence_names_its_tree(self):
         from harness.run import tree_digest
 
         head = checkout(self.tmp / "second")
         code, status = self.verify(head, game="project", routes="routes/walk.json", specs="specs")
-        self.assertEqual((code, status["phase"], status["decision"]), (0, "completed", "accept"), status)
+        self.assertEqual((code, status["phase"], status["decision"]), (2, "completed", "needs-review"), status)
+        self.no_vision(status)
         found = self.findings(status)
         self.assertEqual(found["game"]["headTree"], tree_digest(head / "project", head))
         self.assertEqual([(check["spec"], check["route"], check["after"]) for check in found["checks"]],
-                         [("player-stays-above-ground", "walk", "pass")])
+                         [("player-stays-above-ground", "walk", "needs-review")])
 
     def test_the_second_project_broken_is_rejected_against_itself_as_it_is(self):
         base = checkout(self.tmp / "base")
@@ -211,7 +223,8 @@ class RealGodotTest(Case):
         code, status = self.verify(head, base=base, game="project", routes="routes/walk.json", specs="specs")
         self.assertEqual((code, status["phase"], status["decision"]), (1, "completed", "reject"), status)
         found = self.findings(status)
-        self.assertEqual([(check["before"], check["after"]) for check in found["checks"]], [("pass", "fail")])
+        # Before: the engine passes, but without vision that is needs-review, not pass (#379).
+        self.assertEqual([(check["before"], check["after"]) for check in found["checks"]], [("needs-review", "fail")])
 
     def test_the_second_project_with_only_its_draft_spec_is_needs_review(self):
         head = checkout(self.tmp / "draft", specs=PROJECT / "specs")

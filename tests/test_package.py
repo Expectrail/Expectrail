@@ -78,8 +78,6 @@ NOT_PACKAGED = {
     "expectrail.capabilities": "the capability ledger's tool: reads docs/",
     "expectrail.capability_runs": "the capability ledger's tool: reads CI runs",
     "expectrail.change_evidence": "evidence of a fix loop's change; the wheel does not repair",
-    "expectrail.observers": "the visual observer: it asks a vision model, and the wheel holds nothing that holds a model key",
-    "expectrail.providers": "model provider records; no verification uses a model",
     "expectrail.spec_writer": "drafts specs with a model; no verification uses a model",
     "expectrail.runit": "the site's Run it samples (#265): reads docs/run-it/ in a clone of the repository",
     "expectrail.recorded": "recorded vision answers for the Run it samples (#265); built on expectrail.observers",
@@ -87,12 +85,7 @@ NOT_PACKAGED = {
 }
 # Imports a packaged module makes only on a path a verification never takes.
 NOT_ON_A_VERIFICATION = {
-    "agents.sam_observations": "only when the SAM observer is asked for; the gate reads the engine's position log "
-                               "and never asks (expectrail.gate.verify.observations)",
-    # expectrail.gate.anchor asks the vision model about the player's place on both sides (#327); it is
-    # imported only inside run_gate when a visual observer was given, as agents.sam_observations is.
-    "agents.anchor_rule": "only when a visual observer is given to the gate (expectrail.gate.anchor, #327)",
-    "agents.sam_anchor": "only when a visual observer is given to the gate (expectrail.gate.anchor, #327)",
+    "agents.keys": "only in model adapters' standalone CLI entry points; verification reads the environment directly",
     # harness.adapters is in the wheel: the verify path takes its engine from the registry. The
     # registry also lists the web and Unity adapters, whose runners are imported only inside their
     # own `run`. Neither adapter has a verify path, so no verification can reach those imports.
@@ -145,7 +138,7 @@ class ContentsTest(Case):
             self.assertEqual(packed, lists[folder], folder)
         for folder in ("contracts", "game", "bugs"):
             self.assertEqual([n for n in self.names if n.startswith(f"{BUNDLE}{folder}/") and n.endswith(".py")], [])
-        # Nothing of the fix loop, and nothing that reads a model key.
+        # Nothing of the fix loop or dotenv key loader.
         text = "\n".join(self.names)
         for word in ("fixer", "loop", "keys", "muse", "triage", "gateway"):
             self.assertNotIn(f"agents/{word}", text)
@@ -310,7 +303,7 @@ class InstalledTest(Case):
         doc = json.loads(done.stdout)
         found = {c["id"]: c for c in doc["checks"]}
         self.assertEqual(list(found), ["python", "godot", "display", "opengl", "disk", "sandbox", "patch", "curl", "unzip",
-                                       "vision-key"])
+                                       "vision-key", "vision-cap"])
         self.assertEqual((doc["ok"], found["python"]["status"], found["godot"]["status"], found["opengl"]["status"]),
                          (False, "ok", "missing", "skipped"))
         self.assertIn("--no-fetch was given", found["godot"]["found"])

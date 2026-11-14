@@ -49,6 +49,10 @@ def describe(status: dict) -> str:
     lines = [f"job {status['id']}: {status['phase']}" + (f", {status['decision']}" if status["decision"] else "")]
     lines += [f"  {reason}" for reason in status["reasons"]]
     lines += [f"  {d['code']} ({d['stage']}): {d['detail']} Fix: {d['fix']}" for d in status["diagnostics"]]
+    if "observers" in status:
+        from expectrail.gate.record import observers_words
+
+        lines.append(f"  Judged on: {observers_words(status)}")
     if status["evidenceGrade"]:
         lines.append(f"  evidence grade: {status['evidenceGrade']}")
     return "\n".join(lines)
@@ -148,7 +152,7 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
             return 0
         if args.command == "sample":
             if not args.json:
-                print("Expectrail sample: three real runs on the bundled game and a seeded bug. No model key is used.")
+                print("Expectrail sample: three real runs on the bundled game and a seeded bug. Acceptance needs vision.")
             results = smp.run(store, timeout_seconds=args.timeout,
                               on_case=None if args.json else (lambda r: print(smp.line(r), flush=True)))
             if args.json:

@@ -47,5 +47,13 @@
   "finishedAt": "2026-11-11T18:20:25.012097Z",
   "expectrail": {
     "version": "0.1.0"
+  },
+  "observers": {
+    "rule": "both",
+    "visual": {
+      "name": "sam",
+      "provider": "meta-model-api",
+      "model": "sam-3.1"
+    }
   }
 }

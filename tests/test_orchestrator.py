@@ -411,7 +411,7 @@ class GodotEngineTest(Case):
         self.head = head
         job = self.job(base=base, **over)
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            return runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=FakeReplay())})
+            return runner.work(self.store, job, engines={"godot": engines.GodotGate(rule="engine-only", replay=FakeReplay())})
 
     def gate(self, head: Path, base: Path | None, name: str) -> dict:
         with contextlib.redirect_stdout(io.StringIO()):
@@ -437,7 +437,7 @@ class GodotEngineTest(Case):
     def test_no_project_is_needs_review_before_anything_runs(self):
         replay = FakeReplay()
         job = self.job(game="game/missing")
-        status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=replay)})
+        status = runner.work(self.store, job, engines={"godot": engines.GodotGate(rule="engine-only", replay=replay)})
         self.assertEqual((status["decision"], [d["code"] for d in status["diagnostics"]]), ("needs-review", ["INPUT_INVALID"]))
         self.assertEqual(replay.calls, [])
 
@@ -447,7 +447,7 @@ class GodotEngineTest(Case):
         replay = FakeReplay()
         job = self.job(execution_class="isolated")
         with mock.patch.object(box, "probe", return_value=(None, "bubblewrap (bwrap) is not installed")):
-            status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=replay)})
+            status = runner.work(self.store, job, engines={"godot": engines.GodotGate(rule="engine-only", replay=replay)})
         self.assertEqual((status["phase"], status["decision"], status["evidenceGrade"]), ("completed", "needs-review", None))
         self.assertEqual([d["code"] for d in status["diagnostics"]], ["TOOL_MISSING"])
         self.assertIn("bubblewrap (bwrap) is not installed", status["diagnostics"][0]["detail"])
@@ -461,7 +461,7 @@ class GodotEngineTest(Case):
         with mock.patch.object(box, "probe", return_value=(box.Tool("/usr/bin/bwrap", "0.9.0"), None)):
             # Every replay says it ran inside: the job completes, and the evidence says so.
             job = self.job(execution_class="isolated")
-            status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=Accounting(INSIDE))})
+            status = runner.work(self.store, job, engines={"godot": engines.GodotGate(rule="engine-only", replay=Accounting(INSIDE))})
             self.assertEqual((status["phase"], status["decision"]), ("completed", "accept"))
             record = rec.read_record(self.store.paths(job).output / "findings.json")
             self.assertEqual((record["isolation"]["required"], record["isolation"]["sandboxed"], record["isolation"]["replays"]),
@@ -470,7 +470,7 @@ class GodotEngineTest(Case):
             self.assertEqual(status["evidenceGrade"], "diagnostic")
             # A replay that does not say it ran inside cannot give an accept in this class.
             job = self.job(execution_class="isolated")
-            status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=FakeReplay())})
+            status = runner.work(self.store, job, engines={"godot": engines.GodotGate(rule="engine-only", replay=FakeReplay())})
             self.assertEqual((status["phase"], status["decision"]), ("completed", "needs-review"))
             self.assertTrue(any("outside the sandbox" in reason for reason in status["reasons"]), status["reasons"])
 
@@ -500,7 +500,7 @@ class GodotEngineTest(Case):
         job = self.job()
         named = self.store.status(job)["inputs"]["policyDigest"]
         with contextlib.redirect_stdout(io.StringIO()):
-            status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=SpoilsTheChecksMidRun())})
+            status = runner.work(self.store, job, engines={"godot": engines.GodotGate(rule="engine-only", replay=SpoilsTheChecksMidRun())})
         self.assertEqual((status["phase"], status["decision"]), ("completed", "accept"))
         record = rec.read_record(self.store.paths(job).output / "findings.json")
         self.assertEqual((record["specs"], record["routes"], record["checks"]),
@@ -521,7 +521,7 @@ class GodotEngineTest(Case):
 
         replay = FakeReplay()
         job = self.job()
-        status = runner.work(self.store, job, engines={"godot": EditsTheSpecFirst(replay=replay)})
+        status = runner.work(self.store, job, engines={"godot": EditsTheSpecFirst(rule="engine-only", replay=replay)})
         self.assertEqual((status["decision"], [d["code"] for d in status["diagnostics"]]), ("needs-review", ["INPUT_INVALID"]))
         self.assertIn("the checks changed after the job was created", status["diagnostics"][0]["detail"])
         self.assertEqual(replay.calls, [])
@@ -582,7 +582,7 @@ class GodotEngineTest(Case):
                 try:
                     job = self.job(idempotency_key=f"form-{n}")
                     with contextlib.redirect_stdout(io.StringIO()):
-                        status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=FakeReplay())})
+                        status = runner.work(self.store, job, engines={"godot": engines.GodotGate(rule="engine-only", replay=FakeReplay())})
                 finally:
                     WATCHING.clear()
                 self.assertEqual((status["phase"], status["decision"], status["reasons"]),
@@ -656,7 +656,7 @@ class GodotEngineTest(Case):
         job = self.job()
         asked = self.store.status(job)["inputs"]["headTree"]
         with contextlib.redirect_stdout(io.StringIO()):
-            status = runner.work(self.store, job, engines={"godot": ChangesFirst(replay=replay)})
+            status = runner.work(self.store, job, engines={"godot": ChangesFirst(rule="engine-only", replay=replay)})
         self.assertTrue(replay.calls)   # the changed game did run, and would have been accepted
         self.assertNotEqual(req.inputs(self.request())["headTree"], asked)
         self.assertEqual((status["phase"], status["decision"], [d["code"] for d in status["diagnostics"]]),
@@ -676,7 +676,7 @@ class GodotEngineTest(Case):
 
     def test_the_diagnostic_class_records_isolation_and_does_not_require_it(self):
         job = self.job()
-        status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=FakeReplay())})
+        status = runner.work(self.store, job, engines={"godot": engines.GodotGate(rule="engine-only", replay=FakeReplay())})
         record = rec.read_record(self.store.paths(job).output / "findings.json")
         self.assertEqual((status["decision"], record["isolation"]["required"], record["isolation"]["sandboxed"]), ("accept", False, 0))
 
@@ -1682,7 +1682,7 @@ class SampleTest(Case):
         replay = PatchedReplay()
         seen = []
         with contextlib.redirect_stdout(io.StringIO()):
-            results = smp.run(self.store, engines={"godot": engines.GodotGate(replay=replay)}, on_case=seen.append)
+            results = smp.run(self.store, engines={"godot": engines.GodotGate(rule="engine-only", replay=replay)}, on_case=seen.append)
         self.assertEqual([(r["status"]["phase"], r["status"]["decision"]) for r in results],
                          [("completed", "accept"), ("completed", "reject"), ("completed", "accept")])
         self.assertEqual([r["expected"] for r in results], ["accept", "reject", "accept"])

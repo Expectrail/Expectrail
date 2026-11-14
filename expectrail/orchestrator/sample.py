@@ -9,7 +9,9 @@ bugs/physics-fall-through/v1.patch applied) and runs three jobs through the orch
     a change that breaks it               reject   (the bug, compared with the game as it is)
     the change that repairs it            accept   (the game as it is, compared with the bug)
 
-These are real runs: Godot replays the smoke route each time, and no model key is used. They are a
+These are real runs: Godot replays the smoke route and both observers judge.
+MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP are required for acceptance; without either the clean and
+repaired games need review and the engine's failure still rejects the bug. They are a
 sample, on a game and a bug that ship with Expectrail; they say nothing about any other project.
 """
 from __future__ import annotations
