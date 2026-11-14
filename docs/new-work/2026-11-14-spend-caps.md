@@ -62,3 +62,6 @@ same, and the month's vision total is counted against Sean's $200 limit.
 provider), `agents/sam_observations.py`, `agents/glimmer_client.py`, `agents/sandbox.py`,
 `agents/triage.py`, `setup.py`, `docs/sam.md`, `tests/test_spend.py`, `tests/test_schema_pattern.py`,
 `tests/test_gateway.py`, `tests/test_agents.py`, `tests/test_byo_wiring.py`
+
+## Architect run (Linux, main 1c5bf2bb)
+Applied cleanly (base one day old). Full suite: OK, 31 skipped. Note: `run_muse` now refuses to start without `EXPECTRAIL_MUSE_USD_CAP`, so a live workflow that runs Muse Code stops with that reason until it sets a cap (no workflow sets one yet; workflows are #254's). The month ledger is opt-in (`EXPECTRAIL_VISION_MONTH_LEDGER`) and nothing sets it yet.
