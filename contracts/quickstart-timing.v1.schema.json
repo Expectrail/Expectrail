@@ -1,0 +1,264 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Expectrail/Expectrail/contracts/quickstart-timing.v1.schema.json",
+  "title": "One machine run of the documented no-credentials quickstart",
+  "description": "Writer: tools.quickstart_timer.write_timing. Reader: tools.quickstart_timer.read_timing. Seconds are monotonic wall time for a command block, not human task time. Completed means the documented exit was observed, never a verification accept. A step not executed has null exit_code and seconds. The reader also checks exit/status consistency and unique step names. No credentials or environment dump.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "started_at",
+    "source_commit",
+    "documents",
+    "environment",
+    "steps",
+    "evidence_check",
+    "notes"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.quickstart-timing/v1"
+    },
+    "started_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?\\+00:00$"
+    },
+    "source_commit": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "documents": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "enum": [
+              "README.md",
+              "docs/quickstart.html"
+            ]
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "platform",
+        "python",
+        "configured_godot"
+      ],
+      "properties": {
+        "platform": {
+          "type": "string",
+          "minLength": 1
+        },
+        "python": {
+          "type": "string",
+          "minLength": 1
+        },
+        "configured_godot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "command",
+          "expected_exit",
+          "status",
+          "exit_code",
+          "seconds",
+          "reason",
+          "error_lines",
+          "stdout",
+          "stderr"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,39}$"
+          },
+          "command": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expected_exit": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "failed",
+              "not run"
+            ]
+          },
+          "exit_code": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "seconds": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error_lines": {
+            "type": "array",
+            "maxItems": 5,
+            "items": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "stdout": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stderr": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "oneOf": [
+          {
+            "properties": {
+              "status": {
+                "const": "not run"
+              },
+              "exit_code": {
+                "type": "null"
+              },
+              "seconds": {
+                "type": "null"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "stdout": {
+                "type": "null"
+              },
+              "stderr": {
+                "type": "null"
+              },
+              "error_lines": {
+                "maxItems": 0
+              }
+            }
+          },
+          {
+            "properties": {
+              "status": {
+                "const": "completed"
+              },
+              "exit_code": {
+                "type": "integer"
+              },
+              "seconds": {
+                "type": "number"
+              },
+              "stdout": {
+                "type": "string",
+                "minLength": 1
+              },
+              "stderr": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          {
+            "properties": {
+              "status": {
+                "const": "failed"
+              },
+              "seconds": {
+                "type": "number"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "stdout": {
+                "type": "string",
+                "minLength": 1
+              },
+              "stderr": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        ]
+      }
+    },
+    "evidence_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "completed",
+            "failed",
+            "not run"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "format": "expectrail.quickstart-timing/v1",
+  "started_at": "2026-11-14T00:00:00+00:00",
+  "source_commit": null,
+  "documents": [
+    {
+      "path": "README.md",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "path": "docs/quickstart.html",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ],
+  "environment": {
+    "platform": "example only",
+    "python": "3.12",
+    "configured_godot": null
+  },
+  "steps": [
+    {
+      "name": "sample",
+      "command": "expectrail sample --jobs-root runs/quickstart-sample --json > sample.json",
+      "expected_exit": 3,
+      "status": "not run",
+      "exit_code": null,
+      "seconds": null,
+      "reason": "Example only: doctor reported that Godot is unavailable.",
+      "error_lines": [],
+      "stdout": null,
+      "stderr": null
+    }
+  ],
+  "evidence_check": {
+    "status": "not run",
+    "reason": "The sample command was not executed."
+  },
+  "notes": [
+    "Illustrative contract example, not a measured run. All-zero digests are placeholders for this example only."
+  ]
+}
