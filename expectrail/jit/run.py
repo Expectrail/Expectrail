@@ -25,6 +25,17 @@ The rules (docs/jit.md):
 5. **Untrusted input.** The patch and the report reach the model as data (expectrail/jit/intent.py);
    whether a check is valid and whether it catches is decided by replay outcomes only
    (expectrail/jit/assess.py).
+
+Pixel checks (#286; the pixel setting only, ``offer.PIXEL``). The proposal's pixel checks
+(expectrail/jit/pixel.py) are judged after the trace checks, in ``_pixel_stage``: each check's probe is
+replayed **with frames** (``frame_runner``) on the clean game and on the bug build (``[*base]``), ``reps``
+times each, and the ``observer`` is asked about every run. A check is kept only by ``pixel.keep``: it
+passes on every clean run and fails on every bug run, one observer setting on all of them, no frame
+without both the observer and the engine's record. A kept check is then judged on the candidate the same
+way: failing on every run is a catch. Observer images are reserved against the same cap before the
+replays (``observer.frames``), and what was actually sent is charged. With no observer, no frame runner,
+no bug build or no budget left, a pixel check is ``not-run`` with the reason, never kept. The rows are the
+record's ``pixelChecks``; they are not in ``catches``, ``counts`` or ``gate_summary``.
 """
 from __future__ import annotations
 
@@ -123,13 +134,14 @@ def _sha_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _default_runner(game: Path | None = None):
+def _default_runner(game: Path | None = None, frames: bool = False):
     from functools import partial
 
     from harness.run import run as harness_run
 
-    # Trace-only, like discovery: no frames, so no SAM image is ever needed in v1.
-    return partial(harness_run, capture_frames=False, **({"game": Path(game)} if game else {}))
+    # Trace checks replay trace-only, like discovery: no frames. Pixel checks (the pixel setting only)
+    # replay with frames, for the observer.
+    return partial(harness_run, capture_frames=frames, **({"game": Path(game)} if game else {}))
 
 
 def _probe_ids_for(entry: dict, probes: list[dict], allowed: set[str]) -> list[str]:
@@ -156,17 +168,24 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
              budget_usd: float = DEFAULT_BUDGET_USD, prices: dict | None = None, reps: int = assess.REPS,
              variant_limit: int = 8, approved_claims: frozenset[str] = frozenset(),
              run_id: str | None = None, clock=time.monotonic, offer: str = offer_mod.BASELINE,
-             candidate_to_model: str = "shown") -> dict:
+             candidate_to_model: str = "shown", observer=None, frame_runner=None) -> dict:
     """One change: propose, replay, judge. ``candidate_to_model`` is ``shown`` (the default) or
     ``withheld``: under ``withheld`` the intent is given no byte of the candidate patch and no diff map made
     from it (issue #285, step 6), and the record says so in ``settings.candidate``. The candidate is
-    still what the record judges."""
+    still what the record judges.
+
+    ``observer`` and ``frame_runner`` are for pixel checks only (the pixel setting): the observer asked
+    about each pixel replay (expectrail/jit/pixel.py, ``observe``), and the runner that replays with
+    frames. Without a ``runner`` the frame runner is the harness with frames; with a ``runner`` and no
+    ``frame_runner``, pixel checks are not run."""
     from expectrail.jit.intent import check_candidate
 
     offer_mod.replayable(offer)
     check_candidate(candidate_to_model)
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
+    if frame_runner is None and runner is None:
+        frame_runner = _default_runner(game, frames=True)
     runner = runner or _default_runner(game)
     spend = Spend(budget_usd, prices or {})
     profile = load_strict(Path(profile_path), "mechanics-profile")
@@ -175,7 +194,8 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
     diagnostics: list[str] = []
     state: dict = {"diffMap": None, "proposed": [], "probes": [], "variants": [], "validity": [], "catches": [],
                    "model": str(getattr(intent, "model", None))[:100] if getattr(intent, "model", None) else None,
-                   "promptSha256": None}
+                   "promptSha256": None, "pixelChecks": [],
+                   "pixel": {"observer": observer, "frameRunner": frame_runner}}
     inputs = {"patchSha256": _sha_bytes(cand_bytes), "reportSha256": _sha_bytes(report.encode("utf-8")),
               "basePatchSha256": [_sha_bytes(Path(p).read_bytes()) for p in base_patches],
               "profileSha256": digest_v1(profile)}
@@ -191,6 +211,8 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
         (out / "jit-error.txt").write_text(traceback.format_exc(), encoding="utf-8")
     if status != "complete":
         state["catches"] = []
+        for row in state["pixelChecks"]:
+            row["outcome"] = "not-evaluated"
     doc = {
         "format": FORMAT,
         "runId": run_id or out.name,
@@ -212,12 +234,16 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
         "spend": spend.doc(),
         "diagnostics": diagnostics[:50],
     }
+    if offer_mod.offers_pixel(offer):
+        doc["pixelChecks"] = state["pixelChecks"]
     try:
         validate_v1(doc, "jit-run")
     except Exception as exc:  # noqa: BLE001 - rule 3 holds even for a record we could not write as built
         doc.update(status="nothing-generated", reason=f"RECORD_INVALID: {' '.join(str(exc).split())[:240]}",
                    diffMap=None, proposed=[], probes=[], variants=[], validity=[], catches=[],
                    counts={"proposed": 0, "valid": 0, "strong": 0, "weak": 0})
+        if "pixelChecks" in doc:
+            doc["pixelChecks"] = []
         doc["inputs"].update(model=None, promptSha256=None)
         validate_v1(doc, "jit-run")
     (out / RECORD_NAME).write_text(json.dumps(doc, indent=1) + "\n", encoding="utf-8")
@@ -312,16 +338,17 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
             continue
         plan.append((e, ids))
     state["proposed"] = [{"spec": e["spec"], "applies": e["applies"], "probeIds": ids} for e, ids in plan]
-    needed = sorted({i for _, ids in plan for i in ids})
+    pixel_checks = list(answer.get("pixelChecks") or []) if offer_mod.offers_pixel(offer) else []
+    needed = sorted({i for _, ids in plan for i in ids} | {c["probe"] for c in pixel_checks if c["probe"] in routes})
     state["probes"] = [{"id": pid, "source": next(p["source"] if "source" in p else "jit" for p in all_probes
                                                  if p["id"] == pid),
                         "routeSha256": digest_v1(routes[pid][0])} for pid in needed]
-    if not plan:
+    if not plan and not pixel_checks:
         raise NothingGenerated("MODEL_OUTPUT_INVALID: no proposed check applies to a probe that can run")
 
     prints: dict[tuple[str, str, int], str] = {}
 
-    def replay(name: str, patches: list[Path], pid: str, n: int) -> dict:
+    def replay(name: str, patches: list[Path], pid: str, n: int, with_runner=None) -> dict:
         spend.reserve(spend.replay_estimate(), f"replay {name}/{pid}#{n}")
         route, path = routes[pid]
         run_dir = out / "jit-replays" / name / f"{pid}-{n}"
@@ -329,7 +356,7 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
             shutil.rmtree(run_dir)
         t0 = clock()
         try:
-            runner(path, run_dir, patches=patches)
+            (with_runner or runner)(path, run_dir, patches=patches)
             ep = from_run_dir(run_dir, route, episode_id=f"{name}-{pid}-{n}")
             prints[(name, pid, n)] = _sha_bytes((run_dir / "trace.json").read_bytes())
         except Exception as exc:  # noqa: BLE001 - rule 3
@@ -426,6 +453,9 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
     for v in state["validity"]:
         v.setdefault("outcome", "not-evaluated")
 
+    if pixel_checks:
+        _pixel_stage(pixel_checks, routes, base_patches, candidate, out, replay, spend, reps, state, diagnostics)
+
     # 4. Label each catch from the base build's runs (step 2), never from anything a model said.
     for e, ids in caught:
         sid = e["spec"]["id"]
@@ -435,6 +465,113 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
             "strength": assess.strength(base_runs, e["spec"]["expectationRef"]["claimId"], approved_claims, reps),
             "probeIds": ids, "candidate": cand[sid], "base": base_runs, "killed": rows[sid]["killed"],
         })
+
+
+def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate: Path, out: Path, replay,
+                 spend: Spend, reps: int, state: dict, diagnostics: list[str]) -> None:
+    """Judge the proposal's pixel checks (#286): replay with frames, ask the observer, keep by the keep rule,
+    then the candidate for a kept check. The rows go to ``state["pixelChecks"]``; a replay that fails ends
+    the run (rule 3), and an observer that fails or answers badly drops the checks on that probe."""
+    from expectrail.jit import pixel
+
+    observer, frame_runner = state["pixel"]["observer"], state["pixel"]["frameRunner"]
+    bindings = pixel.bindings_for()
+    rows: dict[str, dict] = {}
+
+    def not_run(check, why):
+        rows[check["id"]] = pixel.record_row(check, "not-run", why)
+
+    by_probe: dict[str, list[dict]] = {}
+    for check in checks:
+        if observer is None:
+            not_run(check, "no observer was given to this run, so nothing on the screen can be judged")
+        elif frame_runner is None:
+            not_run(check, "no runner that captures frames was given to this run")
+        elif getattr(observer, "name", None) != check["observer"]:
+            not_run(check, f"the check names {check['observer']}, and this run's observer is "
+                           f"{str(getattr(observer, 'name', None))[:40]}")
+        elif not base_patches:
+            not_run(check, "no bug build: a pixel check is kept only where it fails on the build the report describes")
+        elif check["probe"] not in routes:
+            not_run(check, f"probe {check['probe']} cannot be run")
+        else:
+            by_probe.setdefault(check["probe"], []).append(check)
+
+    price = spend.prices["samUsdPerImage"]
+    held = 0.0  # observer images reserved and not yet sent, across probes
+    for pid, group in sorted(by_probe.items()):
+        route = routes[pid][0]
+        try:
+            planned = [int(n) for n in observer.frames(route)]
+        except Exception as exc:  # noqa: BLE001 - an observer that cannot say what it will ask is not asked
+            for check in group:
+                not_run(check, f"the observer could not say which frames it would ask about ({type(exc).__name__})")
+            continue
+        # One image a planned frame, on reps runs of each of the clean game, the bug build and the candidate.
+        usd = len(planned) * 3 * reps * price
+        try:
+            spend.reserve(held + usd, f"pixel checks on {pid} ({observer.name})")
+        except OutOfBudget as exc:
+            for check in group:
+                not_run(check, str(exc))
+            continue
+        held += usd
+
+        def runs_on(name: str, patches: list) -> list[tuple[dict, dict]]:
+            nonlocal held
+            pairs = []
+            for n in range(1, reps + 1):
+                replay(name, patches, pid, n, with_runner=frame_runner)
+                setting, run, images = pixel.observe(observer, out / "jit-replays" / name / f"{pid}-{n}", route)
+                spend.sam_images += images
+                spend.sam_usd += images * price
+                held = max(0.0, held - images * price)
+                spend.check_after(f"observer on {name}/{pid}#{n}")
+                pairs.append((setting, run))
+            return pairs
+
+        try:
+            clean = runs_on("pixel-reference", [])
+            bug = runs_on("pixel-base", list(base_patches))
+        except pixel.PixelError as exc:
+            for check in group:
+                rows[check["id"]] = pixel.record_row(check, "dropped", f"observer: {exc}", usd / len(group))
+            continue
+        except OutOfBudget as exc:
+            # The trace checks' results stand; the pixel checks left are not run, and nothing more is asked.
+            for check in [c for g in by_probe.values() for c in g if c["id"] not in rows]:
+                not_run(check, str(exc))
+            break
+        cand_pairs = None
+        for check in group:
+            verdict = pixel.keep(check, clean, bug, bindings, reps)
+            settings = {json.dumps(s, sort_keys=True) for s, _ in [*clean, *bug]}
+            setting = clean[0][0] if len(settings) == 1 else None
+            if not verdict["kept"]:
+                rows[check["id"]] = pixel.record_row(check, "dropped", verdict["reason"], usd / len(group), setting,
+                                                     verdict["runs"]["clean"], verdict["runs"]["bug"])
+                continue
+            if cand_pairs is None:
+                try:
+                    cand_pairs = runs_on("pixel-candidate", [*base_patches, candidate])
+                except (pixel.PixelError, OutOfBudget) as exc:
+                    cand_pairs = pixel.PixelError(str(exc))
+            if isinstance(cand_pairs, pixel.PixelError):
+                rows[check["id"]] = pixel.record_row(check, "kept", verdict["reason"], usd / len(group), setting,
+                                                     verdict["runs"]["clean"], verdict["runs"]["bug"],
+                                                     outcome="needs-review")
+                diagnostics.append(f"{check['id']}: the candidate was not judged: observer: {cand_pairs}"[:200])
+                continue
+            if {json.dumps(s, sort_keys=True) for s, _ in cand_pairs} != settings:
+                cand = [{"result": "needs-review"} for _ in cand_pairs]
+            else:
+                cand = [pixel.judge(check, r, bindings) for _, r in cand_pairs]
+            results = [c["result"] for c in cand]
+            outcome = ("catch" if len(results) == reps and all(r == "fail" for r in results)
+                       else "needs-review" if any(r == "needs-review" for r in results) else "no-catch")
+            rows[check["id"]] = pixel.record_row(check, "kept", verdict["reason"], usd / len(group), setting,
+                                                 verdict["runs"]["clean"], verdict["runs"]["bug"], cand, outcome)
+    state["pixelChecks"] = [rows[c["id"]] for c in checks]
 
 
 def _variants(game, base_patches, candidate, limit):
@@ -474,7 +611,13 @@ def from_base_alone(doc: dict) -> dict:
     candidate withheld: with the candidate shown it is empty, whatever the checks did, because the fix
     could have shaped them. A record that did not complete reproduces nothing.
 
+    Only for a record with ``pixelChecks`` (#286; the pixel setting): ``pixelReproducing`` lists the
+    pixel checks the keep rule keeps on the record's own runs (``pixel.kept_rows``): they passed on the
+    clean game and failed on the bug build ``reps`` times each, under one observer setting. ``pixelFromBaseAlone`` is the same list when the
+    candidate was withheld, and empty otherwise.
+
     Read from the record's rows, never its counts; the record is checked against its schema first."""
+    from expectrail.jit import pixel
     from expectrail.jit.intent import of_record_candidate
 
     validate_v1(doc, "jit-run")
@@ -485,5 +628,10 @@ def from_base_alone(doc: dict) -> dict:
     if doc["status"] == "complete" and base_ids:
         reproducing = sorted(v["specId"] for v in doc["validity"]
                              if assess.all_of(v["reference"], "pass", reps) and base_ids & set(v["killed"]))
-    return {"candidate": candidate, "reproducing": reproducing,
-            "fromBaseAlone": reproducing if candidate == "withheld" else []}
+    out = {"candidate": candidate, "reproducing": reproducing,
+           "fromBaseAlone": reproducing if candidate == "withheld" else []}
+    if "pixelChecks" in doc:
+        pixel_reproducing = sorted(row["check"]["id"] for row in pixel.kept_rows(doc)) if base_ids else []
+        out.update(pixelReproducing=pixel_reproducing,
+                   pixelFromBaseAlone=pixel_reproducing if candidate == "withheld" else [])
+    return out

@@ -137,7 +137,10 @@ def row_status(control: dict, outcomes: dict[str, dict]) -> tuple[str, str]:
         return OPEN, "no test"
     if any(k != PASSED for k in kinds):
         return NOT_RUN, "a test was skipped: " + "; ".join(g.get("detail", "") for g in got if g["outcome"] == SKIPPED)
-    return HELD, f"{len(kinds)} real-process test{'s' if len(kinds) != 1 else ''} passed"
+    held = f"{len(kinds)} real-process test{'s' if len(kinds) != 1 else ''} passed"
+    if control.get("scope"):
+        held += f". Covers {control['scope']}"
+    return HELD, held
 
 
 def summarise(outcomes: dict[str, dict], *, commit: str, where: str, when: str) -> dict:
@@ -179,7 +182,8 @@ def render(summary: dict) -> str:
         f"- Commit: `{summary['commit']}`",
         f"- When: {summary['when']}",
         f"- Rows: {sum(c.values())}. Held {c[HELD]}, open {c[OPEN]}, failed {c[FAILED]}, not run {c[NOT_RUN]}.",
-        f"- Positive control (the same command clears the unchanged game and rejects the seeded bug): "
+        f"- Positive controls (the same command clears the unchanged game and rejects the seeded bug; with a "
+        f"stand-in vision provider that answers, the live visual observer's path clears the unchanged game): "
         f"{'passed' if baseline_ok else 'NOT passed, so no row below can be read as held'}.",
         "",
     ]

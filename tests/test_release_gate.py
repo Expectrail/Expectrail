@@ -17,8 +17,10 @@ The real-process tests themselves run in CI's ``release-gate`` job (``python3 -m
 from __future__ import annotations
 
 import importlib
+import os
 import re
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from tests.release_gate import controls
@@ -136,19 +138,75 @@ class SummaryTest(unittest.TestCase):
         self.assertEqual(self.row(summary(found), "retry")["status"], rg.FAILED)
 
     def test_an_open_row_stays_open_and_a_probe_that_passes_fails_the_run(self):
+        # Keep exercising an expected-failure probe even when no live control has one.
         probe = controls.by_id()["unreachable-route"]["tests"][1]
-        s = summary(outcomes())
-        self.assertEqual(self.row(s, "unreachable-route")["status"], rg.OPEN)
-        self.assertIn("still fails", self.row(s, "unreachable-route")["note"])
-        s = summary(outcomes(**{probe: rg.UNEXPECTED}))
-        self.assertEqual(self.row(s, "unreachable-route")["status"], rg.FAILED)
+        synthetic = [{**c, "open": "fixture probe"} if c["id"] == "unreachable-route" else c
+                     for c in controls.CONTROLS]
+        with mock.patch.object(controls, "CONTROLS", synthetic):
+            s = summary(outcomes(**{probe: rg.EXPECTED}))
+            self.assertEqual(self.row(s, "unreachable-route")["status"], rg.OPEN)
+            self.assertIn("still fails", self.row(s, "unreachable-route")["note"])
+            s = summary(outcomes(**{probe: rg.UNEXPECTED}))
+            self.assertEqual(self.row(s, "unreachable-route")["status"], rg.FAILED)
         self.assertTrue(rg.failed(s, require=False))
+
+    def test_a_scope_note_is_printed_beside_a_held_row_and_never_holds_one(self):
+        s = summary(outcomes())
+        row = self.row(s, "poisoned-import-cache")
+        self.assertEqual(row["status"], rg.HELD)
+        self.assertIn("Covers the cache a change carries in its checkout", row["note"])
+        t = row["tests"][0]
+        s = summary(outcomes(**{t: rg.SKIPPED}))
+        self.assertEqual(self.row(s, "poisoned-import-cache")["status"], rg.NOT_RUN)
+        self.assertNotIn("Covers", self.row(s, "poisoned-import-cache")["note"])
+        synthetic = [{**c, "open": "fixture reason"} if c["id"] == "poisoned-import-cache" else c
+                     for c in controls.CONTROLS]
+        with mock.patch.object(controls, "CONTROLS", synthetic):
+            s = summary(outcomes())
+            self.assertEqual(self.row(s, "poisoned-import-cache")["status"], rg.OPEN)
 
     def test_without_the_positive_control_no_row_is_held(self):
         s = summary(outcomes(**{controls.BASELINES[0]: rg.FAILURE}))
         self.assertEqual(s["counts"][rg.HELD], 0)
         self.assertNotIn(rg.HELD, {r["status"] for r in s["rows"]})
         self.assertIn("NOT passed", rg.render(s))
+
+
+class HoldTest(unittest.TestCase):
+    """The release gate worker's hold (the "swapped policy" row): it waits while the named file exists,
+    and no longer than its limit, and does nothing when no file is named."""
+
+    def test_it_waits_while_the_file_exists_and_not_after(self):
+        import tempfile
+        import threading
+        import time
+
+        from tests.release_gate import worker
+
+        with tempfile.TemporaryDirectory() as tmp:
+            held = Path(tmp) / "hold"
+            held.write_text("held\n", encoding="utf-8")
+            threading.Timer(0.3, held.unlink).start()
+            started = time.monotonic()
+            with mock.patch.dict(os.environ, {worker.HOLD: str(held)}):
+                worker.hold()
+            self.assertGreaterEqual(time.monotonic() - started, 0.25)
+            started = time.monotonic()
+            with mock.patch.dict(os.environ, {worker.HOLD: str(held)}):
+                worker.hold()                       # the file is gone: no wait
+            self.assertLess(time.monotonic() - started, 0.2)
+            held.write_text("held\n", encoding="utf-8")
+            with mock.patch.dict(os.environ, {worker.HOLD: str(held)}), mock.patch.object(worker, "HOLD_SECONDS", 0.2):
+                started = time.monotonic()
+                worker.hold()                       # never forever
+            self.assertLess(time.monotonic() - started, 1.0)
+
+    def test_without_the_variable_it_does_not_wait(self):
+        from tests.release_gate import worker
+
+        env = {k: v for k, v in os.environ.items() if k != worker.HOLD}
+        with mock.patch.dict(os.environ, env, clear=True):
+            worker.hold()
 
 
 class PublishedSummaryTest(unittest.TestCase):
