@@ -466,8 +466,7 @@ after its trace checks:
   `pixelReproducing`, decided from the rows' runs, never their status.
 
 A revision does not carry pixel checks, so `revise` refuses this setting (`offer.revisable`). The
-command line's `run`, the workflow and the reproduction score do not name it yet: none of them has an
-observer to give the replay.
+command line's `run` and the reproduction score take it (below); the workflow does not yet.
 
 ### SAM as the observer (added November 14)
 
@@ -491,9 +490,35 @@ record puts the player, one image a planned frame (agents/sam_anchor.py asks and
   recorded answers on the smoke route replay through the real observer with the same boxes, answers
   and results (`tests/test_jit_sam_observer.py`, on synthetic replay folders built from the recording).
 
-**Not yet:** the command line's `run` and the workflow do not build this observer, no SAM answer has
-been recorded on a bench probe, and no reproduction rate has been measured with pixel checks. #286 is
-done when a recorded run reproduces a public screen-only defect with one.
+### The command line and the score take the pixel setting (added November 14)
+
+`python -m expectrail.jit.cli run --offer signals-reach-evidence-pixel --observer sam-3.1-anchor ...`
+builds the SAM observer (`cli.observer_from`) and hands it to the replay. SAM is asked one of two ways,
+and exactly one must be named, or the command exits 2 before anything runs:
+
+- `--sam-answers FILE`: recorded answers through `RecordedSamClient`. A replay's build
+  (`pixel-reference`, `pixel-base`, `pixel-candidate`) picks the recorded run: `<build>/<replay>` if
+  the file has it, else `--sam-run BUILD=RUN`, else the run named as the build. No request is sent.
+- `--sam-live`: a live call (the key in `MODEL_API_KEY`, the cap in `EXPECTRAIL_SAM_USD_CAP`), its
+  images reserved against `--budget-usd` first. This spends money.
+
+`--sam-box` (`body` by default, or `WxH` with `--sam-lift`), `--sam-pad` and `--sam-first` say how SAM
+is asked; with recorded answers they must match how the recording was asked, or the checks are
+dropped with that reason. `--observer none` (the default) leaves every pixel check `not-run`. An
+observer named without the pixel setting is refused.
+
+`python -m expectrail.repro score --offer signals-reach-evidence-pixel` counts pixel records
+([example](../contracts/examples/repro-score-pixel.json)). A pixel check reproduces by the bench's
+rule: kept by its own runs (3 of 3 on the clean game, 3 of 3 failing on the bug build, one observer
+setting) and failing 3 of 3 again with the no-fix candidate. A row's counts include its pixel checks,
+its `pixel` object says how many were pixel checks, and the totals' `pixel` says how many defects a
+pixel check reproduced and how many only a pixel check did. A pixel row whose status or outcome its own
+runs contradict gives the defect no result. `--screen bench/jit/public/screen.json` (any setting) adds
+what the screen record measured to each row and gives the rate on the screen-only defects apart.
+
+**Not yet:** the workflow does not build the observer (its replay jobs capture no frames and hold no
+SAM key), no SAM answer has been recorded on a bench probe, and no reproduction rate has been measured
+with pixel checks. #286 is done when a recorded run reproduces a public screen-only defect with one.
 
 ## What this does not claim
 

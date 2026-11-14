@@ -17,7 +17,10 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # The full suite took 6 min 53 s on main's runner at cb1fc85 and crossed 10 minutes on #423
+    # (job 132475142618, cut off with 3,384 of 3,405 tests reported, none failed). 20 leaves room as
+    # the suite grows; a hung test still stops well within the hour.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

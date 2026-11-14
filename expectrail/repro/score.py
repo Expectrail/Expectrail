@@ -64,6 +64,22 @@ A defect with no usable record is ``no-result``: counted in the bench, never as 
 told another, and a record made with another setting is ``no-result`` with that reason. So a rate
 measured with the held-back signals and reach probes on offer is never read as the baseline, nor the
 other way round, and the score record and its page name the setting.
+
+**Pixel checks are counted on their own** (#286; records made under the pixel setting,
+``signals-reach-evidence-pixel``). Such a record carries ``pixelChecks`` beside its trace checks
+(expectrail/jit/pixel.py). A pixel check reproduces by the same rule as a trace check: it is kept by its
+own runs (``pixel.kept_rows``: passed on the clean game 3 of 3 and failed on the bug build 3 of 3, under
+one observer setting), and it failed 3 of 3 again on the bug build with the no-fix candidate. A row's
+``proposed``, ``kept`` and ``reproducing`` count both kinds; its ``pixel`` object says how many of each were
+pixel checks, and the totals' ``pixel`` how many defects a pixel check reproduced, and how many only a
+pixel check did. A pixel row whose status or outcome its own runs contradict gives the defect no result,
+like a trace row. ``pixel`` is there on every scored row of a pixel score and on no row of any other.
+
+**Screen-only defects** (``--screen``, the screen record of expectrail/repro/screen.py). With one, each row
+says what that record measured of its defect (``screen``: ``screen-only``, ``record-and-screen``, ...), and
+the totals give the rate on the screen-only defects apart: those are the defects no check that reads only
+the engine's record can fail on along the library probes. A screen record made for another bench is
+refused. Without one, nothing about the screen is said.
 """
 from __future__ import annotations
 
@@ -93,6 +109,8 @@ MISS_REASONS = ("route-never-reaches", "no-signal", "probe-language", "wrong-pre
                 "undetermined")
 ASSIGNED_HERE = ("budget", "flaky", "wrong-predicate", "no-signal", "undetermined")
 TRACE_VISIBLE = ("signal", "trace-only")
+SCREEN_ONLY = "screen-only"
+PIXEL_PREFIX = "jit-px-"
 
 
 class ScoreError(ValueError):
@@ -182,14 +200,62 @@ def one_line(text, limit: int = TEXT_MAX) -> str:
     return " ".join(flat.split())[:limit].rstrip()
 
 
+_NO_SCREEN = object()
+
+
 def score_one(defect: dict, record_path: Path, visible: str | None, root: Path = REPO,
-              offer: str = offer_mod.BASELINE) -> dict:
-    """One defect's row. Its free text (``why``, ``evidence``) is made one line here, whatever set it."""
+              offer: str = offer_mod.BASELINE, screen=_NO_SCREEN) -> dict:
+    """One defect's row. Its free text (``why``, ``evidence``) is made one line here, whatever set it.
+    ``screen`` is what the screen record measured of the defect (None when it has no row for it); left
+    out, the row says nothing about the screen."""
     row = _score_one(defect, record_path, visible, root, offer)
     for key in ("why", "evidence"):
         if row[key] is not None:
             row[key] = one_line(row[key])
+    if offer_mod.offers_pixel(offer) and row["recordSha256"] is not None:
+        row.setdefault("pixel", {"proposed": 0, "kept": 0, "reproducing": []})
+    else:
+        row.pop("pixel", None)
+    if screen is not _NO_SCREEN:
+        row["screen"] = screen
     return row
+
+
+def _pixel_rows(record: dict) -> tuple[dict | None, list[str], str | None]:
+    """The pixel share of a record: ({proposed, kept, reproducing}, flaky notes, None), or
+    (None, [], why) when the record's pixel rows disagree with themselves.
+
+    Kept is decided from the runs (``pixel.kept_rows``), and a row whose status says otherwise, or a kept
+    row whose outcome its candidate runs contradict, is a disagreement."""
+    from expectrail.contracts import ContractError
+    from expectrail.jit import pixel
+
+    rows = record.get("pixelChecks") or []
+    ids = [r["check"].get("id") for r in rows]
+    if len(set(ids)) != len(ids) or not all(isinstance(i, str) and i.startswith(PIXEL_PREFIX) for i in ids):
+        return None, [], "the record disagrees with itself: its pixel checks are not named once each as pixel checks"
+    try:
+        kept = {r["check"]["id"] for r in pixel.kept_rows(record)}
+    except (ContractError, ValueError) as exc:
+        return None, [], f"the record disagrees with itself: a pixel check is not one ({type(exc).__name__})"
+    reproducing, flaky = [], []
+    for r in rows:
+        cid = r["check"]["id"]
+        if (r["status"] == "kept") != (cid in kept) or max(len(r["clean"]), len(r["bug"]), len(r["candidate"])) > REPS:
+            return None, [], (f"the record disagrees with itself: pixel check {cid} is marked {r['status']}, "
+                              f"and its runs say otherwise")
+        if cid not in kept:
+            continue
+        caught = _all(r["candidate"], "fail")
+        if r["outcome"] in ("catch", "no-catch") and (r["outcome"] == "catch") != caught:
+            return None, [], (f"the record disagrees with itself: pixel check {cid} is marked {r['outcome']}, "
+                              f"and its candidate runs say otherwise")
+        if caught:
+            reproducing.append(cid)
+        elif r["candidate"]:
+            flaky.append(f"{cid} failed {REPS} of {REPS} on the bug build, then gave {', '.join(r['candidate'])} "
+                         f"on the same build with the no-fix candidate")
+    return {"proposed": len(rows), "kept": len(kept), "reproducing": sorted(reproducing)}, flaky, None
 
 
 def _bug_build_runs(record: dict, spec_id: str, candidate: list[str]) -> list[str] | None:
@@ -250,6 +316,16 @@ def _score_one(defect: dict, record_path: Path, visible: str | None, root: Path,
                          f"{', '.join(v['candidate']) or 'no run'} on the same build with the no-fix candidate")
         elif "pass" in v["reference"] and any(r != "pass" for r in v["reference"]):
             flaky.append(f"{v['specId']} gave {', '.join(v['reference'])} on the clean game")
+    if offer_mod.offers_pixel(offer):
+        share, pixel_flaky, disagree = _pixel_rows(record)
+        if disagree:
+            row.update(spendUsd=None, recordSha256=None, why=disagree)
+            return row
+        row["pixel"] = share
+        flaky += pixel_flaky
+        reproducing += share["reproducing"]
+        kept += share["kept"]
+        proposed |= {r["check"]["id"] for r in record.get("pixelChecks") or []}
     row.update(proposed=len(proposed), kept=kept, reproducing=sorted(reproducing))
     if reproducing:
         row["outcome"] = "reproduced"
@@ -291,18 +367,44 @@ def totals(rows: list[dict]) -> dict:
         "spendUsd": round(sum(spends), 4),
         "maxSpendUsd": max(spends, default=0),
         "overCap": sum(s > CAP_USD + 1e-9 for s in spends),
+        **_pixel_totals(rows), **_screen_totals(rows),
     }
 
 
+def _pixel_totals(rows: list[dict]) -> dict:
+    """The pixel checks' share of a pixel score's totals; nothing for a score of any other setting."""
+    shares = [(r, r["pixel"]) for r in rows if "pixel" in r]
+    if not shares:
+        return {}
+    done = [(r, p) for r, p in shares if r["outcome"] == "reproduced"]
+    return {"pixel": {
+        "proposed": sum(p["proposed"] for _, p in shares),
+        "kept": sum(p["kept"] for _, p in shares),
+        "reproducedBy": sum(bool(p["reproducing"]) for _, p in done),
+        "reproducedOnlyBy": sum(bool(p["reproducing"]) and set(r["reproducing"]) == set(p["reproducing"])
+                                for r, p in done),
+    }}
+
+
+def _screen_totals(rows: list[dict]) -> dict:
+    """The screen-only defects apart, when the rows say what the screen record measured; else nothing."""
+    if not rows or not all("screen" in r for r in rows):
+        return {}
+    only = [r for r in rows if r["screen"] == SCREEN_ONLY]
+    return {"screenOnly": len(only), "reproducedScreenOnly": sum(r["outcome"] == "reproduced" for r in only)}
+
+
 def score(doc: dict, records_dir: Path, *, visibility_path: Path | None = None, source: str | None = None,
-          root: Path = REPO, bench_path: Path = bench.BENCH, offer: str = offer_mod.BASELINE) -> dict:
+          root: Path = REPO, bench_path: Path = bench.BENCH, offer: str = offer_mod.BASELINE,
+          screen_path: Path | None = None) -> dict:
     """The score record, from ``records_dir/repro-<id>/jit-run.json`` for each defect of the bench,
     counting only records made with ``offer``.
 
     With a visibility record, each row says what the library probes see of its defect, and a miss can
     be given a reason from it. A visibility record made for another bench is refused."""
     try:
-        offer_mod.check(offer)
+        if offer_mod.check(offer) not in offer_mod.SCORED:
+            raise offer_mod.OfferError(f"the offer {offer} is not scored")
     except offer_mod.OfferError as exc:
         raise ScoreError(str(exc)) from exc
     found = no_fix_problems(doc, root)
@@ -320,12 +422,27 @@ def score(doc: dict, records_dir: Path, *, visibility_path: Path | None = None, 
         if old:
             raise ScoreError("the visibility record does not describe this bench: " + "; ".join(old)[:240])
         seen = {r["id"]: r["visibility"] for r in visibility_record["defects"] if r["visibility"] != "error"}
+    sees: dict = {}
+    if screen_path is not None:
+        from expectrail.repro import screen
+
+        try:
+            screen_record = screen.load(screen_path)
+        except (screen.ScreenError, OSError) as exc:
+            raise ScoreError(f"the screen record cannot be read: {exc}"[:300]) from exc
+        old = screen.stale(screen_record, doc, root, bench_path)
+        if old:
+            raise ScoreError("the screen record does not describe this bench: " + "; ".join(old)[:240])
+        sees = {r["id"]: r["sees"] for r in screen_record["defects"] if r["sees"] != "error"}
     rows = [score_one(d, Path(records_dir) / (CASE_PREFIX + d["id"]) / "jit-run.json", seen.get(d["id"]), root,
-                      offer) for d in doc["defects"]]
+                      offer, **({"screen": sees.get(d["id"])} if screen_path is not None else {}))
+            for d in doc["defects"]]
     record = {"format": FORMAT, "benchSha256": bench.sha256(bench_path), "noFixSha256": bench.sha256(root / NO_FIX),
               "visibilitySha256": bench.sha256(Path(visibility_path)) if visibility_path is not None else None,
               "source": (one_line(source, 200) or None) if source else None, "offer": offer,
               "reps": REPS, "capUsd": CAP_USD, "rows": rows, "totals": totals(rows)}
+    if screen_path is not None:
+        record["screenSha256"] = bench.sha256(Path(screen_path))
     found = problems(record)
     if found:
         raise ScoreError("; ".join(found))
@@ -372,6 +489,23 @@ def problems(record) -> list[str]:
                 out.append(f"repro-score: {r['id']}: {key} is not one line of plain text")
         if r["missReason"] is not None and r["missReason"] not in ASSIGNED_HERE:
             out.append(f"repro-score: {r['id']}: {r['missReason']!r} is not a reason the records can show")
+    pixel_score = offer_mod.offers_pixel(record["offer"])
+    for r in record["rows"]:
+        share = r.get("pixel")
+        if pixel_score and (share is not None) != (r["recordSha256"] is not None):
+            out.append(f"repro-score: {r['id']}: a pixel score gives every scored row, and only those, its pixel checks")
+        if not pixel_score and share is not None:
+            out.append(f"repro-score: {r['id']}: pixel checks on a row of a score made with offer {record['offer']}")
+        if share is not None and (not set(share["reproducing"]) <= set(r["reproducing"])
+                                  or len(share["reproducing"]) > share["kept"] or share["kept"] > r["kept"]
+                                  or share["proposed"] > r["proposed"] or share["kept"] > share["proposed"]
+                                  or not all(c.startswith(PIXEL_PREFIX) for c in share["reproducing"])):
+            out.append(f"repro-score: {r['id']}: its pixel checks do not fit inside its counts")
+    has_screen = [("screen" in r) for r in record["rows"]]
+    if any(has_screen) and not all(has_screen):
+        out.append("repro-score: some rows say what the screen record measured and some do not")
+    if ("screenSha256" in record) != (bool(record["rows"]) and all(has_screen)):
+        out.append("repro-score: rows say what a screen record measured only when the score names that record")
     if record["source"] is not None and record["source"] != one_line(record["source"], 200):
         out.append("repro-score: source is not one line of plain text")
     if record["totals"] != totals(record["rows"]):
@@ -445,6 +579,13 @@ def render(record: dict) -> str:
              f"miss): {t['keptChecks']}",
              f"- Spend: ${t['spendUsd']:.4f} in all, at most ${t['maxSpendUsd']:.4f} for one defect; over the "
              f"${record['capUsd']:.2f} cap: {t['overCap']}"]
+    if "screenOnly" in t:
+        lines.append(f"- Of the defects that change only the screen on a library probe (the screen record): "
+                     f"{_share(t['reproducedScreenOnly'], t['screenOnly'])}")
+    if "pixel" in t:
+        px = t["pixel"]
+        lines.append(f"- Pixel checks (#286): {px['proposed']} proposed, {px['kept']} kept; defects a pixel check "
+                     f"reproduced: {px['reproducedBy']}, of which only a pixel check: {px['reproducedOnlyBy']}")
     if t["misses"]:
         lines.append("- Misses by reason: " + ", ".join(f"{k} {n}" for k, n in t["misses"].items()))
     lines += ["",
@@ -458,6 +599,11 @@ def render(record: dict) -> str:
         else:
             note = _code(r["why"])
         spend = "" if r["spendUsd"] is None else f"${r['spendUsd']:.4f}"
-        lines.append(f"| `{r['id']}` | {r['family']} | {'yes' if r['tunedOn'] else 'no'} | {r['visibility'] or 'not measured'} | "
+        sees = r['visibility'] or 'not measured'
+        if "screen" in r:
+            sees += f"; screen record: {r['screen'] or 'not measured'}"
+        if r.get("pixel", {}).get("reproducing"):
+            note += " (pixel)" if set(r["pixel"]["reproducing"]) == set(r["reproducing"]) else " (trace and pixel)"
+        lines.append(f"| `{r['id']}` | {r['family']} | {'yes' if r['tunedOn'] else 'no'} | {sees} | "
                      f"{r['proposed']} | {r['kept']} | {r['outcome']} | {note} | {spend} |")
     return "\n".join(lines) + "\n"
