@@ -14,6 +14,16 @@ it is **not on PyPI**. The [six-step quickstart](https://expectrail.tech/quickst
 installation, `doctor`, `sample` and a project given by path.
 [Install scope and evidence](docs/capabilities.md#installed-command).
 
+Before replaying, Linux needs `xvfb-run` (Ubuntu packages `xvfb` and `xauth`),
+software OpenGL (`libgl1-mesa-dri` and `libglx-mesa0`), `patch`, `curl` and `unzip`.
+Keep at least **1 GiB free** on the filesystems used by the engine cache and temporary
+files; recordings may need more. Doctor labels this threshold 1024 MB, reports each
+location, and suggests freeing space or choosing other folders. A missing display leaves OpenGL untried and blocks replays too.
+Bubblewrap is optional for this walkthrough; isolated verification requires it and
+kernel support. Vision settings remain intentionally absent for the no-spend walkthrough.
+[Prerequisites and install scope](docs/capabilities.md#installed-command) ·
+[Sandbox limits](docs/capabilities.md#replay-sandbox).
+
 [Quickstart](docs/quickstart.html) · [Verify, then repair](#verify-then-repair) · [Concepts and limits](docs/concepts.html) ·
 [Guides](docs/guides.html) · [Positioning](docs/positioning.html) ·
 [Capability ledger](docs/capabilities.md) · [Source](https://github.com/Expectrail/Expectrail)

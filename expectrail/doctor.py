@@ -214,7 +214,8 @@ def disk() -> Check:
             low.append(f"{free // 1024 ** 2} MB free in {label} ({place})")
     if low:
         return _missing("disk", what, "; ".join(low),
-                        "free some space there, or name other folders with EXPECTRAIL_TOOLS and TMPDIR", run=True)
+                        f"free at least {MIN_FREE_BYTES // 1024 ** 2} MB in each folder named above, "
+                        "or name other folders with EXPECTRAIL_TOOLS and TMPDIR", run=True)
     return _ok("disk", what, "; ".join(shown), run=True)
 
 
@@ -228,6 +229,9 @@ def sandbox(isolated: bool) -> Check:
         return _ok("sandbox", what, f"bubblewrap {tool.version} at {tool.path} started a sandbox", required=isolated)
     fix = (f"{APT} bubblewrap (Linux; the kernel must allow unprivileged user namespaces). Without it replays "
            "run outside the sandbox, and the isolated class and `require-sandbox` refuse to run")
+    if why and why.startswith("xvfb-run is not installed"):
+        fix = (f"{APT} xvfb, then run `expectrail doctor` again; the sandbox needs its own virtual display. "
+               "Without it replays run outside the sandbox, and the isolated class and `require-sandbox` refuse to run")
     return _missing("sandbox", what, _clip(why or "the sandbox could not be started"), fix, required=isolated)
 
 
