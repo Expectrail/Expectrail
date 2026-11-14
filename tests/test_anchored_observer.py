@@ -88,6 +88,14 @@ class Echo(Stand):
         return [{"box": [x - h, y - h, x + h, y + h], "score": 0.9} for x, y in points]
 
 
+class OneOwner(Sees):
+    """As the live model behaves (#330, run 43643679280): in one request each pixel belongs to one
+    object, so only the first of several points on the same sprite gets it."""
+    def segment_at(self, png, points):
+        self.calls += 1
+        return [{"box": self.drawn(png), "score": 0.93}] + [None for _ in points[1:]]
+
+
 class Tiles(Stand):
     def segment_at(self, png, points):
         self.calls += 1
@@ -117,7 +125,7 @@ class CalibrationTest(unittest.TestCase):
         self.assertTrue(doc["enabled"], doc["why"])
         self.assertEqual(doc["rates"], {"found": 1.0, "size": 1.0, "stable": 1.0})
         self.assertEqual(doc["drawnSize"], {"width": SPRITE, "height": SPRITE})
-        self.assertEqual(client.calls, 13)   # 13 frames of 120 (every tenth and the last), both points in one request
+        self.assertEqual(client.calls, 26)   # 13 frames of 120 (every tenth and the last), two requests each
         an.check_calibration(doc)
 
     def test_a_model_that_echoes_the_question_is_not_enabled(self):
@@ -141,6 +149,13 @@ class CalibrationTest(unittest.TestCase):
                 self.assertEqual(echo["rates"]["stable"], 0.0)
                 sees = an.calibrate(GAME, run, Sees(run))
                 self.assertTrue(sees["enabled"], sees["why"])
+
+    def test_a_model_that_gives_each_pixel_to_one_object_is_still_enabled(self):
+        # The second live calibration: asked both points in one request, the nudged point came back
+        # empty in every frame. The points are now asked in separate requests.
+        doc = an.calibrate(GAME, self.run, OneOwner(self.run))
+        self.assertTrue(doc["enabled"], doc["why"])
+        self.assertEqual(doc["rates"]["stable"], 1.0)
 
     def test_a_model_that_answers_with_the_tiles_is_not_enabled(self):
         doc = an.calibrate(GAME, self.run, Tiles(self.run))
