@@ -45,3 +45,14 @@ The 59 skips were not listed. No model was called and nothing was spent.
 - `docs/project-config.md`
 - `docs/new-work/2026-11-14-sinking-yardstick.md`
 - `tests/test_project_config.py`
+
+## Architect run
+
+Linux. The patch applied cleanly on `6aecc16` (the head the merge guard reviewed) as `ba5294c`. Main (`0c23a52`, 45 commits ahead) was then merged into the branch as `82ee5dd`. It had two registry conflicts, both resolved by keeping both sides: `setup.py`'s bundled modules (`project_config` with main's `approval` and `repair`) and `expectrail/contracts.py`'s `V1_FORMATS` (`project/v1` with main's `repair-run/v1`). Godot 4.7.2 from `harness/get_godot.sh`, under `xvfb-run`.
+
+- `python -m harness.check_seeded --out runs/seeded-check`: exit 0, every seeded bug differs from clean. Run without bubblewrap here (`bwrap` is not installed), so the replays were not sandboxed; CI's job sandboxes them.
+- CI's "position log sees a robot resting too low" step, run over those traces: `{'clean': 'pass', 'sinking_v1': 'fail', 'sinking_v2': 'pass'}`, matching the assertion that failed in CI run 43568604937.
+- `EXPECTRAIL_ENGINE_TESTS=required` on `tests.test_body_box`, `test_event_input`, `test_ground_under`, `test_pause_input`, `test_second_project`, `test_auto_route_engine`, `test_unknown_actions`: `Ran 69 tests`, `OK`, none skipped.
+- `python3 -m unittest discover -s tests -t .` on the merged result: `Ran 3415 tests`, `OK (skipped=31)`.
+
+Not run: the hosted CI jobs (they run on push), the release gate suite. No model was called and nothing was spent.
