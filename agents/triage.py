@@ -48,6 +48,8 @@ def _bug_report_offline(spec: dict, verdict: dict, route: dict, log_text: str) -
 
 
 def call_wonder(prompt: str, api_key: str, *, api_base: str | None = None) -> str:
+    from expectrail.spend import hold
+    hold("triage", live=True)
     base = api_base or os.environ.get("META_API_BASE", "https://api.meta.ai/v1")
     body = json.dumps({
         "model": WONDER_MODEL,
@@ -73,7 +75,9 @@ TRIAGE_SYSTEM = "You triage game bugs for Expectrail. Be concise."
 def call_byo(prompt: str, *, provider: str | None = None, model: str | None = None) -> tuple[str, str]:
     """Triage through any provider expectrail.providers knows. Returns (report, "provider/model")."""
     from expectrail.providers import chat_completion, extract_message_text, resolve_provider
+    from expectrail.spend import hold
 
+    hold("triage", live=True)
     cfg = resolve_provider("TRIAGE", provider=provider, model=model,
                            legacy_default_model=WONDER_MODEL, legacy_key_envs=("MODEL_API_KEY", "META_API_KEY"))
     messages = [{"role": "system", "content": TRIAGE_SYSTEM}, {"role": "user", "content": prompt}]
