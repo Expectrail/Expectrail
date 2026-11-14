@@ -17,6 +17,11 @@ held-back signals and the reach probes; the evidence setting (``offer.EVIDENCE``
 evidence, which ``measure`` makes (replays with frames, expectrail/jit/offer.py) and ``propose`` and
 ``revise`` read with ``--evidence``. A proposal is replayed only under the offer it was made with.
 
+``--withhold-candidate`` on ``propose``, ``revise`` and ``run`` gives the model no byte of the candidate
+patch (issue #285, step 6): the checks then come from the report and the bug build alone, and a fix
+cannot shape the checks that judge it. Every step of one change takes it or none does; a proposal made
+one way is refused by a run made the other.
+
 ``run`` always exits 0 once it has written a record: a run that generated nothing is a result, and
 nothing here accepts or rejects a change. Bad arguments exit 2.
 """
@@ -31,7 +36,7 @@ from expectrail.contracts import load_strict
 from expectrail.jit.offer import DEFAULT as DEFAULT_OFFER, OFFERS
 from expectrail.jit.offer import library as offered_library
 from expectrail.jit.offer import attach_evidence, make_evidence, shows_evidence
-from expectrail.jit.run import DEFAULT_BUDGET_USD, RECORD_NAME, gate_summary, generate
+from expectrail.jit.run import DEFAULT_BUDGET_USD, RECORD_NAME, from_base_alone, gate_summary, generate
 
 PROFILE = Path(__file__).resolve().parents[2] / "discovery" / "platformer.profile.json"
 
@@ -47,7 +52,16 @@ def render(doc: dict) -> str:
               f"- Near-miss variants: {len(doc['variants'])}",
               f"- Spend: ${doc['spend']['usd']:.4f} of ${doc['spend']['capUsd']:.2f} "
               f"({doc['spend']['replays']} replays, {doc['spend']['promptTokens']} prompt and "
-              f"{doc['spend']['completionTokens']} completion tokens; prices {doc['spend']['prices']['source']})", ""]
+              f"{doc['spend']['completionTokens']} completion tokens; prices {doc['spend']['prices']['source']})"]
+    base = from_base_alone(doc)
+    if base["candidate"] == "withheld":
+        lines.append(f"- The model was not shown the candidate (issue #285, step 6). Checks that pass on the clean game "
+                     f"and fail on the bug build: {len(base['reproducing'])}, all derived from the report and the "
+                     f"bug build alone")
+    else:
+        lines.append(f"- The model was shown the candidate. Checks that pass on the clean game and fail on the bug "
+                     f"build: {len(base['reproducing'])}; none of them is derived without the candidate")
+    lines.append("")
     if doc["catches"]:
         lines += ["| Check | Strength | Says | Candidate | Base | Variants killed |", "| --- | --- | --- | --- | --- | --- |"]
         for k in doc["catches"]:
@@ -128,6 +142,15 @@ def attach_measurements(probes: list[dict], path: Path | None, base: list[Path])
     return []
 
 
+def _candidate(args) -> str:
+    return "withheld" if getattr(args, "withhold_candidate", False) else "shown"
+
+
+def _intent_settings(args) -> dict:
+    # ``candidate`` only when it is withheld, so the default call is the one it always was.
+    return {"offer": args.offer, **({"candidate": "withheld"} if _candidate(args) == "withheld" else {})}
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="expectrail.jit.cli")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -146,6 +169,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--run-id")
     r.add_argument("--proposal", type=Path, help="replay a saved proposal instead of calling the model")
     r.add_argument("--game", type=Path, help="the reference game (default: game/platformer in this checkout)")
+    r.add_argument("--withhold-candidate", action="store_true",
+                    help="give the model no byte of the candidate patch (issue #285, step 6)")
     r.add_argument("--offer", choices=OFFERS, default=DEFAULT_OFFER,
                     help="what the generator is offered (expectrail/jit/offer.py); the same for every step")
     pp = sub.add_parser("propose")
@@ -161,6 +186,8 @@ def main(argv: list[str] | None = None) -> int:
     pp.add_argument("--measurements", type=Path, help="jit-measurements.json from the measure command")
     pp.add_argument("--evidence", type=Path,
                     help="the evidence file the measure command wrote; read only under the evidence setting")
+    pp.add_argument("--withhold-candidate", action="store_true",
+                    help="give the model no byte of the candidate patch (issue #285, step 6)")
     pp.add_argument("--offer", choices=OFFERS, default=DEFAULT_OFFER,
                     help="what the generator is offered (expectrail/jit/offer.py); the same for every step")
     rv = sub.add_parser("revise")
@@ -178,6 +205,8 @@ def main(argv: list[str] | None = None) -> int:
     rv.add_argument("--evidence", type=Path,
                     help="the evidence file the measure command wrote; read only under the evidence setting")
     rv.add_argument("--github-output", type=Path, help="append revised=true|false here (a workflow's GITHUB_OUTPUT)")
+    rv.add_argument("--withhold-candidate", action="store_true",
+                    help="give the model no byte of the candidate patch (issue #285, step 6)")
     rv.add_argument("--offer", choices=OFFERS, default=DEFAULT_OFFER,
                     help="what the generator is offered (expectrail/jit/offer.py); the same for every step")
     ms = sub.add_parser("measure")
@@ -265,7 +294,7 @@ def main(argv: list[str] | None = None) -> int:
         notes = attach_measurements(probes, args.measurements, args.base)
         notes += attach_evidence(probes, args.evidence, args.base, args.offer)
         try:
-            doc = revise_to_file(spark_intent(offer=args.offer), report,
+            doc = revise_to_file(spark_intent(**_intent_settings(args)), report,
                                  args.candidate.read_bytes().decode("utf-8", errors="replace"), profile, probes,
                                  args.proposal, args.record, args.out, budget_usd=args.budget_usd, prices=prices,
                                  notes=notes)
@@ -291,7 +320,7 @@ def main(argv: list[str] | None = None) -> int:
         notes = attach_measurements(probes, args.measurements, args.base)
         measured = not notes
         notes += attach_evidence(probes, args.evidence, args.base, args.offer)
-        doc = propose_to_file(spark_intent(offer=args.offer), report,
+        doc = propose_to_file(spark_intent(**_intent_settings(args)), report,
                               args.candidate.read_bytes().decode("utf-8", errors="replace"), profile,
                               probes, args.out, budget_usd=args.budget_usd, prices=prices, notes=notes)
         print(json.dumps({"error": doc["error"], "candidates": len(doc["candidates"]), "probes": len(doc["probes"]),
@@ -307,17 +336,18 @@ def main(argv: list[str] | None = None) -> int:
             from expectrail.jit.intent import IntentUnavailable, from_proposal
 
             try:
-                intent = from_proposal(args.proposal, offer=args.offer)
+                intent = from_proposal(args.proposal, offer=args.offer, candidate=_candidate(args))
             except IntentUnavailable as exc:
                 reason = str(exc)
 
                 def intent(*_a, _reason=reason):
                     raise IntentUnavailable(_reason)
                 intent.model, intent.system, intent.offer = None, "", args.offer
+                intent.candidate = _candidate(args)
         elif args.model == "spark":
             from expectrail.jit.intent import spark_intent
 
-            intent = spark_intent(offer=args.offer)
+            intent = spark_intent(**_intent_settings(args))
         prices = {}
         if args.spark_usd_per_mtok_in is not None:
             prices["sparkUsdPerMTokIn"] = args.spark_usd_per_mtok_in
@@ -326,7 +356,8 @@ def main(argv: list[str] | None = None) -> int:
         report = args.report_file.read_text(encoding="utf-8", errors="replace")
         doc = generate(args.profile, report, args.candidate, args.base, args.out, intent=intent,
                        budget_usd=args.budget_usd, prices=prices, reps=args.reps, variant_limit=args.variant_limit,
-                       run_id=args.run_id, game=args.game, offer=args.offer)
+                       run_id=args.run_id, game=args.game, offer=args.offer,
+                       candidate_to_model=_candidate(args))
         (args.out / "jit-report.md").write_text(render(doc) + "\n", encoding="utf-8")
         print(json.dumps({"status": doc["status"], "reason": doc["reason"], "counts": doc["counts"],
                           "spendUsd": doc["spend"]["usd"], "record": str(args.out / RECORD_NAME)}))
