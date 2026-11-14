@@ -154,7 +154,8 @@ def row_status(control: dict, outcomes: dict[str, dict]) -> tuple[str, str]:
     if not control["tests"]:
         return OPEN, "no test"
     if any(k != PASSED for k in kinds):
-        return NOT_RUN, "a test was skipped: " + "; ".join(g.get("detail", "") for g in got if g["outcome"] == SKIPPED)
+        why = dict.fromkeys(g.get("detail", "") for g in got if g["outcome"] == SKIPPED)   # each reason once
+        return NOT_RUN, "a test was skipped: " + "; ".join(why)
     held = f"{len(kinds)} real-process test{'s' if len(kinds) != 1 else ''} passed"
     if control.get("scope"):
         held += f". Covers {control['scope']}"

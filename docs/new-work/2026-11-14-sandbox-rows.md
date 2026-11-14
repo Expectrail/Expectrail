@@ -19,6 +19,10 @@ real-process tests (`tests/release_gate/gate_sandbox.py`).
 - Each row's `scope` says it covers the isolated class only. The default class sandboxes only where
   the machine can; without the sandbox the control is what a change can do.
 - The private file is a stand-in written beside the test's checkouts. No held-out material is read.
+- **A test class skipped as a whole now reads as "not run" in the summary**, not FAILED
+  (`tools.release_gate.fill_unreported`). unittest reports a skipped `setUpClass` once, on a
+  placeholder; the tool used to make every test of that class an error. A class that fails to set up
+  is still an error, and `--require` still fails on any skip. A skipped row gives each reason once.
 
 ## What was run
 - The two controls, locally with real Godot 4.7.2 and no bubblewrap: 2 tests, OK in 96 s. Before the
@@ -27,8 +31,14 @@ real-process tests (`tests/release_gate/gate_sandbox.py`).
 - The three sandboxed tests: **not run here**. This session has no bubblewrap and could not install
   it. They run in CI's `release-gate` job, which has bubblewrap and fails on a skipped test
   (`--require`). Their result is the CI run on the pull request.
-- `python3 -m unittest tests.test_release_gate`: 15 tests, OK.
-- `python3 -m tools.release_gate --out docs/release-gate.md` and the full suite: see the pull request.
+- `python3 -m unittest tests.test_release_gate`: 17 tests, OK (two new: a skipped class, a test with
+  no placeholder).
+- `python3 -m tools.release_gate --out docs/release-gate.md --json ...` on 94d79be, locally with real
+  Godot and no bubblewrap: 31 tests, OK (skipped 2) in 832 s. Held 18, open 15, failed 0, not run 2
+  (the two sandbox rows). `docs/release-gate.md` was then rendered again from that run's saved
+  outcomes with the tool's own `summarise` and `render`, after the change that gives a skip reason
+  once; the counts are the run's.
+- The full suite: see the pull request.
 - No model was called; nothing was spent.
 
 ## Not done
@@ -38,5 +48,7 @@ real-process tests (`tests/release_gate/gate_sandbox.py`).
 ## Files
 - `tests/release_gate/gate_sandbox.py` (new)
 - `tests/release_gate/controls.py`
+- `tools/release_gate.py`
+- `tests/test_release_gate.py`
 - `docs/release-gate.md` (regenerated)
 - `docs/new-work/2026-11-14-sandbox-rows.md`

@@ -143,6 +143,7 @@ class SummaryTest(unittest.TestCase):
         self.assertIn("required and missing", filled[private[0]]["detail"])
         s = summary(filled)
         self.assertEqual(self.row(s, "network-egress")["status"], rg.NOT_RUN)
+        self.assertEqual(self.row(s, "network-egress")["note"].count("no sandbox here"), 1)   # each reason once
         self.assertEqual(self.row(s, "private-path-read")["status"], rg.FAILED)
         self.assertTrue(rg.failed(s, require=False))
 
