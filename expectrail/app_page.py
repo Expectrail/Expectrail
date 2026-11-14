@@ -7,6 +7,7 @@ PAGE = r'''<!doctype html>
 *{box-sizing:border-box}body{margin:0}main{max-width:900px;margin:auto;padding:32px 24px 64px}
 h1{font-size:2rem;line-height:1.2}h2{font-size:1.25rem}section{background:white;padding:24px;margin:20px 0;border:1px solid #ccd5cb;border-radius:12px}
 label{display:block;font-weight:600;margin:16px 0 6px}input{width:100%;font:inherit;border:1px solid #687d74;border-radius:5px;padding:10px;min-width:0}
+input[type=checkbox]{width:auto}
 button{font:inherit;font-weight:600;background:#175c47;color:white;border:2px solid #175c47;border-radius:6px;padding:10px 18px;margin:16px 12px 0 0;cursor:pointer}
 button.secondary{background:white;color:#175c47}button:disabled{opacity:.55;cursor:default}a{color:#175c47}a:focus,button:focus,input:focus{outline:3px solid #b35c12;outline-offset:3px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.note{color:#475a53}#result-text{font-size:1.2rem;font-weight:600}#details,#inspection{white-space:pre-wrap;overflow-wrap:anywhere}
@@ -28,11 +29,17 @@ The routes and approved checks come from <strong>Before</strong>. Expectrail doe
 <button id="inspect" class="secondary" type="button">Check folders</button><p id="inspection" role="status"></p></section>
 <section aria-labelledby="run-heading"><h2 id="run-heading">2. Verify</h2>
 <p>Uses the same verifier as the Expectrail command. Only run games you trust.</p>
+<label><input id="auto-fix" type="checkbox"> Try to fix the game if verification rejects it</label>
+<div id="repair-settings" class="grid" hidden>
+<div><label for="attempts">Maximum fix attempts (1 to 10)</label><input id="attempts" type="number" min="1" max="10" value="3"></div>
+<div><label for="usd-cap">Maximum fixer spend in US dollars</label><input id="usd-cap" type="number" min="0" step="any"></div>
+</div>
 <button id="verify" type="button">Verify</button><button id="cancel" type="button" class="secondary" disabled>Cancel</button>
 <p id="progress" role="status">No verification has started.</p><ol id="phases" aria-label="Recorded phases"></ol>
 <p id="error" role="alert" hidden></p></section>
 <section aria-labelledby="result-heading"><h2 id="result-heading">3. Result</h2>
 <p id="result-text">No result yet.</p><p id="judged-by"></p><p id="details"></p>
+<a id="repair-record" target="_blank" rel="noopener noreferrer" hidden>Open repair record</a>
 <a id="report" target="_blank" rel="noopener noreferrer" hidden>Open this job's existing report</a>
 <div id="evidence-viewer"><h3>Evidence viewer</h3><a id="viewer" target="_blank" rel="noopener noreferrer" hidden>Open this job's evidence viewer</a><p id="viewer-note" class="note">Available when a job from this app session finishes.</p></div>
 </section>
@@ -47,13 +54,14 @@ try { sessionStorage.setItem('expectrail-token', token); } catch (_) {}
 history.replaceState(null, '', '/');
 const el = id => document.getElementById(id);
 const values = () => Object.fromEntries(['before','after','game','routes','specs'].map(id => [id,el(id).value]));
+el('auto-fix').onchange=()=>{el('repair-settings').hidden=!el('auto-fix').checked;};
 let job = null, busy = false;
 const phaseNames = {queued:'Waiting to start',preparing:'Checking inputs and tools',executing:'Running the game',
   observing:'Reading observations',evaluating:'Evaluating checks',completed:'Finished',failed:'Failed',cancelled:'Cancelled'};
 function controls(active) {
   busy=active;
   el('verify').disabled=active; el('inspect').disabled=active; el('cancel').disabled=!active || !job;
-  for (const id of ['before','after','game','routes','specs']) el(id).disabled=active;
+  for (const id of ['before','after','game','routes','specs','auto-fix','attempts','usd-cap']) el(id).disabled=active;
 }
 async function api(path, body) {
   const options = {method:body===undefined?'GET':'POST', headers:{'X-Expectrail-Token':token}};
@@ -66,7 +74,7 @@ function problem(error) {
   el('error').textContent=error.message; el('error').hidden=false;
   el('result-text').textContent='Could not be carried out — no result is available here.';
   el('details').textContent='If a job already started, it may still be running. Keep the app open and use Retry status or Cancel.';
-  el('report').hidden=true; el('viewer').hidden=true; el('judged-by').textContent='';
+  el('repair-record').hidden=true; el('report').hidden=true; el('viewer').hidden=true; el('judged-by').textContent='';
   // Losing the connection does not cancel a worker. Keep its controls so it can be recovered.
   controls(Boolean(job)); el('verify').textContent=job?'Retry status':'Verify'; el('verify').disabled=false;
 }
@@ -77,13 +85,16 @@ function show(data) {
   el('result-text').textContent=data.summary || 'Could not be carried out — no result is available here.';
   el('judged-by').textContent=data.judgedBy;
   el('details').textContent=[...data.reasons,...data.diagnostics.flatMap(d=>[d.detail,d.fix])].filter((s,i,a)=>s&&a.indexOf(s)===i).join('\n');
+  el('repair-record').hidden=!data.repairUrl;
+  if(data.repairUrl) el('repair-record').href=data.repairUrl;
   el('report').hidden=!data.report;
   if(data.report) el('report').href=data.report;
   el('viewer').hidden=!data.viewer;
   if(data.viewer) el('viewer').href=data.viewer;
   el('viewer-note').hidden=Boolean(data.viewer);
   el('viewer-note').textContent=data.sessionOwned?'Available when this job finishes.':'This job was created in an earlier app session; its files cannot be opened here.';
-  if(data.state!=='running'){job=null;controls(false);el('verify').textContent='Verify';}
+  if(data.repairRunning) el('cancel').disabled=true;
+  if(data.state!=='running' && !data.repairRunning){job=null;controls(false);el('verify').textContent='Verify';}
 }
 async function poll() {
   const current=job;if(!current)return;
@@ -102,9 +113,15 @@ el('inspect').onclick=async()=>{
 };
 el('verify').onclick=async()=>{
   if(job){controls(true);el('verify').textContent='Verify';await poll();return;}
-  el('error').hidden=true;el('report').hidden=true;el('viewer').hidden=true;el('judged-by').textContent='';el('details').textContent='';el('phases').replaceChildren();
+  el('error').hidden=true;el('repair-record').hidden=true;el('report').hidden=true;el('viewer').hidden=true;el('judged-by').textContent='';el('details').textContent='';el('phases').replaceChildren();
   el('result-text').textContent='No verdict yet.';el('progress').textContent='Creating the job and recording its inputs…';controls(true);
-  try{const data=await api('/api/jobs',values());job=data.id;controls(true);show(data);if(job)await poll();else await pastRuns();}
+  try{const body=values();
+    if(el('auto-fix').checked){
+      body.autoFix=true;body.attempts=el('attempts').valueAsNumber;body.usdCap=el('usd-cap').valueAsNumber;
+      if(!Number.isInteger(body.attempts)||body.attempts<1||body.attempts>10) throw new Error('Enter 1 to 10 fix attempts.');
+      if(!Number.isFinite(body.usdCap)||body.usdCap<0) throw new Error('Enter a fixer spend cap of zero or more US dollars.');
+    }
+    const data=await api('/api/jobs',body);job=data.id;controls(true);show(data);if(job)await poll();else await pastRuns();}
   catch(error){problem(error);}
 };
 el('cancel').onclick=async()=>{
@@ -122,7 +139,7 @@ async function pastRuns() {
       open.textContent='Open run';open.href='#result-heading';
       open.onclick=event=>{
         if(busy || job){event.preventDefault();el('past-note').textContent='Finish or cancel the current run before opening another.';return;}
-        job=row.sessionOwned && row.state==='running'?row.id:null;
+        job=row.sessionOwned && (row.state==='running' || row.repairRunning)?row.id:null;
         show(row);controls(Boolean(job));if(job)poll();
       };
       li.append(detail,open);return li;

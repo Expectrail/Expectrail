@@ -102,6 +102,8 @@ def check_status(doc) -> None:
     if found:
         raise StoreError(f"status.json does not match contracts/{SCHEMA_PATH.name}: {found[0]}"
                          + (f" (and {len(found) - 1} more)" if len(found) > 1 else ""))
+    if "repair" in doc and doc["decision"] != "reject":
+        raise StoreError("only a rejected job can have an auto-fix outcome")
     final, decided = doc["phase"] in FINAL, doc["decision"] is not None
     if decided != (doc["phase"] == "completed"):
         raise StoreError("status.json: only a completed job has a decision, and every completed job has one")
@@ -274,6 +276,8 @@ class JobStore:
         no worker ever took, is failed here, so nobody waits on a job that will never finish."""
         paths = self._existing(job_id)
         doc = self._read(paths)
+        if doc.get("repair", {}).get("state") == "running" and not (doc["worker"] and alive(doc["worker"]["pid"])):
+            return self.finish_repair(job_id, {"state": "interrupted", "detail": "the repair worker stopped"})
         if doc["phase"] in FINAL or doc["lease"] is None:   # no lease: written before jobs had one from the start
             return doc
         if parse_stamp(doc["lease"]["expiresAt"]) > now() or (doc["worker"] and alive(doc["worker"]["pid"])):
@@ -410,10 +414,21 @@ class JobStore:
             doc.update(phase=phase, decision=decision, reasons=[str(r)[:300] for r in (reasons or [])][:20],
                        diagnostics=(doc["diagnostics"] + (diagnostics or []))[:32], output=output,
                        evidenceGrade=evidence_grade if phase == "completed" else None, finishedAt=finished)
+            if decision == "reject" and "autoFix" in self.request(job_id):
+                doc["repair"] = {"state": "running"}
             if observers is not None:
                 doc["observers"] = observers
             doc["history"].append({"phase": phase, "at": finished})
             return self._write(paths, doc), True
+
+    def finish_repair(self, job_id: str, repair: dict) -> dict:
+        paths = self._existing(job_id)
+        with self._locked(paths.lock):
+            doc = self._read(paths)
+            if doc.get("repair", {}).get("state") == "running":
+                doc["repair"] = repair
+                return self._write(paths, doc)
+            return doc
 
     def cancel(self, job_id: str, *, grace_seconds: float = 3.0) -> dict:
         """Cancel an unfinished job and stop everything its worker started. The status is made final
