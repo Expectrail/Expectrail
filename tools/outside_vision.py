@@ -114,9 +114,43 @@ def capture(project, out):
     return receipt
 
 
-def judge(project, data, receipt, out, observer):
+def calibration_markdown(doc):
+    rates = doc['rates']
+    state = 'used' if doc['enabled'] else 'not used: ' + '; '.join(doc['why'])
+    return (f"\n**Anchored vision for {doc['game']['name']}** (#330): {state}. Measured on the clean run: "
+            f"found at its place in {doc['frames']['found']} of {doc['frames']['asked']} asked frames "
+            f"({rates['found']:.0%}); drawn size matches the collision box in {rates['size']:.0%}; "
+            f"same answer with a box twice as large in {rates['stable']:.0%}.\n")
+
+
+def anchored(project, data, client, out):
+    """The visual observer for this game: calibrated on the unchanged game's first route (#330), and
+    used only when the calibration says so. Writes calibration.json and calibration.md to ``out``."""
+    from expectrail import anchored as an
+
+    first = routes(project)[0]
+    run = saved_run(data / 'pinned' / first.stem, first)
+    game = {'name': project['name'], 'commit': project['commit']}
+    try:
+        doc = an.calibrate(game, run, client)
+    except verify.NoAnswer as exc:
+        doc = an.judge_calibration(game, run['replaySha256'], [], an.RULES,
+                                   model=str(getattr(client, 'model', 'unknown')),
+                                   provider=str(getattr(client, 'provider', 'unknown')))
+        doc['why'] = [str(exc)[:200]] + doc['why'][:7]
+    out.mkdir(parents=True, exist_ok=True)
+    (out / 'calibration.json').write_text(json.dumps(doc, indent=1) + '\n')
+    (out / 'calibration.md').write_text(calibration_markdown(doc))
+    return an.AnchoredObserver(client, doc)
+
+
+def judge(project, data, receipt, out, observer=None, client=None):
+    """Judge every variant. ``observer`` is used as given; with ``client`` instead, the anchored
+    observer is calibrated on the unchanged game first (#330)."""
     if capture_id(project, data) != receipt:
         raise ValueError('capture digest differs from the capture job output')
+    if observer is None:
+        observer = anchored(project, data, client, out)
     cases = variants(project)
     rows = []
     with tempfile.TemporaryDirectory() as tmp:
@@ -164,6 +198,8 @@ def main(argv=None):
         if name == 'judge':
             sub.add_argument('--data', type=Path, required=True)
             sub.add_argument('--digest', required=True)
+            sub.add_argument('--recording', type=Path,
+                             help='answer from this vision recording only (no key, no spend); default: the live model, recorded')
     args = parser.parse_args(argv)
     project = next(p for p in trial.load_list() if p['name'] == args.project)
     if args.out.exists():
@@ -177,8 +213,16 @@ def main(argv=None):
         return 0
 
     from agents.sam_observations import CAP_ENV, MetaSamClient, sam_usage
-    from expectrail.observers import FramesObserver
+    from expectrail import recorded
 
+    if args.recording is not None:
+        # Option A (#330): the answers recorded once by a person-dispatched live run, replayed for free.
+        # A frame or question not in the recording gets no answer, so the verdict is needs-review.
+        client = recorded.RecordedClient(recorded.read_recording(args.recording))
+        args.out.mkdir(parents=True)
+        judge(project, args.data, args.digest, args.out, client=client)
+        print(f'Answered from the recording: {client.answered} of {client.calls} questions')
+        return 0
     cap = os.getenv(CAP_ENV, '')
     if not re.fullmatch(r'[0-9]+(?:\.[0-9]{1,2})?', cap) or not 0 < float(cap) <= 2:
         parser.error(f'{CAP_ENV} must be a positive amount of at most 2 dollars')
@@ -186,14 +230,21 @@ def main(argv=None):
         parser.error('MODEL_API_KEY is missing')
     args.out.mkdir(parents=True)
     before = sam_usage()
+    client = recorded.RecordingClient(MetaSamClient())
     try:
-        judge(project, args.data, args.digest, args.out,
-              FramesObserver(client=MetaSamClient(), name='sam', every=1))
+        judge(project, args.data, args.digest, args.out, client=client)
     finally:
         used = {key: value - before[key] for key, value in sam_usage().items()}
         (args.out / 'spend.json').write_text(json.dumps(used, indent=2) + '\n')
         print(f"Spend at list price: ${used['reservedUsd']:.4f}, {used['requests']} requests, "
               f"{used['images']} images answered")
+        try:
+            run = os.getenv('GITHUB_RUN_ID') or 'local'
+            doc = client.recording(sample=project['name'], recorded_at=time.strftime('%Y-%m-%d', time.gmtime()),
+                                   run=run)
+            recorded.write_recording(args.out / 'vision-recording.json', doc)
+        except recorded.RecordingError as exc:
+            print(f'No recording was written: {exc}')
     return 0
 
 

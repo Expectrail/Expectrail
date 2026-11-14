@@ -92,6 +92,9 @@ jobs:
           if [ -f "$RUNNER_TEMP/findings/outside-trial.md" ]; then
             cat "$RUNNER_TEMP/findings/outside-trial.md" >> "$GITHUB_STEP_SUMMARY"
           fi
+          if [ -f "$RUNNER_TEMP/findings/calibration.md" ]; then
+            cat "$RUNNER_TEMP/findings/calibration.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
           if [ -f "$RUNNER_TEMP/findings/spend.json" ]; then
             python -c 'import json, sys; s=json.load(open(sys.argv[1])); print("\nSpend at list price: ${reservedUsd:.4f}, {requests} requests, {images} images answered.".format(**s))' "$RUNNER_TEMP/findings/spend.json" >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -103,4 +106,7 @@ jobs:
             ${{ runner.temp }}/findings/*/findings.json
             ${{ runner.temp }}/findings/spend.json
             ${{ runner.temp }}/findings/outside-trial.md
+            ${{ runner.temp }}/findings/calibration.json
+            ${{ runner.temp }}/findings/calibration.md
+            ${{ runner.temp }}/findings/vision-recording.json
           retention-days: 14

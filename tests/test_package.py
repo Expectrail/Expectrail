@@ -81,6 +81,7 @@ NOT_PACKAGED = {
     "expectrail.spec_writer": "drafts specs with a model; no verification uses a model",
     "expectrail.runit": "the site's Run it samples (#265): reads docs/run-it/ in a clone of the repository",
     "expectrail.recorded": "recorded vision answers for the Run it samples (#265); built on expectrail.observers",
+    "expectrail.anchored": "the anchored visual observer for outside games (#330); built on the vision adapter in agents/, which the wheel does not carry",
     "expectrail.runit_site": "the Run it page's results index (#265): the publish job runs it from a clone; built on expectrail.runit",
 }
 # Imports a packaged module makes only on a path a verification never takes.
