@@ -15,6 +15,7 @@
     "idempotencyKey"
   ],
   "properties": {
+    "intent": {"enum": ["fix"], "description": "A repair candidate must demonstrate its fix on repeated replays."},
     "format": {
       "const": "expectrail.verify-request/v1"
     },

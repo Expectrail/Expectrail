@@ -358,6 +358,7 @@ def run_muse(
     sandboxed: bool = True,
     require_sandbox: bool = False,
     detected: str | None = None,
+    provider_only: bool = False,
 ) -> tuple[subprocess.CompletedProcess[str], dict]:
     """Every ``muse exec`` goes through here: under bwrap when ``sandboxed`` and available, else on
     the host with an allowlisted environment; through the key gateway when it is on (agents.gateway).
@@ -369,7 +370,7 @@ def run_muse(
 
     kind = (detected if detected is not None else detect_sandbox()) if sandboxed else "none"
     muse_kind = muse_kind_for(kind) if sandboxed else "none"
-    if require_sandbox and muse_kind == "none":
+    if (require_sandbox or provider_only) and muse_kind == "none":
         raise SystemExit(
             "--require-sandbox needs bubblewrap (bwrap) on PATH to confine Muse Code"
         )
@@ -377,7 +378,13 @@ def run_muse(
     base = dict(env) if env is not None else muse_subprocess_env()
     meta: dict = {"kind": muse_kind, "requireSandbox": require_sandbox, "detect": kind}
     warm_muse()
-    with muse_gateway() as gateway:
+    # A repair gets only the model gateway, even if the host normally disables or widens it.
+    if provider_only:
+        from agents.gateway import DEFAULT_HOSTS, GATEWAY_ENV, HOSTS_ENV
+        channel = muse_gateway({**os.environ, GATEWAY_ENV: "on", HOSTS_ENV: DEFAULT_HOSTS})
+    else:
+        channel = muse_gateway()
+    with channel as gateway:
         if gateway is not None:
             base = gateway.muse_env(base, in_sandbox=muse_kind == "bwrap")
             meta["network"] = "gateway only" if muse_kind == "bwrap" else "host (proxy settings)"
@@ -411,10 +418,11 @@ def run_muse_sandboxed(
     timeout: int,
     require_sandbox: bool = False,
     detected: str | None = None,
+    provider_only: bool = False,
 ) -> tuple[subprocess.CompletedProcess[str], dict]:
     """``run_muse`` under bwrap when available (the fixer and the sandboxed screenshot judge)."""
     return run_muse(prompt, work=work, env=env, timeout=timeout, sandboxed=True,
-                    require_sandbox=require_sandbox, detected=detected)
+                    require_sandbox=require_sandbox, detected=detected, provider_only=provider_only)
 
 
 def main(argv: list[str] | None = None) -> int:

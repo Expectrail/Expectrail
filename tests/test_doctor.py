@@ -384,7 +384,8 @@ class UsageTest(unittest.TestCase):
         text = cli.usage()
         self.assertIn("doctor       check that this machine has what a verification needs", text)
         self.assertNotIn("doctor", cli.PLANNED)
-        self.assertEqual(sorted(cli.PLANNED), ["repair", "trust-check"])
+        self.assertEqual(sorted(cli.PLANNED), ["trust-check"])
+        self.assertIn("propose and verify a fix for a rejected job", text)
 
 
 @unittest.skipUnless(ENGINE_TESTS == "required", "set EXPECTRAIL_ENGINE_TESTS=required to check with real Godot")

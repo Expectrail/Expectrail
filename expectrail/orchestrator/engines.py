@@ -139,6 +139,7 @@ class Gate:
             base=Path(base["checkout"]) if base else None,
             # The isolated class: every replay in the sandbox, or the gate refuses and nothing is accepted.
             require_sandbox=request["executionClass"] == "isolated",
+            intent=request.get("intent", "none"),
             checks=checks, rule=self._rule, visual=visual, on_phase=advance, adapter=self.name,
             **({"replay": self._replay} if self._replay is not None else {}))
         # The grade stays `diagnostic` even when every replay was sandboxed: the ledger's `isolated`
