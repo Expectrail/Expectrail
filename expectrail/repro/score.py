@@ -65,6 +65,17 @@ told another, and a record made with another setting is ``no-result`` with that 
 measured with the held-back signals and reach probes on offer is never read as the baseline, nor the
 other way round, and the score record and its page name the setting.
 
+**One candidate setting per score** (issue #285, step 6). Whether the model that proposed the checks was
+given the candidate (``shown``, the default) or nothing of it (``withheld``, ``--withhold-candidate``) is a
+setting of the run too (``settings.candidate`` in each record; a record written before the setting existed
+was made with it shown). A score counts the records of one candidate setting, ``shown`` unless it is told
+``withheld``, and a record made with the other is ``no-result`` with that reason, as for the offer. The no-fix
+candidate tells the model nothing either way, but the two prompts differ (the system prompt says no fix is
+shown, and every probe is on offer), so a rate measured one way is never read as the other. A score of
+withheld records names the setting (``candidate``); a score of shown records leaves it out, so a score made
+as before is byte for byte what it was. Under ``withheld`` every reproducing check was derived from the
+report and the bug build alone, which is #271's first condition; the page says so.
+
 **Pixel checks are counted on their own** (#286; records made under the pixel setting,
 ``signals-reach-evidence-pixel``). Such a record carries ``pixelChecks`` beside its trace checks
 (expectrail/jit/pixel.py). A pixel check reproduces by the same rule as a trace check: it is kept by its
@@ -111,6 +122,10 @@ ASSIGNED_HERE = ("budget", "flaky", "wrong-predicate", "no-signal", "undetermine
 TRACE_VISIBLE = ("signal", "trace-only")
 SCREEN_ONLY = "screen-only"
 PIXEL_PREFIX = "jit-px-"
+# The candidate settings a jit-run record states (settings.candidate). Spelled here, not imported: this
+# package never imports the model's code (tests/test_repro_bench.py); a test holds them to the pipeline's.
+SHOWN, WITHHELD = "shown", "withheld"
+CANDIDATE_SETTINGS = (SHOWN, WITHHELD)
 
 
 class ScoreError(ValueError):
@@ -166,7 +181,8 @@ def _all(runs: list[str], outcome: str) -> bool:
     return len(runs) >= REPS and all(r == outcome for r in runs[:REPS])
 
 
-def _read(defect: dict, path: Path, root: Path, offer: str = offer_mod.BASELINE) -> tuple[dict | None, str | None]:
+def _read(defect: dict, path: Path, root: Path, offer: str = offer_mod.BASELINE,
+          candidate: str = SHOWN) -> tuple[dict | None, str | None]:
     """The defect's record, or why there is none to score."""
     try:
         if path.stat().st_size > MAX_BYTES:
@@ -184,6 +200,10 @@ def _read(defect: dict, path: Path, root: Path, offer: str = offer_mod.BASELINE)
     made = record["settings"].get("offer", offer_mod.BASELINE)
     if made != offer:
         return None, f"the record was made with offer {made}, and this score counts offer {offer}"
+    made_with = record["settings"].get("candidate", SHOWN)
+    if made_with != candidate:
+        return None, (f"the record was made with the candidate {made_with}, and this score counts records made "
+                      f"with it {candidate}")
     if record["settings"]["reps"] != REPS:
         return None, f"the record ran each check {record['settings']['reps']} times, and the bench counts {REPS} of {REPS}"
     return record, None
@@ -204,11 +224,11 @@ _NO_SCREEN = object()
 
 
 def score_one(defect: dict, record_path: Path, visible: str | None, root: Path = REPO,
-              offer: str = offer_mod.BASELINE, screen=_NO_SCREEN) -> dict:
+              offer: str = offer_mod.BASELINE, screen=_NO_SCREEN, candidate: str = SHOWN) -> dict:
     """One defect's row. Its free text (``why``, ``evidence``) is made one line here, whatever set it.
     ``screen`` is what the screen record measured of the defect (None when it has no row for it); left
     out, the row says nothing about the screen."""
-    row = _score_one(defect, record_path, visible, root, offer)
+    row = _score_one(defect, record_path, visible, root, offer, candidate)
     for key in ("why", "evidence"):
         if row[key] is not None:
             row[key] = one_line(row[key])
@@ -266,12 +286,13 @@ def _bug_build_runs(record: dict, spec_id: str, candidate: list[str]) -> list[st
     return entries[0]["base"]
 
 
-def _score_one(defect: dict, record_path: Path, visible: str | None, root: Path, offer: str) -> dict:
+def _score_one(defect: dict, record_path: Path, visible: str | None, root: Path, offer: str,
+               candidate: str = SHOWN) -> dict:
     row = {"id": defect["id"], "family": defect["family"], "tunedOn": defect["tunedOn"],
            "patchSha256": bench.sha256(root / defect["patch"]), "visibility": visible,
            "outcome": "no-result", "why": None, "proposed": 0, "kept": 0, "reproducing": [],
            "missReason": None, "evidence": None, "spendUsd": None, "recordSha256": None}
-    record, why = _read(defect, Path(record_path), root, offer)
+    record, why = _read(defect, Path(record_path), root, offer, candidate)
     if record is None:
         row["why"] = why
         return row
@@ -396,9 +417,9 @@ def _screen_totals(rows: list[dict]) -> dict:
 
 def score(doc: dict, records_dir: Path, *, visibility_path: Path | None = None, source: str | None = None,
           root: Path = REPO, bench_path: Path = bench.BENCH, offer: str = offer_mod.BASELINE,
-          screen_path: Path | None = None) -> dict:
+          screen_path: Path | None = None, candidate: str = SHOWN) -> dict:
     """The score record, from ``records_dir/repro-<id>/jit-run.json`` for each defect of the bench,
-    counting only records made with ``offer``.
+    counting only records made with ``offer`` and with the candidate ``candidate`` (shown or withheld).
 
     With a visibility record, each row says what the library probes see of its defect, and a miss can
     be given a reason from it. A visibility record made for another bench is refused."""
@@ -407,6 +428,8 @@ def score(doc: dict, records_dir: Path, *, visibility_path: Path | None = None, 
             raise offer_mod.OfferError(f"the offer {offer} is not scored")
     except offer_mod.OfferError as exc:
         raise ScoreError(str(exc)) from exc
+    if candidate not in CANDIDATE_SETTINGS:
+        raise ScoreError(f"the candidate setting must be one of {', '.join(CANDIDATE_SETTINGS)}")
     found = no_fix_problems(doc, root)
     if found:
         raise ScoreError("; ".join(found))
@@ -435,12 +458,15 @@ def score(doc: dict, records_dir: Path, *, visibility_path: Path | None = None, 
             raise ScoreError("the screen record does not describe this bench: " + "; ".join(old)[:240])
         sees = {r["id"]: r["sees"] for r in screen_record["defects"] if r["sees"] != "error"}
     rows = [score_one(d, Path(records_dir) / (CASE_PREFIX + d["id"]) / "jit-run.json", seen.get(d["id"]), root,
-                      offer, **({"screen": sees.get(d["id"])} if screen_path is not None else {}))
+                      offer, candidate=candidate, **({"screen": sees.get(d["id"])} if screen_path is not None else {}))
             for d in doc["defects"]]
     record = {"format": FORMAT, "benchSha256": bench.sha256(bench_path), "noFixSha256": bench.sha256(root / NO_FIX),
               "visibilitySha256": bench.sha256(Path(visibility_path)) if visibility_path is not None else None,
               "source": (one_line(source, 200) or None) if source else None, "offer": offer,
               "reps": REPS, "capUsd": CAP_USD, "rows": rows, "totals": totals(rows)}
+    if candidate == WITHHELD:
+        # Left out when shown, so a score made as before is the record it always was.
+        record["candidate"] = WITHHELD
     if screen_path is not None:
         record["screenSha256"] = bench.sha256(Path(screen_path))
     found = problems(record)
@@ -565,6 +591,10 @@ def render(record: dict) -> str:
              f"Generator offered: `{record['offer']}` (expectrail/jit/offer.py)."
              + (" This is the generator as it was before steps 3 and 4 of issue #285." if record["offer"] == "baseline"
                 else "") + " A record made with another setting is counted as no result.", "",
+             *(["Candidate: **withheld**. The model was given no byte of the candidate, so every reproducing "
+                "check below was derived from the report and the bug build alone (issue #285, step 6). A record "
+                "made with the candidate shown is counted as no result.", ""]
+               if record.get("candidate") == WITHHELD else []),
              f"From {_code(record['source']) if record['source'] else 'records with no named source'}. "
              f"A defect is reproduced when a generated "
              f"check passed on the clean game {REPS} times of {REPS} and failed on the bug build {REPS} times of "

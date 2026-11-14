@@ -95,6 +95,9 @@ def main(argv: list[str] | None = None) -> int:
                    help="count only records made with this setting (expectrail/jit/offer.py)")
     s.add_argument("--screen", type=Path, default=None,
                    help="a screen record (expectrail/repro/screen.py): the rate on the screen-only defects apart")
+    s.add_argument("--candidate", choices=score.CANDIDATE_SETTINGS, default=score.SHOWN,
+                   help="count only records made with the candidate shown to the model (the default) or withheld "
+                        "(--withhold-candidate; issue #285, step 6)")
     bd = sub.add_parser("breakdown", help="print a score's misses by reason, with the hand findings; no model, no engine")
     bd.add_argument("--score", type=Path, required=True, help="a repro-score.json")
     bd.add_argument("--hand", type=Path, default=breakdown.HAND, help="the hand findings (expectrail.repro-hand-reasons/v1)")
@@ -116,7 +119,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "score":
             record = score.score(doc, args.records, visibility_path=None if args.no_visibility else args.visibility,
                                  source=args.source, bench_path=args.bench, offer=args.offer,
-                                 screen_path=args.screen)
+                                 screen_path=args.screen, candidate=args.candidate)
             score.write(record, args.out)
             print(json.dumps(record["totals"]))
             return 0

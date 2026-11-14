@@ -1,0 +1,80 @@
+{
+ "benchSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+ "candidate": "withheld",
+ "capUsd": 2.0,
+ "format": "expectrail.repro-score/v1",
+ "noFixSha256": "96f6aa972c0ea9d9dc84c4843ec04b1b850e908fd26b6798d63f24d67b9f8d33",
+ "offer": "baseline",
+ "reps": 3,
+ "rows": [
+  {
+   "evidence": null,
+   "family": "movement-input",
+   "id": "air-jump",
+   "kept": 1,
+   "missReason": null,
+   "outcome": "reproduced",
+   "patchSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679",
+   "proposed": 4,
+   "recordSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+   "reproducing": [
+    "jit-no-extra-air-jumps"
+   ],
+   "spendUsd": 0.1,
+   "tunedOn": true,
+   "visibility": "signal",
+   "why": null
+  },
+  {
+   "evidence": "a signal moves on a library probe, and none of the 3 proposed checks failed 3 of 3 on the bug build",
+   "family": "movement-input",
+   "id": "slow-left",
+   "kept": 0,
+   "missReason": "wrong-predicate",
+   "outcome": "not-reproduced",
+   "patchSha256": "c0184f820a786c63290aba04c351d33fdd08ec147fea6d9be1b2493877527077",
+   "proposed": 3,
+   "recordSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+   "reproducing": [],
+   "spendUsd": 0.08,
+   "tunedOn": false,
+   "visibility": "signal",
+   "why": null
+  },
+  {
+   "evidence": null,
+   "family": "camera-viewport",
+   "id": "camera-cut-top",
+   "kept": 0,
+   "missReason": null,
+   "outcome": "no-result",
+   "patchSha256": "58aa8ecdbfa68434dde777cd3229da2f73afc6a34e145509e24402a5e3875b62",
+   "proposed": 0,
+   "recordSha256": null,
+   "reproducing": [],
+   "spendUsd": null,
+   "tunedOn": false,
+   "visibility": "trace-only",
+   "why": "no readable record (FileNotFoundError)"
+  }
+ ],
+ "source": "An example with made-up rows, counting records made with the candidate withheld. Not a measured run.",
+ "totals": {
+  "defects": 3,
+  "keptChecks": 1,
+  "maxSpendUsd": 0.1,
+  "misses": {
+   "wrong-predicate": 1
+  },
+  "noResult": 1,
+  "notReproduced": 1,
+  "overCap": 0,
+  "reproduced": 1,
+  "reproducedTraceVisible": 1,
+  "reproducedUntuned": 0,
+  "spendUsd": 0.18,
+  "traceVisible": 3,
+  "untuned": 2
+ },
+ "visibilitySha256": null
+}
