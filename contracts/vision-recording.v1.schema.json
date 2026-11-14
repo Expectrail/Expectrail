@@ -67,9 +67,10 @@
           "kind": {
             "enum": [
               "segment",
-              "segment-in"
+              "segment-in",
+              "segment-at"
             ],
-            "description": "segment: every match for a prompt; segment-in: what is inside each of the asked boxes, in their order (null for none)."
+            "description": "segment: every match for a prompt; segment-in: what is inside each of the asked boxes, in their order (null for none); segment-at: what is drawn at each of the asked points, in their order (null for none)."
           },
           "frameSha256": {
             "type": "string",

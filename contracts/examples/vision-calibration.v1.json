@@ -12,14 +12,16 @@
   "model": "sam-3.1",
   "provider": "stand-in (example, not a live answer)",
   "box": "body",
-  "pad": 4.0
+  "prompt": "point"
  },
  "rules": {
   "found": 0.9,
   "size": 0.9,
   "stable": 0.9,
   "sizeTolerance": 0.25,
-  "wideFactor": 2.0,
+  "sizeFloorPx": 4.0,
+  "stableFloorPx": 3.0,
+  "nudgePx": 3.0,
   "minFrames": 8
  },
  "frames": {
@@ -53,7 +55,7 @@
     16.0,
     16.0
    ],
-   "wideSize": [
+   "nudgedSize": [
     16.0,
     16.0
    ]
@@ -72,7 +74,7 @@
     16.0,
     16.0
    ],
-   "wideSize": [
+   "nudgedSize": [
     16.0,
     16.0
    ]
@@ -91,7 +93,7 @@
     16.0,
     16.0
    ],
-   "wideSize": [
+   "nudgedSize": [
     16.0,
     16.0
    ]
@@ -110,7 +112,7 @@
     16.0,
     16.0
    ],
-   "wideSize": [
+   "nudgedSize": [
     16.0,
     16.0
    ]
@@ -129,7 +131,7 @@
     16.0,
     16.0
    ],
-   "wideSize": [
+   "nudgedSize": [
     16.0,
     16.0
    ]
@@ -148,7 +150,7 @@
     16.0,
     16.0
    ],
-   "wideSize": [
+   "nudgedSize": [
     16.0,
     16.0
    ]
@@ -167,7 +169,7 @@
     16.0,
     16.0
    ],
-   "wideSize": [
+   "nudgedSize": [
     16.0,
     16.0
    ]
@@ -186,7 +188,7 @@
     16.0,
     16.0
    ],
-   "wideSize": [
+   "nudgedSize": [
     16.0,
     16.0
    ]
@@ -205,7 +207,7 @@
     16.0,
     16.0
    ],
-   "wideSize": [
+   "nudgedSize": [
     16.0,
     16.0
    ]
@@ -224,7 +226,7 @@
     16.0,
     16.0
    ],
-   "wideSize": [
+   "nudgedSize": [
     16.0,
     16.0
    ]
@@ -243,7 +245,7 @@
     16.0,
     16.0
    ],
-   "wideSize": [
+   "nudgedSize": [
     16.0,
     16.0
    ]
@@ -262,7 +264,7 @@
     16.0,
     16.0
    ],
-   "wideSize": [
+   "nudgedSize": [
     16.0,
     16.0
    ]
@@ -281,7 +283,7 @@
     16.0,
     16.0
    ],
-   "wideSize": [
+   "nudgedSize": [
     16.0,
     16.0
    ]

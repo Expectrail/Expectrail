@@ -19,6 +19,10 @@ Two things are held, each with the real engine:
   of #349 found that a centre-column-first rule, the first attempt at this fix, read the ground up
   to 23.7 px low there.)
 
+Since #354 (November 14, 2026), `ShapesTest` holds the cases #349 left open: a body 2.5 px wide or
+less, a turned circle or capsule, a shape on a child area, a shape that grows; and
+`NarrowedRobotOnSlopeTest` holds today's answer to the open choice of whose columns judge a change.
+
 CI sets EXPECTRAIL_ENGINE_TESTS=required in `capture-smoke`, so a skip there is a failure.
 Standard library only.
 """
@@ -335,6 +339,118 @@ class BodyInTheWorldTest(unittest.TestCase):
         self.assertEqual(self.at(ground, 236, 428), {320.0})
 
 
+def turned(degrees: float):
+    """The player's CollisionShape2D turned by `degrees`."""
+    return swap(SHAPE, SHAPE.replace("\nshape", f"\nrotation = {degrees * 3.141592653589793 / 180:.9f}\nshape", 1))
+
+
+def shape(kind: str, props: str):
+    """The player's shape resource replaced by another kind (the sub resource the player uses)."""
+    return swap(BRIDGE_SHAPE, f'[sub_resource type="{kind}" id="2"]\n{props}')
+
+
+class ShapesTest(unittest.TestCase):
+    """The cases #349 left open, listed on #354: a very thin body, turned round shapes, a shape on a
+    child node, and a shape that changes size while the game plays. Same level and walk as
+    BodyInTheWorldTest: the step from x = 448 - right to 512 - left, no ground from 192 - left to
+    256 - right, for a body whose columns are `left` and `right` px from its origin."""
+
+    @classmethod
+    def setUpClass(cls):
+        real_godot()
+        cls.tmp = Path(tempfile.mkdtemp(prefix="expectrail-shapes-"))
+        cls.addClassCleanup(shutil.rmtree, cls.tmp, True)
+
+    def at(self, ground: dict, lo: float, hi: float) -> set:
+        return {g for x, g in ground.items() if lo <= x < hi}
+
+    def test_a_body_2_px_wide_is_asked_about_at_its_middle(self):
+        # Until #354 a body 2.5 px wide or less was treated as having no collision and given the
+        # robot's 20 px: the step was its ground from x = 428, and the gap had no ground only from
+        # 212 to 234 (measured on #354). Its middle is its origin here: the step from 448 to 512.
+        ground = ground_by_x(self.tmp, "thin", swap("size = Vector2(24, 16)", "size = Vector2(2, 16)"))
+        self.assertEqual(self.at(ground, 258, 448), {320.0})
+        self.assertEqual(self.at(ground, 450, 512), {256.0})
+        self.assertEqual(self.at(ground, 514, 531), {320.0})
+        self.assertEqual(self.at(ground, 194, 256), {None})
+        self.assertEqual(self.at(ground, 102, 192), {320.0})
+
+    def test_a_thin_body_off_its_origin_is_asked_about_where_it_is(self):
+        # The same 2 px body 10 px right of the origin: its middle column is at x + 10.
+        thin_aside = both(swap("size = Vector2(24, 16)", "size = Vector2(2, 16)"), swap(SHAPE, ASIDE))
+        ground = ground_by_x(self.tmp, "thin-aside", thin_aside)
+        self.assertEqual(self.at(ground, 248, 438), {320.0})
+        self.assertEqual(self.at(ground, 440, 502), {256.0})
+        self.assertEqual(self.at(ground, 504, 531), {320.0})
+        self.assertEqual(self.at(ground, 184, 246), {None})
+
+    def test_a_body_4_px_wide_keeps_its_two_ends(self):
+        # 2 - 1.25 = 0.75 px either side: the step from 447.25 to 512.75, no ground from 192.75 to 255.25.
+        ground = ground_by_x(self.tmp, "four", swap("size = Vector2(24, 16)", "size = Vector2(4, 16)"))
+        self.assertEqual(self.at(ground, 256, 448), {320.0})
+        self.assertEqual(self.at(ground, 448, 514), {256.0})
+        self.assertEqual(self.at(ground, 194, 256), {None})
+
+    def test_a_circle_turned_45_degrees_is_as_wide_as_it_was(self):
+        # Radius 12, so 24 px wide however it is turned: the same columns as the 24 px box
+        # (GroundUnderTest). Measured by the corners of its box it was 33.9 px wide: the step from 434.
+        ground = ground_by_x(self.tmp, "circle", both(shape("CircleShape2D", "radius = 12.0\n"), turned(45)))
+        self.assertEqual(self.at(ground, 246, 438), {320.0})
+        self.assertEqual(self.at(ground, 438, 524), {256.0})
+        self.assertEqual(self.at(ground, 524, 531), {320.0})
+        self.assertEqual(self.at(ground, 204, 246), {None})
+
+    def test_a_capsule_turned_45_degrees_is_measured_by_its_curve(self):
+        # Radius 8, height 24: its caps' centres are 4 px from its middle along its axis. Turned 45
+        # degrees its ends are 4 cos 45 + 8 = 10.83 px out, so its columns 9.58: the step from 438.42
+        # to 521.58, no ground from 201.58 to 246.42. By its box (14.14 px out) the step was from 434.
+        capsule = both(shape("CapsuleShape2D", "radius = 8.0\nheight = 24.0\n"), turned(45))
+        ground = ground_by_x(self.tmp, "capsule", capsule)
+        self.assertEqual(self.at(ground, 248, 440), {320.0})
+        self.assertEqual(self.at(ground, 440, 522), {256.0})
+        self.assertEqual(self.at(ground, 522, 531), {320.0})
+        self.assertEqual(self.at(ground, 202, 248), {None})
+        self.assertEqual(self.at(ground, 102, 202), {320.0})
+
+    def test_an_upright_capsule_is_measured_as_its_box_was(self):
+        # Unturned, the curve's widest points are its box's sides: 16 px wide, columns at 6.75.
+        ground = ground_by_x(self.tmp, "upright", shape("CapsuleShape2D", "radius = 8.0\nheight = 24.0\n"))
+        self.assertEqual(self.at(ground, 250, 442), {320.0})
+        self.assertEqual(self.at(ground, 442, 520), {256.0})
+        self.assertEqual(self.at(ground, 200, 250), {None})
+
+    def test_a_shape_on_a_child_area_is_not_the_players_collision(self):
+        # A hitbox 200 px wide on an Area2D under the player collides for the area, not for the body:
+        # the columns stay the body's own (GroundUnderTest's numbers).
+        hitbox = ('\n[sub_resource type="RectangleShape2D" id="9"]\nsize = Vector2(200, 16)\n')
+        child = ('\n[node name="Hitbox" type="Area2D" parent="Player"]\n'
+                 '\n[node name="CollisionShape2D" type="CollisionShape2D" parent="Player/Hitbox"]\n'
+                 'shape = SubResource("9")\n')
+        ground = ground_by_x(self.tmp, "hitbox", both(swap(BRIDGE_SHAPE, BRIDGE_SHAPE + hitbox),
+                                                      lambda text: text + child))
+        self.assertEqual(self.at(ground, 246, 438), {320.0})
+        self.assertEqual(self.at(ground, 438, 524), {256.0})
+        self.assertEqual(self.at(ground, 204, 246), {None})
+
+    def test_a_shape_that_grows_while_the_game_plays_is_measured_as_it_is(self):
+        # The level's script makes the 24 px box 48 px wide once the body passes x = 300: over the gap
+        # it is still 24 px wide (no ground from 204 to 246), at the step it is 48 (columns at 22.75:
+        # the step from 425.25, where the 24 px body had it from 438).
+        game = self.tmp / "grows" / "project"
+        shutil.copytree(PROJECT / "project", game)
+        script = game / "main.gd"
+        text = script.read_text(encoding="utf-8")
+        old = "\t\tplayer.position.x += 2.0\n"
+        self.assertEqual(text.count(old), 1, "main.gd changed: the growth has nowhere to go")
+        grow = ("\tif player.position.x >= 300.0:\n"
+                "\t\t($Player/CollisionShape2D.shape as RectangleShape2D).size = Vector2(48, 16)\n")
+        script.write_text(text.replace(old, old + grow), encoding="utf-8")
+        ground = {x: g for x, (g, _from) in ground_and_source(self.tmp, "grows", game).items()}
+        self.assertEqual(self.at(ground, 204, 246), {None})
+        self.assertEqual(self.at(ground, 246, 424), {320.0})
+        self.assertEqual(self.at(ground, 426, 531), {256.0})
+
+
 class SlopeTest(unittest.TestCase):
     """The bundled game, walked up its level's slope (x 838 to 896, y 640 up to 583)."""
 
@@ -359,6 +475,51 @@ class SlopeTest(unittest.TestCase):
         # Main's harness: -1.38 to -1.15 over these rows. A centre-first rule: -25.0 to -5.7.
         self.assertGreaterEqual(min(gaps), -2.0, min(gaps))
         self.assertLessEqual(max(gaps), 0.0, max(gaps))
+
+
+
+class NarrowedRobotOnSlopeTest(unittest.TestCase):
+    """#354 gap 2: whose collision sets the columns is not decided (docs/harness.md, "Not decided").
+
+    The bundled robot with its shape made 6 px wide and lifted 10 px (`size = Vector2(6, 54.5)`,
+    `position = Vector2(0, -24)`), walked up the slope. This holds the rule the harness has today,
+    the candidate's own columns, and the size of what is at stake: its feet are 5.9 to 10.0 px below
+    the ground logged at its own columns, against 17.2 to 32.8 px at the robot's 20 px (measured on
+    #354 with the span fixed at 20). If Sean chooses the base commit's columns, this test changes
+    with that choice. The robot unchanged is SlopeTest."""
+
+    @classmethod
+    def setUpClass(cls):
+        godot = real_godot()
+        cls.tmp = Path(tempfile.mkdtemp(prefix="expectrail-narrow-slope-"))
+        cls.addClassCleanup(shutil.rmtree, cls.tmp, True)
+        game = cls.tmp / "game"
+        shutil.copytree(REPO / "game" / "platformer", game)
+        scene = game / "player" / "player.tscn"
+        text = scene.read_text(encoding="utf-8")
+        size, place = 'size = Vector2(42.5, 54.5)', 'position = Vector2(0, -14)\nshape = SubResource("11")'
+        assert text.count(size) == 1 and text.count(place) == 1, "player.tscn changed: the narrowing has nowhere to go"
+        text = text.replace(size, 'size = Vector2(6, 54.5)').replace(place, place.replace("-14", "-24"))
+        scene.write_text(text, encoding="utf-8")
+        hr.run(REPO / "tests" / "routes" / "slope.json", cls.tmp / "run", game=game, godot=godot, capture_frames=False)
+        cls.rows = json.loads((cls.tmp / "run" / "trace.json").read_text(encoding="utf-8"))["rows"]
+
+    def test_its_own_box_is_logged_6_px_wide(self):
+        widths = {round(r["body"][2] - r["body"][0], 3) for r in self.rows if r.get("body")}
+        self.assertEqual(widths, {6.0})
+
+    def test_on_the_slope_the_ground_is_read_at_its_own_columns(self):
+        on_slope = [r for r in self.rows if r.get("onFloor") and r["player"][0] >= 817 and r.get("ground") is not None]
+        self.assertGreater(len(on_slope), 100)
+        gaps = [(r["player"][1] + FEET) - r["ground"] for r in on_slope]
+        # At its own columns: 5.9 to 10.0 px. At the robot's 20 px it was 17.2 to 32.8, past the
+        # approved check's 20 px; at its own it is within them. That is the open choice.
+        self.assertGreater(min(gaps), 5.0, min(gaps))
+        self.assertLess(max(gaps), 11.0, max(gaps))
+
+    def test_on_flat_ground_the_columns_change_nothing(self):
+        flat = {r["ground"] for r in self.rows if r["player"][0] < 800 and r.get("ground") is not None}
+        self.assertEqual(flat, {650.0})
 
 
 if __name__ == "__main__":

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Expectrail/Expectrail/contracts/provider-capability.v1.schema.json",
+  "title": "What one provider can be asked to do, and the hold taken before a request",
+  "description": "One record per provider. A role's capEnv is the variable that must be set before a live request of that role is sent. reserveUsd is the hold taken before the request, not a vendor bill, except for vision where it is Meta's list price per image.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "provider", "protocol", "roles"],
+  "properties": {
+    "format": {"const": "expectrail.provider-capability/v1"},
+    "provider": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+    "protocol": {"enum": ["openai", "anthropic"]},
+    "roles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "models", "capEnv", "unit", "reserveUsd", "basis"],
+        "properties": {
+          "role": {"enum": ["vision", "glimmer", "muse", "triage"]},
+          "models": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "minLength": 1}
+          },
+          "capEnv": {"type": "string", "pattern": "^EXPECTRAIL_[A-Z_]+$"},
+          "unit": {"enum": ["image", "request", "invocation"]},
+          "reserveUsd": {"type": "number", "exclusiveMinimum": 0},
+          "basis": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

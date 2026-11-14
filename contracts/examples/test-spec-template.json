@@ -1,0 +1,15 @@
+{
+  "format": "expectrail.test-spec/v0",
+  "id": "template-player-visible",
+  "instruction": "Measure whether the calibrated player crop is visible.",
+  "objects": {
+    "player": {
+      "prompt": "player"
+    }
+  },
+  "assertion": {
+    "type": "visible",
+    "object": "player",
+    "minFraction": 1.0
+  }
+}

@@ -1,0 +1,81 @@
+name: Expectrail fixture repair
+on:
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+jobs:
+  authorize:
+    if: >-
+      github.event.label.name == 'expectrail-autofix' &&
+      vars.EXPECTRAIL_CI_AUTOFIX == 'true' &&
+      github.event.pull_request.base.ref == github.event.repository.default_branch
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      decision: ${{ steps.authorize.outputs.decision }}
+      head: ${{ steps.authorize.outputs.head }}
+      intent: ${{ steps.authorize.outputs.intent }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - name: Check the labeler and published head clearance
+        id: authorize
+        env:
+          CHECKS_APP_ID: ${{ vars.EXPECTRAIL_CHECKS_APP_ID }}
+          PERMISSION_TOKEN: ${{ github.token }}
+        run: python3 -m tools.ci_autofix authorize
+  repair:
+    needs: authorize
+    if: >-
+      needs.authorize.result == 'success' && needs.authorize.outputs.decision == 'reject' &&
+      needs.authorize.outputs.head == github.event.pull_request.head.sha
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: candidate
+          persist-credentials: false
+      - run: mv candidate "$RUNNER_TEMP/head"
+      - uses: ./.github/actions/apt-install
+        with:
+          restore-only: 'true'
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch bubblewrap python3-jsonschema python3-pil
+      - uses: ./.github/actions/get-godot
+        with:
+          restore-only: 'true'
+      - name: Enable hosted runner replay namespaces
+        run: |
+          for setting in kernel.apparmor_restrict_unprivileged_userns=0 kernel.unprivileged_userns_clone=1; do
+            name=${setting%=*}
+            if [[ -e /proc/sys/${name//./\/} ]]; then sudo sysctl -w "$setting"; fi
+          done
+      - name: Reproduce the reject and verify fixture repairs
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_CHECKOUT: ${{ github.workspace }}
+          INTENT: ${{ needs.authorize.outputs.intent }}
+          GAME: game/platformer
+          SPECS: agents/specs
+          ROUTES: |
+            harness/routes/smoke.json
+            harness/routes/combat.json
+          FIXTURE: ${{ vars.EXPECTRAIL_CI_AUTOFIX_FIXTURE || 'agents/fixtures/fix-collision-mask.patch' }}
+          ATTEMPTS: ${{ vars.EXPECTRAIL_CI_AUTOFIX_ATTEMPTS || '3' }}
+        run: /usr/bin/python3 -m tools.ci_autofix repair
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: expectrail-repair-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/repair-artifact
+          retention-days: 14
+          if-no-files-found: error

@@ -51,8 +51,8 @@ _TEXT = (
 )
 
 
-def redact(text: str) -> str:
-    return _SECRET.sub("[redacted]", str(text))[:600]
+def redact(text: str, *, limit: int | None = 600) -> str:
+    return _SECRET.sub("[redacted]", str(text))[:limit]
 
 
 def _status(exc: BaseException) -> int | None:

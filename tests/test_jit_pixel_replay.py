@@ -277,10 +277,12 @@ class Settings(unittest.TestCase):
         for other in offer_mod.OFFERS:
             self.assertEqual(offer_mod.revisable(other), other)
 
-    def test_the_command_line_run_and_the_score_still_do_not_name_it(self):
+    def test_the_workflow_still_does_not_name_it_and_the_command_line_run_and_the_score_do(self):
         self.assertNotIn(PX, offer_mod.OFFERS)
+        self.assertIn(PX, offer_mod.REPLAYABLE)
+        self.assertIn(PX, offer_mod.SCORED)
         score = json.loads((REPO / "contracts" / "repro-score.v1.schema.json").read_text(encoding="utf-8"))
-        self.assertNotIn(PX, score["properties"]["offer"]["enum"])
+        self.assertIn(PX, score["properties"]["offer"]["enum"])
 
 
 if __name__ == "__main__":

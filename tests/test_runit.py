@@ -82,10 +82,10 @@ class Case(unittest.TestCase):
 
 
 class ManifestTest(Case):
-    def test_the_shipped_manifest_has_the_three_samples(self):
+    def test_the_shipped_manifest_has_the_four_samples(self):
         doc = runit.read_manifest(REPO)
-        self.assertEqual([s["id"] for s in doc["samples"]], ["clean", "fall-through-bug", "fall-through-repair"])
-        self.assertEqual([s["expected"] for s in doc["samples"]], ["accept", "reject", "accept"])
+        self.assertEqual([s["id"] for s in doc["samples"]], ["clean", "fall-through-bug", "fall-through-repair", "recorded-fix"])
+        self.assertEqual([s["expected"] for s in doc["samples"]], ["accept", "reject", "accept", "accept"])
         self.assertEqual(json.loads((REPO / "contracts/examples/run-it-samples.json").read_text()), json.loads(
             (REPO / runit.MANIFEST).read_text()))
 
@@ -126,13 +126,13 @@ class ManifestTest(Case):
 
 
 class ShippedRecordingsTest(unittest.TestCase):
-    """The recordings on main (Sean's three recording runs, November 13): every sample in the manifest
+    """The recordings on main (Sean's three recording runs, November 13): each of the three original samples
     has one that the recording workflow's own check lets through. Without it a sample that should
     accept can only need review."""
 
-    def test_every_sample_in_the_manifest_has_a_usable_recording(self):
+    def test_the_three_recorded_samples_have_usable_recordings(self):
         root = Path(runit.ROOT)
-        samples = runit.read_manifest(root)["samples"]
+        samples = [s for s in runit.read_manifest(root)["samples"] if s["head"] != "recorded-fix"]
         self.assertEqual(sorted(s["id"] for s in samples), ["clean", "fall-through-bug", "fall-through-repair"])
         for sample in samples:
             with self.subTest(sample=sample["id"]):

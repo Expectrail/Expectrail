@@ -139,10 +139,12 @@ def contract_patterns() -> dict[str, str]:
 
 # pattern: (a value that matches it, whether that value plus "\n" must be refused)
 SAMPLES = {
+    r"^repair-[a-z0-9_]{8}/repair-run\.json$": ("repair-sample01/repair-run.json", True),
     "^[A-Z_]{1,40}$": ("TOOL_MISSING", True),
     "^[a-z0-9][a-z0-9-]{0,63}$": ("player-stays-above-ground", True),
     "^attempt-[0-9]{1,2}/candidate\\.patch$": ("attempt-1/candidate.patch", True),
     "^[A-Za-z0-9._-]{1,64}$": ("19283746501", True),
+    "^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$": ("example-job", True),
     "^[a-z0-9-]{1,40}$": ("fall-through-bug", True),
     "^docs/run-it/vision/[a-z0-9-]{1,40}\\.json$": ("docs/run-it/vision/clean.json", True),
     "(^|/)\\.\\.?(/|$)": ("a/..", True),
@@ -152,8 +154,10 @@ SAMPLES = {
     "^(bench|bugs)/[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$": ("bench/a/b.json", True),
     "^(reference|candidate|clean|held-out-[0-9]+|unlabelled)$": ("held-out-2", True),
     "^EXPECTRAIL_[A-Z_]+\\*?$": ("EXPECTRAIL_SEED*", True),
+    "^EXPECTRAIL_[A-Z_]+$": ("EXPECTRAIL_SAM_USD_CAP", True),
     "^[0-9A-Za-z.+-]+$": ("4.3-stable", True),
     "^[0-9]{4}-[0-9]{2}-[0-9]{2}$": ("2026-11-13", True),
+    "^[0-9]{4}-[0-9]{2}$": ("2026-11", True),
     "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$": ("2026-11-13T04:38:12.5Z", True),
     "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$": ("2026-11-13T04:38:12Z", True),
     "^[0-9a-f]{12}$": ("0123456789ab", True),
@@ -172,6 +176,7 @@ SAMPLES = {
     "^[a-z0-9][a-z0-9-]*$": ("godot", True),
     "^[a-z0-9][a-z0-9._/-]*$": ("game/main.tscn", True),
     "^[a-z][a-z0-9-]{0,31}$": ("combat", True),
+    "^[a-z][a-z0-9-]*$": ("openrouter", True),
     "^[a-z][a-z0-9-]{0,39}$": ("combat-2", True),
     "^(ref:|env:)[A-Za-z0-9_./-]+$": ("env:EXPECTRAIL_VISION", True),
     "^[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)*$": ("player.position_y", True),

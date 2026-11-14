@@ -34,8 +34,10 @@ answer file. It answers only the question SAM was asked: a frame it was not aske
 box, stops the run. So a recorded replay shows the observer asks exactly what SAM was asked, and judges
 what SAM said, with no call. Its setting must be the observer's.
 
-What this is not, yet: the command line and jit.yml do not build this observer, and no live SAM call has
-been made on a bench probe. Nothing here sends a request unless it is given a client that does
+The command line's ``run`` builds this observer under the pixel setting (expectrail/jit/cli.py,
+``observer_from``: ``--observer sam-3.1-anchor`` with ``--sam-answers`` or ``--sam-live``), and
+expectrail/jit/pixel_jobs.py splits capturing, asking and judging into three jobs. What this is
+not, yet: jit.yml does not build it, and no live SAM call has been made on a bench probe. Nothing here sends a request unless it is given a client that does
 (agents.sam_observations.MetaSamClient, which needs a key and EXPECTRAIL_SAM_USD_CAP).
 """
 from __future__ import annotations

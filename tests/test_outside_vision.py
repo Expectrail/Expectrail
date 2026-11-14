@@ -34,15 +34,21 @@ class Stand:
 
 
 class Sees(Stand):
+    def segment_at(self, png, points):
+        self.calls += 1
+        return [{'box': self.drawn(png), 'score': 0.93} for _ in points]
+
     def segment_in(self, png, boxes):
+        # The gate's own before/after comparison (expectrail/gate/anchor.py) asks with boxes.
         self.calls += 1
         return [{'box': self.drawn(png), 'score': 0.93} for _ in boxes]
 
 
 class Echo(Stand):
-    def segment_in(self, png, boxes):
+    """A box the player's size, centred on whatever point it is asked about."""
+    def segment_at(self, png, points):
         self.calls += 1
-        return [{'box': [float(v) for v in b], 'score': 0.9} for b in boxes]
+        return [{'box': [x - 10.0, y - 17.0, x + 10.0, y + 17.0], 'score': 0.9} for x, y in points]
 
 
 class CaptureJudgeTest(unittest.TestCase):
@@ -232,7 +238,7 @@ class CaptureJudgeTest(unittest.TestCase):
     def test_a_model_that_echoes_the_box_is_not_used(self):
         calibration = self.live(Echo(), self.out)
         self.assertFalse(calibration['enabled'])
-        self.assertTrue(any('twice as large' in w for w in calibration['why']))
+        self.assertTrue(any('nudged' in w for w in calibration['why']))
         decided = self.decisions(self.out)
         self.assertEqual(decided['broken'], 'reject')   # the engine's record alone rejects a fail
         self.assertEqual((decided['pinned'], decided['harmless']), ('needs-review', 'needs-review'))

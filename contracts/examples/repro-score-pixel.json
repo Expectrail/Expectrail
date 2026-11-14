@@ -1,0 +1,127 @@
+{
+ "format": "expectrail.repro-score/v1",
+ "benchSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+ "noFixSha256": "556ed2d2a91b984e08f6a079caa7909a3808e1ca259ed91ca6db9ba0ef11a082",
+ "visibilitySha256": null,
+ "source": "An example with made-up rows. Not a measured run.",
+ "offer": "signals-reach-evidence-pixel",
+ "reps": 3,
+ "capUsd": 2.0,
+ "rows": [
+  {
+   "id": "air-jump",
+   "family": "movement-input",
+   "tunedOn": true,
+   "patchSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "visibility": "signal",
+   "outcome": "reproduced",
+   "why": null,
+   "proposed": 2,
+   "kept": 1,
+   "reproducing": [
+    "jit-a"
+   ],
+   "missReason": null,
+   "evidence": null,
+   "spendUsd": 0.1,
+   "recordSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+   "pixel": {
+    "proposed": 1,
+    "kept": 0,
+    "reproducing": []
+   },
+   "screen": "record-and-screen"
+  },
+  {
+   "id": "slow-left",
+   "family": "movement-input",
+   "tunedOn": false,
+   "patchSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "visibility": "signal",
+   "outcome": "no-result",
+   "why": "no readable record (FileNotFoundError)",
+   "proposed": 0,
+   "kept": 0,
+   "reproducing": [],
+   "missReason": null,
+   "evidence": null,
+   "spendUsd": null,
+   "recordSha256": null,
+   "screen": "record-and-screen"
+  },
+  {
+   "id": "camera-cut-top",
+   "family": "camera-viewport",
+   "tunedOn": false,
+   "patchSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "visibility": "trace-only",
+   "outcome": "not-reproduced",
+   "why": null,
+   "proposed": 2,
+   "kept": 0,
+   "reproducing": [],
+   "missReason": "no-signal",
+   "evidence": "the engine's record differs on a library probe and no signal reads the difference",
+   "spendUsd": 0.1,
+   "recordSha256": "3333333333333333333333333333333333333333333333333333333333333333",
+   "pixel": {
+    "proposed": 1,
+    "kept": 0,
+    "reproducing": []
+   },
+   "screen": "record-only"
+  },
+  {
+   "id": "bullet-behind-scenery",
+   "family": "layering",
+   "tunedOn": false,
+   "patchSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+   "visibility": "none",
+   "outcome": "reproduced",
+   "why": null,
+   "proposed": 1,
+   "kept": 1,
+   "reproducing": [
+    "jit-px-player-drawn"
+   ],
+   "missReason": null,
+   "evidence": null,
+   "spendUsd": 0.1,
+   "recordSha256": "4444444444444444444444444444444444444444444444444444444444444444",
+   "pixel": {
+    "proposed": 1,
+    "kept": 1,
+    "reproducing": [
+     "jit-px-player-drawn"
+    ]
+   },
+   "screen": "screen-only"
+  }
+ ],
+ "totals": {
+  "defects": 4,
+  "reproduced": 2,
+  "notReproduced": 1,
+  "noResult": 1,
+  "untuned": 3,
+  "reproducedUntuned": 1,
+  "traceVisible": 3,
+  "reproducedTraceVisible": 1,
+  "keptChecks": 2,
+  "misses": {
+   "no-signal": 1
+  },
+  "spendUsd": 0.3,
+  "maxSpendUsd": 0.1,
+  "overCap": 0,
+  "pixel": {
+   "proposed": 3,
+   "kept": 1,
+   "reproducedBy": 1,
+   "reproducedOnlyBy": 1
+  },
+  "screenOnly": 1,
+  "reproducedScreenOnly": 1
+ },
+ "screenSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+}

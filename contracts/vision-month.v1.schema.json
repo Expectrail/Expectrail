@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Expectrail/Expectrail/contracts/vision-month.v1.schema.json",
+  "title": "Vision spend reserved in one calendar month",
+  "description": "The running total of vision caps reserved this month, kept outside the repository so a pull request cannot write it. Each entry is one run's whole cap (its worst case), added before the run sends a request. The limit is $200.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "month", "limitUsd", "spentUsd", "entries"],
+  "properties": {
+    "format": {"const": "expectrail.vision-month/v1"},
+    "month": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$"},
+    "limitUsd": {"const": 200},
+    "spentUsd": {"type": "number", "minimum": 0},
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["jobId", "reservedUsd", "at"],
+        "properties": {
+          "jobId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$"},
+          "reservedUsd": {"type": "number", "minimum": 0},
+          "at": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

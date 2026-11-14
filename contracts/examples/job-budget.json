@@ -1,0 +1,48 @@
+{
+  "format": "expectrail.job-budget/v1",
+  "jobId": "example-job",
+  "capsUsd": {
+    "vision": 0.5,
+    "glimmer": 1.0,
+    "muse": 1.0,
+    "triage": 0.1
+  },
+  "phases": [
+    {
+      "phase": "observing",
+      "role": "vision",
+      "reservedUsd": 0.25,
+      "requests": 100,
+      "stopped": null
+    },
+    {
+      "phase": "observing",
+      "role": "glimmer",
+      "reservedUsd": 0.05,
+      "requests": 1,
+      "stopped": null
+    },
+    {
+      "phase": "fixing",
+      "role": "muse",
+      "reservedUsd": 1.0,
+      "requests": 1,
+      "stopped": null
+    },
+    {
+      "phase": "triaging",
+      "role": "triage",
+      "reservedUsd": 0.05,
+      "requests": 1,
+      "stopped": null
+    }
+  ],
+  "totalReservedUsd": 1.35,
+  "stopped": null,
+  "visionMonth": {
+    "limitUsd": 200,
+    "spentUsd": 12.5,
+    "runWorstCaseUsd": 0.5,
+    "admitted": true
+  }
+}

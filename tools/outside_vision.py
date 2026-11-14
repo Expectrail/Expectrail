@@ -120,7 +120,7 @@ def calibration_markdown(doc):
     return (f"\n**Anchored vision for {doc['game']['name']}** (#330): {state}. Measured on the clean run: "
             f"found at its place in {doc['frames']['found']} of {doc['frames']['asked']} asked frames "
             f"({rates['found']:.0%}); drawn size matches the collision box in {rates['size']:.0%}; "
-            f"same answer with a box twice as large in {rates['stable']:.0%}.\n")
+            f"same answer from a point nudged inside the player in {rates['stable']:.0%}.\n")
 
 
 def anchored(project, data, client, out):

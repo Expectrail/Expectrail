@@ -1,0 +1,139 @@
+{
+  "fullMeasurement": "https://github.com/Expectrail/Expectrail/blob/b3ac0adf6d593f268e498dd1d236ff2daaada097/docs/template-sensor-measurement.json",
+  "fullMeasurementSha256": "be0763e9be20572bd4b14691c291823f83abee4843dfbe4ebb653b9be1744bc8",
+  "algorithm": "expectrail.template-ncc/v2",
+  "bankSha256": "b01dfdeffd3522193ee820d379cd34d72f3570a2abcf88a88ac8afed02d2162a",
+  "cleanTree": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280",
+  "templateCount": 1620,
+  "calibration": {
+    "selection": "all-clean-crops",
+    "selectionSimilarity": 0.985,
+    "sourceFrames": 1080,
+    "eligibleFrames": 1080,
+    "mirrored": true,
+    "thresholdFloor": 0.9,
+    "thresholdSelected": 0.9,
+    "validationReplaySha256": "61ce4f466490a052e0ae64ea33951067bf17245cd10d9705c83000e7a5cf4621",
+    "positives": 360,
+    "negatives": 360,
+    "positiveMatches": 340,
+    "negativeMatches": 0,
+    "status": "unmet"
+  },
+  "clean": {
+    "measured": 390,
+    "alarms": 79,
+    "falseAlarmRate": 0.20256410256410257
+  },
+  "invisiblePlayerAlarms": 73,
+  "targets": {
+    "cleanMatchedFraction": 0.95,
+    "maxFrameSeconds": 0.3,
+    "accuracyMet": false,
+    "speedMet": false
+  },
+  "runs": [
+    {
+      "name": "clean-smoke",
+      "frames": 120,
+      "measured": 120,
+      "counts": {
+        "matched": 96,
+        "not-found": 24,
+        "displaced": 0,
+        "unavailable": 0,
+        "out-of-frame": 0
+      },
+      "agreementRate": 0.8,
+      "alarmRate": 0.2,
+      "meanFrameSeconds": 0.1672582241746568,
+      "p95FrameSeconds": 0.28407632680609823,
+      "maxFrameSeconds": 0.3130959419941064
+    },
+    {
+      "name": "clean-combat",
+      "frames": 90,
+      "measured": 90,
+      "counts": {
+        "matched": 90,
+        "not-found": 0,
+        "displaced": 0,
+        "unavailable": 0,
+        "out-of-frame": 0
+      },
+      "agreementRate": 1.0,
+      "alarmRate": 0.0,
+      "meanFrameSeconds": 0.15956526340014535,
+      "p95FrameSeconds": 0.19850608309934614,
+      "maxFrameSeconds": 0.2302281860029325
+    },
+    {
+      "name": "clean-traversal",
+      "frames": 180,
+      "measured": 180,
+      "counts": {
+        "matched": 125,
+        "not-found": 55,
+        "displaced": 0,
+        "unavailable": 0,
+        "out-of-frame": 0
+      },
+      "agreementRate": 0.6944444444444444,
+      "alarmRate": 0.3055555555555556,
+      "meanFrameSeconds": 0.15186981098894548,
+      "p95FrameSeconds": 0.2094474088407878,
+      "maxFrameSeconds": 0.23717793899413664
+    },
+    {
+      "name": "invisible-player",
+      "frames": 120,
+      "measured": 120,
+      "counts": {
+        "matched": 47,
+        "not-found": 73,
+        "displaced": 0,
+        "unavailable": 0,
+        "out-of-frame": 0
+      },
+      "agreementRate": 0.39166666666666666,
+      "alarmRate": 0.6083333333333333,
+      "meanFrameSeconds": 0.17270261480795548,
+      "p95FrameSeconds": 0.22161950265362976,
+      "maxFrameSeconds": 0.2790113590017427
+    },
+    {
+      "name": "sinking",
+      "frames": 120,
+      "measured": 120,
+      "counts": {
+        "matched": 0,
+        "not-found": 120,
+        "displaced": 0,
+        "unavailable": 0,
+        "out-of-frame": 0
+      },
+      "agreementRate": 0.0,
+      "alarmRate": 1.0,
+      "meanFrameSeconds": 0.16248976900751586,
+      "p95FrameSeconds": 0.198197693000111,
+      "maxFrameSeconds": 0.24933079500624444
+    },
+    {
+      "name": "fall-through",
+      "frames": 120,
+      "measured": 17,
+      "counts": {
+        "matched": 0,
+        "not-found": 17,
+        "displaced": 0,
+        "unavailable": 0,
+        "out-of-frame": 103
+      },
+      "agreementRate": 0.0,
+      "alarmRate": 1.0,
+      "meanFrameSeconds": 0.04125680529953873,
+      "p95FrameSeconds": 0.1404101169486239,
+      "maxFrameSeconds": 0.18685372799518518
+    }
+  ]
+}

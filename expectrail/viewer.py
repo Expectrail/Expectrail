@@ -46,6 +46,7 @@ MAX_POINTS = 4000            # points in one timeline
 MAX_VIEWS_BYTES = 8 * 1024 * 1024
 MAX_EXPORT_FRAME_BYTES = 32 * 1024 * 1024   # frames embedded in evidence.html, before base64
 EXPORT_NAME = "evidence.html"
+REPAIR_RECORD = re.compile(r"repair-[a-z0-9_]{8}/repair-run\.json")
 FRAME_NAME = re.compile(r"frames/(after|before)-[0-9a-z-]{1,80}-\d{8}\.png")
 
 # state -> (title, tone, what it means). The title never says more than the verifier decided.
@@ -437,8 +438,87 @@ def build_views(record: dict, frames: dict[str, dict], timelines: dict[tuple[str
     return views
 
 
+def read_repair(path: Path) -> dict:
+    """Read a completed repair and its winning patch as data. A fixture is valid for a local viewer."""
+    from expectrail import contracts
+
+    path = Path(path)
+    if path.parent.is_symlink():
+        raise ValueError("repair record directory is a link")
+    doc = rec.read_json(path, label="repair-run.json")
+    contracts.validate_v1(doc, "repair-run")
+    attempts, stop, result = doc["attempts"], doc["stop"], doc["result"]
+    if len(attempts) > doc["budget"]["attempts"]:
+        raise ValueError("repair attempts exceed the recorded budget")
+    for n, attempt in enumerate(attempts, 1):
+        if attempt["n"] != n or (attempt["patch"] and attempt["patch"] != f"attempt-{n}/candidate.patch"):
+            raise ValueError("repair attempt number and patch path disagree")
+        if (attempt["patch"] is None) != (attempt["patchSha256"] is None):
+            raise ValueError("repair attempt patch and digest disagree")
+        if attempt["decision"] and (not attempt["patch"] or not attempt["job"] or attempt["job"] == doc["parent"]["job"]):
+            raise ValueError("repair attempt verdict has no fresh verify job or patch")
+        if n < len(attempts) and attempt["decision"] in ("accept", "needs-review"):
+            raise ValueError("repair continued past a terminal attempt")
+    winner = attempts[-1] if attempts else {}
+    accepted = result["decision"] == "accept"
+    if accepted != (stop["reason"] == "accepted") or accepted != (winner.get("decision") == "accept"):
+        raise ValueError("repair result disagrees with its final attempt")
+    diff = None
+    if accepted:
+        if (result["patch"], result["job"]) != (winner["patch"], winner["job"]):
+            raise ValueError("accepted repair does not name the winning attempt")
+        patch = path.parent / result["patch"]
+        if patch.parent.is_symlink():
+            raise ValueError("repair attempt directory is a link")
+        raw = rec.read_bytes_capped(patch, 1024 * 1024, "candidate patch")
+        if not raw.strip() or hashlib.sha256(raw).hexdigest() != winner["patchSha256"]:
+            raise ValueError("winning patch is empty or its digest differs")
+        diff = raw.decode("utf-8")
+    elif result["patch"] is not None:
+        raise ValueError("repair with no accepted attempt names a winning patch")
+    return {"run": doc, "diff": diff}
+
+
+def _repair_section(repair: dict, fresh: str | None = None) -> str:
+    doc = repair["run"]
+    attempts = ['<li>Original verification: <strong>reject</strong></li>']
+    for attempt in doc["attempts"]:
+        verdict = attempt["decision"] or "No verdict"
+        attempts.append(f'<li>Attempt {attempt["n"]}: <strong>{esc(verdict)}</strong></li>')
+    stop = doc["stop"]
+    body = ('<section aria-label="Recorded repair"><h2>Recorded repair</h2><ol>' + "".join(attempts)
+            + f'</ol><p>Stopped: <strong>{esc(stop["reason"])}</strong>. {esc(stop["detail"])}</p>')
+    if doc["fixer"]["source"] == "fixture":
+        body += "<p>Fixture recording for testing. No live fixer ran.</p>"
+    if repair["diff"] is not None:
+        body += ('<div class="repair-result"><div><h3>Recorded fix</h3>'
+                 f'<p>{esc(doc["review"])}</p><pre tabindex="0">{html.escape(redact(repair["diff"], limit=None))}</pre></div>'
+                 '<div><h3>Final verdict</h3><p>' + esc(fresh or doc["result"]["decision"]) + '</p>'
+                 + ('<p>From this fresh verification. The fix label describes the recorded attempt.</p>' if fresh else '')
+                 + '</div></div>')
+    else:
+        body += f'<p>Final verdict: <strong>{esc(doc["result"]["decision"])}</strong></p>'
+    return body + '</section>'
+
+
+def write_repair(path: Path, folder: Path) -> Path:
+    """Open a saved repair on its own, without running the game, fixer or judge."""
+    repair = read_repair(path)
+    folder = Path(folder)
+    folder.mkdir(parents=True, exist_ok=True)
+    page = folder / "index.html"
+    page.write_text('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
+                    f'<meta http-equiv="Content-Security-Policy" content="{CSP}">'
+                    '<meta name="viewport" content="width=device-width, initial-scale=1">'
+                    f'<title>Expectrail repair</title><style>{CSS}</style></head><body><main>'
+                    '<h1>Repair evidence</h1>' + _repair_section(repair) + '</main></body></html>\n',
+                    encoding="utf-8")
+    return page
+
+
 def write(folder: Path, record: dict | None, views: list[dict] | None = None, *, status: dict | None = None,
-          request: dict | None = None, sample: str | None = None) -> Path:
+          request: dict | None = None, sample: str | None = None, repair: dict | None = None,
+          repair_record: bytes | None = None) -> Path:
     """Write ``folder``/index.html (and views.json) for a record, a job status, or both."""
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
@@ -450,11 +530,15 @@ def write(folder: Path, record: dict | None, views: list[dict] | None = None, *,
         "record": record, "views": views,
         "job": None if status is None else {k: status.get(k) for k in (
             "id", "phase", "decision", "reasons", "diagnostics", "evidenceGrade", "executionClass", "inputs",
-            "history", "finishedAt")},
+            "history", "finishedAt", "repair")},
         "reproduce": reproduce(request, sample=sample), "sample": sample,
     })
+    if repair is not None:
+        payload["repair"] = repair
     page = folder / "index.html"
     page.write_text(render(payload), encoding="utf-8")
+    if repair_record is not None:
+        payload["repairDownload"] = base64.b64encode(repair_record).decode("ascii")
     export(folder, payload)
     return page
 
@@ -558,7 +642,7 @@ def read_views(folder: Path) -> list[dict]:
     return out
 
 
-def write_job(store, job_id: str, *, sample: str | None = None) -> Path:
+def write_job(store, job_id: str, *, sample: str | None = None, repair: dict | None = None) -> Path:
     """The job's viewer: <job>/viewer/, from its status, its request and, when it completed with
     evidence, its findings record and the gate's viewer frames. This is the folder `expectrail
     report` names, the site and the local app open."""
@@ -587,7 +671,23 @@ def write_job(store, job_id: str, *, sample: str | None = None) -> Path:
         request = store.request(job_id)
     except Exception:  # noqa: BLE001 - no request, no reproduction command; the rest still shows
         request = None
-    return write(folder, record, views, status=status, request=request, sample=sample)
+    repair_record = None
+    relative = (status.get("repair") or {}).get("record", "")
+    if REPAIR_RECORD.fullmatch(relative):
+        # Only a regular file under the named job may travel with the offline export.
+        from expectrail import contracts
+        path = paths.root / relative
+        try:
+            if not path.parent.is_symlink():
+                data = rec.read_bytes_capped(path, cap=1024 * 1024, label="repair record")
+                doc = contracts.strict_loads(data.decode("utf-8"))
+                contracts.validate_v1(doc, "repair-run")
+                if doc["parent"]["job"] == job_id:
+                    repair_record = data
+        except (ImportError, OSError, UnicodeError, ValueError):
+            pass
+    return write(folder, record, views, status=status, request=request, sample=sample, repair=repair,
+                 repair_record=repair_record)
 
 
 # --- the page -------------------------------------------------------------------------------------
@@ -600,6 +700,8 @@ CSP = ("default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; scr
        "base-uri 'none'; form-action 'none'")
 
 CSS = """
+.repair-result{display:grid;grid-template-columns:minmax(0,2fr) minmax(9em,1fr);gap:1em}.repair-result pre{overflow:auto}
+@media(max-width:600px){.repair-result{grid-template-columns:minmax(0,1fr)}}
 :root{--bg:#fafaf7;--fg:#14161a;--muted:#4b5049;--line:#dcdcd5;--card:#fff;
 --good-bg:#dff3e4;--good:#14532d;--bad-bg:#fde2e1;--bad:#7f1d1d;--warn-bg:#fdf1d6;--warn:#78350f;--quiet-bg:#eceee9;--quiet:#3f4540;
 --over:#c0362c;--ok:#2f6f4f;--gap:#9a9a90;--limit:#7a5a00;--cursor:#1d4ed8}
@@ -960,6 +1062,32 @@ def vision_words(record: dict | None, job: dict | None) -> str | None:
     return None
 
 
+def auto_fix_words(job: dict) -> str:
+    block = job.get("repair")
+    if not block:
+        return "Auto-fix is off; turn it on with --auto-fix"
+    if block["state"] == "finished":
+        return f"Auto-fix: {block['decision']} ({block['stopReason']})"
+    if block["state"] == "interrupted":
+        return f"Auto-fix: interrupted ({block['detail']})"
+    return "Auto-fix: running"
+
+
+def auto_fix_section(job: dict, link: str | None = None, *, download=False) -> str:
+    parts = ['<section id="auto-fix">', f'<p>{esc(auto_fix_words(job))}</p>']
+    block = job.get("repair") or {}
+    if link:
+        action = 'download="repair-run.json" ' if download else ""
+        words = "Save repair record" if download else "Open repair record"
+        parts.append(f'<p><a {action}href="{html.escape(link, quote=True)}">{words}</a></p>')
+    elif block.get("record"):
+        parts.append("<p>The repair record was unavailable for this offline copy.</p>")
+    if block.get("review"):
+        parts.append(f'<p>{esc(block["review"])}</p>')
+    parts.append("</section>")
+    return "".join(parts)
+
+
 def render(payload: dict) -> str:
     state = payload["state"]
     title, tone, means = STATES[state]
@@ -974,6 +1102,8 @@ def render(payload: dict) -> str:
         f'<div class="banner {tone}" role="status" data-state="{esc(state)}"><h1>{esc(title)}</h1>'
         f"<p>{esc(means)}</p></div>",
     ]
+    if payload.get("repair"):
+        parts.append(_repair_section(payload["repair"], payload["decision"] or "No verdict"))
     exported = payload.get("export")
     if exported is None:
         parts.append(f'<p class="muted"><a href="{EXPORT_NAME}" download>Download this evidence as one file</a> '
@@ -990,6 +1120,21 @@ def render(payload: dict) -> str:
         parts.append("<ul>" + "".join(f"<li><code>{esc(d.get('code'))}</code> ({esc(d.get('stage'))}): "
                                       f"{esc(d.get('detail'))} Fix: {esc(d.get('fix'))}</li>"
                                       for d in job["diagnostics"]) + "</ul>")
+    if payload.get("repair"):
+        pass  # A Run it recorded repair has its own section above; one repair section per page.
+    elif job and job.get("decision") == "reject":
+        block = job.get("repair") or {}
+        link = None
+        download = False
+        if block.get("record") and REPAIR_RECORD.fullmatch(block["record"]):
+            if exported is None:
+                link = "../" + block["record"]
+            elif payload.get("repairDownload"):
+                link = "data:application/json;base64," + payload["repairDownload"]
+                download = True
+        parts.append(auto_fix_section(job, link, download=download))
+    elif record and record.get("decision") == "reject":
+        parts.append('<section id="auto-fix"></section>')  # The gate has no job or repair decision.
     vision = vision_words(record, job)
     if vision:
         parts.append(f'<h2>Vision</h2><p>{esc(vision)}</p>')
@@ -1032,7 +1177,19 @@ def render(payload: dict) -> str:
     parts.append("<p class=\"muted\">The decision on this page is the verifier's. The timeline is measured from the "
                  "same observations the evaluator judged and is shown only when it agrees with the evaluator; it "
                  "decides nothing. Held-out routes appear as counts only.</p>")
-    parts.append(f'<script type="application/json" id="evidence">{_json_for_script(payload)}</script>')
+    parts.append(f'<script type="application/json" id="evidence">{_json_for_script({k: v for k, v in payload.items() if k != "repair"})}</script>')
     parts.append(f"<script>{SCRIPT}</script>")
     parts.append("</main></body></html>\n")
     return "\n".join(parts)
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Open a recorded repair in an offline viewer.")
+    parser.add_argument("--repair-run", required=True, type=Path)
+    parser.add_argument("--out", required=True, type=Path)
+    args = parser.parse_args()
+    try:
+        print(write_repair(args.repair_run, args.out))
+    except (ValueError, OSError) as exc:
+        parser.exit(2, f"Repair viewer: {exc}\n")

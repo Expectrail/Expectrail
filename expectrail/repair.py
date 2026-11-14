@@ -56,7 +56,7 @@ def _live_budget():
         raise ValueError(str(exc)) from exc
 
 
-def _child(jobs, original, checkout, inputs, *, require_isolation):
+def _child(jobs, original, checkout, inputs, *, require_isolation, spawn_worker):
     req = request.build(**original["project"], head=checkout, base=Path(original["head"]["checkout"]),
                         base_commit=original["head"]["commit"],
                         execution_class="isolated" if require_isolation else original["executionClass"],
@@ -65,12 +65,14 @@ def _child(jobs, original, checkout, inputs, *, require_isolation):
     if child["inputs"]["baseTree"] != inputs["headTree"] or child["inputs"]["policyDigest"] != inputs["policyDigest"]:
         jobs.cancel(child["id"])
         raise ValueError(CHANGED)
-    return runner.wait(jobs, child["id"], runner.spawn(jobs, child["id"]))
+    return runner.wait(jobs, child["id"], spawn_worker(jobs, child["id"]))
 
 
-def repair(jobs, job, *, attempts=3, fixture=None):
+def repair(jobs, job, *, attempts=3, fixture=None, recorded=False, spawn_worker=None):
     from agents import fixer
 
+    if recorded and fixture is None:
+        raise ValueError("a recorded repair needs its saved patch")
     if type(attempts) is not int or not 1 <= attempts <= 10:
         raise ValueError("attempts must be between 1 and 10")
     parent = jobs.status(job)
@@ -107,10 +109,11 @@ def repair(jobs, job, *, attempts=3, fixture=None):
     rr = {"format": "expectrail.repair-request/v0", "id": job, "base": {"tree": inputs["headTree"]},
           "failing": failing, "budget": {"attempts": attempts}}
     folder = Path(tempfile.mkdtemp(prefix="repair-", dir=paths.root))
+    source = ("recorded" if recorded else "fixture") if fixture is not None else "muse"
     doc = {"format": "expectrail.repair-run/v1",
            "parent": {"job": job, "decision": "reject", "headTree": inputs["headTree"],
                       "failing": [{"spec": f["spec"]["id"], "route": f["route"]["name"]} for f in failing]},
-           "fixer": {"source": "fixture" if fixture else "muse", "sandboxed": fixture is None},
+           "fixer": {"source": source, "sandboxed": fixture is None},
            "budget": {"attempts": attempts, "usdCap": cap}, "startedAt": store.stamp(), "attempts": [],
            "machineWritten": True, "review": contracts.schema_v1("repair-run")["properties"]["review"]["const"],
            "result": {"decision": "needs-review", "job": None, "patch": None}}
@@ -187,7 +190,8 @@ def repair(jobs, job, *, attempts=3, fixture=None):
                         shutil.copyfile(head / name, target)
                 if any((fixed / name).read_bytes() != (snapshot / name).read_bytes() for name in excluded):
                     raise ValueError("the patch changes a verifier input")
-                child = _child(jobs, original, checkout, inputs, require_isolation=fixture is None)
+                child = _child(jobs, original, checkout, inputs, require_isolation=fixture is None,
+                               spawn_worker=spawn_worker or runner.spawn)
                 row.update(job=child["id"], decision=child["decision"], reasons=[redact(s) for s in child["reasons"][:32]])
                 if child["phase"] != "completed" or child["decision"] == "needs-review":
                     stop = "cancelled" if child["phase"] == "cancelled" else "needs-review"
