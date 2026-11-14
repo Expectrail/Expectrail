@@ -77,7 +77,7 @@ NOT_PACKAGED = {
     "expectrail.trace": "trace signals for discovery and the check generator; no verification imports it",
     "expectrail.capabilities": "the capability ledger's tool: reads docs/",
     "expectrail.capability_runs": "the capability ledger's tool: reads CI runs",
-    "expectrail.change_evidence": "evidence of a fix loop's change; the wheel does not repair",
+    "expectrail.change_evidence": "evidence of a fix loop's change; used by the demo review path",
     "expectrail.spec_writer": "drafts specs with a model; no verification uses a model",
     "expectrail.runit": "the site's Run it samples (#265): reads docs/run-it/ in a clone of the repository",
     "expectrail.recorded": "recorded vision answers for the Run it samples (#265); built on expectrail.observers",
@@ -85,7 +85,7 @@ NOT_PACKAGED = {
 }
 # Imports a packaged module makes only on a path a verification never takes.
 NOT_ON_A_VERIFICATION = {
-    "agents.keys": "only in model adapters' standalone CLI entry points; verification reads the environment directly",
+    "agents.trust": "only the standalone fixer demo plants a poisoned README; repair never requests it",
     # harness.adapters is in the wheel: the verify path takes its engine from the registry. The
     # registry also lists the web and Unity adapters, whose runners are imported only inside their
     # own `run`. Neither adapter has a verify path, so no verification can reach those imports.
@@ -138,9 +138,11 @@ class ContentsTest(Case):
             self.assertEqual(packed, lists[folder], folder)
         for folder in ("contracts", "game", "bugs"):
             self.assertEqual([n for n in self.names if n.startswith(f"{BUNDLE}{folder}/") and n.endswith(".py")], [])
-        # Nothing of the fix loop or dotenv key loader.
+        # Repair ships its sandbox. Benchmark loops and triage stay out.
+        for module in ("fixer", "keys", "sandbox", "guard", "gateway"):
+            self.assertIn(BUNDLE + f"agents/{module}.py", self.names)
         text = "\n".join(self.names)
-        for word in ("fixer", "loop", "keys", "muse", "triage", "gateway"):
+        for word in ("loop", "triage", "muse_judge"):
             self.assertNotIn(f"agents/{word}", text)
 
     def test_every_module_in_the_wheel_can_import_what_it_asks_for(self):
@@ -221,6 +223,19 @@ class InstalledTest(Case):
         command = [str(self.python), "-c", code] if code else [str(self.python), "-m", "expectrail.cli", *args]
         return subprocess.run(command, cwd=self.elsewhere, capture_output=True, text=True, timeout=120,
                               env={"PATH": "/usr/bin:/bin", "HOME": str(self.elsewhere / "home")})
+
+    def test_installed_repair_command_uses_the_packaged_fixer(self):
+        done = self.run_installed("repair", "--help")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        for arg in ("JOB", "--fixture", "--attempts", "--jobs-root"):
+            self.assertIn(arg, done.stdout)
+        done = self.run_installed(code="from expectrail import repair; from agents import fixer; print(fixer.__file__)")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn(str(self.site / "expectrail/_bundle/agents/fixer.py"), done.stdout)
+        done = self.run_installed("repair", "0" * 32, "--jobs-root", str(self.elsewhere / "repair-jobs"))
+        self.assertEqual(done.returncode, 5)
+        self.assertNotIn("not built yet", done.stderr)
+        self.assertNotIn("Traceback", done.stderr)
 
     def test_it_knows_it_is_installed_and_finds_its_files_inside_itself(self):
         done = self.run_installed("--version")

@@ -40,9 +40,10 @@ def schema() -> dict:
 
 def build(*, adapter: str, head: Path, game: str, routes: list[str], specs: str, base: Path | None = None,
           head_commit: str | None = None, base_commit: str | None = None, execution_class: str = "diagnostic",
-          timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS, idempotency_key: str | None = None) -> dict:
+          timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS, idempotency_key: str | None = None, intent: str | None = None) -> dict:
     doc = {
         "format": FORMAT,
+        **({"intent": intent} if intent is not None else {}),
         "project": {"adapter": adapter, "game": game, "routes": [r for r in routes if str(r).strip()], "specs": specs},
         "head": {"checkout": str(Path(head).resolve()), "commit": head_commit},
         "base": None if base is None else {"checkout": str(Path(base).resolve()), "commit": base_commit},
@@ -210,4 +211,6 @@ def inputs(doc: dict) -> dict:
     meaning = {"project": doc["project"], "executionClass": doc["executionClass"], "limits": doc["limits"],
                "headCommit": doc["head"]["commit"], "baseCommit": doc["base"]["commit"] if doc["base"] else None,
                "hasBase": doc["base"] is not None, **resolved, **({"problems": found} if found else {})}
+    if "intent" in doc:
+        meaning["intent"] = doc["intent"]
     return {"requestDigest": digest(meaning), **resolved}

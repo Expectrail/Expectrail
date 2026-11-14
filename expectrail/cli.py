@@ -26,7 +26,6 @@ ORCHESTRATOR = ("verify", "status", "cancel", "report", "sample")
 # name -> (what it will do, the issue that builds it)
 PLANNED = {
     "trust-check": ("check a receipt against a trust store", 255),
-    "repair": ("run the fix loop on a failing check", 249),
 }
 EXIT_USAGE = 5
 
@@ -39,6 +38,7 @@ def usage() -> str:
         ("cancel", "cancel a job and stop what it started"),
         ("report", "show a finished job's result and where its evidence is"),
         ("sample", "three real verifications of the bundled game: as it is, broken, repaired"),
+        ("repair", "propose and verify a fix for a rejected job"),
         ("route", "make a first route from a Godot input map and check three identical replays"),
         ("app", "open the local browser app"),
         ("doctor", "check that this machine has what a verification needs, and name the fix for what is missing"))]
@@ -62,7 +62,7 @@ def main(argv: list[str] | None = None) -> int:
     # The command is the first word that is not an option (or an option's value): `--jobs-root DIR`
     # may come first, as with the orchestrator's own command line.
     words, skip = [], False
-    for word in args:
+    for at, word in enumerate(args):
         if skip:
             skip = False
         elif word in ("--jobs-root", "--lease-seconds"):
@@ -75,6 +75,10 @@ def main(argv: list[str] | None = None) -> int:
         text, issue = PLANNED[command]
         print(f"expectrail: `{command}` is not built yet (#{issue}): it will {text}. Nothing was run.", file=sys.stderr)
         return EXIT_USAGE
+    if command == "repair":
+        from expectrail import repair
+
+        return repair.main(args[:at] + args[at + 1:])
     if command == "route":
         if args[0] != "route":
             print("expectrail: put route options after `route`. Nothing was run.", file=sys.stderr)

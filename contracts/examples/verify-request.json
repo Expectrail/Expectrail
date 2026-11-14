@@ -1,5 +1,6 @@
 {
   "format": "expectrail.verify-request/v1",
+  "intent": "fix",
   "project": {
     "adapter": "godot",
     "game": "game/platformer",
