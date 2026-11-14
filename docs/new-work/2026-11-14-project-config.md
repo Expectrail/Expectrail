@@ -77,3 +77,6 @@ tests that replay when that binary is present ran as part of the 3250. The tests
 - `tests/projects/crate-run/project/expectrail.project.json`
 - `tests/projects/crate-run/project/crate.svg`
 - `tests/projects/crate-run/README.md`
+
+## Architect run (Linux, main 8083215e, Godot 4.7.2)
+Applied cleanly (base two commits behind main). Full suite: OK, 31 skipped. Engine-gated tests with EXPECTRAIL_ENGINE_TESTS=required (body_box, event_input, ground_under, pause_input, second_project, auto_route_engine): OK. The three Run it samples are unchanged: accept, reject, accept. `harness.check_seeded`: every seeded bug still differs from clean, exit 0.
