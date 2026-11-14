@@ -10,11 +10,39 @@ from unittest import mock
 
 import yaml
 
+from expectrail import anchored
 from expectrail.gate import record
 from harness.run import _replay_record
 from tests.test_two_observers import Game
 from tools import outside_trial as trial
 from tools import outside_vision as vision
+
+
+class Stand:
+    """A stand-in model for the anchored observer: it reads where the player is drawn from the saved
+    replay's own trace (the frame's run folder), as a model reads it from the pixels."""
+    model, provider, base = 'sam-3.1', 'stand-in', ''
+
+    def __init__(self):
+        self.calls = 0
+
+    @staticmethod
+    def drawn(png):
+        png = Path(png)
+        rows = json.loads((png.parent.parent / 'trace.json').read_text())['rows']
+        return [float(v) for v in rows[2 * int(png.stem[1:])]['body']]
+
+
+class Sees(Stand):
+    def segment_in(self, png, boxes):
+        self.calls += 1
+        return [{'box': self.drawn(png), 'score': 0.93} for _ in boxes]
+
+
+class Echo(Stand):
+    def segment_in(self, png, boxes):
+        self.calls += 1
+        return [{'box': [float(v) for v in b], 'score': 0.9} for b in boxes]
 
 
 class CaptureJudgeTest(unittest.TestCase):
@@ -43,6 +71,11 @@ class CaptureJudgeTest(unittest.TestCase):
             made = self.model.replay(self.route, game, run_dir, True)
             trace = made['trace']
             trace.update(format='expectrail.trace/v0', ticks=len(trace['rows']))
+            for row in trace['rows']:
+                # The player's collision box, as the harness logs it (#259), so the anchored observer
+                # (#330) has a place to ask about.
+                x, y = row['player']
+                row['body'] = [x - 10.0, y - 20.75, x + 10.0, y + 13.25]
             (run_dir / 'trace.json').write_text(json.dumps(trace))
             isolation = json.loads((trial.REPO / 'contracts/examples/replay.json').read_text())['isolation']
             isolation['mode'] = 'require'
@@ -154,7 +187,7 @@ class CaptureJudgeTest(unittest.TestCase):
                '--out', str(self.out)]
         caps = ('', '0', '-1', '2.01', 'NaN', 'inf')
         with mock.patch.dict(os.environ, {'MODEL_API_KEY': 'stand-in'}), \
-                mock.patch('expectrail.observers.FramesObserver', return_value=self.model.observer()) as factory:
+                mock.patch('agents.sam_observations.MetaSamClient', return_value=Sees()) as factory:
             for cap in caps:
                 with self.subTest(cap=cap), mock.patch.dict(os.environ, {'EXPECTRAIL_SAM_USD_CAP': cap}), \
                         self.assertRaises(SystemExit):
@@ -167,28 +200,59 @@ class CaptureJudgeTest(unittest.TestCase):
             self.assertEqual(json.loads((self.out / 'spend.json').read_text())['requests'], 0)
             self.assertFalse((self.out / 'outside-trial.md').exists())
 
-    def test_cli_writes_verdicts_and_spend_with_the_stand_in_observer(self):
-        cli = ['judge', '--project', self.project['name'], '--data', str(self.data),
-               '--digest', self.receipt, '--out', str(self.out)]
-        # The live client, built on the stand-in transport: nothing leaves this machine (#330: the judge
-        # now builds the anchored observer from the client, not a FramesObserver).
-        from agents import sam_observations as so
+    def cli(self, out, *extra):
+        return ['judge', '--project', self.project['name'], '--data', str(self.data),
+                '--digest', self.receipt, '--out', str(out), *extra]
 
-        stand_in = so.MetaSamClient(transport=self.model.transport, retries=0, sleep=lambda s: None)
+    def live(self, client, out):
+        """The live path (#330): the CLI builds the model client, wraps it in a recorder, calibrates
+        the anchored observer on the unchanged game, then judges. ``client`` stands in for the model."""
         with mock.patch.dict(os.environ, {'MODEL_API_KEY': 'stand-in', 'EXPECTRAIL_SAM_USD_CAP': '2'}), \
-                mock.patch.object(so, 'MetaSamClient', return_value=stand_in):
-            self.assertEqual(vision.main(cli), 0)
-        self.assertEqual(record.read_record(self.out / 'broken/findings.json')['decision'], 'reject')
+                mock.patch('agents.sam_observations.MetaSamClient', return_value=client):
+            self.assertEqual(vision.main(self.cli(out)), 0)
+        return json.loads((out / 'calibration.json').read_text())
+
+    def decisions(self, out):
+        return {v: record.read_record(out / v / 'findings.json')['decision'] for v in ('pinned', 'broken', 'harmless')}
+
+    def test_a_model_that_sees_the_player_calibrates_and_judges_with_vision(self):
+        client = Sees()
+        calibration = self.live(client, self.out)
+        anchored.check_calibration(calibration)
+        self.assertTrue(calibration['enabled'], calibration['why'])
+        self.assertGreater(client.calls, 0)
+        self.assertEqual(self.decisions(self.out), {'pinned': 'accept', 'broken': 'reject', 'harmless': 'accept'})
+        # The broken copy's reject has the visual observer's evidence, not the engine's alone.
+        broken = record.read_record(self.out / 'broken' / 'findings.json')
+        self.assertEqual(broken['observers']['visual']['name'], anchored.NAME)
         self.assertIn('reservedUsd', json.loads((self.out / 'spend.json').read_text()))
+        self.assertIn('used', (self.out / 'calibration.md').read_text())
         self.assertIn('harmless', (self.out / 'outside-trial.md').read_text())
-        # These stand-in traces log no body box, so no frame can be asked about: the game is not
-        # calibrated, no image is sent, and nothing is accepted.
-        calibration = json.loads((self.out / 'calibration.json').read_text())
+
+    def test_a_model_that_echoes_the_box_is_not_used(self):
+        calibration = self.live(Echo(), self.out)
         self.assertFalse(calibration['enabled'])
-        self.assertEqual(calibration['frames']['asked'], 0)
-        self.assertEqual(self.model.asked, [])
-        self.assertNotEqual(record.read_record(self.out / 'harmless/findings.json')['decision'], 'accept')
-        self.assertTrue((self.out / 'vision-recording.json').is_file())
+        self.assertTrue(any('twice as large' in w for w in calibration['why']))
+        decided = self.decisions(self.out)
+        self.assertEqual(decided['broken'], 'reject')   # the engine's record alone rejects a fail
+        self.assertEqual((decided['pinned'], decided['harmless']), ('needs-review', 'needs-review'))
+        harmless = record.read_record(self.out / 'harmless' / 'findings.json')
+        self.assertTrue(any('not calibrated' in r for r in harmless['reasons']), harmless['reasons'])
+
+    def test_the_recording_replays_the_same_findings_without_a_model(self):
+        self.live(Sees(), self.out)
+        recording = self.out / 'vision-recording.json'
+        again = self.root / 'replayed'
+        with mock.patch('agents.sam_observations.MetaSamClient', side_effect=AssertionError('a client was built')), \
+                mock.patch.dict(os.environ, {'MODEL_API_KEY': '', 'EXPECTRAIL_SAM_USD_CAP': ''}):
+            self.assertEqual(vision.main(self.cli(again, '--recording', str(recording))), 0)
+        self.assertEqual(self.decisions(again), self.decisions(self.out))
+        for v in ('pinned', 'broken', 'harmless'):
+            first, second = (record.read_record(o / v / 'findings.json') for o in (self.out, again))
+            self.assertEqual(second['findings'], first['findings'])
+            self.assertEqual(second['counts'], first['counts'])
+        self.assertEqual(json.loads((again / 'calibration.json').read_text())['rates'],
+                         json.loads((self.out / 'calibration.json').read_text())['rates'])
 
     def test_swapping_variant_folders_is_refused(self):
         a, b, tmp = (self.data / v for v in ('broken', 'harmless', 'tmp'))
