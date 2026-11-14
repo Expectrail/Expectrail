@@ -44,7 +44,7 @@ as before. Nothing here can make a decision accept on its own: the gate's rule `
 the engine's checks and this observer's evidence on them.
 
 Every asked frame is a paid image when the client is live. The calibration asks about every tenth
-clean frame twice (26 images for a 120-frame route). Recorded once per game (Option A,
+clean frame twice, in two requests (26 images for a 120-frame route). Recorded once per game (Option A,
 expectrail.recorded), the same answers replay for free in CI.
 """
 from __future__ import annotations
@@ -127,7 +127,12 @@ def calibrate(game: dict, run: dict, client, *, every: int = CALIBRATION_EVERY, 
         width = png_size(frames[n])[0]
         nudged = (point[0] + step if point[0] + step < width else point[0] - step, point[1])
         try:
-            got, again = client.segment_at(frames[n], [point, nudged])
+            # Two requests, not one: in one request the points are separate objects, and the model
+            # gives each pixel to one object, so a second point on the same sprite comes back empty.
+            # The second live calibration showed exactly that (run 43643679280: found 19 of 19,
+            # size 100%, nudged 0%).
+            got = client.segment_at(frames[n], [point])[0]
+            again = client.segment_at(frames[n], [nudged])[0]
         except SamError as exc:
             if exc.kind in STOP_KINDS or exc.status is not None or exc.kind == "not-recorded":
                 raise NoAnswer(f"the calibration stopped ({str(exc.kind)[:60]})") from exc

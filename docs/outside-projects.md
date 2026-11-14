@@ -252,6 +252,13 @@ box twice as large. It found the player in 19 of 19 frames, and the answers were
 (30 to 62 px), and 25% of 14 px is 3.5 px, so it was not used (size 42%, stable 0%). That led to the
 point question and the pixel floors above.
 
+**The second live calibration** ([run 43643679280](https://github.com/Expectrail/Expectrail/actions/runs/43643679280),
+$0.0475, 19 images) asked with points: found at its place in 19 of 19 frames, drawn size within the
+rules in 19 of 19, but the nudged point gave the same answer in 0 of 19, so it was not used. Both
+points went in one request as two objects, and the model gives each pixel to one object, so the
+second point on the same 16 px sprite came back without the sprite. The nudged point is now asked in
+its own request (26 images for a calibration).
+
 **Recorded once (Option A).** The live judge wraps the model in a recorder and leaves
 `vision-recording.json` in the run's artifact. `judge --recording FILE` replays those answers with no
 key and no spend; a frame or question not in the recording gets no answer.
