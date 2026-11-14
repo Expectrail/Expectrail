@@ -82,7 +82,8 @@ class TheSetting(unittest.TestCase):
         scored = json.loads((REPO / "contracts" / "repro-score.v1.schema.json").read_text(encoding="utf-8"))
         self.assertEqual(run["properties"]["settings"]["properties"]["offer"]["enum"], list(offer.REPLAYABLE))
         self.assertNotIn("offer", run["properties"]["settings"]["required"])   # old records have none
-        self.assertEqual(scored["properties"]["offer"]["enum"], list(offer.OFFERS))
+        self.assertEqual(scored["properties"]["offer"]["enum"], list(offer.SCORED))
+        self.assertEqual(offer.SCORED, offer.ALL)   # the score counts the pixel setting too (#286)
         self.assertIn("offer", scored["required"])
 
 

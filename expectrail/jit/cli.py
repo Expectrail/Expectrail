@@ -16,8 +16,25 @@ is the generator as it was before issue #285's steps 3 and 4; ``signals-reach`` 
 held-back signals and the reach probes; the evidence setting (``offer.EVIDENCE``) also gives the proposer step 5's
 evidence, which ``measure`` makes (replays with frames, expectrail/jit/offer.py) and ``propose`` and
 ``revise`` read with ``--evidence``. A proposal is replayed only under the offer it was made with.
-``measure`` and ``propose`` also take the pixel setting (``offer.PIXEL``, #286), under which the proposal
-carries pixel checks; ``run`` and ``revise`` do not take it yet, because the replay does not judge them.
+``measure``, ``propose`` and ``run`` also take the pixel setting (``offer.PIXEL``, #286), under which the
+proposal carries pixel checks; ``revise`` does not take it yet, because a revision does not carry them.
+
+**The observer for pixel checks** (``run`` under the pixel setting only; ``observer_from``). ``--observer``
+names it: ``none`` (the default; every pixel check is then ``not-run``, with the reason) or
+``sam-3.1-anchor`` (expectrail/jit/sam_observer.py). SAM is asked one of two ways, and one must be named:
+
+- ``--sam-answers FILE``: SAM's recorded answers (an agents/sam_anchor.py answer file, answered by
+  ``RecordedSamClient``, which answers only the exact question SAM was asked). The replay folder's build
+  (``pixel-reference``, ``pixel-base``, ``pixel-candidate``) picks the recorded run: the run named
+  ``<build>/<replay>`` if the file has one, else the run ``--sam-run BUILD=RUN`` names, else the run named
+  as the build. No request is sent.
+- ``--sam-live``: a live call (agents.sam_observations.MetaSamClient: the key in MODEL_API_KEY and the cap
+  in EXPECTRAIL_SAM_USD_CAP), its images reserved against ``--budget-usd`` first. This spends money;
+  nothing runs it unless the flag is given.
+
+``--sam-box`` (``body``, the default: the engine's body box widened by ``--sam-pad`` game px; or ``WxH``
+with ``--sam-lift``) and ``--sam-first`` set how SAM is asked, and must be how a recording was asked: an
+observer that asks otherwise than the recording stops at the first replay.
 
 ``--withhold-candidate`` on ``propose``, ``revise`` and ``run`` gives the model no byte of the candidate
 patch (issue #285, step 6): the checks then come from the report and the bug build alone, and a fix
@@ -35,7 +52,7 @@ import sys
 from pathlib import Path
 
 from expectrail.contracts import load_strict
-from expectrail.jit.offer import ALL as ALL_OFFERS, DEFAULT as DEFAULT_OFFER, OFFERS
+from expectrail.jit.offer import ALL as ALL_OFFERS, DEFAULT as DEFAULT_OFFER, OFFERS, PIXEL, REPLAYABLE
 from expectrail.jit.offer import library as offered_library
 from expectrail.jit.offer import attach_evidence, make_evidence, shows_evidence
 from expectrail.jit.run import DEFAULT_BUDGET_USD, RECORD_NAME, from_base_alone, gate_summary, generate
@@ -166,6 +183,81 @@ def _intent_settings(args) -> dict:
     return {"offer": args.offer, **({"candidate": "withheld"} if _candidate(args) == "withheld" else {})}
 
 
+OBSERVERS = ("none", "sam-3.1-anchor")
+BUILDS = ("pixel-reference", "pixel-base", "pixel-candidate")   # the replay folders of expectrail/jit/run.py
+
+
+class ObserverArgs(ValueError):
+    """The observer arguments do not name one observer that can be built."""
+
+
+def _box(text: str):
+    if text == "body":
+        return "body"
+    try:
+        w, h = (float(v) for v in text.lower().split("x"))
+    except ValueError:
+        raise ObserverArgs("--sam-box is 'body' or WIDTHxHEIGHT in game pixels") from None
+    return (w, h)
+
+
+def _sam_runs(pairs: list[str]) -> dict[str, str]:
+    out = {}
+    for pair in pairs:
+        build, sep, run = pair.partition("=")
+        if not sep or build not in BUILDS or not run:
+            raise ObserverArgs(f"--sam-run is BUILD=RUN with BUILD one of {', '.join(BUILDS)}: {pair[:60]!r}")
+        if build in out:
+            raise ObserverArgs(f"--sam-run names {build} twice")
+        out[build] = run
+    return out
+
+
+def recorded_pick(runs: dict, names: dict[str, str]):
+    """For a frame's path, the recorded run to answer from: ``<build>/<replay>`` if the recording has it,
+    else the run ``names`` gives the build, else the build's own name (see the module docstring)."""
+    def pick(png) -> str:
+        run_dir = Path(png).parent.parent
+        build = run_dir.parent.name
+        exact = f"{build}/{run_dir.name}"
+        return exact if exact in runs else names.get(build, build)
+    return pick
+
+
+def observer_from(args):
+    """The observer ``run`` hands ``generate``: None, or a SamAnchorObserver over recorded or live answers.
+
+    Fails closed: an observer named without the pixel setting, SAM named without saying how it is asked
+    (or both ways), or a setting it cannot take, is refused with ObserverArgs and nothing runs."""
+    name = getattr(args, "observer", "none")
+    sam_args = [a for a in ("sam_answers", "sam_live", "sam_run") if getattr(args, a, None)]
+    if name == "none":
+        if sam_args:
+            raise ObserverArgs("--sam-answers, --sam-live and --sam-run need --observer sam-3.1-anchor")
+        return None
+    if args.offer != PIXEL:
+        raise ObserverArgs(f"--observer is for pixel checks, which only the {PIXEL} setting offers")
+    if bool(args.sam_answers) == bool(args.sam_live):
+        raise ObserverArgs("--observer sam-3.1-anchor needs exactly one of --sam-answers FILE (recorded answers) "
+                           "or --sam-live (a live call that spends money)")
+    if args.sam_run and not args.sam_answers:
+        raise ObserverArgs("--sam-run picks runs of recorded answers: it needs --sam-answers")
+    from expectrail.jit.sam_observer import RecordedSamClient, SamAnchorObserver
+
+    client = None
+    if args.sam_answers:
+        try:
+            client = RecordedSamClient(args.sam_answers, "")
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            raise ObserverArgs(f"--sam-answers cannot be read as an answer file ({type(exc).__name__})") from exc
+        client.pick = recorded_pick(client.runs, _sam_runs(args.sam_run))
+    try:
+        return SamAnchorObserver(client, box=_box(args.sam_box), pad=args.sam_pad, lift=args.sam_lift,
+                                 first=args.sam_first)
+    except ValueError as exc:
+        raise ObserverArgs(str(exc)) from exc
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="expectrail.jit.cli")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -186,8 +278,18 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--game", type=Path, help="the reference game (default: game/platformer in this checkout)")
     r.add_argument("--withhold-candidate", action="store_true",
                     help="give the model no byte of the candidate patch (issue #285, step 6)")
-    r.add_argument("--offer", choices=OFFERS, default=DEFAULT_OFFER,
+    r.add_argument("--offer", choices=REPLAYABLE, default=DEFAULT_OFFER,
                     help="what the generator is offered (expectrail/jit/offer.py); the same for every step")
+    r.add_argument("--observer", choices=OBSERVERS, default="none",
+                   help="who judges pixel checks (the pixel setting only); none leaves them not run")
+    r.add_argument("--sam-answers", type=Path, help="SAM's recorded answers (agents/sam_anchor.py answer file)")
+    r.add_argument("--sam-run", action="append", default=[], metavar="BUILD=RUN",
+                   help="the recorded run that answers for a build's replays")
+    r.add_argument("--sam-live", action="store_true", help="ask SAM live: spends money (key and cap from the environment)")
+    r.add_argument("--sam-box", default="body", help="body (the engine's body box), or WIDTHxHEIGHT in game px")
+    r.add_argument("--sam-pad", type=float, default=4.0, help="game px the body box is widened by")
+    r.add_argument("--sam-lift", type=float, default=0.0, help="with a sized box: game px above the origin")
+    r.add_argument("--sam-first", type=int, help="ask about the first N frames only")
     pp = sub.add_parser("propose")
     pp.add_argument("--profile", type=Path, default=PROFILE)
     pp.add_argument("--report-file", type=Path, required=True)
@@ -346,6 +448,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "run":
         if args.budget_usd < 0 or args.reps < 1 or args.variant_limit < 0:
             ap.error("budget, reps and variant limit must not be negative (reps at least 1)")
+        try:
+            observer = observer_from(args)
+        except ObserverArgs as exc:
+            ap.error(str(exc))
         intent = None
         if args.proposal is not None:
             from expectrail.jit.intent import IntentUnavailable, from_proposal
@@ -372,7 +478,7 @@ def main(argv: list[str] | None = None) -> int:
         doc = generate(args.profile, report, args.candidate, args.base, args.out, intent=intent,
                        budget_usd=args.budget_usd, prices=prices, reps=args.reps, variant_limit=args.variant_limit,
                        run_id=args.run_id, game=args.game, offer=args.offer,
-                       candidate_to_model=_candidate(args))
+                       candidate_to_model=_candidate(args), observer=observer)
         (args.out / "jit-report.md").write_text(render(doc) + "\n", encoding="utf-8")
         print(json.dumps({"status": doc["status"], "reason": doc["reason"], "counts": doc["counts"],
                           "spendUsd": doc["spend"]["usd"], "record": str(args.out / RECORD_NAME)}))
