@@ -28,7 +28,7 @@ name: Generated checks
 # by replaying every probe with frames (repro-evidence.json). The known-bugs bench is registered under
 # baseline and refuses any other.
 #
-# signals-reach-evidence-pixel (#286) also lets the proposer write pixel checks, about what is drawn, judged
+# signals-reach-evidence-pixel (#286) also lets the proposer propose pixel checks, about what is drawn, judged
 # by SAM 3.1 (expectrail/jit/pixel.py, sam_observer.py). SAM's key and the change's code never meet, so a
 # pixel check takes three jobs (expectrail/jit/pixel_jobs.py): replay-final replays each pixel check's probe
 # with frames on the clean game, the bug build and the candidate and keeps the frames (no secret);
