@@ -35,7 +35,9 @@ without both the observer and the engine's record. A kept check is then judged o
 way: failing on every run is a catch. Observer images are reserved against the same cap before the
 replays (``observer.frames``), and what was actually sent is charged. With no observer, no frame runner,
 no bug build or no budget left, a pixel check is ``not-run`` with the reason, never kept. The rows are the
-record's ``pixelChecks``; they are not in ``catches``, ``counts`` or ``gate_summary``.
+record's ``pixelChecks``; they are not in ``catches``, ``counts`` or ``gate_summary``. With
+``pixel_capture``, the replays are made on all three builds and kept for a later job, nothing is asked,
+and the rows are ``not-run`` (expectrail/jit/pixel_jobs.py).
 """
 from __future__ import annotations
 
@@ -168,7 +170,8 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
              budget_usd: float = DEFAULT_BUDGET_USD, prices: dict | None = None, reps: int = assess.REPS,
              variant_limit: int = 8, approved_claims: frozenset[str] = frozenset(),
              run_id: str | None = None, clock=time.monotonic, offer: str = offer_mod.BASELINE,
-             candidate_to_model: str = "shown", observer=None, frame_runner=None) -> dict:
+             candidate_to_model: str = "shown", observer=None, frame_runner=None,
+             pixel_capture: Path | None = None) -> dict:
     """One change: propose, replay, judge. ``candidate_to_model`` is ``shown`` (the default) or
     ``withheld``: under ``withheld`` the intent is given no byte of the candidate patch and no diff map made
     from it (issue #285, step 6), and the record says so in ``settings.candidate``. The candidate is
@@ -177,7 +180,11 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
     ``observer`` and ``frame_runner`` are for pixel checks only (the pixel setting): the observer asked
     about each pixel replay (expectrail/jit/pixel.py, ``observe``), and the runner that replays with
     frames. Without a ``runner`` the frame runner is the harness with frames; with a ``runner`` and no
-    ``frame_runner``, pixel checks are not run."""
+    ``frame_runner``, pixel checks are not run.
+
+    ``pixel_capture`` (a folder) is the first of the three jobs of expectrail/jit/pixel_jobs.py: every pixel
+    check's probe is replayed with frames on all three builds and the folders are kept there for the
+    observer, which is not asked here; the pixel rows are then ``not-run``."""
     from expectrail.jit.intent import check_candidate
 
     offer_mod.replayable(offer)
@@ -195,7 +202,8 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
     state: dict = {"diffMap": None, "proposed": [], "probes": [], "variants": [], "validity": [], "catches": [],
                    "model": str(getattr(intent, "model", None))[:100] if getattr(intent, "model", None) else None,
                    "promptSha256": None, "pixelChecks": [],
-                   "pixel": {"observer": observer, "frameRunner": frame_runner}}
+                   "pixel": {"observer": observer, "frameRunner": frame_runner,
+                             "capture": Path(pixel_capture) if pixel_capture is not None else None}}
     inputs = {"patchSha256": _sha_bytes(cand_bytes), "reportSha256": _sha_bytes(report.encode("utf-8")),
               "basePatchSha256": [_sha_bytes(Path(p).read_bytes()) for p in base_patches],
               "profileSha256": digest_v1(profile)}
@@ -472,7 +480,7 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
     """Judge the proposal's pixel checks (#286): replay with frames, ask the observer, keep by the keep rule,
     then the candidate for a kept check. The rows go to ``state["pixelChecks"]``; a replay that fails ends
     the run (rule 3), and an observer that fails or answers badly drops the checks on that probe."""
-    from expectrail.jit import pixel
+    from expectrail.jit import pixel, pixel_jobs
 
     observer, frame_runner = state["pixel"]["observer"], state["pixel"]["frameRunner"]
     bindings = pixel.bindings_for()
@@ -496,6 +504,14 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
             not_run(check, f"probe {check['probe']} cannot be run")
         else:
             by_probe.setdefault(check["probe"], []).append(check)
+
+    if state["pixel"].get("capture") is not None:
+        _pixel_capture(by_probe, routes, base_patches, candidate, out, replay, reps, state["pixel"]["capture"],
+                       frame_runner)
+        for check in [c for g in by_probe.values() for c in g]:
+            rows[check["id"]] = pixel.record_row(check, "not-run", pixel_jobs.CAPTURED)
+        state["pixelChecks"] = [rows[c["id"]] for c in checks]
+        return
 
     price = spend.prices["samUsdPerImage"]
     held = 0.0  # observer images reserved and not yet sent, across probes
@@ -581,6 +597,24 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
             rows[check["id"]] = pixel.record_row(check, "kept", verdict["reason"], usd / len(group), setting,
                                                  verdict["runs"]["clean"], verdict["runs"]["bug"], cand, outcome)
     state["pixelChecks"] = [rows[c["id"]] for c in checks]
+
+
+def _pixel_capture(by_probe: dict, routes: dict, base_patches: list, candidate: Path, out: Path, replay, reps: int,
+                   store: Path, frame_runner) -> None:
+    """The capture job (expectrail/jit/pixel_jobs.py, step 1): each pixel check's probe replayed with frames
+    on the clean game, the bug build and the candidate, ``reps`` times each, and every folder kept in
+    ``store``. A replay that fails ends the run (rule 3), as any replay does."""
+    from expectrail.jit import pixel_jobs
+
+    store = Path(store)
+    store.mkdir(parents=True, exist_ok=True)
+    builds = (("pixel-reference", []), ("pixel-base", list(base_patches)), ("pixel-candidate", [*base_patches, candidate]))
+    for pid in sorted(by_probe):
+        route = routes[pid][0]
+        for name, patches in builds:
+            for n in range(1, reps + 1):
+                replay(name, patches, pid, n, with_runner=frame_runner)
+                pixel_jobs.store_replay(out / "jit-replays" / name / f"{pid}-{n}", store, route)
 
 
 def _variants(game, base_patches, candidate, limit):

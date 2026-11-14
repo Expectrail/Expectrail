@@ -516,8 +516,33 @@ pixel check reproduced and how many only a pixel check did. A pixel row whose st
 runs contradict gives the defect no result. `--screen bench/jit/public/screen.json` (any setting) adds
 what the screen record measured to each row and gives the rate on the screen-only defects apart.
 
-**Not yet:** the workflow does not build the observer (its replay jobs capture no frames and hold no
-SAM key), no SAM answer has been recorded on a bench probe, and no reproduction rate has been measured
+### Three jobs, so SAM's key never meets the change's code (added November 14)
+
+The replays run the change's code, and asking SAM needs its key; jit.yml keeps the two in separate jobs
+for the model already. [`pixel_jobs.py`](../expectrail/jit/pixel_jobs.py) does the same for pixel checks:
+
+1. **Capture** (runs the game, no secret): `run ... --observer sam-3.1-anchor --pixel-capture DIR`
+   replays each pixel check's probe with frames on the clean game, the bug build and the candidate,
+   three times each, and keeps the folders in `DIR/<build>/<probe>-<n>/` with the route each replayed.
+   Nothing is asked; the pixel rows are `not-run`. It takes no `--sam-answers` or `--sam-live`.
+2. **Ask** (holds the key, runs no game): `pixel-ask --replays DIR --out answers.json --budget-usd X
+   --sam-live`. Every stored replay's frames are planned from its route and all their images reserved
+   against the budget before the first request; over it, nothing is sent and it exits 1. SAM is asked
+   through the same observer the judge uses, so frames are checked against the replay's digests. The
+   answer file has one run a replay, named `<build>/<probe>-<n>`. The first replay that cannot be asked
+   about stops the asking (`stopped`). `--sam-answers FILE` in place of `--sam-live` rehearses it.
+3. **Judge** (runs the game, no secret): `run ... --observer sam-3.1-anchor --sam-answers answers.json
+   --pixel-replays DIR`. Trace checks replay as always; a pixel replay is the captured folder, put in
+   place only if it is a replay of the route this run compiled (otherwise the run ends as nothing
+   generated). The observer asks exactly what step 2 asked and the recorded answers answer only that,
+   so a replay missing from the answers, or a frame changed since, drops its checks. `--pixel-replays`
+   never takes `--sam-live`.
+
+The capture folder is untrusted (a job that ran the change wrote it): only the three build names,
+`<probe>-<n>` folders and regular files are accepted, no symbolic link, at most 36 replays.
+
+**Not yet:** the workflow does not run these three jobs (the asking job needs SAM's key in `main-only`,
+which only Sean may give a job), no SAM answer has been recorded on a bench probe, and no reproduction rate has been measured
 with pixel checks. #286 is done when a recorded run reproduces a public screen-only defect with one.
 
 ## What this does not claim
