@@ -16,7 +16,7 @@ import threading
 import tempfile
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from expectrail import app_page, viewer
+from expectrail import app_page, auto_fix, viewer
 from expectrail.gate import record as rec
 from expectrail.orchestrator import request as req, runner
 from expectrail.orchestrator.store import JobStore, StoreError, UnknownJob, FINAL
@@ -115,6 +115,9 @@ class App:
 
     def create(self, body):
         doc = build(body)
+        settings, _ = auto_fix.configure(body.get('autoFix', False), body.get('attempts'), body.get('usdCap'))
+        if settings:
+            doc['autoFix'] = settings
         from harness.adapters import get
 
         for side in ('base', 'head'):
@@ -129,7 +132,9 @@ class App:
             job_id = status['id']
             self.owned.add(job_id)
             try:
-                proc = self.start(self.store, job_id) if created else None
+                proc = None
+                if created:
+                    proc = auto_fix.launch(self.store, job_id, None) if settings else self.start(self.store, job_id)
             except Exception:
                 self.store.finish(job_id, 'failed', reasons=['The worker could not be started. No verdict.'])
                 raise
@@ -152,8 +157,16 @@ class App:
             except (OSError, UnknownJob):
                 pass
         request = self.store.request(job_id)
+        repair = doc.get('repair') or {}
+        summary = OUTCOMES[state]
+        if state == 'reject':
+            summary += ' ' + viewer.auto_fix_words(doc)
+            if 'review' in repair:
+                summary += ' ' + repair['review']
         return {key: doc[key] for key in ('id', 'phase', 'decision', 'history', 'reasons', 'diagnostics', 'createdAt')} | {
-            'state': state, 'summary': OUTCOMES[state], 'sessionOwned': job_id in self.owned, 'report': report,
+            'state': state, 'summary': summary, 'sessionOwned': job_id in self.owned, 'report': report,
+            'repairRunning': repair.get('state') == 'running',
+            'repairUrl': f'/repairs/{job_id}/repair-run.json' if 'record' in repair and job_id in self.owned else None,
             'before': (request['base'] or {}).get('checkout'), 'after': request['head']['checkout'],
             'judgedBy': judged_by(doc, self.findings(job_id, doc)),
             'viewer': f'/viewers/{job_id}/index.html' if job_id in self.owned and phase in FINAL else None}
@@ -185,7 +198,21 @@ class App:
             raise UnknownJob('No such finished viewer file.')
         if doc['output']:
             try:
-                return self.read_file(job_id, ['output', 'viewer', *parts])
+                data = self.read_file(job_id, ['output', 'viewer', *parts])
+                if len(parts) == 1 and doc['decision'] == 'reject':
+                    # The gate wrote the frame viewer before the parent knew its repair outcome.
+                    # Replace just that section. Keep the viewer, frames and script intact.
+                    link = None
+                    download = parts == [viewer.EXPORT_NAME]
+                    if (doc.get('repair') or {}).get('record'):
+                        if download:
+                            encoded = base64.b64encode(self.repair_file(job_id)).decode('ascii')
+                            link = 'data:application/json;base64,' + encoded
+                        else:
+                            link = f'/repairs/{job_id}/repair-run.json'
+                    section = viewer.auto_fix_section(doc, link, download=download).encode()
+                    data = data.replace(b'<section id="auto-fix"></section>', section, 1)
+                return data
             except FileNotFoundError:
                 pass
         if len(parts) != 1:
@@ -194,6 +221,13 @@ class App:
         with tempfile.TemporaryDirectory(prefix='expectrail-app-viewer-') as folder:
             viewer.write(Path(folder), self.findings(job_id, doc), status=doc, request=self.store.request(job_id))
             return (Path(folder) / parts[0]).read_bytes()
+
+    def repair_file(self, job_id):
+        self.own(job_id)
+        path = (self.store.status(job_id).get('repair') or {}).get('record', '')
+        if not viewer.REPAIR_RECORD.fullmatch(path):
+            raise UnknownJob('This job has no finished repair record.')
+        return self.read_file(job_id, path.split('/'))
 
     def report(self, job_id, parts):
         self.own(job_id)
@@ -369,6 +403,14 @@ class Handler(BaseHTTPRequestHandler):
                     raise UnknownJob('No such viewer file.') from None
                 return self.reply(200, data, 'text/html; charset=utf-8' if len(parts) == 1 else 'image/png',
                                   evidence=True)
+            if path.startswith('/repairs/'):
+                job_id, *parts = path.removeprefix('/repairs/').split('/')
+                if parts != ['repair-run.json']:
+                    raise UnknownJob('No such repair file.')
+                try:
+                    return self.reply(200, app.repair_file(job_id), report=True)
+                except OSError:
+                    raise UnknownJob('No such repair file.') from None
             if path.startswith('/reports/'):
                 job_id, *parts = path.removeprefix('/reports/').split('/')
                 try:
