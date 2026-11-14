@@ -71,6 +71,17 @@ The difference from a `test-spec`: a person approves every test spec before it c
 `trace-spec` from discovery is advisory until the promotion stage exists (validation, a person's
 approval, a pinned contract set), which is not built.
 
+## Pixel checks (added November 14)
+
+| Record | Written by | Read by |
+| --- | --- | --- |
+| `pixel-check` (`expectrail.pixel-check/v1`, [`contracts/pixel-check.v1.schema.json`](../contracts/pixel-check.v1.schema.json), example [`pixel-check.json`](../contracts/examples/pixel-check.json)) | `expectrail.jit.pixel.parse_candidate`, from a model's candidate (`model_prior` authority, origin `AUTO_DIFF`) | `expectrail.jit.pixel.judge` and `keep`, which hand each decision to the reference evaluator (`expectrail/evaluator.py`) |
+
+A generated check about what is drawn (issue #286). Its object is a role the project binds, never a
+description, and its observer is a trusted one that declares what it cannot tell; a check asking
+that is refused when it is proposed. It has no approval field. No prompt offers it yet
+([jit.md](jit.md#pixel-checks-what-is-drawn-added-november-14)).
+
 ## The CI gate's record (added November 9)
 
 `findings` (`expectrail.findings/v0`, [`contracts/findings.schema.json`](../contracts/findings.schema.json))
