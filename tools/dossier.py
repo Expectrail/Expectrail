@@ -262,6 +262,10 @@ def runit(ledger, manifest, src):
     ev=ledger_row(ledger, 'run-it')['evidence']
     cases=[]; rendered=[]
     for sample in manifest.json()['samples']:
+        if sample.get('repairRecorded') is False:
+            # A sample the page does not publish yet (#433's recorded fix): shown, never counted.
+            rendered.append([cite(sample['id'],manifest.ref('"id": "'+sample['id']+'"')),cite(sample['expected'],manifest.ref('"id": "'+sample['id']+'"')),'not recorded yet','not measured'])
+            continue
         matches=[]
         for e in ev:
             if e['kind']!='run' or 'vision questions answered from the recording' not in e['shows']:

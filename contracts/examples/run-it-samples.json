@@ -31,6 +31,16 @@
       "base": "bug",
       "expected": "accept",
       "vision": "docs/run-it/vision/fall-through-repair.json"
+    },
+    {
+      "id": "recorded-fix",
+      "title": "A bug, Expectrail’s fix, verified",
+      "summary": "Replay the recorded patch for the fall-through bug. A fresh verification uses saved vision answers. The fixer never runs here.",
+      "head": "recorded-fix",
+      "base": "bug",
+      "expected": "accept",
+      "vision": "docs/run-it/vision/recorded-fix.json",
+      "repairRecorded": false
     }
   ]
 }

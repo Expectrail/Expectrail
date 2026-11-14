@@ -18,6 +18,13 @@
 <div class="card"><span class="pill">02 / Understand</span><h2>Concepts</h2><p>Read how checks, routes, approval and evidence grades fit together, and where the trust boundary ends. <a href="concepts.html">Read the concepts</a>.</p></div>
 <div class="card"><span class="pill">03 / Inspect</span><h2>Evidence ledger</h2><p>Keep implemented, integrated, measured and experimental modes apart. Each row names its evidence and what it does not show. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md">Read the ledger</a>.</p></div>
 </div></div></div>
+<section class="section" id="repair"><h2>What happens after a reject?</h2>
+<figure aria-label="The repair loop"><ol class="repair-loop" role="list">
+<li><span>Reject</span></li><li><span>Sandboxed fixer proposes a patch</span></li>
+<li><span>Fresh independent verification</span></li><li><span>Accept or needs-review</span></li>
+<li><span>A person reviews</span></li></ol>
+<figcaption>The fixer sees the public failure evidence. It never talks to the verifier or the judge. Expectrail never merges a fix.</figcaption></figure>
+<p><a href="run-it/#samples-title">See the recorded fix sample</a></p></section>
 <section class="section" id="results"><p class="eyebrow">Recorded examples / diagnostic evidence</p><h2>A stopped fall can still look wrong.</h2>
 <p>The recorded verification path rejected the change that draws the player into the floor. This is evidence on the bundled game and seeded changes, not a general catch rate. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#godot-verify">Godot verification · measured</a>.</p>
 <div class="shots"><figure><img src="assets/frames/fix-correct.png" width="540" height="320" alt="Recorded game frame with the player standing on the grass edge."><figcaption>Recorded correct repair. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#review-change">Before-and-after review scope</a>.</figcaption></figure>
