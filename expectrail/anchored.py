@@ -25,7 +25,8 @@ only after it has been measured on that game's clean run, against rules fixed he
           collision box (the drawn player is about the size the engine says it is);
 - stable: asked again at a point ``nudgePx`` to the side (still inside the collision box), at
           least ``stable`` of the frames give the same box: the same size (within ``sizeTolerance``
-          or ``stableFloorPx``), still holding the first point, and moved less than the point was. A model that answers with whatever is
+          or ``stableFloorPx``), still holding the first point, and moved less than half the nudge
+          (in frame pixels, against the nudge actually asked). A model that answers with whatever is
           near the point fails here. A model that sees the player gives the player again.
 
 Sizes are compared within ``sizeTolerance`` of the larger size, or within a floor in pixels,
@@ -143,9 +144,11 @@ def calibrate(game: dict, run: dict, client, *, every: int = CALIBRATION_EVERY, 
                 row["nudgedSize"] = [round(nsize[0], 1), round(nsize[1], 1)]
                 # The same box: about the same size, still holding the first point, and moved less than
                 # the point was (a model that draws its answer around the asked point moves with it).
-                shift = abs(((again["box"][0] + again["box"][2]) - (got["box"][0] + got["box"][2])) / 2
-                            / (place["scale"][0] or 1.0))
-                row["stable"] = (_holds(again, place["point"]) and shift < rules["nudgePx"] and all(
+                # Compared in frame pixels with the nudge actually asked (``step``, rounded to whole
+                # pixels): an answer that moved half the nudge or more followed the point (#452 review:
+                # comparing in game pixels let an echo through when the scale was not a whole number).
+                shift = abs(((again["box"][0] + again["box"][2]) - (got["box"][0] + got["box"][2])) / 2)
+                row["stable"] = (_holds(again, place["point"]) and shift < step / 2 and all(
                     _close(w, s, rules["sizeTolerance"], rules["stableFloorPx"]) for w, s in zip(nsize, size)))
         rows.append(row)
     return judge_calibration(game, run.get("replaySha256", "0" * 64), rows, rules,

@@ -41,15 +41,17 @@ SPEC = {
 GAME = {"name": "kinematic-character", "commit": "b761b4cd5718a7118f2c95eb55f181d0a5f004f1"}
 
 
-def make_run(root: Path, *, fall: bool = False, frames: int = 120, seed: int = 0) -> dict:
-    """A replay whose player stands on the ground at x = 40 + frame (or falls through it, ``fall``)."""
+def make_run(root: Path, *, fall: bool = False, frames: int = 120, seed: int = 0, scale: float = 1.0,
+             x0: float = 40.0, speed: float = 1.0, ty: float = 0.0) -> dict:
+    """A replay whose player stands on the ground at x = x0 + speed * frame (or falls through it,
+    ``fall``), drawn at ``scale`` frame pixels per game pixel, shifted ``ty`` frame pixels."""
     rows = []
     for t in range(frames * 2):
         n = t // 2
-        x = 40.0 + n
+        x = x0 + speed * n
         bottom = GROUND_TOP + (3.0 * n if fall else 0.0)
         rows.append({"tick": t, "player": [x, bottom - SPRITE / 2], "onFloor": not fall,
-                     "ground": float(GROUND_TOP), "view": [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                     "ground": float(GROUND_TOP), "view": [scale, 0.0, 0.0, scale, 0.0, ty],
                      "body": [x - SPRITE / 2, bottom - SPRITE, x + SPRITE / 2, bottom]})
     folder = root / f"frames-{seed}-{int(fall)}"
     folder.mkdir(parents=True)
@@ -67,9 +69,10 @@ class Stand:
         self.calls = 0
 
     def drawn(self, png: Path):
-        n = int(Path(png).stem[1:])
-        x0, y0, x1, y1 = self.rows[2 * n]["body"]   # the sprite is drawn exactly where the engine says
-        return [x0, y0, x1, y1]
+        from agents.observations import _frame_box
+
+        row = self.rows[2 * int(Path(png).stem[1:])]
+        return _frame_box(row["view"], row["body"])   # the sprite, drawn exactly where the engine says
 
 
 class Sees(Stand):
@@ -81,7 +84,7 @@ class Sees(Stand):
 class Echo(Stand):
     def segment_at(self, png, points):
         self.calls += 1
-        h = SPRITE / 2
+        h = SPRITE / 2 * self.rows[0]["view"][0]   # player-sized, in frame pixels
         return [{"box": [x - h, y - h, x + h, y + h], "score": 0.9} for x, y in points]
 
 
@@ -124,6 +127,20 @@ class CalibrationTest(unittest.TestCase):
         self.assertEqual(doc["rates"]["size"], 1.0)     # player-sized, so only the nudge can tell
         self.assertEqual(doc["rates"]["stable"], 0.0)   # its box moved with the point
         self.assertTrue(any("nudged" in w for w in doc["why"]))
+
+    def test_an_echo_is_refused_and_a_seeing_model_enabled_at_scales_that_are_not_whole(self):
+        # The guard's probe on #452: with the nudge rounded to whole frame pixels and the shift compared
+        # in game pixels, an echo passed at scale 1.1. The player stays inside the 160 x 96 frame.
+        for scale in (1.1, 1.5, 2.0):
+            with self.subTest(scale=scale):
+                run = make_run(self.tmp, seed=int(scale * 10), scale=scale, x0=20.0, speed=0.3,
+                               ty=-(GROUND_TOP * scale - 70))
+                echo = an.calibrate(GAME, run, Echo(run))
+                self.assertEqual(echo["frames"]["asked"], echo["frames"]["listed"])
+                self.assertFalse(echo["enabled"])
+                self.assertEqual(echo["rates"]["stable"], 0.0)
+                sees = an.calibrate(GAME, run, Sees(run))
+                self.assertTrue(sees["enabled"], sees["why"])
 
     def test_a_model_that_answers_with_the_tiles_is_not_enabled(self):
         doc = an.calibrate(GAME, self.run, Tiles(self.run))
