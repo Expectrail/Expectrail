@@ -13,7 +13,16 @@ One sample id from [`run-it/samples.json`](run-it/samples.json), and nothing els
 | --- | --- | --- |
 | `clean` | the bundled platformer as it is | accept |
 | `fall-through-bug` | the seeded fall-through bug, against the game as it is | reject |
-| `fall-through-repair` | its repair, against the bug | accept |
+| `fall-through-repair` | the unchanged game compared with the bug | accept |
+| `recorded-fix` | a recorded fixer patch applied to the seeded bug | the fresh job decides |
+
+### Replay a recorded fix
+
+Until a live repair is published, the fourth card says “fix not recorded yet”. For this sample, put the original sandboxed repair record at `docs/run-it/repair/repair-run.json`, its winning patch at the attempt path named by the record, relative to the record’s folder, and the saved vision answers at `docs/run-it/vision/recorded-fix.json`. The vision recording must name this sample. After checking those files, Sean sets `repairRecorded` to `true` in the sample manifest and its contract example. Keep the fixer source and the review label from the original run. The schema example is a fixture and cannot supply a site fix.
+
+`python3 -m expectrail.runit run --sample recorded-fix --out out` checks the seeded bug’s tree and the recorded patch digest. It applies the patch to a temporary copy and verifies it against the bug under the fix-demonstration rule, using recorded answers. Missing answers can leave the fresh job at needs-review. A failing check can reject. The recorded verdict never substitutes for the fresh one.
+
+To view a repair record on its own, run `python3 -m expectrail.viewer --repair-run path/to/repair-run.json --out repair-viewer` in a checkout with the contracts extra installed. Open `repair-viewer/index.html`. This reads the attempts and winning diff without starting a game, fixer or model.
 
 The request id is minted by the edge function (a UUID), never by the visitor. The workflow checks both
 against `^[a-z0-9-]{1,40}$` before anything is checked out, and `expectrail.runit` refuses any id that
@@ -34,13 +43,13 @@ run and the checks are live on every visit, and the vision answers come from one
   run <id>)", and `status.json` carries the date, so the page can say "vision answers recorded on
   <date>" beside every verdict.
 
-**Every sample has its recording** (`docs/run-it/vision/<sample>.json`), from Sean's three recording
+**The three original samples have their recordings** (`docs/run-it/vision/<sample>.json`), from Sean's three recording
 runs of November 13: `clean` from run 43508479160, `fall-through-bug` from run 43508788240 and
 `fall-through-repair` from run 43509232715, merged as #403, #404 and #405. Before they existed, `clean`
 and `fall-through-repair` decided needs-review and `fall-through-bug` still rejected, because a check the
 engine's record sees failing is a failure under the two-observer rule. `--expect` still knows that
-reading for a sample whose recording is missing, and `tests/test_runit.py` fails if a sample in the
-manifest has no usable recording. A recording answers only the frames it holds: if the game or the
+reading for a sample whose recording is missing, and `tests/test_runit.py` fails if any of the three original samples
+has no usable recording. A recording answers only the frames it holds: if the game or the
 capture ever changes what a frame looks like, those frames get no answer and the sample needs review
 until it is recorded again.
 
@@ -163,7 +172,7 @@ so every request sees the same strongly consistent state, and requests inside it
 time.
 
 - **What a visitor can send:** `{"sample": id}`, from the page's origin (`ALLOWED_ORIGINS`, default
-  `https://expectrail.tech`), at most 1,024 bytes, with an id from the three samples. Anything else is
+  `https://expectrail.tech`), at most 1,024 bytes, with an id from the sample manifest. Anything else is
   refused before GitHub is called. The request id is a UUID minted here.
 - **What it calls:** the dispatch of `run-it.yml` on `main` with the two inputs, the list of
   `run-it.yml`'s runs, one run and its jobs, and the published `status.json` on `run-it-results`.
