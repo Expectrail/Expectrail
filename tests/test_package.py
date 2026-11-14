@@ -82,6 +82,7 @@ NOT_PACKAGED = {
     "expectrail.runit": "the site's Run it samples (#265): reads docs/run-it/ in a clone of the repository",
     "expectrail.recorded": "recorded vision answers for the Run it samples (#265); built on expectrail.observers",
     "expectrail.runit_site": "the Run it page's results index (#265): the publish job runs it from a clone; built on expectrail.runit",
+    "expectrail.receipt": "receipts and trust-check (#255): needs cryptography and jsonschema, which the standard-library wheel does not ship; packaging it is a later slice",
 }
 # Imports a packaged module makes only on a path a verification never takes.
 NOT_ON_A_VERIFICATION = {
