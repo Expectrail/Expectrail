@@ -1,0 +1,59 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "auto-input-map",
+  "seed": 1,
+  "description": "First route from the project's input map: movement holds, short presses and pauses.",
+  "ticks": 243,
+  "events": [
+    {
+      "tick": 15,
+      "action": "left",
+      "pressed": true
+    },
+    {
+      "tick": 75,
+      "action": "left",
+      "pressed": false
+    },
+    {
+      "tick": 90,
+      "action": "right",
+      "pressed": true
+    },
+    {
+      "tick": 150,
+      "action": "right",
+      "pressed": false
+    },
+    {
+      "tick": 165,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 171,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 186,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 192,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 207,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 213,
+      "action": "jump",
+      "pressed": false
+    }
+  ]
+}
