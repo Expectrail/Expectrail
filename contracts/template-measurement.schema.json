@@ -1,0 +1,572 @@
+{
+  "type": "object",
+  "properties": {
+    "format": {
+      "const": "expectrail.template-measurement/v0"
+    },
+    "evidence": {
+      "type": "string"
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "expectrail.template-ncc/v2"
+        },
+        "coordinates": {
+          "const": "captured-frame pixels; origin top-left; xyxy half-open; y down"
+        },
+        "matchThreshold": {
+          "type": "number",
+          "maximum": 1,
+          "minimum": 1e-06
+        },
+        "agreementIoU": {
+          "type": "number",
+          "maximum": 1,
+          "minimum": 1e-06
+        },
+        "searchMarginPx": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "scales": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0.25,
+            "maximum": 4
+          },
+          "minItems": 1,
+          "maxItems": 9
+        },
+        "stridePx": {
+          "const": 1
+        },
+        "sampleSide": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 32
+        },
+        "minimumContrast": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 128
+        }
+      },
+      "required": [
+        "algorithm",
+        "coordinates",
+        "matchThreshold",
+        "agreementIoU",
+        "searchMarginPx",
+        "scales",
+        "stridePx",
+        "sampleSide",
+        "minimumContrast"
+      ]
+    },
+    "cleanTree": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "bankSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "calibrationFrames": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "minItems": 1
+    },
+    "runs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "route": {
+            "type": "string"
+          },
+          "patches": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "replaySha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "frames": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "objectFrames": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "measured": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "counts": {
+                "type": "object",
+                "properties": {
+                  "matched": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "not-found": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "displaced": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "unavailable": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "out-of-frame": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "matched",
+                  "not-found",
+                  "displaced",
+                  "unavailable",
+                  "out-of-frame"
+                ],
+                "additionalProperties": false
+              },
+              "agreementRate": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "alarmRate": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "disagreements": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "status": {
+                      "enum": [
+                        "matched",
+                        "not-found",
+                        "displaced",
+                        "unavailable",
+                        "out-of-frame"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "predictedBox": {
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          },
+                          "minItems": 4,
+                          "maxItems": 4
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "searchBox": {
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          },
+                          "minItems": 4,
+                          "maxItems": 4
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "rawBox": {
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          },
+                          "minItems": 4,
+                          "maxItems": 4
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "score": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "templateFrame": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "scale": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "frame": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "object": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "reason",
+                    "predictedBox",
+                    "searchBox",
+                    "rawBox",
+                    "score",
+                    "templateFrame",
+                    "scale",
+                    "frame",
+                    "object"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "frames",
+              "objectFrames",
+              "measured",
+              "counts",
+              "agreementRate",
+              "alarmRate",
+              "disagreements"
+            ],
+            "additionalProperties": false
+          },
+          "timing": {
+            "type": "object",
+            "properties": {
+              "frames": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sensorSeconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "meanFrameSeconds": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "p95FrameSeconds": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "maxFrameSeconds": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "frames",
+              "sensorSeconds",
+              "meanFrameSeconds",
+              "p95FrameSeconds",
+              "maxFrameSeconds"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "name",
+          "route",
+          "patches",
+          "replaySha256",
+          "summary",
+          "timing"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "clean": {
+      "type": "object",
+      "properties": {
+        "measured": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "alarms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "falseAlarmRate": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "measured",
+        "alarms",
+        "falseAlarmRate"
+      ],
+      "additionalProperties": false
+    },
+    "invisiblePlayerAlarms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "selection": {
+          "enum": [
+            "explicit-frames",
+            "all-clean-crops"
+          ]
+        },
+        "selectionSimilarity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "sourceFrames": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eligibleFrames": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mirrored": {
+          "type": "boolean"
+        },
+        "thresholdFloor": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "thresholdSelected": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "validationReplaySha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "positives": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "negatives": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "positiveMatches": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "negativeMatches": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "enum": [
+            "not-run",
+            "met",
+            "unmet"
+          ]
+        }
+      },
+      "required": [
+        "selection",
+        "selectionSimilarity",
+        "sourceFrames",
+        "eligibleFrames",
+        "mirrored",
+        "thresholdFloor",
+        "thresholdSelected",
+        "validationReplaySha256",
+        "positives",
+        "negatives",
+        "positiveMatches",
+        "negativeMatches",
+        "status"
+      ]
+    },
+    "templateCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "numpy": {
+          "type": "string"
+        },
+        "pillow": {
+          "type": "string"
+        },
+        "threadEnvironment": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "OPENBLAS_NUM_THREADS": {
+              "type": "string"
+            },
+            "OMP_NUM_THREADS": {
+              "type": "string"
+            },
+            "MKL_NUM_THREADS": {
+              "type": "string"
+            },
+            "BLIS_NUM_THREADS": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "numpy",
+        "pillow",
+        "threadEnvironment"
+      ],
+      "additionalProperties": false
+    },
+    "targets": {
+      "type": "object",
+      "properties": {
+        "cleanMatchedFraction": {
+          "const": 0.95
+        },
+        "maxFrameSeconds": {
+          "const": 0.3
+        },
+        "accuracyMet": {
+          "type": "boolean"
+        },
+        "speedMet": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "cleanMatchedFraction",
+        "maxFrameSeconds",
+        "accuracyMet",
+        "speedMet"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "format",
+    "evidence",
+    "config",
+    "cleanTree",
+    "bankSha256",
+    "calibrationFrames",
+    "runs",
+    "clean",
+    "invisiblePlayerAlarms",
+    "calibration",
+    "templateCount",
+    "runtime",
+    "targets"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Template sensor measurements, with denominators and exclusions; not a product verdict"
+}

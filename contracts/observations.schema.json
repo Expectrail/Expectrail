@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/seanudeke/expectrail/contracts/observations.schema.json",
-  "title": "Observations: what SAM 3.1 found in the frames of one replay",
-  "description": "An object with an empty list in a frame was looked for and not found. A frame that is absent was not looked at.",
+  "title": "Observations: objects found in captured frames",
+  "description": "An object with an empty list was looked for and not found, except that template-sensor frames explicitly marked unavailable or out-of-frame are unmeasured advisory evidence. TemplateObserver refuses to return such incomplete documents for judging. An absent frame was not looked at.",
   "type": "object",
   "required": [
     "format",
@@ -12,7 +12,9 @@
   ],
   "properties": {
     "format": {
-      "enum": ["expectrail.observations/v0"]
+      "enum": [
+        "expectrail.observations/v0"
+      ]
     },
     "replay": {
       "type": "object",
@@ -40,6 +42,251 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "sensor": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "config": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "algorithm": {
+                  "const": "expectrail.template-ncc/v2"
+                },
+                "coordinates": {
+                  "const": "captured-frame pixels; origin top-left; xyxy half-open; y down"
+                },
+                "matchThreshold": {
+                  "type": "number",
+                  "maximum": 1,
+                  "minimum": 1e-06
+                },
+                "agreementIoU": {
+                  "type": "number",
+                  "maximum": 1,
+                  "minimum": 1e-06
+                },
+                "searchMarginPx": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 128
+                },
+                "scales": {
+                  "type": "array",
+                  "items": {
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 4
+                  },
+                  "minItems": 1,
+                  "maxItems": 9
+                },
+                "stridePx": {
+                  "const": 1
+                },
+                "sampleSide": {
+                  "type": "integer",
+                  "minimum": 4,
+                  "maximum": 32
+                },
+                "minimumContrast": {
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 128
+                }
+              },
+              "required": [
+                "algorithm",
+                "coordinates",
+                "matchThreshold",
+                "agreementIoU",
+                "searchMarginPx",
+                "scales",
+                "stridePx",
+                "sampleSide",
+                "minimumContrast"
+              ]
+            },
+            "bankSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "clean": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "gameTree": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "replaySha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "traceSha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "gameTree",
+                "replaySha256",
+                "traceSha256"
+              ]
+            },
+            "capabilities": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "presence",
+                  "position",
+                  "shape"
+                ]
+              },
+              "minItems": 1
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            },
+            "captureFps": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "physicsTicksPerSecond": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sources": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "gameTree": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "replaySha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "traceSha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "gameTree",
+                  "replaySha256",
+                  "traceSha256"
+                ]
+              }
+            },
+            "calibration": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "selection": {
+                  "enum": [
+                    "explicit-frames",
+                    "all-clean-crops"
+                  ]
+                },
+                "selectionSimilarity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "sourceFrames": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "eligibleFrames": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "mirrored": {
+                  "type": "boolean"
+                },
+                "thresholdFloor": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "thresholdSelected": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "validationReplaySha256": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "positives": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "negatives": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "positiveMatches": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "negativeMatches": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "status": {
+                  "enum": [
+                    "not-run",
+                    "met",
+                    "unmet"
+                  ]
+                }
+              },
+              "required": [
+                "selection",
+                "selectionSimilarity",
+                "sourceFrames",
+                "eligibleFrames",
+                "mirrored",
+                "thresholdFloor",
+                "thresholdSelected",
+                "validationReplaySha256",
+                "positives",
+                "negatives",
+                "positiveMatches",
+                "negativeMatches",
+                "status"
+              ]
+            }
+          },
+          "required": [
+            "config",
+            "bankSha256",
+            "clean",
+            "capabilities",
+            "limitations",
+            "captureFps",
+            "physicsTicksPerSecond",
+            "sources",
+            "calibration"
+          ]
         }
       }
     },
@@ -91,6 +338,106 @@
                   }
                 }
               }
+            }
+          },
+          "sensor": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "status": {
+                  "enum": [
+                    "matched",
+                    "not-found",
+                    "displaced",
+                    "unavailable",
+                    "out-of-frame"
+                  ]
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "predictedBox": {
+                  "anyOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 4,
+                      "maxItems": 4
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "searchBox": {
+                  "anyOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 4,
+                      "maxItems": 4
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "rawBox": {
+                  "anyOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 4,
+                      "maxItems": 4
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "score": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "templateFrame": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "scale": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "status",
+                "reason",
+                "predictedBox",
+                "searchBox",
+                "rawBox",
+                "score",
+                "templateFrame",
+                "scale"
+              ]
             }
           }
         }
