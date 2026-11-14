@@ -12,7 +12,8 @@ import re
 from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
-PAGES = ('README.md', 'docs/index.html', 'docs/quickstart.html', 'docs/concepts.html')
+PAGES = ('README.md', 'docs/index.html', 'docs/quickstart.html', 'docs/concepts.html',
+         'docs/guides.html', 'docs/positioning.html')
 LEDGER = 'docs/capabilities.md'
 
 

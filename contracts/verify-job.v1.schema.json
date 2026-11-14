@@ -25,6 +25,27 @@
     "expectrail"
   ],
   "properties": {
+    "repair": {
+      "description": "The repair after the parent's completed reject. A record path is relative to the parent job.",
+      "type": "object", "additionalProperties": false, "required": ["state"],
+      "properties": {
+        "state": {"enum": ["running", "finished", "interrupted"]},
+        "decision": {"enum": ["accept", "needs-review"]},
+        "stopReason": {"enum": ["accepted", "needs-review", "attempts-exhausted", "fixer-failed", "spend-cap", "cancelled"]},
+        "record": {"type": "string", "pattern": "^repair-[a-z0-9_]{8}/repair-run\\.json$"},
+        "review": {"const": "Written by Expectrail's sandboxed fixer and accepted on the approved checks by an independent verification. A person must review it before merging; Expectrail never merges it."},
+        "detail": {"type": "string", "maxLength": 600}
+      },
+      "oneOf": [
+        {"properties": {"state": {"const": "running"}}, "maxProperties": 1},
+        {"properties": {"state": {"const": "interrupted"}}, "required": ["detail"], "maxProperties": 2},
+        {"properties": {"state": {"const": "finished"}, "decision": {"const": "accept"}, "stopReason": {"const": "accepted"}},
+         "required": ["decision", "stopReason", "record", "review"], "maxProperties": 5},
+        {"properties": {"state": {"const": "finished"}, "decision": {"const": "needs-review"},
+                        "stopReason": {"enum": ["needs-review", "attempts-exhausted", "fixer-failed", "spend-cap", "cancelled"]}},
+         "required": ["decision", "stopReason", "record"], "maxProperties": 4}
+      ]
+    },
     "format": {
       "const": "expectrail.verify-job/v1"
     },

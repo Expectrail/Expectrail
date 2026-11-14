@@ -15,6 +15,21 @@
     "idempotencyKey"
   ],
   "properties": {
+    "autoFix": {
+      "description": "Opt-in repair after a reject. A saved patch is identified by its content.",
+      "type": "object", "additionalProperties": false, "required": ["attempts", "source"],
+      "properties": {
+        "attempts": {"type": "integer", "minimum": 1, "maximum": 10},
+        "source": {"enum": ["muse", "fixture", "recorded"]},
+        "usdCap": {"type": "number", "minimum": 0},
+        "patchSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      },
+      "oneOf": [
+        {"properties": {"source": {"const": "muse"}}, "required": ["usdCap"], "maxProperties": 3},
+        {"properties": {"source": {"enum": ["fixture", "recorded"]}}, "required": ["patchSha256"], "maxProperties": 3}
+      ]
+    },
+    "intent": {"enum": ["fix"], "description": "A repair candidate must demonstrate its fix on repeated replays."},
     "format": {
       "const": "expectrail.verify-request/v1"
     },

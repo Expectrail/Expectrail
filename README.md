@@ -15,6 +15,7 @@ installation, `doctor`, `sample` and a project given by path.
 [Install scope and evidence](docs/capabilities.md#installed-command).
 
 [Quickstart](docs/quickstart.html) · [Concepts and limits](docs/concepts.html) ·
+[Guides](docs/guides.html) · [Positioning](docs/positioning.html) ·
 [Capability ledger](docs/capabilities.md) · [Source](https://github.com/Expectrail/Expectrail)
 
 ## Start with an honest result

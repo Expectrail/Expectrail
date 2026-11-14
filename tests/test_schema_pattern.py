@@ -139,7 +139,10 @@ def contract_patterns() -> dict[str, str]:
 
 # pattern: (a value that matches it, whether that value plus "\n" must be refused)
 SAMPLES = {
+    r"^repair-[a-z0-9_]{8}/repair-run\.json$": ("repair-sample01/repair-run.json", True),
     "^[A-Z_]{1,40}$": ("TOOL_MISSING", True),
+    "^[a-z0-9][a-z0-9-]{0,63}$": ("player-stays-above-ground", True),
+    "^attempt-[0-9]{1,2}/candidate\\.patch$": ("attempt-1/candidate.patch", True),
     "^[A-Za-z0-9._-]{1,64}$": ("19283746501", True),
     "^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$": ("example-job", True),
     "^[a-z0-9-]{1,40}$": ("fall-through-bug", True),

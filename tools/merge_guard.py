@@ -237,6 +237,40 @@ def check_approvals(changes: list[Change]) -> list[Reason]:
     return out
 
 
+def _spec(text: str | None) -> dict | None:
+    """A test spec (``expectrail.test-spec/...``) parsed from ``text``; None for anything else."""
+    if text is None:
+        return None
+    try:
+        doc = json.loads(text)
+    except ValueError:
+        return None
+    if isinstance(doc, dict) and str(doc.get("format", "")).startswith("expectrail.test-spec/"):
+        return doc
+    return None
+
+
+def check_approved_specs(changes: list[Change]) -> list[Reason]:
+    """An approved spec whose content changed while it keeps an approval that is not bound to the new
+    content (#420), in any folder: an approval from before content binding survives an edit in the
+    gate, and a bound one stops counting. Either way a person approves the spec again."""
+    from expectrail import approval
+
+    out = []
+    for c in changes:
+        old, new = _spec(c.old), _spec(c.new)
+        if old is None or new is None or not old.get("approval") or not new.get("approval"):
+            continue
+        try:
+            same = approval.canonical(old) == approval.canonical(new)
+        except (ValueError, TypeError):
+            same = False
+        if not same and approval.state(new) != approval.BOUND:
+            out.append(Reason(NEEDS_SEAN, "approved-spec", c.path,
+                              "an approved spec's content changed; a person approves it again"))
+    return out
+
+
 # --- the game, the rules, the guard itself, the baseline ---------------------------------------
 
 def check_paths(changes: list[Change]) -> list[Reason]:
@@ -1080,7 +1114,7 @@ def is_entry(path: str) -> bool:
 
 def check(changes: list[Change], body: str = "") -> list[Reason]:
     """Every reason this diff may not merge as it stands, in a fixed order."""
-    return (check_approvals(changes) + check_paths(changes) + check_baseline(changes) + check_workflows(changes)
+    return (check_approvals(changes) + check_approved_specs(changes) + check_paths(changes) + check_baseline(changes) + check_workflows(changes)
             + check_tests(changes, body) + check_held_out(changes) + check_new_work(changes))
 
 

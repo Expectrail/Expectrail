@@ -7,7 +7,7 @@ import json
 import sys
 from pathlib import Path
 
-from expectrail.jit.offer import DEFAULT as DEFAULT_OFFER, OFFERS
+from expectrail.jit.offer import DEFAULT as DEFAULT_OFFER, SCORED
 from expectrail.repro import bench, breakdown, evidence, menu, reach, score, screen, visibility
 
 PROFILE = bench.REPO / "discovery" / "platformer.profile.json"
@@ -91,8 +91,10 @@ def main(argv: list[str] | None = None) -> int:
                    help="the visibility record a miss's reason is read from")
     s.add_argument("--no-visibility", action="store_true")
     s.add_argument("--source", default=None, help="where the records came from, for example 'run 123456'")
-    s.add_argument("--offer", choices=OFFERS, default=DEFAULT_OFFER,
+    s.add_argument("--offer", choices=SCORED, default=DEFAULT_OFFER,
                    help="count only records made with this setting (expectrail/jit/offer.py)")
+    s.add_argument("--screen", type=Path, default=None,
+                   help="a screen record (expectrail/repro/screen.py): the rate on the screen-only defects apart")
     bd = sub.add_parser("breakdown", help="print a score's misses by reason, with the hand findings; no model, no engine")
     bd.add_argument("--score", type=Path, required=True, help="a repro-score.json")
     bd.add_argument("--hand", type=Path, default=breakdown.HAND, help="the hand findings (expectrail.repro-hand-reasons/v1)")
@@ -113,7 +115,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.cmd == "score":
             record = score.score(doc, args.records, visibility_path=None if args.no_visibility else args.visibility,
-                                 source=args.source, bench_path=args.bench, offer=args.offer)
+                                 source=args.source, bench_path=args.bench, offer=args.offer,
+                                 screen_path=args.screen)
             score.write(record, args.out)
             print(json.dumps(record["totals"]))
             return 0

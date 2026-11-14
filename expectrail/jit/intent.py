@@ -673,7 +673,7 @@ def revise_to_file(intent, report: str, patch_text: str, profile: dict, probes: 
     from expectrail.jit.diff_map import diff_map, withheld_map
     from expectrail.jit.run import OutOfBudget, Spend
 
-    offer = offer_mod.replayable(getattr(intent, "offer", offer_mod.BASELINE))
+    offer = offer_mod.revisable(getattr(intent, "offer", offer_mod.BASELINE))
     candidate = check_candidate(getattr(intent, "candidate", SHOWN))
     first_doc = json.loads(_P(first).read_text(encoding="utf-8"))
     # The record names the patch it judged, so it is checked against the real one; under WITHHELD nothing

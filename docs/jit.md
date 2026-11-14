@@ -442,14 +442,83 @@ setting gives it, and may also write up to four checks in `pixelChecks`:
 - `pixel.assess` judges a proposal's pixel checks from an observer's answers: each check's images are
   reserved against the cap together with the checks before it, then the keep rule applies.
 
-Every other setting's prompts are byte for byte as before. **The replay does not judge pixel checks
-yet**, so `run` and `revise` refuse this setting, and it is in `offer.ALL` but not in `offer.OFFERS`:
-the workflow, the run record and the score do not name it. Nothing has been proposed under it by a
+Every other setting's prompts are byte for byte as before. Nothing has been proposed under it by a
 live model.
 
-**Not yet:** nothing calls an observer during a reproduction run, and no reproduction rate has been
-measured with pixel checks. #286 is done when a recorded run reproduces a public screen-only defect
-with one.
+### The replay judges pixel checks (added November 14)
+
+`run.generate(..., offer=PIXEL, observer=..., frame_runner=...)` judges the proposal's pixel checks
+after its trace checks:
+
+- Each check's probe is replayed **with frames** on the clean game and on the bug build (`[*base]`),
+  three times each, and the observer is asked about every run. The observer is a callable with a
+  `name` and a `frames(route)` (`pixel.observe` reads its answer as untrusted data: a malformed answer
+  or a failure drops the checks on that probe, never passes them).
+- The keep rule is `pixel.keep`'s: passes on every clean run, fails on every bug run, one observer
+  setting on all six, no frame without both the observer and the engine's record. A kept check is
+  then judged on the candidate three times: failing every time is a catch.
+- The observer's images are reserved before the replays (one image a planned frame, on nine runs),
+  against the same cap; what the observer says it sent is charged. Over the cap, with no observer, no
+  frame runner or no bug build, a pixel check is `not-run` with its reason. The trace checks' results
+  stand either way; a replay that fails still ends the run as nothing generated.
+- The rows are the run record's `pixelChecks` ([example](../contracts/examples/jit-run-pixel.json)).
+  They are not in `catches`, `counts` or the gate summary. `from_base_alone` lists the kept ones in
+  `pixelReproducing`, decided from the rows' runs, never their status.
+
+A revision does not carry pixel checks, so `revise` refuses this setting (`offer.revisable`). The
+command line's `run` and the reproduction score take it (below); the workflow does not yet.
+
+### SAM as the observer (added November 14)
+
+[`sam_observer.py`](../expectrail/jit/sam_observer.py) is the `sam-3.1-anchor` observer the replay
+asks. On each replay it asks SAM 3.1 what is drawn inside the player's box at the place the engine's
+record puts the player, one image a planned frame (agents/sam_anchor.py asks and measures):
+
+- **The box** is the player's collision box as the harness logged it on that tick, widened by 4 game
+  pixels each way (`box=body`, the default). A sized box with a lift (`box=(48, 68), lift=17`) is the
+  setting SAM was recorded with on the bundled game, kept so those answers can be replayed.
+- **The frames are planned from the route alone**, before any replay, so the budget is reserved for
+  exactly those: every 10th frame and the last one the route's ticks fill, at most 30.
+- **The frames must line up**, or nothing is judged: the replay is of the check's route, captured at
+  the frame and physics rates the plan assumed, with its frames numbered from 0 without a hole and each
+  asked frame matching the digest in `replay.json`. A planned frame the replay did not capture, or a
+  tick with no player, camera or body box logged, is a gap: the check is `needs-review` on that run.
+- **What is charged** is every request the client made, retries included. An observer that stops part
+  way (no key, no credit, the cap) is still charged what it sent.
+- `RecordedSamClient` gives back a recorded answer file, and only for the question SAM was asked: a
+  different box or frame stops the run, and its setting must be the observer's. Through it, SAM's
+  recorded answers on the smoke route replay through the real observer with the same boxes, answers
+  and results (`tests/test_jit_sam_observer.py`, on synthetic replay folders built from the recording).
+
+### The command line and the score take the pixel setting (added November 14)
+
+`python -m expectrail.jit.cli run --offer signals-reach-evidence-pixel --observer sam-3.1-anchor ...`
+builds the SAM observer (`cli.observer_from`) and hands it to the replay. SAM is asked one of two ways,
+and exactly one must be named, or the command exits 2 before anything runs:
+
+- `--sam-answers FILE`: recorded answers through `RecordedSamClient`. A replay's build
+  (`pixel-reference`, `pixel-base`, `pixel-candidate`) picks the recorded run: `<build>/<replay>` if
+  the file has it, else `--sam-run BUILD=RUN`, else the run named as the build. No request is sent.
+- `--sam-live`: a live call (the key in `MODEL_API_KEY`, the cap in `EXPECTRAIL_SAM_USD_CAP`), its
+  images reserved against `--budget-usd` first. This spends money.
+
+`--sam-box` (`body` by default, or `WxH` with `--sam-lift`), `--sam-pad` and `--sam-first` say how SAM
+is asked; with recorded answers they must match how the recording was asked, or the checks are
+dropped with that reason. `--observer none` (the default) leaves every pixel check `not-run`. An
+observer named without the pixel setting is refused.
+
+`python -m expectrail.repro score --offer signals-reach-evidence-pixel` counts pixel records
+([example](../contracts/examples/repro-score-pixel.json)). A pixel check reproduces by the bench's
+rule: kept by its own runs (3 of 3 on the clean game, 3 of 3 failing on the bug build, one observer
+setting) and failing 3 of 3 again with the no-fix candidate. A row's counts include its pixel checks,
+its `pixel` object says how many were pixel checks, and the totals' `pixel` says how many defects a
+pixel check reproduced and how many only a pixel check did. A pixel row whose status or outcome its own
+runs contradict gives the defect no result. `--screen bench/jit/public/screen.json` (any setting) adds
+what the screen record measured to each row and gives the rate on the screen-only defects apart.
+
+**Not yet:** the workflow does not build the observer (its replay jobs capture no frames and hold no
+SAM key), no SAM answer has been recorded on a bench probe, and no reproduction rate has been measured
+with pixel checks. #286 is done when a recorded run reproduces a public screen-only defect with one.
 
 ## What this does not claim
 

@@ -2,9 +2,14 @@
   "format": "expectrail.verify-job/v1",
   "id": "9d829046502d03a81abd22e52b65173b",
   "phase": "completed",
-  "decision": "accept",
+  "decision": "reject",
+  "repair": {
+    "state": "finished", "decision": "accept", "stopReason": "accepted",
+    "record": "repair-sample01/repair-run.json",
+    "review": "Written by Expectrail's sandboxed fixer and accepted on the approved checks by an independent verification. A person must review it before merging; Expectrail never merges it."
+  },
   "reasons": [
-    "all 2 checks pass"
+    "one public check failed on the original change"
   ],
   "diagnostics": [],
   "inputs": {

@@ -3,18 +3,12 @@ required observer, a missing private suite.
 
 Each test replays the bundled game with real Godot and asserts that clearance is not granted, and,
 where the same run without the fault is cleared, shows that too, so the fault is what stopped it.
-
-``test_a_route_whose_inputs_the_game_does_not_have_is_not_clearance`` is a probe of a control that is
-not defended today (#417): it is an expected failure until the gate notices a route that drives
-nothing and says so. When it starts to pass, the suite fails on the unexpected success: then remove the decorator
-and the row's ``open`` reason in ``controls.py``.
 """
 from __future__ import annotations
 
 import json
 import subprocess
 import sys
-import unittest
 
 from expectrail.gate import verify as gate
 from tests.release_gate.common import GAME, REPO, ROUTE, SPEC_FILE, SPECS, GateCase, edit_json
@@ -43,7 +37,6 @@ class CoverageTest(GateCase):
         self.assertEqual((code, status["decision"]), (2, "needs-review"))
         self.assertTrue(any("no route files match" in r for r in status["reasons"]), status["reasons"])
 
-    @unittest.expectedFailure   # #417: today this run is accepted
     def test_a_route_whose_inputs_the_game_does_not_have_is_not_clearance(self):
         head = self.copy("unknown-actions")
 
@@ -54,6 +47,7 @@ class CoverageTest(GateCase):
         edit_json(head / ROUTE, rename)
         code, status, err = self.verify(head)
         self.assertNotCleared(code, status, err)
+        self.assertEqual((code, status["decision"]), (2, "needs-review"))
         # Not cleared is not enough here: the recorded observer has no answers for the frames of a
         # player who never moved, so this run needs review for that reason alone, and a live observer
         # would see a robot above the ground and pass. The defence is the gate saying why.

@@ -84,5 +84,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CHECKS_TOKEN: ${{ steps.publisher.outputs.token }}
           REPORT_URL: ${{ steps.report.outputs.artifact-url }}
-          REPORT_READY: ${{ steps.judge.outcome == 'success' && steps.report.outcome == 'success' && !cancelled() }}
+          # Status functions such as cancelled() are allowed only in `if:`; GitHub refuses the whole
+          # file otherwise, and the judge never starts (it did, from #429's merge until this fix).
+          REPORT_READY: ${{ steps.judge.outcome == 'success' && steps.report.outcome == 'success' && job.status != 'cancelled' }}
         run: python3 -m tools.ci_checks finish
