@@ -97,6 +97,21 @@ def make_repo(root: Path, *, bug: bool = False, crash: bool = False, spec_edit: 
     return root
 
 
+def _config(game: Path, *, fps: int, node: str) -> None:
+    """A valid expectrail.project.json in ``game``. The files it names are empty stand-ins."""
+    (game / "main.tscn").write_text("", encoding="utf-8")
+    (game / "crate.svg").write_text("<svg xmlns='http://www.w3.org/2000/svg'/>", encoding="utf-8")
+    doc = {
+        "format": "expectrail.project/v1", "adapter": "godot", "entryScene": "res://main.tscn",
+        "viewport": [640, 360], "physicsTicksPerSecond": 60, "captureFps": fps,
+        "inputActions": ["jump"], "bindings": {"player": {"node": node, "texture": "res://crate.svg"}},
+    }
+    (game / "expectrail.project.json").write_text(json.dumps(doc), encoding="utf-8")
+
+
+_MISSING = object()
+
+
 def make_heldout(root: Path, *, broken: bool = False) -> Path:
     """A stand-in held-out set built from public routes under names that must never leave."""
     (root / "routes").mkdir(parents=True)
@@ -491,6 +506,96 @@ class VerifyTest(GateCase):
         base_spec = json.loads(SPEC.read_text(encoding="utf-8"))
         self.assertEqual(doc["specs"][0]["sha256"], rec_digest(base_spec))
         self.assertTrue(any("judge changes once it merges" in r for r in doc["reasons"]))
+
+    def test_a_head_that_adds_a_config_does_not_change_the_capture_rate(self):
+        # captureFps 1 would judge two frames of a 240-tick route at 120 Hz, not the 120 the
+        # adapter's rate of 60 judges. The head may add that setting; the gate keeps the base's rate.
+        base = make_repo(self.tmp / "base")
+        plain_head = make_repo(self.tmp / "plain")
+        head = make_repo(self.tmp / "head")
+        _config(head / "game" / "platformer", fps=1, node="Player")
+        plain = self.gate(plain_head, base, out_name="plain")
+        doc = self.gate(head, base, out_name="added")
+        self.assertEqual(doc["decision"], "needs-review")
+        judged = lambda out: json.loads((self.tmp / out / "verdicts" / "head" / "smoke"
+                                         / "player-stays-above-ground.json").read_text())["framesJudged"]
+        self.assertEqual(judged("added"), judged("plain"))
+        self.assertGreater(judged("added"), 2)
+        self.assertEqual(plain["decision"], "accept")
+        seen = []
+
+        def run(route, out, game=None, capture_frames=True, sandbox=None, within=None, fps=None, **kwargs):
+            seen.append((Path(game).resolve(), fps, kwargs.get("project", _MISSING)))
+            raise SystemExit("stop: the arguments are what this test reads")
+
+        with mock.patch("harness.run.run", side_effect=run), contextlib.redirect_stdout(io.StringIO()):
+            gv.run_gate(repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
+                        out=self.tmp / "harness-out", work=self.tmp / "harness-work", base=base,
+                        pr={"number": 7, "headSha": HEAD, "baseSha": BASE})
+        self.assertGreaterEqual(len(seen), 2)  # the head arm and the base arm
+        games = {game for game, _fps, _project in seen}
+        self.assertIn((head / "game" / "platformer").resolve(), games)
+        self.assertIn((base / "game" / "platformer").resolve(), games)
+        for _game, fps, project in seen:
+            self.assertIsNone(fps)  # the rate comes from the config the gate passed, not a fixed number
+            self.assertIsNone(project)  # the base has no config, so the head's captureFps 1 is not used
+            self.assertIsNot(_MISSING, project)
+
+    def test_a_changed_player_binding_is_not_the_yardstick_and_is_not_an_accept(self):
+        base = make_repo(self.tmp / "base")
+        head = make_repo(self.tmp / "head")
+        _config(base / "game" / "platformer", fps=60, node="Player")
+        _config(head / "game" / "platformer", fps=60, node="Still")
+        doc = self.gate(head, base)
+        self.assertNotEqual(doc["decision"], "accept")
+        self.assertEqual(doc["decision"], "needs-review")
+        self.assertEqual(doc["counts"]["passed"], doc["counts"]["checks"])
+        self.assertGreater(doc["counts"]["checks"], 0)
+        self.assertTrue(any("project config differs" in r for r in doc["reasons"]), doc["reasons"])
+        self.assertEqual(doc["checkProblems"], 1)
+        rec.check_record(doc)
+        same = make_repo(self.tmp / "same-head")
+        same_base = make_repo(self.tmp / "same-base")
+        _config(same / "game" / "platformer", fps=60, node="Player")
+        _config(same_base / "game" / "platformer", fps=60, node="Player")
+        agreed = self.gate(same, same_base, out_name="same")
+        self.assertEqual((agreed["decision"], agreed["checkProblems"]), ("accept", 0))
+        # The binding is not the judgement: a head that falls through the floor still fails,
+        # even though its config names a node that is not the base's player.
+        bug = make_repo(self.tmp / "bug", bug=True)
+        bug_base = make_repo(self.tmp / "bug-base")
+        _config(bug / "game" / "platformer", fps=60, node="Still")
+        _config(bug_base / "game" / "platformer", fps=60, node="Player")
+        broken = self.gate(bug, bug_base, out_name="bug")
+        self.assertEqual(broken["decision"], "reject")
+        seen = []
+
+        def run(route, out, game=None, capture_frames=True, sandbox=None, within=None, fps=None, **kwargs):
+            seen.append(kwargs.get("project", _MISSING))
+            raise SystemExit("stop: the arguments are what this test reads")
+
+        with mock.patch("harness.run.run", side_effect=run), contextlib.redirect_stdout(io.StringIO()):
+            gv.run_gate(repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
+                        out=self.tmp / "bind-out", work=self.tmp / "bind-work", base=base,
+                        pr={"number": 7, "headSha": HEAD, "baseSha": BASE})
+        self.assertGreaterEqual(len(seen), 2)
+        for project in seen:
+            self.assertEqual(project["bindings"]["player"]["node"], "Player")
+            self.assertNotEqual(project["bindings"]["player"]["node"], "Still")
+
+    def test_an_invalid_head_config_does_not_stop_the_gate_or_become_an_accept(self):
+        # A present file that cannot be read is still a difference. The base has no config, so the
+        # yardstick stays the adapter's rate, and the gate writes a record instead of stopping.
+        base = make_repo(self.tmp / "base")
+        head = make_repo(self.tmp / "head")
+        (head / "game" / "platformer" / "expectrail.project.json").write_text("{", encoding="utf-8")
+        doc = self.gate(head, base)
+        self.assertEqual(doc["decision"], "needs-review")
+        self.assertNotEqual(doc["decision"], "accept")
+        self.assertEqual(doc["counts"]["passed"], doc["counts"]["checks"])
+        self.assertEqual(doc["checkProblems"], 1)
+        self.assertTrue(any("not valid JSON" in r for r in doc["reasons"]), doc["reasons"])
+        rec.check_record(doc)
 
     def test_without_a_base_the_heads_own_checks_are_used_and_said_so(self):
         doc = self.gate(make_repo(self.tmp / "head", bug=True))

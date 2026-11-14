@@ -80,3 +80,26 @@ tests that replay when that binary is present ran as part of the 3250. The tests
 
 ## Architect run (Linux, main 8083215e, Godot 4.7.2)
 Applied cleanly (base two commits behind main). Full suite: OK, 31 skipped. Engine-gated tests with EXPECTRAIL_ENGINE_TESTS=required (body_box, event_input, ground_under, pause_input, second_project, auto_route_engine): OK. The three Run it samples are unchanged: accept, reject, accept. `harness.check_seeded`: every seeded bug still differs from clean, exit 0.
+
+## Gate reads the base config
+
+The gate was reading `captureFps` and the bindings from the head game, so the change under test
+could set the yardstick. It now reads `expectrail.project.json` from the base checkout, as it reads
+specs and routes, and passes that capture rate and those bindings to both arms, the held-out routes
+and the repeat runs. The harness already takes the bindings as values; what changed is which file
+is read. With no base, the local path still reads the game's own file. A head config that is added,
+removed or changed is not an accept: it is counted in `checkProblems`, the same way as a spec or
+route file the gate could not use, so the reader recomputes the decision and a failing check still
+rejects. No new field was added to the findings record. A head file that is present and not valid
+JSON is the same kind of difference: the gate still plays the base's config and writes a record,
+and it names the read error. An invalid config on the base, or on the local path with no base,
+still stops the run and names the field.
+
+What was run: `python3` on PATH is 3.10.22 and has no tomllib, so the suite was CPython 3.12.15
+(`/tmp/py312/bin/python -m unittest discover -s tests -t .`). Godot 4.7.2-stable is the binary
+`harness/get_godot.sh` checked by SHA-512; it was not hidden or replaced. The three new tests with
+`-v` were ok (`Ran 3 tests in 0.274s`, `OK`). On the base `80c8bb3c7959205d9314291e512946ccebf5d2c5`:
+`Ran 3410 tests in 456.900s` / `OK (skipped=55)`. On this change: `Ran 3413 tests in 505.122s` /
+`OK (skipped=55)`. Not run: nothing was pushed, and no pull request or GitHub comment was opened.
+#260 was not started.
+

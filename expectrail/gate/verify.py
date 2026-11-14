@@ -15,8 +15,10 @@ This runs in the job that runs the pull request's code, with read-only permissio
 
 With ``--base`` (a checkout of the pull request's base commit) the specs and routes are read from
 the base, so a change cannot edit the checks that judge it, and the base game is replayed too, so
-each check gets a comparison (REPAIRED, PRESERVED, REGRESSION, UNRESOLVED or INCONCLUSIVE). Without
-it, the head's own checks are used and the record says so.
+each check gets a comparison (REPAIRED, PRESERVED, REGRESSION, UNRESOLVED or INCONCLUSIVE). The
+project config is read from that same base checkout: its capture rate and bindings are what both
+arms, the held-out routes and the repeat runs play. A head config that differs is not an accept.
+Without a base, the head's own checks and its own config are used, and the record says so.
 
 Only specs with a person's approval judge a change. The evaluator decides each spec on the engine's
 position log (``agents.observations.from_trace_synthetic``): no model key is used, and a spec about
@@ -109,19 +111,62 @@ def adapter_for(name: str):
     return engine
 
 
+# Omitted means the harness reads the game folder it plays. None is a real value: the base has no config.
+_MISSING = object()
+
+
+def _calls(fn, target) -> bool:
+    """True when ``fn`` is ``target`` or a partial wrapped around it.
+
+    A ``unittest.mock`` mock answers every attribute lookup by making another mock, so this never
+    asks one for ``func``: that walk would not end."""
+    import unittest.mock as mock
+
+    seen: set[int] = set()
+    while fn is not None and id(fn) not in seen:
+        seen.add(id(fn))
+        if fn is target:
+            return True
+        if isinstance(fn, mock.NonCallableMock):
+            return False
+        fn = getattr(fn, "func", None)
+    return False
+
+
+def _takes(fn, name: str) -> bool:
+    """True when ``fn`` can be called with the keyword ``name`` (a partial counts as its target)."""
+    import inspect
+    import unittest.mock as mock
+
+    if isinstance(fn, mock.NonCallableMock):
+        return False
+    try:
+        return name in inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        return False
+
+
 def harness_replay(route: Path, game: Path, out: Path, frames: bool, sandbox: str | None = None,
-                   checkouts: tuple[Path, ...] = (), adapter: str = DEFAULT_ADAPTER) -> dict:
+                   checkouts: tuple[Path, ...] = (), adapter: str = DEFAULT_ADAPTER, *,
+                   project: object = _MISSING) -> dict:
     """One replay through the adapter's harness (``harness.adapters``, ``verify_run``; for Godot that
     is ``harness.run``, which gives Godot only the display and rendering variables from the
     environment and runs it in the replay sandbox where the machine can). ``sandbox`` is auto,
     require or off (default $EXPECTRAIL_SANDBOX, else auto).
     ``checkouts`` are the folders a link in a game may lead into: the one that holds ``game``
-    is used, and without one a link may not leave the game folder."""
+    is used, and without one a link may not leave the game folder.
+    ``project`` is a config already read. The gate passes the base checkout's. Omitted, the runner
+    reads the game folder it plays, which is the local path (no base)."""
     from harness.adapters import sha256_file
 
     engine = adapter_for(adapter)
+    # Only a harness that asks for the config is given it. Another engine's verify_run keeps the
+    # signature it has; passing a keyword it does not take would fail the replay.
+    extra = {}
+    if project is not _MISSING and engine.verify_run is not None and _takes(engine.verify_run, "project"):
+        extra["project"] = project
     replay = engine.verify_run(route, out, game=game, capture_frames=frames, sandbox=sandbox,
-                               within=_checkout_of(game, checkouts))
+                               within=_checkout_of(game, checkouts), **extra)
     trace = json.loads((out / "trace.json").read_text(encoding="utf-8"))
     return {"trace": trace, "replaySha256": sha256_file(out / "replay.json"),
             "framesDir": (out / engine.frame_pattern).parent if frames else None, "isolation": replay.get("isolation"),
@@ -156,6 +201,20 @@ def capture_rate(engine, game: Path | None) -> int | None:
         return rate
     return int(config["captureFps"])
 
+
+def project_config(game: Path | None) -> dict | None:
+    """The game's ``expectrail.project.json``, or None when it has none.
+
+    A file that is present and not valid stops the run. The gate reads this from the base checkout
+    when it has one, and from the game itself only on the local path (no base)."""
+    if game is None or not Path(game).is_dir():
+        return None
+    from expectrail.project_config import ProjectConfigError, read_game
+
+    try:
+        return read_game(game)
+    except ProjectConfigError as exc:
+        raise ConfigError(str(exc)) from exc
 
 
 def evaluate(spec: dict, obs: dict, **context) -> dict:
@@ -1059,8 +1118,29 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     for name, data, _sha in checks.routes:
         (routes_dir / f"{name}.json").write_bytes(data)
 
+    # The project config is part of the checks. With a base it is read from that checkout, once,
+    # and that capture rate and those bindings are what both arms, the held-out routes and the
+    # repeat runs play. The head's file is only compared. With no base the local path still reads
+    # the game's own file, inside the harness, as it did. A head file that is present and not valid
+    # is a difference, not a stop: the base's config is the yardstick, and a stop would write no
+    # record. An invalid base config still stops, because a present file is never treated as absent.
+    config_differs = False
+    head_note = None
+    if base is not None:
+        base_config = project_config(checks_root / game_rel)
+        try:
+            head_config = project_config(head_game) if game_ok(head_game) else None
+        except ConfigError as exc:
+            head_config = None
+            head_note = str(exc)
+        config_differs = head_note is not None or head_config != base_config
+        yard = base_config
+        if _calls(one_replay, harness_replay):
+            one_replay = functools.partial(one_replay, project=base_config)
+    else:
+        yard = project_config(head_game) if game_ok(head_game) else None
     how = {"rule": rule, "visual": visual, "on_phase": on_phase,
-           "capture_fps": capture_rate(engine, head_game if game_ok(head_game) else None)}
+           "capture_fps": int(yard["captureFps"]) if yard is not None else engine.capture_fps}
     held_back = False   # under `both`: the held-out frames were kept from the visual observer
     head_runs: dict = {}
     base_runs: dict = {}
@@ -1145,6 +1225,16 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
                     for s in spec_docs]
     route_records = [{"name": n, "sha256": sha} for n, _p, sha in route_list] if head else []
     check_problems += len(input_problems)
+    if config_differs:
+        # The same count as a spec or route file the gate could not use: the reader recomputes the
+        # decision from it, so an accept cannot rest on a config the change wrote. A failing check
+        # still rejects, because decide looks at failures first. No new record field: the comment
+        # job on main still reads this record.
+        check_problems += 1
+        detail = f" The head's file could not be read: {head_note}." if head_note else ""
+        problems.append("the project config differs from the base's (added, removed or changed); "
+                        "the gate reads the base's capture rate and bindings, and this is not an accept."
+                        + detail)
     decision, reasons = rec.decide(counts, held, isolation, check_problems, intent=intent, repair=repair,
                                    required_routes_missing=rec.missing_required_routes(spec_records, route_records),
                                    observers={"rule": rule, "visual": observer} if rule == rec.BOTH else None,

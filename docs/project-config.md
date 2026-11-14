@@ -39,3 +39,5 @@ reader, the gate and the harness all do this. None of them pretends the file was
 The harness does not receive a path to the file. Python reads it and passes the bindings as
 `--bindings=<json>`. Inside the replay sandbox the game is a copy, and a path from the host would
 not be there. The copy still contains the config file, because the whole project is what is copied.
+The gate, when it has a base commit, reads this file from the base checkout and passes that capture
+rate and those bindings to every replay; a head file that differs is not an accept.
