@@ -107,3 +107,6 @@ green Linux suite required by AGENTS.md before opening the PR.
 - `requirements-dev.txt`
 - `tests/test_template_sensor.py`
 - `tests/test_template_sensor_v2.py`
+
+## Architect run (Linux, main 25a96311, Godot 4.7.2, Pillow 12.3.0)
+Full suite: OK, 31 skipped. `agents.template_sensor_bench` reproduced the handover's table exactly: clean matched 96/120, 90/90, 125/180 (clean false-alarm rate 20.26%); invisible-player 73 alarms in 120; sinking 120 in 120; 0.12 to 0.13 s a frame on average here. It exits 2 because the calibration target is unmet, as designed. Pillow is pinned to 12.3.0, the version the outside-vision judge job pins (#424), so the two pins do not conflict.
