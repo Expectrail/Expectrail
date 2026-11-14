@@ -157,9 +157,13 @@ def not_tested(record: dict | None) -> list[str]:
     return out
 
 
-def reproduce(request: dict | None) -> str | None:
+def reproduce(request: dict | None, *, sample: str | None = None) -> str | None:
     """The command that runs the same verification again, from the job's request. Only public
     inputs: the request never names held-out material."""
+    if sample is not None:
+        if not re.fullmatch(r"[a-z0-9-]{1,40}", sample):
+            raise ValueError("a public sample must have a plain sample id")
+        return f"python3 -m expectrail.runit run --sample {sample} --out {sample}-run"
     if not request:
         return None
     p = request["project"]
@@ -176,7 +180,7 @@ def reproduce(request: dict | None) -> str | None:
 
 # --- the timeline: one check's measured value against its limit, frame by frame -------------------
 
-def series(spec: dict, observations: dict) -> dict | None:
+def series(spec: dict, observations: dict, *, end_frame: int | None = None) -> dict | None:
     """What the check measures in each frame of its window, from the observations the evaluator
     judged, by the evaluator's own rules (expectrail.evaluator). Each point: the frame, the value,
     and a state: ``ok``, ``over`` (past the limit: a failing frame), ``missing`` (an object the
@@ -262,8 +266,20 @@ def series(spec: dict, observations: dict) -> dict | None:
         else:
             return None
         points.append(point)
-    truncated = len(points) > MAX_POINTS
-    return {**head, "points": points[:MAX_POINTS], "truncated": truncated}
+    # An absent frame was not observed, unlike an observed frame with no object.
+    # Include leading/trailing gaps when the check or the engine supplies the window.
+    window = spec.get("window") or {}
+    lo = window.get("fromFrame", 0)
+    hi = window.get("toFrame", end_frame if end_frame is not None else
+                    max((p["frame"] for p in points), default=lo - 1))
+    if end_frame is not None:
+        hi = min(hi, end_frame)
+    if kind == "reaches" and points and points[-1]["state"] == "reached":
+        hi = min(hi, points[-1]["frame"])  # the existential check stops at its witness
+    by_frame = {p["frame"]: p for p in points}
+    points = [by_frame.get(n, {"frame": n, "value": None, "state": "absent", "boxes": {}})
+              for n in range(lo, min(hi + 1, lo + MAX_POINTS))]
+    return {**head, "points": points, "truncated": hi - lo + 1 > MAX_POINTS}
 
 
 def series_agrees(s: dict | None, verdict: dict | None) -> bool:
@@ -271,6 +287,8 @@ def series_agrees(s: dict | None, verdict: dict | None) -> bool:
     first failing frame, and a pass has no failing frame. Anything else is not shown."""
     if s is None or not isinstance(verdict, dict):
         return False
+    if verdict.get("result") == "needs-review":
+        return True  # measurements can be shown without claiming sufficient exercised coverage
     over = [p["frame"] for p in s["points"] if p["state"] == "over"]
     if s["kind"] == "reaches":
         reached = any(p["state"] == "reached" for p in s["points"])
@@ -282,18 +300,68 @@ def series_agrees(s: dict | None, verdict: dict | None) -> bool:
     return True   # needs-review: the timeline shows what was and was not observed
 
 
-def check_series(spec: dict, run: dict, verdict: dict | None) -> dict:
-    """The timeline for one check on one replay, or the reason there is none."""
+def _measured_series(spec, observations, verdict, source, end_frame=None) -> dict:
     try:
-        s = series(spec, run["engineObservations"])
+        s = series(spec, observations, end_frame=end_frame)
     except Exception as exc:  # noqa: BLE001 - a timeline that cannot be measured is left out, never guessed
         return {"series": None, "note": f"no timeline: it could not be measured ({type(exc).__name__})"}
     if s is None:
         return {"series": None, "note": "no timeline for this kind of check yet"}
     if not series_agrees(s, verdict):
         return {"series": None, "note": "no timeline: it does not agree with the evaluator's verdict, so it is left out"}
-    s["source"] = "the engine's record"
-    return {"series": s, "note": None}
+    s["source"] = source
+    s["coverage"] = verdict.get("coverage")
+    coverage = s["coverage"] or {}
+    note = (f"Coverage: {coverage['status']}. {verdict.get('reason', '')}"
+            if coverage.get("status") not in (None, "exercised") else None)
+    return {"series": s, "note": note}
+
+
+def check_series(spec: dict, run: dict, verdict: dict | None) -> dict:
+    """Keep the public check's context until write_gate can read its saved visual evidence.
+
+    _spec and _end_frame are internal only; build_views does not export them."""
+    count = ((verdict or {}).get("coverage") or {}).get("framesExpected")
+    end = (spec.get("window", {}).get("fromFrame", 0) + count - 1) if count else None
+    return {**_measured_series(spec, run.get("engineObservations"), verdict, "the engine's record", end),
+            "_spec": spec, "_end_frame": end}
+
+
+def visual_series(out: Path, spec: dict | None, check: dict, side: str, spec_sha: str,
+                  end_frame: int | None = None) -> dict:
+    """Read only this public row's saved visual answer and verdict, bound by their digests."""
+    from expectrail.contracts import digest, validate
+
+    said = (check.get("observed") or {}).get(side) or {}
+    if said.get("visual") not in rec.VISUAL_VERDICTS:
+        return {"series": None, "note": "no visual timeline: vision " +
+                ("was not asked" if said.get("visual") == "not-asked" else "gave no usable observations")}
+    try:
+        if not spec or digest(spec) != spec_sha:
+            raise ValueError("the check does not match the record")
+        if any(not re.fullmatch(r"[a-z0-9][a-z0-9-]*", check[k]) for k in ("spec", "route")):
+            raise ValueError("not a public check path")
+        arm = {"after": "head", "before": "base"}[side]
+        def read(kind):
+            path = Path(out) / kind / arm / check["route"] / (check["spec"] + ".visual.json")
+            parent = Path(out)
+            for part in ("", *path.relative_to(out).parts):
+                parent = parent / part
+                if parent.is_symlink():
+                    raise ValueError("a visual evidence path is a link")
+            return rec.read_json(path, MAX_VIEWS_BYTES, "visual evidence")
+        observed, verdict = read("observations"), read("verdicts")
+        validate(observed, "observations")
+        validate(verdict, "verdict")
+        sha = digest(observed)
+        if (sha != said["visualAnswerSha256"] or verdict["observations"]["sha256"] != sha
+                or verdict["spec"] != {"id": check["spec"], "sha256": spec_sha}
+                or not (verdict["result"] == said["visual"] or
+                        (verdict["result"] == "pass" and said["visual"] == "needs-review"))):
+            raise ValueError("the visual evidence does not match the record")
+        return _measured_series(spec, observed, verdict, "the visual observer's record", end_frame)
+    except Exception as exc:  # presentation must omit unreadable or unbound evidence, never guess it
+        return {"series": None, "note": f"no visual timeline: its recorded evidence could not be verified ({type(exc).__name__})"}
 
 
 # --- writing the folder ---------------------------------------------------------------------------
@@ -352,7 +420,8 @@ def build_views(record: dict, frames: dict[str, dict], timelines: dict[tuple[str
         tl = timelines.get((check["spec"], check["route"])) or {}
         view = {"spec": check["spec"], "route": check["route"], "before": check["before"], "after": check["after"],
                 "comparison": check["comparison"], "findingId": fid, "firstFrame": first,
-                "reason": finding["reason"] if finding else None, "frames": {}, "series": {}, "notes": []}
+                "reason": finding["reason"] if finding else None, "frames": {}, "series": {}, "notes": [],
+                "observed": check.get("observed"), "visualSeries": {}, "visualNotes": []}
         for side in ("after", "before"):
             src = got.get(side) or (None, None)
             view["frames"][side] = _copy_frames(src[0], first, folder, f"{side}-{fid or 'x'}") if fid else []
@@ -360,12 +429,16 @@ def build_views(record: dict, frames: dict[str, dict], timelines: dict[tuple[str
             view["series"][side] = one.get("series")
             if one.get("note"):
                 view["notes"].append(f"{'after' if side == 'after' else 'before'} the change: {one['note']}")
+            visual = one.get("visual") or {}
+            view["visualSeries"][side] = visual.get("series")
+            if visual.get("note"):
+                view["visualNotes"].append(f"{side} the change: {visual['note']}")
         views.append(view)
     return views
 
 
 def write(folder: Path, record: dict | None, views: list[dict] | None = None, *, status: dict | None = None,
-          request: dict | None = None) -> Path:
+          request: dict | None = None, sample: str | None = None) -> Path:
     """Write ``folder``/index.html (and views.json) for a record, a job status, or both."""
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
@@ -378,7 +451,7 @@ def write(folder: Path, record: dict | None, views: list[dict] | None = None, *,
         "job": None if status is None else {k: status.get(k) for k in (
             "id", "phase", "decision", "reasons", "diagnostics", "evidenceGrade", "executionClass", "inputs",
             "history", "finishedAt")},
-        "reproduce": reproduce(request),
+        "reproduce": reproduce(request, sample=sample), "sample": sample,
     })
     page = folder / "index.html"
     page.write_text(render(payload), encoding="utf-8")
@@ -448,7 +521,16 @@ def write_gate(out: Path, record: dict, frames: dict[str, dict], timelines: dict
     """The gate's viewer, beside its review page: out/viewer/."""
     folder = Path(out) / "viewer"
     shutil.rmtree(folder, ignore_errors=True)
-    return write(folder, record, build_views(record, frames, timelines, folder))
+    enriched = {}
+    specs = {s["id"]: s["sha256"] for s in record["specs"]}
+    for check in record["checks"][:MAX_VIEWS]:  # only public rows; no private paths are enumerated
+        key = (check["spec"], check["route"])
+        enriched[key] = {}
+        for side in ("before", "after"):
+            one = (timelines.get(key) or {}).get(side) or {}
+            enriched[key][side] = dict(one, visual=visual_series(
+                out, one.get("_spec"), check, side, specs.get(check["spec"]), one.get("_end_frame")))
+    return write(folder, record, build_views(record, frames, enriched, folder))
 
 
 def read_views(folder: Path) -> list[dict]:
@@ -476,7 +558,7 @@ def read_views(folder: Path) -> list[dict]:
     return out
 
 
-def write_job(store, job_id: str) -> Path:
+def write_job(store, job_id: str, *, sample: str | None = None) -> Path:
     """The job's viewer: <job>/viewer/, from its status, its request and, when it completed with
     evidence, its findings record and the gate's viewer frames. This is the folder `expectrail
     report` names, the site and the local app open."""
@@ -505,7 +587,7 @@ def write_job(store, job_id: str) -> Path:
         request = store.request(job_id)
     except Exception:  # noqa: BLE001 - no request, no reproduction command; the rest still shows
         request = None
-    return write(folder, record, views, status=status, request=request)
+    return write(folder, record, views, status=status, request=request, sample=sample)
 
 
 # --- the page -------------------------------------------------------------------------------------
@@ -575,7 +657,7 @@ findings.sort(function(a, b){
   return fa - fb || String(a.findingId).localeCompare(String(b.findingId));
 });
 var shown = findings.length ? findings : views;
-var state = {i: 0, frame: 0, overlays: true};
+var state = {i: 0, frame: 0, overlays: true, observer: "engine"};
 function el(tag, attrs, text){
   var e = document.createElement(tag);
   for (var k in (attrs || {})) e.setAttribute(k, attrs[k]);
@@ -591,8 +673,10 @@ function framesOf(v){
   var set = {};
   ["after", "before"].forEach(function(side){
     ((v.frames || {})[side] || []).forEach(function(f){ if (typeof f.frame === "number") set[f.frame] = 1; });
-    var s = (v.series || {})[side];
-    if (s && s.points) s.points.forEach(function(p){ if (typeof p.frame === "number") set[p.frame] = 1; });
+    [v.series, v.visualSeries].forEach(function(series){
+      var s = (series || {})[side];
+      if (s && s.points) s.points.forEach(function(p){ if (typeof p.frame === "number") set[p.frame] = 1; });
+    });
   });
   return Object.keys(set).map(Number).sort(function(a, b){ return a - b; });
 }
@@ -622,7 +706,8 @@ function stage(v, side, n){
   }
   var img = el("img", {src: f.path, alt: label + ", frame " + n});
   box.appendChild(img);
-  var p = pointAt((v.series || {})[side], n);
+  var selected = ((state.observer === "vision" ? v.visualSeries : v.series) || {})[side];
+  var p = pointAt(selected, n);
   if (state.overlays && p) {
     var o = svg("svg", {"aria-hidden": "true", preserveAspectRatio: "none"});
     function draw(){
@@ -651,18 +736,22 @@ function stage(v, side, n){
   }
   fig.appendChild(box);
   var cap = label + ", frame " + n + ", sha256 " + String(f.sha256 || "").slice(0, 16);
-  if (p && p.value !== null && p.value !== undefined) cap += ". Measured " + p.value + ((v.series[side] || {}).unit || "") + " (" + p.state + ")";
+  if (p && p.value !== null && p.value !== undefined) cap += ". Measured " + p.value + (selected.unit || "") + " (" + p.state + ")";
   else if (p) cap += ". " + p.state;
   fig.appendChild(el("figcaption", null, cap));
   return fig;
 }
-function timeline(v, side, n){
-  var s = (v.series || {})[side];
+function timeline(v, side, n, visual){
+  var s = ((visual ? v.visualSeries : v.series) || {})[side];
+  var observer = visual ? "Vision" : "Engine";
   var wrap = el("div", {"class": "timeline"});
-  wrap.appendChild(el("h3", null, (side === "after" ? "After the change" : "Before the change") + ": " + (s ? s.label + ", measured from " + (s.source || "the observations") : "no timeline")));
+  wrap.appendChild(el("h3", null, observer + ", " + (side === "after" ? "after the change" : "before the change") + ": " + (s ? s.label + ", measured from " + (s.source || "the observations") : "no timeline")));
   if (!s || !s.points || !s.points.length) {
-    var why = (v.notes || []).filter(function(t){ return t.indexOf(side === "after" ? "after" : "before") === 0; })[0];
-    wrap.appendChild(el("p", {"class": "muted"}, why || "No measurements for this side."));
+    var why = ((visual ? v.visualNotes : v.notes) || []).filter(function(t){ return t.indexOf(side) === 0; })[0];
+    var said = (v.observed || {})[side];
+    var missing = visual && said ? (said.visual === "not-asked" ? "Vision was not asked about this check." :
+      "Visual measurements are not included in this export. Recorded visual result: " + said.visual + ".") : "No measurements for this side.";
+    wrap.appendChild(el("p", {"class": "muted"}, why || missing));
     return wrap;
   }
   var pts = s.points, W = 1000, H = 120, pad = 8;
@@ -676,6 +765,10 @@ function timeline(v, side, n){
   var g = svg("svg", {viewBox: "0 0 " + W + " " + H, preserveAspectRatio: "none", role: "img",
     "aria-label": s.label + ", frames " + lo + " to " + hi});
   pts.forEach(function(p){
+    if (p.state === "absent") {
+      g.appendChild(svg("rect", {x: X(p.frame) - 2, y: pad, width: Math.max(4, (W - 2 * pad) / Math.max(1, hi - lo)),
+        height: H - 2 * pad, fill: "var(--gap)", opacity: 0.25}));
+    }
     if (p.state === "missing" || p.state === "not-applicable") {
       g.appendChild(svg("rect", {x: X(p.frame) - 2, y: H - pad - 10, width: 4, height: 10,
         fill: p.state === "missing" ? "var(--gap)" : "var(--line)"}));
@@ -707,10 +800,14 @@ function timeline(v, side, n){
   var over = pts.filter(function(p){ return p.state === "over"; }).length;
   var miss = pts.filter(function(p){ return p.state === "missing"; }).length;
   var na = pts.filter(function(p){ return p.state === "not-applicable"; }).length;
+  var absent = pts.filter(function(p){ return p.state === "absent"; }).length;
   var leg = "Frames " + lo + " to " + hi + ". " + (typeof s.limit === "number" ? "Dashed line: the tolerance, " + s.limit + s.unit + ". " : "") +
-    over + " past the limit (red), " + miss + " with an object not found (grey marks), " + na + " with nothing to compare (light marks)." +
+    over + " past the limit (red), " + miss + " with an object not found (grey marks), " + na + " not exercised: nothing to compare (light marks), " +
+    absent + " not observed (grey bands and gaps in the line)." +
     (s.truncated ? " Only the first points are shown." : "") + " Blue line: the frame shown above.";
   wrap.appendChild(el("p", {"class": "legend"}, leg));
+  if (s.coverage) wrap.appendChild(el("p", {"class": "legend"}, "Recorded coverage: " + s.coverage.status +
+    "; observed " + s.coverage.framesObserved + " of " + s.coverage.framesExpected + " window frames."));
   return wrap;
 }
 function draw(){
@@ -735,6 +832,11 @@ function draw(){
   c.appendChild(el("span", {"aria-live": "polite"}, "Frame " + state.frame + (v.firstFrame === state.frame ? " (first failing frame)" : "")));
   var ov = btn(state.overlays ? "Hide overlays" : "Show overlays", "toggle overlays", function(){ state.overlays = !state.overlays; draw(); });
   ov.setAttribute("aria-pressed", String(state.overlays));
+  if (v.visualSeries && (v.visualSeries.before || v.visualSeries.after)) {
+    btn("Overlays: " + state.observer, "toggle measurement source", function(){
+      state.observer = state.observer === "engine" ? "vision" : "engine"; draw();
+    });
+  }
   if (typeof v.firstFrame === "number") btn("First failure", "go to the first failing frame", function(){ state.frame = v.firstFrame; draw(); });
   root.appendChild(c);
   var framed = framedOf(v);
@@ -749,7 +851,10 @@ function draw(){
   }
   root.appendChild(timeline(v, "after", state.frame));
   root.appendChild(timeline(v, "before", state.frame));
+  root.appendChild(timeline(v, "after", state.frame, true));
+  root.appendChild(timeline(v, "before", state.frame, true));
   (v.notes || []).forEach(function(t){ root.appendChild(el("p", {"class": "muted"}, t)); });
+  (v.visualNotes || []).forEach(function(t){ root.appendChild(el("p", {"class": "muted"}, t)); });
   document.querySelectorAll("[data-view]").forEach(function(b){ b.setAttribute("aria-pressed", String(Number(b.getAttribute("data-view")) === state.i)); });
 }
 function step(d){
@@ -758,8 +863,10 @@ function step(d){
   state.frame = all[k]; draw();
 }
 function pick(i){
+  if (!shown.length) { draw(); return; }
   state.i = Math.max(0, Math.min(shown.length - 1, i));
   var v = shown[state.i];
+  state.observer = ((v.observed || {}).after || {}).visual === "fail" ? "vision" : "engine";
   var all = framesOf(v);
   state.frame = typeof v.firstFrame === "number" ? v.firstFrame : (all[0] || 0);
   draw();
@@ -772,6 +879,7 @@ document.querySelectorAll("[data-view]").forEach(function(b){
   });
 });
 document.addEventListener("keydown", function(e){
+  if (!shown.length) return;
   if (e.altKey || e.ctrlKey || e.metaKey) return;
   var t = e.target && e.target.tagName;
   if (t === "INPUT" && e.target.type !== "range") return;
@@ -793,6 +901,10 @@ pick(0);
 def _json_for_script(payload: dict) -> str:
     """JSON that cannot end its <script> element or open a comment inside it."""
     text = json.dumps(payload, separators=(",", ":"), ensure_ascii=True)
+    # JSON escapes preserve the exact image bytes while avoiding key-shaped
+    # word boundaries in random base64. Ordinary evidence text stays scannable.
+    text = re.sub(r'data:image/png;base64,[A-Za-z0-9+/=]+',
+                  lambda m: m[0].replace('+', r'\u002b').replace('/', r'\u002f'), text)
     return text.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
 
 
@@ -829,6 +941,25 @@ def _facts(payload: dict) -> list[tuple[str, str]]:
     return facts
 
 
+def vision_words(record: dict | None, job: dict | None) -> str | None:
+    """Say what did not run without changing the structured decision (including rejects)."""
+    said = [((c.get("observed") or {}).get("after") or {}).get("visual")
+            for c in (record or {}).get("checks", []) if c["after"] != "not-applicable"]
+    if any(d.get("code") == "PROVIDER_FAILED" for d in (job or {}).get("diagnostics") or []):
+        if any(s in rec.VISUAL_VERDICTS for s in said):
+            return "Vision did not complete (PROVIDER_FAILED). Some recorded visual answers are available."
+        if "no-answer" in said:
+            return "Vision returned no usable answer (PROVIDER_FAILED). This is not a visual pass."
+        return "Vision did not run (PROVIDER_FAILED) on the after-change checks. An engine failure still rejects."
+    n = said.count("not-asked")
+    if n:
+        # Not a provider failure: the gate does not ask vision about a check the engine's record already
+        # fails, since a failure from either observer rejects.
+        return (f"Vision was not asked about {n} after-change check{'s' if n != 1 else ''}: the engine's record "
+                "already fails it, and a failure from either observer rejects.")
+    return None
+
+
 def render(payload: dict) -> str:
     state = payload["state"]
     title, tone, means = STATES[state]
@@ -859,6 +990,9 @@ def render(payload: dict) -> str:
         parts.append("<ul>" + "".join(f"<li><code>{esc(d.get('code'))}</code> ({esc(d.get('stage'))}): "
                                       f"{esc(d.get('detail'))} Fix: {esc(d.get('fix'))}</li>"
                                       for d in job["diagnostics"]) + "</ul>")
+    vision = vision_words(record, job)
+    if vision:
+        parts.append(f'<h2>Vision</h2><p>{esc(vision)}</p>')
     findings = sorted((record or {}).get("findings") or [],
                       key=lambda f: (f["frame"] is None, f["frame"] or 0, f["id"]))
     if findings:
@@ -890,8 +1024,9 @@ def render(payload: dict) -> str:
                      + "</table></div>")
     parts.append("<h2>Reproduce</h2>")
     if payload["reproduce"]:
-        parts.append("<p>The same verification, run again from the same checkouts (the paths are the machine's "
-                     f"that ran it):</p><pre>{esc(payload['reproduce'])}</pre>")
+        words = ("Run this public sample with its recorded vision answers (no model call):" if payload.get("sample") else
+                 "The same verification, run again from the same checkouts (the paths are the machine's that ran it):")
+        parts.append(f"<p>{words}</p><pre>{esc(payload['reproduce'])}</pre>")
     else:
         parts.append("<p>No reproduction command: this folder was written without the job's request.</p>")
     parts.append("<p class=\"muted\">The decision on this page is the verifier's. The timeline is measured from the "

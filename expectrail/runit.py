@@ -194,7 +194,7 @@ def run(sample_id: str, out: Path, *, request_id: str | None = None, root: Path 
         status, _ = store.create(request)
         engine = engines.GodotGate(replay=replay, rule=rec.BOTH, visual=observer)
         status = runner.work(store, status["id"], engines={"godot": engine})
-        viewer.write_job(store, status["id"])
+        viewer.write_job(store, status["id"], sample=sample_id)
         folder = store.paths(status["id"]).root / "viewer"
         out.mkdir(parents=True, exist_ok=True)
         shutil.copytree(folder, out / "viewer")
