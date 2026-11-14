@@ -24,11 +24,11 @@ IDN = "tests.release_gate.gate_identity"
 PRV = "tests.release_gate.gate_provider"
 INT = "tests.release_gate.gate_interference"
 ITN = "tests.release_gate.gate_intent"
+SBX = "tests.release_gate.gate_sandbox"
 
 NEEDS_254 = "not written yet: it needs the trusted job that judges outside the candidate job (#254)"
 NEEDS_255 = "not written yet: it needs the signed receipt (#255)"
 NEEDS_257 = "not written yet: it needs the observation timeline (#257)"
-NOT_YET = "not written yet in this suite"
 
 
 def row(group: str, cid: str, control: str, tests=(), open: str | None = None, scope: str | None = None) -> dict:
@@ -62,10 +62,19 @@ CONTROLS = [
          f"{INT}.ImportCacheTest.test_a_broken_change_that_carries_an_import_cache_is_still_rejected"],
         scope="the cache a change carries in its checkout; a run without the replay sandbox can still write "
              "the verifier's own cache, which the first test shows would change what is drawn"),
-    row(GROUPS[1], "private-path-read", "reading a private path", open=NOT_YET + " (the replay sandbox's own "
-        "tests cover it with bubblewrap: tests/test_replay_sandbox.py)"),
-    row(GROUPS[1], "network-egress", "network egress", open=NOT_YET + " (the replay sandbox's own tests cover "
-        "it with bubblewrap: tests/test_replay_sandbox.py)"),
+    row(GROUPS[1], "private-path-read", "reading a private path",
+        [f"{SBX}.PrivatePathTest.test_control_without_the_sandbox_a_change_that_reads_a_private_file_is_cleared",
+         f"{SBX}.PrivatePathTest.test_in_the_isolated_class_a_change_cannot_read_a_private_file_and_is_rejected",
+         f"{SBX}.PrivatePathTest.test_the_isolated_class_clears_the_unchanged_game"],
+        scope="the isolated class (`--execution-class isolated`), where every replay is in the sandbox. The "
+             "default class sandboxes only where the machine can; without the sandbox the first test shows a "
+             "broken change that reads a file outside its checkout repairing itself and being cleared"),
+    row(GROUPS[1], "network-egress", "network egress",
+        [f"{SBX}.EgressTest.test_control_without_the_sandbox_a_change_that_reaches_a_port_is_cleared",
+         f"{SBX}.EgressTest.test_in_the_isolated_class_a_change_cannot_reach_a_port_and_is_rejected"],
+        scope="the isolated class, as above; the port is on this machine's loopback, the nearest address a "
+             "change could reach. Without the sandbox the first test shows a broken change that reaches it "
+             "repairing itself and being cleared"),
     # --- Observation ------------------------------------------------------------------------------
     row(GROUPS[2], "dropped-frames", "dropped frames", open=NEEDS_257),
     row(GROUPS[2], "duplicated-frames", "duplicated frames", open=NEEDS_257),
