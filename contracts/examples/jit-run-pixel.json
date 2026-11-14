@@ -1,0 +1,153 @@
+{
+ "format": "expectrail.jit-run/v1",
+ "runId": "example-pixel",
+ "advisory": true,
+ "status": "complete",
+ "reason": null,
+ "inputs": {
+  "patchSha256": "cd11e09f47aebbc823f2c6e4968876698b9c8d5332e81392f4baec03473f532f",
+  "reportSha256": "0fe843e164f6458d1f077c7d698641d79c3d1e4069093a6ca12c770dfb4cfbba",
+  "basePatchSha256": [
+   "cd11e09f47aebbc823f2c6e4968876698b9c8d5332e81392f4baec03473f532f"
+  ],
+  "profileSha256": "7ad60a7ddc662fab9bcade5b743a34278a3b1a3f14af59a23f6e38a902fe65ec",
+  "model": "muse-spark-1.3",
+  "promptSha256": "6fdde6196dcd3211a3a8b9f763a3360083d2c7b0a192681b1ead39c59425d0a0"
+ },
+ "settings": {
+  "reps": 3,
+  "variantLimit": 8,
+  "budgetUsd": 2.0,
+  "offer": "signals-reach-evidence-pixel",
+  "candidate": "withheld"
+ },
+ "diffMap": {
+  "files": [],
+  "claims": [],
+  "probeIds": [
+   "wait-long",
+   "hold-right",
+   "hold-left",
+   "reverse",
+   "jump-w0-x1",
+   "jump-w0-x2",
+   "jump-w0-x8",
+   "jump-w40-x1",
+   "jump-w40-x2",
+   "jump-w40-x8",
+   "jump-w80-x1",
+   "jump-w80-x2",
+   "jump-w80-x8",
+   "jump-w120-x1",
+   "jump-w120-x2",
+   "jump-w120-x8",
+   "shoot-right-every48",
+   "shoot-right-every12",
+   "shoot-left-every48",
+   "shoot-left-every12",
+   "move-fire-right",
+   "move-fire-left",
+   "jump-l40-x1",
+   "jump-l40-x2",
+   "jump-l40-x8",
+   "reach-move-left-with-move-right",
+   "reach-move-right-with-move-left",
+   "reach-move-left-with-jump",
+   "reach-jump-with-move-left",
+   "reach-move-right-with-jump",
+   "reach-jump-with-move-right",
+   "reach-jump-with-shoot",
+   "reach-shoot-with-jump"
+  ],
+  "allProbes": true
+ },
+ "proposed": [],
+ "probes": [
+  {
+   "id": "hold-right",
+   "source": "library",
+   "routeSha256": "9c1617e416ffef6b94643a19acd53d5596a014f46ba65910426bd1d4d93a87c6"
+  }
+ ],
+ "variants": [
+  {
+   "id": "base",
+   "kind": "base",
+   "file": "",
+   "line": 0,
+   "patchSha256": "cd11e09f47aebbc823f2c6e4968876698b9c8d5332e81392f4baec03473f532f"
+  }
+ ],
+ "validity": [],
+ "catches": [],
+ "counts": {
+  "proposed": 0,
+  "valid": 0,
+  "strong": 0,
+  "weak": 0
+ },
+ "spend": {
+  "usd": 0.009,
+  "capUsd": 2.0,
+  "sparkUsd": 0.009,
+  "replayUsd": 0.0,
+  "samUsd": 0.0,
+  "samImages": 0,
+  "replays": 9,
+  "promptTokens": 1000,
+  "completionTokens": 2000,
+  "prices": {
+   "sparkUsdPerMTokIn": 1.0,
+   "sparkUsdPerMTokOut": 4.0,
+   "runnerUsdPerMinute": 0.008,
+   "samUsdPerImage": 0.0025,
+   "source": "assumed"
+  }
+ },
+ "diagnostics": [],
+ "pixelChecks": [
+  {
+   "check": {
+    "format": "expectrail.pixel-check/v1",
+    "id": "jit-px-player-drawn",
+    "statement": "On hold-right the player is drawn where the engine puts it.",
+    "object": "player",
+    "observer": "sam-3.1-anchor",
+    "probe": "hold-right",
+    "predicate": {
+     "type": "visible",
+     "minScore": 0.8
+    },
+    "authority": "model_prior",
+    "origin": "AUTO_DIFF"
+   },
+   "status": "kept",
+   "reason": "passes 3 of 3 clean, fails 3 of 3 bug",
+   "reservedUsd": 0.2925,
+   "setting": {
+    "model": "sam-3.1",
+    "box": [
+     48.0,
+     68.0
+    ],
+    "lift": 17.0
+   },
+   "clean": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "bug": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "candidate": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "catch"
+  }
+ ]
+}

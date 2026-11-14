@@ -442,14 +442,36 @@ setting gives it, and may also write up to four checks in `pixelChecks`:
 - `pixel.assess` judges a proposal's pixel checks from an observer's answers: each check's images are
   reserved against the cap together with the checks before it, then the keep rule applies.
 
-Every other setting's prompts are byte for byte as before. **The replay does not judge pixel checks
-yet**, so `run` and `revise` refuse this setting, and it is in `offer.ALL` but not in `offer.OFFERS`:
-the workflow, the run record and the score do not name it. Nothing has been proposed under it by a
+Every other setting's prompts are byte for byte as before. Nothing has been proposed under it by a
 live model.
 
-**Not yet:** nothing calls an observer during a reproduction run, and no reproduction rate has been
-measured with pixel checks. #286 is done when a recorded run reproduces a public screen-only defect
-with one.
+### The replay judges pixel checks (added November 14)
+
+`run.generate(..., offer=PIXEL, observer=..., frame_runner=...)` judges the proposal's pixel checks
+after its trace checks:
+
+- Each check's probe is replayed **with frames** on the clean game and on the bug build (`[*base]`),
+  three times each, and the observer is asked about every run. The observer is a callable with a
+  `name` and a `frames(route)` (`pixel.observe` reads its answer as untrusted data: a malformed answer
+  or a failure drops the checks on that probe, never passes them).
+- The keep rule is `pixel.keep`'s: passes on every clean run, fails on every bug run, one observer
+  setting on all six, no frame without both the observer and the engine's record. A kept check is
+  then judged on the candidate three times: failing every time is a catch.
+- The observer's images are reserved before the replays (one image a planned frame, on nine runs),
+  against the same cap; what the observer says it sent is charged. Over the cap, with no observer, no
+  frame runner or no bug build, a pixel check is `not-run` with its reason. The trace checks' results
+  stand either way; a replay that fails still ends the run as nothing generated.
+- The rows are the run record's `pixelChecks` ([example](../contracts/examples/jit-run-pixel.json)).
+  They are not in `catches`, `counts` or the gate summary. `from_base_alone` lists the kept ones in
+  `pixelReproducing`, decided from the rows' runs, never their status.
+
+A revision does not carry pixel checks, so `revise` refuses this setting (`offer.revisable`). The
+command line's `run`, the workflow and the reproduction score do not name it yet: none of them has an
+observer to give the replay.
+
+**Not yet:** no SAM observer is wired into a run (the tests use SAM's recorded answers on the smoke
+route, stamped with the probe's name), and no reproduction rate has been measured with pixel checks.
+#286 is done when a recorded run reproduces a public screen-only defect with one.
 
 ## What this does not claim
 

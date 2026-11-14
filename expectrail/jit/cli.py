@@ -63,7 +63,20 @@ def render(doc: dict) -> str:
     else:
         lines.append(f"- The model was shown the candidate. Checks that pass on the clean game and fail on the bug "
                      f"build: {len(base['reproducing'])}; none of them is derived without the candidate")
+    if "pixelChecks" in doc:
+        rows = doc["pixelChecks"]
+        lines.append(f"- Pixel checks (#286): {len(rows)} proposed, {len(base.get('pixelReproducing', []))} pass on the clean "
+                     f"game and fail on the bug build, "
+                     f"{sum(1 for r in rows if r['outcome'] == 'catch')} fail on the candidate")
     lines.append("")
+    if doc.get("pixelChecks"):
+        lines += ["| Pixel check | Observer | Clean | Bug | Candidate | Result | Why |",
+                  "| --- | --- | --- | --- | --- | --- | --- |"]
+        for r in doc["pixelChecks"]:
+            lines.append(f"| `{r['check']['id']}` | {r['check']['observer']} | {', '.join(r['clean']) or 'not run'} | "
+                         f"{', '.join(r['bug']) or 'not run'} | {', '.join(r['candidate']) or 'not run'} | "
+                         f"{r['status']}, {r['outcome']} | {(r['reason'] or '').replace('|', '/')} |")
+        lines.append("")
     if doc["catches"]:
         lines += ["| Check | Strength | Says | Candidate | Base | Variants killed |", "| --- | --- | --- | --- | --- | --- |"]
         for k in doc["catches"]:

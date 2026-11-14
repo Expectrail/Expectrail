@@ -30,8 +30,15 @@ Offered to the proposer under the pixel setting only (expectrail/jit/offer.py, `
 ``pixelChecks`` through ``parse_candidate``, and ``assess`` reserves and judges each one from recorded
 observer answers.
 
-What this is not, yet: the replay step does not judge pixel checks (``run`` refuses the pixel offer),
-nothing here calls an observer, and no reproduction rate has been measured with it. The tests judge
+In the replay (expectrail/jit/run.py, under the pixel setting): each pixel check's probe is replayed with
+frames on the clean game, the bug build and, for a kept check, the candidate, ``reps`` times each; the
+observer ``run.generate`` is given is asked about every one of those runs (``observe``, which reads its
+answer as untrusted data); and the keep rule decides. The rows go into the run record's
+``pixelChecks`` (``record_row``), and ``kept_rows`` reads them back, deciding from the runs, never from a
+row's own status.
+
+What this is not, yet: nothing here calls an observer. No SAM observer is wired into the workflow or
+the command line, and no reproduction rate has been measured with pixel checks. The tests judge
 recorded SAM answers (tests/data/sam-anchor/), which are one answer per frame per build: three "runs" of a recording are
 the same answers three times, so they test the rule, not the observer's repeatability.
 """
@@ -405,3 +412,70 @@ def assess(checks: list[dict], clean: list[tuple[dict, dict]], bug: list[tuple[d
         rows.append({"check": check["id"], "status": "kept" if row["kept"] else "dropped", "kept": row["kept"],
                      "reason": row["reason"], "reservedUsd": round(usd, 4), "runs": row["runs"]})
     return rows
+
+
+# --- the observer the replay asks -----------------------------------------------------------------
+#
+# ``run.generate(..., observer=...)`` asks an observer about each pixel replay. An observer is a callable
+#
+#     observer(run_dir: Path, route: dict) -> {"setting": {...}, "run": {...}, "images": int}
+#
+# with ``observer.name`` (one of OBSERVERS) and ``observer.frames(route) -> [frame, ...]``, the frames it
+# will ask about on a run of ``route`` (what the budget reserves for, before any replay). ``run`` is one
+# run of an agents/sam_anchor.py answer file: {"route": {"name": ...}, "frames": [...]}; ``setting`` is how
+# it asked (``setting_of``); ``images`` is how many images it actually sent, which the change is charged.
+
+RESULT_ROWS = ("kept", "dropped", "not-run")
+OUTCOMES = ("catch", "no-catch", "needs-review", "not-evaluated")
+
+
+def observe(observer, run_dir, route: dict) -> tuple[dict, dict, int]:
+    """(setting, run, images) from one observer call, checked as untrusted data: a malformed answer is a
+    PixelError, never a pass."""
+    try:
+        answer = observer(Path(run_dir), route)
+    except PixelError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - an observer that fails decides nothing
+        raise PixelError(f"the observer failed: {type(exc).__name__}: {' '.join(str(exc).split())[:120]}") from exc
+    if not isinstance(answer, dict) or set(answer) != {"setting", "run", "images"}:
+        raise PixelError("the observer's answer is not {setting, run, images}")
+    setting, run, images = answer["setting"], answer["run"], answer["images"]
+    if not isinstance(setting, dict) or not isinstance(run, dict) or not isinstance(run.get("frames"), list) \
+            or not isinstance(run.get("route"), dict):
+        raise PixelError("the observer's answer has no setting, route or frames")
+    if not isinstance(images, int) or isinstance(images, bool) or images < 0:
+        raise PixelError("the observer's image count is not a whole number")
+    for f in run["frames"]:
+        if not isinstance(f, dict) or not isinstance(f.get("frame"), int) or isinstance(f.get("frame"), bool):
+            raise PixelError("the observer's answer has a frame without a frame number")
+    return setting, run, images
+
+
+def record_row(check: dict, status: str, reason: str | None, reserved_usd: float = 0.0, setting: dict | None = None,
+               clean=(), bug=(), candidate=(), outcome: str = "not-evaluated") -> dict:
+    """One row of the run record's ``pixelChecks`` (contracts/jit-run.v1.schema.json)."""
+    if status not in RESULT_ROWS or outcome not in OUTCOMES:
+        raise PixelError(f"not a pixel row: {status}/{outcome}")
+    return {"check": check, "status": status, "reason": None if reason is None else " ".join(str(reason).split())[:300],
+            "reservedUsd": round(float(reserved_usd), 4), "setting": setting,
+            "clean": [r["result"] for r in clean], "bug": [r["result"] for r in bug],
+            "candidate": [r["result"] for r in candidate], "outcome": outcome}
+
+
+def kept_rows(doc: dict) -> list[dict]:
+    """The pixel rows of a run record that the keep rule keeps, decided from the rows' runs, not their
+    status: the check must be a pixel check again (``validate_v1``), have one observer setting, and have
+    passed ``reps`` of ``reps`` runs on the clean game and failed ``reps`` of ``reps`` on the bug build. A record that did not
+    complete keeps none."""
+    reps = doc["settings"]["reps"]
+    if doc.get("status") != "complete":
+        return []
+    out = []
+    for row in doc.get("pixelChecks") or []:
+        validate_v1(row["check"], KIND)
+        if row.get("setting") is not None and len(row["clean"]) == reps and len(row["bug"]) == reps \
+                and all(r == "pass" for r in row["clean"]) \
+                and all(r == "fail" for r in row["bug"]):
+            out.append(row)
+    return out
