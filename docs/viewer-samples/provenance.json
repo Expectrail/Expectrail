@@ -1,0 +1,86 @@
+{
+  "source": "expectrail-264-real-samples.zip supplied by Sean",
+  "sourceArchiveSha256": "eb1b154757aea1d627f397ad8d7aa700252040e2f84dca2c811706c779e6e2f9",
+  "producer": "Architect on Linux with Godot 4.7.2 and xvfb-run, per the supplied README",
+  "sourceBranch": "chatgpt/256-exercised-coverage (#416), per the supplied README",
+  "samples": {
+    "clean": {
+      "status": {
+        "asExpected": true,
+        "decision": "accept",
+        "diagnostics": [],
+        "expectrailCommit": "c5d1e53344b0f484c0d1c082aa60f41507932fc8",
+        "findings": "findings.json",
+        "finishedAt": "2026-11-13T23:50:32Z",
+        "format": "expectrail.run-it-result/v1",
+        "phase": "completed",
+        "receipt": {
+          "signed": false,
+          "why": "not signed yet (#255)"
+        },
+        "requestId": "t-clean",
+        "sample": {
+          "expected": "accept",
+          "id": "clean",
+          "title": "The game as it is"
+        },
+        "startedAt": "2026-11-13T23:50:11Z",
+        "viewer": "viewer/index.html",
+        "vision": {
+          "answered": 120,
+          "asked": 120,
+          "model": "sam-3.1",
+          "notRecorded": 0,
+          "recorded": true,
+          "recordedAt": "2026-11-13",
+          "run": "43508479160",
+          "why": null
+        }
+      },
+      "recordSha256": "e6448091f5bbe1536a60b7d554b89300b618e971a8f6af9734fc2df6a45bac49",
+      "jobSha256": "cd8037855f68cf88a3507385e395b9e5119160f7cd494f22e8ea7173a29bf1a4",
+      "originalExportSha256": "9e1dc73c351a9cb57ddeea2b69fdb061f8292a03782dc3b83c4b17d9f775e43c",
+      "framesEmbedded": 0,
+      "visualMeasurementsIncluded": false
+    },
+    "fall-through-bug": {
+      "status": {
+        "asExpected": true,
+        "decision": "reject",
+        "diagnostics": [],
+        "expectrailCommit": "c5d1e53344b0f484c0d1c082aa60f41507932fc8",
+        "findings": "findings.json",
+        "finishedAt": "2026-11-13T23:51:13Z",
+        "format": "expectrail.run-it-result/v1",
+        "phase": "completed",
+        "receipt": {
+          "signed": false,
+          "why": "not signed yet (#255)"
+        },
+        "requestId": "t-fall-through-bug",
+        "sample": {
+          "expected": "reject",
+          "id": "fall-through-bug",
+          "title": "A change that breaks it"
+        },
+        "startedAt": "2026-11-13T23:50:32Z",
+        "viewer": "viewer/index.html",
+        "vision": {
+          "answered": 135,
+          "asked": 135,
+          "model": "sam-3.1",
+          "notRecorded": 0,
+          "recorded": true,
+          "recordedAt": "2026-11-13",
+          "run": "43508788240",
+          "why": null
+        }
+      },
+      "recordSha256": "d7f828c40615d01014a9f667e8ede6be24f41a0ddb4ebc6da978f47a62509fc8",
+      "jobSha256": "256a8ab81121e175e27fa7fea11f10c96f0d597d9b7f7bab80eb58b313643c83",
+      "originalExportSha256": "0f3bc26fb42da432b5eddda7de9b4c0c4084b79f65ee05075952b8db70ea9848",
+      "framesEmbedded": 24,
+      "visualMeasurementsIncluded": false
+    }
+  }
+}
