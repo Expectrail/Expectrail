@@ -12,6 +12,10 @@
 # of calling harness/get_godot.sh; tests/test_downloads.py fails otherwise.
 name: get Godot
 description: The pinned Godot binary, from the cache or a retried download, SHA-512 checked either way.
+inputs:
+  restore-only:
+    description: Read the cache and leave cache publication to other jobs.
+    default: 'false'
 outputs:
   source:
     description: Where the binary came from (present, cache or download).
@@ -28,7 +32,7 @@ runs:
       env:
         GODOT_KEEP_DOWNLOAD: '1'
       run: ./harness/get_godot.sh
-    - if: steps.get.outputs.source == 'download'
+    - if: inputs.restore-only != 'true' && steps.get.outputs.source == 'download'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: tools/godot_cache

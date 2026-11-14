@@ -221,7 +221,7 @@ class EveryWorkflowUsesIt(unittest.TestCase):
                 self.assertRegex(step["uses"], r"^actions/cache/(restore|save)@[0-9a-f]{40}$")
             if "run" in step:
                 self.assertNotIn("${{", step["run"])   # inputs reach the script through env only
-        self.assertEqual(doc["runs"]["steps"][-1]["if"], "steps.install.outputs.fetched == 'true'")
+        self.assertEqual(doc["runs"]["steps"][-1]["if"], "inputs.restore-only != 'true' && steps.install.outputs.fetched == 'true'")
         restore = next(s for s in doc["runs"]["steps"] if s.get("id") == "restore")
         self.assertIn("ImageVersion", text)             # each runner image has its own cache
         self.assertEqual(restore["with"]["restore-keys"], "${{ steps.key.outputs.prefix }}")   # and tries the last one's

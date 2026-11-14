@@ -56,7 +56,7 @@ def _live_budget():
         raise ValueError(str(exc)) from exc
 
 
-def _child(jobs, original, checkout, inputs, *, require_isolation):
+def _child(jobs, original, checkout, inputs, *, require_isolation, spawn_worker):
     req = request.build(**original["project"], head=checkout, base=Path(original["head"]["checkout"]),
                         base_commit=original["head"]["commit"],
                         execution_class="isolated" if require_isolation else original["executionClass"],
@@ -65,10 +65,10 @@ def _child(jobs, original, checkout, inputs, *, require_isolation):
     if child["inputs"]["baseTree"] != inputs["headTree"] or child["inputs"]["policyDigest"] != inputs["policyDigest"]:
         jobs.cancel(child["id"])
         raise ValueError(CHANGED)
-    return runner.wait(jobs, child["id"], runner.spawn(jobs, child["id"]))
+    return runner.wait(jobs, child["id"], spawn_worker(jobs, child["id"]))
 
 
-def repair(jobs, job, *, attempts=3, fixture=None, recorded=False):
+def repair(jobs, job, *, attempts=3, fixture=None, recorded=False, spawn_worker=None):
     from agents import fixer
 
     if recorded and fixture is None:
@@ -190,7 +190,8 @@ def repair(jobs, job, *, attempts=3, fixture=None, recorded=False):
                         shutil.copyfile(head / name, target)
                 if any((fixed / name).read_bytes() != (snapshot / name).read_bytes() for name in excluded):
                     raise ValueError("the patch changes a verifier input")
-                child = _child(jobs, original, checkout, inputs, require_isolation=fixture is None)
+                child = _child(jobs, original, checkout, inputs, require_isolation=fixture is None,
+                               spawn_worker=spawn_worker or runner.spawn)
                 row.update(job=child["id"], decision=child["decision"], reasons=[redact(s) for s in child["reasons"][:32]])
                 if child["phase"] != "completed" or child["decision"] == "needs-review":
                     stop = "cancelled" if child["phase"] == "cancelled" else "needs-review"
