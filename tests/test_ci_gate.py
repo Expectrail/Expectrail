@@ -33,6 +33,7 @@ FIXTURES = REPO / "agents" / "fixtures"
 SPEC = REPO / "agents" / "specs" / "player-stays-above-ground.json"
 ROUTES = REPO / "harness" / "routes"
 VERIFY_WF = REPO / ".github" / "workflows" / "expectrail-verify.yml"
+CAPTURE_WF = REPO / ".github/workflows/expectrail-capture.yml"
 COMMENT_WF = REPO / ".github" / "workflows" / "expectrail-comment.yml"
 VERIFY_ACTION = REPO / ".github" / "actions" / "expectrail-verify" / "action.yml"
 COMMENT_ACTION = REPO / ".github" / "actions" / "expectrail-comment" / "action.yml"
@@ -767,8 +768,9 @@ class IsolationTest(GateCase):
         self.assertEqual(sorted(uses), ["REQUIRE_SANDBOX: ${{ inputs.require-sandbox }}"] * 2
                          + ["if: inputs.require-sandbox == 'true'"])
         workflow = yaml.safe_load(VERIFY_WF.read_text(encoding="utf-8"))
-        step = next(s for s in workflow["jobs"]["verify"]["steps"] if "expectrail-verify" in str(s.get("uses")))
-        self.assertEqual(step["with"]["require-sandbox"], "true")
+        self.assertEqual(workflow["jobs"]["verify"]["uses"], "./.github/workflows/expectrail-capture.yml")
+        self.assertIn("python -m tools.ci_bundle", CAPTURE_WF.read_text())
+        self.assertIn('sandbox="require"', (REPO / "tools/ci_bundle.py").read_text())
 
 
 def rec_digest(doc: dict) -> str:
@@ -1031,11 +1033,11 @@ def steps_of(path: Path) -> list[dict]:
     doc = load_yaml(path)
     if "runs" in doc:
         return doc["runs"]["steps"]
-    return [s for job in doc["jobs"].values() for s in job["steps"]]
+    return [s for job in doc["jobs"].values() for s in job.get("steps", [])]
 
 
 class WorkflowSafetyTest(unittest.TestCase):
-    FILES = (VERIFY_WF, COMMENT_WF, VERIFY_ACTION, COMMENT_ACTION)
+    FILES = (VERIFY_WF, CAPTURE_WF, COMMENT_WF, VERIFY_ACTION, COMMENT_ACTION)
 
     def test_every_third_party_action_is_pinned_by_full_commit_sha(self):
         for path in self.FILES:
@@ -1066,17 +1068,21 @@ class WorkflowSafetyTest(unittest.TestCase):
         (job,) = load_yaml(COMMENT_WF)["jobs"].values()
         steps = job["steps"]
         checkouts = [s for s in steps if str(s.get("uses", "")).startswith("actions/checkout@")]
-        self.assertEqual(len(checkouts), 1)
-        with_ = checkouts[0]["with"]
-        self.assertEqual(with_["ref"], "${{ github.event.repository.default_branch }}")
-        self.assertNotIn("repository", with_)
-        self.assertIs(with_["persist-credentials"], False)
-        text = COMMENT_WF.read_text(encoding="utf-8") + COMMENT_ACTION.read_text(encoding="utf-8")
-        for pr_ref in ("workflow_run.head_sha }}\n", "pull_request.head", "refs/pull", "head_branch }}\n"):
-            self.assertNotIn(f"ref: ${{{{ github.event.{pr_ref}", text)
-        self.assertNotRegex(text, r"ref:\s*\$\{\{\s*github\.event\.workflow_run\.head")
-        self.assertEqual([s["uses"] for s in steps if "uses" in s][1:], ["./.github/actions/expectrail-comment"])
-        self.assertFalse(any("run" in s for s in steps))
+        self.assertEqual([s["with"]["ref"] for s in checkouts],
+                         ["${{ github.workflow_sha }}", "${{ steps.start.outputs.base }}"])
+        for checkout in checkouts:
+            self.assertNotIn("repository", checkout["with"])
+            self.assertIs(checkout["with"]["persist-credentials"], False)
+        self.assertEqual(checkouts[1]["with"]["path"], "policy")
+        judge = next(s for s in steps if s.get("id") == "judge")
+        self.assertEqual((judge["working-directory"], judge["run"]), ("policy", "python -m tools.ci_checks judge"))
+        self.assertEqual(set(judge["env"]), {"GAME", "SPECS", "ROUTES", "RECORDING"})
+        self.assertEqual([s["run"] for s in steps if "run" in s],
+                         ["python3 -m tools.ci_checks start", "python -m pip install jsonschema==4.26.0 pillow==12.3.0",
+                          "python3 -m tools.ci_checks download", "python -m tools.ci_checks judge",
+                          "python3 -m tools.ci_checks finish"])
+        self.assertEqual(steps[-1]["if"], "always()")
+        # Existing users of the legacy comment action keep its isolated entry point.
         action_steps = steps_of(COMMENT_ACTION)
         self.assertFalse(any(str(s.get("uses", "")).startswith("actions/checkout@") for s in action_steps))
         download = next(s for s in action_steps if str(s.get("uses", "")).startswith("actions/download-artifact@"))
@@ -1187,3 +1193,217 @@ class HeldOutScopeTest(GateCase):
         decision, reasons = rec.decide(counts, held)
         self.assertEqual(decision, "needs-review")
         self.assertIn("not-exercised: 2 held-out route(s) ran and judged no check", reasons)
+
+
+class SplitGateTest(unittest.TestCase):
+    def setUp(self):
+        from tools import ci_bundle
+        from tests.test_two_observers import Game
+        self.b = ci_bundle
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+        self.base = make_repo(self.root / "base", bug=True, routes=("smoke",))
+        self.head = make_repo(self.root / "head", routes=("smoke",))
+        self.model = Game()
+        self.pr = {"number": 7, "headSha": HEAD, "baseSha": BASE}
+        self.policy = ci_bundle.Policy("game/platformer", "specs", ["routes/*.json"])
+        self.archive = self.root / "upload.zip"
+
+    def capture(self, intent="fix"):
+        from harness.run import _replay_record
+        def replay(route, game, out, frames, *, sandbox, checkouts):
+            self.assertEqual(sandbox, "require")
+            self.assertEqual(checkouts, (game.parent.parent,))
+            trace = self.model.replay(route, game, out, frames)["trace"]
+            trace.update(format="expectrail.trace/v0", ticks=len(trace["rows"]))
+            (out / "trace.json").write_text(json.dumps(trace))
+            isolation = json.loads((REPO / "contracts/examples/replay.json").read_bytes())["isolation"]
+            isolation["mode"] = "require"
+            _replay_record(route, out, gv.game_tree(game), 60, [], json.loads(route.read_bytes()),
+                           "", out / "frames", isolation)
+        self.b.capture(self.policy, self.base, self.head, self.pr, intent, self.archive, replay)
+
+    def judge(self, intent="fix"):
+        with mock.patch("subprocess.Popen", side_effect=AssertionError("judge started a process")):
+            return self.b.judge(self.policy, self.base, self.pr, intent, self.archive, self.root / "report",
+                                self.model.observer())
+
+    def test_correct_fix_uses_six_sandboxed_replays_and_trusted_judge_accepts(self):
+        self.capture()
+        self.assertEqual(len(self.model.replays), 6)
+        shutil.rmtree(self.head)
+        doc = self.judge()
+        self.assertEqual(doc["decision"], "accept", doc["reasons"])
+        self.assertEqual(doc["observers"]["rule"], "both")
+        self.assertEqual(doc["isolation"]["sandboxed"], 6)
+
+    def test_regression_rejects(self):
+        (self.base / "game/platformer/BUG").unlink()
+        (self.head / "game/platformer/BUG").touch()
+        self.capture("none")
+        self.assertEqual(self.judge("none")["decision"], "reject")
+
+    def test_clean_engine_without_a_visual_answer_needs_review(self):
+        self.capture("none")
+        self.model.down = True
+        self.assertEqual(self.judge("none")["decision"], "needs-review")
+
+    def test_interruption_never_publishes_a_partial_capture(self):
+        with self.assertRaises(TimeoutError):
+            self.b.capture(self.policy, self.base, self.head, self.pr, "fix", self.archive,
+                           mock.Mock(side_effect=TimeoutError))
+        self.assertFalse(self.archive.exists())
+
+    def test_bundle_edits_fail_before_the_observer(self):
+        import zipfile
+        self.capture()
+        original = self.archive.read_bytes()
+        for edit in ("trace", "repeat", "field", "writer", "extra", "head"):
+            with self.subTest(edit=edit):
+                with zipfile.ZipFile(io.BytesIO(original)) as src, zipfile.ZipFile(self.archive, "w") as out:
+                    for name in src.namelist():
+                        data = src.read(name)
+                        if edit == "repeat" and name.startswith("head-3/"):
+                            continue
+                        if edit == "trace" and name.endswith("/trace.json"):
+                            data += b" "
+                        if name == "manifest.json":
+                            doc = json.loads(data)
+                            if edit == "field":
+                                doc["decision"] = "accept"
+                            elif edit == "writer":
+                                doc["writerRef"] = HEAD
+                            elif edit == "head":
+                                doc["pullRequest"]["headSha"] = BASE
+                            data = json.dumps(doc).encode()
+                        out.writestr(name, data)
+                    if edit == "extra":
+                        out.writestr("../extra", b"")
+                with self.assertRaisesRegex(ValueError, "EVIDENCE_MISMATCH"):
+                    self.judge()
+                self.assertFalse(self.model.asked)
+
+
+class HeadChecksTest(unittest.TestCase):
+    def setUp(self):
+        from tools import ci_checks
+        self.c = ci_checks
+        self.run = {"id": 123, "run_attempt": 2, "workflow_id": 99, "conclusion": "success"}
+        self.pr = {"number": 7, "head": {"sha": HEAD, "repo": {"full_name": ctx().repo}},
+                   "base": {"sha": BASE, "ref": "main", "repo": {"full_name": ctx().repo}},
+                   "merge_commit_sha": "f" * 40}
+        self.state = {"pr": ci_checks.identity(self.pr), "intent": "none"}
+        self.writes = []
+        self.runs = [self.run.copy()]
+
+    def api(self, method, path, body=None):
+        if method != "GET":
+            self.writes.append((method, path, body))
+            return {"id": len(self.writes)}
+        if "/pulls?" in path:
+            return [self.pr]
+        if "check-runs?" in path:
+            return {"check_runs": []}
+        if "/runs?" in path:
+            return {"workflow_runs": self.runs}
+        self.fail(path)
+
+    def test_clearance_accept_only_and_interrupted_runs(self):
+        for verdict, outcome, clearance in (("accept", "success", "success"), ("reject", "success", "failure"),
+                                            ("needs-review", "success", "failure"), ("accept", "cancelled", "failure"),
+                                            ("accept", "timed_out", "failure"), ("accept", "failure", "failure")):
+            with self.subTest(verdict=verdict, outcome=outcome):
+                self.writes.clear()
+                self.run["conclusion"] = outcome
+                self.state["ids"] = self.c.start(self.api, ctx(), self.run, ctx().run_url, "publisher")
+                self.assertEqual(set(self.state["ids"]), {"Expectrail evidence", "Expectrail clearance"})
+                self.assertEqual([w[2]["head_sha"] for w in self.writes], [HEAD, HEAD])
+                self.assertFalse(any(w[2].get("conclusion") == "success" for w in self.writes))
+                self.c.finish(self.api, self.api, ctx(), self.run, self.state, verdict, verdict, ctx().run_url)
+                self.assertEqual([w[2]["conclusion"] for w in self.writes[-2:]], ["success", clearance])
+                self.assertTrue(all(w[2]["details_url"] == ctx().run_url for w in self.writes))
+
+    def test_new_head_new_attempt_and_changed_intent_each_block_old_accept(self):
+        self.state["ids"] = {self.c.EVIDENCE: 1, self.c.CLEARANCE: 2}
+        for change in ("head", "attempt", "intent"):
+            with self.subTest(change=change):
+                self.pr["head"]["sha"] = BASE if change == "head" else HEAD
+                self.runs = [dict(self.run, run_attempt=3 if change == "attempt" else 2)]
+                self.pr["labels"] = [{"name": "intent:fix"}] if change == "intent" else []
+                self.c.finish(self.api, self.api, ctx(), self.run, self.state, "accept", "accept", ctx().run_url)
+                self.assertEqual(self.writes[-1][2]["conclusion"], "failure")
+
+    def test_caller_and_reusable_workflow_must_match_the_base_and_test_merge(self):
+        called = {"path": ctx().repo + "/" + self.c.CAPTURE + "@refs/pull/7/merge", "sha": self.pr["merge_commit_sha"]}
+        run = dict(self.run, pull_requests=[], referenced_workflows=[called])
+        for changed in ("", self.c.CALLER, self.c.CAPTURE):
+            def api(method, path):
+                return {"type": "file", "sha": "different" if changed and changed in path and HEAD in path else "same"}
+            if changed:
+                with self.assertRaisesRegex(ValueError, "differs"):
+                    self.c.check_source(api, ctx(), run, self.pr, "main")
+            else:
+                self.assertEqual(self.c.check_source(api, ctx(), run, self.pr, "main"), self.state["pr"])
+        called["sha"] = HEAD
+        with self.assertRaisesRegex(ValueError, "merge commit"):
+            self.c.check_source(api, ctx(), run, self.pr, "main")
+
+    def test_only_dedicated_publisher_can_publish_clearance(self):
+        capture = load_yaml(CAPTURE_WF)
+        self.assertEqual(capture["permissions"], {"contents": "read"})
+        self.assertNotIn("secrets.", CAPTURE_WF.read_text())
+        steps = steps_of(CAPTURE_WF)
+        checkouts = [s["with"] for s in steps if s.get("uses", "").startswith("actions/checkout@")]
+        self.assertEqual([s["ref"] for s in checkouts], ["${{ github.event.pull_request.base.sha }}",
+                                                        "${{ github.event.pull_request.head.sha }}"])
+        self.assertTrue(all(s["persist-credentials"] is False for s in checkouts))
+        self.assertEqual(checkouts[1]["path"], "candidate")
+        self.assertFalse(any("working-directory" in s for s in steps))
+        job = load_yaml(COMMENT_WF)["jobs"]["judge"]
+        self.assertEqual(job["environment"], "main-only")
+        token = next(s for s in job["steps"] if s.get("id") == "publisher")
+        self.assertEqual(token["with"]["permission-checks"], "write")
+        self.assertEqual(token["with"]["private-key"], "${{ secrets.EXPECTRAIL_CHECKS_PRIVATE_KEY }}")
+        self.assertEqual([s["run"] for s in job["steps"] if "CHECKS_TOKEN" in s.get("env", {})],
+                         ["python3 -m tools.ci_checks start", "python3 -m tools.ci_checks finish"])
+
+    def test_download_checks_the_attempt_digest_and_size_and_keeps_token_on_github(self):
+        from email.message import Message
+        data = b"published bytes"
+        item = dict(id=89, name="expectrail-2.zip", size_in_bytes=len(data), expired=False,
+                    digest="sha256:" + hashlib.sha256(data).hexdigest())
+        def api(method, path):
+            self.assertIn("/actions/runs/123/artifacts?name=expectrail-2.zip", path)
+            return {"artifacts": [item]}
+        headers = Message()
+        headers["Location"] = "https://storage.invalid/capture"
+        with tempfile.TemporaryDirectory() as tmp, mock.patch("urllib.request.build_opener") as opener:
+            opener.return_value.open.side_effect = urllib.error.HTTPError("api", 302, "Found", headers, None)
+            for i, download in enumerate((data, b"x" * len(data), data[:-1], data + b"x")):
+                archive = Path(tmp) / str(i)
+                with mock.patch("urllib.request.urlopen", return_value=io.BytesIO(download)) as fetch:
+                    if i:
+                        with self.assertRaisesRegex(ValueError, "EVIDENCE_MISMATCH"):
+                            self.c.download(api, ctx(), self.run, archive, "stand-in")
+                    else:
+                        self.c.download(api, ctx(), self.run, archive, "stand-in")
+                        self.assertEqual(archive.read_bytes(), data)
+                    fetch.assert_called_once_with(headers["Location"], timeout=30)
+
+    def test_schema_example_and_extraction_limits(self):
+        import zipfile
+        from expectrail import contracts
+        from tools import ci_bundle
+        manifest = json.loads((REPO / "contracts/examples/ci-bundle.v1.json").read_bytes())
+        contracts.validate(manifest, ci_bundle.SCHEMA)
+        with self.assertRaises(contracts.ContractError):
+            contracts.validate(dict(manifest, decision="accept"), ci_bundle.SCHEMA)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            archive = root / "capture.zip"
+            with zipfile.ZipFile(archive, "w") as out:
+                out.writestr("manifest.json", b"{}")
+            for key in ("MAX_BYTES", "MAX_FILES"):
+                with mock.patch.object(ci_bundle, key, 0), self.assertRaisesRegex(ValueError, "limit"):
+                    ci_bundle.unpack(archive, root / "data")

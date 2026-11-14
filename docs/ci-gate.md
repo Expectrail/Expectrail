@@ -1,5 +1,54 @@
 # The CI gate: Expectrail on a game repository's pull requests
 
+## Require Expectrail clearance on the protected branch
+
+Install the pull request caller, its reusable capture workflow and the trusted publisher together
+on the default branch. The base checkout must contain Expectrail. Configure the same game folder,
+spec directory and public route patterns in capture and judge. The workflow paths are part of the
+publisher's identity check. A change to either capture workflow requires separate review.
+
+The read-only candidate uses the base harness to replay each game inside Bubblewrap. For a
+declared fix it captures three separate runs per side. Only replay records, traces, frames and
+the manifest go in the public bundle. The trusted job checks the workflow revision, run attempt,
+archive size and GitHub's SHA-256 before opening the bundle. It checks its closed manifest schema,
+base policy digest, current PR head, intent and every saved replay. It judges using the base
+commit's code. No private routes are used in this workflow.
+
+The two checks are attached to the PR head. **Expectrail evidence** links to the trusted report
+or to the run if publication was interrupted. **Expectrail clearance** passes only on accept.
+Reject and needs-review fail it. A new head needs its own clearance. An interrupted capture or
+judge leaves clearance failed or incomplete.
+
+Install a dedicated GitHub App on this repository with Checks read/write. In the protected
+`main-only` environment, set the variable `EXPECTRAIL_CHECKS_APP_ID` and secret
+`EXPECTRAIL_CHECKS_PRIVATE_KEY`. Restrict deployments to the default branch. Require only
+**Expectrail clearance** and select the dedicated App as its expected source. This prevents a
+same-named Actions job satisfying the rule. A person with repository bypass permission can
+merge outside that guarantee.
+
+The judge uses engine observations and the configured base-side visual recording. The bundled
+clean recording covers the smoke sample. Other frames and questions, including on combat, may
+lack recorded answers. A missing answer needs review unless a failure already rejects the change.
+A correct-fix trial must use a trusted recording covering the checks exercised. Neither job calls
+a paid model.
+
+## On Expectrail's own repository
+
+Sean decided on November 14, 2026 (option C on #254): on this repository's own pull requests,
+**Expectrail clearance** is advisory. It runs and shows green or red on every pull request, but
+it is not a required check, and the merge guard records its conclusion without waiting for it.
+Our own pull requests stay gated by the full test suite, the required checks and the merge
+guard's review. The judge uses recorded vision answers, so a pull request that changes what the
+bundled game draws (usually a harness change) has no recorded answer and shows needs-review.
+The App is `Expectrail Checks`, installed on this repository only. `EXPECTRAIL_CHECKS_APP_ID` is a
+repository variable and `EXPECTRAIL_CHECKS_PRIVATE_KEY` a secret of the `main-only` environment.
+For a game studio's repository, require clearance as described above.
+
+## Earlier composite actions
+
+The following installation is for existing callers of the original verify and comment actions.
+Those actions do not publish the two head checks described above.
+
 The gate replays a pull request's Godot game on scripted routes, judges the approved test specs on
 what the engine recorded, and posts the verdict (accept, reject or needs review) with its evidence
 as one pull request comment. The comment is updated on every push, and each finding keeps its id
@@ -274,7 +323,7 @@ That answer, an observations document, is in the artifact at
 reader recomputes every row from `observed`: a record whose row passes without the visual observer's
 pass is refused. It does not check the answer behind that word: the digest is checked for its shape
 only, and nothing reads `observations/.../*.visual.json` back against it or counts its frames again.
-Until the trusted job of #254 does that (`expectrail.gate.verify.visual_gap` is the same question,
+For the earlier composite actions (`expectrail.gate.verify.visual_gap` is the same question,
 callable on a stored answer), "two observers on every check" rests on the record's word. Held-out
 routes are judged by the same rule (see above for their frames). `contracts/examples/findings-both-observers.json` is such a record; it was made with
 the tests' stand-in replay and stand-in model, not by a live run.
@@ -284,8 +333,7 @@ What is and is not in use, as of November 13, 2026:
 - The orchestrator (`verify`, `sample`, and the app through verify) constructs a `FramesObserver`
   and uses `both`. Its findings record and job status carry the `observers` block; `report` says
   which observers judged in plain words.
-- The pull-request gate still uses `engine-only`. A job running a pull request's code must not
-  hold a model key; the separate trusted vision job is #254, outside #379.
+- The earlier verify action uses `engine-only`. The two-job gate above uses `both`.
 - No live model was asked to test this change. Tests use scripted SAM 3.1 wire-format answers.
 - Decision B (#327) remains: an anchored-box difference needs review, never a reject. #373 is
   still open at the start of this work; this change does not implement or alter that check.
@@ -416,11 +464,11 @@ and searches every output file, the log and the comment for its route names.
   What the sandbox changes: the action installs bubblewrap and runs the game in the replay sandbox
   ([replay-sandbox.md](replay-sandbox.md)) where the runner allows it: no network, writes only to its
   own copy and one output folder, no view of the checks, the gate's files or its processes. With
-  `require-sandbox: 'true'` (set in this repository's workflow) the game never runs outside it. The
+  `require-sandbox: 'true'` (when requested by a caller) the game never runs outside it. The
   record's `isolation` block and a line in the comment say how many replays ran inside, and with which
   tool. So the game itself can no longer rewrite what the gate reads. What it does not change: the
-  workflow and, in this repository, the action's own code are still the pull request's copy, and the
-  record is written by that job. A separate trusted job that judges is #254; a signed receipt is #255.
+  workflow can still be the pull request's copy, and that job writes the record. The two-job gate
+  above judges saved replays in the trusted job.
 - **What counts as the game.** The record's `headTree` and `baseTree` are taken before anything is
   replayed, over the files a replay's copy holds ([harness.md](harness.md#what-a-game-folder-holds)).
   A link in the game may lead anywhere inside its own checkout and nowhere else: a game with a link
