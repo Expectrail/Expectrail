@@ -5,8 +5,8 @@
 
 The list is `tests/outside/projects.json`: a repository, a full commit, a folder in it, a licence and
 our own routes for it. A project is fetched at its commit and never copied into this repository. For
-each one a checkout is laid out (the project as `project/`, our routes, the bundled approved spec
-copied unchanged, as the tests of a second project do) and the installed command is run on it as a
+each one a checkout is laid out (the project as `project/`, our routes, the project's spec or the bundled
+spec copied unchanged) and the installed command is run on it as a
 stranger would run it. Nothing is approved here and no model is called.
 
 A project may list `changes`: small patches of ours against its folder (`tests/outside/<name>/changes/`),
@@ -70,6 +70,8 @@ def load_list(path: Path = LIST) -> list[dict]:
                 raise TrialError(f"{p['name']}: {key} must be a plain path inside its repository")
         if not p["routes"].startswith("tests/outside/"):
             raise TrialError(f"{p['name']}: routes are ours and live under tests/outside/")
+        if "spec" in p:
+            project_spec(p)
         changes = p.get("changes", [])
         if not isinstance(changes, list):
             raise TrialError(f"{p['name']}: changes must be a list")
@@ -87,6 +89,18 @@ def load_list(path: Path = LIST) -> list[dict]:
                     or not c["patch"].endswith(".patch")):
                 raise TrialError(f"{p['name']}/{c['name']}: the patch is ours and lives under {folder}")
     return doc["projects"]
+
+
+def project_spec(project: dict) -> Path:
+    if "spec" not in project:
+        return SPEC
+    value = project["spec"]
+    if not isinstance(value, str) or not re.fullmatch(r"tests/outside/specs/[a-z0-9][a-z0-9-]*\.json", value):
+        raise TrialError(f"{project['name']}: spec must name a file under tests/outside/specs/")
+    path = REPO / value
+    if path.resolve() != path or not path.is_file():
+        raise TrialError(f"{project['name']}: spec must be an existing file without symbolic links")
+    return path
 
 
 def git(*args: str, cwd: Path) -> str:
@@ -116,7 +130,7 @@ def fetch(project: dict, into: Path) -> Path:
 
 
 def lay_out(project: dict, source: Path, work: Path, change: dict | None = None) -> Path:
-    """A checkout for one project: its folder as `project/`, our routes, the bundled approved spec.
+    """A checkout for one project: its folder as `project/`, our routes and its selected spec.
     With ``change``, the checkout is named after it and its patch is applied to `project/`."""
     folder = source / project["path"]
     if not (folder / "project.godot").is_file():
@@ -127,7 +141,7 @@ def lay_out(project: dict, source: Path, work: Path, change: dict | None = None)
     shutil.copytree(folder, checkout / "project", symlinks=True)
     shutil.copytree(REPO / project["routes"], checkout / "routes")
     (checkout / "specs").mkdir()
-    shutil.copy(SPEC, checkout / "specs" / SPEC.name)
+    shutil.copy(project_spec(project), checkout / "specs")
     if change is not None:
         # git apply refuses a patch that reaches outside the folder it runs in. It must not find a
         # repository above that folder: inside one (CI lays checkouts out inside this repository)

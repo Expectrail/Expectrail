@@ -1,0 +1,22 @@
+{
+  "format": "expectrail.test-spec/v0",
+  "id": "dodge-play-area",
+  "instruction": "The player's recorded origin stays inside the play area, including its edges.",
+  "objects": {
+    "player": {
+      "prompt": "grey player character"
+    }
+  },
+  "assertion": {
+    "type": "inside-region",
+    "object": "player",
+    "region": {
+      "box": [
+        -20.0,
+        -46.75,
+        500.0,
+        733.25
+      ]
+    }
+  }
+}
