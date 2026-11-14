@@ -1,0 +1,43 @@
+{
+  "format": "expectrail.receipt/v1",
+  "issuerKeyId": "example-issuer",
+  "repository": "Expectrail/Expectrail",
+  "baseSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "headSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "buildSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "policySha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "routeSetSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "versions": {
+    "verifier": "0.1.0",
+    "adapter": "godot-4.7",
+    "observer": "sam-3.1"
+  },
+  "evidence": {
+    "grade": "full",
+    "capabilities": ["frames", "trace", "engine-record"],
+    "artifacts": {
+      "replay": "1111111111111111111111111111111111111111111111111111111111111111",
+      "frames": "2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  },
+  "coverage": {
+    "required": ["regression", "gameplay", "clean", "held-out"],
+    "exercised": ["regression", "gameplay", "clean", "held-out"],
+    "results": {
+      "regression": "pass",
+      "gameplay": "pass",
+      "clean": "pass",
+      "held-out": "pass"
+    }
+  },
+  "decision": "accept",
+  "findings": [],
+  "cost": {
+    "usd": 0.0
+  },
+  "issuedAt": "2026-11-14T00:00:00Z",
+  "expiresAt": "2026-11-21T00:00:00Z",
+  "algorithm": "ed25519",
+  "publicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+  "signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+}
