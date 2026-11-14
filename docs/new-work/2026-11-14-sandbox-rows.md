@@ -28,9 +28,11 @@ real-process tests (`tests/release_gate/gate_sandbox.py`).
 - The two controls, locally with real Godot 4.7.2 and no bubblewrap: 2 tests, OK in 96 s. Before the
   cheat also repaired a player already in the scene, it never fired (the main scene enters before the
   autoload's `_ready`); that was found by this run and fixed.
-- The three sandboxed tests: **not run here**. This session has no bubblewrap and could not install
-  it. They run in CI's `release-gate` job, which has bubblewrap and fails on a skipped test
-  (`--require`). Their result is the CI run on the pull request.
+- The three sandboxed tests: not run in this session, which has no bubblewrap and could not install
+  it. Their first run was CI's `release-gate` job on #456, at 994b098 (job 132512780892, conclusion
+  success). Its log shows all five tests in `gate_sandbox.py` "ok", 36 tests in 924 s, and "release
+  gate: held 20, open 15, failed 0, not run 0". `docs/release-gate.md` in this pull request is still
+  the local run's summary (not run 2), because this session could not download that job's artifact.
 - `python3 -m unittest tests.test_release_gate`: 17 tests, OK (two new: a skipped class, a test with
   no placeholder).
 - `python3 -m tools.release_gate --out docs/release-gate.md --json ...` on 94d79be, locally with real
