@@ -525,7 +525,9 @@ class CoverageTest(Case):
 class EngineOnlyTest(Case):
     def test_the_old_rule_still_judges_as_it_did_and_the_record_names_it(self):
         doc = self.gate(repo(self.tmp / "head"), rule=rec.ENGINE_ONLY, visual=None)
-        self.assertEqual((doc["decision"], doc["reasons"]), ("accept", ["all 1 checks pass"]))
+        # The spec's approval predates content binding (#420), and the record names it after the rest.
+        self.assertEqual((doc["decision"], doc["reasons"]),
+                         ("accept", ["all 1 checks pass", "spec player-stays-above-ground: approved before content binding"]))
         # No block: the record is what it was before the rule existed, so the comment job's reader
         # on main, which may be older than the writer, still reads it. Without the block it reads
         # as engine-only.
