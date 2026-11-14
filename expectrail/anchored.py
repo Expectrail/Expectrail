@@ -4,8 +4,8 @@ Why: the outside trial judged kinematic-character with the bundled game's spec, 
 model for a "blue robot". That game's player is a grey square in a level made of squares, so the
 model found the player in 0 of 120 frames (run 43559500793). Words cannot name a player the team has
 never seen. A place can: the engine's record says where the player's collision box is in every
-tick (the trace's ``body``, #259), and the model is asked what is drawn inside that box, widened by
-a few pixels. The point probe asked that of the same game on November 12 and found a 16 x 16 object
+tick (the trace's ``body``, #259), and the model is asked what is drawn at the middle of that box: a
+point, which carries no size the answer could copy. The point probe asked that of the same game on November 12 and found a 16 x 16 object
 in 13 of 13 frames (run 43304967915, docs/sam.md).
 
 What stays independent: the model is told where to look, never what it should find. Its answer is
@@ -23,10 +23,20 @@ only after it has been measured on that game's clean run, against rules fixed he
           ``found`` of the asked frames;
 - size:   of those, at least ``size`` have a box within ``sizeTolerance`` of the engine's own
           collision box (the drawn player is about the size the engine says it is);
-- stable: asked again with a box ``wideFactor`` times as large, at least ``stable`` of the frames
-          give a box of the same size (within ``sizeTolerance``). A model that only echoes the box
-          it was given fails here: its answer grows with the question. A model that sees the player
-          gives the player again.
+- stable: asked again at a point ``nudgePx`` to the side (still inside the collision box), at
+          least ``stable`` of the frames give the same box: the same size (within ``sizeTolerance``
+          or ``stableFloorPx``), still holding the first point, and moved less than the point was. A model that answers with whatever is
+          near the point fails here. A model that sees the player gives the player again.
+
+Sizes are compared within ``sizeTolerance`` of the larger size, or within a floor in pixels,
+whichever is larger: a 16 px sprite over a 14 px collision box, with a model whose edges move by a
+pixel or two, is not a disagreement.
+
+History (#330): the first rules asked with a box (the collision box widened 4 px) and tested
+stability with a box twice as large. The first live calibration (run 43609849950) found the 16 px
+sprite in 19 of 19 frames with the normal box (answers 16 to 19 px), but the larger box took in
+the tiles around the player, and 25% of a 14 px box is 3.5 px. Sean changed the question to a
+point and set the floors below on November 14, 2026 (decision on #330).
 
 A game that does not meet all three keeps no visual observer, and its verdicts stay needs-review,
 as before. Nothing here can make a decision accept on its own: the gate's rule ``both`` still needs
@@ -49,7 +59,8 @@ PAD = 4.0              # game pixels added on each side of the collision box (ag
 CALIBRATION_EVERY = 10
 # Fixed November 14, 2026, before any live answer for an outside game was seen (#330). Changing any of
 # these is a decision for Sean, recorded on #330; the calibration record carries them.
-RULES = {"found": 0.9, "size": 0.9, "stable": 0.9, "sizeTolerance": 0.25, "wideFactor": 2.0, "minFrames": 8}
+RULES = {"found": 0.9, "size": 0.9, "stable": 0.9, "sizeTolerance": 0.25, "sizeFloorPx": 4.0,
+         "stableFloorPx": 3.0, "nudgePx": 3.0, "minFrames": 8}
 MAX_FRAMES = 64
 MAX_WHY = 200
 
@@ -73,8 +84,8 @@ def _places(trace: dict, frames: dict[int, Path], chosen: list[int], pad: float)
     return anchors(trace, png_size(frames[chosen[0]]), chosen, box=BODY, pad=pad) if chosen else {}
 
 
-def _close(a: float, b: float, tolerance: float) -> bool:
-    return b > 0 and abs(a - b) <= tolerance * b
+def _close(a: float, b: float, tolerance: float, floor: float = 0.0) -> bool:
+    return b > 0 and abs(a - b) <= max(tolerance * b, floor)
 
 
 def _answer_size(answer: dict, scale: list) -> tuple[float, float]:
@@ -92,10 +103,10 @@ def calibrate(game: dict, run: dict, client, *, every: int = CALIBRATION_EVERY, 
     """expectrail.vision-calibration/v1 for one game, measured on one clean replay.
 
     ``game`` is {"name", "commit"}; ``run`` a finished replay (``trace``, ``framesDir``,
-    ``replaySha256``); ``client`` answers ``segment_in``. A model error that the next frame would meet
+    ``replaySha256``); ``client`` answers ``segment_at``. A model error that the next frame would meet
     too (no key, the cap, the network) is raised as NoAnswer: a calibration that stopped is not one."""
     from agents.sam_anchor import STOP_KINDS
-    from agents.sam_observations import SamError, frame_files, sample
+    from agents.sam_observations import SamError, frame_files, png_size, sample
 
     rules = dict(rules or RULES)
     folder = run.get("framesDir")
@@ -107,14 +118,15 @@ def calibrate(game: dict, run: dict, client, *, every: int = CALIBRATION_EVERY, 
     for n in chosen:
         place = normal[n]
         body = _body_size(trace, n)
-        if "why" in place or "promptBox" not in place or body is None:
+        if "why" in place or body is None:
             rows.append({"frame": n, "asked": False, "why": str(place.get("why", "no collision box"))[:MAX_WHY]})
             continue
-        wide_pad = PAD + (rules["wideFactor"] - 1) * (max(body) + 2 * PAD) / 2
-        wide = _places(trace, frames, [n], wide_pad)[n]
+        point = tuple(place["point"])
+        step = max(int(round(rules["nudgePx"] * (place["scale"][0] or 1.0))), 1)
+        width = png_size(frames[n])[0]
+        nudged = (point[0] + step if point[0] + step < width else point[0] - step, point[1])
         try:
-            got = client.segment_in(frames[n], [tuple(place["promptBox"])])[0]
-            again = client.segment_in(frames[n], [tuple(wide["promptBox"])])[0] if "promptBox" in wide else None
+            got, again = client.segment_at(frames[n], [point, nudged])
         except SamError as exc:
             if exc.kind in STOP_KINDS or exc.status is not None or exc.kind == "not-recorded":
                 raise NoAnswer(f"the calibration stopped ({str(exc.kind)[:60]})") from exc
@@ -124,11 +136,17 @@ def calibrate(game: dict, run: dict, client, *, every: int = CALIBRATION_EVERY, 
         if got is not None and _holds(got, place["point"]):
             size = _answer_size(got, place["scale"])
             row.update(found=True, size=[round(size[0], 1), round(size[1], 1)],
-                       sizeAgrees=all(_close(s, b, rules["sizeTolerance"]) for s, b in zip(size, body)))
+                       sizeAgrees=all(_close(s, b, rules["sizeTolerance"], rules["sizeFloorPx"])
+                                      for s, b in zip(size, body)))
             if again is not None:
-                wsize = _answer_size(again, wide["scale"])
-                row["wideSize"] = [round(wsize[0], 1), round(wsize[1], 1)]
-                row["stable"] = all(_close(w, s, rules["sizeTolerance"]) for w, s in zip(wsize, size))
+                nsize = _answer_size(again, place["scale"])
+                row["nudgedSize"] = [round(nsize[0], 1), round(nsize[1], 1)]
+                # The same box: about the same size, still holding the first point, and moved less than
+                # the point was (a model that draws its answer around the asked point moves with it).
+                shift = abs(((again["box"][0] + again["box"][2]) - (got["box"][0] + got["box"][2])) / 2
+                            / (place["scale"][0] or 1.0))
+                row["stable"] = (_holds(again, place["point"]) and shift < rules["nudgePx"] and all(
+                    _close(w, s, rules["sizeTolerance"], rules["stableFloorPx"]) for w, s in zip(nsize, size)))
         rows.append(row)
     return judge_calibration(game, run.get("replaySha256", "0" * 64), rows, rules,
                              model=str(getattr(client, "model", "unknown"))[:80],
@@ -150,7 +168,7 @@ def judge_calibration(game: dict, replay_sha256: str, rows: list[dict], rules: d
         why.append(f"only {len(asked)} frames could be asked about (at least {rules['minFrames']} are needed)")
     for key, label in (("found", "frames where the player was found at its place"),
                        ("size", "found frames where the drawn size matches the engine's collision box"),
-                       ("stable", "found frames where a box twice as large gives the same answer")):
+                       ("stable", "found frames where a point nudged inside the player gives the same answer")):
         if rates[key] < rules[key]:
             why.append(f"{label}: {rates[key]:.0%}, below {rules[key]:.0%}")
     sizes = [r["size"] for r in found]
@@ -158,7 +176,7 @@ def judge_calibration(game: dict, replay_sha256: str, rows: list[dict], rules: d
         "format": CALIBRATION_FORMAT,
         "game": {"name": str(game["name"])[:80], "commit": str(game["commit"])[:64]},
         "replay": {"sha256": replay_sha256},
-        "observer": {"name": NAME, "model": model, "provider": provider, "box": "body", "pad": PAD},
+        "observer": {"name": NAME, "model": model, "provider": provider, "box": "body", "prompt": "point"},
         "rules": dict(rules),
         "frames": {"listed": len(rows), "asked": len(asked), "found": len(found)},
         "rates": rates,
@@ -205,7 +223,7 @@ class AnchoredObserver:
     """The visual observer, asked at the player's place. Used for a game only when ``calibration``
     says so; with a calibration that does not, every ``look`` is NoAnswer and the verdict says why.
 
-    ``client`` answers ``segment_in`` (a live client, a RecordingClient around one, or a
+    ``client`` answers ``segment_at`` (a live client, a RecordingClient around one, or a
     RecordedClient). ``player`` names the spec object that is the engine's player (default: the
     assertion's object)."""
 
@@ -253,9 +271,9 @@ class AnchoredObserver:
         out = []
         for n in indices:
             place, found = places[n], []
-            if "promptBox" in place and "why" not in place:
+            if "point" in place and "why" not in place:
                 try:
-                    got = client.segment_in(frames[n], [tuple(place["promptBox"])])[0]
+                    got = client.segment_at(frames[n], [tuple(place["point"])])[0]
                 except SamError as exc:
                     if exc.kind in STOP_KINDS or exc.status is not None or exc.kind == "not-recorded":
                         raise NoAnswer(f"the model did not answer ({str(exc.kind)[:60]})") from exc
@@ -269,7 +287,7 @@ class AnchoredObserver:
             out.append({"frame": n, "objects": objs})
         model = {"name": str(getattr(client, "model", "unknown")),
                  "provider": str(getattr(client, "provider", "meta-model-api")),
-                 "prompts": {player: f"what is drawn inside the engine's collision box, widened {self._pad:g} px"}}
+                 "prompts": {player: "what is drawn at the middle of the engine's collision box"}}
         if engine:
             model["engineObjects"] = ["ground"]
         return {"format": "expectrail.observations/v0", "replay": {"sha256": run["replaySha256"]}, "model": model,

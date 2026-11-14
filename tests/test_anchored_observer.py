@@ -2,11 +2,13 @@
 
 No live Godot and no live model. The replays are stand-ins that log the player's body box, the
 camera and the ground line as the harness does, with real PNG frames. The models are stand-ins too,
-answering ``segment_in`` directly:
+answering ``segment_at`` (a point question) directly:
 
-- ``Sees``:  answers with the drawn player (a 16 x 16 sprite at the engine's place), whatever box it
-  was asked with: the model the rules are meant to let in.
-- ``Echo``:  answers with the box it was asked with: a model that only repeats the question.
+- ``Sees``:  answers with the drawn player (a 16 x 16 sprite at the engine's place), wherever inside
+  it the point was: the model the rules are meant to let in.
+- ``Echo``:  answers with a player-sized box centred on the point it was asked about: a model that
+  only repeats the question.
+- ``Tiles``: answers with a 48 px region around the point (the tiles behind the player).
 - ``Blind``: answers nothing.
 
 These are not recordings of the live model. The live calibration of kinematic-character is a
@@ -71,25 +73,32 @@ class Stand:
 
 
 class Sees(Stand):
-    def segment_in(self, png, boxes):
+    def segment_at(self, png, points):
         self.calls += 1
-        return [{"box": self.drawn(png), "score": 0.93} for _ in boxes]
+        return [{"box": self.drawn(png), "score": 0.93} for _ in points]
 
 
 class Echo(Stand):
-    def segment_in(self, png, boxes):
+    def segment_at(self, png, points):
         self.calls += 1
-        return [{"box": [float(v) for v in b], "score": 0.9} for b in boxes]
+        h = SPRITE / 2
+        return [{"box": [x - h, y - h, x + h, y + h], "score": 0.9} for x, y in points]
+
+
+class Tiles(Stand):
+    def segment_at(self, png, points):
+        self.calls += 1
+        return [{"box": [x - 24.0, y - 24.0, x + 24.0, y + 24.0], "score": 0.9} for x, y in points]
 
 
 class Blind(Stand):
-    def segment_in(self, png, boxes):
+    def segment_at(self, png, points):
         self.calls += 1
-        return [None for _ in boxes]
+        return [None for _ in points]
 
 
 class Broke(Stand):
-    def segment_in(self, png, boxes):
+    def segment_at(self, png, points):
         raise SamError("no credit", kind="credit")
 
 
@@ -105,15 +114,27 @@ class CalibrationTest(unittest.TestCase):
         self.assertTrue(doc["enabled"], doc["why"])
         self.assertEqual(doc["rates"], {"found": 1.0, "size": 1.0, "stable": 1.0})
         self.assertEqual(doc["drawnSize"], {"width": SPRITE, "height": SPRITE})
-        self.assertEqual(client.calls, 26)   # 13 frames of 120 (every tenth and the last), asked twice
+        self.assertEqual(client.calls, 13)   # 13 frames of 120 (every tenth and the last), both points in one request
         an.check_calibration(doc)
 
     def test_a_model_that_echoes_the_question_is_not_enabled(self):
         doc = an.calibrate(GAME, self.run, Echo(self.run))
         self.assertFalse(doc["enabled"])
         self.assertEqual(doc["rates"]["found"], 1.0)
-        self.assertEqual(doc["rates"]["stable"], 0.0)
-        self.assertTrue(any("twice as large" in w for w in doc["why"]))
+        self.assertEqual(doc["rates"]["size"], 1.0)     # player-sized, so only the nudge can tell
+        self.assertEqual(doc["rates"]["stable"], 0.0)   # its box moved with the point
+        self.assertTrue(any("nudged" in w for w in doc["why"]))
+
+    def test_a_model_that_answers_with_the_tiles_is_not_enabled(self):
+        doc = an.calibrate(GAME, self.run, Tiles(self.run))
+        self.assertFalse(doc["enabled"])
+        self.assertEqual(doc["rates"]["size"], 0.0)
+
+    def test_a_small_sprite_over_its_collision_box_agrees_within_the_floor(self):
+        # The first live calibration: answers of 17 to 18 px for a 14 px collision box (#330).
+        self.assertTrue(an._close(18.0, 14.0, 0.25, 4.0))
+        self.assertFalse(an._close(18.0, 14.0, 0.25))
+        self.assertFalse(an._close(30.0, 14.0, 0.25, 4.0))
 
     def test_a_blind_model_is_not_enabled(self):
         doc = an.calibrate(GAME, self.run, Blind(self.run))
