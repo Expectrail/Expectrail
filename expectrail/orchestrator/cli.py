@@ -25,13 +25,14 @@ import json
 import os
 import re
 import sys
+import time
 from pathlib import Path
 
 from expectrail.orchestrator import request as req
 from expectrail.orchestrator import runner
 from expectrail.orchestrator import sample as smp
 from expectrail.orchestrator import store as st
-from expectrail import viewer
+from expectrail import auto_fix, viewer
 
 EXIT = {"accept": 0, "reject": 1, "needs-review": 2}
 EXIT_FAILED, EXIT_CANCELLED, EXIT_USAGE, EXIT_UNFINISHED = 3, 4, 5, 6
@@ -45,7 +46,7 @@ def exit_code(status: dict) -> int:
     return {"failed": EXIT_FAILED, "cancelled": EXIT_CANCELLED}.get(status["phase"], EXIT_UNFINISHED)
 
 
-def describe(status: dict) -> str:
+def describe(status: dict, job_folder: Path | None = None) -> str:
     lines = [f"job {status['id']}: {status['phase']}" + (f", {status['decision']}" if status["decision"] else "")]
     lines += [f"  {reason}" for reason in status["reasons"]]
     lines += [f"  {d['code']} ({d['stage']}): {d['detail']} Fix: {d['fix']}" for d in status["diagnostics"]]
@@ -55,6 +56,14 @@ def describe(status: dict) -> str:
         lines.append(f"  Judged on: {observers_words(status)}")
     if status["evidenceGrade"]:
         lines.append(f"  evidence grade: {status['evidenceGrade']}")
+    if status["decision"] == "reject":
+        lines.append("  " + viewer.auto_fix_words(status))
+        repair = status.get("repair", {})
+        if "record" in repair:
+            path = repair["record"]
+            lines.append(f"  Repair record: {(job_folder / path).as_uri() if job_folder else path}")
+        if "review" in repair:
+            lines.append("  " + repair["review"])
     return "\n".join(lines)
 
 
@@ -63,8 +72,8 @@ def _store(args) -> st.JobStore:
     return st.JobStore(Path(root), lease_seconds=args.lease_seconds)
 
 
-def _show(status: dict, as_json: bool) -> None:
-    print(json.dumps(status, indent=2) if as_json else describe(status))
+def _show(status: dict, as_json: bool, store: st.JobStore) -> None:
+    print(json.dumps(status, indent=2) if as_json else describe(status, store.paths(status["id"]).root))
 
 
 class UsageError(Exception):
@@ -117,6 +126,7 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
     v.add_argument("--idempotency-key")
     v.add_argument("--detach", action="store_true", help="start the job, print its id and return")
     v.add_argument("--json", action="store_true")
+    auto_fix.options(v)
     _jobs_root_after(v)
 
     for name, text in (("status", "show a job's status"), ("cancel", "cancel a job and stop what it started"),
@@ -159,23 +169,41 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
                 print(json.dumps(results, indent=2))
             return 0 if all(r["asExpected"] for r in results) else EXIT_FAILED
         if args.command == "verify":
+            try:
+                settings, patch = auto_fix.configure(args.auto_fix, args.auto_fix_attempts, args.auto_fix_usd_cap,
+                                                     fixture=args.auto_fix_fixture, recorded=args.auto_fix_recorded)
+            except (OSError, ValueError) as exc:
+                raise req.RequestError(str(exc)) from exc
             request = req.build(adapter=args.adapter, head=args.head, base=args.base, game=args.game,
                                 routes=[r for r in re.split(r"[\s,]+", args.routes) if r], specs=args.specs,
                                 head_commit=args.head_commit, base_commit=args.base_commit,
                                 execution_class=args.execution_class, timeout_seconds=args.timeout,
                                 idempotency_key=args.idempotency_key)
+            if settings:
+                if not args.json:
+                    cost = f"${settings['usdCap']:g} Muse cap" if settings["source"] == "muse" else "offline patch, no fixer spend"
+                    print(f"Auto-fix on reject: up to {settings['attempts']} attempts, {cost}.", file=sys.stderr)
+                request["autoFix"] = settings
             status, created = store.create(request)
-            proc = runner.spawn(store, status["id"]) if created else None
+            proc = None
+            if created:
+                proc = auto_fix.launch(store, status["id"], patch) if settings else runner.spawn(store, status["id"])
             if args.detach:
                 print(json.dumps({"id": status["id"], "created": created}) if args.json else status["id"])
                 return 0
             progress = None if args.json else (lambda s: print(f"job {s['id']}: {s['phase']}", file=sys.stderr))
             status = runner.wait(store, status["id"], proc, on_phase=progress)
-            _show(status, args.json)
+            while status.get("repair", {}).get("state") == "running":
+                if proc is not None:
+                    proc.wait()
+                else:
+                    time.sleep(0.2)
+                status = store.status(status["id"])
+            _show(status, args.json, store)
             return exit_code(status)
         if args.command == "cancel":
             status = store.cancel(args.job)
-            _show(status, args.json)
+            _show(status, args.json, store)
             return exit_code(status)
         status = store.status(args.job)
         if args.command == "report":
@@ -191,7 +219,7 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
                 print(f"expectrail: the evidence viewer was not written ({type(exc).__name__})", file=sys.stderr)
             # --json prints the status as it is (expectrail.verify-job/v1); the viewer is always at
             # <job>/viewer/index.html, and the same page as one file at <job>/viewer/evidence.html.
-            _show(status, args.json)
+            _show(status, args.json, store)
             if not args.json:
                 if status["output"]:
                     print(f"  evidence: {store.paths(status['id']).output}")
@@ -201,7 +229,7 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
                     if single.is_file():
                         print(f"  one file to keep or send: {single}")
             return exit_code(status)
-        _show(status, args.json)
+        _show(status, args.json, store)
         return exit_code(status)
     except (req.RequestError, st.StoreError, smp.SampleError) as exc:
         print(f"expectrail: {exc}", file=sys.stderr)

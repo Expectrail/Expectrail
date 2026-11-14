@@ -137,6 +137,20 @@ class RepairTest(Case):
         self.assertNotIn(self.doc["review"], html.unescape(page))
         self.assertNotIn("candidate.patch", page)
 
+    def test_one_repair_section_per_page(self):
+        # The guard's question on #454: a Run it recorded repair and a rejected job's own auto-fix
+        # outcome are different things, and a page never shows two repair sections that disagree.
+        job = {"id": "j", "phase": "completed", "decision": "reject", "reasons": [], "diagnostics": [],
+               "repair": {"state": "finished", "decision": "accept", "stopReason": "accepted"}}
+        base = {"format": viewer.FORMAT, "state": "behaviour-failure", "decision": "reject", "reasons": [],
+                "record": None, "views": [], "job": job, "reproduce": None, "sample": None}
+        own = viewer.render(dict(base))
+        self.assertIn('<section id="auto-fix">', own)
+        self.assertNotIn("Recorded repair", own)
+        recorded = viewer.render(dict(base, sample="recorded-fix", repair=viewer.read_repair(self.path)))
+        self.assertIn("Recorded repair", recorded)
+        self.assertNotIn('<section id="auto-fix">', recorded)
+
     def test_front_pages_show_the_loop_and_human_review(self):
         for name in ("index.html", "concepts.html"):
             with self.subTest(page=name):

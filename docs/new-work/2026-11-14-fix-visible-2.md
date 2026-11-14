@@ -37,3 +37,12 @@ No live fixer recording or new vision answers. No paid model, real Godot replay 
 - `tests/test_runit_record.py`
 - `tests/test_visible_repair.py`
 - `tools/runit_stub.py`
+
+## Integration with #451 (architect)
+
+- #451 (auto-fix) merged first and changed the same two places in `expectrail/viewer.py`. Both are
+  kept: `write` takes the Run it recorded repair (`repair`) and the job's own repair record
+  (`repair_record`, embedded in the offline export).
+- One repair section per page: a page showing a Run it recorded repair does not also get the job's
+  auto-fix section. `tests/test_visible_repair.py::test_one_repair_section_per_page` renders one page
+  of each kind; it fails without that rule.

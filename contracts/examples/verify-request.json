@@ -1,6 +1,6 @@
 {
   "format": "expectrail.verify-request/v1",
-  "intent": "fix",
+  "autoFix": {"source": "muse", "attempts": 3, "usdCap": 1},
   "project": {
     "adapter": "godot",
     "game": "game/platformer",

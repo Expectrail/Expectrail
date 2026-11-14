@@ -68,9 +68,11 @@ def _child(jobs, original, checkout, inputs, *, require_isolation):
     return runner.wait(jobs, child["id"], runner.spawn(jobs, child["id"]))
 
 
-def repair(jobs, job, *, attempts=3, fixture=None):
+def repair(jobs, job, *, attempts=3, fixture=None, recorded=False):
     from agents import fixer
 
+    if recorded and fixture is None:
+        raise ValueError("a recorded repair needs its saved patch")
     if type(attempts) is not int or not 1 <= attempts <= 10:
         raise ValueError("attempts must be between 1 and 10")
     parent = jobs.status(job)
@@ -107,10 +109,11 @@ def repair(jobs, job, *, attempts=3, fixture=None):
     rr = {"format": "expectrail.repair-request/v0", "id": job, "base": {"tree": inputs["headTree"]},
           "failing": failing, "budget": {"attempts": attempts}}
     folder = Path(tempfile.mkdtemp(prefix="repair-", dir=paths.root))
+    source = ("recorded" if recorded else "fixture") if fixture is not None else "muse"
     doc = {"format": "expectrail.repair-run/v1",
            "parent": {"job": job, "decision": "reject", "headTree": inputs["headTree"],
                       "failing": [{"spec": f["spec"]["id"], "route": f["route"]["name"]} for f in failing]},
-           "fixer": {"source": "fixture" if fixture else "muse", "sandboxed": fixture is None},
+           "fixer": {"source": source, "sandboxed": fixture is None},
            "budget": {"attempts": attempts, "usdCap": cap}, "startedAt": store.stamp(), "attempts": [],
            "machineWritten": True, "review": contracts.schema_v1("repair-run")["properties"]["review"]["const"],
            "result": {"decision": "needs-review", "job": None, "patch": None}}
