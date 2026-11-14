@@ -86,8 +86,20 @@ def usd_cap() -> float | None:
 
 
 def _reserve(usd: float) -> None:
-    """Count one try against the cap before it is sent; refuse it when it would pass the cap."""
+    """Count one try against the cap before it is sent; refuse it when it would pass the cap.
+
+    When ``EXPECTRAIL_VISION_MONTH_LEDGER`` is set, the first try also reserves this run's whole
+    cap against the month's $200 limit. A month that would be passed is a budget stop, and the
+    request is not sent.
+    """
     cap = usd_cap()
+    if cap is not None and os.environ.get("EXPECTRAIL_VISION_MONTH_LEDGER", "").strip():
+        from expectrail.spend import BudgetStop, admit_vision_month, note_stop
+        try:
+            admit_vision_month(cap)
+        except BudgetStop as exc:
+            note_stop("vision", str(exc))
+            raise SamError(str(exc), kind="budget") from exc
     with _usage_lock:
         if cap is not None and _usage["reservedUsd"] + usd > cap + 1e-9:
             raise SamError(f"this run's SAM spend cap is reached: ${_usage['reservedUsd']:.4f} counted of "

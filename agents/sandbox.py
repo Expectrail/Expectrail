@@ -364,7 +364,13 @@ def run_muse(
 
     Docker is not used for Muse (the image would need a Linux muse CLI). Pass ``detected`` (from
     detect_sandbox) when the caller already probed, so the workspace it prepared matches.
+
+    ``EXPECTRAIL_MUSE_USD_CAP`` is required. One invocation holds its reserve before ``muse`` is
+    started; a missing cap or a hold that would pass the cap raises ``BudgetStop`` and starts nothing.
     """
+    from expectrail.spend import hold
+
+    hold("muse", live=True)
     from agents.gateway import muse_gateway
 
     kind = (detected if detected is not None else detect_sandbox()) if sandboxed else "none"

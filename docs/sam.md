@@ -205,10 +205,14 @@ still needed SAM end as needs-review with the reason. The judge ladder ends ther
 wait and ask again, and it does not go on to Glimmer, because a stop that holds spend must not
 start other spend and an accept must not come from a judge that was asked only because the money
 ran out. The candidate stays needs-review for a person. **Without the variable nothing is sent at all.** The limit for the
-project is $200 in a calendar month and never more (#327); the cap is what gives every run a worst
-case, and the count across the month is the next part of #267. **No workflow in this repository
-sets the variable yet, so every live SAM call from a workflow stops with that reason until one
-does.** That is on purpose: Sean goes through each live run and its cap first.
+project is $200 in a calendar month and never more (#327). The cap is one run's worst case. When
+`EXPECTRAIL_VISION_MONTH_LEDGER` points at a file outside this repository, the first SAM request of
+a run reserves that whole cap against the month before anything is sent, and the run is refused
+when the month plus the cap would pass $200. The file is not in the repository, so a pull request
+cannot write it. With the variable unset the month is not counted and only this run's cap applies.
+**No workflow in this repository sets the cap or the ledger yet, so every live SAM call from a
+workflow stops with the missing-cap reason until one does.** That is on purpose: Sean goes through
+each live run and its cap first.
 
 **From GitHub, no setup.** Actions, then **SAM probe**, then **Run workflow**. It renders the clean
 game and every seeded bug, probes every 10th frame (13 frames a run), and puts `probe.md` in the

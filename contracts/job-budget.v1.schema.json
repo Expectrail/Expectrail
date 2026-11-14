@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Expectrail/Expectrail/contracts/job-budget.v1.schema.json",
+  "title": "Per-job budget and the cost held in each phase",
+  "description": "What one job was allowed to spend on each model role, and what it held before the requests of each phase. A hold is counted before the request is sent. It is not a vendor bill. The vision month is Sean's limit of $200.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "jobId", "capsUsd", "phases", "totalReservedUsd", "stopped", "visionMonth"],
+  "properties": {
+    "format": {"const": "expectrail.job-budget/v1"},
+    "jobId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$"},
+    "capsUsd": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["vision", "glimmer", "muse", "triage"],
+      "properties": {
+        "vision": {"type": ["number", "null"], "minimum": 0},
+        "glimmer": {"type": ["number", "null"], "minimum": 0},
+        "muse": {"type": ["number", "null"], "minimum": 0},
+        "triage": {"type": ["number", "null"], "minimum": 0}
+      },
+      "description": "The cap in force for this job, or null when that role's cap was not set."
+    },
+    "phases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["phase", "role", "reservedUsd", "requests", "stopped"],
+        "properties": {
+          "phase": {"enum": ["observing", "fixing", "triaging"]},
+          "role": {"enum": ["vision", "glimmer", "muse", "triage"]},
+          "reservedUsd": {"type": "number", "minimum": 0},
+          "requests": {"type": "integer", "minimum": 0},
+          "stopped": {"type": ["string", "null"], "minLength": 1}
+        }
+      }
+    },
+    "totalReservedUsd": {"type": "number", "minimum": 0},
+    "stopped": {"type": ["string", "null"], "minLength": 1},
+    "visionMonth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["limitUsd", "spentUsd", "runWorstCaseUsd", "admitted"],
+      "properties": {
+        "limitUsd": {"const": 200},
+        "spentUsd": {"type": "number", "minimum": 0},
+        "runWorstCaseUsd": {"type": ["number", "null"], "minimum": 0},
+        "admitted": {"type": "boolean"}
+      }
+    }
+  }
+}
