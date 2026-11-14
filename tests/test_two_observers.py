@@ -239,6 +239,9 @@ class BothObserversTest(Case):
                          {"engine": "pass", "visual": "no-answer", "visualAnswerSha256": None})
         self.assertIn("the visual observer gave no answer (the model did not answer (server))", doc["findings"][0]["reason"])
         self.assertTrue(any("gave no answer" in r for r in doc["reasons"]), doc["reasons"])
+        # The record's own reasons say why, so an outage reads differently from a spent cap (#258).
+        self.assertTrue(any("gave no answer on (the model did not answer (server))" in r for r in doc["reasons"]),
+                        doc["reasons"])
         self.assertNotIn("unavailable", json.dumps(doc))   # the model's own error text is not in the record
         self.assertFalse((self.out / "observations").exists())
 
@@ -250,6 +253,7 @@ class BothObserversTest(Case):
         self.assertEqual(doc["decision"], "needs-review")
         self.assertEqual(self.row(doc)["observed"]["after"]["visual"], "no-answer")
         self.assertIn("the model did not answer (budget)", doc["findings"][0]["reason"])
+        self.assertTrue(any("(the model did not answer (budget))" in r for r in doc["reasons"]), doc["reasons"])
         self.assertLessEqual(len(self.game.asked), 4)
 
     def test_a_visual_observer_that_cannot_find_the_player_is_needs_review(self):
@@ -278,6 +282,8 @@ class BothObserversTest(Case):
         doc = self.gate(repo(self.tmp / "a"), visual=Stops())
         self.assertEqual((doc["decision"], self.row(doc)["observed"]["after"]["visual"]), ("needs-review", "no-answer"))
         self.assertNotIn("SECRET-TEXT", json.dumps(doc))
+        self.assertTrue(any("(the visual observer stopped (RuntimeError))" in r for r in doc["reasons"]),
+                        doc["reasons"])
 
         class NotADocument(Stops):
             def look(self, spec, run, keep=True):

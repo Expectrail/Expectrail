@@ -179,7 +179,8 @@ def render(summary: dict) -> str:
         f"- Commit: `{summary['commit']}`",
         f"- When: {summary['when']}",
         f"- Rows: {sum(c.values())}. Held {c[HELD]}, open {c[OPEN]}, failed {c[FAILED]}, not run {c[NOT_RUN]}.",
-        f"- Positive control (the same command clears the unchanged game and rejects the seeded bug): "
+        f"- Positive controls (the same command clears the unchanged game and rejects the seeded bug; with a "
+        f"stand-in vision provider that answers, the live visual observer's path clears the unchanged game): "
         f"{'passed' if baseline_ok else 'NOT passed, so no row below can be read as held'}.",
         "",
     ]

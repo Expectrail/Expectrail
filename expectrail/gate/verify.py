@@ -653,7 +653,7 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
                             "so this is not a pass"}[said]
     else:
         reason = f"the engine's record could not decide: {engine_reason}"
-    result.update(result=combined, reason=reason,
+    result.update(result=combined, reason=reason, visualWhy=why if said == "no-answer" else None,
                   observed={"engine": engine, "visual": said,
                             "visualAnswerSha256": answer if said in rec.VISUAL_VERDICTS else None},
                   visualObservations=seen if said in rec.VISUAL_VERDICTS else None,
@@ -1083,14 +1083,19 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
                                    base_judged=any(c["before"] is not None for c in checks), anchor=anchor_doc)
     if rule == rec.BOTH:
         # Why a check the engine's record passes is not a pass, in the record's own words.
-        said = [c["observed"]["after"] for c in checks if c["after"] == "needs-review"
-                and c["observed"]["after"]["engine"] == "pass"]
+        held_up = [c for c in checks if c["after"] == "needs-review" and c["observed"]["after"]["engine"] == "pass"]
+        said = [c["observed"]["after"] for c in held_up]
+        # Why the visual observer gave no answer (a provider outage, a spent cap, no credit...), in the
+        # job's own reasons, so whoever reads the status can tell one from another (#258).
+        whys = sorted({head[(c["spec"], c["route"])].get("visualWhy") or "no reason was given"
+                       for c in held_up if c["observed"]["after"]["visual"] == "no-answer"})
         for answer, words in (("not-asked", "no visual observer was asked about"),
                               ("no-answer", "the visual observer gave no answer on"),
                               ("needs-review", "the visual observer could not decide")):
             n = sum(1 for one in said if one["visual"] == answer)
             if n:
-                reasons.append(f"the engine's record passes {n} check{'s' if n != 1 else ''} that {words}, "
+                because = f" ({'; '.join(whys[:3])})" if answer == "no-answer" and whys else ""
+                reasons.append(f"the engine's record passes {n} check{'s' if n != 1 else ''} that {words}{because}, "
                                "so this is not an accept: an accept needs the visual observer's evidence")
         if held_back and held["status"] == "judged" and decision != "reject":
             reasons.append("the held-out routes' frames were not sent to the visual observer (that needs a "
