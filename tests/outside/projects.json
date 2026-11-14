@@ -14,7 +14,9 @@
         {"name": "broken", "patch": "tests/outside/kinematic-character/changes/broken.patch", "expect": "reject",
          "what": "the player's collision mask is emptied, so it falls through the floor"},
         {"name": "harmless", "patch": "tests/outside/kinematic-character/changes/harmless.patch", "expect": "needs-review",
-         "what": "the player's sprite is tinted; nothing it does changes (the engine's checks pass, as on the project unchanged; CI has no vision key, so the verdict is needs-review, as #379 requires: an accept needs vision, and an outside project counts as verified only after a run with vision, Sean's call on #398)"}
+         "what": "the player's sprite is tinted; nothing it does changes (the engine's checks pass, as on the project unchanged; CI has no vision key, so the verdict is needs-review, as #379 requires: an accept needs vision, and an outside project counts as verified only after a run with vision, Sean's call on #398)"},
+        {"name": "invisible", "patch": "tests/outside/kinematic-character/changes/invisible.patch", "expect": "needs-review",
+         "what": "the player's sprite is hidden; it moves exactly as before, so the engine's checks pass and only a visual observer can tell (#330): with vision it must not be accepted, because no player is drawn where the engine says it is"}
       ]
     },
     {
