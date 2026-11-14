@@ -423,9 +423,55 @@ nothing to ask about. A recording holds one answer per frame per build, so the t
 are the same answers three times. They test the rule, not how repeatable SAM is. These are seeded
 bugs of the bundled game, not public bench defects.
 
-**Not yet:** no prompt offers pixel checks to the proposer, nothing calls an observer during a
-reproduction run, and no reproduction rate has been measured with them. #286 is done when a
-recorded run reproduces a public screen-only defect with one.
+**Offered to the proposer (added November 14, second slice).** Under
+`--offer signals-reach-evidence-pixel` (`offer.PIXEL`), the proposer gets everything the evidence
+setting gives it, and may also write up to four checks in `pixelChecks`:
+
+- The system prompt adds one passage (`intent.PIXEL_TEXT`) with the four predicate shapes. The user
+  prompt adds `pixelChecksOffered` (`pixel.menu`): for each observer that exists, the predicates it
+  judges and the bound objects it can be asked about, and every object no observer can judge, with
+  why. On the bundled game that is SAM, `visible`, `inside-region` and `never-crosses`, about the
+  player only. The menu is made from the same tables as the refusals, and a test checks that
+  everything it offers is accepted and nothing it withholds is.
+- The answer's `pixelChecks` go through `parse_candidate`, are renamed `jit-px-<id>` and carry
+  `model_prior` authority. A refused one, a repeated id, or one past the fourth is dropped and said.
+  An answer with pixel checks and no trace check is usable under this setting only.
+- The proposal file carries `pixelChecks` under this setting only. Read back, each check must come out
+  of `parse_candidate` unchanged; an edited one, or pixel checks in another setting's proposal, is
+  refused.
+- `pixel.assess` judges a proposal's pixel checks from an observer's answers: each check's images are
+  reserved against the cap together with the checks before it, then the keep rule applies.
+
+Every other setting's prompts are byte for byte as before. Nothing has been proposed under it by a
+live model.
+
+### The replay judges pixel checks (added November 14)
+
+`run.generate(..., offer=PIXEL, observer=..., frame_runner=...)` judges the proposal's pixel checks
+after its trace checks:
+
+- Each check's probe is replayed **with frames** on the clean game and on the bug build (`[*base]`),
+  three times each, and the observer is asked about every run. The observer is a callable with a
+  `name` and a `frames(route)` (`pixel.observe` reads its answer as untrusted data: a malformed answer
+  or a failure drops the checks on that probe, never passes them).
+- The keep rule is `pixel.keep`'s: passes on every clean run, fails on every bug run, one observer
+  setting on all six, no frame without both the observer and the engine's record. A kept check is
+  then judged on the candidate three times: failing every time is a catch.
+- The observer's images are reserved before the replays (one image a planned frame, on nine runs),
+  against the same cap; what the observer says it sent is charged. Over the cap, with no observer, no
+  frame runner or no bug build, a pixel check is `not-run` with its reason. The trace checks' results
+  stand either way; a replay that fails still ends the run as nothing generated.
+- The rows are the run record's `pixelChecks` ([example](../contracts/examples/jit-run-pixel.json)).
+  They are not in `catches`, `counts` or the gate summary. `from_base_alone` lists the kept ones in
+  `pixelReproducing`, decided from the rows' runs, never their status.
+
+A revision does not carry pixel checks, so `revise` refuses this setting (`offer.revisable`). The
+command line's `run`, the workflow and the reproduction score do not name it yet: none of them has an
+observer to give the replay.
+
+**Not yet:** no SAM observer is wired into a run (the tests use SAM's recorded answers on the smoke
+route, stamped with the probe's name), and no reproduction rate has been measured with pixel checks.
+#286 is done when a recorded run reproduces a public screen-only defect with one.
 
 ## What this does not claim
 

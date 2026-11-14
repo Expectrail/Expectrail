@@ -587,6 +587,15 @@ def visual_gap(spec: dict, seen: dict, run: dict, ticks: int | None,
     return None
 
 
+def input_map_problem(trace: dict) -> str | None:
+    missing = trace.get("unknownActions")
+    if not isinstance(missing, list) or any(not isinstance(action, str) for action in missing):
+        return "cannot tell whether the game has the route's input actions"
+    if missing:
+        return "actions missing from the game's input map: " + ", ".join(map(repr, missing))
+    return None
+
+
 def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None, keep: bool = True,
               ticks: int | None = None, capture_fps: int | None = CAPTURE_FPS,
               route: str | None = None) -> dict:
@@ -606,6 +615,13 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
     with the count in the reason (``engine_gap``, ``visual_gap``); a visual answer that names
     another replay is no answer. Without ``ticks`` the gate cannot tell, and nothing passes; the same
     holds without ``capture_fps``, the frames the engine's harness captures per second of game time."""
+    problem = input_map_problem(run["trace"])
+    if problem:
+        result = {"result": "needs-review", "reason": problem, "verdict": None, "frame": None,
+                  "framesDir": run.get("framesDir")}
+        if rule == rec.BOTH:
+            result["observed"] = {"engine": "needs-review", "visual": "not-asked", "visualAnswerSha256": None}
+        return result
     try:
         verdict = evaluate(spec, run["engineObservations"], route=route, trace=run.get("trace"),
                            expected_frames=window_frames(spec, ticks, run.get("trace"), capture_fps))
@@ -671,7 +687,7 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
                             "so this is not a pass"}[said]
     else:
         reason = f"the engine's record could not decide: {engine_reason}"
-    result.update(result=combined, reason=reason,
+    result.update(result=combined, reason=reason, visualWhy=why if said == "no-answer" else None,
                   observed={"engine": engine, "visual": said,
                             "visualAnswerSha256": answer if said in rec.VISUAL_VERDICTS else None},
                   visualObservations=seen if said in rec.VISUAL_VERDICTS else None,
@@ -826,6 +842,18 @@ def _game_ok(game: Path, adapter: str = DEFAULT_ADAPTER) -> bool:
     return adapter_for(adapter).is_project(game)
 
 
+@dataclass(frozen=True)
+class SavedReplays:
+    """Prechecked runs keyed by logical game folder and SHA-256 of the trusted route bytes."""
+    trees: dict[Path, str]
+    runs: dict[tuple[Path, str], dict]
+
+    def __call__(self, route: Path, game: Path, out: Path, frames: bool) -> dict:
+        import hashlib
+
+        return self.runs[game, hashlib.sha256(route.read_bytes()).hexdigest()]
+
+
 def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path, work: Path,
              base: Path | None = None, heldout: Path | None = None, pr: dict | None = None,
              expectrail_commit: str | None = None, replay: Replay = harness_replay,
@@ -833,7 +861,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
              checks: Checks | None = None, rule: str = rec.ENGINE_ONLY, visual=None,
              on_phase: Callable[[str], object] | None = None, heldout_frames_to_visual: bool = False,
              intent: str = "none", adapter: str = DEFAULT_ADAPTER,
-             anchor_every: int = ANCHOR_EVERY) -> dict:
+             anchor_every: int = ANCHOR_EVERY, changed_checks: dict | None = None) -> dict:
     """Run the gate and write the artifact in ``out``; returns the findings record.
 
     ``adapter`` names the engine, and everything about the engine comes from its entry in the
@@ -888,7 +916,9 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     as untrusted data after the decision is made, and nothing in it can change the decision."""
     repo = repo.resolve()
     engine = adapter_for(adapter)
-    game_ok = engine.is_project
+    saved = replay if isinstance(replay, SavedReplays) else None
+    # A saved run names the tree captured on the other machine. No game is installed here.
+    game_ok = engine.is_project if saved is None else saved.trees.__contains__
     if intent not in rec.INTENTS:
         raise ConfigError("the intent must be one of: " + ", ".join(rec.INTENTS))
     problems: list[str] = []
@@ -923,6 +953,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     accounts: list = []   # each finished replay's own account of its isolation
     named: dict[Path, str] = {}   # game folder -> the tree the record names for it (filled below)
     one_replay = replay
+    input_problems: dict[str, None] = {}
 
     def replay(route: Path, game: Path, out: Path, frames: bool) -> dict:  # noqa: F811 - the same call, recorded
         run = one_replay(route, game, out, frames)
@@ -932,6 +963,11 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         ran, want = run.get("tree"), named.get(Path(game))
         if ran is not None and want is not None and ran != want:
             raise GameChanged(f"the replay ran tree {ran[:12]}, the record names {want[:12]}")
+        # Public replays use the gate's copies of the base routes. Private routes report counts only.
+        if route.parent == routes_dir:
+            problem = input_map_problem(run["trace"])
+            if problem:
+                input_problems[f"{out.parent.name} route {route.stem}: {problem}"] = None
         return run
 
     game_rel = safe_relative(game, "game-path", root_ok=True)
@@ -956,7 +992,11 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     routes_dir = Path(work) / "checks" / "routes"
     route_list = [(name, routes_dir / f"{name}.json", sha) for name, _data, sha in checks.routes]
     changed = {"specs": 0, "routes": 0}
-    if base is not None:
+    if changed_checks is not None:
+        if saved is None:
+            raise ConfigError("changed check counts require saved replays")
+        changed = changed_checks
+    elif base is not None:
         # What the change does to the check files, counted from one kind of reading on both sides:
         # the head's checks are listed by the same reader as the base's. A file the reader refuses
         # compares by its name and its refusal, so one that is the same on both sides is not counted
@@ -989,7 +1029,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
             if place == folder.resolve() or folder.resolve() in place.parents:
                 raise ConfigError(f"the {label} folder is inside the {side} game folder ({game_rel}); keep it outside the game")
         try:
-            trees[side] = game_tree(folder, checkout, engine.name)
+            trees[side] = game_tree(folder, checkout, engine.name) if saved is None else saved.trees[folder]
         except TreeProblem as exc:
             raise ConfigError(f"the {side} game cannot be verified as it stands: {exc}") from exc
         named[Path(folder)] = trees[side]
@@ -1082,20 +1122,26 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
                      **({"routes": s["coverage"]["routes"]} if "routes" in s.get("coverage", {}) else {})}
                     for s in spec_docs]
     route_records = [{"name": n, "sha256": sha} for n, _p, sha in route_list] if head else []
+    check_problems += len(input_problems)
     decision, reasons = rec.decide(counts, held, isolation, check_problems, intent=intent, repair=repair,
                                    required_routes_missing=rec.missing_required_routes(spec_records, route_records),
                                    observers={"rule": rule, "visual": observer} if rule == rec.BOTH else None,
                                    base_judged=any(c["before"] is not None for c in checks), anchor=anchor_doc)
     if rule == rec.BOTH:
         # Why a check the engine's record passes is not a pass, in the record's own words.
-        said = [c["observed"]["after"] for c in checks if c["after"] == "needs-review"
-                and c["observed"]["after"]["engine"] == "pass"]
+        held_up = [c for c in checks if c["after"] == "needs-review" and c["observed"]["after"]["engine"] == "pass"]
+        said = [c["observed"]["after"] for c in held_up]
+        # Why the visual observer gave no answer (a provider outage, a spent cap, no credit...), in the
+        # job's own reasons, so whoever reads the status can tell one from another (#258).
+        whys = sorted({head[(c["spec"], c["route"])].get("visualWhy") or "no reason was given"
+                       for c in held_up if c["observed"]["after"]["visual"] == "no-answer"})
         for answer, words in (("not-asked", "no visual observer was asked about"),
                               ("no-answer", "the visual observer gave no answer on"),
                               ("needs-review", "the visual observer could not decide")):
             n = sum(1 for one in said if one["visual"] == answer)
             if n:
-                reasons.append(f"the engine's record passes {n} check{'s' if n != 1 else ''} that {words}, "
+                because = f" ({'; '.join(whys[:3])})" if answer == "no-answer" and whys else ""
+                reasons.append(f"the engine's record passes {n} check{'s' if n != 1 else ''} that {words}{because}, "
                                "so this is not an accept: an accept needs the visual observer's evidence")
         if held_back and held["status"] == "judged" and decision != "reject":
             reasons.append("the held-out routes' frames were not sent to the visual observer (that needs a "
@@ -1103,7 +1149,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     if checks_from == "base" and (changed["specs"] or changed["routes"]):
         reasons.append(f"this change edits {changed['specs']} spec and {changed['routes']} route files; "
                        "they judge changes once it merges")
-    reasons = [_clip(r) for r in (reasons + problems + approval_notes)][:MAX_REASONS]
+    reasons = [_clip(r) for r in (reasons + list(input_problems) + problems + approval_notes)][:MAX_REASONS]
 
     document = {
         "format": rec.FORMAT,

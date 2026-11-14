@@ -130,11 +130,17 @@ func _physics_process(_delta: float) -> void:
 		_send(event["action"], event["pressed"])
 
 
+var _unknown_actions: Dictionary = {}
+
+
 func _send(action: String, pressed: bool) -> void:
 	# As a press reaches a game from a player: an input event, which also sets the action's state.
 	# A game may read either one: the state in a tick (Input.is_action_pressed), or the event
 	# (_input, _unhandled_input, a button's shortcut). Input.action_press sets the state and sends
 	# no event, so a game started from a menu or paused by a key was never driven by it.
+	if not InputMap.has_action(action):
+		_unknown_actions[action] = true
+		return
 	Input.parse_input_event(_event_for(StringName(action), pressed))
 	# The engine holds events until the next drawn frame. Sent now, so the press is seen on the tick
 	# the route names and not up to a frame later.
@@ -148,18 +154,17 @@ func _event_for(action: StringName, pressed: bool) -> InputEvent:
 	# the player. An action with no key or pad button (none bound, or only a mouse button or a
 	# stick, which need a place or an amount the route does not give) is sent as an action event:
 	# the state, _input and _unhandled_input see it, a shortcut does not.
-	if InputMap.has_action(action):
-		for bound in InputMap.action_get_events(action):
-			if bound is InputEventKey:
-				var key := bound.duplicate() as InputEventKey
-				key.pressed = pressed
-				key.echo = false
-				return key
-			if bound is InputEventJoypadButton:
-				var button := bound.duplicate() as InputEventJoypadButton
-				button.pressed = pressed
-				button.pressure = 1.0 if pressed else 0.0
-				return button
+	for bound in InputMap.action_get_events(action):
+		if bound is InputEventKey:
+			var key := bound.duplicate() as InputEventKey
+			key.pressed = pressed
+			key.echo = false
+			return key
+		if bound is InputEventJoypadButton:
+			var button := bound.duplicate() as InputEventJoypadButton
+			button.pressed = pressed
+			button.pressure = 1.0 if pressed else 0.0
+			return button
 	var event := InputEventAction.new()
 	event.action = action
 	event.pressed = pressed
@@ -214,7 +219,15 @@ func record() -> void:
 
 func _finish() -> void:
 	if _trace_path != "":
-		var out := {"format": TRACE_FORMAT, "ticks": _ticks,
+		# Events scheduled beyond the route never reached _send. Include their missing actions too.
+		for tick in _events:
+			if tick >= _ticks:
+				for event in _events[tick]:
+					if not InputMap.has_action(event["action"]):
+						_unknown_actions[event["action"]] = true
+		var missing := _unknown_actions.keys()
+		missing.sort()
+		var out := {"format": TRACE_FORMAT, "ticks": _ticks, "unknownActions": missing,
 			"physicsTicksPerSecond": Engine.physics_ticks_per_second, "rows": _trace,
 			# What this recorder collects, for expectrail/trace/normalize.py: enemies are the instances
 			# in the scene when it is first searched (later spawns are not tracked); bullets are every

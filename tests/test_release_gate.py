@@ -19,6 +19,7 @@ from __future__ import annotations
 import importlib
 import re
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from tests.release_gate import controls
@@ -136,12 +137,16 @@ class SummaryTest(unittest.TestCase):
         self.assertEqual(self.row(summary(found), "retry")["status"], rg.FAILED)
 
     def test_an_open_row_stays_open_and_a_probe_that_passes_fails_the_run(self):
+        # Keep exercising an expected-failure probe even when no live control has one.
         probe = controls.by_id()["unreachable-route"]["tests"][1]
-        s = summary(outcomes())
-        self.assertEqual(self.row(s, "unreachable-route")["status"], rg.OPEN)
-        self.assertIn("still fails", self.row(s, "unreachable-route")["note"])
-        s = summary(outcomes(**{probe: rg.UNEXPECTED}))
-        self.assertEqual(self.row(s, "unreachable-route")["status"], rg.FAILED)
+        synthetic = [{**c, "open": "fixture probe"} if c["id"] == "unreachable-route" else c
+                     for c in controls.CONTROLS]
+        with mock.patch.object(controls, "CONTROLS", synthetic):
+            s = summary(outcomes(**{probe: rg.EXPECTED}))
+            self.assertEqual(self.row(s, "unreachable-route")["status"], rg.OPEN)
+            self.assertIn("still fails", self.row(s, "unreachable-route")["note"])
+            s = summary(outcomes(**{probe: rg.UNEXPECTED}))
+            self.assertEqual(self.row(s, "unreachable-route")["status"], rg.FAILED)
         self.assertTrue(rg.failed(s, require=False))
 
     def test_without_the_positive_control_no_row_is_held(self):

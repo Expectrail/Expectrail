@@ -26,9 +26,20 @@ sees in the frames:
   on six runs is reserved against the per-change cap before anything is asked, and a check that
   cannot be afforded is ``not-run``.
 
-What this is not, yet: no prompt offers pixel checks to the proposer, nothing here calls an observer,
-and no reproduction rate has been measured with it. The tests judge recorded SAM answers
-(tests/data/sam-anchor/), which are one answer per frame per build: three "runs" of a recording are
+Offered to the proposer under the pixel setting only (expectrail/jit/offer.py, ``PIXEL``): ``menu`` is what the prompt says can be judged, ``parse_answer`` reads the model's
+``pixelChecks`` through ``parse_candidate``, and ``assess`` reserves and judges each one from recorded
+observer answers.
+
+In the replay (expectrail/jit/run.py, under the pixel setting): each pixel check's probe is replayed with
+frames on the clean game, the bug build and, for a kept check, the candidate, ``reps`` times each; the
+observer ``run.generate`` is given is asked about every one of those runs (``observe``, which reads its
+answer as untrusted data); and the keep rule decides. The rows go into the run record's
+``pixelChecks`` (``record_row``), and ``kept_rows`` reads them back, deciding from the runs, never from a
+row's own status.
+
+What this is not, yet: nothing here calls an observer. No SAM observer is wired into the workflow or
+the command line, and no reproduction rate has been measured with pixel checks. The tests judge
+recorded SAM answers (tests/data/sam-anchor/), which are one answer per frame per build: three "runs" of a recording are
 the same answers three times, so they test the rule, not the observer's repeatability.
 """
 from __future__ import annotations
@@ -62,6 +73,12 @@ BUNDLED_BINDINGS = {
     "coins-counter": {"node": "CoinsCounter/Label", "kind": "text"},
 }
 KINDS = ("sprite", "text", "ground")
+
+
+def bindings_for(profile: dict | None = None) -> dict:
+    """The roles a pixel check may name. Until #259's ``expectrail.project/v1`` names a project's
+    objects, every game the generator runs on is the bundled platformer, so this is BUNDLED_BINDINGS."""
+    return BUNDLED_BINDINGS
 
 # What each trusted observer can judge. "cannot" are kinds of thing it cannot tell apart on the
 # screen; "anchored" observers see only roles the engine's record gives a position for, one per
@@ -141,6 +158,76 @@ def parse_candidate(entry, bindings: dict, probe_ids, observers: dict = OBSERVER
     if pred["type"] == "inside-region" and observer.get("anchored") and pred["region"]["engine"] != doc["object"]:
         return None, f"{doc['observer']} has the engine's box of {doc['object']!r} only, not of another object"
     return doc, None
+
+
+# --- what the proposer is offered, and reading its answer ------------------------------------------
+
+MAX_PIXEL_CHECKS = 4
+ID_PREFIX = "jit-px-"
+
+
+def judgeable(role: str, bindings: dict, name: str, observer: dict) -> str | None:
+    """None when ``observer`` can be asked about ``role`` as a check's object, otherwise why not."""
+    if not observer.get("available"):
+        return observer["why"]["available"]
+    kind = bindings[role].get("kind")
+    if kind in observer.get("cannot", ()):
+        return observer["why"][kind]
+    if observer.get("anchored") and bindings[role].get("anchor") != "engine-position":
+        return f"{name} is asked where the engine's record puts an object, and the record gives no position for it"
+    return None
+
+
+def menu(bindings: dict = BUNDLED_BINDINGS, observers: dict = OBSERVERS) -> dict:
+    """What the prompt offers: for each trusted observer that exists, the predicates it can judge and the
+    bound objects it can be asked about; and every bound object no observer can judge, with why.
+
+    Made from the same tables ``parse_candidate`` refuses by, so the model is never offered a check that
+    would be refused, and a refusal it meets anyway names the same reason."""
+    out = {"observers": {}, "notJudgeable": {}}
+    reasons: dict = {role: [] for role in sorted(bindings)}
+    for name, observer in sorted(observers.items()):
+        roles = []
+        for role in sorted(bindings):
+            why = judgeable(role, bindings, name, observer)
+            if why is None:
+                roles.append(role)
+            else:
+                reasons[role].append(f"{name}: {why}")
+        if observer.get("available") and roles:
+            out["observers"][name] = {"predicates": list(observer["predicates"]), "objects": roles}
+            if observer.get("anchored"):
+                out["observers"][name]["note"] = ("asked about one object a frame, at the place the engine puts it: "
+                                                  "an inside-region region names that same object")
+    judged = {r for o in out["observers"].values() for r in o["objects"]}
+    out["notJudgeable"] = {role: "; ".join(why) for role, why in reasons.items() if role not in judged}
+    return out
+
+
+def parse_answer(entries, bindings: dict, probe_ids, observers: dict = OBSERVERS) -> tuple[list[dict], list[str]]:
+    """(checks, diagnostics) from the model's ``pixelChecks``: at most MAX_PIXEL_CHECKS are read, each
+    through ``parse_candidate``, renamed ``jit-px-<id>``; a refused one or a repeated id is dropped and said."""
+    if entries is None:
+        return [], []
+    if not isinstance(entries, list):
+        return [], ["pixelChecks: not a list, none read"]
+    checks, notes, seen = [], [], set()
+    for i, entry in enumerate(entries[:MAX_PIXEL_CHECKS]):
+        check, why = parse_candidate(entry, bindings, probe_ids, observers)
+        label = str(entry.get("id"))[:40] if isinstance(entry, dict) else f"#{i}"
+        if check is None:
+            notes.append(f"dropped pixel check {label!r}: {why}"[:200])
+            continue
+        check["id"] = (ID_PREFIX + check["id"].removeprefix(ID_PREFIX))[:80]
+        if check["id"] in seen:
+            notes.append(f"dropped pixel check {label!r}: its id is used twice")
+            continue
+        seen.add(check["id"])
+        validate_v1(check, KIND)
+        checks.append(check)
+    if len(entries) > MAX_PIXEL_CHECKS:
+        notes.append(f"pixelChecks: {len(entries) - MAX_PIXEL_CHECKS} beyond the first {MAX_PIXEL_CHECKS} not read")
+    return checks, notes
 
 
 # --- recorded observer answers -----------------------------------------------------------------
@@ -294,3 +381,101 @@ def reserve(check: dict, frames_probed, spend) -> dict:
     except OutOfBudget as exc:
         return {"check": check["id"], "status": "not-run", "reason": str(exc), "reservedUsd": 0.0}
     return {"check": check["id"], "status": "reserved", "reason": None, "reservedUsd": round(usd, 4)}
+
+
+# --- judging a proposal's pixel checks -------------------------------------------------------------
+
+def assess(checks: list[dict], clean: list[tuple[dict, dict]], bug: list[tuple[dict, dict]], spend,
+           frames_probed, bindings: dict = BUNDLED_BINDINGS, repeats: int = REPEATS) -> list[dict]:
+    """Each check: its observer calls reserved against the change's cap, together with the checks before it
+    (as ``reserve`` does for one), then the keep rule
+    over the observer's answers (``keep``). A check that cannot be afforded is ``not-run`` and is never
+    judged. ``clean`` and ``bug`` are (setting, run) pairs of answers already recorded: nothing is asked
+    here, so the reservation is what judging would cost if the answers had to be bought, and the caller
+    adds to ``spend`` what was actually sent."""
+    from expectrail.jit.run import OutOfBudget
+
+    # Spend.reserve compares one amount with what is already spent; reservations do not add up by
+    # themselves. So every check is reserved together with the ones before it, and four checks that
+    # each fit under the cap alone cannot together pass it.
+    rows, held = [], 0.0
+    for check in checks:
+        usd = cost(check, frames_probed, spend.prices["samUsdPerImage"])
+        try:
+            spend.reserve(held + usd, f"pixel check {check['id']} ({check['observer']}) with the {len(rows)} before it")
+        except OutOfBudget as exc:
+            rows.append({"check": check["id"], "status": "not-run", "kept": False, "reason": str(exc),
+                         "reservedUsd": 0.0})
+            continue
+        held += usd
+        row = keep(check, clean, bug, bindings, repeats)
+        rows.append({"check": check["id"], "status": "kept" if row["kept"] else "dropped", "kept": row["kept"],
+                     "reason": row["reason"], "reservedUsd": round(usd, 4), "runs": row["runs"]})
+    return rows
+
+
+# --- the observer the replay asks -----------------------------------------------------------------
+#
+# ``run.generate(..., observer=...)`` asks an observer about each pixel replay. An observer is a callable
+#
+#     observer(run_dir: Path, route: dict) -> {"setting": {...}, "run": {...}, "images": int}
+#
+# with ``observer.name`` (one of OBSERVERS) and ``observer.frames(route) -> [frame, ...]``, the frames it
+# will ask about on a run of ``route`` (what the budget reserves for, before any replay). ``run`` is one
+# run of an agents/sam_anchor.py answer file: {"route": {"name": ...}, "frames": [...]}; ``setting`` is how
+# it asked (``setting_of``); ``images`` is how many images it actually sent, which the change is charged.
+
+RESULT_ROWS = ("kept", "dropped", "not-run")
+OUTCOMES = ("catch", "no-catch", "needs-review", "not-evaluated")
+
+
+def observe(observer, run_dir, route: dict) -> tuple[dict, dict, int]:
+    """(setting, run, images) from one observer call, checked as untrusted data: a malformed answer is a
+    PixelError, never a pass."""
+    try:
+        answer = observer(Path(run_dir), route)
+    except PixelError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - an observer that fails decides nothing
+        raise PixelError(f"the observer failed: {type(exc).__name__}: {' '.join(str(exc).split())[:120]}") from exc
+    if not isinstance(answer, dict) or set(answer) != {"setting", "run", "images"}:
+        raise PixelError("the observer's answer is not {setting, run, images}")
+    setting, run, images = answer["setting"], answer["run"], answer["images"]
+    if not isinstance(setting, dict) or not isinstance(run, dict) or not isinstance(run.get("frames"), list) \
+            or not isinstance(run.get("route"), dict):
+        raise PixelError("the observer's answer has no setting, route or frames")
+    if not isinstance(images, int) or isinstance(images, bool) or images < 0:
+        raise PixelError("the observer's image count is not a whole number")
+    for f in run["frames"]:
+        if not isinstance(f, dict) or not isinstance(f.get("frame"), int) or isinstance(f.get("frame"), bool):
+            raise PixelError("the observer's answer has a frame without a frame number")
+    return setting, run, images
+
+
+def record_row(check: dict, status: str, reason: str | None, reserved_usd: float = 0.0, setting: dict | None = None,
+               clean=(), bug=(), candidate=(), outcome: str = "not-evaluated") -> dict:
+    """One row of the run record's ``pixelChecks`` (contracts/jit-run.v1.schema.json)."""
+    if status not in RESULT_ROWS or outcome not in OUTCOMES:
+        raise PixelError(f"not a pixel row: {status}/{outcome}")
+    return {"check": check, "status": status, "reason": None if reason is None else " ".join(str(reason).split())[:300],
+            "reservedUsd": round(float(reserved_usd), 4), "setting": setting,
+            "clean": [r["result"] for r in clean], "bug": [r["result"] for r in bug],
+            "candidate": [r["result"] for r in candidate], "outcome": outcome}
+
+
+def kept_rows(doc: dict) -> list[dict]:
+    """The pixel rows of a run record that the keep rule keeps, decided from the rows' runs, not their
+    status: the check must be a pixel check again (``validate_v1``), have one observer setting, and have
+    passed ``reps`` of ``reps`` runs on the clean game and failed ``reps`` of ``reps`` on the bug build. A record that did not
+    complete keeps none."""
+    reps = doc["settings"]["reps"]
+    if doc.get("status") != "complete":
+        return []
+    out = []
+    for row in doc.get("pixelChecks") or []:
+        validate_v1(row["check"], KIND)
+        if row.get("setting") is not None and len(row["clean"]) == reps and len(row["bug"]) == reps \
+                and all(r == "pass" for r in row["clean"]) \
+                and all(r == "fail" for r in row["bug"]):
+            out.append(row)
+    return out

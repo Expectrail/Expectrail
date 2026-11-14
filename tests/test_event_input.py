@@ -66,12 +66,17 @@ class EventInputTest(unittest.TestCase):
         cls.tmp = Path(tempfile.mkdtemp(prefix="expectrail-event-input-"))
         cls.addClassCleanup(shutil.rmtree, cls.tmp, True)
         cls.runs = {}
+        cls.unknown = {}
         for name, frames in (("drawn", True), ("headless", False)):   # as the gate replays, and as discovery does
             hr.run(PROJECT / "routes" / "events.json", cls.tmp / name, game=PROJECT / "project", godot=godot,
                    capture_frames=frames)
             trace = json.loads((cls.tmp / name / "trace.json").read_text(encoding="utf-8"))
+            cls.unknown[name] = trace["unknownActions"]
             cls.runs[name] = {row["tick"]: row["player"] for row in trace["rows"]}
         cls.at = cls.runs["drawn"]
+
+    def test_defined_actions_include_those_without_a_binding(self):
+        self.assertEqual(self.unknown, {"headless": [], "drawn": []})
 
     def test_drawn_and_headless_replays_agree(self):
         self.assertEqual(len(self.at), 70)

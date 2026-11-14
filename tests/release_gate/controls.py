@@ -21,6 +21,7 @@ GROUPS = ("Identity and authority", "Candidate interference", "Observation", "Co
 OPS = "tests.release_gate.gate_operations"
 COV = "tests.release_gate.gate_coverage"
 IDN = "tests.release_gate.gate_identity"
+PRV = "tests.release_gate.gate_provider"
 
 NEEDS_254 = "not written yet: it needs the trusted job that judges outside the candidate job (#254)"
 NEEDS_255 = "not written yet: it needs the signed receipt (#255)"
@@ -68,11 +69,7 @@ CONTROLS = [
         [f"{COV}.CoverageTest.test_no_approved_spec_at_all_is_not_clearance"]),
     row(GROUPS[3], "unreachable-route", "unreachable route",
         [f"{COV}.CoverageTest.test_a_route_pattern_that_matches_no_file_is_not_clearance",
-         f"{COV}.CoverageTest.test_a_route_whose_inputs_the_game_does_not_have_is_not_clearance"],
-        open="undefended: a route whose every input names an action the game does not have is replayed, "
-             "the player stands still, and nothing says so (#417). On a590aac's engine-only path it was "
-             "accepted; with both observers a live observer would see the robot above the ground. The probe, "
-             "which asks that the job name the missing action, is an expected failure until then"),
+         f"{COV}.CoverageTest.test_a_route_whose_inputs_the_game_does_not_have_is_not_clearance"]),
     row(GROUPS[3], "zero-evaluations", "zero evaluations",
         [f"{COV}.CoverageTest.test_specs_that_are_all_drafts_judge_nothing_and_are_not_clearance"]),
     row(GROUPS[3], "skipped-required-observer", "skipped required observer",
@@ -97,16 +94,21 @@ CONTROLS = [
          f"{OPS}.OperationsTest.test_the_same_request_twice_at_once_is_one_job_with_one_verdict"]),
     row(GROUPS[5], "disk-quota", "disk quota", open="undefended: a replay's files are capped one by one, and "
         "nothing bounds a job's total disk use yet (#253)"),
-    row(GROUPS[5], "provider-outage", "provider outage", open="not written yet: `expectrail verify` asks no "
-        "vision provider today; the visual observer joins that path with #379"),
-    row(GROUPS[5], "budget-exhausted", "budget exhausted", open="not written yet: `expectrail verify` spends "
-        "nothing today; the visual observer and its cap join that path with #379 and #267"),
+    row(GROUPS[5], "provider-outage", "provider outage",
+        [f"{PRV}.ProviderTest.test_a_provider_outage_is_not_clearance_and_does_not_hide_a_broken_build"]),
+    row(GROUPS[5], "budget-exhausted", "budget exhausted",
+        [f"{PRV}.ProviderTest.test_a_cap_of_nothing_sends_nothing_and_is_not_clearance",
+         f"{PRV}.ProviderTest.test_a_cap_spent_part_way_stops_the_requests_and_is_not_clearance",
+         f"{PRV}.ProviderTest.test_a_provider_out_of_credit_is_not_clearance"]),
 ]
 
 # The positive controls: without them every "not clearance" assertion could hold because nothing is
 # ever cleared. They are part of the suite and of the summary, and belong to no row.
 BASELINES = [
     f"{OPS}.BaselineTest.test_the_unchanged_game_is_cleared_through_the_same_command",
+    # The provider rows run the real command with its live visual observer against a stand-in provider
+    # on this machine: with the stand-in answering from the recorded answers, that command clears.
+    f"{PRV}.ProviderBaselineTest.test_with_the_provider_answering_the_live_observer_clears_the_unchanged_game",
 ]
 
 

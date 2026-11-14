@@ -131,6 +131,7 @@ class Context:
     workflow_path: str
     artifact: str
     bot: str
+    trusted_report: bool = False
 
     @property
     def run_url(self) -> str:
@@ -382,8 +383,9 @@ def _body(record: dict, ctx: Context, *, previous: list[str], touched: list[str]
     lines.append(f"<sub>Commit `{head[:12]}`. Expectrail {md(record['expectrail']['version'], 32)}"
                  + (f" at `{commit[:12]}`" if commit else "")
                  + ". A finding id is the first 12 hex digits of sha256(spec, route, kind), so a failure keeps "
-                 "its id across pushes. The verdict was computed in the pull request's own workflow run; this "
-                 "comment was posted by a separate job that only read it.</sub>")
+                 "its id across pushes. " + ("The trusted job judged the saved replays." if ctx.trusted_report
+                 else "The verdict was computed in the pull request's own workflow run; this comment was posted "
+                      "by a separate job that only read it.") + "</sub>")
     lines.append(f"<!-- expectrail-gate:v0 ids={','.join(now[:MAX_PREVIOUS_IDS])} -->")
     return "\n".join(lines) + "\n"
 
@@ -433,7 +435,8 @@ def stricter_than_judged(declared: "declared_intent.Declared", judged: str, deci
     return None
 
 
-def run(api: Api, ctx: Context, evidence: Path | None, watch: list[str] | None = None) -> dict:
+def run(api: Api, ctx: Context, evidence: Path | None, watch: list[str] | None = None, *,
+        problem_message: str | None = None) -> dict:
     """Post or update the comment. Returns {"action": created|updated|skipped, ...}."""
     if ctx.run_event != "pull_request":
         return {"action": "skipped", "reason": f"the verify run was a {ctx.run_event} run, not a pull request's"}
@@ -445,7 +448,7 @@ def run(api: Api, ctx: Context, evidence: Path | None, watch: list[str] | None =
     fork = ((pr.get("head") or {}).get("repo") or {}).get("full_name") != ctx.repo
     problem, record = None, None
     if evidence is None:
-        problem = f"no {ctx.artifact} artifact was found for the run"
+        problem = problem_message or f"no {ctx.artifact} artifact was found for the run"
     else:
         try:
             record = rec.read_record(Path(evidence) / "findings.json")

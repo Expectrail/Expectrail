@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "format",
+    "writerRef",
+    "pullRequest",
+    "intent",
+    "checksSha256",
+    "changed",
+    "runs"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.ci-bundle/v1"
+    },
+    "writerRef": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "pullRequest": {
+      "type": "object",
+      "required": [
+        "number",
+        "headSha",
+        "baseSha"
+      ],
+      "properties": {
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "headSha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "baseSha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "intent": {
+      "enum": [
+        "fix",
+        "change",
+        "none"
+      ]
+    },
+    "checksSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "changed": {
+      "type": "object",
+      "required": [
+        "specs",
+        "routes"
+      ],
+      "properties": {
+        "specs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "routes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "runs": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 1024,
+      "items": {
+        "type": "object",
+        "required": [
+          "group",
+          "route",
+          "replay"
+        ],
+        "properties": {
+          "group": {
+            "enum": [
+              "base-1",
+              "base-2",
+              "base-3",
+              "head-1",
+              "head-2",
+              "head-3"
+            ]
+          },
+          "route": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "replay": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

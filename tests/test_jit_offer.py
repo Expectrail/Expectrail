@@ -80,7 +80,7 @@ class TheSetting(unittest.TestCase):
     def test_the_schemas_name_the_same_settings(self):
         run = json.loads((REPO / "contracts" / "jit-run.v1.schema.json").read_text(encoding="utf-8"))
         scored = json.loads((REPO / "contracts" / "repro-score.v1.schema.json").read_text(encoding="utf-8"))
-        self.assertEqual(run["properties"]["settings"]["properties"]["offer"]["enum"], list(offer.OFFERS))
+        self.assertEqual(run["properties"]["settings"]["properties"]["offer"]["enum"], list(offer.REPLAYABLE))
         self.assertNotIn("offer", run["properties"]["settings"]["required"])   # old records have none
         self.assertEqual(scored["properties"]["offer"]["enum"], list(offer.OFFERS))
         self.assertIn("offer", scored["required"])
