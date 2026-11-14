@@ -217,3 +217,36 @@ From reading, before any run (the full list is on #263):
 - Ground is read from tile collision only. Dodge the Creeps has none.
 - No approved check fits a top-down game. A project with no check that fits is needs-review.
 - A route cannot click, and cannot press a key that is no action.
+
+## Anchored vision (#330)
+
+**Why the first vision run found no player.** The outside judge asked every game the bundled game's
+spec, whose player prompt is "blue robot". Kinematic-character's player is a grey square, so the
+model found it in 0 of 120 frames (run 43559500793). Words cannot name a player nobody described.
+
+**What the judge asks now.** `tools/outside_vision.py judge` uses `expectrail/anchored.py`: in each
+frame the model is asked what is drawn inside the engine's collision box for the player (the trace's
+`body`, widened 4 px). It is told where to look, never what it should find, and the spec's assertion
+is judged on the box it answers with. A frame with no answer is a missing player: needs-review.
+
+**When it is used.** Only for a game whose clean run passes three rules fixed on November 14, 2026,
+before any live answer for an outside game was seen (`RULES` in `expectrail/anchored.py`):
+
+| Rule | Threshold |
+| --- | --- |
+| Found: a box holding the asked place | at least 90% of asked frames |
+| Size: that box within 25% of the engine's collision box | at least 90% of found frames |
+| Stable: asked with a box twice as large, the same size comes back | at least 90% of found frames |
+| Frames asked | at least 8 (every tenth clean frame) |
+
+The stable rule is the guard against a model that only repeats the box it was given. A game that
+fails any rule keeps no visual observer, and its verdicts stay needs-review. The calibration
+(`calibration.json`, `expectrail.vision-calibration/v1`) is published with every run, and a
+calibration whose verdict does not follow from its own frames, or that uses other rules, is refused.
+
+**Recorded once (Option A).** The live judge wraps the model in a recorder and leaves
+`vision-recording.json` in the run's artifact. `judge --recording FILE` replays those answers with no
+key and no spend; a frame or question not in the recording gets no answer.
+
+Not yet measured: nothing above says how the live model does on kinematic-character. That is the
+first live run after this lands.
