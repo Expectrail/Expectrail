@@ -22,6 +22,7 @@ OPS = "tests.release_gate.gate_operations"
 COV = "tests.release_gate.gate_coverage"
 IDN = "tests.release_gate.gate_identity"
 PRV = "tests.release_gate.gate_provider"
+INT = "tests.release_gate.gate_interference"
 
 NEEDS_254 = "not written yet: it needs the trusted job that judges outside the candidate job (#254)"
 NEEDS_255 = "not written yet: it needs the signed receipt (#255)"
@@ -29,17 +30,20 @@ NEEDS_257 = "not written yet: it needs the observation timeline (#257)"
 NOT_YET = "not written yet in this suite"
 
 
-def row(group: str, cid: str, control: str, tests=(), open: str | None = None) -> dict:
-    return {"group": group, "id": cid, "control": control, "tests": list(tests), "open": open}
+def row(group: str, cid: str, control: str, tests=(), open: str | None = None, scope: str | None = None) -> dict:
+    """``scope`` says what a held row covers and what it does not; it is printed beside the row and
+    never changes its status."""
+    return {"group": group, "id": cid, "control": control, "tests": list(tests), "open": open, "scope": scope}
 
 
 CONTROLS = [
     # --- Identity and authority -------------------------------------------------------------------
     row(GROUPS[0], "wrong-build-or-head", "wrong build or head", open=NEEDS_255),
     row(GROUPS[0], "unknown-signer", "unknown signer", open=NEEDS_255),
-    row(GROUPS[0], "swapped-policy", "swapped policy", open=NOT_YET + " (the orchestrator refuses checks that "
-        "change after a job is created, tests/test_orchestrator.py, with a stand-in replay; a real-process "
-        "test is the next slice)"),
+    row(GROUPS[0], "swapped-policy", "swapped policy",
+        [f"{IDN}.IdentityTest.test_checks_swapped_between_the_request_and_the_run_judge_nothing",
+         f"{IDN}.IdentityTest.test_the_base_checks_swapped_after_the_request_judge_nothing",
+         f"{IDN}.IdentityTest.test_checks_swapped_and_put_back_exactly_are_the_checks_that_were_named"]),
     row(GROUPS[0], "expired-receipt", "expired receipt", open=NEEDS_255),
     row(GROUPS[0], "changed-head", "changed head", open=NEEDS_254),
     row(GROUPS[0], "approval-added-by-change", "an approval added by the change",
@@ -51,7 +55,12 @@ CONTROLS = [
     row(GROUPS[1], "rewritten-frame", "a rewritten frame", open="undefended: the game draws the frames the "
         "visual observer reads, and no capture the game cannot forge exists yet (#246, #273). The positive "
         "control asserts the run's grade is `diagnostic`, never `protected`"),
-    row(GROUPS[1], "poisoned-import-cache", "a poisoned import cache", open=NOT_YET),
+    row(GROUPS[1], "poisoned-import-cache", "a poisoned import cache",
+        [f"{INT}.ImportCacheTest.test_control_the_same_poison_in_the_verifiers_own_cache_changes_what_is_drawn",
+         f"{INT}.ImportCacheTest.test_an_import_cache_the_change_carries_is_never_drawn_from",
+         f"{INT}.ImportCacheTest.test_a_broken_change_that_carries_an_import_cache_is_still_rejected"],
+        scope="the cache a change carries in its checkout; a run without the replay sandbox can still write "
+             "the verifier's own cache, which the first test shows would change what is drawn"),
     row(GROUPS[1], "private-path-read", "reading a private path", open=NOT_YET + " (the replay sandbox's own "
         "tests cover it with bubblewrap: tests/test_replay_sandbox.py)"),
     row(GROUPS[1], "network-egress", "network egress", open=NOT_YET + " (the replay sandbox's own tests cover "
