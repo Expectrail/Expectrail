@@ -386,6 +386,47 @@ refused. The system prompt is the same text as before, byte for byte. They are o
 `--offer signals-reach` (above, "What the generator is offered"). No live run has used these
 signals, and nothing here says the model will propose a check on them.
 
+## Pixel checks: what is drawn (added November 14)
+
+Issue #286. A generated trace check reads the engine's record, so a defect that only shows on the
+screen can never fail one: on the public bench's baseline (run 43465090517), 1 of the 5 screen-only
+defects was reproduced. [`pixel.py`](../expectrail/jit/pixel.py) adds the closed shape a generated
+check takes when it speaks about the screen: `expectrail.pixel-check/v1`
+([schema](../contracts/pixel-check.v1.schema.json), [example](../contracts/examples/pixel-check.json)).
+
+- **Objects are bound roles.** The bundled game's are `player`, `coin`, `bullet`, `ground` and
+  `coins-counter` (`BUNDLED_BINDINGS`, named after the game's own nodes). #259 will give every
+  project its own in `expectrail.project/v1`. A candidate naming anything else is refused.
+- **Observers declare what they cannot tell.** `sam-3.1-anchor` is SAM 3.1 asked about the place the
+  engine's record puts the object ([`agents/sam_anchor.py`](../agents/sam_anchor.py)). It judges
+  `visible`, `inside-region` (around the engine's box) and `never-crosses` (a fixed line). It cannot
+  tell the ground or what a label reads. It sees only objects the record gives a position for (the
+  player, in the bundled game), one at a time, so it cannot judge `reaches`. `visual-sensor` (#262)
+  can be named but is refused until it is built. All of this is decided when a check is proposed.
+- **Only frames with both the observer and the record count.** A frame the observer was not asked
+  about (the engine puts the player outside the picture), could not answer, or that lacks the
+  engine's box an `inside-region` check needs is a gap. A run with a gap is `needs-review`. An answer
+  that does not hold the point it was asked about is "looked for, not found", which is a result.
+- **Keep rule:** pass on the clean build 3 runs of 3, fail on the bug build 3 runs of 3, with the
+  observer asked the same way on all six. Asked with a point, SAM's lowest score on the clean game
+  was 0.5. Asked with a box, it was 0.87. The same check can pass under one setting and fail under
+  the other.
+- **Budget:** one SAM image a frame in the check's window, on six runs, reserved against the
+  change's cap before anything is asked. A check that does not fit is `not-run`.
+
+**What the recorded answers show.** These are SAM's answers of run 43335151089, the smoke route, asked
+with a 48 x 68 box. The example check is "the player is found where the engine puts it in every frame,
+score at least 0.8". It passes on the clean game and fails on both layering bugs and on the second
+sinking bug. It passes on the missing texture and the first sinking bug. It is `needs-review` on
+physics fall-through: the engine puts the player outside the picture from frame 20, so there is
+nothing to ask about. A recording holds one answer per frame per build, so the tests' "three runs"
+are the same answers three times. They test the rule, not how repeatable SAM is. These are seeded
+bugs of the bundled game, not public bench defects.
+
+**Not yet:** no prompt offers pixel checks to the proposer, nothing calls an observer during a
+reproduction run, and no reproduction rate has been measured with them. #286 is done when a
+recorded run reproduces a public screen-only defect with one.
+
 ## What this does not claim
 
 - **No detection rate.** The offline tests use a simulated game and a fake model. They show that an

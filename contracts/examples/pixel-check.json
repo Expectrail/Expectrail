@@ -1,0 +1,12 @@
+{
+  "format": "expectrail.pixel-check/v1",
+  "id": "player-drawn-where-engine-says",
+  "statement": "On the smoke route, the player is drawn, clearly, at the place the engine puts it in every frame judged.",
+  "object": "player",
+  "observer": "sam-3.1-anchor",
+  "probe": "smoke",
+  "window": {"fromFrame": 0, "toFrame": 119},
+  "predicate": {"type": "visible", "minFraction": 1.0, "minScore": 0.8},
+  "authority": "model_prior",
+  "origin": "AUTO_DIFF"
+}

@@ -102,6 +102,7 @@ V1_FORMATS = {
     "expectrail.mechanics-profile/v1": ("mechanics-profile", "mechanics-profile.v1.schema.json"),
     "expectrail.discovery-run/v1": ("discovery-run", "discovery-run.v1.schema.json"),
     "expectrail.jit-run/v1": ("jit-run", "jit-run.v1.schema.json"),
+    "expectrail.pixel-check/v1": ("pixel-check", "pixel-check.v1.schema.json"),
 }
 
 
