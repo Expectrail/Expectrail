@@ -25,11 +25,13 @@ the player standing still, and nothing says so; on main before #392 it was accep
 the "unreachable route" row is open with a probe that is an expected failure until then.
 
 ## What was run
-- `python3 -m tools.release_gate --require --out docs/release-gate.md` on this branch (main at
-  41364bd plus this change), real Godot 4.7.2, no bubblewrap here: 14 tests, OK (1 expected
-  failure); held 10, open 25, failed 0, not run 0. The committed `docs/release-gate.md` is that run.
-- `python3 -m unittest tests.test_release_gate`: 12 tests, OK.
-- The full suite: see the pull request.
+- `python3 -m tools.release_gate --require` on 7838952 (main at e7738a5 plus this change), real Godot
+  4.7.2, no bubblewrap on this machine: 14 tests, OK (1 expected failure); held 10, open 25, failed 0,
+  not run 0. The committed `docs/release-gate.md` is that run's output.
+- The probe, with its `expectedFailure` taken off by hand: it fails on "'teleport_through_wall' not
+  found", the stated reason, and not on anything else.
+- The full suite on the same tree (`python3 -m unittest discover -s tests -t .`): 3,165 tests, OK,
+  31 skipped. It includes `tests.test_release_gate` (12 tests).
 - The `release-gate` CI job: not run when this was written.
 
 ## Not done
