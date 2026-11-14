@@ -328,6 +328,51 @@ jobs:
           path: runs/seeded-check/summary.json
           retention-days: 7
 
+  # The release gate suite (#258; docs/release-gate.md): one control per row, each starting the real
+  # `expectrail verify`, its worker and Godot, and asserting that clearance is not granted. The summary
+  # is written from this run's results. A skipped test fails the step (--require). No model key.
+  release-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Install a virtual display and software OpenGL
+        uses: ./.github/actions/apt-install
+        with:
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch bubblewrap
+      - name: Download Godot 4.7.2 and check its SHA-512
+        uses: ./.github/actions/get-godot
+      - name: Allow unprivileged user namespaces for bubblewrap
+        run: |
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          fi
+          if [ -f /proc/sys/kernel/unprivileged_userns_clone ]; then
+            echo 1 | sudo tee /proc/sys/kernel/unprivileged_userns_clone
+          fi
+      - name: The release gate, every control with real processes, and its summary
+        run: |
+          mkdir -p runs
+          python -m tools.release_gate --require --out runs/release-gate.md --json runs/release-gate.json
+      - name: Show the summary on the run's page
+        if: always()
+        run: |
+          if [ -f runs/release-gate.md ]; then cat runs/release-gate.md >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Keep the summary
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-gate
+          path: runs/release-gate.*
+          if-no-files-found: ignore
+          retention-days: 30
+
   agents-gate1:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
