@@ -14,4 +14,4 @@ def complete_trace(trace: dict, ticks: int) -> dict:
         while index + 1 < len(samples) and samples[index + 1]["tick"] <= tick:
             index += 1
         rows.append(dict(copy.deepcopy(samples[index]), tick=tick))
-    return dict(trace, rows=rows, ticks=ticks)
+    return dict(trace, rows=rows, ticks=ticks, unknownActions=[])
