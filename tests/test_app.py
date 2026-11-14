@@ -363,7 +363,11 @@ class HTTPTest(unittest.TestCase):
         self.assertNotIn("script-src 'unsafe-inline'", headers['Content-Security-Policy'])
         self.assertNotIn("script-src 'self'", headers['Content-Security-Policy'])
         folder = self.store.paths(job_id).output / 'viewer'
-        self.assertEqual(page, (folder / 'index.html').read_bytes())
+        # The session supplies the job's auto-fix section after the gate wrote its frame viewer.
+        expected = (folder / 'index.html').read_bytes().replace(b'<section id="auto-fix"></section>',
+                                                               viewer.auto_fix_section({}).encode(), 1)
+        self.assertEqual(page, expected)
+        self.assertIn(b'Auto-fix is off; turn it on with --auto-fix', page)
         frame = next((folder / 'frames').glob('*.png'))
         prefix = f'/viewers/{job_id}/'
         _, _, opening = self.http('GET', '/?token=' + self.token, token=False)

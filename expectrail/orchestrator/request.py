@@ -213,4 +213,6 @@ def inputs(doc: dict) -> dict:
                "hasBase": doc["base"] is not None, **resolved, **({"problems": found} if found else {})}
     if "intent" in doc:
         meaning["intent"] = doc["intent"]
+    if "autoFix" in doc:
+        meaning["autoFix"] = doc["autoFix"]
     return {"requestDigest": digest(meaning), **resolved}

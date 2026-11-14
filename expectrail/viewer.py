@@ -46,6 +46,7 @@ MAX_POINTS = 4000            # points in one timeline
 MAX_VIEWS_BYTES = 8 * 1024 * 1024
 MAX_EXPORT_FRAME_BYTES = 32 * 1024 * 1024   # frames embedded in evidence.html, before base64
 EXPORT_NAME = "evidence.html"
+REPAIR_RECORD = re.compile(r"repair-[a-z0-9_]{8}/repair-run\.json")
 FRAME_NAME = re.compile(r"frames/(after|before)-[0-9a-z-]{1,80}-\d{8}\.png")
 
 # state -> (title, tone, what it means). The title never says more than the verifier decided.
@@ -438,7 +439,7 @@ def build_views(record: dict, frames: dict[str, dict], timelines: dict[tuple[str
 
 
 def write(folder: Path, record: dict | None, views: list[dict] | None = None, *, status: dict | None = None,
-          request: dict | None = None, sample: str | None = None) -> Path:
+          request: dict | None = None, sample: str | None = None, repair_record: bytes | None = None) -> Path:
     """Write ``folder``/index.html (and views.json) for a record, a job status, or both."""
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
@@ -450,11 +451,13 @@ def write(folder: Path, record: dict | None, views: list[dict] | None = None, *,
         "record": record, "views": views,
         "job": None if status is None else {k: status.get(k) for k in (
             "id", "phase", "decision", "reasons", "diagnostics", "evidenceGrade", "executionClass", "inputs",
-            "history", "finishedAt")},
+            "history", "finishedAt", "repair")},
         "reproduce": reproduce(request, sample=sample), "sample": sample,
     })
     page = folder / "index.html"
     page.write_text(render(payload), encoding="utf-8")
+    if repair_record is not None:
+        payload["repairDownload"] = base64.b64encode(repair_record).decode("ascii")
     export(folder, payload)
     return page
 
@@ -587,7 +590,22 @@ def write_job(store, job_id: str, *, sample: str | None = None) -> Path:
         request = store.request(job_id)
     except Exception:  # noqa: BLE001 - no request, no reproduction command; the rest still shows
         request = None
-    return write(folder, record, views, status=status, request=request, sample=sample)
+    repair_record = None
+    relative = (status.get("repair") or {}).get("record", "")
+    if REPAIR_RECORD.fullmatch(relative):
+        # Only a regular file under the named job may travel with the offline export.
+        from expectrail import contracts
+        path = paths.root / relative
+        try:
+            if not path.parent.is_symlink():
+                data = rec.read_bytes_capped(path, cap=1024 * 1024, label="repair record")
+                doc = contracts.strict_loads(data.decode("utf-8"))
+                contracts.validate_v1(doc, "repair-run")
+                if doc["parent"]["job"] == job_id:
+                    repair_record = data
+        except (ImportError, OSError, UnicodeError, ValueError):
+            pass
+    return write(folder, record, views, status=status, request=request, sample=sample, repair_record=repair_record)
 
 
 # --- the page -------------------------------------------------------------------------------------
@@ -960,6 +978,32 @@ def vision_words(record: dict | None, job: dict | None) -> str | None:
     return None
 
 
+def auto_fix_words(job: dict) -> str:
+    block = job.get("repair")
+    if not block:
+        return "Auto-fix is off; turn it on with --auto-fix"
+    if block["state"] == "finished":
+        return f"Auto-fix: {block['decision']} ({block['stopReason']})"
+    if block["state"] == "interrupted":
+        return f"Auto-fix: interrupted ({block['detail']})"
+    return "Auto-fix: running"
+
+
+def auto_fix_section(job: dict, link: str | None = None, *, download=False) -> str:
+    parts = ['<section id="auto-fix">', f'<p>{esc(auto_fix_words(job))}</p>']
+    block = job.get("repair") or {}
+    if link:
+        action = 'download="repair-run.json" ' if download else ""
+        words = "Save repair record" if download else "Open repair record"
+        parts.append(f'<p><a {action}href="{html.escape(link, quote=True)}">{words}</a></p>')
+    elif block.get("record"):
+        parts.append("<p>The repair record was unavailable for this offline copy.</p>")
+    if block.get("review"):
+        parts.append(f'<p>{esc(block["review"])}</p>')
+    parts.append("</section>")
+    return "".join(parts)
+
+
 def render(payload: dict) -> str:
     state = payload["state"]
     title, tone, means = STATES[state]
@@ -990,6 +1034,19 @@ def render(payload: dict) -> str:
         parts.append("<ul>" + "".join(f"<li><code>{esc(d.get('code'))}</code> ({esc(d.get('stage'))}): "
                                       f"{esc(d.get('detail'))} Fix: {esc(d.get('fix'))}</li>"
                                       for d in job["diagnostics"]) + "</ul>")
+    if job and job.get("decision") == "reject":
+        block = job.get("repair") or {}
+        link = None
+        download = False
+        if block.get("record") and REPAIR_RECORD.fullmatch(block["record"]):
+            if exported is None:
+                link = "../" + block["record"]
+            elif payload.get("repairDownload"):
+                link = "data:application/json;base64," + payload["repairDownload"]
+                download = True
+        parts.append(auto_fix_section(job, link, download=download))
+    elif record and record.get("decision") == "reject":
+        parts.append('<section id="auto-fix"></section>')  # The gate has no job or repair decision.
     vision = vision_words(record, job)
     if vision:
         parts.append(f'<h2>Vision</h2><p>{esc(vision)}</p>')
