@@ -32,6 +32,18 @@ lack recorded answers. A missing answer needs review unless a failure already re
 A correct-fix trial must use a trusted recording covering the checks exercised. Neither job calls
 a paid model.
 
+## On Expectrail's own repository
+
+Sean decided on November 14, 2026 (option C on #254): on this repository's own pull requests,
+**Expectrail clearance** is advisory. It runs and shows green or red on every pull request, but
+it is not a required check, and the merge guard records its conclusion without waiting for it.
+Our own pull requests stay gated by the full test suite, the required checks and the merge
+guard's review. The judge uses recorded vision answers, so a pull request that changes what the
+bundled game draws (usually a harness change) has no recorded answer and shows needs-review.
+The App is `Expectrail Checks`, installed on this repository only. `EXPECTRAIL_CHECKS_APP_ID` is a
+repository variable and `EXPECTRAIL_CHECKS_PRIVATE_KEY` a secret of the `main-only` environment.
+For a game studio's repository, require clearance as described above.
+
 ## Earlier composite actions
 
 The following installation is for existing callers of the original verify and comment actions.
