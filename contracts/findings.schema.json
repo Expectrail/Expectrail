@@ -133,6 +133,17 @@
           "instruction": {
             "type": "string",
             "maxLength": 300
+          },
+          "routes": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "maxLength": 64
+            },
+            "description": "Required route names from the approved coverage declaration. Absent means every selected route."
           }
         }
       }
@@ -230,12 +241,12 @@
               "route": { "type": "string", "maxLength": 64, "pattern": "^[a-z0-9][a-z0-9-]*$" },
               "base": {
                 "type": "array", "minItems": 1, "maxItems": 3,
-                "items": { "enum": ["pass", "fail", "needs-review", "replay-error"] },
+                "items": { "enum": ["pass", "fail", "needs-review", "replay-error", "not-applicable"] },
                 "description": "the check's result on the base on each run; the first is the row's before"
               },
               "head": {
                 "type": "array", "minItems": 1, "maxItems": 3,
-                "items": { "enum": ["pass", "fail", "needs-review", "replay-error"] },
+                "items": { "enum": ["pass", "fail", "needs-review", "replay-error", "not-applicable"] },
                 "description": "the check's result after the change on each run; the first is the row's after"
               },
               "counts": { "type": "boolean", "description": "true when the base failed and the head passed on every one of the runs" }
@@ -268,7 +279,7 @@
       "type": "object",
       "required": ["checks", "passed", "failed", "needsReview"],
       "additionalProperties": false,
-      "description": "the public checks after the change; needsReview includes replay errors",
+      "description": "Required public checks after the change; excludes not-applicable rows. needsReview includes replay errors.",
       "properties": {
         "checks": {
           "type": "integer",
@@ -308,11 +319,11 @@
             "pattern": "^[a-z0-9][a-z0-9-]*$"
           },
           "before": {
-            "enum": ["pass", "fail", "needs-review", "replay-error", null],
+            "enum": ["pass", "fail", "needs-review", "replay-error", "not-applicable", null],
             "description": "on the base commit; null when the base was not replayed"
           },
           "after": {
-            "enum": ["pass", "fail", "needs-review", "replay-error"]
+            "enum": ["pass", "fail", "needs-review", "replay-error", "not-applicable"]
           },
           "comparison": {
             "enum": ["REPAIRED", "PRESERVED", "REGRESSION", "UNRESOLVED", "INCONCLUSIVE"],
@@ -321,7 +332,7 @@
           "findingId": {
             "type": ["string", "null"],
             "pattern": "^[0-9a-f]{12}$",
-            "description": "null when the check passes after the change"
+            "description": "null when the check passes or is not applicable after the change"
           },
           "observed": {
             "type": "object",
@@ -339,7 +350,7 @@
                     "additionalProperties": false,
                     "properties": {
                       "engine": {
-                        "enum": ["pass", "fail", "needs-review", "replay-error"],
+                        "enum": ["pass", "fail", "needs-review", "replay-error", "not-applicable"],
                         "description": "the evaluator's result on the engine's record (the position log)"
                       },
                       "visual": {
@@ -361,7 +372,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "engine": {
-                    "enum": ["pass", "fail", "needs-review", "replay-error"],
+                    "enum": ["pass", "fail", "needs-review", "replay-error", "not-applicable"],
                     "description": "the evaluator's result on the engine's record (the position log)"
                   },
                   "visual": {
@@ -383,7 +394,7 @@
     "findings": {
       "type": "array",
       "maxItems": 4096,
-      "description": "one per check that does not pass after the change",
+      "description": "one per required check that does not pass after the change",
       "items": {
         "type": "object",
         "required": ["id", "spec", "route", "kind", "before", "after", "comparison", "reason", "frame"],
@@ -408,7 +419,7 @@
             "enum": ["fail", "needs-review", "replay-error"]
           },
           "before": {
-            "enum": ["pass", "fail", "needs-review", "replay-error", null]
+            "enum": ["pass", "fail", "needs-review", "replay-error", "not-applicable", null]
           },
           "after": {
             "enum": ["fail", "needs-review", "replay-error"]

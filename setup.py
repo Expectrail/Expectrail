@@ -10,7 +10,7 @@ from setuptools.command.build_py import build_py
 BUNDLED_MODULES = {
     # The top-level modules a verification imports. Left out: the capability ledger's tools (they read
     # docs/), the spec writer (model-side) and change evidence (the fix loop's).
-    "expectrail": {"__init__", "app", "app_page", "cli", "contracts", "diagnostics", "doctor", "evaluator", "legacy", "observers", "providers", "resources", "route", "timing", "viewer"},
+    "expectrail": {"__init__", "app", "app_page", "cli", "contracts", "coverage", "diagnostics", "doctor", "evaluator", "legacy", "observers", "providers", "resources", "route", "timing", "viewer"},
     "expectrail._bundle.harness": {"__init__", "adapters", "run", "sandbox", "tree"},
     "expectrail._bundle.agents": {"__init__", "anchor_rule", "observations", "sam_anchor", "sam_observations", "glimmer_client", "byo_vision", "engine_check"},
     # Data only: no module of these folders is packaged.

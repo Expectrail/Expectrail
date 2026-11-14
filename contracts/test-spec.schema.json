@@ -14,7 +14,9 @@
   "additionalProperties": false,
   "properties": {
     "format": {
-      "enum": ["expectrail.test-spec/v0"]
+      "enum": [
+        "expectrail.test-spec/v0"
+      ]
     },
     "id": {
       "type": "string",
@@ -280,6 +282,101 @@
         },
         "at": {
           "type": "string"
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Evidence obligations, not a change to the assertion. Every applicable check is required. Named routes must be selected; other routes are not-applicable. Checkpoints use the engine trace, in world coordinates.",
+      "properties": {
+        "minFrames": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Minimum distinct judged frames. Default two, capped by an explicitly one-frame window; reaches defaults to one."
+        },
+        "minFraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Minimum judged share of the whole window. Combined with minFrames using the stricter requirement."
+        },
+        "routes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
+          }
+        },
+        "reached": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "const": "on-floor"
+                  },
+                  "fromTick": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type",
+                  "box"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "const": "position-region"
+                  },
+                  "fromTick": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "box": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 4,
+                    "maxItems": 4
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "const": "coin-count-change"
+                  },
+                  "fromTick": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            ]
+          },
+          "description": "All checkpoints must occur at or after fromTick (default 0). on-floor: bound player onFloor is true; position-region: player point inside inclusive world box; coin-count-change: observed coin count differs from the first eligible tick."
         }
       }
     }

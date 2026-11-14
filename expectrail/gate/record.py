@@ -25,7 +25,7 @@ FORMAT = "expectrail.findings/v0"
 # trusted code that imports the standard library and nothing else (the comment job runs it).
 _PACKAGE = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = (_PACKAGE / "_bundle" if (_PACKAGE / "_bundle").is_dir() else _PACKAGE.parent) / "contracts" / "findings.schema.json"
-RESULTS = ("pass", "fail", "needs-review", "replay-error")
+RESULTS = ("pass", "fail", "needs-review", "replay-error", "not-applicable")
 KINDS = ("fail", "needs-review", "replay-error")
 DECISIONS = ("accept", "reject", "needs-review")
 MAX_RECORD_BYTES = 4 * 1024 * 1024
@@ -94,8 +94,8 @@ def combine(engine: str, visual: str) -> str:
         raise ValueError(f"unknown result {engine!r}")
     if visual not in VISUAL_SAID:
         raise ValueError(f"unknown visual answer {visual!r}")
-    if engine == "replay-error":
-        return "replay-error"
+    if engine in ("replay-error", "not-applicable"):
+        return engine
     if engine == "fail" or visual == "fail":
         return "fail"
     if engine == "pass" and visual == "pass":
@@ -127,7 +127,7 @@ def kind_of(after: str) -> str | None:
     """The finding kind for a check's result after the change; None when it passes."""
     if after not in RESULTS:
         raise ValueError(f"unknown result {after!r}")
-    return None if after == "pass" else after
+    return None if after in ("pass", "not-applicable") else after
 
 
 NOT_SAID = "the replay did not say whether it was sandboxed"
@@ -238,7 +238,8 @@ def _not_demonstrated(counts: dict, repair: dict | None, base_judged: bool) -> s
 
 def decide(counts: dict, held: dict, isolation: dict | None = None, check_problems: int = 0, *,
            intent: str = "none", repair: dict | None = None, base_judged: bool = True,
-           anchor: dict | None = None) -> tuple[str, list[str]]:
+           anchor: dict | None = None, required_routes_missing: int = 0,
+           observers: dict | None = None) -> tuple[str, list[str]]:
     """accept, reject or needs-review, and why.
 
     Accept only when at least one check ran and every public and held-out check passed. Any failure
@@ -273,6 +274,16 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
         return "reject", reasons
     if not counts["checks"]:
         return "needs-review", ([_not_demonstrated(counts, repair, base_judged)] if unverified else []) + ["no checks ran"]
+    if required_routes_missing:
+        reasons.append(f"not-exercised: {required_routes_missing} required route(s) were not selected or run")
+    if held.get("status") == "judged" and held.get("routes", 0) and not held["checks"]:
+        # Held-out routes ran but gave no check a result: that is not an empty pass (merge guard on #416).
+        reasons.append(f"not-exercised: {held['routes']} held-out route(s) ran and judged no check")
+    if observers and observers["rule"] == BOTH and observers["visual"] is None and not counts["needsReview"]:
+        reasons.append("not-exercised: the required visual observer is disabled")
+    # Legacy callers supply only checks/failed/needsReview; persisted records always include passed.
+    if "passed" in counts and counts["passed"] + counts["failed"] + counts["needsReview"] != counts["checks"]:
+        reasons.append("not-exercised: some required checks have no result")
     if check_problems:
         reasons.append(f"{check_problems} problem{'s' if check_problems != 1 else ''} with the spec and route files, "
                        "so the checks that ran are not all of the project's checks")
@@ -298,6 +309,12 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
         return "accept", [f"all {total} checks pass, and {shown} of them failed before the change "
                           f"{REPAIR_RUNS} times of {REPAIR_RUNS}: the repair is demonstrated"]
     return "accept", [f"all {total} checks pass"]
+
+
+def missing_required_routes(specs: list[dict], routes: list[dict]) -> int:
+    """Count explicit obligations absent from the record, independently of the rows that ran."""
+    selected = {r["name"] for r in routes}
+    return len({name for spec in specs for name in spec.get("routes", [])} - selected)
 
 
 def anchor_effect(anchor: dict | None) -> str | None:
@@ -613,6 +630,7 @@ def check_consistency(doc: dict) -> None:
     """Everything in a record that can be derived from the rest must agree with it."""
     spec_ids = [s["id"] for s in doc["specs"]]
     route_names = [r["name"] for r in doc["routes"]]
+    scopes = {s["id"]: s.get("routes") for s in doc["specs"]}
     if len(set(spec_ids)) != len(spec_ids):
         raise RecordError("a spec id is listed twice")
     if len(set(route_names)) != len(route_names):
@@ -626,6 +644,11 @@ def check_consistency(doc: dict) -> None:
         seen.add(key)
         if check["spec"] not in spec_ids or check["route"] not in route_names:
             raise RecordError(f"checks/{n}: names a spec or route the record does not list")
+        scope = scopes[check["spec"]]
+        applicable = scope is None or check["route"] in scope
+        for side in ("before", "after"):
+            if check[side] is not None and (check[side] == "not-applicable") == applicable:
+                raise RecordError(f"checks/{n}: applicability does not follow from the spec's required routes")
         if check["comparison"] != compare(check["before"], check["after"]):
             raise RecordError(f"checks/{n}: the comparison does not follow from before and after")
         kind = kind_of(check["after"])
@@ -647,7 +670,7 @@ def check_consistency(doc: dict) -> None:
         if not same or finding["kind"] != kind_of(finding["after"]):
             raise RecordError(f"findings/{n}: does not match its check")
     counts = doc["counts"]
-    afters = [c["after"] for c in doc["checks"]]
+    afters = [c["after"] for c in doc["checks"] if c["after"] != "not-applicable"]
     recount = {"checks": len(afters), "passed": afters.count("pass"), "failed": afters.count("fail"),
                "needsReview": afters.count("needs-review") + afters.count("replay-error")}
     if counts != recount:
@@ -668,7 +691,7 @@ def check_consistency(doc: dict) -> None:
         # Every judged route was replayed at least once on each side that has a result, so a record
         # cannot count fewer replays than its own checks rest on (and so cannot hide one that ran
         # outside the sandbox by not counting it).
-        ran = lambda result: result is not None and result != "replay-error"   # noqa: E731
+        ran = lambda result: result is not None and result not in ("replay-error", "not-applicable")   # noqa: E731
         needed = (len({c["route"] for c in doc["checks"] if ran(c["after"])})
                   + len({c["route"] for c in doc["checks"] if ran(c["before"])})
                   # A held-out replay that finished gave every spec a result; one that did not finish
@@ -679,7 +702,9 @@ def check_consistency(doc: dict) -> None:
     check_observers(doc)
     check_repair(doc)
     decision, _reasons = decide(counts, held, isolation, doc.get("checkProblems", 0),
-                                intent=intent_of(doc), repair=doc.get("repair"), anchor=doc.get("anchor"))
+                                intent=intent_of(doc), repair=doc.get("repair"), anchor=doc.get("anchor"),
+                                required_routes_missing=missing_required_routes(doc["specs"], doc["routes"]),
+                                observers=doc.get("observers"))
     if doc["decision"] != decision:
         raise RecordError(f"the decision should be {decision} from these counts")
     pr = doc["pullRequest"]
@@ -750,7 +775,7 @@ def check_observers(doc: dict) -> None:
                 raise RecordError(f"checks/{n}: a visual verdict is given and the record names no visual observer")
             if answered != (said["visualAnswerSha256"] is not None):
                 raise RecordError(f"checks/{n}: the digest of the visual observer's answer is given exactly when it gave a verdict")
-            if said["engine"] == "replay-error" and said["visual"] != "not-asked":
+            if said["engine"] in ("replay-error", "not-applicable") and said["visual"] != "not-asked":
                 raise RecordError(f"checks/{n}: a replay that did not finish has nothing for a visual observer to look at")
 
 

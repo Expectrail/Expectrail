@@ -25,6 +25,7 @@ import yaml
 from expectrail.gate import comment as gc
 from expectrail.gate import record as rec
 from expectrail.gate import verify as gv
+from tests.coverage_replays import complete_trace
 
 REPO = Path(__file__).resolve().parent.parent
 EXAMPLE = REPO / "contracts" / "examples" / "findings.json"
@@ -59,7 +60,8 @@ class FakeReplay:
             raise SystemExit("godot failed (139); see godot.log")
         name = "trace-fallthrough.json" if (game / "BUG").exists() else "trace-fixed.json"
         out.mkdir(parents=True, exist_ok=True)
-        trace = json.loads((FIXTURES / name).read_text(encoding="utf-8"))
+        trace = complete_trace(json.loads((FIXTURES / name).read_text(encoding="utf-8")),
+                               json.loads(route.read_text(encoding="utf-8"))["ticks"])
         frames_dir = None
         if frames:
             frames_dir = out / "frames"
@@ -1147,3 +1149,41 @@ class WorkflowSafetyTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HeldOutFallsThrough(FakeReplay):
+    """The public routes replay clean; the held-out routes (SECRET_NAMES) fall through the floor."""
+
+    def __call__(self, route: Path, game: Path, out: Path, frames: bool) -> dict:
+        if route.stem in SECRET_NAMES:
+            game = Path(str(game) + "-bug")
+            game.mkdir(exist_ok=True)
+            (game / "BUG").write_text("1", encoding="utf-8")
+        return super().__call__(route, game, out, frames)
+
+
+class HeldOutScopeTest(GateCase):
+    """A spec's coverage.routes names public routes; it must never take the held-out routes out of
+    the verdict (merge guard on #416: a scoped spec was judged on no held-out route, and the gate
+    accepted with zero held-out checks while every held-out route fell through)."""
+
+    def setUp(self):
+        super().setUp()
+        self.replay = HeldOutFallsThrough()
+
+    def test_held_out_failures_reject_with_and_without_a_route_scope(self):
+        for name, edit in (("unscoped", None), ("scoped", {"coverage": {"routes": ["smoke", "combat"]}})):
+            with self.subTest(name):
+                heldout = make_heldout(self.tmp / f"heldout-{name}")
+                doc = self.gate(make_repo(self.tmp / f"head-{name}", spec_edit=edit),
+                                make_repo(self.tmp / f"base-{name}", spec_edit=edit),
+                                heldout=heldout, out_name=f"out-{name}")
+                self.assertEqual(doc["decision"], "reject", doc["reasons"])
+                self.assertEqual((doc["heldOut"]["checks"], doc["heldOut"]["failed"]), (2, 2))
+
+    def test_a_judged_held_out_set_with_no_checks_is_not_an_accept(self):
+        counts = {"checks": 2, "passed": 2, "failed": 0, "needsReview": 0}
+        held = {"status": "judged", "routes": 2, "checks": 0, "passed": 0, "failed": 0, "needsReview": 0}
+        decision, reasons = rec.decide(counts, held)
+        self.assertEqual(decision, "needs-review")
+        self.assertIn("not-exercised: 2 held-out route(s) ran and judged no check", reasons)

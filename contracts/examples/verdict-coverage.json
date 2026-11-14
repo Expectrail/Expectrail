@@ -1,0 +1,64 @@
+{
+  "format": "expectrail.verdict/v0",
+  "spec": {
+    "id": "player-above-ground-after-checkpoint",
+    "sha256": "b17bc74beebcd37dc5cab96847aff87e381f11535b380898c163fa9f7a95cdbd"
+  },
+  "observations": {
+    "sha256": "ddf01cf8f505cbfbbb370b2948c75ff1836bb00dc20b879b5297895982135d72"
+  },
+  "result": "fail",
+  "reason": "player is 50px past the boundary (above 770, tolerance 20) (first at frame 8, 2 frames)",
+  "firstFrame": 8,
+  "evidence": [
+    {
+      "frame": 8,
+      "detail": "player is 50px past the boundary (above 770, tolerance 20)",
+      "boxes": {
+        "player": [
+          770,
+          700,
+          840,
+          820
+        ],
+        "ground": [
+          350,
+          770,
+          1600,
+          960
+        ]
+      }
+    },
+    {
+      "frame": 16,
+      "detail": "player is 170px past the boundary (above 770, tolerance 20)",
+      "boxes": {
+        "player": [
+          775,
+          820,
+          845,
+          940
+        ],
+        "ground": [
+          350,
+          770,
+          1600,
+          960
+        ]
+      }
+    }
+  ],
+  "framesJudged": 3,
+  "evaluator": {
+    "name": "expectrail.evaluator",
+    "version": "0.1.0"
+  },
+  "coverage": {
+    "status": "exercised",
+    "semanticResult": "fail",
+    "framesObserved": 4,
+    "framesExpected": 120,
+    "framesRequired": 60,
+    "completeWindow": false
+  }
+}

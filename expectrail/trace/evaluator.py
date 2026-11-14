@@ -25,6 +25,7 @@ import math
 import traceback
 
 from expectrail.contracts import digest_v1, validate_v1
+from expectrail.coverage import evidence_result
 from expectrail.trace import signals
 
 EVALUATOR = {"name": "expectrail.trace.evaluator", "version": "1.0.0"}
@@ -50,18 +51,11 @@ class _Eval:
     def verdict(self, result: str | None = None) -> dict:
         req = self.spec["evidenceRequirement"]
         if result is None:
-            if self.counterexample:
-                result = "fail"
-            elif self.applicable == "unknown":
-                result = "insufficient_observation"
-            elif self.applicable == "no":
-                result = "not_exercised"
-            elif self.triggered == 0 or self.triggered < req["minimumTriggers"] or self.evaluated < req["minimumEvaluations"]:
-                result = "not_exercised"
-            elif req["completeWindow"] and not self.complete:
-                result = "insufficient_observation"
-            else:
-                result = "pass"
+            result = evidence_result(counterexample=self.counterexample, applicable=self.applicable,
+                                     triggered=self.triggered, evaluated=self.evaluated,
+                                     minimum_triggers=req["minimumTriggers"],
+                                     minimum_evaluations=req["minimumEvaluations"], complete=self.complete,
+                                     complete_window=req["completeWindow"])
         return {
             "format": "expectrail.trace-verdict/v1",
             "specId": self.spec["id"],
