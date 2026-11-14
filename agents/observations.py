@@ -74,13 +74,21 @@ def _is_world_box(body) -> bool:
 def _player_world_box(row: dict, x: float, y: float, *, feet: bool) -> list[float]:
     """The player's box in world pixels.
 
-    A row that carries ``body`` uses that box: the engine's own collision for this tick.
-    A row without one (a trace from before the harness logged it) keeps the bundled constants.
+    A row that carries ``body`` gives the engine's width and height for this tick. The bottom
+    stays where it was without a body: the feet (origin + FEET_OFFSET), or the origin on the old
+    no-camera fallback. The collision's own bottom is not used. A bug that lifts the collision
+    and leaves the sprite sunk would otherwise stand the box on the ground, and the ground check
+    would pass it (sinking v1, #430). A row without a body, or with one that is not a box, keeps
+    the bundled constants.
     """
+    bottom = y + FEET_OFFSET if feet else y
     body = row.get("body")
     if _is_world_box(body):
-        return [float(v) for v in body]
-    return _player_box(x, y + FEET_OFFSET if feet else y)
+        left, top, right, bot = (float(v) for v in body)
+        width, height = right - left, bot - top
+        if width > 0 and height > 0:
+            return [left, bottom - height, right, bottom]
+    return _player_box(x, bottom)
 
 
 
@@ -120,8 +128,9 @@ def from_trace_synthetic(
     Physics is 120 Hz and capture is 60 fps, so a frame shows the state after every other tick.
 
     Traces from the current harness carry the level's ground line (``ground``) and the camera
-    (``view``): the ground box then sits on that line, the player's box is the row's ``body`` when
-    the harness logged one and otherwise ends at its feet (origin + FEET_OFFSET), and both are in
+    (``view``): the ground box then sits on that line, the player's box takes its width and height
+    from the row's ``body`` when the harness logged one and otherwise from the bundled constants,
+    and its bottom is the feet (origin + FEET_OFFSET) either way. Both are in
     captured-frame pixels like SAM's boxes, so a spec's tolerancePx means the same thing for either
     provider. A row with no ground line (no tile collision under the player, or a level with none
     at all) has no ground observation, so a check against the ground cannot be decided there and is
@@ -343,8 +352,8 @@ def engine_refs_by_frame(trace: dict, frame_size: tuple[int, int], frames: list[
                          fps: int = 60) -> dict[int, dict[str, list[list[float]]]]:
     """Where the engine put each checkable object on each captured frame, as boxes in frame pixels.
 
-    ``player``: the engine's ``body`` box for that tick when the row has one, otherwise the
-    robot's body (origin to feet, as the constants draw it). ``coin``: every coin still in the
+    ``player``: the engine's width and height from ``body`` when the row has one, otherwise the
+    bundled constants, with the bottom at the feet (origin + FEET_OFFSET). ``coin``: every coin still in the
     level, from the harness's ``coins`` rows. Both
     use the camera of that frame (``view``). A frame the trace cannot place (no row, no camera) is
     left out, so a caller can tell "the engine has nothing here" from "no coins here". The frame

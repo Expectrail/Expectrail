@@ -1,8 +1,9 @@
 """expectrail.project/v1: the config, and the verify path reading it (#259).
 
 No engine is started. A config that is present and wrong stops the run and names the field.
-Sizes are not in the config: observations use a row's ``body`` when the harness logged one.
-The bundled game has no config; that is deliberate and covered here.
+Sizes are not in the config. A row's ``body`` gives the player's width and height; the bottom
+of the box stays at the feet, so a sunk sprite is still below the ground. The bundled game has
+no config; that is deliberate and covered here.
 """
 from __future__ import annotations
 
@@ -17,7 +18,8 @@ from unittest import mock
 import jsonschema
 
 from agents.observations import FEET_OFFSET, PLAYER_H, PLAYER_HALF_W, from_trace_synthetic
-from expectrail.contracts import ContractError, validate_v1
+from expectrail.contracts import ContractError, load as load_spec, validate_v1
+from expectrail.evaluator import evaluate
 from expectrail.gate import verify as gate
 from expectrail.project_config import (
     FILENAME, ProjectConfigError, find, harness_arguments, load, read_game,
@@ -119,14 +121,44 @@ class ReaderTest(unittest.TestCase):
 
 
 class BodyBoxTest(unittest.TestCase):
-    def test_body_is_the_player_box_and_the_constants_remain_without_it(self):
+    def test_body_gives_the_size_and_the_feet_stay_the_bottom(self):
         plain = from_trace_synthetic(_trace())
         box = plain["frames"][0]["objects"]["player"][0]["box"]
         feet = 200.0 + FEET_OFFSET
         self.assertEqual(box, [100.0 - PLAYER_HALF_W, feet - PLAYER_H, 100.0 + PLAYER_HALF_W, feet])
         body = [90.0, 170.0, 122.0, 202.0]
-        used = from_trace_synthetic(_trace(body))
-        self.assertEqual(used["frames"][0]["objects"]["player"][0]["box"], body)
+        used = from_trace_synthetic(_trace(body))["frames"][0]["objects"]["player"][0]["box"]
+        height = body[3] - body[1]
+        self.assertEqual(used, [body[0], feet - height, body[2], feet])
+        self.assertNotEqual(used[3], body[3])
+
+    def test_a_sunk_collision_fails_the_ground_check_and_the_clean_game_passes(self):
+        # The bundled robot's collision is 42.5 by 54.5 and its bottom is FEET_OFFSET below the
+        # origin (tests/test_body_box.py). bugs/sinking/v1.patch lifts that collision 26 px, so the
+        # body rests on the ground while the origin, and the feet, are 26 px lower. The ground
+        # check allows 20 px. sinking v2 moves only the sprite, so this trace is unchanged.
+        spec = load_spec(REPO / "agents" / "specs" / "player-stays-above-ground.json", "test-spec")
+        half_w, height, ground = 21.25, 54.5, 213.25
+
+        def trace(origin_y: float, body_bottom: float) -> dict:
+            # Four frames: the spec's coverage minimum is two, and one frame is needs-review.
+            rows = []
+            for tick in range(4):
+                rows.append({
+                    "tick": tick, "player": [100.0, origin_y], "ground": ground, "onFloor": True,
+                    "view": [1, 0, 0, 1, 0, 0],
+                    "body": [100.0 - half_w, body_bottom - height, 100.0 + half_w, body_bottom]})
+            return {"format": "expectrail.trace/v0", "physicsTicksPerSecond": 60, "rows": rows}
+
+        clean = trace(ground - FEET_OFFSET, ground)
+        sunk = trace(ground - (FEET_OFFSET - 26.0), ground)
+        self.assertEqual(evaluate(spec, from_trace_synthetic(clean))["result"], "pass")
+        self.assertEqual(evaluate(spec, from_trace_synthetic(sunk))["result"], "fail")
+        sunk_box = from_trace_synthetic(sunk)["frames"][0]["objects"]["player"][0]["box"]
+        self.assertEqual(sunk_box[0], 100.0 - half_w)
+        self.assertAlmostEqual(sunk_box[2] - sunk_box[0], half_w * 2)
+        self.assertAlmostEqual(sunk_box[3] - sunk_box[1], height)
+        self.assertAlmostEqual(sunk_box[3] - ground, 26.0)
 
     def test_the_verify_path_takes_the_crate_rate_and_refuses_a_bad_config(self):
         from harness.adapters import get

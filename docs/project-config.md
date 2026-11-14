@@ -18,8 +18,11 @@ The file names:
   project). Two roles may not name the same node or the same group.
 
 It does not name sizes. A trace row's `body` is the player's own collision box for that tick.
-`agents/observations.py` uses that box when the row has one, and the bundled constants only when
-it does not. Coins stay on their constant until a row carries a box for them.
+`agents/observations.py` takes the width and height from that box when the row has one, and keeps
+the bottom at the feet (the origin plus `FEET_OFFSET`). The collision's own bottom is not the
+bottom of the box: a collision that rests on the ground while the sprite has sunk must not hide
+the sink. The bundled constants are used only when the row has no box. Coins stay on their
+constant until a row carries a box for them.
 
 A provider value, when present, is a `ref:` or `env:` name. An inline secret is refused.
 
