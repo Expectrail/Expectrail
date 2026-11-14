@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/repair-run.v1.schema.json",
+  "title": "expectrail.repair-run/v1",
+  "description": "What `expectrail repair JOB` did after a verify job rejected a change (#433): each fix attempt by the sandboxed fixer, the fresh verify job that judged it, and why the loop stopped. The fixer never talks to the verifier or the judge. A fix it writes is labelled machine-written and is never merged by Expectrail.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "parent", "fixer", "budget", "attempts", "stop", "result", "machineWritten", "review", "startedAt", "finishedAt"],
+  "properties": {
+    "format": {"const": "expectrail.repair-run/v1"},
+    "parent": {
+      "description": "The verify job whose reject started the repair.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["job", "decision", "headTree", "failing"],
+      "properties": {
+        "job": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+        "decision": {"const": "reject"},
+        "headTree": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "failing": {
+          "description": "The public checks that failed on the parent: spec id and route.",
+          "type": "array", "minItems": 1, "maxItems": 64,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["spec", "route"],
+            "properties": {
+              "spec": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"},
+              "route": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}
+            }
+          }
+        }
+      }
+    },
+    "fixer": {
+      "description": "Who wrote the candidates: a recorded or fixture patch (offline), Muse Code, or a brought coding agent. sandboxed is false only for a fixture, which runs no agent.",
+      "type": "object", "additionalProperties": false, "required": ["source", "sandboxed"],
+      "properties": {
+        "source": {"enum": ["fixture", "recorded", "muse", "claude", "codex", "aider", "llm-patch"]},
+        "sandboxed": {"type": "boolean"}
+      }
+    },
+    "budget": {
+      "type": "object", "additionalProperties": false, "required": ["attempts", "usdCap"],
+      "properties": {
+        "attempts": {"type": "integer", "minimum": 1, "maximum": 10},
+        "usdCap": {"type": ["number", "null"], "minimum": 0, "description": "The fixer's spend cap in US dollars; null for a fixture or recorded fixer, which spends nothing."}
+      }
+    },
+    "attempts": {
+      "type": "array", "maxItems": 10,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["n", "patch", "patchSha256", "job", "decision", "reasons"],
+        "properties": {
+          "n": {"type": "integer", "minimum": 1, "maximum": 10},
+          "patch": {"type": ["string", "null"], "pattern": "^attempt-[0-9]{1,2}/candidate\\.patch$", "description": "The candidate, relative to the repair folder; null when the fixer produced none."},
+          "patchSha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+          "job": {"type": ["string", "null"], "pattern": "^[0-9a-f]{32}$", "description": "The fresh verify job that judged this candidate; null when there was no candidate to judge."},
+          "decision": {"enum": ["accept", "reject", "needs-review", null]},
+          "reasons": {"type": "array", "maxItems": 32, "items": {"type": "string", "maxLength": 600}}
+        }
+      }
+    },
+    "stop": {
+      "type": "object", "additionalProperties": false, "required": ["reason", "detail"],
+      "properties": {
+        "reason": {"enum": ["accepted", "needs-review", "attempts-exhausted", "fixer-failed", "spend-cap", "cancelled"]},
+        "detail": {"type": "string", "maxLength": 600}
+      }
+    },
+    "result": {
+      "description": "accept only when a fresh verify job accepted a candidate; anything else is needs-review. Never reject: the reject is the parent's.",
+      "type": "object", "additionalProperties": false, "required": ["decision", "patch", "job"],
+      "properties": {
+        "decision": {"enum": ["accept", "needs-review"]},
+        "patch": {"type": ["string", "null"], "pattern": "^attempt-[0-9]{1,2}/candidate\\.patch$"},
+        "job": {"type": ["string", "null"], "pattern": "^[0-9a-f]{32}$"}
+      }
+    },
+    "machineWritten": {"const": true},
+    "review": {"const": "Written by Expectrail's sandboxed fixer and accepted on the approved checks by an independent verification. A person must review it before merging; Expectrail never merges it."},
+    "startedAt": {"type": "string", "format": "date-time"},
+    "finishedAt": {"type": "string", "format": "date-time"}
+  }
+}
