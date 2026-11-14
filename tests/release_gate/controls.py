@@ -69,11 +69,7 @@ CONTROLS = [
         [f"{COV}.CoverageTest.test_no_approved_spec_at_all_is_not_clearance"]),
     row(GROUPS[3], "unreachable-route", "unreachable route",
         [f"{COV}.CoverageTest.test_a_route_pattern_that_matches_no_file_is_not_clearance",
-         f"{COV}.CoverageTest.test_a_route_whose_inputs_the_game_does_not_have_is_not_clearance"],
-        open="undefended: a route whose every input names an action the game does not have is replayed, "
-             "the player stands still, and nothing says so (#417). On a590aac's engine-only path it was "
-             "accepted; with both observers a live observer would see the robot above the ground. The probe, "
-             "which asks that the job name the missing action, is an expected failure until then"),
+         f"{COV}.CoverageTest.test_a_route_whose_inputs_the_game_does_not_have_is_not_clearance"]),
     row(GROUPS[3], "zero-evaluations", "zero evaluations",
         [f"{COV}.CoverageTest.test_specs_that_are_all_drafts_judge_nothing_and_are_not_clearance"]),
     row(GROUPS[3], "skipped-required-observer", "skipped required observer",

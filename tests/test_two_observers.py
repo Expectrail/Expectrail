@@ -84,7 +84,7 @@ class Game:
         logged = ticks if self.log_ticks is None else min(self.log_ticks, ticks)
         rows = [{"tick": t, "player": [70.0, GROUND_TOP - FEET + (sink(t // 2) if falls else 0.0)], "onFloor": not falls,
                  "ground": float(GROUND_TOP), "view": [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]} for t in range(logged)]
-        trace = {"physicsTicksPerSecond": 120, "rows": rows}
+        trace = {"physicsTicksPerSecond": 120, "rows": rows, "unknownActions": []}
         out.mkdir(parents=True, exist_ok=True)
         frames_dir = None
         if frames:
