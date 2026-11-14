@@ -6,6 +6,8 @@
 !/tools/merge_guard.py
 !/tools/outside_trial.py
 !/tools/outside_vision.py
+!/tools/quickstart.py
+!/tools/front_door.py
 !/tools/runit_stub.py
 !/tools/runit_burst.py
 !/tools/release_gate.py

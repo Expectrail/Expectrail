@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quickstart — Expectrail</title><meta name="description" content="Six steps through installation, doctor, sample and a project path, with expected results and no model spend.">
+<link rel="icon" href="brand/favicon.svg" type="image/svg+xml"><meta name="theme-color" content="#16133a">
+<link rel="stylesheet" href="assets/front-door.css"></head><body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="wrap"><header class="top"><a class="logo" href="./" aria-label="Expectrail, home"><img src="brand/expectrail-logo.svg" alt="Expectrail" width="150" height="35"></a>
+<nav aria-label="Sections"><a href="quickstart.html">Quickstart</a><a href="concepts.html">Concepts</a><a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md">Evidence ledger</a><a href="run-it/">Run it</a></nav></header></div>
+<main id="main" class="wrap">
+<article class="article"><div class="intro"><p class="eyebrow">Quickstart / a no-credentials first pass</p><h1>Get a result you can explain.</h1>
+<p>Start in a checkout of Expectrail on Linux with Python 3.12+, a virtual display, software OpenGL, <code>patch</code>, <code>curl</code> and <code>unzip</code>. Godot 4.7.2 is fetched and SHA-512 checked on first use unless you already configured a binary. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#installed-command">Installation evidence and platform limits</a>.</p>
+<p>Use a fresh Bash shell and run these six blocks in order, in the same shell. This walkthrough deliberately removes the vision key and cap from that shell. Nothing is sent to a vision model; passing engine checks need review. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#orchestrator">No-settings behavior</a>.</p>
+<p class="notice">Nonzero exits below are expected results, not instructions to bypass a check. Do not chain the six steps with <code>&amp;&amp;</code> or run the whole walkthrough with <code>set -e</code>. A missing tool is a separate problem to fix before continuing.</p>
+<nav class="toc" aria-label="Quickstart steps"><a href="#install">1 Install</a><a href="#doctor">2 Doctor</a><a href="#sample">3 Sample</a><a href="#project">4 Project</a><a href="#verify">5 Verify</a><a href="#report">6 Report</a></nav></div>
+<section id="install"><h2>1. Install in a virtual environment</h2>
+<pre tabindex="0" data-quickstart-step="install" data-exit="0"><code>python3 -m venv .venv &amp;&amp;
+. .venv/bin/activate &amp;&amp;
+python3 -m pip install . &amp;&amp;
+expectrail --version</code></pre>
+<p>Expected exit: <strong>0</strong>. This installs the checkout, not a package from PyPI. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#installed-command">Installed-command row</a>.</p></section>
+<section id="doctor"><h2>2. Check this machine</h2>
+<pre tabindex="0" data-quickstart-step="doctor" data-exit="3"><code>unset MODEL_API_KEY EXPECTRAIL_SAM_USD_CAP
+expectrail doctor --json &gt; doctor.json</code></pre>
+<p>Expected exit: <strong>3</strong>, with exactly <code>vision-key</code> and <code>vision-cap</code> missing when the machine’s other prerequisites are ready. Read <code>doctor.json</code>; fix any other missing requirement first. Doctor checks prerequisites, not a change, and never prints the key. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#installed-command">Doctor evidence and limits</a>.</p></section>
+<section id="sample"><h2>3. Run the bundled sample</h2>
+<pre tabindex="0" data-quickstart-step="sample" data-exit="3"><code>expectrail sample --jobs-root runs/quickstart-sample --json &gt; sample.json</code></pre>
+<p>Expected exit: <strong>3</strong>. The three jobs must complete as <strong>needs-review, reject, needs-review</strong>: clean, seeded fall-through bug, repair. The sample’s success condition is accept/reject/accept, so this deliberately incomplete first pass does not meet it. The game still replays and the engine checks run. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#installed-command">Sample scope</a> · <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#orchestrator">Vision requirement</a>.</p>
+<p>This is not the same as the site’s Run it recordings. This command has no recorded-vision substitute. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#run-it">Run it is a separate path</a>.</p></section>
+<section id="project"><h2>4. Point at a project</h2>
+<pre tabindex="0" data-quickstart-step="project" data-exit="0"><code>PROJECT=tests/projects/crate-run</code></pre>
+<p>Expected exit: <strong>0</strong>. Use the small included project first. After this walkthrough, replace the value of <code>PROJECT</code> with your checkout path and adapt the relative paths in step 5. The measured scope is the bundled game and the cited second-project integration, not arbitrary projects. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#installed-command">Project-by-path evidence</a>.</p>
+<pre class="tree" tabindex="0"><code>PROJECT/
+  project/project.godot
+  routes/walk.json
+  specs/crate-stays-above-floor.json  # an unapproved draft</code></pre>
+<p>Your routes must use your game’s inputs and its harness-compatible scene bindings. Checks must describe your intended behavior. A person must review and approve them; this walkthrough never adds or copies an approval. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#godot-harness">Harness limits</a> · <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#spec-writer">Drafts and approval</a>.</p></section>
+<section id="verify"><h2>5. Ask for verification</h2>
+<pre tabindex="0" data-quickstart-step="verify" data-exit="2"><code>expectrail verify --head &quot;$PROJECT&quot; --game project \
+  --routes &#x27;routes/*.json&#x27; --specs specs \
+  --jobs-root runs/quickstart-project --json &gt; verification.json</code></pre>
+<p>Expected exit for this example: <strong>2</strong>, <strong>needs-review</strong>. Its only check is a draft: no approved check ran, so there is no judged replay of this project. This is a test of the project-path and approval boundary, not a demonstrated pass or evidence that your game was exercised. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#orchestrator">Verification-job scope</a> · <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#installed-command">Second-project limits</a>.</p>
+<p>For a real change, supply a trusted base checkout with <code>--base</code>; the job reads checks and routes from that base. Keep job output outside the game and checks folders. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#orchestrator">Input and job boundaries</a>.</p></section>
+<section id="report"><h2>6. Read the job’s result</h2>
+<pre tabindex="0" data-quickstart-step="report" data-exit="2"><code>JOB=$(python3 -c &#x27;import json; print(json.load(open(&quot;verification.json&quot;))[&quot;id&quot;])&#x27;) &amp;&amp;
+expectrail report &quot;$JOB&quot; --jobs-root runs/quickstart-project</code></pre>
+<p>Expected exit: <strong>2</strong> again. The report names the decision, reasons and evidence location. It does not turn a draft or a missing observer into an accept. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#orchestrator">Report and decision evidence</a>.</p></section>
+<section id="next"><h2>Before expecting an accept</h2><p>A verification needs both <code>MODEL_API_KEY</code> and a finite, nonnegative <code>EXPECTRAIL_SAM_USD_CAP</code> in the verifier’s environment, plus usable vision answers and approved checks. Setting them alone does not establish any behavior. Reaching the cap can leave a question unanswered. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#orchestrator">Current observer rule</a> · <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#sam-observer">Vision scope and cost limits</a>.</p>
+<p>The recorded example cost is up to $0.60 for both prompts over one 120-frame run; other runs can differ. This is a historical figure, not a suggested cap or a guarantee. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/sam.md">Recorded cost source</a> · <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#sam-observer">Observer evidence</a>.</p>
+<p>CI is configured to extract and execute these six command blocks, including installation, then check the saved jobs rather than treating an exit alone as success. No credentials, approvals or paid calls are added. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#installed-command">Command and quickstart test evidence</a>.</p>
+<p><a href="concepts.html">Next: what the checks and verdict actually mean.</a></p></section></article>
+</main>
+<footer><div class="wrap"><div class="links"><a href="./">Expectrail</a><a href="quickstart.html">Quickstart</a><a href="concepts.html">Concepts</a><a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md">Capability ledger</a><a href="run-it/">Run it</a><a href="https://github.com/Expectrail/Expectrail">Source</a></div>
+<p>Read the scope of a result before relying on it. <a href="concepts.html#clearance">A verdict is not release clearance.</a></p></div></footer>
+</body></html>
