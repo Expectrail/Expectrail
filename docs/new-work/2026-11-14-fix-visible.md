@@ -40,3 +40,6 @@ No live fixer recording was available. No model call, workflow dispatch or hoste
 - `tests/test_runit_record.py`
 - `tests/test_visible_repair.py`
 - `tools/runit_stub.py`
+
+## Architect run (Linux, on arch/433-repair merged with main a5b7d950)
+Applied cleanly. The page checker found one problem: the Run it page asked for `repair/repair-run.json`, which does not exist until a repair is recorded, so `check_pages` (CI's web-capture job) failed. Fixed by a `repairRecorded` flag in `samples.json` (false for now): the page asks for the record only once it is true. Full suite: OK, 31 skipped; page check: 10 pages, 0 problems; `runit run --sample recorded-fix` says "fix not recorded yet".

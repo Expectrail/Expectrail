@@ -63,9 +63,10 @@
           "head": {
             "enum": [
               "clean",
-              "bug"
+              "bug",
+              "recorded-fix"
             ],
-            "description": "The game after the change: as it ships, or with the seeded bug."
+            "description": "The game after the change: as shipped, with the seeded bug, or with the recorded fixer patch applied to that bug."
           },
           "base": {
             "enum": [
@@ -87,6 +88,10 @@
             "type": "string",
             "pattern": "^docs/run-it/vision/[a-z0-9-]{1,40}\\.json$",
             "description": "Where the sample's recorded vision answers are kept, whether or not they exist yet."
+          },
+          "repairRecorded": {
+            "type": "boolean",
+            "description": "For the recorded-fix sample: true once a live repair run has been recorded under docs/run-it/repair/. The page asks for that record only when this is true."
           }
         }
       }
