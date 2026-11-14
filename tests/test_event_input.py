@@ -19,6 +19,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.tool_requirements import require_tool
 from harness import run as hr
 
 REPO = Path(__file__).resolve().parent.parent
@@ -60,6 +61,7 @@ class HarnessScriptTest(unittest.TestCase):
 class EventInputTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        require_tool('xvfb-run')
         godot = real_godot()
         cls.tmp = Path(tempfile.mkdtemp(prefix="expectrail-event-input-"))
         cls.addClassCleanup(shutil.rmtree, cls.tmp, True)

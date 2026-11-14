@@ -35,7 +35,9 @@
         "variantLimit": {"type": "integer", "minimum": 0},
         "budgetUsd": {"type": "number", "minimum": 0},
         "offer": {"enum": ["baseline", "signals-reach", "signals-reach-evidence"],
-                  "description": "What the generator was offered (expectrail/jit/offer.py). Absent in records written before the setting existed, which were made under baseline."}
+                  "description": "What the generator was offered (expectrail/jit/offer.py). Absent in records written before the setting existed, which were made under baseline."},
+        "candidate": {"enum": ["shown", "withheld"],
+                      "description": "Whether the model that proposed the checks was given the candidate patch (shown) or nothing of it, neither its text nor a diff map made from it (withheld; issue #285, step 6). Only checks proposed with the candidate withheld are derived from the report and the base build alone (expectrail/jit/run.py, from_base_alone). Absent in records written before the setting existed, which were made with the candidate shown."}
       }
     },
     "diffMap": {

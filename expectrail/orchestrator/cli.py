@@ -49,6 +49,10 @@ def describe(status: dict) -> str:
     lines = [f"job {status['id']}: {status['phase']}" + (f", {status['decision']}" if status["decision"] else "")]
     lines += [f"  {reason}" for reason in status["reasons"]]
     lines += [f"  {d['code']} ({d['stage']}): {d['detail']} Fix: {d['fix']}" for d in status["diagnostics"]]
+    if "observers" in status:
+        from expectrail.gate.record import observers_words
+
+        lines.append(f"  Judged on: {observers_words(status)}")
     if status["evidenceGrade"]:
         lines.append(f"  evidence grade: {status['evidenceGrade']}")
     return "\n".join(lines)
@@ -72,16 +76,32 @@ class Parser(argparse.ArgumentParser):
     raises instead, and ``main`` returns 5: the command could not be carried out. (Subcommands are
     made with this class too: ``add_subparsers`` uses the class of the parser it is called on.)"""
 
+    full_usage: str | None = None   # what a command line that cannot be read shows, in place of argparse's usage
+
     def error(self, message):
-        raise UsageError(f"{message}\n{self.format_usage().strip()}")
+        raise UsageError(f"{message}\n{self.full_usage or self.format_usage().strip()}")
 
 
-def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.orchestrator") -> int:
-    """``prog`` is the name shown in help and errors: the `expectrail` command passes its own."""
+JOBS_ROOT_HELP = "where jobs are kept (default: $EXPECTRAIL_JOBS, else runs/jobs)"
+
+
+def _jobs_root_after(parser: argparse.ArgumentParser) -> None:
+    """``--jobs-root`` after the command, as `expectrail app --jobs-root DIR` takes it (#383). SUPPRESS
+    keeps a value given before the command when none is given after it."""
+    parser.add_argument("--jobs-root", dest="jobs_root_after", default=argparse.SUPPRESS, help=JOBS_ROOT_HELP)
+
+
+def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.orchestrator",
+         usage: str | None = None) -> int:
+    """``prog`` is the name shown in help and errors: the `expectrail` command passes its own, and
+    ``usage``, its command list, which a command line that cannot be read then shows. ``--jobs-root``
+    is taken before the command or after it (not both with different folders)."""
     p = Parser(prog=prog, description=__doc__.splitlines()[0])
-    p.add_argument("--jobs-root", help="where jobs are kept (default: $EXPECTRAIL_JOBS, else runs/jobs)")
+    p.full_usage = usage
+    p.add_argument("--jobs-root", help=JOBS_ROOT_HELP)
     p.add_argument("--lease-seconds", type=float, default=st.DEFAULT_LEASE_SECONDS, help=argparse.SUPPRESS)
-    sub = p.add_subparsers(dest="command", required=True)
+    # COMMAND, not argparse's {verify,...,_work}: the worker's command is not for people.
+    sub = p.add_subparsers(dest="command", required=True, metavar="COMMAND")
 
     v = sub.add_parser("verify", help="verify a change and say accept, reject or needs review")
     v.add_argument("--head", type=Path, required=True, help="a checkout of the change")
@@ -97,22 +117,31 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
     v.add_argument("--idempotency-key")
     v.add_argument("--detach", action="store_true", help="start the job, print its id and return")
     v.add_argument("--json", action="store_true")
+    _jobs_root_after(v)
 
     for name, text in (("status", "show a job's status"), ("cancel", "cancel a job and stop what it started"),
                        ("report", "show a finished job's result and where its evidence is")):
         s = sub.add_parser(name, help=text)
         s.add_argument("job")
         s.add_argument("--json", action="store_true")
+        _jobs_root_after(s)
 
     sm = sub.add_parser("sample", help="three real verifications of the bundled game: as it is, broken, repaired")
     sm.add_argument("--timeout", type=int, default=600, help="seconds allowed for each of the three runs")
     sm.add_argument("--json", action="store_true")
+    _jobs_root_after(sm)
 
     w = sub.add_parser("_work")   # the worker process; started by `verify`, not by people
     w.add_argument("job")
 
     try:
         args = p.parse_args(argv)
+        after = getattr(args, "jobs_root_after", None)
+        if after is not None:
+            if args.jobs_root is not None and Path(args.jobs_root) != Path(after):
+                raise UsageError(f"--jobs-root was given twice, as {args.jobs_root} before the command and as "
+                                 f"{after} after it; give it once")
+            args.jobs_root = after
     except UsageError as exc:
         print(f"expectrail: {exc}\nNothing was run.", file=sys.stderr)
         return EXIT_USAGE
@@ -123,7 +152,7 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
             return 0
         if args.command == "sample":
             if not args.json:
-                print("Expectrail sample: three real runs on the bundled game and a seeded bug. No model key is used.")
+                print("Expectrail sample: three real runs on the bundled game and a seeded bug. Acceptance needs vision.")
             results = smp.run(store, timeout_seconds=args.timeout,
                               on_case=None if args.json else (lambda r: print(smp.line(r), flush=True)))
             if args.json:

@@ -17,6 +17,7 @@ import pty
 import shutil
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -665,6 +666,20 @@ class SameReplayTest(unittest.TestCase):
         self.assertEqual(inside["engine"], plain["engine"])
 
 
+def spawn_sandbox_worker(store, job):
+    """This fixture tests process lifetime, with real Godot and no visual observer."""
+    from expectrail.orchestrator import runner
+
+    code = (
+        "from pathlib import Path; import sys; "
+        "from expectrail.orchestrator import engines, runner; "
+        "from expectrail.orchestrator.store import JobStore; "
+        "runner.work(JobStore(Path(sys.argv[1]), lease_seconds=float(sys.argv[3])), sys.argv[2], "
+        "engines={'godot': engines.GodotGate(rule='engine-only')}, own_group=True)"
+    )
+    return runner.spawn(store, job, command=[sys.executable, "-c", code, str(store.root), job, str(store.lease_seconds)])
+
+
 class LostWorkerTest(unittest.TestCase):
     """A verification job whose worker is killed while the game runs in the sandbox: nothing of the
     job may be left running (#307, gap 3). Needs the real tool and the real engine, so it runs in CI."""
@@ -673,7 +688,6 @@ class LostWorkerTest(unittest.TestCase):
         import signal
 
         from expectrail.orchestrator import request as req
-        from expectrail.orchestrator import runner
         from expectrail.orchestrator import store as st
 
         godot = real_godot()
@@ -686,7 +700,7 @@ class LostWorkerTest(unittest.TestCase):
         job = store.create(request)[0]["id"]
         self.addCleanup(st.stop_job, job)
         with mock.patch.dict(os.environ, {"EXPECTRAIL_GODOT": str(godot), "EXPECTRAIL_GODOT_CACHE": str(tmp / "cache")}):
-            worker = runner.spawn(store, job)
+            worker = spawn_sandbox_worker(store, job)
 
         def programs() -> list[str]:
             names = []

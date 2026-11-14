@@ -1,5 +1,19 @@
 # Expectrail
 
+Verification (`expectrail verify`, `expectrail sample`, and the app through verify) needs
+`MODEL_API_KEY` and `EXPECTRAIL_SAM_USD_CAP` in the verifier's environment. It judges with both the
+engine's record and a `FramesObserver`; an accept needs both. Without either setting, nothing is
+sent to the model, but the game still replays and its engine checks run. An engine failure
+**rejects**; otherwise the result is **needs-review**. A `PROVIDER_FAILED` diagnostic names each
+missing setting and its fix. There is no command option for an engine-only accept. `expectrail doctor` checks both settings
+without printing the key, and `expectrail report` names the observers that judged.
+
+Cost depends on frames, checks and cached answers. [The recorded costs in docs/sam.md](docs/sam.md)
+describe **up to $0.60 for both prompts over one 120-frame run**, at $2.50 per 1,000 images.
+More routes or checks add work; cached answers reduce it. This is not a price guarantee for another project. The spend cap is
+the most one run may send, in US dollars; reaching it gives no answer, never an accept on silence.
+
+
 **An AI coding agent says it fixed the bug. Expectrail plays the game and watches to find out.**
 
 [Demo video](https://youtu.be/BlWOiweL8Lc) · [expectrail.tech](https://expectrail.tech) ·

@@ -32,17 +32,20 @@ EXIT_USAGE = 5
 
 
 def usage() -> str:
-    lines = ["usage: expectrail [--jobs-root DIR] COMMAND ...", "", "commands:"]
+    lines = ["usage: expectrail COMMAND [--jobs-root DIR] ...", "", "commands:"]
     lines += [f"  {name:<12} {text}" for name, text in (
         ("verify", "verify a change and say accept, reject or needs review"),
         ("status", "show a job's status"),
         ("cancel", "cancel a job and stop what it started"),
         ("report", "show a finished job's result and where its evidence is"),
         ("sample", "three real verifications of the bundled game: as it is, broken, repaired"),
+        ("route", "make a first route from a Godot input map and check three identical replays"),
         ("app", "open the local browser app"),
         ("doctor", "check that this machine has what a verification needs, and name the fix for what is missing"))]
     lines += [f"  {name:<12} not built yet (#{issue}): {text}" for name, (text, issue) in PLANNED.items()]
     lines += ["", "  --version    print the version and where this copy's files are",
+              "", "  --jobs-root DIR  where jobs are kept (default: $EXPECTRAIL_JOBS, else runs/jobs); after the",
+              "                   command, or before it for every command but app and doctor",
               "", "`expectrail COMMAND --help` shows a command's options."]
     return "\n".join(lines)
 
@@ -72,6 +75,13 @@ def main(argv: list[str] | None = None) -> int:
         text, issue = PLANNED[command]
         print(f"expectrail: `{command}` is not built yet (#{issue}): it will {text}. Nothing was run.", file=sys.stderr)
         return EXIT_USAGE
+    if command == "route":
+        if args[0] != "route":
+            print("expectrail: put route options after `route`. Nothing was run.", file=sys.stderr)
+            return EXIT_USAGE
+        from expectrail import route
+
+        return route.main(args[1:])
     if command == "app":
         if args[0] != "app":
             print("expectrail: put app options after `app`. Nothing was run.", file=sys.stderr)
@@ -88,11 +98,11 @@ def main(argv: list[str] | None = None) -> int:
         return doctor.main(args[1:])
     if command not in ORCHESTRATOR:
         shown = f"no command named {command!r}" if command else "no command given"
-        print(f"expectrail: {shown}.\n\n{usage()}", file=sys.stderr)
+        print(f"expectrail: {shown}. Nothing was run.\n\n{usage()}", file=sys.stderr)
         return EXIT_USAGE
     from expectrail.orchestrator import cli as orchestrator
 
-    return orchestrator.main(args, prog="expectrail")
+    return orchestrator.main(args, prog="expectrail", usage=usage())
 
 
 if __name__ == "__main__":

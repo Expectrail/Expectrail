@@ -78,8 +78,6 @@ NOT_PACKAGED = {
     "expectrail.capabilities": "the capability ledger's tool: reads docs/",
     "expectrail.capability_runs": "the capability ledger's tool: reads CI runs",
     "expectrail.change_evidence": "evidence of a fix loop's change; the wheel does not repair",
-    "expectrail.observers": "the visual observer: it asks a vision model, and the wheel holds nothing that holds a model key",
-    "expectrail.providers": "model provider records; no verification uses a model",
     "expectrail.spec_writer": "drafts specs with a model; no verification uses a model",
     "expectrail.runit": "the site's Run it samples (#265): reads docs/run-it/ in a clone of the repository",
     "expectrail.recorded": "recorded vision answers for the Run it samples (#265); built on expectrail.observers",
@@ -87,12 +85,7 @@ NOT_PACKAGED = {
 }
 # Imports a packaged module makes only on a path a verification never takes.
 NOT_ON_A_VERIFICATION = {
-    "agents.sam_observations": "only when the SAM observer is asked for; the gate reads the engine's position log "
-                               "and never asks (expectrail.gate.verify.observations)",
-    # expectrail.gate.anchor asks the vision model about the player's place on both sides (#327); it is
-    # imported only inside run_gate when a visual observer was given, as agents.sam_observations is.
-    "agents.anchor_rule": "only when a visual observer is given to the gate (expectrail.gate.anchor, #327)",
-    "agents.sam_anchor": "only when a visual observer is given to the gate (expectrail.gate.anchor, #327)",
+    "agents.keys": "only in model adapters' standalone CLI entry points; verification reads the environment directly",
     # harness.adapters is in the wheel: the verify path takes its engine from the registry. The
     # registry also lists the web and Unity adapters, whose runners are imported only inside their
     # own `run`. Neither adapter has a verify path, so no verification can reach those imports.
@@ -145,7 +138,7 @@ class ContentsTest(Case):
             self.assertEqual(packed, lists[folder], folder)
         for folder in ("contracts", "game", "bugs"):
             self.assertEqual([n for n in self.names if n.startswith(f"{BUNDLE}{folder}/") and n.endswith(".py")], [])
-        # Nothing of the fix loop, and nothing that reads a model key.
+        # Nothing of the fix loop or dotenv key loader.
         text = "\n".join(self.names)
         for word in ("fixer", "loop", "keys", "muse", "triage", "gateway"):
             self.assertNotIn(f"agents/{word}", text)
@@ -310,7 +303,7 @@ class InstalledTest(Case):
         doc = json.loads(done.stdout)
         found = {c["id"]: c for c in doc["checks"]}
         self.assertEqual(list(found), ["python", "godot", "display", "opengl", "disk", "sandbox", "patch", "curl", "unzip",
-                                       "vision-key"])
+                                       "vision-key", "vision-cap"])
         self.assertEqual((doc["ok"], found["python"]["status"], found["godot"]["status"], found["opengl"]["status"]),
                          (False, "ok", "missing", "skipped"))
         self.assertIn("--no-fetch was given", found["godot"]["found"])
@@ -354,6 +347,28 @@ class CommandTest(unittest.TestCase):
             done = self.run_cli(*args)
             self.assertEqual(done.returncode, 5, f"{args}: {done.stdout}{done.stderr}")
         self.assertEqual(self.run_cli("--help").returncode, 0)
+
+    def test_a_usage_error_shows_the_expectrail_command_list_and_not_the_workers_command(self):
+        # #383: an unreadable command line printed the orchestrator's usage, with `_work` and without app or doctor.
+        with tempfile.TemporaryDirectory() as tmp:
+            for args in (("--jobs-root", tmp, "--frobnicate", "status", "0" * 32), ("--jobs-root", tmp, "--lease-seconds")):
+                with self.subTest(args=args):
+                    done = self.run_cli(*args)
+                    self.assertEqual(done.returncode, 5, done.stdout + done.stderr)
+                    for name in ("app", "doctor", "verify", "sample", "--jobs-root DIR"):
+                        self.assertIn(name, done.stderr)
+                    self.assertNotIn("_work", done.stderr)
+                    self.assertIn("Nothing was run.", done.stderr)
+            # A command's own error shows that command's options, and nothing names the worker either.
+            done = self.run_cli("verify", "--jobs-root", tmp, "--head", ".")
+            self.assertEqual(done.returncode, 5)
+            self.assertIn("usage: expectrail verify", done.stderr)
+            self.assertNotIn("_work", done.stderr + self.run_cli("--help").stdout + self.run_cli("verify", "--help").stdout)
+            # And the command found where it goes: after `status`, as after `app`.
+            done = self.run_cli("status", "0" * 32, "--jobs-root", tmp)
+            self.assertEqual(done.returncode, 5)
+            self.assertIn("no job", done.stderr)
+            self.assertNotIn("unrecognized arguments", done.stderr)
 
     def test_a_clone_has_no_bundle_and_one_rule_says_where_the_files_are(self):
         from expectrail import resources

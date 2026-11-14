@@ -16,7 +16,7 @@ python3 -m expectrail.orchestrator report JOB
 (docs/viewer.md). `report --json` prints the status alone.
 
 `sample` is the quickest way to see it work. It copies the bundled game twice, once as it is and once
-with the seeded fall-through bug, and runs three real verifications with no model key: the game as
+with the seeded fall-through bug, and runs three real verifications with the vision key and cap: the game as
 it is (accept), the change that breaks it (reject) and the change that repairs it (accept). It exits
 0 only when all three decide that way and 3 otherwise (it checks the install; it is not a verdict on a
 change, so it never exits 1), and CI runs it on every pull request (`seeded-bugs`).
@@ -42,7 +42,10 @@ Exit code, the same for `verify`, `status`, `cancel` and `report`:
 `verify --detach` exits 0 when the job was started, which says nothing about its result, and `sample`
 exits 0 when all three of its runs were as expected.
 
-Jobs are kept under `--jobs-root` (default `$EXPECTRAIL_JOBS`, else `runs/jobs`). The jobs folder may
+Jobs are kept under `--jobs-root` (default `$EXPECTRAIL_JOBS`, else `runs/jobs`). It goes after the
+command (`expectrail verify ... --jobs-root DIR`, as with `expectrail app --jobs-root DIR`) or before it
+(`expectrail --jobs-root DIR verify ...`); given in both places with different folders, nothing is run
+and the exit is 5. The jobs folder may
 not be inside the game folder or the specs folder, or anywhere a route pattern looks: a job's own
 `request.json` would be read as part of the game or as a check. With `--routes '**/*.json'` the default
 folder is refused; name the routes' own folder (`routes/*.json`) or keep the jobs elsewhere.
@@ -193,8 +196,8 @@ godot"). Nothing runs in either case. Today `godot` is the only adapter with a v
 
 The engine tells the job when it moves on: `observing` when a replay starts, `evaluating` when its
 checks are judged. It takes the gate's rule for which observers judge (`GodotGate(rule="both",
-visual=...)`, [ci-gate.md](ci-gate.md), "Two observers, one rule"). The engine registered for `godot`
-still judges by `engine-only`; a job's `findings.json` has an `observers` block when the rule was `both`.
+visual=...)`, [ci-gate.md](ci-gate.md), "Two observers, one rule"). Every registered verification engine uses `both` with a `FramesObserver`. The findings record
+and job status name the observers in `observers`; `expectrail report` says this in plain words.
 
 ## A second Godot project
 
@@ -231,3 +234,16 @@ about the ground then needs review.
   into checkouts is the caller's job for now.
 - **Held-out routes, the `expectrail` command, MCP, the Action and the site** on top of this.
 - **More than one machine.** The store is a folder and its locks are file locks: one host.
+
+Verification (`expectrail verify`, `expectrail sample`, and the app through verify) needs
+`MODEL_API_KEY` and `EXPECTRAIL_SAM_USD_CAP` in the verifier's environment. It judges with both the
+engine's record and a `FramesObserver`; an accept needs both. Without either setting, nothing is
+sent to the model, but the game still replays and its engine checks run. An engine failure
+**rejects**; otherwise the result is **needs-review**. A `PROVIDER_FAILED` diagnostic names each
+missing setting and its fix. There is no command option for an engine-only accept. `expectrail doctor` checks both settings
+without printing the key, and `expectrail report` names the observers that judged.
+
+Cost depends on frames, checks and cached answers. [The recorded costs in sam.md](sam.md)
+describe **up to $0.60 for both prompts over one 120-frame run**, at $2.50 per 1,000 images.
+More routes or checks add work; cached answers reduce it. This is not a price guarantee for another project. The spend cap is
+the most one run may send, in US dollars; reaching it gives no answer, never an accept on silence.

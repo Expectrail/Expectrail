@@ -23,15 +23,19 @@ from agents.keys import muse_subprocess_env
 SANDBOX_KINDS = frozenset({"bwrap", "docker", "none"})
 
 
-def _bwrap_usable() -> bool:
-    """True when bwrap can create a namespace (GHA often blocks uid_map until sysctl)."""
+def _bwrap_namespaces(*, network: bool) -> list[str]:
+    return ["--unshare-pid"] + ([] if network else ["--unshare-net"])
+
+
+def bwrap_problem() -> str | None:
+    """Probe the namespaces needed by offline and gateway calls; return the refusal, if any."""
     if not shutil.which("bwrap"):
-        return False
+        return "Bubblewrap (bwrap) is not installed"
     cmd = [
         "bwrap",
         "--die-with-parent",
         "--new-session",   # the probe runs what the fixer runs
-        "--unshare-pid",
+        *_bwrap_namespaces(network=False),
         "--dev", "/dev",
         "--tmpfs", "/tmp",
     ]
@@ -41,9 +45,25 @@ def _bwrap_usable() -> bool:
     cmd.extend(["--", "true"])
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15, stdin=subprocess.DEVNULL)
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return proc.returncode == 0
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"Bubblewrap could not run: {type(exc).__name__}: {exc}"
+    if proc.returncode != 0:
+        why = next((line.strip() for line in (proc.stderr or "").splitlines() if line.strip()),
+                   f"exit {proc.returncode}")
+        return f"Bubblewrap probe failed: {why[:300]}"
+    return None
+
+
+_BWRAP_WARNED = False
+
+
+def _bwrap_usable() -> bool:
+    global _BWRAP_WARNED
+    why = bwrap_problem()
+    if why is not None and not _BWRAP_WARNED:
+        print(f"Expectrail: {why}; trying the next sandbox choice (or none)", file=sys.stderr)
+        _BWRAP_WARNED = True
+    return why is None
 
 
 def detect_sandbox() -> str:
@@ -129,7 +149,7 @@ def _bwrap_cmd(work: Path, argv: list[str], *, network: bool, gateway=None,
         "bwrap",
         "--die-with-parent",
         "--new-session",
-        "--unshare-pid",
+        *_bwrap_namespaces(network=network and gateway is None),
         "--bind", str(work), "/fixer",
     ]
     if (work / ".muse").is_dir():
@@ -141,8 +161,6 @@ def _bwrap_cmd(work: Path, argv: list[str], *, network: bool, gateway=None,
         "--proc", "/proc",
         "--tmpfs", "/tmp",
     ]
-    if not network or gateway is not None:
-        cmd.append("--unshare-net")
     if gateway is not None:
         from agents.gateway import SANDBOX_DIR
 

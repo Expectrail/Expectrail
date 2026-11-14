@@ -384,7 +384,10 @@
           "shows": "the client on recorded replies: an unrecognised answer is an error, never nothing found"
         }
       ],
-      "limits": "SAM does not see the ground, so the ground line always comes from the engine. Needs a Meta key and is paid per image. Measured on one game and one page."
+      "limits": "SAM does not see the ground, so the ground line always comes from the engine. Needs a Meta key and is paid per image. Measured on one game and one page.",
+      "switches": [
+        "EXPECTRAIL_SAM_USD_CAP"
+      ]
     },
     {
       "id": "glimmer-observer",
@@ -1219,7 +1222,7 @@
       "id": "orchestrator",
       "mode": "Verification as a job: verify, status, cancel and report, with a folder and a status file per job",
       "profile": "The Godot game, through the CI gate's verification",
-      "observer": "The engine's record; no vision model",
+      "observer": "The engine's record and a FramesObserver, under the rule both",
       "entryPoints": [
         "expectrail.orchestrator"
       ],
@@ -1250,15 +1253,20 @@
           "kind": "test",
           "ref": "tests/test_tree.py",
           "shows": "one walk of a game folder makes every digest and every copy: the copy holds exactly the files the digest covers; the bundled games keep their digests; a link that leaves the checkout, a loop or a pipe stops a replay before anything is copied; a replay of another tree than the record names is not used"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_verify_vision.py",
+          "shows": "scripted SAM 3.1 answers; both observers required, missing key or cap still replays: engine failures reject and passing engine checks need review, and the replay never receives the key"
         }
       ],
-      "limits": "Only the sample command and tests call it: the gate's action and the site do not go through it yet. The isolated execution class runs every replay with the sandbox required and refuses where the machine cannot; its evidence grade stays diagnostic, because the ledger's isolated grade also needs a trusted job that judges and signs (#254, #255). The game is held to the tree the job asked about (the worker's read, the gate's record and each replay's copy must agree, or the job is needs-review), and the verifier judges with the one reading of the specs and routes whose digest is the job's. On a system without /proc a killed worker's children are not found and run on to their own time limit. One host."
+      "limits": "Only the sample command and tests call it: the gate's action and the site do not go through it yet. The isolated execution class runs every replay with the sandbox required and refuses where the machine cannot; its evidence grade stays diagnostic, because the ledger's isolated grade also needs a trusted job that judges and signs (#254, #255). The game is held to the tree the job asked about (the worker's read, the gate's record and each replay's copy must agree, or the job is needs-review), and the verifier judges with the one reading of the specs and routes whose digest is the job's. On a system without /proc a killed worker's children are not found and run on to their own time limit. One host. The cited live run predates the vision default; vision in the orchestrator is tested offline only. Requires MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP."
     },
     {
       "id": "installed-command",
       "mode": "The installed expectrail command: doctor checks the machine, sample runs three real verifications of the bundled game, verify takes a Godot project by path",
       "profile": "A wheel built from the repository and installed with pip into a clean venv on a hosted Linux runner; the bundled Godot game and a second Godot project",
-      "observer": "The engine's record; no vision model (sample and verify use no key today)",
+      "observer": "The engine's record and a FramesObserver, under the rule both: with no vision settings (as in CI) an engine failure rejects and a pass is needs-review",
       "entryPoints": [
         "expectrail.cli",
         "expectrail.doctor"
@@ -1293,7 +1301,7 @@
           "shows": "a version tag builds the wheel and attaches it to the run only when the tag is the package's version; the workflow reads only, holds no secret and publishes nowhere"
         }
       ],
-      "limits": "Not on PyPI: publishing needs an account and a token, which a person sets up. The release workflow has not run: it runs on a tag, and pushing a tag is a person's step. Linux only as packaged. sample and verify judge on the engine's record and use no key; the vision model by default is #379."
+      "limits": "Not on PyPI: publishing needs an account and a token, which a person sets up. The release workflow has not run: it runs on a tag, and pushing a tag is a person's step. Linux only as packaged. sample and verify need MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP to accept (#379); without them, as in CI, they still replay and an engine failure rejects, and a pass is needs-review."
     },
     {
       "id": "run-it",
@@ -1315,6 +1323,45 @@
       "evidence": [
         {
           "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43514147344",
+          "conclusion": "success",
+          "jobs": [
+            "verify",
+            "publish"
+          ],
+          "shows": "run-it.yml dispatched by hand on main (ccc54d5) for the sample clean: verify replayed the real game and decided accept, as the sample expects, with 120 of 120 vision questions answered from the recording of November 13 and none left unanswered; publish checked the folder and committed it to run-it-results"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43514430601",
+          "conclusion": "success",
+          "jobs": [
+            "verify",
+            "publish"
+          ],
+          "shows": "run-it.yml dispatched by hand on main (ccc54d5) for the sample fall-through-repair: verify replayed the real game and decided accept, as the sample expects, with 135 of 135 vision questions answered from the recording of November 13 and none left unanswered; publish checked the folder and committed it to run-it-results"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43514715045",
+          "conclusion": "success",
+          "jobs": [
+            "verify",
+            "publish"
+          ],
+          "shows": "run-it.yml dispatched by hand on main (ccc54d5) for the sample fall-through-bug: verify replayed the real game and decided reject, as the sample expects, with 135 of 135 vision questions answered from the recording of November 13 and none left unanswered; publish checked the folder and committed it to run-it-results"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43513054013",
+          "conclusion": "success",
+          "jobs": [
+            "seeded-bugs"
+          ],
+          "shows": "CI on main (ccc54d5), job seeded-bugs: the same command offline on each sample with real sandboxed replays decided accept, reject, accept, each with the vision answers recorded on 2026-11-13, and the publish check passed on each folder"
+        },
+        {
+          "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43453709805",
           "conclusion": "success",
           "jobs": [
@@ -1334,7 +1381,7 @@
           "shows": "the home page and the README link the Run it page, and the page and its script are there"
         }
       ],
-      "limits": "Visitors cannot start a run yet: the service that starts runs (apps/run-it-edge) is written and tested against a local stub but not deployed, and no sample has its vision answers recorded, so no sample can be accepted. Until then the page says it cannot start runs. Receipts are not signed (#255)."
+      "limits": "Visitors cannot start a run yet: the service that starts runs (apps/run-it-edge) is written and tested against a local stub but not deployed, so the page says it cannot start runs. The runs cited were dispatched by hand. Each sample's vision answers are one recording (November 13): a frame the recording does not hold gets no answer and the sample needs review until it is recorded again. Receipts are not signed (#255)."
     }
   ],
   "notModes": {

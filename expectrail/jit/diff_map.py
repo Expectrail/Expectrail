@@ -125,3 +125,9 @@ def diff_map(patch_text: str, profile: dict, probes: list[dict]) -> dict:
         "allProbes": unknown,
         "_parsed": files,
     }
+
+
+def withheld_map(probes: list[dict]) -> dict:
+    """The map when the model is not shown the candidate (issue #285, step 6): no file, no claim, every
+    probe. Nothing in it is made from the patch, so the candidate cannot narrow the probes on offer."""
+    return {"files": [], "claims": [], "probeIds": [p["id"] for p in probes], "allProbes": True, "_parsed": []}

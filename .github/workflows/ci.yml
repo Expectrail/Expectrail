@@ -32,6 +32,7 @@ jobs:
         run: git fetch --no-tags --depth=1 origin c169a5e0da304773587304ed47bc8aabcec80da7
       - env:
           EXPECTRAIL_PACKAGE_TESTS: required
+          EXPECTRAIL_GATEWAY_TESTS: required
         run: python -m unittest discover -s tests -t . -v
       - name: Export scan of the public repository (keys and signing keys; private names are checked by private-scan.yml and on main)
         run: python -m agents.export_scan bench docs README.md apps --paths error
@@ -137,6 +138,12 @@ jobs:
         env:
           EXPECTRAIL_ENGINE_TESTS: required
         run: python -m unittest tests.test_body_box -v
+      # A first route made from the project's input map (#329): on the bundled game and crate-run it
+      # replays to three identical traces and the player moves; an unseeded random source is refused.
+      - name: A first route from the input map replays three times identically
+        env:
+          EXPECTRAIL_ENGINE_TESTS: required
+        run: python -m unittest tests.test_auto_route_engine -v
       - name: A candidate's game code cannot read the verifier's environment
         env:
           EXPECTRAIL_CANARY: canary-${{ github.run_id }}
@@ -191,6 +198,8 @@ jobs:
           python -m unittest tests.test_check_pages -v
           python -m agents.check_pages docs
       - name: Web adapter tests, including two byte-identical replays
+        env:
+          EXPECTRAIL_WEB_TESTS: required
         run: python -m unittest tests.test_web -v
       - name: Every variant on both routes, layout and behaviour only
         run: |
@@ -243,15 +252,19 @@ jobs:
           EXPECTRAIL_SANDBOX: require
         run: python -m harness.check_seeded --out runs/seeded-check
       # Three real verifications through the orchestrator (docs/orchestrator.md): the bundled game as it
-      # is (accept), with the seeded fall-through bug (reject), and the repair (accept). No model key.
-      # The step fails unless all three decide that way.
-      - name: Verification as a job, on the bundled game (accept, reject, accept), each replay sandboxed
+      # is (needs-review), with the seeded fall-through bug (reject), and the repair (needs-review).
+      # No vision settings: engine failures reject, but passing engine checks cannot accept.
+      - name: Verification as a job, on the bundled game (needs-review, reject, needs-review), each replay sandboxed
         env:
           EXPECTRAIL_SANDBOX: require
-        run: python -m expectrail.orchestrator --jobs-root runs/orchestrator-sample sample
+        run: |
+          mkdir -p runs
+          code=0; python -m expectrail.orchestrator --jobs-root runs/orchestrator-sample sample --json > runs/orchestrator-sample.json || code=$?
+          test "$code" = 3
+          python -m tools.check_no_vision runs/orchestrator-sample.json runs/orchestrator-sample --sample
       # "Run it" offline (#265; docs/run-it.md): the command the site's workflow runs, on each sample,
-      # with real replays, each sandboxed, then the publishing job's allowlist check on each folder. No
-      # vision answers are recorded yet, so a sample that would accept needs review (--expect knows).
+      # with real replays, each sandboxed, then the publishing job's allowlist check on each folder. The
+      # vision answers come from each sample's recording (docs/run-it/vision/); no model is called.
       - name: Run it, offline, on each sample (real replays, sandboxed), and the publish check on each folder
         env:
           EXPECTRAIL_SANDBOX: require
@@ -756,13 +769,23 @@ jobs:
       - name: Fetch the baseline commit (the discovery freeze and the mutation registration are checked against it)
         run: git fetch --no-tags --depth=1 origin c169a5e0da304773587304ed47bc8aabcec80da7
       - name: The whole suite on Python 3.12
+        env:
+          EXPECTRAIL_GATEWAY_TESTS: required
         run: python -m unittest discover -s tests -t .
       - name: Install a virtual display and software OpenGL
         uses: ./.github/actions/apt-install
         with:
-          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch
+          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch bubblewrap
       - name: Download Godot 4.7.2 and check its SHA-512
         uses: ./.github/actions/get-godot
+      - name: Allow unprivileged user namespaces for bubblewrap
+        run: |
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          fi
+          if [ -f /proc/sys/kernel/unprivileged_userns_clone ]; then
+            echo 1 | sudo tee /proc/sys/kernel/unprivileged_userns_clone
+          fi
       - name: Build the wheel and check what is in it
         env:
           EXPECTRAIL_PACKAGE_TESTS: required
@@ -785,13 +808,26 @@ jobs:
           venv/bin/expectrail --version
           venv/bin/expectrail --version | grep -q "installed package"
           venv/bin/python -c "import importlib.util as u, sys; sys.exit('the clean venv has jsonschema') if u.find_spec('jsonschema') else print('standard library only')"
-      # `expectrail doctor` from the installed copy (#333): it passes on this runner and names what it
-      # checked; with the engine taken away it exits 3 and names the fix; and a command line that
+      # `expectrail doctor` from the installed copy (#333): only the two vision settings are missing;
+      # with the engine taken away it exits 3 and names the fix; and a command line that
       # cannot be read exits 5, not 2 (2 is needs-review).
-      - name: doctor from the installed copy (passes; fails with the engine taken away; a usage error is exit 5)
+      - name: doctor from the installed copy (only vision settings missing; a usage error is exit 5)
         working-directory: ${{ runner.temp }}
         run: |
-          venv/bin/expectrail doctor
+          code=0; venv/bin/expectrail doctor --json > doctor.json || code=$?
+          test "$code" = 3
+          venv/bin/python - <<'PY'
+          import json
+          from expectrail import doctor
+          with open("doctor.json") as source:
+              doc = json.load(source)
+          problems = doctor.problems(doc)
+          assert not problems, problems
+          missing = sorted((c["id"], c["status"]) for c in doc["checks"] if c["required"] and c["status"] != "ok")
+          assert missing == [("vision-cap", "missing"), ("vision-key", "missing")], missing
+          assert doc["ok"] is False, doc
+          print("doctor: exactly vision-key and vision-cap are missing; vision is still required")
+          PY
           code=0; EXPECTRAIL_GODOT="$RUNNER_TEMP/no-such-engine" venv/bin/expectrail doctor > doctor-missing.txt || code=$?
           cat doctor-missing.txt
           test "$code" = 3
@@ -800,19 +836,28 @@ jobs:
           code=0; venv/bin/expectrail verify --head . > usage.txt 2>&1 || code=$?
           cat usage.txt
           test "$code" = 5
-      - name: The sample from the installed copy (accept, reject, accept)
+      - name: The sample from the installed copy (needs-review, reject, needs-review), each replay sandboxed
         working-directory: ${{ runner.temp }}
-        run: venv/bin/expectrail --jobs-root "$RUNNER_TEMP/jobs" sample
+        env:
+          EXPECTRAIL_SANDBOX: require
+        run: |
+          code=0; venv/bin/expectrail --jobs-root "$RUNNER_TEMP/jobs" sample --json > sample.json || code=$?
+          test "$code" = 3
+          venv/bin/python "$GITHUB_WORKSPACE/tools/check_no_vision.py" sample.json "$RUNNER_TEMP/jobs" --sample
       # The installed command on a Godot project that is not the bundled game, given by path (#251):
       # tests/projects/crate-run, judged by the approved spec that ships, copied unchanged. The step
-      # fails unless the job completes as accept (exit 0).
-      - name: The installed command verifies a second Godot project given by path (accept)
+      # fails unless engine checks run in the sandbox and complete as needs-review (exit 2).
+      - name: The installed command verifies a second Godot project given by path (needs-review)
+        env:
+          EXPECTRAIL_SANDBOX: require
         run: |
           mkdir -p "$RUNNER_TEMP/second/specs"
           cp -r tests/projects/crate-run/project tests/projects/crate-run/routes "$RUNNER_TEMP/second/"
           cp agents/specs/player-stays-above-ground.json "$RUNNER_TEMP/second/specs/"
           cd "$RUNNER_TEMP"
-          venv/bin/expectrail --jobs-root "$RUNNER_TEMP/jobs-second" verify --head second --game project --routes routes/walk.json --specs specs
+          code=0; venv/bin/expectrail --jobs-root "$RUNNER_TEMP/jobs-second" verify --head second --game project --routes routes/walk.json --specs specs --json > second.json || code=$?
+          test "$code" = 2
+          venv/bin/python "$GITHUB_WORKSPACE/tools/check_no_vision.py" second.json "$RUNNER_TEMP/jobs-second"
       - name: The engine it used is the one its own script unpacked
         run: test -x "$HOME/.cache/expectrail/godot/Godot_v4.7.2-stable_linux.x86_64"
 

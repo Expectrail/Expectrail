@@ -81,7 +81,9 @@ class EdgeFunctionTest(unittest.TestCase):
     def test_its_own_tests_pass_and_every_body_it_sent_is_in_the_contract(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "bodies.json"
-            proc = subprocess.run([NODE, "--test", str(EDGE / "test" / "service.test.mjs")], cwd=REPO,
+            # --test-reporter=tap: Node 24 prints its own summary by default, not TAP, so "# fail 0" was
+            # never there and the test failed with every JavaScript test passing (#365, November 13).
+            proc = subprocess.run([NODE, "--test", "--test-reporter=tap", str(EDGE / "test" / "service.test.mjs")], cwd=REPO,
                                   env={"PATH": str(Path(NODE).parent), "BODIES_OUT": str(out)},
                                   capture_output=True, text=True, timeout=300)
             self.assertEqual(proc.returncode, 0, proc.stdout[-4000:] + proc.stderr[-2000:])

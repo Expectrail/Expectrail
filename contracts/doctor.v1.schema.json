@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Expectrail/Expectrail/contracts/doctor.v1.schema.json",
   "title": "Doctor: what `expectrail doctor --json` found on one machine",
-  "description": "Written by expectrail.doctor.document and read by expectrail.doctor.problems. It says what a verification needs on this machine and whether each piece is there. It is not a verdict on any change. No value of any key or other secret is in it: the vision key is `present` or `absent`, with the names of the environment variables that are set.",
+  "description": "Written by expectrail.doctor.document and read by expectrail.doctor.problems. It says what a verification needs on this machine and whether each piece is there. It is not a verdict on any change. No value of any key or other secret is in it: the required vision key check reports presence or absence without its value, and the required spend cap check reports its amount.",
   "type": "object",
   "additionalProperties": false,
   "required": [
