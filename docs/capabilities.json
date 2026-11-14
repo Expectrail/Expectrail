@@ -1460,6 +1460,44 @@
         }
       ],
       "limits": "Visitors cannot start a run yet: the service that starts runs (apps/run-it-edge) is written and tested against a local stub but not deployed, so the page says it cannot start runs. The runs cited were dispatched by hand. Each sample's vision answers are one recording (November 13): a frame the recording does not hold gets no answer and the sample needs review until it is recorded again. Receipts are not signed (#255)."
+    },
+    {
+      "id": "outside-projects",
+      "mode": "Verify a change to a Godot project Expectrail did not write, through its project list, routes and change patches, with the anchored visual observer",
+      "profile": "Pinned outside Godot projects (kinematic-character, Dodge the Creeps) fetched at a fixed commit, on hosted Linux runners: outside-trial.yml without vision, outside-vision.yml with a sandboxed capture job and a main-only judge",
+      "observer": "The engine's record and, on outside-vision.yml, the anchored visual observer (a point at the middle of the engine's collision box), used only when its calibration on the unchanged game passes",
+      "entryPoints": [
+        "tools.outside_trial",
+        "tools.outside_vision",
+        "expectrail.anchored"
+      ],
+      "workflows": [
+        "outside-trial.yml",
+        "outside-vision.yml"
+      ],
+      "docs": [
+        "docs/outside-projects.md"
+      ],
+      "grade": "diagnostic",
+      "status": "integrated",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43652198623",
+          "conclusion": "success",
+          "jobs": [
+            "capture",
+            "judge"
+          ],
+          "shows": "outside-vision.yml dispatched by Sean on main after #470 for kinematic-character: calibration used (found 19 of 19, size 19 of 19, nudged point 19 of 19); the project as pinned accept, broken reject, harmless (tinted sprite) accept, invisible (hidden sprite) reject, all with the anchored visual observer; 800 images, $2.00 at list price"
+        },
+        {
+          "kind": "record",
+          "ref": "tests/outside/recordings/kinematic-character/calibration.json",
+          "shows": "the calibration of that run, as expectrail.vision-calibration/v1"
+        }
+      ],
+      "limits": "One outside project verified with vision (kinematic-character). Dodge the Creeps has a draft check awaiting Sean's approval and no vision run. A full vision run asks about every frame and cost $2.00 for four variants. The hidden-player reject reads as past the boundary (the model answered with what lies behind the player), not as a missing player. The recorded answers replay only frames whose bytes match."
     }
   ],
   "notModes": {

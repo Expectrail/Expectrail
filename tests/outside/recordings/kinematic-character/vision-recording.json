@@ -1,0 +1,6876 @@
+{
+ "answers": [
+  {
+   "detections": [
+    {
+     "box": [
+      392.0,
+      290.0,
+      408.0,
+      306.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "012a004775b5326dde2c480647a33ed18a61f63a1df577090fbfe978c7fbea7d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=401;y=298;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      233.0,
+      242.0,
+      249.0,
+      258.0
+     ],
+     "score": 0.90625
+    }
+   ],
+   "frameSha256": "0300a78d4e6c92629d62802842faef22729cf4c71d0fb5dafe73cf5fc79848af",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=241;y=251;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      491.0
+     ],
+     "score": 0.5585936307907104
+    }
+   ],
+   "frameSha256": "033f92ef141f16e676e7811b68feaea03f68495d8ebcdf26eeb1e8b9cbedfff5",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=484;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      210.0,
+      193.0,
+      272.0,
+      337.0
+     ],
+     "score": 0.5
+    }
+   ],
+   "frameSha256": "034d44a85bebe1161042c81afb46f428ef0f3c999b90da84ae6fac524fc60a16",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=233;y=235;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      259.0,
+      245.0,
+      275.0,
+      261.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "03bc0061f3e59355c77947e357cabfccf0c210e78b67a046735a07d559bf14c3",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=267;y=253;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      382.0,
+      289.0,
+      398.0,
+      306.0
+     ],
+     "score": 0.91015625
+    }
+   ],
+   "frameSha256": "03cc1f62b6610b9edad36b7222cad225cb1ce264aa4181e86624e5200f2b9ac6",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=391;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      441.0,
+      312.0,
+      459.0,
+      329.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "03f3d5c6320eaac8f2cabfee5aa306c7fb93d3a8d3b54b207660c81c4dec5ca0",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=451;y=321;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      425.0,
+      301.0,
+      441.0,
+      318.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "04a3ddacf82460785f40b05ca4ab11c4235fbba6b3cff4d68800652dc4fd4e27",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=434;y=310;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      438.0,
+      310.0,
+      455.0,
+      326.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "05bdda478ad70a61ce6ec7882cca4ecbe81cec7fb05f9b9ae9b88d13f4970985",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=447;y=319;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      275.0,
+      250.0,
+      291.0,
+      266.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "05c347859a1558aad7d737f08681ace47420aacfb316b6366f709917ee67b151",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=284;y=258;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      216.0,
+      241.0,
+      232.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "05e09b306684be765cce7dc9b4516b015c2f23f5ab395dba84897a40c3ba11d6",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=224;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      459.0,
+      321.0,
+      475.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "0642062e1937c98b561b00bc4cfd7141cb06d4d19bf253bf55ab00b532a4ebe0",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=467;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "06c4e974fb33a4506fc210e20555d9495e579e1ac61553b010adcb0c988eb018",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      415.0,
+      297.0,
+      431.0,
+      313.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "0782df2728b993db6e627d813c784fcf094d138956513c364b86c5ac822f8a9e",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=424;y=305;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      489.0
+     ],
+     "score": 0.57421875
+    }
+   ],
+   "frameSha256": "0a60d967acd8539b41190c7bdac6c419e00d51b602d83214fa4b31ce606fa1e1",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=480;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      33.0,
+      530.0,
+      488.0
+     ],
+     "score": 0.66015625
+    }
+   ],
+   "frameSha256": "0a88533f553192038f2586cb31f20d5547362f3210c0f2b53ea0e648807b57ef",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=451;y=321;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      219.0,
+      241.0,
+      235.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "0cc77e12131e8492d3917c48a8ccd680a8943bdbd70605a411a015224a9f2674",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=227;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.6875
+    }
+   ],
+   "frameSha256": "0db905818e9ee39c04d3c94066b4314bf8b2378b0e3836fbbf94005b44815dba",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=364;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      329.0,
+      287.0,
+      345.0,
+      304.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "0f6f6cce5b5157d7ca7203365c7c02de86a8e08525a70b390ee66cca9d24b91e",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=337;y=296;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "110555452fd25933583862498bf65c3fe7fd13d8d4a745c4becd5deed9e8e68c",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      349.0,
+      289.0,
+      365.0,
+      306.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "11076e70e1381faa5787c8e3a9bc56002352cc2fc14c2ff75ebbd682821bfeb0",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=357;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      216.0,
+      241.0,
+      232.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "1119c586bdcf84968506653b6bca1cff0d7c7ef94228686e7e992850e263ef19",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=224;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      216.0,
+      241.0,
+      232.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "1119c586bdcf84968506653b6bca1cff0d7c7ef94228686e7e992850e263ef19",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=235;y=224;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      217.0,
+      241.0,
+      233.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "1154c5edd7a56dfd2a0f1bb87ea8754af77d955433430db0ad60cc3462f269af",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=225;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      488.0
+     ],
+     "score": 0.66796875
+    }
+   ],
+   "frameSha256": "12927ff2faf965254a1d1d5ba0ca1c6da9a7ce2db1142f909aca5968c67767c9",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=471;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      265.0,
+      247.0,
+      281.0,
+      263.0
+     ],
+     "score": 0.875
+    }
+   ],
+   "frameSha256": "12f71d0e24b2091ea34ecc0c283dde3e24ed14e3b6d315bde0d054ea7f9b1f95",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=274;y=255;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      432.0,
+      306.0,
+      448.0,
+      311.0
+     ],
+     "score": 0.6796875
+    }
+   ],
+   "frameSha256": "131f4a5bab11870c9e98d0b9eebc04071dd0a27a61632e507aefc31637eb0e17",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=434;y=310;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      221.0,
+      241.0,
+      237.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "133ffeaf280cf544634f71324075519f4b19e18cac80ee42667d99187a6daf08",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=229;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      269.0,
+      248.0,
+      285.0,
+      264.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "13cb91c6c166938c7dddc024959ebfd70b0651d7babffc33eba6efb336b7031a",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=277;y=256;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      210.0,
+      199.0,
+      272.0,
+      337.0
+     ],
+     "score": 0.58984375
+    }
+   ],
+   "frameSha256": "1421d62330dc5db0652f60f30e9a9ab7a92577c2184609a6bc1e30b60e5de46b",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=232;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      315.0,
+      274.0,
+      331.0,
+      290.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "15774e7a4cc2dd98ae808c45c6e7e0542b4baa189f2c6f03c96b9d2af61d9f3e",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=324;y=283;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      409.0,
+      294.0,
+      425.0,
+      311.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "15b6e1c6a87fa575eb711625d1c57952e8d42d4bff332f7ad7318b78813dba06",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=417;y=302;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      476.0,
+      321.0,
+      492.0,
+      337.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "167388defdc291a0a95f933f682f57db59c3383122d8705254c125864cb610f3",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=483;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      282.0,
+      252.0,
+      298.0,
+      269.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "1891777c62538a22c9c9a2396eabf84effda98ba3d33f37960be703d7ee01fca",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=291;y=261;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "198eeca1bb336bab6da6f736be0733f6e6b4a133da6effe1799d6c296352fae1",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      359.0,
+      289.0,
+      375.0,
+      305.0
+     ],
+     "score": 0.90625
+    }
+   ],
+   "frameSha256": "1a6c964a2930bae0a482102d9b674f21d54f829852bd917c59a91e30984df6d9",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=367;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      221.0,
+      241.0,
+      237.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "1a86510823711335113f3cceb7b9a753827c1e595b0377c87eed8d65cffb9aab",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=229;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      312.0,
+      271.0,
+      328.0,
+      287.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "1b57c1bf9ad611161f26ff4283be928a9e2fb06c061ecf0376208c220fa3313e",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=321;y=280;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      242.0,
+      244.0,
+      259.0,
+      260.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "1b82d73324296031b50fb15dc8c8a0e48d16fcee85f1f7f4bdaa48ff4aad7d5a",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=252;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "1babdd9575626574e57a6e7fcd2b89670db4f3c9358332b965701a870c522988",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "1bb509a20036dc3bf1868f914c01a9acba27817a9aea4a739a896fbfbcff9d95",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=311;y=273;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      220.0,
+      241.0,
+      236.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "1bbd7d95c6e2c974d9d90421274a737d2ff937ec1a8c45ebb5c9bdd0084d7224",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=228;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      5.0,
+      32.0,
+      497.0,
+      465.0
+     ],
+     "score": 0.36132803559303284
+    }
+   ],
+   "frameSha256": "1db03540cc33082d7b114ab14d96dd5c0a18149a31725ff6c3c84042b87d392e",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      240.0,
+      244.0,
+      258.0,
+      260.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "1dfa40d085b9abd3949bed30bdc7fb5104996023fddb965d1c7edffe0e5c290f",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=249;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "1e1f069227a6d0ded252f26454be45ed9bd7f01c73ac3804cb47fa09119647df",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      452.0,
+      321.0,
+      468.0,
+      337.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "21c6a910362a83f6bcec4178f897d4feea55319e2cbd7ba1cf035664fbd4a62f",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=461;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      424.0,
+      301.0,
+      441.0,
+      318.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "238130f9b59b8cfff699fa39b517ee3879ac3f2008969eb1afc41e46b8ed6d5c",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=434;y=310;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      479.0,
+      321.0,
+      496.0,
+      337.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "25398c80d09c4071b60cb0b93b1d7dd1cb32bbb8ba4b5054257097e61baaaa97",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=486;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.55859375
+    }
+   ],
+   "frameSha256": "259f361a639bcf0581f8cbaf9d3baeb24f450dc028c270704347478f4da9b8ee",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=424;y=305;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      355.0,
+      289.0,
+      371.0,
+      304.0
+     ],
+     "score": 0.90234375
+    }
+   ],
+   "frameSha256": "264ec20ade2b4306146fd4ae387c01ba21b94d6f3f432f56fbd715b44bf011c4",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=364;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "267fc7c20a5f3cbf2563fa266063c2a8b314689178a3a6d4863111909793fb05",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      285.0,
+      254.0,
+      301.0,
+      271.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "29e922e88273ab4f7a9fc9a58b961bda6ed3ad4524e7206e85f98a829d2633c0",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=294;y=262;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "2aefc744c95c4539b66e80f5ba9f433b527729fd30cf899e712b60abdf73b15f",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      352.0,
+      289.0,
+      368.0,
+      306.0
+     ],
+     "score": 0.8984375
+    }
+   ],
+   "frameSha256": "2c0e6d217a8f071e1717bb1053e05eba5e9f3adedace669ad3c721d5d9ef251d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=361;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      231.0,
+      239.0,
+      247.0,
+      256.0
+     ],
+     "score": 0.953125
+    }
+   ],
+   "frameSha256": "2c6c521874313218dc4fb48697a96c7930fbec2563cf3bf6ab661ea0d1d4fb20",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=239;y=248;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      302.0,
+      264.0,
+      318.0,
+      280.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "2e3ed4719c8b1c8ef14fd77bca0dda8c43c4f8d8fd0c3b259d4224a00be5568d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=311;y=273;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      462.0,
+      321.0,
+      478.0,
+      338.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "2e4715c14c135e54a4dfb11d2d459f6a725de159eb6bdeedac3bb3bb54499631",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=471;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      462.0,
+      321.0,
+      478.0,
+      338.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "2e4715c14c135e54a4dfb11d2d459f6a725de159eb6bdeedac3bb3bb54499631",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=474;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      305.0,
+      266.0,
+      321.0,
+      283.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "2ebef95a01d2b3f00001e57da8fba398d5c1aee1aea3e990cd8258de45e18005",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=314;y=275;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      477.0,
+      321.0,
+      494.0,
+      337.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "2f05aa3c7734c1bf9fb52a520eb8901c52b46b57a10d6339a45ba1bcfbfd5641",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=484;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      352.0,
+      289.0,
+      369.0,
+      306.0
+     ],
+     "score": 0.90625
+    }
+   ],
+   "frameSha256": "2f8185b2f89ad7e1fc15ad02c42da1ed31e72115a202215a52074f63cb8fa53b",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=361;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      222.0,
+      241.0,
+      238.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "2f8f80030e7c5d799c30ef0a7cac8136a35ad3e452eec1352644228c6e9d7d2b",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=230;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      33.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.89453125
+    }
+   ],
+   "frameSha256": "2fcdcde711c7b2b1f20fb7232164df50c70c90c78e87cea7f1a49aaf5b7bbc23",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=274;y=255;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      218.0,
+      241.0,
+      234.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "30430dd5419944507d3510063018ab0ab69ef8810ce49d348e264b19df74f586",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=226;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      235.0,
+      244.0,
+      251.0,
+      260.0
+     ],
+     "score": 0.921875
+    }
+   ],
+   "frameSha256": "30a7a4cf6f19000fdfa0d89624b413c47b443b046b70e100be900e52e75d50f5",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=243;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      488.0
+     ],
+     "score": 0.7734375
+    }
+   ],
+   "frameSha256": "31a9c283bf6a7a1caa09ef63bcaf1e7061588b597ca29c62b3eb376db374d9a8",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=371;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      339.0,
+      289.0,
+      355.0,
+      306.0
+     ],
+     "score": 0.91796875
+    }
+   ],
+   "frameSha256": "3217291786571e1e1caf19bdf163987968314260b058d4c7282e36ca17da313a",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=347;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      369.0,
+      289.0,
+      385.0,
+      306.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "33dd1d897655c479dad8926e1bf588dfea066f00a0e9e48c4d30cf56fda5dc9d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=377;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      382.0,
+      289.0,
+      398.0,
+      306.0
+     ],
+     "score": 0.90234375
+    }
+   ],
+   "frameSha256": "3445eaf3130afe8c966aa3fe3e5e92b2ba6ae383d32d3e4922f7f2cc606032ac",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=391;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      4.0,
+      33.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.828125
+    }
+   ],
+   "frameSha256": "34b70086128a3b827bc3cf0e296f09f322ccdec3a92da7a569477fda1faaa7e9",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=334;y=293;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      430.0,
+      306.0,
+      496.0,
+      325.0
+     ],
+     "score": 0.154296875
+    }
+   ],
+   "frameSha256": "350c23a400b2ca55edaa8466fc72a6df120273bd11fe6f46d11359426cf9a655",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=444;y=316;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      255.0,
+      245.0,
+      271.0,
+      261.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "35937a59991dd42cef71c4810dbb990bbe2e0042f2a599e4930921f36c3c5172",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=264;y=253;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      4.0,
+      32.0,
+      498.0,
+      488.0
+     ],
+     "score": 0.40820303559303284
+    }
+   ],
+   "frameSha256": "363d488d8fb15bdbb966df3323d90d272039bb30ca8ff9257e8219afa227e6b6",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      479.0,
+      321.0,
+      496.0,
+      338.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "36f58bead2d043fd0bbc464edf23c0103d922fed711f1a90cd64e98a6222bba7",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=487;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      309.0,
+      269.0,
+      325.0,
+      285.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "388eba0b1a884df0a89376a1f58269bf8b7fdf30419642f98f9ceb047eccfb68",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=317;y=278;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      429.0,
+      303.0,
+      445.0,
+      319.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "3896af1e72b9aa7631d35abc0e92f38caf3c7f37dd9b54b3c6e910070559d846",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=437;y=312;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      395.0,
+      291.0,
+      411.0,
+      307.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "38a31c7109efe9011a9753e0d1ae9f039cf1c1f70f7160eab6c6c1322789181d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=404;y=298;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      395.0,
+      291.0,
+      411.0,
+      307.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "38a31c7109efe9011a9753e0d1ae9f039cf1c1f70f7160eab6c6c1322789181d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=407;y=298;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.609375
+    }
+   ],
+   "frameSha256": "38b20bb96ad54643f30c844fd50974152554a870370dd167499de8621992aa32",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=297;y=264;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      299.0,
+      261.0,
+      315.0,
+      277.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "38c2f0818e3e79a61274a8e837b153c0f645e1d5fef77addb85486d188d41613",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=307;y=270;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      325.0,
+      283.0,
+      341.0,
+      299.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "39313f8366eef4dbd9956878ade9f301744f92c30d1aafbc73471ee6d69ca1c7",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=334;y=293;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      226.0,
+      228.0,
+      243.0,
+      244.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "393385a34e46fa84ae5045717e93f7fe9c9ee80f4ba09f3010abaa4a05f83d0c",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=234;y=237;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      4.0,
+      32.0,
+      497.0,
+      488.0
+     ],
+     "score": 0.31835928559303284
+    }
+   ],
+   "frameSha256": "3a26ea537400e60bb238167a18a364b2fc4ff53d2dbdfcabc1bc9aa5e727ab76",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      32.0,
+      32.0,
+      499.0,
+      464.0
+     ],
+     "score": 0.515625
+    }
+   ],
+   "frameSha256": "3a7e8c5852b45ce0795b968a329721f1a5fd6bc115080df4bdc1d39baab6b183",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=249;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      459.0,
+      321.0,
+      475.0,
+      337.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "3aa9faa68e519d81d287596ee39b45836dfb4ed769ad8c15eaa34930afc771de",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=467;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      349.0,
+      360.0,
+      366.0,
+      377.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "3b17b3b5ef29dfcc69828b3c8182a076b2b9df81a8af1797c780b421bff77874",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=356;y=367;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      349.0,
+      360.0,
+      366.0,
+      377.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "3b17b3b5ef29dfcc69828b3c8182a076b2b9df81a8af1797c780b421bff77874",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=359;y=367;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      412.0,
+      295.0,
+      428.0,
+      312.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "3c26c41d248b99c84d8d24507433a3c8bdcc791ebd9efef996f598adfd694d72",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=421;y=304;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      469.0,
+      321.0,
+      485.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "3cae26f9b71f923bd41a81f68397831add17a7b33d4d6f8f998bf1b5f8b66738",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=477;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      412.0,
+      331.0,
+      428.0,
+      348.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "3cc07d993a661cc54084de28a022f8aae895718c882113f49dc7c61d116604df",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=418;y=339;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      412.0,
+      331.0,
+      428.0,
+      348.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "3cc07d993a661cc54084de28a022f8aae895718c882113f49dc7c61d116604df",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=421;y=339;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      445.0,
+      315.0,
+      461.0,
+      332.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "3ccfd7c5e1de329368af033109b06b9622764e388858eb7b82d73f582129fc56",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=454;y=324;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      469.0
+     ],
+     "score": 0.89453125
+    }
+   ],
+   "frameSha256": "3df51e56046ab01334f389e2e299ade93cb264fd8bd6518687b955b69611fa8f",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=404;y=298;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      479.0,
+      321.0,
+      496.0,
+      337.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "3ffc7165cfada83338ee3365e5769a4e689470a9e1a75f3291f6e418ddb9b6a0",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=487;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "412707c43b1d20173ef7d2b396c74eaa2357d4e680770cbc0f099411d019b654",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=261;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      455.0,
+      321.0,
+      471.0,
+      337.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "4253cb61033d7225132e8a701af227f6c9cc150d224eff824e8c49d801f367e2",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=464;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "427085a1a610ad648d5f9cf1e03ec984416ef5b3f3827b430ea7f39011d174e6",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "427085a1a610ad648d5f9cf1e03ec984416ef5b3f3827b430ea7f39011d174e6",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=491;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.875
+    }
+   ],
+   "frameSha256": "431e77c794436e5251a80acf3663efedf4e5a5ff302ee2efcbae30bffd128d85",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=411;y=300;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      355.0,
+      289.0,
+      372.0,
+      305.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "4358aa2a08f72d13e987394ef74c6003a364551cb39d2b14eaceef51bbd8cd09",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=364;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      15.0,
+      32.0,
+      498.0,
+      464.0
+     ],
+     "score": 0.7578125
+    }
+   ],
+   "frameSha256": "449b326c17565160f3dc35135f5902cff36556ee9700f8afcf1f5e36d33d9bb7",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=252;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      475.0,
+      321.0,
+      491.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "45adf5db002556f6b7b18353144b9f5cfdf50a1e4f969362009d25448c677a77",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=481;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      15.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.373046875
+    }
+   ],
+   "frameSha256": "45beb487963c5161017120b571d48849abed32670981e79b98f78bb53cec9db6",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=241;y=251;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      210.0,
+      199.0,
+      272.0,
+      337.0
+     ],
+     "score": 0.35546875
+    }
+   ],
+   "frameSha256": "45ccb60b3b02f2e4a687e3f1c449a5cdfc49d554f1491e98691ec39683c2f540",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=234;y=237;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      230.0,
+      237.0,
+      246.0,
+      253.0
+     ],
+     "score": 0.953125
+    }
+   ],
+   "frameSha256": "460822dcb61ca9ec44b3065802684f3d5b22d0c9c171eb79743434e5d1f1f399",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=238;y=245;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.6953125
+    }
+   ],
+   "frameSha256": "4a25a7003f1ccf9bd4d5a17b5f2053be696667b15b869517130e7678ff273af7",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=367;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      372.0,
+      289.0,
+      388.0,
+      305.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "4a8796b4597a8ccee8ede87cfb449f12a49c74af79835fc35ce843c18d9f3aeb",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=381;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      4.0,
+      32.0,
+      498.0,
+      488.0
+     ],
+     "score": 0.345703125
+    }
+   ],
+   "frameSha256": "4b15779e2e8a7b8ce0cde602fc1576da24eda7180e1b7e9180bf7ce67808dafd",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      477.0,
+      321.0,
+      494.0,
+      337.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "4c8d4c358c5535abf008a7dd828de1b3d7c9e3a84249fb53489fdd4adc8f6dd6",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=484;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      445.0,
+      321.0,
+      461.0,
+      338.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "4d0dd914950d28c2a17dd0866f2d309d878eda6c259f9346a8885225c1619a04",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=451;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      445.0,
+      321.0,
+      461.0,
+      338.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "4d0dd914950d28c2a17dd0866f2d309d878eda6c259f9346a8885225c1619a04",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=454;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      252.0,
+      245.0,
+      268.0,
+      261.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "507d1a96f872e513ece69fff2e98ea97e834e009847b3abc7326461c9fbd5f6e",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=261;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      480.0,
+      321.0,
+      496.0,
+      337.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "513681a83490fdd4eb572916dc570a86ded1133676338257fa2badcac43437f7",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=487;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      322.0,
+      280.0,
+      338.0,
+      296.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "52df41753fd5f3701a92f96594321d7a3c891c526b45483dc593023fc3c5a7a1",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=331;y=289;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "531cf2425ef665ea5d780760416e4af327353ab9d920811f17a147e41d782de4",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      432.0,
+      306.0,
+      449.0,
+      312.0
+     ],
+     "score": 0.69921875
+    }
+   ],
+   "frameSha256": "5345fc53a39fec35357e7f019566ac49a5e0794a8d5533b8bbf8836668d23728",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=441;y=314;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      33.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.271484375
+    }
+   ],
+   "frameSha256": "537156bb52520e87232c282a2ab6b9084f2f424bd59722ba3cdfa05ac951f7e2",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=427;y=307;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      339.0,
+      289.0,
+      355.0,
+      305.0
+     ],
+     "score": 0.91796875
+    }
+   ],
+   "frameSha256": "55cc439c958283e2132369107fcaf2c2f0a6e865ceaee45fabcc5b7bca647cc8",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=347;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      210.0,
+      199.0,
+      272.0,
+      337.0
+     ],
+     "score": 0.4609375
+    }
+   ],
+   "frameSha256": "55e7db082bfc2dfbb3e25a25453777ffb830ff091228e6ab7feb82a7a9ce0e88",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=225;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      309.0,
+      269.0,
+      325.0,
+      285.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "5741a86dade85e6cc9302f2c804f51ca3276ced0962d2bf5ab1dec52b36b6344",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=317;y=278;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      369.0,
+      289.0,
+      385.0,
+      306.0
+     ],
+     "score": 0.921875
+    }
+   ],
+   "frameSha256": "58fe6d9e179292c95fa1a542f6aa24cc6b480277a817a3f7e6aab4fc2c3ecb95",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=377;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      302.0,
+      264.0,
+      318.0,
+      280.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "59827b12eb5583dbe96dac164231a63395586ce66dfe00bc330ba4e99160794d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=311;y=273;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      469.0,
+      321.0,
+      486.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "59c9621f4fc02cf7948470a5bfd422ad2a04dbaa06867e16122c67a46ad66f47",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=477;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      315.0,
+      274.0,
+      331.0,
+      290.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "59e4306b8e46d63af3041207da8885ee789d459e961aea6a9b2a56bc226fe053",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=324;y=283;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      325.0,
+      283.0,
+      341.0,
+      299.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "59e848fef5947bc4ebb74e0bc912ebfa2d53607d4630a49dbd2d7f60ced4b1e1",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=334;y=293;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      252.0,
+      245.0,
+      268.0,
+      262.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "5a923c11c32340f9c61dc8e496bb861b495b8804d4bcc1dafb72ad14a763a9ed",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=261;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "5ad0f8c613ff28a10ae2f7b001fe03c56810516bd5294c7cf2b55cb16e699d42",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      226.0,
+      228.0,
+      243.0,
+      244.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "5aec4a04f82c8e5208318fa65d8363d9d49ad8e3354f05ab3b86297277d37cf4",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=234;y=237;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "5aef13eac382bf63c9eab4cfbdcb5537c8a3eda7a9112b1eda9cf6867b92a669",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      5.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.7265625
+    }
+   ],
+   "frameSha256": "5b708188a384977bb6b63c75a4a16cc2c3f07c31dbb81480b34f386b6c3ca1f2",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=341;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "5c0c4bd123831e3467e387e94dd9b51b0489c269766806a8456a8d7be03a3ef9",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      229.0,
+      234.0,
+      245.0,
+      250.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "5c12e5475c782ad27df96a5418aa4bfc01b03d048d560d984c8e7fff3b257357",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=237;y=243;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      228.0,
+      232.0,
+      244.0,
+      249.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "5c71fab5b61ee094cb215e8eaa8c07d56be1dc5579aa99d56ddf7f4087dcbdb3",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=235;y=241;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      515.0,
+      464.0
+     ],
+     "score": 0.73046875
+    }
+   ],
+   "frameSha256": "5cfd9dc45b3047c04bfe6e16ad46434da79193078a55a584a01a581e91a58087",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=271;y=254;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      312.0,
+      271.0,
+      328.0,
+      287.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "5d965957b82a6a649467ba9333da826a1ca89a5928ac6d49692e878373a09f75",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=321;y=280;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      219.0,
+      241.0,
+      235.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "5e995c07c28b52aa4c9c2fd4f778cf758dfd867fe9663628120c34e5bf9d9604",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=227;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.7109375
+    }
+   ],
+   "frameSha256": "5ec55a9222f6f776e011564725235da2048b35e6f3fc7507964bc906e7b88a79",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=237;y=243;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      402.0,
+      292.0,
+      418.0,
+      308.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "6020333b9d37732ea7408d354efe04e68da1338be9416967ae30f9c0fbb4beb6",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=411;y=300;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      217.0,
+      241.0,
+      233.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "610dd34694933e1c029211ee12fb45a6b1e37b5784b5b82ee54ac9d3d2ee42d2",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=225;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      33.0,
+      530.0,
+      488.0
+     ],
+     "score": 0.578125
+    }
+   ],
+   "frameSha256": "6275b6c8cce6ec4aad316d45ff0f72a85ad131bd3605bcce37f1dab58c500aef",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=361;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      217.0,
+      241.0,
+      233.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "6460ea8a20bb90d78b275a91f3e4535d5fef7fbef4038cee05376b287ec8ccfd",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=225;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "64809aa5a0cbd995c10988a671bd306a4f3f25d8bd1813447c26c6b9a2871ab8",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=387;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      216.0,
+      241.0,
+      232.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "66122060bdf4b9ac11def8d35e42029ed4ca4515a6fed4e3288bec1197b38301",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=224;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      472.0,
+      321.0,
+      488.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "67fd640f665f389b2458c1044eb3524ee801bf3caac953eea9c4b1c17bb0706d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=478;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      472.0,
+      321.0,
+      488.0,
+      337.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "67fd640f665f389b2458c1044eb3524ee801bf3caac953eea9c4b1c17bb0706d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=481;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      226.0,
+      226.0,
+      242.0,
+      242.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "6842747e3ea49c1e004c3e51aba125716b774fdc19e004cf27dbdc0aad3267c9",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=233;y=235;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      319.0,
+      277.0,
+      335.0,
+      294.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "684d98db1425ed09aa2d9af72eb6010901c65e0cf08262938bce40faffcb1ee1",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=327;y=286;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      227.0,
+      230.0,
+      243.0,
+      247.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "693fc00e22617828c2427ed691ece9bf32b5c5ee3d19824f9e105d26d57a2aab",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=235;y=239;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "6946859d39c0e32c908adaa1d90c0700733fb7d5f66610751f334c814f116bcb",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=324;y=283;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      480.0,
+      321.0,
+      496.0,
+      337.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "698abcaa2970c5b52105ca829352f3c630a13c900ee2206c9c4d31641fc928ad",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=487;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.859375
+    }
+   ],
+   "frameSha256": "6b4a3ad81cef32f69d394fca43e2ca4d554aecdb9aa39b5ee07aa0f2390e2826",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=391;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.88671875
+    }
+   ],
+   "frameSha256": "6c04c6fe13a63387ff988459a22b1acecf136566fd9fe56492e9a948f7a5d885",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=267;y=253;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      455.0,
+      321.0,
+      471.0,
+      337.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "6c6e26787f4654148731a494e142f9e7e47e2a815a875a516819b590ae9390f6",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=464;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      225.0,
+      241.0,
+      241.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "6e0fbeba3345eb2cb3a9bb502520cc49f5f858fa4dfdee265eb84d15ca773d9c",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=233;y=233;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "6fcfe7b8ca39c22348a7ec8b87100ec307b882405d327c2f397b0c6d44737277",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      362.0,
+      289.0,
+      379.0,
+      305.0
+     ],
+     "score": 0.91015625
+    }
+   ],
+   "frameSha256": "704534934220bc4ff70a931a0a4f51e61b83001e6c6b94358ebe143931b257ba",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=371;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      218.0,
+      241.0,
+      234.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "70b6ebbabd835ab41f0ff2442a6c2a6160b14e6a7ff6218eb0cf89bade3b6a6a",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=226;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      216.0,
+      241.0,
+      232.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "71f071e2e647be83e6f8ec965b0bc449f03db99bcf9d126723bf917e6c2b7505",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=224;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      498.0,
+      489.0
+     ],
+     "score": 0.5273436307907104
+    }
+   ],
+   "frameSha256": "72aaf32bdadac4a2c1789147784d271197e35e031d949b638c07c2a524795421",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=486;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      3.0,
+      32.0,
+      498.0,
+      489.0
+     ],
+     "score": 0.45312488079071045
+    }
+   ],
+   "frameSha256": "72c57d2ea7b88ad5609c1cf95f95a7c147a041a5984d363ca83466286bbda5f7",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=487;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      4.0,
+      32.0,
+      498.0,
+      488.0
+     ],
+     "score": 0.40039053559303284
+    }
+   ],
+   "frameSha256": "7345e95ade2ee6eb4be43d90494e5df221bb5396f7d5f2e5ee28d6593cfb08ec",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      432.0,
+      306.0,
+      448.0,
+      311.0
+     ],
+     "score": 0.71875
+    }
+   ],
+   "frameSha256": "7392a64dd0ae9286ded08784543be8e94f34480e365b4895089e03c6431d3549",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=437;y=312;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      272.0,
+      249.0,
+      288.0,
+      265.0
+     ],
+     "score": 0.90234375
+    }
+   ],
+   "frameSha256": "74251500ab0cedde7e31043ab440d575d55224c135578e728bfe2fac8a8f8506",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=281;y=257;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      5.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.72265625
+    }
+   ],
+   "frameSha256": "74626a3955efa6bbae648830db2b00c0654b90d453b12e78ca83bbac00f08214",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=344;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      488.0
+     ],
+     "score": 0.6015625
+    }
+   ],
+   "frameSha256": "7532249ebed9dbd42c6718bd1ef7195b9e7ae7948fa3671f8125f954204b6abd",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=457;y=327;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      473.0,
+      321.0,
+      489.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "7651b31164dc44c6418af3af8a1234c94d0f871c69c2eed17501b7fe5247fac7",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=480;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      210.0,
+      199.0,
+      272.0,
+      337.0
+     ],
+     "score": 0.515625
+    }
+   ],
+   "frameSha256": "77b25acee096a7c8a12f6b23aea555de9fcbe921eba1173f790e4bfd1061b727",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=227;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      385.0,
+      289.0,
+      401.0,
+      306.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "77b56dd3be691829e06c2796c2bcaa0a4adfedd3c86334a190c70ca4702a7fe9",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=394;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      419.0,
+      298.0,
+      435.0,
+      314.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "7af3fd2e513f0fee17908bf346a141cfcccfdffe794950265cd31a64229c38ef",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=427;y=307;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "7b1182a9876ded3f60c7a143fc90d75af83aa445877ad1dd59b67e83a918e607",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=421;y=304;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      246.0,
+      244.0,
+      262.0,
+      260.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "7b39169ceeab655de3b37013ee40b879aa2d580b0df689b5d9e539e38a3c4540",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=255;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      289.0,
+      256.0,
+      305.0,
+      272.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "7d3c1b155ae8b828493006e05bd52a45f62f698ad5bafae98e042f5f04ee409e",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=297;y=264;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "7f88de6a84b5155df6324dd228b8df39b3487cd63c51a94122a1e8e0709ed03f",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=304;y=268;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      472.0,
+      321.0,
+      488.0,
+      337.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "8022b02a29227624b33e8c0d3309465f25cb6a6f369849e82d1d1d668e7c01c8",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=481;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      210.0,
+      256.0,
+      295.0,
+      337.0
+     ],
+     "score": 0.2910155653953552
+    }
+   ],
+   "frameSha256": "80283deb395d8e1d8ad8e5f2b1ded0f6700870b2617babd3c3da6d660646ff82",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=287;y=259;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      379.0,
+      289.0,
+      395.0,
+      305.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "80809b1ca0542e3a93cda38ea99e0b1018e3ba5a41004ac2c88cd2161dcebdf8",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=387;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "80a9c1b2de8be52c6d4c68750307c23c603a71bbe76ac46cb89a466de7e53ea3",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=317;y=278;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "80f294166b388959fe5897479f5baa72e288a5883f261d001751c369f2bae194",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      478.0,
+      321.0,
+      495.0,
+      337.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "81006c4447d836e1627bd7bbb228d40df4f4e1cc19608dca917012e47a485b6d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=485;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      295.0,
+      259.0,
+      311.0,
+      276.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "81459b4c263570d2097d11ee476015fc5fecbd13be8ae3eba6b5bebfe08e8570",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=304;y=268;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      285.0,
+      254.0,
+      301.0,
+      271.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "81c30d1dbac6fac3b6a785ab86543f238a7af16d454feb47c50ced0fda5cc013",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=294;y=262;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "8232bd8d4843c8421b8ff918bcc8d054ed64a6866714c5b4602f0f0a8d89a627",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      474.0
+     ],
+     "score": 0.73828125
+    }
+   ],
+   "frameSha256": "8249701d368f22f16a8b775b300d2a697037516276ab75f84b6bb5141a76b0e0",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=377;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      233.0,
+      242.0,
+      250.0,
+      259.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "832940217c42be9de4281169de1cfcb3f119d73b117305b65f12e2bd584a97f1",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=241;y=251;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      402.0,
+      292.0,
+      418.0,
+      308.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "839ac411697f937aed2189c3752a08227b04a2480c1ec020d09b3d0cc4e7b498",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=411;y=300;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      4.0,
+      32.0,
+      498.0,
+      488.0
+     ],
+     "score": 0.35546866059303284
+    }
+   ],
+   "frameSha256": "83d8dcae862a3249812df7a8cba71a2f5b2a8e334c9224fd4c3de7b25763be81",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      295.0,
+      259.0,
+      311.0,
+      276.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "83df1ec905ffa63d9a1955a8841c9665f777f55b0e7612ebf7d05ac6443ea507",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=304;y=268;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      295.0,
+      259.0,
+      311.0,
+      276.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "83df1ec905ffa63d9a1955a8841c9665f777f55b0e7612ebf7d05ac6443ea507",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=307;y=268;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      249.0,
+      244.0,
+      265.0,
+      261.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "84cd06c4aaf9cc4a1967f724d507de8c47a1842f702d043103bf66a981127017",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=258;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      33.0,
+      530.0,
+      488.0
+     ],
+     "score": 0.53125
+    }
+   ],
+   "frameSha256": "8565f0932aaf20239cc0c8a2e8af43ec0691e6ecc16391361e1682c38ab1db30",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=357;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      389.0,
+      289.0,
+      405.0,
+      307.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "861d240a47d36a0c5b8a0fbb251b8e58955d3e83e7c132a038d1121402ff18b7",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=397;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      279.0,
+      251.0,
+      295.0,
+      267.0
+     ],
+     "score": 0.890625
+    }
+   ],
+   "frameSha256": "869be39c3ee559bd9807640a055beabb86d4f4b231a12b38e12ad331acce4318",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=287;y=259;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "86c31b75fdb7bd1b214365bfae8c02d7e936572b84950f9a569a24919b922856",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.828125
+    }
+   ],
+   "frameSha256": "87acfe98d5dd2511b6f6a4b8b8b2a5ed675a969086b78b7b248c5e2e6165d15f",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=239;y=248;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      4.0,
+      32.0,
+      498.0,
+      489.0
+     ],
+     "score": 0.37109375
+    }
+   ],
+   "frameSha256": "87d43b3a1383b187a448ac4b02a5adadc733c92cbc5222ef4eb6e8f874bb77b9",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      209.0,
+      257.0,
+      295.0,
+      338.0
+     ],
+     "score": 0.328125
+    }
+   ],
+   "frameSha256": "88a4683aa2c2ec7f4b1ce11d3e894de31b51243fdec6f42a8158f295db3cd847",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=294;y=262;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "89895106515de890ee7920cad098149e8318e9cc499c2a3a5fee6da6a24bd356",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=314;y=275;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      248.0,
+      244.0,
+      265.0,
+      261.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "8a0ed3c5ea5a36bc98ed4f0caa3094b466560fc85eee9ad0866b4981b4c2f4c3",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=258;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.84375
+    }
+   ],
+   "frameSha256": "8b72757504957392f9b27ac8a55196f30c808183a4d34311917e6153c33ad0b8",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=414;y=301;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      332.0,
+      289.0,
+      348.0,
+      306.0
+     ],
+     "score": 0.90234375
+    }
+   ],
+   "frameSha256": "8c02fd12175401b9af64e3de751c27f9f844c6c9da3edb62e24bbea8246fb598",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=341;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      33.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.7109375
+    }
+   ],
+   "frameSha256": "8c66ae23a54ca4571b6eb869ff34afb58c94928cc673c498b70b0057ce3b0c72",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=337;y=296;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      239.0,
+      244.0,
+      255.0,
+      260.0
+     ],
+     "score": 0.91796875
+    }
+   ],
+   "frameSha256": "8d81db87ec430e6983c16a9915629c81c5fa43598204759f36a54158ec24822d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=247;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      471.0
+     ],
+     "score": 0.90234375
+    }
+   ],
+   "frameSha256": "90199de5bd42b3a86f328e846af8065dced130be08f9f623f23f961e0d974b9d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=401;y=298;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      489.0
+     ],
+     "score": 0.5273436307907104
+    }
+   ],
+   "frameSha256": "913d72029b7401cbde4b6148bd67b55aa1e9d86023d21828f206d465877d682c",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=481;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      33.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.48828125
+    }
+   ],
+   "frameSha256": "917f2c3ab3e49def7220df187e9ceaf2fc304544e707c665a47a86611c6d6c69",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=351;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      465.0,
+      321.0,
+      481.0,
+      337.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "91d519984c86031414b0ba8aa09397e8d3a25f95546e27cd1b4d0555f6dd2680",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=474;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      210.0,
+      198.0,
+      272.0,
+      337.0
+     ],
+     "score": 0.51171875
+    }
+   ],
+   "frameSha256": "91e25bf99caf8e897db0f304b5c7a539717d6e52e004823b789c66d5c87eff83",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=226;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      262.0,
+      246.0,
+      278.0,
+      262.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "9356afaf641ff3afaa645a9b4bc9327eb088b0b80f19ce82ef2245333699c8ea",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=271;y=254;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "93b83c46e2533f90ca71667131c5aa2c9a9289855ffbeeff53a315e346e5653d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      272.0,
+      249.0,
+      288.0,
+      265.0
+     ],
+     "score": 0.90625
+    }
+   ],
+   "frameSha256": "93d3abeef7eaa8f033256d534ff16003648e7f1aecc348231e01fb1821106825",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=281;y=257;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "93f9112bb4f386082d73f5287752279a7802e88089e21585e6050545238d8043",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      498.0,
+      489.0
+     ],
+     "score": 0.42968741059303284
+    }
+   ],
+   "frameSha256": "94ff71c90a18b4e543899cd54d181a1636774cfe8376eb3b568ac9a821bd5f50",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=487;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.80859375
+    }
+   ],
+   "frameSha256": "954fa09b6c81e42db08de2fb1157c7867dee9c7a82e87a7d9950ff2949e4e24e",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=381;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      422.0,
+      300.0,
+      438.0,
+      316.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "96ccf2c542205dfdd150ba5ba0c71ab418362b34f08c194a2d009c91374f57f7",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=431;y=308;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      223.0,
+      241.0,
+      239.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "96d3510690af2b750b59141d025c8af65ccc94edfd576b5dea7fe3215082bb27",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=232;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      322.0,
+      280.0,
+      338.0,
+      296.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "96de7c6a013a1004c66e048a056cc0deb4b18b81551e66df98e0ee9f2270f662",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=331;y=289;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      231.0,
+      239.0,
+      247.0,
+      256.0
+     ],
+     "score": 0.953125
+    }
+   ],
+   "frameSha256": "9723916f2668d5ccbc9b243253fc01292138196ae10f7dc68cc1255a674415b9",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=239;y=248;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      31.0,
+      530.0,
+      490.0
+     ],
+     "score": 0.77734375
+    }
+   ],
+   "frameSha256": "972ba12138962a39331b123d18e9a4d2bd354f1288909e9f64ada4768e686884",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=467;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      499.0,
+      464.0
+     ],
+     "score": 0.91015625
+    }
+   ],
+   "frameSha256": "97dd098bf8ce3e663d3af806fb652970c84a32288db288d56e66a17fcd46d31f",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=258;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      275.0,
+      250.0,
+      291.0,
+      266.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "9b00f3055beb0b69d130a6d9c9672fba02ce237a504be9c4c5f867c791809550",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=284;y=258;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      432.0,
+      305.0,
+      449.0,
+      321.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "9b31393209c514c32e0ecea28309ad8c212b930ff26883061980aeea97b624bf",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=441;y=314;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      365.0,
+      289.0,
+      381.0,
+      305.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "9b51f2036ab038961b23ac87834e5121cfb8f280b13fb9097dfad679ce9cadb0",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=374;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.62109375
+    }
+   ],
+   "frameSha256": "9b84905a2c747a450d74d81536360c32703eb4b360a143ba31ab8376afc97084",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=235;y=241;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      342.0,
+      289.0,
+      358.0,
+      305.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "9bda51b450da747627c871e5352396628e476131080fcc9f7eea6ead5e83f32a",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=351;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "9c025a116cdac0d8f49e709167f006265ecfb2940fd3cf16563be5bfca5f3d7c",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      32.0,
+      32.0,
+      526.0,
+      464.0
+     ],
+     "score": 0.36328125
+    }
+   ],
+   "frameSha256": "9e29752e75ac5e1a4a0e8ad269ffb3c673cc9839db1a33c6b12aa64ce36e4063",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=245;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      473.0,
+      321.0,
+      489.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "9e587221a777b4965e0bcee059b5bc429c873cb25d6ef842c8c10961ca29f47e",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=480;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      472.0,
+      321.0,
+      488.0,
+      337.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "9ef68ca980065329f8e1e29c2f6516a85a505e1771f3efeb2f465f34d079aa0d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=481;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      259.0,
+      245.0,
+      275.0,
+      261.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "9f0e49ef84cdc4f5acaec30330b0a312b8bd06fe16d5f968dd00aaec9560ca3b",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=267;y=253;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "a135fad1f981268309bf9bc137af77d0ada046cd7a94e74f79b9de78cf574d98",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      5.0,
+      32.0,
+      497.0,
+      488.0
+     ],
+     "score": 0.32226553559303284
+    }
+   ],
+   "frameSha256": "a154da066bdfec594a70c9078a6da285b4b582676dc95d09e17b6697e883f2b0",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "a1e740aa06c750aa1f2372138b9139dd4ffed1aac90b6a56bfb30f525bdeb028",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=307;y=270;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      209.0,
+      257.0,
+      295.0,
+      338.0
+     ],
+     "score": 0.45703125
+    }
+   ],
+   "frameSha256": "a26dd4ddb4e9aeef0e894e43b63d0cfe589e177867e9e2ebd560fa6824cfca40",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=291;y=261;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      359.0,
+      289.0,
+      375.0,
+      305.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "a3542716f22c994f2a6160262fb7a964ea56f0ac8a34d2c0eaacb1a9dfca8f7a",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=367;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      405.0,
+      293.0,
+      421.0,
+      310.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "a362e74b4af2f0f46144407423ffda0df9f08dd56960f2d51d457d3bcba9832c",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=414;y=301;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      4.0,
+      32.0,
+      498.0,
+      488.0
+     ],
+     "score": 0.47656238079071045
+    }
+   ],
+   "frameSha256": "a3ecc2a99181fa6355372854dc4a1ca5778bcec4f53e113a09e144e7846b8c97",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      4.0,
+      33.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.890625
+    }
+   ],
+   "frameSha256": "a43dda06b5c6bed4f13c33a97cbfad4c276e8feb6ea17963f615801f7ca87337",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=331;y=289;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      217.0,
+      241.0,
+      233.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "a49bb2ce866c157ecbb0188dfadac08f60e88c9febea3bc2ed108ba3f8c82efc",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=225;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "a5249fe7f246fd191f59b8b342320dda0791303e03036192840502a45c7b2980",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      216.0,
+      241.0,
+      232.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "a53e2459d6420eabf47a92d114d3800e5de97b763a152edae12ddc9beed5cf27",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=224;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      210.0,
+      200.0,
+      272.0,
+      337.0
+     ],
+     "score": 0.451171875
+    }
+   ],
+   "frameSha256": "a53ee0a06efe1dcdff2ce666092a676d2d6c974290ac562144856fdd30c07a9c",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=233;y=233;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      372.0,
+      289.0,
+      388.0,
+      305.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "a6be115cdf3d461c15976f3eb556a05a3c080de259b1930719596abf1d126f3c",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=381;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      216.0,
+      241.0,
+      232.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "a796971db0fedf23dc3aaffc13525a29fae7dd2ebfaac6e474529e32d10bbf02",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=224;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "a7ad84274d9f4dd6f2d110199fe4c7398c675ddccbcf5cdcff0e6710619eabeb",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "a7d8c802126b480cda81ef02e8c124fce9e68aa47a47e9b4d189250f36e34908",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      4.0,
+      32.0,
+      497.0,
+      488.0
+     ],
+     "score": 0.36914053559303284
+    }
+   ],
+   "frameSha256": "a80da967f61a044bd1c17c947cb69d38d460966c98d52685b2a52b7a7985328d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      230.0,
+      237.0,
+      246.0,
+      254.0
+     ],
+     "score": 0.953125
+    }
+   ],
+   "frameSha256": "a83b52a41c1b9064eaf097a54de820cb6fdb5e5ff9285ff998fc69cd62fe70a2",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=238;y=245;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      475.0,
+      321.0,
+      491.0,
+      337.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "a94821f8449c437d93a41db463908b735a01146362967f514252517c97de3ca6",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=481;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "a984dbb7e10e9086dd6ead59eecb37a6f7f8438e5ae248bc6321e1d0a012c524",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      488.0
+     ],
+     "score": 0.64453125
+    }
+   ],
+   "frameSha256": "a9c41efb8fe6f8fffe05ef2bc4de4e3750e8a66190c3d344610baf3a15190748",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=461;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      399.0,
+      291.0,
+      415.0,
+      307.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "a9d0022fff9e827726c663489561a54350614308858a5fc4b91f3d961f1cd564",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=407;y=299;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      339.0,
+      357.0,
+      355.0,
+      374.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "a9f97fcca4bc5c49fc135fb5ae10fac72a759a5ab052b629256df3c31dc96576",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=346;y=364;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      339.0,
+      357.0,
+      355.0,
+      374.0
+     ],
+     "score": 0.91796875
+    }
+   ],
+   "frameSha256": "a9f97fcca4bc5c49fc135fb5ae10fac72a759a5ab052b629256df3c31dc96576",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=349;y=364;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.27734375
+    }
+   ],
+   "frameSha256": "aa5a567896f9a0ad3f2ad0807c9c17bf94a23a3c414b20693d9a6a09a928684c",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=235;y=239;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "ab21a424bcc3282c8e7aa18278c1ab209c2660cce992953f78bd6e78465a1af5",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "ab21a424bcc3282c8e7aa18278c1ab209c2660cce992953f78bd6e78465a1af5",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=491;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      210.0,
+      193.0,
+      272.0,
+      337.0
+     ],
+     "score": 0.51171875
+    }
+   ],
+   "frameSha256": "acca4141bba4ca49e6f4b65beff622b291ab53ed4d3ebc905c5d82213d12cec0",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=229;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      5.0,
+      33.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.58203125
+    }
+   ],
+   "frameSha256": "ad7733223ba45c7f72ea2b1d252481e8796a8dd53d884e9c184365310658ee36",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=347;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      395.0,
+      291.0,
+      411.0,
+      307.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "adff64c5f12394634576df0324c955726f236e0d340d9fe7826bad5f85ca465c",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=404;y=298;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      305.0,
+      266.0,
+      321.0,
+      283.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "af4c55af50a29c2b430e660164029c2f51db8c6070d4df6f5016968b7859627f",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=314;y=275;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      242.0,
+      244.0,
+      259.0,
+      261.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "af97550d81f1aec30ee2012b8970ee637d7185731fcf93bccf55e7f59322af1b",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=252;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "af9eafca58456814ebda1b0db296cd8d0a7219ad22d5a6be6303969c313ec6a0",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      392.0,
+      290.0,
+      408.0,
+      306.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "b0d131a3799901df6cb349f2eb41d1152cc6ef40b0754bf31d2e01f0b671a013",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=401;y=298;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      422.0,
+      300.0,
+      438.0,
+      317.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "b1084d6f34f265b2dd3e399c60a66be71627f8cec5425da5b56e8d824862e165",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=431;y=308;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.90234375
+    }
+   ],
+   "frameSha256": "b15eed1795a0abe08da7196e3933ffbede950a2d407d9a9ed9408918e21a00e9",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=397;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      227.0,
+      230.0,
+      243.0,
+      247.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "b1815bb27a9b6502eace35aa2f73b8c89114c51426146ba7959ed1e1acafc4fa",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=235;y=239;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      434.0,
+      307.0,
+      451.0,
+      324.0
+     ],
+     "score": 0.921875
+    }
+   ],
+   "frameSha256": "b202d97ac2c83685b3871588dfabf5596f613959eff55539c126559987d0b959",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=444;y=316;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      405.0,
+      293.0,
+      421.0,
+      310.0
+     ],
+     "score": 0.921875
+    }
+   ],
+   "frameSha256": "b36026c8f162f2e4c37c314fe55ae7520a0a67024a4fd542dc59de30b6a704fc",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=414;y=301;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      299.0,
+      261.0,
+      315.0,
+      277.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "b3df420ea054ab6c3ff838180ff48d01bd3c6ac06c70e39c60b83a9aa4ef5482",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=307;y=270;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      491.0
+     ],
+     "score": 0.5351561307907104
+    }
+   ],
+   "frameSha256": "b4ad65293cc4b6898d1004c91b66fac5d92d3ee4db53af78ce47b5f5f0320897",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=484;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      225.0,
+      241.0,
+      241.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "b5edfb0bec688568744ea11eee4bfd52e8a0056ebe7c54773490330a4e3774ae",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=233;y=233;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      412.0,
+      295.0,
+      428.0,
+      312.0
+     ],
+     "score": 0.91796875
+    }
+   ],
+   "frameSha256": "b80f473e0f44e98e0365fe5a175a5d1a8fdd9c7f88a21e6f7872307265549165",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=421;y=304;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      449.0,
+      318.0,
+      465.0,
+      335.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "b81bbd3b2c19ce6eaa68b382169dda0071a35508e3ab97524c2484c2b453d780",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=457;y=327;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      475.0
+     ],
+     "score": 0.67578125
+    }
+   ],
+   "frameSha256": "b919e31a40c5d9e08b18694c0705bc6f16d2aa5ae585f69b731b219336473a47",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=454;y=324;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      4.0,
+      33.0,
+      530.0,
+      465.0
+     ],
+     "score": 0.1767578125
+    }
+   ],
+   "frameSha256": "b91ee55e9d206cf2e7753bb01986801afcbe28a20289682a67deb09ca1a96c8a",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=447;y=319;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      335.0,
+      289.0,
+      351.0,
+      306.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "b9aade857e1382ae962ddf2fac4b2e789e3145b1bc1b7553e7d5ce382f8bdd27",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=344;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      4.0,
+      32.0,
+      498.0,
+      488.0
+     ],
+     "score": 0.44531238079071045
+    }
+   ],
+   "frameSha256": "b9ae366a37ff37aaad782a25e9fd11413db8a846763684f0a5baa158deb1523e",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      349.0,
+      289.0,
+      365.0,
+      306.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "ba1d8634debb8c2bb9dfc3ab19ba8ea3d8d868e536dd47d5bd45444f0e797798",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=357;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "bb6e6c8a5a71efcd7617a8f900a29658cf054150954369cec68aaf71805140e8",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      432.0,
+      306.0,
+      448.0,
+      311.0
+     ],
+     "score": 0.6171875
+    }
+   ],
+   "frameSha256": "bb91ccf4b88f1f8bc1d2dc0451e42fa04efd23a8b166af4db4a242dee5b24a2f",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=431;y=308;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      476.0,
+      321.0,
+      492.0,
+      337.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "bbabe8dfb3726a366406fbb94dd1c6cc2dc8afa519e69d5a61aa85dec5033225",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=483;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      210.0,
+      194.0,
+      272.0,
+      337.0
+     ],
+     "score": 0.57421875
+    }
+   ],
+   "frameSha256": "bc9d58a7c4496d95105e5696b42538f1995954dd209a96e5c586333cc035e5de",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=224;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      210.0,
+      193.0,
+      272.0,
+      337.0
+     ],
+     "score": 0.45703125
+    }
+   ],
+   "frameSha256": "be56517f547cc6138c6275b51308d21d23536ecc528359222e687945941b237a",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=228;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      240.0,
+      244.0,
+      258.0,
+      260.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "be6a38e94d05b1f2ef57eaa715ce62faa775aad1426e5671591c0d0038878e59",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=249;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      329.0,
+      287.0,
+      345.0,
+      304.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "be740b28e02d8a01e6401fe77fb91a7b03c75b35ce3b5248f08b9abd691a5539",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=337;y=296;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      329.0,
+      287.0,
+      345.0,
+      304.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "be740b28e02d8a01e6401fe77fb91a7b03c75b35ce3b5248f08b9abd691a5539",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=340;y=296;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      475.0,
+      321.0,
+      491.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "bf6f41e932c4d7e7ec2586321588ef546032bffa473afb074cb1bbe0b76b2976",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=484;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      269.0,
+      248.0,
+      285.0,
+      264.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "c03e9f40932d1c079773b2c47babb5abe0ddbb01dcc157cf4fc010ab3f83bba1",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=277;y=256;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "c04adb52da965e81119f01a2538ece751c8a1330b9f39754a541bce5fc2feae4",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=321;y=280;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      374.0,
+      289.0,
+      391.0,
+      305.0
+     ],
+     "score": 0.91015625
+    }
+   ],
+   "frameSha256": "c14fd5251bce328cda0086ba46718301f602dee14847b5bf4feaa6b3072793da",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=384;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      432.0,
+      305.0,
+      449.0,
+      321.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "c1616dd47ddde40d373c2f661bdda1fb317649b1fdde27e9ac9d57b101e3d42d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=441;y=314;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      409.0,
+      294.0,
+      425.0,
+      310.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "c1f489ddca03f70e51490bd9be48a866b3456ceb62af50c8f78bd96f7f00cff2",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=417;y=302;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      379.0,
+      354.0,
+      395.0,
+      370.0
+     ],
+     "score": 0.953125
+    }
+   ],
+   "frameSha256": "c2e57b4d462e9435226535f15cb4f45fddec35cebf7c47ace15289579861ce03",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=384;y=363;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      379.0,
+      354.0,
+      395.0,
+      371.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "c2e57b4d462e9435226535f15cb4f45fddec35cebf7c47ace15289579861ce03",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=387;y=363;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      32.0,
+      32.0,
+      499.0,
+      464.0
+     ],
+     "score": 0.26171875
+    }
+   ],
+   "frameSha256": "c3f38f3d806e501b6e9cdd5360cdff5ecd3abbf2caa362b4620104967907ebee",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=247;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      488.0
+     ],
+     "score": 0.5781248807907104
+    }
+   ],
+   "frameSha256": "c45beb67af6b65731c18f9600f53cd86ef16628b6d23fcc8534e0fdcbb8284ec",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=474;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "c49416f64884f1087d78c52992482d62efd64f780fcd7857186a22c023d1ef1c",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=301;y=266;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      265.0,
+      247.0,
+      281.0,
+      263.0
+     ],
+     "score": 0.88671875
+    }
+   ],
+   "frameSha256": "c4d35f129dda94cfd9a4c161e4d3fd163cbba3a69df737a57a351d731b8925c8",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=274;y=255;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      210.0,
+      193.0,
+      272.0,
+      337.0
+     ],
+     "score": 0.58203125
+    }
+   ],
+   "frameSha256": "c4ef07cde64ba23bb01573fab222f9105672e14e8046a71de125145b32849fec",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=224;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      220.0,
+      241.0,
+      236.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "c579f9d49f81595ceec79fa1f27f8cadb05fe4c558de2102766321e3c3ac7cc0",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=228;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      478.0,
+      321.0,
+      495.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "c6615677850c023e44c3b0ba99132b34f64fdc35de737d1794915060424fd424",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=485;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      236.0,
+      244.0,
+      253.0,
+      260.0
+     ],
+     "score": 0.89453125
+    }
+   ],
+   "frameSha256": "c6feaabfc9fc0026cf64142b83666306bf771196e72d60b3045eac428238e2c0",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=245;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      365.0,
+      289.0,
+      382.0,
+      305.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "c85dc634c175e9868fbc43b44736e5cc71ac8d7520a1dde5f1ff04eeb2599250",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=374;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      246.0,
+      244.0,
+      262.0,
+      260.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "c8af236454e0d61e18b41255b556b14a812dcae2ad73e39e65aa4f6b18012214",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=255;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      489.0
+     ],
+     "score": 0.5273436307907104
+    }
+   ],
+   "frameSha256": "c9454f9eca9823446d04f0e03b3f546163b56a5f226a6aa0e1729f5a4738a68b",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=481;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      5.0,
+      32.0,
+      497.0,
+      465.0
+     ],
+     "score": 0.34374991059303284
+    }
+   ],
+   "frameSha256": "c9b13b63265375817e618bf3583ad984f11518d5124485382e7e3fbb93c81d32",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      441.0,
+      312.0,
+      458.0,
+      329.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "ca7ed98680baf5117cfe9c8e949b956ee0617ff5cb58985e2c4799c1489d51eb",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=451;y=321;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.90234375
+    }
+   ],
+   "frameSha256": "caacfa6bd5008ea23b99a3fa1e4c8fde50210f03d4ad299a68e998cccdbdcbfc",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=327;y=286;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      282.0,
+      252.0,
+      298.0,
+      269.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "cc0dbd03b3b65e06803064a8e79c5f7298b6ae9df89c82139e21affd97d24c81",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=291;y=261;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.87109375
+    }
+   ],
+   "frameSha256": "cc1c692f305fed886d2d574dfdab83d7a75462bb06fc80cb112bb184b766b450",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=394;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "cc39f0891ee7097a665fda49baf03d3b3e380ec3afa30c438b883ba6a289e316",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "cdfd04e2fc7766b7f542e1f1bb81176b558d86ba787ee496634c94432a7f6219",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      471.0
+     ],
+     "score": 0.89453125
+    }
+   ],
+   "frameSha256": "ce111a4f3a2915734e450357fb87c4a1641da56942ce55b883c03d743e9754ab",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=407;y=299;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      332.0,
+      289.0,
+      348.0,
+      306.0
+     ],
+     "score": 0.90234375
+    }
+   ],
+   "frameSha256": "ce5f2b549b501e12793cc3825fdafbf40e24814788408f24ed0d4ffb26601099",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=341;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      292.0,
+      257.0,
+      308.0,
+      273.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "ce883506291c4813b265a21796dbbfe5315e0dee22959ee05c34dc514c31f951",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=301;y=266;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "cf64d2efddfb2bee6cd51b7b048872cb12bc85e58dde8092bd6b39a47ad3198d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      4.0,
+      32.0,
+      497.0,
+      488.0
+     ],
+     "score": 0.48046863079071045
+    }
+   ],
+   "frameSha256": "d05c5bdf56ac74d2754bf8fce8bc330408547fe13378748d81fe5d754c57dd1d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      429.0,
+      303.0,
+      445.0,
+      319.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "d0f501db1eede5f76fdfa69c41a5d1fd80c8618a6851b8a2dd47fcc8355aba59",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=437;y=312;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      429.0,
+      303.0,
+      445.0,
+      319.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "d0f501db1eede5f76fdfa69c41a5d1fd80c8618a6851b8a2dd47fcc8355aba59",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=440;y=312;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      449.0,
+      318.0,
+      465.0,
+      334.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "d1a72607f942aa46124e1ab5adcbe6b14d26176440070daa0dafa0c78255ace1",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=457;y=327;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      385.0,
+      289.0,
+      401.0,
+      306.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "d3ca4641bec6b0b0c59fa32f645cc0bf54e899dc382fb2bd499b8c0d7268ac78",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=394;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      319.0,
+      277.0,
+      335.0,
+      294.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "d4bacc0143770d3b19227e2ca1ea2955764e3640a0a34a0c577c23b9be510f48",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=327;y=286;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      491.0
+     ],
+     "score": 0.5624998807907104
+    }
+   ],
+   "frameSha256": "d6712df6c071733751c5210015be4a46cfec80cf4b9e21144d56d6f065f7caa1",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=485;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "d6d045f2dcee396a7984cb7f66cd3917cccf5c9893395b3eb8b29fc2550a2368",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "d78df0bb9687435c727a98eb0dcf73f1078cfc8b7872f15b974807308cd3a025",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      488.0
+     ],
+     "score": 0.69140625
+    }
+   ],
+   "frameSha256": "d89d228abd138fbff3c6be1e38ebdc58087e77e634c8f23155e95efbfcc8638e",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=464;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      223.0,
+      241.0,
+      239.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "d8f20cd4693b8deb6cacae3ee0a388d75620a18d9f3363e9108ae2fd83e35778",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=232;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      223.0,
+      241.0,
+      239.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "d8f20cd4693b8deb6cacae3ee0a388d75620a18d9f3363e9108ae2fd83e35778",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=235;y=232;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      4.0,
+      32.0,
+      498.0,
+      488.0
+     ],
+     "score": 0.42968741059303284
+    }
+   ],
+   "frameSha256": "d90f287d0be4accbd46c0f0ee850e572452d7c4c98ed2fd89edd7d921b4f4bc2",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      335.0,
+      289.0,
+      351.0,
+      305.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "d922b5b177f05d6890c1d3eb84f35b1081354b59ac80665bc7fd5a16b34ccd46",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=344;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      228.0,
+      232.0,
+      244.0,
+      249.0
+     ],
+     "score": 0.91796875
+    }
+   ],
+   "frameSha256": "db39800832b9d5ec5c6366419d4bbdf920975225c271f92a13ac560201b8f14d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=235;y=241;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      498.0,
+      464.0
+     ],
+     "score": 0.85546875
+    }
+   ],
+   "frameSha256": "db69b1a470f4cf3ee367987e812d5fb7d9cf34e92e1e7c621bae6fef40fbf8c2",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=255;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      255.0,
+      245.0,
+      271.0,
+      261.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "dbc1aee1026a65a6b8fc27610ff78d0548af52ae12838f10d2621d86375fb252",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=264;y=253;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      289.0,
+      256.0,
+      305.0,
+      272.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "dc2f9ec8a602cf50924cdcbbfe13337408d2882b873a54fb0ae5d67fd83a1dbb",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=297;y=264;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      389.0,
+      290.0,
+      405.0,
+      307.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "dd71cff27b890480ca9ad553b83d4fa60bdd91aff3fe0307133e3d3b819987bf",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=397;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      438.0,
+      310.0,
+      455.0,
+      326.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "ded56aecc8346954bfc85e0e0f533790e361793f42a88171b314524c47e812d9",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=447;y=319;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      210.0,
+      193.0,
+      272.0,
+      337.0
+     ],
+     "score": 0.52734375
+    }
+   ],
+   "frameSha256": "df2f1c43e794d3ccec0db021995ecbc8966cb2681f6ca4c86f50649780cae978",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=225;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      479.0,
+      321.0,
+      495.0,
+      338.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "dfdf5f829314ed30db2775265df391a43c1a5dcad52862b6a22453bd3845b4b7",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=486;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      475.0,
+      321.0,
+      491.0,
+      337.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "dfe3e78a3bbd1893db38d27e51c73db4f206874edec3351f041efccc39b83c18",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=484;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      279.0,
+      251.0,
+      295.0,
+      267.0
+     ],
+     "score": 0.89453125
+    }
+   ],
+   "frameSha256": "e0d99a21ff90c234b1d583bb51d8a48a026fe17b8918bd615b7308a51c177834",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=287;y=259;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      374.0,
+      289.0,
+      391.0,
+      305.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "e1032dfbca8153cd57f4fbf39e953e8bf44a8a380e1c9717217e44b6a38f6c99",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=384;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.5351561307907104
+    }
+   ],
+   "frameSha256": "e12fbfca232e07e56379e8b5fdc0a6a9fd173d51cc435a29055e0963ecaa6acc",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=284;y=258;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      33.0,
+      530.0,
+      474.0
+     ],
+     "score": 0.4921875
+    }
+   ],
+   "frameSha256": "e15381e96439eea10f6fd4d7d07cd66f9e70f1fd32cc5496313ce84e3f1af164",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=354;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      235.0,
+      244.0,
+      251.0,
+      260.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "e1b03824a769f2e691ea1ed25b9106afa61e1c2175b7e497a355406efeb4b90b",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=243;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      235.0,
+      244.0,
+      251.0,
+      260.0
+     ],
+     "score": 0.91015625
+    }
+   ],
+   "frameSha256": "e1b03824a769f2e691ea1ed25b9106afa61e1c2175b7e497a355406efeb4b90b",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=246;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      489.0
+     ],
+     "score": 0.5546873807907104
+    }
+   ],
+   "frameSha256": "e1de1e1781596c3c6ede189bcb5c12645d321267219a1a5aeb7c44cab901017f",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=483;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "e23a567805be92007481193456b6e5df2f5d68f06afd633084953617cc8a438d",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=417;y=302;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      342.0,
+      289.0,
+      358.0,
+      305.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "e40c3a68b485e333ae4b45bfebec50901b52acccabea983b067389b9a3476825",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=351;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      32.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.400390625
+    }
+   ],
+   "frameSha256": "e491716d421629af9a34ba4826229516acfd5b9934d3f628c8766ac9ee803ddf",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=243;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      225.0,
+      222.0,
+      241.0,
+      238.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "e62dd0403548de13907c2c9a3f3dc005e42871001058f9107220387556765d54",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=230;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      210.0,
+      199.0,
+      272.0,
+      337.0
+     ],
+     "score": 0.59765625
+    }
+   ],
+   "frameSha256": "e66aa8bc3e364645e1cc4921acff191d15783841c9abb2174bf8e13adc42325b",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=224;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "e68ce38322a6e75dccf8114263e7b6585c30fe149f1e083f2a979503572454b0",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.69140625
+    }
+   ],
+   "frameSha256": "e879c2a3ccf3cc8030614fc15aa31963c123167722b1473b105f74c95366ae56",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=238;y=245;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      262.0,
+      246.0,
+      278.0,
+      262.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "e8860ea7d36979865c1616cb7c25ceb651ed3c7888f5e8458c83540a178db5de",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=271;y=254;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      262.0,
+      246.0,
+      278.0,
+      262.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "e8860ea7d36979865c1616cb7c25ceb651ed3c7888f5e8458c83540a178db5de",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=274;y=254;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      362.0,
+      289.0,
+      378.0,
+      305.0
+     ],
+     "score": 0.91015625
+    }
+   ],
+   "frameSha256": "ea51a1375422c895652bfbe4861706eb3bc2c03a253902aee61afeff7eb65bc4",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=371;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      362.0,
+      289.0,
+      378.0,
+      305.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "ea51a1375422c895652bfbe4861706eb3bc2c03a253902aee61afeff7eb65bc4",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=374;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      415.0,
+      297.0,
+      431.0,
+      313.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "ea610f2e61e8d310b8fc89a37a6f0f00f69b9b790530019f8a2931a8163586bb",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=424;y=305;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      239.0,
+      244.0,
+      255.0,
+      260.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "ebbbea3c6f252c17a7bf43ef8c27f42026dc2126749ad6ab317a8fae4f06dcb1",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=247;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      5.0,
+      32.0,
+      497.0,
+      488.0
+     ],
+     "score": 0.35156241059303284
+    }
+   ],
+   "frameSha256": "ec12c4754dfd19cf23df4e39b9bb56e8a39794908be39ff5a140e75a32bc73fb",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      226.0,
+      226.0,
+      242.0,
+      242.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "ec64990b8dd3db7088d870a7d09bf9c4135625dace79de1b7791f572c19ead28",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=233;y=235;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      462.0,
+      321.0,
+      478.0,
+      338.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "ed3c3604650eb81a73c19f267f456233cb2c70a5b64538a1542618ba6ce0a2e9",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=471;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      344.0,
+      289.0,
+      361.0,
+      305.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "edf815f20135a9723b74b3e0c62097be7734eba28160dee55be3db054270a041",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=354;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      210.0,
+      199.0,
+      272.0,
+      337.0
+     ],
+     "score": 0.53515625
+    }
+   ],
+   "frameSha256": "efa40933e05354aa0e1d460fa6bc939ffa830d6ff14348ee407033ce2fa2bee6",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=232;y=230;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      379.0,
+      289.0,
+      395.0,
+      305.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "efd3a4b624d310efc0a01b8374c438991f69efb4dac25e9faedb521126f6a916",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=387;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.80078125
+    }
+   ],
+   "frameSha256": "f0959d56ba9ab14332d0391cfcfdf07586890a99c4e0f0313f4baa4443df1b10",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=281;y=257;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      344.0,
+      289.0,
+      362.0,
+      306.0
+     ],
+     "score": 0.91796875
+    }
+   ],
+   "frameSha256": "f09ecfa50b4bc118b9acef03cea07ffb1a90bf6f2a4e72fd91804447536dbadc",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=354;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      399.0,
+      291.0,
+      415.0,
+      307.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "f171eb0b259a551af03be69504dc5d901af549fe8d823c481c54676318809142",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=407;y=299;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      445.0,
+      315.0,
+      461.0,
+      331.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "f178da778c9cef4f9343a6c4b5236a89fa46a99d98bdb876f0b993cc4a55fdd3",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=454;y=324;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      229.0,
+      234.0,
+      245.0,
+      250.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "f2ba49197b53dd76d43c0b487ebf1bd8f1271cd31c9f4e8360a92138d1cf72dd",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=237;y=243;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      481.0,
+      321.0,
+      497.0,
+      337.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "f2c5298067f794a9faf2cae57d9db10e6b9232403f889248a83fc2369743cbde",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      4.0,
+      32.0,
+      497.0,
+      488.0
+     ],
+     "score": 0.35156241059303284
+    }
+   ],
+   "frameSha256": "f3bbdde90bdc5e3c2072ee1f04d1231881a77c44ec5288c80911e90c360f690b",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      419.0,
+      298.0,
+      436.0,
+      314.0
+     ],
+     "score": 0.921875
+    }
+   ],
+   "frameSha256": "f5a7760b933f1c1284ad437b0b8d10f1d6384f4547eb4e7ea5ff9fc7d3ace81f",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=427;y=307;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      474.0
+     ],
+     "score": 0.7734375
+    }
+   ],
+   "frameSha256": "f7bc1f9e50ce9cbc83f61bfcee94b91fbf3202168883d223295940d46742e0b9",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=374;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "f886099490fd935b79bb2ceddbf6573fd89fdd369bd2428f3ebf8a3871d16d81",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=264;y=253;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      292.0,
+      257.0,
+      308.0,
+      273.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "fa6f4a7cdaa27f5926025d08fbbf2d0e3c767c8fa471140863fd744121aa5042",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=301;y=266;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      452.0,
+      321.0,
+      468.0,
+      338.0
+     ],
+     "score": 0.94921875
+    }
+   ],
+   "frameSha256": "faacd4a02a469391ca35a235ca8331b0462226f2d1887e274936610f75b0a927",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=461;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      465.0,
+      321.0,
+      481.0,
+      337.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "fadca27eed3106a2d8e19291bc0e1d09fb0ce507275d98da6b4da6f015870702",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=474;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      3.0,
+      32.0,
+      530.0,
+      488.0
+     ],
+     "score": 0.48046863079071045
+    }
+   ],
+   "frameSha256": "fb513e297d6e0ec12cda3fa31d63a1ac4688fec8e2055e1521c6b6caf76c9bf5",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=477;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      236.0,
+      244.0,
+      253.0,
+      260.0
+     ],
+     "score": 0.921875
+    }
+   ],
+   "frameSha256": "fb98584af74a9269ace7f6dd10fe80a1fc684aca00790e8d23edd61b936ce362",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=245;y=252;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.91015625
+    }
+   ],
+   "frameSha256": "fc25f3ad6ad38a2006539cf5779bea00706320aa03fa51999e88224cd943c8d4",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=277;y=256;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      339.0,
+      357.0,
+      355.0,
+      374.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "fca705e6ca874c99224e24f7d747912995d97662bd6e356f31f8c5927ec9ecf0",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=346;y=364;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      339.0,
+      357.0,
+      355.0,
+      374.0
+     ],
+     "score": 0.91796875
+    }
+   ],
+   "frameSha256": "fca705e6ca874c99224e24f7d747912995d97662bd6e356f31f8c5927ec9ecf0",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=349;y=364;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      0.0,
+      32.0,
+      530.0,
+      464.0
+     ],
+     "score": 0.921875
+    }
+   ],
+   "frameSha256": "fd83afde345d142ddc1b9a72cfa404c0f4eca7d585674a3faeafd1b9305a8a32",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=384;y=297;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      5.0,
+      32.0,
+      498.0,
+      488.0
+     ],
+     "score": 0.39648428559303284
+    }
+   ],
+   "frameSha256": "fdb31516cc2b8fd60f963c8f680b610b38b73a8a6273b7aaddb3d40fbe64badd",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      434.0,
+      307.0,
+      451.0,
+      324.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "fdbab09092a78d9f748ca790f3a651546dd1e1205dced7667ea4fda640e470b9",
+   "kind": "segment-at",
+   "prompt": "<0f>1<|point;x=444;y=316;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      328.0,
+      287.0,
+      346.0,
+      304.0
+     ],
+     "score": 0.8984375
+    }
+   ],
+   "frameSha256": "0f6f6cce5b5157d7ca7203365c7c02de86a8e08525a70b390ee66cca9d24b91e",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=326;y1=285;x2=348;y2=307;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      224.0,
+      215.0,
+      242.0,
+      233.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "1119c586bdcf84968506653b6bca1cff0d7c7ef94228686e7e992850e263ef19",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=221;y1=213;x2=243;y2=235;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      327.0,
+      390.0,
+      344.0,
+      408.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "1512f2bea277023f8c4cf4c50b1004bad38b5c1d581becf6f7019ae81464f4bc",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=325;y1=391;x2=347;y2=413;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      445.0,
+      321.0,
+      461.0,
+      338.0
+     ],
+     "score": 0.9296875
+    }
+   ],
+   "frameSha256": "1ceb61978258969d49e4d27dd9b124d56400880a4b58a55963173008bc7a5cff",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=440;y1=318;x2=462;y2=340;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      462.0,
+      321.0,
+      479.0,
+      337.0
+     ],
+     "score": 0.91796875
+    }
+   ],
+   "frameSha256": "2e4715c14c135e54a4dfb11d2d459f6a725de159eb6bdeedac3bb3bb54499631",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=460;y1=318;x2=482;y2=340;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      234.0,
+      243.0,
+      252.0,
+      261.0
+     ],
+     "score": 0.90625
+    }
+   ],
+   "frameSha256": "30a7a4cf6f19000fdfa0d89624b413c47b443b046b70e100be900e52e75d50f5",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=232;y1=241;x2=254;y2=263;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      429.0,
+      303.0,
+      446.0,
+      320.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "3896af1e72b9aa7631d35abc0e92f38caf3c7f37dd9b54b3c6e910070559d846",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=426;y1=301;x2=448;y2=323;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      395.0,
+      290.0,
+      412.0,
+      308.0
+     ],
+     "score": 0.90625
+    }
+   ],
+   "frameSha256": "38a31c7109efe9011a9753e0d1ae9f039cf1c1f70f7160eab6c6c1322789181d",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=393;y1=287;x2=415;y2=309;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      348.0,
+      359.0,
+      367.0,
+      377.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "3b17b3b5ef29dfcc69828b3c8182a076b2b9df81a8af1797c780b421bff77874",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=345;y1=356;x2=367;y2=378;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      411.0,
+      330.0,
+      429.0,
+      348.0
+     ],
+     "score": 0.91015625
+    }
+   ],
+   "frameSha256": "3cc07d993a661cc54084de28a022f8aae895718c882113f49dc7c61d116604df",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=407;y1=328;x2=429;y2=350;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      480.0,
+      321.0,
+      498.0,
+      337.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "427085a1a610ad648d5f9cf1e03ec984416ef5b3f3827b430ea7f39011d174e6",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=477;y1=318;x2=499;y2=340;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      444.0,
+      321.0,
+      461.0,
+      338.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "4d0dd914950d28c2a17dd0866f2d309d878eda6c259f9346a8885225c1619a04",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=440;y1=318;x2=462;y2=340;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      378.0,
+      354.0,
+      396.0,
+      371.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "4e911974bcd0926811d7696847be8c6e78911c40f4da4e203cc9a81665c8b64e",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=373;y1=352;x2=395;y2=374;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      234.0,
+      244.0,
+      252.0,
+      261.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "5913b34c463f806724b0b7424a4da49b36eb50c2e357f6ff8dd8d4ea269caf2a",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=232;y1=242;x2=254;y2=264;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      260.0,
+      279.0,
+      278.0,
+      297.0
+     ],
+     "score": 0.90625
+    }
+   ],
+   "frameSha256": "5a1a5d8e26a9e92bdac6a25ee5cf858b5728128a71b85608627bd9186a555188",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=259;y1=278;x2=281;y2=300;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      224.0,
+      215.0,
+      242.0,
+      233.0
+     ],
+     "score": 0.921875
+    }
+   ],
+   "frameSha256": "66122060bdf4b9ac11def8d35e42029ed4ca4515a6fed4e3288bec1197b38301",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=221;y1=213;x2=243;y2=235;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      471.0,
+      320.0,
+      488.0,
+      337.0
+     ],
+     "score": 0.91015625
+    }
+   ],
+   "frameSha256": "67fd640f665f389b2458c1044eb3524ee801bf3caac953eea9c4b1c17bb0706d",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=467;y1=318;x2=489;y2=340;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      362.0,
+      289.0,
+      379.0,
+      307.0
+     ],
+     "score": 0.8828125
+    }
+   ],
+   "frameSha256": "704534934220bc4ff70a931a0a4f51e61b83001e6c6b94358ebe143931b257ba",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=360;y1=286;x2=382;y2=308;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      339.0,
+      357.0,
+      355.0,
+      374.0
+     ],
+     "score": 0.91796875
+    }
+   ],
+   "frameSha256": "72244e26884bc4f525f973ce92880adb4a0227e1bfbc87236803532289394f6b",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=335;y1=353;x2=357;y2=375;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      294.0,
+      259.0,
+      312.0,
+      276.0
+     ],
+     "score": 0.90625
+    }
+   ],
+   "frameSha256": "81459b4c263570d2097d11ee476015fc5fecbd13be8ae3eba6b5bebfe08e8570",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=293;y1=257;x2=315;y2=279;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      294.0,
+      259.0,
+      313.0,
+      276.0
+     ],
+     "score": 0.90625
+    }
+   ],
+   "frameSha256": "83df1ec905ffa63d9a1955a8841c9665f777f55b0e7612ebf7d05ac6443ea507",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=293;y1=257;x2=315;y2=279;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      411.0,
+      330.0,
+      429.0,
+      348.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "8769f76e72519821cc37fb775b76b420e1a5374e26cee4e5b89d9b2f9f47e933",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=407;y1=328;x2=429;y2=350;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      261.0,
+      246.0,
+      279.0,
+      263.0
+     ],
+     "score": 0.91015625
+    }
+   ],
+   "frameSha256": "9356afaf641ff3afaa645a9b4bc9327eb088b0b80f19ce82ef2245333699c8ea",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=260;y1=243;x2=282;y2=265;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      224.0,
+      222.0,
+      242.0,
+      240.0
+     ],
+     "score": 0.91796875
+    }
+   ],
+   "frameSha256": "96d3510690af2b750b59141d025c8af65ccc94edfd576b5dea7fe3215082bb27",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=221;y1=221;x2=243;y2=243;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      361.0,
+      468.0,
+      383.0,
+      495.0
+     ],
+     "score": 0.8359375
+    }
+   ],
+   "frameSha256": "9c7e717d5c80f33b5798b33fa7a40f4cd86121561248a688202841c8f1cb054b",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=359;y1=469;x2=381;y2=491;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      471.0,
+      320.0,
+      488.0,
+      337.0
+     ],
+     "score": 0.91796875
+    }
+   ],
+   "frameSha256": "a9ce99cc0195e8b5afe0a18751d841663202ed552fc33482898d721bc65b4fff",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=467;y1=318;x2=489;y2=340;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      338.0,
+      357.0,
+      355.0,
+      374.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "a9f97fcca4bc5c49fc135fb5ae10fac72a759a5ab052b629256df3c31dc96576",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=335;y1=353;x2=357;y2=375;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      480.0,
+      321.0,
+      498.0,
+      337.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "ab21a424bcc3282c8e7aa18278c1ab209c2660cce992953f78bd6e78465a1af5",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=477;y1=318;x2=499;y2=340;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      395.0,
+      290.0,
+      412.0,
+      308.0
+     ],
+     "score": 0.91015625
+    }
+   ],
+   "frameSha256": "adff64c5f12394634576df0324c955726f236e0d340d9fe7826bad5f85ca465c",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=393;y1=287;x2=415;y2=309;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      480.0,
+      321.0,
+      498.0,
+      338.0
+     ],
+     "score": 0.91796875
+    }
+   ],
+   "frameSha256": "bb6e6c8a5a71efcd7617a8f900a29658cf054150954369cec68aaf71805140e8",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=477;y1=318;x2=499;y2=340;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      349.0,
+      359.0,
+      367.0,
+      377.0
+     ],
+     "score": 0.921875
+    }
+   ],
+   "frameSha256": "bbf242198c36de3f38acc8e9ba6114ecd49d616e013fa2074a9294197ac96dd2",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=345;y1=356;x2=367;y2=378;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      329.0,
+      287.0,
+      346.0,
+      304.0
+     ],
+     "score": 0.89453125
+    }
+   ],
+   "frameSha256": "be740b28e02d8a01e6401fe77fb91a7b03c75b35ce3b5248f08b9abd691a5539",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=326;y1=285;x2=348;y2=307;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      378.0,
+      354.0,
+      395.0,
+      371.0
+     ],
+     "score": 0.91015625
+    }
+   ],
+   "frameSha256": "c2e57b4d462e9435226535f15cb4f45fddec35cebf7c47ace15289579861ce03",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=373;y1=352;x2=395;y2=374;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      338.0,
+      357.0,
+      355.0,
+      374.0
+     ],
+     "score": 0.91796875
+    }
+   ],
+   "frameSha256": "cb217c99faf21f7f5f6b99c3a701c3c0e83a520e9cf6ccef6786044c664ef1e2",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=335;y1=353;x2=357;y2=375;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      429.0,
+      303.0,
+      446.0,
+      320.0
+     ],
+     "score": 0.91015625
+    }
+   ],
+   "frameSha256": "d0f501db1eede5f76fdfa69c41a5d1fd80c8618a6851b8a2dd47fcc8355aba59",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=426;y1=301;x2=448;y2=323;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      480.0,
+      321.0,
+      498.0,
+      338.0
+     ],
+     "score": 0.91796875
+    }
+   ],
+   "frameSha256": "d6d045f2dcee396a7984cb7f66cd3917cccf5c9893395b3eb8b29fc2550a2368",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=477;y1=318;x2=499;y2=340;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      224.0,
+      223.0,
+      242.0,
+      240.0
+     ],
+     "score": 0.91796875
+    }
+   ],
+   "frameSha256": "d8f20cd4693b8deb6cacae3ee0a388d75620a18d9f3363e9108ae2fd83e35778",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=221;y1=221;x2=243;y2=243;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      293.0,
+      328.0,
+      311.0,
+      346.0
+     ],
+     "score": 0.890625
+    }
+   ],
+   "frameSha256": "db623daa3c6296acabfe7bc56843e8f3837c41bdd8265e869fc3b046f7c13d94",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=292;y1=328;x2=314;y2=350;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      234.0,
+      243.0,
+      252.0,
+      261.0
+     ],
+     "score": 0.91015625
+    }
+   ],
+   "frameSha256": "e1b03824a769f2e691ea1ed25b9106afa61e1c2175b7e497a355406efeb4b90b",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=232;y1=241;x2=254;y2=263;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      261.0,
+      246.0,
+      279.0,
+      263.0
+     ],
+     "score": 0.90625
+    }
+   ],
+   "frameSha256": "e8860ea7d36979865c1616cb7c25ceb651ed3c7888f5e8458c83540a178db5de",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=260;y1=243;x2=282;y2=265;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      362.0,
+      288.0,
+      379.0,
+      307.0
+     ],
+     "score": 0.86328125
+    }
+   ],
+   "frameSha256": "ea51a1375422c895652bfbe4861706eb3bc2c03a253902aee61afeff7eb65bc4",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=360;y1=286;x2=382;y2=308;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      462.0,
+      321.0,
+      479.0,
+      338.0
+     ],
+     "score": 0.921875
+    }
+   ],
+   "frameSha256": "ed3c3604650eb81a73c19f267f456233cb2c70a5b64538a1542618ba6ce0a2e9",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=460;y1=318;x2=482;y2=340;w=530;h=495|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      338.0,
+      357.0,
+      355.0,
+      374.0
+     ],
+     "score": 0.9140625
+    }
+   ],
+   "frameSha256": "fca705e6ca874c99224e24f7d747912995d97662bd6e356f31f8c5927ec9ecf0",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=335;y1=353;x2=357;y2=375;w=530;h=495|>"
+  }
+ ],
+ "format": "expectrail.vision-recording/v1",
+ "model": {
+  "name": "sam-3.1",
+  "provider": "meta-model-api"
+ },
+ "recordedAt": "2026-11-14",
+ "run": "43652198623",
+ "sample": "kinematic-character"
+}
