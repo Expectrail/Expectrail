@@ -77,3 +77,14 @@ Applied cleanly (base one day old). Full suite: OK, 31 skipped. Note: `run_muse`
 The identity check `self._transport is self._http` in `GlimmerClient._call` was always false because each access to the bound method `self._http` creates a new object. `MetaSamClient.__init__` already records `self._live = transport is None` at construction. `_call` now reads that flag, so a real sender (no transport argument) is live: a missing cap records a stop in the job budget, holds nothing, and does not count the call. EngineCheckedGlimmer and BothClient inherit or construct the same way, so they receive the correct flag. No other identity check of a bound method existed; `warm`'s comparison against the module-level `urlopen` is unchanged.
 
 What was run: the two new tests in `tests/test_spend.py` (`test_live_path_with_no_cap_records_stop_and_sends_nothing` and `test_live_path_with_cap_opens_once_and_records_phase`). This machine has only Python 3.11 (package requires >=3.12); the full suite was not reported. No live model call was made.
+
+## Architect run (the Glimmer live fix)
+
+Linux, Python 3. The patch applied cleanly on `5119fbd` as `e810ce4`. Main (`da3d975`) was merged in as `538bbb2`, with one registry conflict in `setup.py`'s bundled modules, resolved by keeping main's `approval`, `auto_fix` and `repair` and this branch's `spend`.
+
+- `tests.test_spend.GlimmerCapTest.test_live_path_with_no_cap_records_stop_and_sends_nothing` against `5119fbd`'s `glimmer_client.py` (the old identity check): `FAILED (failures=1)`. With the fix: `python3 -m unittest tests.test_spend -v`, `Ran 17 tests`, `OK`.
+- The merge guard's probe (cap unset, throwaway key, `urlopen` stubbed): `SamError` of kind `budget`; `build_job_budget` phases `[('glimmer', stopped, 0 requests)]`; `calls == 0`; nothing sent.
+- `python3 -m unittest discover -s tests -t .` on the merged result: `Ran 3475 tests`, `OK (skipped=31)`.
+- `EXPECTRAIL_ENGINE_TESTS=required` on `tests.test_body_box`, `test_event_input`, `test_ground_under`, `test_pause_input`, `test_second_project`, `test_auto_route_engine` (Godot 4.7.2, `xvfb-run` available): `Ran 64 tests`, `OK`.
+
+Not run: hosted CI (runs on push), any live call. Nothing was spent.
