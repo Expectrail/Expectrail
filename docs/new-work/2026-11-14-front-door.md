@@ -34,3 +34,6 @@ Guides for Actions/MCP/private runners/provider adapters and a sourced positioni
 - `tests/test_quickstart.py`
 - `tools/front_door.py`
 - `tools/quickstart.py`
+
+## Architect run (Linux, main 6e6ca6a8)
+Applied cleanly. Full suite: OK, 31 skipped. `capabilities check` exit 0; `agents.check_pages docs`: 10 pages, 0 problems. Rendered index, quickstart and concepts in headless Chromium at 1280 and 390 px wide: no script errors, no sideways scrolling. The quickstart end to end (`tools.quickstart`) was not run here, because its pip install needs the network this workspace lacks; CI's package job runs it. The two new tools are added to `.gitignore`'s allowlist like the others.
