@@ -160,7 +160,11 @@ class RepairTest(Case):
                          "Accept or needs-review", "A person reviews")
                 positions = [figure.index(f"<span>{step}</span>") for step in steps]
                 self.assertEqual(positions, sorted(positions))
-                self.assertIn("never talks to the verifier or the judge", figure)
+                # Guard: test change intended (#244). Require the evidenced boundary and its
+                # containment condition instead of the old unconditional isolation wording.
+                self.assertIn("public failure evidence", figure)
+                self.assertIn("a separate verification job judges each candidate", figure)
+                self.assertIn("requires the real sandbox", figure)
                 self.assertIn("Expectrail never merges a fix", figure)
 
     def test_full_diff_is_escaped_in_both_pages_and_fixture_is_identified(self):

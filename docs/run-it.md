@@ -1,7 +1,7 @@
 # Run it
 
-"Run it" on expectrail.tech lets a visitor verify one of Expectrail's sample changes, live, without a
-terminal or GitHub (#265). This page describes slice 1 (the workflow, the samples, the recorded vision
+"Run it" has an operator-dispatched sample workflow and an implemented visitor UI/start service (#265).
+The visitor service is **not deployed**: visitors cannot start runs from expectrail.tech yet. This page describes slice 1 (the workflow, the samples, the recorded vision
 answers and the same run offline), slice 2 (the page, `docs/run-it/`, and a local stub of the edge
 function) and slice 3 (the edge function, `apps/run-it-edge/`, and a scripted burst).
 
@@ -10,9 +10,9 @@ The visitor service has not yet been deployed.
 
 ## What a visitor chooses
 
-One sample id from [`run-it/samples.json`](run-it/samples.json), and nothing else:
+The intended visitor UI offers one sample id from [`run-it/samples.json`](run-it/samples.json), and nothing else:
 
-| id | the change | a working install decides |
+| id | the change | recorded historical result, with matching vision answers |
 | --- | --- | --- |
 | `clean` | the bundled platformer as it is | accept |
 | `fall-through-bug` | the seeded fall-through bug, against the game as it is | reject |
@@ -35,12 +35,12 @@ is not in the manifest before anything runs. No visitor text reaches a shell, a 
 
 Expectrail judges every check with two observers (#327): the engine's record and a vision model over
 the captured frames, and a pass needs both. For the samples, Sean decided on November 13 that the game
-run and the checks are live on every visit, and the vision answers come from one recording per sample:
+run and checks execute on each operator-dispatched sample run (and are intended to do so for visitors after deployment). Vision answers come from one recording per sample:
 
 - `docs/run-it/vision/<sample>.json` (`expectrail.vision-recording/v1`) holds the model's answers,
   each keyed by the SHA256 of the frame's PNG bytes and the exact text asked.
 - `expectrail.recorded.RecordedObserver` answers only for a frame and question in the recording. Any
-  other frame gets no answer, so the decision is needs-review. An answer about another picture is never
+  other frame gets no answer; this needs review unless a check already fails and rejects. An answer about another picture is never
   reused, and no model is ever called.
 - The record names the observer `sam-recorded`, with the provider "meta-model-api (recorded <date>,
   run <id>)", and `status.json` carries the date, so the page can say "vision answers recorded on
@@ -53,8 +53,7 @@ and `fall-through-repair` decided needs-review and `fall-through-bug` still reje
 engine's record sees failing is a failure under the two-observer rule. `--expect` still knows that
 reading for a sample whose recording is missing, and `tests/test_runit.py` fails if any of the three original samples
 has no usable recording. A recording answers only the frames it holds: if the game or the
-capture ever changes what a frame looks like, those frames get no answer and the sample needs review
-until it is recorded again.
+capture changes PNG bytes or the requested question, those answers are missing. The sample needs review unless a failing check rejects. Even a renderer difference can change two pixels of an unchanged game; no approximate answer matching or live fallback is provided. See the [recorded-vision limits](capabilities.md#recorded-vision).
 
 ## The same run offline
 

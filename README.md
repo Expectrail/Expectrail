@@ -13,7 +13,7 @@
   <a href="https://github.com/Expectrail/Expectrail/actions/workflows/ci.yml"><img src="https://github.com/Expectrail/Expectrail/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-16133a" alt="License: Apache 2.0"></a>
   <img src="https://img.shields.io/badge/python-3.12%2B-16133a" alt="Python 3.12+">
-  <a href="docs/capabilities.md"><img src="https://img.shields.io/badge/every%20claim-linked%20to%20a%20run-ffc928" alt="Every claim linked to a run"></a>
+  <a href="docs/capabilities.md"><img src="https://img.shields.io/badge/capabilities-evidence%20and%20limits-ffc928" alt="Capabilities with evidence and limits"></a>
 </p>
 
 <p align="center">
@@ -27,23 +27,23 @@
 
 # Expectrail
 
-**Coding agents write changes at machine speed. Expectrail proves they actually work—and, when you opt in, repairs what fails for a person to review.**
+**Coding agents write changes at machine speed. Expectrail checks their behavior on approved checks and routes; opt-in repair proposes patches for a person to review.**
 
 Autonomous coding agents can make unit tests pass while breaking the running software: drawing a character inside
 the floor, hiding a checkout button behind a banner, failing to render a texture, or disabling a feature to silence a
 failing check.
 
-Expectrail replays the changed software in a harness against approved and per-change checks, cross-examines
-**internal runtime telemetry** against **external visual observation** (SAM 3.1 or open-weight Muse Glimmer 30B), and
+The installed command replays Godot changes against approved checks and cross-examines
+**internal runtime telemetry** against **external visual observation** (live SAM or configured exact recorded answers). Historical agent benchmarks also used Muse Glimmer 30B. Generated per-change checks remain advisory. It
 uses **plain deterministic code—never a model**—to report **accept**, **reject** or **needs-review**. When a check
-catches a defect and you turn auto-fix on, a sandboxed fixer works on a separate copy, a fresh verification judges each
+catches a defect and you turn auto-fix on, a fixer proposes a patch on a separate copy under the configured sandbox policy, a fresh verification judges each
 candidate, and a person reviews any accepted patch. [Capability ledger: installed command — integrated, diagnostic](docs/capabilities.md#installed-command).
 
 ```mermaid
 flowchart LR
   A["Change from a coding agent"] --> B["Replay in a harness<br/>on fixed input routes"]
   B --> C["Internal runtime telemetry<br/>(the engine's record)"]
-  B --> D["External perceptual sensor<br/>(SAM 3.1 / Glimmer over captured frames)"]
+  B --> D["External perceptual sensor<br/>(live SAM / exact recorded answers)"]
   C --> E{"Deterministic evaluator<br/>plain code, no model"}
   D --> E
   E -->|accept| F["Bounded by the approved checks"]
@@ -81,7 +81,7 @@ deceptive fixes passed every public check under Glimmer and was stopped only by 
 | Try a repair after a reject | [Verify, then repair](#verify-then-repair) |
 | Bring my own model, vision backend or coding agent | [Providers guide](docs/guides.html#providers) · ledger rows: [models](docs/capabilities.md#byo-models), [vision](docs/capabilities.md#byo-vision), [fixer](docs/capabilities.md#byo-fixer) |
 | Know what a verdict does and does not establish | [Concepts](docs/concepts.html) · [What a result means](#what-a-result-means) |
-| Check a claim on this page | [Capability ledger](docs/capabilities.md): every row names its run and its limits |
+| Check a claim on this page | [Capability ledger](docs/capabilities.md): every row names its test, record or run, and its limits |
 
 ## Install
 
@@ -165,7 +165,7 @@ For the hidden player, the engine passed. Vision measured the background and rep
 [“past the boundary”](docs/outside-projects.md#first-outside-game-verified-with-vision-november-14-2026).
 Since [#481](https://github.com/Expectrail/Expectrail/pull/481), Expectrail reports “not drawn” in this case; no live run has shown that yet.
 
-Dodge the Creeps has [a draft check awaiting approval and no vision verification run](docs/capabilities.md#outside-projects).
+Dodge the Creeps has [an approved engine check that rejects its broken build in CI, and no vision verification run](docs/capabilities.md#outside-projects).
 The [release dossier](https://expectrail.tech/release/#blind) lists the historical blind-test results.
 
 ## How we stress-tested the premise
@@ -191,12 +191,11 @@ mutation experiment specifically to break Expectrail.
    **4 of 4** reported Godot bugs ([41238187197](https://github.com/Expectrail/Expectrail/actions/runs/41238187197)), and raised **0 of 4** false alarms on intentional
    design changes. [Discovery results](docs/discovery.md).
 
-## Proved in game engines, built for stateful visual software
+## Measured in Godot; Unity remains experimental
 
 Most static webpages do not need Expectrail. It is built for stateful, visually complex software where unit tests and
 DOM selectors pass while the rendered experience is broken. We started with a 2D game engine (and a
-[3D Unity harness](docs/capabilities.md#unity-harness)) because continuous physics, layering and sprite rendering are
-the hardest visual state machine to prove this on, and the same verifier has already run on a
+[experimental Unity harness](docs/capabilities.md#unity-harness)) to study continuous physics, layering and sprite rendering. The historical verifier also ran on a
 [web checkout page](docs/capabilities.md#web-checkout).
 
 | Bug family | In game engines | Where the same bugs appear in web, canvas and mobile apps |
@@ -231,11 +230,11 @@ To repair an existing reject instead, set `JOB` to its ID in the same job store:
 expectrail repair "$JOB" --fixture agents/fixtures/fix-collision-mask.patch
 ```
 
-The fixer gets a separate game copy and public failure evidence. It never edits the verifier or specs.
+The fixer gets a separate game copy and public failure evidence. OS enforcement of verifier/spec isolation requires the sandbox; a diagnostic fallback is not isolation.
 Each candidate gets a fresh verification. A person reviews any winning patch. Expectrail never merges it.
 [Repair tests](tests/test_repair_command.py) · [Fixture result in the evidence viewer](docs/viewer-samples/fixture-repair.html).
 
-The [local app checkbox](docs/app.md#auto-fix-checkbox) requests live repair; spend caps are in (#436), but no live repair has been run yet.
+The [local app checkbox](docs/app.md#auto-fix-checkbox) requests live repair; [per-role spend caps are in](docs/capabilities.md#spend-caps), but no live repair through this new app/repair path has been recorded.
 [CI auto-fix](.github/workflows/expectrail-autofix.yml) runs only the fixture fixer, when a maintainer labels a rejected pull request, and is off by default. The [Run it card](https://expectrail.tech/run-it/#recorded-fix) is off until a real
 repair is recorded. [Status and evidence](docs/new-work/2026-11-14-loop-story.md).
 
@@ -258,6 +257,11 @@ The quickstart needs none of their credentials. Each row links its own evidence 
 
 [Recorded vision costs](docs/sam.md) are scoped to their runs, not a quote for your project.
 [Observer scope](docs/capabilities.md#sam-observer).
+
+Recent capability boundaries: [recorded vision and renderer limits](docs/capabilities.md#recorded-vision),
+[experimental template sensor](docs/capabilities.md#template-sensor) (2.35% clean alarms on the untuned route; the frozen bank does not transfer to kinematic-character),
+[verify --intent](docs/capabilities.md#verify-intent), [local app](docs/capabilities.md#local-app),
+[Dodge play-area check](docs/capabilities.md#dodge-the-creeps), and [receipt module](docs/capabilities.md#verifier-receipts).
 
 ## Evidence and limits
 
