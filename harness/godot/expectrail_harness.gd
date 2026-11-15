@@ -533,17 +533,14 @@ func _body_span(body: Node2D) -> Vector2:
 
 	The two ends of its own collision (see _body_extent), each pulled in by EDGE_INSET so that a wall
 	the body touches is not counted as under it. A body 2 * EDGE_INSET wide or less has no room for
-	that: its middle is asked about, as both ends (#354; until November 14, 2026 such a body was
-	treated as having no collision and given the robot's 20 px either side, which read a step 18 px
-	away as the ground under a body 2 px wide). (-BODY_HALF_WIDTH, BODY_HALF_WIDTH) only when there
+	that inset: use its real ends so a ledge under either end still counts (#354). (-BODY_HALF_WIDTH, BODY_HALF_WIDTH) only when there
 	is nothing to measure.
 	"""
 	var extent = _body_extent(body)
 	if extent == null:
 		return Vector2(-BODY_HALF_WIDTH, BODY_HALF_WIDTH)
 	if extent[2] - extent[0] <= 2.0 * EDGE_INSET:
-		var middle: float = (extent[0] + extent[2]) / 2.0
-		return Vector2(middle, middle)
+		return Vector2(extent[0], extent[2])
 	return Vector2(extent[0] + EDGE_INSET, extent[2] - EDGE_INSET)
 
 
