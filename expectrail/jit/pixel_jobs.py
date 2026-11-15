@@ -32,8 +32,14 @@ files, no symbolic link), and ``ask`` caps the replays it will look at (``MAX_RE
 will send (the observer's ``MAX_FRAMES`` a replay, and the budget), so a forged folder can at most make it
 ask about frames that the judging run then refuses.
 
-What this is not, yet: jit.yml does not run these steps. The asking job needs SAM's key in the main-only
-environment, and only Sean may give a job a secret (AGENTS.md).
+**What the asking job may spend** (``budget_left``; ``python -m expectrail.jit.cli pixel-budget``): the
+change's cap less what the capture run's record says was spent (the model's calls and the replays so far).
+The record is untrusted too: it is read only if it is a valid ``jit-run`` record of at most 8 MiB with a
+plain spend, and otherwise nothing is left, so nothing is asked. A forged record can lower what is left,
+never raise it above the cap.
+
+In jit.yml (under the pixel setting): replay-final is the capture, pixel-ask the asking (the key, in the
+main-only environment), pixel-judge the judging.
 """
 from __future__ import annotations
 
@@ -190,3 +196,32 @@ def ask(store: Path, observer, budget_usd: float, usd_per_image: float) -> dict:
     if pixel.setting_of(doc) != setting:
         raise AskRefused("the answer file would not read back under the observer's setting")
     return doc
+
+
+MAX_RECORD_BYTES = 8 * 1024 * 1024
+
+
+def budget_left(record_path, budget_usd: float) -> tuple[float, str | None]:
+    """(dollars the asking job may spend, why it is 0 or None). The change's cap less the capture record's
+    ``spend.usd``, never below 0 and never above the cap; an unreadable record leaves 0 (see the module
+    docstring)."""
+    import math
+
+    from expectrail.contracts import load_strict
+
+    if not (isinstance(budget_usd, (int, float)) and not isinstance(budget_usd, bool)
+            and math.isfinite(budget_usd) and budget_usd >= 0):
+        return 0.0, "the cap is not a number of dollars, 0 or more"
+    path = Path(record_path)
+    try:
+        if not path.is_file() or path.is_symlink() or path.stat().st_size > MAX_RECORD_BYTES:
+            return 0.0, "the capture record is missing, a link, or over 8 MiB"
+        record = load_strict(path, "jit-run")
+        spent = record["spend"]["usd"]
+    except Exception as exc:  # noqa: BLE001 - any unreadable record leaves nothing to spend
+        return 0.0, f"the capture record cannot be read ({type(exc).__name__})"
+    if not (isinstance(spent, (int, float)) and not isinstance(spent, bool) and math.isfinite(spent) and spent >= 0):
+        return 0.0, "the capture record's spend is not a plain amount"
+    left = max(0.0, float(budget_usd) - float(spent))
+    return math.floor(left * 10000) / 10000, None if left > 0 else "the capture run spent the whole cap"
+

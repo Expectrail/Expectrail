@@ -18,6 +18,25 @@
 <div class="card"><span class="pill">02 / Understand</span><h2>Concepts</h2><p>Read how checks, routes, approval and evidence grades fit together, and where the trust boundary ends. <a href="concepts.html">Read the concepts</a>.</p></div>
 <div class="card"><span class="pill">03 / Inspect</span><h2>Evidence ledger</h2><p>Keep implemented, integrated, measured and experimental modes apart. Each row names its evidence and what it does not show. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md">Read the ledger</a>.</p></div>
 </div></div></div>
+<section class="section" id="outside-vision" aria-labelledby="outside-title">
+<h2 id="outside-title">What’s been shown</h2>
+<p>Expectrail verified Godot’s kinematic-character demo using the engine’s record and vision.
+It is the <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#outside-projects">only outside game verified with vision so far</a>.</p>
+<table aria-label="Recorded verdicts for kinematic-character">
+<thead><tr><th scope="col">Change to the game</th><th scope="col">Verdict</th></tr></thead>
+<tbody>
+<tr><td>Original game at the pinned revision</td><td><a href="https://github.com/Expectrail/Expectrail/actions/runs/43652198623">accept</a></td></tr>
+<tr><td>Disabled floor collisions so the player fell through</td><td><a href="https://github.com/Expectrail/Expectrail/actions/runs/43652198623">reject</a></td></tr>
+<tr><td>Tinted the player’s sprite</td><td><a href="https://github.com/Expectrail/Expectrail/actions/runs/43652198623">accept</a></td></tr>
+<tr><td>Hid the player’s sprite</td><td><a href="https://github.com/Expectrail/Expectrail/actions/runs/43652198623">reject</a></td></tr>
+</tbody></table>
+<p>The full run cost <a href="https://github.com/Expectrail/Expectrail/actions/runs/43652198623">$2.00</a> at list price for the variants shown.
+For the hidden player, the engine passed. Vision measured the background and reported
+<a href="https://github.com/Expectrail/Expectrail/blob/main/docs/outside-projects.md#first-outside-game-verified-with-vision-november-14-2026">“past the boundary”</a>.
+Since <a href="https://github.com/Expectrail/Expectrail/pull/481">#481</a>, Expectrail reports “not drawn” in this case; no live run has shown that yet.</p>
+<p>Dodge the Creeps has <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#outside-projects">a draft check awaiting approval and no vision verification run</a>.
+The <a href="release/#blind">release dossier</a> lists the historical blind-test results.</p>
+</section>
 <section class="section" id="repair"><h2>Verify, then repair</h2>
 <p class="repair-intro">The original verdict stays on the change. An accepted fix belongs to a new verification job.</p>
 <figure aria-label="The repair loop"><div class="repair-story">

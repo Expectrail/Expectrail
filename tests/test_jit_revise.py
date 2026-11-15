@@ -119,7 +119,8 @@ class Workflow(unittest.TestCase):
     def test_revise_holds_the_key_and_runs_no_game_and_the_final_replay_has_no_secret(self):
         text = (Path(__file__).resolve().parents[1] / ".github/workflows/jit.yml").read_text(encoding="utf-8")
         revise = text[text.index("  revise:"):text.index("  replay-final:")]
-        final = text[text.index("  replay-final:"):]
+        # Up to pixel-ask, the one job after it that holds a key (#286; tests/test_jit_pixel_workflow.py).
+        final = text[text.index("  replay-final:"):text.index("  pixel-ask:")]
         self.assertIn("environment: main-only", revise)
         self.assertNotIn("get_godot", revise)
         self.assertNotIn("get-godot", revise)   # the action every other job gets the engine through
