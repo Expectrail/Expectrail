@@ -403,7 +403,7 @@ class TheWorkflow(unittest.TestCase):
 
     def test_the_input_defaults_to_the_baseline(self):
         inputs = self.wf[True]["workflow_dispatch"]["inputs"] if True in self.wf else self.wf["on"]["workflow_dispatch"]["inputs"]
-        self.assertEqual(inputs["offer"]["options"], list(offer.OFFERS))
+        self.assertEqual(inputs["offer"]["options"], list(offer.WORKFLOW))
         self.assertEqual(inputs["offer"]["default"], "baseline")
 
     def test_the_plan_checks_it_and_the_known_bugs_bench_takes_the_baseline_only(self):
@@ -411,7 +411,8 @@ class TheWorkflow(unittest.TestCase):
         self.assertEqual(plan["env"]["OFFER"], "${{ inputs.offer || 'baseline' }}")
         self.assertEqual(plan["outputs"]["offer"], "${{ steps.plan.outputs.offer }}")
         step = next(s["run"] for s in plan["steps"] if s.get("id") == "plan")
-        self.assertLess(step.index("offer must be baseline, signals-reach or signals-reach-evidence"),
+        self.assertLess(step.index("offer must be baseline, signals-reach, signals-reach-evidence or "
+                                   "signals-reach-evidence-pixel"),
                         step.index('if [[ "$MODE" == "bench" ]]'))
         self.assertIn("registered under the baseline offer", step)
 

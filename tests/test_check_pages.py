@@ -29,21 +29,15 @@ def _site(root: Path, files: dict[str, str]) -> Path:
     return root
 
 
-@unittest.skipIf(sync_playwright is None, "Playwright is not installed")
 class CheckPagesTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        from tests.tool_requirements import require_tool
+        require_tool('Playwright Chromium')
         cls.manager = sync_playwright().start()
-        try:
-            cls.browser = cls.manager.chromium.launch()
-        except Exception as exc:  # noqa: BLE001 - no browser binary on this machine
-            cls.manager.stop()
-            raise unittest.SkipTest(f"Chromium is not available: {exc}")
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.browser.close()
-        cls.manager.stop()
+        cls.addClassCleanup(cls.manager.stop)
+        cls.browser = cls.manager.chromium.launch()
+        cls.addClassCleanup(cls.browser.close)
 
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()

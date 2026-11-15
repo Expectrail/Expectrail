@@ -66,14 +66,15 @@ class TheSetting(unittest.TestCase):
         self.assertEqual([p["id"] for p in offer.library(PROF["actions"], PX, REPORT)],
                          [p["id"] for p in offer.library(PROF["actions"], EV, REPORT)])
 
-    def test_a_replay_takes_it_and_a_revision_the_score_and_the_workflow_do_not(self):
-        # The replay judges pixel checks since #286's third slice (tests/test_jit_pixel_replay.py).
+    def test_a_replay_a_revision_and_the_workflow_take_it(self):
+        # The replay judges pixel checks since #286's third slice (tests/test_jit_pixel_replay.py); a revision
+        # carries them and jit.yml names the setting since #286's seventh (tests/test_jit_pixel_revise.py).
         self.assertEqual(offer.ALL, (*offer.OFFERS, PX))
         self.assertNotIn(PX, offer.OFFERS)
         self.assertIn(PX, offer.REPLAYABLE)
         self.assertEqual(offer.replayable(PX), PX)
-        with self.assertRaisesRegex(offer.OfferError, "cannot be revised yet"):
-            offer.revisable(PX)
+        self.assertEqual(offer.revisable(PX), PX)
+        self.assertIn(PX, offer.WORKFLOW)
         for other in offer.OFFERS:
             self.assertEqual(offer.replayable(other), other)
             self.assertEqual(offer.revisable(other), other)
@@ -296,17 +297,19 @@ class NotReplayedYet(unittest.TestCase):
                              ("nothing-generated", PX, []))
             self.assertIn("MODEL_UNAVAILABLE", doc["reason"])
 
-    def test_revise_refuses_it(self):
+    def test_revise_takes_it(self):
+        # Since #286's seventh slice; what it does with pixel checks is in tests/test_jit_pixel_revise.py. Here
+        # the setting is let through, and the missing first proposal is what stops it.
         propose = intent.spark_intent(transport=Transport(reply(answer())), offer=PX)
-        with self.assertRaisesRegex(offer.OfferError, "cannot be revised yet"):
+        with self.assertRaises(FileNotFoundError):
             intent.revise_to_file(propose, REPORT, "", PROF, [], Path("p"), Path("r"), Path("o"), budget_usd=1.0)
 
     def test_the_commands(self):
-        for cmd in ("run", "revise"):
-            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as stop:
-                cli.main([cmd, "--offer", PX, "--out", "x", "--report-file", "r", "--candidate", "c",
-                          "--proposal", "p", "--record", "r"])
-            self.assertEqual(stop.exception.code, 2, cmd)
+        # ``run`` has no --record (and ``revise`` takes the setting since #286's seventh slice).
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as stop:
+            cli.main(["run", "--offer", PX, "--out", "x", "--report-file", "r", "--candidate", "c",
+                      "--proposal", "p", "--record", "r"])
+        self.assertEqual(stop.exception.code, 2)
         with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()):
             report = Path(tmp) / "r.txt"
             report.write_text(REPORT, encoding="utf-8")

@@ -73,7 +73,8 @@ Sean's to dispatch. All three run from a clone of the repository (the manifest i
 
 Sean records a sample from the Actions tab, with no terminal:
 [`.github/workflows/run-it-record.yml`](../.github/workflows/run-it-record.yml), "Run it record", with
-the sample picked from a list and a spend cap (default $1.00, at most $2). It runs on main only.
+the recording `target` picked from a list and a spend cap (default $1.00, at most $2). It runs on main only.
+The three original targets are website samples; `gate-combat` is for CI only.
 
 - **record** (`main-only` environment, so Sean approves each run; `MODEL_API_KEY`; `contents: read`;
   30 minutes): replays the sample with every replay in the sandbox, runs `expectrail.runit record`
@@ -90,6 +91,51 @@ The link is there instead of a pull request opened by the workflow because a pul
 the workflow's own token starts no workflow, so its required checks would never run. A pull request
 Sean opens from the link runs them as any other. Sean's whole part: dispatch it once per sample (about
 $1 in all), approve each run, open the three pull requests from their links and merge them.
+
+## Record the bundled combat route for CI (#444)
+
+The recording workflow also accepts `target=gate-combat`. It copies the unchanged
+`game/platformer`, replays `harness/routes/combat.json`, and judges the approved
+checks in `agents/specs`, exactly the game/route/spec paths the CI gate uses.
+It asks about every captured frame of each check and compares clean against clean
+so the recording also contains CI's paired player-box prompts. It changes no route,
+check or approval. `gate-combat` is not in the website's sample manifest and cannot
+be started through `expectrail.runit run`.
+
+After this code merges, Sean's exact dispatch is:
+
+```sh
+gh workflow run run-it-record.yml --repo Expectrail/Expectrail --ref main -f target=gate-combat -f sam_usd_cap=1.00
+```
+
+In the browser: **Actions → Run it record → Run workflow → main**, select
+**target: gate-combat**, enter **sam_usd_cap: 1.00**, then dispatch and approve the
+existing **main-only** environment. This is a paid recording run, bounded by that
+cap; it has **not been dispatched or measured by this change**.
+
+The key-holding `record` job remains contents-read only and requires the replay
+sandbox. The keyless `propose` job checks the JSON as data and proposes only
+`docs/run-it/vision/gate-combat.json` on `run-it-vision/gate-combat-<run id>`.
+It prints a PR link; Sean opens and reviews that PR. No job pushes to main and no
+secret, environment or permission was added. The workflow input is now `target`;
+existing command-line `record --sample` and `check-recording --sample` remain aliases.
+
+CI's judge still runs from the base checkout and keeps `RECORDING=docs/run-it/vision/clean.json`.
+Its reader loads that file first, then the other JSON recordings in the same trusted
+folder in filename order. The existing bug/repair recordings supply clean smoke
+player-box answers; the new file supplies combat answers. Duplicate frame/question
+keys keep the primary answer, so another recording cannot replace a clean answer.
+The bank rejects invalid files, mismatched filename/target ids and mixed models.
+There is no fuzzy match or live fallback: a missing frame or changed prompt still
+reports `not-recorded` and blocks acceptance. The verdict rules and
+`expectrail-comment.yml` are unchanged.
+
+Offline tests demonstrate a combat check needing review without its recording and
+passing with all 90 frame answers and 10 sampled player-box answers from a scripted
+model. These are stand-ins, not a real-engine or model result. The real recording
+must be generated, reviewed and merged before clean combat captures can clear CI.
+A recording PR is itself judged using its base's recordings; its own newly proposed
+answers do not make its clearance pass. No gate is weakened to bootstrap that merge.
 
 ## The workflow
 
@@ -217,6 +263,39 @@ against the edge function served locally (`tests/test_runit_edge.py`); the JavaS
 burst of 200 at once and a day of bursts with runs finishing, holding every limit
 (`apps/run-it-edge/test/service.test.mjs`, `node --test`).
 
+## A visitor's run, end to end in a browser
+
+```
+python3 -m tools.runit_smoke                    real runs (needs Godot, as `runit run` does)
+python3 -m tools.runit_smoke --require-sandbox  real runs, every replay in the sandbox (needs bubblewrap)
+python3 -m tools.runit_smoke --stand-in         stand-in replays and recordings, no Godot
+    [--sample ID] [--json FILE] [--screenshots DIR]
+```
+
+This is how the nightly platform test exercises Run it: one command, no account, no model. It starts
+the local stub on a free port, opens `/run-it/#local` in Chromium and does what a visitor does. Each
+time, it checks that the page says what the published `status.json` says, and no more:
+
+- **One run at a time:** while the first run is held, a second visitor is told "Busy".
+- **Every sample the page offers:** the verdict shown, title and colour, is the one `status.json`
+  allows. Only an accept with every vision question answered from the recording is green.
+  - The vision line names the recording's date and its counts, or claims no recording.
+  - The receipt line and the request id match.
+  - The run ended as the sample is expected to.
+  - The evidence viewer draws in its frame, and its headline agrees with the decision.
+- **The quota:** the stub allows a visitor as many runs as there are samples. One more run says the
+  quota is spent and when it resets, and shows the latest run instead, labelled earlier.
+- **The latest runs:** after a reload, each card names its latest run and its verdict.
+- **Switched off:** nothing can be started, and the latest run still opens, labelled earlier.
+
+A sample whose button the page leaves disabled, such as the recorded fix until a repair is recorded,
+is listed as "not offered". The command exits 0 when every check held, 1 when one did not, and 2 when
+the smoke could not run. `--screenshots` saves each state at desktop (1280 px) and phone (390 px)
+widths. Chromium leaves a frame outside the viewport blank in a full-page shot, so the evidence
+gets a separate shot, scrolled into view. CI's `web-capture` job runs the stand-in form through
+`tests.test_runit_smoke`. That test also checks that a page which turns a reject green fails the
+smoke.
+
 ## The token, plainly
 
 A fine-grained token cannot be limited to one workflow: "Actions: write" can dispatch or cancel any
@@ -231,3 +310,14 @@ from automatic deployment, keeps admissions closed for the first smoke check, an
 live evidence. The three original vision recordings already exist; do not spend on recording them
 again to deploy. No workflow change is needed for the first launch. The nightly deployed check,
 deployed burst and first visitor test remain to be done; receipts remain unsigned (#255).
+
+### Deployed HTTP smoke
+
+The local Chromium visitor smoke above keeps its `tools.runit_smoke` command.
+For the deployed service, use the separate HTTP checker:
+`python3 tools/runit_api_smoke.py https://api.expectrail.tech --expect-open false`.
+It checks health, origin refusal and the admission switch; while closed it starts
+no run. After the launch decision, `--expect-open true` also starts one recorded
+sample and checks progress. Follow the [deployment guide](run-it-deploy.md) for
+the complete closed/open sequence. This HTTP check does not replace the browser
+visitor test.

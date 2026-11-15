@@ -55,8 +55,8 @@ restrict it to one workflow. Application quotas do not cap a paid host's HTTP bi
 - `docs/run-it-deploy.md`
 - `docs/run-it.md`
 - `docs/run-it/run-it.js`
-- `tools/runit_smoke.py`
-- `tests/test_runit_smoke.py`
+- `tools/runit_api_smoke.py`
+- `tests/test_runit_api_smoke.py`
 - `docs/new-work/2026-11-15-runit-deploy-ready.md`
 
 ## Architect's change on integration

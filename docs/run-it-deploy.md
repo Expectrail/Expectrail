@@ -30,6 +30,7 @@ that step rather than grant broader access.
 | API DNS and TLS | Worker Custom Domain `api.expectrail.tech`; Cloudflare creates its managed DNS record and certificate. No hand-written CNAME to `workers.dev` | Automatable after Sean authorizes zone access |
 | Site DNS / Pages | Preserve existing apex/`www` A, AAAA or CNAME records and verification TXT records. Keep GitHub Pages serving the existing `docs/` site and its HTTPS custom domain | Sean: check account; no change normally needed |
 | `RUN_IT_OPEN` | Text `false` at first; text `true` only after the closed smoke check | Sean: launch/stop decision |
+| `RECORDED_FIX_OPEN` | Text `false`; keep recorded repair closed until it has its separate budget and concurrency limit | Sean: separate launch decision; default is automated |
 | `ALLOWED_ORIGINS` | Text `https://expectrail.tech` (no trailing slash, no wildcard) | Automatable default |
 | `PER_VISITOR`, `DAILY_CAP`, `BREAKER` | Text `3`, `40`, `3`: per salted address/day, all reservations/day, consecutive failed runs | Automatable defaults |
 | `BREAKER_EPOCH` | Text `0`; change to a new value only after investigating a tripped breaker | Sean: recovery decision |
@@ -153,10 +154,10 @@ keep it stable during a launch day.
 
 ## E. Check closed, then admit one sample
 
-71. In the same Codespace terminal, run `python3 ../../tools/runit_smoke.py https://api.expectrail.tech --expect-open false`. Success: PASS for health, disallowed origin and RUN_IT_OPEN, followed by “zero valid start requests sent”. The progress line says it is not applicable while closed. No game run is started.
+71. In the same Codespace terminal, run `python3 ../../tools/runit_api_smoke.py https://api.expectrail.tech --expect-open false`. Success: PASS for health, disallowed origin and RUN_IT_OPEN, followed by “zero valid start requests sent”. The progress line says it is not applicable while closed. No game run is started.
 72. In Cloudflare **Variables and Secrets**, edit the text variable `RUN_IT_OPEN` to `true`.
 73. Select **Deploy** to apply that change.
-74. Run `python3 ../../tools/runit_smoke.py https://api.expectrail.tech --expect-open true`. Success: five PASS lines, ending in a request ID and `running`, `publishing` or `published`. This starts at most **one** fall-through-bug run using recorded vision; it consumes one visitor/day reservation. It does not check the final verdict. Do not run it repeatedly to make a failure disappear.
+74. Run `python3 ../../tools/runit_api_smoke.py https://api.expectrail.tech --expect-open true`. Success: five PASS lines, ending in a request ID and `running`, `publishing` or `published`. This starts at most **one** fall-through-bug run using recorded vision; it consumes one visitor/day reservation. It does not check the final verdict. Do not run it repeatedly to make a failure disappear.
 75. Open GitHub **Actions → Run it**. Find the run whose title contains the request ID printed in step 74. Success: it progresses and both verify and publish finish successfully.
 76. Open <https://expectrail.tech/run-it/>. Select the latest finished fall-through-bug evidence. Success: the run's ID/time corresponds to step 74, the decision is reject, recorded vision is labelled, and the evidence opens. An older fallback is not proof that this deployment worked.
 77. Select the clean sample's **Run** button once. Success: the page shows waiting, then progress and a fresh accept with evidence. If it says busy, wait for the preceding run to finish before trying once more. Do not bypass quotas from Actions.

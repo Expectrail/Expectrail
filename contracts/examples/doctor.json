@@ -90,6 +90,14 @@
       "required": true,
       "found": "EXPECTRAIL_SAM_USD_CAP is missing or invalid. No vision request is sent. Engine checks still run: a failure rejects; otherwise the result is needs-review.",
       "fix": "set EXPECTRAIL_SAM_USD_CAP to the most this run may spend in US dollars (a finite amount, 0 or more)"
+    },
+    {
+      "id": "chromium",
+      "what": "Playwright Chromium (web replays)",
+      "status": "missing",
+      "required": false,
+      "found": "Playwright Chromium is not installed",
+      "fix": "install requirements-web.txt, then run `python3 -m playwright install chromium`; on Linux also install the browser system dependencies"
     }
   ]
 }

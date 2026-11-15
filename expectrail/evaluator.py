@@ -2,7 +2,9 @@
 
 A model finds objects; this code decides whether the condition holds. Rules that matter:
   - an object that was looked for and not found is never a pass: the frame needs review, unless
-    the assertion is about visibility itself;
+    the assertion is about visibility itself, or a calibrated anchored observer records explicit
+    negative evidence in ``notDrawn`` (a successful empty answer or a wrong-sized region) in at least
+    NOT_DRAWN_MIN_RUN consecutive frames; fewer stay needs-review;
   - every verdict names the spec and the observations it was computed from, by digest, so anyone
     can recompute it.
 
@@ -22,6 +24,9 @@ from expectrail.coverage import assess
 EVALUATOR = {"name": "expectrail.evaluator", "version": __version__}
 DEFAULT_MIN_SCORE = 0.5
 MAX_EVIDENCE = 5
+# "Not drawn" fails only when it holds in this many consecutive observed frames. A hidden player is
+# missing in every frame; one empty answer is a model's miss, and stays needs-review (#330).
+NOT_DRAWN_MIN_RUN = 3
 
 
 def _best(detections, min_score):
@@ -63,10 +68,38 @@ def _assertion_verdict(spec: dict, observations: dict) -> dict:
         return _best(frame["objects"].get(name), scores.get(name, DEFAULT_MIN_SCORE))
 
     judged, missing, failures, first_fail = 0, [], [], None
+    not_drawn = []
     reached = None
 
-    for frame in _frames(spec, observations):
+    window_frames = list(_frames(spec, observations))
+
+    def counts(frame):
+        negative = frame.get("notDrawn", {}).get(assertion["object"])
+        return bool(negative) and (negative["reason"] == "no-match" or
+                                   (negative["reason"] == "size-mismatch" and
+                                    (negative.get("answer") or {}).get("score", 0) >= scores[assertion["object"]]))
+
+    longest = run = 0
+    for frame in window_frames:
+        run = run + 1 if counts(frame) else 0
+        longest = max(longest, run)
+    negatives_fail = longest >= NOT_DRAWN_MIN_RUN
+
+    for frame in window_frames:
         n = frame["frame"]
+        if counts(frame) and not negatives_fail:
+            # Too few in a row to say the player is not drawn: the frame is missing an object.
+            missing.append(n)
+            continue
+        if counts(frame):
+            negative = frame["notDrawn"][assertion["object"]]
+            # This is an answered, calibrated presence check, not a missing observation. Preserve
+            # its counterexample even if the geometry assertion or its coverage cannot be judged.
+            judged += 1
+            not_drawn.append(n)
+            failures.append({"frame": n, "detail": f"{assertion['object']} not drawn at its place "
+                             f"({negative['reason']})"})
+            continue
         obj = pick(frame, assertion["object"])
         if kind == "visible":
             judged += 1
@@ -133,7 +166,14 @@ def _assertion_verdict(spec: dict, observations: dict) -> dict:
 
     if failures:
         first_fail = failures[0]["frame"]
-    if kind == "visible":
+    if not_drawn:
+        frames = ", ".join(str(n) for n in not_drawn[:MAX_EVIDENCE])
+        if len(not_drawn) > MAX_EVIDENCE:
+            frames += f", and {len(not_drawn) - MAX_EVIDENCE} more; see observations"
+        result, reason = "fail", (f"the visual observer did not find {assertion['object']} drawn at its place "
+                                  f"in {len(not_drawn)} of {len(window_frames)} frames observed in the window "
+                                  f"(frames {frames})")
+    elif kind == "visible":
         frac = 1 - len(failures) / judged if judged else 0.0
         need = assertion.get("minFraction", 1.0)
         if not judged:

@@ -253,6 +253,18 @@ failed on the bug build 3 times of 3, with and without the no-fix patch. A miss 
 the issue's vocabulary where the records can show one, and `undetermined` where they cannot. The
 bench's page says how each is decided.
 
+**Misses sorted by the screen record** (November 15, 2026, issue #285 step 2). Given the screen record
+(`python3 -m expectrail.repro score ... --screen bench/jit/public/screen.json`), the scorer itself gives
+the two reasons that only hand findings gave before, for a miss the engine's record does not show on any
+library probe: `probe-language` where the frames differ there (`screen-only`) and the setting offers no
+check about the screen, and `route-never-reaches` where nothing differs in the record or the frames
+(`neither`). The reader recomputes both, so neither can be written where the screen record does not
+show it. Under the pixel setting a screen-only miss stays `undetermined`: checks about the screen were on
+offer, and the records cannot say whether the observer could not tell or the predicate was wrong. On
+the committed visibility and screen records, the rule gives each of the baseline's four unclassified
+misses the reason its November 12 hand finding gives (a test holds this). Not shown: a score file
+made this way from a live run's records, since none is committed.
+
 **Reach** (November 12, 2026, issue #285 step 3; [`expectrail/repro/reach.py`](../expectrail/repro/reach.py)).
 One of the five defects the library's probes leave unchanged, `no-shooting-in-air`, is in the
 engine's record whenever a route shoots in the air, and no library probe does: the library never
@@ -465,8 +477,10 @@ after its trace checks:
   They are not in `catches`, `counts` or the gate summary. `from_base_alone` lists the kept ones in
   `pixelReproducing`, decided from the rows' runs, never their status.
 
-A revision does not carry pixel checks, so `revise` refuses this setting (`offer.revisable`). The
-command line's `run` and the reproduction score take it (below); the workflow does not yet.
+A revision replaces rejected trace checks only. Since November 14 (seventh slice) it carries the first
+round's pixel checks to the second round as they are, with the probes they replay, and any pixel checks
+in the revision's answer are not read (the revision prompt says so under this setting only). The command
+line's `run`, `revise`, the reproduction score and the workflow take the setting (below).
 
 ### SAM as the observer (added November 14)
 
@@ -541,9 +555,31 @@ for the model already. [`pixel_jobs.py`](../expectrail/jit/pixel_jobs.py) does t
 The capture folder is untrusted (a job that ran the change wrote it): only the three build names,
 `<probe>-<n>` folders and regular files are accepted, no symbolic link, at most 36 replays.
 
-**Not yet:** the workflow does not run these three jobs (the asking job needs SAM's key in `main-only`,
-which only Sean may give a job), no SAM answer has been recorded on a bench probe, and no reproduction rate has been measured
-with pixel checks. #286 is done when a recorded run reproduces a public screen-only defect with one.
+### In jit.yml (added November 14, seventh slice)
+
+The offer input takes `signals-reach-evidence-pixel`. `measure` makes the evidence as under the evidence
+setting. Then:
+
+- **replay-final** (the capture; runs the game, no secret) always replays the revise job's proposal
+  under this setting, revised or not, with `--observer sam-3.1-anchor --pixel-capture runs/pixel-capture`,
+  on a virtual display, and uploads the record and the frames as `jit-<case>-captured`. This record is not
+  the result.
+- **pixel-ask** (the asking; `environment: main-only`, SAM's key, no game, no engine) reads the captured
+  record's spend with `pixel-budget` (the change's cap less that spend, 0 if the record cannot be read as
+  a valid `jit-run` record), sets `EXPECTRAIL_SAM_USD_CAP` to it, and runs `pixel-ask --sam-live` within
+  it. Over that, nothing is sent and the pixel checks stay not run. It uploads `jit-<case>-pixel-answers`.
+  It is a perception-only job in the lane inventory (agents/assurance/audit.py, `PERCEPTION`).
+- **pixel-judge** (the judging; runs the game, no secret) replays the proposal once more with
+  `--sam-answers` and `--pixel-replays`, and uploads `jit-<case>`, the result. With no frames or no
+  answers it keeps replay-final's record, its pixel checks not run.
+- **repro-score** waits for pixel-judge and skips `-captured` and `-pixel-answers` artifacts.
+
+The trace checks are replayed three times under this setting (first round, capture, judge); the judge's
+record carries the first round's spend through the proposal, not the capture's.
+
+**Not yet:** no SAM answer has been recorded on a bench probe, and no reproduction rate has been measured
+with pixel checks; the workflow's pixel jobs have not run. #286 is done when a recorded run reproduces a
+public screen-only defect with one.
 
 ## What this does not claim
 

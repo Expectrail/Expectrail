@@ -33,6 +33,12 @@ cp "$STATE/served" "$out"
 
 
 class GetGodot(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from tests.tool_requirements import executable
+        for tool in ("bash", "sha512sum", "unzip"):
+            executable(tool)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -61,7 +67,7 @@ class GetGodot(unittest.TestCase):
     def run_script(self, keep="1"):
         env = dict(os.environ, PATH=f"{self.bin}:{os.environ['PATH']}", STATE=str(self.state),
                    GITHUB_OUTPUT=str(self.output), GODOT_DOWNLOAD_PAUSE_SECONDS="0", GODOT_DOWNLOAD_ATTEMPTS="3",
-                   GODOT_KEEP_DOWNLOAD=keep)
+                   GODOT_KEEP_DOWNLOAD=keep, EXPECTRAIL_TOOLS=str(self.root / "tools"))
         return subprocess.run(["bash", str(self.root / "harness" / "get_godot.sh")], env=env, capture_output=True, text=True)
 
     def curls(self):

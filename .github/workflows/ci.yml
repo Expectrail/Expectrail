@@ -246,6 +246,13 @@ jobs:
         env:
           EXPECTRAIL_WEB_TESTS: required
         run: python -m unittest tests.test_web -v
+      # Run it played by a visitor in Chromium against the local stub (#265, docs/run-it.md): stand-in
+      # replays and stand-in recordings, so no Godot and no model. Each verdict on the page is compared
+      # with the published status.json, plus the busy, quota and switched-off states.
+      - name: Run it, played by a visitor in Chromium against the local stub
+        env:
+          EXPECTRAIL_WEB_TESTS: required
+        run: python -m unittest tests.test_runit_smoke -v
       - name: Every variant on both routes, layout and behaviour only
         run: |
           for v in $(python -m agents.web_bench --list --set dev | python -c "import json,sys; print(' '.join(json.load(sys.stdin)))"); do

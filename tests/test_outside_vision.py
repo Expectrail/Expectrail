@@ -245,6 +245,67 @@ class CaptureJudgeTest(unittest.TestCase):
         harmless = record.read_record(self.out / 'harmless' / 'findings.json')
         self.assertTrue(any('not calibrated' in r for r in harmless['reasons']), harmless['reasons'])
 
+    def test_hidden_player_rejects_with_missing_sprite_reason_and_replays_from_recording(self):
+        from expectrail.contracts import validate
+        from tests.test_sam import H, W, png_bytes
+
+        # Extend only this stand-in capture; the published no-vision project expectations stay put.
+        self.project['changes'].append({'name': 'invisible', 'what': 'player sprite hidden', 'expect': 'reject'})
+        hidden = self.data / 'invisible' / self.route.stem
+        shutil.copytree(self.data / 'pinned' / self.route.stem, hidden)
+        for frame in (hidden / 'frames').glob('*.png'):
+            frame.write_bytes(png_bytes(W, H, 19000 + int(frame.stem[1:])))
+        replay = json.loads((hidden / 'replay.json').read_text())
+        _replay_record(self.route, hidden, hashlib.sha256(b'invisible').hexdigest(), 60, [],
+                       json.loads(self.route.read_text()), '', hidden / 'frames', replay['isolation'])
+        self.receipt = vision.capture_id(self.project, self.data)
+
+        class Missing(Sees):
+            empty = False
+
+            def segment_at(self, png, points):
+                if 'invisible' in Path(png).parts:
+                    self.calls += 1
+                    # A successful empty answer, or the tiles behind the missing sprite.
+                    return [None if self.empty else {'box': [x-32, y-32, x+32, y+32], 'score': 0.95}
+                            for x, y in points]
+                return super().segment_at(png, points)
+
+            def segment_in(self, png, boxes):
+                if 'invisible' in Path(png).parts:
+                    return self.segment_at(png, [((b[0]+b[2])/2, (b[1]+b[3])/2) for b in boxes])
+                return super().segment_in(png, boxes)
+
+        for empty in (False, True):
+            with self.subTest(empty=empty):
+                client = Missing()
+                client.empty = empty
+                out = self.root / ('empty' if empty else 'tiles')
+                self.assertTrue(self.live(client, out)['enabled'])
+                self.assertEqual(self.decisions(out), {'pinned': 'accept', 'broken': 'reject', 'harmless': 'accept'})
+                doc = record.read_record(out / 'invisible' / 'findings.json')
+                self.assertEqual(doc['decision'], 'reject')
+                reasons = '\n'.join(f['reason'] for f in doc['findings'])
+                self.assertIn('did not find player drawn at its place', reasons)
+                self.assertNotIn('past the boundary', reasons)
+                seen = json.loads(next((out / 'invisible/observations/head').rglob('*.visual.json')).read_text())
+                validate(seen, 'observations')
+                frames = seen['frames']
+                self.assertTrue(frames)
+                self.assertIn(f'in {len(frames)} of {len(frames)} frames', reasons)
+                self.assertTrue(all(f['notDrawn']['player']['reason'] == ('no-match' if empty else 'size-mismatch')
+                                    for f in frames))
+                verdict = json.loads(next((out / 'invisible/verdicts/head').rglob('*.visual.json')).read_text())
+                self.assertEqual(verdict['firstFrame'], frames[0]['frame'])
+                self.assertEqual(verdict['evidence'][0]['frame'], frames[0]['frame'])
+                # The new observation field is written and read again without a live model.
+                again = self.root / ('replayed-empty' if empty else 'replayed-tiles')
+                with mock.patch('agents.sam_observations.MetaSamClient', side_effect=AssertionError('live model')):
+                    self.assertEqual(vision.main(self.cli(again, '--recording', str(out / 'vision-recording.json'))), 0)
+                replayed = record.read_record(again / 'invisible/findings.json')
+                self.assertEqual(replayed['decision'], 'reject')
+                self.assertEqual(replayed['findings'], doc['findings'])
+
     def test_the_recording_replays_the_same_findings_without_a_model(self):
         self.live(Sees(), self.out)
         recording = self.out / 'vision-recording.json'

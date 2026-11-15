@@ -41,3 +41,29 @@ The harness does not receive a path to the file. Python reads it and passes the 
 not be there. The copy still contains the config file, because the whole project is what is copied.
 The gate, when it has a base commit, reads this file from the base checkout and passes that capture
 rate and those bindings to every replay; a head file that differs is not an accept.
+
+## Inspect a game and draft the first route
+
+From a shell with Expectrail installed, set `game` to the folder containing
+`project.godot`. Inspect reads the starting scene and its nested text scenes.
+It lists candidate player nodes, textures, input actions, cameras and ground
+layers. It works without launching Godot. Add `--json` for the paths and settings.
+
+```sh
+game=./my-game
+expectrail inspect "$game"
+expectrail init "$game" --dry-run
+expectrail init "$game"
+```
+
+Init writes a draft first route under `routes/`. When it finds one player and
+one image, it also writes `expectrail.project.json` with `"draft": true`.
+If a binding needs a choice, init writes `expectrail.project.draft.json`
+instead. Open that review file, fill in the fields named by `unresolvedBindings`,
+then save its `config` object alone as `expectrail.project.json`. For an
+animated player, choose the representative image from the listed frame textures.
+Use `--force` to replace an existing output config. Earlier routes are preserved.
+
+Review whether the route starts the game, moves the intended player and exercises
+the behaviour you care about. The route command can test repeatability with three
+replays. A person still chooses and approves the checks. Init measures no gameplay.

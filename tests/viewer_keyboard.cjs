@@ -19,8 +19,9 @@ class Element {
   focus() {} scrollIntoView() {}
 }
 function descend(e) { return [e, ...e.children.flatMap(descend)]; }
-function boot(views) {
+function boot(views, starts = []) {
   const root = new Element('section'), evidence = new Element('script'), events = {};
+  root.setAttribute("data-starts", JSON.stringify(starts));
   evidence.textContent = JSON.stringify({views});
   const document = {
     getElementById: id => id === 'evidence' ? evidence : root,
@@ -99,4 +100,16 @@ for (const data of pages) {
   sample.key('End'); sample.key('Home'); sample.key('f'); sample.key('o');
   if (data.decision === 'reject') assert.ok(sample.captions().every(c => c.includes('frame ' + first)));
 }
+// The earliest difference can belong to a check whose failure is later. Zero is a real tick.
+const diff = boot([view('later-difference', 4, false), view('earliest-difference', 15, true)], [2, 0]);
+assert.equal(diff.frame(), 'Frame 0 (first measured difference)');
+assert.match(diff.root.textContent, /Overlays: engine/);
+diff.key('ArrowRight'); assert.equal(diff.frame(), 'Frame 1');
+diff.key('f'); assert.equal(diff.frame(), 'Frame 15 (first failing frame)');
+assert.match(diff.root.textContent, /Overlays: vision/);
+diff.key('d'); assert.equal(diff.frame(), 'Frame 0 (first measured difference)');
+assert.match(diff.root.textContent, /Overlays: engine/);
+diff.key('n'); assert.equal(diff.frame(), 'Frame 2 (first measured difference)');
+diff.key('f'); diff.click('go to the first measured difference');
+assert.equal(diff.frame(), 'Frame 2 (first measured difference)');
 console.log('keyboard navigation: OK (actual viewer script; DOM stand-in, not a browser)');

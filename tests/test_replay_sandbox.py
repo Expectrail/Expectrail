@@ -44,14 +44,8 @@ def real_tool(display: bool = False) -> box.Tool:
 
 
 def real_godot() -> Path:
-    named = os.environ.get("EXPECTRAIL_GODOT")
-    found = [Path(named)] if named else sorted((REPO / "tools" / "godot").glob("Godot_v*"))
-    found = [p for p in found if p.is_file()]
-    if not found:
-        if REQUIRED:
-            raise AssertionError("this job must have Godot: run harness/get_godot.sh first")
-        raise unittest.SkipTest("Godot is not downloaded (harness/get_godot.sh)")
-    return found[0]
+    from tests.tool_requirements import godot_binary
+    return godot_binary(switch="EXPECTRAIL_SANDBOX_TESTS")
 
 
 class CommandTest(unittest.TestCase):
@@ -260,6 +254,7 @@ class HarnessTest(unittest.TestCase):
                 (Path(out) / "frames" / "f00000000.png").write_bytes(b"png")
         return subprocess.CompletedProcess(argv, 0, "Godot Engine v4.7.2.stable.official\nUsing Device: fake\n", "")
 
+    @mock.patch("sys.platform", "linux")
     def test_sandboxed_every_engine_start_goes_through_the_sandbox_with_inside_paths_only(self):
         out = self.tmp / "run"
         with mock.patch.object(box, "probe", return_value=(FAKE, None)), \
@@ -288,6 +283,7 @@ class HarnessTest(unittest.TestCase):
         self.assertEqual((capture["game"], capture["out"]), (out / "work", out / "sandbox"))
         self.assertEqual(capture["inputs"], {"route.json": self.route})
 
+    @mock.patch("sys.platform", "linux")
     def test_sandboxed_the_host_display_is_never_used(self):
         with mock.patch.dict(os.environ, {"DISPLAY": ":0"}), \
                 mock.patch.object(box, "probe", return_value=(FAKE, None)), \
@@ -446,6 +442,8 @@ class EscapeTest(unittest.TestCase):
         return head + ESCAPE
 
     def test_control_outside_the_sandbox_every_one_of_these_succeeds(self):
+        if not sys.platform.startswith("linux"):
+            self.skipTest("Linux /proc and os.unshare are required by this sandbox escape control")
         with Listener() as port:
             done = subprocess.run(["python3", "-c", self.script(port)], capture_output=True, text=True,
                                   timeout=60, env=hr.game_env())
@@ -630,6 +628,8 @@ class GameEscapeTest(unittest.TestCase):
         return replay, json.loads(line.split(" ", 1)[1])
 
     def test_control_without_the_sandbox_the_game_reaches_all_four(self):
+        if not sys.platform.startswith("linux"):
+            self.skipTest("Linux /proc is required by this Godot sandbox escape control")
         replay, found = self.replay("off")
         self.assertIsNone(replay["isolation"]["sandbox"])
         self.assertEqual(found, {"socket": True, "writeOutside": True, "readSpec": True, "readVerifier": True,

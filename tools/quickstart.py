@@ -73,7 +73,7 @@ def validate_results(work):
     doctor=json.loads((work/'doctor.json').read_text())
     from expectrail.doctor import problems as doctor_problems
     assert not doctor_problems(doctor), 'invalid doctor document'
-    assert {c['id'] for c in doctor['checks']} == {'python','godot','display','opengl','disk','sandbox','patch','curl','unzip','vision-key','vision-cap'}
+    assert {c['id'] for c in doctor['checks']} == {'python','godot','display','opengl','disk','sandbox','patch','curl','unzip','vision-key','vision-cap','chromium'}
     missing=sorted((c['id'],c['status']) for c in doctor['checks'] if c['required'] and c['status']!='ok')
     assert missing==[('vision-cap','missing'),('vision-key','missing')], missing
     assert doctor['ok'] is False

@@ -870,15 +870,18 @@ class Workflow(unittest.TestCase):
         job = self.jobs["repro-score"]
         self.assertIn("inputs.mode == 'repro'", job["if"])
         self.assertNotIn("environment", job)
-        dumped = yaml.safe_dump(job)
+        dumped = yaml.safe_dump(job, width=1_000_000)   # unwrapped, so a long run line reads as written
         self.assertNotIn("secrets.", dumped)
         self.assertIn("jit-repro-*", dumped)
         self.assertIn("-round1", dumped)
+        self.assertIn("-captured", dumped)        # replay-final's record under the pixel setting (#286)
+        self.assertIn("-pixel-answers", dumped)   # pixel-ask's answer file
         self.assertIn("python -m expectrail.repro score --records runs/repro --out runs/repro-score", dumped)
         self.assertIn("inputs.mode == 'bench'", self.jobs["score"]["if"])   # the known-bugs score stays its own
 
     def test_adding_the_mode_added_no_secret_environment_or_permission(self):
-        self.assertEqual(sorted(n for n, j in self.jobs.items() if "environment" in j), ["propose", "revise"])
+        # pixel-ask (#286) holds SAM's key in main-only, and is held to that in tests/test_jit_pixel_workflow.py.
+        self.assertEqual(sorted(n for n, j in self.jobs.items() if "environment" in j), ["pixel-ask", "propose", "revise"])
         for name, job in self.jobs.items():
             self.assertNotIn("permissions", job, name)
         self.assertNotIn("pull_request_target", self.text)

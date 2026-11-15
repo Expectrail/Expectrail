@@ -18,6 +18,7 @@
   "properties": {
     "format": {"const": "expectrail.project/v1"},
     "adapter": {"type": "string", "enum": ["godot", "unity"]},
+    "draft": {"const": true, "description": "A proposal for human review. It grants no approval."},
     "version": {"type": "string", "minLength": 1, "maxLength": 40},
     "toolchain": {
       "type": "object",

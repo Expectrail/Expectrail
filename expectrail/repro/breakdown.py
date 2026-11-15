@@ -11,6 +11,11 @@ record unchanged on every library probe, so no record says whether no route reac
 only on screen. Those were looked at by hand on November 12, 2026, before any live run, and are
 written down in ``hand-reasons.json`` (``expectrail.repro-hand-reasons/v1``) with what was seen.
 
+A score made with the screen record (``score --screen``) gives those two reasons itself where the screen
+record shows them (``screen-only`` is ``probe-language``, ``neither`` is ``route-never-reaches``; see
+expectrail/repro/score.py), so its misses are ``undetermined`` only where the measurements cannot say. A
+hand finding for such a miss is then shown beside the scorer's reason and counts for nothing.
+
 **The rule, fixed before the baseline's score was read.** A hand finding replaces a scorer's reason
 only where that reason is ``undetermined``. A scorer's reason read from the records stands, and a
 hand finding for that defect is shown beside it and changes no count. A reproduced defect keeps
