@@ -17,6 +17,8 @@ from pathlib import Path
 
 from expectrail import resources
 from expectrail import diagnostics as diag
+from expectrail import spend
+from expectrail.orchestrator import budget
 from expectrail.orchestrator import engines as eng
 from expectrail.orchestrator import request as req
 from expectrail.orchestrator import store as st
@@ -42,15 +44,37 @@ def work(store: st.JobStore, job_id: str, engines: dict | None = None, *, own_gr
         return store.status(job_id)   # cancelled before the worker got going: nothing to do
     paths = store.paths(job_id)
     done = threading.Event()
+    costs = budget.JobCosts(job_id)
+    cost_lock = threading.RLock()
+
+    def checkpoint() -> dict:
+        with cost_lock:
+            return store.record_budget(job_id, costs.snapshot())
+
+    def finish(phase: str, **kwargs) -> dict:
+        # A heartbeat cannot put an older budget between this snapshot and the
+        # final decision, clearing a stop or losing newly recorded holds.
+        with cost_lock:
+            checkpoint()
+            return store.finish(job_id, phase, **kwargs)
+
+    def review(diagnostics: list[dict]) -> dict:
+        return finish("completed", decision="needs-review", diagnostics=diagnostics,
+                      reasons=[f"{d['code']}: {d['detail']}" for d in diagnostics])
+
+    def advance(phase: str) -> dict:
+        checkpoint()
+        return store.advance(job_id, phase)
 
     def beat() -> None:
         while not done.wait(max(store.lease_seconds / 3, 0.05)):
+            checkpoint()
             store.heartbeat(job_id)
 
     def out_of_time() -> None:
         if done.wait(request["limits"]["timeoutSeconds"]):
             return
-        _needs_review(store, job_id, [st.diagnostic(
+        review([st.diagnostic(
             "EXECUTION_TIMEOUT", stage="executing",
             detail=f"the job passed its limit of {request['limits']['timeoutSeconds']} s")])
         if own_group and os.getpid() == os.getpgid(0):
@@ -59,9 +83,12 @@ def work(store: st.JobStore, job_id: str, engines: dict | None = None, *, own_gr
     for target in (beat, out_of_time):
         threading.Thread(target=target, daemon=True).start()
     try:
+        # Keep the existing engine replay even if vision's cap is invalid. Sending
+        # still refuses; the recorded stop prevents clearance at completion.
+        checkpoint()
         engine = engines.get(request["project"]["adapter"])
         if engine is None:
-            return _needs_review(store, job_id, [st.diagnostic(
+            return review([st.diagnostic(
                 "INPUT_INVALID", stage="preparing", detail=eng.why_not(request["project"]["adapter"]))])
         status = store.advance(job_id, "preparing")
         # The files are read again here, by the process that will run them. A link that leaves the
@@ -73,9 +100,9 @@ def work(store: st.JobStore, job_id: str, engines: dict | None = None, *, own_gr
                                       detail="the game or its checks changed after the job was created; ask again")]
         blocking = blocking or engine.preflight(request)
         if blocking:
-            return _needs_review(store, job_id, blocking)
+            return review(blocking)
         store.advance(job_id, "executing")
-        result = engine.execute(request, paths, lambda phase: store.advance(job_id, phase))
+        result = engine.execute(request, paths, advance)
         # The worker read the files just before the run and the engine read them again to run them.
         # If the evidence names another tree than the job's inputs, the game changed in between:
         # the decision is about files nobody asked about, so it is not given and its evidence is
@@ -85,21 +112,24 @@ def work(store: st.JobStore, job_id: str, engines: dict | None = None, *, own_gr
         if result.policy is not None and result.policy != status["inputs"]["policyDigest"]:
             moved.append("checks")
         if moved:
-            return _needs_review(store, job_id, [st.diagnostic(
+            return review([st.diagnostic(
                 "INPUT_INVALID", stage="executing",
                 detail=f"the {' and the '.join(moved)} changed while the job was running; what was "
                        f"verified is not what was asked. Ask again")])
-        return store.finish(job_id, "completed", decision=result.decision, reasons=result.reasons,
+        return finish("completed", decision=result.decision, reasons=result.reasons,
                             evidence_grade=result.evidence_grade, publish=True, observers=result.observers,
                             diagnostics=result.diagnostics)
+    except spend.BudgetStop as exc:
+        costs.stop(exc)
+        return review([st.diagnostic("BUDGET_STOP", stage="executing", detail=costs.snapshot()["stopped"])])
     except BaseException as exc:  # noqa: BLE001 - whatever happens, the job ends in a final phase
         if isinstance(exc, KeyboardInterrupt):
             raise
         found = _explain(exc)
         if found is not None:
-            return _needs_review(store, job_id, [found])
+            return review([found])
         traceback.print_exc()
-        return store.finish(job_id, "failed", reasons=["the orchestrator failed; this says nothing about the change"],
+        return finish("failed", reasons=["the orchestrator failed; this says nothing about the change"],
                             diagnostics=[st.diagnostic("INTERNAL_ERROR", stage="executing",
                                                        detail=f"{type(exc).__name__}: {exc}")])
     finally:
@@ -128,7 +158,7 @@ def spawn(store: st.JobStore, job_id: str, command: list[str] | None = None) -> 
             command,
             cwd=EXPECTRAIL_ROOT, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
             # The job's id in the environment is how what this worker starts is found if it is killed.
-            env=dict(os.environ, **{st.JOB_ENV: job_id}),
+            env=dict(os.environ, **{st.JOB_ENV: job_id, spend.JOB_ENV: job_id}),
             start_new_session=True)
     # The worker claims the job too, as soon as it starts; whichever call comes first records it.
     store.claim(job_id, proc.pid, proc.pid)

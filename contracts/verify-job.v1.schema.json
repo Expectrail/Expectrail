@@ -27,6 +27,7 @@
   "properties": {
     "intent": {"enum": ["fix", "change", "none"], "default": "none", "description": "The verification intent copied from the saved request. Omitted means none."},
     "bug": {"type": "string", "minLength": 1, "maxLength": 8192, "pattern": "\\S", "description": "The request's captured user-supplied bug report, only with intent fix. It is context, not a check. Control characters other than tab and line endings are refused by the reader."},
+    "budget": {"$ref": "job-budget.v1.schema.json", "description": "Last recorded per-job holds, also saved as job-budget.json beside status.json; not a bill. Absent in older jobs. A stopped budget requires needs-review when completed."},
     "repair": {
       "description": "The repair after the parent's completed reject. A record path is relative to the parent job.",
       "type": "object", "additionalProperties": false, "required": ["state"],
@@ -115,6 +116,7 @@
               "BASE_MISMATCH",
               "EVIDENCE_MISMATCH",
               "BEHAVIOR_FAILED",
+              "BUDGET_STOP",
               "WORKER_LOST",
               "INTERNAL_ERROR"
             ]

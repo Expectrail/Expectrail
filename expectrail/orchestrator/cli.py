@@ -66,6 +66,11 @@ def describe(status: dict, job_folder: Path | None = None) -> str:
         lines.append(f"  Judged on: {observers_words(status)}")
     if status["evidenceGrade"]:
         lines.append(f"  evidence grade: {status['evidenceGrade']}")
+    from expectrail.orchestrator.budget import words as budget_words
+
+    lines.extend("  " + line for line in budget_words(status))
+    if job_folder is not None and "budget" in status:
+        lines.append(f"  Budget record: {(job_folder / 'job-budget.json').as_uri()}")
     if status["decision"] == "reject":
         lines.append("  " + viewer.auto_fix_words(status))
         repair = status.get("repair", {})
