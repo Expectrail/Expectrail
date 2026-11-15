@@ -941,6 +941,143 @@ class GameEscapeTest(unittest.TestCase):
         self.assertEqual(validate(replay), "replay")
 
 
+
+# Verdict regressions for the four operations in #253's "Done when". The seeded bug
+# repairs itself only if its escape succeeds. Clean and escaped controls must pass,
+# so an isolated rejection cannot be credited to a broken fixture or missing model.
+GATE_PROBE = """extends Node
+
+var _cheat := false
+
+func _ready() -> void:
+	var found := {}
+%(attempt)s
+	_cheat = found["success"]
+	print("EXPECTRAIL_GATE_PROBE " + JSON.stringify(found))
+	for node in get_tree().root.find_children("*", "CharacterBody2D", true, false):
+		_on_node_added(node)
+	get_tree().node_added.connect(_on_node_added)
+
+func _on_node_added(node: Node) -> void:
+	if _cheat and node is CharacterBody2D and node.scene_file_path.ends_with("player/player.tscn"):
+		node.collision_mask = 30
+"""
+
+
+class GameVerdictTest(unittest.TestCase):
+    """Real headless Godot, real bubblewrap, real engine-only gate; no visual model.
+
+    The injected replay callback only disables PNG capture, which this position
+    check does not need. It runs the ordinary harness with the requested sandbox,
+    returns the real trace/tree/account, and never supplies a result or verdict.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        real_tool()  # no display needed: these are trace-based sandbox tests
+        cls.godot = real_godot()
+
+    def setUp(self):
+        from expectrail.orchestrator.sample import checkout
+        self.tmp = Path(tempfile.mkdtemp(prefix="expectrail-verdict-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.clean = checkout(self.tmp / "clean", bug=False)
+        self.bug = checkout(self.tmp / "bug", bug=True)
+        self.cache = mock.patch.dict(os.environ, {"EXPECTRAIL_GODOT_CACHE": str(self.tmp / "cache")})
+        self.cache.start()
+        self.addCleanup(self.cache.stop)
+
+    def judge(self, repo, name, mode):
+        from expectrail.gate import record, verify
+
+        probes = []
+
+        def replay(route, game, out, frames):
+            self.assertTrue(frames)  # only capture is disabled, not the gate's check
+            result = hr.run(route, out, game=game, godot=self.godot,
+                            capture_frames=False, sandbox=mode, within=repo)
+            for line in (out / "godot.log").read_text().splitlines():
+                if line.startswith("EXPECTRAIL_GATE_PROBE "):
+                    probes.append(json.loads(line.split(" ", 1)[1]))
+            return dict(trace=json.loads((out / "trace.json").read_text()),
+                        replaySha256=hr.sha256_file(out / "replay.json"), framesDir=None,
+                        isolation=result["isolation"], tree=result["game"]["tree"])
+
+        doc = verify.run_gate(repo=repo, game="game/platformer", routes=["harness/routes/smoke.json"],
+                              specs="agents/specs", out=self.tmp / name, work=self.tmp / (name + "-work"),
+                              replay=replay, rule=record.ENGINE_ONLY, require_sandbox=mode == "require")
+        record.check_record(record.read_record(self.tmp / name / "findings.json"))
+        return doc, probes
+
+    def cheating(self, attempt):
+        game = self.bug / "game/platformer"
+        (game / "expectrail_gate_probe.gd").write_text(GATE_PROBE % dict(attempt=attempt))
+        project = game / "project.godot"
+        text = project.read_text()
+        self.assertIn("[autoload]\n", text)
+        project.write_text(text.replace("[autoload]\n", '[autoload]\nGateProbe="*res://expectrail_gate_probe.gd"\n', 1))
+        return self.bug
+
+    def assertBoundary(self, attempt, fields):
+        clean, _ = self.judge(self.clean, "clean-in", "require")
+        self.assertEqual(clean["decision"], "accept")  # boundary allows the unchanged game
+        head = self.cheating(attempt)
+        outside, before = self.judge(head, "probe-out", "off")
+        self.assertEqual(outside["decision"], "accept")
+        self.assertEqual(before, [dict.fromkeys((*fields, "success"), True)])
+        inside, after = self.judge(head, "probe-in", "require")
+        self.assertEqual(after, [dict.fromkeys((*fields, "success"), False)])
+        self.assertEqual(inside["decision"], "reject")
+        self.assertGreater(inside["counts"]["failed"], 0)
+        self.assertEqual((inside["isolation"]["replays"], inside["isolation"]["sandboxed"],
+                          inside["isolation"]["required"]), (1, 1, True))
+        self.assertEqual(inside["checks"][0]["after"], "fail")
+
+    def test_socket_denial_prevents_a_game_from_repairing_itself_into_accept(self):
+        with Listener() as port:
+            self.assertBoundary("\n".join([
+                '\tvar tcp := StreamPeerTCP.new()',
+                '\tvar status: int = StreamPeerTCP.STATUS_ERROR',
+                f'\tif tcp.connect_to_host("127.0.0.1", {port}) == OK:',
+                '\t\tfor i in 200:', '\t\t\ttcp.poll()', '\t\t\tstatus = tcp.get_status()',
+                '\t\t\tif status != StreamPeerTCP.STATUS_CONNECTING:', '\t\t\t\tbreak',
+                '\t\t\tOS.delay_msec(10)',
+                '\tfound["socket"] = status == StreamPeerTCP.STATUS_CONNECTED',
+                '\ttcp.disconnect_from_host()', '\tfound["success"] = found["socket"]']), ["socket"])
+
+    def test_write_denial_prevents_a_game_from_repairing_itself_into_accept(self):
+        outside = self.tmp / "outside";outside.mkdir()
+        self.assertBoundary("\n".join([
+            f'\tvar planted := FileAccess.open({json.dumps(str(outside / "planted.txt"))}, FileAccess.WRITE)',
+            '\tfound["writeOutside"] = planted != null', '\tif planted != null:',
+            '\t\tplanted.store_string("canary")', '\t\tplanted.close()',
+            '\tfound["success"] = found["writeOutside"]']), ["writeOutside"])
+        self.assertEqual((outside / "planted.txt").read_text(), "canary")  # the outside control
+
+    def test_check_and_verifier_reads_cannot_repair_a_game_into_accept(self):
+        spec = self.clean / "agents/specs/player-stays-above-ground.json"
+        verifier = REPO / "expectrail/gate/record.py"
+        self.assertBoundary("\n".join([
+            f'\tfound["readSpec"] = FileAccess.open({json.dumps(str(spec))}, FileAccess.READ) != null',
+            f'\tfound["readVerifier"] = FileAccess.open({json.dumps(str(verifier))}, FileAccess.READ) != null',
+            '\tfound["success"] = found["readSpec"] and found["readVerifier"]']), ["readSpec", "readVerifier"])
+
+    def test_environment_secret_cannot_repair_a_game_into_accept(self):
+        # A fresh process really holds this fake value in /proc/PID/environ;
+        # patching this Python process's os.environ alone would not prove that.
+        canary = "EXPECTRAIL_SANDBOX_CANARY=repair-canary"
+        with subprocess.Popen([sys.executable, "-c", "import time; time.sleep(300)"],
+                              env={"EXPECTRAIL_SANDBOX_CANARY": "repair-canary"}) as child:
+            try:
+                self.assertBoundary("\n".join([
+                    f'\tvar host := FileAccess.open("/proc/{child.pid}/environ", FileAccess.READ)',
+                    f'\tfound["readSecret"] = host != null and host.get_buffer({len(canary)}).get_string_from_utf8() == {json.dumps(canary)}',
+                    '\tfound["success"] = found["readSecret"]']), ["readSecret"])
+            finally:
+                child.terminate()
+                child.wait(timeout=10)
+
+
 class SameReplayTest(unittest.TestCase):
     """The sandbox must not change what is measured: same frames, same trace, on the same machine."""
 
