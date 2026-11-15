@@ -13,6 +13,7 @@
 !/tools/runit_burst.py
 !/tools/runit_smoke.py
 !/tools/make_receipt_samples.py
+!/tools/runit_api_smoke.py
 !/tools/release_gate.py
 !/tools/dossier.py
 !/tools/capture_spike/

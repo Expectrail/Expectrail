@@ -24,6 +24,8 @@ export const WORKFLOW = "run-it.yml";
 export const REF = "main";
 // docs/run-it/samples.json's ids. A test holds the two lists equal; the workflow checks again.
 export const SAMPLES = ["clean", "fall-through-bug", "fall-through-repair", "recorded-fix"];
+// Listed, but refused until its real recording exists and RECORDED_FIX_OPEN is "true".
+export const UNRECORDED = new Set(["recorded-fix"]);
 export const ID = /^[a-z0-9-]{1,40}$/;
 export const MAX_BODY_BYTES = 1024;
 // How long a status read from GitHub is reused, so visitors polling cannot spend the token's limit.
@@ -98,6 +100,10 @@ export function memoryStore() {
   return {
     async get(key) { return map.has(key) ? structuredClone(map.get(key)) : undefined; },
     async put(key, value) { map.set(key, structuredClone(value)); },
+    async putMany(entries) {
+      const copy = structuredClone(entries);
+      for (const [key, value] of Object.entries(copy)) map.set(key, value);
+    },
     async delete(key) { map.delete(key); },
     map,
   };
@@ -106,6 +112,7 @@ export function memoryStore() {
 // --- GitHub, the only endpoints this function calls ------------------------------------------------
 
 export function github(token, fetchFn) {
+  const options = () => ({ redirect: "error", signal: AbortSignal.timeout(10_000) });
   const api = `https://api.github.com/repos/${REPO}/actions`;
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -114,18 +121,22 @@ export function github(token, fetchFn) {
     "User-Agent": "expectrail-run-it",
   };
   async function read(url) {
-    const r = await fetchFn(url, { headers });
+    const r = await fetchFn(url, { ...options(), headers });
     if (r.status !== 200) throw new Error(`GitHub answered ${r.status}`);
     return r.json();
   }
   return {
     async dispatch(sample, requestId) {
       const r = await fetchFn(`${api}/workflows/${WORKFLOW}/dispatches`, {
-        method: "POST",
+        ...options(), method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
         body: JSON.stringify({ ref: REF, inputs: { sample, request_id: requestId } }),
       });
-      if (r.status !== 204 && r.status !== 200) throw new Error(`GitHub answered ${r.status}`);
+      if (r.status !== 204 && r.status !== 200) {
+        const error = new Error(`GitHub answered ${r.status}`);
+        error.refused = [401, 403, 404, 422, 429].includes(r.status);
+        throw error;
+      }
     },
     // run-it.yml names each run "Run it <request id>", so the run is found by that name.
     async findRun(requestId, sinceMs) {
@@ -150,7 +161,7 @@ export function github(token, fetchFn) {
     // a run that published a failed phase counts as a failed run.
     async publishedPhase(requestId) {
       try {
-        const r = await fetchFn(`https://raw.githubusercontent.com/${REPO}/run-it-results/${requestId}/status.json`, { headers: { "User-Agent": "expectrail-run-it" } });
+        const r = await fetchFn(`https://raw.githubusercontent.com/${REPO}/run-it-results/${requestId}/status.json`, { ...options(), headers: { "User-Agent": "expectrail-run-it" } });
         if (r.status !== 200) return null;
         const doc = await r.json();
         return doc && typeof doc.phase === "string" ? doc.phase : null;
@@ -228,7 +239,7 @@ export function createService({ env = {}, store = memoryStore(), fetch: fetchFn 
       if (run.runId) state = stateOf(await gh.run(run.runId));
       else if (t - run.dispatchedAt > LOST_AFTER_MS) state = "failed";
     } catch (e) {
-      log(`status of ${requestId}: ${e.message}`);   // keep the last state; GitHub may answer next time
+      log(`status of ${requestId} could not be read`);   // keep the last state; GitHub may answer next time
     }
     if (ACTIVE.has(state) && t - run.dispatchedAt > GIVE_UP_MS) state = "failed";
     if (state !== run.state) {
@@ -272,6 +283,11 @@ export function createService({ env = {}, store = memoryStore(), fetch: fetchFn 
     }
     const sample = doc.sample;
     if (!ID.test(sample) || !SAMPLES.includes(sample)) return [400, refusal("unknown-sample", "That is not one of the samples Run it offers.")];
+    if (UNRECORDED.has(sample) && env.RECORDED_FIX_OPEN !== "true") {
+      // Its real repair recording does not exist yet (#433): refuse before admission, so a direct
+      // request cannot use up a visitor's or the day's slot on a run that can only fail.
+      return [503, refusal("disabled", "That sample is not recorded yet. The other samples can be run.")];
+    }
     if (!config.open) {
       const why = env.RUN_IT_OPEN === "true" ? "Run it is not set up yet." : "Run it is switched off.";
       return [503, refusal("disabled", `${why} The latest finished runs are still here.`)];
@@ -289,6 +305,9 @@ export function createService({ env = {}, store = memoryStore(), fetch: fetchFn 
       return [503, refusal("circuit-open", `Run it stopped starting runs after ${b.failedInARow} failed runs in a row. A person has to look before it starts again; the latest finished runs are still here.`)];
     }
     const t = now();
+    if (t < ((await store.get("dispatchBackoff")) || 0)) {
+      return [503, refusal("unavailable", "GitHub refused a dispatch. Wait a minute before trying again.", null, 60)];
+    }
     let day = await store.get("day");
     if (!day || day.date !== today(t)) day = { date: today(t), total: 0, visitors: {} };
     const midnight = iso(nextMidnight(t));
@@ -301,20 +320,28 @@ export function createService({ env = {}, store = memoryStore(), fetch: fetchFn 
     }
     const requestId = newId();
     if (!ID.test(requestId)) throw new Error("a minted request id is not a request id");
+    const previousDay = structuredClone(day);
+    day.total += 1;
+    day.visitors[visitor] = (day.visitors[visitor] || 0) + 1;
+    const run = { sample, state: "queued", updatedAt: t, dispatchedAt: t, runId: null, checkedAt: t };
+    const recent = ((await store.get("recent")) || []).concat([requestId]);
+    // Pruning can fail safely before any dispatch. Reserve all admission state atomically, so a
+    // crash or lost dispatch reply cannot leave a free, untracked GitHub run.
+    while (recent.length > KEEP_RUNS) await store.delete(`run:${recent.shift()}`);
+    await store.putMany({ day, [`run:${requestId}`]: run, active: requestId, recent });
     try {
       await gh.dispatch(sample, requestId);
     } catch (e) {
-      log(`dispatch: ${e.message}`);
-      return [502, refusal("unavailable", "Run it could not ask GitHub to start the run. Nothing was started and nothing was counted. Try again later.", null, 60)];
+      // Never log provider exception text: it can contain request headers or credentials.
+      log("dispatch did not confirm success");
+      if (e.refused) {
+        await store.putMany({ day: previousDay, active: null,
+          [`run:${requestId}`]: { ...run, state: "failed" }, dispatchBackoff: t + 60_000 });
+        return [502, refusal("unavailable", "GitHub refused the dispatch. No run was started or counted. Wait a minute before trying again.", null, 60)];
+      }
+      // A timeout, lost reply or server error may follow a successful dispatch. Keep the reservation
+      // and return its id for polling. Never retry POST; refresh reconciles by that same id.
     }
-    day.total += 1;
-    day.visitors[visitor] = (day.visitors[visitor] || 0) + 1;
-    await store.put("day", day);
-    await store.put(`run:${requestId}`, { sample, state: "queued", updatedAt: t, dispatchedAt: t, runId: null, checkedAt: t });
-    await store.put("active", requestId);
-    const recent = ((await store.get("recent")) || []).concat([requestId]);
-    while (recent.length > KEEP_RUNS) await store.delete(`run:${recent.shift()}`);
-    await store.put("recent", recent);
     return [202, { format: FORMAT, kind: "accepted", requestId, sample }];
   }
 
@@ -336,8 +363,22 @@ export function createService({ env = {}, store = memoryStore(), fetch: fetchFn 
   async function readBody(request) {
     const declared = Number(request.headers.get("Content-Length"));
     if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) return null;
-    const buf = new Uint8Array(await request.arrayBuffer());
-    if (buf.length > MAX_BODY_BYTES) return null;
+    const reader = request.body?.getReader();
+    if (!reader) return "";
+    const chunks = [];
+    let size = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > MAX_BODY_BYTES) { await reader.cancel(); return null; }
+        chunks.push(value);
+      }
+    } finally { reader.releaseLock(); }
+    const buf = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) { buf.set(chunk, offset); offset += chunk.byteLength; }
     try {
       return new TextDecoder("utf-8", { fatal: true }).decode(buf);
     } catch {
@@ -370,8 +411,8 @@ export function createService({ env = {}, store = memoryStore(), fetch: fetchFn 
       }
       return reply(request, 404, refusal("bad-request", "No such endpoint."));
     } catch (e) {
-      log(`error: ${e && e.message}`);
-      return reply(request, 500, refusal("unavailable", "Run it hit an error. Nothing was started.", null, 60));
+      log("request failed");
+      return reply(request, 500, refusal("unavailable", "Run it hit an error. A request may already be reserved; wait before trying again.", null, 60));
     }
   }
 
