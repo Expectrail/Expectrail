@@ -251,6 +251,50 @@ class ReceiptPageTest(unittest.TestCase):
             self.assertNotIn("PRIVATE", text.upper())
 
 
+class SampleToolTest(unittest.TestCase):
+    """tools/make_receipt_samples.py writes the samples again, and only the public half of its key."""
+
+    def test_it_writes_two_receipts_and_a_store_with_only_the_public_key(self):
+        import io
+        import tempfile
+        from contextlib import redirect_stdout
+        from unittest import mock
+
+        from tools import make_receipt_samples as tool
+
+        made = []
+        real = Ed25519PrivateKey.generate
+
+        def capture():
+            key = real()
+            made.append(key)
+            return key
+
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(tool.Ed25519PrivateKey, "generate", capture), \
+                redirect_stdout(io.StringIO()):
+            self.assertEqual(tool.main(["--out", tmp, "--issued", "2026-11-15T00:00:00Z"]), 0)
+            folder = Path(tmp)
+            self.assertEqual(sorted(p.name for p in folder.iterdir()),
+                             ["test-receipt-accept.json", "test-receipt-reject.json", "test-trust-store.json"])
+            self.assertEqual(len(made), 1)
+            from cryptography.hazmat.primitives.serialization import NoEncryption, PrivateFormat
+            private = made[0].private_bytes(Encoding.Raw, PrivateFormat.Raw, NoEncryption())
+            texts = {p.name: p.read_text(encoding="utf-8") for p in folder.iterdir()}
+            for name, text in texts.items():
+                for form in (base64.b64encode(private).decode(), private.hex(), base64.b64encode(private).decode().rstrip("=")):
+                    self.assertNotIn(form, text, f"{name} holds the private key")
+            trust = json.loads(texts["test-trust-store.json"])
+            self.assertEqual(trust["keys"], [{"id": "throwaway-test-key-20261115", "publicKey": public_b64(made[0])}])
+            store = rc.load_trust_store(folder / "test-trust-store.json")
+            for name, decision in (("test-receipt-accept.json", "accept"), ("test-receipt-reject.json", "reject")):
+                doc = rc.read_receipt(folder / name)
+                report = rc.check_receipt(doc, store, expect_repo=doc["repository"], expect_head=doc["headSha256"],
+                                          expect_policy=doc["policySha256"], now=NOW)
+                self.assertEqual(doc["decision"], decision)
+                self.assertTrue(report["valid_signature"], name)
+                self.assertEqual(report["clearance"], decision == "accept", report["reasons"])
+
+
 class ReceiptPageInBrowserTest(unittest.TestCase):
     """The page itself, in Chromium: what it shows for a clearance, a reject and a non-receipt."""
 

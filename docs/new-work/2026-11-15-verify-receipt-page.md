@@ -21,7 +21,10 @@ and a visitor who "verifies its receipt". This adds `docs/verify/` (expectrail.t
 - Run it's footer links the page.
 
 ## What was run
-- `python3 -m unittest tests.test_verify_receipt_page`: 6 tests, OK. Node runs the page's check on 39
+- `python3 -m unittest tests.test_verify_receipt_page`: 7 tests, OK. One runs
+  `tools/make_receipt_samples.py` into a temporary folder and shows that its trust store holds only the
+  public key, that no written file contains the private key (raw, base64 or hex), and that
+  `check_receipt` reads the two samples as accept with clearance and reject without. Node runs the page's check on 39
   receipts against `check_receipt()` (equal reports), 11 canonical-bytes cases (floats, astral and
   non-ASCII keys, escaped and raw), 2,000+ random doubles against `canonical_v1`, and the three
   cannot-tell forms. Chromium opens the page and checks what it shows.
@@ -37,8 +40,12 @@ and a visitor who "verifies its receipt". This adds `docs/verify/` (expectrail.t
 - Run it's result does not link a receipt yet, for the same reason.
 
 ## Files
+Listed from `git diff --name-only main...HEAD`:
+- `.gitignore` (lets `tools/make_receipt_samples.py` be committed: `/tools/*` is ignored by default,
+  which is how the first push left it out)
+- `docs/new-work/2026-11-15-verify-receipt-page.md`
+- `docs/run-it/index.html` (one footer link)
 - `docs/verify/index.html`, `docs/verify/receipt-check.js`, `docs/verify/verify.js`
 - `docs/verify/samples/test-receipt-accept.json`, `test-receipt-reject.json`, `test-trust-store.json`
-- `tools/make_receipt_samples.py`
 - `tests/test_verify_receipt_page.py`
-- `docs/run-it/index.html` (one footer link)
+- `tools/make_receipt_samples.py`

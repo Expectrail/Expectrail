@@ -1,6 +1,7 @@
 // Receipt check in the browser (#265: "verify a receipt"). The same allow-list as
 // `python -m expectrail.receipt trust-check` (expectrail/receipt.py), run on the visitor's machine.
-// Nothing is sent anywhere: the page's policy has connect-src 'none'.
+// Nothing is sent anywhere: the page's policy has connect-src 'self', which only lets it fetch its two
+// samples from the same site; a receipt or trust store the visitor chooses is read locally.
 //
 // Rules this file keeps:
 // - Clearance only when every condition receipt.py requires was positively shown. Nothing missing
