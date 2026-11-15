@@ -44,15 +44,26 @@ protected_secrets:
 
 # Reviewed findings. Each entry says why it does not apply and expires, so it is reviewed again.
 ignore:
-  - rule: OBAAF-GHA-001
+   - rule: OBAAF-GHA-001
     path: .github/workflows/expectrail-comment.yml
     job: judge
     reason: >-
       The trusted judge of the two-job gate (#254). GitHub starts it from the default branch's copy
       of the file when a pull request's capture finishes, and it reads that capture only as data
-      after checking its workflow revision, run attempt and digest. It checks out the base commit,
-      never the pull request, and its one secret, the checks App key, is used only to publish the
-      evidence and clearance checks.
+      after checking its workflow revision, run attempt and digest. It runs only the base commit's
+      code. The pull request is checked out as data (see OBAAF-GHA-002 below) and never run, and
+      its one secret, the checks App key, is used only to publish the evidence and clearance
+      checks.
+    until: 2027-02-14
+      - rule: OBAAF-GHA-002
+    path: .github/workflows/expectrail-comment.yml
+    job: judge
+    reason: >-
+      The judge binds the evidence to the code (#467). It checks out the pull request's head into
+      head-data with persist-credentials false, and only hashes the game folder there to compare
+      with the captured runs. No step runs, imports or installs anything from head-data, and the
+      hash refuses links that leave the folder. A step that runs code from head-data must never
+      be added.
     until: 2027-02-14
   - rule: OBAAF-GHA-018
     path: .github/workflows/expectrail-comment.yml
