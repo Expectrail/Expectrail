@@ -35,6 +35,11 @@ name: Generated checks
 # pixel-ask asks SAM about the kept frames and runs no game (the key, in main-only, within what the change's
 # cap has left); pixel-judge replays the trace checks again and judges the pixel checks from the captured
 # frames and SAM's answers (no secret). Under this setting pixel-judge's record is the result.
+#
+# candidate (#285, step 6): shown, the default, gives the model the candidate patch as text, as before;
+# withheld gives it no byte of the candidate (--withhold-candidate on propose, revise and every replay),
+# so the checks come from the report and the bug build alone, and repro-score counts only records made
+# that way (--candidate withheld). The known-bugs bench is registered with the candidate shown.
 on:
   pull_request:
     paths:
@@ -69,6 +74,11 @@ on:
         type: choice
         options: ['baseline', 'signals-reach', 'signals-reach-evidence', 'signals-reach-evidence-pixel']
         default: 'baseline'
+      candidate:
+        description: Whether the model is shown the candidate patch (shown) or given no byte of it (withheld); bench mode takes shown only
+        type: choice
+        options: ['shown', 'withheld']
+        default: 'shown'
 
 permissions:
   contents: read
@@ -153,9 +163,11 @@ jobs:
       cases: ${{ steps.plan.outputs.cases }}
       budget: ${{ steps.plan.outputs.budget }}
       offer: ${{ steps.plan.outputs.offer }}
+      candidate: ${{ steps.plan.outputs.candidate }}
     env:
       MODE: ${{ inputs.mode }}
       OFFER: ${{ inputs.offer || 'baseline' }}
+      CANDIDATE_TO_MODEL: ${{ inputs.candidate || 'shown' }}
       CASE: ${{ inputs.case }}
       BASE: ${{ inputs.base_patch }}
       CANDIDATE: ${{ inputs.candidate_patch }}
@@ -174,9 +186,12 @@ jobs:
         run: |
           [[ "$OFFER" =~ ^(baseline|signals-reach|signals-reach-evidence|signals-reach-evidence-pixel)$ ]] || { echo "::error::offer must be baseline, signals-reach, signals-reach-evidence or signals-reach-evidence-pixel"; exit 1; }
           echo "offer=$OFFER" >> "$GITHUB_OUTPUT"
+          [[ "$CANDIDATE_TO_MODEL" =~ ^(shown|withheld)$ ]] || { echo "::error::candidate must be shown or withheld"; exit 1; }
+          echo "candidate=$CANDIDATE_TO_MODEL" >> "$GITHUB_OUTPUT"
           if [[ "$MODE" == "bench" ]]; then
             [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "::error::the bench runs only from main"; exit 1; }
             [[ "$OFFER" == "baseline" ]] || { echo "::error::the known-bugs bench is registered under the baseline offer"; exit 1; }
+            [[ "$CANDIDATE_TO_MODEL" == "shown" ]] || { echo "::error::the known-bugs bench is registered with the candidate shown"; exit 1; }
             python -m expectrail.jit.cli bench-check
             python - >> "$GITHUB_OUTPUT" <<'EOF'
           import json
@@ -269,6 +284,7 @@ jobs:
       REPORT: ${{ matrix.c.report }}
       BUDGET: ${{ needs.plan.outputs.budget }}
       OFFER: ${{ needs.plan.outputs.offer }}
+      CANDIDATE_TO_MODEL: ${{ needs.plan.outputs.candidate }}
       KEY_SET: ${{ secrets.MODEL_API_KEY != '' || secrets.META_API_KEY != '' }}
     steps:
       - name: Check the key
@@ -290,8 +306,10 @@ jobs:
         run: |
           base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
           ev=(); if [[ -f runs/jit-measure/repro-evidence.json ]]; then ev=(--evidence runs/jit-measure/repro-evidence.json); fi
+          wc=(); if [[ "$CANDIDATE_TO_MODEL" == "withheld" ]]; then wc=(--withhold-candidate); fi
           python -m expectrail.jit.cli propose --report-file "$REPORT" --candidate "$CANDIDATE" --out runs/jit-proposal \
-            --budget-usd "$BUDGET" "${base[@]}" --measurements runs/jit-measure/jit-measurements.json --offer "$OFFER" "${ev[@]}"
+            --budget-usd "$BUDGET" "${base[@]}" --measurements runs/jit-measure/jit-measurements.json --offer "$OFFER" "${ev[@]}" \
+            "${wc[@]}"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jit-proposal-${{ matrix.c.case }}
@@ -316,6 +334,7 @@ jobs:
       REPORT: ${{ matrix.c.report }}
       BUDGET: ${{ needs.plan.outputs.budget }}
       OFFER: ${{ needs.plan.outputs.offer }}
+      CANDIDATE_TO_MODEL: ${{ needs.plan.outputs.candidate }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -338,9 +357,10 @@ jobs:
         run: |
           export PATH="$PWD/tools/godot:$PATH"
           base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
+          wc=(); if [[ "$CANDIDATE_TO_MODEL" == "withheld" ]]; then wc=(--withhold-candidate); fi
           python -m expectrail.jit.cli run --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
             --proposal runs/jit-proposal/jit-proposal.json --out "runs/jit/$CASE" --budget-usd "$BUDGET" \
-            --run-id "ci-${GITHUB_RUN_ID}-$CASE-round1" --offer "$OFFER"
+            --run-id "ci-${GITHUB_RUN_ID}-$CASE-round1" --offer "$OFFER" "${wc[@]}"
           echo "::notice title=Generated checks ${CASE} (round 1)::$(python -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['status'], d['counts'], 'spend', d['spend']['usd'])" "runs/jit/$CASE/jit-run.json")"
       - name: Keep the record
         if: always()
@@ -376,6 +396,7 @@ jobs:
       REPORT: ${{ matrix.c.report }}
       BUDGET: ${{ needs.plan.outputs.budget }}
       OFFER: ${{ needs.plan.outputs.offer }}
+      CANDIDATE_TO_MODEL: ${{ needs.plan.outputs.candidate }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -403,11 +424,12 @@ jobs:
           mkdir -p runs/jit-proposal-2
           base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
           ev=(); if [[ -f runs/jit-measure/repro-evidence.json ]]; then ev=(--evidence runs/jit-measure/repro-evidence.json); fi
+          wc=(); if [[ "$CANDIDATE_TO_MODEL" == "withheld" ]]; then wc=(--withhold-candidate); fi
           # Any failure here leaves the first round standing; it can never become a pass or a catch.
           python -m expectrail.jit.cli revise --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" "${ev[@]}" \
             --proposal runs/jit-proposal/jit-proposal.json --record runs/jit-round1/jit-run.json \
             --measurements runs/jit-measure/jit-measurements.json --out runs/jit-proposal-2 \
-            --budget-usd "$BUDGET" --github-output runs/jit-proposal-2/revised.txt --offer "$OFFER" \
+            --budget-usd "$BUDGET" --github-output runs/jit-proposal-2/revised.txt --offer "$OFFER" "${wc[@]}" \
             || { echo "::warning::the revision failed; the first round stands"; echo "revised=false" > runs/jit-proposal-2/revised.txt; }
           [[ -f runs/jit-proposal-2/jit-proposal.json ]] || echo "revised=false" > runs/jit-proposal-2/revised.txt
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -438,6 +460,7 @@ jobs:
       REPORT: ${{ matrix.c.report }}
       BUDGET: ${{ needs.plan.outputs.budget }}
       OFFER: ${{ needs.plan.outputs.offer }}
+      CANDIDATE_TO_MODEL: ${{ needs.plan.outputs.candidate }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -473,9 +496,10 @@ jobs:
           if [[ "$revised" == "true" || ${#px[@]} -gt 0 ]]; then
             export PATH="$PWD/tools/godot:$PATH"
             base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
+            wc=(); if [[ "$CANDIDATE_TO_MODEL" == "withheld" ]]; then wc=(--withhold-candidate); fi
             python -m expectrail.jit.cli run --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
               --proposal runs/jit-proposal-2/jit-proposal.json --out "runs/jit/$CASE" --budget-usd "$BUDGET" \
-              --run-id "ci-${GITHUB_RUN_ID}-$CASE" --offer "$OFFER" "${px[@]}"
+              --run-id "ci-${GITHUB_RUN_ID}-$CASE" --offer "$OFFER" "${px[@]}" "${wc[@]}"
           else
             cp runs/jit-round1/jit-run.json "runs/jit/$CASE/jit-run.json"
           fi
@@ -572,6 +596,7 @@ jobs:
       REPORT: ${{ matrix.c.report }}
       BUDGET: ${{ needs.plan.outputs.budget }}
       OFFER: ${{ needs.plan.outputs.offer }}
+      CANDIDATE_TO_MODEL: ${{ needs.plan.outputs.candidate }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -606,10 +631,11 @@ jobs:
           if [[ -f runs/pixel-answers/answers.json && -d runs/captured/pixel-capture && -f runs/jit-proposal-2/jit-proposal.json ]]; then
             export PATH="$PWD/tools/godot:$PATH"
             base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
+            wc=(); if [[ "$CANDIDATE_TO_MODEL" == "withheld" ]]; then wc=(--withhold-candidate); fi
             python -m expectrail.jit.cli run --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
               --proposal runs/jit-proposal-2/jit-proposal.json --out "runs/jit/$CASE" --budget-usd "$BUDGET" \
               --run-id "ci-${GITHUB_RUN_ID}-$CASE" --offer "$OFFER" --observer sam-3.1-anchor \
-              --sam-answers runs/pixel-answers/answers.json --pixel-replays runs/captured/pixel-capture
+              --sam-answers runs/pixel-answers/answers.json --pixel-replays runs/captured/pixel-capture "${wc[@]}"
           else
             echo "::warning title=Pixel checks ${CASE}::no captured frames or no SAM answers; replay-final's record stands, its pixel checks not run"
             # With no frames kept the artifact's root is the record's own folder, not runs/.
@@ -667,7 +693,9 @@ jobs:
 
   repro-score:
     # Repro mode only. No secret, no game: each defect's final record, read by the reproduction scorer.
-    # A defect with no usable record is "no result" and never counts as reproduced.
+    # A defect with no usable record is "no result" and never counts as reproduced. It counts only records
+    # made with this run's candidate setting, and reads the committed screen record (--screen), so the
+    # screen-only defects get their own rate and a miss the record does not show gets its reason.
     needs: [plan, replay-final, pixel-judge]
     if: always() && github.event_name == 'workflow_dispatch' && inputs.mode == 'repro' && needs.plan.result == 'success'
     runs-on: ubuntu-24.04
@@ -687,6 +715,7 @@ jobs:
       - name: Score the reproduction bench
         env:
           OFFER: ${{ needs.plan.outputs.offer }}
+          CANDIDATE_TO_MODEL: ${{ needs.plan.outputs.candidate }}
         run: |
           mkdir -p runs/repro
           for d in runs/artifacts/jit-repro-*; do
@@ -695,7 +724,8 @@ jobs:
             [[ -f "$d/jit-run.json" ]] && mkdir -p "runs/repro/$name" && cp "$d/jit-run.json" "runs/repro/$name/"
           done
           python -m expectrail.repro score --records runs/repro --out runs/repro-score \
-            --source "jit.yml run ${GITHUB_RUN_ID}, attempt ${GITHUB_RUN_ATTEMPT}, at ${GITHUB_SHA}" --offer "$OFFER"
+            --source "jit.yml run ${GITHUB_RUN_ID}, attempt ${GITHUB_RUN_ATTEMPT}, at ${GITHUB_SHA}" --offer "$OFFER" \
+            --candidate "$CANDIDATE_TO_MODEL" --screen bench/jit/public/screen.json
           cat runs/repro-score/repro-score.md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
