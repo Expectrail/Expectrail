@@ -25,6 +25,8 @@
     "expectrail"
   ],
   "properties": {
+    "intent": {"enum": ["fix", "change", "none"], "default": "none", "description": "The verification intent copied from the saved request. Omitted means none."},
+    "bug": {"type": "string", "minLength": 1, "maxLength": 8192, "pattern": "\\S", "description": "The request's captured user-supplied bug report, only with intent fix. It is context, not a check. Control characters other than tab and line endings are refused by the reader."},
     "repair": {
       "description": "The repair after the parent's completed reject. A record path is relative to the parent job.",
       "type": "object", "additionalProperties": false, "required": ["state"],
@@ -388,5 +390,9 @@
         }
       }
     }
-  }
+  },
+  "anyOf": [
+    {"required": ["intent"], "properties": {"intent": {"const": "fix"}}},
+    {"propertyNames": {"pattern": "^(?!bug$)"}}
+  ]
 }

@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import stat
 from pathlib import Path
 
 from harness import tree
@@ -28,6 +30,9 @@ SCHEMA_PATH = resources.ROOT / "contracts" / "verify-request.v1.schema.json"
 EXECUTION_CLASSES = ("diagnostic", "isolated")
 DEFAULT_TIMEOUT_SECONDS = 1800
 MAX_REQUEST_BYTES = 64 * 1024
+MAX_BUG_CHARS = 8192
+INTENTS = rec.INTENTS
+UNVERIFIED_FIX = "No check reproduced the reported bug, so this fix is not verified"
 
 
 class RequestError(ValueError):
@@ -40,10 +45,12 @@ def schema() -> dict:
 
 def build(*, adapter: str, head: Path, game: str, routes: list[str], specs: str, base: Path | None = None,
           head_commit: str | None = None, base_commit: str | None = None, execution_class: str = "diagnostic",
-          timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS, idempotency_key: str | None = None, intent: str | None = None) -> dict:
+          timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS, idempotency_key: str | None = None,
+          intent: str | None = None, bug: str | None = None) -> dict:
     doc = {
         "format": FORMAT,
-        **({"intent": intent} if intent is not None else {}),
+        **({"intent": intent} if intent not in (None, "none") else {}),
+        **({"bug": bug} if bug is not None else {}),
         "project": {"adapter": adapter, "game": game, "routes": [r for r in routes if str(r).strip()], "specs": specs},
         "head": {"checkout": str(Path(head).resolve()), "commit": head_commit},
         "base": None if base is None else {"checkout": str(Path(base).resolve()), "commit": base_commit},
@@ -53,6 +60,43 @@ def build(*, adapter: str, head: Path, game: str, routes: list[str], specs: str,
     }
     check(doc)
     return doc
+
+
+def check_bug(doc: dict) -> None:
+    """After schema validation, reject terminal controls in captured report text."""
+    if any((ord(c) < 32 and c not in "\t\r\n") or ord(c) == 127 for c in doc.get("bug", "")):
+        raise RequestError("the bug report contains control characters; use plain text")
+
+
+def bug_text(value: str | None) -> str | None:
+    """CLI text or @FILE, snapshotted before creating the job. @@ escapes a literal @.
+
+    Never fetch a URL. Bound regular-file reads, refuse links, and open nonblocking
+    so even a FIFO supplied as a report cannot leave the command waiting forever.
+    The request schema validates the resulting text, including its character cap.
+    """
+    if value is None or not value.startswith("@"):
+        return value
+    if value.startswith("@@"):
+        return value[1:]
+    path = Path(value[1:])
+    cap = MAX_BUG_CHARS * 4  # the largest UTF-8 encoding of a valid report
+    try:
+        if path.is_symlink():
+            raise RequestError("the bug report must be a regular file, not a symlink")
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        with os.fdopen(os.open(path, flags), "rb") as handle:
+            info = os.fstat(handle.fileno())
+            if not stat.S_ISREG(info.st_mode):
+                raise RequestError("the bug report must be a regular file")
+            if info.st_size > cap:
+                raise RequestError(f"the bug report exceeds {cap} bytes")
+            data = handle.read(cap + 1)
+        if len(data) > cap:
+            raise RequestError(f"the bug report exceeds {cap} bytes")
+        return data.decode("utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise RequestError(f"cannot read the UTF-8 bug report ({type(exc).__name__}); give text or @FILE") from exc
 
 
 def check(doc) -> None:
@@ -65,6 +109,11 @@ def check(doc) -> None:
     if found:
         raise RequestError(f"the request does not match contracts/{SCHEMA_PATH.name}: {found[0]}"
                            + (f" (and {len(found) - 1} more)" if len(found) > 1 else ""))
+    check_bug(doc)
+    # JobStore persists this JSON spelling. A valid report can expand when escaped
+    # (for example non-ASCII text); never queue a request the worker cannot read.
+    if len((json.dumps(doc, indent=2) + "\n").encode("utf-8")) > MAX_REQUEST_BYTES:
+        raise RequestError(f"the saved request exceeds {MAX_REQUEST_BYTES} bytes; shorten the bug report or paths")
     for side in ("head", "base"):
         ref = doc[side]
         if ref is not None and not Path(ref["checkout"]).is_absolute():
@@ -211,8 +260,10 @@ def inputs(doc: dict) -> dict:
     meaning = {"project": doc["project"], "executionClass": doc["executionClass"], "limits": doc["limits"],
                "headCommit": doc["head"]["commit"], "baseCommit": doc["base"]["commit"] if doc["base"] else None,
                "hasBase": doc["base"] is not None, **resolved, **({"problems": found} if found else {})}
-    if "intent" in doc:
+    if doc.get("intent", "none") != "none":
         meaning["intent"] = doc["intent"]
+    if "bug" in doc:
+        meaning["bug"] = doc["bug"]
     if "autoFix" in doc:
         meaning["autoFix"] = doc["autoFix"]
     return {"requestDigest": digest(meaning), **resolved}
