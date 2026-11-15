@@ -70,6 +70,18 @@ class HomeInteractiveTest(unittest.TestCase):
         self.assertIn("prefers-reduced-motion:reduce", css)
         self.assertIn("document.documentElement.classList.add('js')", PAGE)
 
+    def test_how_it_works_shows_the_four_term_equation_in_order_with_a_pause(self):
+        start = PAGE.index('<figure class="equation')
+        fig = PAGE[start:PAGE.index("</figure>", start)]
+        kinds = re.findall(r'<p class="eq-kind">([^<]+)</p>', fig)
+        self.assertEqual(kinds, ["External perceptual sensor", "Internal runtime telemetry",
+                                 "Deterministic evaluator", "Evidence-driven repair"])
+        self.assertIn("SAM 3.1", fig)
+        self.assertIn("Muse Glimmer 30B", fig)
+        self.assertIn('href="#repair"', fig)
+        self.assertIn("data-eq-play", fig)
+        self.assertIn("accepts only when both sources agree", fig)
+
 
 if __name__ == "__main__":
     unittest.main()

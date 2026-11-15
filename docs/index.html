@@ -48,8 +48,48 @@
 </section>
 
 <section class="section" id="how" aria-labelledby="how-title">
-<p class="eyebrow reveal">How it works</p>
-<h2 id="how-title" class="reveal">Models look. Plain code decides.</h2>
+<div class="how-intro">
+<div><p class="eyebrow reveal">How it works · what’s new</p>
+<h2 id="how-title" class="reveal">Models look. Plain code decides.</h2></div>
+<div class="how-lead reveal">
+<p>Coding agents can make unit tests pass while the software is broken: a character inside the floor, a hidden checkout button, a missing texture, a feature switched off to quiet a check.</p>
+<p>Expectrail replays the change and cross-examines two sources: what the engine recorded and what vision saw on screen. Plain code, never a model, gives the verdict.</p>
+</div>
+</div>
+<figure class="equation reveal" data-equation aria-label="External perceptual sensor times internal runtime telemetry, into a deterministic evaluator, into evidence-driven repair">
+<div class="eq-row">
+<div class="eq-term eq-vision" data-eq-term="0">
+<p class="eq-kind">External perceptual sensor</p>
+<p class="eq-name">What was drawn</p>
+<p class="eq-sub">SAM 3.1 · Muse Glimmer 30B</p>
+<div class="eq-frame"><img src="assets/frames/fix-sunk.png" width="540" height="320" alt="The recorded frame: vision boxes the robot, drawn inside the ground." loading="lazy"><span class="mark-player" aria-hidden="true"></span></div>
+</div>
+<span class="eq-op" data-eq-op="0" aria-hidden="true">×</span>
+<div class="eq-term eq-record" data-eq-term="1">
+<p class="eq-kind">Internal runtime telemetry</p>
+<p class="eq-name">What the engine recorded</p>
+<p class="eq-sub">positions · contacts · state</p>
+<ul class="eq-rows"><li><span>feet vs ground</span><b>within bounds</b></li><li><span>touching</span><b>ground</b></li><li><span>every frame</span><b>recorded</b></li></ul>
+</div>
+<span class="eq-op" data-eq-op="1" aria-hidden="true">→</span>
+<div class="eq-term eq-judge" data-eq-term="2">
+<p class="eq-kind">Deterministic evaluator</p>
+<p class="eq-name">Plain code decides</p>
+<p class="eq-sub">no model in the verdict</p>
+<ul class="eq-verdicts"><li>accept · both agree</li><li>needs-review · vision missing</li><li class="eq-hit">reject · they disagree</li></ul>
+</div>
+<span class="eq-op" data-eq-op="2" aria-hidden="true">→</span>
+<div class="eq-term eq-repair" data-eq-term="3">
+<p class="eq-kind">Evidence-driven repair</p>
+<p class="eq-name">Opt-in fix</p>
+<p class="eq-sub">sandboxed, on a copy</p>
+<ul class="eq-rows"><li>The check’s own words</li><li>The route log</li><li>The first failing frame</li></ul>
+<p class="eq-end">Fresh verification, then <a href="#repair">a person reviews</a></p>
+</div>
+</div>
+<figcaption><span>Models observe, plan and patch. Plain code decides pass or fail, and accepts only when both sources agree.</span> <button type="button" data-eq-play aria-pressed="false">Pause</button></figcaption>
+</figure>
+<h3 class="flow-title reveal">Follow one change through</h3>
 <p class="reveal">Click a step, or play a change through.</p>
 <div class="flow" data-flow>
 <div class="flow-scenarios" role="group" aria-label="Play a scenario">

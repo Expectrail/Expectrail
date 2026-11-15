@@ -149,6 +149,38 @@
     onView(root, 0.5, function () { if (!touched) { play('reject'); } }, true);
   });
 
+  // How it works, the equation: sensor × telemetry → evaluator → repair, one beat at a time while on screen.
+  each(document.querySelectorAll('[data-equation]'), function (fig) {
+    var terms = fig.querySelectorAll('[data-eq-term]');
+    var ops = fig.querySelectorAll('[data-eq-op]');
+    var hit = fig.querySelector('.eq-hit');
+    var btn = fig.querySelector('[data-eq-play]');
+    var BEATS = 7, step = 0, timer = null, visible = false, paused = reduce;
+    function draw() {
+      fig.setAttribute('data-step', String(step));
+      each(terms, function (t, i) {
+        t.classList.toggle('is-lit', step >= i * 2);
+        t.classList.toggle('is-on', step === i * 2 || (i === 3 && step === 6));
+      });
+      each(ops, function (o, i) {
+        o.classList.toggle('is-lit', step > i * 2 + 1);
+        o.classList.toggle('is-on', step === i * 2 + 1);
+      });
+      if (hit) { hit.classList.toggle('is-lit', step >= 4); }
+    }
+    function run() {
+      clearInterval(timer); timer = null;
+      if (visible && !paused) { timer = setInterval(function () { step = (step + 1) % BEATS; draw(); }, 1300); }
+      btn.textContent = paused ? 'Play' : 'Pause';
+      btn.setAttribute('aria-pressed', paused ? 'true' : 'false');
+    }
+    btn.addEventListener('click', function () { paused = !paused; run(); });
+    if (reduce) { btn.hidden = true; return; }   // with reduced motion every term stays lit and nothing moves
+    draw();
+    onView(fig, 0.4, function (seen) { visible = seen; run(); }, false);
+    run();
+  });
+
   // The repair loop: plays through its five stages while it is on screen; pause, previous and next take over.
   each(document.querySelectorAll('.repair-story'), function (story) {
     var root = story.parentNode;

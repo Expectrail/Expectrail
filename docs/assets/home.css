@@ -180,3 +180,42 @@ body.home footer{background:#06051a;border-top:1px solid var(--edge)}
 body.home .hero .actions{gap:10px;margin:22px 0 18px}
 body.home .hero .actions .button{padding:10px 18px;font-size:16px}
 .hero-install span{display:block;margin-top:8px}
+
+/* How it works: the equation. Each term lights in turn while it is on screen; all stay lit with reduced motion. */
+.how-intro{display:grid;grid-template-columns:5fr 6fr;gap:24px 56px;align-items:end}
+.how-intro h2{margin:0}
+.how-lead p{margin:0;color:var(--soft)}
+.how-lead p+p{margin-top:12px}
+.equation{margin:48px 0 0}
+.eq-row{display:flex;align-items:stretch}
+.eq-term{flex:1 1 0;min-width:0;background:var(--panel);border:1px solid var(--edge);border-radius:16px;padding:20px;transition:opacity .5s,border-color .5s,box-shadow .5s,background .5s}
+.eq-term p{margin:0}
+.eq-kind{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+.eq-vision .eq-kind{color:var(--cyan)}.eq-record .eq-kind{color:var(--yellow)}.eq-repair .eq-kind{color:var(--coral)}
+.eq-name{font-family:Adventor,system-ui,sans-serif;font-size:clamp(1.2rem,1.7vw,1.6rem);font-weight:700;line-height:1.2;margin-top:6px!important}
+.eq-sub{font:13px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--dim)}
+.eq-frame{position:relative;margin-top:16px;border-radius:8px;overflow:hidden}
+.eq-frame img{display:block;width:100%;height:auto;image-rendering:pixelated}
+.eq-rows,.eq-verdicts{list-style:none;padding:0;margin:16px 0 0;display:flex;flex-direction:column;gap:8px;font:13px ui-monospace,SFMono-Regular,Consolas,monospace}
+.eq-rows li{display:flex;justify-content:space-between;gap:8px;background:var(--panel2);border-radius:6px;padding:8px 10px;margin:0}
+.eq-rows b{color:var(--yellow);font-weight:600}
+.eq-repair .eq-rows{font-family:inherit;font-size:14px}
+.eq-verdicts li{border:1px solid var(--edge2);border-radius:6px;padding:8px 10px;color:var(--dim);margin:0;transition:background .4s,color .4s}
+.eq-verdicts .eq-hit{background:var(--coral);border-color:var(--coral);color:var(--ink);font-weight:700}
+.eq-end{margin-top:10px!important;color:var(--yellow);font-weight:600;font-size:14px}
+.eq-op{flex:0 0 52px;display:flex;align-items:center;justify-content:center;font:700 32px Adventor,system-ui,sans-serif;color:var(--soft);transition:color .4s,transform .4s}
+.equation figcaption{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center;justify-content:space-between;margin-top:24px;padding-top:18px;border-top:1px solid var(--edge);font-size:16px;color:var(--soft)}
+.equation figcaption button{min-height:44px;padding:8px 18px;border-radius:999px;border:1px solid var(--edge2);background:transparent;color:var(--text);font:600 15px system-ui,sans-serif;cursor:pointer}
+.flow-title{margin:56px 0 4px}
+/* Only once the script runs: dim what the walk hasn't reached, ring the current term. */
+.js .equation[data-step] .eq-term{opacity:.45}
+.js .equation[data-step] .eq-term.is-lit{opacity:1}
+.js .equation[data-step] .eq-term.is-on{border-color:var(--yellow);background:var(--panel2);box-shadow:0 0 0 3px rgba(255,201,40,.35)}
+.js .equation[data-step] .eq-op{color:var(--edge2)}
+.js .equation[data-step] .eq-op.is-lit{color:var(--soft)}
+.js .equation[data-step] .eq-op.is-on{color:var(--yellow);transform:scale(1.35)}
+.js .equation[data-step] .eq-verdicts .eq-hit:not(.is-lit){background:transparent;border-color:var(--edge2);color:var(--dim);font-weight:400}
+@media (max-width:1080px){.how-intro{grid-template-columns:1fr}.eq-row{display:grid;grid-template-columns:1fr 52px 1fr}.eq-op[data-eq-op="1"]{grid-column:1/-1;transform:rotate(90deg);height:44px}.js .equation[data-step] .eq-op[data-eq-op="1"].is-on{transform:rotate(90deg) scale(1.35)}}
+@media (max-width:640px){.eq-row{display:flex;flex-direction:column}.eq-op{flex-basis:44px;transform:rotate(90deg)}.eq-op[data-eq-op="0"]{transform:none}.js .equation[data-step] .eq-op.is-on{transform:rotate(90deg) scale(1.35)}.js .equation[data-step] .eq-op[data-eq-op="0"].is-on{transform:scale(1.35)}}
+@media (prefers-reduced-motion:reduce){.eq-term,.eq-op,.eq-verdicts li{transition:none}}
+.eq-rows b{white-space:nowrap}
