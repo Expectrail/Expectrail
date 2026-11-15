@@ -191,6 +191,9 @@ SAMPLES = {
     "^jit-[a-z0-9][a-z0-9._/-]{0,120}$": ("jit-a/b", True),
     "^review-[0-9]{8}T[0-9]{6}Z-[0-9]{5}$": ("review-20261113T043812Z-00001", True),
     "frames/f%08d.png": ("frames/f%08d.png", False),  # not anchored
+    "^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$": ("WZU63wJuMN6xAV1t3grhK5c/Un5MRUIy5doJFBFOVjs=", True),
+    "^[A-Za-z0-9+/]{85}[AQgw]==$":
+        ("7v1eVI2ryW5o8xdbjZcgrkh2ju84bKWuBUdirtTeJBfSrJiBnVYJ6NPL3Pl0hJEm2r3vaa4lPKdt2BX9DWGAAg==", True),
 }
 
 

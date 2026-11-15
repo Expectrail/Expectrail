@@ -32,6 +32,7 @@ NOW = datetime(2026, 11, 15, 12, 0, 0, tzinfo=timezone.utc)
 NOW_MICROS = int(NOW.timestamp()) * 1_000_000
 REPO = "Expectrail/Expectrail"
 HEAD = "b" * 64
+BUILD = "c" * 64
 POLICY = "d" * 64
 
 HARNESS = r"""
@@ -53,6 +54,14 @@ def public_b64(key: Ed25519PrivateKey) -> str:
     return base64.b64encode(key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)).decode()
 
 
+def padding_alias(signature: str) -> str:
+    """The same 64 bytes in another spelling: the last data character with a padding bit set."""
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    alias = signature[:85] + alphabet[alphabet.index(signature[85]) + 1] + "=="
+    assert base64.b64decode(alias) == base64.b64decode(signature)
+    return alias
+
+
 def store_text(entries: dict[str, str]) -> str:
     return json.dumps({"format": rc.TRUST_STORE_FORMAT, "keys": [{"id": k, "publicKey": v} for k, v in entries.items()]})
 
@@ -66,7 +75,11 @@ def base_doc(key: Ed25519PrivateKey, kid: str = "ci-2026") -> dict:
 
 
 def sign(doc: dict, key: Ed25519PrivateKey) -> dict:
-    return rc.write_receipt(copy.deepcopy(doc), key)
+    """Signed without the writer's checks, so a receipt the writer refuses (a naive or impossible
+    timestamp) can still be put to both readers."""
+    signed = copy.deepcopy(doc)
+    signed["signature"] = rc.sign_receipt(signed, key)
+    return signed
 
 
 def python_check(receipt_text: str, store: str, opts: dict) -> dict:
@@ -74,19 +87,11 @@ def python_check(receipt_text: str, store: str, opts: dict) -> dict:
     try:
         doc = strict_loads(receipt_text)
         rc._validate_receipt(doc)
-        trust = strict_loads(store)
-        if not isinstance(trust, dict) or trust.get("format") != rc.TRUST_STORE_FORMAT or not trust.get("keys"):
-            raise rc.ReceiptError("trust store")
-        entries = {}
-        for e in trust["keys"]:
-            if not isinstance(e, dict) or not isinstance(e.get("id"), str) or not e.get("id") \
-                    or not isinstance(e.get("publicKey"), str) or not e.get("publicKey") or e["id"] in entries:
-                raise rc.ReceiptError("trust store entry")
-            entries[e["id"]] = e["publicKey"]
+        entries = rc.parse_trust_store(store)
     except (ContractError, ValueError):
         return {"outcome": "invalid"}
     report = rc.check_receipt(doc, entries, expect_repo=opts.get("expectRepo"), expect_head=opts.get("expectHead"),
-                              expect_policy=opts.get("expectPolicy"), now=NOW)
+                              expect_build=opts.get("expectBuild"), expect_policy=opts.get("expectPolicy"), now=NOW)
     return {"outcome": "clearance" if report["clearance"] else "no-clearance", "report": report}
 
 
@@ -118,7 +123,7 @@ class ReceiptPageTest(unittest.TestCase):
     def test_the_page_reports_what_trust_check_reports(self):
         key, other = Ed25519PrivateKey.generate(), Ed25519PrivateKey.generate()
         store = store_text({"ci-2026": public_b64(key)})
-        full = {"expectRepo": REPO, "expectHead": HEAD, "expectPolicy": POLICY}
+        full = {"expectRepo": REPO, "expectHead": HEAD, "expectBuild": BUILD, "expectPolicy": POLICY}
         doc = base_doc(key)
         good = sign(doc, key)
 
@@ -141,12 +146,22 @@ class ReceiptPageTest(unittest.TestCase):
             ("only the repository asked", json.dumps(good), store, {"expectRepo": REPO}),
             ("repository mismatch", json.dumps(good), store, dict(full, expectRepo="Someone/Else")),
             ("head mismatch", json.dumps(good), store, dict(full, expectHead="a" * 64)),
+            ("another build of the same head", json.dumps(good), store, dict(full, expectBuild="f" * 64)),
+            ("build not checked", json.dumps(good), store, {k: v for k, v in full.items() if k != "expectBuild"}),
             ("policy mismatch", json.dumps(good), store, dict(full, expectPolicy="e" * 64)),
             ("a field changed after signing", json.dumps(tampered), store, full),
             ("signed by another key", json.dumps(other_signed), store, full),
             ("unknown issuer", json.dumps(good), store_text({"someone": public_b64(key)}), full),
             ("embedded key is not the trusted one", json.dumps(good), store_text({"ci-2026": public_b64(other)}), full),
             ("trusted key is not a key", json.dumps(dict(good, publicKey="AAAA")), store_text({"ci-2026": "AAAA"}), full),
+            ("trust store: a key in another spelling", json.dumps(good),
+             store_text({"ci-2026": public_b64(key).rstrip("=")}), full),
+            ("a 32-byte key that is not the trusted one's spelling", json.dumps(dict(good, publicKey="A" * 43 + "=")),
+             store_text({"ci-2026": "A" * 43 + "="}), full),
+            ("junk appended to the signature", json.dumps(dict(good, signature=good["signature"] + "!!")), store, full),
+            ("the signature with padding bits set", json.dumps(dict(good, signature=padding_alias(good["signature"]))),
+             store, full),
+            ("a newline after the signature", json.dumps(dict(good, signature=good["signature"] + "\n")), store, full),
             ("expired", variant(issuedAt="2026-11-01T00:00:00Z", expiresAt="2026-11-08T00:00:00Z"), store, full),
             ("not yet valid", variant(issuedAt="2026-11-16T00:00:00Z", expiresAt="2026-11-17T00:00:00Z"), store, full),
             ("eight days", variant(issuedAt="2026-11-14T00:00:00Z", expiresAt="2026-11-22T00:00:00Z"), store, full),
@@ -186,7 +201,7 @@ class ReceiptPageTest(unittest.TestCase):
     def test_canonical_bytes_survive_floats_unicode_and_key_order(self):
         key = Ed25519PrivateKey.generate()
         store = store_text({"ci-2026": public_b64(key)})
-        full = {"expectRepo": REPO, "expectHead": HEAD, "expectPolicy": POLICY}
+        full = {"expectRepo": REPO, "expectHead": HEAD, "expectBuild": BUILD, "expectPolicy": POLICY}
         cases = []
         for usd in (0, 0.1, 1e-05, 2.5, 1e16, 123456789.123, 5e-324, 7):
             d = base_doc(key)
@@ -217,9 +232,11 @@ class ReceiptPageTest(unittest.TestCase):
             self.assertEqual(g, canonical_v1(json.loads(t)).decode(), t)
 
     def test_forms_it_cannot_reproduce_say_cannot_tell_and_never_clear(self):
+        # Base64 in another spelling was "cannot tell" here while trust-check read it leniently. Both
+        # readers now refuse it as not a receipt (#255), so those two cases are "invalid" in both.
         key = Ed25519PrivateKey.generate()
         store = store_text({"ci-2026": public_b64(key)})
-        full = {"expectRepo": REPO, "expectHead": HEAD, "expectPolicy": POLICY}
+        full = {"expectRepo": REPO, "expectHead": HEAD, "expectBuild": BUILD, "expectPolicy": POLICY}
         d = base_doc(key)
         d["issuedAt"] = "2026-11-15 00:00:00+00:00"  # Python reads a space; the page reads RFC 3339 only
         spaced = json.dumps(sign(d, key))
@@ -230,7 +247,9 @@ class ReceiptPageTest(unittest.TestCase):
             ("a space in a timestamp", spaced, store, full),
             ("a newline inside the signature", json.dumps(junk), store, full),
             ("unpadded signature", json.dumps(unpadded), store, full),
-        ], cannot_tell=frozenset({"a space in a timestamp", "a newline inside the signature", "unpadded signature"}))
+        ], cannot_tell=frozenset({"a space in a timestamp"}))
+        for _, text in (("junk", json.dumps(junk)), ("unpadded", json.dumps(unpadded))):
+            self.assertEqual(python_check(text, store, full)["outcome"], "invalid")
 
     def test_the_published_samples_are_what_they_say(self):
         folder = ROOT / "docs" / "verify" / "samples"
@@ -244,7 +263,7 @@ class ReceiptPageTest(unittest.TestCase):
             self.assertTrue(doc["issuerKeyId"].startswith("throwaway-test-key"))
             report = rc.check_receipt(doc, rc.load_trust_store(folder / "test-trust-store.json"),
                                       expect_repo=doc["repository"], expect_head=doc["headSha256"],
-                                      expect_policy=doc["policySha256"],
+                                      expect_build=doc["buildSha256"], expect_policy=doc["policySha256"],
                                       now=datetime.fromisoformat(doc["issuedAt"].replace("Z", "+00:00")) + timedelta(hours=1))
             self.assertTrue(report["valid_signature"], name)
             self.assertEqual(report["clearance"], decision == "accept")
@@ -289,7 +308,7 @@ class SampleToolTest(unittest.TestCase):
             for name, decision in (("test-receipt-accept.json", "accept"), ("test-receipt-reject.json", "reject")):
                 doc = rc.read_receipt(folder / name)
                 report = rc.check_receipt(doc, store, expect_repo=doc["repository"], expect_head=doc["headSha256"],
-                                          expect_policy=doc["policySha256"], now=NOW)
+                                          expect_build=doc["buildSha256"], expect_policy=doc["policySha256"], now=NOW)
                 self.assertEqual(doc["decision"], decision)
                 self.assertTrue(report["valid_signature"], name)
                 self.assertEqual(report["clearance"], decision == "accept", report["reasons"])
@@ -347,6 +366,18 @@ class ReceiptPageInBrowserTest(unittest.TestCase):
             page.click("#check")
             page.wait_for_selector("#outcome[data-tone='fail']")
             self.assertIn("head not checked", page.inner_text("#details"))
+            # So is clearing the expected build, and another build of the same head is no clearance.
+            page.click("#sample-accept")
+            page.wait_for_selector("#outcome[data-tone='pass']")
+            self.assertIn("--expect-build " + sample["buildSha256"], page.inner_text("#details"))
+            page.fill("#expect-build", "")
+            page.click("#check")
+            page.wait_for_selector("#outcome[data-tone='fail']")
+            self.assertIn("build not checked", page.inner_text("#details"))
+            page.fill("#expect-build", "f" * 64)
+            page.click("#check")
+            page.wait_for_selector("#outcome[data-tone='fail']")
+            self.assertIn("build digest mismatch", page.inner_text("#details"))
             browser.close()
         self.assertEqual(errors, [])
         self.assertTrue(all(u.startswith(url.rsplit("/verify/", 1)[0]) for u in requests), requests)

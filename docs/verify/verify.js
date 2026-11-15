@@ -24,6 +24,7 @@
     var parts = ["python -m expectrail.receipt trust-check receipt.json --trust-store trust-store.json"];
     if (value("expect-repo") !== null) parts.push("--repo " + quote(value("expect-repo")));
     if (value("expect-head") !== null) parts.push("--expect-head " + quote(value("expect-head")));
+    if (value("expect-build") !== null) parts.push("--expect-build " + quote(value("expect-build")));
     if (value("expect-policy") !== null) parts.push("--expect-policy " + quote(value("expect-policy")));
     return parts.join(" ");
   }
@@ -59,7 +60,7 @@
       facts.className = "facts";
       [["Signature", r.valid_signature ? "valid" : "not valid with a trusted key"],
        ["Issuer", r.known_issuer ? "in your trust store" : "not in your trust store"],
-       ["Build identity", notChecked("repository not checked", "head not checked") ? "not checked" : (r.identity_ok ? "matches" : "does not match")],
+       ["Build identity", (notChecked("repository not checked", "head not checked") || notChecked("build not checked")) ? "not checked" : (r.identity_ok ? "matches" : "does not match")],
        ["Policy", notChecked("policy not checked") ? "not checked" : (r.policy_ok ? "matches" : "does not match")],
        ["In date", r.fresh ? "yes" : "no"],
        ["Complete", r.complete ? "yes" : "no"],
@@ -79,7 +80,7 @@
 
   async function run() {
     var result = await R.check($("receipt-text").value, $("store-text").value, {
-      expectRepo: value("expect-repo"), expectHead: value("expect-head"), expectPolicy: value("expect-policy")
+      expectRepo: value("expect-repo"), expectHead: value("expect-head"), expectBuild: value("expect-build"), expectPolicy: value("expect-policy")
     });
     show(result);
   }
@@ -103,6 +104,7 @@
       var doc = JSON.parse(texts[0]);
       $("expect-repo").value = doc.repository || "";
       $("expect-head").value = doc.headSha256 || "";
+      $("expect-build").value = doc.buildSha256 || "";
       $("expect-policy").value = doc.policySha256 || "";
       $("sample-note").textContent = "Test " + name + " loaded. It is signed by a throwaway test key whose private half was discarded: it shows the check working and proves nothing about any game. It is valid until " + doc.expiresAt + "; after that it gets no clearance, as it should.";
       $("sample-note").hidden = false;

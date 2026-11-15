@@ -144,7 +144,8 @@
     },
     "issuedAt": {
       "type": "string",
-      "format": "date-time"
+      "format": "date-time",
+      "description": "RFC 3339 with an offset (Z or +hh:mm). The writer refuses any other form."
     },
     "expiresAt": {
       "type": "string",
@@ -156,13 +157,13 @@
     },
     "publicKey": {
       "type": "string",
-      "minLength": 1,
-      "description": "Base64 raw Ed25519 public key of the issuer. Present for identification only; never trusted by itself."
+      "pattern": "^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$",
+      "description": "Canonical base64 of the issuer's raw 32-byte Ed25519 public key. Present for identification only; never trusted by itself."
     },
     "signature": {
       "type": "string",
-      "minLength": 1,
-      "description": "Base64 Ed25519 signature over the canonical receipt with the signature field omitted."
+      "pattern": "^[A-Za-z0-9+/]{85}[AQgw]==$",
+      "description": "Canonical base64 of the 64-byte Ed25519 signature over the canonical receipt with the signature field omitted. One spelling only: padded, no other characters, unused bits zero."
     }
   }
 }

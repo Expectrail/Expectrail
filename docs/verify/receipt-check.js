@@ -10,8 +10,9 @@
 //   ensure_ascii=False). This file parses the receipt with its own strict parser, keeping each
 //   number's text, and rebuilds those bytes exactly: Python's key order (code points), its string
 //   escapes, int against float, and float repr.
-// - Where it cannot be sure it matches Python (a timestamp form outside RFC 3339, base64 that is
-//   not canonical, a browser without Ed25519), the outcome is "cannot-tell", never a pass.
+// - Where it cannot be sure it matches Python (a timestamp form outside RFC 3339, a browser
+//   without Ed25519), the outcome is "cannot-tell", never a pass. The signature and the keys must
+//   be canonical base64 of the right length, in both readers: anything else is not a receipt.
 // - Its reports match check_receipt() field for field; tests/test_verify_receipt_page.py holds it
 //   to that.
 "use strict";
@@ -185,6 +186,10 @@
   var HEX = /^[0-9a-f]{64}\n?$/;          // Python's "$" also matches before one final newline
   var REPO = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\n?$/;
   var DIGESTS = ["baseSha256", "headSha256", "buildSha256", "policySha256", "routeSetSha256"];
+  // Canonical base64 of a 64-byte signature and a 32-byte key: padded, unused bits zero. receipt.py
+  // matches the same expressions with fullmatch (SIGNATURE_RE, PUBLIC_KEY_RE).
+  var SIGNATURE = /^[A-Za-z0-9+/]{85}[AQgw]==$/;
+  var PUBLIC_KEY = /^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$/;
   var REQUIRED = ["format", "issuerKeyId", "repository", "baseSha256", "headSha256", "buildSha256",
     "policySha256", "routeSetSha256", "versions", "evidence", "coverage", "decision", "findings",
     "cost", "issuedAt", "expiresAt", "algorithm", "publicKey", "signature"];
@@ -251,6 +256,8 @@
     if (doc.algorithm !== "ed25519") throw new Invalid("algorithm: expected ed25519");
     if (!isStr(doc.publicKey, 1)) throw new Invalid("publicKey: not a non-empty string");
     if (!isStr(doc.signature, 1)) throw new Invalid("signature: not a non-empty string");
+    if (!SIGNATURE.test(doc.signature)) throw new Invalid("receipt: signature is not canonical base64");
+    if (!PUBLIC_KEY.test(doc.publicKey)) throw new Invalid("receipt: publicKey is not canonical base64");
   }
 
   function readReceipt(text) {
@@ -270,6 +277,9 @@
       if (!isObj(entry)) throw new Invalid("trust-store key entry must be an object");
       if (!isStr(entry.id, 1) || !isStr(entry.publicKey, 1)) throw new Invalid("trust-store key entry needs id and publicKey");
       if (entry.id in out) throw new Invalid("duplicate key id in trust store: " + entry.id);
+      if (!PUBLIC_KEY.test(entry.publicKey)) {
+        throw new Invalid("trust-store key " + entry.id + ": publicKey is not canonical base64 of a 32-byte Ed25519 key");
+      }
       out[entry.id] = entry.publicKey;
     });
     return out;
@@ -332,6 +342,8 @@
     // Python's b64decode skips characters outside the alphabet. Only canonical base64 is read here.
     if (!B64.test(s)) throw new CannotTell(what + " is not plain base64, which this page does not read");
     var bin = atob(s), out = new Uint8Array(bin.length);
+    // The readers above already refuse every other spelling; kept as the fallback.
+    if (btoa(bin) !== s) throw new CannotTell(what + " is not canonical base64, which this page does not read");
     for (var k = 0; k < bin.length; k++) out[k] = bin.charCodeAt(k);
     return out;
   }
@@ -360,6 +372,7 @@
     opts = opts || {};
     var expectRepo = opts.expectRepo == null ? null : opts.expectRepo;
     var expectHead = opts.expectHead == null ? null : opts.expectHead;
+    var expectBuild = opts.expectBuild == null ? null : opts.expectBuild;
     var expectPolicy = opts.expectPolicy == null ? null : opts.expectPolicy;
     var now = opts.nowMicros != null ? opts.nowMicros : Date.now() * 1000;
     var report = {
@@ -395,6 +408,7 @@
 
     var repoShown = expectRepo !== null && doc.repository === expectRepo;
     var headShown = expectHead !== null && doc.headSha256 === expectHead;
+    var buildShown = expectBuild !== null && doc.buildSha256 === expectBuild;
     var policyShown = expectPolicy !== null && doc.policySha256 === expectPolicy;
     if (expectRepo === null) gap("repository not checked");
     else if (doc.repository !== expectRepo) {
@@ -402,10 +416,13 @@
     }
     if (expectHead === null) gap("head not checked");
     else if (doc.headSha256 !== expectHead) gap("head digest mismatch", "build identity");
-    report.identity_ok = !!(report.valid_signature && repoShown && headShown);
+    if (expectBuild === null) gap("build not checked");
+    else if (doc.buildSha256 !== expectBuild) gap("build digest mismatch", "build identity");
+    report.identity_ok = !!(report.valid_signature && repoShown && headShown && buildShown);
     if (report.identity_ok) {
-      report.establishes.push("repository " + doc.repository + " head " + Array.from(doc.headSha256).slice(0, 12).join("") + "…");
-    } else if (!dne("build identity") && (dne("repository not checked") || dne("head not checked"))) {
+      report.establishes.push("repository " + doc.repository + " head " + Array.from(doc.headSha256).slice(0, 12).join("") +
+        "… build " + Array.from(doc.buildSha256).slice(0, 12).join("") + "…");
+    } else if (!dne("build identity") && (dne("repository not checked") || dne("head not checked") || dne("build not checked"))) {
       report.does_not_establish.push("build identity");
     }
 
@@ -457,7 +474,7 @@
 
     if (doc.decision !== "accept") gap("decision is " + pyRepr(doc.decision) + ", not accept", "decision accept");
 
-    report.clearance = !!(report.valid_signature && report.known_issuer && repoShown && headShown &&
+    report.clearance = !!(report.valid_signature && report.known_issuer && repoShown && headShown && buildShown &&
       policyShown && report.fresh && report.complete && doc.decision === "accept");
     if (report.clearance) report.establishes.push("clearance: accept on full evidence");
     else {
