@@ -1,0 +1,144 @@
+{
+  "format": "expectrail.observations/v0",
+  "replay": {
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "model": {
+    "name": "sam-3.1",
+    "provider": "stand-in",
+    "engineObjects": [
+      "ground"
+    ],
+    "prompts": {
+      "player": "what is drawn at the middle of the engine's collision box"
+    }
+  },
+  "_comment": "Synthetic example: calibrated 16 x 16 player, then a confident 48 x 48 background answer and a successful empty answer. No live call.",
+  "frames": [
+    {
+      "frame": 0,
+      "objects": {
+        "player": [],
+        "ground": [
+          {
+            "box": [
+              0,
+              60,
+              160,
+              96
+            ],
+            "score": 1.0
+          }
+        ]
+      },
+      "notDrawn": {
+        "player": {
+          "reason": "size-mismatch",
+          "point": [
+            40,
+            52
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "expectedSize": [
+            16,
+            16
+          ],
+          "observedSize": [
+            48,
+            48
+          ],
+          "answer": {
+            "box": [
+              16,
+              28,
+              64,
+              76
+            ],
+            "score": 0.9
+          },
+          "sizeTolerance": 0.25,
+          "sizeFloorPx": 4.0
+        }
+      }
+    },
+    {
+      "frame": 1,
+      "objects": {
+        "player": [],
+        "ground": [
+          {
+            "box": [
+              0,
+              60,
+              160,
+              96
+            ],
+            "score": 1.0
+          }
+        ]
+      },
+      "notDrawn": {
+        "player": {
+          "reason": "no-match",
+          "point": [
+            40,
+            52
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "expectedSize": [
+            16,
+            16
+          ],
+          "observedSize": null,
+          "answer": null,
+          "sizeTolerance": 0.25,
+          "sizeFloorPx": 4.0
+        }
+      }
+    },
+    {
+      "frame": 2,
+      "objects": {
+        "player": [],
+        "ground": [
+          {
+            "box": [
+              0,
+              60,
+              160,
+              96
+            ],
+            "score": 1.0
+          }
+        ]
+      },
+      "notDrawn": {
+        "player": {
+          "reason": "no-match",
+          "point": [
+            40,
+            52
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "expectedSize": [
+            16,
+            16
+          ],
+          "observedSize": null,
+          "answer": null,
+          "sizeTolerance": 0.25,
+          "sizeFloorPx": 4.0
+        }
+      }
+    }
+  ]
+}
