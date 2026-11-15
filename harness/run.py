@@ -331,6 +331,9 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
             (out / "godot.log").write_text((exc.stdout or "") + (exc.stderr or "") + "\nimport timed out\n",
                                            encoding="utf-8")
             raise SystemExit(f"godot import timed out; see {out / 'godot.log'}") from exc
+        except box.DiskBoundError as exc:
+            _discard(work, staging)
+            raise SystemExit(f"the game's import was stopped: {exc}") from exc
     if tool is not None:
         # Inside, the game sees these paths and never the host's; the display is started inside too.
         engine, project, movie = box.ENGINE_BINARY, box.GAME, f"{box.OUT}/frames/f.png"
@@ -360,6 +363,10 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
         (out / "godot.log").write_text((exc.stdout or "") + (exc.stderr or "") + "\ncapture timed out\n",
                                        encoding="utf-8")
         raise SystemExit(f"godot capture timed out; see {out / 'godot.log'}") from exc
+    except box.DiskBoundError as exc:
+        # Nothing it wrote is used, and what it wrote does not stay on the disk.
+        _discard(work, staging)
+        raise SystemExit(f"the replay was stopped: {exc}") from exc
     (out / "godot.log").write_text(proc.stdout + proc.stderr, encoding="utf-8")
     if tool is not None:
         try:
@@ -372,6 +379,27 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
         replay = _replay_record(route, out, game_tree, fps, ordered, route_doc, proc.stdout + proc.stderr, frames,
                                 isolation)
     return replay
+
+
+def _discard(*folders: Path) -> None:
+    """Remove what a stopped game wrote. A game may have made its own folders unreadable, so each is
+    made writable again first; whatever still cannot be removed is left for the caller's cleanup."""
+    for folder in folders:
+        if not folder.exists() or folder.is_symlink():
+            continue
+        try:
+            os.chmod(folder, 0o700)
+        except OSError:
+            pass
+        for root, dirs, _files in os.walk(folder):
+            for name in dirs:
+                path = os.path.join(root, name)
+                if not os.path.islink(path):
+                    try:
+                        os.chmod(path, 0o700)
+                    except OSError:
+                        pass
+        shutil.rmtree(folder, ignore_errors=True)
 
 
 def _replay_record(route: Path, out: Path, game_tree: str, fps: int, ordered: list[Path], route_doc: dict, log: str,

@@ -16,7 +16,7 @@ environment (`game_env`) did not close any of that. `harness/sandbox.py` does, w
 | The repository, the checks, the caller's home | not mounted | readable |
 | Environment | built from nothing: display and rendering variables only | the same variables |
 | Terminal | none: a session of its own, so `/dev/tty` cannot be opened | the terminal the harness was started from |
-| Limits | 2 GiB per file, no core dumps, no further user namespaces, the replay's time limit | the time limit |
+| Limits | 2 GiB per file; 4 GiB and 250,000 files and folders added to the work copy and output folder together (the disk bound, below); no core dumps, no further user namespaces, the replay's time limit | the time limit |
 
 Both of Godot's steps run inside: the import (which runs the project's own import code) and the replay.
 A replay with frames starts its own virtual display inside; the host's display is never used.
@@ -24,6 +24,27 @@ A replay with frames starts its own virtual display inside; the host's display i
 The harness takes only two things back from the output folder: `trace.json` and `frames/f*.png`, and
 only when they are plain files. A link is refused and the replay fails, because following one would
 read a file the game itself could not.
+
+## The disk bound
+
+The work copy and the output folder are on the host's disk, so a game could fill it. `harness.sandbox.run`
+measures both folders before the game starts, every 0.1 s while it runs, and once more after it ends.
+When the game has added more than 4 GiB, or more than 250,000 files and folders, the sandbox is killed,
+what it wrote is removed, and the replay fails. The gate's record then says, in its own words, "the head
+replay was stopped: the game wrote more to its folders than the replay sandbox allows" (a replay error,
+never a pass).
+
+- A file counts its length or the blocks it holds, whichever is more, so a sparse file counts in full.
+  Links are counted as links and never followed.
+- A folder the game makes unreadable cannot be counted, so the run is refused as "could not be measured".
+- The bound is measured, not enforced by the file system. Between two measurements a game can go past it
+  by what the disk takes in 0.1 s: about 200 MB when Godot wrote 1 MB files on the machine where this was
+  measured. The last measurement after the end means a game that ends between two measurements is still
+  caught. Each file stays under 2 GiB all the same.
+- `EXPECTRAIL_SANDBOX_DISK_BYTES` lowers the byte bound for a run (the release gate's test sets 32 MB). It
+  cannot raise it: a larger or unreadable value stops the run.
+- `replay.json` records the bound in force (`isolation.limits.diskBytes`, `diskEntries`). A replay written
+  before the bound existed has neither.
 
 ## Modes
 
@@ -60,8 +81,9 @@ that off first (`kernel.apparmor_restrict_unprivileged_userns=0`), as the fixer'
 ## What it does not do
 
 - It is a namespace sandbox on the host's kernel, not a virtual machine.
-- The work copy and the output folder are on the host's disk: each file is limited, their total is not.
-  CPU and memory are limited only by the replay's time limit.
+- The disk bound is a measurement every 0.1 s, not a file-system quota (see above). It holds only
+  inside the sandbox: a replay without it (`auto` on a machine that cannot, or `off`) is bounded only by
+  its time limit. CPU and memory are limited only by the replay's time limit.
 - The process limit (4,096) is the kernel's per-user count, which includes that user's processes
   outside the sandbox. A user already running more than that gets "could not start a sandbox" without
   the limit being named; `auto` records it and `require` refuses.
