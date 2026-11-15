@@ -507,7 +507,7 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
 
     if state["pixel"].get("capture") is not None:
         _pixel_capture(by_probe, routes, base_patches, candidate, out, replay, reps, state["pixel"]["capture"],
-                       frame_runner)
+                       frame_runner, observer)
         for check in [c for g in by_probe.values() for c in g]:
             rows[check["id"]] = pixel.record_row(check, "not-run", pixel_jobs.CAPTURED)
         state["pixelChecks"] = [rows[c["id"]] for c in checks]
@@ -600,10 +600,12 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
 
 
 def _pixel_capture(by_probe: dict, routes: dict, base_patches: list, candidate: Path, out: Path, replay, reps: int,
-                   store: Path, frame_runner) -> None:
+                   store: Path, frame_runner, observer) -> None:
     """The capture job (expectrail/jit/pixel_jobs.py, step 1): each pixel check's probe replayed with frames
     on the clean game, the bug build and the candidate, ``reps`` times each, and every folder kept in
-    ``store``. A replay that fails ends the run (rule 3), as any replay does."""
+    ``store`` with only the frames ``observer`` will ask about. A probe whose frames the observer cannot
+    plan is not replayed (the judging run then does not run its checks, as it would not here). A replay
+    that fails ends the run (rule 3), as any replay does."""
     from expectrail.jit import pixel_jobs
 
     store = Path(store)
@@ -611,10 +613,14 @@ def _pixel_capture(by_probe: dict, routes: dict, base_patches: list, candidate: 
     builds = (("pixel-reference", []), ("pixel-base", list(base_patches)), ("pixel-candidate", [*base_patches, candidate]))
     for pid in sorted(by_probe):
         route = routes[pid][0]
+        try:
+            planned = [int(n) for n in observer.frames(route)]
+        except Exception:  # noqa: S112 - as in _pixel_stage: an observer that cannot plan is not asked
+            continue
         for name, patches in builds:
             for n in range(1, reps + 1):
                 replay(name, patches, pid, n, with_runner=frame_runner)
-                pixel_jobs.store_replay(out / "jit-replays" / name / f"{pid}-{n}", store, route)
+                pixel_jobs.store_replay(out / "jit-replays" / name / f"{pid}-{n}", store, route, planned)
 
 
 def _variants(game, base_patches, candidate, limit):

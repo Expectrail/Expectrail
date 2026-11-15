@@ -11,8 +11,10 @@ in 13 of 13 frames (run 43304967915, docs/sam.md).
 What stays independent: the model is told where to look, never what it should find. Its answer is
 the box of what is drawn there, and the spec's assertion is judged on that box (for
 player-stays-above-ground, against the engine's ground line, as before). A player that is drawn
-somewhere else, drawn wrongly or not drawn at all gives a box that disagrees, or no box, which is
-needs-review: a frame missing the player is never read as agreement (expectrail.evaluator).
+somewhere else or drawn wrongly can give a box that disagrees. After clean calibration, a successful
+empty answer or a region of another size is explicit negative evidence: the player was not found
+drawn at its place. It fails, rather than measuring the background as the player. Provider errors
+remain no answer, not evidence that the sprite is missing (expectrail.evaluator).
 
 What it leans on, said plainly: the place comes from the engine, so if the engine's record and the
 picture both lie in the same way, this cannot see it. That is why the observer is used for a game
@@ -32,6 +34,10 @@ only after it has been measured on that game's clean run, against rules fixed he
 Sizes are compared within ``sizeTolerance`` of the larger size, or within a floor in pixels,
 whichever is larger: a 16 px sprite over a 14 px collision box, with a model whose edges move by a
 pixel or two, is not a disagreement.
+On a candidate replay, answer sizes are converted from frame pixels to game pixels and compared
+with the clean calibration's ``drawnSize``. A different-sized region is kept as ``notDrawn`` evidence,
+including the raw box and score, rather than being judged as if it were the player. This cannot tell
+apart a player and background of the same size; it is not an independent object-identity proof.
 
 History (#330): the first rules asked with a box (the collision box widened 4 px) and tested
 stability with a box twice as large. The first live calibration (run 43609849950) found the 16 px
@@ -44,7 +50,7 @@ as before. Nothing here can make a decision accept on its own: the gate's rule `
 the engine's checks and this observer's evidence on them.
 
 Every asked frame is a paid image when the client is live. The calibration asks about every tenth
-clean frame twice (26 images for a 120-frame route). Recorded once per game (Option A,
+clean frame twice, in two requests (26 images for a 120-frame route). Recorded once per game (Option A,
 expectrail.recorded), the same answers replay for free in CI.
 """
 from __future__ import annotations
@@ -127,7 +133,12 @@ def calibrate(game: dict, run: dict, client, *, every: int = CALIBRATION_EVERY, 
         width = png_size(frames[n])[0]
         nudged = (point[0] + step if point[0] + step < width else point[0] - step, point[1])
         try:
-            got, again = client.segment_at(frames[n], [point, nudged])
+            # Two requests, not one: in one request the points are separate objects, and the model
+            # gives each pixel to one object, so a second point on the same sprite comes back empty.
+            # The second live calibration showed exactly that (run 43643679280: found 19 of 19,
+            # size 100%, nudged 0%).
+            got = client.segment_at(frames[n], [point])[0]
+            again = client.segment_at(frames[n], [nudged])[0]
         except SamError as exc:
             if exc.kind in STOP_KINDS or exc.status is not None or exc.kind == "not-recorded":
                 raise NoAnswer(f"the calibration stopped ({str(exc.kind)[:60]})") from exc
@@ -271,23 +282,44 @@ class AnchoredObserver:
         size = png_size(frames[indices[0]])
         places = _places(trace, frames, indices, self._pad)
         ground = engine_ground_by_frame(trace, size, indices) if engine else {}
+        drawn, rules = self.calibration["drawnSize"], self.calibration["rules"]
+        expected = [drawn["width"], drawn["height"]]
         out = []
         for n in indices:
             place, found = places[n], []
+            negative = None
             if "point" in place and "why" not in place:
+                answered = True
                 try:
                     got = client.segment_at(frames[n], [tuple(place["point"])])[0]
                 except SamError as exc:
                     if exc.kind in STOP_KINDS or exc.status is not None or exc.kind == "not-recorded":
                         raise NoAnswer(f"the model did not answer ({str(exc.kind)[:60]})") from exc
-                    got = None
+                    got, answered = None, False
                 # An answer without a confidence is not used: the evaluator's threshold needs one.
-                if got is not None and got.get("score") is not None and _holds(got, place["point"]):
-                    found = [{"box": [float(v) for v in got["box"]], "score": float(got["score"])}]
+                answer, measured = None, None
+                if got is not None and got.get("score") is not None:
+                    answer = {"box": [float(v) for v in got["box"]], "score": float(got["score"])}
+                    measured = list(_answer_size(got, place["scale"]))
+                    if not all(_close(s, b, rules["sizeTolerance"], rules["sizeFloorPx"])
+                               for s, b in zip(measured, expected)):
+                        negative = "size-mismatch"
+                    elif _holds(got, place["point"]):
+                        found = [answer]
+                elif answered and got is None:
+                    negative = "no-match"
             objs = {player: found}
             if engine:
                 objs["ground"] = list(ground.get(n, {}).get("ground", []))
-            out.append({"frame": n, "objects": objs})
+            row = {"frame": n, "objects": objs}
+            if negative:
+                # Keep the rejected region, its score, and the exact size comparison. Empty object
+                # lists alone mean uncertainty to the evaluator, not a missing-sprite diagnosis.
+                row["notDrawn"] = {player: {"reason": negative, "point": list(place["point"]),
+                    "scale": [s or 1.0 for s in place["scale"]], "expectedSize": list(expected),
+                    "observedSize": measured, "answer": answer,
+                    "sizeTolerance": rules["sizeTolerance"], "sizeFloorPx": rules["sizeFloorPx"]}}
+            out.append(row)
         model = {"name": str(getattr(client, "model", "unknown")),
                  "provider": str(getattr(client, "provider", "meta-model-api")),
                  "prompts": {player: "what is drawn at the middle of the engine's collision box"}}

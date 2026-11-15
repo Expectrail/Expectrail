@@ -17,8 +17,9 @@ replay the observer then checks, before it asks anything:
 - the replay is of the route the check names (replay.json's ``route.name``);
 - it was captured at the frame rate and physics rate the frames were planned at, so frame ``n`` shows the
   tick the plan says (agents/observations.py, ``_frame_tick``);
-- the frames on disk are the replay's: numbered from 0 without a hole, as many as replay.json counts, and
-  each frame asked about has the digest replay.json gives it.
+- the frames on disk are the replay's: numbered below the count replay.json gives, with a digest for each
+  frame counted, every frame asked about present (a kept replay holds only those, see
+  expectrail/jit/pixel_jobs.py), and each frame asked about has the digest replay.json gives it.
 
 Any of these failing is a ``PixelError``: the checks on that probe are dropped with the reason, never
 passed. A planned frame the replay did not capture (the game ended sooner than the route), or one where
@@ -155,16 +156,25 @@ class SamAnchorObserver:
         on_disk = frame_files(run_dir / "frames")
         if not on_disk:
             raise pixel.PixelError("the replay captured no frames")
-        if list(on_disk) != list(range(len(on_disk))) or len(hashes) != len(on_disk) \
-                or capture.get("frames") != len(on_disk):
+        count = capture.get("frames")
+        if not isinstance(count, int) or isinstance(count, bool) or len(hashes) != count \
+                or not all(0 <= n < count for n in on_disk):
             raise pixel.PixelError(f"the frames on disk ({len(on_disk)}) are not the replay's "
-                                   f"({capture.get('frames')} counted, {len(hashes)} digests)")
+                                   f"({count} counted, {len(hashes)} digests)")
+        planned = self.frames(route)
+        # A kept replay (expectrail/jit/pixel_jobs.py, store_replay) holds only the frames asked about. Any
+        # frame missing from disk must then be one that is never asked about; a missing frame that is asked
+        # about refuses the replay, so a trimmed folder can never turn a question into a gap.
+        missing = [n for n in planned if n < count and n not in on_disk]
+        if missing:
+            raise pixel.PixelError(f"the frames on disk ({len(on_disk)}) are not the replay's ({count} counted, "
+                                   f"{len(hashes)} digests): frame {missing[0]}, which is asked about, is missing")
         try:
             trace = load_trace(run_dir)
-            size = png_size(on_disk[0])
+            first = next(iter(on_disk))
+            size = png_size(on_disk[first])
         except SamError as exc:
             raise pixel.PixelError(str(exc)[:200]) from exc
-        planned = self.frames(route)
         where = anchors(trace, size, [n for n in planned if n in on_disk], self.lift, fps=self.fps,
                         box=self.box, pad=self.pad)
         client = self.client
@@ -183,7 +193,7 @@ class SamAnchorObserver:
                 continue
             try:
                 if png_size(on_disk[n]) != size:
-                    raise self._stop(f"frame {n} is not the size of frame 0", client, before)
+                    raise self._stop(f"frame {n} is not the size of frame {first}", client, before)
                 answer = client.segment_in(on_disk[n], [tuple(anchor["promptBox"])])[0]
             except SamError as exc:
                 if exc.kind in STOP_KINDS or exc.status is not None:

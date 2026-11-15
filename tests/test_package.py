@@ -29,7 +29,9 @@ REPO = Path(__file__).resolve().parent.parent
 BUNDLE = "expectrail/_bundle/"
 # What the build reads. Anything else in the tree cannot reach the wheel.
 SOURCES = ("pyproject.toml", "setup.py", "README.md", "LICENSE", "NOTICE", "expectrail", "harness", "agents",
-           "contracts", "game", "bugs/physics-fall-through")
+           "contracts", "game", "bugs/physics-fall-through", "tests/outside/kinematic-character/routes/walk.json",
+           "tests/outside/recordings/kinematic-character/calibration.json",
+           "tests/outside/recordings/kinematic-character/vision-recording.json")
 BUILT: dict = {}
 
 
@@ -80,9 +82,8 @@ NOT_PACKAGED = {
     "expectrail.change_evidence": "evidence of a fix loop's change; used by the demo review path",
     "expectrail.spec_writer": "drafts specs with a model; no verification uses a model",
     "expectrail.runit": "the site's Run it samples (#265): reads docs/run-it/ in a clone of the repository",
-    "expectrail.recorded": "recorded vision answers for the Run it samples (#265); built on expectrail.observers",
-    "expectrail.anchored": "the anchored visual observer for outside games (#330); built on the vision adapter in agents/, which the wheel does not carry",
     "expectrail.runit_site": "the Run it page's results index (#265): the publish job runs it from a clone; built on expectrail.runit",
+    "expectrail.receipt": "receipts and trust-check (#255): needs cryptography and jsonschema, which the standard-library wheel does not ship; packaging it is a later slice",
 }
 # Imports a packaged module makes only on a path a verification never takes.
 NOT_ON_A_VERIFICATION = {
@@ -184,6 +185,9 @@ class ContentsTest(Case):
                      "bugs/physics-fall-through/v1.patch"):
             self.assertIn(BUNDLE + name, self.names)
             self.assertEqual(self.wheel.read(BUNDLE + name), (REPO / name).read_bytes(), name)
+        for name in ("kinematic-character/routes/walk.json", "recordings/kinematic-character/calibration.json",
+                     "recordings/kinematic-character/vision-recording.json"):
+            self.assertEqual(self.wheel.read(BUNDLE + "outside/" + name), (REPO / "tests/outside" / name).read_bytes())
         # No held-out or fresh material, no other bug, no fixture, no import cache.
         for name in self.names:
             self.assertFalse(any(word in name for word in ("fresh", "heldout", "fixtures", "/.godot/", "__pycache__")), name)
@@ -319,7 +323,7 @@ class InstalledTest(Case):
         doc = json.loads(done.stdout)
         found = {c["id"]: c for c in doc["checks"]}
         self.assertEqual(list(found), ["python", "godot", "display", "opengl", "disk", "sandbox", "patch", "curl", "unzip",
-                                       "vision-key", "vision-cap"])
+                                       "vision-key", "vision-cap", "chromium"])
         self.assertEqual((doc["ok"], found["python"]["status"], found["godot"]["status"], found["opengl"]["status"]),
                          (False, "ok", "missing", "skipped"))
         self.assertIn("--no-fetch was given", found["godot"]["found"])

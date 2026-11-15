@@ -29,6 +29,22 @@ The app serves its own page without downloading scripts, styles or fonts.
    When the job has an existing report, the page links to it. Missing tools are reported by
    the verifier, with its suggested fix.
 
+### Try kinematic-character with saved vision answers
+
+Once the app is open, the outside game needs no terminal commands. Get the
+[pinned Godot demos](https://github.com/godotengine/godot-demo-projects/archive/b761b4cd5718a7118f2c95eb55f181d0a5f004f1.zip)
+and extract the archive. In **Before**, paste the path to its unchanged
+`2d/kinematic_character` folder. In **After**, paste the path to your changed copy of
+that game. Select **Use the kinematic-character example with recorded vision** and
+**Check folders**, then **Verify**. Open the evidence viewer from the result.
+
+Expectrail checks Before against the pinned game, copies the games into the job store,
+and supplies the walk route and approved ground check used in the [outside trial](outside-projects.md).
+Past runs names those verification copies. Godot replays both versions. Vision answers come
+only from the published recording, matched by frame and question. An engine failure can reject
+even if a frame has no recorded answer. A missing answer cannot clear the change.
+The example needs the usual local Godot and display tools. It uses no provider key or fixer.
+
 The result says which observers judged, from the job's own status or findings. With `both`,
 the engine's record and the vision model judge every check. If that rule records no visual
 observer, the page says the model was unavailable. An absent observers block or `engine-only`
@@ -69,3 +85,10 @@ lists the same stored jobs without granting access to their report or viewer fil
 
 An installer, a trial with a person unfamiliar with terminals, and tests of this app on real
 games are not done in this slice. This page was not looked at in a browser.
+
+## Auto-fix checkbox
+
+Before selecting **Verify**, open the repair controls by checking **Try to fix the game if verification rejects it**.
+The box starts unchecked. The app asks for the attempt limit and dollar cap. The checkbox requests a live fixer
+and has no fixture picker. Until the Muse spend meter is available, use the [CLI fixture example](../README.md#verify-then-repair)
+to try the loop. [App and budget tests](../tests/test_auto_fix.py).

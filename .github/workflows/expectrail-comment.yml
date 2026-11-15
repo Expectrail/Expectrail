@@ -56,11 +56,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 -m tools.ci_checks download
+      - name: Read the candidate revision as data
+        if: steps.start.outputs.base != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ github.event.workflow_run.head_repository.full_name }}
+          ref: ${{ github.event.workflow_run.head_sha }}
+          path: head-data
+          persist-credentials: false
       - name: Evaluate the saved runs from the base commit
         if: steps.start.outputs.base != ''
         id: judge
         working-directory: policy
         env:
+          HEAD_CHECKOUT: ${{ github.workspace }}/head-data
           GAME: game/platformer
           SPECS: agents/specs
           ROUTES: |

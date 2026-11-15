@@ -50,6 +50,7 @@ packages = [
     "expectrail._bundle.contracts",
     "expectrail._bundle.game",
     "expectrail._bundle.bugs",
+    "expectrail._bundle.outside",
 ]
 
 [tool.setuptools.package-dir]
@@ -58,6 +59,7 @@ packages = [
 "expectrail._bundle.contracts" = "contracts"
 "expectrail._bundle.game" = "game"
 "expectrail._bundle.bugs" = "bugs"
+"expectrail._bundle.outside" = "tests/outside"
 
 [tool.setuptools.dynamic]
 version = { attr = "expectrail.__version__" }
@@ -69,3 +71,4 @@ version = { attr = "expectrail.__version__" }
 # Every file of the bundled game, dot-files included (`*` does not match them); never `.godot`.
 "expectrail._bundle.game" = ["platformer/**/*", "platformer/**/.gdignore"]
 "expectrail._bundle.bugs" = ["physics-fall-through/v1.patch"]
+"expectrail._bundle.outside" = ["kinematic-character/routes/walk.json", "recordings/kinematic-character/calibration.json", "recordings/kinematic-character/vision-recording.json"]

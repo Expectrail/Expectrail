@@ -1,5 +1,5 @@
 """python3 -m expectrail.repro check | visibility | render | screen | screen-render | evidence | evidence-render
-| reach | menu | cases | score | score-render | breakdown"""
+| reach | menu | cases | score | score-render | breakdown | pixel-reach | pixel-reach-render"""
 from __future__ import annotations
 
 import argparse
@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from expectrail.jit.offer import DEFAULT as DEFAULT_OFFER, SCORED
-from expectrail.repro import bench, breakdown, evidence, menu, reach, score, screen, visibility
+from expectrail.repro import bench, breakdown, evidence, menu, pixel_reach, reach, score, screen, visibility
 
 PROFILE = bench.REPO / "discovery" / "platformer.profile.json"
 
@@ -49,6 +49,19 @@ def main(argv: list[str] | None = None) -> int:
     sc.add_argument("--only", action="append", default=[], help="a defect id (repeatable); default: all")
     sc.add_argument("--reach", action="store_true", help="replay the reach probes in place of the library probes")
     sc.add_argument("--keep-frames", action="store_true", help="leave the captured frames under <out>/work")
+    px = sub.add_parser("pixel-reach", help="replay with frames and say, for each defect, whether any pixel inside the "
+                                            "box a pixel check's observer is shown differs; no model, no key")
+    px.add_argument("--bench", type=Path, default=bench.BENCH)
+    px.add_argument("--profile", type=Path, default=PROFILE)
+    px.add_argument("--screen", type=Path, default=screen.RECORD,
+                    help="the screen record: its screen-only defects are measured unless --only names others")
+    px.add_argument("--out", type=Path, required=True)
+    px.add_argument("--jobs", type=int, default=1)
+    px.add_argument("--only", action="append", default=[], help="a defect id (repeatable)")
+    px.add_argument("--probe", action="append", default=[], help="a library probe id (repeatable); default: all")
+    pxr = sub.add_parser("pixel-reach-render", help="print a pixel-reach record as a table")
+    pxr.add_argument("record", type=Path)
+    pxr.add_argument("--bench", type=Path, default=bench.BENCH)
     scr = sub.add_parser("screen-render", help="print a screen record as a table")
     scr.add_argument("record", type=Path)
     scr.add_argument("--bench", type=Path, default=bench.BENCH)
@@ -95,6 +108,9 @@ def main(argv: list[str] | None = None) -> int:
                    help="count only records made with this setting (expectrail/jit/offer.py)")
     s.add_argument("--screen", type=Path, default=None,
                    help="a screen record (expectrail/repro/screen.py): the rate on the screen-only defects apart")
+    s.add_argument("--candidate", choices=score.CANDIDATE_SETTINGS, default=score.SHOWN,
+                   help="count only records made with the candidate shown to the model (the default) or withheld "
+                        "(--withhold-candidate; issue #285, step 6)")
     bd = sub.add_parser("breakdown", help="print a score's misses by reason, with the hand findings; no model, no engine")
     bd.add_argument("--score", type=Path, required=True, help="a repro-score.json")
     bd.add_argument("--hand", type=Path, default=breakdown.HAND, help="the hand findings (expectrail.repro-hand-reasons/v1)")
@@ -116,7 +132,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "score":
             record = score.score(doc, args.records, visibility_path=None if args.no_visibility else args.visibility,
                                  source=args.source, bench_path=args.bench, offer=args.offer,
-                                 screen_path=args.screen)
+                                 screen_path=args.screen, candidate=args.candidate)
             score.write(record, args.out)
             print(json.dumps(record["totals"]))
             return 0
@@ -222,6 +238,27 @@ def main(argv: list[str] | None = None) -> int:
                                     bench_path=args.bench, keep_frames=args.keep_frames)
             print(json.dumps(record["totals"]))
             return 1 if record["totals"]["error"] else 0
+        if args.cmd == "pixel-reach":
+            from expectrail.contracts import load_strict
+            from expectrail.jit.probes import jit_library
+
+            profile = load_strict(args.profile, "mechanics-profile")
+            probes = jit_library(profile["actions"])
+            if args.probe:
+                unknown = sorted(set(args.probe) - {p["id"] for p in probes})
+                if unknown:
+                    raise pixel_reach.PixelReachError(f"no probe {unknown[0][:60]!r}")
+                probes = [p for p in probes if p["id"] in args.probe]
+            defects = args.only or pixel_reach.screen_only(screen.load(args.screen))
+            record = pixel_reach.measure(doc, profile, probes, args.out, defects, jobs=args.jobs, bench_path=args.bench)
+            print(json.dumps(record["totals"]))
+            return 1 if record["totals"]["error"] else 0
+        if args.cmd == "pixel-reach-render":
+            record = pixel_reach.load(args.record)
+            for line in pixel_reach.stale(record, doc, bench_path=args.bench):
+                print(f"repro pixel-reach-render: stale: {line}", file=sys.stderr)
+            sys.stdout.write(pixel_reach.render(record))
+            return 0
         if args.cmd == "screen-render":
             record = screen.load(args.record)
             for line in screen.stale(record, doc, bench_path=args.bench):
@@ -246,7 +283,7 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write(visibility.render(record, doc))
         return 0
     except (bench.BenchError, visibility.VisibilityError, screen.ScreenError, score.ScoreError, reach.ReachError,
-            evidence.EvidenceError, breakdown.BreakdownError, menu.MenuError, OSError) as exc:
+            evidence.EvidenceError, breakdown.BreakdownError, menu.MenuError, pixel_reach.PixelReachError, OSError) as exc:
         print(f"repro: {exc}", file=sys.stderr)
         return 1
 

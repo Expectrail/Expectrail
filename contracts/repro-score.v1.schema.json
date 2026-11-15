@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://expectrail.tech/contracts/repro-score.v1.schema.json",
   "title": "expectrail.repro-score/v1",
-  "description": "The reproduction rate of one live run on the public reproduction bench: per defect, whether a generated check passed on the clean game 3 times of 3 and failed on the bug build 3 times of 3, read from that run's jit-run records. Every defect runs with the same stand-in candidate, a comment line that changes nothing, so the check comes from the bug build and the report alone. A defect with no usable record is no-result and never counts as reproduced. A miss carries a reason only where the records can show one. Under the pixel setting (#286) a row's counts include its pixel checks, and its pixel object says how many were pixel checks. With a screen record, each row says what it measured, and the totals give the screen-only defects apart. Written and read by expectrail.repro.score.",
+  "description": "The reproduction rate of one live run on the public reproduction bench: per defect, whether a generated check passed on the clean game 3 times of 3 and failed on the bug build 3 times of 3, read from that run's jit-run records. Every defect runs with the same stand-in candidate, a comment line that changes nothing, so the check comes from the bug build and the report alone. A defect with no usable record is no-result and never counts as reproduced. A miss carries a reason only where the records can show one. Under the pixel setting (#286) a row's counts include its pixel checks, and its pixel object says how many were pixel checks. With a screen record, each row says what it measured, and the totals give the screen-only defects apart. A score counts records of one candidate setting, shown or withheld, and says withheld when it is. Written and read by expectrail.repro.score.",
   "type": "object",
   "additionalProperties": false,
   "required": ["format", "benchSha256", "noFixSha256", "visibilitySha256", "source", "offer", "reps", "capUsd",
@@ -13,7 +13,7 @@
     "usd": { "type": "number", "minimum": 0 },
     "reason": {
       "enum": ["route-never-reaches", "no-signal", "probe-language", "wrong-predicate", "flaky", "budget", "undetermined"],
-      "description": "The issue's vocabulary (#285, step 2), and undetermined. The scorer assigns budget, flaky, wrong-predicate, no-signal and undetermined; no record separates route-never-reaches or probe-language from the others, so a record that carries one of those is refused."
+      "description": "The issue's vocabulary (#285, step 2), and undetermined. The scorer assigns budget, flaky, wrong-predicate, no-signal and undetermined from the run's records and the visibility record. route-never-reaches and probe-language only with a screen record, on a row whose visibility is none: route-never-reaches where the row's screen is neither, probe-language where it is screen-only and the offer is not the pixel one. The reader recomputes both, so a record that carries one elsewhere, or undetermined where the screen record gives one, is refused."
     }
   },
   "properties": {
@@ -35,6 +35,10 @@
     "offer": {
       "enum": ["baseline", "signals-reach", "signals-reach-evidence", "signals-reach-evidence-pixel"],
       "description": "What the generator was offered in the records this score counts (expectrail/jit/offer.py). A record made with another setting is a row with no result."
+    },
+    "candidate": {
+      "const": "withheld",
+      "description": "There only when the score counts records made with the candidate withheld (issue #285, step 6: the model was given no byte of the candidate, so every reproducing check came from the report and the bug build alone). Absent, the score counts records made with the candidate shown, as every score did before the setting existed. A record made with the other setting is a row with no result."
     },
     "reps": { "const": 3 },
     "capUsd": { "const": 2.0 },

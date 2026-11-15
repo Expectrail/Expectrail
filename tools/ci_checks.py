@@ -138,6 +138,22 @@ def report_problem(report, problem, ctx):
     (report / "report.md").write_text(comment.render_unreadable(problem, ctx))
 
 
+def recorded_observer(path):
+    """The base checkout's recording bank, with its configured primary first; no model fallback."""
+    from expectrail.recorded import RecordedBankObserver, read_recording, RecordingError
+
+    path = Path(path)
+    paths = [path, *sorted(p for p in path.parent.glob("*.json") if p != path)]
+    docs = []
+    for source in paths:
+        if source.exists() or source.is_symlink():
+            doc = read_recording(source)
+            if source.stem != doc["sample"]:
+                raise RecordingError(f"{source.name} is not a {source.stem} recording")
+            docs.append(doc)
+    return RecordedBankObserver(docs, every=1) if docs else None
+
+
 def main(mode):
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_bytes())
     ctx = context(event)
@@ -179,14 +195,13 @@ def main(mode):
     elif mode == "judge":
         import tempfile
         from agents import export_scan
-        from expectrail.recorded import RecordedObserver, read_recording
         from tools import ci_bundle
         recording = Path(os.environ["RECORDING"])
-        visual = RecordedObserver(read_recording(recording), every=1) if recording.is_file() else None
+        visual = recorded_observer(recording)
         with tempfile.TemporaryDirectory(dir=temp) as tmp:
             staged = Path(tmp) / "result"
             ci_bundle.judge(ci_bundle.Policy.configured(), Path.cwd(), state["pr"], state["intent"],
-                            temp / "capture.zip", staged, visual)
+                            temp / "capture.zip", staged, visual, head_checkout=Path(os.environ["HEAD_CHECKOUT"]))
             if any(row["level"] == "error" for row in export_scan.scan([staged])):
                 raise ValueError("report failed the public export scan")
             staged.rename(report)

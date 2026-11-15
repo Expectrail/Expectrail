@@ -1,7 +1,9 @@
 """The local app over loopback HTTP. Replays use public fixtures, never Godot."""
 from __future__ import annotations
 
+from contextlib import redirect_stdout
 import http.client
+import io
 import json
 import os
 from pathlib import Path
@@ -114,6 +116,72 @@ class HTTPTest(unittest.TestCase):
                 return data
             time.sleep(.02)
         self.fail('job did not finish')
+
+    def test_verify_command_and_app_decide_the_same_change(self):
+        from expectrail import cli
+        from tests.test_two_observers import Game
+
+        candidate = self.after / 'game/platformer'
+        cli_store = JobStore(self.root / 'cli-jobs')
+
+        def start_cli_worker(store, job_id):
+            # The real spawn sends worker output to this log. Keep the CLI's JSON stream separate.
+            with store.paths(job_id).log.open('a') as log, redirect_stdout(log):
+                runner.work(store, job_id, engines={'godot': self.engine})
+
+        for decision, marker, exit_code in [('accept', None, 0), ('reject', 'BUG', 1),
+                                            ('needs-review', 'CRASH', 2)]:
+            with self.subTest(decision=decision):
+                if decision == 'reject':
+                    (self.before / 'game/platformer/BUG').unlink()
+                if marker:
+                    (candidate / marker).touch()
+                game = Game()
+                self.engine = engines.GodotGate(replay=game.replay, visual=game.observer(), rule='both')
+                shown = self.finished(self.create())
+                command = ['verify', '--jobs-root', str(cli_store.root), '--base', str(self.before),
+                           '--head', str(self.after), '--game', self.body['game'], '--routes', self.body['routes'],
+                           '--specs', self.body['specs'], '--json']
+                with mock.patch.object(runner, 'spawn', start_cli_worker), redirect_stdout(io.StringIO()) as output:
+                    self.assertEqual(cli.main(command), exit_code)
+                printed = json.loads(output.getvalue())
+                self.assertEqual(self.store.request(shown['id']), cli_store.request(printed['id']))
+                self.assertEqual(self.store.status(shown['id'])['inputs'], printed['inputs'])
+                self.assertNotEqual(printed['inputs']['baseTree'], printed['inputs']['headTree'])
+                self.assertEqual((shown['state'], shown['decision'], printed['decision']), (decision,) * 3)
+                if marker:
+                    (candidate / marker).unlink()
+
+    def test_recorded_project_requires_its_pinned_before_folder(self):
+        body = {'preset': 'kinematic-character', 'before': str(self.before / 'game/platformer'),
+                'after': str(self.after / 'game/platformer')}
+        code, error, _ = self.http('POST', '/api/jobs', body)
+        self.assertEqual(code, 400)
+        self.assertIn('pinned', error['detail'])
+        self.assertFalse(list((self.store.root / 'jobs').glob('*')))
+
+    def test_recorded_project_supplies_only_its_bundled_policy(self):
+        from expectrail import app_kinematic as preset
+
+        before, after = [p / 'game/platformer' for p in (self.before, self.after)]
+        body = {'preset': 'kinematic-character', 'before': str(before), 'after': str(after)}
+        with mock.patch.object(preset, 'BASE_TREE', request.tree_digest(before)):
+            checked = self.http('POST', '/api/inspect', body | {'side': 'before', 'folder': str(before)})[1]
+            self.assertEqual((checked['godot'], checked['routes'], checked['checks']), (True, 1, 1))
+            self.assertFalse((before / 'routes').exists())
+            refused = self.http('POST', '/api/jobs', body | {'autoFix': True})
+            self.assertEqual(refused[0], 400)
+            with mock.patch.object(preset, 'start', return_value=None) as recorded_start:
+                job_id = self.create(**body)
+                recorded_start.assert_called_once_with(self.store, job_id)
+        self.store.cancel(job_id)
+        doc = self.store.request(job_id)
+        for arm, source in [('base', before), ('head', after)]:
+            checkout = Path(doc[arm]['checkout'])
+            self.assertEqual((checkout / 'routes/walk.json').read_bytes(), preset.ROUTE.read_bytes())
+            self.assertEqual((checkout / 'specs' / preset.SPEC.name).read_bytes(), preset.SPEC.read_bytes())
+            self.assertEqual(request.tree_digest(Path(doc[arm]['checkout']) / 'project'), request.tree_digest(source))
+            self.assertFalse((source / 'specs').exists())
 
     def test_initial_page_removes_url_token_and_apis_use_header(self):
         self.assertEqual(self.server.server_address[0], '127.0.0.1')

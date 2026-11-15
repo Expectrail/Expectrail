@@ -18,10 +18,14 @@ button.secondary{background:white;color:#175c47}button:disabled{opacity:.55;curs
 <p>Compare two folders on this computer. This first version supports Godot projects with existing routes and approved checks.</p>
 <section aria-labelledby="project-heading"><h2 id="project-heading">1. Your project and versions</h2>
 <p>Choose a copy from before the change and a copy from after it. Both must have the same folder layout.
-The routes and approved checks come from <strong>Before</strong>. Expectrail does not change these folders.</p>
+For your own checks, the routes and approvals come from <strong>Before</strong>. Expectrail does not change these folders.</p>
 <div class="grid"><div><label for="before">Before: full folder path</label><input id="before" placeholder="/Users/you/MyGame-before" autocomplete="off" spellcheck="false"></div>
 <div><label for="after">After: full folder path</label><input id="after" placeholder="/Users/you/MyGame-after" autocomplete="off" spellcheck="false"></div></div>
-<details><summary>Where your game, routes and checks are</summary>
+<label><input type="checkbox" id="kinematic"> Use the kinematic-character example with recorded vision</label>
+<p id="preset-help" hidden>Choose the unchanged game from the <a href="https://github.com/godotengine/godot-demo-projects/archive/b761b4cd5718a7118f2c95eb55f181d0a5f004f1.zip" target="_blank" rel="noopener noreferrer">pinned Godot demos</a> as Before and your changed copy as After.
+Each folder must contain project.godot. Expectrail supplies the walk route and ground check, replays both folders,
+and uses saved vision answers for matching frames and questions. No key is needed.</p>
+<details id="paths"><summary>Where your game, routes and checks are</summary>
 <p>Paths below are relative to each version's folder. A game folder of <code>.</code> means project.godot is directly inside that folder.</p>
 <label for="game">Game folder</label><input id="game" value="." spellcheck="false">
 <label for="routes">Route files (patterns separated by spaces or commas)</label><input id="routes" value="routes/*.json" spellcheck="false">
@@ -53,7 +57,7 @@ const token = '__TOKEN__';
 try { sessionStorage.setItem('expectrail-token', token); } catch (_) {}
 history.replaceState(null, '', '/');
 const el = id => document.getElementById(id);
-const values = () => Object.fromEntries(['before','after','game','routes','specs'].map(id => [id,el(id).value]));
+const values = () => el('kinematic').checked ? {preset:'kinematic-character',before:el('before').value,after:el('after').value} : Object.fromEntries(['before','after','game','routes','specs'].map(id => [id,el(id).value]));
 el('auto-fix').onchange=()=>{el('repair-settings').hidden=!el('auto-fix').checked;};
 let job = null, busy = false;
 const phaseNames = {queued:'Waiting to start',preparing:'Checking inputs and tools',executing:'Running the game',
@@ -61,8 +65,15 @@ const phaseNames = {queued:'Waiting to start',preparing:'Checking inputs and too
 function controls(active) {
   busy=active;
   el('verify').disabled=active; el('inspect').disabled=active; el('cancel').disabled=!active || !job;
-  for (const id of ['before','after','game','routes','specs','auto-fix','attempts','usd-cap']) el(id).disabled=active;
+  for (const id of ['kinematic','before','after','game','routes','specs','auto-fix','attempts','usd-cap']) el(id).disabled=active;
+  el('auto-fix').disabled=active || el('kinematic').checked;
 }
+el('kinematic').onchange=()=>{
+  const selected=el('kinematic').checked;
+  el('preset-help').hidden=!selected; el('paths').hidden=selected;
+  if(selected){el('auto-fix').checked=false;el('repair-settings').hidden=true;}
+  el('inspection').textContent=''; controls(false);
+};
 async function api(path, body) {
   const options = {method:body===undefined?'GET':'POST', headers:{'X-Expectrail-Token':token}};
   if(body!==undefined){options.headers['Content-Type']='application/json';options.body=JSON.stringify(body);}
@@ -104,8 +115,8 @@ async function poll() {
 el('inspect').onclick=async()=>{
   el('error').hidden=true; controls(true);
   try {const body=values(), lines=[];
-    for(const side of ['before','after']){const data=await api('/api/inspect',{...body,folder:body[side]});
-      lines.push(side==='before'?'Before (checks used for this run)':'After',
+    for(const side of ['before','after']){const data=await api('/api/inspect',{...body,side,folder:body[side]});
+      lines.push(side==='before'?(body.preset?'Before':'Before (checks used for this run)'):'After',
         data.godot?'Godot project found.':'No Godot project found.',
         `${data.routes} usable routes; ${data.checks} approved checks; ${data.drafts} draft checks.`,data.help,...data.problems,'');}
     el('inspection').textContent=lines.join('\n');

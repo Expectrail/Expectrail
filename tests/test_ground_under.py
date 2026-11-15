@@ -46,14 +46,8 @@ REQUIRED = os.environ.get("EXPECTRAIL_ENGINE_TESTS") == "required"
 
 
 def real_godot() -> Path:
-    named = os.environ.get("EXPECTRAIL_GODOT")
-    found = [Path(named)] if named else sorted((REPO / "tools" / "godot").glob("Godot_v*"))
-    found = [p for p in found if p.is_file()]
-    if not found:
-        if REQUIRED:
-            raise AssertionError("this job must have Godot: run harness/get_godot.sh first")
-        raise unittest.SkipTest("Godot is not downloaded (harness/get_godot.sh)")
-    return found[0]
+    from tests.tool_requirements import godot_binary
+    return godot_binary(switch="EXPECTRAIL_ENGINE_TESTS")
 
 
 FEET = 13.25    # the bundled robot's feet below its origin (agents/observations.py FEET_OFFSET)
@@ -82,6 +76,25 @@ class ScriptTest(unittest.TestCase):
         inset = float(re.search(r"^const EDGE_INSET := ([\d.]+)$", code, re.M).group(1))
         fallback = float(re.search(r"^const BODY_HALF_WIDTH := ([\d.]+)$", code, re.M).group(1))
         self.assertEqual(42.5 / 2 - inset, fallback)
+
+
+class GroundReaderTest(unittest.TestCase):
+    def test_both_readers_use_the_measured_height_even_when_only_an_end_has_support(self):
+        from agents.observations import engine_ground_by_frame, from_trace_synthetic
+
+        # At the same origin, the end can meet a flat ledge, a slope, or nothing.
+        # Neither reader can recover that geometry from the origin alone.
+        for width in (1, 2.5):
+            with self.subTest(width=width):
+                rows = [{"tick": tick, "player": [10, 0], "body": [10 - width / 2, -1, 10 + width / 2, 1],
+                         "view": [2, 0, 0, 2, 0, 10], **ground}
+                        for tick, ground in enumerate(({}, {"ground": 0}, {"ground": 1.25}))]
+                trace = {"physicsTicksPerSecond": 60, "rows": rows}
+                frames = from_trace_synthetic(trace)["frames"]
+                visual_ground = engine_ground_by_frame(trace, (64, 64), list(range(len(rows))))
+                for i, expected in enumerate(([], [10], [12.5])):
+                    self.assertEqual([o["box"][1] for o in frames[i]["objects"]["ground"]], expected)
+                    self.assertEqual([o["box"][1] for o in visual_ground[i]["ground"]], expected)
 
 
 def ground_by_x(tmp: Path, name: str, scene=None) -> dict:
@@ -364,10 +377,33 @@ class ShapesTest(unittest.TestCase):
     def at(self, ground: dict, lo: float, hi: float) -> set:
         return {g for x, g in ground.items() if lo <= x < hi}
 
-    def test_a_body_2_px_wide_is_asked_about_at_its_middle(self):
+    def test_thin_bodies_read_the_gap_step_and_slope_at_their_actual_ends(self):
+        # A platform across only the middle of the gap. Its top rises 0.5 px per
+        # world pixel to the right. At x=224 its height is y=320.
+        ramp = ('\n[node name="Ramp" type="StaticBody2D" parent="."]\n'
+                '\n[node name="Shape" type="CollisionPolygon2D" parent="Ramp"]\n'
+                'polygon = PackedVector2Array(216, 324, 232, 316, 232, 348, 216, 348)\n')
+        for width in (1, 2.5, 2.75):
+            reach = width / 2 if width <= 2.5 else width / 2 - 1.25
+            for offset in (-0.25, 0.25):
+                with self.subTest(width=width, offset=offset):
+                    def scene(text):
+                        text = swap("size = Vector2(24, 16)", f"size = Vector2({width}, 16)")(text)
+                        return swap(BODY, f"position = Vector2({100 + offset}, 312)\n")(text) + ramp
+
+                    ground = ground_by_x(self.tmp, f"thin-{width}-{offset}", scene)
+                    # Centre over air or past the step, but one end may still have support.
+                    x_gap = (256 if offset < 0 else 192) + offset
+                    x_step = (448 if offset < 0 else 512) + offset
+                    self.assertEqual(ground[x_gap], 320.0 if reach > abs(offset) else None)
+                    self.assertEqual(ground[x_step], 256.0 if reach > abs(offset) else 320.0)
+                    self.assertIsNone(ground[206 + offset])
+                    self.assertAlmostEqual(ground[224 + offset], 320 - (offset + reach) / 2, delta=0.001)
+
+    def test_a_body_2_px_wide_does_not_reach_a_distant_step(self):
         # Until #354 a body 2.5 px wide or less was treated as having no collision and given the
         # robot's 20 px: the step was its ground from x = 428, and the gap had no ground only from
-        # 212 to 234 (measured on #354). Its middle is its origin here: the step from 448 to 512.
+        # 212 to 234 (measured on #354). On this walk the samples are 2 px apart.
         ground = ground_by_x(self.tmp, "thin", swap("size = Vector2(24, 16)", "size = Vector2(2, 16)"))
         self.assertEqual(self.at(ground, 258, 448), {320.0})
         self.assertEqual(self.at(ground, 450, 512), {256.0})
@@ -376,7 +412,7 @@ class ShapesTest(unittest.TestCase):
         self.assertEqual(self.at(ground, 102, 192), {320.0})
 
     def test_a_thin_body_off_its_origin_is_asked_about_where_it_is(self):
-        # The same 2 px body 10 px right of the origin: its middle column is at x + 10.
+        # The same 2 px body 10 px right of the origin: its columns straddle x + 10.
         thin_aside = both(swap("size = Vector2(24, 16)", "size = Vector2(2, 16)"), swap(SHAPE, ASIDE))
         ground = ground_by_x(self.tmp, "thin-aside", thin_aside)
         self.assertEqual(self.at(ground, 248, 438), {320.0})

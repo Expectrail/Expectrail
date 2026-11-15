@@ -30,12 +30,13 @@ baseline stays what it was:
   trusted observer declares it can tell (``pixel.menu``). Under this setting the proposal carries
   ``pixelChecks`` beside its trace checks, and ``run.generate`` replays them with frames, asks the
   observer it is given about each run, keeps a pixel check only by the keep rule, and writes the rows
-  in the run record's ``pixelChecks`` (``replayable``). A revision does not carry pixel checks yet, so
-  ``revise`` refuses this setting (``revisable``). The command line's ``run`` takes it with an observer
-  named on the command line (expectrail/jit/cli.py, ``--observer``), and the reproduction score counts its
-  records, with the pixel checks counted on their own (expectrail/repro/score.py). It is in ``ALL``,
-  ``REPLAYABLE`` and ``SCORED``, not in ``OFFERS``: the workflow does not name it yet, because its replay
-  jobs neither capture frames nor hold the observer's key.
+  in the run record's ``pixelChecks`` (``replayable``). A revision replaces rejected trace checks only and
+  carries the first round's pixel checks to the second round as they are (``intent.revise_to_file``). The
+  command line's ``run`` takes it with an observer named on the command line (expectrail/jit/cli.py,
+  ``--observer``), and the reproduction score counts its records, with the pixel checks counted on their
+  own (expectrail/repro/score.py). It is in every list but ``OFFERS`` (the settings without pixel checks).
+  The workflow names it (``WORKFLOW``): jit.yml captures the pixel checks' frames in the final replay,
+  asks SAM about them in a job that runs no game, and judges them in a last job (pixel-ask, pixel-judge).
 
 Nothing about what decides a check changes: a check is kept or dropped by replays only
 (expectrail/jit/assess.py), under either setting.
@@ -59,16 +60,16 @@ BASELINE = "baseline"
 SIGNALS_REACH = "signals-reach"
 EVIDENCE = "signals-reach-evidence"
 PIXEL = "signals-reach-evidence-pixel"
-# The settings the workflow accepts. PIXEL is not one of them yet: its replay jobs capture no frames and
-# hold no observer key. ``measure`` and ``propose`` take every setting (``ALL``); ``run.generate`` and the
-# command line's ``run`` take every setting (``REPLAYABLE``), since they judge pixel checks with the
-# observer they are given; the reproduction score counts every setting (``SCORED``); a revision takes
-# ``OFFERS`` only (``REVISABLE``), since it does not carry pixel checks to its second round.
+# ``OFFERS`` are the settings without pixel checks. Every step takes every setting: ``measure`` and
+# ``propose`` (``ALL``); ``run.generate`` and the command line's ``run`` (``REPLAYABLE``), since they judge
+# pixel checks with the observer they are given; the reproduction score (``SCORED``); a revision
+# (``REVISABLE``), which carries pixel checks to its second round unchanged; and jit.yml (``WORKFLOW``).
 OFFERS = (BASELINE, SIGNALS_REACH, EVIDENCE)
 ALL = (*OFFERS, PIXEL)
 REPLAYABLE = ALL
 SCORED = ALL
-REVISABLE = OFFERS
+REVISABLE = ALL
+WORKFLOW = ALL
 DEFAULT = BASELINE
 
 
@@ -107,8 +108,7 @@ def replayable(offer) -> str:
 def revisable(offer) -> str:
     """``offer``, if a revision (``intent.revise_to_file``) can be made under it; otherwise OfferError saying why."""
     if check(offer) not in REVISABLE:
-        raise OfferError(f"the offer {offer} cannot be revised yet: a revision does not carry pixel checks to its "
-                         "second round (#286)")
+        raise OfferError(f"the offer {offer} cannot be revised")
     return offer
 
 

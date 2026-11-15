@@ -62,6 +62,12 @@ done
 
 
 class InstallScript(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from tests.tool_requirements import executable
+        executable("bash")
+        executable("timeout")
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -126,6 +132,8 @@ class InstallScript(unittest.TestCase):
         self.assertFalse((self.cache / "partial").exists())   # only the packages are cached
 
     def test_an_independent_mirror_serves_when_ubuntus_own_is_down(self):
+        if not Path("/etc/os-release").is_file():
+            self.skipTest("Ubuntu apt mirror fixture needs Linux /etc/os-release")
         # November 11: archive.ubuntu.com and snapshot.ubuntu.com were both unreachable.
         for which in ("live", "snapshot"):
             (self.state / f"{which}-failures").write_text("99", encoding="utf-8")

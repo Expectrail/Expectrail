@@ -82,7 +82,7 @@ def _code_only(text: str) -> str:
 
 class FakePlayerCase(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp())
+        self.tmp = Path(tempfile.mkdtemp()).resolve()
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         # A display is there, so the runner does not wrap the fake in xvfb-run.
         patcher = mock.patch.dict(os.environ, {"DISPLAY": ":99"})
@@ -134,6 +134,7 @@ class RunnerTest(FakePlayerCase):
         self.assertNotIn("-batchmode", argv)
         self.assertNotIn("-nographics", argv)
 
+    @mock.patch("sys.platform", "linux")
     def test_without_a_display_the_player_runs_under_xvfb(self):
         with mock.patch.dict(os.environ, {}, clear=False):
             os.environ.pop("DISPLAY", None)
@@ -143,15 +144,31 @@ class RunnerTest(FakePlayerCase):
     def test_the_game_sees_only_the_allowlisted_environment_and_a_fresh_home(self):
         secrets = {"EXPECTRAIL_CANARY": "canary-1234", "EXPECTRAIL_HELDOUT_DIR": "/canary/private/path",
                    "META_API_KEY": "meta-key", "UNITY_PASSWORD": "unity-password", "GITHUB_TOKEN": "gh-token"}
-        with mock.patch.dict(os.environ, secrets):
+        secrets["__CF_USER_TEXT_ENCODING"] = "must-not-be-inherited"
+        with mock.patch.dict(os.environ, secrets), mock.patch.object(unity.subprocess, "run", wraps=subprocess.run) as spawn:
             self.replay()
+        # Check the actual boundary before a shell or interpreter can add runtime settings.
+        given = [c.kwargs["env"] for c in spawn.call_args_list if "env" in c.kwargs]
+        self.assertTrue(given)
+        for env in given:
+            self.assertFalse(set(secrets) & set(env))
+            self.assertTrue(all(k in godot_run.GAME_ENV_KEEP or k.startswith(godot_run.GAME_ENV_PREFIXES) for k in env))
         log = (self.tmp / "out" / "unity.log").read_text()
         self.assertIn("CANARY_ENV=\n", log)
         self.assertIn("CANARY_HELDOUT=\n", log)
         for value in secrets.values():
             self.assertNotIn(value, log)
         # PWD, SHLVL and _ are set by the fake's own /bin/sh wrapper, not passed by the runner.
-        keys = [k for k in re.search(r"^ENV_KEYS=(.*)$", log, re.M).group(1).split(",") if k not in ("PWD", "SHLVL", "_")]
+        runtime = {"PWD", "SHLVL", "_"}
+        if sys.platform == "darwin":
+            # A clean-room control, not an allowlist exception: accept this runtime addition only
+            # if the same shell/Python imports create it with an empty supplied environment.
+            control = subprocess.run(["/bin/sh", "-c", 'exec "$1" -c "$2"', "control", sys.executable,
+                                      "import json, os, struct, sys, time, zlib; from pathlib import Path; print(json.dumps(sorted(os.environ)))"],
+                                     env={}, capture_output=True, text=True, check=True)
+            if "__CF_USER_TEXT_ENCODING" in json.loads(control.stdout):
+                runtime.add("__CF_USER_TEXT_ENCODING")
+        keys = [k for k in re.search(r"^ENV_KEYS=(.*)$", log, re.M).group(1).split(",") if k not in runtime]
         allowed = [k for k in keys if k in godot_run.GAME_ENV_KEEP or k.startswith(godot_run.GAME_ENV_PREFIXES)]
         self.assertEqual(keys, allowed)
         home = self.tmp / "out" / "home"
@@ -316,7 +333,7 @@ class ReplayCheckTest(FakePlayerCase):
 
 class BuildTest(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp())
+        self.tmp = Path(tempfile.mkdtemp()).resolve()
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
 
     def test_prepare_build_lays_out_a_patched_copy_with_the_package(self):

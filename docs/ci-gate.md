@@ -11,8 +11,10 @@ The read-only candidate uses the base harness to replay each game inside Bubblew
 declared fix it captures three separate runs per side. Only replay records, traces, frames and
 the manifest go in the public bundle. The trusted job checks the workflow revision, run attempt,
 archive size and GitHub's SHA-256 before opening the bundle. It checks its closed manifest schema,
-base policy digest, current PR head, intent and every saved replay. It judges using the base
-commit's code. No private routes are used in this workflow.
+base policy digest, current PR head, intent and every saved replay. It hashes the game files from
+the pinned base and head checkouts. A replay naming a different tree on either side is refused
+with `EVIDENCE_MISMATCH`. The head checkout is read as data. The judge runs from the base checkout.
+No private routes are used in this workflow.
 
 The two checks are attached to the PR head. **Expectrail evidence** links to the trusted report
 or to the run if publication was interrupted. **Expectrail clearance** passes only on accept.
@@ -424,11 +426,9 @@ compromised by design:
 **The comment job is trusted.** It runs on `workflow_run`, from the default branch's copy of its
 workflow file, with `actions: read`, `contents: read` and `pull-requests: write`, and nothing else:
 
-- It never checks out, builds or runs the pull request's code. The action does not check anything
-  out. This repository's workflow checks out only its default branch (sparse), to use main's copy of
-  the action. `tests/test_ci_gate.py` reads both YAML files and fails if a checkout names another ref
-  or repository, if a step runs anything but the action's entry point, or if any script expands
-  `${{ }}`.
+- The legacy comment action does not check out or run pull request code. In the two-job workflow
+  described above, a separate checkout of the head serves only as input to the game digest.
+  `tests/test_ci_gate.py` checks the pinned revisions, working directories and commands.
 - It installs nothing. The code is [`expectrail/gate/comment.py`](../expectrail/gate/comment.py) and
   [`expectrail/gate/record.py`](../expectrail/gate/record.py), standard library only (a test parses
   their imports). It runs as `python3 -I`, so `PYTHONPATH`, user site-packages and the current

@@ -39,6 +39,9 @@ def usage() -> str:
         ("report", "show a finished job's result and where its evidence is"),
         ("sample", "three real verifications of the bundled game: as it is, broken, repaired"),
         ("repair", "propose and verify a fix for a rejected job"),
+        ("onboard", "build an offline binding review page from an init draft"),
+        ("inspect", "list the player, inputs, cameras and ground in a Godot project"),
+        ("init", "propose a draft project config and first input route"),
         ("route", "make a first route from a Godot input map and check three identical replays"),
         ("app", "open the local browser app"),
         ("doctor", "check that this machine has what a verification needs, and name the fix for what is missing"))]
@@ -79,6 +82,14 @@ def main(argv: list[str] | None = None) -> int:
         from expectrail import repair
 
         return repair.main(args[:at] + args[at + 1:])
+    if command == "onboard" and args[0] == command:
+        from expectrail import onboard
+
+        return onboard.main(args[1:])
+    if command in ("init", "inspect") and args[0] == command:
+        from expectrail import onboarding
+
+        return onboarding.main(command, args[1:])
     if command == "route":
         if args[0] != "route":
             print("expectrail: put route options after `route`. Nothing was run.", file=sys.stderr)

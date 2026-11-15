@@ -99,7 +99,7 @@ class RequirementsTest(unittest.TestCase):
 
         with mock.patch.object(req.sys, 'platform', 'linux'), mock.patch.object(req.shutil, 'which', return_value=None):
             self.assertIn('xvfb-run', req.display_problem())
-        with mock.patch.object(req.sys, 'platform', 'darwin'), mock.patch.object(req.shutil, 'which', return_value=None):
+        with mock.patch.object(req.sys, 'platform', 'darwin'), mock.patch("expectrail.doctor.macos_display_problem", return_value=None):
             self.assertIsNone(req.display_problem())
         with mock.patch.object(req.socket, 'socket', side_effect=PermissionError('Operation not permitted')):
             self.assertIn('AF_UNIX', req.unix_problem())

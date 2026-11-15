@@ -47,7 +47,17 @@ def exit_code(status: dict) -> int:
 
 
 def describe(status: dict, job_folder: Path | None = None) -> str:
-    lines = [f"job {status['id']}: {status['phase']}" + (f", {status['decision']}" if status["decision"] else "")]
+    from expectrail.gate import record as rec
+
+    lines = []
+    if status["decision"] == "needs-review" and any(
+            r.startswith(rec.NOT_DEMONSTRATED + ":") for r in status["reasons"]):
+        lines.append(req.UNVERIFIED_FIX)
+    lines.append(f"job {status['id']}: {status['phase']}" + (f", {status['decision']}" if status["decision"] else ""))
+    if status.get("intent", "none") != "none":
+        lines.append(f"  Declared intent: {status['intent']}")
+    if "bug" in status:
+        lines.append(f"  Bug report (user supplied; not a check): {status['bug']}")
     lines += [f"  {reason}" for reason in status["reasons"]]
     lines += [f"  {d['code']} ({d['stage']}): {d['detail']} Fix: {d['fix']}" for d in status["diagnostics"]]
     if "observers" in status:
@@ -56,6 +66,11 @@ def describe(status: dict, job_folder: Path | None = None) -> str:
         lines.append(f"  Judged on: {observers_words(status)}")
     if status["evidenceGrade"]:
         lines.append(f"  evidence grade: {status['evidenceGrade']}")
+    from expectrail.orchestrator.budget import words as budget_words
+
+    lines.extend("  " + line for line in budget_words(status))
+    if job_folder is not None and "budget" in status:
+        lines.append(f"  Budget record: {(job_folder / 'job-budget.json').as_uri()}")
     if status["decision"] == "reject":
         lines.append("  " + viewer.auto_fix_words(status))
         repair = status.get("repair", {})
@@ -124,6 +139,12 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
     v.add_argument("--execution-class", choices=req.EXECUTION_CLASSES, default="diagnostic")
     v.add_argument("--timeout", type=int, default=req.DEFAULT_TIMEOUT_SECONDS, help="seconds before the job stops as needs review")
     v.add_argument("--idempotency-key")
+    v.add_argument("--intent", choices=req.INTENTS, default="none",
+                   help="fix requires a check to fail on the base and pass on the head three times each; "
+                        "change and none keep the existing rule (default: none)")
+    v.add_argument("--bug", metavar="TEXT|@FILE",
+                   help="report with --intent fix; capture text or a UTF-8 file (8192 characters max). "
+                        "Use @@ for a literal leading @. No URL is fetched; this does not create a check")
     v.add_argument("--detach", action="store_true", help="start the job, print its id and return")
     v.add_argument("--json", action="store_true")
     auto_fix.options(v)
@@ -169,6 +190,8 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
                 print(json.dumps(results, indent=2))
             return 0 if all(r["asExpected"] for r in results) else EXIT_FAILED
         if args.command == "verify":
+            if args.bug is not None and args.intent != "fix":
+                raise req.RequestError("--bug requires --intent fix; nothing was run")
             try:
                 settings, patch = auto_fix.configure(args.auto_fix, args.auto_fix_attempts, args.auto_fix_usd_cap,
                                                      fixture=args.auto_fix_fixture, recorded=args.auto_fix_recorded)
@@ -178,7 +201,8 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
                                 routes=[r for r in re.split(r"[\s,]+", args.routes) if r], specs=args.specs,
                                 head_commit=args.head_commit, base_commit=args.base_commit,
                                 execution_class=args.execution_class, timeout_seconds=args.timeout,
-                                idempotency_key=args.idempotency_key)
+                                idempotency_key=args.idempotency_key, intent=args.intent,
+                                bug=req.bug_text(args.bug))
             if settings:
                 if not args.json:
                     cost = f"${settings['usdCap']:g} Muse cap" if settings["source"] == "muse" else "offline patch, no fixer spend"

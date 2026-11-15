@@ -77,8 +77,13 @@ def input_map(project: Path) -> tuple[list[str], int, bool]:
     if config is not None:
         actions = list(config["inputActions"])
         return sorted(actions) or list(FALLBACK_ACTIONS), int(config["physicsTicksPerSecond"]), not bool(actions)
+    return authored_input_map((project / "project.godot").read_text(encoding="utf-8-sig"))
+
+
+def authored_input_map(text: str) -> tuple[list[str], int, bool]:
+    """Read the game's input map even when an older Expectrail config exists."""
     section, actions, rate = "", set(), 60
-    for record in _records((project / "project.godot").read_text(encoding="utf-8-sig")):
+    for record in _records(text):
         if record.startswith("[") and record.endswith("]"):
             section = record[1:-1].strip()
             continue

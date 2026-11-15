@@ -14,6 +14,11 @@ which holds every key the job has) and write into the evidence folder. Inside, i
   repository, the checks, the caller's home and every other folder are not there;
 - an environment built from nothing, holding only the display and rendering variables;
 - no way to make another user namespace, a cap on any one file's size, and no core dumps;
+- a bound on everything it writes to the two folders it can write to (the work copy and the output
+  folder, which are on the host's disk): ``DISK_BYTES`` more bytes and ``DISK_ENTRIES`` more files
+  and folders than were there when it started. ``run`` measures both folders every
+  ``DISK_INTERVAL`` seconds while the game runs and once more after it ends; past the bound the
+  sandbox is killed and the run is refused (``DiskBoundError``), never used;
 - no terminal: a session of its own, so the terminal the harness was started from cannot be opened
   through ``/dev/tty`` (on kernels that still allow it, a program that can open a terminal can type
   into the shell behind it).
@@ -23,10 +28,11 @@ which holds every key the job has) and write into the evidence folder. Inside, i
 that ran with the host in reach. Nothing here falls back silently: the mode is ``auto`` (isolate
 when possible, say why not otherwise), ``require`` (refuse to run without it) or ``off``.
 
-What it does not do, stated so nobody assumes it: the work copy and the output folder are on the
-host's disk, so their total size is limited only per file and by the replay's time limit; CPU and
-memory are limited only by that time limit; and it is a namespace sandbox on a shared kernel, not a
-virtual machine.
+What it does not do, stated so nobody assumes it: the disk bound is measured, not enforced by the
+file system, so between two measurements a game can write past it by as much as the machine's disk
+writes in ``DISK_INTERVAL`` seconds (each file stays under ``FILE_BYTES`` all the same), and the
+run is refused afterwards; CPU and memory are limited only by the replay's time limit; and it is a
+namespace sandbox on a shared kernel, not a virtual machine.
 """
 from __future__ import annotations
 
@@ -34,9 +40,11 @@ import functools
 import os
 import resource
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -50,6 +58,15 @@ ENGINE_BINARY = ENGINE + "/godot"
 SCRATCH_BYTES = 256 * 1024 * 1024  # each of /tmp and the home folder (memory-backed)
 FILE_BYTES = 2 * 1024 ** 3         # the largest single file the game may write
 PROCESSES = 4096                   # processes and threads for the user (the kernel exempts root)
+# What the game may add to its work copy and its output folder together, over what they held when it
+# started. A replay of the bundled game adds about 30 MB and 340 files (120 frames); the longest
+# route in the repository (360 frames) about 100 MB. The bound is far above that and well below a
+# CI runner's free disk, with room for what a game can write between two measurements (Godot writing
+# 1 MB files on the machine this was measured on: about 200 MB in 0.1 s, into the page cache).
+DISK_BYTES = 4 * 1024 ** 3
+DISK_ENTRIES = 250_000
+DISK_INTERVAL = 0.1                # seconds between two measurements while the game runs
+DISK_ENV = "EXPECTRAIL_SANDBOX_DISK_BYTES"   # set by the person running the verifier, to lower the bound
 
 # Read-only pieces of the host that a program needs to start, draw and find fonts. No /etc/passwd,
 # no /sys, no /home, no /var, no /run.
@@ -65,6 +82,11 @@ ENV_DROP_PREFIXES = ("XDG_",)
 
 class SandboxError(RuntimeError):
     """The sandbox was required and cannot be had, or its output cannot be trusted."""
+
+
+class DiskBoundError(SandboxError):
+    """The game wrote more to its work copy and output folder than the bound allows. The sandbox was
+    killed (or had ended) and nothing it wrote is used."""
 
 
 @dataclass(frozen=True)
@@ -130,15 +152,137 @@ def limits() -> None:
         resource.setrlimit(name, (value, value))
 
 
+class _Unmeasurable(Exception):
+    """A folder under the roots could not be read, so what is in it cannot be counted."""
+
+
+def usage(roots: list[Path], cap: int) -> tuple[int, int]:
+    """(bytes, entries) under ``roots``, links not followed. A file counts its size or the blocks it
+    holds, whichever is more, so a sparse file counts as its full length. Counting stops once
+    ``cap`` entries have been seen (the caller treats more than that as over the bound), so a game
+    that makes millions of files cannot make one measurement take long.
+
+    A file or folder that disappears while it is being counted is skipped: it no longer takes room.
+    A folder that exists and cannot be read raises ``_Unmeasurable``, because the game can make its
+    own folders unreadable to hide what is in them."""
+    total = count = 0
+    stack = [os.fspath(root) for root in roots]
+    while stack:
+        top = stack.pop()
+        try:
+            listing = os.scandir(top)
+        except (FileNotFoundError, NotADirectoryError):
+            continue
+        except OSError as exc:
+            raise _Unmeasurable(f"{type(exc).__name__} on a folder the game could write to") from exc
+        with listing:
+            while True:
+                try:
+                    entry = next(listing)
+                except StopIteration:
+                    break
+                except OSError as exc:
+                    raise _Unmeasurable(f"{type(exc).__name__} while listing a folder the game could write to") from exc
+                count += 1
+                if count > cap:
+                    return total, count
+                try:
+                    info = entry.stat(follow_symlinks=False)
+                except FileNotFoundError:
+                    continue
+                except OSError as exc:
+                    raise _Unmeasurable(f"{type(exc).__name__} on a file the game could write to") from exc
+                total += max(info.st_size, info.st_blocks * 512)
+                if stat.S_ISDIR(info.st_mode):
+                    stack.append(entry.path)
+    return total, count
+
+
+def disk_bytes() -> int:
+    """The byte bound in force: ``DISK_BYTES``, or less when $EXPECTRAIL_SANDBOX_DISK_BYTES asks for
+    less. It can only lower the bound: the game's code never sets the verifier's environment, and a
+    larger or unreadable value is refused rather than used."""
+    asked = os.environ.get(DISK_ENV, "").strip()
+    if not asked:
+        return DISK_BYTES
+    if not asked.isdigit() or not 0 < int(asked) <= DISK_BYTES:
+        raise SandboxError(f"${DISK_ENV} must be a whole number of bytes from 1 to {DISK_BYTES}, not {asked[:40]!r}")
+    return int(asked)
+
+
+def _over(roots: list[Path], start: tuple[int, int], allowed: int) -> str | None:
+    """Why the folders are past the bound, or None while they are within it."""
+    try:
+        used, entries = usage(roots, start[1] + DISK_ENTRIES)
+    except _Unmeasurable as exc:
+        return f"what the game wrote could not be measured ({exc}), so the run is not used"
+    if entries > start[1] + DISK_ENTRIES:
+        return (f"the game made more than {DISK_ENTRIES} files and folders in its work copy and output folder, "
+                "the most a replay may add")
+    if used > start[0] + allowed:
+        return (f"the game wrote {used - start[0]} bytes to its work copy and output folder, more than the "
+                f"{allowed} a replay may add")
+    return None
+
+
 def run(tool: Tool, argv: list[str], *, timeout: float, **binds) -> subprocess.CompletedProcess:
     """Run ``argv`` in the sandbox (see ``command``) and return the finished process. The sandbox
-    dies with this process, and everything in it dies with the sandbox."""
+    dies with this process, and everything in it dies with the sandbox.
+
+    While it runs, the two folders it can write to are measured every ``DISK_INTERVAL`` seconds, and
+    once more after it ends. Past the bound (``DISK_BYTES``, ``DISK_ENTRIES``) the sandbox is killed
+    and ``DiskBoundError`` is raised; the caller uses nothing it wrote. Past ``timeout`` it is killed
+    and ``subprocess.TimeoutExpired`` is raised with its output, as ``subprocess.run`` does."""
     # The sandbox tool itself gets nothing from this process's environment but the job's id, which
     # is how the orchestrator finds it if its worker is killed; the game's environment is built by
     # `command` from `env`.
-    own = {"PATH": "/usr/bin:/bin", **{k: v for k, v in os.environ.items() if k == "EXPECTRAIL_JOB"}}
-    return subprocess.run(command(tool, argv, **binds), capture_output=True, text=True, timeout=timeout,
-                          stdin=subprocess.DEVNULL, env=own, preexec_fn=limits)
+    cmd = command(tool, argv, **binds)
+    return watched(cmd, roots=[Path(binds["game"]), Path(binds["out"])], timeout=timeout, env=_own_env(),
+                   preexec_fn=limits)
+
+
+def _own_env() -> dict:
+    return {"PATH": "/usr/bin:/bin", **{k: v for k, v in os.environ.items() if k == "EXPECTRAIL_JOB"}}
+
+
+def watched(cmd: list[str], *, roots: list[Path], timeout: float, **popen) -> subprocess.CompletedProcess:
+    """Run ``cmd`` to the end and return it, as ``subprocess.run(capture_output=True, text=True)``
+    does, while holding what it adds under ``roots`` to the disk bound (see ``run``). Kept apart from
+    the sandbox's command so the bound can be shown on any process."""
+    allowed = disk_bytes()
+    try:
+        start = usage(roots, sys.maxsize)
+    except _Unmeasurable as exc:
+        raise SandboxError(f"the folders the game may write to cannot be measured before it starts: {exc}") from exc
+    deadline = time.monotonic() + timeout
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL,
+                            text=True, **popen)
+    try:
+        while True:
+            try:
+                stdout, stderr = proc.communicate(timeout=max(0.0, min(DISK_INTERVAL, deadline - time.monotonic())))
+                break
+            except subprocess.TimeoutExpired:
+                pass   # retrying communicate loses no output (the subprocess documentation says so)
+            why = _over(roots, start, allowed)
+            if why is not None:
+                proc.kill()
+                proc.communicate()
+                raise DiskBoundError(why + "; the sandbox was stopped")
+            if time.monotonic() >= deadline:
+                proc.kill()
+                stdout, stderr = proc.communicate()
+                raise subprocess.TimeoutExpired(proc.args, timeout, output=stdout, stderr=stderr)
+    except BaseException:
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+        raise
+    # The last measurement, after the end: the one a game cannot slip between.
+    why = _over(roots, start, allowed)
+    if why is not None:
+        raise DiskBoundError(why)
+    return subprocess.CompletedProcess(proc.args, proc.returncode, stdout, stderr)
 
 
 @functools.lru_cache(maxsize=None)
@@ -163,7 +307,10 @@ def probe(display: bool = True) -> tuple[Tool | None, str | None]:
             game, out = Path(scratch, "game"), Path(scratch, "out")
             game.mkdir()
             out.mkdir()
-            done = run(tool, ["true"], timeout=30, game=game, out=out)
+            # The replay's own command, running a program that writes nothing, so the disk bound's
+            # watch (``watched``) is not needed for it.
+            done = subprocess.run(command(tool, ["true"], game=game, out=out), capture_output=True, text=True,
+                                  timeout=30, stdin=subprocess.DEVNULL, env=_own_env(), preexec_fn=limits)
     except (OSError, subprocess.TimeoutExpired) as exc:
         return None, f"bubblewrap could not be run ({type(exc).__name__})"
     if done.returncode != 0:
@@ -192,7 +339,8 @@ def describe(tool: Tool | None, wanted: str, why: str | None) -> dict:
     return {"sandbox": {"tool": "bubblewrap", "version": tool.version}, "mode": wanted, "reason": None,
             "network": "none", "filesystem": "confined", "processes": "own",
             "environment": "allowlist",
-            "limits": {"scratchBytes": SCRATCH_BYTES, "fileBytes": FILE_BYTES, "processes": PROCESSES}}
+            "limits": {"scratchBytes": SCRATCH_BYTES, "fileBytes": FILE_BYTES, "processes": PROCESSES,
+                       "diskBytes": disk_bytes(), "diskEntries": DISK_ENTRIES}}
 
 
 def collect(staging: Path, out: Path, *, frames: bool) -> None:

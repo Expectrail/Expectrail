@@ -53,7 +53,7 @@ jit-run/v1 record, report, and an advisory block in the gate comment and the rev
 | Assessor | [`assess.py`](../expectrail/jit/assess.py) | Pure functions of the interpreter's five outcomes per run. Nothing a model said reaches it. |
 | Record | [`contracts/jit-run.v1.schema.json`](../contracts/jit-run.v1.schema.json) | One per change: digests of the inputs, model and prompt; settings; the diff map; every proposed check and probe; every near miss; each check's reference runs, kills, candidate runs and outcome; the catches with their label; spend with the prices used. `advisory` is always true and there is no decision field. |
 | Revision | [`intent.py`](../expectrail/jit/intent.py) `revise_to_file` | When the first replay rejects any check, one more model call. Each rejected check goes back with one of two reasons: it did not pass on the clean game (with the interpreter's outcome names), or it did not fail on the bug build. Never the candidate's outcomes or the near misses built from the candidate, which would let it fit checks to the change under test. At most one replacement per rejected check; kept checks stay as they were. The first round's record is read as untrusted data (schema-valid, this patch, plain numbers), and the second record carries the first round's replays and both calls' tokens, so the $2 cap covers the whole change. No budget left, no rejected check, or an unusable answer: the first round stands. |
-| Candidate withheld | [`intent.py`](../expectrail/jit/intent.py), [`run.py`](../expectrail/jit/run.py) `from_base_alone` | Issue #285, step 6. With `--withhold-candidate` on `propose`, `revise` and `run`, the model is given no byte of the candidate patch and nothing made from it: the prompt has no `untrustedCandidatePatch` and no `patchTouches`, every library probe is on offer, and the system prompt says no fix is shown. Two fixes of one report give the model the same prompt. The proposal is bound to the report (`reportSha256`, no `patchSha256`), so it can judge any fix of that report; the record says `settings.candidate: withheld`. A proposal, intent or first-round record made one way is refused by a step made the other. `from_base_alone` lists a record's checks that passed on the clean game and failed on the bug build 3 of 3, and of those, the ones proposed with the candidate withheld: the first condition of #271. Off by default: with the candidate shown, every prompt is byte for byte as before. Not yet an input of `jit.yml`. |
+| Candidate withheld | [`intent.py`](../expectrail/jit/intent.py), [`run.py`](../expectrail/jit/run.py) `from_base_alone` | Issue #285, step 6. With `--withhold-candidate` on `propose`, `revise` and `run`, the model is given no byte of the candidate patch and nothing made from it: the prompt has no `untrustedCandidatePatch` and no `patchTouches`, every library probe is on offer, and the system prompt says no fix is shown. Two fixes of one report give the model the same prompt. The proposal is bound to the report (`reportSha256`, no `patchSha256`), so it can judge any fix of that report; the record says `settings.candidate: withheld`. A proposal, intent or first-round record made one way is refused by a step made the other. `from_base_alone` lists a record's checks that passed on the clean game and failed on the bug build 3 of 3, and of those, the ones proposed with the candidate withheld: the first condition of #271. Off by default: with the candidate shown, every prompt is byte for byte as before. `python -m expectrail.repro score --candidate withheld` counts only records made with the candidate withheld, and the default (`shown`) only those made with it shown; a record of the other setting is no result, and a withheld score says `candidate: withheld` on its record and its page. In `jit.yml` it is the `candidate` input (`shown`, the default, or `withheld`): `withheld` passes `--withhold-candidate` to `propose`, `revise` and every replay, and `--candidate withheld` to `repro-score`, which also reads the committed screen record (`--screen bench/jit/public/screen.json`); the known-bugs bench refuses `withheld`. |
 | CLI | [`cli.py`](../expectrail/jit/cli.py) | `run`, `measure`, `propose`, `revise`, `report`, `gate-summary`, `diff-games`. |
 | CI | [`.github/workflows/jit.yml`](../.github/workflows/jit.yml) | Rehearsal on pull requests that touch this code; `live` by dispatch; `bench` (the known-bugs bench) and `repro` (the public reproduction bench) by dispatch from main only. |
 | Gate | [`gate/`](../expectrail/gate), the verify action's `generated-checks` input | Reads and shows a generated-checks block; nothing in a pull request's run produces one yet (below). |
@@ -252,6 +252,18 @@ defect counts as reproduced when a generated check passed on the clean game 3 ti
 failed on the bug build 3 times of 3, with and without the no-fix patch. A miss gets a reason from
 the issue's vocabulary where the records can show one, and `undetermined` where they cannot. The
 bench's page says how each is decided.
+
+**Misses sorted by the screen record** (November 15, 2026, issue #285 step 2). Given the screen record
+(`python3 -m expectrail.repro score ... --screen bench/jit/public/screen.json`), the scorer itself gives
+the two reasons that only hand findings gave before, for a miss the engine's record does not show on any
+library probe: `probe-language` where the frames differ there (`screen-only`) and the setting offers no
+check about the screen, and `route-never-reaches` where nothing differs in the record or the frames
+(`neither`). The reader recomputes both, so neither can be written where the screen record does not
+show it. Under the pixel setting a screen-only miss stays `undetermined`: checks about the screen were on
+offer, and the records cannot say whether the observer could not tell or the predicate was wrong. On
+the committed visibility and screen records, the rule gives each of the baseline's four unclassified
+misses the reason its November 12 hand finding gives (a test holds this). Not shown: a score file
+made this way from a live run's records, since none is committed.
 
 **Reach** (November 12, 2026, issue #285 step 3; [`expectrail/repro/reach.py`](../expectrail/repro/reach.py)).
 One of the five defects the library's probes leave unchanged, `no-shooting-in-air`, is in the
@@ -465,8 +477,10 @@ after its trace checks:
   They are not in `catches`, `counts` or the gate summary. `from_base_alone` lists the kept ones in
   `pixelReproducing`, decided from the rows' runs, never their status.
 
-A revision does not carry pixel checks, so `revise` refuses this setting (`offer.revisable`). The
-command line's `run` and the reproduction score take it (below); the workflow does not yet.
+A revision replaces rejected trace checks only. Since November 14 (seventh slice) it carries the first
+round's pixel checks to the second round as they are, with the probes they replay, and any pixel checks
+in the revision's answer are not read (the revision prompt says so under this setting only). The command
+line's `run`, `revise`, the reproduction score and the workflow take the setting (below).
 
 ### SAM as the observer (added November 14)
 
@@ -523,8 +537,10 @@ for the model already. [`pixel_jobs.py`](../expectrail/jit/pixel_jobs.py) does t
 
 1. **Capture** (runs the game, no secret): `run ... --observer sam-3.1-anchor --pixel-capture DIR`
    replays each pixel check's probe with frames on the clean game, the bug build and the candidate,
-   three times each, and keeps the folders in `DIR/<build>/<probe>-<n>/` with the route each replayed.
-   Nothing is asked; the pixel rows are `not-run`. It takes no `--sam-answers` or `--sam-live`.
+   three times each, and keeps each in `DIR/<build>/<probe>-<n>/` with the route it replayed. A kept
+   replay holds only its `replay.json`, its `trace.json` and the frames the observer will ask about
+   (since November 15): on hold-right that is 3.8 MB instead of 39.5 MB, on wait-long 6.2 MB instead of
+   113.1 MB. The observer refuses a kept replay missing a frame it asks about. Nothing is asked; the pixel rows are `not-run`. It takes no `--sam-answers` or `--sam-live`.
 2. **Ask** (holds the key, runs no game): `pixel-ask --replays DIR --out answers.json --budget-usd X
    --sam-live`. Every stored replay's frames are planned from its route and all their images reserved
    against the budget before the first request; over it, nothing is sent and it exits 1. SAM is asked
@@ -539,11 +555,47 @@ for the model already. [`pixel_jobs.py`](../expectrail/jit/pixel_jobs.py) does t
    never takes `--sam-live`.
 
 The capture folder is untrusted (a job that ran the change wrote it): only the three build names,
-`<probe>-<n>` folders and regular files are accepted, no symbolic link, at most 36 replays.
+`<probe>-<n>` folders holding only what a kept replay holds, and regular files are accepted, no symbolic
+link, at most 36 replays.
 
-**Not yet:** the workflow does not run these three jobs (the asking job needs SAM's key in `main-only`,
-which only Sean may give a job), no SAM answer has been recorded on a bench probe, and no reproduction rate has been measured
-with pixel checks. #286 is done when a recorded run reproduces a public screen-only defect with one.
+### In jit.yml (added November 14, seventh slice)
+
+The offer input takes `signals-reach-evidence-pixel`. `measure` makes the evidence as under the evidence
+setting. Then:
+
+- **replay-final** (the capture; runs the game, no secret) always replays the revise job's proposal
+  under this setting, revised or not, with `--observer sam-3.1-anchor --pixel-capture runs/pixel-capture`,
+  on a virtual display, and uploads the record and the frames as `jit-<case>-captured`. This record is not
+  the result.
+- **pixel-ask** (the asking; `environment: main-only`, SAM's key, no game, no engine) reads the captured
+  record's spend with `pixel-budget` (the change's cap less that spend, 0 if the record cannot be read as
+  a valid `jit-run` record), sets `EXPECTRAIL_SAM_USD_CAP` to it, and runs `pixel-ask --sam-live` within
+  it. Over that, nothing is sent and the pixel checks stay not run. It uploads `jit-<case>-pixel-answers`.
+  It is a perception-only job in the lane inventory (agents/assurance/audit.py, `PERCEPTION`).
+- **pixel-judge** (the judging; runs the game, no secret) replays the proposal once more with
+  `--sam-answers` and `--pixel-replays`, and uploads `jit-<case>`, the result. With no frames or no
+  answers it keeps replay-final's record, its pixel checks not run.
+- **repro-score** waits for pixel-judge and skips `-captured` and `-pixel-answers` artifacts.
+
+The trace checks are replayed three times under this setting (first round, capture, judge); the judge's
+record carries the first round's spend through the proposal, not the capture's.
+
+**Not yet:** no SAM answer has been recorded on a bench probe, and no reproduction rate has been measured
+with pixel checks; the workflow's pixel jobs have not run. #286 is done when a recorded run reproduces a
+public screen-only defect with one.
+
+### What the offered boxes can see (added November 15)
+
+`python3 -m expectrail.repro pixel-reach` ([`pixel_reach.py`](../expectrail/repro/pixel_reach.py),
+[schema](../contracts/repro-pixel-reach.v1.schema.json), [example](../contracts/examples/repro-pixel-reach.json))
+asks, with no model, whether a pixel check as the menu offers it could fail on a defect at all: on the
+frames `sam-3.1-anchor` would be asked about, does any pixel inside the box it would be shown differ
+between the clean game and the defect build? The menu offers the player only, so the box is the
+player's. On the bench's two screen-only defects (all 25 library probes, November 15): yes for both,
+on 9 planned frames of one probe for `enemy-walks-backwards` and 17 over six probes for
+`bullet-behind-scenery`; but on the four frames looked at by hand, what differs inside the box is the
+enemy or the bullets overlapping the player, not the player. Whether SAM's box of the player changes there is untested. The table and
+what it does not show are on the [bench's page](../bench/jit/public/README.md).
 
 ## What this does not claim
 

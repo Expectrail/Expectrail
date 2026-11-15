@@ -324,14 +324,18 @@ class TheWorkflow(unittest.TestCase):
 
     def test_the_plan_takes_the_setting(self):
         step = next(s["run"] for s in self.jobs["plan"]["steps"] if s.get("id") == "plan")
-        self.assertIn("^(baseline|signals-reach|signals-reach-evidence)$", step)
+        self.assertIn("^(baseline|signals-reach|signals-reach-evidence|signals-reach-evidence-pixel)$", step)
 
-    def test_the_measure_job_gets_a_display_and_more_time_only_under_the_evidence_setting(self):
+    def test_the_measure_job_gets_a_display_and_more_time_only_under_the_settings_that_offer_evidence(self):
+        # The evidence setting and the pixel setting, which offers the evidence too (#286); the two names that
+        # start with signals-reach-evidence are exactly those (expectrail/jit/offer.py).
+        self.assertEqual([o for o in offer.ALL if o.startswith("signals-reach-evidence")],
+                         [o for o in offer.ALL if offer.shows_evidence(o)])
         measure = self.jobs["measure"]
         self.assertEqual(measure["timeout-minutes"],
-                         "${{ needs.plan.outputs.offer == 'signals-reach-evidence' && 75 || 30 }}")
+                         "${{ startsWith(needs.plan.outputs.offer, 'signals-reach-evidence') && 75 || 30 }}")
         install = next(s for s in measure["steps"] if s.get("uses") == "./.github/actions/apt-install")
-        self.assertEqual(install["with"]["packages"], "${{ needs.plan.outputs.offer == 'signals-reach-evidence' "
+        self.assertEqual(install["with"]["packages"], "${{ startsWith(needs.plan.outputs.offer, 'signals-reach-evidence') "
                                                       "&& 'patch xvfb libgl1-mesa-dri libglx-mesa0' || 'patch' }}")
         upload = next(s for s in measure["steps"] if "upload-artifact" in (s.get("uses") or ""))
         self.assertEqual(upload["with"]["path"].split(),

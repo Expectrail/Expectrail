@@ -139,8 +139,12 @@ def contract_patterns() -> dict[str, str]:
 
 # pattern: (a value that matches it, whether that value plus "\n" must be refused)
 SAMPLES = {
+    r"\S": ("bug report", False),  # captured reports may include line endings
+    "^(?!bug$)": ("intent", False),  # excludes one property name, not multiline values
+    '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?\\+00:00$': ("2026-11-14T00:00:00+00:00", True),
     r"^repair-[a-z0-9_]{8}/repair-run\.json$": ("repair-sample01/repair-run.json", True),
     "^[A-Z_]{1,40}$": ("TOOL_MISSING", True),
+    "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$": ("Expectrail/Expectrail", True),
     "^[a-z0-9][a-z0-9-]{0,63}$": ("player-stays-above-ground", True),
     "^attempt-[0-9]{1,2}/candidate\\.patch$": ("attempt-1/candidate.patch", True),
     "^[A-Za-z0-9._-]{1,64}$": ("19283746501", True),
@@ -187,6 +191,9 @@ SAMPLES = {
     "^jit-[a-z0-9][a-z0-9._/-]{0,120}$": ("jit-a/b", True),
     "^review-[0-9]{8}T[0-9]{6}Z-[0-9]{5}$": ("review-20261113T043812Z-00001", True),
     "frames/f%08d.png": ("frames/f%08d.png", False),  # not anchored
+    "^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$": ("WZU63wJuMN6xAV1t3grhK5c/Un5MRUIy5doJFBFOVjs=", True),
+    "^[A-Za-z0-9+/]{85}[AQgw]==$":
+        ("7v1eVI2ryW5o8xdbjZcgrkh2ju84bKWuBUdirtTeJBfSrJiBnVYJ6NPL3Pl0hJEm2r3vaa4lPKdt2BX9DWGAAg==", True),
 }
 
 

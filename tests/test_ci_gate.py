@@ -97,7 +97,7 @@ def make_repo(root: Path, *, bug: bool = False, crash: bool = False, spec_edit: 
     return root
 
 
-def _config(game: Path, *, fps: int, node: str) -> None:
+def _config(game: Path, *, fps: int, node: str, draft: bool = False) -> None:
     """A valid expectrail.project.json in ``game``. The files it names are empty stand-ins."""
     (game / "main.tscn").write_text("", encoding="utf-8")
     (game / "crate.svg").write_text("<svg xmlns='http://www.w3.org/2000/svg'/>", encoding="utf-8")
@@ -106,6 +106,8 @@ def _config(game: Path, *, fps: int, node: str) -> None:
         "viewport": [640, 360], "physicsTicksPerSecond": 60, "captureFps": fps,
         "inputActions": ["jump"], "bindings": {"player": {"node": node, "texture": "res://crate.svg"}},
     }
+    if draft:
+        doc["draft"] = True
     (game / "expectrail.project.json").write_text(json.dumps(doc), encoding="utf-8")
 
 
@@ -540,6 +542,23 @@ class VerifyTest(GateCase):
             self.assertIsNone(fps)  # the rate comes from the config the gate passed, not a fixed number
             self.assertIsNone(project)  # the base has no config, so the head's captureFps 1 is not used
             self.assertIsNot(_MISSING, project)
+
+    def test_a_draft_config_from_init_is_never_the_ground_for_an_accept(self):
+        # #260: `expectrail init` writes `draft: true`; nobody has reviewed its bindings yet.
+        base = make_repo(self.tmp / "draft-base")
+        head = make_repo(self.tmp / "draft-head")
+        _config(base / "game" / "platformer", fps=60, node="Player", draft=True)
+        _config(head / "game" / "platformer", fps=60, node="Player", draft=True)
+        doc = self.gate(head, base)
+        self.assertEqual(doc["decision"], "needs-review")
+        self.assertEqual(doc["counts"]["passed"], doc["counts"]["checks"])
+        self.assertTrue(any("project config is a draft" in r for r in doc["reasons"]), doc["reasons"])
+        rec.check_record(doc)
+        reviewed = make_repo(self.tmp / "reviewed-head")
+        reviewed_base = make_repo(self.tmp / "reviewed-base")
+        _config(reviewed / "game" / "platformer", fps=60, node="Player")
+        _config(reviewed_base / "game" / "platformer", fps=60, node="Player")
+        self.assertFalse(any("draft" in r for r in self.gate(reviewed, reviewed_base)["reasons"]))
 
     def test_a_changed_player_binding_is_not_the_yardstick_and_is_not_an_accept(self):
         base = make_repo(self.tmp / "base")
@@ -1173,19 +1192,27 @@ class WorkflowSafetyTest(unittest.TestCase):
         self.assertIn("github.event.workflow_run.path == '.github/workflows/expectrail-verify.yml'", job["if"])
         self.assertIn("github.event.workflow_run.event == 'pull_request'", job["if"])
 
-    def test_the_trusted_job_never_checks_out_or_runs_pull_request_code(self):
+    def test_the_trusted_job_reads_the_head_as_data_and_runs_only_trusted_code(self):
         (job,) = load_yaml(COMMENT_WF)["jobs"].values()
         steps = job["steps"]
         checkouts = [s for s in steps if str(s.get("uses", "")).startswith("actions/checkout@")]
         self.assertEqual([s["with"]["ref"] for s in checkouts],
-                         ["${{ github.workflow_sha }}", "${{ steps.start.outputs.base }}"])
-        for checkout in checkouts:
+                         ["${{ github.workflow_sha }}", "${{ steps.start.outputs.base }}",
+                          "${{ github.event.workflow_run.head_sha }}"])
+        for checkout in checkouts[:2]:
             self.assertNotIn("repository", checkout["with"])
+        for checkout in checkouts:
             self.assertIs(checkout["with"]["persist-credentials"], False)
         self.assertEqual(checkouts[1]["with"]["path"], "policy")
+        self.assertEqual(checkouts[2]["with"]["repository"], "${{ github.event.workflow_run.head_repository.full_name }}")
+        self.assertEqual(checkouts[2]["with"]["path"], "head-data")
+        self.assertEqual(checkouts[2]["if"], "steps.start.outputs.base != ''")
+        self.assertEqual([s["working-directory"] for s in steps if "working-directory" in s], ["policy"])
+        self.assertNotIn("defaults", job)
         judge = next(s for s in steps if s.get("id") == "judge")
         self.assertEqual((judge["working-directory"], judge["run"]), ("policy", "python -m tools.ci_checks judge"))
-        self.assertEqual(set(judge["env"]), {"GAME", "SPECS", "ROUTES", "RECORDING"})
+        self.assertEqual(set(judge["env"]), {"GAME", "SPECS", "ROUTES", "RECORDING", "HEAD_CHECKOUT"})
+        self.assertEqual(judge["env"]["HEAD_CHECKOUT"], "${{ github.workspace }}/head-data")
         self.assertEqual([s["run"] for s in steps if "run" in s],
                          ["python3 -m tools.ci_checks start", "python -m pip install jsonschema==4.26.0 pillow==12.3.0",
                           "python3 -m tools.ci_checks download", "python -m tools.ci_checks judge",
@@ -1333,16 +1360,17 @@ class SplitGateTest(unittest.TestCase):
                            "", out / "frames", isolation)
         self.b.capture(self.policy, self.base, self.head, self.pr, intent, self.archive, replay)
 
-    def judge(self, intent="fix"):
+    def judge(self, intent="fix", *, head_checkout=None):
         with mock.patch("subprocess.Popen", side_effect=AssertionError("judge started a process")):
             return self.b.judge(self.policy, self.base, self.pr, intent, self.archive, self.root / "report",
-                                self.model.observer())
+                                self.model.observer(), head_checkout=head_checkout or self.head)
 
     def test_correct_fix_uses_six_sandboxed_replays_and_trusted_judge_accepts(self):
         self.capture()
         self.assertEqual(len(self.model.replays), 6)
+        head_data = shutil.copytree(self.head, self.root / "head-data")
         shutil.rmtree(self.head)
-        doc = self.judge()
+        doc = self.judge(head_checkout=head_data)
         self.assertEqual(doc["decision"], "accept", doc["reasons"])
         self.assertEqual(doc["observers"]["rule"], "both")
         self.assertEqual(doc["isolation"]["sandboxed"], 6)
@@ -1357,6 +1385,19 @@ class SplitGateTest(unittest.TestCase):
         self.capture("none")
         self.model.down = True
         self.assertEqual(self.judge("none")["decision"], "needs-review")
+
+    def test_complete_capture_is_refused_if_either_checkouts_game_tree_differs(self):
+        self.capture()
+        for side, checkout in (("base", self.base), ("head", self.head)):
+            with self.subTest(side=side):
+                extra = checkout / self.policy.game / "different-game.txt"
+                extra.write_text("other game")
+                try:
+                    with self.assertRaisesRegex(ValueError, f"EVIDENCE_MISMATCH: {side} game tree"):
+                        self.judge()
+                    self.assertFalse(self.model.asked)
+                finally:
+                    extra.unlink()
 
     def test_interruption_never_publishes_a_partial_capture(self):
         with self.assertRaises(TimeoutError):

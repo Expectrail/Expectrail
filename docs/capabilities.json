@@ -922,6 +922,44 @@
       "limits": "Without the private routes a review is inconclusive by design, so reviews on pull requests never claim a repair."
     },
     {
+      "id": "repair",
+      "mode": "Verify, then repair: after a reject, and only when the user turns auto-fix on, a fixer proposes a patch on a separate copy and each candidate is judged by a fresh verification; the original reject stands and a person reviews any accepted patch",
+      "profile": "The bundled Godot game, on a developer's machine (expectrail repair, expectrail verify --auto-fix, the local app's checkbox) or on a hosted Linux runner when a maintainer labels a rejected pull request (expectrail-autofix.yml)",
+      "observer": "Each candidate is judged by the same gate as any verification, in a new job; the fixer never talks to the verifier",
+      "entryPoints": [
+        "expectrail.repair",
+        "expectrail.auto_fix",
+        "tools.ci_autofix"
+      ],
+      "workflows": [
+        "expectrail-autofix.yml"
+      ],
+      "docs": [
+        "docs/ci-gate.md",
+        "docs/app.md"
+      ],
+      "grade": "fixture",
+      "status": "implemented",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_repair_command.py",
+          "shows": "With a fixture patch, a rejected job's repair applies the patch to a copy, verifies it in a new job and records an accept; the original job's reject is unchanged"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_auto_fix.py",
+          "shows": "verify --auto-fix starts a repair only on reject, keeps the reject as the verdict, and refuses a live fixer without a spend cap before any call"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_ci_autofix.py",
+          "shows": "The CI workflow runs only on a maintainer's expectrail-autofix label with a published reject for the same head, holds contents: read only, and runs the fixture fixer with isolated replay"
+        }
+      ],
+      "limits": "Only fixture patches have been used: no live fixer has produced a repair yet, in any run. CI auto-fix is off by default and runs only the fixture fixer. Expectrail never merges a repair."
+    },
+    {
       "id": "fixer-sandbox",
       "mode": "Fixer sandbox: the agent reaches only its worktree",
       "profile": "bubblewrap on Linux; a plain worktree without the verifier's files where bubblewrap is missing",
@@ -991,7 +1029,7 @@
           "shows": "inside, a program and the real game each fail to open a socket, write outside, read a check or the verifier, and read the starting process's environment, while the same attempts succeed outside; a link left as the trace is refused; the clean game's frame and trace hashes are the same with and without"
         }
       ],
-      "limits": "Godot only: the Unity player and the web replay are not sandboxed. The gate records how many replays were sandboxed and can require it, and the orchestrator's isolated class requires it; no verdict is graded isolated by it, because that grade also needs a trusted job that judges and signs (#254, #255). Not shown in the real tool: that the terminal was reachable before the sandbox got a session of its own. A namespace sandbox on the host's kernel, not a virtual machine. Total disk use of the work copy and the output folder is not limited, only each file; CPU and memory are limited only by the replay's time limit. On Ubuntu 24.04 the runner must allow unprivileged user namespaces first."
+      "limits": "Godot only: the Unity player and the web replay are not sandboxed. The gate records how many replays were sandboxed and can require it, and the orchestrator's isolated class requires it; no verdict is graded isolated by it, because that grade also needs a trusted job that judges and signs (#254, #255). Not shown in the real tool: that the terminal was reachable before the sandbox got a session of its own. A namespace sandbox on the host's kernel, not a virtual machine. What a replay adds to its work copy and output folder is bounded (4 GiB, 250,000 files) by a measurement every 0.1 s, not a file-system quota, so a game can pass it by what the disk takes in 0.1 s before it is stopped; CPU and memory are limited only by the replay's time limit. On Ubuntu 24.04 the runner must allow unprivileged user namespaces first."
     },
     {
       "id": "key-gateway",
@@ -1310,7 +1348,8 @@
         "release.yml"
       ],
       "docs": [
-        "docs/install.md"
+        "docs/install.md",
+        "docs/app.md"
       ],
       "grade": "diagnostic",
       "status": "integrated",
@@ -1421,6 +1460,44 @@
         }
       ],
       "limits": "Visitors cannot start a run yet: the service that starts runs (apps/run-it-edge) is written and tested against a local stub but not deployed, so the page says it cannot start runs. The runs cited were dispatched by hand. Each sample's vision answers are one recording (November 13): a frame the recording does not hold gets no answer and the sample needs review until it is recorded again. Receipts are not signed (#255)."
+    },
+    {
+      "id": "outside-projects",
+      "mode": "Verify a change to a Godot project Expectrail did not write, through its project list, routes and change patches, with the anchored visual observer",
+      "profile": "Pinned outside Godot projects (kinematic-character, Dodge the Creeps) fetched at a fixed commit, on hosted Linux runners: outside-trial.yml without vision, outside-vision.yml with a sandboxed capture job and a main-only judge",
+      "observer": "The engine's record and, on outside-vision.yml, the anchored visual observer (a point at the middle of the engine's collision box), used only when its calibration on the unchanged game passes",
+      "entryPoints": [
+        "tools.outside_trial",
+        "tools.outside_vision",
+        "expectrail.anchored"
+      ],
+      "workflows": [
+        "outside-trial.yml",
+        "outside-vision.yml"
+      ],
+      "docs": [
+        "docs/outside-projects.md"
+      ],
+      "grade": "diagnostic",
+      "status": "integrated",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43652198623",
+          "conclusion": "success",
+          "jobs": [
+            "capture",
+            "judge"
+          ],
+          "shows": "outside-vision.yml dispatched by Sean on main after #470 for kinematic-character: calibration used (found 19 of 19, size 19 of 19, nudged point 19 of 19); the project as pinned accept, broken reject, harmless (tinted sprite) accept, invisible (hidden sprite) reject, all with the anchored visual observer; 800 images, $2.00 at list price"
+        },
+        {
+          "kind": "record",
+          "ref": "tests/outside/recordings/kinematic-character/calibration.json",
+          "shows": "the calibration of that run, as expectrail.vision-calibration/v1"
+        }
+      ],
+      "limits": "One outside project verified with vision (kinematic-character). Dodge the Creeps has a draft check awaiting Sean's approval and no vision run. A full vision run asks about every frame and cost $2.00 for four variants. The hidden-player reject reads as past the boundary (the model answered with what lies behind the player), not as a missing player. The recorded answers replay only frames whose bytes match."
     }
   ],
   "notModes": {

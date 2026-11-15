@@ -20,7 +20,11 @@ no answer, so nothing is accepted: the decision is needs-review (a check the eng
 rejects). The site's workflow (``.github/workflows/run-it.yml``) runs exactly this in a job that holds
 no secret, and ``check`` is what its publishing job runs on the folder before it commits anything.
 
-``record`` is the one live run per sample that makes the recording. It needs a model key and a spend
+``record --target gate-combat`` also records the unchanged bundled game on the CI combat route,
+including the paired player-box questions. It is not a website sample. ``--sample`` remains a CLI
+alias for ``--target`` on record/check-recording.
+
+``record`` is the one live run per target that makes the recording. It needs a model key and a spend
 cap (``EXPECTRAIL_SAM_USD_CAP``), costs about $0.33 a sample (docs/sam.md), and is dispatched by Sean.
 """
 from __future__ import annotations
@@ -49,6 +53,10 @@ RESULT_FORMAT = "expectrail.run-it-result/v1"
 ID = re.compile(r"[a-z0-9-]{1,40}")
 TIMEOUT_SECONDS = 15 * 60
 RECEIPT = {"signed": False, "why": "not signed yet (#255)"}
+GATE_COMBAT = "gate-combat"
+COMBAT_ROUTE = "harness/routes/combat.json"
+GATE_GAME = "game/platformer"
+GATE_SPECS = "agents/specs"
 NO_RECORDING = "no vision answers are recorded for this sample yet, so nothing can be accepted"
 
 # What the publishing job lets through (``check``): these names, and frames named as the viewer
@@ -277,22 +285,57 @@ def run(sample_id: str, out: Path, *, request_id: str | None = None, root: Path 
 
 def record(sample_id: str, target: Path, *, run_id: str, client=None, root: Path = ROOT, replay=None,
            require_sandbox: bool = False, recorded_at: str | None = None) -> Path:
-    """The one live run of a sample that records the vision model's answers into ``target``.
+    """The one live run of a recording target that records the vision model's answers into ``target``.
     ``client`` defaults to the live model client, which needs a key and a spend cap."""
     from expectrail import recorded
 
-    if find_sample(read_manifest(root), sample_id)["head"] == "recorded-fix":
+    if sample_id != GATE_COMBAT and find_sample(read_manifest(root), sample_id)["head"] == "recorded-fix":
         raise RunItError("this sample uses recorded answers only")
     if client is None:
         from agents.sam_observations import default_client
 
         client = default_client(verdict=True)
-    with tempfile.TemporaryDirectory(prefix="expectrail-runit-record-") as tmp:
-        doc = run(sample_id, Path(tmp) / "out", request_id="recording", root=root, replay=replay,
-                  require_sandbox=require_sandbox, record_with=client)
-    recording = doc["recording"].recording(sample=sample_id, run=run_id,
+    if sample_id == GATE_COMBAT:
+        recorder = _record_combat(root, client, replay, require_sandbox)
+    else:
+        with tempfile.TemporaryDirectory(prefix="expectrail-runit-record-") as tmp:
+            doc = run(sample_id, Path(tmp) / "out", request_id="recording", root=root, replay=replay,
+                      require_sandbox=require_sandbox, record_with=client)
+        recorder = doc["recording"]
+    recording = recorder.recording(sample=sample_id, run=run_id,
                                            recorded_at=recorded_at or dt.date.today().isoformat())
     return recorded.write_recording(target, recording)
+
+
+def _record_combat(root: Path, client, replay, require_sandbox: bool):
+    """Clean against clean: CI's checks at every frame plus its paired player-box questions.
+
+    Only copies are replayed. The website manifest, game, route and approved specs are not edited.
+    Both sides are needed: CI's paired anchor prompts are absent from a head-only verification.
+    """
+    from agents.sam_observations import Cache
+    from expectrail import recorded
+    from expectrail.gate import verify
+    from expectrail.observers import FramesObserver
+
+    recorder = recorded.RecordingClient(client)
+    with tempfile.TemporaryDirectory(prefix="expectrail-combat-record-") as tmp:
+        tmp = Path(tmp)
+        checkout = tmp / "clean"
+        try:
+            for rel in (GATE_GAME, GATE_SPECS):
+                shutil.copytree(Path(root) / rel, checkout / rel, ignore=shutil.ignore_patterns(".godot"))
+            route = checkout / COMBAT_ROUTE
+            route.parent.mkdir(parents=True)
+            shutil.copyfile(Path(root) / COMBAT_ROUTE, route)
+            verify.run_gate(repo=checkout, base=checkout, game=GATE_GAME, specs=GATE_SPECS,
+                            routes=[COMBAT_ROUTE], out=tmp / "out", work=tmp / "work",
+                            rule=rec.BOTH, visual=FramesObserver(client=recorder, cache=Cache(None), name="sam", every=1),
+                            replay=replay if replay is not None else verify.harness_replay,
+                            require_sandbox=require_sandbox)
+        except (OSError, verify.ConfigError) as exc:
+            raise RunItError(f"could not record gate-combat: {exc}") from exc
+    return recorder
 
 
 # --- what the recording workflow lets through ------------------------------------------------------
@@ -300,13 +343,14 @@ def record(sample_id: str, target: Path, *, run_id: str, client=None, root: Path
 def check_recording(path: Path, *, sample_id: str, root: Path = ROOT) -> list[str]:
     """Every reason not to propose the recording at ``path`` for ``sample_id``; empty when it may be.
     It must be a usable recording (expectrail.recorded.read_recording), for this sample, from a
-    sample in the manifest, and hold at least one answer: an empty recording answers nothing."""
+    sample in the manifest or gate-combat, and hold at least one answer: an empty recording answers nothing."""
     from expectrail import recorded
 
     if not valid_id(sample_id):
         return ["the sample is not a sample id"]
     try:
-        find_sample(read_manifest(root), sample_id)
+        if sample_id != GATE_COMBAT:
+            find_sample(read_manifest(root), sample_id)
     except RunItError as exc:
         return [str(exc)]
     try:
@@ -438,15 +482,16 @@ def main(argv: list[str] | None = None) -> int:
     p_check.add_argument("folder", type=Path)
     p_check.add_argument("--sample", required=True)
     p_check.add_argument("--request-id", required=True)
-    p_rec = sub.add_parser("record", help="the one live run per sample that records the vision answers (spends money)")
-    p_rec.add_argument("--sample", required=True)
+    p_rec = sub.add_parser("record", help="record a sample or bundled gate target (spends money)")
+    p_rec.add_argument("--target", "--sample", dest="sample", required=True,
+                       help="a Run it sample id or gate-combat (not a website sample)")
     p_rec.add_argument("--out", required=True, type=Path)
     p_rec.add_argument("--run", required=True, help="the recording run's id, written into the recording")
     p_rec.add_argument("--require-sandbox", action="store_true")
     p_chk = sub.add_parser("check-recording",
-                           help="check a recording before it is proposed: its schema, its rules and its sample")
+                           help="check a recording before it is proposed: its schema, its rules and its target")
     p_chk.add_argument("file", type=Path)
-    p_chk.add_argument("--sample", required=True)
+    p_chk.add_argument("--target", "--sample", dest="sample", required=True)
     args = parser.parse_args(argv)
     try:
         if args.command == "run":

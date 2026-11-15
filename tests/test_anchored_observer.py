@@ -17,6 +17,7 @@ person-dispatched run (#330); until it is recorded, nothing here says how the li
 from __future__ import annotations
 
 import copy
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -24,6 +25,7 @@ from pathlib import Path
 from agents.sam_observations import SamError
 from expectrail import anchored as an
 from expectrail.evaluator import evaluate
+from expectrail.contracts import ContractError, validate
 from expectrail.gate import record as rec
 from expectrail.gate.verify import NoAnswer
 from expectrail.recorded import RecordedClient, RecordingClient
@@ -88,6 +90,14 @@ class Echo(Stand):
         return [{"box": [x - h, y - h, x + h, y + h], "score": 0.9} for x, y in points]
 
 
+class OneOwner(Sees):
+    """As the live model behaves (#330, run 43643679280): in one request each pixel belongs to one
+    object, so only the first of several points on the same sprite gets it."""
+    def segment_at(self, png, points):
+        self.calls += 1
+        return [{"box": self.drawn(png), "score": 0.93}] + [None for _ in points[1:]]
+
+
 class Tiles(Stand):
     def segment_at(self, png, points):
         self.calls += 1
@@ -117,7 +127,7 @@ class CalibrationTest(unittest.TestCase):
         self.assertTrue(doc["enabled"], doc["why"])
         self.assertEqual(doc["rates"], {"found": 1.0, "size": 1.0, "stable": 1.0})
         self.assertEqual(doc["drawnSize"], {"width": SPRITE, "height": SPRITE})
-        self.assertEqual(client.calls, 13)   # 13 frames of 120 (every tenth and the last), both points in one request
+        self.assertEqual(client.calls, 26)   # 13 frames of 120 (every tenth and the last), two requests each
         an.check_calibration(doc)
 
     def test_a_model_that_echoes_the_question_is_not_enabled(self):
@@ -141,6 +151,13 @@ class CalibrationTest(unittest.TestCase):
                 self.assertEqual(echo["rates"]["stable"], 0.0)
                 sees = an.calibrate(GAME, run, Sees(run))
                 self.assertTrue(sees["enabled"], sees["why"])
+
+    def test_a_model_that_gives_each_pixel_to_one_object_is_still_enabled(self):
+        # The second live calibration: asked both points in one request, the nudged point came back
+        # empty in every frame. The points are now asked in separate requests.
+        doc = an.calibrate(GAME, self.run, OneOwner(self.run))
+        self.assertTrue(doc["enabled"], doc["why"])
+        self.assertEqual(doc["rates"]["stable"], 1.0)
 
     def test_a_model_that_answers_with_the_tiles_is_not_enabled(self):
         doc = an.calibrate(GAME, self.run, Tiles(self.run))
@@ -188,6 +205,37 @@ class CalibrationTest(unittest.TestCase):
         self.assertTrue(an.check_calibration(doc)["enabled"])
 
 
+class NotDrawnRunTest(unittest.TestCase):
+    """One empty answer is a model's miss, not a hidden player (#330 integration)."""
+
+    def doc(self, empty):
+        frames = []
+        for n in range(10):
+            row = {"frame": n, "objects": {"player": [] if n in empty else [{"box": [32.0, 54.0, 48.0, 70.0], "score": 0.9}],
+                                           "ground": [{"box": [0.0, 70.0, 160.0, 96.0], "score": 1.0}]}}
+            if n in empty:
+                row["notDrawn"] = {"player": {"reason": "no-match", "point": [40, 62], "scale": [1.0, 1.0],
+                                              "expectedSize": [16.0, 16.0], "observedSize": None, "answer": None,
+                                              "sizeTolerance": 0.25, "sizeFloorPx": 4.0}}
+            frames.append(row)
+        return {"format": "expectrail.observations/v0", "replay": {"sha256": "0" * 64},
+                "model": {"name": "stand-in", "provider": "stand-in", "prompts": {"player": "point"},
+                          "engineObjects": ["ground"]}, "frames": frames}
+
+    def spec(self):
+        return dict(SPEC, window={"fromFrame": 0, "toFrame": 9})
+
+    def test_one_or_two_empty_frames_are_needs_review(self):
+        for empty in ({4}, {4, 5}, {2, 7}):
+            with self.subTest(empty=sorted(empty)):
+                self.assertEqual(evaluate(self.spec(), self.doc(empty))["result"], "needs-review")
+
+    def test_three_in_a_row_fail_with_the_not_drawn_reason(self):
+        verdict = evaluate(self.spec(), self.doc({3, 4, 5}))
+        self.assertEqual(verdict["result"], "fail")
+        self.assertIn("did not find player drawn at its place", verdict["reason"])
+
+
 class LookTest(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
@@ -211,11 +259,128 @@ class LookTest(unittest.TestCase):
         observer._client = Sees(broken)   # the same calibrated model, now asked about the broken replay
         self.assertEqual(evaluate(SPEC, observer.look(SPEC, broken))["result"], "fail")
 
-    def test_a_player_not_drawn_is_needs_review_never_a_pass(self):
+    def test_a_player_not_drawn_is_a_failure_never_a_pass(self):
         run = make_run(self.tmp)
         observer = self.observer(run)
         observer._client = Blind(run)
-        self.assertEqual(evaluate(SPEC, observer.look(SPEC, run))["result"], "needs-review")
+        seen = observer.look(SPEC, run)
+        verdict = evaluate(SPEC, seen)
+        self.assertEqual(verdict["result"], "fail")
+        self.assertIn("did not find player drawn at its place in 120 of 120 frames", verdict["reason"])
+        self.assertEqual(verdict["firstFrame"], 0)
+        self.assertEqual(seen["frames"][0]["notDrawn"]["player"]["reason"], "no-match")
+        self.assertIsNone(seen["frames"][0]["notDrawn"]["player"]["answer"])
+        validate(seen, "observations")
+        validate(verdict, "verdict")
+
+    def test_tiles_are_retained_as_not_the_player_instead_of_measuring_their_boundary(self):
+        run = make_run(self.tmp)
+        observer = self.observer(run)
+        observer._client = Tiles(run)
+        seen = observer.look(SPEC, run)
+        for frame in seen["frames"]:
+            self.assertEqual(frame["objects"]["player"], [])
+            negative = frame["notDrawn"]["player"]
+            self.assertEqual(negative["reason"], "size-mismatch")
+            self.assertEqual(negative["expectedSize"], [16.0, 16.0])
+            self.assertEqual(negative["observedSize"], [48.0, 48.0])
+            self.assertEqual(negative["answer"]["score"], 0.9)
+            self.assertEqual(len(negative["answer"]["box"]), 4)
+        verdict = evaluate(SPEC, seen)
+        self.assertEqual(verdict["result"], "fail")
+        self.assertNotIn("past the boundary", verdict["reason"])
+        self.assertEqual([e["frame"] for e in verdict["evidence"]], list(range(5)))
+        validate(seen, "observations")
+
+    def test_size_rule_uses_drawn_size_game_pixels_and_both_axes_at_the_exact_limits(self):
+        class Sized(Sees):
+            def __init__(self, run, width, height):
+                super().__init__(run)
+                self.width, self.height = width, height
+
+            def drawn(self, png):
+                x0, y0, x1, y1 = super().drawn(png)
+                sx, sy = self.rows[0]["view"][0], self.rows[0]["view"][3]
+                x, y = (x0 + x1) / 2, (y0 + y1) / 2
+                return [x - self.width * sx / 2, y - self.height * sy / 2,
+                        x + self.width * sx / 2, y + self.height * sy / 2]
+
+        for seed, (scale, drawn, delta, result) in enumerate(((0.5, 12.0, 4.0, "pass"),
+                (2.0, 12.0, 4.01, "fail"), (1.5, 18.0, 4.5, "pass"), (1.5, 18.0, 4.51, "fail"))):
+            run = make_run(self.tmp, frames=12, seed=seed, scale=scale, x0=30, speed=0,
+                           ty=-(GROUND_TOP * scale - 70))
+            client = Sized(run, drawn, drawn)
+            calibration = an.calibrate(GAME, run, client, every=1)
+            self.assertTrue(calibration["enabled"], calibration["why"])
+            self.assertEqual(calibration["drawnSize"], {"width": drawn, "height": drawn})
+            for axis in (0, 1):
+                with self.subTest(scale=scale, drawn=drawn, delta=delta, axis=axis):
+                    dimensions = [drawn, drawn]
+                    dimensions[axis] += delta
+                    observer = an.AnchoredObserver(Sized(run, *dimensions), calibration)
+                    spec = dict(SPEC, window={"fromFrame": 0, "toFrame": 11})
+                    seen = observer.look(spec, run)
+                    self.assertEqual(evaluate(spec, seen)["result"], result)
+                    validate(seen, "observations")
+
+    def test_provider_errors_and_missing_confidence_are_not_negative_presence_evidence(self):
+        run = make_run(self.tmp)
+        observer = self.observer(run)
+        class Malformed(Stand):
+            def segment_at(self, png, points):
+                raise SamError("unreadable answer", kind="parse")
+        class NoScore(Sees):
+            def segment_at(self, png, points):
+                return [{"box": self.drawn(png), "score": None}]
+        for client in (Malformed(run), NoScore(run)):
+            with self.subTest(client=type(client).__name__):
+                observer._client = client
+                seen = observer.look(SPEC, run)
+                self.assertTrue(all("notDrawn" not in f for f in seen["frames"]))
+                self.assertEqual(evaluate(SPEC, seen)["result"], "needs-review")
+        observer._client = Broke(run)
+        with self.assertRaises(NoAnswer):
+            observer.look(SPEC, run)
+
+    def test_negative_evidence_obeys_window_object_and_confidence_and_survives_truncation(self):
+        run = make_run(self.tmp)
+        observer = self.observer(run)
+        good = observer.look(SPEC, run)
+        observer._client = Tiles(run)
+        bad = observer.look(SPEC, run)
+        mixed = copy.deepcopy(good)
+        mixed["frames"][3] = bad["frames"][3]
+        # One frame alone is a model's miss: needs-review, never a reject (architect, #330).
+        self.assertEqual(evaluate(SPEC, mixed)["result"], "needs-review")
+        for n in (4, 5):
+            mixed["frames"][n] = bad["frames"][n]
+        verdict = evaluate(SPEC, mixed)
+        self.assertEqual(verdict["result"], "fail")
+        self.assertIn("in 3 of 120 frames", verdict["reason"])
+        self.assertEqual(verdict["firstFrame"], 3)
+        self.assertEqual(evaluate(dict(SPEC, window={"fromFrame": 6, "toFrame": 119}), mixed)["result"], "pass")
+        truncated = dict(bad, frames=[bad["frames"][n] for n in (3, 4, 5)])
+        self.assertEqual(evaluate(SPEC, truncated, expected_frames=list(range(120)))["result"], "fail")
+        for frame in bad["frames"]:
+            frame["notDrawn"]["player"]["answer"]["score"] = 0.1
+        self.assertEqual(evaluate(SPEC, bad)["result"], "needs-review")
+        # A marker for another object does not reject this assertion.
+        mixed = copy.deepcopy(good)
+        mixed["frames"][3]["notDrawn"] = {"other": bad["frames"][3]["notDrawn"]["player"]}
+        self.assertEqual(evaluate(SPEC, mixed)["result"], "pass")
+
+    def test_missing_player_example_round_trips_and_malformed_evidence_is_refused(self):
+        path = Path(__file__).resolve().parents[1] / "contracts/examples/observations-missing-player.json"
+        seen = json.loads(path.read_text())
+        validate(seen, "observations")
+        self.assertEqual(evaluate(SPEC, seen)["result"], "fail")
+        for key, value in (("reason", "provider-failed"), ("answer", None),
+                           ("observedSize", None), ("sizeTolerance", 0.5), ("sizeFloorPx", 8)):
+            with self.subTest(key=key):
+                changed = copy.deepcopy(seen)
+                changed["frames"][0]["notDrawn"]["player"][key] = value
+                with self.assertRaises(ContractError):
+                    validate(changed, "observations")
 
     def test_a_game_that_is_not_calibrated_gets_no_visual_observer(self):
         run = make_run(self.tmp)

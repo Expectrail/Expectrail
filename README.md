@@ -14,9 +14,39 @@ it is **not on PyPI**. The [six-step quickstart](https://expectrail.tech/quickst
 installation, `doctor`, `sample` and a project given by path.
 [Install scope and evidence](docs/capabilities.md#installed-command).
 
-[Quickstart](docs/quickstart.html) · [Concepts and limits](docs/concepts.html) ·
+Before replaying, Linux needs `xvfb-run` (Ubuntu packages `xvfb` and `xauth`),
+software OpenGL (`libgl1-mesa-dri` and `libglx-mesa0`), `patch`, `curl` and `unzip`.
+Keep at least **1 GiB free** on the filesystems used by the engine cache and temporary
+files; recordings may need more. Doctor labels this threshold 1024 MB, reports each
+location, and suggests freeing space or choosing other folders. A missing display leaves OpenGL untried and blocks replays too.
+Bubblewrap is optional for this walkthrough; isolated verification requires it and
+kernel support. Vision settings remain intentionally absent for the no-spend walkthrough.
+[Prerequisites and install scope](docs/capabilities.md#installed-command) ·
+[Sandbox limits](docs/capabilities.md#replay-sandbox).
+
+[Quickstart](docs/quickstart.html) · [Verify, then repair](#verify-then-repair) · [Concepts and limits](docs/concepts.html) ·
 [Guides](docs/guides.html) · [Positioning](docs/positioning.html) ·
 [Capability ledger](docs/capabilities.md) · [Source](https://github.com/Expectrail/Expectrail)
+
+## What’s been shown
+
+Expectrail verified Godot’s kinematic-character demo using the engine’s record and vision.
+It is the [only outside game verified with vision so far](docs/capabilities.md#outside-projects).
+
+| Change to the game | Verdict |
+| --- | --- |
+| Original game at the pinned revision | [accept](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
+| Disabled floor collisions so the player fell through | [reject](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
+| Tinted the player’s sprite | [accept](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
+| Hid the player’s sprite | [reject](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
+
+The full run cost [$2.00](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) at list price for the variants shown.
+For the hidden player, the engine passed. Vision measured the background and reported
+[“past the boundary”](docs/outside-projects.md#first-outside-game-verified-with-vision-november-14-2026).
+Since [#481](https://github.com/Expectrail/Expectrail/pull/481), Expectrail reports “not drawn” in this case; no live run has shown that yet.
+
+Dodge the Creeps has [a draft check awaiting approval and no vision verification run](docs/capabilities.md#outside-projects).
+The [release dossier](https://expectrail.tech/release/#blind) lists the historical blind-test results.
 
 ## Start with an honest result
 
@@ -70,13 +100,35 @@ nothing. [Demo row](docs/capabilities.md#interactive-demo).
 currently says visitors cannot start runs because the service is not deployed; its cited sample
 runs were dispatched by hand. [Run it row](docs/capabilities.md#run-it).
 
-## Optional repair, separate from verification
+## Verify, then repair
 
-The planned installed `expectrail repair` command is **not built**; it exits 5 and runs nothing.
-[Installed-command limits](docs/capabilities.md#installed-command).
-The historical repository command `python3 -m agents.loop` is the optional fix loop. Its recorded
-repairs are on seeded bugs in one game; verification does not require running a fixer.
-[Fix-loop evidence](docs/capabilities.md#fix-loop) · [Verification jobs](docs/capabilities.md#orchestrator).
+Auto-fix is off by default. Turn it on to try a patch **only after a reject**. The original job keeps its
+reject even if a fresh job accepts the candidate. [Verify and auto-fix tests](tests/test_auto_fix.py).
+
+From a repository checkout, set `BEFORE` and `AFTER` to the two checkout paths. This example uses the
+bundled game layout and its fall-through fixture. To try a different fix, supply a patch for that game.
+
+```sh
+expectrail verify --base "$BEFORE" --head "$AFTER" --game game/platformer \
+  --routes harness/routes/smoke.json --specs agents/specs \
+  --auto-fix --auto-fix-fixture agents/fixtures/fix-collision-mask.patch
+```
+
+To repair an existing reject instead, set `JOB` to its ID in the same job store:
+
+```sh
+expectrail repair "$JOB" --fixture agents/fixtures/fix-collision-mask.patch
+```
+
+The fixer gets a separate game copy and public failure evidence. It never edits the verifier or specs.
+Each candidate gets a fresh verification. A person reviews any winning patch. Expectrail never merges it.
+[Repair tests](tests/test_repair_command.py) · [Fixture result in the evidence viewer](docs/viewer-samples/fixture-repair.html).
+
+The [local app checkbox](docs/app.md#auto-fix-checkbox) requests live repair; spend caps are in (#436), but no live repair has been run yet.
+[CI auto-fix](.github/workflows/expectrail-autofix.yml) runs only the fixture fixer, when a maintainer labels a rejected pull request, and is off by default. The [Run it card](https://expectrail.tech/run-it/#recorded-fix) is off until a real
+repair is recorded. [Status and evidence](docs/new-work/2026-11-14-loop-story.md).
+
+The historical repository command `python3 -m agents.loop` has [recorded repairs on seeded bugs in one game](docs/capabilities.md#fix-loop).
 
 ### Meta models
 

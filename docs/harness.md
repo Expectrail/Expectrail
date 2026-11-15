@@ -108,8 +108,8 @@ so a player sunk into the floor is still measured against the floor it sank into
 
 The ends are the player's own: the leftmost and rightmost points of its collision
 (`CollisionShape2D` and `CollisionPolygon2D` children that are not disabled), measured where the
-body is in the world, each pulled in by 1.25 px so that a wall the body touches is not counted as
-under it. A scaled body, a scaled parent and a mirrored body are measured as they stand; a shape
+body is in the world. For spans wider than 2.5 px, each end is pulled in by 1.25 px so that a wall
+the body touches is not counted as under it. A scaled body, a scaled parent and a mirrored body are measured as they stand; a shape
 off to one side gives two different ends, and the middle column is midway between them. A player
 with no collision to measure is given 20 px either side of its origin. The bundled robot's shape is
 42.5 px wide and centred, which is those same 20 px.
@@ -122,9 +122,9 @@ How each kind of shape is measured (#354, November 14, 2026; each held with the 
   The points lie on the curve, so the measure is never wider than the shape, and at most 0.12 % of
   the radius narrower. A polygon shape by its own points, a segment by its ends, anything else by
   its bounding rectangle (exact for a rectangle, the usual player).
-- **A body 2.5 px wide or less** has no room for the 1.25 px on each side: its middle is asked, as
-  all three columns. Until #354 such a body was treated as having no collision and given the
-  robot's 20 px, so a body 2 px wide had a step 18 px away as its ground.
+- **A body 2.5 px wide or less** is sampled at its left end, midpoint and right end, with no
+  inset. If just one end extends over a ledge, that ledge can support the body. If all three
+  columns miss, the trace omits the ground. Both Python observation readers use the logged height.
 - **Only the body's direct children** count, because only they collide for it in Godot. A shape on
   a child area or body (a hitbox, a sensor) belongs to that node and does not widen the columns.
 - **A shape that changes size while the game plays** is measured as it is in each tick.

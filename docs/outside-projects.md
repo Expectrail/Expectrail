@@ -242,6 +242,31 @@ From reading, before any run (the full list is on #263):
 - No approved check fits a top-down game. A project with no check that fits is needs-review.
 - A route cannot click, and cannot press a key that is no action.
 
+## First outside game verified with vision (November 14, 2026)
+
+[Run 43652198623](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) (outside-vision.yml,
+dispatched by Sean on main after #470; 800 images, $2.00 at list price, which reached the run's cap).
+The anchored observer's calibration on the unchanged game was **used**: found at its place in 19 of
+19 frames, drawn size matching the collision box in 19 of 19, the nudged point giving the same answer
+in 19 of 19 (`tests/outside/recordings/kinematic-character/calibration.json`).
+
+| Change | Verdict | Engine | Visual observer |
+| --- | --- | --- | --- |
+| none (as pinned) | **accept** | 1 of 1 pass | agrees |
+| broken (collision mask emptied) | **reject** | fails: 71.7 px past the ground, from frame 44 | agrees |
+| harmless (sprite tinted) | **accept** | 1 of 1 pass | agrees |
+| invisible (sprite hidden) | **reject** | passes | fails: 77.5 px past the ground, from frame 0 |
+
+Read the last row plainly: with no sprite drawn, the model answered at the player's place with
+something else (what lies behind the player), and that reaches below the ground line. The verdict is
+right (a hidden player is never accepted); the stated reason is indirect, not "no player drawn".
+`tests/outside/projects.json` keeps needs-review as the expectation for `harmless` and `invisible`,
+because the CI outside trial has no vision.
+
+The run's answers are kept in `tests/outside/recordings/kinematic-character/vision-recording.json` (429
+answers). They replay for free with `tools/outside_vision.py judge --recording`, but only for frames
+whose bytes match the ones recorded; whether a fresh capture reproduces them is not yet checked.
+
 ## Anchored vision (#330)
 
 **Why the first vision run found no player.** The outside judge asked every game the bundled game's
@@ -274,6 +299,13 @@ box twice as large. It found the player in 19 of 19 frames, and the answers were
 16 px sprite over a 14 px collision box. But the larger box took in the tiles around the player
 (30 to 62 px), and 25% of 14 px is 3.5 px, so it was not used (size 42%, stable 0%). That led to the
 point question and the pixel floors above.
+
+**The second live calibration** ([run 43643679280](https://github.com/Expectrail/Expectrail/actions/runs/43643679280),
+$0.0475, 19 images) asked with points: found at its place in 19 of 19 frames, drawn size within the
+rules in 19 of 19, but the nudged point gave the same answer in 0 of 19, so it was not used. Both
+points went in one request as two objects, and the model gives each pixel to one object, so the
+second point on the same 16 px sprite came back without the sprite. The nudged point is now asked in
+its own request (26 images for a calibration).
 
 **Recorded once (Option A).** The live judge wraps the model in a recorder and leaves
 `vision-recording.json` in the run's artifact. `judge --recording FILE` replays those answers with no

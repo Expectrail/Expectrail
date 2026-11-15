@@ -167,17 +167,20 @@ def summarise(outcomes: dict[str, dict], *, commit: str, where: str, when: str) 
 
     baselines = {t: outcomes.get(t, {}).get("outcome", ERROR) for t in controls.BASELINES}
     baseline_ok = all(v == PASSED for v in baselines.values())
+    own = {t: outcomes.get(t, {}).get("outcome", ERROR) for t in controls.row_baselines()}
     rows = []
     for c in controls.CONTROLS:
         status, note = row_status(c, outcomes)
         if status == HELD and not baseline_ok:
             # Without the positive control, "not cleared" could mean "nothing is ever cleared".
             status, note = NOT_RUN, "the positive control did not pass, so this row cannot be read as held"
+        elif status == HELD and any(own[t] != PASSED for t in c.get("baselines", ())):
+            status, note = NOT_RUN, "this row's own positive control did not pass, so it cannot be read as held"
         rows.append({**c, "status": status, "note": note,
                      "results": {t: outcomes.get(t, {}).get("outcome", ERROR) for t in c["tests"]}})
     counts = {s: sum(1 for r in rows if r["status"] == s) for s in (HELD, OPEN, FAILED, NOT_RUN)}
     return {"format": "expectrail.release-gate/v0", "commit": commit, "where": where, "when": when,
-            "counts": counts, "baselines": baselines, "rows": rows,
+            "counts": counts, "baselines": baselines, "rowBaselines": own, "rows": rows,
             "tests": {k: outcomes[k] for k in sorted(outcomes)}}
 
 
@@ -186,13 +189,21 @@ def render(summary: dict) -> str:
 
     c = summary["counts"]
     baseline_ok = all(v == PASSED for v in summary["baselines"].values())
+    own = summary.get("rowBaselines") or {}
+    if own and all(v == PASSED for v in own.values()):
+        two_job = "passed"
+    elif own and all(v == SKIPPED for v in own.values()):
+        two_job = "not run, so those rows are not run"
+    else:
+        two_job = "NOT passed, so those rows cannot be read as held"
     lines = [
         "# Release gate",
         "",
         "One control per row (#258). Each row's tests start real processes (the `expectrail verify` command, its",
-        "worker, Godot) and assert that clearance is **not** granted: today, that the command does not exit 0",
-        "and the job is not an accept. A row is held only when its tests ran and passed. A row without a test,",
-        "or with a probe that shows the control is not defended, is open, with the reason.",
+        "worker, Godot) and assert that clearance is **not** granted: that the command does not exit 0 and the",
+        "job is not an accept, or, on the two-job pull-request gate (#254), that the head's clearance check is",
+        "not a success. A row is held only when its tests ran and passed. A row without a test, or with a probe",
+        "that shows the control is not defended, is open, with the reason.",
         "",
         "This file is written by `python3 -m tools.release_gate` from the results of one run. Do not edit it by",
         "hand.",
@@ -205,6 +216,8 @@ def render(summary: dict) -> str:
         f"stand-in vision provider that answers, the live visual observer's path clears the unchanged game; the "
         f"pull-request gate's command clears the unchanged game declared an intended change): "
         f"{'passed' if baseline_ok else 'NOT passed, so no row below can be read as held'}.",
+        f"- The two-job rows' own positive controls (the trusted judge clears the unchanged game's capture and "
+        f"rejects the seeded bug's): {two_job}.",
         "",
     ]
     for group in controls.GROUPS:
