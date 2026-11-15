@@ -96,7 +96,7 @@ def _marks(path_a: Path, path_b: Path) -> tuple[int, int, bytes | None]:
     try:
         wa, ha, ca, pa = png_pixels._decode(Path(path_a))
         wb, hb, cb, pb = png_pixels._decode(Path(path_b))
-    except Exception as exc:  # noqa: BLE001 - whatever the decoder raises, the frame cannot be read
+    except Exception as exc:  # whatever the decoder raises, the frame cannot be read
         raise PixelReachError(f"a frame cannot be read: {type(exc).__name__}: {' '.join(str(exc).split())}"[:200]) from exc
     if (wa, ha) != (wb, hb):
         raise PixelReachError("two frames of one probe have different sizes")

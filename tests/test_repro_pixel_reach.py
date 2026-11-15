@@ -14,8 +14,8 @@ from expectrail.contracts import load_strict
 from expectrail.jit.probes import jit_library
 from expectrail.repro import bench, pixel_reach
 from expectrail.repro.__main__ import main
-from tests.test_discovery import PROFILE
 from tests import test_repro_bench as repro_bench
+from tests.test_discovery import PROFILE
 from tests.test_unity_png_pixels import write_png
 
 W, H = 40, 20
@@ -126,7 +126,7 @@ class OneProbe(unittest.TestCase):
 
 
 class Measure(unittest.TestCase):
-    NAMES = ["in-box", "outside", "between", "crash"]
+    NAMES = ("in-box", "outside", "between", "crash")
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="pixel-reach-test-"))
