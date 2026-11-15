@@ -3,7 +3,7 @@ trusted judge, each in its own process, as the two workflows run them.
 
     python3 -m tests.release_gate.bundle capture --base B --head H --routes R [R ...] --pr JSON
                                                  --intent I --out BUNDLE.zip
-    python3 -m tests.release_gate.bundle judge   --base B --routes R [R ...] --pr JSON --intent I
+    python3 -m tests.release_gate.bundle judge   --base B --head H --routes R [R ...] --pr JSON --intent I
                                                  --bundle BUNDLE.zip --out DIR
     python3 -m tests.release_gate.bundle finish  --findings DIR/findings.json --github GITHUB.json
 
@@ -55,7 +55,7 @@ def judge(args) -> int:
     observer = recorded.RecordedObserver(recording(), every=1)
     try:
         document = ci_bundle.judge(policy(args.routes), args.base.resolve(), json.loads(args.pr), args.intent,
-                                   args.bundle.resolve(), args.out.resolve(), observer)
+                                   args.bundle.resolve(), args.out.resolve(), observer, head_checkout=args.head.resolve())
     except ValueError as exc:
         print(json.dumps({"decision": None, "problem": str(exc)}))
         return MISMATCH_EXIT
@@ -111,6 +111,7 @@ def main(argv: list[str]) -> int:
     c.add_argument("--out", type=Path, required=True)
     j = sub.add_parser("judge")
     j.add_argument("--base", type=Path, required=True)
+    j.add_argument("--head", type=Path, required=True)
     j.add_argument("--routes", nargs="+", required=True)
     j.add_argument("--pr", required=True)
     j.add_argument("--intent", default="none")

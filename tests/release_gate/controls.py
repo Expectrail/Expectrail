@@ -72,17 +72,17 @@ CONTROLS = [
         [f"{IDN}.IdentityTest.test_an_approval_the_change_adds_to_its_own_checks_judges_nothing"]),
     # --- Candidate interference -------------------------------------------------------------------
     row(GROUPS[1], "writes-evidence-or-policy", "writes to evidence or policy",
-        [f"{BDL}.EvidenceTest.test_a_frame_rewritten_between_the_jobs_is_refused",
+        [f"{BDL}.EvidenceTest.test_an_intact_capture_from_a_different_base_game_is_refused",
+         f"{BDL}.EvidenceTest.test_an_intact_capture_from_a_different_head_game_is_refused",
+         f"{BDL}.EvidenceTest.test_a_frame_rewritten_between_the_jobs_is_refused",
          f"{BDL}.EvidenceTest.test_a_trace_rewritten_between_the_jobs_is_refused",
          f"{BDL}.EvidenceTest.test_a_trace_and_its_replay_record_rewritten_together_are_refused_by_the_manifest",
          f"{BDL}.EvidenceTest.test_a_run_taken_out_between_the_jobs_is_refused",
          f"{BDL}.EvidenceTest.test_a_capture_made_with_other_checks_is_refused",
          f"{BDL}.EvidenceTest.test_checks_the_change_rewrites_are_not_the_ones_that_judge_it"],
-        scope="the two-job gate (#254): edits to the capture's archive between the jobs that leave it "
-             "inconsistent, and checks the change carries. A whole archive replaced by another that is "
-             "consistent in itself is not caught by the judge, which does not compare the captured trees "
-             "with the pull request's commits (#467); only GitHub's digest of the artifact stops it, and "
-             "that download needs GitHub and is not run here. What the game itself writes from inside its "
+        scope="the two-job gate (#254): edits between the jobs, an archive consistent in itself whose "
+             "recorded base or head game tree differs from its checkout, and checks the change carries. "
+             "The artifact download needs GitHub and is not run here. What the game itself writes from inside its "
              "replay is the forged-trace and rewritten-frame rows",
         baselines=TWO_JOB_BASELINES),
     row(GROUPS[1], "forged-trace", "a forged trace", open="undefended: since #254 the judgment runs outside the "

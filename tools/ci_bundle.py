@@ -123,7 +123,7 @@ class Attempts(verify.SavedReplays):
         return self.runs[f"{side}-{repeat or '1'}"](route, game, out, frames)
 
 
-def judge(policy, base, pr, intent, archive, out, observer):
+def judge(policy, base, pr, intent, archive, out, observer, *, head_checkout):
     checks = verify.read_checks(base, policy.specs, policy.routes, "base")
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -142,7 +142,11 @@ def judge(policy, base, pr, intent, archive, out, observer):
             if set(listed) != expected or len(expected) != len(manifest["runs"]):
                 raise ValueError("missing, duplicate or unexpected replay")
             evidence.directory(data, ["manifest.json", *groups(intent)])
-            trees, arms = {}, {}
+            # Only this digest comes from the head checkout. The gate still receives the
+            # logical head folder, saved replays and trusted base policy.
+            trees = {base / policy.game: verify.game_tree(base / policy.game, base),
+                     head / policy.game: verify.game_tree(head_checkout / policy.game, head_checkout)}
+            arms = {}
             for group in groups(intent):
                 evidence.directory(data / group, routes)
                 game = (base if group.startswith("base-") else head) / policy.game
@@ -151,8 +155,11 @@ def judge(policy, base, pr, intent, archive, out, observer):
                     folder = data / group / digest
                     evidence.directory(folder, ("replay.json", "trace.json", "frames"))
                     run = evidence.saved_run(folder, route)
-                    if listed[group, digest] != run["replaySha256"] or trees.setdefault(game, run["tree"]) != run["tree"]:
-                        raise ValueError("replay digest or game tree differs")
+                    if listed[group, digest] != run["replaySha256"]:
+                        raise ValueError("replay digest differs")
+                    if trees[game] != run["tree"]:
+                        side = group.split("-")[0]
+                        raise ValueError(f"{side} game tree differs from the checkout")
                     ticks = json.loads(route.read_bytes())["ticks"]
                     trace = run["trace"]
                     if (trace["ticks"] != ticks or len(trace["rows"]) != ticks
