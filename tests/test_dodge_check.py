@@ -190,10 +190,12 @@ class DodgeCheckTest(unittest.TestCase):
                 with self.subTest(trace=trace), self.assertRaises(ValueError):
                     region(project, trace)
 
-    def test_changed_spec_is_unapproved_and_contract_examples_validate(self):
+    def test_spec_approval_matches_its_content_and_contract_examples_validate(self):
+        from expectrail import approval
         from expectrail.contracts import validate
         spec = load(trial.REPO / self.dodge['spec'], 'test-spec')
-        self.assertNotIn('approval', spec)
+        # A draft, or an approval bound to exactly this content: never a legacy or mismatched one.
+        self.assertIn(approval.state(spec), (approval.NONE, approval.BOUND))
         for name, kind in [('trace-player-visibility.json','trace'),
                            ('test-spec-player-visibility.json','test-spec'),
                            ('verdict-player-visibility.json','verdict')]:
