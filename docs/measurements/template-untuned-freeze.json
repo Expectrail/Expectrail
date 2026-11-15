@@ -1,0 +1,32 @@
+{
+  "pr522": "cfb9c9c171d0a433c92732bffb0a39370a83431a",
+  "taskBase": "3063a8249bae50e1d2ab8313182925a1f8ee83c8",
+  "prerequisite": "5e67e66",
+  "sensorFiles": {
+    "agents/template_observations.py": "08db564592b84a6af624797fcb82065685a5cc3857cfd102cd3d30c9f30f266d",
+    "agents/template_foreground.py": "41d58531099e53ffdef1fa75b2c31f4dcd212d019632b7f68b460c8dc60b5161",
+    "agents/template_art.py": "c2f5831c401f8474fcbaf7a4e7e6b7f5d252177b05a1aabdb12e7f0ee17cfaef",
+    "agents/template_regions.py": "5df59a80c5ece9ba5f8ee8efbc419f39e93f5cafcf350fd5039bd89fcf8971db",
+    "agents/template_sensor_bench.py": "72ac56152b74816db4086fa6dababc445bf0bb0395c43dfa98a555eb761051ff",
+    "contracts/observations.schema.json": "e8a2b9c77b287d5b254edc115df757bcd3ba4aa75108fd8015c2962d61443fad",
+    "contracts/template-bank.schema.json": "422210fd75efd7ec563f369c656841e3c014ba59d769d531764b3056ea8b8009",
+    "contracts/template-measurement.schema.json": "fdc3111e26966f33cb8f375b392cad97d019f5382ed9776fc3a9a060230d366c",
+    "contracts/template-foreground-catalogue.schema.json": "14f094cc3fed0d233983c94de1438c9d2c464b1b1cd35372f82d070764e9c92a"
+  },
+  "platformerBankSha256": "6d646efd35e96306d10ac7e7ab615c2ee63a3d606e95d8a4d441adf7a7d60235",
+  "platformerBankCanonical": "a40e0e0e49d729eaeb6e58b3686e0102e2573f6407d2f4ddc1a0de1afd515eb8",
+  "planSha256": "57ec56645b50114e4aa8500d8279d70a1d73cb07faa01441ee5719c09054d372",
+  "priorFrameHashesSha256": "b8d8ae447e4df1e87cc1fefb2e9157dd23989552fbeb192888a1d30558421799",
+  "priorCaptureCount": 2190,
+  "routeFiles": {
+    "tests/fixtures/template-untuned/routes/sensor-kinematic-cal-air.json": "b16bdaa57f81ec35dfcec6489a1852b4ddf038add70d5c0c077ef01451fc8ea1",
+    "tests/fixtures/template-untuned/routes/sensor-kinematic-cal-turns.json": "0b7cf0a39edda596b81502f973dd600a8a30063f371904f34beecf4665990fe9",
+    "tests/fixtures/template-untuned/routes/sensor-kinematic-cal-validation.json": "ccd7a4b9228aa8ff147b1b1384fe26cda1da1110f732f84fa1c91b9221d8aab5",
+    "tests/fixtures/template-untuned/routes/sensor-kinematic-cal-walk.json": "e252a86261333dcd9fc49b77dfb5d1a41ccb9ee006ab69d48845b33029022395",
+    "tests/fixtures/template-untuned/routes/sensor-untuned-kinematic-v1.json": "342be4454a5bed0a20c7557e8e21d2c0a87b25a146863f0e59f678192864ff46",
+    "tests/fixtures/template-untuned/routes/sensor-untuned-platformer-v1.json": "a8eab554df6547bc18e9b12b9b8e60f7d540656395cc45c15e47459a78f95cb1",
+    "harness/routes/coins.json": "24bad991c37e15daef971d6eac1dd2b43b6509202db8e0a233bf6f786e5ac542",
+    "tests/outside/kinematic-character/routes/walk.json": "4a53e5b12e0b291a8db650c21825595ed1a16ade0b17a0265b62f58570dd78a3",
+    "tests/outside/projects.json": "21c8bac779fef77b7d12e766faa03438a1504e1e8ee03dcbd630298d0e843279"
+  }
+}
