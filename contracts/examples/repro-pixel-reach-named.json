@@ -1,0 +1,96 @@
+{
+ "benchSha256": "216fa355f94cc9d6478867b69b90e5ef3ca6f7503b89e5674e21f68b3ceed355",
+ "defects": [
+  {
+   "id": "bullet-behind-scenery",
+   "patchSha256": "52c90da34798edd5624fbd52980b8f5a2ef1a8253b78623c4ef93296122f5cf5",
+   "probes": [
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 11,
+       "gaps": 0,
+       "maxPixelsInBox": 2379
+      },
+      "enemy": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      }
+     },
+     "framesAsked": 14,
+     "framesDiffer": 11,
+     "framesDifferInBox": 1,
+     "gaps": 0,
+     "maxPixelsInBox": 2223,
+     "probe": "shoot-left-every48"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 16,
+       "gaps": 0,
+       "maxPixelsInBox": 2401
+      },
+      "enemy": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      }
+     },
+     "framesAsked": 17,
+     "framesDiffer": 16,
+     "framesDifferInBox": 12,
+     "gaps": 0,
+     "maxPixelsInBox": 6610,
+     "probe": "move-fire-left"
+    }
+   ],
+   "probesMeasured": 3,
+   "reach": "inside-a-box",
+   "reachIfNamed": "inside-a-box"
+  }
+ ],
+ "engine": "Godot 4.7.2-stable",
+ "engineRetries": 0,
+ "format": "expectrail.repro-pixel-reach/v1",
+ "named": [
+  "bullet",
+  "enemy"
+ ],
+ "objects": [
+  "player"
+ ],
+ "observer": {
+  "box": "body",
+  "every": 10,
+  "maxFrames": 30,
+  "name": "sam-3.1-anchor",
+  "pad": 4.0
+ },
+ "probes": [
+  "move-fire-left",
+  "shoot-left-every48",
+  "wait-long"
+ ],
+ "replaysPerBuild": {
+  "clean": 1,
+  "defect": 1
+ },
+ "totals": {
+  "defects": 1,
+  "error": 0,
+  "inside-a-box": 1,
+  "no-difference": 0,
+  "outside-every-box": 0
+ },
+ "totalsIfNamed": {
+  "defects": 1,
+  "error": 0,
+  "inside-a-box": 1,
+  "no-difference": 0,
+  "outside-every-box": 0
+ }
+}

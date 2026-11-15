@@ -20,6 +20,7 @@
       "properties": {
         "enemies": {"enum": ["complete", "initial-instances", "absent"]},
         "projectiles": {"enum": ["complete", "initial-instances", "absent"]},
+        "objectBoxes": {"type": "boolean", "description": "Added Nov 15, 2026 by the Godot harness (#286): true when every row carries enemyBoxes and projectileBoxes. Absent on a trace from before; a reader then has no box for an enemy or a projectile and never guesses one."},
         "facing": {"type": "boolean"},
         "onFloor": {"type": "boolean"},
         "groundSources": {
@@ -67,6 +68,8 @@
           "coins": {"type": "array", "items": {"$ref": "#/$defs/point"}},
           "enemies": {"type": "array", "items": {"$ref": "#/$defs/tracked"}},
           "projectiles": {"type": "array", "items": {"$ref": "#/$defs/tracked"}},
+          "enemyBoxes": {"type": "array", "items": {"$ref": "#/$defs/trackedBox"}, "description": "Added Nov 15, 2026 by the Godot harness (#286): [id, left, top, right, bottom], the world box of the own collision of each enemy in enemies (same id) that has one to measure, measured as body is for the player. An enemy with nothing to measure is left out."},
+          "projectileBoxes": {"type": "array", "items": {"$ref": "#/$defs/trackedBox"}, "description": "Added Nov 15, 2026 by the Godot harness (#286): the same as enemyBoxes, for each projectile in projectiles."},
           "view": {
             "description": "[xx, xy, yx, yy, ox, oy]: a world point (x, y) lands at (xx*x + yx*y + ox, xy*x + yy*y + oy) in frame pixels. It is the camera of the frame drawn before this row's tick; readers take the next row's view for this tick's frame (agents/observations.py, _view_at).",
             "type": "array", "items": {"type": "number"}, "minItems": 6, "maxItems": 6
@@ -99,6 +102,7 @@
   },
   "$defs": {
     "point": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
-    "tracked": {"type": "array", "prefixItems": [{"type": "integer"}, {"type": "number"}, {"type": "number"}], "minItems": 3, "maxItems": 3}
+    "tracked": {"type": "array", "prefixItems": [{"type": "integer"}, {"type": "number"}, {"type": "number"}], "minItems": 3, "maxItems": 3},
+    "trackedBox": {"type": "array", "prefixItems": [{"type": "integer"}, {"type": "number"}, {"type": "number"}, {"type": "number"}, {"type": "number"}], "minItems": 5, "maxItems": 5}
   }
 }

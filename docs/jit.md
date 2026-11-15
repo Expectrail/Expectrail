@@ -597,6 +597,16 @@ on 9 planned frames of one probe for `enemy-walks-backwards` and 17 over six pro
 enemy or the bullets overlapping the player, not the player. Whether SAM's box of the player changes there is untested. The table and
 what it does not show are on the [bench's page](../bench/jit/public/README.md).
 
+Since November 15 the harness also logs each enemy's and bullet's own collision box every tick (the
+trace's `enemyBoxes` and `projectileBoxes`, matched to `enemies` and `projectiles` by id; header
+`capabilities.objectBoxes`; [Godot example](../contracts/examples/trace-godot.json)), and
+`agents/sam_anchor.py` `object_boxes` places them in a frame as `anchors` places the player's.
+`pixel-reach` measures those boxes too, as objects the menu does not offer yet
+([example](../contracts/examples/repro-pixel-reach-named.json)): inside the enemies' boxes,
+`enemy-walks-backwards` differs on 230 of its 241 differing planned frames; inside the bullets',
+`bullet-behind-scenery` differs on all 67. The menu does not offer `enemy` or `bullet` to
+`sam-3.1-anchor` yet.
+
 ## What this does not claim
 
 - **No detection rate.** The offline tests use a simulated game and a fake model. They show that an

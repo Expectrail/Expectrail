@@ -1,5 +1,5 @@
 {
-  "_comment": "Hand-written example of a trace from the Unity harness, in the shape harness/unity/package writes; not from a run. World pixels are Unity units times 128, y negated. The Godot harness writes the same fields without objects.",
+  "_comment": "Hand-written example of a trace from the Unity harness, in the shape harness/unity/package writes; not from a run. World pixels are Unity units times 128, y negated. The Godot harness writes the same fields without objects, and with enemyBoxes and projectileBoxes (see trace-godot.json, from a run).",
   "format": "expectrail.trace/v0",
   "ticks": 3,
   "physicsTicksPerSecond": 50,
