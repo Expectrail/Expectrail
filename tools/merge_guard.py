@@ -171,11 +171,25 @@ class Reason:
         return f"{self.label}: {self.rule}: {self.path}: {self.message}"
 
 
+LONG_LINE = 1_000   # characters; ndiff compares changed lines character by character
+MAX_CHARS = 2_000_000
+
+
+def _cheap(old: list[str], new: list[str]) -> bool:
+    """True when ndiff would be too slow: many lines, much text, or very long lines (#472: a 7.7 MB
+    page with lines of 24,190 characters ran past the check's 5-minute limit)."""
+    if len(old) * len(new) >= 4_000_000:
+        return True
+    if sum(map(len, old)) + sum(map(len, new)) >= MAX_CHARS:
+        return True
+    return any(len(l) > LONG_LINE for l in old) or any(len(l) > LONG_LINE for l in new)
+
+
 def _lines(change: Change, sign: str) -> list[str]:
     old = (change.old or "").splitlines()
     new = (change.new or "").splitlines()
     out = []
-    for line in difflib.ndiff(old, new) if len(old) * len(new) < 4_000_000 else _plain(old, new):
+    for line in _plain(old, new) if _cheap(old, new) else difflib.ndiff(old, new):
         if line.startswith(sign + " "):
             out.append(line[2:])
     return out
