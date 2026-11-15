@@ -29,6 +29,22 @@ The app serves its own page without downloading scripts, styles or fonts.
    When the job has an existing report, the page links to it. Missing tools are reported by
    the verifier, with its suggested fix.
 
+### Try kinematic-character with saved vision answers
+
+Once the app is open, the outside game needs no terminal commands. Get the
+[pinned Godot demos](https://github.com/godotengine/godot-demo-projects/archive/b761b4cd5718a7118f2c95eb55f181d0a5f004f1.zip)
+and extract the archive. In **Before**, paste the path to its unchanged
+`2d/kinematic_character` folder. In **After**, paste the path to your changed copy of
+that game. Select **Use the kinematic-character example with recorded vision** and
+**Check folders**, then **Verify**. Open the evidence viewer from the result.
+
+Expectrail checks Before against the pinned game, copies the games into the job store,
+and supplies the walk route and approved ground check used in the [outside trial](outside-projects.md).
+Past runs names those verification copies. Godot replays both versions. Vision answers come
+only from the published recording, matched by frame and question. An engine failure can reject
+even if a frame has no recorded answer. A missing answer cannot clear the change.
+The example needs the usual local Godot and display tools. It uses no provider key or fixer.
+
 The result says which observers judged, from the job's own status or findings. With `both`,
 the engine's record and the vision model judge every check. If that rule records no visual
 observer, the page says the model was unavailable. An absent observers block or `engine-only`

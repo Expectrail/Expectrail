@@ -59,6 +59,10 @@ def copy_checkout(source, target):
         for file in source.glob(pattern):copy(str(file.relative_to(source)))
     for name in ('harness/get_godot.sh','harness/macos/get_godot_mac.sh','bugs/physics-fall-through/v1.patch'):
         copy(name)
+    # The local app's recorded outside example (#370): the package data pyproject.toml names.
+    for name in ('kinematic-character/routes/walk.json','recordings/kinematic-character/calibration.json',
+                 'recordings/kinematic-character/vision-recording.json'):
+        copy('tests/outside/'+name)
     def ignore(folder,names):
         return [n for n in names if n in ('.git','.godot','__pycache__','Expectrail-heldout') or n.startswith(('fresh-','.env'))]
     for folder in ('game/platformer','tests/projects/crate-run'):
