@@ -1,0 +1,26 @@
+[gd_scene load_steps=5 format=3]
+[ext_resource type="Script" path="res://avatar.gd" id="motion"]
+[ext_resource type="Texture2D" path="res://square.svg" id="art"]
+[sub_resource type="RectangleShape2D" id="body"]
+size = Vector2(24,24)
+[sub_resource type="RectangleShape2D" id="floor"]
+size = Vector2(2000,24)
+[node name="Stage" type="Node2D"]
+[node name="Actors" type="Node2D" parent="."]
+[node name="Avatar" type="CharacterBody2D" parent="Actors" groups=["controlled"]]
+position = Vector2(80,116)
+script = ExtResource("motion")
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Actors/Avatar"]
+shape = SubResource("body")
+[node name="Art" type="Sprite2D" parent="Actors/Avatar"]
+texture = ExtResource("art")
+[node name="Follow" type="Camera2D" parent="Actors/Avatar"]
+position_smoothing_enabled = false
+[node name="Lookalike" type="Sprite2D" parent="."]
+position = Vector2(300,116)
+texture = ExtResource("art")
+[node name="Floor" type="StaticBody2D" parent="."]
+position = Vector2(500,140)
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Floor"]
+shape = SubResource("floor")
+[node name="NotSpatial" type="Node" parent="."]
