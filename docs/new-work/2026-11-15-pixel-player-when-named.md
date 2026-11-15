@@ -25,7 +25,7 @@ reserved and counted a player image a frame for a probe with only an enemy check
 makes.
 
 ## What was run
-- `python3 -m unittest tests.test_jit_pixel_player tests.test_jit_pixel_named`: 40 tests, OK (16 new).
+- `python3 -m unittest tests.test_jit_pixel_player tests.test_jit_pixel_named`: 40 tests, OK (15 new).
 - Full suite on the branch (main 02e66bd plus this change), after
   `git fetch --no-tags --depth=1 origin c169a5e0da304773587304ed47bc8aabcec80da7`:
   `python3 -m unittest discover -s tests -t .`, 3,952 tests, OK, 40 skipped.
