@@ -21,10 +21,8 @@ accept is not clearance: the check fails as "superseded". A capture made for the
 for the new one. GitHub's API is a stand-in in these tests (``bundle.GitHub``); the hosted run on a
 test pull request is the rest of #254 and Sean's.
 
-What these do not cover, said in the rows: a whole archive replaced by another one that is consistent
-in itself. The judge cannot tell it from the real one: it does not compare the trees it was given
-with the pull request's commits (#467). What stops that today is GitHub's digest of the artifact, checked by
-``tools.ci_checks.download``, which needs GitHub and is not run here.
+The judge also compares each recorded game tree to the corresponding checkout. The separate
+GitHub artifact download and its digest check need GitHub and are not run here.
 """
 from __future__ import annotations
 
@@ -114,9 +112,11 @@ class BundleCase(GateCase):
             raise AssertionError(f"the capture of {name} failed: {err[-3000:]}")
         return out
 
-    def judge(self, bundle: Path, pr: dict = PR, base: Path | None = None) -> tuple[int, dict, Path]:
+    def judge(self, bundle: Path, pr: dict = PR, base: Path | None = None,
+              head: Path | None = None) -> tuple[int, dict, Path]:
         out = self.tmp / f"judged-{bundle.stem}"
-        code, stdout, err = driver("judge", "--base", str(base or self.clean), "--routes", ROUTE,
+        code, stdout, err = driver("judge", "--base", str(base or self.clean), "--head", str(head or self.clean),
+                                   "--routes", ROUTE,
                                    "--pr", json.dumps(pr), "--bundle", str(bundle), "--out", str(out))
         self.assertTrue(stdout.strip(), err[-3000:])
         return code, json.loads(stdout.strip().splitlines()[-1]), out
@@ -140,12 +140,18 @@ class BundleBaselineTest(BundleCase):
         self.assertEqual((code, result["decision"]), (0, "accept"), result)
 
     def test_the_trusted_judge_rejects_the_seeded_bugs_capture(self):
-        code, result, _out = self.judge(self.bug_bundle)
+        code, result, _out = self.judge(self.bug_bundle, head=self.bug)
         self.assertEqual((code, result["decision"]), (1, "reject"), result)
 
 
 class EvidenceTest(BundleCase):
     """Writes to evidence or policy."""
+
+    def test_an_intact_capture_from_a_different_base_game_is_refused(self):
+        self.assertRefused(self.clean_bundle, "base game tree", base=self.bug)
+
+    def test_an_intact_capture_from_a_different_head_game_is_refused(self):
+        self.assertRefused(self.bug_bundle, "head game tree", head=self.clean)
 
     def test_a_frame_rewritten_between_the_jobs_is_refused(self):
         def change(name, data):
@@ -184,7 +190,7 @@ class EvidenceTest(BundleCase):
                 replay["trace"]["sha256"] = hashlib.sha256(new_trace).hexdigest()
                 return json.dumps(replay).encode()
             return data
-        self.assertRefused(self.edited("trace-and-record", change), "replay digest or game tree differs")
+        self.assertRefused(self.edited("trace-and-record", change), "replay digest differs")
 
     def test_a_run_taken_out_between_the_jobs_is_refused(self):
         with zipfile.ZipFile(self.clean_bundle) as z:
@@ -205,7 +211,7 @@ class EvidenceTest(BundleCase):
         with zipfile.ZipFile(bundle) as z:
             manifest = json.loads(z.read("manifest.json"))
         self.assertEqual(manifest["changed"]["specs"], 1, manifest["changed"])
-        code, result, _out = self.judge(bundle)
+        code, result, _out = self.judge(bundle, head=head)
         self.assertNotEqual(code, 0, "exit 0 is clearance")
         self.assertEqual((code, result["decision"]), (1, "reject"), result)
 
