@@ -215,3 +215,25 @@ class _NoCache:
         return None
 
 
+
+
+class RecordedBankObserver(FramesObserver):
+    """Exact answers from an ordered set of trusted recordings, never a live fallback.
+
+    Earlier files win for a duplicate frame/question. In CI clean.json remains first, so adding
+    combat cannot replace any existing smoke answer. Dates/runs remain in ``recordings``.
+    """
+
+    def __init__(self, recordings: list[dict], **kw):
+        if not recordings:
+            raise RecordingError("the recording bank is empty")
+        self.recordings = recordings
+        self.client = RecordedClient(recordings[0])
+        for doc in recordings[1:]:
+            other = RecordedClient(doc)
+            if doc["model"] != recordings[0]["model"]:
+                raise RecordingError("recordings in a bank must use the same model and provider")
+            for key, answer in other._answers.items():
+                self.client._answers.setdefault(key, answer)
+        self.client.provider = "recorded: " + ", ".join(d["sample"] for d in recordings)
+        super().__init__(client=self.client, cache=_NoCache(), name=NAME, **kw)

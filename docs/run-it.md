@@ -70,7 +70,8 @@ Sean's to dispatch. All three run from a clone of the repository (the manifest i
 
 Sean records a sample from the Actions tab, with no terminal:
 [`.github/workflows/run-it-record.yml`](../.github/workflows/run-it-record.yml), "Run it record", with
-the sample picked from a list and a spend cap (default $1.00, at most $2). It runs on main only.
+the recording `target` picked from a list and a spend cap (default $1.00, at most $2). It runs on main only.
+The three original targets are website samples; `gate-combat` is for CI only.
 
 - **record** (`main-only` environment, so Sean approves each run; `MODEL_API_KEY`; `contents: read`;
   30 minutes): replays the sample with every replay in the sandbox, runs `expectrail.runit record`
@@ -87,6 +88,51 @@ The link is there instead of a pull request opened by the workflow because a pul
 the workflow's own token starts no workflow, so its required checks would never run. A pull request
 Sean opens from the link runs them as any other. Sean's whole part: dispatch it once per sample (about
 $1 in all), approve each run, open the three pull requests from their links and merge them.
+
+## Record the bundled combat route for CI (#444)
+
+The recording workflow also accepts `target=gate-combat`. It copies the unchanged
+`game/platformer`, replays `harness/routes/combat.json`, and judges the approved
+checks in `agents/specs`, exactly the game/route/spec paths the CI gate uses.
+It asks about every captured frame of each check and compares clean against clean
+so the recording also contains CI's paired player-box prompts. It changes no route,
+check or approval. `gate-combat` is not in the website's sample manifest and cannot
+be started through `expectrail.runit run`.
+
+After this code merges, Sean's exact dispatch is:
+
+```sh
+gh workflow run run-it-record.yml --repo Expectrail/Expectrail --ref main -f target=gate-combat -f sam_usd_cap=1.00
+```
+
+In the browser: **Actions → Run it record → Run workflow → main**, select
+**target: gate-combat**, enter **sam_usd_cap: 1.00**, then dispatch and approve the
+existing **main-only** environment. This is a paid recording run, bounded by that
+cap; it has **not been dispatched or measured by this change**.
+
+The key-holding `record` job remains contents-read only and requires the replay
+sandbox. The keyless `propose` job checks the JSON as data and proposes only
+`docs/run-it/vision/gate-combat.json` on `run-it-vision/gate-combat-<run id>`.
+It prints a PR link; Sean opens and reviews that PR. No job pushes to main and no
+secret, environment or permission was added. The workflow input is now `target`;
+existing command-line `record --sample` and `check-recording --sample` remain aliases.
+
+CI's judge still runs from the base checkout and keeps `RECORDING=docs/run-it/vision/clean.json`.
+Its reader loads that file first, then the other JSON recordings in the same trusted
+folder in filename order. The existing bug/repair recordings supply clean smoke
+player-box answers; the new file supplies combat answers. Duplicate frame/question
+keys keep the primary answer, so another recording cannot replace a clean answer.
+The bank rejects invalid files, mismatched filename/target ids and mixed models.
+There is no fuzzy match or live fallback: a missing frame or changed prompt still
+reports `not-recorded` and blocks acceptance. The verdict rules and
+`expectrail-comment.yml` are unchanged.
+
+Offline tests demonstrate a combat check needing review without its recording and
+passing with all 90 frame answers and 10 sampled player-box answers from a scripted
+model. These are stand-ins, not a real-engine or model result. The real recording
+must be generated, reviewed and merged before clean combat captures can clear CI.
+A recording PR is itself judged using its base's recordings; its own newly proposed
+answers do not make its clearance pass. No gate is weakened to bootstrap that merge.
 
 ## The workflow
 
