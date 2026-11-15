@@ -1225,6 +1225,12 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
                     for s in spec_docs]
     route_records = [{"name": n, "sha256": sha} for n, _p, sha in route_list] if head else []
     check_problems += len(input_problems)
+    if yard is not None and yard.get("draft") is True:
+        # A config `expectrail init` wrote and nobody has reviewed (#260): its bindings decide what
+        # the engine measures, so an accept cannot rest on it. A failing check still rejects.
+        check_problems += 1
+        problems.append("the project config is a draft (`draft: true`, written by `expectrail init`); "
+                        "review its bindings and remove `draft` before an accept can rest on it.")
     if config_differs:
         # The same count as a spec or route file the gate could not use: the reader recomputes the
         # decision from it, so an accept cannot rest on a config the change wrote. A failing check

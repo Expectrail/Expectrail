@@ -97,7 +97,7 @@ def make_repo(root: Path, *, bug: bool = False, crash: bool = False, spec_edit: 
     return root
 
 
-def _config(game: Path, *, fps: int, node: str) -> None:
+def _config(game: Path, *, fps: int, node: str, draft: bool = False) -> None:
     """A valid expectrail.project.json in ``game``. The files it names are empty stand-ins."""
     (game / "main.tscn").write_text("", encoding="utf-8")
     (game / "crate.svg").write_text("<svg xmlns='http://www.w3.org/2000/svg'/>", encoding="utf-8")
@@ -106,6 +106,8 @@ def _config(game: Path, *, fps: int, node: str) -> None:
         "viewport": [640, 360], "physicsTicksPerSecond": 60, "captureFps": fps,
         "inputActions": ["jump"], "bindings": {"player": {"node": node, "texture": "res://crate.svg"}},
     }
+    if draft:
+        doc["draft"] = True
     (game / "expectrail.project.json").write_text(json.dumps(doc), encoding="utf-8")
 
 
@@ -540,6 +542,23 @@ class VerifyTest(GateCase):
             self.assertIsNone(fps)  # the rate comes from the config the gate passed, not a fixed number
             self.assertIsNone(project)  # the base has no config, so the head's captureFps 1 is not used
             self.assertIsNot(_MISSING, project)
+
+    def test_a_draft_config_from_init_is_never_the_ground_for_an_accept(self):
+        # #260: `expectrail init` writes `draft: true`; nobody has reviewed its bindings yet.
+        base = make_repo(self.tmp / "draft-base")
+        head = make_repo(self.tmp / "draft-head")
+        _config(base / "game" / "platformer", fps=60, node="Player", draft=True)
+        _config(head / "game" / "platformer", fps=60, node="Player", draft=True)
+        doc = self.gate(head, base)
+        self.assertEqual(doc["decision"], "needs-review")
+        self.assertEqual(doc["counts"]["passed"], doc["counts"]["checks"])
+        self.assertTrue(any("project config is a draft" in r for r in doc["reasons"]), doc["reasons"])
+        rec.check_record(doc)
+        reviewed = make_repo(self.tmp / "reviewed-head")
+        reviewed_base = make_repo(self.tmp / "reviewed-base")
+        _config(reviewed / "game" / "platformer", fps=60, node="Player")
+        _config(reviewed_base / "game" / "platformer", fps=60, node="Player")
+        self.assertFalse(any("draft" in r for r in self.gate(reviewed, reviewed_base)["reasons"]))
 
     def test_a_changed_player_binding_is_not_the_yardstick_and_is_not_an_accept(self):
         base = make_repo(self.tmp / "base")
