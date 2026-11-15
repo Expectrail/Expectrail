@@ -134,12 +134,14 @@ class CombatRecordingTest(Case):
         (temp / "gate-state.json").write_text(json.dumps({"pr": {}, "intent": "none"}))
         event = temp / "event.json"
         event.write_text('{"workflow_run": {}}')
-        def judge(policy, base, pr, intent, archive, out, visual):
+        def judge(policy, base, pr, intent, archive, out, visual, *, head_checkout):
+            self.assertEqual(head_checkout, temp / "head-data")
             self.assertEqual([d["sample"] for d in visual.recordings], ["clean", "gate-combat"])
             self.assertEqual(visual.describe()["name"], "sam-recorded")
             out.mkdir()
         env = dict(GITHUB_EVENT_PATH=str(event), RUNNER_TEMP=str(temp), GITHUB_RUN_ID="999", RECORDING=str(self.clean),
-                   GAME=runit.GATE_GAME, SPECS=runit.GATE_SPECS, ROUTES=runit.COMBAT_ROUTE)
+                   HEAD_CHECKOUT=str(temp / "head-data"), GAME=runit.GATE_GAME, SPECS=runit.GATE_SPECS,
+                   ROUTES=runit.COMBAT_ROUTE)
         with mock.patch.dict(os.environ, env), mock.patch.object(ci_checks, "context", return_value=ctx()), \
                 mock.patch.object(ci_bundle, "judge", side_effect=judge) as called, \
                 mock.patch("agents.sam_observations.default_client", side_effect=AssertionError("model")):
