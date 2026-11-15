@@ -715,7 +715,8 @@ class ProcessTest(Case):
             self.assertEqual((paths.output / "evidence.txt").read_text(encoding="utf-8"), f"evidence of {job}\n")
             self.assertEqual((paths.work / "scratch.txt").read_text(encoding="utf-8"), job)
             self.assertEqual(sorted(p.name for p in paths.root.iterdir()),
-                             ["lock", "output", "request.json", "status.json", "work", "worker.log"])
+                             ["job-budget.json", "lock", "output", "request.json", "status.json", "work", "worker.log"])
+            self.assertEqual(json.loads(paths.budget.read_text())["jobId"], job)
 
     def test_a_cancelled_job_ends_cancelled_with_everything_it_started_stopped(self):
         job = self.job("slow")

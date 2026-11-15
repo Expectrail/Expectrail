@@ -39,6 +39,7 @@ from expectrail import __version__
 from expectrail import diagnostics as diag
 from expectrail.gate import record as rec
 from expectrail.orchestrator import request as req
+from expectrail.orchestrator import budget as costs
 
 FORMAT = "expectrail.verify-job/v1"
 SCHEMA_PATH = resources.ROOT / "contracts" / "verify-job.v1.schema.json"
@@ -54,6 +55,8 @@ JOB_ID_LENGTH = 32
 JOB_ENV = "EXPECTRAIL_JOB"
 # Codes a job can carry beyond expectrail.diagnostics.CODES: the worker itself, not the change.
 OWN_CODES = {
+    "BUDGET_STOP": ("the spend budget stopped the job; verification is incomplete",
+                    "check the named cap and the recorded holds before starting a new job"),
     "WORKER_LOST": ("the worker process stopped without finishing the job; there is no result",
                     "run the verification again"),
     "INTERNAL_ERROR": ("the orchestrator failed; this says nothing about the change",
@@ -74,7 +77,10 @@ class IdempotencyConflict(StoreError):
 
 
 def schema() -> dict:
-    return json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    doc = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    # Resolve this one repository-owned reference locally, never over the network.
+    doc["properties"]["budget"] = costs.schema()
+    return doc
 
 
 def now() -> datetime:
@@ -106,6 +112,13 @@ def check_status(doc) -> None:
         req.check_bug(doc)
     except req.RequestError as exc:
         raise StoreError(str(exc)) from exc
+    if "budget" in doc:
+        try:
+            costs.check(doc["budget"], doc["id"])
+        except (ValueError, rec.RecordError) as exc:
+            raise StoreError(f"invalid job budget: {exc}") from exc
+        if doc["budget"]["stopped"] and doc["decision"] in ("accept", "reject"):
+            raise StoreError("a stopped budget requires needs-review, never accept or reject")
     if "repair" in doc and doc["decision"] != "reject":
         raise StoreError("only a rejected job can have an auto-fix outcome")
     final, decided = doc["phase"] in FINAL, doc["decision"] is not None
@@ -171,6 +184,8 @@ class JobPaths:
     def output(self) -> Path: return self.root / "output"
     @property
     def log(self) -> Path: return self.root / "worker.log"
+    @property
+    def budget(self) -> Path: return self.root / "job-budget.json"
 
 
 class JobStore:
@@ -254,6 +269,7 @@ class JobStore:
             "format": FORMAT, "id": job_id, "phase": "queued", "decision": None, "reasons": [], "diagnostics": [],
             "inputs": inputs, "executionClass": request["executionClass"], "evidenceGrade": None,
             **{key: request[key] for key in ("intent", "bug") if key in request},
+            "budget": costs.JobCosts(job_id).snapshot(),
             # A job nobody takes is failed when this first lease runs out (`status`), so a starter that
             # died between creating the job and starting its worker leaves nothing to wait on for ever.
             "worker": None, "lease": self._lease(), "output": None, "history": [{"phase": "queued", "at": created}],
@@ -261,6 +277,7 @@ class JobStore:
         }
         check_status(status)
         _write_atomic(paths.request, json.dumps(request, indent=2) + "\n")
+        _write_atomic(paths.budget, json.dumps(status["budget"], indent=2) + "\n")
         _write_atomic(paths.status, json.dumps(status, indent=2) + "\n")
         return status
 
@@ -328,8 +345,20 @@ class JobStore:
     def _write(self, paths: JobPaths, doc: dict) -> dict:
         doc["updatedAt"] = stamp()
         check_status(doc)
+        if "budget" in doc:
+            _write_atomic(paths.budget, json.dumps(doc["budget"], indent=2) + "\n")
         _write_atomic(paths.status, json.dumps(doc, indent=2) + "\n")
         return doc
+
+    def record_budget(self, job_id: str, budget: dict) -> dict:
+        """Persist a worker snapshot without changing any phase or final decision."""
+        paths = self._existing(job_id)
+        with self._locked(paths.lock):
+            doc = self._read(paths)
+            if doc.get("budget") == budget:
+                return doc
+            doc["budget"] = budget
+            return self._write(paths, doc)
 
     def _lease(self) -> dict:
         beat = now()
@@ -403,6 +432,13 @@ class JobStore:
             doc = self._read(paths)
             if doc["phase"] in FINAL:
                 return doc, False
+            stop = doc.get("budget", {}).get("stopped")
+            if phase == "completed" and stop:
+                decision = "needs-review"
+                reasons = [f"BUDGET_STOP: {stop}"] + list(reasons or [])
+                diagnostics = list(diagnostics or [])
+                if not any(d["code"] == "BUDGET_STOP" for d in diagnostics):
+                    diagnostics.append(diagnostic("BUDGET_STOP", stage=doc["phase"], detail=stop))
             output = None
             decided = phase == "completed" and decision in ("accept", "reject")
             if decided and not _holds_a_file(paths.staging):
