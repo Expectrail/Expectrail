@@ -6,6 +6,7 @@ public patches to the copies. Calibration is frozen before any candidate is repl
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -22,6 +23,40 @@ CASES = [('clean-smoke', 'smoke', []), ('clean-combat', 'combat', []), ('clean-t
          ('invisible-player', 'smoke', ['bugs/physics-fall-through/v1.patch', 'agents/fixtures/fix-but-hide-player.patch']),
          ('sinking', 'smoke', ['bugs/sinking/v2.patch']),
          ('fall-through', 'smoke', ['bugs/physics-fall-through/v1.patch'])]
+
+
+def presence_alarm_frames(run):
+    return {row['frame'] for row in run['summary']['disagreements'] if row['status'] in ('not-found', 'displaced')}
+
+
+def run_alarm_frames(run):
+    return presence_alarm_frames(run) | set(run.get('regionCheck', {}).get('crossedFrames', []))
+
+
+def complete_clean(report):
+    rows = [r for r in report['runs'] if r['name'].startswith('clean-')]
+    return bool(rows) and all(r['summary']['measured'] == r['summary']['objectFrames'] > 0
+        and not r['regionCheck']['unavailableFrames'] for r in rows)
+
+
+def seed_detections(report):
+    out = {}
+    for name in ('invisible-player', 'sinking', 'fall-through'):
+        rows = [r for r in report['runs'] if r['name'] == name]
+        if len(rows) != 1:
+            raise sensor.SensorError('measurement needs exactly one run for each seeded bug')
+        row = rows[0]
+        if name == 'fall-through':
+            check = row['regionCheck']
+            frames = check['crossedFrames']
+            measured = len(check['proof']) > len(check['unavailableFrames'])
+            rule = 'pixel-position-crosses-clean-region/v1'
+        else:
+            frames = sorted(presence_alarm_frames(row))
+            measured = row['summary']['measured'] > 0
+            rule = 'pixel-absence/v1'
+        out[name] = dict(rule=rule, measured=measured, detected=bool(frames) and measured, frames=frames)
+    return out
 
 
 def check_report(report):
@@ -41,9 +76,23 @@ def check_report(report):
                 timing['sensorSeconds']/timing['frames'] if timing['frames'] else None)
                 or (timing['frames'] and not 0 <= timing['p95FrameSeconds'] <= timing['maxFrameSeconds'])):
             raise sensor.SensorError('measurement timing does not match its frame count')
+    if report['format'] == 'expectrail.template-measurement/v1':
+        from agents import template_regions
+        for row in report['runs']:
+            actual = template_regions.check(row['regionCheck']['proof'], report['groundReference'], tolerance=row['regionCheck']['tolerancePx'])
+            if actual != row['regionCheck'] or [p['frame'] for p in actual['proof']] != list(range(row['summary']['frames'])):
+                raise sensor.SensorError('region proof does not match its reported crossings or frame count')
+        if report['seedDetections'] != seed_detections(report):
+            raise sensor.SensorError('seed detection claims disagree with the pixel evidence')
+        wanted = complete_clean(report) and report['clean']['falseAlarmRate'] is not None and report['clean']['falseAlarmRate'] < .02
+        seeded = all(item['measured'] and item['detected'] for item in report['seedDetections'].values())
+        if report['targets']['falseAlarmTargetMet'] != wanted or report['targets']['seedDetectionsMet'] != seeded:
+            raise sensor.SensorError('foreground target claims disagree with their evidence')
     clean = [r['summary'] for r in report['runs'] if r['name'].startswith('clean-')]
     measured = sum(s['measured'] for s in clean)
     alarms = sum(s['counts']['not-found'] + s['counts']['displaced'] for s in clean)
+    if report['format'] == 'expectrail.template-measurement/v1':
+        alarms = sum(len(run_alarm_frames(r)) for r in report['runs'] if r['name'].startswith('clean-'))
     if report['clean'] != dict(measured=measured, alarms=alarms, falseAlarmRate=alarms/measured if measured else None):
         raise sensor.SensorError('clean aggregate does not match the measured runs')
     invisible = [r['summary'] for r in report['runs'] if r['name'] == 'invisible-player']
@@ -88,6 +137,20 @@ def render(report):
               'Unavailable and off-screen predictions are excluded from rate denominators and shown above. '
               'Matched crops do not certify colour, semantic identity, all sprite pixels, or other projects. '
               'A collision box is a search hint, not independent visibility truth. No default verdict uses these numbers.', '']
+    if report['format'] == 'expectrail.template-measurement/v1':
+        lines += ['## Seeded detections', '',
+                  '| Seed | Rule | Detected frames | Detected |',
+                  '| --- | --- | ---: | --- |']
+        for name, item in report['seedDetections'].items():
+            lines.append(f"| {name} | {item['rule']} | {len(item['frames'])} | {item['detected']} |")
+        lines += ['', 'The run table above reports pixel presence. The clean false-alarm total also includes '
+                  'crossings of frozen clean ground regions. Fall-through is detected by observed player pixels '
+                  'crossing that reference, with 20 px tolerance; a visible player below the floor is not absence.',
+                  'Ground regions come from the pinned clean calibration trace, not candidate ground/body rows. '
+                  'They do not prove current floor visibility, detect moved floors, or certify a player already below '
+                  'terrain at the first frame. Missing player pixels, camera or reference leave region evidence unavailable.',
+                  f"Under 2% clean false alarms with complete clean evidence: {report['targets']['falseAlarmTargetMet']}. "
+                  f"All three seeded bugs detected: {report['targets']['seedDetectionsMet']}.", '']
     return '\n'.join(lines)
 
 
@@ -155,7 +218,7 @@ def read_checkpoint(path, identity):
     return checkpoint
 
 
-def measure(out, *, godot, game=None, run_replay=None, config=None, evidence='real engine', resume=False):
+def measure(out, *, godot, game=None, run_replay=None, config=None, evidence='real engine', resume=False, foreground_art=None, foreground_catalogue=None):
     import os
     import time
     out,game=Path(out).resolve(),Path(game or ROOT/'game/platformer').resolve()
@@ -166,7 +229,12 @@ def measure(out, *, godot, game=None, run_replay=None, config=None, evidence='re
     out.mkdir(parents=True,exist_ok=True)
     runner=run_replay or harness.run
     clean_tree=harness.tree_digest(game)
-    settings=dict(sensor.DEFAULTS,**(config or {}))
+    if foreground_art is not None:
+        from agents import template_foreground as foreground
+        defaults = foreground.DEFAULTS
+    else:
+        defaults = sensor.CALIBRATION_DEFAULTS
+    settings=dict(defaults,**(config or {}))
     if settings['matchThreshold']<0.90:
         raise sensor.SensorError('the threshold floor cannot be lowered below 0.90')
     plans=calibration_routes()
@@ -181,6 +249,16 @@ def measure(out, *, godot, game=None, run_replay=None, config=None, evidence='re
               runtime=dict(numpy=np.__version__,pillow=PIL.__version__,threadEnvironment={
                   name:os.environ[name] for name in ('OPENBLAS_NUM_THREADS','OMP_NUM_THREADS','MKL_NUM_THREADS','BLIS_NUM_THREADS')
                   if name in os.environ}),evidence=evidence)
+    if foreground_catalogue is not None:
+        if foreground_art is None:
+            raise sensor.SensorError('a foreground catalogue needs selected foreground art')
+        from agents import template_art
+        foreground_catalogue = template_art.read_catalogue(foreground_catalogue)
+        plan['foregroundCatalogueSha256'] = digest(foreground_catalogue)
+    if foreground_art is not None:
+        from agents import template_art, template_regions
+        plan['implementationSha256'] = digest({Path(module.__file__).name: sensor.sha(module.__file__) for module in (sensor, foreground, template_art, template_regions)})
+        plan['foregroundArt'] = foreground.art_sources(game, foreground_art, clean_tree)
     if progress_path.exists():
         progress=json.loads(progress_path.read_text())
         if progress.get('plan')!=plan:
@@ -207,12 +285,18 @@ def measure(out, *, godot, game=None, run_replay=None, config=None, evidence='re
         atomic_json(path,route)
         target,_=capture(route['name'],path)
         calibration.append(target)
-    bank_path = frozen_bank(out, progress, lambda: sensor.calibrate_routes(
-        calibration[:-1], calibration[-1], clean_tree=clean_tree, config=settings))
+    def calibrate():
+        if foreground_art is not None:
+            return foreground.calibrate_routes(calibration[:-1], calibration[-1], clean_game=game,
+                clean_tree=clean_tree, art=foreground_art, config=settings, catalogue=foreground_catalogue)
+        return sensor.calibrate_routes(calibration[:-1], calibration[-1], clean_tree=clean_tree, config=settings)
+    bank_path = frozen_bank(out, progress, calibrate)
     bank = sensor.load_bank(bank_path)
-    report=dict(format='expectrail.template-measurement/v0',evidence=evidence,config=bank['config'],
+    report=dict(format='expectrail.template-measurement/v1' if foreground_art is not None else 'expectrail.template-measurement/v0',evidence=evidence,config=bank['config'],
                 cleanTree=clean_tree,bankSha256=digest(bank),calibrationFrames=sorted({t['frame'] for t in bank['templates']}),
                 calibration=bank['calibration'],templateCount=len(bank['templates']),runtime=plan['runtime'],runs=[])
+    if foreground_art is not None:
+        report['groundReference'] = bank.get('groundReference')
     for name,route,patches in CASES:
         target,replay=capture(name,ROOT/f'harness/routes/{route}.json',[ROOT/p for p in patches])
         checkpoint_path=target/'sensor-progress.json'
@@ -234,6 +318,9 @@ def measure(out, *, godot, game=None, run_replay=None, config=None, evidence='re
                     maxFrameSeconds=max(samples) if samples else None)
         row=dict(name=name,route=route,patches=patches,replaySha256=identity['replaySha256'],summary=sensor.summarize(doc),timing=timing)
         report['runs'].append(row)
+        if foreground_art is not None:
+            from agents import template_regions
+            row['regionCheck'] = template_regions.from_observations(doc, json.loads((target/'trace.json').read_text()), bank.get('groundReference'))
         atomic_json(target/'template-result.json',row)
         if name not in progress['completed']:progress['completed'].append(name)
         atomic_json(progress_path,progress)
@@ -242,15 +329,50 @@ def measure(out, *, godot, game=None, run_replay=None, config=None, evidence='re
     clean_runs=[r for r in report['runs'] if r['name'].startswith('clean-')]
     measured=sum(r['summary']['measured'] for r in clean_runs)
     alarms=sum(r['summary']['counts']['not-found']+r['summary']['counts']['displaced'] for r in clean_runs)
+    if foreground_art is not None:
+        alarms = sum(len(run_alarm_frames(r)) for r in clean_runs)
     report['clean']=dict(measured=measured,alarms=alarms,falseAlarmRate=alarms/measured if measured else None)
     invisible=next(r['summary'] for r in report['runs'] if r['name']=='invisible-player')
     report['invisiblePlayerAlarms']=invisible['counts']['not-found']+invisible['counts']['displaced']
     report['targets']=dict(cleanMatchedFraction=0.95,maxFrameSeconds=0.3,
         accuracyMet=all(r['summary']['frames'] and r['summary']['counts']['matched']/r['summary']['frames']>=0.95 for r in clean_runs),
         speedMet=all(r['timing']['maxFrameSeconds'] is not None and r['timing']['maxFrameSeconds']<0.3 for r in report['runs']))
+    if foreground_art is not None:
+        report['seedDetections'] = seed_detections(report)
+        report['targets'].update(maxCleanFalseAlarmRate=.02,
+            falseAlarmTargetMet=complete_clean(report) and report['clean']['falseAlarmRate'] < .02,
+            seedDetectionsMet=all(item['measured'] and item['detected'] for item in report['seedDetections'].values()))
     atomic_json(out/'template-measurement.json',report)
     (out/'template-measurement.md').write_text(render(report))
     return report
+
+
+def reuse_captures(source, *, clean_tree):
+    """Replay runner for measuring the exact same hashed PNGs with a new clean bank.
+
+    Verify the source game, route, patches, trace and every PNG before copying.
+    No engine, candidate learning, or reuse of old observations/checkpoints occurs.
+    Calibration is still frozen before measured cases are read by measure().
+    """
+    import shutil
+    source = Path(source).resolve()
+
+    def recorded(route, out, *, patches, **_kwargs):
+        old = source / Path(out).name
+        replay = checked_capture(old)
+        patch_sha = None if not patches else (sensor.sha(patches[0]) if len(patches) == 1 else
+            hashlib.sha256(b''.join(sensor.sha(p).encode() for p in patches)).hexdigest())
+        if (replay['game']['tree'] != clean_tree or replay['route']['sha256'] != sensor.sha(route)
+                or replay['game']['patchSha256'] != patch_sha
+                or bool(replay['game']['patch']) != bool(patches)):
+            raise sensor.SensorError('recorded capture does not match the requested game, route or patches')
+        out = Path(out)
+        out.mkdir(parents=True, exist_ok=False)
+        for name in ('replay.json', 'trace.json'):
+            shutil.copyfile(old/name, out/name)
+        # Copy rather than link: an interrupted or edited comparison cannot change its baseline.
+        shutil.copytree(old/'frames', out/'frames')
+    return recorded
 
 
 def main(argv=None):
@@ -258,19 +380,34 @@ def main(argv=None):
     p.add_argument('--godot', type=Path, required=True, help='existing local binary; nothing is downloaded')
     p.add_argument('--clean-game', type=Path, default=ROOT/'game/platformer', help='trusted approved clean checkout')
     p.add_argument('--out', type=Path, required=True)
+    p.add_argument('--reuse-captures', type=Path, help='re-measure verified saved PNGs; no engine calls')
+    p.add_argument('--foreground-catalogue', type=Path, help='optional trusted clean sprite-grid/pose catalogue')
+    p.add_argument('--foreground-art', action='append', metavar='OBJECT=RELATIVE_PATH', help='opt into approved RGBA foreground witnesses from the trusted clean game')
     p.add_argument('--resume', action='store_true', help='continue a frozen v2 calibration and frame checkpoints')
     args = p.parse_args(argv)
     if not args.godot.is_file():
         p.error('--godot must name an installed binary')
     try:
-        report = measure(args.out, godot=args.godot.resolve(), game=args.clean_game,resume=args.resume)
+        runner = reuse_captures(args.reuse_captures, clean_tree=harness.tree_digest(args.clean_game)) if args.reuse_captures else None
+        art = None
+        if args.foreground_art:
+            art = {}
+            for assignment in args.foreground_art:
+                name, separator, path = assignment.partition('=')
+                if not separator or not name or not path or name in art:
+                    raise sensor.SensorError('--foreground-art needs unique OBJECT=RELATIVE_PATH entries')
+                art[name] = path
+        report = measure(args.out, godot=args.godot.resolve(), game=args.clean_game,resume=args.resume,
+                         run_replay=runner, foreground_art=art, foreground_catalogue=args.foreground_catalogue)
     except (sensor.SensorError, OSError, ValueError, KeyError) as exc:
         p.exit(2, f'measurement incomplete: {exc}\n')
     print(render(report))
     # This is a measurement tool, not a product accept. No samples or no demonstrated hidden-player
     # alarm is incomplete evidence. Clean false alarms are reported, never tuned away here.
     return 0 if (report['clean']['measured'] and report['invisiblePlayerAlarms']
-                 and report['targets']['accuracyMet'] and report['targets']['speedMet']) else 2
+                 and report['targets']['accuracyMet'] and report['targets']['speedMet']
+                 and report['targets'].get('falseAlarmTargetMet', True)
+                 and report['targets'].get('seedDetectionsMet', True)) else 2
 
 
 if __name__ == '__main__':

@@ -2,70 +2,172 @@
   "type": "object",
   "properties": {
     "format": {
-      "const": "expectrail.template-measurement/v0"
+      "enum": [
+        "expectrail.template-measurement/v0",
+        "expectrail.template-measurement/v1"
+      ]
     },
     "evidence": {
       "type": "string"
     },
     "config": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "algorithm": {
-          "const": "expectrail.template-ncc/v2"
-        },
-        "coordinates": {
-          "const": "captured-frame pixels; origin top-left; xyxy half-open; y down"
-        },
-        "matchThreshold": {
-          "type": "number",
-          "maximum": 1,
-          "minimum": 1e-06
-        },
-        "agreementIoU": {
-          "type": "number",
-          "maximum": 1,
-          "minimum": 1e-06
-        },
-        "searchMarginPx": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 128
-        },
-        "scales": {
-          "type": "array",
-          "items": {
-            "type": "number",
-            "minimum": 0.25,
-            "maximum": 4
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "algorithm": {
+              "const": "expectrail.template-ncc/v2"
+            },
+            "coordinates": {
+              "const": "captured-frame pixels; origin top-left; xyxy half-open; y down"
+            },
+            "matchThreshold": {
+              "type": "number",
+              "maximum": 1,
+              "minimum": 1e-06
+            },
+            "agreementIoU": {
+              "type": "number",
+              "maximum": 1,
+              "minimum": 1e-06
+            },
+            "searchMarginPx": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 128
+            },
+            "scales": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 4
+              },
+              "minItems": 1,
+              "maxItems": 9
+            },
+            "stridePx": {
+              "const": 1
+            },
+            "sampleSide": {
+              "type": "integer",
+              "minimum": 4,
+              "maximum": 32
+            },
+            "minimumContrast": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 128
+            }
           },
-          "minItems": 1,
-          "maxItems": 9
+          "required": [
+            "algorithm",
+            "coordinates",
+            "matchThreshold",
+            "agreementIoU",
+            "searchMarginPx",
+            "scales",
+            "stridePx",
+            "sampleSide",
+            "minimumContrast"
+          ]
         },
-        "stridePx": {
-          "const": 1
-        },
-        "sampleSide": {
-          "type": "integer",
-          "minimum": 4,
-          "maximum": 32
-        },
-        "minimumContrast": {
-          "type": "number",
-          "minimum": 1,
-          "maximum": 128
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "algorithm": {
+              "const": "expectrail.template-foreground/v3"
+            },
+            "coordinates": {
+              "const": "captured-frame pixels; origin top-left; xyxy half-open; y down"
+            },
+            "matchThreshold": {
+              "type": "number",
+              "maximum": 1,
+              "minimum": 1e-06
+            },
+            "agreementIoU": {
+              "type": "number",
+              "maximum": 1,
+              "minimum": 1e-06
+            },
+            "searchMarginPx": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 128
+            },
+            "scales": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 4
+              },
+              "minItems": 1,
+              "maxItems": 9
+            },
+            "stridePx": {
+              "const": 1
+            },
+            "sampleSide": {
+              "type": "integer",
+              "minimum": 4,
+              "maximum": 32
+            },
+            "minimumContrast": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 128
+            },
+            "foregroundPurity": {
+              "type": "number",
+              "minimum": 0.5,
+              "maximum": 1
+            },
+            "rgbTolerance": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8
+            },
+            "rasterTolerancePx": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2
+            },
+            "confirmationCandidates": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64
+            },
+            "minimumForegroundBins": {
+              "type": "integer",
+              "minimum": 4,
+              "maximum": 1024
+            },
+            "confirmationParts": {
+              "const": 4
+            }
+          },
+          "required": [
+            "algorithm",
+            "coordinates",
+            "matchThreshold",
+            "agreementIoU",
+            "searchMarginPx",
+            "scales",
+            "stridePx",
+            "sampleSide",
+            "minimumContrast",
+            "foregroundPurity",
+            "rgbTolerance",
+            "rasterTolerancePx",
+            "confirmationCandidates",
+            "minimumForegroundBins",
+            "confirmationParts"
+          ]
         }
-      },
-      "required": [
-        "algorithm",
-        "coordinates",
-        "matchThreshold",
-        "agreementIoU",
-        "searchMarginPx",
-        "scales",
-        "stridePx",
-        "sampleSide",
-        "minimumContrast"
       ]
     },
     "cleanTree": {
@@ -270,6 +372,54 @@
                     },
                     "object": {
                       "type": "string"
+                    },
+                    "components": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "ncc",
+                            "foregroundCoverage",
+                            "partCoverage"
+                          ],
+                          "properties": {
+                            "ncc": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "foregroundCoverage": {
+                              "type": [
+                                "number",
+                                "null"
+                              ],
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "partCoverage": {
+                              "anyOf": [
+                                {
+                                  "type": "null"
+                                },
+                                {
+                                  "type": "array",
+                                  "minItems": 4,
+                                  "maxItems": 4,
+                                  "items": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -351,6 +501,83 @@
               "maxFrameSeconds"
             ],
             "additionalProperties": false
+          },
+          "regionCheck": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tolerancePx",
+              "proof",
+              "crossedFrames",
+              "unavailableFrames"
+            ],
+            "properties": {
+              "tolerancePx": {
+                "const": 20
+              },
+              "proof": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "frame",
+                    "box",
+                    "view"
+                  ],
+                  "properties": {
+                    "frame": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "box": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          },
+                          "minItems": 4,
+                          "maxItems": 4
+                        }
+                      ]
+                    },
+                    "view": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          },
+                          "minItems": 6,
+                          "maxItems": 6
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "crossedFrames": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "unavailableFrames": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
           }
         },
         "required": [
@@ -407,7 +634,8 @@
         "selection": {
           "enum": [
             "explicit-frames",
-            "all-clean-crops"
+            "all-clean-crops",
+            "approved-foreground"
           ]
         },
         "selectionSimilarity": {
@@ -540,6 +768,15 @@
         },
         "speedMet": {
           "type": "boolean"
+        },
+        "maxCleanFalseAlarmRate": {
+          "const": 0.02
+        },
+        "falseAlarmTargetMet": {
+          "type": "boolean"
+        },
+        "seedDetectionsMet": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -549,6 +786,158 @@
         "speedMet"
       ],
       "additionalProperties": false
+    },
+    "groundReference": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "coordinates",
+            "sourceReplaySha256",
+            "sourceTraceSha256",
+            "polygons"
+          ],
+          "properties": {
+            "coordinates": {
+              "const": "trusted clean world coordinates; y down"
+            },
+            "sourceReplaySha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "sourceTraceSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "polygons": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 100000,
+              "items": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 64,
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "seedDetections": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "invisible-player",
+        "sinking",
+        "fall-through"
+      ],
+      "properties": {
+        "invisible-player": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "rule",
+            "measured",
+            "detected",
+            "frames"
+          ],
+          "properties": {
+            "rule": {
+              "enum": [
+                "pixel-absence/v1",
+                "pixel-position-crosses-clean-region/v1"
+              ]
+            },
+            "measured": {
+              "type": "boolean"
+            },
+            "detected": {
+              "type": "boolean"
+            },
+            "frames": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "sinking": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "rule",
+            "measured",
+            "detected",
+            "frames"
+          ],
+          "properties": {
+            "rule": {
+              "enum": [
+                "pixel-absence/v1",
+                "pixel-position-crosses-clean-region/v1"
+              ]
+            },
+            "measured": {
+              "type": "boolean"
+            },
+            "detected": {
+              "type": "boolean"
+            },
+            "frames": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "fall-through": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "rule",
+            "measured",
+            "detected",
+            "frames"
+          ],
+          "properties": {
+            "rule": {
+              "enum": [
+                "pixel-absence/v1",
+                "pixel-position-crosses-clean-region/v1"
+              ]
+            },
+            "measured": {
+              "type": "boolean"
+            },
+            "detected": {
+              "type": "boolean"
+            },
+            "frames": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
     }
   },
   "required": [
@@ -568,5 +957,53 @@
   ],
   "additionalProperties": false,
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Template sensor measurements, with denominators and exclusions; not a product verdict"
+  "title": "Template sensor measurements, with denominators and exclusions; not a product verdict",
+  "oneOf": [
+    {
+      "properties": {
+        "format": {
+          "const": "expectrail.template-measurement/v0"
+        },
+        "config": {
+          "properties": {
+            "algorithm": {
+              "const": "expectrail.template-ncc/v2"
+            }
+          }
+        }
+      }
+    },
+    {
+      "required": [
+        "groundReference",
+        "seedDetections"
+      ],
+      "properties": {
+        "format": {
+          "const": "expectrail.template-measurement/v1"
+        },
+        "config": {
+          "properties": {
+            "algorithm": {
+              "const": "expectrail.template-foreground/v3"
+            }
+          }
+        },
+        "runs": {
+          "items": {
+            "required": [
+              "regionCheck"
+            ]
+          }
+        },
+        "targets": {
+          "required": [
+            "maxCleanFalseAlarmRate",
+            "falseAlarmTargetMet",
+            "seedDetectionsMet"
+          ]
+        }
+      }
+    }
+  ]
 }

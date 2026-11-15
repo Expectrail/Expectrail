@@ -48,64 +48,163 @@
           "additionalProperties": false,
           "properties": {
             "config": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "algorithm": {
-                  "const": "expectrail.template-ncc/v2"
-                },
-                "coordinates": {
-                  "const": "captured-frame pixels; origin top-left; xyxy half-open; y down"
-                },
-                "matchThreshold": {
-                  "type": "number",
-                  "maximum": 1,
-                  "minimum": 1e-06
-                },
-                "agreementIoU": {
-                  "type": "number",
-                  "maximum": 1,
-                  "minimum": 1e-06
-                },
-                "searchMarginPx": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "maximum": 128
-                },
-                "scales": {
-                  "type": "array",
-                  "items": {
-                    "type": "number",
-                    "minimum": 0.25,
-                    "maximum": 4
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "algorithm": {
+                      "const": "expectrail.template-ncc/v2"
+                    },
+                    "coordinates": {
+                      "const": "captured-frame pixels; origin top-left; xyxy half-open; y down"
+                    },
+                    "matchThreshold": {
+                      "type": "number",
+                      "maximum": 1,
+                      "minimum": 1e-06
+                    },
+                    "agreementIoU": {
+                      "type": "number",
+                      "maximum": 1,
+                      "minimum": 1e-06
+                    },
+                    "searchMarginPx": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 128
+                    },
+                    "scales": {
+                      "type": "array",
+                      "items": {
+                        "type": "number",
+                        "minimum": 0.25,
+                        "maximum": 4
+                      },
+                      "minItems": 1,
+                      "maxItems": 9
+                    },
+                    "stridePx": {
+                      "const": 1
+                    },
+                    "sampleSide": {
+                      "type": "integer",
+                      "minimum": 4,
+                      "maximum": 32
+                    },
+                    "minimumContrast": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 128
+                    }
                   },
-                  "minItems": 1,
-                  "maxItems": 9
+                  "required": [
+                    "algorithm",
+                    "coordinates",
+                    "matchThreshold",
+                    "agreementIoU",
+                    "searchMarginPx",
+                    "scales",
+                    "stridePx",
+                    "sampleSide",
+                    "minimumContrast"
+                  ]
                 },
-                "stridePx": {
-                  "const": 1
-                },
-                "sampleSide": {
-                  "type": "integer",
-                  "minimum": 4,
-                  "maximum": 32
-                },
-                "minimumContrast": {
-                  "type": "number",
-                  "minimum": 1,
-                  "maximum": 128
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "algorithm": {
+                      "const": "expectrail.template-foreground/v3"
+                    },
+                    "coordinates": {
+                      "const": "captured-frame pixels; origin top-left; xyxy half-open; y down"
+                    },
+                    "matchThreshold": {
+                      "type": "number",
+                      "maximum": 1,
+                      "minimum": 1e-06
+                    },
+                    "agreementIoU": {
+                      "type": "number",
+                      "maximum": 1,
+                      "minimum": 1e-06
+                    },
+                    "searchMarginPx": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 128
+                    },
+                    "scales": {
+                      "type": "array",
+                      "items": {
+                        "type": "number",
+                        "minimum": 0.25,
+                        "maximum": 4
+                      },
+                      "minItems": 1,
+                      "maxItems": 9
+                    },
+                    "stridePx": {
+                      "const": 1
+                    },
+                    "sampleSide": {
+                      "type": "integer",
+                      "minimum": 4,
+                      "maximum": 32
+                    },
+                    "minimumContrast": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 128
+                    },
+                    "foregroundPurity": {
+                      "type": "number",
+                      "minimum": 0.5,
+                      "maximum": 1
+                    },
+                    "rgbTolerance": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 8
+                    },
+                    "rasterTolerancePx": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 2
+                    },
+                    "confirmationCandidates": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 64
+                    },
+                    "minimumForegroundBins": {
+                      "type": "integer",
+                      "minimum": 4,
+                      "maximum": 1024
+                    },
+                    "confirmationParts": {
+                      "const": 4
+                    }
+                  },
+                  "required": [
+                    "algorithm",
+                    "coordinates",
+                    "matchThreshold",
+                    "agreementIoU",
+                    "searchMarginPx",
+                    "scales",
+                    "stridePx",
+                    "sampleSide",
+                    "minimumContrast",
+                    "foregroundPurity",
+                    "rgbTolerance",
+                    "rasterTolerancePx",
+                    "confirmationCandidates",
+                    "minimumForegroundBins",
+                    "confirmationParts"
+                  ]
                 }
-              },
-              "required": [
-                "algorithm",
-                "coordinates",
-                "matchThreshold",
-                "agreementIoU",
-                "searchMarginPx",
-                "scales",
-                "stridePx",
-                "sampleSide",
-                "minimumContrast"
               ]
             },
             "bankSha256": {
@@ -195,7 +294,8 @@
                 "selection": {
                   "enum": [
                     "explicit-frames",
-                    "all-clean-crops"
+                    "all-clean-crops",
+                    "approved-foreground"
                   ]
                 },
                 "selectionSimilarity": {
@@ -274,6 +374,130 @@
                 "negativeMatches",
                 "status"
               ]
+            },
+            "foregroundSources": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "object",
+                  "path",
+                  "sha256",
+                  "alphaMinimum",
+                  "paletteRgb"
+                ],
+                "properties": {
+                  "object": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "alphaMinimum": {
+                    "const": 250
+                  },
+                  "paletteRgb": {
+                    "type": "array",
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 255
+                      },
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "minItems": 2,
+                    "maxItems": 4096
+                  },
+                  "catalogue": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "artPath",
+                      "spriteGrid",
+                      "poses",
+                      "sourceScene"
+                    ],
+                    "properties": {
+                      "artPath": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 4096
+                      },
+                      "spriteGrid": {
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "items": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 64
+                        }
+                      },
+                      "poses": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 4096,
+                        "items": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 4095
+                        }
+                      },
+                      "sourceScene": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "path",
+                          "sha256"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4096
+                          },
+                          "sha256": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "artSize": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4096
+                    }
+                  },
+                  "rgbaPixelsSha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              },
+              "minItems": 1,
+              "maxItems": 64
+            },
+            "groundReferenceSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
             }
           },
           "required": [
@@ -286,6 +510,39 @@
             "physicsTicksPerSecond",
             "sources",
             "calibration"
+          ],
+          "oneOf": [
+            {
+              "properties": {
+                "config": {
+                  "properties": {
+                    "algorithm": {
+                      "const": "expectrail.template-ncc/v2"
+                    }
+                  }
+                },
+                "foregroundSources": {
+                  "type": "null"
+                },
+                "groundReferenceSha256": {
+                  "type": "null"
+                }
+              }
+            },
+            {
+              "required": [
+                "foregroundSources"
+              ],
+              "properties": {
+                "config": {
+                  "properties": {
+                    "algorithm": {
+                      "const": "expectrail.template-foreground/v3"
+                    }
+                  }
+                }
+              }
+            }
           ]
         }
       }
@@ -425,6 +682,54 @@
                   "type": [
                     "number",
                     "null"
+                  ]
+                },
+                "components": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "ncc",
+                        "foregroundCoverage",
+                        "partCoverage"
+                      ],
+                      "properties": {
+                        "ncc": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "foregroundCoverage": {
+                          "type": [
+                            "number",
+                            "null"
+                          ],
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "partCoverage": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "array",
+                              "minItems": 4,
+                              "maxItems": 4,
+                              "items": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
                   ]
                 }
               },
@@ -571,5 +876,75 @@
         }
       }
     }
-  }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "model": {
+          "properties": {
+            "sensor": {
+              "type": "null"
+            }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "model": {
+          "required": [
+            "sensor"
+          ],
+          "properties": {
+            "sensor": {
+              "properties": {
+                "config": {
+                  "properties": {
+                    "algorithm": {
+                      "const": "expectrail.template-ncc/v2"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "model": {
+          "required": [
+            "sensor"
+          ],
+          "properties": {
+            "sensor": {
+              "properties": {
+                "config": {
+                  "properties": {
+                    "algorithm": {
+                      "const": "expectrail.template-foreground/v3"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "frames": {
+          "items": {
+            "properties": {
+              "sensor": {
+                "additionalProperties": {
+                  "required": [
+                    "components"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }
