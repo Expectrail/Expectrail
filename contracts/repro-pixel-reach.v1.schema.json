@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/repro-pixel-reach.v1.schema.json",
+  "title": "expectrail.repro-pixel-reach/v1",
+  "description": "Whether a pixel check, as the proposer's menu offers it, could fail on a defect of the public reproduction bench at all. A pixel check is judged from what its observer says inside one box a frame (for sam-3.1-anchor, the logged body box of an offered object, widened by the observer's padding) on the frames the observer plans from the route. Each probe is replayed on the clean game once and on each defect build once with frames, and on every planned frame the pixels inside that box are compared. No model and no observer is asked anything: a difference inside a box is necessary for a pixel check to fail, not enough, and the record is never a reproduction rate. Written and read by expectrail.repro.pixel_reach (bench/jit/public/pixel-reach.json).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "benchSha256", "engine", "observer", "objects", "probes", "replaysPerBuild", "engineRetries", "defects", "totals"],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "name": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,60}$" },
+    "count": { "type": "integer", "minimum": 0 },
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["probe", "framesAsked", "framesDiffer", "framesDifferInBox", "maxPixelsInBox", "gaps", "boxesMoved"],
+      "properties": {
+        "probe": { "$ref": "#/$defs/name" },
+        "framesAsked": { "$ref": "#/$defs/count", "description": "Frames the observer plans for this probe's route that both captures hold." },
+        "framesDiffer": { "type": "integer", "minimum": 1, "description": "Planned frames where any pixel differs between the clean game and the defect build. Only probes with at least one are listed." },
+        "framesDifferInBox": { "$ref": "#/$defs/count", "description": "Planned frames where a pixel inside an offered object's box differs (both builds' boxes, when they differ)." },
+        "maxPixelsInBox": { "$ref": "#/$defs/count" },
+        "gaps": { "$ref": "#/$defs/count", "description": "Planned frames where one build has no box (no body logged, or the object outside the picture): the observer would not be asked there." },
+        "boxesMoved": { "$ref": "#/$defs/count", "description": "Differing planned frames where the two builds put the box in different places." }
+      }
+    }
+  },
+  "properties": {
+    "format": { "const": "expectrail.repro-pixel-reach/v1" },
+    "benchSha256": { "$ref": "#/$defs/sha256" },
+    "engine": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "observer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "box", "pad", "every", "maxFrames"],
+      "properties": {
+        "name": { "const": "sam-3.1-anchor" },
+        "box": { "const": "body" },
+        "pad": { "type": "number", "minimum": 0 },
+        "every": { "type": "integer", "minimum": 1 },
+        "maxFrames": { "type": "integer", "minimum": 2 }
+      }
+    },
+    "objects": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/name" }, "description": "The bound objects the menu offers this observer; the boxes are theirs." },
+    "probes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/name" } },
+    "replaysPerBuild": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clean", "defect"],
+      "properties": {
+        "clean": { "const": 1, "description": "Once: the capture's repeatability on these probes is the screen record's measurement, not this one's." },
+        "defect": { "const": 1 }
+      }
+    },
+    "engineRetries": { "$ref": "#/$defs/count" },
+    "defects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "patchSha256", "reach", "probesMeasured", "probes"],
+        "properties": {
+          "id": { "$ref": "#/$defs/name" },
+          "patchSha256": { "$ref": "#/$defs/sha256" },
+          "reach": { "enum": ["inside-a-box", "outside-every-box", "no-difference", "error"] },
+          "probesMeasured": { "$ref": "#/$defs/count" },
+          "probes": { "type": "array", "items": { "$ref": "#/$defs/probe" } },
+          "error": { "type": "string", "minLength": 1, "maxLength": 300 }
+        }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["defects", "inside-a-box", "outside-every-box", "no-difference", "error"],
+      "properties": {
+        "defects": { "$ref": "#/$defs/count" },
+        "inside-a-box": { "$ref": "#/$defs/count" },
+        "outside-every-box": { "$ref": "#/$defs/count" },
+        "no-difference": { "$ref": "#/$defs/count" },
+        "error": { "$ref": "#/$defs/count" }
+      }
+    }
+  }
+}
