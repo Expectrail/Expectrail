@@ -88,7 +88,11 @@ def configured(body):
 
 def inspect_project(body):
     if configured(body):
-        return project_job.inspect(Path(field(body, 'folder')).expanduser())
+        from expectrail import renderer
+        root = Path(field(body, 'folder')).expanduser()
+        result = project_job.inspect(root)
+        result['rendering'] = renderer.project_report(root)
+        return result
     doc = build(body, inspect=True)
     root = Path(doc['head']['checkout'])
     game = root / doc['project']['game']
