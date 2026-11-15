@@ -1,0 +1,119 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "sensor-untuned-platformer-v1",
+  "description": "Predeclared #262 untuned measurement; see frozen work-log plan.",
+  "ticks": 720,
+  "seed": 26220261115,
+  "events": [
+    {
+      "tick": 17,
+      "action": "move_right",
+      "pressed": true
+    },
+    {
+      "tick": 53,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 65,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 71,
+      "action": "shoot",
+      "pressed": true
+    },
+    {
+      "tick": 77,
+      "action": "shoot",
+      "pressed": false
+    },
+    {
+      "tick": 111,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 123,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 143,
+      "action": "shoot",
+      "pressed": true
+    },
+    {
+      "tick": 149,
+      "action": "shoot",
+      "pressed": false
+    },
+    {
+      "tick": 183,
+      "action": "move_right",
+      "pressed": false
+    },
+    {
+      "tick": 211,
+      "action": "move_left",
+      "pressed": true
+    },
+    {
+      "tick": 247,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 259,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 289,
+      "action": "shoot",
+      "pressed": true
+    },
+    {
+      "tick": 295,
+      "action": "shoot",
+      "pressed": false
+    },
+    {
+      "tick": 371,
+      "action": "move_left",
+      "pressed": false
+    },
+    {
+      "tick": 403,
+      "action": "move_right",
+      "pressed": true
+    },
+    {
+      "tick": 439,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 451,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 491,
+      "action": "shoot",
+      "pressed": true
+    },
+    {
+      "tick": 497,
+      "action": "shoot",
+      "pressed": false
+    },
+    {
+      "tick": 567,
+      "action": "move_right",
+      "pressed": false
+    }
+  ]
+}

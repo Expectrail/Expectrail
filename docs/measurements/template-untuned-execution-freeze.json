@@ -1,0 +1,10 @@
+{
+  "stage": "before first evaluation pixel decoding/measurement; one untouched capture already exists",
+  "files": {
+    "tools/template_untuned_measure.py": "9463b506e6bbfc8ed26824a441b1c8e545eb7064b1df0ebc645a4573bb613e90",
+    "tests/test_template_untuned_measure.py": "9cb13e5e3794c13e8a092c1dc65348f5fb81c5ff867c15a1e4a9c00153bab066"
+  },
+  "outsideSourceTree": "ba5fb112d7603f608f0054c767e45f23469efcfe2861a0d85d2f7f7e3e2e9747",
+  "outsideBankStatusSha256": "8b134448834b01ea2d0e4d6ea4ea9f35a609e3b72da643eaa567a53ac2c6be15",
+  "amendment": "Runner callback keyword corrected from progress to on_frame after TypeError, before any evaluation PNG was opened or score produced. Sensor, thresholds, banks and route plan unchanged."
+}
