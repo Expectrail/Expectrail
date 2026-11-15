@@ -190,7 +190,7 @@ class SpecWriterTest(unittest.TestCase):
             seen.update(kwargs)
             return {"choices": [{"message": {"content": json.dumps(answer)}}]}
 
-        with mock.patch.dict(os.environ, {"EXPECTRAIL_LLM_PROVIDER": "ollama"}, clear=True), \
+        with mock.patch.dict(os.environ, {"EXPECTRAIL_LLM_PROVIDER": "ollama", "EXPECTRAIL_SPEC_USD_CAP": "100"}, clear=True), \
                 mock.patch("expectrail.providers.chat_completion", side_effect=fake_chat):
             transport, cfg = provider_transport()
             spec, problems = draft("The player never falls through the ground", "p", cfg.model, transport=transport)
@@ -345,7 +345,7 @@ class McpTest(unittest.TestCase):
         answer = {"objects": {"coin": {"prompt": "gold coin"}},
                   "assertion": {"type": "visible", "object": "coin", "minFraction": 0.9}}
         with tempfile.TemporaryDirectory() as tmp, \
-                mock.patch.dict(os.environ, {"EXPECTRAIL_LLM_PROVIDER": "ollama"}, clear=True), \
+                mock.patch.dict(os.environ, {"EXPECTRAIL_LLM_PROVIDER": "ollama", "EXPECTRAIL_SPEC_USD_CAP": "100"}, clear=True), \
                 mock.patch("expectrail.providers.chat_completion",
                            return_value={"choices": [{"message": {"content": json.dumps(answer)}}]}):
             out = Path(tmp) / "coins.json"

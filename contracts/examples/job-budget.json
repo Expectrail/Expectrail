@@ -5,7 +5,8 @@
     "vision": 0.5,
     "glimmer": 1.0,
     "muse": 1.0,
-    "triage": 0.1
+    "triage": 0.1,
+    "spec": 0.1
   },
   "phases": [
     {
@@ -34,6 +35,13 @@
       "role": "triage",
       "reservedUsd": 0.05,
       "requests": 1,
+      "stopped": null
+    },
+    {
+      "phase": "drafting",
+      "role": "spec",
+      "reservedUsd": 0,
+      "requests": 0,
       "stopped": null
     }
   ],

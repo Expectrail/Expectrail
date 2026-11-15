@@ -1,0 +1,821 @@
+{
+  "format": "expectrail.template-measurement/v1",
+  "evidence": "synthetic offline contract fixture; not a game measurement",
+  "config": {
+    "algorithm": "expectrail.template-foreground/v3",
+    "coordinates": "captured-frame pixels; origin top-left; xyxy half-open; y down",
+    "matchThreshold": 0.9,
+    "agreementIoU": 0.5,
+    "searchMarginPx": 8,
+    "scales": [
+      1
+    ],
+    "stridePx": 1,
+    "sampleSide": 12,
+    "minimumContrast": 8.0,
+    "foregroundPurity": 0.95,
+    "rgbTolerance": 2,
+    "rasterTolerancePx": 1,
+    "confirmationCandidates": 32,
+    "minimumForegroundBins": 32,
+    "confirmationParts": 4
+  },
+  "cleanTree": "bbc81923887944c9e5b581205dfde9913a8621552d83b545855b81eaf8e397c2",
+  "bankSha256": "07e7b19404c9d67fa6473b1133eef35cd89165979b1e4915bd29862caae5beda",
+  "calibrationFrames": [
+    0
+  ],
+  "calibration": {
+    "selection": "approved-foreground",
+    "selectionSimilarity": 0.995,
+    "sourceFrames": 9,
+    "eligibleFrames": 9,
+    "mirrored": true,
+    "thresholdFloor": 0.9,
+    "thresholdSelected": 0.9,
+    "validationReplaySha256": "6bb9a700831bae9815e986b382b2df05e65b5beb33a32521f204019960a633f7",
+    "positives": 3,
+    "negatives": 3,
+    "positiveMatches": 3,
+    "negativeMatches": 0,
+    "status": "met"
+  },
+  "templateCount": 4,
+  "runtime": {
+    "numpy": "2.3.5",
+    "pillow": "13.0.0",
+    "threadEnvironment": {
+      "OPENBLAS_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1"
+    }
+  },
+  "runs": [
+    {
+      "name": "clean-smoke",
+      "route": "smoke",
+      "patches": [],
+      "replaySha256": "07cb19491342658347455f82774753db6216bbc39e24ba0f424e6e70dcdbdb12",
+      "summary": {
+        "frames": 3,
+        "objectFrames": 3,
+        "measured": 3,
+        "counts": {
+          "matched": 3,
+          "not-found": 0,
+          "displaced": 0,
+          "unavailable": 0,
+          "out-of-frame": 0
+        },
+        "agreementRate": 1.0,
+        "alarmRate": 0.0,
+        "disagreements": []
+      },
+      "timing": {
+        "frames": 3,
+        "sensorSeconds": 0.007366982999883476,
+        "meanFrameSeconds": 0.0024556609999611587,
+        "p95FrameSeconds": 0.0028123083002355997,
+        "maxFrameSeconds": 0.0028720640002575237
+      },
+      "regionCheck": {
+        "tolerancePx": 20,
+        "proof": [
+          {
+            "frame": 0,
+            "box": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "view": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "frame": 1,
+            "box": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "view": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "frame": 2,
+            "box": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "view": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "crossedFrames": [],
+        "unavailableFrames": []
+      }
+    },
+    {
+      "name": "clean-combat",
+      "route": "combat",
+      "patches": [],
+      "replaySha256": "b9d3598fd6b731df30e40bf5681be7671e8ff0c54fb5067a31a89f966bd42a21",
+      "summary": {
+        "frames": 3,
+        "objectFrames": 3,
+        "measured": 3,
+        "counts": {
+          "matched": 3,
+          "not-found": 0,
+          "displaced": 0,
+          "unavailable": 0,
+          "out-of-frame": 0
+        },
+        "agreementRate": 1.0,
+        "alarmRate": 0.0,
+        "disagreements": []
+      },
+      "timing": {
+        "frames": 3,
+        "sensorSeconds": 0.00979078900127206,
+        "meanFrameSeconds": 0.0032635963337573535,
+        "p95FrameSeconds": 0.0037067334013045185,
+        "maxFrameSeconds": 0.003730023001480731
+      },
+      "regionCheck": {
+        "tolerancePx": 20,
+        "proof": [
+          {
+            "frame": 0,
+            "box": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "view": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "frame": 1,
+            "box": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "view": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "frame": 2,
+            "box": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "view": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "crossedFrames": [],
+        "unavailableFrames": []
+      }
+    },
+    {
+      "name": "clean-traversal",
+      "route": "traversal",
+      "patches": [],
+      "replaySha256": "aa5c4ead5710758b71401189265b91be71136b0c422a9f331eeea1b3729f7620",
+      "summary": {
+        "frames": 3,
+        "objectFrames": 3,
+        "measured": 3,
+        "counts": {
+          "matched": 3,
+          "not-found": 0,
+          "displaced": 0,
+          "unavailable": 0,
+          "out-of-frame": 0
+        },
+        "agreementRate": 1.0,
+        "alarmRate": 0.0,
+        "disagreements": []
+      },
+      "timing": {
+        "frames": 3,
+        "sensorSeconds": 0.010013694998633582,
+        "meanFrameSeconds": 0.003337898332877861,
+        "p95FrameSeconds": 0.003954241699284466,
+        "maxFrameSeconds": 0.004060990999278147
+      },
+      "regionCheck": {
+        "tolerancePx": 20,
+        "proof": [
+          {
+            "frame": 0,
+            "box": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "view": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "frame": 1,
+            "box": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "view": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "frame": 2,
+            "box": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "view": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "crossedFrames": [],
+        "unavailableFrames": []
+      }
+    },
+    {
+      "name": "invisible-player",
+      "route": "smoke",
+      "patches": [
+        "bugs/physics-fall-through/v1.patch",
+        "agents/fixtures/fix-but-hide-player.patch"
+      ],
+      "replaySha256": "bc6634ec784821a9e3916fb500ce214b2bb13ac6f97e9672fc0d5cca97d15b4a",
+      "summary": {
+        "frames": 3,
+        "objectFrames": 3,
+        "measured": 3,
+        "counts": {
+          "matched": 0,
+          "not-found": 3,
+          "displaced": 0,
+          "unavailable": 0,
+          "out-of-frame": 0
+        },
+        "agreementRate": 0.0,
+        "alarmRate": 1.0,
+        "disagreements": [
+          {
+            "frame": 0,
+            "object": "player",
+            "status": "not-found",
+            "reason": "no template reached the pixel similarity threshold",
+            "predictedBox": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "searchBox": [
+              16,
+              12,
+              44,
+              44
+            ],
+            "rawBox": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "score": 0.0,
+            "templateFrame": 0,
+            "scale": 1.0,
+            "components": {
+              "ncc": 0.0,
+              "foregroundCoverage": null,
+              "partCoverage": null
+            }
+          },
+          {
+            "frame": 1,
+            "object": "player",
+            "status": "not-found",
+            "reason": "no template reached the pixel similarity threshold",
+            "predictedBox": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "searchBox": [
+              16,
+              12,
+              44,
+              44
+            ],
+            "rawBox": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "score": 0.0,
+            "templateFrame": 0,
+            "scale": 1.0,
+            "components": {
+              "ncc": 0.0,
+              "foregroundCoverage": null,
+              "partCoverage": null
+            }
+          },
+          {
+            "frame": 2,
+            "object": "player",
+            "status": "not-found",
+            "reason": "no template reached the pixel similarity threshold",
+            "predictedBox": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "searchBox": [
+              16,
+              12,
+              44,
+              44
+            ],
+            "rawBox": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "score": 0.0,
+            "templateFrame": 0,
+            "scale": 1.0,
+            "components": {
+              "ncc": 0.0,
+              "foregroundCoverage": null,
+              "partCoverage": null
+            }
+          }
+        ]
+      },
+      "timing": {
+        "frames": 3,
+        "sensorSeconds": 0.006361671999911778,
+        "meanFrameSeconds": 0.002120557333303926,
+        "p95FrameSeconds": 0.0022970702999373315,
+        "maxFrameSeconds": 0.0023063469998305663
+      },
+      "regionCheck": {
+        "tolerancePx": 20,
+        "proof": [
+          {
+            "frame": 0,
+            "box": null,
+            "view": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "frame": 1,
+            "box": null,
+            "view": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "frame": 2,
+            "box": null,
+            "view": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "crossedFrames": [],
+        "unavailableFrames": [
+          0,
+          1,
+          2
+        ]
+      }
+    },
+    {
+      "name": "sinking",
+      "route": "smoke",
+      "patches": [
+        "bugs/sinking/v2.patch"
+      ],
+      "replaySha256": "534097dd399162af0bfccb116fec791166dd3f2247873cb8c1296c887bd4d083",
+      "summary": {
+        "frames": 3,
+        "objectFrames": 3,
+        "measured": 3,
+        "counts": {
+          "matched": 0,
+          "not-found": 3,
+          "displaced": 0,
+          "unavailable": 0,
+          "out-of-frame": 0
+        },
+        "agreementRate": 0.0,
+        "alarmRate": 1.0,
+        "disagreements": [
+          {
+            "frame": 0,
+            "object": "player",
+            "status": "not-found",
+            "reason": "no template reached the pixel similarity threshold",
+            "predictedBox": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "searchBox": [
+              16,
+              12,
+              44,
+              44
+            ],
+            "rawBox": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "score": 0.0,
+            "templateFrame": 0,
+            "scale": 1.0,
+            "components": {
+              "ncc": 0.0,
+              "foregroundCoverage": null,
+              "partCoverage": null
+            }
+          },
+          {
+            "frame": 1,
+            "object": "player",
+            "status": "not-found",
+            "reason": "no template reached the pixel similarity threshold",
+            "predictedBox": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "searchBox": [
+              16,
+              12,
+              44,
+              44
+            ],
+            "rawBox": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "score": 0.0,
+            "templateFrame": 0,
+            "scale": 1.0,
+            "components": {
+              "ncc": 0.0,
+              "foregroundCoverage": null,
+              "partCoverage": null
+            }
+          },
+          {
+            "frame": 2,
+            "object": "player",
+            "status": "not-found",
+            "reason": "no template reached the pixel similarity threshold",
+            "predictedBox": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "searchBox": [
+              16,
+              12,
+              44,
+              44
+            ],
+            "rawBox": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "score": 0.0,
+            "templateFrame": 0,
+            "scale": 1.0,
+            "components": {
+              "ncc": 0.0,
+              "foregroundCoverage": null,
+              "partCoverage": null
+            }
+          }
+        ]
+      },
+      "timing": {
+        "frames": 3,
+        "sensorSeconds": 0.0073233860020991415,
+        "meanFrameSeconds": 0.0024411286673663803,
+        "p95FrameSeconds": 0.0025004356999488663,
+        "maxFrameSeconds": 0.0025069479997910094
+      },
+      "regionCheck": {
+        "tolerancePx": 20,
+        "proof": [
+          {
+            "frame": 0,
+            "box": null,
+            "view": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "frame": 1,
+            "box": null,
+            "view": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "frame": 2,
+            "box": null,
+            "view": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "crossedFrames": [],
+        "unavailableFrames": [
+          0,
+          1,
+          2
+        ]
+      }
+    },
+    {
+      "name": "fall-through",
+      "route": "smoke",
+      "patches": [
+        "bugs/physics-fall-through/v1.patch"
+      ],
+      "replaySha256": "634ec2a34b622c323059b985b4b81c4a6fef977c4e57dd00d438a9d9f7fc6a17",
+      "summary": {
+        "frames": 3,
+        "objectFrames": 3,
+        "measured": 3,
+        "counts": {
+          "matched": 3,
+          "not-found": 0,
+          "displaced": 0,
+          "unavailable": 0,
+          "out-of-frame": 0
+        },
+        "agreementRate": 1.0,
+        "alarmRate": 0.0,
+        "disagreements": []
+      },
+      "timing": {
+        "frames": 3,
+        "sensorSeconds": 0.008325560998855508,
+        "meanFrameSeconds": 0.002775186999618503,
+        "p95FrameSeconds": 0.002793932599161053,
+        "maxFrameSeconds": 0.0027951199990638997
+      },
+      "regionCheck": {
+        "tolerancePx": 20,
+        "proof": [
+          {
+            "frame": 0,
+            "box": [
+              24,
+              20,
+              36,
+              36
+            ],
+            "view": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "frame": 1,
+            "box": [
+              24,
+              32,
+              36,
+              48
+            ],
+            "view": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "frame": 2,
+            "box": [
+              24,
+              44,
+              36,
+              60
+            ],
+            "view": [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "crossedFrames": [
+          2
+        ],
+        "unavailableFrames": []
+      }
+    }
+  ],
+  "groundReference": {
+    "coordinates": "trusted clean world coordinates; y down",
+    "sourceReplaySha256": "6cf6e9d6788d04d15a186f2113a3910d6a9852be66d5d4f74eaefa9d1254e1be",
+    "sourceTraceSha256": "7947eb5187c25682519da5a566917cf3dd7e4dca160f2f8b48d78758d5f3cc1e",
+    "polygons": [
+      [
+        [
+          0,
+          36
+        ],
+        [
+          80,
+          36
+        ],
+        [
+          80,
+          70
+        ],
+        [
+          0,
+          70
+        ]
+      ]
+    ]
+  },
+  "clean": {
+    "measured": 9,
+    "alarms": 0,
+    "falseAlarmRate": 0.0
+  },
+  "invisiblePlayerAlarms": 3,
+  "targets": {
+    "cleanMatchedFraction": 0.95,
+    "maxFrameSeconds": 0.3,
+    "accuracyMet": true,
+    "speedMet": true,
+    "maxCleanFalseAlarmRate": 0.02,
+    "falseAlarmTargetMet": true,
+    "seedDetectionsMet": true
+  },
+  "seedDetections": {
+    "invisible-player": {
+      "rule": "pixel-absence/v1",
+      "measured": true,
+      "detected": true,
+      "frames": [
+        0,
+        1,
+        2
+      ]
+    },
+    "sinking": {
+      "rule": "pixel-absence/v1",
+      "measured": true,
+      "detected": true,
+      "frames": [
+        0,
+        1,
+        2
+      ]
+    },
+    "fall-through": {
+      "rule": "pixel-position-crosses-clean-region/v1",
+      "measured": true,
+      "detected": true,
+      "frames": [
+        2
+      ]
+    }
+  }
+}
