@@ -44,7 +44,8 @@
           "const": "expectrail.run-it-api/v1"
         },
         "kind": {
-          "const": "accepted"
+          "const": "accepted",
+          "description": "A durable reservation exists. Dispatch is attempted once; if its reply is lost, status reconciles it with GitHub. This is not a verdict or proof that GitHub started."
         },
         "requestId": {
           "type": "string",
@@ -87,7 +88,7 @@
             "disabled",
             "unavailable"
           ],
-          "description": "unavailable: the service could not reach GitHub or hit an error; nothing was started and nothing was counted."
+          "description": "unavailable: the service hit an error or GitHub explicitly refused dispatch. The detail says whether a reservation may remain; never assume that retrying is free."
         },
         "detail": {
           "type": "string",
