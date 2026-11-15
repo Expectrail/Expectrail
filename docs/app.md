@@ -11,18 +11,19 @@ required. Open the full address it prints. Keep that process running while using
 The address is on `127.0.0.1`, with a free port and a new token each time. Do not share it.
 The app serves its own page without downloading scripts, styles or fonts.
 
-1. Paste the full paths to **Before** and **After**, two folders with the same layout. Git
-   references are not supported in this slice.
-2. Open **Where your game, routes and checks are** if needed. The game folder defaults to
-   `.` (the folder containing `project.godot`), the routes to `routes/*.json`, and the checks
-   folder to `specs`. These paths are relative to each version's folder.
-3. Select **Check folders**. The page reports whether it found a Godot project, usable
-   routes and approved checks, and gives next steps for missing inputs. Checking folders
-   does not run Godot or check the machine's tools. If you have no routes or checks, ask
-   your game developer to provide them. Only a person may approve checks.
-4. Select **Verify**. The routes and approved checks from **Before** judge both versions,
-   exactly as with `expectrail verify --base BEFORE --head AFTER`. The page shows the job's
-   recorded phases. **Cancel** asks the orchestrator to stop the job and its processes.
+1. Paste the full paths to **Before** and **After**, two Godot project folders. Each has
+   `project.godot` and its own [project config](project-config.md), `expectrail.project.json`.
+   Git references are not supported in this screen.
+2. The config's `routes` and `approvedContracts` lists choose the policy. The base config
+   chooses what judges both copies. A config produced by `expectrail init` is a draft and
+   cannot give an accept until its bindings are reviewed. Only a person may approve checks.
+3. Select **Check folders**. The page lists usable route names, approved check IDs and draft
+   warnings. This reads files without running Godot. Invalid or absent configs name what to fix.
+   **Older projects without a config** retains the explicit path inputs for existing checkouts.
+4. Select **Verify**. The app and `expectrail verify --project AFTER --base BEFORE` prepare
+   the same kind of request and use the same worker. The job snapshots both games and the
+   selected policy bytes outside your source folders. The page shows phases; **Cancel** asks
+   the orchestrator to stop the job and its processes. [Offline parity tests](../tests/test_app_projects.py).
 5. Read the result and its reasons. **Accept** and **Reject** are the verifier's decisions
    under the checks used. **Needs review** is not an accept. **Failed**, **Cancelled** and
    **Could not be carried out** give no verdict. An unfinished job gives no verdict either.
@@ -31,19 +32,30 @@ The app serves its own page without downloading scripts, styles or fonts.
 
 ### Try kinematic-character with saved vision answers
 
-Once the app is open, the outside game needs no terminal commands. Get the
+The example is an ordinary configured project, not a verification preset. Get the
 [pinned Godot demos](https://github.com/godotengine/godot-demo-projects/archive/b761b4cd5718a7118f2c95eb55f181d0a5f004f1.zip)
-and extract the archive. In **Before**, paste the path to its unchanged
-`2d/kinematic_character` folder. In **After**, paste the path to your changed copy of
-that game. Select **Use the kinematic-character example with recorded vision** and
-**Check folders**, then **Verify**. Open the evidence viewer from the result.
+and extract them. To prepare a new copy once, use:
 
-Expectrail checks Before against the pinned game, copies the games into the job store,
-and supplies the walk route and approved ground check used in the [outside trial](outside-projects.md).
-Past runs names those verification copies. Godot replays both versions. Vision answers come
-only from the published recording, matched by frame and question. An engine failure can reject
-even if a frame has no recorded answer. A missing answer cannot clear the change.
-The example needs the usual local Godot and display tools. It uses no provider key or fixer.
+```sh
+python3 -m expectrail.app_kinematic /path/to/demos/2d/kinematic_character /path/to/example-before
+```
+
+The destination must not exist. This copies the game, the existing approved check unchanged,
+the walk route, published recording and calibration, and the [example config](../contracts/examples/project-recorded.json).
+It does not run a game, approve a check or ask a model. Copy that prepared folder to
+`example-after` and make your change there. Choose those two configured folders in the app,
+then **Check folders** and **Verify**. No special checkbox or worker is used. The same pair
+can be verified with `expectrail verify --project /path/to/example-after --base /path/to/example-before`.
+Past runs names the immutable verification copies in the job store.
+
+Saved answers match exact PNG bytes and questions. The unchanged game is **not guaranteed an
+accept from the current recording**: a real replay on November 15 differed from the original
+capture at frame 111 by two pixels. Its point question `(488, 329)` is recorded for the old PNG,
+but not for the new hash. The [reproducible image probe](../tests/test_app_projects.py) and
+[request details](../tests/fixtures/recorded-pixel-mismatch/question.json) name the missing answer.
+It stays needs-review. No approximate-image substitution or live fallback was added; Sean must
+decide whether to record that image. An engine failure can still reject. Godot, a display and
+the other usual local tools are required for an actual replay; recorded vision uses no key.
 
 The result says which observers judged, from the job's own status or findings. With `both`,
 the engine's record and the vision model judge every check. If that rule records no visual
@@ -83,8 +95,8 @@ or **Cancel**. Reloading the page clears the selected job from the screen; it do
 it. Stop the app with Ctrl+C to cancel unfinished jobs. A restart uses a new token and
 lists the same stored jobs without granting access to their report or viewer files.
 
-An installer, a trial with a person unfamiliar with terminals, and tests of this app on real
-games are not done in this slice. This page was not looked at in a browser.
+An installer and a trial with a person unfamiliar with terminals remain open. Browser and
+real-replay evidence for this slice is named in its work log; automated use is not a first-user trial.
 
 ## Auto-fix checkbox
 

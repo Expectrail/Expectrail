@@ -1,0 +1,46 @@
+{
+  "frame": 111,
+  "oldPngSha256": "e68ce38322a6e75dccf8114263e7b6585c30fe149f1e083f2a979503572454b0",
+  "newPngSha256": "5c5df8b07348466a7df9ba1d9112e1efe71071c43dbd5274ae3ff64bb8fa047b",
+  "samePointPrompt": true,
+  "prompt": "<0f>1<|point;x=488;y=329;w=530;h=495|>",
+  "differingPixels": 2,
+  "firstDifferingPixels": [
+    [
+      220,
+      318,
+      [
+        47,
+        178,
+        174,
+        255
+      ],
+      [
+        46,
+        178,
+        174,
+        255
+      ]
+    ],
+    [
+      215,
+      324,
+      [
+        42,
+        74,
+        90,
+        255
+      ],
+      [
+        42,
+        73,
+        89,
+        255
+      ]
+    ]
+  ],
+  "totalFrames": 180,
+  "differentFrameIndices": [
+    111
+  ]
+}
