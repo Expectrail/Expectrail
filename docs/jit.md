@@ -584,6 +584,19 @@ record carries the first round's spend through the proposal, not the capture's.
 with pixel checks; the workflow's pixel jobs have not run. #286 is done when a recorded run reproduces a
 public screen-only defect with one.
 
+### What the offered boxes can see (added November 15)
+
+`python3 -m expectrail.repro pixel-reach` ([`pixel_reach.py`](../expectrail/repro/pixel_reach.py),
+[schema](../contracts/repro-pixel-reach.v1.schema.json), [example](../contracts/examples/repro-pixel-reach.json))
+asks, with no model, whether a pixel check as the menu offers it could fail on a defect at all: on the
+frames `sam-3.1-anchor` would be asked about, does any pixel inside the box it would be shown differ
+between the clean game and the defect build? The menu offers the player only, so the box is the
+player's. On the bench's two screen-only defects (all 25 library probes, November 15): yes for both,
+on 9 planned frames of one probe for `enemy-walks-backwards` and 17 over six probes for
+`bullet-behind-scenery`; but on the four frames looked at by hand, what differs inside the box is the
+enemy or the bullets overlapping the player, not the player. Whether SAM's box of the player changes there is untested. The table and
+what it does not show are on the [bench's page](../bench/jit/public/README.md).
+
 ## What this does not claim
 
 - **No detection rate.** The offline tests use a simulated game and a fake model. They show that an
