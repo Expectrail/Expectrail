@@ -190,12 +190,16 @@ def render(summary: dict) -> str:
     c = summary["counts"]
     baseline_ok = all(v == PASSED for v in summary["baselines"].values())
     own = summary.get("rowBaselines") or {}
-    if own and all(v == PASSED for v in own.values()):
-        two_job = "passed"
-    elif own and all(v == SKIPPED for v in own.values()):
-        two_job = "not run, so those rows are not run"
-    else:
-        two_job = "NOT passed, so those rows cannot be read as held"
+
+    def own_word(tests: list[str]) -> str:
+        """One set of a row's own positive controls, read on its own."""
+        got = [own.get(t, ERROR) for t in tests]
+        if got and all(v == PASSED for v in got):
+            return "passed"
+        if got and all(v == SKIPPED for v in got):
+            return "not run, so those rows are not run"
+        return "NOT passed, so those rows cannot be read as held"
+
     lines = [
         "# Release gate",
         "",
@@ -216,8 +220,7 @@ def render(summary: dict) -> str:
         f"stand-in vision provider that answers, the live visual observer's path clears the unchanged game; the "
         f"pull-request gate's command clears the unchanged game declared an intended change): "
         f"{'passed' if baseline_ok else 'NOT passed, so no row below can be read as held'}.",
-        f"- The two-job rows' own positive controls (the trusted judge clears the unchanged game's capture and "
-        f"rejects the seeded bug's): {two_job}.",
+        *(f"- {words}: {own_word(tests)}." for words, tests in controls.ROW_BASELINE_GROUPS),
         "",
     ]
     for group in controls.GROUPS:

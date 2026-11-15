@@ -4,6 +4,8 @@
     expectrail status JOB | cancel JOB | report JOB
     expectrail sample              three real verifications of the bundled game: as it is, broken, repaired
     expectrail doctor [--json]     does this machine have what a verification needs?
+    expectrail trust-check RECEIPT --trust-store FILE [--repo OWNER/NAME] [--expect-head SHA] ...
+                                   does this receipt clear this change? (needs the `trust` extra)
     expectrail --version
 
 `verify`, `status`, `cancel`, `report` and `sample` are the orchestrator's own commands
@@ -11,6 +13,10 @@
 ``python3 -m expectrail.orchestrator``. Nothing is implemented twice here.
 
 `doctor` is ``expectrail.doctor``: it checks the machine, exits 0 or 3, and is not a verdict.
+
+`trust-check` is ``expectrail.receipt``: 0 clearance, 1 no clearance, 5 when nothing could be checked.
+It needs ``cryptography`` and ``jsonschema`` (``pip install 'expectrail[trust]'``); a copy without them
+says so and checks nothing.
 
 Commands that are planned and not built say so, name the issue, and exit 5 (the command could not
 be carried out). They never print a verdict. A command line that cannot be read (a missing or
@@ -24,9 +30,9 @@ from expectrail import __version__, resources
 
 ORCHESTRATOR = ("verify", "status", "cancel", "report", "sample")
 # name -> (what it will do, the issue that builds it)
-PLANNED = {
-    "trust-check": ("check a receipt against a trust store", 255),
-}
+PLANNED: dict[str, tuple[str, int]] = {}
+# What `trust-check` needs beyond the standard library: the `trust` extra in pyproject.toml.
+TRUST_PACKAGES = ("cryptography", "jsonschema")
 EXIT_USAGE = 5
 
 
@@ -44,11 +50,12 @@ def usage() -> str:
         ("init", "propose a draft project config and first input route"),
         ("route", "make a first route from a Godot input map and check three identical replays"),
         ("app", "open the local browser app"),
+        ("trust-check", "check a receipt against a trust store: clearance or not, and what it establishes"),
         ("doctor", "check that this machine has what a verification needs, and name the fix for what is missing"))]
     lines += [f"  {name:<12} not built yet (#{issue}): {text}" for name, (text, issue) in PLANNED.items()]
     lines += ["", "  --version    print the version and where this copy's files are",
               "", "  --jobs-root DIR  where jobs are kept (default: $EXPECTRAIL_JOBS, else runs/jobs); after the",
-              "                   command, or before it for every command but app and doctor",
+              "                   command, or before it for every command but app, doctor and trust-check",
               "", "`expectrail COMMAND --help` shows a command's options."]
     return "\n".join(lines)
 
@@ -104,6 +111,21 @@ def main(argv: list[str] | None = None) -> int:
         from expectrail import app
 
         return app.main(args[1:])
+    if command == "trust-check":
+        if args[0] != "trust-check":
+            print("expectrail: `trust-check` takes no option before it. Nothing was checked.", file=sys.stderr)
+            return EXIT_USAGE
+        try:
+            from expectrail import receipt
+        except ModuleNotFoundError as exc:
+            missing = (exc.name or "").split(".")[0]
+            if missing not in TRUST_PACKAGES:
+                raise
+            print(f"expectrail: `trust-check` needs the `{missing}` package, which this copy does not have. "
+                  "Install it with: pip install 'expectrail[trust]' (or, in a clone, pip install "
+                  "cryptography jsonschema). Nothing was checked.", file=sys.stderr)
+            return EXIT_USAGE
+        return receipt.trust_check_main(args[1:])
     if command == "doctor":
         if args[0] != "doctor":
             print("expectrail: `doctor` takes no option before it. Nothing was checked.", file=sys.stderr)
