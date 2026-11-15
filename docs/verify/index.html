@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Nothing leaves the browser: connect-src is 'self' only so the two test samples can be fetched from
+     this site; a receipt or trust store you choose is read from your disk and never sent. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Verify a receipt: Expectrail</title>
+<meta name="description" content="Check an Expectrail receipt against a trust store in your browser. The same rules as expectrail.receipt trust-check. Nothing is uploaded.">
+<link rel="canonical" href="https://expectrail.tech/verify/">
+<link rel="icon" href="../brand/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#16133A">
+<style>
+@font-face { font-family:"TG Adventor"; src:url("../assets/fonts/texgyreadventor-regular.woff") format("woff"); font-weight:400; font-display:swap; }
+@font-face { font-family:"TG Adventor"; src:url("../assets/fonts/texgyreadventor-bold.woff") format("woff"); font-weight:700; font-display:swap; }
+@font-face { font-family:"Lora"; src:url("../assets/fonts/Lora-Variable.woff") format("woff"); font-weight:400 700; font-style:normal; font-display:swap; }
+:root {
+  --ink:#16133A; --paper:#F6F7FB; --rail:#FFC928; --stone:#4B4178; --mist:#E4E3F0;
+  --pass:#157F4E; --fail:#C2303A; --review:#8A5A00; --card:#FFFFFF;
+  --sans:"TG Adventor", "Century Gothic", "Avenir Next", system-ui, sans-serif;
+  --serif:"Lora", Georgia, "Times New Roman", serif;
+  --wrap:1040px; --gutter:clamp(16px, 4vw, 40px);
+}
+* { box-sizing:border-box; }
+[hidden] { display:none !important; }
+html { -webkit-text-size-adjust:100%; }
+body { margin:0; background:var(--paper); color:var(--ink); font:400 1.0625rem/1.6 var(--serif); }
+a { color:inherit; text-decoration-color:var(--rail); text-decoration-thickness:3px; text-underline-offset:3px; }
+a:hover { text-decoration-color:currentColor; }
+:focus-visible { outline:3px solid var(--rail); outline-offset:3px; border-radius:2px; }
+.skip { position:absolute; left:-999px; top:8px; background:var(--ink); color:var(--paper); padding:8px 12px; font-family:var(--sans); }
+.skip:focus { left:8px; }
+.wrap { max-width:var(--wrap); margin:0 auto; padding:0 var(--gutter); }
+h1, h2, h3, label, button, .sans { font-family:var(--sans); letter-spacing:-0.01em; }
+h1 { font-size:clamp(2rem, 1.4rem + 2.4vw, 2.8rem); line-height:1.1; margin:0.2em 0 0.3em; }
+h2 { font-size:1.5rem; line-height:1.2; margin:0 0 0.5em; }
+h3 { font-size:1.05rem; line-height:1.25; margin:14px 0 4px; }
+p { margin:0 0 0.9em; max-width:68ch; }
+.lede { font-size:1.2rem; color:var(--stone); }
+.muted { color:var(--stone); font-size:0.95rem; }
+.top { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:20px 0; flex-wrap:wrap; }
+.top img { height:32px; width:auto; display:block; }
+.top nav { display:flex; gap:20px; font:700 0.95rem/1 var(--sans); flex-wrap:wrap; }
+.top nav a { text-decoration:none; padding:6px 0; border-bottom:3px solid transparent; }
+.top nav a:hover { border-bottom-color:var(--rail); }
+.panel { background:var(--card); border:1px solid var(--mist); border-radius:6px; padding:clamp(16px, 3vw, 28px); margin:0 0 28px; }
+.inputs { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+.field { display:flex; flex-direction:column; gap:6px; min-width:0; }
+label { font-weight:700; font-size:0.95rem; }
+.hint { font:400 0.88rem/1.4 var(--sans); color:var(--stone); margin:0; }
+textarea, input[type=text] { width:100%; font:400 0.85rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color:var(--ink); background:var(--paper); border:1px solid var(--stone); border-radius:4px; padding:8px 10px; }
+textarea { min-height:150px; resize:vertical; }
+input[type=file] { font:400 0.9rem/1.4 var(--sans); max-width:100%; }
+.expect { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-top:18px; }
+.row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:18px; }
+button { font-weight:700; font-size:1rem; line-height:1; padding:13px 18px; border-radius:4px; border:2px solid var(--ink); background:var(--ink); color:var(--paper); cursor:pointer; }
+button:hover { background:var(--stone); border-color:var(--stone); }
+button.quiet { background:transparent; color:var(--ink); font-size:0.92rem; padding:9px 12px; }
+button.quiet:hover { background:var(--mist); }
+.outcome { border-left:8px solid var(--stone); padding:14px 16px; background:var(--paper); border-radius:0 4px 4px 0; margin:0 0 12px; }
+.outcome h2 { margin:0 0 4px; }
+.outcome p { margin:0; }
+.outcome[data-tone="pass"] { border-color:var(--pass); } .outcome[data-tone="pass"] h2 { color:var(--pass); }
+.outcome[data-tone="fail"] { border-color:var(--fail); } .outcome[data-tone="fail"] h2 { color:var(--fail); }
+.outcome[data-tone="review"] { border-color:var(--review); } .outcome[data-tone="review"] h2 { color:var(--review); }
+.facts { display:grid; grid-template-columns:max-content 1fr; gap:4px 16px; margin:0 0 8px; font-size:0.97rem; }
+.facts dt { font:700 0.9rem/1.5 var(--sans); color:var(--stone); }
+.facts dd { margin:0; overflow-wrap:anywhere; }
+#details ul { margin:0 0 8px; padding-left:1.2em; overflow-wrap:anywhere; }
+pre { background:var(--paper); border:1px solid var(--mist); border-radius:4px; padding:10px 12px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:0.82rem; margin:4px 0 0; }
+.notice { font:400 0.95rem/1.5 var(--sans); background:#FBEFD9; padding:10px 14px; border-radius:4px; max-width:none; }
+footer { border-top:1px solid var(--mist); padding:22px 0 40px; font:400 0.9rem/1.5 var(--sans); color:var(--stone); }
+@media (max-width:720px) {
+  .inputs, .expect { grid-template-columns:1fr; }
+  .facts { grid-template-columns:1fr; gap:0; }
+  .facts dd { margin-bottom:6px; }
+  .top nav { gap:14px; }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the check</a>
+<div class="wrap">
+  <header class="top">
+    <a href="../" aria-label="Expectrail, home"><img src="../brand/expectrail-logo.svg" alt="Expectrail" width="137" height="32"></a>
+    <nav aria-label="Sections">
+      <a href="../">Home</a>
+      <a href="../run-it/">Run it</a>
+      <a href="https://github.com/Expectrail/Expectrail/blob/main/contracts/receipt.v1.schema.json">Receipt format</a>
+    </nav>
+  </header>
+</div>
+
+<main id="main" class="wrap">
+  <h1>Verify a receipt</h1>
+  <p class="lede">A receipt is a signed statement of what Expectrail checked, on which build, under which policy, and what it decided. Check one here against the keys you already trust.</p>
+  <p class="muted">This page applies the same rules as <code>python -m expectrail.receipt trust-check</code>, in your browser. Nothing you choose is uploaded. Clearance is given only when everything is shown: a key from your trust store, a valid signature, the repository, head and policy you expect, a validity of at most 7 days that includes now, and every required check passed and exercised on full evidence. Anything this page cannot reproduce exactly, it reports as "cannot tell" rather than guess.</p>
+  <p class="notice">Expectrail has not published an issuer key yet: signing in CI waits on <a href="https://github.com/Expectrail/Expectrail/issues/255">#255</a>, so Run it's receipts are not signed yet. Until then, the two samples below are signed by a throwaway test key, to show the check working.</p>
+
+  <section class="panel" aria-labelledby="check-title">
+    <h2 id="check-title">Your receipt</h2>
+    <div class="inputs">
+      <div class="field">
+        <label for="receipt-text">Receipt (expectrail.receipt/v1)</label>
+        <input type="file" id="receipt-file" accept=".json,application/json" aria-label="Choose a receipt file">
+        <textarea id="receipt-text" spellcheck="false" placeholder="…or paste the receipt's JSON here"></textarea>
+      </div>
+      <div class="field">
+        <label for="store-text">Trust store (expectrail.trust-store/v1)</label>
+        <input type="file" id="store-file" accept=".json,application/json" aria-label="Choose a trust store file">
+        <textarea id="store-text" spellcheck="false" placeholder="…or paste the trust store's JSON here"></textarea>
+        <p class="hint">The keys you already trust. A key carried inside the receipt is never trusted on its own, and a trust store that came with the receipt from the same place proves little.</p>
+      </div>
+    </div>
+    <div class="expect">
+      <div class="field"><label for="expect-repo">Repository you expect</label><input type="text" id="expect-repo" spellcheck="false" placeholder="OWNER/NAME"></div>
+      <div class="field"><label for="expect-head">Head digest you expect</label><input type="text" id="expect-head" spellcheck="false" placeholder="64 hex characters"></div>
+      <div class="field"><label for="expect-policy">Policy digest you expect</label><input type="text" id="expect-policy" spellcheck="false" placeholder="64 hex characters"></div>
+    </div>
+    <p class="hint">A field left empty is "not checked", and a receipt with something not checked gets no clearance.</p>
+    <div class="row">
+      <button type="button" id="check">Check the receipt</button>
+      <button type="button" class="quiet" id="sample-accept">Load the test accept</button>
+      <button type="button" class="quiet" id="sample-reject">Load the test reject</button>
+    </div>
+    <p id="sample-note" class="hint" hidden></p>
+  </section>
+
+  <section id="result" class="panel" aria-labelledby="outcome-title" hidden>
+    <div id="outcome" class="outcome" role="status" aria-live="polite"><h2 id="outcome-title"></h2><p id="outcome-means"></p></div>
+    <div id="details"></div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>This page reads the receipt with its own strict parser and rebuilds the signed bytes as Python does. A form it cannot reproduce exactly (a timestamp outside RFC 3339, base64 with extra characters, a browser without Ed25519) is "cannot tell": check that receipt with <code>trust-check</code>.</p>
+    <p><a href="https://github.com/Expectrail/Expectrail/blob/main/docs/verify/receipt-check.js">The check's source</a> · <a href="https://github.com/Expectrail/Expectrail">Expectrail on GitHub</a></p>
+  </div>
+</footer>
+<script src="receipt-check.js"></script>
+<script src="verify.js"></script>
+</body>
+</html>

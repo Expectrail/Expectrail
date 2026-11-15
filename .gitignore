@@ -12,6 +12,7 @@
 !/tools/runit_stub.py
 !/tools/runit_burst.py
 !/tools/runit_smoke.py
+!/tools/make_receipt_samples.py
 !/tools/release_gate.py
 !/tools/dossier.py
 # The private held-out set when checked out locally or in CI (never commit it)

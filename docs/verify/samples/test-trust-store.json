@@ -1,0 +1,10 @@
+{
+  "format": "expectrail.trust-store/v1",
+  "note": "A throwaway test key for the Verify page's samples. Its private half was discarded after signing. It is not an Expectrail issuer key and proves nothing about any game.",
+  "keys": [
+    {
+      "id": "throwaway-test-key-20261115",
+      "publicKey": "WZU63wJuMN6xAV1t3grhK5c/Un5MRUIy5doJFBFOVjs="
+    }
+  ]
+}
