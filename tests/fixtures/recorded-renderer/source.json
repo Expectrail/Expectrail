@@ -1,0 +1,42 @@
+{
+  "frame": 111,
+  "run": "https://github.com/Expectrail/Expectrail/actions/runs/43652198623",
+  "replayed": "Local real Godot 4.7.2 replay from #370 slice 4, reproduced on November 15, 2026; diagnostic (not sandboxed).",
+  "hashes": {
+    "hidden.png": "4b15779e2e8a7b8ce0cde602fc1576da24eda7180e1b7e9180bf7ce67808dafd",
+    "recorded-replay.json": "4135709764ef22a91c6863b1638147614d54d5ac5d2198dd80b43bcec3a869f4",
+    "recorded.png": "e68ce38322a6e75dccf8114263e7b6585c30fe149f1e083f2a979503572454b0",
+    "replayed-replay.json": "1dfe3f01c0e822e335d2f3b7491e86ea2d004224cb8c6c418c86a658669a7224",
+    "replayed.png": "5c5df8b07348466a7df9ba1d9112e1efe71071c43dbd5274ae3ff64bb8fa047b",
+    "tinted.png": "6fcfe7b8ca39c22348a7ec8b87100ec307b882405d327c2f397b0c6d44737277"
+  },
+  "traceRow": {
+    "tick": 222,
+    "frame": 111,
+    "player": [
+      488.99,
+      328.767
+    ],
+    "onFloor": true,
+    "ground": 336.0,
+    "groundFrom": "tile",
+    "body": [
+      481.675,
+      321.925,
+      495.675,
+      335.925
+    ],
+    "facing": 1,
+    "enemies": [],
+    "projectiles": [],
+    "view": [
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.5
+    ]
+  },
+  "physicsTicksPerSecond": 120
+}

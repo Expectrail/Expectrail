@@ -180,4 +180,6 @@ def observer(doc):
                         'prompt': prompt}, sort_keys=True), flush=True)
                 raise
 
-    return anchored.AnchoredObserver(ExactAnswers(recording), anchored.check_calibration(calibration))
+    # Keep the recorded-image diagnosis (#515): which environment the recording was made under.
+    return recorded.with_recorded_diagnostics(
+        anchored.AnchoredObserver(ExactAnswers(recording), anchored.check_calibration(calibration)))

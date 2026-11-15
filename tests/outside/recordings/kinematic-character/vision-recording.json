@@ -6871,6 +6871,14 @@
   "provider": "meta-model-api"
  },
  "recordedAt": "2026-11-14",
+ "renderingEnvironments": [
+  {
+   "device": "Mesa - llvmpipe (LLVM 20.1.2, 256 bits)",
+   "name": "godot",
+   "renderer": "opengl3",
+   "version": "4.7.2.stable.official.ed1daf0bf"
+  }
+ ],
  "run": "43652198623",
  "sample": "kinematic-character"
 }

@@ -139,6 +139,7 @@ def contract_patterns() -> dict[str, str]:
 
 # pattern: (a value that matches it, whether that value plus "\n" must be refused)
 SAMPLES = {
+    r"^[\x20-\x7e]+$": ("Mesa - llvmpipe (LLVM 20.1.2, 256 bits)", True),
     r"\S": ("bug report", False),  # captured reports may include line endings
     "^(?!bug$)": ("intent", False),  # excludes one property name, not multiline values
     '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?\\+00:00$': ("2026-11-14T00:00:00+00:00", True),
