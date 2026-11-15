@@ -516,9 +516,9 @@ and exactly one must be named, or the command exits 2 before anything runs:
 - `--sam-live`: a live call (the key in `MODEL_API_KEY`, the cap in `EXPECTRAIL_SAM_USD_CAP`), its
   images reserved against `--budget-usd` first. This spends money.
 
-`--sam-box` (`body` by default, or `WxH` with `--sam-lift`), `--sam-pad` and `--sam-first` say how SAM
-is asked; with recorded answers they must match how the recording was asked, or the checks are
-dropped with that reason. `--observer none` (the default) leaves every pixel check `not-run`. An
+`--sam-box` (`body` by default, or `WxH` with `--sam-lift`), `--sam-pad`, `--sam-every` and `--sam-first`
+say how SAM is asked; with recorded answers they must match how the recording was asked, or the checks
+are dropped with that reason. `--observer none` (the default) leaves every pixel check `not-run`. An
 observer named without the pixel setting is refused.
 
 `python -m expectrail.repro score --offer signals-reach-evidence-pixel` counts pixel records
@@ -529,6 +529,23 @@ its `pixel` object says how many were pixel checks, and the totals' `pixel` says
 pixel check reproduced and how many only a pixel check did. A pixel row whose status or outcome its own
 runs contradict gives the defect no result. `--screen bench/jit/public/screen.json` (any setting) adds
 what the screen record measured to each row and gives the rate on the screen-only defects apart.
+
+### How often a frame is asked: `--sam-every` (added November 15)
+
+The observer asks about every Nth frame of a probe and its last, at most `MAX_FRAMES` (30) a replay.
+N was fixed at 10; `--sam-every N` (1 to 60, 10 by default) now sets it on `run` and `pixel-ask`, and
+jit.yml's `sam_every` input passes one value to the capture, asking and judging jobs. A sparser plan
+reserves fewer images under the same cap: a probe whose check names the enemy, on a route that fills
+the plan, reserves 30 frames x 3 boxes x 9 runs x $0.0025 = $2.025 at every 10th frame (over the $2
+cap, so `not-run`) and 16 frames, $1.08, at every 20th. The price: `never-crosses` and `inside-region`
+fail on any failing frame, so a sparser plan can only miss failures, and a check the bug breaks only
+between sampled frames is then not kept. 60 (one frame a second) is the sparsest.
+
+The plan must be one plan across the jobs. A recorded answer file says which frames each run was asked
+about (`framesProbed`, else the frames its rows cover), and the observer refuses, before it sends or
+judges anything, a recording whose plan is not its own: a denser plan would stop on a frame the
+recording never saw, and a sparser one would judge fewer frames than were paid for. Tested offline in
+`tests/test_jit_sam_every.py` and `tests/test_jit_sam_every_workflow.py`; no live run has used it.
 
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 

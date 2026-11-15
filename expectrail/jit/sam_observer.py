@@ -11,7 +11,10 @@ about the player's size is typed in. A sized box (``box=(w, h)`` with ``lift``) 
 recorded with on the bundled game (tests/data/sam-anchor/), kept so those answers can be replayed.
 
 **The frames line up with the replay's own, or nothing is judged.** The frames to ask about are planned
-from the route alone (``frames``), before any replay, so the budget can be reserved for them. On each
+from the route alone (``frames``: every ``every``-th frame and the last, 1 to MAX_EVERY, at most
+``max_frames``), before any replay, so the budget can be reserved for them. With recorded answers, the
+plan must be the one the recording was asked about (``RecordedSamClient.plan_of``), or the replay is
+refused before anything is asked. On each
 replay the observer then checks, before it asks anything:
 
 - the replay is of the route the check names (replay.json's ``route.name``);
@@ -65,6 +68,10 @@ from expectrail.jit import pixel
 
 NAME = "sam-3.1-anchor"
 DEFAULT_EVERY = 10
+# The sparsest plan: one frame a second at 60 fps. never-crosses and inside-region fail on any failing frame,
+# so a sparser plan can only miss failures; past one a second a check would judge little more than the
+# route's first and last frames.
+MAX_EVERY = 60
 DEFAULT_FPS = 60
 DEFAULT_TICKS_PER_SECOND = 120
 MAX_FRAMES = 30   # images a replay at most: 30 x 9 runs x $0.0025 = $0.675 a probe at list price
@@ -99,6 +106,8 @@ class SamAnchorObserver:
                              ("ticks_per_second", ticks_per_second)):
             if not isinstance(value, int) or isinstance(value, bool) or value < 1:
                 raise ValueError(f"{label} is a whole number, 1 or more")
+        if every > MAX_EVERY:
+            raise ValueError(f"every is at most {MAX_EVERY} (one frame a second at {DEFAULT_FPS} fps)")
         if first is not None and (not isinstance(first, int) or isinstance(first, bool) or first < 1):
             raise ValueError("first is a whole number of frames, 1 or more")
         if max_frames < 2:
@@ -204,6 +213,17 @@ class SamAnchorObserver:
         if missing:
             raise pixel.PixelError(f"the frames on disk ({len(on_disk)}) are not the replay's ({count} counted, "
                                    f"{len(hashes)} digests): frame {missing[0]}, which is asked about, is missing")
+        # Recorded answers were asked about one plan of frames. This observer must plan exactly those, or
+        # its every-th frame, first frames or frame cap differ from the asking job's: a plan with frames the
+        # recording never saw would stop part way, and one with fewer would judge less than was paid for.
+        plan_of = getattr(self.client, "plan_of", None)
+        if callable(plan_of):
+            recorded_plan = plan_of(on_disk[next(iter(on_disk))])
+            if recorded_plan is not None and recorded_plan != planned:
+                raise pixel.PixelError(f"the recorded answers were asked about {len(recorded_plan)} frames "
+                                       f"({_frames_text(recorded_plan)}), and this observer plans {len(planned)} "
+                                       f"({_frames_text(planned)}): ask and judge with the same --sam-every and "
+                                       f"--sam-first")
         try:
             trace = load_trace(run_dir)
             first = next(iter(on_disk))
@@ -289,6 +309,12 @@ class SamAnchorObserver:
         return exc
 
 
+def _frames_text(frames) -> str:
+    frames = list(frames)
+    shown = ", ".join(str(n) for n in frames[:4])
+    return f"{shown}, ..., {frames[-1]}" if len(frames) > 5 else shown
+
+
 def measure_box(prompt_box, answer: dict | None) -> dict:
     """One box's answer measured against the box it was asked about: does it hold the box's middle, and
     how much of it lies inside the box."""
@@ -321,6 +347,11 @@ class RecordedSamClient:
         self.model = doc["model"]
         self.setting = pixel.setting_of(doc)
         self.runs = {str(r["run"]): {f["frame"]: f for f in r["frames"]} for r in doc["runs"]}
+        # The frames each run was asked about: its ``framesProbed``, else every frame it has a row for (the
+        # observer writes a row for every planned frame, asked or not).
+        self.plans = {str(r["run"]): [int(n) for n in (r["framesProbed"] if isinstance(r.get("framesProbed"), list)
+                                                       else sorted(f["frame"] for f in r["frames"]))]
+                      for r in doc["runs"]}
         # The boxes asked about named objects (``objects`` in a run), by run and frame.
         self.boxes: dict = {}
         for r in doc["runs"]:
@@ -331,6 +362,12 @@ class RecordedSamClient:
         self.pick = pick
         self.calls = 0
         self.seconds = 0.0
+
+    def plan_of(self, png) -> list[int] | None:
+        """The frames the recorded run that answers ``png`` was asked about; None when there is no such run
+        (``segment_in`` then stops at the first question)."""
+        name = self.pick(Path(png)) if callable(self.pick) else self.pick
+        return self.plans.get(name)
 
     def segment_in(self, png, boxes):
         self.calls += 1

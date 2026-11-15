@@ -95,7 +95,9 @@ class TheJobs(unittest.TestCase):
         self.assertNotIn("environment", job)
         run = step_run(job, "Replay the revised proposal")
         self.assertIn("--observer sam-3.1-anchor --pixel-capture runs/pixel-capture", run)
-        self.assertNotIn("--sam-", run)
+        # The capture job is given no way to ask SAM. --sam-every (#286) is the frame plan, not a way to ask.
+        for way in ("--sam-answers", "--sam-live", "--sam-run"):
+            self.assertNotIn(way, run)
         upload = next(s for s in job["steps"] if s.get("name") == "Keep the record")
         self.assertEqual(upload["with"]["name"],
                          f"jit-${{{{ matrix.c.case }}}}${{{{ needs.plan.outputs.offer == '{PX}' && '-captured' || '' }}}}")
@@ -180,7 +182,7 @@ class TheSteps(unittest.TestCase):
         calls = self.run_step(step_run(self.jobs["replay-final"], "Replay the revised proposal"), OFFER=PX)
         runs = [c for c in calls if "jit.cli run" in c]
         self.assertEqual(len(runs), 1)
-        self.assertTrue(runs[0].endswith("--observer sam-3.1-anchor --pixel-capture runs/pixel-capture"))
+        self.assertTrue(runs[0].endswith("--observer sam-3.1-anchor --pixel-capture runs/pixel-capture --sam-every 10"))
 
     def test_replay_final_keeps_the_first_round_otherwise(self):
         for offer, proposal in ((offer_mod.EVIDENCE, True), (PX, False)):
@@ -212,7 +214,7 @@ class TheSteps(unittest.TestCase):
         calls = self.run_step(step_run(self.jobs["pixel-ask"], "Ask SAM"))
         self.assertEqual(calls[0], "-m expectrail.jit.cli pixel-budget --record runs/captured/jit/c1/jit-run.json --budget-usd 2")
         self.assertEqual(calls[1], "-m expectrail.jit.cli pixel-ask --replays runs/captured/pixel-capture "
-                                   "--out runs/pixel-answers/answers.json --budget-usd 1.2500 --sam-live")
+                                   "--out runs/pixel-answers/answers.json --budget-usd 1.2500 --sam-live --sam-every 10")
 
     def test_pixel_judge_judges_when_it_has_frames_answers_and_the_proposal(self):
         self.touch("runs/pixel-answers/answers.json")
@@ -221,7 +223,7 @@ class TheSteps(unittest.TestCase):
         calls = self.run_step(step_run(self.jobs["pixel-judge"], "Judge the pixel checks"), OFFER=PX)
         [run] = [c for c in calls if "jit.cli run" in c]
         self.assertTrue(run.endswith("--observer sam-3.1-anchor --sam-answers runs/pixel-answers/answers.json "
-                                     "--pixel-replays runs/captured/pixel-capture"))
+                                     "--pixel-replays runs/captured/pixel-capture --sam-every 10"))
 
     def test_pixel_judge_keeps_the_captured_record_without_answers(self):
         for where in ("runs/captured/jit/c1/jit-run.json", "runs/captured/jit-run.json"):
