@@ -1,3 +1,4 @@
+import hashlib
 """The home page's interactive parts stay true to the page and to the benches (direction B)."""
 import re
 import unittest
@@ -15,8 +16,12 @@ def mode(name: str) -> dict:
 
 class HomeInteractiveTest(unittest.TestCase):
     def test_the_page_loads_its_script_and_styles(self):
-        self.assertIn('<script src="assets/home.js" defer></script>', PAGE)
-        self.assertIn('<link rel="stylesheet" href="assets/home.css">', PAGE)
+        # Each link carries the first 10 hex digits of the file's SHA-256, so a browser holding an older copy
+        # fetches the new one as soon as the page changes. A stale tag fails here.
+        for name, tag in (("home.js", '<script src="assets/home.js?v={}" defer></script>'),
+                          ("home.css", '<link rel="stylesheet" href="assets/home.css?v={}">')):
+            digest = hashlib.sha256((ROOT / "docs/assets" / name).read_bytes()).hexdigest()[:10]
+            self.assertIn(tag.format(digest), PAGE)
 
     def test_the_switch_html_shows_the_both_state_the_script_holds(self):
         both = mode("both")
