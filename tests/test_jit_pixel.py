@@ -66,7 +66,7 @@ class ParseTest(unittest.TestCase):
             "not an object": ("just pass it", B),
             "not in the closed language": (candidate(predicate={"type": "visible", "minScore": 2}), B),
             "a name with a character outside its pattern": (candidate(id="c\n"), B),
-            "is not an object this project binds": (candidate(object="enemy"), B),
+            "is not an object this project binds": (candidate(object="boss"), B),
             "probe 'coins' is not on offer": (candidate(probe="coins"), B),
             "the window ends before it starts": (candidate(window={"fromFrame": 50, "toFrame": 10}), B),
             "cannot judge anything yet": (candidate(observer="visual-sensor"), B),
@@ -74,8 +74,12 @@ class ParseTest(unittest.TestCase):
             "cannot tell 'ground' (ground)": (candidate(object="ground"), B),
             "cannot tell 'coins-counter' (text)": (candidate(object="coins-counter"), B),
             "gives no position for 'coin'": (candidate(object="coin"), B),
-            "gives no position for 'bullet'": (
-                candidate(object="player", predicate={"type": "inside-region", "region": {"engine": "bullet"}}), B),
+            "the record gives no position for 'coin'": (
+                candidate(object="player", predicate={"type": "inside-region", "region": {"engine": "coin"}}), B),
+            "is not pointed at the boxes the engine logs for 'crate'": (
+                candidate(object="crate"), {**B, "crate": {"node": "Crate", "kind": "sprite", "anchor": "engine-boxes"}}),
+            "has the engine's box of 'bullet' only": (
+                candidate(object="bullet", predicate={"type": "inside-region", "region": {"engine": "enemy"}}), B),
             "has the engine's box of 'player' only": (
                 candidate(object="player", predicate={"type": "inside-region", "region": {"engine": "enemy"}}),
                 {**B, "enemy": {"node": "Enemy", "kind": "sprite", "anchor": "engine-position"}}),

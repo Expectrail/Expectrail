@@ -117,10 +117,13 @@ class OneProbe(unittest.TestCase):
         with self.assertRaisesRegex(pixel_reach.PixelReachError, "cannot be compared frame by frame"):
             pixel_reach.probe_reach(self.tmp / "clean", self.tmp / "short", self.route)
 
-    def test_only_the_player_can_be_measured(self):
+    def test_only_the_player_and_objects_with_logged_boxes_can_be_measured(self):
         self.assertEqual(pixel_reach.offered(), ["player"])
+        self.assertEqual(pixel_reach.offered_named(), ["bullet", "enemy"])
         menu = {"observers": {"sam-3.1-anchor": {"objects": ["player", "bullet"]}}}
-        with self.assertRaisesRegex(pixel_reach.PixelReachError, "'bullet'"):
+        self.assertEqual((pixel_reach.offered(menu), pixel_reach.offered_named(menu)), (["player"], ["bullet"]))
+        menu = {"observers": {"sam-3.1-anchor": {"objects": ["player", "coin"]}}}
+        with self.assertRaisesRegex(pixel_reach.PixelReachError, "'coin'"):
             pixel_reach.offered(menu)
         self.assertEqual(pixel_reach.offered({"observers": {}}), [])
 
@@ -281,9 +284,10 @@ class NamedPainted(Painted):
 class MeasureNamed(Measure):
     NAMES = ("in-box", "outside", "bullet", "crash")
 
-    def measure(self, names=None, named=None):
+    def measure(self, names=None, named=None, menu=None):
         return pixel_reach.measure(self.doc, self.profile, self.probes, self.tmp / "out", names or self.NAMES,
-                                   runner=NamedPainted(), root=self.tmp, bench_path=self.bench_path, named=named)
+                                   runner=NamedPainted(), root=self.tmp, bench_path=self.bench_path, named=named,
+                                   menu=menu)
 
     def test_each_defect_is_sorted_by_whether_an_offered_box_ever_shows_its_difference(self):
         record = self.measure()
@@ -299,8 +303,10 @@ class MeasureNamed(Measure):
         self.assertIn("If a pixel check could also name bullet, enemy", table)
         self.assertIn("| `bullet` | inside-a-box | 24 (2) | 1 | 0 | 0 (0) | 0 | 0 |", table)
 
-    def test_named_none_writes_a_record_as_before(self):
-        record = self.measure(["bullet"], named=[])
+    def test_named_none_writes_a_record_as_before_only_when_the_menu_offers_no_named_object(self):
+        with self.assertRaisesRegex(pixel_reach.PixelReachError, "the menu offers 'bullet'"):
+            self.measure(["bullet"], named=[])
+        record = self.measure(["bullet"], named=[], menu={"observers": {"sam-3.1-anchor": {"objects": ["player"]}}})
         self.assertNotIn("named", record)
         self.assertNotIn("reachIfNamed", record["defects"][0])
         self.assertEqual(record["defects"][0]["reach"], "outside-every-box")

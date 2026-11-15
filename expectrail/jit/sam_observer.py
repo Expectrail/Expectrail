@@ -26,6 +26,12 @@ passed. A planned frame the replay did not capture (the game ended sooner than t
 the engine logged no player, camera or body box, or where the player is outside the picture, is not
 asked about: it is a gap, and a check over a gap is ``needs-review`` (pixel.py, ``observations``).
 
+**Objects the game has many of** (``objects``: the enemy, the bullet; expectrail/jit/pixel.py ``named``).
+Asked with ``objects``, the observer also asks SAM about every object of each role on screen, at the box
+the engine logged for it (agents/sam_anchor.py ``object_boxes``), widened by ``pad``, one image a box. A
+frame with more than pixel.MAX_BOXES of one role on screen, or one whose record cannot place them, is not
+asked about for that role. ``most_images`` is the most a replay can then take, which the budget reserves.
+
 **What is charged.** Every request the client makes is one image, retries included (the client counts
 them in ``calls``); ``images`` is that count for the replay. When the observer stops part way, the images
 already sent ride on the error (``PixelError.images``) and the replay charges them too.
@@ -48,7 +54,7 @@ import json
 import math
 from pathlib import Path
 
-from agents.sam_anchor import BODY, DEFAULT_PAD, STOP_KINDS, anchors, load_trace, measure, summarise
+from agents.sam_anchor import BODY, DEFAULT_PAD, STOP_KINDS, anchors, load_trace, measure, object_boxes, summarise
 from agents.sam_observations import SamError, frame_files, png_size, sample
 from expectrail.jit import pixel
 
@@ -131,8 +137,27 @@ class SamAnchorObserver:
         picked = sample(list(range(last + 1)), every)
         return picked if len(picked) <= self.max_frames else [*picked[:self.max_frames - 1], last]
 
-    def __call__(self, run_dir, route: dict) -> dict:
+    def most_images(self, route: dict, objects=()) -> int:
+        """The most images one replay of ``route`` can take: one a planned frame for the player, and up to
+        pixel.MAX_BOXES a planned frame for each role in ``objects``. What the budget reserves for."""
+        return len(self.frames(route)) * (1 + pixel.MAX_BOXES * len(self._objects(objects)))
+
+    def _objects(self, objects) -> tuple[str, ...]:
+        objects = tuple(objects)
+        allowed = pixel.OBSERVERS[NAME].get("boxes", ())
+        for role in objects:
+            if role not in allowed:
+                raise pixel.PixelError(f"{NAME} is not pointed at {str(role)[:40]!r}; it is pointed at the boxes of "
+                                       f"{', '.join(allowed)}")
+        if len(set(objects)) != len(objects):
+            raise pixel.PixelError("a role is named twice")
+        if objects and self.box != BODY:
+            raise pixel.PixelError("named objects are asked about with their logged boxes, so only with box 'body'")
+        return objects
+
+    def __call__(self, run_dir, route: dict, objects=()) -> dict:
         run_dir = Path(run_dir)
+        objects = self._objects(objects)
         setting = self.setting()
         recorded = getattr(self.client, "setting", None)
         if recorded is not None and recorded != setting:
@@ -205,13 +230,67 @@ class SamAnchorObserver:
             rows.append({"frame": n, **measure(anchor, answer, size)})
         run = {"run": run_dir.name, "route": {"name": replayed, "sha256": replay["route"].get("sha256")},
                "framesProbed": planned, "frames": rows, "summary": summarise(rows)}
+        if objects:
+            run["objects"] = {role: self._ask_boxes(role, trace, size, planned, on_disk, client, before)
+                              for role in objects}
         return {"setting": setting, "run": run, "images": client.calls - before}
+
+    def _ask_boxes(self, role: str, trace: dict, size, planned, on_disk, client, before) -> list[dict]:
+        """One row a planned frame about every ``role`` object the engine logged on screen: one image a box,
+        at most pixel.MAX_BOXES a frame. A frame with more of them on screen than that, or one the engine's
+        record cannot place them in, is not asked about (a gap); an empty list of boxes is an answer."""
+        where = object_boxes(trace, size, [n for n in planned if n in on_disk], role, fps=self.fps, pad=self.pad)
+        rows = []
+        for n in planned:
+            if n not in on_disk:
+                rows.append({"frame": n, "asked": False, "note": "the replay did not capture this frame"})
+                continue
+            entry = where[n]
+            if "why" in entry:
+                rows.append({"frame": n, "asked": False, "note": entry["why"]})
+                continue
+            if len(entry["boxes"]) > pixel.MAX_BOXES:
+                rows.append({"frame": n, "asked": False, "outside": entry["outside"],
+                             "note": f"{len(entry['boxes'])} on screen, more than the {pixel.MAX_BOXES} asked about"})
+                continue
+            boxes = []
+            for b in entry["boxes"]:
+                try:
+                    answer = client.segment_in(on_disk[n], [tuple(b["promptBox"])])[0]
+                except SamError as exc:
+                    if exc.kind in STOP_KINDS or exc.status is not None:
+                        raise self._stop(f"SAM stopped at frame {n} ({role} {b['id']}): {exc}", client, before) from exc
+                    boxes.append({"id": b["id"], "world": b["world"], "promptBox": b["promptBox"], "box": None,
+                                  "score": None, "error": " ".join(str(exc).split())[:300]})
+                    continue
+                boxes.append({"id": b["id"], "world": b["world"], **measure_box(b["promptBox"], answer)})
+            rows.append({"frame": n, "asked": True, "boxes": boxes, "outside": entry["outside"]})
+        return rows
 
     @staticmethod
     def _stop(why: str, client, before: int) -> pixel.PixelError:
         exc = pixel.PixelError(" ".join(why.split())[:300])
         exc.images = client.calls - before
         return exc
+
+
+def measure_box(prompt_box, answer: dict | None) -> dict:
+    """One box's answer measured against the box it was asked about: does it hold the box's middle, and
+    how much of it lies inside the box."""
+    row = {"promptBox": list(prompt_box), "box": None, "score": None}
+    if answer is None:
+        row["note"] = "nothing came back for the box"
+        return row
+    x0, y0, x1, y1 = answer["box"]
+    bx0, by0, bx1, by1 = prompt_box
+    px, py = (bx0 + bx1) // 2, (by0 + by1) // 2
+    inside = max(0.0, min(x1, bx1) - max(x0, bx0)) * max(0.0, min(y1, by1) - max(y0, by0))
+    area, asked = max(0.0, x1 - x0) * max(0.0, y1 - y0), (bx1 - bx0) * (by1 - by0)
+    row.update({"box": [round(v, 1) for v in answer["box"]], "score": answer["score"],
+                "holdsPoint": bool(x0 <= px < x1 and y0 <= py < y1),
+                "insidePrompt": round(inside / area, 3) if area else 0.0,
+                "fillsPrompt": round(inside / asked, 3) if asked else 0.0})
+    return row
 
 
 class RecordedSamClient:
@@ -227,6 +306,13 @@ class RecordedSamClient:
         self.model = doc["model"]
         self.setting = pixel.setting_of(doc)
         self.runs = {str(r["run"]): {f["frame"]: f for f in r["frames"]} for r in doc["runs"]}
+        # The boxes asked about named objects (``objects`` in a run), by run and frame.
+        self.boxes: dict = {}
+        for r in doc["runs"]:
+            for rows in (r.get("objects") or {}).values():
+                for f in rows:
+                    for b in ((f.get("boxes") or []) if f.get("asked") else []):
+                        self.boxes.setdefault(str(r["run"]), {}).setdefault(f["frame"], []).append(b)
         self.pick = pick
         self.calls = 0
         self.seconds = 0.0
@@ -240,6 +326,13 @@ class RecordedSamClient:
             raise SamError(f"the recording has no run {str(name)[:40]!r}", kind="request")
         n = int(png.stem[1:])
         row = frames.get(n)
+        asked = [list(b) for b in boxes]
+        named = [b for b in self.boxes.get(name, {}).get(n, []) if [list(b.get("promptBox") or [])] == asked]
+        if named and not (row and row.get("asked") and [list(row.get("promptBox") or [])] == asked):
+            row = named[0]
+            if row.get("error"):
+                raise SamError(row["error"], kind="unreadable")
+            return [None if row.get("box") is None else {"box": list(row["box"]), "score": row["score"]}]
         if row is None or not row.get("asked") or row.get("promptBox") is None:
             raise SamError(f"{name} frame {n} was not asked about with a box in the recording", kind="request")
         if [list(b) for b in boxes] != [list(row["promptBox"])]:

@@ -335,7 +335,7 @@ python3 -m expectrail.repro pixel-reach-render bench/jit/public/pixel-reach.json
 | `enemy-walks-backwards` | inside-a-box | 25 of 25 | 9 of 241 (1) | 1125 |
 | `bullet-behind-scenery` | inside-a-box | 6 of 25 | 17 of 67 (6) | 6610 |
 
-If a pixel check could also name bullet, enemy (the engine logs their boxes; the menu does not offer them yet): a difference inside an offered or named box: 2. Frames differ, never inside one: 0. No planned frame differs: 0.
+If a pixel check could also name bullet, enemy (the engine logs their boxes; since November 15 the menu offers them to sam-3.1-anchor): a difference inside an offered or named box: 2. Frames differ, never inside one: 0. No planned frame differs: 0.
 
 | Defect | Reach if named | Planned frames differing inside bullet boxes (probes) | Most pixels inside one bullet box | Planned frames with no bullet boxes on a build | Planned frames differing inside enemy boxes (probes) | Most pixels inside one enemy box | Planned frames with no enemy boxes on a build |
 | --- | --- | --- | --- | --- | --- | --- | --- |
