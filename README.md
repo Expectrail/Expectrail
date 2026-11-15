@@ -7,7 +7,7 @@
   </a>
 </p>
 
-<p align="center"><strong>Verification for coding agents’ changes: the runtime’s record and vision must agree, and plain code decides.</strong></p>
+<p align="center"><strong> Independent verification for coding agents’ changes: the runtime’s record and vision must agree, and plain code decides.</strong></p>
 
 <p align="center">
   <a href="https://github.com/Expectrail/Expectrail/actions/workflows/ci.yml"><img src="https://github.com/Expectrail/Expectrail/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
