@@ -102,6 +102,10 @@ def check_status(doc) -> None:
     if found:
         raise StoreError(f"status.json does not match contracts/{SCHEMA_PATH.name}: {found[0]}"
                          + (f" (and {len(found) - 1} more)" if len(found) > 1 else ""))
+    try:
+        req.check_bug(doc)
+    except req.RequestError as exc:
+        raise StoreError(str(exc)) from exc
     if "repair" in doc and doc["decision"] != "reject":
         raise StoreError("only a rejected job can have an auto-fix outcome")
     final, decided = doc["phase"] in FINAL, doc["decision"] is not None
@@ -249,6 +253,7 @@ class JobStore:
         status = {
             "format": FORMAT, "id": job_id, "phase": "queued", "decision": None, "reasons": [], "diagnostics": [],
             "inputs": inputs, "executionClass": request["executionClass"], "evidenceGrade": None,
+            **{key: request[key] for key in ("intent", "bug") if key in request},
             # A job nobody takes is failed when this first lease runs out (`status`), so a starter that
             # died between creating the job and starting its worker leaves nothing to wait on for ever.
             "worker": None, "lease": self._lease(), "output": None, "history": [{"phase": "queued", "at": created}],
