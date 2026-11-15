@@ -239,6 +239,17 @@ time ("did-not-pass-on-clean", with its outcomes) or did not fail on the bug bui
 rejected check, using the measurements to choose probes and signals that separate the two builds. \
 Do not repeat a kept or rejected check. Answer in the same JSON format, with only the new checks."""
 
+# Added to REVISE_SYSTEM under the pixel setting only (#286), so every other setting's revision prompt is
+# byte for byte what it was. A revision replaces rejected trace checks; the first round's pixel checks are
+# carried to the second round as they are (``revise_to_file``), and any the answer writes are not read.
+REVISE_PIXEL_TEXT = """ Pixel checks are not revised: the first attempt's pixel checks stay as they are, so \
+write no "pixelChecks" in this answer."""
+
+
+def revise_system(offer: str) -> str:
+    """What is added to the system prompt for the one revision under ``offer``."""
+    return REVISE_SYSTEM + (REVISE_PIXEL_TEXT if offer_mod.offers_pixel(offer) else "")
+
 
 class IntentUnavailable(RuntimeError):
     """No usable answer: the model was unavailable, out of budget, or returned nothing valid."""
@@ -413,7 +424,7 @@ def spark_intent(transport=None, model: str = MODEL, offer: str = offer_mod.BASE
     def propose(report: str, patch_text: str, dmap: dict, profile: dict, probes: list[dict],
                 revision: dict | None = None) -> dict:
         user = prompt(report, patch_text, dmap, profile, probes, revision, offer=offer, candidate=candidate)
-        system = system_text + REVISE_SYSTEM if revision is not None else system_text
+        system = system_text + revise_system(offer) if revision is not None else system_text
         # max_tokens is the completion the budget reserves (run.generate, propose_to_file), so the
         # answer can never cost more than was reserved for it.
         body = {"model": model, "temperature": 0, "response_format": {"type": "json_object"},
@@ -687,6 +698,8 @@ def revise_to_file(intent, report: str, patch_text: str, profile: dict, probes: 
     doc = dict(first_doc, offer=offer, diagnostics=list(notes or []) + list(first_doc.get("diagnostics") or []),
                prior={"replayUsd": round(float(record["spend"]["replayUsd"]), 6), "replays": int(record["spend"]["replays"])},
                revision={"revised": False, "skipped": None, "kept": [], "replaced": [], "added": []})
+    if offer_mod.offers_pixel(offer):
+        doc["pixelChecks"] = list(r1.get("pixelChecks") or [])   # as re-checked by from_proposal, never revised
 
     def write(d):
         _P(out).mkdir(parents=True, exist_ok=True)
@@ -707,7 +720,7 @@ def revise_to_file(intent, report: str, patch_text: str, profile: dict, probes: 
                     usage1.get("completionTokens") if isinstance(usage1.get("completionTokens"), int) else 0)
     revision = {"kept": [_shown(e) for e in kept],
                 "rejected": [dict(_shown(r["entry"]), why=r["why"], cleanOutcomes=r["clean"]) for r in rejected]}
-    est = estimate_prompt_tokens(getattr(intent, "system", "") + REVISE_SYSTEM,
+    est = estimate_prompt_tokens(getattr(intent, "system", "") + revise_system(offer),
                                  prompt(report, patch_text, dmap, profile, probes, revision, offer=offer,
                                         candidate=candidate))
     try:
@@ -722,13 +735,17 @@ def revise_to_file(intent, report: str, patch_text: str, profile: dict, probes: 
         doc["usage"] = _sum_usage(usage1, {"promptTokens": est, "completionTokens": 0})  # charged for its prompt
         return write(doc)
     taken = {e["spec"]["id"] for e in r1["candidates"]}
-    kept_probe_ids = {i for e in kept for i in _applies_ids(e)}
+    # The first round's pixel checks are carried as they are (#286), so the probes they replay stay too.
+    pixel_kept = list(r1.get("pixelChecks") or [])
+    kept_probe_ids = {i for e in kept for i in _applies_ids(e)} | {c["probe"] for c in pixel_kept}
     probes_out = [p for p in r1["probes"] if p["id"] in kept_probe_ids]
     new_probe_ids = {}
     for p in answer.get("probes") or []:
         if len(probes_out) >= MAX_PROBES:
             break
         pid = "jit-r-" + p["id"].removeprefix("jit-")
+        if any(q["id"] == pid for q in probes_out):
+            continue  # a kept probe already has this id; a check that names the new one is not taken
         new_probe_ids[p["id"]] = pid
         probes_out.append(dict(p, id=pid))
     added = []
@@ -752,6 +769,9 @@ def revise_to_file(intent, report: str, patch_text: str, profile: dict, probes: 
         e["spec"]["id"] = sid
         validate_v1(e["spec"], "trace-spec")
         added.append(e)
+    if answer.get("pixelChecks"):
+        doc["diagnostics"] = doc["diagnostics"] + ["revision: pixel checks in the answer were not read: the first "
+                                                   "round's pixel checks are carried as they are"]
     doc.update(probes=probes_out, candidates=kept + added,
                diagnostics=doc["diagnostics"] + [f"revision: {d}" for d in answer.get("diagnostics") or []][:20],
                usage=_sum_usage(usage1, answer.get("usage") or {}),

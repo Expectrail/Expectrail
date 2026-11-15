@@ -27,6 +27,14 @@ name: Generated checks
 # probes; signals-reach-evidence also gives the proposer step 5's evidence, which the measure job makes
 # by replaying every probe with frames (repro-evidence.json). The known-bugs bench is registered under
 # baseline and refuses any other.
+#
+# signals-reach-evidence-pixel (#286) also lets the proposer propose pixel checks, about what is drawn, judged
+# by SAM 3.1 (expectrail/jit/pixel.py, sam_observer.py). SAM's key and the change's code never meet, so a
+# pixel check takes three jobs (expectrail/jit/pixel_jobs.py): replay-final replays each pixel check's probe
+# with frames on the clean game, the bug build and the candidate and keeps the frames (no secret);
+# pixel-ask asks SAM about the kept frames and runs no game (the key, in main-only, within what the change's
+# cap has left); pixel-judge replays the trace checks again and judges the pixel checks from the captured
+# frames and SAM's answers (no secret). Under this setting pixel-judge's record is the result.
 on:
   pull_request:
     paths:
@@ -59,7 +67,7 @@ on:
       offer:
         description: What the generator is offered (expectrail/jit/offer.py); bench mode takes baseline only
         type: choice
-        options: ['baseline', 'signals-reach', 'signals-reach-evidence']
+        options: ['baseline', 'signals-reach', 'signals-reach-evidence', 'signals-reach-evidence-pixel']
         default: 'baseline'
 
 permissions:
@@ -164,7 +172,7 @@ jobs:
       - name: Plan the cases
         id: plan
         run: |
-          [[ "$OFFER" =~ ^(baseline|signals-reach|signals-reach-evidence)$ ]] || { echo "::error::offer must be baseline, signals-reach or signals-reach-evidence"; exit 1; }
+          [[ "$OFFER" =~ ^(baseline|signals-reach|signals-reach-evidence|signals-reach-evidence-pixel)$ ]] || { echo "::error::offer must be baseline, signals-reach, signals-reach-evidence or signals-reach-evidence-pixel"; exit 1; }
           echo "offer=$OFFER" >> "$GITHUB_OUTPUT"
           if [[ "$MODE" == "bench" ]]; then
             [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "::error::the bench runs only from main"; exit 1; }
@@ -206,8 +214,9 @@ jobs:
       matrix:
         c: ${{ fromJSON(needs.plan.outputs.cases) }}
     runs-on: ubuntu-24.04
-    # signals-reach-evidence adds three replays with frames a probe (expectrail/repro/evidence.py).
-    timeout-minutes: ${{ needs.plan.outputs.offer == 'signals-reach-evidence' && 75 || 30 }}
+    # The evidence (signals-reach-evidence, and the pixel setting, which offers it too) adds three replays
+    # with frames a probe (expectrail/repro/evidence.py).
+    timeout-minutes: ${{ startsWith(needs.plan.outputs.offer, 'signals-reach-evidence') && 75 || 30 }}
     env:
       BASE: ${{ matrix.c.base }}
       REPORT: ${{ matrix.c.report }}
@@ -223,7 +232,7 @@ jobs:
       - name: Install patch (and, for the evidence's frames, a virtual display and software OpenGL)
         uses: ./.github/actions/apt-install
         with:
-          packages: ${{ needs.plan.outputs.offer == 'signals-reach-evidence' && 'patch xvfb libgl1-mesa-dri libglx-mesa0' || 'patch' }}
+          packages: ${{ startsWith(needs.plan.outputs.offer, 'signals-reach-evidence') && 'patch xvfb libgl1-mesa-dri libglx-mesa0' || 'patch' }}
       - name: Download Godot 4.7.2 and check its SHA-512
         uses: ./.github/actions/get-godot
       - name: Measure every probe on the clean game and the bug build
@@ -409,9 +418,146 @@ jobs:
 
   replay-final:
     # Runs the game. No secret. The revised proposal, replayed from scratch with the first round's spend
-    # carried in; or, when nothing was revised, the first round's record as it is.
+    # carried in; or, when nothing was revised, the first round's record as it is. Under the pixel setting
+    # the proposal the revise job wrote is always replayed, and each pixel check's probe is replayed with
+    # frames, which are kept for pixel-ask (--pixel-capture); nothing is asked here, so the pixel rows are
+    # not run, and this record is not the result (pixel-judge's is).
     needs: [plan, replay, revise]
     if: github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal'
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        c: ${{ fromJSON(needs.plan.outputs.cases) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ needs.plan.outputs.offer == 'signals-reach-evidence-pixel' && 90 || 60 }}
+    env:
+      CASE: ${{ matrix.c.case }}
+      BASE: ${{ matrix.c.base }}
+      CANDIDATE: ${{ matrix.c.candidate }}
+      REPORT: ${{ matrix.c.report }}
+      BUDGET: ${{ needs.plan.outputs.budget }}
+      OFFER: ${{ needs.plan.outputs.offer }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Install patch (and, for the pixel checks' frames, a virtual display and software OpenGL)
+        uses: ./.github/actions/apt-install
+        with:
+          packages: ${{ needs.plan.outputs.offer == 'signals-reach-evidence-pixel' && 'patch xvfb libgl1-mesa-dri libglx-mesa0' || 'patch' }}
+      - name: Download Godot 4.7.2 and check its SHA-512
+        uses: ./.github/actions/get-godot
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: jit-proposal-${{ matrix.c.case }}-revised
+          path: runs/jit-proposal-2
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: jit-${{ matrix.c.case }}-round1
+          path: runs/jit-round1
+      - name: Replay the revised proposal, or keep the first round
+        run: |
+          revised=false; grep -qx "revised=true" runs/jit-proposal-2/revised.txt 2>/dev/null && revised=true
+          # Under the pixel setting the revise job's proposal (revised, or the first one with the first
+          # round's spend) is replayed whether or not it was revised, to capture the pixel checks' frames.
+          px=()
+          if [[ "$OFFER" == "signals-reach-evidence-pixel" && -f runs/jit-proposal-2/jit-proposal.json ]]; then
+            px=(--observer sam-3.1-anchor --pixel-capture runs/pixel-capture)
+          fi
+          mkdir -p "runs/jit/$CASE"
+          if [[ "$revised" == "true" || ${#px[@]} -gt 0 ]]; then
+            export PATH="$PWD/tools/godot:$PATH"
+            base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
+            python -m expectrail.jit.cli run --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
+              --proposal runs/jit-proposal-2/jit-proposal.json --out "runs/jit/$CASE" --budget-usd "$BUDGET" \
+              --run-id "ci-${GITHUB_RUN_ID}-$CASE" --offer "$OFFER" "${px[@]}"
+          else
+            cp runs/jit-round1/jit-run.json "runs/jit/$CASE/jit-run.json"
+          fi
+          echo "::notice title=Generated checks ${CASE} (revised: $revised)::$(python -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['status'], d['counts'], 'spend', d['spend']['usd'])" "runs/jit/$CASE/jit-run.json")"
+          python -m expectrail.jit.cli report "runs/jit/$CASE/jit-run.json" >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the record
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          # Under the pixel setting this is not the result: pixel-judge uploads jit-<case>.
+          name: jit-${{ matrix.c.case }}${{ needs.plan.outputs.offer == 'signals-reach-evidence-pixel' && '-captured' || '' }}
+          path: |
+            runs/jit/${{ matrix.c.case }}/jit-run.json
+            runs/jit/${{ matrix.c.case }}/jit-routes/
+            runs/pixel-capture/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  pixel-ask:
+    # The pixel setting only. Holds SAM's key; runs no game and installs no engine. It reads the frames
+    # replay-final kept, as untrusted data (expectrail/jit/pixel_jobs.py checks their layout), and asks SAM
+    # about the frames each pixel check judges. Every image is reserved first against what the change's cap
+    # has left after replay-final's record; over that, nothing is sent. In main-only: only a dispatch from
+    # main can reach the key.
+    needs: [plan, replay-final]
+    environment: main-only
+    if: github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal' && needs.plan.outputs.offer == 'signals-reach-evidence-pixel'
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        c: ${{ fromJSON(needs.plan.outputs.cases) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CASE: ${{ matrix.c.case }}
+      BUDGET: ${{ needs.plan.outputs.budget }}
+      KEY_SET: ${{ secrets.MODEL_API_KEY != '' || secrets.META_API_KEY != '' }}
+    steps:
+      - name: Check the key
+        run: '[[ "$KEY_SET" == "true" ]] || { echo "::error::Set MODEL_API_KEY (or META_API_KEY) in the main-only environment first."; exit 1; }'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: jit-${{ matrix.c.case }}-captured
+          path: runs/captured
+      - name: Ask SAM 3.1 about the captured frames (one image a judged frame)
+        env:
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY || secrets.META_API_KEY }}
+        run: |
+          mkdir -p runs/pixel-answers
+          if [[ ! -d runs/captured/pixel-capture ]]; then
+            echo "::notice title=Pixel checks ${CASE}::no frames were captured, so nothing is asked"
+            exit 0
+          fi
+          left=$(python -m expectrail.jit.cli pixel-budget --record "runs/captured/jit/$CASE/jit-run.json" --budget-usd "$BUDGET")
+          export EXPECTRAIL_SAM_USD_CAP="$left"
+          echo "::notice title=SAM budget ${CASE}::\$$left left of the change's \$$BUDGET"
+          # Exit 1 means nothing was asked (over the budget, or nothing to ask): the pixel rows stay not run.
+          python -m expectrail.jit.cli pixel-ask --replays runs/captured/pixel-capture \
+            --out runs/pixel-answers/answers.json --budget-usd "$left" --sam-live \
+            || echo "::warning title=Pixel checks ${CASE}::SAM was not asked; the pixel checks stay not run"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jit-${{ matrix.c.case }}-pixel-answers
+          path: runs/pixel-answers/answers.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  pixel-judge:
+    # The pixel setting only. Runs the game, no secret. The revise job's proposal replayed once more, with
+    # the pixel checks judged from the frames replay-final kept and SAM's answers (--pixel-replays and
+    # --sam-answers; a missing answer or a changed frame drops the check). With no frames or no answers,
+    # replay-final's record is kept as it is, its pixel rows not run. This job's record is the result.
+    needs: [plan, revise, replay-final, pixel-ask]
+    if: always() && github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal' && needs.plan.outputs.offer == 'signals-reach-evidence-pixel' && needs.replay-final.result == 'success'
     strategy:
       fail-fast: false
       max-parallel: 4
@@ -446,22 +592,31 @@ jobs:
           path: runs/jit-proposal-2
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          name: jit-${{ matrix.c.case }}-round1
-          path: runs/jit-round1
-      - name: Replay the revised proposal, or keep the first round
+          name: jit-${{ matrix.c.case }}-captured
+          path: runs/captured
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        # pixel-ask uploads nothing when nothing was captured or nothing was asked.
+        continue-on-error: true
+        with:
+          name: jit-${{ matrix.c.case }}-pixel-answers
+          path: runs/pixel-answers
+      - name: Judge the pixel checks from the captured frames and SAM's answers
         run: |
-          revised=false; grep -qx "revised=true" runs/jit-proposal-2/revised.txt 2>/dev/null && revised=true
           mkdir -p "runs/jit/$CASE"
-          if [[ "$revised" == "true" ]]; then
+          if [[ -f runs/pixel-answers/answers.json && -d runs/captured/pixel-capture && -f runs/jit-proposal-2/jit-proposal.json ]]; then
             export PATH="$PWD/tools/godot:$PATH"
             base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
             python -m expectrail.jit.cli run --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
               --proposal runs/jit-proposal-2/jit-proposal.json --out "runs/jit/$CASE" --budget-usd "$BUDGET" \
-              --run-id "ci-${GITHUB_RUN_ID}-$CASE" --offer "$OFFER"
+              --run-id "ci-${GITHUB_RUN_ID}-$CASE" --offer "$OFFER" --observer sam-3.1-anchor \
+              --sam-answers runs/pixel-answers/answers.json --pixel-replays runs/captured/pixel-capture
           else
-            cp runs/jit-round1/jit-run.json "runs/jit/$CASE/jit-run.json"
+            echo "::warning title=Pixel checks ${CASE}::no captured frames or no SAM answers; replay-final's record stands, its pixel checks not run"
+            # With no frames kept the artifact's root is the record's own folder, not runs/.
+            record="runs/captured/jit/$CASE/jit-run.json"; [[ -f "$record" ]] || record=runs/captured/jit-run.json
+            cp "$record" "runs/jit/$CASE/jit-run.json"
           fi
-          echo "::notice title=Generated checks ${CASE} (revised: $revised)::$(python -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['status'], d['counts'], 'spend', d['spend']['usd'])" "runs/jit/$CASE/jit-run.json")"
+          echo "::notice title=Generated checks ${CASE} (pixel)::$(python -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['status'], d['counts'], 'spend', d['spend']['usd'])" "runs/jit/$CASE/jit-run.json")"
           python -m expectrail.jit.cli report "runs/jit/$CASE/jit-run.json" >> "$GITHUB_STEP_SUMMARY"
       - name: Keep the record
         if: always()
@@ -513,7 +668,7 @@ jobs:
   repro-score:
     # Repro mode only. No secret, no game: each defect's final record, read by the reproduction scorer.
     # A defect with no usable record is "no result" and never counts as reproduced.
-    needs: [plan, replay-final]
+    needs: [plan, replay-final, pixel-judge]
     if: always() && github.event_name == 'workflow_dispatch' && inputs.mode == 'repro' && needs.plan.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -536,7 +691,7 @@ jobs:
           mkdir -p runs/repro
           for d in runs/artifacts/jit-repro-*; do
             name="${d#runs/artifacts/jit-}"
-            [[ "$name" == *-round1 ]] && continue
+            [[ "$name" == *-round1 || "$name" == *-captured || "$name" == *-pixel-answers ]] && continue
             [[ -f "$d/jit-run.json" ]] && mkdir -p "runs/repro/$name" && cp "$d/jit-run.json" "runs/repro/$name/"
           done
           python -m expectrail.repro score --records runs/repro --out runs/repro-score \
