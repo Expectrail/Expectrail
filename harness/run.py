@@ -16,6 +16,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -97,15 +98,32 @@ def godot_import(godot: Path, project: Path, env: dict, tool: box.Tool | None = 
                  timeout: float = 600) -> subprocess.CompletedProcess:
     """Godot's import step on a game copy, inside the sandbox when there is one: importing runs the
     project's own import code, so it is the candidate's code as much as the replay is."""
-    if tool is None:
-        return subprocess.run([str(godot), "--headless", "--path", str(project), "--import"], check=True,
-                              capture_output=True, text=True, env=env, timeout=timeout)
-    with tempfile.TemporaryDirectory(prefix="expectrail-import-") as nowhere:
-        done = box.run(tool, [box.ENGINE_BINARY, "--headless", "--path", box.GAME, "--import"],
-                       timeout=timeout, game=project, out=Path(nowhere), engine=godot, env=env)
-    if done.returncode != 0:
-        raise subprocess.CalledProcessError(done.returncode, done.args, done.stdout, done.stderr)
-    return done
+    # Parallel asset import can abort on a cold project (godotengine/godot#125245).
+    # --import starts the editor, which ignores override.cfg. Set the editor option on the
+    # disposable copy for this process only. Keep the original outside the sandbox's game mount.
+    settings = project / "project.godot"
+    with tempfile.TemporaryDirectory(dir=project.parent) as tmp:
+        original = Path(tmp) / "project.godot"
+        settings.replace(original)
+        try:
+            settings.write_bytes(original.read_bytes() + b"\n[editor]\nimport/use_multiple_threads=false\n")
+            if tool is None:
+                return subprocess.run([str(godot), "--headless", "--path", str(project), "--import"], check=True,
+                                      capture_output=True, text=True, env=env, timeout=timeout)
+            with tempfile.TemporaryDirectory(prefix="expectrail-import-") as nowhere:
+                done = box.run(tool, [box.ENGINE_BINARY, "--headless", "--path", box.GAME, "--import"],
+                               timeout=timeout, game=project, out=Path(nowhere), engine=godot, env=env)
+            if done.returncode != 0:
+                raise subprocess.CalledProcessError(done.returncode, done.args, done.stdout, done.stderr)
+            return done
+        except subprocess.CalledProcessError as exc:
+            if exc.returncode in (-signal.SIGABRT, 128 + signal.SIGABRT):
+                # CalledProcessError's default text drops stderr. Quote candidate output on one line.
+                tail = (exc.stderr or "")[-2000:]
+                print(f"harness: Godot import aborted; stderr tail: {tail!r}", file=sys.stderr)
+            raise
+        finally:
+            original.replace(settings)
 
 
 def ensure_import_cache(game: Path, godot: Path, env: dict, tool: box.Tool | None = None,

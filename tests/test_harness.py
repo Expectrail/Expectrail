@@ -2,6 +2,7 @@ import contextlib
 import io
 import os
 import shutil
+import signal
 import subprocess
 import tempfile
 import unittest
@@ -17,6 +18,7 @@ from harness.run import (
     find_godot,
     get_cache_dir,
     godot_cmd,
+    godot_import,
     prepare,
     tree_digest,
 )
@@ -85,6 +87,31 @@ class HarnessTest(unittest.TestCase):
             self.assertTrue((work / "expectrail_recorder.gd").is_file())
             self.assertTrue((work / ".godot" / "imported" / "sample.ctex").is_file())
             self.assertIn("ExpectrailHarness", (work / "project.godot").read_text(encoding="utf-8"))
+
+    def test_editor_import_is_serial_and_restores_replay_settings(self):
+        original = b"config_version=5\r\n[editor]\r\nimport/use_multiple_threads=true\r\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            project = self._game(Path(tmp))
+            settings = project / "project.godot"
+            settings.write_bytes(original)
+            for sandboxed in (False, True):
+                for abort in (False, True):
+                    with self.subTest(sandboxed=sandboxed, abort=abort):
+                        def run(*args, **kwargs):
+                            self.assertTrue(settings.read_bytes().endswith(
+                                b"[editor]\nimport/use_multiple_threads=false\n"))
+                            if abort and not sandboxed:
+                                raise subprocess.CalledProcessError(-signal.SIGABRT, args, stderr="editor stopped")
+                            return subprocess.CompletedProcess(args, 128 + signal.SIGABRT if abort else 0, "", "editor stopped")
+
+                        runner = "harness.run.box.run" if sandboxed else "subprocess.run"
+                        error = io.StringIO()
+                        with mock.patch(runner, side_effect=run) as invoke, contextlib.redirect_stderr(error):
+                            with self.assertRaises(subprocess.CalledProcessError) if abort else contextlib.nullcontext():
+                                godot_import(Path("godot"), project, {}, object() if sandboxed else None)
+                        self.assertEqual("editor stopped" in error.getvalue(), abort)
+                        self.assertEqual(settings.read_bytes(), original)
+                        invoke.assert_called_once()
 
     def _fake_godot_import(self, calls):
         """subprocess.run stand-in: '--import' creates .godot/imported in the target project."""
