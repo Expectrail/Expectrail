@@ -110,3 +110,8 @@ succeeds, so a refusal inside is the sandbox's doing.
 
 The tests that need bubblewrap are skipped where it cannot run and are required in CI's `seeded-bugs`
 job (`EXPECTRAIL_SANDBOX_TESTS=required`).
+
+The [2026-11-15 acceptance audit](replay-sandbox-audit.md) maps every #253 Done-when
+case to its test, records the two already-fixed reader gaps, and adds headless Godot
+verdict tests with positive controls and boundary-removal red evidence. Unity and
+web replay, and explicit UID reporting from the original Build list, remain open.
