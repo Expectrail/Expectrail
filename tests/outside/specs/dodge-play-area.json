@@ -22,5 +22,10 @@
   "coverage": {
     "whenPlayerVisible": true,
     "minFrames": 120
+  },
+  "approval": {
+    "by": "Sean Keluo-Udeke",
+    "at": "2026-11-15T18:09:57Z",
+    "specSha256": "944af8e931fd4bbce81425fd6eb5f815fbe37953355666ea6b2311349e0e02ce"
   }
 }
