@@ -1381,6 +1381,31 @@ class SplitGateTest(unittest.TestCase):
         self.capture("none")
         self.assertEqual(self.judge("none")["decision"], "reject")
 
+    def test_extra_frame_with_consistent_digests_is_refused_before_observation(self):
+        from tests.capture_edits import edit_capture
+        self.capture("none")
+        edited = self.root / "extra-frame.zip"
+        edit_capture(self.archive, edited, "extra")
+        self.archive = edited
+        with self.assertRaisesRegex(ValueError, "EVIDENCE_MISMATCH: replay did not capture exactly the route"):
+            self.judge("none")
+        self.assertFalse(self.model.asked)
+
+    def test_resolution_change_with_consistent_digests_is_refused_before_observation(self):
+        import base64
+        from tests.capture_edits import edit_capture
+        self.capture("none")
+        edited = self.root / "resolution.zip"
+        changed = edit_capture(self.archive, edited, "resolution")
+        # The stand-in would answer clean for the valid resized PNG; refusal must
+        # come from the trusted evidence reader, not an unknown-provider reply.
+        for index, data in changed.items():
+            self.model.index[base64.b64encode(data).decode()] = ("clean", index)
+        self.archive = edited
+        with self.assertRaisesRegex(ValueError, "EVIDENCE_MISMATCH: frame resolution changed"):
+            self.judge("none")
+        self.assertFalse(self.model.asked)
+
     def test_clean_engine_without_a_visual_answer_needs_review(self):
         self.capture("none")
         self.model.down = True

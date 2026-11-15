@@ -4,6 +4,7 @@ import os
 import re
 import shutil
 import stat
+import struct
 import tempfile
 import zipfile
 from dataclasses import dataclass
@@ -166,8 +167,21 @@ def judge(policy, base, pr, intent, archive, out, observer, *, head_checkout):
                             or any(row["tick"] != i for i, row in enumerate(trace["rows"]))):
                         raise ValueError("replay did not cover the route's ticks")
                     need = verify.window_frames({}, ticks, trace)
-                    if not need or len(verify.captured_frames(run["framesDir"])) < len(need):
-                        raise ValueError("replay did not capture the whole route")
+                    if not need or verify.captured_frames(run["framesDir"]) != set(need):
+                        raise ValueError("replay did not capture exactly the route's frames")
+                    size = None
+                    for frame in need:
+                        with (run["framesDir"] / f"f{frame:08d}.png").open("rb") as image:
+                            header = image.read(24)
+                        if (len(header) != 24 or header[:8] != b"\x89PNG\r\n\x1a\n"
+                                or header[8:16] != b"\x00\x00\x00\x0dIHDR"):
+                            raise ValueError("frame has no valid PNG dimensions")
+                        dimensions = struct.unpack(">II", header[16:24])
+                        if not all(dimensions):
+                            raise ValueError("frame has invalid PNG dimensions")
+                        if size is not None and dimensions != size:
+                            raise ValueError("frame resolution changed during the route")
+                        size = dimensions
                     runs[game, digest] = run
                 arms[group] = verify.SavedReplays(trees, runs)
         except (OSError, ValueError, LookupError, TypeError, RuntimeError, zipfile.BadZipFile) as exc:
