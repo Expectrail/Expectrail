@@ -51,11 +51,23 @@ page writes every such cell as a code span, where GitHub renders no link, image,
   record (expectrail/repro/visibility.py) shows a signal that moves on a library probe. That signal
   can be a side effect a hundredth of a pixel wide; the visibility table says which.
 - ``no-signal``: the visibility record shows the engine's record differs and no signal does.
+- ``route-never-reaches`` and ``probe-language``: only with a screen record (``--screen``, below), for a
+  miss the visibility record shows no difference for on any library probe. ``probe-language`` when the
+  screen record says the frames differ there and the engine's record does not (``screen-only``), and the
+  setting offers no check about the screen (any setting but the pixel one). ``route-never-reaches`` when
+  the screen record says nothing differs on any library probe, in the record or in the frames
+  (``neither``): no library route reaches anything this defect changes that either can see. That reading
+  is the measurement's, and its limit is the screen record's: a defect whose effect neither the record nor
+  the frames carry would read the same way.
 - ``undetermined``: the records cannot say. The visibility record shows no difference on any library
-  probe (no route reaches it, or it shows only on screen), or there is no visibility row.
+  probe and there is no screen record (or no row in it, or it disagrees with the visibility record about
+  the engine's record, or the pixel setting offered checks about the screen and none reproduced), or
+  there is no visibility row.
 
-``route-never-reaches`` and ``probe-language`` are in the vocabulary and are never assigned here: no
-record separates them from the others. A person, or a later measurement, has to.
+Without a screen record, ``route-never-reaches`` and ``probe-language`` are never assigned here: no record
+separates them from the others, and a person's hand finding (expectrail/repro/breakdown.py) has to. The
+reader recomputes both from the row's ``visibility`` and ``screen``, so neither can be written where the
+screen record does not show it, and ``undetermined`` cannot be written where it does.
 
 A defect with no usable record is ``no-result``: counted in the bench, never as reproduced.
 
@@ -119,6 +131,8 @@ OUTCOMES = ("reproduced", "not-reproduced", "no-result")
 MISS_REASONS = ("route-never-reaches", "no-signal", "probe-language", "wrong-predicate", "flaky", "budget",
                 "undetermined")
 ASSIGNED_HERE = ("budget", "flaky", "wrong-predicate", "no-signal", "undetermined")
+# Given only with a screen record, and recomputed by the reader (screen_reason).
+SCREEN_REASONS = ("route-never-reaches", "probe-language")
 TRACE_VISIBLE = ("signal", "trace-only")
 SCREEN_ONLY = "screen-only"
 PIXEL_PREFIX = "jit-px-"
@@ -223,12 +237,32 @@ def one_line(text, limit: int = TEXT_MAX) -> str:
 _NO_SCREEN = object()
 
 
+def screen_reason(visible: str | None, sees: str | None, pixel_offer: bool) -> tuple[str, str] | None:
+    """(reason, evidence) that the screen record gives a miss, or None when it gives none.
+
+    Only for a miss the visibility record shows no difference for on any library probe (``visible`` is
+    ``none``). ``sees`` is the screen record's word for the defect (expectrail/repro/screen.py), None
+    when there is no screen record or no row for the defect in it."""
+    if visible != "none":
+        return None
+    if sees == "neither":
+        return ("route-never-reaches",
+                "nothing differs on any library probe, in the engine's record or in the frames (the screen "
+                "record): no library route reaches anything this defect changes that either can see")
+    if sees == SCREEN_ONLY and not pixel_offer:
+        return ("probe-language",
+                "the frames differ on a library probe and the engine's record does not (the screen record): "
+                "no check about the record can fail on it, and this setting offers no check about the screen")
+    return None
+
+
 def score_one(defect: dict, record_path: Path, visible: str | None, root: Path = REPO,
               offer: str = offer_mod.BASELINE, screen=_NO_SCREEN, candidate: str = SHOWN) -> dict:
     """One defect's row. Its free text (``why``, ``evidence``) is made one line here, whatever set it.
     ``screen`` is what the screen record measured of the defect (None when it has no row for it); left
     out, the row says nothing about the screen."""
-    row = _score_one(defect, record_path, visible, root, offer, candidate)
+    row = _score_one(defect, record_path, visible, root, offer, candidate,
+                     None if screen is _NO_SCREEN else screen)
     for key in ("why", "evidence"):
         if row[key] is not None:
             row[key] = one_line(row[key])
@@ -287,7 +321,7 @@ def _bug_build_runs(record: dict, spec_id: str, candidate: list[str]) -> list[st
 
 
 def _score_one(defect: dict, record_path: Path, visible: str | None, root: Path, offer: str,
-               candidate: str = SHOWN) -> dict:
+               candidate: str = SHOWN, sees: str | None = None) -> dict:
     row = {"id": defect["id"], "family": defect["family"], "tunedOn": defect["tunedOn"],
            "patchSha256": bench.sha256(root / defect["patch"]), "visibility": visible,
            "outcome": "no-result", "why": None, "proposed": 0, "kept": 0, "reproducing": [],
@@ -363,9 +397,23 @@ def _score_one(defect: dict, record_path: Path, visible: str | None, root: Path,
         row.update(missReason="no-signal",
                    evidence="the engine's record differs on a library probe and no signal reads the difference")
     elif visible == "none":
-        row.update(missReason="undetermined",
-                   evidence="the record is the same on every library probe: no route reaches the behaviour, or "
-                            "it shows only on screen")
+        by_screen = screen_reason(visible, sees, offer_mod.offers_pixel(offer))
+        if by_screen is not None:
+            row.update(missReason=by_screen[0], evidence=by_screen[1])
+        elif sees in ("record-and-screen", "record-only"):
+            row.update(missReason="undetermined",
+                       evidence=f"the visibility record shows no difference in the engine's record on any library "
+                                f"probe, and the screen record says it differs ({sees}): the two measurements disagree")
+        elif sees == SCREEN_ONLY:
+            row.update(missReason="undetermined",
+                       evidence=f"the frames differ on a library probe and the engine's record does not (the screen "
+                                f"record); checks about the screen were on offer and none of the {n} proposed "
+                                f"reproduced it, and the records cannot say whether the observer could not tell or "
+                                f"the predicate was wrong")
+        else:
+            row.update(missReason="undetermined",
+                       evidence="the record is the same on every library probe: no route reaches the behaviour, or "
+                                "it shows only on screen")
     else:
         row.update(missReason="undetermined", evidence="no visibility row for this defect")
     return row
@@ -495,6 +543,7 @@ def problems(record) -> list[str]:
     ids = [r["id"] for r in record["rows"]]
     if len(set(ids)) != len(ids):
         out.append("repro-score: a defect is listed twice")
+    pixel_score = offer_mod.offers_pixel(record["offer"])
     for r in record["rows"]:
         scored = r["recordSha256"] is not None
         expect = {
@@ -513,9 +562,15 @@ def problems(record) -> list[str]:
         for key in ("why", "evidence"):
             if r[key] is not None and r[key] != one_line(r[key]):
                 out.append(f"repro-score: {r['id']}: {key} is not one line of plain text")
-        if r["missReason"] is not None and r["missReason"] not in ASSIGNED_HERE:
+        by_screen = screen_reason(r["visibility"], r.get("screen"), pixel_score) if "screen" in r else None
+        if r["missReason"] in SCREEN_REASONS:
+            if by_screen is None or by_screen[0] != r["missReason"]:
+                out.append(f"repro-score: {r['id']}: {r['missReason']!r} is given only where the screen record "
+                           f"shows it")
+        elif r["missReason"] is not None and r["missReason"] not in ASSIGNED_HERE:
             out.append(f"repro-score: {r['id']}: {r['missReason']!r} is not a reason the records can show")
-    pixel_score = offer_mod.offers_pixel(record["offer"])
+        elif r["missReason"] == "undetermined" and by_screen is not None:
+            out.append(f"repro-score: {r['id']}: 'undetermined', where the screen record gives {by_screen[0]!r}")
     for r in record["rows"]:
         share = r.get("pixel")
         if pixel_score and (share is not None) != (r["recordSha256"] is not None):

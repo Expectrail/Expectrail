@@ -13,7 +13,7 @@
     "usd": { "type": "number", "minimum": 0 },
     "reason": {
       "enum": ["route-never-reaches", "no-signal", "probe-language", "wrong-predicate", "flaky", "budget", "undetermined"],
-      "description": "The issue's vocabulary (#285, step 2), and undetermined. The scorer assigns budget, flaky, wrong-predicate, no-signal and undetermined; no record separates route-never-reaches or probe-language from the others, so a record that carries one of those is refused."
+      "description": "The issue's vocabulary (#285, step 2), and undetermined. The scorer assigns budget, flaky, wrong-predicate, no-signal and undetermined from the run's records and the visibility record. route-never-reaches and probe-language only with a screen record, on a row whose visibility is none: route-never-reaches where the row's screen is neither, probe-language where it is screen-only and the offer is not the pixel one. The reader recomputes both, so a record that carries one elsewhere, or undetermined where the screen record gives one, is refused."
     }
   },
   "properties": {

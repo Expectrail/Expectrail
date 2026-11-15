@@ -253,6 +253,18 @@ failed on the bug build 3 times of 3, with and without the no-fix patch. A miss 
 the issue's vocabulary where the records can show one, and `undetermined` where they cannot. The
 bench's page says how each is decided.
 
+**Misses sorted by the screen record** (November 15, 2026, issue #285 step 2). Given the screen record
+(`python3 -m expectrail.repro score ... --screen bench/jit/public/screen.json`), the scorer itself gives
+the two reasons that only hand findings gave before, for a miss the engine's record does not show on any
+library probe: `probe-language` where the frames differ there (`screen-only`) and the setting offers no
+check about the screen, and `route-never-reaches` where nothing differs in the record or the frames
+(`neither`). The reader recomputes both, so neither can be written where the screen record does not
+show it. Under the pixel setting a screen-only miss stays `undetermined`: checks about the screen were on
+offer, and the records cannot say whether the observer could not tell or the predicate was wrong. On
+the committed visibility and screen records, the rule gives each of the baseline's four unclassified
+misses the reason its November 12 hand finding gives (a test holds this). Not shown: a score file
+made this way from a live run's records, since none is committed.
+
 **Reach** (November 12, 2026, issue #285 step 3; [`expectrail/repro/reach.py`](../expectrail/repro/reach.py)).
 One of the five defects the library's probes leave unchanged, `no-shooting-in-air`, is in the
 engine's record whenever a route shoots in the air, and no library probe does: the library never
