@@ -76,7 +76,8 @@ entry point work as before, and the engine stays in `tools/`.
 | `expectrail sample` | Three real runs on the bundled game and a seeded bug. Exit 0 only when they decide accept, reject, accept. |
 | `expectrail --version` | The version, whether this copy is a clone or an installed package, and where its files are. |
 | `expectrail doctor` | Checks the machine (above). Exit 0 or 3. Not a verdict. |
-| `expectrail trust-check`, `repair` | Not built yet. Each says so, names its issue and exits 5. None prints a verdict. |
+| `expectrail repair JOB` | Proposes and verifies a fix for a rejected job (`expectrail repair --help`). |
+| `expectrail trust-check RECEIPT --trust-store FILE` | Checks an `expectrail.receipt/v1` against a trust store you already hold, with `--repo`, `--expect-head`, `--expect-build` and `--expect-policy` for what it must be about, and prints what it does and does not establish. Exit 0 clearance, 1 no clearance, 5 when nothing could be checked. Needs the `trust` extra (below); without it, it names the package to install and checks nothing. The same check as `python3 -m expectrail.receipt trust-check`, which exits 2 instead of 5. |
 
 A command line that cannot be read (a missing or unknown option, on any command) exits 5, with the
 usage on stderr and "Nothing was run". It was 2 until November 12, 2026, which is also needs-review.
@@ -94,6 +95,8 @@ The wheel holds what a verification runs, and nothing that could not work from a
   held out. `tests/test_package.py` lists each part of `expectrail` that is left out, with why.
 - **No dependencies.** A verification imports the standard library only. `jsonschema` is an extra
   (`pip install 'expectrail[contracts]'`) for checking documents against the schemas.
+  `trust-check` needs `cryptography` and `jsonschema`, the `trust` extra
+  (`pip install 'expectrail[trust]'`); a verification does not need them.
 
 One top-level name is installed: `expectrail`. The harness is imported as `harness` and the log
 reader as `agents.observations`, so the wheel carries them inside the package, under

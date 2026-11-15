@@ -6,8 +6,15 @@ the receipt with the ``signature`` field omitted. Verification never trusts a
 public key found only inside the receipt; the key must be in a trust store the
 verifier already holds.
 
-    python -m expectrail.receipt trust-check RECEIPT --trust-store FILE \\
+    expectrail trust-check RECEIPT --trust-store FILE \\
         [--repo OWNER/NAME] [--expect-head SHA] [--expect-build DIGEST] [--expect-policy DIGEST]
+
+``python -m expectrail.receipt trust-check ...`` is the same check. The two differ only in the exit
+code for a receipt or trust store that cannot be read, or a command line that cannot: 5 from
+``expectrail`` (as every ``expectrail`` command), 2 from ``python -m expectrail.receipt`` (as it was
+first built). Clearance is 0 and no clearance is 1 from both. Installed from the wheel, this module
+needs the ``trust`` extra (``cryptography`` and ``jsonschema``); without it ``expectrail trust-check``
+says what to install and checks nothing.
 
 Clearance is an allow-list. It is granted only when every condition was positively
 shown: a known issuer, a valid signature, repository, head, build and policy each
@@ -36,6 +43,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PublicKey,
 )
 
+from expectrail import resources
 from expectrail.contracts import (
     ContractError,
     canonical_v1,
@@ -44,7 +52,8 @@ from expectrail.contracts import (
 
 import jsonschema
 
-SCHEMAS = Path(__file__).resolve().parent.parent / "contracts"
+# The schemas beside the package in a clone, inside it (``_bundle``) in an installed copy.
+SCHEMAS = resources.ROOT / "contracts"
 RECEIPT_SCHEMA = json.loads((SCHEMAS / "receipt.v1.schema.json").read_text(encoding="utf-8"))
 
 
@@ -424,36 +433,70 @@ def _print_report(report: dict) -> None:
             print(f"    - {line}")
 
 
+class _UsageError(Exception):
+    """A command line that cannot be read. Raised instead of argparse's exit, so the caller picks the code."""
+
+
+class _Parser(argparse.ArgumentParser):
+    def error(self, message):  # noqa: D401 — argparse's hook
+        self.print_usage(sys.stderr)
+        print(f"{self.prog}: error: {message}", file=sys.stderr)
+        raise _UsageError(message)
+
+
+def _trust_check_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("receipt", type=Path)
+    parser.add_argument("--repo", default=None, help="OWNER/NAME the receipt must be about")
+    parser.add_argument("--trust-store", type=Path, required=True)
+    parser.add_argument("--expect-head", default=None)
+    parser.add_argument("--expect-build", default=None, help="buildSha256 the receipt must name")
+    parser.add_argument("--expect-policy", default=None)
+
+
+def _trust_check(args: argparse.Namespace, error_code: int) -> int:
+    try:
+        doc = read_receipt(args.receipt)
+        store = load_trust_store(args.trust_store)
+        report = check_receipt(
+            doc,
+            store,
+            expect_repo=args.repo,
+            expect_head=args.expect_head,
+            expect_build=args.expect_build,
+            expect_policy=args.expect_policy,
+        )
+    except (ContractError, ReceiptError, OSError, ValueError) as exc:
+        # ValueError covers a file that is not UTF-8 text. Nothing was checked: no report is printed.
+        print(f"error: {exc}. Nothing was checked.", file=sys.stderr)
+        return error_code
+    _print_report(report)
+    return 0 if report["clearance"] else 1
+
+
+def trust_check_main(argv: list[str] | None = None, *, prog: str = "expectrail trust-check",
+                     error_code: int = 5) -> int:
+    """``expectrail trust-check``: 0 clearance, 1 no clearance, ``error_code`` when nothing could be checked."""
+    parser = _Parser(prog=prog, description="Verify a receipt against a trust store you already hold, and say "
+                     "what it does and does not establish. Exit 0: clearance. 1: no clearance. "
+                     f"{error_code}: nothing was checked (the receipt, the trust store or the command line could not be read).")
+    _trust_check_options(parser)
+    try:
+        args = parser.parse_args(argv)
+    except _UsageError:
+        print("Nothing was checked.", file=sys.stderr)
+        return error_code
+    return _trust_check(args, error_code)
+
+
 def main(argv: list[str] | None = None) -> int:
+    """``python -m expectrail.receipt trust-check ...``: as ``expectrail trust-check``, with 2 for nothing checked."""
     parser = argparse.ArgumentParser(prog="expectrail.receipt")
     sub = parser.add_subparsers(dest="cmd", required=True)
-
     check = sub.add_parser("trust-check", help="verify a receipt against a trust store")
-    check.add_argument("receipt", type=Path)
-    check.add_argument("--repo", default=None, help="OWNER/NAME the receipt must be about")
-    check.add_argument("--trust-store", type=Path, required=True)
-    check.add_argument("--expect-head", default=None)
-    check.add_argument("--expect-build", default=None, help="buildSha256 the receipt must name")
-    check.add_argument("--expect-policy", default=None)
-
+    _trust_check_options(check)
     args = parser.parse_args(argv)
     if args.cmd == "trust-check":
-        try:
-            doc = read_receipt(args.receipt)
-            store = load_trust_store(args.trust_store)
-            report = check_receipt(
-                doc,
-                store,
-                expect_repo=args.repo,
-                expect_head=args.expect_head,
-                expect_build=args.expect_build,
-                expect_policy=args.expect_policy,
-            )
-        except (ContractError, ReceiptError, OSError) as exc:
-            print(f"error: {exc}", file=sys.stderr)
-            return 2
-        _print_report(report)
-        return 0 if report["clearance"] else 1
+        return _trust_check(args, 2)
     return 2
 
 
