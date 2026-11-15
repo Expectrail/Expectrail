@@ -11,19 +11,23 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import numpy as np
-from PIL import Image
-
 from agents.sam_observations import SamError
 from expectrail import anchored, recorded, runit
 from expectrail.gate import anchor, verify
 from tests import test_runit as runit_tests
 from tests import test_two_observers as observers_tests
-from tools import recorded_renderer as measurement
+
+try:  # only the two pixel-measurement tests need these; the stock CI runner has neither
+    import numpy  # noqa: F401
+    from PIL import Image
+    from tools import recorded_renderer as measurement
+except ImportError:
+    Image = measurement = None
+PIXELS = unittest.skipUnless(measurement, 'numpy and PIL are needed to measure pixels')
 
 ROOT = Path(__file__).resolve().parent.parent
-FIXTURES = measurement.FIXTURES
-RECORDING = measurement.RECORDING
+FIXTURES = ROOT / 'tests/fixtures/recorded-renderer'
+RECORDING = ROOT / 'tests/outside/recordings/kinematic-character/vision-recording.json'
 OLD = json.loads((FIXTURES / 'recorded-replay.json').read_text())['engine']
 NEW = json.loads((FIXTURES / 'replayed-replay.json').read_text())['engine']
 POINT = [(488, 329)]
@@ -204,6 +208,7 @@ class RenderingTest(unittest.TestCase):
         self.assertNotIn('secret', str(caught.exception))
         self.assertIsNone(recorded.missing_reason(caught.exception))
 
+    @PIXELS
     def test_measured_visual_changes_never_reuse_the_clean_frame_answer(self):
         reference, box, cases = measurement.cases()
         sha = json.loads((FIXTURES / 'source.json').read_text())['hashes']['recorded.png']
@@ -216,6 +221,7 @@ class RenderingTest(unittest.TestCase):
                 self.assertEqual(caught.exception.kind, 'not-recorded')
         self.assertEqual(measurement.metrics(reference, reference, box)['changedPixels'], 0)
 
+    @PIXELS
     def test_published_measurements_reproduce_and_overlap_is_explicit(self):
         doc = measurement.measure()
         self.assertEqual(doc, json.loads((ROOT / 'docs/measurements/recorded-renderer.json').read_text()))
