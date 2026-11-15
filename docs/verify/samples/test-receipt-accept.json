@@ -1,0 +1,50 @@
+{
+  "format": "expectrail.receipt/v1",
+  "issuerKeyId": "throwaway-test-key-20261115",
+  "repository": "Expectrail/Expectrail",
+  "baseSha256": "b0d87c63a3ebddf18a97a096c41ef23c12c053374f4f7b09e9f8547f28f1e38e",
+  "headSha256": "7f2af054dfb0b8dfd4a621daaf9ff214a54e2daf132de590982915d086772f71",
+  "buildSha256": "7e8853b8361ae1d482b9f11be7725fc7fad4f15bd309cac933c0b41a30b3a3ec",
+  "policySha256": "9aa2c53b2d5f32a8f985473e406366767baeb278976fd5e6d683f9366d11dc69",
+  "routeSetSha256": "c541ad8b31abd6929c3e63266c14bb32ca96d3db9728db0488b7946e38394a84",
+  "versions": {
+    "verifier": "test",
+    "adapter": "test",
+    "observer": "test"
+  },
+  "evidence": {
+    "grade": "full",
+    "capabilities": [
+      "frames",
+      "engine-record"
+    ],
+    "artifacts": {
+      "frames": "1152c5c8f13519b6d878ad555c395ea13c5a639fc1278735b229aa9e53268a79",
+      "trace": "bbfaba0bbb2d7b69603f2e50575b1ff9d917adad2873b84980746eb1b33727ae"
+    }
+  },
+  "coverage": {
+    "required": [
+      "stays-on-ground",
+      "lands-after-jump"
+    ],
+    "exercised": [
+      "stays-on-ground",
+      "lands-after-jump"
+    ],
+    "results": {
+      "stays-on-ground": "pass",
+      "lands-after-jump": "pass"
+    }
+  },
+  "decision": "accept",
+  "findings": [],
+  "cost": {
+    "usd": 0
+  },
+  "issuedAt": "2026-11-15T00:00:00Z",
+  "expiresAt": "2026-11-22T00:00:00Z",
+  "algorithm": "ed25519",
+  "publicKey": "WZU63wJuMN6xAV1t3grhK5c/Un5MRUIy5doJFBFOVjs=",
+  "signature": "7v1eVI2ryW5o8xdbjZcgrkh2ju84bKWuBUdirtTeJBfSrJiBnVYJ6NPL3Pl0hJEm2r3vaa4lPKdt2BX9DWGAAg=="
+}
