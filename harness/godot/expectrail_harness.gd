@@ -32,6 +32,12 @@ extends Node
 ##                Enemy) still in the tree; ids are small integers in the order the nodes were seen.
 ##   projectiles: [id, x, y] of every node of the projectile class (--projectiles=<class_name>,
 ##                default Bullet) in the tree, so the tick each one first appears is when it was fired.
+## and, beside those two and written with them every tick (the header's capabilities say
+## objectBoxes: true), the box of each one's own collision, measured the way the player's body is:
+##   enemyBoxes:      [id, left, top, right, bottom] of every enemy listed in enemies whose
+##                    collision can be measured (see _body_extent); one with none is left out.
+##   projectileBoxes: the same for every projectile listed in projectiles.
+##   The ids are the ones in enemies and projectiles, so a box is matched to its position by id.
 ## and the trace header carries levelSurfaces: every solid tile collision polygon in world
 ## coordinates, so the verifier can measure a candidate against the clean game's ground instead of
 ## the ground the candidate itself shipped; and levelArt: where the tile layers are drawn, so the
@@ -317,6 +323,9 @@ func record() -> void:
 	# capabilities say so): a reader can tell "no bullets" from "not recorded".
 	row["enemies"] = _enemy_positions()
 	row["projectiles"] = _tracked_positions(_projectiles)
+	# Each one's own collision box, matched by id: what a visual observer is pointed at (#286).
+	row["enemyBoxes"] = _tracked_boxes(_enemies)
+	row["projectileBoxes"] = _tracked_boxes(_projectiles)
 	var view := get_viewport().get_final_transform() * get_viewport().get_canvas_transform()
 	row["view"] = [snappedf(view.x.x, 0.0001), snappedf(view.x.y, 0.0001), snappedf(view.y.x, 0.0001),
 		snappedf(view.y.y, 0.0001), snappedf(view.origin.x, 0.001), snappedf(view.origin.y, 0.001)]
@@ -343,6 +352,8 @@ func _finish() -> void:
 			# node of the projectile class added to the tree.
 			"capabilities": {"enemies": "initial-instances", "projectiles": "complete",
 				"facing": _sprite != null, "onFloor": _player is CharacterBody2D,
+				# Rows carry enemyBoxes and projectileBoxes (since November 15, 2026; #286).
+				"objectBoxes": true,
 				# Where a row's ground may come from: tiles, and the platforms counted (see _platform_bodies).
 				"groundSources": {"tiles": not _layers.is_empty(), "bodies": _platforms.size()}}}
 		var surfaces := _level_surfaces()
@@ -423,6 +434,21 @@ func _tracked_positions(tracked: Array) -> Array:
 		if is_instance_valid(node) and node.is_inside_tree():
 			var p: Vector2 = node.global_position
 			out.append([entry[0], snappedf(p.x, 0.01), snappedf(p.y, 0.01)])
+	return out
+
+
+func _tracked_boxes(tracked: Array) -> Array:
+	"""[id, left, top, right, bottom] of every tracked node still in the tree whose own collision can be
+	measured (see _body_extent), in world pixels. A node with nothing to measure is left out, never guessed."""
+	var out := []
+	for entry in tracked:
+		var node = entry[1]
+		if is_instance_valid(node) and node.is_inside_tree():
+			var extent = _body_extent(node)
+			if extent != null:
+				var at: Vector2 = node.global_position
+				out.append([entry[0], snappedf(at.x + extent[0], 0.01), snappedf(at.y + extent[1], 0.01),
+					snappedf(at.x + extent[2], 0.01), snappedf(at.y + extent[3], 0.01)])
 	return out
 
 

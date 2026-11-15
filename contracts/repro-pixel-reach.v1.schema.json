@@ -10,6 +10,28 @@
     "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "name": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,60}$" },
     "count": { "type": "integer", "minimum": 0 },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["defects", "inside-a-box", "outside-every-box", "no-difference", "error"],
+      "properties": {
+        "defects": { "$ref": "#/$defs/count" },
+        "inside-a-box": { "$ref": "#/$defs/count" },
+        "outside-every-box": { "$ref": "#/$defs/count" },
+        "no-difference": { "$ref": "#/$defs/count" },
+        "error": { "$ref": "#/$defs/count" }
+      }
+    },
+    "named": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["framesDifferInBox", "maxPixelsInBox", "gaps"],
+      "properties": {
+        "framesDifferInBox": { "$ref": "#/$defs/count", "description": "Differing planned frames where a pixel inside the box of some object of this role differs (either build's boxes)." },
+        "maxPixelsInBox": { "$ref": "#/$defs/count", "description": "The most differing pixels inside one such box on one frame." },
+        "gaps": { "$ref": "#/$defs/count", "description": "Planned frames where either build's record cannot say where these objects are (no row, no camera, no boxes logged). A frame where none is on screen is not a gap." }
+      }
+    },
     "probe": {
       "type": "object",
       "additionalProperties": false,
@@ -21,7 +43,13 @@
         "framesDifferInBox": { "$ref": "#/$defs/count", "description": "Planned frames where a pixel inside an offered object's box differs (both builds' boxes, when they differ)." },
         "maxPixelsInBox": { "$ref": "#/$defs/count" },
         "gaps": { "$ref": "#/$defs/count", "description": "Planned frames where one build has no box (no body logged, or the object outside the picture): the observer would not be asked there." },
-        "boxesMoved": { "$ref": "#/$defs/count", "description": "Differing planned frames where the two builds put the box in different places." }
+        "boxesMoved": { "$ref": "#/$defs/count", "description": "Differing planned frames where the two builds put the box in different places." },
+        "byObject": {
+          "type": "object",
+          "description": "Added November 15, 2026 (#286), present exactly when the record lists named objects: for each one, the same counts over the boxes the engine logged for every object of that role (enemyBoxes, projectileBoxes), widened by the observer's padding.",
+          "propertyNames": { "$ref": "#/$defs/name" },
+          "additionalProperties": { "$ref": "#/$defs/named" }
+        }
       }
     }
   },
@@ -42,6 +70,8 @@
       }
     },
     "objects": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/name" }, "description": "The bound objects the menu offers this observer; the boxes are theirs." },
+    "named": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["enemy", "bullet"] }, "description": "Added November 15, 2026 (#286): objects the menu does not offer this observer yet whose boxes the engine logs. Measured as well, in each probe's byObject and each defect's reachIfNamed, to say what naming them would add. Absent on a record from before." },
+    "totalsIfNamed": { "$ref": "#/$defs/totals", "description": "The totals of reachIfNamed. Present exactly when named is." },
     "probes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/name" } },
     "replaysPerBuild": {
       "type": "object",
@@ -66,21 +96,11 @@
           "reach": { "enum": ["inside-a-box", "outside-every-box", "no-difference", "error"] },
           "probesMeasured": { "$ref": "#/$defs/count" },
           "probes": { "type": "array", "items": { "$ref": "#/$defs/probe" } },
+          "reachIfNamed": { "enum": ["inside-a-box", "outside-every-box", "no-difference"], "description": "The reach if a pixel check could also name the named objects: inside-a-box when a planned frame differs inside an offered box or a named object's box. On every row but an error row exactly when the record lists named objects." },
           "error": { "type": "string", "minLength": 1, "maxLength": 300 }
         }
       }
     },
-    "totals": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["defects", "inside-a-box", "outside-every-box", "no-difference", "error"],
-      "properties": {
-        "defects": { "$ref": "#/$defs/count" },
-        "inside-a-box": { "$ref": "#/$defs/count" },
-        "outside-every-box": { "$ref": "#/$defs/count" },
-        "no-difference": { "$ref": "#/$defs/count" },
-        "error": { "$ref": "#/$defs/count" }
-      }
-    }
+    "totals": { "$ref": "#/$defs/totals" }
   }
 }

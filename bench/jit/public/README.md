@@ -334,12 +334,23 @@ python3 -m expectrail.repro pixel-reach-render bench/jit/public/pixel-reach.json
 | --- | --- | --- | --- | --- |
 | `enemy-walks-backwards` | inside-a-box | 25 of 25 | 9 of 241 (1) | 1125 |
 | `bullet-behind-scenery` | inside-a-box | 6 of 25 | 17 of 67 (6) | 6610 |
+
+If a pixel check could also name bullet, enemy (the engine logs their boxes; the menu does not offer them yet): a difference inside an offered or named box: 2. Frames differ, never inside one: 0. No planned frame differs: 0.
+
+| Defect | Reach if named | Planned frames differing inside bullet boxes (probes) | Most pixels inside one bullet box | Planned frames with no bullet boxes on a build | Planned frames differing inside enemy boxes (probes) | Most pixels inside one enemy box | Planned frames with no enemy boxes on a build |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `enemy-walks-backwards` | inside-a-box | 17 (3) | 1335 | 0 | 230 (25) | 7145 | 0 |
+| `bullet-behind-scenery` | inside-a-box | 67 (6) | 2401 | 0 | 17 (3) | 5310 | 0 |
 <!-- pixel-reach:end -->
 
 The record is [`pixel-reach.json`](pixel-reach.json) (`expectrail.repro-pixel-reach/v1`), made in a
 cloud container on November 15, 2026, with the pinned Godot 4.7.2, Xvfb and llvmpipe, two probes at
-a time (17 minutes 49 seconds). The clean game was replayed once a probe; the screen record above
-replayed it twice on every library probe with the same renderer and found no frame that differed.
+a time. It was first made with the player's box only (17 minutes 49 seconds), then made again the same
+day after the harness began logging every enemy's and bullet's own collision box (the trace's
+`enemyBoxes` and `projectileBoxes`), measuring those as named objects (18 minutes 22 seconds). The
+player's numbers came out the same in both runs, probe for probe. The clean game was replayed once a
+probe; the screen record above replayed it twice on every library probe with the same renderer and
+found no frame that differed.
 
 What it shows, and what it does not:
 
@@ -356,6 +367,14 @@ What it shows, and what it does not:
 - **Most of each defect's difference is outside the box.** For `enemy-walks-backwards`, 232 of the
   241 differing planned frames differ only outside it, as do 50 of 67 for `bullet-behind-scenery`.
   A pixel check that could name the enemy or the bullet would be shown far more of each defect.
+- **Measured: the enemy's and the bullet's boxes show nearly all of it.** Inside the enemies' boxes
+  (their logged collision box widened by 4 game pixels), `enemy-walks-backwards` differs on 230 of the
+  241 differing planned frames, on all 25 probes. Inside the bullets' boxes, `bullet-behind-scenery`
+  differs on all 67, on all six probes that shoot. The enemies and bullets are never a gap: every
+  planned frame's record says where they are. These boxes are not offered to any observer yet: the
+  menu still offers the player only, and `sam-3.1-anchor` is still pointed at the player's box. The
+  next step names `enemy` and `bullet` for it. Whether SAM then answers differently on these frames is
+  again for a run to measure.
 - **The coin-counter defects are not measured here.** They change the screen only through the pause
   menu, which no offered probe opens, and the counter is text, which `sam-3.1-anchor` declares it
   cannot tell.
