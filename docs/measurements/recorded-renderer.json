@@ -1,0 +1,84 @@
+{
+  "framesCompared": 180,
+  "identicalFrames": 179,
+  "differentFrames": [
+    111
+  ],
+  "playerBox": [
+    481,
+    321,
+    497,
+    337
+  ],
+  "recordedEnvironment": {
+    "name": "godot",
+    "version": "4.7.2.stable.official.ed1daf0bf",
+    "renderer": "opengl3",
+    "device": "Mesa - llvmpipe (LLVM 20.1.2, 256 bits)"
+  },
+  "replayedEnvironment": {
+    "name": "godot",
+    "version": "4.7.2.stable.official.ed1daf0bf",
+    "renderer": "opengl3",
+    "device": "Mesa - llvmpipe (LLVM 19.1.7, 256 bits)"
+  },
+  "rows": [
+    {
+      "case": "renderer-frame-111",
+      "source": "real capture",
+      "changedPixels": 2,
+      "largestChannelDifference": 1,
+      "nearestPlayerDistancePx": 261.017,
+      "farthestPlayerDistancePx": 266.0
+    },
+    {
+      "case": "hidden-player",
+      "source": "real seeded-bug capture",
+      "changedPixels": 256,
+      "largestChannelDifference": 209,
+      "nearestPlayerDistancePx": 0.0,
+      "farthestPlayerDistancePx": 0.0
+    },
+    {
+      "case": "moved-right-3px",
+      "source": "synthetic compositing over the real hidden background",
+      "changedPixels": 298,
+      "largestChannelDifference": 209,
+      "nearestPlayerDistancePx": 0.0,
+      "farthestPlayerDistancePx": 3.0
+    },
+    {
+      "case": "resized-16-to-20px",
+      "source": "synthetic nearest-neighbour enlargement about the same centre",
+      "changedPixels": 362,
+      "largestChannelDifference": 209,
+      "nearestPlayerDistancePx": 0.0,
+      "farthestPlayerDistancePx": 2.828
+    },
+    {
+      "case": "tinted-player",
+      "source": "real harmless/tinted capture",
+      "changedPixels": 256,
+      "largestChannelDifference": 36,
+      "nearestPlayerDistancePx": 0.0,
+      "farthestPlayerDistancePx": 0.0
+    },
+    {
+      "case": "red-minus-one-whole-player",
+      "source": "synthetic one-level red reduction",
+      "changedPixels": 256,
+      "largestChannelDifference": 1,
+      "nearestPlayerDistancePx": 0.0,
+      "farthestPlayerDistancePx": 0.0
+    },
+    {
+      "case": "two-player-pixels-one-level",
+      "source": "synthetic one-level recolour at two interior pixels",
+      "changedPixels": 2,
+      "largestChannelDifference": 1,
+      "nearestPlayerDistancePx": 0.0,
+      "farthestPlayerDistancePx": 0.0
+    }
+  ],
+  "decision": "Keep exact matching: a sparse player recolour overlaps renderer drift in pixel count and maximum channel difference. Distance separates these fixtures, but no general protected-region matching rule is validated."
+}

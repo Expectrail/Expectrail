@@ -6,6 +6,7 @@
 !/tools/merge_guard.py
 !/tools/outside_trial.py
 !/tools/outside_vision.py
+!/tools/recorded_renderer.py
 !/tools/quickstart.py
 !/tools/quickstart_timer.py
 !/tools/front_door.py
