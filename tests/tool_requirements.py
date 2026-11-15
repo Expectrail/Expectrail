@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 import socket
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -12,9 +13,49 @@ from agents.sandbox import bwrap_problem
 
 
 def display_problem():
-    if sys.platform.startswith('linux') and shutil.which('xvfb-run') is None:
-        return 'xvfb-run is not installed; the drawn replay needs a virtual display'
+    from expectrail import doctor
+    if sys.platform.startswith('linux') or sys.platform == 'darwin':
+        check = doctor.display()
+        return check.found if check.status == 'missing' else None
     return None
+
+
+def executable(name):
+    if shutil.which(name) is None:
+        raise unittest.SkipTest(f'{name} is not installed; this integration needs it on PATH')
+
+
+def godot_binary(*, switch='EXPECTRAIL_ENGINE_TESTS'):
+    """Use an installed engine, never download one just to discover tests."""
+    from harness import run as hr
+    named = os.environ.get('EXPECTRAIL_GODOT')
+    if named:
+        candidates = [Path(named)]
+    else:
+        candidates = ([hr.REPO / 'tools/godot_mac/Godot.app/Contents/MacOS/Godot'] if sys.platform == 'darwin' else
+                      [hr.tools_dir() / 'godot' / f'Godot_v{hr.GODOT_VERSION}_linux.x86_64'])
+    for path in candidates:
+        if path.is_file() and os.access(path, os.X_OK):
+            return path
+    versions = []
+    if not named:
+        for name in ('godot4', 'godot'):
+            found = shutil.which(name)
+            if found:
+                version = subprocess.run([found, '--version'], capture_output=True, text=True, timeout=15)
+                if version.returncode:
+                    raise AssertionError(f'{name} --version failed with exit {version.returncode}')
+                said = version.stdout.strip().splitlines()[-1] if version.stdout.strip() else ''
+                want = hr.GODOT_VERSION.replace('-', '.')
+                if said == want or said.startswith(want + '.'):
+                    return Path(found)
+                versions.append(said or 'unknown')
+    why = f'Godot {hr.GODOT_VERSION} is not installed at its configured/cache path or on PATH; see expectrail doctor'
+    if versions:
+        why += '; PATH has a different version: ' + ', '.join(versions)
+    if os.environ.get(switch) == 'required':
+        raise AssertionError(f'{switch}=required: {why}')
+    raise unittest.SkipTest(why)
 
 
 def unix_problem():

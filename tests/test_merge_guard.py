@@ -1017,6 +1017,20 @@ class WorkflowAddedLinesAndParsedTest(unittest.TestCase):
                                       "script: |\n  ls *.py &> /dev/null && echo &done\n")
         self.assertEqual(counted, {"escape": 0, "alias": 1, "anchor": 4})
 
+    def test_long_lines_use_the_cheap_diff_and_finish(self):
+        # #472: a 7.7 MB page with lines of 24,190 characters ran past the check's 5-minute limit.
+        import time
+        rows = ["<p>" + "x" * 24_000 + str(i) + "</p>" for i in range(60)]
+        old = "\n".join(rows)
+        new = "\n".join(r.replace("x", "y", 3) if i % 3 == 0 else r for i, r in enumerate(rows)) + "\nadded secret line"
+        start = time.monotonic()
+        added = mg._lines(mg.Change("docs/page.html", old, new), "+")
+        self.assertLess(time.monotonic() - start, 5)
+        self.assertIn("added secret line", added)
+        self.assertEqual(len(added), 21)   # the 20 changed rows and the added line
+        self.assertTrue(mg._cheap(old.splitlines(), new.splitlines()))
+        self.assertFalse(mg._cheap(["a: 1"], ["a: 2"]))
+
     def test_only_the_lines_the_diff_adds_are_counted(self):
         old = "a: 1\nb: &x 2\nc: *x\nd: \"\\x41\"\n"
         self.assertEqual(mg.unread_added(old, old.replace("a: 1", "a: 2")), {"escape": 0, "alias": 0, "anchor": 0})

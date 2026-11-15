@@ -44,6 +44,10 @@ expectrail init "$game"
 expectrail onboard --project "$game"
 ```
 
+Generating the review page writes `expectrail-review.html` in the game folder by
+default. Opening that page changes no game file. Use `--out PATH` to generate it
+elsewhere.
+
 1. Open the local HTML address printed by the second command. Review the player
    node, images and route inputs. The images come from the project. The page
    carries its own content and download links and works with JavaScript off.

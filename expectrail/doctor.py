@@ -146,7 +146,60 @@ def godot(fetch: bool = True) -> tuple[Check, Path | None]:
     return _ok("godot", what, f"Godot {version} at {path}", run=True), path
 
 
+def macos_display_problem() -> str | None:
+    """Ask the OS for an online display, without assuming X11 on macOS."""
+    import ctypes
+    try:
+        core = ctypes.CDLL('/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics')
+        count = ctypes.c_uint32()
+        query = core.CGGetOnlineDisplayList
+        query.argtypes = [ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint32), ctypes.POINTER(ctypes.c_uint32)]
+        query.restype = ctypes.c_int32
+        status = query(0, None, ctypes.byref(count))
+    except (OSError, AttributeError) as exc:
+        return f'macOS display could not be checked with CoreGraphics ({type(exc).__name__})'
+    if status:
+        return f'macOS display check was refused by CoreGraphics (code {status})'
+    return None if count.value else 'macOS has no online display for Godot to draw on'
+
+
+def chromium() -> Check:
+    """An optional local browser probe; no page, URL or model is opened."""
+    what = 'Playwright Chromium (web replays)'
+    fix = ('install requirements-web.txt, then run `python3 -m playwright install chromium`; '
+           'on Linux also install the browser system dependencies')
+    try:
+        from playwright.sync_api import Error, sync_playwright
+    except ImportError:
+        return _missing('chromium', what, 'Playwright is not installed; its Chromium executable is required for web replays', fix, required=False)
+    except Exception as exc:  # noqa: BLE001 - a broken install must not stop doctor
+        return _missing('chromium', what, f'Playwright could not be imported ({type(exc).__name__})', fix, required=False)
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(args=['--disable-background-networking'])
+            browser.close()
+    except (Error, OSError) as exc:
+        # Do not copy browser stderr: it can include inherited settings or paths.
+        if "Executable doesn't exist" in str(exc):
+            why = 'Playwright Chromium is not installed'
+        elif 'Host system is missing dependencies' in str(exc):
+            why = 'Playwright Chromium is missing browser system dependencies'
+        else:
+            why = f'Playwright Chromium could not start ({type(exc).__name__}); check the local browser installation'
+        return _missing('chromium', what, why, fix, required=False)
+    except Exception as exc:  # noqa: BLE001 - an optional probe never stops doctor (the driver can raise a plain Exception)
+        return _missing('chromium', what, f'Playwright Chromium could not start ({type(exc).__name__}); check the local browser installation',
+                        fix, required=False)
+    return _ok('chromium', what, 'Playwright Chromium started and closed without opening a page', required=False)
+
+
 def display() -> Check:
+    if sys.platform == "darwin":
+        why = macos_display_problem()
+        if why:
+            return _missing("display", "a macOS display", why,
+                            "log in to a graphical macOS session with an online display, or run drawn replays on a Linux host with xvfb-run", run=True)
+        return _ok("display", "a macOS display", "CoreGraphics reports an online display; the OpenGL check still has to draw a frame", run=True)
     what = "a virtual display (xvfb-run)"
     if not sys.platform.startswith("linux"):
         return Check("display", what, "skipped", False,
@@ -154,6 +207,9 @@ def display() -> Check:
                      None, True)
     if shutil.which("xvfb-run") is None:
         return _missing("display", what, "xvfb-run is not installed", f"{APT} xvfb", run=True)
+    for program, package in (("Xvfb", "xvfb"), ("xauth", "xauth")):
+        if shutil.which(program) is None:
+            return _missing("display", what, f"{program} is not installed; xvfb-run needs it", f"{APT} {package}", run=True)
     return _ok("display", what, f"xvfb-run at {shutil.which('xvfb-run')}", run=True)
 
 
@@ -165,7 +221,8 @@ def opengl(engine: Path | None, shown: Check) -> Check:
     """The real thing: the engine draws one frame of an empty project, started as a replay starts it
     (harness.run.godot_cmd and game_env), and names the device it drew with."""
     what = "OpenGL the engine can draw with (Mesa's software renderer)"
-    mesa = f"{APT} libgl1-mesa-dri libglx-mesa0"
+    mesa = ("use a graphical macOS session and a Godot binary this Mac can run; or use a Linux host with Mesa and xvfb-run"
+            if sys.platform == "darwin" else f"{APT} libgl1-mesa-dri libglx-mesa0")
     if engine is None or shown.status == "missing":
         return Check("opengl", what, "skipped", True, "not tried: it needs Godot and a display, and one is missing above",
                      "fix what is missing above, then run `expectrail doctor` again", True)
@@ -229,7 +286,9 @@ def sandbox(isolated: bool) -> Check:
         return _ok("sandbox", what, f"bubblewrap {tool.version} at {tool.path} started a sandbox", required=isolated)
     fix = (f"{APT} bubblewrap (Linux; the kernel must allow unprivileged user namespaces). Without it replays "
            "run outside the sandbox, and the isolated class and `require-sandbox` refuse to run")
-    if why and why.startswith("xvfb-run is not installed"):
+    if not sys.platform.startswith("linux"):
+        fix = "use a Linux host with bubblewrap and user namespaces for isolated replays; bubblewrap is not supported on this system"
+    elif why and why.startswith("xvfb-run is not installed"):
         fix = (f"{APT} xvfb, then run `expectrail doctor` again; the sandbox needs its own virtual display. "
                "Without it replays run outside the sandbox, and the isolated class and `require-sandbox` refuse to run")
     return _missing("sandbox", what, _clip(why or "the sandbox could not be started"), fix, required=isolated)
@@ -287,7 +346,7 @@ def checks(*, isolated: bool = False, fetch: bool = True, env: dict | None = Non
     return [python(), engine, shown, opengl(path, shown), disk(), sandbox(isolated),
             program("patch", "`expectrail sample` and seeded bugs put a patch on a copy of the game", required=True),
             program("curl", fetching, required=False), program("unzip", fetching, required=False),
-            *vision_checks(env)]
+            *vision_checks(env), chromium()]
 
 
 def missing(found: list[Check]) -> list[Check]:

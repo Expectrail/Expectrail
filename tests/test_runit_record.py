@@ -131,12 +131,13 @@ class WorkflowTest(unittest.TestCase):
         cls.doc = yaml.safe_load(cls.text)
         cls.on = cls.doc.get("on", cls.doc.get(True))
 
-    def test_only_a_dispatch_of_a_manifest_sample_starts_it(self):
+    def test_only_a_dispatch_of_a_known_recording_target_starts_it(self):
         self.assertEqual(list(self.on), ["workflow_dispatch"])
         inputs = self.on["workflow_dispatch"]["inputs"]
-        self.assertEqual(set(inputs), {"sample", "sam_usd_cap"})
+        self.assertEqual(set(inputs), {"target", "sam_usd_cap"})
         manifest = json.loads((REPO / runit.MANIFEST).read_text())
-        self.assertEqual(inputs["sample"]["options"], [s["id"] for s in manifest["samples"] if s["head"] != "recorded-fix"])
+        self.assertEqual(inputs["target"]["options"],
+                         [s["id"] for s in manifest["samples"] if s["head"] != "recorded-fix"] + ["gate-combat"])
         self.assertEqual(self.doc["permissions"], {})
         self.assertEqual(self.doc["concurrency"], {"group": "run-it-record", "cancel-in-progress": False})
         for job in self.doc["jobs"].values():
@@ -179,7 +180,7 @@ class WorkflowTest(unittest.TestCase):
         push = next(i for i, s in enumerate(steps) if "git push" in s.get("run", ""))
         self.assertLess(check, push)
         self.assertIn('HEAD:refs/heads/${branch}"', steps[push]["run"])
-        self.assertIn('branch="run-it-vision/${SAMPLE}-${GITHUB_RUN_ID}"', steps[push]["run"])
+        self.assertIn('branch="run-it-vision/${TARGET}-${GITHUB_RUN_ID}"', steps[push]["run"])
         self.assertNotRegex(steps[push]["run"], r"push[^\n]*\bmain\b")
 
     def test_inputs_reach_shells_only_through_the_environment(self):
