@@ -16,7 +16,7 @@ FILENAME = "expectrail.project.json"
 _ROLES = re.compile(r"^[a-z][a-z0-9-]{0,39}$")
 _PROVIDER = re.compile(r"^(?:ref:|env:)[A-Za-z0-9_./-]+$")
 _ROOT_FIELDS = {
-    "format", "adapter", "version", "toolchain", "entryScene", "viewport",
+    "format", "adapter", "draft", "version", "toolchain", "entryScene", "viewport",
     "physicsTicksPerSecond", "captureFps", "inputActions", "bindings",
     "routes", "approvedContracts", "providers",
 }
@@ -54,6 +54,11 @@ def load(path: Path, root: Path | None = None) -> dict:
         doc = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         raise ProjectConfigError(f"{name}: not valid JSON ({exc.msg} at line {exc.lineno})") from exc
+    return validate(doc, root, name)
+
+
+def validate(doc: dict, root: Path, name: str = FILENAME) -> dict:
+    """Validate a saved or proposed config against the same project files."""
     if not isinstance(doc, dict):
         raise ProjectConfigError(f"{name}: the file must be a JSON object")
     extra = sorted(set(doc) - _ROOT_FIELDS)
@@ -66,6 +71,8 @@ def load(path: Path, root: Path | None = None) -> dict:
         raise ProjectConfigError(f"{name}: format must be {FORMAT}, not {doc['format']!r}")
     if doc["adapter"] not in ("godot", "unity"):
         raise ProjectConfigError(f"{name}: adapter must be \"godot\" or \"unity\", not {doc['adapter']!r}")
+    if "draft" in doc and doc["draft"] is not True:
+        _fail(f"{name}: draft must be true when supplied")
     _text(doc, "version", name, required=False)
     _toolchain(doc.get("toolchain"), name)
     _res_file(doc["entryScene"], root, f"{name}: entryScene")
