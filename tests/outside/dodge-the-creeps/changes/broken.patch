@@ -1,0 +1,7 @@
+--- a/player.gd
++++ b/player.gd
+@@ -31,2 +31,1 @@ func _process(delta):
+-	position = position.clamp(Vector2.ZERO, screen_size)
+
+
+base-commit: b761b4cd5718a7118f2c95eb55f181d0a5f004f1

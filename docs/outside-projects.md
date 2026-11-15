@@ -8,9 +8,10 @@ holds only what a recorded run shows, with its link. A project a builder wrote f
 
 `tests/outside/projects.json` pins each project to a repository and a full commit. The workflow
 `outside-trial.yml` fetches each one at that commit (nothing of the project is copied into this
-repository), lays out a checkout with our own routes and the bundled approved spec, and runs
+repository), lays out a checkout with our routes and the spec named by the project, and runs
 `expectrail verify` on it. The job holds no secret, has a read-only token, and requires the replay
-sandbox for every replay, because the projects' code is not ours.
+sandbox for every replay, because the projects' code is not ours. A project that omits `spec`
+gets the bundled ground check, as kinematic-character does.
 
 A project may also list **changes**: small patches of ours under `tests/outside/<project>/changes/`,
 each with the verdict it should get. For each one the project as pinned is the base and a patched
@@ -22,6 +23,28 @@ The table shows the expected verdict beside the one given. kinematic-character h
 | `broken` | empties the player's collision mask, so it falls through the floor | reject | a real bug in a game we did not write; the approved check should see the player go below the ground |
 | `harmless` | tints the player's sprite; nothing it does changes | needs-review | the engine's checks pass, as on the project unchanged, but CI has no vision key and an accept needs vision (#379). The engine's record alone gave accept on #398/#401, before vision was required; Sean withdrew call 4 for the engine's record, and an outside project counts as verified only after a run with vision |
 | `invisible` | hides the player's sprite; it moves exactly as before | needs-review | a defect only a visual observer can see (#330): the engine's checks pass, as on the project unchanged. Without vision it is needs-review like any accept; with vision it must stay needs-review, because no player is drawn where the engine says it is. If a vision run ever accepts it, the visual observer is not looking |
+
+### Dodge the Creeps checks the player's position
+
+Dodge clamps the player's origin between zero and the size of its viewport. Its check uses
+`inside-region` over the whole `dodge` route. The gate represents the origin as a box. To include
+legal positions right on an edge, the region extends by the same box offsets on each side.
+With the pinned scene's fixed view and native window size, this tests the recorded origin.
+It does not measure the sprite or its collision shape.
+[Pinned player script](https://github.com/godotengine/godot-demo-projects/blob/b761b4cd5718a7118f2c95eb55f181d0a5f004f1/2d/dodge_the_creeps/player.gd)
+and [viewport settings](https://github.com/godotengine/godot-demo-projects/blob/b761b4cd5718a7118f2c95eb55f181d0a5f004f1/2d/dodge_the_creeps/project.godot).
+
+To reproduce the region from a checkout of that pin, run
+`python3 -m tools.dodge_play_area /path/to/2d/dodge_the_creeps/project.godot`.
+Compare the result with `assertion.region.box` in [the Dodge spec](../tests/outside/specs/dodge-play-area.json).
+A person must approve this spec before it can judge a trial.
+
+| Dodge change | Expected CI verdict after approval | Evidence to look for |
+| --- | --- | --- |
+| Remove the position clamp | reject | The route holds right long enough to cross the right edge. Check the finding for the first out-of-bounds position. |
+| Change a comment | needs-review | The engine passes the same bounds check as the unchanged game. Vision did not run. |
+
+The linked runs below used the ground check on Dodge. The table above gives expectations for the play-area check.
 
 **The first run did not test either change.** [Run 43398657245](https://github.com/Expectrail/Expectrail/actions/runs/43398657245)
 on PR #385 gave all three kinematic-character rows the same verdict, needs-review, with the same

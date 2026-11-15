@@ -26,7 +26,14 @@
       "path": "2d/dodge_the_creeps",
       "licence": "MIT",
       "kind": "top-down; Area2D player; no tiles; enemies spawn at random; starts from a button whose shortcut is an action; 480 by 720; 60 ticks a second",
-      "routes": "tests/outside/dodge-the-creeps/routes"
+      "routes": "tests/outside/dodge-the-creeps/routes",
+      "spec": "tests/outside/specs/dodge-play-area.json",
+      "changes": [
+        {"name": "broken", "patch": "tests/outside/dodge-the-creeps/changes/broken.patch", "expect": "reject",
+         "what": "the player can move past the edge because its position is no longer clamped to the viewport"},
+        {"name": "harmless", "patch": "tests/outside/dodge-the-creeps/changes/harmless.patch", "expect": "needs-review",
+         "what": "only a comment changes; the engine should pass the bounds check, and CI has no vision key"}
+      ]
     }
   ]
 }
