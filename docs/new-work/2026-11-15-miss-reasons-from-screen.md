@@ -32,8 +32,8 @@ already measures what each defect changes in the frames as well as the record, s
   reason that defect's November 12 hand finding gives: `route-never-reaches` for the two coin-counter
   defects, `probe-language` for `enemy-walks-backwards` and `bullet-behind-scenery`.
 - Mutation check: with the reader's recompute disabled, 3 of those tests fail.
-- `python3 -m unittest discover -s tests -t .` on the branch merged with current main, after the pinned
-  fetch: the result is in the pull request.
+- `python3 -m unittest discover -s tests -t .` on the branch (main 8581a0f plus this change), after the
+  pinned fetch: 3,655 tests, OK, 42 skipped.
 - Nothing was dispatched. No model, observer or engine was used, and nothing was spent.
 
 ## Not done
