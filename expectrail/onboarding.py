@@ -305,7 +305,9 @@ def main(command, argv):
                         print(problem)
                     print("Complete the config object in the review draft, then save that object alone "
                           "as expectrail.project.json. Existing active bindings were preserved.")
-                print("Review the player, texture and route. Replay on a clean game and choose the checks to approve.")
+                print(f"Review these bindings offline with expectrail onboard --project GAME --source {filename} "
+                      "(use this game folder for GAME).")
+                print("Replay on a clean game and choose the checks to approve.")
         return 0
     except (OSError, ValueError, KeyError) as exc:
         print(f"expectrail {command}: {exc}", file=sys.stderr)

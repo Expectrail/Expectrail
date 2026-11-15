@@ -30,3 +30,37 @@ Agree on a session limit beforehand. If no verdict appears, write **“not reach
 - Each stop: elapsed minutes | page/command | their words | next action | help:
 - What the report did not explain, in their words; interruptions; assisted/unaided; follow-up issues:
 - did they understand the verdict and its evidence: yes, partly, no, and why
+
+## From init to a saved draft config (#331)
+
+Use a disposable copy of each game. Start the clock when the admin runs the
+first command. Stop when the chosen `expectrail.project.json` is saved beside
+`project.godot`. Record pauses, help, file-picker actions and actual clicks.
+Keep this time separate from time to a verified change.
+
+```sh
+game=./my-game
+expectrail init "$game"
+expectrail onboard --project "$game"
+```
+
+1. Open the local HTML address printed by the second command. Review the player
+   node, images and route inputs. The images come from the project. The page
+   carries its own content and download links and works with JavaScript off.
+2. If the binding is right, use the link below. For Dodge, the link under the
+   chosen image both selects it and downloads the draft. If none fits, leave
+   the draft unsaved and record the stop.
+3. Save the download as `expectrail.project.json` in the game folder. If the
+   browser saves to Downloads, move it there. For the bundled game and
+   kinematic-character, confirm replacement of the draft from init. Browser and
+   OS file-picker clicks vary, so record those separately from page clicks.
+
+| Game | Action on the review page | Page clicks for this path | Human minutes |
+| --- | --- | ---: | --- |
+| Bundled platformer | Check Level/Player and robot.webp, then click “Save these bindings”. | 1 | not measured |
+| kinematic-character | Check Player and player/player.png, then click “Save these bindings”. | 1 | not measured |
+| Dodge the Creeps | Compare the four player frames, then click “Use … and save” under the representative image. | 1 | not measured |
+
+Opening the page and saving the file are separate from the page click. If the
+config needs more work, record “not reached” and why. Saving bindings leaves
+the config in draft. Approving the checks is a separate, explicit human step.
