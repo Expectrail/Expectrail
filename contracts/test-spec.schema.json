@@ -383,6 +383,10 @@
             ]
           },
           "description": "All checkpoints must occur at or after fromTick (default 0). on-floor: bound player onFloor is true; position-region: player point inside inclusive world box; coin-count-change: observed coin count differs from the first eligible tick."
+        },
+        "whenPlayerVisible": {
+          "const": true,
+          "description": "Opt in to judging only frames where the engine records the bound player node visible in its tree. Hidden frames are not exercised, never passes; absent/unknown visibility prevents a pass. This is engine lifecycle state, not proof that pixels show a sprite. Frame counts and fractions still use the whole window."
         }
       }
     }
