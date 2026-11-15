@@ -5,6 +5,9 @@ terminal or GitHub (#265). This page describes slice 1 (the workflow, the sample
 answers and the same run offline), slice 2 (the page, `docs/run-it/`, and a local stub of the edge
 function) and slice 3 (the edge function, `apps/run-it-edge/`, and a scripted burst).
 
+Deployment: [Sean’s click-by-click launch guide](run-it-deploy.md), including the closed/open smoke checks.
+The visitor service has not yet been deployed.
+
 ## What a visitor chooses
 
 One sample id from [`run-it/samples.json`](run-it/samples.json), and nothing else:
@@ -142,9 +145,12 @@ checking and publishing the evidence), and then shows the run's published folder
 | `POST /api/run` `{"sample": id}` | `accepted` (202) with a request id the service mints, or `refused` |
 | `GET /api/status/<request id>` | `status`: `queued`, `running`, `publishing`, `published`, `failed` or `cancelled`; or `refused` (404) |
 
+An accepted response confirms a durable reservation, not that GitHub has started or a verdict exists.
+An unavailable response can leave a reservation behind; its detail says so.
+
 A refusal names its `reason` (`bad-request`, `unknown-sample`, `unknown-request`, `busy` 409,
-`visitor-quota` 429, `daily-cap` 429, `circuit-open` 503, `disabled` 503, `unavailable` 502 when
-GitHub could not be reached and nothing was started or counted), a sentence, and when it resets. The service never sends a verdict: the page reads the published `status.json` itself.
+`visitor-quota` 429, `daily-cap` 429, `circuit-open` 503, `disabled` 503, `unavailable` 502/503/500 when
+dispatch is explicitly refused, cooling down, or the service hits an error), a sentence, and when it resets. The service never sends a verdict: the page reads the published `status.json` itself.
 
 ### The local stub
 
@@ -183,7 +189,9 @@ time.
   busy. A run GitHub has not listed after 5 minutes, or still going after 30, is failed.
 - **Quotas:** 3 runs per visitor per day (`PER_VISITOR`), counted by a SHA-256 of `VISITOR_SALT` and
   the address (`CF-Connecting-IP`), never the address itself; 40 a day in all (`DAILY_CAP`). Both
-  reset at midnight UTC and the refusal says so. A start GitHub refuses is not counted.
+  reset at midnight UTC and the refusal says so. An explicit GitHub refusal is not counted and imposes a one-minute dispatch cooldown.
+  Quota, request and busy state are saved atomically before dispatch. A timeout, lost reply or server
+  error keeps the reservation and returns its id for polling; the service never retries dispatch.
 - **Circuit breaker:** after 3 failed runs in a row (`BREAKER`) it starts nothing and says why. A run
   counts as failed when it fails, is cancelled, is lost, or publishes a `status.json` whose phase is
   not completed; a published run whose `status.json` cannot be read neither counts nor resets. A
@@ -218,20 +226,8 @@ so a stolen token cannot spend without Sean.
 
 ## What Sean does
 
-- Review and merge this workflow's `permissions` (`contents: write` on the publish job).
-- Dispatch the one live recording run per sample, about $1 in all.
-- Put the edge function online. Everything below is Sean's (AGENTS.md: accounts, secrets, DNS), and
-  none of it is in the repository:
-  1. **Pick the host and create the account.** The code is written for Cloudflare Workers with a
-     Durable Object; `apps/run-it-edge/wrangler.toml.example` is a starting configuration. Another
-     host needs its own adapter in place of `worker.js` (a store with strongly consistent get, put and
-     delete, and one instance for all requests).
-  2. **Create a fine-grained token**: resource owner Expectrail, only the repository
-     Expectrail/Expectrail, repository permission **Actions: Read and write** and nothing else
-     (Metadata: read comes with it). Set an expiry and a reminder to rotate it.
-  3. **Set two secrets on the function**: `GITHUB_TOKEN` (the token) and `VISITOR_SALT` (32 random
-     characters or more). Set the variable `RUN_IT_OPEN` to `true` when ready; until then every start
-     is refused as switched off.
-  4. **DNS**: `api.expectrail.tech` pointing at the function (with Cloudflare, a custom domain on the
-     worker, which needs the zone on Cloudflare; otherwise the host's own instructions).
-  5. Then a burst against the deployed function, which starts at most one real run.
+Follow [the deployment guide](run-it-deploy.md). It separates account, token, secret and DNS actions
+from automatic deployment, keeps admissions closed for the first smoke check, and names the remaining
+live evidence. The three original vision recordings already exist; do not spend on recording them
+again to deploy. No workflow change is needed for the first launch. The nightly deployed check,
+deployed burst and first visitor test remain to be done; receipts remain unsigned (#255).

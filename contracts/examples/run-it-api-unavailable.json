@@ -1,0 +1,1 @@
+{"format":"expectrail.run-it-api/v1","kind":"refused","reason":"unavailable","detail":"Run it hit an error. A request may already be reserved; wait before trying again.","resetsAt":null,"retryAfterSeconds":60}

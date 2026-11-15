@@ -281,17 +281,17 @@
       var doc = res.doc;
       if (isObj(doc) && doc.format === API_FORMAT && doc.kind === "accepted" && typeof doc.requestId === "string"
           && ID.test(doc.requestId) && doc.sample === sampleId) {
-        $("run-message").textContent = "Started. This page follows the run; you can leave it open.";
+        $("run-message").textContent = "Request reserved. Waiting for GitHub; this page follows its progress.";
         setPhase("queued");
         follow(doc.requestId, sampleId, Date.now(), 0);
         return;
       }
       finish();
       if (isObj(doc) && doc.format === API_FORMAT && doc.kind === "refused") return refused(doc, sampleId);
-      $("run-message").textContent = "Run it answered in a way this page does not understand. No run was started.";
+      $("run-message").textContent = "Run it answered in a way this page does not understand. A run may already have started; wait before trying again.";
     }).catch(function () {
       finish();
-      $("run-message").textContent = "Could not reach Run it. No run was started.";
+      $("run-message").textContent = "Could not confirm the request with Run it. A run may already have started; wait before trying again.";
     });
   }
 
@@ -303,7 +303,7 @@
       "daily-cap": "Run it has started its most runs for today.",
       "circuit-open": "Run it stopped starting runs after several failed runs in a row. A person has to look first.",
       "disabled": "Run it is switched off right now.",
-      "unavailable": "Run it could not start a run just now.",
+      "unavailable": "Run it could not confirm the request. Wait before trying again.",
       "unknown-sample": "That is not one of the samples Run it offers.",
       "bad-request": "Run it did not accept the request."
     }[doc.reason] || "Run it refused the request.";

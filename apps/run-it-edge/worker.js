@@ -20,6 +20,7 @@ export class RunIt {
       store: {
         get: (key) => storage.get(key),
         put: (key, value) => storage.put(key, value),
+        putMany: (entries) => storage.put(entries),
         delete: (key) => storage.delete(key),
       },
       log: (message) => console.log(`run-it: ${message}`),
