@@ -161,8 +161,15 @@ CONTROLS = [
     row(GROUPS[5], "duplicate-request", "duplicate request",
         [f"{OPS}.OperationsTest.test_a_key_used_for_one_change_does_not_clear_another",
          f"{OPS}.OperationsTest.test_the_same_request_twice_at_once_is_one_job_with_one_verdict"]),
-    row(GROUPS[5], "disk-quota", "disk quota", open="undefended: a replay's files are capped one by one, and "
-        "nothing bounds a job's total disk use yet (#253)"),
+    row(GROUPS[5], "disk-quota", "disk quota",
+        [f"{SBX}.DiskQuotaTest.test_control_without_the_sandbox_a_change_that_fills_the_disk_writes_it_all_and_is_cleared",
+         f"{SBX}.DiskQuotaTest.test_in_the_isolated_class_a_change_that_fills_the_disk_is_stopped_and_not_cleared"],
+        scope="the replay sandbox's bound on what a replay adds to its work copy and output folder (4 GiB and "
+              "250,000 files by default, lowered to 32 MB here), measured every 0.1 s and after the replay ends, "
+              "so a game can pass it by what the disk takes in 0.1 s before it is stopped. Without the sandbox "
+              "the first test shows the same change writing all 96 MB and being cleared. Bounded only where "
+              "the replay runs in the sandbox (the isolated class); the import cache the verifier keeps between "
+              "jobs and the job's own files outside the replay are not bounded by it"),
     row(GROUPS[5], "provider-outage", "provider outage",
         [f"{PRV}.ProviderTest.test_a_provider_outage_is_not_clearance_and_does_not_hide_a_broken_build"]),
     row(GROUPS[5], "budget-exhausted", "budget exhausted",

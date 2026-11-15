@@ -139,7 +139,19 @@ class ModeTest(unittest.TestCase):
         self.assertEqual(isolation, {
             "sandbox": {"tool": "bubblewrap", "version": "0.9.0"}, "mode": "require", "reason": None,
             "network": "none", "filesystem": "confined", "processes": "own", "environment": "allowlist",
-            "limits": {"scratchBytes": box.SCRATCH_BYTES, "fileBytes": box.FILE_BYTES, "processes": box.PROCESSES}})
+            "limits": {"scratchBytes": box.SCRATCH_BYTES, "fileBytes": box.FILE_BYTES, "processes": box.PROCESSES,
+                       "diskBytes": box.DISK_BYTES, "diskEntries": box.DISK_ENTRIES}})
+
+    def test_a_replay_from_before_the_disk_bound_still_matches_the_contract(self):
+        example = json.loads((REPO / "contracts" / "examples" / "replay.json").read_text(encoding="utf-8"))
+        isolation = box.describe(FAKE, "auto", None)
+        older = {**isolation, "limits": {k: v for k, v in isolation["limits"].items() if not k.startswith("disk")}}
+        self.assertEqual(validate({**example, "isolation": older}), "replay")
+        from expectrail.contracts import ContractError
+
+        for bad in (0, -1, "8G", 1.5):
+            with self.subTest(diskBytes=bad), self.assertRaises(ContractError):
+                validate({**example, "isolation": {**isolation, "limits": {**isolation["limits"], "diskBytes": bad}}})
 
     def test_both_shapes_match_the_replay_contract_and_a_loose_one_does_not(self):
         example = json.loads((REPO / "contracts" / "examples" / "replay.json").read_text(encoding="utf-8"))
@@ -173,6 +185,38 @@ class ModeTest(unittest.TestCase):
             self.assertEqual(box.probe(True), (None, "xvfb-run is not installed, and the sandbox cannot use the host's display"))
         with mock.patch.object(box.sys, "platform", "darwin"):
             self.assertEqual(box.probe(False), (None, "bubblewrap runs on Linux only"))
+
+
+class GateReasonTest(unittest.TestCase):
+    """What the gate's record says of a replay the disk bound stopped: its own sentence, never text
+    the game could have written, and the result is a replay error (never a pass)."""
+
+    def judged(self, failure: BaseException) -> dict:
+        from expectrail.gate import verify as gv
+
+        def replay(path, game, out, frames):
+            raise failure
+
+        with tempfile.TemporaryDirectory() as tmp:
+            results = gv.judge_arm(Path(tmp), [("smoke", Path(tmp) / "smoke.json", "0" * 64)], [{"id": "s"}],
+                                   Path(tmp) / "out", replay, label="head")
+        return results[("s", "smoke")]
+
+    def test_a_replay_stopped_at_the_disk_bound_says_so_in_the_gates_words(self):
+        try:
+            try:
+                raise box.DiskBoundError("the game wrote 9 bytes <img src=x> @sean")
+            except box.DiskBoundError as exc:
+                raise SystemExit(f"the replay was stopped: {exc}") from exc
+        except SystemExit as stopped:
+            result = self.judged(stopped)
+        self.assertEqual(result["result"], "replay-error")
+        self.assertEqual(result["reason"], "the head replay was stopped: the game wrote more to its folders than the "
+                                           "replay sandbox allows")
+
+    def test_any_other_stop_still_gives_only_its_kind(self):
+        result = self.judged(SystemExit("text the game printed"))
+        self.assertEqual((result["result"], result["reason"]), ("replay-error", "the head replay did not finish (SystemExit)"))
 
 
 class CollectTest(unittest.TestCase):
@@ -298,6 +342,49 @@ class HarnessTest(unittest.TestCase):
             hr.run(self.route, self.tmp / "run", game=self.game, godot=self.godot, sandbox="require")
         self.assertFalse((self.tmp / "run" / "work").exists())
 
+    @mock.patch("sys.platform", "linux")
+    def test_a_replay_past_the_disk_bound_is_stopped_and_nothing_it_wrote_is_kept(self):
+        out = self.tmp / "run"
+
+        def greedy(tool, argv, **binds):
+            if "--import" in argv:
+                return self.engine(tool, argv, **binds)
+            # What the sandbox raises once the game has written too much (see DiskBoundTest).
+            (Path(binds["out"]) / "trace.json").write_text("{}", encoding="utf-8")
+            (Path(binds["game"]) / "filler.bin").write_bytes(b"x" * 1024)
+            raise box.DiskBoundError("the game wrote 9 bytes to its work copy and output folder, more than the 8 "
+                                     "a replay may add; the sandbox was stopped")
+
+        with mock.patch.object(box, "probe", return_value=(FAKE, None)), \
+                mock.patch.object(box, "run", side_effect=greedy), \
+                self.assertRaisesRegex(SystemExit, "the replay was stopped: the game wrote 9 bytes"):
+            hr.run(self.route, out, game=self.game, godot=self.godot, sandbox="require")
+        self.assertFalse((out / "trace.json").exists())
+        self.assertFalse((out / "replay.json").exists())
+        self.assertFalse((out / "work").exists())
+        self.assertFalse((out / "sandbox").exists())
+        self.assertEqual(list((out / "frames").iterdir()), [])
+
+    @mock.patch("sys.platform", "linux")
+    def test_an_import_past_the_disk_bound_stops_the_replay_before_it_starts(self):
+        out = self.tmp / "run"
+        starts = []
+
+        def greedy(tool, argv, **binds):
+            starts.append(list(argv))
+            if "--import" in argv:
+                raise box.DiskBoundError("the game made more than 8 files and folders")
+            return self.engine(tool, argv, **binds)
+
+        with mock.patch.object(box, "probe", return_value=(FAKE, None)), \
+                mock.patch.object(box, "run", side_effect=greedy), \
+                self.assertRaisesRegex(SystemExit, "the game's import was stopped: the game made more than 8"):
+            hr.run(self.route, out, game=self.game, godot=self.godot, sandbox="require")
+        self.assertTrue(starts)
+        self.assertTrue(all("--import" in argv for argv in starts), "the replay ran after its import was stopped")
+        self.assertFalse((out / "work").exists())
+        self.assertFalse((out / "trace.json").exists())
+
     def test_warming_the_cache_with_the_sandbox_required_and_impossible_is_one_line(self):
         with mock.patch.object(box, "probe", return_value=(None, "bubblewrap (bwrap) is not installed")), \
                 mock.patch.object(hr, "find_godot", return_value=self.godot), \
@@ -407,6 +494,196 @@ found["home"] = os.listdir(os.environ["HOME"])
 found["sys"] = os.path.exists("/sys/class/net")
 print(json.dumps(found))
 '''
+
+
+# A writer for the disk bound's tests: real processes, no sandbox needed. It writes CHUNK bytes at a
+# time into a file in ROOT until it has written TOTAL (or forever when TOTAL is 0), and leaves its pid.
+WRITER = """
+import os, sys, time
+root, total, files = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+open(os.path.join(root, "writer.pid"), "w").write(str(os.getpid()))
+for n in range(files):
+    open(os.path.join(root, f"f{n}"), "w").close()
+written = 0
+with open(os.path.join(root, "data.bin"), "wb") as out:
+    while total == 0 or written < total:
+        out.write(b"x" * 65536)
+        out.flush()
+        written += 65536
+        if total == 0:
+            time.sleep(0.01)
+print("wrote", written)
+"""
+
+
+class DiskBoundTest(unittest.TestCase):
+    """The bound on what a game adds to its two writable folders (``harness.sandbox.watched``), shown
+    on real processes. The sandbox's own command is not needed for this: ``run`` hands its two bound
+    folders to ``watched``, and EscapeTest shows the same through real bubblewrap."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="expectrail-disk-"))
+        self.addCleanup(self._cleanup)
+        self.game, self.out = self.tmp / "game", self.tmp / "out"
+        self.game.mkdir()
+        self.out.mkdir()
+        for name, value in (("DISK_BYTES", 1024 * 1024), ("DISK_ENTRIES", 50), ("DISK_INTERVAL", 0.05)):
+            patch = mock.patch.object(box, name, value)
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def _cleanup(self):
+        for root, dirs, _files in os.walk(self.tmp):
+            for name in dirs:
+                os.chmod(os.path.join(root, name), 0o700)
+        shutil.rmtree(self.tmp, True)
+
+    def write(self, total: int, files: int = 0, *, timeout: float = 30) -> subprocess.CompletedProcess:
+        return box.watched([sys.executable, "-c", WRITER, str(self.out), str(total), str(files)],
+                           roots=[self.game, self.out], timeout=timeout)
+
+    def alive(self, pid: int) -> bool:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        try:   # a zombie has ended; only its entry is left
+            return Path(f"/proc/{pid}/stat").read_text().split(")")[-1].split()[0] != "Z"
+        except OSError:
+            return False
+
+    def test_control_within_the_bound_the_run_is_returned_as_it_ended(self):
+        done = self.write(512 * 1024, files=10)
+        self.assertEqual((done.returncode, done.stdout.strip()), (0, "wrote 524288"))
+        self.assertEqual(done.stderr, "")
+
+    def test_a_writer_that_never_stops_is_stopped_at_the_bound(self):
+        started = time.monotonic()
+        with self.assertRaisesRegex(box.DiskBoundError, r"more than the 1048576 a replay may add; the sandbox was stopped"):
+            self.write(0, timeout=60)
+        self.assertLess(time.monotonic() - started, 30, "the writer ran on to its time limit")
+        pid = int((self.out / "writer.pid").read_text())
+        deadline = time.monotonic() + 5
+        while self.alive(pid) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        self.assertFalse(self.alive(pid), "the writer outlived the stop")
+        # It was stopped soon after the bound: well under what it would have written by its time limit.
+        self.assertLess((self.out / "data.bin").stat().st_size, 64 * 1024 * 1024)
+
+    def test_too_many_files_is_past_the_bound_too(self):
+        with self.assertRaisesRegex(box.DiskBoundError, "more than 50 files and folders"):
+            self.write(0, files=200)
+
+    def test_a_writer_that_ends_between_two_measurements_is_caught_after_it_ends(self):
+        # No measurement falls while it runs; the one after the end still sees what it wrote.
+        with mock.patch.object(box, "DISK_INTERVAL", 3600.0), \
+                self.assertRaisesRegex(box.DiskBoundError, "^the game wrote [0-9]+ bytes"):
+            self.write(4 * 1024 * 1024)
+
+    def test_what_the_folders_held_before_the_start_does_not_count(self):
+        (self.game / "assets.bin").write_bytes(b"a" * (4 * 1024 * 1024))
+        done = self.write(512 * 1024)
+        self.assertEqual(done.returncode, 0)
+
+    def test_a_sparse_file_counts_as_its_full_length(self):
+        script = f"open({str(self.out / 'sparse.bin')!r}, 'wb').truncate(64 * 1024 * 1024)"
+        with self.assertRaisesRegex(box.DiskBoundError, "the game wrote"):
+            box.watched([sys.executable, "-c", script], roots=[self.game, self.out], timeout=30)
+
+    def test_a_link_is_counted_as_a_link_and_never_followed(self):
+        big = self.tmp / "outside.bin"
+        big.write_bytes(b"o" * (4 * 1024 * 1024))
+        script = (f"import os\nos.symlink({str(big)!r}, {str(self.out / 'link')!r})\n"
+                  f"os.symlink({str(self.tmp)!r}, {str(self.out / 'loop')!r})")
+        done = box.watched([sys.executable, "-c", script], roots=[self.game, self.out], timeout=30)
+        self.assertEqual(done.returncode, 0, done.stderr)
+
+    def test_a_folder_that_cannot_be_read_is_cannot_tell_never_a_pass(self):
+        real = os.scandir
+
+        def refusing(path):
+            if os.fspath(path).endswith("hidden"):
+                raise PermissionError(13, "Permission denied", os.fspath(path))
+            return real(path)
+
+        # The folder is made by the program, so the measurement before the start does not meet it.
+        script = f"import os\nos.mkdir({str(self.out / 'hidden')!r})"
+        with mock.patch.object(box.os, "scandir", side_effect=refusing), \
+                self.assertRaisesRegex(box.DiskBoundError, "could not be measured.*PermissionError"):
+            box.watched([sys.executable, "-c", script], roots=[self.game, self.out], timeout=30)
+
+    def test_a_folder_the_game_makes_unreadable_is_cannot_tell(self):
+        if os.geteuid() == 0:
+            self.skipTest("root reads any folder; the mocked refusal above covers this case here")
+        script = (f"import os\nd = {str(self.out / 'hidden')!r}\nos.mkdir(d)\n"
+                  f"open(os.path.join(d, 'big'), 'wb').write(b'x' * 4194304)\nos.chmod(d, 0)")
+        with self.assertRaisesRegex(box.DiskBoundError, "could not be measured"):
+            box.watched([sys.executable, "-c", script], roots=[self.game, self.out], timeout=30)
+
+    def test_a_file_that_disappears_while_it_is_counted_is_skipped(self):
+        (self.out / "gone").write_bytes(b"g")
+        real = os.scandir
+
+        class Vanishing:
+            def __init__(self, it):
+                self.it = it
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                self.it.close()
+
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                entry = next(self.it)
+                if entry.name == "gone":
+                    os.unlink(entry.path)
+                return entry
+
+        with mock.patch.object(box.os, "scandir", side_effect=lambda path: Vanishing(real(path))):
+            used, entries = box.usage([self.game, self.out], 1000)
+        self.assertEqual(entries, 1)
+        self.assertEqual(used, 0)
+
+    def test_the_time_limit_still_holds_and_keeps_the_output(self):
+        with self.assertRaises(subprocess.TimeoutExpired) as caught:
+            box.watched([sys.executable, "-c", "import time; print('started', flush=True); time.sleep(300)"],
+                        roots=[self.game, self.out], timeout=1)
+        self.assertIn("started", caught.exception.stdout)
+
+    def test_folders_that_cannot_be_measured_before_the_start_stop_it_before_it_starts(self):
+        with mock.patch.object(box, "usage", side_effect=box._Unmeasurable("PermissionError on a folder")), \
+                mock.patch.object(box.subprocess, "Popen", side_effect=AssertionError("it was started")), \
+                self.assertRaisesRegex(box.SandboxError, "cannot be measured before it starts"):
+            self.write(1)
+
+    def test_the_bound_can_be_lowered_by_the_verifiers_environment_and_never_raised(self):
+        with mock.patch.dict(os.environ, {box.DISK_ENV: "4096"}):
+            self.assertEqual(box.disk_bytes(), 4096)
+            self.assertEqual(box.describe(FAKE, "auto", None)["limits"]["diskBytes"], 4096)
+            with self.assertRaisesRegex(box.DiskBoundError, "more than the 4096 a replay may add"):
+                self.write(512 * 1024)
+        with mock.patch.dict(os.environ, {box.DISK_ENV: ""}):
+            self.assertEqual(box.disk_bytes(), box.DISK_BYTES)
+        for asked in (str(box.DISK_BYTES + 1), "0", "-5", "8G", "1e9", " 12 34"):
+            with self.subTest(asked=asked), mock.patch.dict(os.environ, {box.DISK_ENV: asked}), \
+                    mock.patch.object(box.subprocess, "Popen", side_effect=AssertionError("it was started")), \
+                    self.assertRaisesRegex(box.SandboxError, "must be a whole number of bytes"):
+                self.write(1)
+
+    def test_the_sandbox_hands_its_two_writable_folders_to_the_bound(self):
+        seen = {}
+
+        def capture(cmd, *, roots, timeout, **popen):
+            seen.update(roots=roots, timeout=timeout, preexec=popen.get("preexec_fn"))
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+
+        with mock.patch.object(box, "watched", side_effect=capture):
+            box.run(FAKE, ["true"], timeout=7, game=self.game, out=self.out)
+        self.assertEqual(seen, {"roots": [self.game, self.out], "timeout": 7, "preexec": box.limits})
 
 
 class Listener:
@@ -559,6 +836,23 @@ class EscapeTest(unittest.TestCase):
         self.assertNotEqual(lines[0], "status=0", done.stdout + done.stderr)
         self.assertLessEqual(int(lines[1]), 4 * 1024 * 1024)
 
+
+    def test_the_work_copy_and_the_output_folder_hold_only_so_much(self):
+        tool = real_tool()
+        with mock.patch.object(box, "DISK_BYTES", 4 * 1024 * 1024), mock.patch.object(box, "DISK_INTERVAL", 0.05), \
+                self.assertRaisesRegex(box.DiskBoundError, "a replay may add"):
+            box.run(tool, ["sh", "-c", "i=0; while :; do head -c 1048576 /dev/zero > /game/part$i; "
+                           "head -c 1048576 /dev/zero > /out/part$i; i=$((i+1)); sleep 0.01; done"],
+                    timeout=120, game=self.tmp / "game", out=self.tmp / "out")
+        written = sum(p.stat().st_size for d in ("game", "out") for p in (self.tmp / d).iterdir())
+        self.assertLess(written, 256 * 1024 * 1024, "the sandbox ran on long after the bound")
+
+    def test_control_within_the_disk_bound_the_sandbox_runs_to_its_end(self):
+        tool = real_tool()
+        with mock.patch.object(box, "DISK_BYTES", 4 * 1024 * 1024):
+            done = box.run(tool, ["sh", "-c", "head -c 1048576 /dev/zero > /game/part; head -c 1048576 /dev/zero > /out/part; "
+                                  "echo done"], timeout=60, game=self.tmp / "game", out=self.tmp / "out")
+        self.assertEqual((done.returncode, done.stdout.strip()), (0, "done"), done.stderr)
 
 # The same attempts from inside the game: an autoload added to a copy of the bundled game.
 GAME_PROBE = '''extends Node
