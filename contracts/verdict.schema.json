@@ -154,6 +154,24 @@
         },
         "completeWindow": {
           "type": "boolean"
+        },
+        "framesNotExercised": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "uniqueItems": true,
+          "description": "Frames excluded by the approved whenPlayerVisible condition because the engine explicitly recorded false. These frames did not pass."
+        },
+        "framesVisibilityUnknown": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "uniqueItems": true,
+          "description": "Frames whose engine visibility could not be established. These prevent a pass."
         }
       }
     }

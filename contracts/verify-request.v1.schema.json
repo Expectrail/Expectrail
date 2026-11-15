@@ -44,6 +44,31 @@
         "specs"
       ],
       "properties": {
+        "visual": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "recording",
+            "calibration"
+          ],
+          "description": "Optional offline anchored observer, with recording and calibration files inside the game folder of the base checkout (head when no base). Unknown answers never use a live fallback.",
+          "properties": {
+            "type": {
+              "const": "anchored-recorded"
+            },
+            "recording": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "calibration": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          }
+        },
         "adapter": {
           "type": "string",
           "pattern": "^[a-z][a-z0-9-]{0,31}$",

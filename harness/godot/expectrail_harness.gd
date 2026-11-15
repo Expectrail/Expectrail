@@ -295,6 +295,8 @@ func record() -> void:
 	var row := {"tick": _tick, "frame": Engine.get_frames_drawn()}
 	if _player != null:
 		row["player"] = [snappedf(_player.global_position.x, 0.001), snappedf(_player.global_position.y, 0.001)]
+		# Lifecycle state, not evidence that the sprite was drawn (vision still judges that).
+		row["playerVisible"] = _player.is_visible_in_tree()
 		var body := _player as CharacterBody2D
 		if body != null:
 			row["onFloor"] = body.is_on_floor()

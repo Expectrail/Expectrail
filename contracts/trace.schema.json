@@ -57,6 +57,7 @@
           "tick": {"type": "integer", "minimum": 0},
           "frame": {"type": "integer", "minimum": 0},
           "player": {"$ref": "#/$defs/point"},
+          "playerVisible": {"type": "boolean", "description": "The bound Godot player node is visible in its tree at this tick. Engine lifecycle state only, not pixel visibility or evidence that the sprite is drawn. Absent means unknown, never true."},
           "onFloor": {"type": "boolean"},
           "facing": {"enum": [-1, 1]},
           "ground": {"type": "number", "description": "World y of the level surface under the player, from the level's geometry (tiles, and since Nov 13, 2026 the authored collision of its platforms), never from the player's own collider."},

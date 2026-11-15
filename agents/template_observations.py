@@ -24,6 +24,9 @@ ALGORITHM = 'expectrail.template-ncc/v2'
 COORDINATES = 'captured-frame pixels; origin top-left; xyxy half-open; y down'
 DEFAULTS = dict(algorithm=ALGORITHM, coordinates=COORDINATES, matchThreshold=0.9, agreementIoU=0.5,
                 searchMarginPx=16, scales=[0.75, 1.0, 1.25], stridePx=1, sampleSide=16, minimumContrast=8.0)
+# Automatic clean-route calibration uses a tighter crop with a stricter public-regression floor.
+# Explicit-frame calibration and existing frozen banks keep their requested configuration.
+CALIBRATION_DEFAULTS = dict(DEFAULTS, matchThreshold=0.93)
 CAPABILITIES = ['presence', 'position', 'shape']
 LIMITATIONS = ['Colour is discarded (luminance matching).', 'No text, semantic identity, or animation correctness.',
                'Normalized correlation ignores uniform brightness/contrast changes; sampling loses fine detail.',
@@ -113,12 +116,12 @@ def player_predictions(trace, frames, fps=60):
     return out
 
 
-def _image(path):
+def _image(path, mode="L"):
     Image, _, _ = imaging()
     with Image.open(path) as image:
         if image.format != 'PNG' or image.width * image.height > 16_777_216:
             raise SensorError('expected a PNG no larger than 16 megapixels')
-        return image.convert('L')
+        return image.convert(mode)
 
 
 def _contrast(image):
@@ -151,10 +154,32 @@ def load_bank(path_or_doc):
         sample = image.resize((bank['config']['sampleSide'],)*2, Image.Resampling.BOX)
         if min(_contrast(image), _contrast(sample)) < bank['config']['minimumContrast']:
             raise SensorError('flat template cannot identify a sprite')
+    if bank['config']['algorithm'] == ALGORITHM:
+        if any(key in item for item in bank['templates'] for key in
+               ('rgbPixels', 'rgbPixelsSha256', 'foregroundMask', 'foregroundMaskSha256')):
+            raise SensorError('legacy templates cannot carry foreground pixels')
+    else:
+        from agents.template_foreground import check_bank
+        check_bank(bank)
     return bank
 
 
-def calibrate(clean_run, *, clean_tree, frames, out=None, config=None, predicted=None):
+def _calibration_crop(box, inset=0.0):
+    """Round once, then remove a symmetric border from a trusted clean crop.
+
+    Crop and original prediction are both recorded in the bank. A 10% border
+    leaves at least 64% of the rounded crop area. Runtime IoU against the original
+    prediction is still checked. Observation requires the crop's own pixel evidence;
+    no full-body box is invented.
+    """
+    if not 0 <= inset <= 0.1:
+        raise SensorError('clean crop inset must be between zero and 0.1')
+    crop = [math.floor(box[0]), math.floor(box[1]), math.ceil(box[2]), math.ceil(box[3])]
+    dx, dy = math.floor((crop[2]-crop[0])*inset), math.floor((crop[3]-crop[1])*inset)
+    return [crop[0]+dx, crop[1]+dy, crop[2]-dx, crop[3]-dy]
+
+
+def calibrate(clean_run, *, clean_tree, frames, out=None, config=None, predicted=None, crop_inset=0.0):
     """Capture templates ONLY from a clean replay pinned to a caller-selected trusted game digest.
 
     patch:null alone is not proof of approval. The caller must obtain clean_tree from its trusted
@@ -184,7 +209,7 @@ def calibrate(clean_run, *, clean_tree, frames, out=None, config=None, predicted
         for name, box in boxes.get(n, {}).items():
             if not finite_box(box):
                 raise SensorError(f'clean frame {n}: {name} has no measured box')
-            crop = [math.floor(box[0]), math.floor(box[1]), math.ceil(box[2]), math.ceil(box[3])]
+            crop = _calibration_crop(box, crop_inset)
             if crop[0] < 0 or crop[1] < 0 or crop[2] > image.width or crop[3] > image.height:
                 raise SensorError('calibration crop must be entirely on screen')
             patch = image.crop(crop)
@@ -310,14 +335,17 @@ def match(image, templates, predicted, config):
     return Matcher(templates,config).match(image,predicted)
 
 
-def calibrate_routes(clean_runs, validation_run, *, clean_tree, config=None, similarity=0.985):
+def calibrate_routes(clean_runs, validation_run, *, clean_tree, config=None, similarity=0.985, crop_inset=0.1):
     """Select diverse crops from EVERY eligible clean training frame, with mirrored partners.
 
     No measured/candidate input is accepted by this API. Threshold selection uses a separate
     clean validation route and off-player regions only; it may raise, never lower, the 0.90 floor.
     A failed calibration target is recorded, not hidden by lowering the threshold.
+    A symmetric 10% clean border is omitted to reduce changing background pixels.
+    The stricter default 0.93 floor was chosen against public seeded regressions;
+    these measurements are a tuning corpus, not independent generalization evidence.
     """
-    settings = dict(DEFAULTS, **(config or {}))
+    settings = dict(CALIBRATION_DEFAULTS, **(config or {}))
     if settings['matchThreshold'] < 0.9:
         raise SensorError('calibration cannot lower the 0.90 threshold floor')
     validation_root = Path(validation_run)
@@ -344,13 +372,13 @@ def calibrate_routes(clean_runs, validation_run, *, clean_tree, config=None, sim
             box = predictions[n]['player']
             if not finite_box(box) or box[0]<0 or box[1]<0 or box[2]>image.width or box[3]>image.height:
                 continue
-            crop = image.crop((math.floor(box[0]),math.floor(box[1]),math.ceil(box[2]),math.ceil(box[3])))
+            crop = image.crop(_calibration_crop(box, crop_inset))
             sample = _pooled(np.asarray(crop),settings['sampleSide'])
             if min(_contrast(crop),float(sample.std())) >= settings['minimumContrast']:
                 eligible.append(n)
         if not eligible:
             raise SensorError(f'no usable clean calibration frames in {root.name}')
-        candidate = calibrate(root,clean_tree=clean_tree,frames=eligible,config=settings)
+        candidate = calibrate(root,clean_tree=clean_tree,frames=eligible,config=settings,crop_inset=crop_inset)
         sources.append(candidate['clean'])
         eligible_frames += len(eligible)
         bank = bank or candidate
@@ -433,7 +461,11 @@ def from_replay(trace, *, replay_sha256, frames_dir, bank, spec, fps=60, predict
     by_name = {name: [t for t in bank['templates'] if t['object'] == name] for name in names}
     if not names or any(not items for items in by_name.values()):
         raise SensorError('every requested object needs a clean template; no engine-only object is invented')
-    matchers = {name: Matcher(items,config) for name,items in by_name.items()}
+    foreground = config['algorithm'] != ALGORITHM
+    if foreground:
+        from agents.template_foreground import ForegroundMatcher
+    matcher_type = ForegroundMatcher if foreground else Matcher
+    matchers = {name: matcher_type(items,config) for name,items in by_name.items()}
     frames = []
     for n in indices:
         if completed is not None and n in completed:
@@ -442,7 +474,7 @@ def from_replay(trace, *, replay_sha256, frames_dir, bank, spec, fps=60, predict
         started = time.perf_counter()
         image, error = None, None
         try:
-            image = _image(files[n])
+            image = _image(files[n], mode='RGB') if foreground else _image(files[n])
         except (KeyError, OSError, ValueError) as exc:
             error = f'frame unavailable ({type(exc).__name__})'
         objects, evidence = {}, {}
@@ -451,6 +483,8 @@ def from_replay(trace, *, replay_sha256, frames_dir, bank, spec, fps=60, predict
             row = dict(status='unavailable', reason=error or 'engine has no measured search box',
                        predictedBox=box if finite_box(box) else None, searchBox=None, rawBox=None,
                        score=None, templateFrame=None, scale=None)
+            if foreground:
+                row['components'] = None
             objects[name] = []
             if image is not None and finite_box(box):
                 if box[0] < 0 or box[1] < 0 or box[2] > image.width or box[3] > image.height:
@@ -459,6 +493,8 @@ def from_replay(trace, *, replay_sha256, frames_dir, bank, spec, fps=60, predict
                     found, roi = matchers[name].match(image, box)
                     row['searchBox'] = roi
                     if found:
+                        if foreground:
+                            row['components'] = found['components']
                         row.update(rawBox=found['box'], score=round(found['score'], 6),
                                    templateFrame=found['templateFrame'], scale=round(found['scale'], 6))
                     if found is None or found['score'] < config['matchThreshold']:
@@ -485,11 +521,17 @@ def from_replay(trace, *, replay_sha256, frames_dir, bank, spec, fps=60, predict
                     f['sensor'][name].update(status='displaced', reason='the supplied agreeing filter removed the pixel match')
                 f['objects'][name] = kept
     doc = {'format': 'expectrail.observations/v0', 'replay': {'sha256': replay_sha256},
-           'model': {'name': ALGORITHM, 'prompts': {n: spec['objects'][n].get('prompt', n) for n in names},
+           'model': {'name': config['algorithm'], 'prompts': {n: spec['objects'][n].get('prompt', n) for n in names},
                      'sensor': dict(config=config, bankSha256=digest(bank), clean=bank['clean'],
                                     capabilities=CAPABILITIES, limitations=LIMITATIONS,
                                     sources=bank['sources'], calibration=bank['calibration'],
                                     captureFps=fps, physicsTicksPerSecond=tps)}, 'frames': frames}
+    if foreground:
+        doc['model']['sensor']['foregroundSources'] = [{key: value for key, value in source.items() if key != 'rgbaPixels'} for source in bank['foregroundSources']]
+        if bank.get('groundReference'):
+            doc['model']['sensor']['groundReferenceSha256'] = digest(bank['groundReference'])
+        from agents.template_foreground import LIMITATIONS as foreground_limitations
+        doc['model']['sensor']['limitations'] = foreground_limitations
     validate(doc, 'observations')
     return doc
 
@@ -507,6 +549,18 @@ def summarize(doc):
             raise SensorError('every observed object needs sensor evidence')
         for name, row in frame['sensor'].items():
             expected = [dict(box=row['rawBox'], score=row['score'])] if row['status'] == 'matched' else []
+            if doc['model']['sensor']['config']['algorithm'] != ALGORITHM:
+                component = row.get('components')
+                if component is not None:
+                    values = (component['ncc'], component['foregroundCoverage'], component['partCoverage'])
+                    score = 0 if values[1] is None or values[2] is None else min(values[0], values[1], *values[2])
+                    if row['status'] == 'matched' and (score < doc['model']['sensor']['config']['matchThreshold']
+                            or _iou(row['rawBox'], row['predictedBox']) < doc['model']['sensor']['config']['agreementIoU']):
+                        raise SensorError('matched foreground lacks the required pixel evidence or agreement')
+                    if row['score'] != round(score, 6):
+                        raise SensorError('foreground score disagrees with its component evidence')
+                elif row['score'] is not None:
+                    raise SensorError('foreground score has no component evidence')
             if frame['objects'][name] != expected:
                 raise SensorError('detections disagree with the sensor evidence')
     rows = [(f['frame'], name, row) for f in doc['frames'] for name, row in f['sensor'].items()]
@@ -528,7 +582,7 @@ class TemplateObserver:
         self.required = set(required_capabilities)
 
     def describe(self):
-        return {'name': 'template', 'provider': 'local', 'model': ALGORITHM}
+        return {'name': 'template', 'provider': 'local', 'model': self.bank['config']['algorithm']}
 
     def look(self, spec, run, *, keep=True):
         del keep  # no candidate cache, persistence, training or calibration

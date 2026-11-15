@@ -1,0 +1,31 @@
+{
+  "format": "expectrail.verdict/v0",
+  "spec": {
+    "id": "player-visibility-example",
+    "sha256": "71004d56ad4cfe45f2d4bb61c636a93dd774fe58920857c4c4e8b639a757b79a"
+  },
+  "observations": {
+    "sha256": "f6cb5d775e76077e43b89d890305a7efdef8ae2c8422fccb06314aeddb4beefe"
+  },
+  "result": "pass",
+  "reason": "no violation in 2 frames; 1 frames not exercised (player hidden)",
+  "firstFrame": null,
+  "evidence": [],
+  "framesJudged": 2,
+  "evaluator": {
+    "name": "expectrail.evaluator",
+    "version": "0.1.0"
+  },
+  "coverage": {
+    "status": "exercised",
+    "semanticResult": "pass",
+    "framesObserved": 3,
+    "framesExpected": 3,
+    "framesRequired": 2,
+    "completeWindow": true,
+    "framesNotExercised": [
+      0
+    ],
+    "framesVisibilityUnknown": []
+  }
+}

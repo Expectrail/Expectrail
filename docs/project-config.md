@@ -67,3 +67,41 @@ Use `--force` to replace an existing output config. Earlier routes are preserved
 Review whether the route starts the game, moves the intended player and exercises
 the behaviour you care about. The route command can test repeatability with three
 replays. A person still chooses and approves the checks. Init measures no gameplay.
+
+## Verify the configured project in the app or CLI
+
+`routes` lists route files or patterns inside the project. `approvedContracts` lists individual
+check files; they may be in different subfolders. Naming a draft check does not approve it.
+The app lists the usable routes and checks when you choose **Check folders**.
+
+```sh
+expectrail verify --project /path/to/after --base /path/to/before
+```
+
+The CLI and app share `expectrail.project_job`: they snapshot the games, select policy from the
+base config, copy those policy bytes without editing them, and submit a normal verification
+request. The changed config cannot replace the base's policy. Removing a selected check or
+route from the changed copy is still a policy change. Draft configs retain the gate's
+needs-review rule. Empty routes or checks never become an accept. This configured path currently
+supports Godot; the older explicit `--head`, `--game`, `--routes`, `--specs` path is unchanged.
+[App/CLI and draft-refusal tests](../tests/test_app_projects.py).
+
+Vision normally uses the existing environment settings (`MODEL_API_KEY` and
+`EXPECTRAIL_SAM_USD_CAP`). `providers.vision: "env:MODEL_API_KEY"` names that same setup;
+no secret belongs in the config. To use an existing anchored recording, set both:
+
+```json
+"providers": {
+  "vision": "ref:vision/vision-recording.json",
+  "vision-calibration": "ref:vision/calibration.json"
+}
+```
+
+Both are regular files inside the base project. They use the existing vision-recording and
+vision-calibration contracts; the calibration must pass its validation. No model is constructed
+as a fallback. A missing or invalid recording, or an exact image/question without an answer,
+cannot clear the change. Unsupported vision references are refused with a fix. The worker log
+names an unmatched image hash and prompt without printing a key. The optional request field
+`project.visual` carries these references to the ordinary worker
+([request schema](../contracts/verify-request.v1.schema.json),
+[example](../contracts/examples/verify-request-recorded.json)).

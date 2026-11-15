@@ -39,7 +39,7 @@ from expectrail.gate.verify import NoAnswer
 TREE = 'a'*64
 SPEC = bench.SPEC
 BOX = [24, 20, 36, 36]
-CONFIG = dict(searchMarginPx=8, stridePx=1, scales=[0.75, 1, 1.5], sampleSide=12)
+CONFIG = dict(matchThreshold=0.9, searchMarginPx=8, stridePx=1, scales=[0.75, 1, 1.5], sampleSide=12)
 
 
 def sprite():

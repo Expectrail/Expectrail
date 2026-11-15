@@ -1,0 +1,51 @@
+{
+  "format": "expectrail.foreground-catalogue/v1",
+  "objects": {
+    "player": {
+      "artPath": "player/robot.webp",
+      "spriteGrid": [
+        8,
+        8
+      ],
+      "poses": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        26,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        42,
+        45,
+        46,
+        48
+      ],
+      "sourceScene": {
+        "path": "player/player.tscn",
+        "sha256": "19047bfa6e8f1987206e3456a65382df366e225e55dfa71688d62f6a8857a167"
+      }
+    }
+  }
+}

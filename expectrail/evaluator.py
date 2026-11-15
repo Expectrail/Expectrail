@@ -218,16 +218,58 @@ def _assertion_verdict(spec: dict, observations: dict) -> dict:
     }
 
 
+def _in_play(spec: dict, observations: dict, trace: dict | None, capture_fps: int | None):
+    """Opt-in lifecycle filter. Unknown state is never treated as visible or hidden.
+
+    Use the last physics tick represented by a frame, just like the engine observer.
+    Do not trust the trace's renderer frame counter (headless runs can keep it at zero).
+    """
+    tps = (trace or {}).get("physicsTicksPerSecond")
+    rate_known = (type(tps) is int and tps > 0 and type(capture_fps) is int and capture_fps > 0)
+    step = max(tps // capture_fps, 1) if rate_known else None
+    rows = {}
+    for row in (trace or {}).get("rows", []):
+        tick = row.get("tick")
+        if type(tick) is int:
+            # A duplicate tick cannot establish a unique state.
+            rows[tick] = None if tick in rows else row
+    included, hidden, unknown = [], [], []
+    for frame in _frames(spec, observations):
+        n = frame["frame"]
+        row = (rows.get(n * step + step - 1) or {}) if step else {}
+        state = row.get("playerVisible") if row.get("player") is not None else None
+        if state is True:
+            included.append(frame)
+        elif state is False:
+            hidden.append(n)
+        else:
+            unknown.append(n)
+    return dict(observations, frames=included), hidden, unknown
+
+
 def evaluate(spec: dict, observations: dict, *, route: str | None = None, trace: dict | None = None,
-             expected_frames: list[int] | None = None) -> dict:
+             expected_frames: list[int] | None = None, capture_fps: int | None = 60) -> dict:
     """Judge the unchanged assertion, then require exercised coverage before counting its pass."""
     # A duplicated observation is not another judged frame.
     frames = observations.get("frames", [])
     if len({f["frame"] for f in frames}) != len(frames):
         raise ValueError("observations contain duplicate frame numbers")
-    verdict = _assertion_verdict(spec, observations)
+    hidden, unknown = [], []
+    eligible = observations
+    conditional = spec.get("coverage", {}).get("whenPlayerVisible", False)
+    if conditional:
+        eligible, hidden, unknown = _in_play(spec, observations, trace, capture_fps)
+    verdict = _assertion_verdict(spec, eligible)
+    # The verdict names the original evidence, not an undocumented filtered document.
+    verdict["observations"]["sha256"] = digest(observations)
     coverage, detail = assess(spec, observations, verdict["framesJudged"], counterexample=verdict["result"] == "fail",
                               route=route, trace=trace, expected_frames=expected_frames)
+    if conditional:
+        coverage.update(framesNotExercised=hidden, framesVisibilityUnknown=unknown)
+        if unknown and verdict["result"] != "fail" and coverage["status"] != "not-applicable":
+            coverage.update(status="insufficient-observation", semanticResult="insufficient_observation")
+        detail += f"; {len(hidden)} frames not exercised (player hidden); {len(unknown)} visibility unknown"
+        verdict["reason"] += f"; {len(hidden)} frames not exercised (player hidden)"
     verdict["coverage"] = coverage
     if coverage["status"] == "not-applicable":
         verdict.update(result="not-applicable", reason="not-applicable: this spec does not apply to this route",

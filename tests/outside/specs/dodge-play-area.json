@@ -1,0 +1,31 @@
+{
+  "format": "expectrail.test-spec/v0",
+  "id": "dodge-play-area",
+  "instruction": "While the engine says the player is in play (its node is visible), its recorded origin stays inside the play area, including its edges. Hidden frames are not exercised, not passes.",
+  "objects": {
+    "player": {
+      "prompt": "grey player character"
+    }
+  },
+  "assertion": {
+    "type": "inside-region",
+    "object": "player",
+    "region": {
+      "box": [
+        -27.0,
+        -54.75,
+        507.0,
+        733.25
+      ]
+    }
+  },
+  "coverage": {
+    "whenPlayerVisible": true,
+    "minFrames": 120
+  },
+  "approval": {
+    "by": "Sean Keluo-Udeke",
+    "at": "2026-11-15T18:09:57Z",
+    "specSha256": "944af8e931fd4bbce81425fd6eb5f815fbe37953355666ea6b2311349e0e02ce"
+  }
+}

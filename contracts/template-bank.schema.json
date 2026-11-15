@@ -3,67 +3,169 @@
   "additionalProperties": false,
   "properties": {
     "format": {
-      "const": "expectrail.template-bank/v0"
+      "enum": [
+        "expectrail.template-bank/v0",
+        "expectrail.template-bank/v1"
+      ]
     },
     "config": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "algorithm": {
-          "const": "expectrail.template-ncc/v2"
-        },
-        "coordinates": {
-          "const": "captured-frame pixels; origin top-left; xyxy half-open; y down"
-        },
-        "matchThreshold": {
-          "type": "number",
-          "maximum": 1,
-          "minimum": 1e-06
-        },
-        "agreementIoU": {
-          "type": "number",
-          "maximum": 1,
-          "minimum": 1e-06
-        },
-        "searchMarginPx": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 128
-        },
-        "scales": {
-          "type": "array",
-          "items": {
-            "type": "number",
-            "minimum": 0.25,
-            "maximum": 4
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "algorithm": {
+              "const": "expectrail.template-ncc/v2"
+            },
+            "coordinates": {
+              "const": "captured-frame pixels; origin top-left; xyxy half-open; y down"
+            },
+            "matchThreshold": {
+              "type": "number",
+              "maximum": 1,
+              "minimum": 1e-06
+            },
+            "agreementIoU": {
+              "type": "number",
+              "maximum": 1,
+              "minimum": 1e-06
+            },
+            "searchMarginPx": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 128
+            },
+            "scales": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 4
+              },
+              "minItems": 1,
+              "maxItems": 9
+            },
+            "stridePx": {
+              "const": 1
+            },
+            "sampleSide": {
+              "type": "integer",
+              "minimum": 4,
+              "maximum": 32
+            },
+            "minimumContrast": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 128
+            }
           },
-          "minItems": 1,
-          "maxItems": 9
+          "required": [
+            "algorithm",
+            "coordinates",
+            "matchThreshold",
+            "agreementIoU",
+            "searchMarginPx",
+            "scales",
+            "stridePx",
+            "sampleSide",
+            "minimumContrast"
+          ]
         },
-        "stridePx": {
-          "const": 1
-        },
-        "sampleSide": {
-          "type": "integer",
-          "minimum": 4,
-          "maximum": 32
-        },
-        "minimumContrast": {
-          "type": "number",
-          "minimum": 1,
-          "maximum": 128
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "algorithm": {
+              "const": "expectrail.template-foreground/v3"
+            },
+            "coordinates": {
+              "const": "captured-frame pixels; origin top-left; xyxy half-open; y down"
+            },
+            "matchThreshold": {
+              "type": "number",
+              "maximum": 1,
+              "minimum": 1e-06
+            },
+            "agreementIoU": {
+              "type": "number",
+              "maximum": 1,
+              "minimum": 1e-06
+            },
+            "searchMarginPx": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 128
+            },
+            "scales": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 4
+              },
+              "minItems": 1,
+              "maxItems": 9
+            },
+            "stridePx": {
+              "const": 1
+            },
+            "sampleSide": {
+              "type": "integer",
+              "minimum": 4,
+              "maximum": 32
+            },
+            "minimumContrast": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 128
+            },
+            "foregroundPurity": {
+              "type": "number",
+              "minimum": 0.5,
+              "maximum": 1
+            },
+            "rgbTolerance": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8
+            },
+            "rasterTolerancePx": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2
+            },
+            "confirmationCandidates": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64
+            },
+            "minimumForegroundBins": {
+              "type": "integer",
+              "minimum": 4,
+              "maximum": 1024
+            },
+            "confirmationParts": {
+              "const": 4
+            }
+          },
+          "required": [
+            "algorithm",
+            "coordinates",
+            "matchThreshold",
+            "agreementIoU",
+            "searchMarginPx",
+            "scales",
+            "stridePx",
+            "sampleSide",
+            "minimumContrast",
+            "foregroundPurity",
+            "rgbTolerance",
+            "rasterTolerancePx",
+            "confirmationCandidates",
+            "minimumForegroundBins",
+            "confirmationParts"
+          ]
         }
-      },
-      "required": [
-        "algorithm",
-        "coordinates",
-        "matchThreshold",
-        "agreementIoU",
-        "searchMarginPx",
-        "scales",
-        "stridePx",
-        "sampleSide",
-        "minimumContrast"
       ]
     },
     "clean": {
@@ -148,6 +250,78 @@
           },
           "mirrorX": {
             "type": "boolean"
+          },
+          "rgbPixels": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1048576
+          },
+          "rgbPixelsSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "foregroundMask": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 350000
+          },
+          "foregroundMaskSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "kind": {
+            "enum": [
+              "clean-capture",
+              "approved-art-pose"
+            ]
+          },
+          "artRegistration": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "anchorPose",
+              "pose",
+              "scale",
+              "offset",
+              "agreement",
+              "anchorRgbSha256"
+            ],
+            "properties": {
+              "anchorPose": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4095
+              },
+              "pose": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4095
+              },
+              "scale": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 4
+              },
+              "offset": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "integer",
+                  "minimum": -4096,
+                  "maximum": 4096
+                }
+              },
+              "agreement": {
+                "type": "number",
+                "minimum": 0.98,
+                "maximum": 1
+              },
+              "anchorRgbSha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
           }
         },
         "required": [
@@ -201,7 +375,8 @@
         "selection": {
           "enum": [
             "explicit-frames",
-            "all-clean-crops"
+            "all-clean-crops",
+            "approved-foreground"
           ]
         },
         "selectionSimilarity": {
@@ -280,6 +455,198 @@
         "negativeMatches",
         "status"
       ]
+    },
+    "foregroundSources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "object",
+          "path",
+          "sha256",
+          "alphaMinimum",
+          "paletteRgb"
+        ],
+        "properties": {
+          "object": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "alphaMinimum": {
+            "const": 250
+          },
+          "paletteRgb": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "minItems": 2,
+            "maxItems": 4096
+          },
+          "catalogue": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "artPath",
+              "spriteGrid",
+              "poses",
+              "sourceScene"
+            ],
+            "properties": {
+              "artPath": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "spriteGrid": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 64
+                }
+              },
+              "poses": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 4096,
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4095
+                }
+              },
+              "sourceScene": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              }
+            }
+          },
+          "artSize": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4096
+            }
+          },
+          "rgbaPixels": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 22369624
+          },
+          "rgbaPixelsSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "oneOf": [
+          {
+            "properties": {
+              "catalogue": {
+                "type": "null"
+              },
+              "artSize": {
+                "type": "null"
+              },
+              "rgbaPixels": {
+                "type": "null"
+              },
+              "rgbaPixelsSha256": {
+                "type": "null"
+              }
+            }
+          },
+          {
+            "required": [
+              "catalogue",
+              "artSize",
+              "rgbaPixels",
+              "rgbaPixelsSha256"
+            ]
+          }
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 64
+    },
+    "groundReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "coordinates",
+        "sourceReplaySha256",
+        "sourceTraceSha256",
+        "polygons"
+      ],
+      "properties": {
+        "coordinates": {
+          "const": "trusted clean world coordinates; y down"
+        },
+        "sourceReplaySha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "sourceTraceSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "polygons": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100000,
+          "items": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 64,
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        }
+      }
     }
   },
   "required": [
@@ -291,5 +658,101 @@
     "calibration"
   ],
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Clean-build template bank; provenance is pinned by the caller, not an approval"
+  "title": "Clean-build template bank; provenance is pinned by the caller, not an approval",
+  "oneOf": [
+    {
+      "properties": {
+        "format": {
+          "const": "expectrail.template-bank/v0"
+        },
+        "config": {
+          "properties": {
+            "algorithm": {
+              "const": "expectrail.template-ncc/v2"
+            }
+          }
+        },
+        "foregroundSources": {
+          "type": "null"
+        },
+        "groundReference": {
+          "type": "null"
+        },
+        "templates": {
+          "items": {
+            "properties": {
+              "rgbPixels": {
+                "type": "null"
+              },
+              "rgbPixelsSha256": {
+                "type": "null"
+              },
+              "foregroundMask": {
+                "type": "null"
+              },
+              "foregroundMaskSha256": {
+                "type": "null"
+              },
+              "kind": {
+                "type": "null"
+              },
+              "artRegistration": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "required": [
+        "foregroundSources"
+      ],
+      "properties": {
+        "format": {
+          "const": "expectrail.template-bank/v1"
+        },
+        "config": {
+          "properties": {
+            "algorithm": {
+              "const": "expectrail.template-foreground/v3"
+            }
+          }
+        },
+        "templates": {
+          "items": {
+            "required": [
+              "rgbPixels",
+              "rgbPixelsSha256",
+              "foregroundMask",
+              "foregroundMaskSha256",
+              "kind"
+            ],
+            "oneOf": [
+              {
+                "properties": {
+                  "kind": {
+                    "const": "clean-capture"
+                  },
+                  "artRegistration": {
+                    "type": "null"
+                  }
+                }
+              },
+              {
+                "required": [
+                  "artRegistration"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "approved-art-pose"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
 }

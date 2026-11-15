@@ -254,8 +254,9 @@ def run(sample_id: str, out: Path, *, request_id: str | None = None, root: Path 
         else:
             vision = {**observer.summary(), "why": None}
             if vision["notRecorded"]:
-                vision["why"] = ("the replay drew a frame, or asked a question, that the recording does not hold; "
-                                 "no answer was reused from another picture")
+                vision["why"] = observer.client.last_missing_reason or (
+                    "the replay drew a frame, or asked a question, that the recording does not hold; "
+                    "no answer was reused from another picture")
     decision = status["decision"] if status["phase"] == "completed" else None
     doc = {
         "format": RESULT_FORMAT,

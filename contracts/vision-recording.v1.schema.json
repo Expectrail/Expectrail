@@ -124,6 +124,66 @@
           }
         }
       }
+    },
+    "renderingEnvironments": {
+      "description": "Rendering environments of the answered captures, copied from replay.json engine. Optional for old recordings. A null entry means some answers have no captured environment; never infer it from the machine reading the recording.",
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "version",
+              "renderer",
+              "device"
+            ],
+            "properties": {
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1,
+                "maxLength": 160,
+                "pattern": "^[\\x20-\\x7e]+$"
+              },
+              "version": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1,
+                "maxLength": 160,
+                "pattern": "^[\\x20-\\x7e]+$"
+              },
+              "renderer": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1,
+                "maxLength": 160,
+                "pattern": "^[\\x20-\\x7e]+$"
+              },
+              "device": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1,
+                "maxLength": 160,
+                "pattern": "^[\\x20-\\x7e]+$"
+              }
+            }
+          }
+        ]
+      }
     }
   }
 }

@@ -126,7 +126,7 @@ def calibration_markdown(doc):
 def anchored(project, data, client, out):
     """The visual observer for this game: calibrated on the unchanged game's first route (#330), and
     used only when the calibration says so. Writes calibration.json and calibration.md to ``out``."""
-    from expectrail import anchored as an
+    from expectrail import anchored as an, recorded
 
     first = routes(project)[0]
     run = saved_run(data / 'pinned' / first.stem, first)
@@ -137,11 +137,12 @@ def anchored(project, data, client, out):
         doc = an.judge_calibration(game, run['replaySha256'], [], an.RULES,
                                    model=str(getattr(client, 'model', 'unknown')),
                                    provider=str(getattr(client, 'provider', 'unknown')))
-        doc['why'] = [str(exc)[:200]] + doc['why'][:7]
+        doc['why'] = [(recorded.missing_reason(exc) or str(exc))[:200]] + doc['why'][:7]
     out.mkdir(parents=True, exist_ok=True)
     (out / 'calibration.json').write_text(json.dumps(doc, indent=1) + '\n')
     (out / 'calibration.md').write_text(calibration_markdown(doc))
-    return an.AnchoredObserver(client, doc)
+    observer = an.AnchoredObserver(client, doc)
+    return recorded.with_recorded_diagnostics(observer) if isinstance(client, recorded.RecordedClient) else observer
 
 
 def judge(project, data, receipt, out, observer=None, client=None):
