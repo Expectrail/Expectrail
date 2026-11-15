@@ -105,12 +105,14 @@ class WhatThePromptOffers(unittest.TestCase):
         self.assertEqual(withheld["pixelChecksOffered"], pixel.menu(B))
         self.assertNotIn("untrustedCandidatePatch", withheld)
 
-    def test_on_the_bundled_game_sam_can_be_asked_about_the_player_only(self):
+    def test_on_the_bundled_game_sam_can_be_asked_about_the_player_the_bullet_and_the_enemy(self):
+        # Since the observer is pointed at the boxes the engine logs for every bullet and enemy (#286).
         m = pixel.menu(B)
         self.assertEqual(list(m["observers"]), ["sam-3.1-anchor"])
-        self.assertEqual(m["observers"]["sam-3.1-anchor"]["objects"], ["player"])
+        self.assertEqual(m["observers"]["sam-3.1-anchor"]["objects"], ["bullet", "enemy", "player"])
         self.assertEqual(m["observers"]["sam-3.1-anchor"]["predicates"], ["visible", "inside-region", "never-crosses"])
-        self.assertEqual(sorted(m["notJudgeable"]), ["bullet", "coin", "coins-counter", "ground"])
+        self.assertIn("every one on screen, each judged on its own", m["observers"]["sam-3.1-anchor"]["note"])
+        self.assertEqual(sorted(m["notJudgeable"]), ["coin", "coins-counter", "ground"])
         self.assertIn("does not find the ground", m["notJudgeable"]["ground"])
         self.assertIn("not built yet", m["notJudgeable"]["coin"])
 

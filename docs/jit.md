@@ -443,7 +443,7 @@ setting gives it, and may also write up to four checks in `pixelChecks`:
   prompt adds `pixelChecksOffered` (`pixel.menu`): for each observer that exists, the predicates it
   judges and the bound objects it can be asked about, and every object no observer can judge, with
   why. On the bundled game that is SAM, `visible`, `inside-region` and `never-crosses`, about the
-  player only. The menu is made from the same tables as the refusals, and a test checks that
+  player (and, since November 15, the enemy and the bullet: see below). The menu is made from the same tables as the refusals, and a test checks that
   everything it offers is accepted and nothing it withholds is.
 - The answer's `pixelChecks` go through `parse_candidate`, are renamed `jit-px-<id>` and carry
   `model_prior` authority. A refused one, a repeated id, or one past the fourth is dropped and said.
@@ -601,11 +601,32 @@ Since November 15 the harness also logs each enemy's and bullet's own collision 
 trace's `enemyBoxes` and `projectileBoxes`, matched to `enemies` and `projectiles` by id; header
 `capabilities.objectBoxes`; [Godot example](../contracts/examples/trace-godot.json)), and
 `agents/sam_anchor.py` `object_boxes` places them in a frame as `anchors` places the player's.
-`pixel-reach` measures those boxes too, as objects the menu does not offer yet
+`pixel-reach` measures those boxes too, apart from the player's (when this was measured, the menu did not offer them yet)
 ([example](../contracts/examples/repro-pixel-reach-named.json)): inside the enemies' boxes,
 `enemy-walks-backwards` differs on 230 of its 241 differing planned frames; inside the bullets',
-`bullet-behind-scenery` differs on all 67. The menu does not offer `enemy` or `bullet` to
-`sam-3.1-anchor` yet.
+`bullet-behind-scenery` differs on all 67.
+
+**The enemy and the bullet are offered (November 15, later).** `enemy` is a bound role, and `enemy` and
+`bullet` are bound with `"anchor": "engine-boxes"`: every object of the role has its own logged box. The
+observer is pointed at those boxes (`SamAnchorObserver(..., objects=...)`; `pixel.OBSERVERS` lists them
+under `boxes`), so the menu offers both to `sam-3.1-anchor`.
+
+- **Asked:** on every planned frame, one image for each object of the role on screen, widened by the
+  same pad as the player's box. At most `pixel.MAX_BOXES` (3) a frame; a frame with more of them on
+  screen is not asked about and is a gap. A box wholly off screen is not drawn and not asked about.
+  A trace without `objectBoxes` is a gap on every frame: a box is never guessed from a position.
+- **Judged:** each object, by its id, on its own frames, by the reference evaluator. The check fails
+  when any one fails, passes when every one passes, and is `needs-review` on any gap or when none of
+  them was on screen in the window. `inside-region` is each object's own logged box.
+- **Only what a check names is asked:** the replay asks about a role only when a pixel check on that
+  probe names it (`run.py`); the capture job writes those roles into the stored replay
+  (`objects.json`), and the asking job reads them back (untrusted: only roles the observer is pointed
+  at, each once).
+- **Reserved:** `pixel.MAX_BOXES` images a frame for each named role, on every run, before anything is
+  asked, in the in-process replay, in `pixel.cost` and in `pixel-ask`.
+- **Shown offline only.** The tests use a scripted SAM client and synthetic replays
+  (`tests/test_jit_pixel_named.py`). No SAM answer about an enemy or a bullet has been recorded, and no
+  live run has asked one.
 
 ## What this does not claim
 

@@ -55,6 +55,7 @@ from expectrail.jit import pixel
 BUILDS = ("pixel-reference", "pixel-base", "pixel-candidate")   # the replay folders of expectrail/jit/run.py
 REPLAY = re.compile(r"[a-z0-9][a-z0-9-]{0,80}-[1-9][0-9]?")
 ROUTE_FILE = "route.json"
+OBJECTS_FILE = "objects.json"   # the named roles the observer is asked about on this replay, when there are any
 KEPT = ("replay.json", "trace.json")   # besides the route and the frames asked about: what the later jobs read
 FRAME = "f{:08d}.png"                  # Movie Maker's frame names (harness/run.py)
 FRAME_NAME = re.compile(r"f[0-9]{8}\.png")
@@ -78,7 +79,7 @@ def _checked_tree(root: Path) -> None:
             raise StoreError(f"{p.relative_to(root).as_posix()[:80]} is not a regular file")
 
 
-def store_replay(run_dir: Path, store: Path, route: dict, frames) -> Path:
+def store_replay(run_dir: Path, store: Path, route: dict, frames, objects=()) -> Path:
     """Keep one replay folder (``.../<build>/<probe>-<n>``) in the capture folder, with its route: only
     what the later jobs read (``KEPT``) and, of the frames, only ``frames``, the ones the observer will ask
     about (``observer.frames(route)``). A frame the replay did not capture is not kept, and the observer
@@ -105,13 +106,40 @@ def store_replay(run_dir: Path, store: Path, route: dict, frames) -> Path:
         if src.is_file():
             shutil.copyfile(src, dest / "frames" / FRAME.format(n))
     (dest / ROUTE_FILE).write_text(json.dumps(route, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    objects = sorted(objects)
+    if objects:
+        _checked_objects(objects, f"{build}/{name}")
+        (dest / OBJECTS_FILE).write_text(json.dumps({"objects": objects}) + "\n", encoding="utf-8")
     return dest
+
+
+def _checked_objects(objects, where: str) -> list[str]:
+    allowed = pixel.OBSERVERS["sam-3.1-anchor"].get("boxes", ())
+    if not isinstance(objects, list) or len(set(map(str, objects))) != len(objects) \
+            or not all(isinstance(r, str) and r in allowed for r in objects):
+        raise StoreError(f"{where}: the named objects are not a list of {', '.join(allowed)}, each once")
+    return sorted(objects)
+
+
+def objects_of(folder: Path) -> list[str]:
+    """The named roles the capture said the observer is asked about on this replay (none without the file).
+    Untrusted: only roles the observer is pointed at are read, each once."""
+    path = Path(folder) / OBJECTS_FILE
+    if not path.exists():
+        return []
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise StoreError(f"{folder.parent.name}/{folder.name}: no readable {OBJECTS_FILE} ({type(exc).__name__})") from exc
+    if not isinstance(doc, dict) or set(doc) != {"objects"}:
+        raise StoreError(f"{folder.parent.name}/{folder.name}: {OBJECTS_FILE} is not {{objects}}")
+    return _checked_objects(doc["objects"], f"{folder.parent.name}/{folder.name}")
 
 
 def _checked_replay(folder: Path) -> None:
     """Refuse a replay folder holding anything but what store_replay keeps."""
     for p in folder.iterdir():
-        if p.name in (*KEPT, ROUTE_FILE) and p.is_file():
+        if p.name in (*KEPT, ROUTE_FILE, OBJECTS_FILE) and p.is_file():
             continue
         if p.name == "frames" and p.is_dir():
             for f in p.iterdir():
@@ -202,16 +230,18 @@ def ask(store: Path, observer, budget_usd: float, usd_per_image: float) -> dict:
         frames = list(observer.frames(route))
         if len(frames) > observer.max_frames:
             raise AskRefused(f"{name}: the observer planned {len(frames)} frames, more than its {observer.max_frames}")
-        planned[name] = (folder, route, frames)
-    images = sum(len(f) for _, _, f in planned.values())
+        objects = objects_of(folder)
+        planned[name] = (folder, route, frames, objects)
+    # One image a planned frame for the player, and up to MAX_BOXES a planned frame for each named role.
+    images = sum(len(f) * (1 + pixel.MAX_BOXES * len(o)) for _, _, f, o in planned.values())
     if images * usd_per_image > budget_usd + 1e-9:
         raise AskRefused(f"the {len(found)} replays need up to {images} images, ${images * usd_per_image:.4f}, "
                          f"over the budget of ${budget_usd:.2f}; nothing was asked")
     setting = observer.setting()
     runs, sent, stopped = [], 0, None
-    for name, (folder, route, _) in planned.items():
+    for name, (folder, route, _, objects) in planned.items():
         try:
-            got, run, n = pixel.observe(observer, folder, route)
+            got, run, n = pixel.observe(observer, folder, route, objects)
         except pixel.PixelError as exc:
             extra = getattr(exc, "images", 0)
             sent += extra if isinstance(extra, int) and not isinstance(extra, bool) and extra > 0 else 0
