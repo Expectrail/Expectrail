@@ -44,7 +44,7 @@ protected_secrets:
 
 # Reviewed findings. Each entry says why it does not apply and expires, so it is reviewed again.
 ignore:
-   - rule: OBAAF-GHA-001
+  - rule: OBAAF-GHA-001
     path: .github/workflows/expectrail-comment.yml
     job: judge
     reason: >-
@@ -55,7 +55,7 @@ ignore:
       its one secret, the checks App key, is used only to publish the evidence and clearance
       checks.
     until: 2027-02-14
-      - rule: OBAAF-GHA-002
+  - rule: OBAAF-GHA-002
     path: .github/workflows/expectrail-comment.yml
     job: judge
     reason: >-
