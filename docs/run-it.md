@@ -209,6 +209,39 @@ against the edge function served locally (`tests/test_runit_edge.py`); the JavaS
 burst of 200 at once and a day of bursts with runs finishing, holding every limit
 (`apps/run-it-edge/test/service.test.mjs`, `node --test`).
 
+## A visitor's run, end to end in a browser
+
+```
+python3 -m tools.runit_smoke                    real runs (needs Godot, as `runit run` does)
+python3 -m tools.runit_smoke --require-sandbox  real runs, every replay in the sandbox (needs bubblewrap)
+python3 -m tools.runit_smoke --stand-in         stand-in replays and recordings, no Godot
+    [--sample ID] [--json FILE] [--screenshots DIR]
+```
+
+This is how the nightly platform test exercises Run it: one command, no account, no model. It starts
+the local stub on a free port, opens `/run-it/#local` in Chromium and does what a visitor does. Each
+time, it checks that the page says what the published `status.json` says, and no more:
+
+- **One run at a time:** while the first run is held, a second visitor is told "Busy".
+- **Every sample the page offers:** the verdict shown, title and colour, is the one `status.json`
+  allows. Only an accept with every vision question answered from the recording is green.
+  - The vision line names the recording's date and its counts, or claims no recording.
+  - The receipt line and the request id match.
+  - The run ended as the sample is expected to.
+  - The evidence viewer draws in its frame, and its headline agrees with the decision.
+- **The quota:** the stub allows a visitor as many runs as there are samples. One more run says the
+  quota is spent and when it resets, and shows the latest run instead, labelled earlier.
+- **The latest runs:** after a reload, each card names its latest run and its verdict.
+- **Switched off:** nothing can be started, and the latest run still opens, labelled earlier.
+
+A sample whose button the page leaves disabled, such as the recorded fix until a repair is recorded,
+is listed as "not offered". The command exits 0 when every check held, 1 when one did not, and 2 when
+the smoke could not run. `--screenshots` saves each state at desktop (1280 px) and phone (390 px)
+widths. Chromium leaves a frame outside the viewport blank in a full-page shot, so the evidence
+gets a separate shot, scrolled into view. CI's `web-capture` job runs the stand-in form through
+`tests.test_runit_smoke`. That test also checks that a page which turns a reject green fails the
+smoke.
+
 ## The token, plainly
 
 A fine-grained token cannot be limited to one workflow: "Actions: write" can dispatch or cancel any
