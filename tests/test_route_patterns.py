@@ -134,6 +134,11 @@ class RoutePatternTest(unittest.TestCase):
         self.assertEqual([name for name in everything if "up" in name.split("/")], [])
 
     def test_folders_nested_deeper_than_python_nests_calls(self):
+        if sys.platform == "darwin":
+            # Still exceed the interpreter's recursion limit, without exceeding macOS PATH_MAX.
+            old_limit = sys.getrecursionlimit()
+            sys.setrecursionlimit(100)
+            self.addCleanup(sys.setrecursionlimit, old_limit)
         depth = sys.getrecursionlimit() + 200
         folders = [self.root / "deep"]
         for _ in range(depth):
@@ -255,7 +260,7 @@ class RoutePatternTest(unittest.TestCase):
         compared = left_out = 0
         for pattern, found in self.generated():
             try:
-                theirs = {p for p in self.root.glob(pattern) if p.is_file()}
+                theirs = {p for p in self.root.glob(pattern, case_sensitive=True) if p.is_file()}
             except ValueError:
                 self.assertFalse(current, pattern)
                 left_out += 1

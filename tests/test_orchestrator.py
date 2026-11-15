@@ -52,6 +52,13 @@ OPENED: list[str] = []
 WATCHING: list[bool] = []
 
 
+def canonical_open_path(path) -> str:
+    # Normalise /var versus /private/var, but preserve the final name: an attempted
+    # O_NOFOLLOW open of a symlink is not an open of what it points to.
+    path = Path(path)
+    return str(path.parent.resolve() / path.name)
+
+
 def _note_opens(event: str, args: tuple) -> None:
     if WATCHING and event == "open" and isinstance(args[0], (str, bytes, os.PathLike)):
         OPENED.append(os.fsdecode(args[0]))
@@ -574,7 +581,7 @@ class GodotEngineTest(Case):
                 repo = make_repo(self.tmp / f"form-{n}")
                 spec = repo / "specs" / "two.json"
                 make(repo, spec)
-                target = os.path.abspath(os.readlink(spec)) if spec.is_symlink() else None
+                target = canonical_open_path(os.readlink(spec)) if spec.is_symlink() else None
                 plain = self.gate(repo, None, f"gate-form-{n}")
                 self.head = repo
                 OPENED.clear()
@@ -591,8 +598,8 @@ class GodotEngineTest(Case):
                 self.assertEqual((len(record["checks"]), record["specs"], record["drafts"]),
                                  (len(plain["checks"]), plain["specs"], plain["drafts"]))
                 self.assertEqual(len(record["checks"]), checks_expected.get(name, 2))
-                opened = {os.path.abspath(p) for p in OPENED}
-                self.assertIn(str(repo / "specs" / "player-stays-above-ground.json"), opened)   # the watch does see opens
+                opened = {canonical_open_path(p) for p in OPENED}
+                self.assertIn(canonical_open_path(repo / "specs" / "player-stays-above-ground.json"), opened)   # the watch does see opens
                 if target is not None:
                     self.assertNotIn(target, opened)   # what the link leads to was never opened, by anything
                 if name not in ("a file", "a link to nothing"):

@@ -172,9 +172,20 @@ class VerifyPathTest(Case):
         self.assertEqual(seen["within"], head.resolve())
 
 
-@unittest.skipUnless(ENGINE_TESTS == "required", "set EXPECTRAIL_ENGINE_TESTS=required to replay with real Godot")
 class RealGodotTest(Case):
     """Real replays through the one command. Each test starts Godot at least once."""
+
+    @classmethod
+    def setUpClass(cls):
+        from tests.tool_requirements import godot_binary, require_tool
+        engine = godot_binary()
+        require_tool('xvfb-run')
+        # These verdicts exercise the keyless path; never spend inherited credentials.
+        configured = unittest.mock.patch.dict(
+            os.environ, EXPECTRAIL_GODOT=str(engine),
+            MODEL_API_KEY="", EXPECTRAIL_SAM_USD_CAP="")
+        configured.start()
+        cls.addClassCleanup(configured.stop)
 
     def verify(self, head: Path, *, game: str, routes: str, specs: str, base: Path | None = None) -> tuple[int, dict]:
         command = [sys.executable, "-m", "expectrail.cli", "--jobs-root", str(self.tmp / "jobs"), "verify",

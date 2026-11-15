@@ -29,7 +29,7 @@ REPO = Path(__file__).resolve().parent.parent
 EXAMPLE = REPO / "contracts" / "examples" / "doctor.json"
 ENGINE_TESTS = os.environ.get("EXPECTRAIL_ENGINE_TESTS", "")
 LLVMPIPE = "OpenGL API 4.5 (Core Profile) Mesa 25.2.8 - Compatibility - Using Device: Mesa - llvmpipe (LLVM 20.1.2, 256 bits)"
-EVERYTHING = ("xvfb-run", "bwrap", "patch", "curl", "unzip")
+EVERYTHING = ("Xvfb", "xauth", "xvfb-run", "bwrap", "patch", "curl", "unzip")
 SECRET = "sk-THIS-VALUE-MUST-NEVER-BE-PRINTED"
 Usage = namedtuple("Usage", "total used free")
 STUB = """#!/bin/bash
@@ -58,6 +58,7 @@ class Machine(unittest.TestCase):
         env.update(MODEL_API_KEY=SECRET, EXPECTRAIL_SAM_USD_CAP="0.50", EXPECTRAIL_GODOT=str(self.engine), EXPECTRAIL_TOOLS=str(self.tmp / "tools"))
         for patch in (
                 mock.patch.dict(os.environ, env, clear=True),
+                mock.patch.object(doctor, "chromium", lambda: doctor._ok("chromium", "Playwright Chromium (web replays)", "stand-in browser", required=False)),
                 mock.patch.object(doctor.shutil, "which", lambda name, *a, **k: f"/usr/bin/{name}" if name in self.programs else None),
                 mock.patch.object(doctor.shutil, "disk_usage", lambda path: Usage(self.free * 2, self.free, self.free)),
                 mock.patch.object(doctor.sys, "platform", "linux"),
@@ -96,7 +97,7 @@ class DoctorTest(Machine):
         self.assertIn("the engine drew a frame with Mesa - llvmpipe", out)
         self.assertNotIn("MISSING", out)
         self.assertEqual([c.id for c in doctor.checks()],
-                         ["python", "godot", "display", "opengl", "disk", "sandbox", "patch", "curl", "unzip", "vision-key", "vision-cap"])
+                         ["python", "godot", "display", "opengl", "disk", "sandbox", "patch", "curl", "unzip", "vision-key", "vision-cap", "chromium"])
 
     def test_each_required_tool_removed_fails_and_names_the_fix(self):
         for gone, check, fix in (("xvfb-run", "display", "sudo apt-get install xvfb"),
@@ -388,13 +389,24 @@ class UsageTest(unittest.TestCase):
         self.assertIn("propose and verify a fix for a rejected job", text)
 
 
-@unittest.skipUnless(ENGINE_TESTS == "required", "set EXPECTRAIL_ENGINE_TESTS=required to check with real Godot")
 class RealEngineTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from tests.tool_requirements import godot_binary, require_tool
+        engine = godot_binary()
+        require_tool('xvfb-run')
+        configured = mock.patch.dict(os.environ, EXPECTRAIL_GODOT=str(engine))
+        configured.start()
+        cls.addClassCleanup(configured.stop)
+
     def test_the_real_engine_at_the_pinned_version_draws_a_frame(self):
         found = {c.id: c for c in doctor.for_run()}
         self.assertEqual({c.status for c in found.values()}, {"ok"}, [(c.id, c.found) for c in found.values()])
         self.assertIn("4.7.2.stable", found["godot"].found)
-        self.assertIn("llvmpipe", found["opengl"].found)
+        if sys.platform.startswith("linux"):
+            self.assertIn("llvmpipe", found["opengl"].found)
+        else:
+            self.assertIn("the engine drew a frame", found["opengl"].found)
         self.assertEqual(engines.GodotGate._tools(), [])
 
 
@@ -407,14 +419,19 @@ class DisplayApplicabilityTest(Machine):
             for engine_here in (True, False):
                 with self.subTest(platform=platform, engine_here=engine_here), \
                         mock.patch.object(doctor.sys, "platform", platform), \
+                        mock.patch.object(doctor, "macos_display_problem", return_value=None), \
                         mock.patch.dict(os.environ, EXPECTRAIL_GODOT=str(self.engine if engine_here else self.tmp / "missing")):
                     checks = doctor.checks(fetch=False, env={})
                     doc = doctor.document(checks)
                     self.assertEqual(doctor.problems(doc), [])
                     shown = next(c for c in doc["checks"] if c["id"] == "display")
-                    self.assertEqual((shown["status"], shown["required"], shown["fix"]), ("skipped", False, None))
-                    self.assertIn("does not apply", shown["found"])
-                    self.assertNotIn(f"  {'ok':<9} {shown['what']}", doctor.text(checks))
+                    if platform == "darwin":
+                        self.assertEqual((shown["status"], shown["required"], shown["fix"]), ("ok", True, None))
+                        self.assertIn("CoreGraphics reports an online display", shown["found"])
+                    else:
+                        self.assertEqual((shown["status"], shown["required"], shown["fix"]), ("skipped", False, None))
+                        self.assertIn("does not apply", shown["found"])
+                        self.assertNotIn(f"  {'ok':<9} {shown['what']}", doctor.text(checks))
                     if not engine_here:
                         self.assertFalse(doc["ok"])
 
@@ -431,7 +448,7 @@ class DisplayApplicabilityTest(Machine):
                 self.assertEqual(doctor.problems(doc), [])
 
     def test_a_required_skipped_check_still_blocks_readiness(self):
-        with mock.patch.object(doctor.sys, "platform", "darwin"):
+        with mock.patch.object(doctor.sys, "platform", "win32"):
             shown = doctor.display()
         waiting = doctor.Check("opengl", "OpenGL", "skipped", True, "not tried", "install the engine")
         checks = [shown, waiting]
