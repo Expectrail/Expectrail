@@ -17,7 +17,8 @@
         "vision": {"type": ["number", "null"], "minimum": 0},
         "glimmer": {"type": ["number", "null"], "minimum": 0},
         "muse": {"type": ["number", "null"], "minimum": 0},
-        "triage": {"type": ["number", "null"], "minimum": 0}
+        "triage": {"type": ["number", "null"], "minimum": 0},
+        "spec": {"type": ["number", "null"], "minimum": 0}
       },
       "description": "The cap in force for this job, or null when unset or invalid. An invalid cap is named in stopped and the role's phase stopped; its raw value is never recorded."
     },
@@ -28,8 +29,8 @@
         "additionalProperties": false,
         "required": ["phase", "role", "reservedUsd", "requests", "stopped"],
         "properties": {
-          "phase": {"enum": ["observing", "fixing", "triaging"]},
-          "role": {"enum": ["vision", "glimmer", "muse", "triage"]},
+          "phase": {"enum": ["observing", "fixing", "triaging", "drafting"]},
+          "role": {"enum": ["vision", "glimmer", "muse", "triage", "spec"]},
           "reservedUsd": {"type": "number", "minimum": 0},
           "requests": {"type": "integer", "minimum": 0},
           "stopped": {"type": ["string", "null"], "minLength": 1}

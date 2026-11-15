@@ -34,7 +34,8 @@ class SparkOpenSpecWriterTest(unittest.TestCase):
             seen.update(url=req.full_url, auth=req.get_header("Authorization"), body=json.loads(req.data))
             return Resp(json.dumps({"choices": [{"message": {"content": json.dumps(SPEC)}}]}).encode())
 
-        with mock.patch.object(spec_writer.urllib.request, "urlopen", fake):
+        with mock.patch.dict(os.environ, {"EXPECTRAIL_SPEC_USD_CAP": "100"}), \
+                mock.patch.object(spec_writer.urllib.request, "urlopen", fake):
             spec, problems = spec_writer.draft("The player never falls through the ground.", "x",
                                                spec_writer.OPEN_MODEL,
                                                transport=spec_writer.open_transport(key="bk"))
@@ -55,7 +56,8 @@ class SparkOpenSpecWriterTest(unittest.TestCase):
                 raise urllib.error.HTTPError(req.full_url, 400, "bad", {}, io.BytesIO(b"response_format"))
             return Resp(json.dumps({"choices": [{"message": {"content": json.dumps(SPEC)}}]}).encode())
 
-        with mock.patch.object(spec_writer.urllib.request, "urlopen", fake):
+        with mock.patch.dict(os.environ, {"EXPECTRAIL_SPEC_USD_CAP": "100"}), \
+                mock.patch.object(spec_writer.urllib.request, "urlopen", fake):
             spec, _ = spec_writer.draft("The player never falls through the ground.", "x", spec_writer.OPEN_MODEL,
                                         transport=spec_writer.open_transport(key="bk"))
         self.assertIsNotNone(spec)
