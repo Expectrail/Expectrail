@@ -7,11 +7,11 @@ public key found only inside the receipt; the key must be in a trust store the
 verifier already holds.
 
     python -m expectrail.receipt trust-check RECEIPT --trust-store FILE \\
-        [--repo OWNER/NAME] [--expect-head SHA] [--expect-policy DIGEST]
+        [--repo OWNER/NAME] [--expect-head SHA] [--expect-build DIGEST] [--expect-policy DIGEST]
 
 Clearance is an allow-list. It is granted only when every condition was positively
-shown: a known issuer, a valid signature, repository, head and policy each given
-and matched, a validity of at most 7 days that contains now, at least one required
+shown: a known issuer, a valid signature, repository, head, build and policy each
+given and matched, a validity of at most 7 days that contains now, at least one required
 check, every required check's result ``pass``, and ``exercised`` covering
 ``required``, on full evidence, with decision ``accept``. Anything not shown is
 listed under ``does_not_establish`` and clearance is refused. A valid signature
@@ -23,7 +23,9 @@ from __future__ import annotations
 
 import argparse
 import base64
+import binascii
 import json
+import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -46,8 +48,51 @@ SCHEMAS = Path(__file__).resolve().parent.parent / "contracts"
 RECEIPT_SCHEMA = json.loads((SCHEMAS / "receipt.v1.schema.json").read_text(encoding="utf-8"))
 
 
+# Canonical base64 of an Ed25519 signature (64 bytes) and public key (32 bytes): the only
+# spelling each value has. Padded, nothing outside the alphabet, and the unused bits of the last
+# character zero, so no two strings decode to the same bytes. Matched with fullmatch, so a trailing
+# newline is refused too (a schema ``pattern`` read by jsonschema lets ``$`` match before one).
+SIGNATURE_RE = re.compile(r"[A-Za-z0-9+/]{85}[AQgw]==")
+PUBLIC_KEY_RE = re.compile(r"[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=")
+# RFC 3339 with an offset: the one timestamp form the writer emits, and the form the browser check
+# on docs/verify/ reads. Python's fromisoformat reads more (a space, no offset); the writer does not.
+TIMESTAMP_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})",
+                          re.ASCII)
+# Stands in for the signature while the writer validates the unsigned document.
+_PLACEHOLDER_SIGNATURE = "A" * 86 + "=="
+
+
+def strict_b64(value: str, pattern: re.Pattern, what: str) -> bytes:
+    """Decode canonical base64 only. Anything else is refused, never read leniently."""
+    if not isinstance(value, str) or not pattern.fullmatch(value):
+        raise ContractError(f"{what} is not canonical base64")
+    try:
+        raw = base64.b64decode(value, validate=True)
+    except (binascii.Error, ValueError) as exc:  # unreachable after the pattern; kept as the fallback
+        raise ContractError(f"{what} is not canonical base64") from exc
+    if base64.b64encode(raw).decode("ascii") != value:
+        raise ContractError(f"{what} is not canonical base64")
+    return raw
+
+
+def check_timestamp(value: object, what: str) -> datetime:
+    """An RFC 3339 date-time with an offset, as the writer must emit it."""
+    if not isinstance(value, str) or not TIMESTAMP_RE.fullmatch(value):
+        raise ContractError(f"receipt: {what}: {value!r} is not an RFC 3339 date-time with an offset")
+    try:
+        parsed = _parse_time(value)
+    except ValueError as exc:
+        raise ContractError(f"receipt: {what}: {value!r} is not a real date and time") from exc
+    if parsed.tzinfo is None:  # the pattern requires an offset; kept as the fallback
+        raise ContractError(f"receipt: {what}: {value!r} has no offset")
+    return parsed
+
+
 def _validate_receipt(doc: dict) -> None:
-    """Validate a receipt against its schema. Refuses non-finite numbers via canonical_v1."""
+    """Validate a receipt against its schema. Refuses non-finite numbers via canonical_v1.
+
+    The signature and the public key must be canonical base64 of the right length.
+    """
     canonical_v1(doc)
     errors = sorted(
         jsonschema.Draft202012Validator(RECEIPT_SCHEMA).iter_errors(doc),
@@ -59,6 +104,8 @@ def _validate_receipt(doc: dict) -> None:
         raise ContractError(f"receipt: {where}: {first.message}")
     if doc.get("format") != FORMAT:
         raise ContractError(f"expected {FORMAT}, got {doc.get('format')!r}")
+    strict_b64(doc["signature"], SIGNATURE_RE, "receipt: signature")
+    strict_b64(doc["publicKey"], PUBLIC_KEY_RE, "receipt: publicKey")
 
 
 FORMAT = "expectrail.receipt/v1"
@@ -87,8 +134,8 @@ def sign_receipt(doc: dict, private_key: Ed25519PrivateKey) -> str:
 def verify_signature(doc: dict, public_key_b64: str) -> bool:
     """True if the signature verifies with the given public key."""
     try:
-        pub = Ed25519PublicKey.from_public_bytes(base64.b64decode(public_key_b64))
-        pub.verify(base64.b64decode(doc["signature"]), _canonical_body(doc))
+        pub = Ed25519PublicKey.from_public_bytes(strict_b64(public_key_b64, PUBLIC_KEY_RE, "public key"))
+        pub.verify(strict_b64(doc["signature"], SIGNATURE_RE, "signature"), _canonical_body(doc))
         return True
     except Exception:  # noqa: BLE001 — any crypto failure is a failed verify
         return False
@@ -98,14 +145,19 @@ def write_receipt(doc: dict, private_key: Ed25519PrivateKey, path: Path | None =
     """Validate, sign and optionally write a receipt. Returns the signed document.
 
     ``doc`` must contain every field except ``signature``. The signature is
-    computed and inserted. The private key is never written.
+    computed and inserted. The private key is never written. ``issuedAt`` and
+    ``expiresAt`` must be RFC 3339 date-times with an offset: the schema's
+    ``format: date-time`` is not enforced by jsonschema without a format checker,
+    so the writer checks it itself.
     """
     if "signature" in doc:
         raise ReceiptError("receipt to sign must not already contain a signature")
     # Placeholder so validation can run; replaced after.
     candidate = dict(doc)
-    candidate["signature"] = "pending"
+    candidate["signature"] = _PLACEHOLDER_SIGNATURE
     _validate_receipt(candidate)
+    check_timestamp(candidate.get("issuedAt"), "issuedAt")
+    check_timestamp(candidate.get("expiresAt"), "expiresAt")
     signature = sign_receipt(candidate, private_key)
     signed = dict(candidate)
     signed["signature"] = signature
@@ -128,7 +180,11 @@ def load_trust_store(path: Path) -> dict[str, str]:
 
     Format: {"format": "expectrail.trust-store/v1", "keys": [{"id": "...", "publicKey": "..."}]}
     """
-    text = path.read_text(encoding="utf-8")
+    return parse_trust_store(path.read_text(encoding="utf-8"))
+
+
+def parse_trust_store(text: str) -> dict[str, str]:
+    """Read a trust store's text. Each public key must be canonical base64 of 32 bytes."""
     doc = strict_loads(text)
     if not isinstance(doc, dict) or doc.get("format") != TRUST_STORE_FORMAT:
         raise ReceiptError(f"trust store must be {TRUST_STORE_FORMAT}")
@@ -145,9 +201,14 @@ def load_trust_store(path: Path) -> dict[str, str]:
             raise ReceiptError("trust-store key entry needs id and publicKey")
         if kid in out:
             raise ReceiptError(f"duplicate key id in trust store: {kid}")
+        if not PUBLIC_KEY_RE.fullmatch(pub):
+            raise ReceiptError(f"trust-store key {kid}: publicKey is not canonical base64 of a 32-byte Ed25519 key")
         # Reject a key that is only the embedded one by requiring it is listed here.
         out[kid] = pub
     return out
+
+
+_IDENTITY_NOT_CHECKED = ("repository not checked", "head not checked", "build not checked")
 
 
 def _gap(report: dict, reason: str, gap: str | None = None) -> None:
@@ -171,12 +232,14 @@ def check_receipt(
     expect_head: str | None = None,
     expect_policy: str | None = None,
     now: datetime | None = None,
+    expect_build: str | None = None,
 ) -> dict[str, Any]:
     """Verify signature, issuer, identity, policy, freshness and completeness.
 
     Clearance is granted only when every condition was positively shown. A missing
-    ``--repo``, ``--expect-head`` or ``--expect-policy`` is "not checked", not a
-    pass. A required check passes only when its result is ``"pass"``. The span
+    ``--repo``, ``--expect-head``, ``--expect-build`` or ``--expect-policy`` is
+    "not checked", not a pass. The build is part of identity: a genuine receipt for
+    one build of a head does not clear another build of the same head. A required check passes only when its result is ``"pass"``. The span
     from ``issuedAt`` to ``expiresAt`` must be positive and at most 7 days.
     A valid signature on insufficient evidence still reports ``"no clearance"``.
     """
@@ -219,6 +282,7 @@ def check_receipt(
     # Omitting the question is not a pass.
     repo_shown = expect_repo is not None and doc.get("repository") == expect_repo
     head_shown = expect_head is not None and doc.get("headSha256") == expect_head
+    build_shown = expect_build is not None and doc.get("buildSha256") == expect_build
     policy_shown = expect_policy is not None and doc.get("policySha256") == expect_policy
     if expect_repo is None:
         _gap(report, "repository not checked")
@@ -229,11 +293,16 @@ def check_receipt(
         _gap(report, "head not checked")
     elif doc.get("headSha256") != expect_head:
         _gap(report, "head digest mismatch", "build identity")
-    report["identity_ok"] = bool(report["valid_signature"] and repo_shown and head_shown)
+    if expect_build is None:
+        _gap(report, "build not checked")
+    elif doc.get("buildSha256") != expect_build:
+        _gap(report, "build digest mismatch", "build identity")
+    report["identity_ok"] = bool(report["valid_signature"] and repo_shown and head_shown and build_shown)
     if report["identity_ok"]:
-        report["establishes"].append(f"repository {doc.get('repository')} head {doc.get('headSha256', '')[:12]}…")
-    elif "build identity" not in report["does_not_establish"] and (
-            "repository not checked" in report["does_not_establish"] or "head not checked" in report["does_not_establish"]):
+        report["establishes"].append(f"repository {doc.get('repository')} head {doc.get('headSha256', '')[:12]}… "
+                                     f"build {doc.get('buildSha256', '')[:12]}…")
+    elif "build identity" not in report["does_not_establish"] and any(
+            item in report["does_not_establish"] for item in _IDENTITY_NOT_CHECKED):
         report["does_not_establish"].append("build identity")
 
     if expect_policy is None:
@@ -306,6 +375,7 @@ def check_receipt(
         and report["known_issuer"]
         and repo_shown
         and head_shown
+        and build_shown
         and policy_shown
         and report["fresh"]
         and report["complete"]
@@ -322,7 +392,7 @@ def check_receipt(
 
 def _print_report(report: dict) -> None:
     def identity_word() -> str:
-        if "repository not checked" in report["does_not_establish"] or "head not checked" in report["does_not_establish"]:
+        if any(item in report["does_not_establish"] for item in _IDENTITY_NOT_CHECKED):
             return "not checked"
         return "ok" if report["identity_ok"] else "mismatch"
 
@@ -363,6 +433,7 @@ def main(argv: list[str] | None = None) -> int:
     check.add_argument("--repo", default=None, help="OWNER/NAME the receipt must be about")
     check.add_argument("--trust-store", type=Path, required=True)
     check.add_argument("--expect-head", default=None)
+    check.add_argument("--expect-build", default=None, help="buildSha256 the receipt must name")
     check.add_argument("--expect-policy", default=None)
 
     args = parser.parse_args(argv)
@@ -375,6 +446,7 @@ def main(argv: list[str] | None = None) -> int:
                 store,
                 expect_repo=args.repo,
                 expect_head=args.expect_head,
+                expect_build=args.expect_build,
                 expect_policy=args.expect_policy,
             )
         except (ContractError, ReceiptError, OSError) as exc:
