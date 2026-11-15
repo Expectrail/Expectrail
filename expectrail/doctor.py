@@ -172,6 +172,8 @@ def chromium() -> Check:
         from playwright.sync_api import Error, sync_playwright
     except ImportError:
         return _missing('chromium', what, 'Playwright is not installed; its Chromium executable is required for web replays', fix, required=False)
+    except Exception as exc:  # noqa: BLE001 - a broken install must not stop doctor
+        return _missing('chromium', what, f'Playwright could not be imported ({type(exc).__name__})', fix, required=False)
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(args=['--disable-background-networking'])
@@ -185,6 +187,9 @@ def chromium() -> Check:
         else:
             why = f'Playwright Chromium could not start ({type(exc).__name__}); check the local browser installation'
         return _missing('chromium', what, why, fix, required=False)
+    except Exception as exc:  # noqa: BLE001 - an optional probe never stops doctor (the driver can raise a plain Exception)
+        return _missing('chromium', what, f'Playwright Chromium could not start ({type(exc).__name__}); check the local browser installation',
+                        fix, required=False)
     return _ok('chromium', what, 'Playwright Chromium started and closed without opening a page', required=False)
 
 

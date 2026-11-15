@@ -141,6 +141,27 @@ class BrowserDoctorTest(unittest.TestCase):
             launch.return_value.close.assert_called_once()
             launch.return_value.new_page.assert_not_called()
 
+    def test_any_failure_of_the_optional_browser_probe_is_missing_never_a_crash(self):
+        # The guard's finding on #479: the Playwright driver can raise a plain Exception, and a broken
+        # install can fail on import with something other than ImportError.
+        class Error(Exception):
+            pass
+        start = mock.MagicMock()
+        start.return_value.__enter__.side_effect = Exception("Connection closed while reading from the driver SECRET")
+        with mock.patch.dict(sys.modules, {'playwright.sync_api': types.SimpleNamespace(Error=Error, sync_playwright=start)}):
+            found = doctor.chromium()
+        self.assertEqual((found.id, found.status, found.required), ('chromium', 'missing', False))
+        self.assertIn('could not start (Exception)', found.found)
+        self.assertNotIn('SECRET', json.dumps(doctor.document([found])))
+        self.assertEqual(doctor.document([found])['ok'], True)
+        class Broken:
+            def __getattr__(self, name):
+                raise RuntimeError("broken install SECRET")
+        with mock.patch.dict(sys.modules, {'playwright.sync_api': Broken()}):
+            found = doctor.chromium()
+        self.assertEqual((found.status, found.required), ('missing', False))
+        self.assertIn('could not be imported (RuntimeError)', found.found)
+
     def test_doctors_list_includes_the_optional_browser_probe(self):
         from tests import test_doctor
         machine = test_doctor.Machine()

@@ -46,3 +46,14 @@ Native macOS was not run. CoreGraphics and __CF runtime behavior need a Mac; sta
 - `tests/test_unity_harness.py`
 - `tests/tool_requirements.py`
 - `tools/quickstart.py`
+
+## The guard's finding on #479 (architect)
+
+- `expectrail/doctor.py`, `chromium()`: any exception from the optional browser probe, on import or
+  on launch, is now a `missing` check with a fix and `required: False`. Before, only Playwright's
+  `Error` and `OSError` were caught, so a plain `Exception` (the driver's "Connection closed") or a
+  broken install crashed the whole `doctor` command. Browser stderr is still never copied.
+- `tests/test_platform_tools.py::test_any_failure_of_the_optional_browser_probe_is_missing_never_a_crash`
+  fails on #479's head and passes here.
+- A correction to #479's description: the raw logs and the `run-hidden.py` runner it mentions are in
+  the builder's handover, not in this pull request. The hidden-tools counts are the builder's run.
