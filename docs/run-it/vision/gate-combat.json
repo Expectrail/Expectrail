@@ -1,0 +1,1612 @@
+{
+ "answers": [
+  {
+   "detections": [
+    {
+     "box": [
+      759.0,
+      667.0,
+      835.0,
+      785.0
+     ],
+     "score": 0.941605806350708
+    }
+   ],
+   "frameSha256": "00b062e85f54b94eec4b90c0939627bd88444a7302771363931165f71bede0df",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      737.0,
+      467.0,
+      853.0,
+      590.0
+     ],
+     "score": 0.9569892287254333
+    }
+   ],
+   "frameSha256": "02458b4178129adfc89ce692df0819a248793ddafc3adfda3eec9715dc8ad85a",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      737.0,
+      486.0,
+      854.0,
+      608.0
+     ],
+     "score": 0.9569892287254333
+    }
+   ],
+   "frameSha256": "04bbd77d94a09a498e585f91ed9ee35cb29ec4ca4ce814497edc5af0d59f4f01",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      736.0,
+      540.0,
+      854.0,
+      663.0
+     ],
+     "score": 0.949367105960846
+    }
+   ],
+   "frameSha256": "04ff4896cd3b998fac36607653e1791e1a529594c9eb9634e873fcfd02fb07f1",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      757.0,
+      671.0,
+      842.0,
+      783.0
+     ],
+     "score": 0.8750000596046448
+    }
+   ],
+   "frameSha256": "0657d8decde324db7055a9ec5d82f544b653f4b39fe491820f1a81c48bd0e1b0",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      757.0,
+      671.0,
+      841.0,
+      783.0
+     ],
+     "score": 0.9375000596046448
+    }
+   ],
+   "frameSha256": "0c21049b53ffc4a55ec9da47660300dbb41b8877172b175ce4de770d77db0720",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      750.0,
+      669.0,
+      854.0,
+      775.0
+     ],
+     "score": 0.9336099624633789
+    }
+   ],
+   "frameSha256": "1419a91f28ca24dc5b36e2fe72823309db41c67de376fe3ce7f7b9eb84070ab3",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      746.0,
+      465.0,
+      843.0,
+      591.0
+     ],
+     "score": 0.921951174736023
+    }
+   ],
+   "frameSha256": "167677f79f7df89198ac7f3bad970fc1a5e594913f72471a33c65269cbb9546e",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      747.0,
+      672.0,
+      842.0,
+      777.0
+     ],
+     "score": 0.8904109597206116
+    }
+   ],
+   "frameSha256": "1876b21e6da6a4960195987eb68380b8b6c3256e8ea2b84bbb374eb683a9f867",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      748.0,
+      668.0,
+      854.0,
+      775.0
+     ],
+     "score": 0.921951174736023
+    }
+   ],
+   "frameSha256": "1895431edc6bc406bddde59f14dd39018092da4a51cd666857399297f80eb2cf",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      746.0,
+      469.0,
+      843.0,
+      595.0
+     ],
+     "score": 0.9375000596046448
+    }
+   ],
+   "frameSha256": "18b630ab37695a6dc27ee3a7e72cc019151a3cad0cab3ef31afa792c4fc526ff",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      751.0,
+      669.0,
+      855.0,
+      775.0
+     ],
+     "score": 0.949367105960846
+    }
+   ],
+   "frameSha256": "18bdec1b6641b928020740a2cb0553ca402800c3037cb1a298bc268a72177a22",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      747.0,
+      673.0,
+      842.0,
+      775.0
+     ],
+     "score": 0.9064327478408813
+    }
+   ],
+   "frameSha256": "1a030160f1aeaa8b84fdd3b90fc7127f7ad86fb99f3320fb349c42b75554db6f",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      756.0,
+      671.0,
+      840.0,
+      783.0
+     ],
+     "score": 0.9298245906829834
+    }
+   ],
+   "frameSha256": "1c3ea47fb7675d10450cf780672e0cf32bd98a13d9b4b5363bf047bff49cc014",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      746.0,
+      459.0,
+      844.0,
+      585.0
+     ],
+     "score": 0.9336099624633789
+    }
+   ],
+   "frameSha256": "1f89035c8250efe3aa731d62d9963c645b5fa3f223a6f86d8abbb0adec8f7e4a",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      745.0,
+      616.0,
+      843.0,
+      742.0
+     ],
+     "score": 0.9139785170555115
+    }
+   ],
+   "frameSha256": "1fe0b60cfb00381c37055eb9ce9482f0b8a45732335f5edcd3c5026cd1d64091",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      746.0,
+      507.0,
+      843.0,
+      634.0
+     ],
+     "score": 0.941605806350708
+    }
+   ],
+   "frameSha256": "214b76080446596809fe1849ca44616ab78fac45576ec1292579f988a3b2f563",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      736.0,
+      556.0,
+      854.0,
+      677.0
+     ],
+     "score": 0.9452055096626282
+    }
+   ],
+   "frameSha256": "2593055b07237a41484c6f47aaecd9cd6a9112d2643987f3795a48ccb0db489e",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      750.0,
+      668.0,
+      854.0,
+      775.0
+     ],
+     "score": 0.9259259104728699
+    }
+   ],
+   "frameSha256": "277acc121ba475e3ed7b3db918e76e9d641f6bf914cc77bf602e338e018b5d51",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      766.0,
+      669.0,
+      848.0,
+      783.0
+     ],
+     "score": 0.9336099624633789
+    }
+   ],
+   "frameSha256": "284a64878e34663964bf174c37765d71eeca2eb77a1448c9762d766feb675df5",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      770.0,
+      669.0,
+      845.0,
+      783.0
+     ],
+     "score": 0.921951174736023
+    }
+   ],
+   "frameSha256": "2c3ffa3c7d47815666e5ea3eb29bcbd6a665ca4c06fc92f1bedc903a860bfe81",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      769.0,
+      670.0,
+      845.0,
+      783.0
+     ],
+     "score": 0.9139785170555115
+    }
+   ],
+   "frameSha256": "341fbf9c5e4e7251a495641fc804552b4dbbb253cb51c9d8b9812685d14dc948",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      761.0,
+      671.0,
+      843.0,
+      783.0
+     ],
+     "score": 0.9179486632347107
+    }
+   ],
+   "frameSha256": "35dac23a7e2497e03e53c0cbe28f017a402823d6cc2e932a9c1e66bcf5a48c96",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      747.0,
+      557.0,
+      843.0,
+      683.0
+     ],
+     "score": 0.8552036285400391
+    }
+   ],
+   "frameSha256": "3c35290305c12ed8481f5a0a3eb2e741f886618a93397eb5d5e4530ace06474e",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      736.0,
+      478.0,
+      854.0,
+      600.0
+     ],
+     "score": 0.9532163739204407
+    }
+   ],
+   "frameSha256": "4a355c4aef0893e4d53156b170e457bea2ab6bc94e7aaca7bd4ace74715fda21",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      767.0,
+      669.0,
+      848.0,
+      783.0
+     ],
+     "score": 0.941605806350708
+    }
+   ],
+   "frameSha256": "4ba05ffcba2c5edc00976e1b04b86836b60fd373d73d7f9de26f26e56484575a",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      744.0,
+      673.0,
+      843.0,
+      776.0
+     ],
+     "score": 0.8632478713989258
+    }
+   ],
+   "frameSha256": "5505407209c140b2f3aa1338b501bfc08a4a9aa4c9aea2121e02b0d4a6624db9",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      751.0,
+      669.0,
+      853.0,
+      775.0
+     ],
+     "score": 0.9298245906829834
+    }
+   ],
+   "frameSha256": "62001962581258d090868a58331c70d0f563b6284c8bd2c6043ce2495dbd440c",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      758.0,
+      669.0,
+      855.0,
+      777.0
+     ],
+     "score": 0.8324607610702515
+    }
+   ],
+   "frameSha256": "63ba9e37c90202dd105794b59acebbf25216915750c42a1990ec3350bd3fc788",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      775.0,
+      671.0,
+      836.0,
+      785.0
+     ],
+     "score": 0.9101123809814453
+    }
+   ],
+   "frameSha256": "65be0c8a7d1b713ba321494d24596e2efbbc023218c366d4d32df33720ef38c0",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      745.0,
+      474.0,
+      844.0,
+      600.0
+     ],
+     "score": 0.9179486632347107
+    }
+   ],
+   "frameSha256": "727b503b461c43b347ab96edbf3dd311ee309a4d5581b166c249455035aa277f",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      746.0,
+      575.0,
+      843.0,
+      701.0
+     ],
+     "score": 0.9179486632347107
+    }
+   ],
+   "frameSha256": "7334129758f179f1b8f9be41352a4be271ab392fd27f95f6ee1ee1bab66ec614",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      770.0,
+      669.0,
+      848.0,
+      783.0
+     ],
+     "score": 0.9139785170555115
+    }
+   ],
+   "frameSha256": "7644aef828ab71827f551fd74b232b92c653fa097daaca6826c051bf7515330c",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      736.0,
+      624.0,
+      853.0,
+      747.0
+     ],
+     "score": 0.8904109597206116
+    }
+   ],
+   "frameSha256": "7f267250e10a6d4413cadb4ad2dece419620c6e15ff549d5c792888ad440de9b",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      760.0,
+      667.0,
+      835.0,
+      785.0
+     ],
+     "score": 0.921951174736023
+    }
+   ],
+   "frameSha256": "810a09d9eb89c49496be7934e65b1063ab2277dbf5722f0a7b640c6548da495b",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      746.0,
+      480.0,
+      844.0,
+      607.0
+     ],
+     "score": 0.9336099624633789
+    }
+   ],
+   "frameSha256": "83ee87ef9fa556e00b504617320bf6a142e2b8884a3f8d2bc0ac9fdbebf47798",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      746.0,
+      539.0,
+      843.0,
+      665.0
+     ],
+     "score": 0.9024390578269958
+    }
+   ],
+   "frameSha256": "8887aa3f5d8fe68ac0556c2db45460a16ae7d66a2a0aef745490c47ba8d19aff",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      752.0,
+      667.0,
+      835.0,
+      785.0
+     ],
+     "score": 0.8827838897705078
+    }
+   ],
+   "frameSha256": "8bb15c434ad1e926e15f8ebd7478d36cbec550ac87245d51323adf894a84bea1",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      766.0,
+      669.0,
+      847.0,
+      783.0
+     ],
+     "score": 0.9259259104728699
+    }
+   ],
+   "frameSha256": "8cf67930b7a5947d88f49f9a764972276647d3b64a69c89e674a1f8fda202e81",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      759.0,
+      667.0,
+      835.0,
+      785.0
+     ],
+     "score": 0.941605806350708
+    }
+   ],
+   "frameSha256": "92faa8b0ee67aa646eb3be7ef6d68a366935d3b0545618b2ee8c85a3d9e94885",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      768.0,
+      669.0,
+      847.0,
+      783.0
+     ],
+     "score": 0.941605806350708
+    }
+   ],
+   "frameSha256": "97d7bcae904d5826d7b13587871cd4a51a341541c6573264289a5850dc199ca8",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      746.0,
+      523.0,
+      844.0,
+      648.0
+     ],
+     "score": 0.9298245906829834
+    }
+   ],
+   "frameSha256": "97f2f2c8d3a9083a43641b21d8c63987bf916270f1b0b44737322846864bf016",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      737.0,
+      461.0,
+      854.0,
+      583.0
+     ],
+     "score": 0.949367105960846
+    }
+   ],
+   "frameSha256": "9868ae5f43b1b2e095d9d70416617709bad4291412f120f5008b9f417a9329ea",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      759.0,
+      669.0,
+      858.0,
+      777.0
+     ],
+     "score": 0.8750000596046448
+    }
+   ],
+   "frameSha256": "9b06e5c473a293c9449510af5fba5f65ddb5ef4c86fdf276200f41b8ea9712cb",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      775.0,
+      671.0,
+      836.0,
+      785.0
+     ],
+     "score": 0.9259259104728699
+    }
+   ],
+   "frameSha256": "9be3ed241cb3d7b47ed81b755f2c04a4b8dd59133188b8684d6bd983ad1adb1b",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      745.0,
+      661.0,
+      844.0,
+      787.0
+     ],
+     "score": 0.9179486632347107
+    }
+   ],
+   "frameSha256": "9cf71d8583d3b819b056c9ba2d6f0f460c319bd1aa7fa4af8a0838e545d6d0c4",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      736.0,
+      504.0,
+      854.0,
+      626.0
+     ],
+     "score": 0.9569892287254333
+    }
+   ],
+   "frameSha256": "9f70ce66c9a8b44e495daeb9feb9f25c429664e9c6bc1b0f0a8533307f62b4e4",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      747.0,
+      673.0,
+      842.0,
+      777.0
+     ],
+     "score": 0.8947368264198303
+    }
+   ],
+   "frameSha256": "a3041a9f2b5d7eb9aa1a85952bd38da02f42c22c474ba7089ea67175b408cbd1",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      775.0,
+      671.0,
+      836.0,
+      785.0
+     ],
+     "score": 0.9298245906829834
+    }
+   ],
+   "frameSha256": "a6b37e15f034c65790a444a4b69fe990d2faf89a994ff79a4dedef864c3f0ad9",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      767.0,
+      669.0,
+      849.0,
+      783.0
+     ],
+     "score": 0.9259259104728699
+    }
+   ],
+   "frameSha256": "a7c9b5b49316045a11dd57cf04f723f8e35e56985ce85c3d407ac66d85e9ecc9",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      751.0,
+      673.0,
+      843.0,
+      777.0
+     ],
+     "score": 0.9064327478408813
+    }
+   ],
+   "frameSha256": "a8d3bf1b8f12cfe1aacbbcfcae37d43e152c8db4325fcf8a0a06a2c0e5649d32",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      769.0,
+      670.0,
+      846.0,
+      783.0
+     ],
+     "score": 0.921951174736023
+    }
+   ],
+   "frameSha256": "ae1c2d86e8d5e8b80bf9ed58e4799db4050e876035e882ebf52efa08ee625467",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      750.0,
+      668.0,
+      854.0,
+      775.0
+     ],
+     "score": 0.921951174736023
+    }
+   ],
+   "frameSha256": "aecfcbce91e1895df45e5c46ab23bf5bacd2f29322f9bcd63ef3926b95fac721",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      759.0,
+      669.0,
+      859.0,
+      777.0
+     ],
+     "score": 0.8476190567016602
+    }
+   ],
+   "frameSha256": "b46c30f526473b6b1765afc0dd4f8c05782b259b53fdb0c63c7cde6f9cc657a2",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      761.0,
+      671.0,
+      842.0,
+      783.0
+     ],
+     "score": 0.9375000596046448
+    }
+   ],
+   "frameSha256": "b517646e68e5a0397bb95c4428c2340db87ce5b39d91cc59f2ffc44195b91204",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      767.0,
+      669.0,
+      845.0,
+      783.0
+     ],
+     "score": 0.9139785170555115
+    }
+   ],
+   "frameSha256": "b5fa251711f4ce4fd0cd6973fdd2b65f4383681c9f907dad15656703075e9695",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      746.0,
+      595.0,
+      844.0,
+      721.0
+     ],
+     "score": 0.8827838897705078
+    }
+   ],
+   "frameSha256": "b6e42a9ed3f5f606c37186b073c64add819a33d40edc6037a9e4050f5e837c84",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      760.0,
+      667.0,
+      835.0,
+      785.0
+     ],
+     "score": 0.9259259104728699
+    }
+   ],
+   "frameSha256": "b789823c64ba320bea17168315348cc0b1cafeb7715428b36531cf5782d08d36",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      736.0,
+      587.0,
+      854.0,
+      709.0
+     ],
+     "score": 0.9532163739204407
+    }
+   ],
+   "frameSha256": "ba1e279f8610e6fac6e2f42619fcc30b6ce9013660be58ba5f66daa3ed9a5b28",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      737.0,
+      460.0,
+      854.0,
+      582.0
+     ],
+     "score": 0.9532163739204407
+    }
+   ],
+   "frameSha256": "bbc752aa9a095c238e71af4f1be94185db93d3be8cb22b2155e6dbaa6e582d98",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      773.0,
+      671.0,
+      841.0,
+      787.0
+     ],
+     "score": 0.8324607610702515
+    }
+   ],
+   "frameSha256": "bf76e7ede52586cbc7c208942b386414ca1e9a1a9090acd4c4ce464091339058",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      737.0,
+      460.0,
+      854.0,
+      582.0
+     ],
+     "score": 0.9532163739204407
+    }
+   ],
+   "frameSha256": "c2ce02c450deac7ee075cad3607faf82bb237aef4c9bde898a7130e3b378319f",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      773.0,
+      671.0,
+      842.0,
+      787.0
+     ],
+     "score": 0.8947368264198303
+    }
+   ],
+   "frameSha256": "c72d2059725adb971ed9b069177a3e60d58f71508d86b83d9c405f947c564f7a",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      767.0,
+      668.0,
+      849.0,
+      783.0
+     ],
+     "score": 0.9179486632347107
+    }
+   ],
+   "frameSha256": "c76f252f88f7e67a2ed0f26a6c738b879d1509decd4ac1bbf4bf7a9f5a372e83",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      772.0,
+      671.0,
+      841.0,
+      787.0
+     ],
+     "score": 0.7887788414955139
+    }
+   ],
+   "frameSha256": "c7f29a36b1231b4b84e7603e6b94b3dcf003bf4e0a8f3c2e0f810a2927102fee",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      774.0,
+      671.0,
+      837.0,
+      785.0
+     ],
+     "score": 0.921951174736023
+    }
+   ],
+   "frameSha256": "ca9054cad09e80923fdd3c2465e85a740625b73c124143b4096f2aeda995e3b3",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      736.0,
+      473.0,
+      854.0,
+      595.0
+     ],
+     "score": 0.9569892287254333
+    }
+   ],
+   "frameSha256": "ccf333d519059a4a999a967ad01fc668b1aab16bede842e8e789dabad1662ee4",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      736.0,
+      515.0,
+      854.0,
+      637.0
+     ],
+     "score": 0.9569892287254333
+    }
+   ],
+   "frameSha256": "d0713f4ae90fa4d3cfdb96b38de38b3b14ec0e95583d26523a4f91f07491a09e",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      760.0,
+      669.0,
+      857.0,
+      777.0
+     ],
+     "score": 0.8904109597206116
+    }
+   ],
+   "frameSha256": "d2c7787853be75fb9d90b5994bad56913f50bdf2c8984ab4b305a6aaaec6a666",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      736.0,
+      464.0,
+      853.0,
+      585.0
+     ],
+     "score": 0.9532163739204407
+    }
+   ],
+   "frameSha256": "d9c040655b47a18d5a3062ba27bb4000a5494f287454deb97da069281bfa7854",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      736.0,
+      605.0,
+      854.0,
+      727.0
+     ],
+     "score": 0.9452055096626282
+    }
+   ],
+   "frameSha256": "dc3e8678059b7e053c02ff1f408b0bf740dd5f53b1cb16bcce9ef02651aeae61",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      746.0,
+      638.0,
+      843.0,
+      765.0
+     ],
+     "score": 0.9375000596046448
+    }
+   ],
+   "frameSha256": "dd0e15a7338f0fa412a95e606d96fd3a8b5678c88f0edf86c066b2c03a1e7a34",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      775.0,
+      671.0,
+      835.0,
+      785.0
+     ],
+     "score": 0.9139785170555115
+    }
+   ],
+   "frameSha256": "dd490c336f19b9d44c3825cf17246dd3451ea4901959278673cb34fd43d8e1d8",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      767.0,
+      669.0,
+      848.0,
+      783.0
+     ],
+     "score": 0.9336099624633789
+    }
+   ],
+   "frameSha256": "e2dafc946c8ac7c0fe174603af7aae28d45506e87ea6ce6d1b0b477e827a24d8",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      736.0,
+      494.0,
+      853.0,
+      616.0
+     ],
+     "score": 0.9569892287254333
+    }
+   ],
+   "frameSha256": "e4fa2e604f72b3dc3964333a769ae9b1cdc02cfa9507d5ca25567c9c4532d1f8",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      737.0,
+      644.0,
+      860.0,
+      767.0
+     ],
+     "score": 0.9298245906829834
+    }
+   ],
+   "frameSha256": "e5e36c537426c266bc206776912c3bf1e897b54c9491c5a986dd8483bd3cda95",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      746.0,
+      461.0,
+      844.0,
+      587.0
+     ],
+     "score": 0.9336099624633789
+    }
+   ],
+   "frameSha256": "e5f4372f745b9abd12cc998f3905061bc1b6e88e094eaa9ee86bc929e306c414",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      737.0,
+      527.0,
+      853.0,
+      650.0
+     ],
+     "score": 0.9532163739204407
+    }
+   ],
+   "frameSha256": "e6a8518cb6230b5b84d8a5a2b22cdd0e3bbbb39a00d6ad0be8407f71610758b3",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      746.0,
+      494.0,
+      843.0,
+      620.0
+     ],
+     "score": 0.9375000596046448
+    }
+   ],
+   "frameSha256": "e805a43b793d9e33f710c7282802813cdda712f7e7b6b40ba4cf30a1d6b2139f",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      760.0,
+      667.0,
+      835.0,
+      785.0
+     ],
+     "score": 0.9259259104728699
+    }
+   ],
+   "frameSha256": "ebbe44372cade5921ed439c2f10ad8f84235a41d7086a7fdc827f04f18912023",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      737.0,
+      570.0,
+      854.0,
+      693.0
+     ],
+     "score": 0.941605806350708
+    }
+   ],
+   "frameSha256": "ec7e99db20df21e0a188ac0621920b122f64dc1a398683e2d91628851b0e6e84",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      762.0,
+      671.0,
+      841.0,
+      783.0
+     ],
+     "score": 0.9336099624633789
+    }
+   ],
+   "frameSha256": "ee7853199a288fad9cf0dd30558f2cd8d5dca1aa49be6c86577fe70ac6cac1b8",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      760.0,
+      667.0,
+      835.0,
+      785.0
+     ],
+     "score": 0.9259259104728699
+    }
+   ],
+   "frameSha256": "f3c2b88680c4a5ecbce480310afbaa8f9bc03ccdeae7f28457e2928d75581316",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      759.0,
+      667.0,
+      835.0,
+      785.0
+     ],
+     "score": 0.9336099624633789
+    }
+   ],
+   "frameSha256": "f4ed24a8e1dd50fe1b64ee0cc4c15f0fc43d739bc9384b5a4d3128671cc9866e",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      775.0,
+      671.0,
+      850.0,
+      785.0
+     ],
+     "score": 0.8709677457809448
+    }
+   ],
+   "frameSha256": "f66e33e639811e3f2b213d648d2ba8d525bcd579113dfeabab0f97abec7f89ce",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      759.0,
+      667.0,
+      835.0,
+      785.0
+     ],
+     "score": 0.941605806350708
+    }
+   ],
+   "frameSha256": "f884f228f4bb6cd681ca2aacfe15948b231581cb9177030e4e3f901a3c8c123c",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      761.0,
+      671.0,
+      843.0,
+      783.0
+     ],
+     "score": 0.921951174736023
+    }
+   ],
+   "frameSha256": "fbd5a0c95175cc450fb0951b665f1b245f360de4f7fe7ce2520e436912141d9e",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      760.0,
+      667.0,
+      835.0,
+      785.0
+     ],
+     "score": 0.9259259104728699
+    }
+   ],
+   "frameSha256": "fd24a2c03084214c1526108ca5bf10ab54510939a48e3f7297b0af76da0895db",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      750.0,
+      668.0,
+      854.0,
+      775.0
+     ],
+     "score": 0.9298245906829834
+    }
+   ],
+   "frameSha256": "fecb27d1ef484da08ed33065016b6f6197bcf9734fa065ab3234606e1dd75be5",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      749.0,
+      669.0,
+      855.0,
+      775.0
+     ],
+     "score": 0.9375000596046448
+    }
+   ],
+   "frameSha256": "ffa15b62e7dd9cafaf2f1cb4c6d95cf73c9038553d2b56e1cbdc75337f5ba4b7",
+   "kind": "segment",
+   "prompt": "blue robot"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      736.0,
+      467.0,
+      854.0,
+      590.0
+     ],
+     "score": 0.9453125
+    }
+   ],
+   "frameSha256": "02458b4178129adfc89ce692df0819a248793ddafc3adfda3eec9715dc8ad85a",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=749;y1=471;x2=850;y2=596;w=1600;h=960|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      746.0,
+      673.0,
+      842.0,
+      777.0
+     ],
+     "score": 0.8984375
+    }
+   ],
+   "frameSha256": "1a030160f1aeaa8b84fdd3b90fc7127f7ad86fb99f3320fb349c42b75554db6f",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=754;y1=662;x2=855;y2=787;w=1600;h=960|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      769.0,
+      669.0,
+      846.0,
+      783.0
+     ],
+     "score": 0.93359375
+    }
+   ],
+   "frameSha256": "2c3ffa3c7d47815666e5ea3eb29bcbd6a665ca4c06fc92f1bedc903a860bfe81",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=754;y1=662;x2=855;y2=787;w=1600;h=960|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      750.0,
+      669.0,
+      854.0,
+      775.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "62001962581258d090868a58331c70d0f563b6284c8bd2c6043ce2495dbd440c",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=754;y1=662;x2=855;y2=787;w=1600;h=960|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      760.0,
+      667.0,
+      835.0,
+      785.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "810a09d9eb89c49496be7934e65b1063ab2277dbf5722f0a7b640c6548da495b",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=749;y1=662;x2=850;y2=787;w=1600;h=960|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      746.0,
+      480.0,
+      844.0,
+      606.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "83ee87ef9fa556e00b504617320bf6a142e2b8884a3f8d2bc0ac9fdbebf47798",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=754;y1=478;x2=855;y2=603;w=1600;h=960|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      746.0,
+      654.0,
+      846.0,
+      787.0
+     ],
+     "score": 0.92578125
+    }
+   ],
+   "frameSha256": "9cf71d8583d3b819b056c9ba2d6f0f460c319bd1aa7fa4af8a0838e545d6d0c4",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=754;y1=651;x2=855;y2=776;w=1600;h=960|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      767.0,
+      668.0,
+      850.0,
+      784.0
+     ],
+     "score": 0.91796875
+    }
+   ],
+   "frameSha256": "a7c9b5b49316045a11dd57cf04f723f8e35e56985ce85c3d407ac66d85e9ecc9",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=752;y1=662;x2=853;y2=787;w=1600;h=960|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      737.0,
+      570.0,
+      854.0,
+      693.0
+     ],
+     "score": 0.9375
+    }
+   ],
+   "frameSha256": "ec7e99db20df21e0a188ac0621920b122f64dc1a398683e2d91628851b0e6e84",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=749;y1=579;x2=850;y2=704;w=1600;h=960|>"
+  },
+  {
+   "detections": [
+    {
+     "box": [
+      758.0,
+      667.0,
+      835.0,
+      785.0
+     ],
+     "score": 0.94140625
+    }
+   ],
+   "frameSha256": "f884f228f4bb6cd681ca2aacfe15948b231581cb9177030e4e3f901a3c8c123c",
+   "kind": "segment-in",
+   "prompt": "<0f>1<|box;x1=749;y1=663;x2=850;y2=787;w=1600;h=960|>"
+  }
+ ],
+ "format": "expectrail.vision-recording/v1",
+ "model": {
+  "name": "sam-3.1",
+  "provider": "meta-model-api"
+ },
+ "recordedAt": "2026-11-15",
+ "run": "43676005540",
+ "sample": "gate-combat"
+}
