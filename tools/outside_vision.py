@@ -150,6 +150,9 @@ def judge(project, data, receipt, out, observer=None, client=None):
     observer is calibrated on the unchanged game first (#330)."""
     if capture_id(project, data) != receipt:
         raise ValueError('capture digest differs from the capture job output')
+    # Use the same trusted check selection as the no-key trial, and refuse an
+    # invalid selection before calibration can ask a model anything.
+    selected_spec = trial.project_spec(project)
     if observer is None:
         observer = anchored(project, data, client, out)
     cases = variants(project)
@@ -162,7 +165,7 @@ def judge(project, data, receipt, out, observer=None, client=None):
             arm = policy / case
             shutil.copytree(trial.REPO / project['routes'], arm / 'routes')
             (arm / 'specs').mkdir()
-            shutil.copyfile(trial.SPEC, arm / 'specs' / trial.SPEC.name)
+            shutil.copyfile(selected_spec, arm / 'specs' / selected_spec.name)
             game = arm / 'project'
             for path in routes(project):
                 run = saved_run(data / case / path.stem, path)

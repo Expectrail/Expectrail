@@ -1,0 +1,18 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "config-lane",
+  "seed": 1,
+  "ticks": 120,
+  "events": [
+    {
+      "tick": 0,
+      "action": "move_right",
+      "pressed": true
+    },
+    {
+      "tick": 119,
+      "action": "move_right",
+      "pressed": false
+    }
+  ]
+}

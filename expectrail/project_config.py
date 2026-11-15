@@ -34,7 +34,13 @@ class ProjectConfigError(ValueError):
 def find(game: Path) -> Path | None:
     """The config beside a game's project file, or None when that game has none."""
     path = Path(game) / FILENAME
-    return path if path.is_file() else None
+    if not path.exists() and not path.is_symlink():
+        return None
+    if path.is_symlink() or not path.is_file():
+        raise ProjectConfigError(
+            f"{FILENAME}: use a regular file beside project.godot, not a directory or link; "
+            "restore the config there before verifying")
+    return path
 
 
 def read_game(game: Path) -> dict | None:

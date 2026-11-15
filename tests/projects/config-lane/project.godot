@@ -1,0 +1,13 @@
+config_version=5
+[application]
+config/name="Expectrail config lane"
+run/main_scene="res://main.tscn"
+[display]
+window/size/viewport_width=360
+window/size/viewport_height=240
+[physics]
+common/physics_ticks_per_second=60
+[input]
+move_right={"deadzone":0.5,"events":[]}
+[rendering]
+renderer/rendering_method="gl_compatibility"

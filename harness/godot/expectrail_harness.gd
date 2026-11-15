@@ -233,7 +233,16 @@ func _node_at(path: String) -> Node:
 	if direct != null:
 		return direct
 	if not path.contains("/"):
-		return scene.find_child(path, true, false)
+		# Short bindings may name a nested node, but must not select a wildcard
+		# or whichever of several identically named nodes happens to come first.
+		var matches: Array = []
+		for node in scene.find_children("*", "", true, false):
+			if str(node.name) == path:
+				matches.append(node)
+		if matches.size() > 1:
+			_stop("expectrail: binding node %s is ambiguous: %d matches; use a full node path" % [path, matches.size()])
+		elif matches.size() == 1:
+			return matches[0]
 	return null
 
 
@@ -254,6 +263,9 @@ func _find_player() -> Node2D:
 		var node := _node_at(_player_node)
 		if node == null:
 			_stop("expectrail: player node %s was not found" % _player_node)
+			return null
+		if not node is Node2D:
+			_stop("expectrail: bindings.player node %s is not a Node2D; bind the player's spatial node" % _player_node)
 			return null
 		return node as Node2D
 	return scene.find_child(_player_name, true, false) as Node2D

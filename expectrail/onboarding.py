@@ -105,6 +105,19 @@ def scene_nodes(root, entry):
             raise ValueError(f"Check the nested scene references at {uri}: circular or too large.")
         files.add(uri)
         sections = read(uri)
+        # Validate before building lookup tables: missing or duplicate IDs must not
+        # become a bare KeyError or silently select the last resource in the scene.
+        ids = {"ext_resource": set(), "sub_resource": set()}
+        required = {"ext_resource": ("id", "path"), "sub_resource": ("id",), "node": ("name",)}
+        for tag, _, attrs, _ in sections:
+            for field in required.get(tag, ()):
+                if not attrs.get(field):
+                    raise ValueError(f"{uri}: {tag} is missing {field}. Fix its saved scene header.")
+            if tag in ids:
+                if attrs["id"] in ids[tag]:
+                    raise ValueError(f"{uri}: duplicate {tag} id {attrs['id']!r}. "
+                                     "Fix the IDs and their references in this scene.")
+                ids[tag].add(attrs["id"])
         external = {a["id"]: a["path"] for tag, _, a, _ in sections if tag == "ext_resource"}
         textures = {a["id"]: a["path"] for tag, _, a, _ in sections
                     if tag == "ext_resource" and a.get("type") == "Texture2D"}
@@ -117,6 +130,9 @@ def scene_nodes(root, entry):
                 p for p in (prefix, parent, attrs["name"]) if p not in ("", "."))
             instance = re.search(r'\binstance=ExtResource\("([^"]+)"\)', header)
             if instance:
+                if instance[1] not in external:
+                    raise ValueError(f"{uri}: node {attrs['name']!r} has an unknown scene reference "
+                                     f"{instance[1]!r}. Fix its ExtResource reference or restore that resource.")
                 visit(external[instance[1]], path, parents + (uri,))
             node = nodes.setdefault(path, {})
             if "type" in attrs:
