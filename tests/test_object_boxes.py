@@ -5,8 +5,9 @@ A pixel check that can name the bullet or an enemy needs to know where each is d
 enemy's and projectile's own collision, matched to its position by id, and says so in the header
 (`capabilities.objectBoxes`). agents/sam_anchor.py ``object_boxes`` turns them into boxes in a frame.
 
-The engine half runs the bundled game on harness/routes/combat.json, like tests/test_body_box.py; CI
-sets EXPECTRAIL_ENGINE_TESTS=required in `capture-smoke`, so a skip there is a failure.
+The engine half (BundledGameTest) runs the bundled game on harness/routes/combat.json, like
+tests/test_body_box.py. The suite's job has no engine, so it skips there; `capture-smoke` runs
+BundledGameTest with EXPECTRAIL_ENGINE_TESTS=required, so a missing engine there is a failure.
 """
 from __future__ import annotations
 
@@ -89,10 +90,9 @@ class ContractTest(unittest.TestCase):
             self.assertEqual([p[0] for p in row["projectiles"]], [b[0] for b in row["projectileBoxes"]])
 
     def test_both_examples_validate_and_a_malformed_box_is_refused(self):
-        try:
-            import jsonschema  # noqa: F401
-        except ImportError:
-            self.skipTest("jsonschema is not installed in this job; the suite's jobs have it")
+        # No skip: the suite's job installs jsonschema (requirements-dev.txt), so a missing package fails
+        # here. The engine job runs only BundledGameTest, which needs no jsonschema.
+        import jsonschema  # noqa: F401
         from expectrail.contracts import validate
         validate(self.example, "trace")
         validate(json.loads((REPO / "contracts" / "examples" / "trace.json").read_text(encoding="utf-8")), "trace")

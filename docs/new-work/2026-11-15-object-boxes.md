@@ -77,3 +77,12 @@ Nothing was dispatched and nothing was spent: no model call, no SAM call.
 - `tests/test_object_boxes.py`
 - `tests/test_repro_pixel_reach.py`
 - `docs/new-work/2026-11-15-object-boxes.md`
+
+## Review fix (merge guard, November 15)
+- The merge guard refused one added skip: `ContractTest` skipped its schema validation when
+  `jsonschema` was missing. It now imports `jsonschema` with no skip; the suite's job installs it
+  (`requirements-dev.txt`), so a missing package fails instead of passing quietly.
+- The engine half (`BundledGameTest`) was claimed to run in `capture-smoke`, but no step ran it: the
+  suite's job has no engine, so it was skipped in CI. `capture-smoke` now runs
+  `tests.test_object_boxes.BundledGameTest` with `EXPECTRAIL_ENGINE_TESTS=required`.
+- Files: `tests/test_object_boxes.py`, `.github/workflows/ci.yml`.
