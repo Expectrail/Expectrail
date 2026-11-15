@@ -277,7 +277,8 @@ class TheBudgetReservesEveryBox(Scratch):
             replay(self.tmp / "jit-replays" / name / f"{pid}-{n}")
 
         price = Spend(1, {}).prices["samUsdPerImage"]
-        need = len(FRAMES) * (1 + pixel.MAX_BOXES) * 3 * 3 * price
+        # Only the enemy is named on this probe, so the player is not asked about (tests/test_jit_pixel_player.py).
+        need = len(FRAMES) * pixel.MAX_BOXES * 3 * 3 * price
         state = {"pixel": {"observer": observer, "frameRunner": object()}}
         run_mod._pixel_stage([check()], {PROBE: (ROUTE,)}, ["bug.patch"], Path("cand.patch"), self.tmp, fake_replay,
                              Spend(need * 0.99, {}), 3, state, [])
@@ -293,7 +294,7 @@ class TheBudgetReservesEveryBox(Scratch):
         self.assertEqual((row["status"], row["reason"]), ("dropped", "does-not-fail-on-bug"))
         self.assertEqual(row["clean"], ["pass"] * 3)
         self.assertEqual(spend.sam_images, client.calls)
-        self.assertEqual(client.calls, 2 * 3 * len(FRAMES) * 3)
+        self.assertEqual(client.calls, 2 * 3 * len(FRAMES) * 2)
 
 
 class TheThreeJobsCarryTheNamedObjects(Scratch):

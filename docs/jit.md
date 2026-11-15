@@ -622,10 +622,15 @@ under `boxes`), so the menu offers both to `sam-3.1-anchor`.
   probe names it (`run.py`); the capture job writes those roles into the stored replay
   (`objects.json`), and the asking job reads them back (untrusted: only roles the observer is pointed
   at, each once).
-- **Reserved:** `pixel.MAX_BOXES` images a frame for each named role, on every run, before anything is
-  asked, in the in-process replay, in `pixel.cost` and in `pixel-ask`.
+- **The player only when a check names it:** a probe whose pixel checks name only the enemy or the
+  bullet is not asked about the player (`pixel.asks_player`). Its player rows are `asked: false` with
+  the reason, so a player check on such a run could only be `needs-review`, and an answer that says it
+  asked about the player is refused. The capture job writes `"player": false` into `objects.json`.
+- **Reserved:** `pixel.MAX_BOXES` images a frame for each named role, and one for the player only when
+  it is asked about, on every run, before anything is asked, in the in-process replay, in `pixel.cost`
+  and in `pixel-ask`.
 - **Shown offline only.** The tests use a scripted SAM client and synthetic replays
-  (`tests/test_jit_pixel_named.py`). No SAM answer about an enemy or a bullet has been recorded, and no
+  (`tests/test_jit_pixel_named.py`, `tests/test_jit_pixel_player.py`). No SAM answer about an enemy or a bullet has been recorded, and no
   live run has asked one.
 
 ## What this does not claim
