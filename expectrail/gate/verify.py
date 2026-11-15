@@ -651,8 +651,8 @@ def visual_gap(spec: dict, seen: dict, run: dict, ticks: int | None,
     shows it (``reaches``): there the answer need not hold every frame, but the replay must still
     have captured the whole window. (That the answer is about this replay at all is checked before
     any verdict is read from it: ``judge_run``.) Explicit ``vision_every`` sampling relaxes only
-    the visual sample schedule for specs without explicit coverage obligations; all captured
-    frames and engine ticks are still required. An observer cannot opt itself into this policy."""
+    the visual sample schedule allowed by sampling_plan, without relaxing explicit coverage
+    obligations; all captured frames and engine ticks are still required. An observer cannot opt itself into this policy."""
     want = window_frames(spec, ticks, run.get("trace"), capture_fps)
     if want is None:
         return "the gate cannot tell how many frames this route should have"
@@ -660,11 +660,12 @@ def visual_gap(spec: dict, seen: dict, run: dict, ticks: int | None,
     got = sum(1 for i in want if i in on_disk)
     if got < len(want):
         return f"the replay captured {got} of {len(want)} frames of the check's window"
-    if (spec.get("assertion") or {}).get("type") in PASSES_ON_ONE_FRAME:
+    from agents.sam_observations import sample, sampling_plan
+    every = sampling_plan(spec, vision_every)
+    if (spec.get("assertion") or {}).get("type") in PASSES_ON_ONE_FRAME and not spec.get("coverage"):
         return None
-    if vision_every > 1 and not spec.get("coverage"):
-        from agents.sam_observations import sample
-        want = sample(want, vision_every)
+    if not spec.get("coverage"):
+        want = sample(want, every)
     have = frames_in(seen)
     got = sum(1 for i in want if i in have)
     if got < len(want):
@@ -743,13 +744,26 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
                 # Whatever it says, it is not about what this replay showed: not a pass, and not a
                 # failure of this change either.
                 raise NoAnswer("its answer is about another replay")
+            from agents.sam_observations import sample, sampling_plan
             expected = window_frames(spec, ticks, run.get("trace"), capture_fps)
-            if vision_every > 1 and expected is not None and not spec.get("coverage"):
-                from agents.sam_observations import sample
-                expected = sample(expected, vision_every)
+            full_window = expected
+            have = frames_in(seen)
+            complete = full_window is not None and all(n in have for n in full_window)
+            every = sampling_plan(spec, vision_every)
+            if expected is not None and not complete and not spec.get("coverage"):
+                expected = sample(expected, every)
             seen_verdict = evaluate(spec, seen, route=route, trace=run.get("trace"), expected_frames=expected)
             said = seen_verdict["result"] if seen_verdict["result"] in rec.VISUAL_VERDICTS else "needs-review"
-            if said != "fail":
+            if vision_every > 1 and said != "pass" and not complete:
+                # A sampled non-pass is provisional. Do not trust analysis metadata claiming
+                # refinement: count the actual rows, including for a reaches check without a witness.
+                count = sum(n in have for n in full_window) if full_window is not None else None
+                part = (f"sampled non-pass needs full-window refinement: the visual observer saw "
+                        f"{count} of {len(full_window)} frames of the check's window" if full_window is not None
+                        else "sampled non-pass needs refinement; the gate cannot tell the full window")
+                said = "needs-review"
+                seen_verdict = dict(seen_verdict, result=said, reason="not-exercised: " + part, firstFrame=None)
+            elif said != "fail":
                 part = visual_gap(spec, seen, run, ticks, capture_fps, vision_every=vision_every)
                 if part:
                     said = "needs-review"

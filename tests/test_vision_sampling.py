@@ -92,7 +92,7 @@ class SamplingTest(unittest.TestCase):
             self.assertEqual(client.calls,len(indices))
             self.assertEqual([f['frame'] for f in seen['frames']],indices)
 
-    def test_hidden_player_rejects_for_three_consecutive_sampled_frames(self):
+    def test_hidden_player_rejects_after_refining_consecutive_sampled_frames(self):
         self.hidden()
         class Missing(fixture.Sees):
             empty = True
@@ -110,9 +110,12 @@ class SamplingTest(unittest.TestCase):
             self.assertIn('did not find player drawn at its place',reason)
             self.assertNotIn('past the boundary',reason)
             if every==4:
-                self.assertIn('3 consecutive samples',reason)
-                self.assertIn('9 real frames',reason)
-                self.assertIn('frames 0, 4, 8',reason)
+                self.assertIn('frames 0, 1, 2',reason)
+                self.assertNotIn('consecutive samples',reason)
+                seen=json.loads(next((out/'invisible/observations/head').rglob('*.visual.json')).read_text())
+                self.assertEqual(seen['analysis']['framesAnalyzed'],seen['analysis']['framesInWindow'])
+                self.assertEqual(seen['analysis']['every'],1)
+                self.assertTrue(seen['analysis']['refined'])
 
     def test_short_defect_can_be_missed_only_with_explicit_sampling(self):
         class Blip(fixture.Sees):
@@ -148,7 +151,12 @@ class SamplingTest(unittest.TestCase):
         self.assertEqual(verify.judge_run(spec,run,**kw)['result'],'needs-review')
         self.assertEqual(verify.judge_run(spec,run,vision_every=4,**kw)['result'],'pass')
         stronger=copy.deepcopy(spec);stronger['coverage']={'minFraction':0.9}
-        self.assertEqual(verify.judge_run(stronger,run,vision_every=4,**kw)['result'],'needs-review')
+        # The shared plan now makes the anchored observer inspect every frame for coverage.
+        # An observer that still supplies the sparse answer must remain refused.
+        sparse=observer.look(spec,run)
+        with mock.patch.object(observer,'look',return_value=sparse):
+            self.assertEqual(verify.judge_run(stronger,run,vision_every=4,**kw)['result'],'needs-review')
+        self.assertEqual(verify.judge_run(stronger,run,vision_every=4,**kw)['result'],'pass')
         # Missing a captured frame is not excused even if it was not scheduled for a vision question.
         frame=run['framesDir']/'f00000001.png';saved=frame.read_bytes();frame.unlink()
         self.assertEqual(verify.judge_run(spec,run,vision_every=4,**kw)['result'],'needs-review')

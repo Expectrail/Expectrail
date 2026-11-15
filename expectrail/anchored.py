@@ -266,7 +266,9 @@ class AnchoredObserver:
     def look(self, spec: dict, run: dict, *, keep: bool = True) -> dict:
         from agents.observations import engine_ground_by_frame, has_engine_ground
         from agents.sam_anchor import STOP_KINDS
-        from agents.sam_observations import SamError, frame_files, png_size, sample, window
+        from agents.sam_observations import (SamError, frame_files, passing_frames, png_size,
+                                             refine_targets, sample, sampling_plan, window)
+        from expectrail.evaluator import _assertion_verdict
 
         client = self._usable()
         folder = run.get("framesDir")
@@ -285,54 +287,76 @@ class AnchoredObserver:
         if not indices:
             raise NoAnswer("no captured frame falls inside the spec's window")
         in_window = len(indices)
-        indices = sample(indices, self.every)
+        every = sampling_plan(spec, self.every)
+        first = sample(indices, every)
         size = png_size(frames[indices[0]])
         places = _places(trace, frames, indices, self._pad)
         ground = engine_ground_by_frame(trace, size, indices) if engine else {}
         drawn, rules = self.calibration["drawnSize"], self.calibration["rules"]
         expected = [drawn["width"], drawn["height"]]
-        out = []
-        for n in indices:
-            place, found = places[n], []
-            negative = None
-            if "point" in place and "why" not in place:
-                answered = True
-                try:
-                    got = client.segment_at(frames[n], [tuple(place["point"])])[0]
-                except SamError as exc:
-                    if exc.kind in STOP_KINDS or exc.status is not None or exc.kind == "not-recorded":
-                        raise NoAnswer(f"the model did not answer ({str(exc.kind)[:60]})") from exc
-                    got, answered = None, False
-                # An answer without a confidence is not used: the evaluator's threshold needs one.
-                answer, measured = None, None
-                if got is not None and got.get("score") is not None:
-                    answer = {"box": [float(v) for v in got["box"]], "score": float(got["score"])}
-                    measured = list(_answer_size(got, place["scale"]))
-                    if not all(_close(s, b, rules["sizeTolerance"], rules["sizeFloorPx"])
-                               for s, b in zip(measured, expected)):
-                        negative = "size-mismatch"
-                    elif _holds(got, place["point"]):
-                        found = [answer]
-                elif answered and got is None:
-                    negative = "no-match"
-            objs = {player: found}
-            if engine:
-                objs["ground"] = list(ground.get(n, {}).get("ground", []))
-            row = {"frame": n, "objects": objs}
-            if negative:
-                # Keep the rejected region, its score, and the exact size comparison. Empty object
-                # lists alone mean uncertainty to the evaluator, not a missing-sprite diagnosis.
-                row["notDrawn"] = {player: {"reason": negative, "point": list(place["point"]),
-                    "scale": [s or 1.0 for s in place["scale"]], "expectedSize": list(expected),
-                    "observedSize": measured, "answer": answer,
-                    "sizeTolerance": rules["sizeTolerance"], "sizeFloorPx": rules["sizeFloorPx"]}}
-            out.append(row)
+        out = {}
+
+        def observe(chosen):
+            for n in chosen:
+                place, found = places[n], []
+                negative = None
+                if "point" in place and "why" not in place:
+                    answered = True
+                    try:
+                        got = client.segment_at(frames[n], [tuple(place["point"])])[0]
+                    except SamError as exc:
+                        if exc.kind in STOP_KINDS or exc.status is not None or exc.kind == "not-recorded":
+                            raise NoAnswer(f"the model did not answer ({str(exc.kind)[:60]})") from exc
+                        got, answered = None, False
+                    # An answer without a confidence is not used: the evaluator's threshold needs one.
+                    answer, measured = None, None
+                    if got is not None and got.get("score") is not None:
+                        answer = {"box": [float(v) for v in got["box"]], "score": float(got["score"])}
+                        measured = list(_answer_size(got, place["scale"]))
+                        if not all(_close(s, b, rules["sizeTolerance"], rules["sizeFloorPx"])
+                                   for s, b in zip(measured, expected)):
+                            negative = "size-mismatch"
+                        elif _holds(got, place["point"]):
+                            found = [answer]
+                    elif answered and got is None:
+                        negative = "no-match"
+                objs = {player: found}
+                if engine:
+                    objs["ground"] = list(ground.get(n, {}).get("ground", []))
+                row = {"frame": n, "objects": objs}
+                if negative:
+                    # Keep the rejected region, its score, and the exact size comparison. Empty object
+                    # lists alone mean uncertainty to the evaluator, not a missing-sprite diagnosis.
+                    row["notDrawn"] = {player: {"reason": negative, "point": list(place["point"]),
+                        "scale": [s or 1.0 for s in place["scale"]], "expectedSize": list(expected),
+                        "observedSize": measured, "answer": answer,
+                        "sizeTolerance": rules["sizeTolerance"], "sizeFloorPx": rules["sizeFloorPx"]}}
+                out[n] = row
+
         model = {"name": str(getattr(client, "model", "unknown")),
                  "provider": str(getattr(client, "provider", "meta-model-api")),
                  "prompts": {player: "what is drawn at the middle of the engine's collision box"}}
         if engine:
             model["engineObjects"] = ["ground"]
-        return {"format": "expectrail.observations/v0", "replay": {"sha256": run["replaySha256"]}, "model": model,
-                "frames": out,
-                "analysis": {"framesCaptured": len(frames), "framesInWindow": in_window,
-                             "framesAnalyzed": len(indices), "every": self.every, "refined": None, "confirmed": 0}}
+
+        def document(refined=None):
+            return {"format": "expectrail.observations/v0", "replay": {"sha256": run["replaySha256"]}, "model": model,
+                    "frames": [out[n] for n in sorted(out)],
+                    "analysis": {"framesCaptured": len(frames), "framesInWindow": in_window,
+                                 "framesAnalyzed": len(out), "every": 1 if refined else every,
+                                 "refined": refined, "confirmed": 0}}
+
+        observe(first)
+        seen = document()
+        verdict = _assertion_verdict(spec, seen) if every > 1 else None
+        if verdict is not None and verdict["result"] != "pass":
+            # The shared helper prioritizes the first failing stretch (or every unseen frame
+            # for reaches). Finish the whole window before deciding any sampled non-pass:
+            # intervening frames can supply a witness or break a missing-player streak.
+            priority = refine_targets(indices, set(out), verdict, passing_frames(spec, seen),
+                                      (spec.get("assertion") or {}).get("type"))
+            remaining = [n for n in indices if n not in out]
+            observe(priority)
+            observe([n for n in remaining if n not in out])
+            seen = document(sorted(remaining) or None)
+        return seen

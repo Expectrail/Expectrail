@@ -198,11 +198,12 @@ def judge(project, data, receipt, out, observer=None, client=None, *, vision_eve
 
 
 def sampling_markdown(every):
-    return (f"\n**Vision sampling:** every {every} frame(s) from the check window's first, plus its last. "
+    return (f"\n**Vision sampling:** requested every {every} frame(s) from the check window's first, plus its last. "
+            "Each check uses the shared sampling plan: fractional visibility checks need every frame. "
             "The engine still checks every frame; calibration and the paired comparison keep their own stride 10. "
-            f"A visual defect shorter than {every} frames may be missed. The missing-player rule needs "
-            f"3 consecutive sampled frames (up to {2 * every + 1} real frames inclusive between the first "
-            "and third sample); it does not prove the player was absent between samples. "
+            f"A visual defect shorter than {every} frames may be missed. A sampled non-pass is refined "
+            "on every remaining frame or needs review; a reaches witness can pass from samples. "
+            "Missing-player rejection requires 3 consecutive negative observations in the refined sequence. "
             "Explicit spec coverage obligations are not relaxed. Default: 1.\n")
 
 
