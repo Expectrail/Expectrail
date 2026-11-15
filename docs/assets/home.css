@@ -219,3 +219,5 @@ body.home .hero .actions .button{padding:10px 18px;font-size:16px}
 @media (max-width:640px){.eq-row{display:flex;flex-direction:column}.eq-op{flex-basis:44px;transform:rotate(90deg)}.eq-op[data-eq-op="0"]{transform:none}.js .equation[data-step] .eq-op.is-on{transform:rotate(90deg) scale(1.35)}.js .equation[data-step] .eq-op[data-eq-op="0"].is-on{transform:scale(1.35)}}
 @media (prefers-reduced-motion:reduce){.eq-term,.eq-op,.eq-verdicts li{transition:none}}
 .eq-rows b{white-space:nowrap}
+body.home .top.has-toggle nav,body.home .top.has-toggle nav a{border-color:var(--edge)}
+body.home .top.has-toggle nav a{color:var(--text)}
