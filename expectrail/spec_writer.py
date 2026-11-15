@@ -25,6 +25,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
+from expectrail.spend import BudgetStop, hold, require_cap
 from expectrail import approval
 from expectrail.contracts import ContractError, schema, validate
 
@@ -99,6 +100,7 @@ def request_body(instruction: str, model: str, structured: bool = True, problems
 
 def http_transport(body: dict, timeout: float = 120) -> dict:
     """POST to the Meta Model API's OpenAI-compatible chat completions endpoint."""
+    hold("spec", live=True)
     key = os.environ.get("MODEL_API_KEY")
     if not key:
         raise SpecDraftError("set MODEL_API_KEY to your Meta Model API key")
@@ -120,6 +122,7 @@ def open_transport(base: str | None = None, key: str | None = None):
         raise SpecDraftError(f"set one of {', '.join(OPEN_KEY_ENVS)} for {base}")
 
     def transport(body: dict) -> dict:
+        hold("spec", live=True)
         req = urllib.request.Request(f"{base}/chat/completions", data=json.dumps(body).encode(), method="POST",
                                      headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
         try:
@@ -129,6 +132,7 @@ def open_transport(base: str | None = None, key: str | None = None):
             detail = err.read().decode(errors="replace")[:500]
             raise SpecDraftError(f"HTTP {err.code}: {detail}") from err
 
+    transport._spec_budgeted = True
     return transport
 
 
@@ -148,6 +152,7 @@ def provider_transport(provider: str | None = None, model: str | None = None):
         raise SpecDraftError(str(err)) from err
 
     def transport(body: dict) -> dict:
+        require_cap("spec")
         fmt = body.get("response_format") or {}
         schema_doc = (fmt.get("json_schema") or {}).get("schema") if fmt.get("type") == "json_schema" else None
         messages = list(body["messages"])
@@ -160,7 +165,17 @@ def provider_transport(provider: str | None = None, model: str | None = None):
         except RuntimeError as err:
             raise SpecDraftError(str(err)) from err
 
+    transport._spec_budgeted = True
     return transport, cfg
+
+
+http_transport._spec_budgeted = True
+
+
+def _draft_request(transport, body: dict) -> dict:
+    if getattr(transport, "_spec_budgeted", False) is not True:
+        hold("spec", live=False)
+    return transport(body)
 
 
 def lint(spec: dict) -> list[str]:
@@ -205,12 +220,12 @@ def draft(instruction: str, spec_id: str | None = None, model: str = DEFAULT_MOD
     structured, problems = True, []
     for _ in range(attempts):
         try:
-            response = transport(request_body(instruction, model, structured, problems or None))
+            response = _draft_request(transport, request_body(instruction, model, structured, problems or None))
         except SpecDraftError as err:
             text = str(err)
             if structured and (text.startswith("HTTP 400") or "response_format" in text or "json_schema" in text):
                 structured = False  # the endpoint rejected schema-constrained output; ask for plain JSON
-                response = transport(request_body(instruction, model, structured, problems or None))
+                response = _draft_request(transport, request_body(instruction, model, structured, problems or None))
             else:
                 raise
         doc = _parse(response)
@@ -305,7 +320,7 @@ def main(argv=None) -> int:
         print(f"approved {doc['id']} by {doc['approval']['by']} at {doc['approval']['at']} "
               f"(content sha256 {doc['approval'][approval.DIGEST_FIELD]})")
         return 0
-    except (SpecDraftError, ContractError) as err:
+    except (BudgetStop, SpecDraftError, ContractError) as err:
         print(f"error: {err}", file=sys.stderr)
         return 1
 

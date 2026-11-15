@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+from functools import wraps
 import os
 import sys
 import urllib.error
@@ -77,6 +78,7 @@ def list_models(base: str, key: str, timeout: int = 60) -> list[str]:
 
 def counting(transport, calls: list[dict], who: str):
     """Wrap a transport to keep what the endpoint said it served and the tokens it reported."""
+    @wraps(transport)
     def wrapped(body: dict) -> dict:
         try:
             resp = transport(body)

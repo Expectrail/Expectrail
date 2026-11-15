@@ -407,6 +407,9 @@ def openai_transport(base: str, key: str, timeout: int = 120) -> Transport:
     url = f"{base.rstrip('/')}/chat/completions"
 
     def transport(body: dict) -> dict:
+        if (body.get("messages") or [{}])[0].get("content") == spec_writer.SYSTEM_PROMPT:
+            from expectrail.spend import hold
+            hold("spec", live=True)
         req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
                                      headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
         try:
@@ -417,6 +420,7 @@ def openai_transport(base: str, key: str, timeout: int = 120) -> Transport:
             # Same error type as the Meta transport, so the json_schema → json_object fallback applies.
             raise spec_writer.SpecDraftError(f"HTTP {err.code}: {detail}") from err
 
+    transport._spec_budgeted = True
     return transport
 
 

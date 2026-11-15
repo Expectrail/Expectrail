@@ -1,8 +1,8 @@
-"""Spend caps for the model roles, the job's budget record, and the vision month.
+"""Spend caps for the model roles, the job's budget record, and opt-in month totals.
 
 Vision (SAM) is already counted in ``agents.sam_observations`` against
 ``EXPECTRAIL_SAM_USD_CAP``. This module does the same for the other roles that
-send a request: Glimmer, Muse and triage. Each hold is taken before the request
+send a request: Glimmer, Muse, triage and spec drafting. Each hold is taken before the request
 is sent. A missing cap, a cap that is not an amount, or a hold that would pass
 the cap stops the request and says why. Nothing is sent in those cases.
 
@@ -29,6 +29,7 @@ import json
 import os
 import sys
 import threading
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -44,13 +45,14 @@ VISION_MONTH_LIMIT_USD = 200.0
 LEDGER_ENV = "EXPECTRAIL_VISION_MONTH_LEDGER"
 JOB_ENV = "EXPECTRAIL_JOB_ID"
 
-ROLES = ("vision", "glimmer", "muse", "triage")
-PHASE_OF = {"vision": "observing", "glimmer": "observing", "muse": "fixing", "triage": "triaging"}
+ROLES = ("vision", "glimmer", "muse", "triage", "spec")
+PHASE_OF = {"vision": "observing", "glimmer": "observing", "muse": "fixing", "triage": "triaging", "spec": "drafting"}
 CAP_ENV = {
     "vision": "EXPECTRAIL_SAM_USD_CAP",
     "glimmer": "EXPECTRAIL_GLIMMER_USD_CAP",
     "muse": "EXPECTRAIL_MUSE_USD_CAP",
     "triage": "EXPECTRAIL_TRIAGE_USD_CAP",
+    "spec": "EXPECTRAIL_SPEC_USD_CAP",
 }
 # Holds taken before a request whose bill is not known yet. Vision's per-image
 # price stays in agents.sam_observations; this figure is what the capability
@@ -60,12 +62,14 @@ RESERVE_USD = {
     "glimmer": 0.05,
     "muse": 1.0,
     "triage": 0.05,
+    "spec": 0.05,
 }
 
 SCHEMAS = resources.ROOT / "contracts"
 _SCHEMA_FILE = {
     "job-budget": "job-budget.v1.schema.json",
     "vision-month": "vision-month.v1.schema.json",
+    "model-month": "model-month.v1.schema.json",
     "provider-capability": "provider-capability.v1.schema.json",
 }
 
@@ -134,7 +138,12 @@ class Meter:
             raise BudgetStop(f"unknown model role {role!r}", role=role)
         if not (0.0 < usd < float("inf")):
             raise BudgetStop(f"a hold must be a finite amount above 0, not {usd!r}", role=role)
-        cap = parse_cap(role)
+        try:
+            cap = parse_cap(role)
+        except BudgetStop as exc:
+            with self._lock:
+                self.roles[role].stopped = str(exc)
+            raise
         with self._lock:
             row = self.roles[role]
             if cap is None:
@@ -150,6 +159,12 @@ class Meter:
                            "it was not sent")
                 row.stopped = message
                 raise BudgetStop(message, role=role)
+            try:
+                if role in MODEL_ROLES:
+                    admit_model_month(role, cap)
+            except BudgetStop as exc:
+                row.stopped = str(exc)
+                raise
             row.reserved += usd
             row.requests += 1
 
@@ -176,6 +191,8 @@ def reset_for_tests() -> None:
     """Drop this process's holds and the remembered month check. Tests only."""
     global _month_status, _vision_run_reserved
     METER.reset()
+    with _model_month_lock:
+        _model_run_reserved.clear()
     with _month_lock:
         _vision_run_reserved = False
         _month_status = {
@@ -203,13 +220,19 @@ def hold(role: str, *, live: bool, usd: float | None = None) -> None:
 
 def require_cap(role: str) -> float:
     """The cap, or a stop when it is missing or not an amount. Does not hold."""
-    cap = parse_cap(role)
+    try:
+        cap = parse_cap(role)
+    except BudgetStop as exc:
+        note_stop(role, str(exc))
+        raise
     if cap is None:
-        raise BudgetStop(
+        exc = BudgetStop(
             f"no spend cap for {role}: set {CAP_ENV[role]} to the most this run may spend, "
             "in US dollars. Nothing is sent without one",
             role=role,
         )
+        note_stop(role, str(exc))
+        raise exc
     return cap
 
 
@@ -362,6 +385,107 @@ def read_provider_capability(path: Path) -> dict:
     doc = strict_loads(Path(path).read_text(encoding="utf-8"))
     _check_capability(doc)
     return doc
+
+
+# Separate from vision's $200 ledger: these are worst-case role caps, not bills.
+MODEL_MONTH_LIMIT_USD = 200.0
+MODEL_LEDGER_ENV = "EXPECTRAIL_MODEL_MONTH_LEDGER"
+MODEL_MONTH_FORMAT = "expectrail.model-month/v1"
+MODEL_ROLES = ("glimmer", "muse", "triage", "spec")
+_model_month_lock = threading.Lock()
+_model_run_reserved: dict[tuple, float] = {}
+
+
+def _check_model_month(doc: dict) -> None:
+    _validate(doc, "model-month")
+    total = sum(entry["reservedUsd"] for entry in doc["entries"])
+    if abs(total - doc["spentUsd"]) > 1e-6:
+        raise ContractError(f"model-month: spentUsd is {doc['spentUsd']}, entries sum to {total}")
+    if doc["spentUsd"] > MODEL_MONTH_LIMIT_USD:
+        raise ContractError("model-month: spentUsd exceeds the limit")
+
+
+def read_model_month(path: Path) -> dict:
+    """Read and validate a complete ledger. An invalid ledger never means an empty month."""
+    doc = strict_loads(Path(path).read_text(encoding="utf-8"))
+    _check_model_month(doc)
+    return doc
+
+
+def admit_model_month(role: str, cap_usd: float, *, path: Path | None = None,
+                      job_id: str | None = None, now: datetime | None = None) -> dict | None:
+    """Reserve a role's whole process cap once per UTC month before its first request.
+
+    Opt in with EXPECTRAIL_MODEL_MONTH_LEDGER. A stable sidecar lock serializes
+    processes across atomic replacements; a failed write leaves the old ledger intact.
+    Increased caps reserve the difference. A new process reserves again even for the
+    same job id, since its per-process request counter starts at zero.
+    """
+    raw = str(path) if path is not None else os.environ.get(MODEL_LEDGER_ENV, "").strip()
+    if not raw:
+        return None
+    if role not in MODEL_ROLES or not (0 <= cap_usd < float("inf")):
+        raise BudgetStop("model month ledger: invalid role or cap", role=role)
+    try:
+        ledger = Path(raw).resolve()
+    except (OSError, RuntimeError) as exc:
+        raise BudgetStop(f"model month ledger unreadable or invalid: {exc}", role=role) from exc
+    now = now or datetime.now(timezone.utc)
+    month = month_of(now)
+    key = (os.getpid(), str(ledger), month, role)
+    with _model_month_lock:
+        temporary = None
+        try:
+            ledger.parent.mkdir(parents=True, exist_ok=True)
+            with ledger.with_name(ledger.name + ".lock").open("a+") as lock:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+                try:
+                    doc = read_model_month(ledger)
+                except FileNotFoundError:
+                    if any(k[:3] == key[:3] for k in _model_run_reserved):
+                        raise ContractError("model-month: previously reserved ledger is missing")
+                    doc = {"format": MODEL_MONTH_FORMAT, "month": month,
+                           "limitUsd": MODEL_MONTH_LIMIT_USD, "spentUsd": 0.0, "entries": []}
+                if doc["month"] > month:
+                    raise ContractError("model-month: ledger month is in the future")
+                if doc["month"] != month:
+                    doc = {"format": MODEL_MONTH_FORMAT, "month": month,
+                           "limitUsd": MODEL_MONTH_LIMIT_USD, "spentUsd": 0.0, "entries": []}
+                previous = _model_run_reserved.get(key, 0.0)
+                delta = max(0.0, cap_usd - previous)
+                if doc["spentUsd"] + delta > MODEL_MONTH_LIMIT_USD + 1e-9:
+                    raise BudgetStop(
+                        f"model month ledger: this month's {role} reservation would pass "
+                        f"${MODEL_MONTH_LIMIT_USD:.0f}: ${doc['spentUsd']:.4f} reserved in {month}, "
+                        f"next hold ${delta:.4f}. Nothing was sent", role=role)
+                if key in _model_run_reserved and delta == 0:
+                    return doc
+                # Keep precision: rounding a small cap down would under-reserve it.
+                doc["entries"].append({"jobId": job_id or os.environ.get(JOB_ENV, "").strip() or "run",
+                                       "role": role, "reservedUsd": delta,
+                                       "at": now.astimezone(timezone.utc).isoformat()})
+                doc["spentUsd"] = sum(entry["reservedUsd"] for entry in doc["entries"])
+                _check_model_month(doc)
+                with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=ledger.parent,
+                                                 prefix=ledger.name + ".", delete=False) as handle:
+                    temporary = Path(handle.name)
+                    handle.write(json.dumps(doc, indent=2) + "\n")
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                os.replace(temporary, ledger)
+                temporary = None
+                directory = os.open(ledger.parent, os.O_RDONLY | os.O_DIRECTORY)
+                try:
+                    os.fsync(directory)
+                finally:
+                    os.close(directory)
+                _model_run_reserved[key] = max(previous, cap_usd)
+                return doc
+        except (OSError, ValueError, ContractError) as exc:
+            raise BudgetStop(f"model month ledger unreadable or invalid ({ledger}): {exc}", role=role) from exc
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
 
 
 def _blank_month(month: str) -> dict:
