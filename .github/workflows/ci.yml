@@ -141,6 +141,11 @@ jobs:
         env:
           EXPECTRAIL_ENGINE_TESTS: required
         run: python -m unittest tests.test_body_box -v
+      # Each enemy's and bullet's own box is in every row, with the id of its position (#286).
+      - name: The position log carries each enemy's and bullet's own box
+        env:
+          EXPECTRAIL_ENGINE_TESTS: required
+        run: python -m unittest tests.test_object_boxes.BundledGameTest -v
       # A first route made from the project's input map (#329): on the bundled game and crate-run it
       # replays to three identical traces and the player moves; an unseeded random source is refused.
       - name: A first route from the input map replays three times identically

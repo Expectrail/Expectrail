@@ -7,6 +7,18 @@
    "probes": [
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 4,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
      "framesAsked": 30,
      "framesDiffer": 6,
      "framesDifferInBox": 0,
@@ -16,6 +28,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 18,
+       "gaps": 0,
+       "maxPixelsInBox": 7145
+      }
+     },
      "framesAsked": 18,
      "framesDiffer": 18,
      "framesDifferInBox": 9,
@@ -25,6 +49,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 2,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
      "framesAsked": 18,
      "framesDiffer": 2,
      "framesDifferInBox": 0,
@@ -34,6 +70,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 18,
+       "gaps": 0,
+       "maxPixelsInBox": 7145
+      }
+     },
      "framesAsked": 18,
      "framesDiffer": 18,
      "framesDifferInBox": 0,
@@ -43,6 +91,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 6,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
      "framesAsked": 6,
      "framesDiffer": 6,
      "framesDifferInBox": 0,
@@ -52,6 +112,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 7,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
      "framesAsked": 7,
      "framesDiffer": 7,
      "framesDifferInBox": 0,
@@ -61,6 +133,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 8,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
      "framesAsked": 13,
      "framesDiffer": 11,
      "framesDifferInBox": 0,
@@ -70,6 +154,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 8,
+       "gaps": 0,
+       "maxPixelsInBox": 7122
+      }
+     },
      "framesAsked": 8,
      "framesDiffer": 8,
      "framesDifferInBox": 0,
@@ -79,6 +175,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 9,
+       "gaps": 0,
+       "maxPixelsInBox": 7122
+      }
+     },
      "framesAsked": 9,
      "framesDiffer": 9,
      "framesDifferInBox": 0,
@@ -88,6 +196,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 15,
+       "gaps": 0,
+       "maxPixelsInBox": 7122
+      }
+     },
      "framesAsked": 15,
      "framesDiffer": 15,
      "framesDifferInBox": 0,
@@ -97,6 +217,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 10,
+       "gaps": 0,
+       "maxPixelsInBox": 7122
+      }
+     },
      "framesAsked": 10,
      "framesDiffer": 10,
      "framesDifferInBox": 0,
@@ -106,6 +238,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 11,
+       "gaps": 0,
+       "maxPixelsInBox": 7122
+      }
+     },
      "framesAsked": 11,
      "framesDiffer": 11,
      "framesDifferInBox": 0,
@@ -115,6 +259,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 17,
+       "gaps": 0,
+       "maxPixelsInBox": 7122
+      }
+     },
      "framesAsked": 17,
      "framesDiffer": 17,
      "framesDifferInBox": 0,
@@ -124,6 +280,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 12,
+       "gaps": 0,
+       "maxPixelsInBox": 7145
+      }
+     },
      "framesAsked": 12,
      "framesDiffer": 12,
      "framesDifferInBox": 0,
@@ -133,6 +301,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 13,
+       "gaps": 0,
+       "maxPixelsInBox": 7145
+      }
+     },
      "framesAsked": 13,
      "framesDiffer": 13,
      "framesDifferInBox": 0,
@@ -142,6 +322,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 19,
+       "gaps": 0,
+       "maxPixelsInBox": 7145
+      }
+     },
      "framesAsked": 19,
      "framesDiffer": 19,
      "framesDifferInBox": 0,
@@ -151,6 +343,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 5,
+       "gaps": 0,
+       "maxPixelsInBox": 594
+      },
+      "enemy": {
+       "framesDifferInBox": 11,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
      "framesAsked": 13,
      "framesDiffer": 11,
      "framesDifferInBox": 0,
@@ -160,6 +364,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 5,
+       "gaps": 0,
+       "maxPixelsInBox": 594
+      },
+      "enemy": {
+       "framesDifferInBox": 11,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
      "framesAsked": 13,
      "framesDiffer": 11,
      "framesDifferInBox": 0,
@@ -169,6 +385,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 3,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
      "framesAsked": 14,
      "framesDiffer": 6,
      "framesDifferInBox": 0,
@@ -178,6 +406,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 3,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
      "framesAsked": 14,
      "framesDiffer": 6,
      "framesDifferInBox": 0,
@@ -187,6 +427,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 7,
+       "gaps": 0,
+       "maxPixelsInBox": 1335
+      },
+      "enemy": {
+       "framesDifferInBox": 17,
+       "gaps": 0,
+       "maxPixelsInBox": 7145
+      }
+     },
      "framesAsked": 17,
      "framesDiffer": 17,
      "framesDifferInBox": 0,
@@ -196,6 +448,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 2,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
      "framesAsked": 17,
      "framesDiffer": 2,
      "framesDifferInBox": 0,
@@ -205,6 +469,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 2,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
      "framesAsked": 8,
      "framesDiffer": 2,
      "framesDifferInBox": 0,
@@ -214,6 +490,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 2,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
      "framesAsked": 9,
      "framesDiffer": 2,
      "framesDifferInBox": 0,
@@ -223,6 +511,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 2,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
      "framesAsked": 15,
      "framesDiffer": 2,
      "framesDifferInBox": 0,
@@ -232,7 +532,8 @@
     }
    ],
    "probesMeasured": 25,
-   "reach": "inside-a-box"
+   "reach": "inside-a-box",
+   "reachIfNamed": "inside-a-box"
   },
   {
    "id": "bullet-behind-scenery",
@@ -240,6 +541,18 @@
    "probes": [
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 8,
+       "gaps": 0,
+       "maxPixelsInBox": 2401
+      },
+      "enemy": {
+       "framesDifferInBox": 5,
+       "gaps": 0,
+       "maxPixelsInBox": 1416
+      }
+     },
      "framesAsked": 13,
      "framesDiffer": 8,
      "framesDifferInBox": 1,
@@ -249,6 +562,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 8,
+       "gaps": 0,
+       "maxPixelsInBox": 2401
+      },
+      "enemy": {
+       "framesDifferInBox": 5,
+       "gaps": 0,
+       "maxPixelsInBox": 1416
+      }
+     },
      "framesAsked": 13,
      "framesDiffer": 8,
      "framesDifferInBox": 1,
@@ -258,6 +583,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 11,
+       "gaps": 0,
+       "maxPixelsInBox": 2379
+      },
+      "enemy": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      }
+     },
      "framesAsked": 14,
      "framesDiffer": 11,
      "framesDifferInBox": 1,
@@ -267,6 +604,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 11,
+       "gaps": 0,
+       "maxPixelsInBox": 2379
+      },
+      "enemy": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      }
+     },
      "framesAsked": 14,
      "framesDiffer": 11,
      "framesDifferInBox": 1,
@@ -276,6 +625,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 13,
+       "gaps": 0,
+       "maxPixelsInBox": 2401
+      },
+      "enemy": {
+       "framesDifferInBox": 7,
+       "gaps": 0,
+       "maxPixelsInBox": 5310
+      }
+     },
      "framesAsked": 17,
      "framesDiffer": 13,
      "framesDifferInBox": 1,
@@ -285,6 +646,18 @@
     },
     {
      "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 16,
+       "gaps": 0,
+       "maxPixelsInBox": 2401
+      },
+      "enemy": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      }
+     },
      "framesAsked": 17,
      "framesDiffer": 16,
      "framesDifferInBox": 12,
@@ -294,12 +667,17 @@
     }
    ],
    "probesMeasured": 25,
-   "reach": "inside-a-box"
+   "reach": "inside-a-box",
+   "reachIfNamed": "inside-a-box"
   }
  ],
  "engine": "Godot 4.7.2-stable",
  "engineRetries": 0,
  "format": "expectrail.repro-pixel-reach/v1",
+ "named": [
+  "bullet",
+  "enemy"
+ ],
  "objects": [
   "player"
  ],
@@ -342,6 +720,13 @@
   "defect": 1
  },
  "totals": {
+  "defects": 2,
+  "error": 0,
+  "inside-a-box": 2,
+  "no-difference": 0,
+  "outside-every-box": 0
+ },
+ "totalsIfNamed": {
   "defects": 2,
   "error": 0,
   "inside-a-box": 2,

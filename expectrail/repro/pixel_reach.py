@@ -28,6 +28,14 @@ sound only because the capture is repeatable here: the screen record (bench/jit/
 replayed the clean game twice on every library probe with the same renderer and found no frame that
 differed. This measurement replays the clean game once and says so in its record.
 
+**Named objects** (since November 15, 2026). The harness also logs the box of every enemy and bullet
+(the trace's ``enemyBoxes`` and ``projectileBoxes``, agents/sam_anchor.py ``object_boxes``). Objects
+the menu does not offer yet but whose boxes are logged are measured as well, apart from the offered
+ones: each probe's ``byObject`` counts, per role, the planned frames differing inside the box of any
+object of that role on either build, and each defect's ``reachIfNamed`` is its reach if a pixel check
+could name them too. A frame where none of them is on screen is not a gap; a frame whose record cannot
+say where they are (a trace from before, no camera) is. ``reach`` and ``totals`` keep their meaning.
+
 What this is not: no observer is asked anything, and nothing here is a reproduction rate. It says
 which defects the pixel menu can reach at all, so a live pixel run is not dispatched to find a number
 this measurement already decides.
@@ -59,16 +67,17 @@ class PixelReachError(ValueError):
 def offered(menu: dict | None = None) -> list[str]:
     """The bound objects ``sam-3.1-anchor`` can be asked about, as the proposer's menu offers them.
 
-    Only an object the engine logs a body box for can be measured here (agents/sam_anchor.py points at
-    the player's); any other offered object stops the measurement rather than being skipped."""
+    The observer is pointed at the player's body box only (agents/sam_anchor.py ``anchors``), so any other
+    offered object stops the measurement rather than being skipped. Objects the engine logs boxes for but the
+    menu does not offer yet are measured apart, as named objects (``named_objects``)."""
     from expectrail.jit import pixel
 
     menu = pixel.menu() if menu is None else menu
     roles = list((menu.get("observers") or {}).get(OBSERVER, {}).get("objects") or [])
     unmeasurable = [r for r in roles if r != "player"]
     if unmeasurable:
-        raise PixelReachError(f"the menu offers {unmeasurable[0]!r} to {OBSERVER}, and only the player's box is logged; "
-                              "this measurement would miss it")
+        raise PixelReachError(f"the menu offers {unmeasurable[0]!r} to {OBSERVER}, and this measurement places only the "
+                              "player's box among the offered ones; it would miss it")
     return roles
 
 
@@ -115,11 +124,14 @@ def _union(a: list[int], b: list[int]) -> list[list[int]]:
     return [a] if a == b else [a, b]
 
 
-def probe_reach(clean_dir: Path, defect_dir: Path, route: dict, observer=None) -> dict:
+def probe_reach(clean_dir: Path, defect_dir: Path, route: dict, observer=None, named: tuple[str, ...] = ()) -> dict:
     """One probe of one defect: on the frames the observer plans for ``route``, how many differ at all,
     how many differ inside the offered object's box, the most pixels inside it, and how many planned
-    frames have no box on one build or the other (the observer would not be asked there: a gap)."""
-    from agents.sam_anchor import BODY, DEFAULT_PAD, anchors, load_trace
+    frames have no box on one build or the other (the observer would not be asked there: a gap).
+
+    With ``named`` roles (objects not offered yet whose boxes the engine logs, agents/sam_anchor.py
+    ``OBJECT_BOXES``), ``byObject`` gives the same counts over every logged box of each role."""
+    from agents.sam_anchor import BODY, DEFAULT_PAD, anchors, load_trace, object_boxes
     from agents.sam_observations import frame_files
 
     observer = observer or _observer()
@@ -129,21 +141,32 @@ def probe_reach(clean_dir: Path, defect_dir: Path, route: dict, observer=None) -
         raise PixelReachError(f"the defect build's capture has {len(files_d)} frames and the clean game's has "
                               f"{len(files_c)}: the two cannot be compared frame by frame")
     planned = [n for n in planned if n in files_c]
+    by_object = {role: {"framesDifferInBox": 0, "maxPixelsInBox": 0, "gaps": 0} for role in named}
     if not planned:
         return {"framesAsked": 0, "framesDiffer": 0, "framesDifferInBox": 0, "maxPixelsInBox": 0, "gaps": 0,
-                "boxesMoved": 0}
+                "boxesMoved": 0, **({"byObject": by_object} if named else {})}
     width, height, _ = _marks(files_c[planned[0]], files_c[planned[0]])
     trace_c, trace_d = load_trace(Path(clean_dir)), load_trace(Path(defect_dir))
     at_c = anchors(trace_c, (width, height), planned, box=BODY, pad=DEFAULT_PAD)
     at_d = anchors(trace_d, (width, height), planned, box=BODY, pad=DEFAULT_PAD)
+    objects = {role: (object_boxes(trace_c, (width, height), planned, role, pad=DEFAULT_PAD),
+                      object_boxes(trace_d, (width, height), planned, role, pad=DEFAULT_PAD)) for role in named}
     differ = in_box = most = gaps = moved = 0
     for n in planned:
         box_c, box_d = at_c[n].get("promptBox"), at_d[n].get("promptBox")
         if "why" in at_c[n] or "why" in at_d[n] or not box_c or not box_d:
             gaps += 1
+        for role, (oc, od) in objects.items():
+            by_object[role]["gaps"] += "why" in oc[n] or "why" in od[n]
         w, _h, marks = _marks(files_c[n], files_d[n])
         if marks is None:
             continue
+        for role, (oc, od) in objects.items():
+            boxes = [b["promptBox"] for at in (oc[n], od[n]) for b in at.get("boxes", [])]
+            count = max((_inside(marks, w, b) for b in boxes), default=0)
+            if count:
+                by_object[role]["framesDifferInBox"] += 1
+                by_object[role]["maxPixelsInBox"] = max(by_object[role]["maxPixelsInBox"], count)
         differ += 1
         if box_c and box_d and "why" not in at_c[n] and "why" not in at_d[n]:
             moved += box_c != box_d
@@ -152,11 +175,13 @@ def probe_reach(clean_dir: Path, defect_dir: Path, route: dict, observer=None) -
                 in_box += 1
                 most = max(most, count)
     return {"framesAsked": len(planned), "framesDiffer": differ, "framesDifferInBox": in_box,
-            "maxPixelsInBox": most, "gaps": gaps, "boxesMoved": moved}
+            "maxPixelsInBox": most, "gaps": gaps, "boxesMoved": moved, **({"byObject": by_object} if named else {})}
 
 
-def reach_of(rows: list[dict]) -> str:
-    if any(r["framesDifferInBox"] for r in rows):
+def reach_of(rows: list[dict], named: bool = False) -> str:
+    """The reach of a defect from its probes; with ``named``, a named object's box counts as well."""
+    if any(r["framesDifferInBox"] or (named and any(o["framesDifferInBox"] for o in r["byObject"].values()))
+           for r in rows):
         return "inside-a-box"
     if any(r["framesDiffer"] for r in rows):
         return "outside-every-box"
@@ -172,7 +197,7 @@ def _route(work: Path, probe_id: str) -> dict:
 def _probe_task(args) -> tuple[str, dict, str | None, int]:
     """One probe: the clean game once, then each defect build, compared while both are on disk.
     (probe id, {defect id: row or {"error": why}}, an error that stops the probe, replays made again)."""
-    profile, probe, defects, work, runner = args
+    profile, probe, defects, work, runner, named = args
     runner = runner or screen._default_runner()
     work = Path(work)
     out, retries = {}, 0
@@ -188,7 +213,8 @@ def _probe_task(args) -> tuple[str, dict, str | None, int]:
                 got, n = screen.capture_probe(profile, probe, [patch], work / did, runner)
                 retries += n
                 try:
-                    out[did] = {"probe": probe["id"], **probe_reach(Path(clean["dir"]), Path(got["dir"]), route)}
+                    out[did] = {"probe": probe["id"],
+                                **probe_reach(Path(clean["dir"]), Path(got["dir"]), route, named=tuple(named))}
                 finally:
                     shutil.rmtree(got["dir"], ignore_errors=True)
             except Exception as exc:  # noqa: BLE001 - one defect build that cannot be measured is its own row
@@ -203,13 +229,29 @@ def screen_only(screen_record: dict) -> list[str]:
     return [r["id"] for r in screen_record["defects"] if r["sees"] == "screen-only"]
 
 
+def named_objects(roles: list[str], named=None) -> list[str]:
+    """The objects measured beside the offered ones: by default every role the engine logs a box for
+    (agents/sam_anchor.py ``OBJECT_BOXES``) that the menu does not offer yet."""
+    from agents.sam_anchor import OBJECT_BOXES
+
+    named = sorted(OBJECT_BOXES) if named is None else list(named)
+    unknown = [r for r in named if r not in OBJECT_BOXES]
+    if unknown:
+        raise PixelReachError(f"the engine logs no box for {unknown[0][:40]!r}; it logs one for "
+                              f"{', '.join(sorted(OBJECT_BOXES))} and the player")
+    return [r for r in dict.fromkeys(named) if r not in roles]
+
+
 def measure(doc: dict, profile: dict, probes: list[dict], out: Path, defects: list[str], *, runner=None,
-            jobs: int = 1, root: Path = REPO, bench_path: Path = bench.BENCH, menu: dict | None = None) -> dict:
+            jobs: int = 1, root: Path = REPO, bench_path: Path = bench.BENCH, menu: dict | None = None,
+            named=None) -> dict:
     """Replay each probe on the clean game once and on each named defect build once, with frames; write
-    ``out/repro-pixel-reach.json``."""
+    ``out/repro-pixel-reach.json``. ``named``: the objects measured beside the offered ones
+    (``named_objects``); an empty list measures the offered ones only, as records before November 15 did."""
     from harness.run import GODOT_VERSION
 
     roles = offered(menu)
+    named = named_objects(roles, named)
     by_id = {d["id"]: d for d in doc["defects"]}
     unknown = [d for d in defects if d not in by_id]
     if unknown or not defects:
@@ -218,7 +260,7 @@ def measure(doc: dict, profile: dict, probes: list[dict], out: Path, defects: li
     out.mkdir(parents=True, exist_ok=True)
     work = out / "work"
     pairs = [(d, str(root / by_id[d]["patch"])) for d in defects]
-    tasks = [(profile, p, pairs, str(work / p["id"]), runner) for p in probes]
+    tasks = [(profile, p, pairs, str(work / p["id"]), runner, named) for p in probes]
     try:
         if jobs > 1:
             with ProcessPoolExecutor(max_workers=jobs) as pool:
@@ -241,11 +283,15 @@ def measure(doc: dict, profile: dict, probes: list[dict], out: Path, defects: li
         else:
             shown = [f for f in found if f["framesDiffer"]]
             row.update(reach=reach_of(found), probesMeasured=len(found), probes=shown)
+            if named:
+                row["reachIfNamed"] = reach_of(found, named=True)
         rows.append(row)
     record = {"format": FORMAT, "benchSha256": bench.sha256(bench_path), "engine": f"Godot {GODOT_VERSION}",
               "observer": setting(), "objects": roles, "probes": [p["id"] for p in probes],
               "replaysPerBuild": {"clean": 1, "defect": 1}, "engineRetries": retries,
               "defects": rows, "totals": totals(rows)}
+    if named:
+        record.update(named=named, totalsIfNamed=totals(rows, "reachIfNamed"))
     found = problems(record)
     if found:
         raise PixelReachError("; ".join(found))
@@ -253,8 +299,9 @@ def measure(doc: dict, profile: dict, probes: list[dict], out: Path, defects: li
     return record
 
 
-def totals(rows: list[dict]) -> dict:
-    return {"defects": len(rows), **{k: sum(r["reach"] == k for r in rows) for k in REACH}}
+def totals(rows: list[dict], key: str = "reach") -> dict:
+    """Defects by reach; with ``key`` "reachIfNamed", an error row counts as an error."""
+    return {"defects": len(rows), **{k: sum(r.get(key, r["reach"]) == k for r in rows) for k in REACH}}
 
 
 # --- the record ---------------------------------------------------------------------------------------
@@ -273,10 +320,25 @@ def problems(record) -> list[str]:
     if len(set(ids)) != len(ids):
         out.append("repro-pixel-reach: a defect is listed twice")
     names = set(record["probes"])
+    named = record.get("named")
+    if named is not None:
+        if set(named) & set(record["objects"]):
+            out.append("repro-pixel-reach: an object is both offered and named")
+        if "totalsIfNamed" not in record:
+            out.append("repro-pixel-reach: named objects without totalsIfNamed")
+    elif "totalsIfNamed" in record:
+        out.append("repro-pixel-reach: totalsIfNamed without named objects")
     for r in record["defects"]:
         if r["reach"] == "error":
-            if r["probes"] or r["probesMeasured"] or not r.get("error"):
+            if r["probes"] or r["probesMeasured"] or not r.get("error") or "reachIfNamed" in r:
                 out.append(f"repro-pixel-reach: {r['id']}: an error row carries results")
+            continue
+        if (named is None) != ("reachIfNamed" not in r):
+            out.append(f"repro-pixel-reach: {r['id']}: reachIfNamed must be given exactly when objects are named")
+            continue
+        if any((named is None) != ("byObject" not in p) or (named is not None and sorted(p["byObject"]) != sorted(named))
+               for p in r["probes"]):
+            out.append(f"repro-pixel-reach: {r['id']}: a probe's byObject does not name exactly the named objects")
             continue
         if "error" in r or r["probesMeasured"] != len(names):
             out.append(f"repro-pixel-reach: {r['id']}: the probe count does not agree with the record")
@@ -288,10 +350,18 @@ def problems(record) -> list[str]:
                     and p["gaps"] <= p["framesAsked"] and p["boxesMoved"] <= p["framesDiffer"]
                     and (p["maxPixelsInBox"] > 0) == (p["framesDifferInBox"] > 0)):
                 out.append(f"repro-pixel-reach: {r['id']}: probe {p['probe']} does not agree with itself")
+            for role, o in (p.get("byObject") or {}).items():
+                if not (o["framesDifferInBox"] <= p["framesDiffer"] and o["gaps"] <= p["framesAsked"]
+                        and (o["maxPixelsInBox"] > 0) == (o["framesDifferInBox"] > 0)):
+                    out.append(f"repro-pixel-reach: {r['id']}: probe {p['probe']}: {role} does not agree with itself")
         if r["reach"] != reach_of(r["probes"]):
             out.append(f"repro-pixel-reach: {r['id']}: {r['reach']!r} does not follow from its probes")
+        if named is not None and r["reachIfNamed"] != reach_of(r["probes"], named=True):
+            out.append(f"repro-pixel-reach: {r['id']}: reachIfNamed {r['reachIfNamed']!r} does not follow from its probes")
     if record["totals"] != totals(record["defects"]):
         out.append("repro-pixel-reach: the totals do not match the rows")
+    if named is not None and record.get("totalsIfNamed") != totals(record["defects"], "reachIfNamed"):
+        out.append("repro-pixel-reach: totalsIfNamed do not match the rows")
     return out
 
 
@@ -343,4 +413,23 @@ def render(record: dict) -> str:
         lines.append(f"| `{r['id']}` | {r['reach']} | {len(ps)} of {r['probesMeasured']} | "
                      f"{inside} of {sum(p['framesDiffer'] for p in ps)} ({sum(bool(p['framesDifferInBox']) for p in ps)}) | "
                      f"{max([p['maxPixelsInBox'] for p in ps], default=0)} |")
+    named = record.get("named")
+    if named:
+        t = record["totalsIfNamed"]
+        lines += ["", f"If a pixel check could also name {', '.join(named)} (the engine logs their boxes; the menu does not "
+                      f"offer them yet): a difference inside an offered or named box: {t['inside-a-box']}. Frames differ, "
+                      f"never inside one: {t['outside-every-box']}. No planned frame differs: {t['no-difference']}.", "",
+                  "| Defect | Reach if named | " + " | ".join(
+                      f"Planned frames differing inside {role} boxes (probes) | Most pixels inside one {role} box | "
+                      f"Planned frames with no {role} boxes on a build" for role in named) + " |",
+                  "| --- | --- | " + " | ".join("--- | --- | ---" for _ in named) + " |"]
+        for r in record["defects"]:
+            if r["reach"] == "error":
+                continue
+            ps, cells = r["probes"], []
+            for role in named:
+                got = [p["byObject"][role] for p in ps]
+                cells.append(f"{sum(o['framesDifferInBox'] for o in got)} ({sum(bool(o['framesDifferInBox']) for o in got)}) | "
+                             f"{max([o['maxPixelsInBox'] for o in got], default=0)} | {sum(o['gaps'] for o in got)}")
+            lines.append(f"| `{r['id']}` | {r['reachIfNamed']} | " + " | ".join(cells) + " |")
     return "\n".join(lines) + "\n"

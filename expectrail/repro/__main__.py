@@ -59,6 +59,9 @@ def main(argv: list[str] | None = None) -> int:
     px.add_argument("--jobs", type=int, default=1)
     px.add_argument("--only", action="append", default=[], help="a defect id (repeatable)")
     px.add_argument("--probe", action="append", default=[], help="a library probe id (repeatable); default: all")
+    px.add_argument("--named", action="append", default=None,
+                    help="an object not offered yet whose logged boxes are measured too (repeatable: enemy, bullet); "
+                         "default: every one the engine logs a box for; --named none measures the offered ones only")
     pxr = sub.add_parser("pixel-reach-render", help="print a pixel-reach record as a table")
     pxr.add_argument("record", type=Path)
     pxr.add_argument("--bench", type=Path, default=bench.BENCH)
@@ -250,7 +253,9 @@ def main(argv: list[str] | None = None) -> int:
                     raise pixel_reach.PixelReachError(f"no probe {unknown[0][:60]!r}")
                 probes = [p for p in probes if p["id"] in args.probe]
             defects = args.only or pixel_reach.screen_only(screen.load(args.screen))
-            record = pixel_reach.measure(doc, profile, probes, args.out, defects, jobs=args.jobs, bench_path=args.bench)
+            named = None if args.named is None else [n for n in args.named if n != "none"]
+            record = pixel_reach.measure(doc, profile, probes, args.out, defects, jobs=args.jobs, bench_path=args.bench,
+                                         named=named)
             print(json.dumps(record["totals"]))
             return 1 if record["totals"]["error"] else 0
         if args.cmd == "pixel-reach-render":
