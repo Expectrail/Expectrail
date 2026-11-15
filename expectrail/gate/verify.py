@@ -643,14 +643,16 @@ def engine_gap(spec: dict, run: dict, ticks: int | None, capture_fps: int | None
 
 
 def visual_gap(spec: dict, seen: dict, run: dict, ticks: int | None,
-               capture_fps: int | None = CAPTURE_FPS) -> str | None:
+               capture_fps: int | None = CAPTURE_FPS, *, vision_every: int = 1) -> str | None:
     """Why the visual observer's passing answer cannot carry a pass, or None when it can.
 
     A pass counts only when the replay captured every frame of the check's window and the observer's
     answer holds every one of them. The one exception is an assertion that passes on the frame that
     shows it (``reaches``): there the answer need not hold every frame, but the replay must still
     have captured the whole window. (That the answer is about this replay at all is checked before
-    any verdict is read from it: ``judge_run``.)"""
+    any verdict is read from it: ``judge_run``.) Explicit ``vision_every`` sampling relaxes only
+    the visual sample schedule for specs without explicit coverage obligations; all captured
+    frames and engine ticks are still required. An observer cannot opt itself into this policy."""
     want = window_frames(spec, ticks, run.get("trace"), capture_fps)
     if want is None:
         return "the gate cannot tell how many frames this route should have"
@@ -660,6 +662,9 @@ def visual_gap(spec: dict, seen: dict, run: dict, ticks: int | None,
         return f"the replay captured {got} of {len(want)} frames of the check's window"
     if (spec.get("assertion") or {}).get("type") in PASSES_ON_ONE_FRAME:
         return None
+    if vision_every > 1 and not spec.get("coverage"):
+        from agents.sam_observations import sample
+        want = sample(want, vision_every)
     have = frames_in(seen)
     got = sum(1 for i in want if i in have)
     if got < len(want):
@@ -678,7 +683,7 @@ def input_map_problem(trace: dict) -> str | None:
 
 def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None, keep: bool = True,
               ticks: int | None = None, capture_fps: int | None = CAPTURE_FPS,
-              route: str | None = None) -> dict:
+              route: str | None = None, vision_every: int = 1) -> dict:
     """One approved spec on one finished replay, by the rule.
 
     ``engine-only``: the evaluator on the engine's record, as the gate always judged. ``both``: that,
@@ -738,11 +743,14 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
                 # Whatever it says, it is not about what this replay showed: not a pass, and not a
                 # failure of this change either.
                 raise NoAnswer("its answer is about another replay")
-            seen_verdict = evaluate(spec, seen, route=route, trace=run.get("trace"),
-                                    expected_frames=window_frames(spec, ticks, run.get("trace"), capture_fps))
+            expected = window_frames(spec, ticks, run.get("trace"), capture_fps)
+            if vision_every > 1 and expected is not None and not spec.get("coverage"):
+                from agents.sam_observations import sample
+                expected = sample(expected, vision_every)
+            seen_verdict = evaluate(spec, seen, route=route, trace=run.get("trace"), expected_frames=expected)
             said = seen_verdict["result"] if seen_verdict["result"] in rec.VISUAL_VERDICTS else "needs-review"
             if said != "fail":
-                part = visual_gap(spec, seen, run, ticks, capture_fps)
+                part = visual_gap(spec, seen, run, ticks, capture_fps, vision_every=vision_every)
                 if part:
                     said = "needs-review"
                     seen_verdict = dict(seen_verdict, result=said, reason="not-exercised: " + part)
@@ -778,7 +786,7 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
 def judge_arm(game: Path, routes: list[tuple[str, Path, str]], specs: list[dict], out: Path,
               replay: Replay, *, label: str, rule: str = rec.ENGINE_ONLY, visual=None,
               on_phase: Callable[[str], object] | None = None,
-              capture_fps: int | None = CAPTURE_FPS, runs: dict | None = None) -> dict[tuple[str, str], dict]:
+              capture_fps: int | None = CAPTURE_FPS, runs: dict | None = None, vision_every: int = 1) -> dict[tuple[str, str], dict]:
     """{(spec id, route name): result} for one game tree. ``runs``, when given, is filled with each
     finished replay by route name (the player's place is compared between the two sides from them)."""
     results: dict[tuple[str, str], dict] = {}
@@ -819,7 +827,8 @@ def judge_arm(game: Path, routes: list[tuple[str, Path, str]], specs: list[dict]
             on_phase("evaluating")
         ticks = route_ticks(path)
         for spec in applicable_specs:
-            result = judge_run(spec, run, rule=rule, visual=visual, ticks=ticks, capture_fps=capture_fps, route=name)
+            result = judge_run(spec, run, rule=rule, visual=visual, ticks=ticks, capture_fps=capture_fps,
+                               route=name, vision_every=vision_every)
             # The evidence viewer's timeline (expectrail.viewer): measured from the engine's record the
             # evaluator judged, kept only when it agrees with that verdict. It decides nothing.
             result["timeline"] = viewer.check_series(spec, run, result.get("verdict"))
@@ -941,8 +950,13 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
              checks: Checks | None = None, rule: str = rec.ENGINE_ONLY, visual=None,
              on_phase: Callable[[str], object] | None = None, heldout_frames_to_visual: bool = False,
              intent: str = "none", adapter: str = DEFAULT_ADAPTER,
-             anchor_every: int = ANCHOR_EVERY, changed_checks: dict | None = None) -> dict:
+             anchor_every: int = ANCHOR_EVERY, changed_checks: dict | None = None, vision_every: int = 1) -> dict:
     """Run the gate and write the artifact in ``out``; returns the findings record.
+
+    ``vision_every`` is an explicit opt-in for public visual checks, default 1. It changes only
+    the required visual sample schedule, never the engine's evidence, calibration or paired anchor
+    comparison. Specs with explicit coverage obligations still require their full window. A stride
+    greater than 1 is recorded in observers.visionEvery; shorter defects may be missed.
 
     ``adapter`` names the engine, and everything about the engine comes from its entry in the
     registry (``harness.adapters``): the replay (``verify_run``), how a project folder is recognised,
@@ -1004,6 +1018,10 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     problems: list[str] = []
     if rule not in rec.RULES:
         raise ConfigError(f"the rule must be one of {', '.join(rec.RULES)}")
+    if type(vision_every) is not int or vision_every < 1:
+        raise ConfigError("vision stride must be a positive integer")
+    if vision_every != 1 and rule != rec.BOTH:
+        raise ConfigError("vision sampling requires the rule both")
     if rule == rec.ENGINE_ONLY and visual is not None:
         raise ConfigError("a visual observer was given and the rule is engine-only; ask for the rule both")
     observer = None   # how the record names the visual observer; None when none judged
@@ -1139,7 +1157,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
             one_replay = functools.partial(one_replay, project=base_config)
     else:
         yard = project_config(head_game) if game_ok(head_game) else None
-    how = {"rule": rule, "visual": visual, "on_phase": on_phase,
+    how = {"rule": rule, "visual": visual, "on_phase": on_phase, "vision_every": vision_every,
            "capture_fps": int(yard["captureFps"]) if yard is not None else engine.capture_fps}
     held_back = False   # under `both`: the held-out frames were kept from the visual observer
     head_runs: dict = {}
@@ -1241,9 +1259,12 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         problems.append("the project config differs from the base's (added, removed or changed); "
                         "the gate reads the base's capture rate and bindings, and this is not an accept."
                         + detail)
+    observer_block = {"rule": rule, "visual": observer} if rule == rec.BOTH else None
+    if observer_block is not None and vision_every != 1:
+        observer_block["visionEvery"] = vision_every
     decision, reasons = rec.decide(counts, held, isolation, check_problems, intent=intent, repair=repair,
                                    required_routes_missing=rec.missing_required_routes(spec_records, route_records),
-                                   observers={"rule": rule, "visual": observer} if rule == rec.BOTH else None,
+                                   observers=observer_block,
                                    base_judged=any(c["before"] is not None for c in checks), anchor=anchor_doc)
     if rule == rec.BOTH:
         # Why a check the engine's record passes is not a pass, in the record's own words.
@@ -1284,7 +1305,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         # Written under the rule both only. An engine-only record stays as it was before the block
         # existed, so a reader from before it (the comment job runs main's) can still read it; a
         # reader takes a record without the block as engine-only.
-        **({"observers": {"rule": rule, "visual": observer}} if rule == rec.BOTH else {}),
+        **({"observers": observer_block} if observer_block is not None else {}),
         **({"anchor": anchor_doc} if anchor_doc is not None else {}),
         # Written only when something was declared, so a record of an undeclared change is the record
         # it was before the field existed and a reader older than the field still reads it.

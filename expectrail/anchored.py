@@ -239,10 +239,15 @@ class AnchoredObserver:
 
     ``client`` answers ``segment_at`` (a live client, a RecordingClient around one, or a
     RecordedClient). ``player`` names the spec object that is the engine's player (default: the
-    assertion's object)."""
+    assertion's object). ``every`` defaults to 1; larger strides ask every Nth window frame plus
+    its last, and can miss a defect shorter than N frames. Calibration is not sampled differently.
+    The gate must independently opt in to that stride before a sparse answer can support a pass."""
 
-    def __init__(self, client, calibration: dict, *, pad: float = PAD):
+    def __init__(self, client, calibration: dict, *, pad: float = PAD, every: int = 1):
+        if type(every) is not int or every < 1:
+            raise ValueError("vision stride must be a positive integer")
         self._client, self.calibration, self._pad = client, calibration, pad
+        self.every = every
 
     def _usable(self):
         if not self.calibration.get("enabled"):
@@ -261,7 +266,7 @@ class AnchoredObserver:
     def look(self, spec: dict, run: dict, *, keep: bool = True) -> dict:
         from agents.observations import engine_ground_by_frame, has_engine_ground
         from agents.sam_anchor import STOP_KINDS
-        from agents.sam_observations import SamError, frame_files, png_size, window
+        from agents.sam_observations import SamError, frame_files, png_size, sample, window
 
         client = self._usable()
         folder = run.get("framesDir")
@@ -279,6 +284,8 @@ class AnchoredObserver:
         indices = window(sorted(frames), spec)
         if not indices:
             raise NoAnswer("no captured frame falls inside the spec's window")
+        in_window = len(indices)
+        indices = sample(indices, self.every)
         size = png_size(frames[indices[0]])
         places = _places(trace, frames, indices, self._pad)
         ground = engine_ground_by_frame(trace, size, indices) if engine else {}
@@ -327,5 +334,5 @@ class AnchoredObserver:
             model["engineObjects"] = ["ground"]
         return {"format": "expectrail.observations/v0", "replay": {"sha256": run["replaySha256"]}, "model": model,
                 "frames": out,
-                "analysis": {"framesCaptured": len(frames), "framesInWindow": len(indices),
-                             "framesAnalyzed": len(indices), "every": 1, "refined": None, "confirmed": 0}}
+                "analysis": {"framesCaptured": len(frames), "framesInWindow": in_window,
+                             "framesAnalyzed": len(indices), "every": self.every, "refined": None, "confirmed": 0}}
