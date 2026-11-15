@@ -1,0 +1,736 @@
+{
+ "benchSha256": "216fa355f94cc9d6478867b69b90e5ef3ca6f7503b89e5674e21f68b3ceed355",
+ "defects": [
+  {
+   "id": "enemy-walks-backwards",
+   "patchSha256": "d5f98a8deb2af9da727330d119c1755cae4f00d436aa59e818610c20d789080b",
+   "probes": [
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 4,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
+     "framesAsked": 30,
+     "framesDiffer": 6,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "wait-long"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 18,
+       "gaps": 0,
+       "maxPixelsInBox": 7145
+      }
+     },
+     "framesAsked": 18,
+     "framesDiffer": 18,
+     "framesDifferInBox": 9,
+     "gaps": 0,
+     "maxPixelsInBox": 1125,
+     "probe": "hold-right"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 2,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
+     "framesAsked": 18,
+     "framesDiffer": 2,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "hold-left"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 18,
+       "gaps": 0,
+       "maxPixelsInBox": 7145
+      }
+     },
+     "framesAsked": 18,
+     "framesDiffer": 18,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "reverse"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 6,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
+     "framesAsked": 6,
+     "framesDiffer": 6,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "jump-w0-x1"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 7,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
+     "framesAsked": 7,
+     "framesDiffer": 7,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "jump-w0-x2"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 8,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
+     "framesAsked": 13,
+     "framesDiffer": 11,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "jump-w0-x8"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 8,
+       "gaps": 0,
+       "maxPixelsInBox": 7122
+      }
+     },
+     "framesAsked": 8,
+     "framesDiffer": 8,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "jump-w40-x1"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 9,
+       "gaps": 0,
+       "maxPixelsInBox": 7122
+      }
+     },
+     "framesAsked": 9,
+     "framesDiffer": 9,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "jump-w40-x2"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 15,
+       "gaps": 0,
+       "maxPixelsInBox": 7122
+      }
+     },
+     "framesAsked": 15,
+     "framesDiffer": 15,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "jump-w40-x8"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 10,
+       "gaps": 0,
+       "maxPixelsInBox": 7122
+      }
+     },
+     "framesAsked": 10,
+     "framesDiffer": 10,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "jump-w80-x1"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 11,
+       "gaps": 0,
+       "maxPixelsInBox": 7122
+      }
+     },
+     "framesAsked": 11,
+     "framesDiffer": 11,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "jump-w80-x2"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 17,
+       "gaps": 0,
+       "maxPixelsInBox": 7122
+      }
+     },
+     "framesAsked": 17,
+     "framesDiffer": 17,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "jump-w80-x8"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 12,
+       "gaps": 0,
+       "maxPixelsInBox": 7145
+      }
+     },
+     "framesAsked": 12,
+     "framesDiffer": 12,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "jump-w120-x1"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 13,
+       "gaps": 0,
+       "maxPixelsInBox": 7145
+      }
+     },
+     "framesAsked": 13,
+     "framesDiffer": 13,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "jump-w120-x2"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 19,
+       "gaps": 0,
+       "maxPixelsInBox": 7145
+      }
+     },
+     "framesAsked": 19,
+     "framesDiffer": 19,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "jump-w120-x8"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 5,
+       "gaps": 0,
+       "maxPixelsInBox": 594
+      },
+      "enemy": {
+       "framesDifferInBox": 11,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
+     "framesAsked": 13,
+     "framesDiffer": 11,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "shoot-right-every48"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 5,
+       "gaps": 0,
+       "maxPixelsInBox": 594
+      },
+      "enemy": {
+       "framesDifferInBox": 11,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
+     "framesAsked": 13,
+     "framesDiffer": 11,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "shoot-right-every12"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 3,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
+     "framesAsked": 14,
+     "framesDiffer": 6,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "shoot-left-every48"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 3,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
+     "framesAsked": 14,
+     "framesDiffer": 6,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "shoot-left-every12"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 7,
+       "gaps": 0,
+       "maxPixelsInBox": 1335
+      },
+      "enemy": {
+       "framesDifferInBox": 17,
+       "gaps": 0,
+       "maxPixelsInBox": 7145
+      }
+     },
+     "framesAsked": 17,
+     "framesDiffer": 17,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "move-fire-right"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 2,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
+     "framesAsked": 17,
+     "framesDiffer": 2,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "move-fire-left"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 2,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
+     "framesAsked": 8,
+     "framesDiffer": 2,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "jump-l40-x1"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 2,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
+     "framesAsked": 9,
+     "framesDiffer": 2,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "jump-l40-x2"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      },
+      "enemy": {
+       "framesDifferInBox": 2,
+       "gaps": 0,
+       "maxPixelsInBox": 2883
+      }
+     },
+     "framesAsked": 15,
+     "framesDiffer": 2,
+     "framesDifferInBox": 0,
+     "gaps": 0,
+     "maxPixelsInBox": 0,
+     "probe": "jump-l40-x8"
+    }
+   ],
+   "probesMeasured": 25,
+   "reach": "inside-a-box",
+   "reachIfNamed": "inside-a-box"
+  },
+  {
+   "id": "bullet-behind-scenery",
+   "patchSha256": "52c90da34798edd5624fbd52980b8f5a2ef1a8253b78623c4ef93296122f5cf5",
+   "probes": [
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 8,
+       "gaps": 0,
+       "maxPixelsInBox": 2401
+      },
+      "enemy": {
+       "framesDifferInBox": 5,
+       "gaps": 0,
+       "maxPixelsInBox": 1416
+      }
+     },
+     "framesAsked": 13,
+     "framesDiffer": 8,
+     "framesDifferInBox": 1,
+     "gaps": 0,
+     "maxPixelsInBox": 2962,
+     "probe": "shoot-right-every48"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 8,
+       "gaps": 0,
+       "maxPixelsInBox": 2401
+      },
+      "enemy": {
+       "framesDifferInBox": 5,
+       "gaps": 0,
+       "maxPixelsInBox": 1416
+      }
+     },
+     "framesAsked": 13,
+     "framesDiffer": 8,
+     "framesDifferInBox": 1,
+     "gaps": 0,
+     "maxPixelsInBox": 2962,
+     "probe": "shoot-right-every12"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 11,
+       "gaps": 0,
+       "maxPixelsInBox": 2379
+      },
+      "enemy": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      }
+     },
+     "framesAsked": 14,
+     "framesDiffer": 11,
+     "framesDifferInBox": 1,
+     "gaps": 0,
+     "maxPixelsInBox": 2223,
+     "probe": "shoot-left-every48"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 11,
+       "gaps": 0,
+       "maxPixelsInBox": 2379
+      },
+      "enemy": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      }
+     },
+     "framesAsked": 14,
+     "framesDiffer": 11,
+     "framesDifferInBox": 1,
+     "gaps": 0,
+     "maxPixelsInBox": 2223,
+     "probe": "shoot-left-every12"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 13,
+       "gaps": 0,
+       "maxPixelsInBox": 2401
+      },
+      "enemy": {
+       "framesDifferInBox": 7,
+       "gaps": 0,
+       "maxPixelsInBox": 5310
+      }
+     },
+     "framesAsked": 17,
+     "framesDiffer": 13,
+     "framesDifferInBox": 1,
+     "gaps": 0,
+     "maxPixelsInBox": 3763,
+     "probe": "move-fire-right"
+    },
+    {
+     "boxesMoved": 0,
+     "byObject": {
+      "bullet": {
+       "framesDifferInBox": 16,
+       "gaps": 0,
+       "maxPixelsInBox": 2401
+      },
+      "enemy": {
+       "framesDifferInBox": 0,
+       "gaps": 0,
+       "maxPixelsInBox": 0
+      }
+     },
+     "framesAsked": 17,
+     "framesDiffer": 16,
+     "framesDifferInBox": 12,
+     "gaps": 0,
+     "maxPixelsInBox": 6610,
+     "probe": "move-fire-left"
+    }
+   ],
+   "probesMeasured": 25,
+   "reach": "inside-a-box",
+   "reachIfNamed": "inside-a-box"
+  }
+ ],
+ "engine": "Godot 4.7.2-stable",
+ "engineRetries": 0,
+ "format": "expectrail.repro-pixel-reach/v1",
+ "named": [
+  "bullet",
+  "enemy"
+ ],
+ "objects": [
+  "player"
+ ],
+ "observer": {
+  "box": "body",
+  "every": 10,
+  "maxFrames": 30,
+  "name": "sam-3.1-anchor",
+  "pad": 4.0
+ },
+ "probes": [
+  "wait-long",
+  "hold-right",
+  "hold-left",
+  "reverse",
+  "jump-w0-x1",
+  "jump-w0-x2",
+  "jump-w0-x8",
+  "jump-w40-x1",
+  "jump-w40-x2",
+  "jump-w40-x8",
+  "jump-w80-x1",
+  "jump-w80-x2",
+  "jump-w80-x8",
+  "jump-w120-x1",
+  "jump-w120-x2",
+  "jump-w120-x8",
+  "shoot-right-every48",
+  "shoot-right-every12",
+  "shoot-left-every48",
+  "shoot-left-every12",
+  "move-fire-right",
+  "move-fire-left",
+  "jump-l40-x1",
+  "jump-l40-x2",
+  "jump-l40-x8"
+ ],
+ "replaysPerBuild": {
+  "clean": 1,
+  "defect": 1
+ },
+ "totals": {
+  "defects": 2,
+  "error": 0,
+  "inside-a-box": 2,
+  "no-difference": 0,
+  "outside-every-box": 0
+ },
+ "totalsIfNamed": {
+  "defects": 2,
+  "error": 0,
+  "inside-a-box": 2,
+  "no-difference": 0,
+  "outside-every-box": 0
+ }
+}

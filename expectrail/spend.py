@@ -271,6 +271,18 @@ def _vision_reserved() -> tuple[float, int]:
 def build_job_budget(job_id: str, *, month: dict | None = None) -> dict:
     """The budget record for this process: caps, and what each phase has held."""
     roles = METER.snapshot_roles()
+    caps = {}
+    invalid = []
+    for role in ROLES:
+        try:
+            caps[role] = parse_cap(role)
+        except BudgetStop:
+            # Reporting must survive the same invalid cap that stopped sending.
+            # Never serialize its raw value (nor the exception that includes it).
+            caps[role] = None
+            reason = f"{CAP_ENV[role]} is not an amount"
+            roles[role]["stopped"] = reason
+            invalid.append(reason)
     vision_usd, vision_requests = _vision_reserved()
     roles["vision"] = {
         "reserved": vision_usd,
@@ -278,7 +290,7 @@ def build_job_budget(job_id: str, *, month: dict | None = None) -> dict:
         "stopped": roles["vision"]["stopped"],
     }
     phases = []
-    stopped = None
+    stopped = "; ".join(invalid) or None
     for role in ROLES:
         row = roles[role]
         if row["stopped"] and stopped is None:
@@ -298,7 +310,7 @@ def build_job_budget(job_id: str, *, month: dict | None = None) -> dict:
     doc = {
         "format": FORMAT_BUDGET,
         "jobId": job_id,
-        "capsUsd": {role: parse_cap(role) for role in ROLES},
+        "capsUsd": caps,
         "phases": phases,
         "totalReservedUsd": round(sum(p["reservedUsd"] for p in phases), 6),
         "stopped": stopped,
@@ -309,7 +321,14 @@ def build_job_budget(job_id: str, *, month: dict | None = None) -> dict:
             "admitted": bool(month.get("admitted")),
         },
     }
-    return write_job_budget(doc)
+    # Building a verification record also runs in the standard-library wheel.
+    # The construction above fixes role/phase mapping and computes the total;
+    # validate the produced JSON/schema without requiring the optional jsonschema.
+    from expectrail.gate.record import validate
+
+    canonical_v1(doc)
+    validate(doc, json.loads((SCHEMAS / _SCHEMA_FILE["job-budget"]).read_text(encoding="utf-8")))
+    return doc
 
 
 def _check_capability(doc: dict) -> None:

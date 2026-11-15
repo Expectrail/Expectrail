@@ -216,7 +216,8 @@ class SummaryTest(unittest.TestCase):
         for cid in ("changed-head", "writes-evidence-or-policy"):
             scope = controls.by_id()[cid]["scope"]
             self.assertIn("#254", scope)
-        self.assertIn("consistent in itself", controls.by_id()["writes-evidence-or-policy"]["scope"])
+        self.assertIn("artifact download needs GitHub and is not run here",
+                      controls.by_id()["writes-evidence-or-policy"]["scope"])
         self.assertTrue(controls.by_id()["forged-trace"]["open"].startswith("undefended"))
 
     def test_without_the_positive_control_no_row_is_held(self):

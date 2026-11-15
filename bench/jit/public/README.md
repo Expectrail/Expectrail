@@ -312,6 +312,73 @@ What the table shows, and what it does not:
 - **It is not a reproduction rate**, and nothing generated checks run on reads it: a live run on
   this bench, the baseline included, is the same with or without it.
 
+## Can a pixel check, as offered today, see the screen-only defects? (November 15, 2026)
+
+A pixel check (issue #286) is judged from what its observer says inside one box a frame: for
+`sam-3.1-anchor`, the logged body box of an object the proposer's menu offers, widened by 4 game
+pixels, on the frames the observer plans (every 10th and the last, at most 30). Today the menu offers
+one object, the player: the enemy, the bullet and the coin counter are not offered to any observer.
+So before a live pixel run is paid for, one question has an answer with no model: on the defect build,
+does any pixel inside that box differ from the clean game's, on a frame the observer would be asked
+about? ([`expectrail/repro/pixel_reach.py`](../../../expectrail/repro/pixel_reach.py))
+
+```
+python3 -m expectrail.repro pixel-reach --out runs/repro-pixel-reach --jobs 2    # the screen record's screen-only defects; no model, no key
+python3 -m expectrail.repro pixel-reach-render bench/jit/public/pixel-reach.json
+```
+
+<!-- pixel-reach:start -->
+2 defects, 25 probes, Godot 4.7.2-stable, observer sam-3.1-anchor (the body box widened by 4 game px, every 10th frame and the last, at most 30), objects offered: player. No model, nothing asked. A difference inside an offered box: 2. Frames differ, never inside an offered box: 0. No planned frame differs: 0.
+
+| Defect | Reach | Probes where a planned frame differs | Planned frames differing inside the box, of those differing (probes) | Most pixels inside the box |
+| --- | --- | --- | --- | --- |
+| `enemy-walks-backwards` | inside-a-box | 25 of 25 | 9 of 241 (1) | 1125 |
+| `bullet-behind-scenery` | inside-a-box | 6 of 25 | 17 of 67 (6) | 6610 |
+
+If a pixel check could also name bullet, enemy (the engine logs their boxes; the menu does not offer them yet): a difference inside an offered or named box: 2. Frames differ, never inside one: 0. No planned frame differs: 0.
+
+| Defect | Reach if named | Planned frames differing inside bullet boxes (probes) | Most pixels inside one bullet box | Planned frames with no bullet boxes on a build | Planned frames differing inside enemy boxes (probes) | Most pixels inside one enemy box | Planned frames with no enemy boxes on a build |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `enemy-walks-backwards` | inside-a-box | 17 (3) | 1335 | 0 | 230 (25) | 7145 | 0 |
+| `bullet-behind-scenery` | inside-a-box | 67 (6) | 2401 | 0 | 17 (3) | 5310 | 0 |
+<!-- pixel-reach:end -->
+
+The record is [`pixel-reach.json`](pixel-reach.json) (`expectrail.repro-pixel-reach/v1`), made in a
+cloud container on November 15, 2026, with the pinned Godot 4.7.2, Xvfb and llvmpipe, two probes at
+a time. It was first made with the player's box only (17 minutes 49 seconds), then made again the same
+day after the harness began logging every enemy's and bullet's own collision box (the trace's
+`enemyBoxes` and `projectileBoxes`), measuring those as named objects (18 minutes 22 seconds). The
+player's numbers came out the same in both runs, probe for probe. The clean game was replayed once a
+probe; the screen record above replayed it twice on every library probe with the same renderer and
+found no frame that differed.
+
+What it shows, and what it does not:
+
+- **Neither defect is ruled out.** On some planned frames, pixels inside the player's box differ:
+  for `enemy-walks-backwards` on 9 frames of one probe (`hold-right`), for `bullet-behind-scenery`
+  on 17 frames over all six probes that shoot.
+- **What differs there is another object, not the player.** Cropped and looked at by hand on two
+  frames each (`move-fire-left` frames 50 and 60, `hold-right` frames 90 and 100; the crops were not
+  kept): on the clean game the bullets are drawn over the player's body, on the defect build behind
+  it; and an enemy walking into the player's box faces the other way. The player is drawn the same.
+  A pixel check about the player is judged from where SAM finds the player inside that box, so
+  whether SAM's answer changes when a bullet or an enemy overlaps it is the open question. That is
+  for a live run to measure; this measurement cannot.
+- **Most of each defect's difference is outside the box.** For `enemy-walks-backwards`, 232 of the
+  241 differing planned frames differ only outside it, as do 50 of 67 for `bullet-behind-scenery`.
+  A pixel check that could name the enemy or the bullet would be shown far more of each defect.
+- **Measured: the enemy's and the bullet's boxes show nearly all of it.** Inside the enemies' boxes
+  (their logged collision box widened by 4 game pixels), `enemy-walks-backwards` differs on 230 of the
+  241 differing planned frames, on all 25 probes. Inside the bullets' boxes, `bullet-behind-scenery`
+  differs on all 67, on all six probes that shoot. The enemies and bullets are never a gap: every
+  planned frame's record says where they are. These boxes are not offered to any observer yet: the
+  menu still offers the player only, and `sam-3.1-anchor` is still pointed at the player's box. The
+  next step names `enemy` and `bullet` for it. Whether SAM then answers differently on these frames is
+  again for a run to measure.
+- **The coin-counter defects are not measured here.** They change the screen only through the pause
+  menu, which no offered probe opens, and the counter is text, which `sam-3.1-anchor` declares it
+  cannot tell.
+
 ## Evidence for one bug build: the record and the screen side by side
 
 Added November 13, 2026 ([`expectrail/repro/evidence.py`](../../../expectrail/repro/evidence.py),

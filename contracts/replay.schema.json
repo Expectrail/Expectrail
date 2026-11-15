@@ -198,7 +198,7 @@
         "filesystem": {"enum": ["confined", "host"]},
         "processes": {"description": "own: a separate process tree and /proc; host: the game could see the harness's processes.", "enum": ["own", "host"]},
         "environment": {"description": "allowlist: only display and rendering variables were passed.", "enum": ["allowlist"]},
-        "limits": {"description": "Limits in force inside the sandbox, or null without one. Total disk use of the work copy and the output folder is not limited.", "type": ["object", "null"], "required": ["scratchBytes", "fileBytes", "processes"], "additionalProperties": false, "properties": {"scratchBytes": {"type": "integer", "minimum": 1}, "fileBytes": {"type": "integer", "minimum": 1}, "processes": {"type": "integer", "minimum": 1}}}
+        "limits": {"description": "Limits in force inside the sandbox, or null without one. diskBytes and diskEntries bound what the game may add to its work copy and output folder together; a replay written before that bound existed (#253) has neither, and its disk use was limited only per file.", "type": ["object", "null"], "required": ["scratchBytes", "fileBytes", "processes"], "additionalProperties": false, "properties": {"scratchBytes": {"type": "integer", "minimum": 1}, "fileBytes": {"type": "integer", "minimum": 1}, "processes": {"type": "integer", "minimum": 1}, "diskBytes": {"description": "Bytes the game may add to its work copy and output folder together, measured while it runs and after it ends.", "type": "integer", "minimum": 1}, "diskEntries": {"description": "Files and folders the game may add there.", "type": "integer", "minimum": 1}}}
       }
     }
   }

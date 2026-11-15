@@ -72,17 +72,17 @@ CONTROLS = [
         [f"{IDN}.IdentityTest.test_an_approval_the_change_adds_to_its_own_checks_judges_nothing"]),
     # --- Candidate interference -------------------------------------------------------------------
     row(GROUPS[1], "writes-evidence-or-policy", "writes to evidence or policy",
-        [f"{BDL}.EvidenceTest.test_a_frame_rewritten_between_the_jobs_is_refused",
+        [f"{BDL}.EvidenceTest.test_an_intact_capture_from_a_different_base_game_is_refused",
+         f"{BDL}.EvidenceTest.test_an_intact_capture_from_a_different_head_game_is_refused",
+         f"{BDL}.EvidenceTest.test_a_frame_rewritten_between_the_jobs_is_refused",
          f"{BDL}.EvidenceTest.test_a_trace_rewritten_between_the_jobs_is_refused",
          f"{BDL}.EvidenceTest.test_a_trace_and_its_replay_record_rewritten_together_are_refused_by_the_manifest",
          f"{BDL}.EvidenceTest.test_a_run_taken_out_between_the_jobs_is_refused",
          f"{BDL}.EvidenceTest.test_a_capture_made_with_other_checks_is_refused",
          f"{BDL}.EvidenceTest.test_checks_the_change_rewrites_are_not_the_ones_that_judge_it"],
-        scope="the two-job gate (#254): edits to the capture's archive between the jobs that leave it "
-             "inconsistent, and checks the change carries. A whole archive replaced by another that is "
-             "consistent in itself is not caught by the judge, which does not compare the captured trees "
-             "with the pull request's commits (#467); only GitHub's digest of the artifact stops it, and "
-             "that download needs GitHub and is not run here. What the game itself writes from inside its "
+        scope="the two-job gate (#254): edits between the jobs, an archive consistent in itself whose "
+             "recorded base or head game tree differs from its checkout, and checks the change carries. "
+             "The artifact download needs GitHub and is not run here. What the game itself writes from inside its "
              "replay is the forged-trace and rewritten-frame rows",
         baselines=TWO_JOB_BASELINES),
     row(GROUPS[1], "forged-trace", "a forged trace", open="undefended: since #254 the judgment runs outside the "
@@ -161,8 +161,15 @@ CONTROLS = [
     row(GROUPS[5], "duplicate-request", "duplicate request",
         [f"{OPS}.OperationsTest.test_a_key_used_for_one_change_does_not_clear_another",
          f"{OPS}.OperationsTest.test_the_same_request_twice_at_once_is_one_job_with_one_verdict"]),
-    row(GROUPS[5], "disk-quota", "disk quota", open="undefended: a replay's files are capped one by one, and "
-        "nothing bounds a job's total disk use yet (#253)"),
+    row(GROUPS[5], "disk-quota", "disk quota",
+        [f"{SBX}.DiskQuotaTest.test_control_without_the_sandbox_a_change_that_fills_the_disk_writes_it_all_and_is_cleared",
+         f"{SBX}.DiskQuotaTest.test_in_the_isolated_class_a_change_that_fills_the_disk_is_stopped_and_not_cleared"],
+        scope="the replay sandbox's bound on what a replay adds to its work copy and output folder (4 GiB and "
+              "250,000 files by default, lowered to 32 MB here), measured every 0.1 s and after the replay ends, "
+              "so a game can pass it by what the disk takes in 0.1 s before it is stopped. Without the sandbox "
+              "the first test shows the same change writing all 96 MB and being cleared. Bounded only where "
+              "the replay runs in the sandbox (the isolated class); the import cache the verifier keeps between "
+              "jobs and the job's own files outside the replay are not bounded by it"),
     row(GROUPS[5], "provider-outage", "provider outage",
         [f"{PRV}.ProviderTest.test_a_provider_outage_is_not_clearance_and_does_not_hide_a_broken_build"]),
     row(GROUPS[5], "budget-exhausted", "budget exhausted",

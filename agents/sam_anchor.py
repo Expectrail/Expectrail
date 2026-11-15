@@ -128,6 +128,68 @@ def anchors(trace: dict, frame_size: tuple[int, int], frames: list[int], lift: f
     return out
 
 
+# The bound roles whose boxes the harness logs per tick beside their positions (since November 15,
+# 2026; #286), and the trace field each is in. The player's box is ``body``; see ``anchors``.
+OBJECT_BOXES = {"enemy": "enemyBoxes", "bullet": "projectileBoxes"}
+
+
+def object_boxes(trace: dict, frame_size: tuple[int, int], frames: list[int], role: str, fps: int = 60,
+                 pad: float = DEFAULT_PAD) -> dict[int, dict]:
+    """Where every object of ``role`` is drawn in each frame, from the boxes the engine logged for it.
+
+    {frame: {"boxes": [{"id", "world": [l, t, r, b], "promptBox": [x0, y0, x1, y1]}, ...]}} where each
+    prompt box is the logged collision box widened by ``pad`` game pixels each way, placed and sized as
+    ``anchors`` places the player's (centred on the box's middle, scaled by the camera), and cut to the
+    picture. An object wholly outside the picture is not listed; it is counted in ``outside``. An empty
+    list is an answer: the engine logged none of them on screen in that tick.
+
+    {frame: {"why": reason}} when the frame cannot be answered: no row for it, no camera, or a trace
+    whose header does not say it logs object boxes (``capabilities.objectBoxes``, a trace from before
+    November 15, 2026). A box is never guessed from a position."""
+    field = OBJECT_BOXES.get(role)
+    if field is None:
+        raise ValueError(f"the engine logs no box for {role!r}; it logs one for "
+                         f"{', '.join(['player', *sorted(OBJECT_BOXES)])}")
+    rows = list(trace.get("rows") or [])
+    logged = (trace.get("capabilities") or {}).get("objectBoxes") is True
+    step = max(int(trace.get("physicsTicksPerSecond") or 120) // fps, 1)
+    width, height = frame_size
+    out: dict[int, dict] = {}
+    for n in frames:
+        if not logged:
+            out[n] = {"why": f"the engine's record does not log a box for {role!r} (no objectBoxes in its header)"}
+            continue
+        tick = _frame_tick(n, step)
+        if tick >= len(rows):
+            out[n] = {"why": "the position log ends before this frame"}
+            continue
+        view = _view_at(rows, tick)
+        if not view:
+            out[n] = {"why": "the engine logged no camera"}
+            continue
+        entries = rows[tick].get(field)
+        if not isinstance(entries, list):
+            out[n] = {"why": f"the engine logged no {field} on this tick"}
+            continue
+        sx, sy = math.hypot(view[0], view[1]), math.hypot(view[2], view[3])
+        boxes, outside = [], 0
+        for entry in entries:
+            ident, left, top, right, bottom = entry[0], *(float(v) for v in entry[1:5])
+            fx, fy = _to_frame(view, (left + right) / 2, (top + bottom) / 2)
+            half_w, half_h = (right - left + 2 * pad) * sx / 2, (bottom - top + 2 * pad) * sy / 2
+            if not all(math.isfinite(v) for v in (fx, fy, half_w, half_h)):
+                outside += 1
+                continue
+            x0, y0 = max(0, int(math.floor(fx - half_w))), max(0, int(math.floor(fy - half_h)))
+            x1, y1 = min(width, int(math.ceil(fx + half_w))), min(height, int(math.ceil(fy + half_h)))
+            if x0 >= x1 or y0 >= y1:
+                outside += 1
+                continue
+            boxes.append({"id": ident, "world": [left, top, right, bottom], "promptBox": [x0, y0, x1, y1]})
+        out[n] = {"boxes": boxes, "outside": outside}
+    return out
+
+
 def measure(anchor: dict, answer: dict | None, frame_size: tuple[int, int]) -> dict:
     """One frame's row: the answer measured against the point it was asked about."""
     row = {"world": anchor["world"], "point": anchor["point"], "asked": True, "box": None, "score": None}

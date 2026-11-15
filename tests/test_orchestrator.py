@@ -715,7 +715,8 @@ class ProcessTest(Case):
             self.assertEqual((paths.output / "evidence.txt").read_text(encoding="utf-8"), f"evidence of {job}\n")
             self.assertEqual((paths.work / "scratch.txt").read_text(encoding="utf-8"), job)
             self.assertEqual(sorted(p.name for p in paths.root.iterdir()),
-                             ["lock", "output", "request.json", "status.json", "work", "worker.log"])
+                             ["job-budget.json", "lock", "output", "request.json", "status.json", "work", "worker.log"])
+            self.assertEqual(json.loads(paths.budget.read_text())["jobId"], job)
 
     def test_a_cancelled_job_ends_cancelled_with_everything_it_started_stopped(self):
         job = self.job("slow")
@@ -1551,8 +1552,9 @@ class LostWorkerTest(Case):
             seen.update(kwargs["env"])
             return subprocess.CompletedProcess(cmd, 0, "", "")
 
+        # The sandbox tool is started by box.watched, which holds the replay to the disk bound (#253).
         with mock.patch.dict(os.environ, {st.JOB_ENV: "b" * 32, "MODEL_API_KEY": "k"}), \
-                mock.patch.object(box.subprocess, "run", side_effect=fake):
+                mock.patch.object(box, "watched", side_effect=fake):
             box.run(box.Tool("/usr/bin/bwrap", "0.9.0"), ["true"], timeout=5, game=self.tmp, out=self.tmp)
         self.assertEqual(seen, {"PATH": "/usr/bin:/bin", st.JOB_ENV: "b" * 32})
 

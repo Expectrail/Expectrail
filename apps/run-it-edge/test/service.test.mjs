@@ -5,6 +5,7 @@
 // With BODIES_OUT set, every body the function sent is written there as JSON, so the Python suite
 // (tests/test_runit_edge.py) can check each one against contracts/run-it-api.v1.schema.json.
 import { test, after } from "node:test";
+import vm from "node:vm";
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -41,7 +42,7 @@ function fakeGitHub() {
     const json = (status, doc) => new Response(doc === undefined ? null : JSON.stringify(doc), { status });
     if (method === "POST") {
       assert.equal(init.headers.Authorization, "Bearer test-token-0123456789abcdef");
-      if (gh.failDispatch) return json(500, { message: "no" });
+      if (gh.failDispatch) return json(403, { message: "no" });
       const body = JSON.parse(init.body);
       assert.deepEqual(Object.keys(body).sort(), ["inputs", "ref"]);
       assert.equal(body.ref, "main");
@@ -274,6 +275,7 @@ test("a dispatch GitHub refuses starts nothing and counts nothing", async () => 
   assert.equal(r.status, 502);
   assert.equal(r.doc.reason, "unavailable");
   s.gh.failDispatch = false;
+  s.clock.t += 60_000;
   assert.equal((await s.run("clean")).status, 202, "the failed try did not use the visitor's one run");
 });
 
@@ -358,4 +360,177 @@ test("old runs are forgotten beyond the last two hundred", async () => {
   }
   assert.equal((await s.status(first)).status, 404);
   assert.ok(s.store.map.size < 220);
+});
+
+test("reservation is durable before dispatch, including after a lost reply and restart", async () => {
+  for (const failure of ["lost reply", "server error"]) {
+    const s = setup();
+    const fetch = s.gh.fetch;
+    s.gh.fetch = async (url, init) => {
+      if (init?.method === "POST") {
+        const id = JSON.parse(init.body).inputs.request_id;
+        assert.equal(await s.store.get("active"), id);
+        assert.equal((await s.store.get("day")).total, 1);
+        assert.equal((await s.store.get(`run:${id}`)).state, "queued");
+        assert.ok((await s.store.get("recent")).includes(id));
+        await fetch(url, init); // GitHub did start, but its response is lost.
+        if (failure === "lost reply") throw new Error("connection reset");
+        return new Response(null, { status: 500 });
+      }
+      return fetch(url, init);
+    };
+    const request = () => new Request("https://api.expectrail.tech/run", {
+      method: "POST", headers: { Origin: ORIGIN }, body: '{"sample":"clean"}',
+    });
+    const first = await s.make().handle(request());
+    assert.equal(first.status, 202);
+    const id = (await first.json()).requestId;
+    assert.equal((await s.make().handle(request())).status, 409);
+    assert.equal(s.gh.dispatches, 1, "restart never redispatches an uncertain request");
+    s.gh.set(id, "in_progress");
+    s.clock.t += STATUS_TTL_MS + 1;
+    assert.equal((await s.status(id)).doc.state, "running");
+  }
+});
+
+test("storage failure before reservation never dispatches and never promises nothing started", async () => {
+  const store = memoryStore();
+  store.putMany = async () => { throw new Error("storage unavailable"); };
+  const s = setup({}, { store });
+  const r = await s.run();
+  assert.equal(r.status, 500);
+  assert.match(r.doc.detail, /may already be reserved/);
+  assert.equal(s.gh.dispatches, 0);
+  assert.equal(await store.get("active"), undefined);
+});
+
+test("explicit refusal rolls back admission and backs off across restarts", async () => {
+  const s = setup();
+  s.gh.failDispatch = true;
+  assert.equal((await s.run()).status, 502);
+  assert.equal((await s.store.get("day")).total, 0);
+  assert.equal(await s.store.get("active"), null);
+  const calls = s.gh.calls.length;
+  for (let i = 0; i < 5; i++) assert.equal((await s.run()).status, 503);
+  assert.equal(s.gh.calls.length, calls);
+  const res = await s.make().handle(new Request("https://api.expectrail.tech/run", {
+    method: "POST", headers: { Origin: ORIGIN }, body: '{"sample":"clean"}',
+  }));
+  assert.equal(res.status, 503);
+  assert.equal(s.gh.calls.length, calls);
+});
+
+test("failed rollback keeps the reservation and blocks another dispatch", async () => {
+  const s = setup();
+  const put = s.store.putMany;
+  let writes = 0;
+  s.store.putMany = async (entries) => {
+    if (++writes === 2) throw new Error("storage failed");
+    return put(entries);
+  };
+  s.gh.failDispatch = true;
+  assert.equal((await s.run()).status, 500);
+  assert.equal((await s.store.get("day")).total, 1);
+  assert.equal((await s.run()).doc.reason, "busy");
+  assert.equal(s.gh.calls.filter(x => x.startsWith("POST")).length, 1);
+});
+
+test("GitHub requests have deadlines, refuse redirects, and never log provider error text", async () => {
+  const logs = [];
+  let calls = 0;
+  const svc = createService({ env: ENV, log: s => logs.push(s), fetch: async (url, init) => {
+    calls++;
+    assert.equal(init.redirect, "error");
+    assert.ok(init.signal instanceof AbortSignal);
+    throw new Error(ENV.GITHUB_TOKEN);
+  }});
+  const res = await svc.handle(new Request("https://api.expectrail.tech/run", {
+    method: "POST", headers: { Origin: ORIGIN }, body: '{"sample":"clean"}',
+  }));
+  assert.equal(res.status, 202);
+  assert.equal(calls, 1);
+  assert.ok(!JSON.stringify(logs).includes(ENV.GITHUB_TOKEN));
+});
+
+test("an oversized streamed body is cancelled without reading the rest", async () => {
+  const s = setup();
+  let pulls = 0, cancelled = false;
+  const stream = new ReadableStream({
+    pull(controller) { pulls++; controller.enqueue(new Uint8Array(1025)); },
+    cancel() { cancelled = true; },
+  });
+  const r = await s.svc.handle(new Request("https://api.expectrail.tech/run", {
+    method: "POST", headers: { Origin: ORIGIN }, body: stream, duplex: "half",
+  }));
+  assert.equal(r.status, 400);
+  assert.equal(cancelled, true);
+  assert.ok(pulls <= 2);
+  assert.equal(s.gh.calls.length, 0);
+});
+
+test("the page does not claim no run started when a dispatch response is lost or unreadable", async () => {
+  const manifest = JSON.parse(readFileSync(join(REPO_ROOT, "docs/run-it/samples.json"), "utf8"));
+  const script = readFileSync(join(REPO_ROOT, "docs/run-it/run-it.js"), "utf8");
+  for (const answer of ["lost", "unreadable", "unavailable", "reserved"]) {
+    const nodes = [], ids = {}, requests = [], timers = [];
+    function element() {
+      const node = {
+        dataset: {}, attributes: {}, children: [], handlers: {}, textContent: "",
+        setAttribute(k, v) { this.attributes[k] = v; },
+        removeAttribute(k) { delete this.attributes[k]; },
+        addEventListener(k, fn) { this.handlers[k] = fn; },
+        appendChild(child) { child.parent = this; this.children.push(child); },
+        closest() { return this.className === "sample" ? this : this.parent.closest(); },
+        querySelectorAll() { return []; }, focus() {}, scrollIntoView() {},
+      };
+      nodes.push(node);
+      return node;
+    }
+    const document = {
+      createElement: element, getElementById: id => ids[id] || (ids[id] = element()),
+      querySelectorAll: () => nodes.filter(n => n.attributes["data-run"]),
+      querySelector(selector) {
+        const [, attr, id] = selector.match(/^\[(data-[a-z]+)="([a-z-]+)"\]$/);
+        return nodes.find(n => n.attributes[attr] === id);
+      },
+    };
+    const fetch = async (url, init = {}) => {
+      requests.push([url, init.method || "GET"]);
+      let doc;
+      if (url === "samples.json") doc = manifest;
+      else if (url === "/api/health") doc = { format: "expectrail.run-it-api/v1", kind: "health", open: true };
+      else if (url === "/results/latest.json") doc = { format: "expectrail.run-it-latest/v1", samples: {} };
+      else if (url === "/api/run") {
+        if (answer === "lost") throw new Error("lost reply after starting");
+        if (answer === "unreadable") return { status: 202, json: async () => { throw new Error("broken JSON"); } };
+        doc = answer === "reserved" ? { format: "expectrail.run-it-api/v1", kind: "accepted", sample: "clean", requestId: "reserved-1" }
+          : { format: "expectrail.run-it-api/v1", kind: "refused", reason: "unavailable", detail: "A request may already be reserved.", resetsAt: null };
+      } else if (url === "/api/status/reserved-1") return new Promise(() => {}); // no progress answer yet
+      else throw new Error(`unexpected page request ${url}`);
+      return { status: answer === "unavailable" && url === "/api/run" ? 500 : 200, json: async () => doc };
+    };
+    vm.runInNewContext(script, { document, fetch, location: { hostname: "localhost", hash: "#local" },
+      setTimeout: fn => timers.push(fn) });
+    await new Promise(setImmediate);
+    const button = document.querySelector('[data-run="clean"]');
+    assert.equal(button.disabled, false);
+    button.handlers.click();
+    await new Promise(setImmediate);
+    assert.equal(requests.filter(([url]) => url === "/api/run").length, 1);
+    assert.equal(timers.length, answer === "reserved" ? 1 : 0);
+    assert.doesNotMatch(ids["run-message"].textContent, /No run was started|^Started\./);
+    assert.match(ids["run-message"].textContent, answer === "reserved" ? /Request reserved.*Waiting/ : /may already/);
+  }
+});
+
+test("the unrecorded recorded-fix sample is refused before admission and counts nothing", async () => {
+  const { gh, run, store } = setup();
+  const r = await run("recorded-fix");
+  assert.equal(r.status, 503);
+  assert.equal(r.doc.reason, "disabled");
+  assert.equal(await store.get("active") ?? null, null);
+  assert.equal(await store.get("day") ?? null, null);
+  const ok = await run("clean", { ip: "203.0.113.9" });
+  assert.equal(ok.status < 300, true, JSON.stringify(ok.doc));
+  void gh;
 });

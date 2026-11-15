@@ -19,7 +19,7 @@
         "muse": {"type": ["number", "null"], "minimum": 0},
         "triage": {"type": ["number", "null"], "minimum": 0}
       },
-      "description": "The cap in force for this job, or null when that role's cap was not set."
+      "description": "The cap in force for this job, or null when unset or invalid. An invalid cap is named in stopped and the role's phase stopped; its raw value is never recorded."
     },
     "phases": {
       "type": "array",

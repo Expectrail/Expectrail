@@ -28,6 +28,7 @@
 
   var samples = [];          // from samples.json
   var latest = {};           // sample id -> {requestId, finishedAt}
+  var publishedHere = {};    // completed runs whose status.json this visitor has read
   var open = false;
   var busy = false;          // a run of ours is going
   var blobUrl = null;
@@ -216,12 +217,19 @@
     }).catch(function () { latest = {}; }).then(renderLatest);
   }
 
+  function latestRun(sampleId) {
+    var indexed = latest[sampleId], seen = publishedHere[sampleId];
+    // The card index is fetched independently of the visitor's published result.
+    if (!indexed || (seen && seen.finishedAt > indexed.finishedAt)) return seen;
+    return indexed;
+  }
+
   function renderLatest() {
     samples.forEach(function (s) {
       var line = document.querySelector('[data-latest="' + s.id + '"]');
       var show = document.querySelector('[data-show="' + s.id + '"]');
       if (!line || !show) return;
-      var row = latest[s.id];
+      var row = latestRun(s.id);
       var card = show.closest(".sample");
       if (s.head === "recorded-fix" && card.dataset.available !== "yes") {
         line.textContent = ""; show.hidden = true; return;
@@ -281,17 +289,17 @@
       var doc = res.doc;
       if (isObj(doc) && doc.format === API_FORMAT && doc.kind === "accepted" && typeof doc.requestId === "string"
           && ID.test(doc.requestId) && doc.sample === sampleId) {
-        $("run-message").textContent = "Started. This page follows the run; you can leave it open.";
+        $("run-message").textContent = "Request reserved. Waiting for GitHub; this page follows its progress.";
         setPhase("queued");
         follow(doc.requestId, sampleId, Date.now(), 0);
         return;
       }
       finish();
       if (isObj(doc) && doc.format === API_FORMAT && doc.kind === "refused") return refused(doc, sampleId);
-      $("run-message").textContent = "Run it answered in a way this page does not understand. No run was started.";
+      $("run-message").textContent = "Run it answered in a way this page does not understand. A run may already have started; wait before trying again.";
     }).catch(function () {
       finish();
-      $("run-message").textContent = "Could not reach Run it. No run was started.";
+      $("run-message").textContent = "Could not confirm the request with Run it. A run may already have started; wait before trying again.";
     });
   }
 
@@ -303,14 +311,14 @@
       "daily-cap": "Run it has started its most runs for today.",
       "circuit-open": "Run it stopped starting runs after several failed runs in a row. A person has to look first.",
       "disabled": "Run it is switched off right now.",
-      "unavailable": "Run it could not start a run just now.",
+      "unavailable": "Run it could not confirm the request. Wait before trying again.",
       "unknown-sample": "That is not one of the samples Run it offers.",
       "bad-request": "Run it did not accept the request."
     }[doc.reason] || "Run it refused the request.";
     var message = lead + reset;
     if (typeof doc.detail === "string" && doc.detail) message += " (" + doc.detail + ")";
     if (doc.reason === "circuit-open" || doc.reason === "disabled") { open = false; checkService(); }
-    if (latest[sampleId]) {
+    if (latestRun(sampleId)) {
       showLatest(sampleId, message + " Here is the most recent finished run of this sample instead.");
     } else {
       $("run-message").textContent = message + " No earlier run of this sample is published yet.";
@@ -338,7 +346,7 @@
         if (doc.state === "published") {
           $("phases").hidden = true;
           $("run-message").textContent = "Finished at " + when(doc.updatedAt) + ".";
-          loadResult(requestId, sampleId);
+          loadResult(requestId, sampleId, true);
           loadLatest();
         } else if (doc.state === "cancelled") {
           $("run-message").textContent = "Cancelled: no verdict. Nothing was published.";
@@ -358,7 +366,7 @@
 
   function showLatest(sampleId, message) {
     var s = sampleById(sampleId);
-    var row = latest[sampleId];
+    var row = latestRun(sampleId);
     if (!s || !row) return;
     openPanel("Earlier run, from " + when(row.finishedAt), s.title, message);
     loadResult(row.requestId, sampleId);
@@ -372,11 +380,14 @@
     list.appendChild(dd);
   }
 
-  function loadResult(requestId, sampleId) {
+  function loadResult(requestId, sampleId, justPublished) {
     if (!ID.test(requestId) || !ID.test(sampleId)) return;
     var base = RESULTS + "/" + requestId + "/";
     getJson(base + "status.json").then(function (res) {
       if (res.status !== 200 || !usable(res.doc, requestId, sampleId)) throw new Error("unusable");
+      if (justPublished && typeof res.doc.finishedAt === "string") {
+        publishedHere[sampleId] = { requestId: requestId, finishedAt: res.doc.finishedAt };
+      }
       showResult(res.doc, base);
     }).catch(function () {
       $("result").hidden = false;

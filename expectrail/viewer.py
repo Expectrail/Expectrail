@@ -169,7 +169,10 @@ def reproduce(request: dict | None, *, sample: str | None = None) -> str | None:
     if not request:
         return None
     p = request["project"]
-    cmd = ["expectrail", "verify", "--adapter", p["adapter"], "--head", request["head"]["checkout"]]
+    cmd = ["expectrail", "verify"]
+    if request.get("intent", "none") != "none":
+        cmd += ["--intent", request["intent"]]
+    cmd += ["--adapter", p["adapter"], "--head", request["head"]["checkout"]]
     if request.get("base"):
         cmd += ["--base", request["base"]["checkout"]]
     cmd += ["--game", p["game"], "--routes", " ".join(p["routes"]), "--specs", p["specs"]]
@@ -177,6 +180,11 @@ def reproduce(request: dict | None, *, sample: str | None = None) -> str | None:
         cmd += ["--head-commit", request["head"]["commit"]]
     if request.get("base") and request["base"].get("commit"):
         cmd += ["--base-commit", request["base"]["commit"]]
+    if "bug" in request:
+        bug = request["bug"]
+        # Reproduce the captured text, never reopen its original file. Escape the
+        # CLI's @FILE syntax and use = so a report beginning -- is still an argument.
+        cmd += ["--bug=" + ("@" if bug.startswith("@") else "") + bug]
     return " ".join(shlex.quote(str(c)) for c in cmd)
 
 
@@ -532,8 +540,11 @@ def write(folder: Path, record: dict | None, views: list[dict] | None = None, *,
         "job": None if status is None else {k: status.get(k) for k in (
             "id", "phase", "decision", "reasons", "diagnostics", "evidenceGrade", "executionClass", "inputs",
             "history", "finishedAt", "repair")},
-        "reproduce": reproduce(request, sample=sample), "sample": sample,
+        "sample": sample,
     })
+    command = reproduce(request, sample=sample)
+    # A command cannot be clipped like prose: doing so can drop its flags or quotes.
+    payload["reproduce"] = redact(command, limit=None) if command is not None else None
     if repair is not None:
         payload["repair"] = repair
     page = folder / "index.html"
@@ -1300,7 +1311,7 @@ def render(payload: dict) -> str:
     if payload["reproduce"]:
         words = ("Run this public sample with its recorded vision answers (no model call):" if payload.get("sample") else
                  "The same verification, run again from the same checkouts (the paths are the machine's that ran it):")
-        parts.append(f"<p>{words}</p><pre>{esc(payload['reproduce'])}</pre>")
+        parts.append(f"<p>{words}</p><pre>{html.escape(redact(payload['reproduce'], limit=None), quote=True)}</pre>")
     else:
         parts.append("<p>No reproduction command: this folder was written without the job's request.</p>")
     if record is not None:

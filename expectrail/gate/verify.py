@@ -831,6 +831,8 @@ def judge_arm(game: Path, routes: list[tuple[str, Path, str]], specs: list[dict]
             # The gate's own sentence when it is the gate that refused the replay; otherwise only the
             # kind of error, since a message could carry text from the game.
             why = f"the {label} game changed while it was being verified" if isinstance(exc, GameChanged) \
+                else (f"the {label} replay was stopped: the game wrote more to its folders than the replay "
+                      "sandbox allows") if _past_disk_bound(exc) \
                 else f"the {label} replay did not finish ({type(exc).__name__})"
             print(f"::warning title=Expectrail gate::route {name}: {why}")
             for spec in applicable_specs:
@@ -848,6 +850,15 @@ def judge_arm(game: Path, routes: list[tuple[str, Path, str]], specs: list[dict]
             result["timeline"] = viewer.check_series(spec, run, result.get("verdict"))
             results[(spec["id"], name)] = result
     return results
+
+
+def _past_disk_bound(exc: BaseException) -> bool:
+    """The harness stopped the replay because the game wrote past the sandbox's disk bound (the
+    harness raises SystemExit from harness.sandbox.DiskBoundError). The sentence is the gate's own,
+    so nothing the game printed reaches the record."""
+    from harness import sandbox as box
+
+    return isinstance(exc.__cause__, box.DiskBoundError) or isinstance(exc, box.DiskBoundError)
 
 
 class GameChanged(RuntimeError):

@@ -1,4 +1,5 @@
-"""Release gate, candidate interference (#258): reading a private path, and network egress.
+"""Release gate, candidate interference (#258): reading a private path, and network egress; and,
+under operations, the disk quota (``DiskQuotaTest`` at the end).
 
 The change here is the seeded fall-through bug carrying a cheat: an autoload added to the game that
 tries to read a file outside its checkout, or to connect to a port on this machine, and repairs the
@@ -195,3 +196,72 @@ class EgressTest(SandboxCase):
     def test_in_the_isolated_class_a_change_cannot_reach_a_port_and_is_rejected(self):
         self.assertCheatRefused("egress")
 
+
+
+# An autoload for the disk quota: it writes FILLER_MB files of 1 MB into the game's own folder (the
+# only place on the machine's disk the sandbox lets it write, besides its output folder), then says
+# how much it wrote. It changes nothing else, so a game carrying it plays as the unchanged game.
+FILLER = '''extends Node
+
+
+func _ready() -> void:
+	var root := ProjectSettings.globalize_path("res://")
+	var chunk := PackedByteArray()
+	chunk.resize(1048576)
+	chunk.fill(120)
+	var written := 0
+	for i in %(megabytes)d:
+		var f := FileAccess.open(root.path_join("filler-%%d.bin" %% i), FileAccess.WRITE)
+		if f == null:
+			break
+		f.store_buffer(chunk)
+		f.close()
+		written += 1
+	print("%(marker)s" + JSON.stringify({"megabytes": written}))
+'''
+FILLER_MB = 96
+DISK_BOUND = 32 * 1024 * 1024   # lowered for the test through $EXPECTRAIL_SANDBOX_DISK_BYTES
+
+
+class DiskQuotaTest(SandboxCase):
+    """A change that fills the disk is stopped at the sandbox's bound and is not cleared.
+
+    The change is the unchanged game carrying ``FILLER``. The control is the same change with the
+    sandbox off, where nothing bounds what it writes: it writes all of it, plays as the unchanged
+    game, and is cleared. So the stop inside is the bound's doing. The bound is lowered for the test
+    (32 MB, where the default is 4 GiB) only so the test writes little; the mechanism is the same."""
+
+    def filling(self, name: str) -> Path:
+        head = self.copy(name)
+        game = head / GAME
+        (game / "expectrail_filler.gd").write_text(FILLER % {"megabytes": FILLER_MB, "marker": PROBE}, encoding="utf-8")
+        project = (game / "project.godot").read_text(encoding="utf-8")
+        self.assertIn("[autoload]\n", project)
+        (game / "project.godot").write_text(
+            project.replace("[autoload]\n", '[autoload]\n\nFiller="*res://expectrail_filler.gd"\n', 1), encoding="utf-8")
+        return head
+
+    def written(self) -> int:
+        return sum(p.stat().st_size for p in self.jobs.rglob("filler-*.bin") if p.is_file())
+
+    def test_control_without_the_sandbox_a_change_that_fills_the_disk_writes_it_all_and_is_cleared(self):
+        code, status, err = self.verify(self.filling("fill-out"), base=self.clean,
+                                        env={"EXPECTRAIL_SANDBOX": "off", "EXPECTRAIL_SANDBOX_DISK_BYTES": str(DISK_BOUND)})
+        self.assertIsNotNone(status, err)
+        probes = self.probes(status)
+        self.assertTrue(probes, f"the filler's line is in no replay's log. {err}")
+        self.assertEqual({p["megabytes"] for p in probes}, {FILLER_MB}, probes)
+        self.assertEqual((code, status["decision"]), (0, "accept"), err)
+
+    def test_in_the_isolated_class_a_change_that_fills_the_disk_is_stopped_and_not_cleared(self):
+        code, status, err = self.verify(self.filling("fill-in"), "--execution-class", "isolated", base=self.clean,
+                                        env={"EXPECTRAIL_SANDBOX_DISK_BYTES": str(DISK_BOUND)})
+        self.assertIsNotNone(status, err)
+        self.assertNotCleared(code, status, err)
+        # Stopped near the bound, and what it wrote did not stay on the machine's disk.
+        self.assertLess(self.written(), FILLER_MB * 1024 * 1024 // 2, "the filler's files were kept")
+        record = next(self.jobs.rglob("findings.json"), None)
+        self.assertIsNotNone(record, f"the job left no record. {err}")
+        reasons = {f.get("reason") for f in json.loads(record.read_text(encoding="utf-8"))["findings"]}
+        self.assertIn("the head replay was stopped: the game wrote more to its folders than the replay sandbox allows",
+                      reasons, err)

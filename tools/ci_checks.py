@@ -201,7 +201,7 @@ def main(mode):
         with tempfile.TemporaryDirectory(dir=temp) as tmp:
             staged = Path(tmp) / "result"
             ci_bundle.judge(ci_bundle.Policy.configured(), Path.cwd(), state["pr"], state["intent"],
-                            temp / "capture.zip", staged, visual)
+                            temp / "capture.zip", staged, visual, head_checkout=Path(os.environ["HEAD_CHECKOUT"]))
             if any(row["level"] == "error" for row in export_scan.scan([staged])):
                 raise ValueError("report failed the public export scan")
             staged.rename(report)

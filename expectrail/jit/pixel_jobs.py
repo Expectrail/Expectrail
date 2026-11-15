@@ -9,8 +9,10 @@ jobs run the game and hold no secret). This module gives pixel checks the same s
 1. **Capture** (``run --observer sam-3.1-anchor --pixel-capture DIR``; runs the game, no secret). Every
    pixel check's probe is replayed with frames on the clean game, the bug build and the candidate,
    ``reps`` times each, whether or not the check will be kept (the candidate's frames are needed by the
-   time the answers say so). Each replay folder is copied into ``DIR/<build>/<probe>-<n>/`` with the
-   route it replayed (``route.json``). Nothing is asked and nothing is judged: the pixel rows are
+   time the answers say so). Each replay is kept in ``DIR/<build>/<probe>-<n>/`` with the route it
+   replayed (``route.json``): its replay.json, its trace.json and only the frames the observer will ask
+   about (``store_replay``), so the folder the later jobs download is a few megabytes a replay, not the
+   whole movie. Nothing is asked and nothing is judged: the pixel rows are
    ``not-run`` with the reason ``CAPTURED``. The trace checks run as always.
 2. **Ask** (``python -m expectrail.jit.cli pixel-ask --replays DIR --out answers.json``; holds the key,
    runs no game). ``ask`` plans every stored replay's frames from its route, reserves all of their images
@@ -27,8 +29,8 @@ jobs run the game and hold no secret). This module gives pixel checks the same s
    passes them. The record charges the images the answers stand for at the list price.
 
 **The capture folder is untrusted.** It was written by a job that ran the change's code. ``ask`` and
-``StoredReplays`` accept only the layout above (the three build names, ``<probe>-<n>`` folders, regular
-files, no symbolic link), and ``ask`` caps the replays it will look at (``MAX_REPLAYS``) and the images it
+``StoredReplays`` accept only the layout above (the three build names, ``<probe>-<n>`` folders holding
+only what ``store_replay`` keeps, regular files, no symbolic link), and ``ask`` caps the replays it will look at (``MAX_REPLAYS``) and the images it
 will send (the observer's ``MAX_FRAMES`` a replay, and the budget), so a forged folder can at most make it
 ask about frames that the judging run then refuses.
 
@@ -53,6 +55,9 @@ from expectrail.jit import pixel
 BUILDS = ("pixel-reference", "pixel-base", "pixel-candidate")   # the replay folders of expectrail/jit/run.py
 REPLAY = re.compile(r"[a-z0-9][a-z0-9-]{0,80}-[1-9][0-9]?")
 ROUTE_FILE = "route.json"
+KEPT = ("replay.json", "trace.json")   # besides the route and the frames asked about: what the later jobs read
+FRAME = "f{:08d}.png"                  # Movie Maker's frame names (harness/run.py)
+FRAME_NAME = re.compile(r"f[0-9]{8}\.png")
 MAX_REPLAYS = 3 * 3 * pixel.MAX_PIXEL_CHECKS   # three builds, three runs each, a probe per pixel check at most
 CAPTURED = ("captured for the observer, not judged here: the frames are in the capture folder, for pixel-ask "
             "and then run --pixel-replays")
@@ -73,19 +78,48 @@ def _checked_tree(root: Path) -> None:
             raise StoreError(f"{p.relative_to(root).as_posix()[:80]} is not a regular file")
 
 
-def store_replay(run_dir: Path, store: Path, route: dict) -> Path:
-    """Copy one replay folder (``.../<build>/<probe>-<n>``) into the capture folder, with its route."""
+def store_replay(run_dir: Path, store: Path, route: dict, frames) -> Path:
+    """Keep one replay folder (``.../<build>/<probe>-<n>``) in the capture folder, with its route: only
+    what the later jobs read (``KEPT``) and, of the frames, only ``frames``, the ones the observer will ask
+    about (``observer.frames(route)``). A frame the replay did not capture is not kept, and the observer
+    treats it as it would on the full replay. Everything else (the game's working copy, the log, the
+    sound, every frame not asked about) stays behind: on a bench probe that is most of the folder
+    (docs/new-work/2026-11-15-trim-pixel-capture.md has the measurement)."""
     run_dir = Path(run_dir)
     build, name = run_dir.parent.name, run_dir.name
     if build not in BUILDS or not REPLAY.fullmatch(name):
         raise StoreError(f"not a pixel replay folder: {build[:40]}/{name[:60]}")
     _checked_tree(run_dir)
+    wanted = sorted({int(n) for n in frames})
+    if any(n < 0 for n in wanted):
+        raise StoreError("a frame number is 0 or more")
     dest = Path(store) / build / name
     if dest.exists():
         shutil.rmtree(dest)
-    shutil.copytree(run_dir, dest)
+    (dest / "frames").mkdir(parents=True)
+    for file in KEPT:
+        if (run_dir / file).is_file():
+            shutil.copyfile(run_dir / file, dest / file)
+    for n in wanted:
+        src = run_dir / "frames" / FRAME.format(n)
+        if src.is_file():
+            shutil.copyfile(src, dest / "frames" / FRAME.format(n))
     (dest / ROUTE_FILE).write_text(json.dumps(route, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     return dest
+
+
+def _checked_replay(folder: Path) -> None:
+    """Refuse a replay folder holding anything but what store_replay keeps."""
+    for p in folder.iterdir():
+        if p.name in (*KEPT, ROUTE_FILE) and p.is_file():
+            continue
+        if p.name == "frames" and p.is_dir():
+            for f in p.iterdir():
+                if not (f.is_file() and FRAME_NAME.fullmatch(f.name)):
+                    raise StoreError(f"{folder.parent.name}/{folder.name}/frames holds {f.name[:60]!r}, "
+                                     "which is not a kept frame")
+            continue
+        raise StoreError(f"{folder.parent.name}/{folder.name} holds {p.name[:60]!r}, which a kept replay does not")
 
 
 def _route_of(folder: Path) -> dict:
@@ -114,6 +148,7 @@ def replays(store: Path) -> list[tuple[str, Path]]:
         for folder in sorted(top.iterdir()):
             if not folder.is_dir() or not REPLAY.fullmatch(folder.name):
                 raise StoreError(f"{top.name}/{folder.name[:60]} is not a replay folder")
+            _checked_replay(folder)
             found.append((f"{top.name}/{folder.name}", folder))
     if not found:
         raise StoreError("the capture folder holds no replay")
@@ -139,6 +174,7 @@ class StoredReplays:
         if not src.is_dir():
             raise StoreError(f"the capture folder has no replay {build}/{name}")
         _checked_tree(src)
+        _checked_replay(src)
         own = json.loads(Path(route_path).read_text(encoding="utf-8"))
         if _route_of(src) != own:
             raise StoreError(f"the captured replay {build}/{name} is not of the route this run compiled")
