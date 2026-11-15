@@ -1,0 +1,97 @@
+/* The home page's dark theme and interactive parts, on top of front-door.css. Only index.html loads it. */
+body.home{--bg:#0b0a1d;--panel:#14122e;--panel2:#1d1a40;--edge:#2e2a55;--edge2:#3d3870;--text:#f2f1fa;--soft:#c9c5e3;--dim:#a9a4cc;--cyan:#7fe3ff;--coral:#ff9e8a;
+  background:var(--bg);color:var(--text)}
+body.home a{text-decoration-color:var(--yellow)}
+body.home a:hover{text-decoration-color:var(--soft)}
+body.home a:focus-visible,body.home button:focus-visible,body.home pre:focus-visible,body.home .table-wrap:focus-visible{outline:3px solid var(--yellow);outline-offset:4px}
+body.home .top{border-bottom-color:var(--edge)}
+body.home .top nav a{color:var(--soft)}
+body.home .eyebrow{color:var(--yellow)}
+body.home .source,body.home .try-note,body.home figcaption{color:var(--dim)}
+body.home code{color:var(--text)}
+body.home pre{background:var(--panel);border:1px solid var(--edge)}
+body.home .section{border-top-color:var(--edge)}
+body.home th,body.home td{border-bottom-color:var(--edge)}
+body.home th{color:var(--soft)}
+body.home small{color:var(--dim)}
+
+/* Hero: centred, Night Replay */
+body.home .hero{text-align:center;padding:72px 0 40px;display:flex;flex-direction:column;align-items:center}
+body.home .hero h1{font-size:clamp(2.1rem,3.7vw,3.3rem);letter-spacing:-.035em;line-height:1.06;max-width:24ch;margin:.45em auto .3em}
+body.home .hero .lead{color:var(--soft);max-width:60ch;margin-left:auto;margin-right:auto;font-size:19px}
+body.home .hero .actions{justify-content:center}
+body.home .hero .notice{text-align:left;margin-top:12px}
+.hero-pill{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--edge2);border-radius:999px;padding:6px 16px;font-size:14px;color:var(--soft);text-decoration:none;margin-bottom:14px}
+.hero-pill span{width:8px;height:8px;border-radius:50%;background:var(--yellow)}
+body.home .button{border-color:var(--edge2);color:var(--text);border-radius:999px}
+body.home .button.primary{background:var(--yellow);border-color:var(--yellow);color:var(--ink)}
+body.home .notice{background:var(--panel);border-left-color:var(--yellow);border-radius:0 8px 8px 0}
+
+body.home .card{background:var(--panel);border-color:var(--edge);border-top-color:var(--yellow);color:var(--text)}
+body.home .pill{color:var(--ink)}
+body.home .install p{color:var(--dim)}
+body.home .shots img{border-radius:10px}
+
+/* The channel switch */
+.switch{background:var(--panel);border:1px solid var(--edge);border-radius:18px;padding:22px;margin-top:22px}
+.switch-modes,.flow-scenarios{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.switch-modes button,.flow-scenarios button{min-height:44px;padding:10px 18px;border-radius:999px;border:1px solid var(--edge2);background:transparent;color:var(--soft);font:600 15px system-ui,sans-serif;cursor:pointer}
+.switch-modes button[aria-pressed="true"],.flow-scenarios button[aria-pressed="true"]{background:var(--yellow);border-color:var(--yellow);color:var(--ink)}
+.switch-body{display:flex;flex-wrap:wrap;gap:24px;margin-top:22px;align-items:stretch}
+.switch-frame{position:relative;flex:3 1 440px;min-width:0;margin:0;border-radius:10px;overflow:hidden}
+.switch-frame img{width:100%;image-rendering:pixelated}
+.mark-ground{position:absolute;left:0;right:0;top:71%;border-top:3px dashed var(--yellow)}
+.mark-player{position:absolute;left:36%;top:50%;width:19%;height:34%;border:3px solid var(--cyan);border-radius:4px}
+.tag-ground,.tag-player{position:absolute;font:700 12px system-ui,sans-serif;padding:3px 8px;border-radius:4px;color:var(--ink)}
+.tag-ground{right:10px;top:64%;background:var(--yellow)}
+.tag-player{left:36%;top:41%;background:var(--cyan)}
+.switch-frame[data-show-engine="false"] .mark-ground,.switch-frame[data-show-engine="false"] .tag-ground,
+.switch-frame[data-show-vision="false"] .mark-player,.switch-frame[data-show-vision="false"] .tag-player{display:none}
+.switch-panel{flex:2 1 300px;min-width:0;display:flex;flex-direction:column;gap:6px}
+.switch-panel p{margin:0}
+.switch-case{font-size:14px;color:var(--dim)}
+.switch-verdict{font:700 clamp(1.8rem,3vw,2.5rem) Adventor,system-ui,sans-serif;margin:6px 0!important;color:var(--yellow)}
+.switch-verdict[data-right="false"]{color:var(--coral)}
+.switch-right{font-size:.55em;font-weight:600}
+.switch-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.switch-stats div{background:var(--panel2);border-radius:10px;padding:12px}
+.switch-stats dt{font-size:12px;color:var(--dim);order:2}
+.switch-stats dd{margin:0;font:700 1.35rem Adventor,system-ui,sans-serif}
+.switch-stats div{display:flex;flex-direction:column-reverse}
+
+/* The how-it-works flow */
+.flow{margin-top:24px}
+.flow-map{list-style:none;padding:0;margin:28px 0 0;display:flex;align-items:center;justify-content:center;gap:12px 28px}
+.flow-col{margin:0;position:relative;display:flex;flex-direction:column;gap:10px;flex:1 1 0;min-width:0}
+.flow-col+.flow-col::before{content:"";position:absolute;left:-26px;top:50%;width:24px;border-top:2px solid var(--edge2)}
+.flow-node{min-height:44px;width:100%;padding:12px 10px;border:1px solid var(--edge2);border-radius:12px;background:var(--panel);color:var(--text);font:600 15px system-ui,sans-serif;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;transition:background .25s,border-color .25s,box-shadow .25s}
+.flow-node small{font-weight:500;font-size:12px}
+.flow-record{border-color:var(--yellow)}
+.flow-vision{border-color:var(--cyan)}
+.flow-judge{background:var(--yellow);border-color:var(--yellow);color:var(--ink)}
+body.home .flow-judge small{color:var(--ink)}
+.flow-out{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-weight:600}
+.flow-node[aria-pressed="true"]{box-shadow:0 0 0 3px var(--soft)}
+.flow-node.is-on{background:var(--panel2);border-color:var(--yellow);box-shadow:0 0 0 3px rgba(255,201,40,.45)}
+.flow-judge.is-on{background:var(--yellow)}
+.flow-detail{margin:26px auto 0;max-width:760px;background:var(--panel);border:1px solid var(--edge);border-radius:14px;padding:18px 22px}
+.flow-detail h3{margin:0 0 6px;font-family:Adventor,system-ui,sans-serif}
+.flow-detail p{margin:0 0 8px}
+@media(max-width:860px){.flow-map{flex-direction:column;align-items:stretch}.flow-col+.flow-col::before{left:50%;top:-12px;width:0;height:10px;border-top:0;border-left:2px solid var(--edge2)}.flow-node{width:100%}}
+@media(prefers-reduced-motion:reduce){.flow-node{transition:none}}
+
+/* The repair loop: the diagram keeps its light card; the stepper lights a stage */
+body.home .repair-map{background:#ecebf4}
+body.home .repair-notes li{border-left:3px solid transparent;padding-left:12px;margin-left:-15px;transition:border-color .25s}
+body.home .repair-notes li.is-on{border-left-color:var(--yellow)}
+.loop-card rect{cursor:pointer;transition:fill .25s}
+body.home .loop-human{fill:#fff3c4}
+.loop-card rect.is-on{fill:var(--yellow);stroke-width:3.2}
+.loop-label text.is-on{font-weight:800}
+.loop-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:14px}
+.loop-controls button{min-height:44px;padding:8px 16px;border-radius:999px;border:1px solid var(--edge2);background:transparent;color:var(--text);font:600 15px system-ui,sans-serif;cursor:pointer}
+.loop-controls [data-loop-status]{color:var(--soft);font-size:15px}
+body.home .repair-status{color:var(--soft)}
+
+body.home footer{background:#06051a;border-top:1px solid var(--edge)}
+@media(max-width:700px){body.home .hero{padding:36px 0 24px}.switch{padding:14px}.switch-stats{grid-template-columns:1fr}}
