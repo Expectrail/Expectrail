@@ -24,10 +24,16 @@ its own frame files. "Run it" on expectrail.tech (#265) and the local app (#370)
 - **The job's decision wins.** When the job and its evidence disagree, the page says needs review and
   why; it never picks the kinder of the two. An empty result (no check, no evidence) is never shown
   as success, and a record that says accept over a check that did not pass is not shown as accepted.
-- **Findings, earliest first.** The inspector opens at the first failing frame of the earliest
-  finding: the frame before the change and after it, side by side, on the same frame number, with
-  the captured frames around it (six either side). Overlays draw the boxes the check measured and
-  the boundary line; they can be turned off so the raw pixels show.
+- **First difference and first failure.** In a finding, the inspector opens at the first tick where the
+  engine recorded different before and after values for the same check and bound. Missing readings
+  cannot establish a difference. The first failing frame is labeled separately. If paired measurements
+  do not show a difference, the inspector opens on the finding's frame, when available. A measured
+  difference alone does not change the verdict. The before and after pictures always use the selected
+  tick. An unavailable picture is labeled, even if a nearby frame exists.
+- **Without JavaScript.** Expand a measurement table to see the before and after values for each
+  recorded window tick, their bounds and gaps. Engine and vision readings have separate tables.
+  The selected pair of pictures opens without scripts. The reproduction command appears above
+  the measurements. With scripts, **Step through frame** opens the interactive inspector.
 - **A timeline per side.** The value the check measures in each frame against its tolerance, with
   frames where an object was not found and frames with nothing to compare marked. It is measured
   from the same engine's record the evaluator judged, by the evaluator's rules, and it is shown only
@@ -72,12 +78,12 @@ observations and verdicts can be verified.
 
 ## Keys
 
-`←` `→` step a captured frame (`Shift` for five), `Home` `End`, `f` the first failing frame, `o`
+`←` `→` step a captured frame (`Shift` for five), `Home` `End`, `d` the first measured difference, `f` the finding’s frame, `o`
 overlays on or off, `n` `p` the next or previous finding. Clicking a timeline jumps to that frame.
 
 ## Not yet
 
-The two-minute trial with one person who has not seen the run remains to be done. This slice was
-not looked at in a browser. Keyboard tests execute the actual viewer script against a DOM
-stand-in, including the supplied real exports; that is not a browser or usability test.
+The two-minute trial still needs a person who has not seen the run. Ask them to find the failed
+relation and its reproduction command in the failing sample, then record the elapsed time on
+[#264](https://github.com/Expectrail/Expectrail/issues/264).
 No model-written explanation is included.
