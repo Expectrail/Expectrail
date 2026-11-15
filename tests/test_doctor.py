@@ -385,7 +385,7 @@ class UsageTest(unittest.TestCase):
         text = cli.usage()
         self.assertIn("doctor       check that this machine has what a verification needs", text)
         self.assertNotIn("doctor", cli.PLANNED)
-        self.assertEqual(sorted(cli.PLANNED), ["trust-check"])
+        self.assertEqual(sorted(cli.PLANNED), [])   # trust-check was the last one (#255)
         self.assertIn("propose and verify a fix for a rejected job", text)
 
 
