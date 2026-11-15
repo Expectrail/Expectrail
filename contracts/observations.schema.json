@@ -439,6 +439,134 @@
                 "scale"
               ]
             }
+          },
+          "notDrawn": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Negative evidence from a calibrated anchored observer, not a provider error. The answered region is retained but is not a player detection. Size-mismatch evidence counts only at the spec object confidence floor; no-match is a successful response with no region.",
+              "required": [
+                "reason",
+                "point",
+                "scale",
+                "expectedSize",
+                "observedSize",
+                "answer",
+                "sizeTolerance",
+                "sizeFloorPx"
+              ],
+              "properties": {
+                "reason": {
+                  "enum": [
+                    "size-mismatch",
+                    "no-match"
+                  ]
+                },
+                "point": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "description": "The engine-derived question point in captured-frame pixels."
+                },
+                "scale": {
+                  "type": "array",
+                  "items": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "description": "Captured-frame pixels per game pixel on each axis."
+                },
+                "expectedSize": {
+                  "type": "array",
+                  "items": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "description": "Width and height in game pixels, from clean calibration drawnSize."
+                },
+                "observedSize": {
+                  "anyOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "minItems": 2,
+                      "maxItems": 2
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Answer width and height converted to game pixels, or null for no match."
+                },
+                "answer": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/properties/frames/items/properties/objects/additionalProperties/items"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "The original answered box and score in captured-frame pixels; null for a successful empty answer."
+                },
+                "sizeTolerance": {
+                  "const": 0.25
+                },
+                "sizeFloorPx": {
+                  "const": 4.0
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "reason": {
+                        "const": "no-match"
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "answer": {
+                        "type": "null"
+                      },
+                      "observedSize": {
+                        "type": "null"
+                      }
+                    }
+                  },
+                  "else": {
+                    "properties": {
+                      "answer": {
+                        "$ref": "#/properties/frames/items/properties/objects/additionalProperties/items"
+                      },
+                      "observedSize": {
+                        "type": "array",
+                        "items": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "minItems": 2,
+                        "maxItems": 2
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "description": "By spec object name: explicit evidence that the calibrated player was not drawn at its place. Absence of a detection without this evidence remains uncertainty, never an automatic reject."
           }
         }
       }
