@@ -112,6 +112,14 @@ def _to_frame(view: list, x: float, y: float) -> tuple[float, float]:
     return view[0] * x + view[2] * y + view[4], view[1] * x + view[3] * y + view[5]
 
 
+def _logged_ground_point(row: dict, view: list | None) -> tuple[float, float] | None:
+    """Project the height selected by the harness's three columns; a gap has no point."""
+    player, ground = row.get("player"), row.get("ground")
+    if player is None or ground is None or not view:
+        return None
+    return _to_frame(view, float(player[0]), float(ground))
+
+
 def _frame_box(view: list, box: list[float]) -> list[float]:
     (ax, ay), (bx, by) = _to_frame(view, box[0], box[1]), _to_frame(view, box[2], box[3])
     return [round(min(ax, bx), 3), round(min(ay, by), 3), round(max(ax, bx), 3), round(max(ay, by), 3)]
@@ -155,12 +163,13 @@ def from_trace_synthetic(
         for n in range(len(rows) // step):
             tick = _frame_tick(n, step)
             row, view = rows[tick], _view_at(rows, tick)
-            player, g = row.get("player"), row.get("ground")
+            player = row.get("player")
             objects: dict = {"ground": [], "player": []}
             if player is not None and view:
                 x, y = float(player[0]), float(player[1])
-                if g is not None:
-                    gx, gy = _to_frame(view, x, float(g))
+                point = _logged_ground_point(row, view)
+                if point is not None:
+                    gx, gy = point
                     objects["ground"] = [{"box": [round(gx - 4000.0, 3), round(gy, 3), round(gx + 4000.0, 3),
                                                   round(gy + 2 * GROUND_DEPTH, 3)], "score": 0.95, "track": 2}]
                 if y <= floor + 800:  # far below the level: off screen, so not seen
@@ -332,11 +341,11 @@ def engine_ground_by_frame(trace: dict, frame_size: tuple[int, int], frames: lis
         if tick >= len(rows):
             continue
         row, view = rows[tick], _view_at(rows, tick)
-        g, player = row.get("ground"), row.get("player")
-        if g is None or not view or player is None:
+        point = _logged_ground_point(row, view)
+        if point is None:
             out[n] = {"ground": []}
             continue
-        _, y = _to_frame(view, float(player[0]), float(g))
+        _, y = point
         out[n] = {"ground": [{"box": [0.0, round(y, 3), float(width), float(max(height, y + 1))],
                               "score": 1.0, "source": "engine"}]}
     return out
