@@ -8,8 +8,10 @@ import io
 import json
 import shutil
 import tempfile
+import threading
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tests.tool_requirements import require_tool
 from tools import runit_smoke
@@ -129,6 +131,34 @@ class InChromium(unittest.TestCase):
                          "the page logged no script errors"):
             self.assertIn(expected, names)
         self.assertTrue(all(c["held"] for c in doc["checks"]))
+
+    def test_quota_after_publication_before_latest_index_arrives(self):
+        # The published result and the card index are independent HTTP responses.
+        from tools import runit_stub
+        release = threading.Event()
+        waiting = threading.Event()
+        serve_file = runit_stub.Handler._file
+        read = runit_smoke.read
+
+        def hold_index(handler, base, parts):
+            if parts == ["latest.json"] and (base / "latest.json").is_file() and not release.is_set():
+                waiting.set()
+                release.wait(120)
+            return serve_file(handler, base, parts)
+
+        def read_panel(page):
+            panel = read(page)
+            if panel["message"].startswith("Today's quota"):
+                self.assertTrue(waiting.wait(10), "expected a pending index response")
+                release.set()
+            return panel
+
+        try:
+            with mock.patch.object(runit_stub.Handler, "_file", hold_index), mock.patch.object(runit_smoke, "read", read_panel):
+                doc, lines = self.smoke(only=["clean"])
+        finally:
+            release.set()
+        self.assertEqual(doc["problems"], [], "\n".join(lines))
 
     def test_a_page_that_turns_a_reject_green_fails_the_smoke(self):
         tmp = Path(tempfile.mkdtemp(prefix="runit-smoke-"))
