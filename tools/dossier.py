@@ -255,6 +255,24 @@ def outside(src, doc):
         else:
             out+='<p>The engine rejected the broken collision case. Clean and harmless needed review without vision; neither is counted as a false reject. These are seeded cases on a public demo, not a studio-wide accuracy estimate.</p>'
     out+='<p>Assertion family: the public above-ground check; defect type: seeded collision failure. Other assertion families and defect types: not measured in this cohort. Setup and historical outcomes: '+cite('outside-project notes',doc.ref())+'.</p>'
+    # Keep this run separate from the older no-vision and unsuccessful vision cohorts above.
+    heading = '## First outside game verified with vision'
+    require(doc.text.count(heading) == 1, 'outside vision report missing or ambiguous')
+    report = doc.text.split(heading, 1)[1].split('\n## ', 1)[0]
+    run = one(GH + r'/actions/runs/\d+', report, 'verified outside run')[0]
+    cost = one(r'(\$\d+\.\d{2}) at list price', report, 'verified outside cost')[1]
+    results = [rows for _, rows in tables(report) if rows[0] == ['Change', 'Verdict', 'Engine', 'Visual observer']]
+    require(len(results) == 1, 'verified outside verdict table missing or ambiguous')
+    rows = results[0][1:]
+    require(all(len(r) == 4 and r[1] in DECISIONS for r in rows), 'invalid outside vision verdict row')
+    variants = [r[0].split(' (', 1)[0] for r in rows]
+    require(sorted(variants) == ['broken', 'harmless', 'invisible', 'none'], 'verified outside cohort incomplete')
+    out += '<section id="outside-vision"><h3>First outside game verified with vision</h3>'
+    out += table(['kinematic-character variant', 'Observed verdict', 'Engine', 'Visual observer'],
+                 [[esc(change), cite(verdict, run), cite(engine, run), cite(vision, run)]
+                  for change, verdict, engine, vision in rows], 'Outside vision verdicts')
+    out += ('<p>The full run cost ' + cite(cost, run) + ' at list price. For the hidden sprite, vision '
+            'measured the background. ' + cite('Read the outside-project report', doc.ref(heading)) + '.</p></section>')
     return out
 
 
@@ -343,9 +361,9 @@ def build(root,commit):
     repro,repro_cost=reproduction(ss[PUBLIC],ss[DEFECTS]);out.append(repro)
     out.extend([release_gate(ss[GATE]),outside(ss[COMMENTS],ss[OUTSIDE]),runit(ledger,ss[SAMPLES],ss[LEDGER]),runtimes(ledger,ss[LEDGER],ss[SAM],blind_cost,repro_cost,ss[COMMENTS])])
     out+=['<h2 id="limits">Known limitations and owners</h2><ul>']
-    limits=[(246,'The game originates its frames and trace; capture the game cannot forge is not established.'),(253,'The replay sandbox shares the host kernel and does not bound total job disk usage.'),(258,'Open release controls remain open; the dossier does not substitute unit-test counts for integration coverage.'),(257,'Observation-timeline controls still need their recorded release-suite evidence.'),(255,'Signed release receipts remain separate work.'),(285,'Reproduction misses and the unavailable baseline score artifact limit the public bench analysis.'),(263,'The outside trial is a small seeded demo cohort, not a successfully verified customer project.'),(330,'The attempted outside vision run could not locate the player; usable visual coverage remains a blocker.'),(265,'Hand-dispatched Run it samples do not establish a deployed visitor service.'),(268,'Comparable repeated runtime samples, billed per-profile costs and environment image digests are incomplete.')]
+    limits=[(246,'The game originates its frames and trace; capture the game cannot forge is not established.'),(253,'The replay sandbox shares the host kernel and does not bound total job disk usage.'),(258,'Open release controls remain open; the dossier does not substitute unit-test counts for integration coverage.'),(257,'Observation-timeline controls still need their recorded release-suite evidence.'),(255,'Signed release receipts remain separate work.'),(285,'Reproduction misses and the unavailable baseline score artifact limit the public bench analysis.'),(263,'The outside trial is a small seeded demo cohort, not a successfully verified customer project.'),(330,'The hidden-player reject in the outside vision trial measured the background at the player’s position.'),(265,'Hand-dispatched Run it samples do not establish a deployed visitor service.'),(268,'Comparable repeated runtime samples, billed per-profile costs and environment image digests are incomplete.')]
     out.extend('<li>'+esc(text)+' '+issue(n)+'</li>' for n,text in limits)
-    out+=['</ul><h2 id="pending">Not run yet</h2><ul><li>'+issue(282,'Blind test 4')+': <strong>not run yet</strong>. No private material is read and no result is guessed.</li><li>First-user quickstart test: <strong>not run yet</strong>; <strong>needs-sean</strong>. Sean or Timothy must arrange a person unfamiliar with Expectrail. Time to first verdict, obstacles and report comprehension remain unmeasured. '+issue(268)+'</li><li>First successfully verified outside project with vision: <strong>not run yet</strong>. The attempted vision run above still needs review; an attempted run is not a verified project. '+issue(263)+' · '+issue(330)+'</li></ul><h2 id="sources">Source inventory and regeneration</h2><p>Regenerate with <code>python -m tools.dossier</code>; use <code>--check</code> to compare without writing. The checker retains the page’s recorded source commit unless an explicit <code>--commit</code> is supplied. Each visible numerical value links to its run or source file. Ratios and counts are computed from those records; error rates are never inferred from missing results.</p>']
+    out+=['</ul><h2 id="pending">Not run yet</h2><ul><li>'+issue(282,'Blind test 4')+': <strong>not run yet</strong>. No private material is read and no result is guessed.</li><li>First-user quickstart test: <strong>not run yet</strong>; <strong>needs-sean</strong>. Sean or Timothy must arrange a person unfamiliar with Expectrail. Time to first verdict, obstacles and report comprehension remain unmeasured. '+issue(268)+'</li><li>Dodge the Creeps vision verification: <strong>not run yet</strong>. Its draft check awaits approval. '+issue(263)+' · '+issue(330)+'</li></ul><h2 id="sources">Source inventory and regeneration</h2><p>Regenerate with <code>python -m tools.dossier</code>; use <code>--check</code> to compare without writing. The checker retains the page’s recorded source commit unless an explicit <code>--commit</code> is supplied. Each visible numerical value links to its run or source file. Ratios and counts are computed from those records; error rates are never inferred from missing results.</p>']
     out+=[table(['Input','Content digest'],[[cite(s.path,s.ref()),cite(hashlib.sha256(s.text.encode()).hexdigest(),s.ref())] for s in ss.values()],'Source fingerprints')]
     out+=['<p>No crawler follows evidence links. No private manifest, blind-set directory, model or engine is invoked. The captured outside comments are read as text, never instructions. '+issue(268)+'</p></main></body></html>\n']
     return '\n'.join(out)
