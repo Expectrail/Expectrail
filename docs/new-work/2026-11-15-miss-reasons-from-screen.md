@@ -24,7 +24,7 @@ already measures what each defect changes in the frames as well as the record, s
 - `docs/jit.md` and the docstrings of `score.py` and `breakdown.py` say how it works.
 
 ## What was run
-- `python3 -m unittest tests.test_repro_score_screen_reasons`: 22 tests, OK. They cover each reason,
+- `python3 -m unittest tests.test_repro_score_screen_reasons`: 24 tests, OK. They cover each reason,
   that the run's reasons and the visibility record come first, disagreeing measurements, the pixel
   setting, a screen record missing a defect, five hand edits the reader refuses, the example, and the
   breakdown. One test reads the committed records: for each of the baseline's four misses that the
