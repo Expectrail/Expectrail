@@ -162,18 +162,19 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual([p.name for p in got], ["f00000000.png", "f00000001.png", "f00000002.png", "f00000010.png"])
 
 
-@unittest.skipUnless(__import__("importlib").util.find_spec("playwright"), "playwright is not installed")
 class WebReplayTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from tests.tool_requirements import require_tool
+        require_tool('Playwright Chromium')
+
     def test_the_web_adapter_writes_the_document_the_web_harness_writes(self):
         from harness.web import run as web
 
         route = adapters.get("web").default_route
         bug = sorted(adapters.get("web").bugs.glob("layering/v1.patch"))
         with tempfile.TemporaryDirectory() as tmp:
-            try:
-                direct = web.run(route, Path(tmp) / "direct", bug)
-            except Exception as exc:  # noqa: BLE001 - no browser on this machine
-                self.skipTest(f"chromium unavailable: {exc}")
+            direct = web.run(route, Path(tmp) / "direct", bug)
             through = adapters.get("web").run(route, Path(tmp) / "adapter", bug)
             self.assertEqual((Path(tmp) / "direct" / "replay.json").read_bytes(),
                              (Path(tmp) / "adapter" / "replay.json").read_bytes())

@@ -46,14 +46,8 @@ REQUIRED = os.environ.get("EXPECTRAIL_ENGINE_TESTS") == "required"
 
 
 def real_godot() -> Path:
-    named = os.environ.get("EXPECTRAIL_GODOT")
-    found = [Path(named)] if named else sorted((REPO / "tools" / "godot").glob("Godot_v*"))
-    found = [p for p in found if p.is_file()]
-    if not found:
-        if REQUIRED:
-            raise AssertionError("this job must have Godot: run harness/get_godot.sh first")
-        raise unittest.SkipTest("Godot is not downloaded (harness/get_godot.sh)")
-    return found[0]
+    from tests.tool_requirements import godot_binary
+    return godot_binary(switch="EXPECTRAIL_ENGINE_TESTS")
 
 
 FEET = 13.25    # the bundled robot's feet below its origin (agents/observations.py FEET_OFFSET)

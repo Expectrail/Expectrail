@@ -1,4 +1,4 @@
-"""Opt-in real Godot checks; the same command decisions always run offline in test_auto_route.
+"""Installed-engine Godot checks; the same command decisions always run offline in test_auto_route.
 
 Run EXPECTRAIL_ENGINE_TESTS=required python3 -m unittest tests.test_auto_route_engine -v.
 No display or rendered frames are needed. No model is called.
@@ -20,9 +20,15 @@ from harness import run as harness
 REPO = Path(__file__).resolve().parent.parent
 
 
-@unittest.skipUnless(os.environ.get("EXPECTRAIL_ENGINE_TESTS") == "required",
-                     "set EXPECTRAIL_ENGINE_TESTS=required to run the real Godot auto-route checks")
 class AutoRouteEngineTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from unittest import mock
+        from tests.tool_requirements import godot_binary
+        configured = mock.patch.dict(os.environ, EXPECTRAIL_GODOT=str(godot_binary()))
+        configured.start()
+        cls.addClassCleanup(configured.stop)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix="expectrail-auto-route-test-")
         self.addCleanup(self.tmp.cleanup)

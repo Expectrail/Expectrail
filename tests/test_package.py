@@ -319,7 +319,7 @@ class InstalledTest(Case):
         doc = json.loads(done.stdout)
         found = {c["id"]: c for c in doc["checks"]}
         self.assertEqual(list(found), ["python", "godot", "display", "opengl", "disk", "sandbox", "patch", "curl", "unzip",
-                                       "vision-key", "vision-cap"])
+                                       "vision-key", "vision-cap", "chromium"])
         self.assertEqual((doc["ok"], found["python"]["status"], found["godot"]["status"], found["opengl"]["status"]),
                          (False, "ok", "missing", "skipped"))
         self.assertIn("--no-fetch was given", found["godot"]["found"])
