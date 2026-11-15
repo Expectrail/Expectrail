@@ -1,139 +1,468 @@
 {
-  "fullMeasurement": "https://github.com/Expectrail/Expectrail/blob/b3ac0adf6d593f268e498dd1d236ff2daaada097/docs/template-sensor-measurement.json",
-  "fullMeasurementSha256": "be0763e9be20572bd4b14691c291823f83abee4843dfbe4ebb653b9be1744bc8",
-  "algorithm": "expectrail.template-ncc/v2",
-  "bankSha256": "b01dfdeffd3522193ee820d379cd34d72f3570a2abcf88a88ac8afed02d2162a",
+  "evidence": "same public PNGs; tuning corpus; opt-in only",
+  "algorithm": "expectrail.template-foreground/v3",
   "cleanTree": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280",
-  "templateCount": 1620,
-  "calibration": {
-    "selection": "all-clean-crops",
-    "selectionSimilarity": 0.985,
-    "sourceFrames": 1080,
-    "eligibleFrames": 1080,
-    "mirrored": true,
-    "thresholdFloor": 0.9,
-    "thresholdSelected": 0.9,
-    "validationReplaySha256": "61ce4f466490a052e0ae64ea33951067bf17245cd10d9705c83000e7a5cf4621",
-    "positives": 360,
-    "negatives": 360,
-    "positiveMatches": 340,
-    "negativeMatches": 0,
-    "status": "unmet"
+  "originalBankSha256": "b01dfdeffd3522193ee820d379cd34d72f3570a2abcf88a88ac8afed02d2162a",
+  "afterBankSha256": "a40e0e0e49d729eaeb6e58b3686e0102e2573f6407d2f4ddc1a0de1afd515eb8",
+  "allOriginalFrameHashesMatched": 2190,
+  "traceDifference": "empty unknownActions metadata only; all rows identical",
+  "before": {
+    "config": {
+      "algorithm": "expectrail.template-ncc/v2",
+      "coordinates": "captured-frame pixels; origin top-left; xyxy half-open; y down",
+      "matchThreshold": 0.9,
+      "agreementIoU": 0.5,
+      "searchMarginPx": 16,
+      "scales": [
+        0.75,
+        1.0,
+        1.25
+      ],
+      "stridePx": 1,
+      "sampleSide": 16,
+      "minimumContrast": 8.0
+    },
+    "calibration": {
+      "selection": "all-clean-crops",
+      "selectionSimilarity": 0.985,
+      "sourceFrames": 1080,
+      "eligibleFrames": 1080,
+      "mirrored": true,
+      "thresholdFloor": 0.9,
+      "thresholdSelected": 0.9,
+      "validationReplaySha256": "61ce4f466490a052e0ae64ea33951067bf17245cd10d9705c83000e7a5cf4621",
+      "positives": 360,
+      "negatives": 360,
+      "positiveMatches": 340,
+      "negativeMatches": 0,
+      "status": "unmet"
+    },
+    "templateCount": 1620,
+    "clean": {
+      "measured": 390,
+      "alarms": 79,
+      "falseAlarmRate": 0.20256410256410257
+    },
+    "invisiblePlayerAlarms": 73,
+    "targets": {
+      "cleanMatchedFraction": 0.95,
+      "maxFrameSeconds": 0.3,
+      "accuracyMet": false,
+      "speedMet": false
+    },
+    "runs": [
+      {
+        "name": "clean-smoke",
+        "summary": {
+          "frames": 120,
+          "objectFrames": 120,
+          "measured": 120,
+          "counts": {
+            "matched": 96,
+            "not-found": 24,
+            "displaced": 0,
+            "unavailable": 0,
+            "out-of-frame": 0
+          },
+          "agreementRate": 0.8,
+          "alarmRate": 0.2
+        },
+        "timing": {
+          "frames": 120,
+          "sensorSeconds": 20.070986900958815,
+          "meanFrameSeconds": 0.1672582241746568,
+          "p95FrameSeconds": 0.28407632680609823,
+          "maxFrameSeconds": 0.3130959419941064
+        }
+      },
+      {
+        "name": "clean-combat",
+        "summary": {
+          "frames": 90,
+          "objectFrames": 90,
+          "measured": 90,
+          "counts": {
+            "matched": 90,
+            "not-found": 0,
+            "displaced": 0,
+            "unavailable": 0,
+            "out-of-frame": 0
+          },
+          "agreementRate": 1.0,
+          "alarmRate": 0.0
+        },
+        "timing": {
+          "frames": 90,
+          "sensorSeconds": 14.36087370601308,
+          "meanFrameSeconds": 0.15956526340014535,
+          "p95FrameSeconds": 0.19850608309934614,
+          "maxFrameSeconds": 0.2302281860029325
+        }
+      },
+      {
+        "name": "clean-traversal",
+        "summary": {
+          "frames": 180,
+          "objectFrames": 180,
+          "measured": 180,
+          "counts": {
+            "matched": 125,
+            "not-found": 55,
+            "displaced": 0,
+            "unavailable": 0,
+            "out-of-frame": 0
+          },
+          "agreementRate": 0.6944444444444444,
+          "alarmRate": 0.3055555555555556
+        },
+        "timing": {
+          "frames": 180,
+          "sensorSeconds": 27.336565978010185,
+          "meanFrameSeconds": 0.15186981098894548,
+          "p95FrameSeconds": 0.2094474088407878,
+          "maxFrameSeconds": 0.23717793899413664
+        }
+      },
+      {
+        "name": "invisible-player",
+        "summary": {
+          "frames": 120,
+          "objectFrames": 120,
+          "measured": 120,
+          "counts": {
+            "matched": 47,
+            "not-found": 73,
+            "displaced": 0,
+            "unavailable": 0,
+            "out-of-frame": 0
+          },
+          "agreementRate": 0.39166666666666666,
+          "alarmRate": 0.6083333333333333
+        },
+        "timing": {
+          "frames": 120,
+          "sensorSeconds": 20.72431377695466,
+          "meanFrameSeconds": 0.17270261480795548,
+          "p95FrameSeconds": 0.22161950265362976,
+          "maxFrameSeconds": 0.2790113590017427
+        }
+      },
+      {
+        "name": "sinking",
+        "summary": {
+          "frames": 120,
+          "objectFrames": 120,
+          "measured": 120,
+          "counts": {
+            "matched": 0,
+            "not-found": 120,
+            "displaced": 0,
+            "unavailable": 0,
+            "out-of-frame": 0
+          },
+          "agreementRate": 0.0,
+          "alarmRate": 1.0
+        },
+        "timing": {
+          "frames": 120,
+          "sensorSeconds": 19.498772280901903,
+          "meanFrameSeconds": 0.16248976900751586,
+          "p95FrameSeconds": 0.198197693000111,
+          "maxFrameSeconds": 0.24933079500624444
+        }
+      },
+      {
+        "name": "fall-through",
+        "summary": {
+          "frames": 120,
+          "objectFrames": 120,
+          "measured": 17,
+          "counts": {
+            "matched": 0,
+            "not-found": 17,
+            "displaced": 0,
+            "unavailable": 0,
+            "out-of-frame": 103
+          },
+          "agreementRate": 0.0,
+          "alarmRate": 1.0
+        },
+        "timing": {
+          "frames": 120,
+          "sensorSeconds": 4.950816635944648,
+          "meanFrameSeconds": 0.04125680529953873,
+          "p95FrameSeconds": 0.1404101169486239,
+          "maxFrameSeconds": 0.18685372799518518
+        }
+      }
+    ]
   },
-  "clean": {
-    "measured": 390,
-    "alarms": 79,
-    "falseAlarmRate": 0.20256410256410257
+  "after": {
+    "config": {
+      "algorithm": "expectrail.template-foreground/v3",
+      "coordinates": "captured-frame pixels; origin top-left; xyxy half-open; y down",
+      "matchThreshold": 0.9,
+      "agreementIoU": 0.5,
+      "searchMarginPx": 16,
+      "scales": [
+        0.75,
+        1.0,
+        1.25
+      ],
+      "stridePx": 1,
+      "sampleSide": 16,
+      "minimumContrast": 8.0,
+      "foregroundPurity": 0.95,
+      "rgbTolerance": 2,
+      "rasterTolerancePx": 1,
+      "confirmationCandidates": 32,
+      "minimumForegroundBins": 32,
+      "confirmationParts": 4
+    },
+    "calibration": {
+      "selection": "approved-foreground",
+      "selectionSimilarity": 0.995,
+      "sourceFrames": 1080,
+      "eligibleFrames": 1080,
+      "mirrored": true,
+      "thresholdFloor": 0.9,
+      "thresholdSelected": 0.9,
+      "validationReplaySha256": "3271ac953f3c97e9ad2138ce70cd21c40236be4ad0f4ee1763307483675ba0fc",
+      "positives": 360,
+      "negatives": 360,
+      "positiveMatches": 358,
+      "negativeMatches": 0,
+      "status": "met"
+    },
+    "templateCount": 408,
+    "clean": {
+      "measured": 390,
+      "alarms": 0,
+      "falseAlarmRate": 0.0
+    },
+    "invisiblePlayerAlarms": 77,
+    "targets": {
+      "cleanMatchedFraction": 0.95,
+      "maxFrameSeconds": 0.3,
+      "accuracyMet": true,
+      "speedMet": false,
+      "maxCleanFalseAlarmRate": 0.02,
+      "falseAlarmTargetMet": true,
+      "seedDetectionsMet": true
+    },
+    "runs": [
+      {
+        "name": "clean-smoke",
+        "summary": {
+          "frames": 120,
+          "objectFrames": 120,
+          "measured": 120,
+          "counts": {
+            "matched": 120,
+            "not-found": 0,
+            "displaced": 0,
+            "unavailable": 0,
+            "out-of-frame": 0
+          },
+          "agreementRate": 1.0,
+          "alarmRate": 0.0
+        },
+        "timing": {
+          "frames": 120,
+          "sensorSeconds": 18.31370862500262,
+          "meanFrameSeconds": 0.15261423854168849,
+          "p95FrameSeconds": 0.20609562720010216,
+          "maxFrameSeconds": 0.22581123499912792
+        },
+        "regionCheck": {
+          "tolerancePx": 20,
+          "crossedFrames": [],
+          "unavailableFrameCount": 0
+        }
+      },
+      {
+        "name": "clean-combat",
+        "summary": {
+          "frames": 90,
+          "objectFrames": 90,
+          "measured": 90,
+          "counts": {
+            "matched": 90,
+            "not-found": 0,
+            "displaced": 0,
+            "unavailable": 0,
+            "out-of-frame": 0
+          },
+          "agreementRate": 1.0,
+          "alarmRate": 0.0
+        },
+        "timing": {
+          "frames": 90,
+          "sensorSeconds": 14.464906562008764,
+          "meanFrameSeconds": 0.1607211840223196,
+          "p95FrameSeconds": 0.20491910320079115,
+          "maxFrameSeconds": 0.2432578089992603
+        },
+        "regionCheck": {
+          "tolerancePx": 20,
+          "crossedFrames": [],
+          "unavailableFrameCount": 0
+        }
+      },
+      {
+        "name": "clean-traversal",
+        "summary": {
+          "frames": 180,
+          "objectFrames": 180,
+          "measured": 180,
+          "counts": {
+            "matched": 180,
+            "not-found": 0,
+            "displaced": 0,
+            "unavailable": 0,
+            "out-of-frame": 0
+          },
+          "agreementRate": 1.0,
+          "alarmRate": 0.0
+        },
+        "timing": {
+          "frames": 180,
+          "sensorSeconds": 32.296703738011274,
+          "meanFrameSeconds": 0.1794261318778404,
+          "p95FrameSeconds": 0.2191537310494823,
+          "maxFrameSeconds": 0.30707036499916285
+        },
+        "regionCheck": {
+          "tolerancePx": 20,
+          "crossedFrames": [],
+          "unavailableFrameCount": 0
+        }
+      },
+      {
+        "name": "invisible-player",
+        "summary": {
+          "frames": 120,
+          "objectFrames": 120,
+          "measured": 120,
+          "counts": {
+            "matched": 43,
+            "not-found": 77,
+            "displaced": 0,
+            "unavailable": 0,
+            "out-of-frame": 0
+          },
+          "agreementRate": 0.35833333333333334,
+          "alarmRate": 0.6416666666666667
+        },
+        "timing": {
+          "frames": 120,
+          "sensorSeconds": 21.18762606999735,
+          "meanFrameSeconds": 0.17656355058331125,
+          "p95FrameSeconds": 0.25682565819952285,
+          "maxFrameSeconds": 0.30678449399965757
+        },
+        "regionCheck": {
+          "tolerancePx": 20,
+          "crossedFrames": [],
+          "unavailableFrameCount": 77
+        }
+      },
+      {
+        "name": "sinking",
+        "summary": {
+          "frames": 120,
+          "objectFrames": 120,
+          "measured": 120,
+          "counts": {
+            "matched": 0,
+            "not-found": 120,
+            "displaced": 0,
+            "unavailable": 0,
+            "out-of-frame": 0
+          },
+          "agreementRate": 0.0,
+          "alarmRate": 1.0
+        },
+        "timing": {
+          "frames": 120,
+          "sensorSeconds": 18.21571275801034,
+          "meanFrameSeconds": 0.15179760631675285,
+          "p95FrameSeconds": 0.2159539157495601,
+          "maxFrameSeconds": 0.3278996030003327
+        },
+        "regionCheck": {
+          "tolerancePx": 20,
+          "crossedFrames": [],
+          "unavailableFrameCount": 120
+        }
+      },
+      {
+        "name": "fall-through",
+        "summary": {
+          "frames": 120,
+          "objectFrames": 120,
+          "measured": 17,
+          "counts": {
+            "matched": 17,
+            "not-found": 0,
+            "displaced": 0,
+            "unavailable": 0,
+            "out-of-frame": 103
+          },
+          "agreementRate": 1.0,
+          "alarmRate": 0.0
+        },
+        "timing": {
+          "frames": 120,
+          "sensorSeconds": 4.786007932003486,
+          "meanFrameSeconds": 0.03988339943336238,
+          "p95FrameSeconds": 0.14951316985016092,
+          "maxFrameSeconds": 0.15736124300019583
+        },
+        "regionCheck": {
+          "tolerancePx": 20,
+          "crossedFrames": [
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16
+          ],
+          "unavailableFrameCount": 103
+        }
+      }
+    ]
   },
-  "invisiblePlayerAlarms": 73,
-  "targets": {
-    "cleanMatchedFraction": 0.95,
-    "maxFrameSeconds": 0.3,
-    "accuracyMet": false,
-    "speedMet": false
-  },
-  "runs": [
-    {
-      "name": "clean-smoke",
-      "frames": 120,
-      "measured": 120,
-      "counts": {
-        "matched": 96,
-        "not-found": 24,
-        "displaced": 0,
-        "unavailable": 0,
-        "out-of-frame": 0
-      },
-      "agreementRate": 0.8,
-      "alarmRate": 0.2,
-      "meanFrameSeconds": 0.1672582241746568,
-      "p95FrameSeconds": 0.28407632680609823,
-      "maxFrameSeconds": 0.3130959419941064
+  "seedDetections": {
+    "invisible-player": {
+      "rule": "pixel-absence/v1",
+      "measured": true,
+      "detected": true,
+      "detectedFrameCount": 77
     },
-    {
-      "name": "clean-combat",
-      "frames": 90,
-      "measured": 90,
-      "counts": {
-        "matched": 90,
-        "not-found": 0,
-        "displaced": 0,
-        "unavailable": 0,
-        "out-of-frame": 0
-      },
-      "agreementRate": 1.0,
-      "alarmRate": 0.0,
-      "meanFrameSeconds": 0.15956526340014535,
-      "p95FrameSeconds": 0.19850608309934614,
-      "maxFrameSeconds": 0.2302281860029325
+    "sinking": {
+      "rule": "pixel-absence/v1",
+      "measured": true,
+      "detected": true,
+      "detectedFrameCount": 120
     },
-    {
-      "name": "clean-traversal",
-      "frames": 180,
-      "measured": 180,
-      "counts": {
-        "matched": 125,
-        "not-found": 55,
-        "displaced": 0,
-        "unavailable": 0,
-        "out-of-frame": 0
-      },
-      "agreementRate": 0.6944444444444444,
-      "alarmRate": 0.3055555555555556,
-      "meanFrameSeconds": 0.15186981098894548,
-      "p95FrameSeconds": 0.2094474088407878,
-      "maxFrameSeconds": 0.23717793899413664
-    },
-    {
-      "name": "invisible-player",
-      "frames": 120,
-      "measured": 120,
-      "counts": {
-        "matched": 47,
-        "not-found": 73,
-        "displaced": 0,
-        "unavailable": 0,
-        "out-of-frame": 0
-      },
-      "agreementRate": 0.39166666666666666,
-      "alarmRate": 0.6083333333333333,
-      "meanFrameSeconds": 0.17270261480795548,
-      "p95FrameSeconds": 0.22161950265362976,
-      "maxFrameSeconds": 0.2790113590017427
-    },
-    {
-      "name": "sinking",
-      "frames": 120,
-      "measured": 120,
-      "counts": {
-        "matched": 0,
-        "not-found": 120,
-        "displaced": 0,
-        "unavailable": 0,
-        "out-of-frame": 0
-      },
-      "agreementRate": 0.0,
-      "alarmRate": 1.0,
-      "meanFrameSeconds": 0.16248976900751586,
-      "p95FrameSeconds": 0.198197693000111,
-      "maxFrameSeconds": 0.24933079500624444
-    },
-    {
-      "name": "fall-through",
-      "frames": 120,
-      "measured": 17,
-      "counts": {
-        "matched": 0,
-        "not-found": 17,
-        "displaced": 0,
-        "unavailable": 0,
-        "out-of-frame": 103
-      },
-      "agreementRate": 0.0,
-      "alarmRate": 1.0,
-      "meanFrameSeconds": 0.04125680529953873,
-      "p95FrameSeconds": 0.1404101169486239,
-      "maxFrameSeconds": 0.18685372799518518
+    "fall-through": {
+      "rule": "pixel-position-crosses-clean-region/v1",
+      "measured": true,
+      "detected": true,
+      "detectedFrameCount": 12
     }
-  ]
+  },
+  "pairedPixelOnlyDetections": {
+    "before": 49,
+    "retained": 49
+  },
+  "caveat": "Fall-through was visible in the original 17 on-screen frames: new detections are 12 ground-reference position crossings, not 17 retained absence labels. No independent frame-level recall claim."
 }
