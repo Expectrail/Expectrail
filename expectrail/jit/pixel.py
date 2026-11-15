@@ -493,6 +493,19 @@ def frames_to_ask(check: dict, frames_probed) -> list[int]:
 MAX_BOXES = 3
 
 
+def asks_player(checks, bindings: dict = BUNDLED_BINDINGS) -> bool:
+    """True when a check in ``checks`` is about an object the engine gives one position a frame (the
+    player): only then is the observer asked about the player on that probe. A probe whose checks name
+    only roles the game has many of (``named``) pays for their boxes and nothing else."""
+    return any(not named(c["object"], bindings) for c in checks)
+
+
+def images_per_frame(player: bool, objects=()) -> int:
+    """The most images one planned frame can take: one for the player when it is asked about, and up to
+    MAX_BOXES for each named role in ``objects``."""
+    return (1 if player else 0) + MAX_BOXES * len(tuple(objects))
+
+
 def images_a_frame(check: dict, bindings: dict = BUNDLED_BINDINGS) -> int:
     """The most images one frame of the check's object can take: one, or MAX_BOXES for a role with many."""
     return MAX_BOXES if named(check["object"], bindings) else 1
@@ -566,13 +579,25 @@ RESULT_ROWS = ("kept", "dropped", "not-run")
 OUTCOMES = ("catch", "no-catch", "needs-review", "not-evaluated")
 
 
-def observe(observer, run_dir, route: dict, objects=()) -> tuple[dict, dict, int]:
+NOT_ASKED_PLAYER = "the player is not asked about: no check on this probe names it"
+
+
+def observe(observer, run_dir, route: dict, objects=(), player: bool = True) -> tuple[dict, dict, int]:
     """(setting, run, images) from one observer call, checked as untrusted data: a malformed answer is a
     PixelError, never a pass. ``objects`` are the roles the game has many of (``named``) that the observer
-    is also asked about; its run must then carry ``objects[role]`` for each, one row a frame."""
+    is also asked about; its run must then carry ``objects[role]`` for each, one row a frame. With
+    ``player`` False (``asks_player``: no check on the probe names the player) the observer is not asked
+    about the player, and an answer that says it asked about the player anyway is refused."""
     objects = tuple(objects)
+    if not player and not objects:
+        raise PixelError("the observer would be asked about nothing: neither the player nor a named object")
+    kwargs = {}
+    if objects:
+        kwargs["objects"] = objects
+    if not player:
+        kwargs["player"] = False
     try:
-        answer = observer(Path(run_dir), route, objects=objects) if objects else observer(Path(run_dir), route)
+        answer = observer(Path(run_dir), route, **kwargs)
     except PixelError:
         raise
     except Exception as exc:  # noqa: BLE001 - an observer that fails decides nothing
@@ -588,6 +613,8 @@ def observe(observer, run_dir, route: dict, objects=()) -> tuple[dict, dict, int
     for f in run["frames"]:
         if not isinstance(f, dict) or not isinstance(f.get("frame"), int) or isinstance(f.get("frame"), bool):
             raise PixelError("the observer's answer has a frame without a frame number")
+    if not player and any(f.get("asked") for f in run["frames"]):
+        raise PixelError("the observer was not asked about the player, and its answer says it asked")
     asked = run.get("objects", {})
     if not isinstance(asked, dict) or set(asked) != set(objects):
         raise PixelError(f"the observer was asked about {', '.join(objects) or 'no named object'}, and its "

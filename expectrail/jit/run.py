@@ -526,9 +526,11 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
         # The roles the game has many of that a check on this probe names: the observer is asked about
         # each of their boxes too, up to pixel.MAX_BOXES a frame.
         objects = sorted({c["object"] for c in group if pixel.named(c["object"], bindings)})
-        # One image a planned frame (and MAX_BOXES a named role), on reps runs of each of the clean game,
-        # the bug build and the candidate.
-        usd = len(planned) * (1 + pixel.MAX_BOXES * len(objects)) * 3 * reps * price
+        # The player is asked about only when a check on this probe names it.
+        player = pixel.asks_player(group, bindings)
+        # One image a planned frame for the player (when asked) and MAX_BOXES for each named role, on reps
+        # runs of each of the clean game, the bug build and the candidate.
+        usd = len(planned) * pixel.images_per_frame(player, objects) * 3 * reps * price
         try:
             spend.reserve(held + usd, f"pixel checks on {pid} ({observer.name})")
         except OutOfBudget as exc:
@@ -544,7 +546,7 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
                 replay(name, patches, pid, n, with_runner=frame_runner)
                 try:
                     setting, run, images = pixel.observe(observer, out / "jit-replays" / name / f"{pid}-{n}", route,
-                                                         objects)
+                                                         objects, player)
                 except pixel.PixelError as exc:
                     # An observer that stops part way has still sent what it sent: charge it, then stop.
                     sent = getattr(exc, "images", 0)
@@ -626,10 +628,12 @@ def _pixel_capture(by_probe: dict, routes: dict, base_patches: list, candidate: 
         except Exception:  # noqa: S112 - as in _pixel_stage: an observer that cannot plan is not asked
             continue
         objects = sorted({c["object"] for c in by_probe[pid] if pixel.named(c["object"], bindings)})
+        player = pixel.asks_player(by_probe[pid], bindings)
         for name, patches in builds:
             for n in range(1, reps + 1):
                 replay(name, patches, pid, n, with_runner=frame_runner)
-                pixel_jobs.store_replay(out / "jit-replays" / name / f"{pid}-{n}", store, route, planned, objects)
+                pixel_jobs.store_replay(out / "jit-replays" / name / f"{pid}-{n}", store, route, planned, objects,
+                                        player)
 
 
 def _variants(game, base_patches, candidate, limit):

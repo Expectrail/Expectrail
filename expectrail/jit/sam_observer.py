@@ -32,6 +32,11 @@ the engine logged for it (agents/sam_anchor.py ``object_boxes``), widened by ``p
 frame with more than pixel.MAX_BOXES of one role on screen, or one whose record cannot place them, is not
 asked about for that role. ``most_images`` is the most a replay can then take, which the budget reserves.
 
+**The player only when a check names it.** Asked with ``player=False`` (no check on the probe is about the
+player: expectrail/jit/pixel.py ``asks_player``), the observer asks nothing about the player: every planned
+frame's player row is ``asked: false`` with the reason, and only the named objects' boxes are sent. The
+frames are still checked against the replay's digests before any box is asked about.
+
 **What is charged.** Every request the client makes is one image, retries included (the client counts
 them in ``calls``); ``images`` is that count for the replay. When the observer stops part way, the images
 already sent ride on the error (``PixelError.images``) and the replay charges them too.
@@ -137,10 +142,11 @@ class SamAnchorObserver:
         picked = sample(list(range(last + 1)), every)
         return picked if len(picked) <= self.max_frames else [*picked[:self.max_frames - 1], last]
 
-    def most_images(self, route: dict, objects=()) -> int:
-        """The most images one replay of ``route`` can take: one a planned frame for the player, and up to
-        pixel.MAX_BOXES a planned frame for each role in ``objects``. What the budget reserves for."""
-        return len(self.frames(route)) * (1 + pixel.MAX_BOXES * len(self._objects(objects)))
+    def most_images(self, route: dict, objects=(), player: bool = True) -> int:
+        """The most images one replay of ``route`` can take: one a planned frame for the player (when it is
+        asked about), and up to pixel.MAX_BOXES a planned frame for each role in ``objects``. What the
+        budget reserves for."""
+        return len(self.frames(route)) * pixel.images_per_frame(player, self._objects(objects))
 
     def _objects(self, objects) -> tuple[str, ...]:
         objects = tuple(objects)
@@ -155,9 +161,13 @@ class SamAnchorObserver:
             raise pixel.PixelError("named objects are asked about with their logged boxes, so only with box 'body'")
         return objects
 
-    def __call__(self, run_dir, route: dict, objects=()) -> dict:
+    def __call__(self, run_dir, route: dict, objects=(), player: bool = True) -> dict:
         run_dir = Path(run_dir)
         objects = self._objects(objects)
+        if not isinstance(player, bool):
+            raise pixel.PixelError("whether the player is asked about is true or false")
+        if not player and not objects:
+            raise pixel.PixelError("the observer would be asked about nothing: neither the player nor a named object")
         setting = self.setting()
         recorded = getattr(self.client, "setting", None)
         if recorded is not None and recorded != setting:
@@ -201,7 +211,7 @@ class SamAnchorObserver:
         except SamError as exc:
             raise pixel.PixelError(str(exc)[:200]) from exc
         where = anchors(trace, size, [n for n in planned if n in on_disk], self.lift, fps=self.fps,
-                        box=self.box, pad=self.pad)
+                        box=self.box, pad=self.pad) if player else {}
         client = self.client
         before = client.calls
         rows = []
@@ -211,6 +221,11 @@ class SamAnchorObserver:
                 continue
             if _sha256(on_disk[n]) != hashes[n]:
                 raise self._stop(f"frame {n} on disk is not the frame the replay recorded", client, before)
+            if not player:
+                if png_size(on_disk[n]) != size:
+                    raise self._stop(f"frame {n} is not the size of frame {first}", client, before)
+                rows.append({"frame": n, "asked": False, "note": pixel.NOT_ASKED_PLAYER})
+                continue
             anchor = where[n]
             if "why" in anchor:
                 rows.append({"frame": n, "asked": False, "note": anchor["why"],
