@@ -25,7 +25,7 @@ These waited for #465, which rewrote the same jobs and is now on main.
 - `python3 -m expectrail.repro score --records <empty> --out <dir> --offer signals-reach-evidence-pixel
   --candidate withheld --screen bench/jit/public/screen.json`: exit 0, 24 defects, all no result, the page
   says "Candidate: **withheld**".
-- Full suite on the branch (main 6a0b834 plus the change): see the pull request.
+- Full suite on the branch merged with main 6bcab93: 3,724 tests, OK, 36 skipped.
 - Not run: the workflow itself, any model or SAM call. Nothing was dispatched and nothing was spent.
 
 ## Not done
