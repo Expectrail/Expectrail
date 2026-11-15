@@ -40,6 +40,11 @@ name: Generated checks
 # withheld gives it no byte of the candidate (--withhold-candidate on propose, revise and every replay),
 # so the checks come from the report and the bug build alone, and repro-score counts only records made
 # that way (--candidate withheld). The known-bugs bench is registered with the candidate shown.
+#
+# sam_every (#286): under the pixel setting, SAM is asked about every Nth frame of a probe and its last
+# (10 by default, 1 to 60). The capture, asking and judging jobs all take the same value, so the frames
+# kept, asked about and judged are one plan; a job that plans other frames than the answers were asked
+# about judges nothing. A sparser plan reserves fewer images under the same cap.
 on:
   pull_request:
     paths:
@@ -79,6 +84,9 @@ on:
         type: choice
         options: ['shown', 'withheld']
         default: 'shown'
+      sam_every:
+        description: Pixel setting only. SAM is asked about every Nth frame of a probe and its last (1 to 60; 10 by default)
+        default: '10'
 
 permissions:
   contents: read
@@ -164,10 +172,12 @@ jobs:
       budget: ${{ steps.plan.outputs.budget }}
       offer: ${{ steps.plan.outputs.offer }}
       candidate: ${{ steps.plan.outputs.candidate }}
+      sam_every: ${{ steps.plan.outputs.sam_every }}
     env:
       MODE: ${{ inputs.mode }}
       OFFER: ${{ inputs.offer || 'baseline' }}
       CANDIDATE_TO_MODEL: ${{ inputs.candidate || 'shown' }}
+      SAM_EVERY: ${{ inputs.sam_every || '10' }}
       CASE: ${{ inputs.case }}
       BASE: ${{ inputs.base_patch }}
       CANDIDATE: ${{ inputs.candidate_patch }}
@@ -188,6 +198,8 @@ jobs:
           echo "offer=$OFFER" >> "$GITHUB_OUTPUT"
           [[ "$CANDIDATE_TO_MODEL" =~ ^(shown|withheld)$ ]] || { echo "::error::candidate must be shown or withheld"; exit 1; }
           echo "candidate=$CANDIDATE_TO_MODEL" >> "$GITHUB_OUTPUT"
+          SAM_EVERY="${SAM_EVERY:-10}"; [[ "$SAM_EVERY" =~ ^([1-9]|[1-5][0-9]|60)$ ]] || { echo "::error::sam_every must be a whole number from 1 to 60"; exit 1; }
+          echo "sam_every=$SAM_EVERY" >> "$GITHUB_OUTPUT"
           if [[ "$MODE" == "bench" ]]; then
             [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "::error::the bench runs only from main"; exit 1; }
             [[ "$OFFER" == "baseline" ]] || { echo "::error::the known-bugs bench is registered under the baseline offer"; exit 1; }
@@ -461,6 +473,7 @@ jobs:
       BUDGET: ${{ needs.plan.outputs.budget }}
       OFFER: ${{ needs.plan.outputs.offer }}
       CANDIDATE_TO_MODEL: ${{ needs.plan.outputs.candidate }}
+      SAM_EVERY: ${{ needs.plan.outputs.sam_every }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -490,7 +503,8 @@ jobs:
           # round's spend) is replayed whether or not it was revised, to capture the pixel checks' frames.
           px=()
           if [[ "$OFFER" == "signals-reach-evidence-pixel" && -f runs/jit-proposal-2/jit-proposal.json ]]; then
-            px=(--observer sam-3.1-anchor --pixel-capture runs/pixel-capture)
+            SAM_EVERY="${SAM_EVERY:-10}"; [[ "$SAM_EVERY" =~ ^([1-9]|[1-5][0-9]|60)$ ]] || { echo "::error::sam_every must be a whole number from 1 to 60"; exit 1; }
+            px=(--observer sam-3.1-anchor --pixel-capture runs/pixel-capture --sam-every "$SAM_EVERY")
           fi
           mkdir -p "runs/jit/$CASE"
           if [[ "$revised" == "true" || ${#px[@]} -gt 0 ]]; then
@@ -537,6 +551,7 @@ jobs:
     env:
       CASE: ${{ matrix.c.case }}
       BUDGET: ${{ needs.plan.outputs.budget }}
+      SAM_EVERY: ${{ needs.plan.outputs.sam_every }}
       KEY_SET: ${{ secrets.MODEL_API_KEY != '' || secrets.META_API_KEY != '' }}
     steps:
       - name: Check the key
@@ -561,12 +576,13 @@ jobs:
             echo "::notice title=Pixel checks ${CASE}::no frames were captured, so nothing is asked"
             exit 0
           fi
+          SAM_EVERY="${SAM_EVERY:-10}"; [[ "$SAM_EVERY" =~ ^([1-9]|[1-5][0-9]|60)$ ]] || { echo "::error::sam_every must be a whole number from 1 to 60"; exit 1; }
           left=$(python -m expectrail.jit.cli pixel-budget --record "runs/captured/jit/$CASE/jit-run.json" --budget-usd "$BUDGET")
           export EXPECTRAIL_SAM_USD_CAP="$left"
           echo "::notice title=SAM budget ${CASE}::\$$left left of the change's \$$BUDGET"
           # Exit 1 means nothing was asked (over the budget, or nothing to ask): the pixel rows stay not run.
           python -m expectrail.jit.cli pixel-ask --replays runs/captured/pixel-capture \
-            --out runs/pixel-answers/answers.json --budget-usd "$left" --sam-live \
+            --out runs/pixel-answers/answers.json --budget-usd "$left" --sam-live --sam-every "$SAM_EVERY" \
             || echo "::warning title=Pixel checks ${CASE}::SAM was not asked; the pixel checks stay not run"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -597,6 +613,7 @@ jobs:
       BUDGET: ${{ needs.plan.outputs.budget }}
       OFFER: ${{ needs.plan.outputs.offer }}
       CANDIDATE_TO_MODEL: ${{ needs.plan.outputs.candidate }}
+      SAM_EVERY: ${{ needs.plan.outputs.sam_every }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -629,13 +646,15 @@ jobs:
         run: |
           mkdir -p "runs/jit/$CASE"
           if [[ -f runs/pixel-answers/answers.json && -d runs/captured/pixel-capture && -f runs/jit-proposal-2/jit-proposal.json ]]; then
+            SAM_EVERY="${SAM_EVERY:-10}"; [[ "$SAM_EVERY" =~ ^([1-9]|[1-5][0-9]|60)$ ]] || { echo "::error::sam_every must be a whole number from 1 to 60"; exit 1; }
             export PATH="$PWD/tools/godot:$PATH"
             base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
             wc=(); if [[ "$CANDIDATE_TO_MODEL" == "withheld" ]]; then wc=(--withhold-candidate); fi
             python -m expectrail.jit.cli run --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" \
               --proposal runs/jit-proposal-2/jit-proposal.json --out "runs/jit/$CASE" --budget-usd "$BUDGET" \
               --run-id "ci-${GITHUB_RUN_ID}-$CASE" --offer "$OFFER" --observer sam-3.1-anchor \
-              --sam-answers runs/pixel-answers/answers.json --pixel-replays runs/captured/pixel-capture "${wc[@]}"
+              --sam-answers runs/pixel-answers/answers.json --pixel-replays runs/captured/pixel-capture \
+              --sam-every "$SAM_EVERY" "${wc[@]}"
           else
             echo "::warning title=Pixel checks ${CASE}::no captured frames or no SAM answers; replay-final's record stands, its pixel checks not run"
             # With no frames kept the artifact's root is the record's own folder, not runs/.
