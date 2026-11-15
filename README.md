@@ -1,9 +1,89 @@
+<p align="center">
+  <a href="https://expectrail.tech">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/brand/expectrail-logo-reverse.svg">
+      <img src="docs/brand/expectrail-logo.svg" alt="Expectrail" width="300">
+    </picture>
+  </a>
+</p>
+
+<p align="center"><strong>Verification for coding agents’ changes: the runtime’s record and vision must agree, and plain code decides.</strong></p>
+
+<p align="center">
+  <a href="https://github.com/Expectrail/Expectrail/actions/workflows/ci.yml"><img src="https://github.com/Expectrail/Expectrail/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-16133a" alt="License: Apache 2.0"></a>
+  <img src="https://img.shields.io/badge/python-3.12%2B-16133a" alt="Python 3.12+">
+  <a href="docs/capabilities.md"><img src="https://img.shields.io/badge/every%20claim-linked%20to%20a%20run-ffc928" alt="Every claim linked to a run"></a>
+</p>
+
+<p align="center">
+  <a href="https://expectrail.tech">Website</a> ·
+  <a href="https://expectrail.tech/quickstart.html">Quickstart</a> ·
+  <a href="docs/concepts.html">Concepts</a> ·
+  <a href="docs/guides.html">Guides</a> ·
+  <a href="docs/positioning.html">Positioning</a> ·
+  <a href="docs/capabilities.md">Evidence ledger</a>
+</p>
+
 # Expectrail
 
-**Verify a game change against approved checks, with evidence you can inspect.**
-The installed command replays a project and reports **accept**, **reject** or **needs-review**.
-An accept needs both the engine's record and vision.
-[Capability ledger: installed command — integrated, diagnostic](docs/capabilities.md#installed-command).
+**Coding agents write changes at machine speed. Expectrail proves they actually work—and, when you opt in, repairs what fails for a person to review.**
+
+Autonomous coding agents can make unit tests pass while breaking the running software: drawing a character inside
+the floor, hiding a checkout button behind a banner, failing to render a texture, or disabling a feature to silence a
+failing check.
+
+Expectrail replays the changed software in a harness against approved and per-change checks, cross-examines
+**internal runtime telemetry** against **external visual observation** (SAM 3.1 or open-weight Muse Glimmer 30B), and
+uses **plain deterministic code—never a model**—to report **accept**, **reject** or **needs-review**. When a check
+catches a defect and you turn auto-fix on, a sandboxed fixer works on a separate copy, a fresh verification judges each
+candidate, and a person reviews any accepted patch. [Capability ledger: installed command — integrated, diagnostic](docs/capabilities.md#installed-command).
+
+```mermaid
+flowchart LR
+  A["Change from a coding agent"] --> B["Replay in a harness<br/>on fixed input routes"]
+  B --> C["Internal runtime telemetry<br/>(the engine's record)"]
+  B --> D["External perceptual sensor<br/>(SAM 3.1 / Glimmer over captured frames)"]
+  C --> E{"Deterministic evaluator<br/>plain code, no model"}
+  D --> E
+  E -->|accept| F["Bounded by the approved checks"]
+  E -->|needs-review| G["Not enough evidence to accept"]
+  E -->|reject| H["Opt-in repair on a separate copy<br/>fresh verification, a person reviews"]
+```
+
+Models observe, plan and patch. Plain code decides pass or fail. An accept requires both the runtime’s internal record
+and external vision to agree.
+
+## Why single-channel verification fails
+
+We measured three verification structures against the same 8 held-out bugs (`physics-fall-through`,
+`missing-texture`, `layering`, `sinking`), 8 valid fixes and 7 deceptive fixes that look plausible on the surface.
+
+| Verification architecture | Held-out bugs caught | Deceptive fixes accepted | Valid fixes falsely rejected |
+| --- | --- | --- | --- |
+| Internal telemetry / code checks alone (vision off) | [4 of 8](bench/detection/README.md) | [3 of 7](bench/judge/glimmer/README.md) | 0 of 8 |
+| A model judging screenshots alone | Not a deterministic gate | [2 of 7](bench/judge/README.md) (Muse Code) | [1 to 2 of 8](bench/judge/README.md) (Muse) · [5 of 10](bench/mutation/ai-fixes/README.md) on mutation repairs · [1 to 5 of 24](bench/judge/outside-models/README.md) (frontier models) |
+| **Expectrail: vision × runtime record → deterministic evaluator** | **[8 of 8](bench/detection/README.md)**, no false alarm on the clean build | **[0 of 7](bench/judge/glimmer/README.md)** (SAM 3.1, and Glimmer + engine) | **0 of 8** (8 of 8 valid fixes accepted) |
+
+Telemetry alone misses what is drawn: coordinates look normal while a coin texture fails to render or a character is
+hidden behind scenery. A screenshot judge hallucinates: Muse Code accepted a robot drawn inside the ground, and
+frontier models rejected working code. Recorded runs: held-out detection [41003749744](https://github.com/Expectrail/Expectrail/actions/runs/41003749744) and
+[41003751876](https://github.com/Expectrail/Expectrail/actions/runs/41003751876); targeted wrong fixes [41268021760](https://github.com/Expectrail/Expectrail/actions/runs/41268021760) (31 of 39 caught, 24 needing SAM; all
+8 misses from one no-op mutation operator); open-weight Glimmer + engine [41230177124](https://github.com/Expectrail/Expectrail/actions/runs/41230177124), where 1 of 7
+deceptive fixes passed every public check under Glimmer and was stopped only by a private held-out route.
+
+## Get started
+
+| I want to | Start here |
+| --- | --- |
+| Install and run the sample, spending nothing | [Six-step quickstart](https://expectrail.tech/quickstart.html) · [Install](#install) |
+| Verify pull requests to a game in CI | [GitHub Action guide](docs/guides.html#action) |
+| Try a repair after a reject | [Verify, then repair](#verify-then-repair) |
+| Bring my own model, vision backend or coding agent | [Providers guide](docs/guides.html#providers) · ledger rows: [models](docs/capabilities.md#byo-models), [vision](docs/capabilities.md#byo-vision), [fixer](docs/capabilities.md#byo-fixer) |
+| Know what a verdict does and does not establish | [Concepts](docs/concepts.html) · [What a result means](#what-a-result-means) |
+| Check a claim on this page | [Capability ledger](docs/capabilities.md): every row names its run and its limits |
+
+## Install
 
 ```sh
 python3 -m pip install .
@@ -13,6 +93,9 @@ Run that in a checkout, using a Python 3.12+ virtual environment. The packaged p
 it is **not on PyPI**. The [six-step quickstart](https://expectrail.tech/quickstart.html) covers
 installation, `doctor`, `sample` and a project given by path.
 [Install scope and evidence](docs/capabilities.md#installed-command).
+
+<details>
+<summary>Prerequisites</summary>
 
 Before replaying, Linux needs `xvfb-run` (Ubuntu packages `xvfb` and `xauth`),
 software OpenGL (`libgl1-mesa-dri` and `libglx-mesa0`), `patch`, `curl` and `unzip`.
@@ -24,29 +107,7 @@ kernel support. Vision settings remain intentionally absent for the no-spend wal
 [Prerequisites and install scope](docs/capabilities.md#installed-command) ·
 [Sandbox limits](docs/capabilities.md#replay-sandbox).
 
-[Quickstart](docs/quickstart.html) · [Verify, then repair](#verify-then-repair) · [Concepts and limits](docs/concepts.html) ·
-[Guides](docs/guides.html) · [Positioning](docs/positioning.html) ·
-[Capability ledger](docs/capabilities.md) · [Source](https://github.com/Expectrail/Expectrail)
-
-## What’s been shown
-
-Expectrail verified Godot’s kinematic-character demo using the engine’s record and vision.
-It is the [only outside game verified with vision so far](docs/capabilities.md#outside-projects).
-
-| Change to the game | Verdict |
-| --- | --- |
-| Original game at the pinned revision | [accept](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
-| Disabled floor collisions so the player fell through | [reject](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
-| Tinted the player’s sprite | [accept](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
-| Hid the player’s sprite | [reject](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
-
-The full run cost [$2.00](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) at list price for the variants shown.
-For the hidden player, the engine passed. Vision measured the background and reported
-[“past the boundary”](docs/outside-projects.md#first-outside-game-verified-with-vision-november-14-2026).
-Since [#481](https://github.com/Expectrail/Expectrail/pull/481), Expectrail reports “not drawn” in this case; no live run has shown that yet.
-
-Dodge the Creeps has [a draft check awaiting approval and no vision verification run](docs/capabilities.md#outside-projects).
-The [release dossier](https://expectrail.tech/release/#blind) lists the historical blind-test results.
+</details>
 
 ## Start with an honest result
 
@@ -87,18 +148,68 @@ in the historical loop is not an offline trusted receipt for the installed verif
 [Sandbox limits](docs/capabilities.md#replay-sandbox) · [Signing limits](docs/capabilities.md#signing).
 Read the [concepts page](docs/concepts.html) for grades, approval and the threat model.
 
-## Results
+## What’s been shown
 
-Use the [capability ledger](docs/capabilities.md) to distinguish **implemented**, **integrated**,
-**measured** and **experimental** modes. Each row keeps its recorded evidence beside its limits.
-The measured Godot path is one game, with bugs the team seeded; it is not a general catch rate.
-[Godot verification row](docs/capabilities.md#godot-verify).
+Expectrail verified Godot’s kinematic-character demo using the engine’s record and vision.
+It is the [only outside game verified with vision so far](docs/capabilities.md#outside-projects).
 
-[The interactive demo](https://expectrail.tech/demo/) shows saved captures; viewing it verifies
-nothing. [Demo row](docs/capabilities.md#interactive-demo).
-[Run it](https://expectrail.tech/run-it/) says whether it can start a run right now. The ledger
-currently says visitors cannot start runs because the service is not deployed; its cited sample
-runs were dispatched by hand. [Run it row](docs/capabilities.md#run-it).
+| Change to the game | Verdict |
+| --- | --- |
+| Original game at the pinned revision | [accept](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
+| Disabled floor collisions so the player fell through | [reject](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
+| Tinted the player’s sprite | [accept](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
+| Hid the player’s sprite | [reject](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
+
+The full run cost [$2.00](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) at list price for the variants shown.
+For the hidden player, the engine passed. Vision measured the background and reported
+[“past the boundary”](docs/outside-projects.md#first-outside-game-verified-with-vision-november-14-2026).
+Since [#481](https://github.com/Expectrail/Expectrail/pull/481), Expectrail reports “not drawn” in this case; no live run has shown that yet.
+
+Dodge the Creeps has [a draft check awaiting approval and no vision verification run](docs/capabilities.md#outside-projects).
+The [release dossier](https://expectrail.tech/release/#blind) lists the historical blind-test results.
+
+## How we stress-tested the premise
+
+Human-approved checks caught 8 of 8 seeded bugs and 31 of 39 targeted wrong fixes. We then designed a pre-registered
+mutation experiment specifically to break Expectrail.
+
+1. **Breaking static checks: a 0.9% random-mutation catch rate.** Across 77 random single-edit mutations (runs
+   [41268023631](https://github.com/Expectrail/Expectrail/actions/runs/41268023631), [41323827584](https://github.com/Expectrail/Expectrail/actions/runs/41323827584), [41323829361](https://github.com/Expectrail/Expectrail/actions/runs/41323829361)), static human-written
+   checks caught **10 of 77** raw, **0.9%** weighted by how common each edit type is. **0 of 45** mutations that moved,
+   resized or re-layered objects were caught: 44 touched background scenery no human had written a check to watch.
+   [Mutation bench](bench/mutation/README.md).
+2. **The repair discovery: 10 of 10 repaired when caught.** Given the catching check’s words and evidence, Muse Code
+   fixed **10 of 10** caught mutations on the first attempt, across all 6 routes, 5 of them unseen by the judge (run
+   [41330361829](https://github.com/Expectrail/Expectrail/actions/runs/41330361829)). Muse judging those same fixes from screenshots alone rejected 5 of the 10 working
+   repairs. The bottleneck is check coverage and evidence quality, not the coding model.
+   [AI-written fixes](bench/mutation/ai-fixes/README.md).
+3. **Closing the blind spot: advisory discovery and per-change checks.** [Advisory discovery](docs/capabilities.md#discovery)
+   reads invariants from the game’s code and plans probes with Muse Spark; [generated checks](docs/capabilities.md#generated-checks)
+   are proposed from the change itself. They caught **7 of 16** blind post-freeze defects (runs
+   [41248745687](https://github.com/Expectrail/Expectrail/actions/runs/41248745687), [41319184209](https://github.com/Expectrail/Expectrail/actions/runs/41319184209), [41319197682](https://github.com/Expectrail/Expectrail/actions/runs/41319197682)), flagged **4 of 4**
+   sabotage fixes that disabled features while ignoring 2 valid retunes ([41326269491](https://github.com/Expectrail/Expectrail/actions/runs/41326269491)), found
+   **4 of 4** reported Godot bugs ([41238187197](https://github.com/Expectrail/Expectrail/actions/runs/41238187197)), and raised **0 of 4** false alarms on intentional
+   design changes. [Discovery results](docs/discovery.md).
+
+## Proved in game engines, built for stateful visual software
+
+Most static webpages do not need Expectrail. It is built for stateful, visually complex software where unit tests and
+DOM selectors pass while the rendered experience is broken. We started with a 2D game engine (and a
+[3D Unity harness](docs/capabilities.md#unity-harness)) because continuous physics, layering and sprite rendering are
+the hardest visual state machine to prove this on, and the same verifier has already run on a
+[web checkout page](docs/capabilities.md#web-checkout).
+
+| Bug family | In game engines | Where the same bugs appear in web, canvas and mobile apps |
+| --- | --- | --- |
+| `layering` | Player or collectible drawn behind scenery after a z-index edit | A sticky banner or bottom sheet covering the checkout button |
+| `missing-texture` | Pickup logic works, but the coin sprite is not on screen | A canvas or WebGL view that drops a texture with no console error |
+| `sinking` | The character rests halfway into the ground line | A container that clips half of a primary button on small viewports |
+| `physics-fall-through` | The player falls through solid ground after a collision change | A drawer stuck mid-transition that start-and-end snapshots never see |
+
+Measured outside games so far: one web checkout page, in Chromium desktop and phone browser sessions
+([run 41109233666](https://github.com/Expectrail/Expectrail/actions/runs/41109233666): 8 of 8 development bugs caught with SAM on, 4 of 8 with SAM off, no false alarm).
+Canvas, WebGL and native mobile apps have not been run; the last column is where the same bug families appear, not a
+measured result.
 
 ## Verify, then repair
 
@@ -147,6 +258,18 @@ The quickstart needs none of their credentials. Each row links its own evidence 
 
 [Recorded vision costs](docs/sam.md) are scoped to their runs, not a quote for your project.
 [Observer scope](docs/capabilities.md#sam-observer).
+
+## Evidence and limits
+
+Use the [capability ledger](docs/capabilities.md) to distinguish **implemented**, **integrated**,
+**measured** and **experimental** modes. Each row keeps its recorded evidence beside its limits.
+[Godot verification row](docs/capabilities.md#godot-verify).
+
+[The interactive demo](https://expectrail.tech/demo/) shows saved captures; viewing it verifies
+nothing. [Demo row](docs/capabilities.md#interactive-demo).
+[Run it](https://expectrail.tech/run-it/) says whether it can start a run right now. The ledger
+currently says visitors cannot start runs because the service is not deployed; its cited sample
+runs were dispatched by hand. [Run it row](docs/capabilities.md#run-it).
 
 ## Development and license
 
