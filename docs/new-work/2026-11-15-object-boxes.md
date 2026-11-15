@@ -24,6 +24,8 @@ A pixel check about the enemy or the bullet needs to know where each is drawn, t
   (`contracts/examples/repro-pixel-reach-named.json`), writer and reader are in this pull request. The
   reader recomputes `reachIfNamed` and `totalsIfNamed`, and refuses a probe whose `byObject` does not
   name exactly the named objects.
+- `expectrail/repro/evidence.py`: `FIELDS`, the trace fields a proposer's summary may name, lists the
+  two new fields (`tests.test_repro_evidence` holds it equal to the schema's row fields).
 - `bench/jit/public/pixel-reach.json` was made again with named objects. The bench page and
   `docs/jit.md` give the result.
 
@@ -51,6 +53,10 @@ Nothing was dispatched and nothing was spent: no model call, no SAM call.
   object's boxes, with one image per box, reserved against the cap.
 - A difference inside a box is necessary for a pixel check to fail, not enough. Whether SAM answers
   differently there is for a recorded or live run to say.
+- The committed screen, visibility and evidence records were made from traces without the new fields.
+  A new replay has two more row fields. They differ wherever `enemies` or `projectiles` differ (a box
+  moves with its object), and also where only a collision shape changes, so a re-made record would name
+  them beside those. Not re-made here.
 - The Unity harness does not write `enemyBoxes` or `projectileBoxes`. Its traces have no `objectBoxes`,
   so the reader treats every frame as a gap for those objects.
 
@@ -62,6 +68,7 @@ Nothing was dispatched and nothing was spent: no model call, no SAM call.
 - `agents/sam_anchor.py`
 - `expectrail/repro/pixel_reach.py`
 - `expectrail/repro/__main__.py`
+- `expectrail/repro/evidence.py`
 - `contracts/repro-pixel-reach.v1.schema.json`
 - `contracts/examples/repro-pixel-reach-named.json`
 - `bench/jit/public/pixel-reach.json`
