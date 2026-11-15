@@ -1,0 +1,62 @@
+"""The home page's interactive parts stay true to the page and to the benches (direction B)."""
+import re
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+PAGE = (ROOT / "docs/index.html").read_text(encoding="utf-8")
+SCRIPT = (ROOT / "docs/assets/home.js").read_text(encoding="utf-8")
+
+
+def mode(name: str) -> dict:
+    body = re.search(name + r": \{(.*?)\}", SCRIPT, re.S)[1]
+    return dict(re.findall(r"(\w+): '([^']*)'", body))
+
+
+class HomeInteractiveTest(unittest.TestCase):
+    def test_the_page_loads_its_script_and_styles(self):
+        self.assertIn('<script src="assets/home.js" defer></script>', PAGE)
+        self.assertIn('<link rel="stylesheet" href="assets/home.css">', PAGE)
+
+    def test_the_switch_html_shows_the_both_state_the_script_holds(self):
+        both = mode("both")
+        for key in ("verdict", "caught", "fooled", "blocked"):
+            self.assertIn(f'data-field="{key}">{both[key]}<', PAGE, key)
+        self.assertEqual(set(re.findall(r'data-mode="(\w+)"', PAGE)), {"engine", "judge", "both"})
+
+    def test_every_switch_count_is_in_its_bench(self):
+        detection = (ROOT / "bench/detection/README.md").read_text(encoding="utf-8")
+        glimmer = (ROOT / "bench/judge/glimmer/README.md").read_text(encoding="utf-8")
+        judge = (ROOT / "bench/judge/README.md").read_text(encoding="utf-8")
+        self.assertIn("Without vision: **4 of 8**", detection)
+        self.assertIn("**8 of 8**", detection)
+        self.assertIn("| Expectrail, SAM on | 41230177124 | 8 of 8 | 0 of 7 | 0 |", glimmer)
+        self.assertIn("| Expectrail, SAM off | 41230177124 | 8 of 8 | 3 of 7 | 0 |", glimmer)
+        self.assertIn("| Muse from screenshots | 40936362830 | 6 of 8 | 2 of 7 | 0 |", judge)
+        self.assertIn("| Muse from screenshots | 40943391994 | 7 of 8 | 2 of 7 | 0 |", judge)
+        # The recorded case the switch shows: accepted with vision off and by Muse, rejected with vision on.
+        self.assertIn("| bad/fall-through-sink-player | reject | reject, reject | accept, accept | accept, accept |", judge)
+        self.assertEqual((mode("engine")["fooled"], mode("judge")["fooled"], mode("both")["fooled"]),
+                         ("3 of 7", "2 of 7", "0 of 7"))
+        self.assertEqual((mode("engine")["caught"], mode("both")["caught"]), ("4 of 8", "8 of 8"))
+
+    def test_every_flow_button_has_an_explanation_and_every_scenario_a_real_path(self):
+        nodes = set(re.findall(r'data-node="(\w+)"', PAGE))
+        explained = set(re.findall(r"^    (\w+): \{ title:", SCRIPT, re.M))
+        self.assertEqual(nodes, explained)
+        for name, path in re.findall(r"(\w+): \[((?:'\w+',?\s*)+)\]", SCRIPT):
+            with self.subTest(scenario=name):
+                self.assertTrue(set(re.findall(r"'(\w+)'", path)) <= nodes)
+        self.assertEqual(set(re.findall(r'data-scenario="(\w+)"', PAGE)), {"accept", "reject", "review"})
+
+    def test_the_repair_stepper_covers_the_five_stages_and_notes(self):
+        section = PAGE[PAGE.index('id="repair"'):].split("</section>", 1)[0]
+        for hook in ("data-loop-prev", "data-loop-next", "data-loop-status"):
+            self.assertIn(hook, section)
+        self.assertEqual(section.count("<rect "), 5)
+        self.assertEqual(section.count("<li>"), 5)
+        self.assertIn("var noteFor = [[0], [0], [1], [2, 3], [4]];", SCRIPT)
+
+
+if __name__ == "__main__":
+    unittest.main()
