@@ -593,8 +593,8 @@ frames `sam-3.1-anchor` would be asked about, does any pixel inside the box it w
 between the clean game and the defect build? The menu offers the player only, so the box is the
 player's. On the bench's two screen-only defects (all 25 library probes, November 15): yes for both,
 on 9 planned frames of one probe for `enemy-walks-backwards` and 17 over six probes for
-`bullet-behind-scenery`; but what differs inside the box is the enemy or the bullets overlapping the
-player, never the player. Whether SAM's box of the player changes there is untested. The table and
+`bullet-behind-scenery`; but on the four frames looked at by hand, what differs inside the box is the
+enemy or the bullets overlapping the player, not the player. Whether SAM's box of the player changes there is untested. The table and
 what it does not show are on the [bench's page](../bench/jit/public/README.md).
 
 ## What this does not claim
