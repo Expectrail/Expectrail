@@ -16,3 +16,21 @@
 .repair-notes span{display:block;font-weight:700}
 .repair-status{font-size:.95rem;color:var(--muted);margin:0}
 @media(max-width:700px){.repair-story{grid-template-columns:minmax(0,1fr)}.repair-map{justify-self:center}}
+/* Site menu: a labelled toggle at 860px and below, once nav.js has run (.has-toggle); links stay visible otherwise. */
+.menu-toggle{display:none}
+.top nav a[aria-current="page"]{text-decoration-thickness:3px}
+@media(max-width:860px){
+.top.has-toggle{flex-direction:row;flex-wrap:wrap;align-items:center;gap:0 16px;padding:18px 0}
+.top.has-toggle .menu-toggle{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:8px 16px;border:2px solid currentColor;border-radius:999px;background:transparent;color:inherit;font:650 15px/1 system-ui,sans-serif;cursor:pointer}
+.menu-bars{position:relative;display:block;width:18px;height:12px}
+.menu-bars::before,.menu-bars::after,.menu-bars i{content:"";position:absolute;left:0;width:100%;height:2px;border-radius:1px;background:currentColor;transition:transform .25s,opacity .2s,top .25s}
+.menu-bars::before{top:0}.menu-bars i{top:5px}.menu-bars::after{top:10px}
+.top.open .menu-bars::before{top:5px;transform:rotate(45deg)}.top.open .menu-bars i{opacity:0}.top.open .menu-bars::after{top:5px;transform:rotate(-45deg)}
+.top.has-toggle nav{display:none;flex-basis:100%;flex-direction:column;gap:0;margin-top:16px;border-top:1px solid var(--line);font-size:18px}
+.top.has-toggle.open nav{display:flex;animation:menu-in .22s ease-out}
+.top.has-toggle nav a{display:flex;align-items:center;min-height:52px;border-bottom:1px solid var(--line);text-decoration:none}
+.top.has-toggle nav a[aria-current="page"]{text-decoration:underline;text-decoration-thickness:3px}
+}
+@keyframes menu-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.top.has-toggle.open nav{animation:none}.menu-bars::before,.menu-bars::after,.menu-bars i{transition:none}}
+.top.has-toggle nav a:last-child{border-bottom:0}
