@@ -537,8 +537,10 @@ for the model already. [`pixel_jobs.py`](../expectrail/jit/pixel_jobs.py) does t
 
 1. **Capture** (runs the game, no secret): `run ... --observer sam-3.1-anchor --pixel-capture DIR`
    replays each pixel check's probe with frames on the clean game, the bug build and the candidate,
-   three times each, and keeps the folders in `DIR/<build>/<probe>-<n>/` with the route each replayed.
-   Nothing is asked; the pixel rows are `not-run`. It takes no `--sam-answers` or `--sam-live`.
+   three times each, and keeps each in `DIR/<build>/<probe>-<n>/` with the route it replayed. A kept
+   replay holds only its `replay.json`, its `trace.json` and the frames the observer will ask about
+   (since November 15): on hold-right that is 3.8 MB instead of 39.5 MB, on wait-long 6.2 MB instead of
+   113.1 MB. The observer refuses a kept replay missing a frame it asks about. Nothing is asked; the pixel rows are `not-run`. It takes no `--sam-answers` or `--sam-live`.
 2. **Ask** (holds the key, runs no game): `pixel-ask --replays DIR --out answers.json --budget-usd X
    --sam-live`. Every stored replay's frames are planned from its route and all their images reserved
    against the budget before the first request; over it, nothing is sent and it exits 1. SAM is asked
@@ -553,7 +555,8 @@ for the model already. [`pixel_jobs.py`](../expectrail/jit/pixel_jobs.py) does t
    never takes `--sam-live`.
 
 The capture folder is untrusted (a job that ran the change wrote it): only the three build names,
-`<probe>-<n>` folders and regular files are accepted, no symbolic link, at most 36 replays.
+`<probe>-<n>` folders holding only what a kept replay holds, and regular files are accepted, no symbolic
+link, at most 36 replays.
 
 ### In jit.yml (added November 14, seventh slice)
 
