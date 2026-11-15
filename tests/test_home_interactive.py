@@ -51,11 +51,24 @@ class HomeInteractiveTest(unittest.TestCase):
 
     def test_the_repair_stepper_covers_the_five_stages_and_notes(self):
         section = PAGE[PAGE.index('id="repair"'):].split("</section>", 1)[0]
-        for hook in ("data-loop-prev", "data-loop-next", "data-loop-status"):
+        for hook in ("data-loop-play", "data-loop-prev", "data-loop-next", "data-loop-status"):
             self.assertIn(hook, section)
         self.assertEqual(section.count("<rect "), 5)
         self.assertEqual(section.count("<li>"), 5)
         self.assertIn("var noteFor = [[0], [0], [1], [2, 3], [4]];", SCRIPT)
+
+    def test_counting_numbers_already_show_their_value_without_the_script(self):
+        counts = re.findall(r'<span data-count="([\d.]+)"(?: data-decimals="\d")?>([\d.]+)</span>', PAGE)
+        self.assertGreaterEqual(len(counts), 6)
+        for target, shown in counts:
+            self.assertEqual(target, shown)
+
+    def test_scroll_in_text_is_hidden_only_when_the_script_runs(self):
+        css = (ROOT / "docs/assets/home.css").read_text(encoding="utf-8")
+        self.assertIn(".js .reveal{opacity:0", css)
+        self.assertNotRegex(css, r"(?m)^\.reveal\{[^}]*opacity:0")
+        self.assertIn("prefers-reduced-motion:reduce", css)
+        self.assertIn("document.documentElement.classList.add('js')", PAGE)
 
 
 if __name__ == "__main__":
