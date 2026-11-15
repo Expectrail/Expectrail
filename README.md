@@ -28,6 +28,26 @@ kernel support. Vision settings remain intentionally absent for the no-spend wal
 [Guides](docs/guides.html) · [Positioning](docs/positioning.html) ·
 [Capability ledger](docs/capabilities.md) · [Source](https://github.com/Expectrail/Expectrail)
 
+## What’s been shown
+
+Expectrail verified Godot’s kinematic-character demo using the engine’s record and vision.
+It is the [only outside game verified with vision so far](docs/capabilities.md#outside-projects).
+
+| Change to the game | Verdict |
+| --- | --- |
+| Original game at the pinned revision | [accept](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
+| Disabled floor collisions so the player fell through | [reject](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
+| Tinted the player’s sprite | [accept](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
+| Hid the player’s sprite | [reject](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
+
+The full run cost [$2.00](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) at list price for the variants shown.
+For the hidden player, the engine passed. Vision measured the background and reported
+[“past the boundary”](docs/outside-projects.md#first-outside-game-verified-with-vision-november-14-2026).
+Since [#481](https://github.com/Expectrail/Expectrail/pull/481), Expectrail reports “not drawn” in this case; no live run has shown that yet.
+
+Dodge the Creeps has [a draft check awaiting approval and no vision verification run](docs/capabilities.md#outside-projects).
+The [release dossier](https://expectrail.tech/release/#blind) lists the historical blind-test results.
+
 ## Start with an honest result
 
 The quickstart deliberately uses no vision credentials and makes no model calls. Its expected
