@@ -152,35 +152,35 @@ class HTTPTest(unittest.TestCase):
                 if marker:
                     (candidate / marker).unlink()
 
-    def test_recorded_project_requires_its_pinned_before_folder(self):
+    def test_removed_project_preset_is_refused_without_starting_a_job(self):
         body = {'preset': 'kinematic-character', 'before': str(self.before / 'game/platformer'),
                 'after': str(self.after / 'game/platformer')}
         code, error, _ = self.http('POST', '/api/jobs', body)
         self.assertEqual(code, 400)
-        self.assertIn('pinned', error['detail'])
+        self.assertIn('config', error['detail'])
         self.assertFalse(list((self.store.root / 'jobs').glob('*')))
 
-    def test_recorded_project_supplies_only_its_bundled_policy(self):
-        from expectrail import app_kinematic as preset
+    def test_configured_project_supplies_only_its_selected_policy_to_the_normal_worker(self):
+        from tests.test_app_projects import configured_project
+        import shutil
 
-        before, after = [p / 'game/platformer' for p in (self.before, self.after)]
-        body = {'preset': 'kinematic-character', 'before': str(before), 'after': str(after)}
-        with mock.patch.object(preset, 'BASE_TREE', request.tree_digest(before)):
-            checked = self.http('POST', '/api/inspect', body | {'side': 'before', 'folder': str(before)})[1]
-            self.assertEqual((checked['godot'], checked['routes'], checked['checks']), (True, 1, 1))
-            self.assertFalse((before / 'routes').exists())
-            refused = self.http('POST', '/api/jobs', body | {'autoFix': True})
-            self.assertEqual(refused[0], 400)
-            with mock.patch.object(preset, 'start', return_value=None) as recorded_start:
-                job_id = self.create(**body)
-                recorded_start.assert_called_once_with(self.store, job_id)
+        before = configured_project(self.root / 'configured-before')
+        after = self.root / 'configured-after'
+        shutil.copytree(before, after)
+        body = {'projectConfig': True, 'before': str(before), 'after': str(after)}
+        checked = self.http('POST', '/api/inspect', body | {'folder': str(before)})[1]
+        self.assertEqual((checked['godot'], checked['routes'], checked['checks']), (True, 1, 1))
+        self.assertFalse((before / 'specs').exists())
+        with mock.patch.object(self.server.app, 'start', return_value=None) as normal_start:
+            job_id = self.create(**body)
+            normal_start.assert_called_once_with(self.store, job_id)
         self.store.cancel(job_id)
         doc = self.store.request(job_id)
         for arm, source in [('base', before), ('head', after)]:
             checkout = Path(doc[arm]['checkout'])
-            self.assertEqual((checkout / 'routes/walk.json').read_bytes(), preset.ROUTE.read_bytes())
-            self.assertEqual((checkout / 'specs' / preset.SPEC.name).read_bytes(), preset.SPEC.read_bytes())
-            self.assertEqual(request.tree_digest(Path(doc[arm]['checkout']) / 'project'), request.tree_digest(source))
+            self.assertEqual((checkout / 'routes/000.json').read_bytes(), (source / 'inputs/first.json').read_bytes())
+            self.assertEqual((checkout / 'specs/000.json').read_bytes(), (source / 'checks/nested/floor.json').read_bytes())
+            self.assertEqual(request.tree_digest(checkout / 'project'), request.tree_digest(source))
             self.assertFalse((source / 'specs').exists())
 
     def test_initial_page_removes_url_token_and_apis_use_header(self):

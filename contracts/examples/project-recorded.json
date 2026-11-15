@@ -1,0 +1,33 @@
+{
+  "format": "expectrail.project/v1",
+  "adapter": "godot",
+  "version": "4.7",
+  "entryScene": "res://world.tscn",
+  "viewport": [
+    530,
+    495
+  ],
+  "physicsTicksPerSecond": 120,
+  "captureFps": 60,
+  "inputActions": [
+    "jump",
+    "move_left",
+    "move_right"
+  ],
+  "bindings": {
+    "player": {
+      "node": "Player",
+      "texture": "res://player/player.png"
+    }
+  },
+  "routes": [
+    "routes/walk.json"
+  ],
+  "approvedContracts": [
+    "checks/player-stays-above-ground.json"
+  ],
+  "providers": {
+    "vision": "ref:vision/vision-recording.json",
+    "vision-calibration": "ref:vision/calibration.json"
+  }
+}

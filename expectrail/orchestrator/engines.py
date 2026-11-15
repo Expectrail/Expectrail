@@ -122,7 +122,16 @@ class Gate:
         if checks.digest != named:
             raise gate.ConfigError("the checks changed after the job was created; ask again")
         diagnostics = []
-        if self._rule == "both" and self._needs_vision_settings:
+        visual = self._visual
+        if self._rule == "both" and project.get("visual"):
+            from expectrail import project_job
+
+            try:
+                visual = project_job.observer(request)
+            except (ValueError, OSError) as exc:
+                diagnostics.append(st.diagnostic("PROVIDER_FAILED", stage="observing",
+                    detail=f"the configured recording or calibration could not be used: {exc}"))
+        elif self._rule == "both" and self._needs_vision_settings:
             from expectrail import doctor
 
             for check in doctor.vision_checks():
@@ -132,7 +141,7 @@ class Gate:
                     diagnostics.append(diagnostic)
         # A missing provider cannot hide an engine failure. Keep the rule `both`: without a
         # visual answer the gate can reject, but cannot accept. Recheck settings for each job.
-        visual = None if diagnostics else self._visual
+        visual = None if diagnostics else visual
         document = gate.run_gate(
             repo=Path(request["head"]["checkout"]), game=project["game"], routes=project["routes"],
             specs=project["specs"], out=paths.staging, work=paths.work / "gate",

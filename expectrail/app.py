@@ -16,7 +16,7 @@ import threading
 import tempfile
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from expectrail import app_kinematic, app_page, auto_fix, viewer
+from expectrail import app_page, auto_fix, project_job, viewer
 from expectrail.gate import record as rec
 from expectrail.orchestrator import request as req, runner
 from expectrail.orchestrator.store import JobStore, StoreError, UnknownJob, FINAL
@@ -69,38 +69,39 @@ def field(body, name, default=None):
 
 def build(body, *, inspect=False):
     head = Path(field(body, 'folder' if inspect else 'after')).expanduser()
-    preset = recorded_project(body)
+    configured(body)
     return req.build(adapter='godot', head=head,
                      base=None if inspect else Path(field(body, 'before')).expanduser(),
-                     game='.' if preset else field(body, 'game', '.'),
+                     game=field(body, 'game', '.'),
                      routes=field(body, 'routes', 'routes/*.json').replace(',', ' ').split(),
                      specs=field(body, 'specs', 'specs'))
 
 
-def recorded_project(body):
-    preset = body.get('preset', '')
-    if preset not in ('', 'kinematic-character'):
-        raise ValueError('Unknown project preset.')
-    return bool(preset)
+def configured(body):
+    if body.get('preset'):
+        raise ValueError('Project presets are no longer used. Choose a folder with an expectrail.project.json config.')
+    value = body.get('projectConfig', not any(k in body for k in ('game', 'routes', 'specs')))
+    if type(value) is not bool:
+        raise ValueError('projectConfig must be true or false.')
+    return value
 
 
 def inspect_project(body):
+    if configured(body):
+        return project_job.inspect(Path(field(body, 'folder')).expanduser())
     doc = build(body, inspect=True)
     root = Path(doc['head']['checkout'])
     game = root / doc['project']['game']
     from harness.adapters import get
 
     found = root.is_dir() and get('godot').is_project(game)
-    preset = recorded_project(body)
-    checks = app_kinematic.checks() if preset else req.read_checks(doc)
+    checks = req.read_checks(doc)
     help_text = []
     if not root.is_dir():
         help_text.append('This folder does not exist. Paste the full path to an existing folder.')
     elif not found:
         help_text.append('No Godot project found. Choose the folder containing project.godot, '
                          'or set the game folder below.')
-    if preset and found and body.get('side') == 'before' and req.tree_digest(game) != app_kinematic.BASE_TREE:
-        help_text.append(app_kinematic.WRONG_BASE)
     if not checks.routes:
         help_text.append('No usable routes found. Choose your route files in the settings below. '
                          'If you have none, ask your game developer to record routes for these checks.')
@@ -109,8 +110,6 @@ def inspect_project(body):
                          'A person must review and approve checks before they can judge a change.')
     if checks.problems:
         help_text.append('Correct the listed file problems before verifying.')
-    if preset and not help_text:
-        help_text.append('The example supplies the walk route and the approved ground check.')
     return {'folder': str(root), 'godot': found, 'routes': len(checks.routes),
             'checks': len(checks.specs), 'drafts': checks.drafts, 'problems': checks.problems,
             'help': ' '.join(help_text) or 'Project, routes and approved checks found.'}
@@ -130,10 +129,10 @@ class App:
                 raise UnknownJob('No job from this app session has that address.')
 
     def create(self, body):
-        preset = recorded_project(body)
-        if preset and body.get('autoFix'):
-            raise ValueError('The recorded example does not run a fixer.')
-        doc = build(body)
+        if configured(body):
+            doc = project_job.prepare(self.store, Path(field(body, 'after')), Path(field(body, 'before')))
+        else:
+            doc = build(body)
         settings, _ = auto_fix.configure(body.get('autoFix', False), body.get('attempts'), body.get('usdCap'))
         if settings:
             doc['autoFix'] = settings
@@ -147,11 +146,7 @@ class App:
         with self.lock:
             if self.closing:
                 raise ValueError('The app is stopping. Nothing was run.')
-            if preset:
-                status, created = app_kinematic.create_job(self.store, Path(doc['base']['checkout']),
-                                                         Path(doc['head']['checkout']))
-            else:
-                status, created = self.store.create(doc)
+            status, created = self.store.create(doc)
             job_id = status['id']
             self.owned.add(job_id)
             try:
@@ -160,8 +155,7 @@ class App:
                     if settings:
                         proc = auto_fix.launch(self.store, job_id, None)
                     else:
-                        start = app_kinematic.start if preset else self.start
-                        proc = start(self.store, job_id)
+                        proc = self.start(self.store, job_id)
             except Exception:
                 self.store.finish(job_id, 'failed', reasons=['The worker could not be started. No verdict.'])
                 raise

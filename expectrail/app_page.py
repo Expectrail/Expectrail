@@ -21,12 +21,12 @@ button.secondary{background:white;color:#175c47}button:disabled{opacity:.55;curs
 For your own checks, the routes and approvals come from <strong>Before</strong>. Expectrail does not change these folders.</p>
 <div class="grid"><div><label for="before">Before: full folder path</label><input id="before" placeholder="/Users/you/MyGame-before" autocomplete="off" spellcheck="false"></div>
 <div><label for="after">After: full folder path</label><input id="after" placeholder="/Users/you/MyGame-after" autocomplete="off" spellcheck="false"></div></div>
-<label><input type="checkbox" id="kinematic"> Use the kinematic-character example with recorded vision</label>
-<p id="preset-help" hidden>Choose the unchanged game from the <a href="https://github.com/godotengine/godot-demo-projects/archive/b761b4cd5718a7118f2c95eb55f181d0a5f004f1.zip" target="_blank" rel="noopener noreferrer">pinned Godot demos</a> as Before and your changed copy as After.
-Each folder must contain project.godot. Expectrail supplies the walk route and ground check, replays both folders,
-and uses saved vision answers for matching frames and questions. No key is needed.</p>
-<details id="paths"><summary>Where your game, routes and checks are</summary>
-<p>Paths below are relative to each version's folder. A game folder of <code>.</code> means project.godot is directly inside that folder.</p>
+<p>Each folder contains <code>project.godot</code> and <code>expectrail.project.json</code>.
+The config names the routes and checks. A draft config cannot give an accept.
+The kinematic-character example uses the same config path as your project.</p>
+<details id="paths"><summary>Older projects without a config</summary>
+<label><input type="checkbox" id="manual"> Enter paths manually</label>
+<p>For an existing checkout with routes and checks. Paths are relative to each version's folder.</p>
 <label for="game">Game folder</label><input id="game" value="." spellcheck="false">
 <label for="routes">Route files (patterns separated by spaces or commas)</label><input id="routes" value="routes/*.json" spellcheck="false">
 <label for="specs">Checks folder</label><input id="specs" value="specs" spellcheck="false"></details>
@@ -57,7 +57,7 @@ const token = '__TOKEN__';
 try { sessionStorage.setItem('expectrail-token', token); } catch (_) {}
 history.replaceState(null, '', '/');
 const el = id => document.getElementById(id);
-const values = () => el('kinematic').checked ? {preset:'kinematic-character',before:el('before').value,after:el('after').value} : Object.fromEntries(['before','after','game','routes','specs'].map(id => [id,el(id).value]));
+const values = () => ({projectConfig:!el('manual').checked,...Object.fromEntries((el('manual').checked?['before','after','game','routes','specs']:['before','after']).map(id => [id,el(id).value]))});
 el('auto-fix').onchange=()=>{el('repair-settings').hidden=!el('auto-fix').checked;};
 let job = null, busy = false;
 const phaseNames = {queued:'Waiting to start',preparing:'Checking inputs and tools',executing:'Running the game',
@@ -65,15 +65,9 @@ const phaseNames = {queued:'Waiting to start',preparing:'Checking inputs and too
 function controls(active) {
   busy=active;
   el('verify').disabled=active; el('inspect').disabled=active; el('cancel').disabled=!active || !job;
-  for (const id of ['kinematic','before','after','game','routes','specs','auto-fix','attempts','usd-cap']) el(id).disabled=active;
-  el('auto-fix').disabled=active || el('kinematic').checked;
+  for (const id of ['manual','before','after','game','routes','specs','auto-fix','attempts','usd-cap']) el(id).disabled=active;
 }
-el('kinematic').onchange=()=>{
-  const selected=el('kinematic').checked;
-  el('preset-help').hidden=!selected; el('paths').hidden=selected;
-  if(selected){el('auto-fix').checked=false;el('repair-settings').hidden=true;}
-  el('inspection').textContent=''; controls(false);
-};
+
 async function api(path, body) {
   const options = {method:body===undefined?'GET':'POST', headers:{'X-Expectrail-Token':token}};
   if(body!==undefined){options.headers['Content-Type']='application/json';options.body=JSON.stringify(body);}
@@ -116,9 +110,10 @@ el('inspect').onclick=async()=>{
   el('error').hidden=true; controls(true);
   try {const body=values(), lines=[];
     for(const side of ['before','after']){const data=await api('/api/inspect',{...body,side,folder:body[side]});
-      lines.push(side==='before'?(body.preset?'Before':'Before (checks used for this run)'):'After',
+      lines.push(side==='before'?'Before (checks used for this run)':'After',
         data.godot?'Godot project found.':'No Godot project found.',
-        `${data.routes} usable routes; ${data.checks} approved checks; ${data.drafts} draft checks.`,data.help,...data.problems,'');}
+        `${data.routes} usable routes; ${data.checks} approved checks; ${data.drafts} draft checks.`,
+        ...(data.routeNames||[]).map(name=>'Route: '+name), ...(data.checkNames||[]).map(name=>'Check: '+name),data.help,...data.problems,'');}
     el('inspection').textContent=lines.join('\n');
   }catch(error){problem(error);} finally{controls(false);}
 };

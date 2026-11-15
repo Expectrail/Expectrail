@@ -122,6 +122,11 @@ def check(doc) -> None:
     try:
         safe_relative(project["game"], "project.game", root_ok=True)
         safe_relative(project["specs"], "project.specs")
+        if "visual" in project:
+            for field in ("recording", "calibration"):
+                path = safe_relative(project["visual"][field], f"project.visual.{field}")
+                if project["game"] != "." and not path.startswith(project["game"].rstrip("/") + "/"):
+                    raise RequestError(f"project.visual.{field} must be inside the game folder")
         for pattern in project["routes"]:
             safe_relative(pattern, "a route pattern", glob=True)
     except ConfigError as exc:
