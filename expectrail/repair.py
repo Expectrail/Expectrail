@@ -302,11 +302,13 @@ def main(argv):
     p.add_argument("job", metavar="JOB")
     p.add_argument("--jobs-root", help=JOBS_ROOT_HELP)
     p.add_argument("--attempts", type=int, default=3, help="maximum candidates, 1 to 10 (default 3)")
-    p.add_argument("--fixture", type=Path, metavar="PATCH", help="use a fixed patch without starting Muse")
+    p.add_argument("--fixture", type=Path, metavar="PATCH", help="use a fixed patch without starting a fixer")
+    p.add_argument("--agent", choices=("muse-code", "llm-patch"), default="muse-code",
+                   help="fixer path (default: muse-code); live use still requires its enforced spend bound")
     try:
         args = p.parse_args(argv)
         jobs = store.JobStore(Path(args.jobs_root or os.environ.get("EXPECTRAIL_JOBS") or "runs/jobs"))
-        path, doc = repair(jobs, args.job, attempts=args.attempts, fixture=args.fixture)
+        path, doc = repair(jobs, args.job, attempts=args.attempts, fixture=args.fixture, agent=args.agent)
     except (UsageError, OSError, ValueError, store.StoreError) as exc:
         print(f"repair: {exc}", file=sys.stderr)
         return 5

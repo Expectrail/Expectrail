@@ -18,7 +18,10 @@ The app serves its own page without downloading scripts, styles or fonts.
    chooses what judges both copies. A config produced by `expectrail init` is a draft and
    cannot give an accept until its bindings are reviewed. Only a person may approve checks.
 3. Select **Check folders**. The page lists usable route names, approved check IDs and draft
-   warnings. This reads files without running Godot. Invalid or absent configs name what to fix.
+   warnings. The setup doctor probes the installed engine and display with an empty project;
+   it runs neither your selected game nor a model. Missing engine, display or drawing support
+   now shows its reason and fix for live vision as well as recorded vision. Invalid or absent
+   configs name what to fix.
    **Older projects without a config** retains the explicit path inputs for existing checkouts.
 4. Select **Verify**. The app and `expectrail verify --project AFTER --base BEFORE` prepare
    the same kind of request and use the same worker. The job snapshots both games and the
@@ -101,6 +104,10 @@ real-replay evidence for this slice is named in its work log; automated use is n
 ## Auto-fix checkbox
 
 Before selecting **Verify**, open the repair controls by checking **Try to fix the game if verification rejects it**.
-The box starts unchecked. The app asks for the attempt limit and dollar cap. The checkbox requests a live fixer
-and has no fixture picker. Until the Muse spend meter is available, use the [CLI fixture example](../README.md#verify-then-repair)
-to try the loop. [App and budget tests](../tests/test_auto_fix.py).
+The box starts unchecked. The app asks for the attempt limit and dollar cap. The checkbox requests Muse
+and has no fixture picker. Muse still has no enforceable per-request dollar bound, so that live path
+stops with needs-review and `fixer-bound-unavailable`. Use the [CLI fixture example](../README.md#verify-then-repair)
+to try the loop without a model. The separate `expectrail repair JOB --agent llm-patch` selector
+does not change this checkbox or verification's auto-fix agent. Its live path still requires the
+reviewed model, keys and enforced caps; no live repair was run in this audit.
+[App and budget tests](../tests/test_auto_fix.py), [remaining close-out steps](p0-closeout-audit.md).

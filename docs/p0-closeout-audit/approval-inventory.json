@@ -1,0 +1,46 @@
+[
+  {
+    "path": "agents/specs/player-stays-above-ground.json",
+    "state": "legacy"
+  },
+  {
+    "path": "specs/coins-visible.json",
+    "state": "legacy"
+  },
+  {
+    "path": "specs/player-always-visible.json",
+    "state": "legacy"
+  },
+  {
+    "path": "specs/player-stays-above-ground.json",
+    "state": "legacy"
+  },
+  {
+    "path": "specs/unity/unity-coins-visible.json",
+    "state": "legacy"
+  },
+  {
+    "path": "specs/unity/unity-player-always-visible.json",
+    "state": "legacy"
+  },
+  {
+    "path": "specs/unity/unity-player-stays-above-ground.json",
+    "state": "legacy"
+  },
+  {
+    "path": "apps/checkout/specs/checkout-button-inside-form.json",
+    "state": "none"
+  },
+  {
+    "path": "apps/checkout/specs/checkout-button-visible.json",
+    "state": "none"
+  },
+  {
+    "path": "apps/checkout/specs/logo-visible.json",
+    "state": "none"
+  },
+  {
+    "path": "tests/outside/specs/dodge-play-area.json",
+    "state": "bound"
+  }
+]

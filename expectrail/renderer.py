@@ -79,19 +79,21 @@ def project_report(root, probe=None):
         config = project_job.read_config(root)
         settings = project_job.visual_settings(config)
         if settings is None:
-            return {'recording': None, 'status': 'live', 'warning': False, 'fix': None,
+            report = {'recording': None, 'status': 'live', 'warning': False, 'fix': None,
                     'message': f'This machine: {describe(environment)}. No recorded vision selected; '
                                'live vision requires MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP.'}
-        name = settings['recording'].removeprefix('project/')
-        doc = record.strict_loads(project_job.regular(root, name, recorded.MAX_BYTES).decode('utf-8'))
-        recorded.check(doc)
-        report = recording_report(doc, environment)
+        else:
+            name = settings['recording'].removeprefix('project/')
+            doc = record.strict_loads(project_job.regular(root, name, recorded.MAX_BYTES).decode('utf-8'))
+            recorded.check(doc)
+            report = recording_report(doc, environment)
     except (RequestError, OSError, ValueError, UnicodeError):
         # Do not echo file contents, arbitrary parser exceptions or credential values.
         report = {'status': 'unreadable', 'warning': True,
                   'message': f'This machine: {describe(environment)}. The configured recording could not be read safely.',
                   'fix': 'Check the project config and use a valid vision recording in a regular file inside the project.'}
     if environment is None:
+        report['warning'] = True
         report['message'] += ' ' + (probe['reason'] or 'Renderer unavailable.')
         report['fix'] = (probe['fix'] or 'Run expectrail doctor.') + ' ' + (report['fix'] or '')
     return {'recording': name, **report}
