@@ -18,6 +18,7 @@
 !/tools/release_gate.py
 !/tools/dossier.py
 !/tools/capture_spike/
+!/tools/playtester/
 # The private held-out set when checked out locally or in CI (never commit it)
 /heldout-set/
 # Python
