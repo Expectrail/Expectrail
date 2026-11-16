@@ -413,8 +413,9 @@ check takes when it speaks about the screen: `expectrail.pixel-check/v1`
   engine's record puts the object ([`agents/sam_anchor.py`](../agents/sam_anchor.py)). It judges
   `visible`, `inside-region` (around the engine's box) and `never-crosses` (a fixed line). It cannot
   tell the ground or what a label reads. It sees only objects the record gives a position for (the
-  player, in the bundled game), one at a time, so it cannot judge `reaches`. `visual-sensor` (#262)
-  can be named but is refused until it is built. All of this is decided when a check is proposed.
+  player, in the bundled game), one at a time, so it cannot judge `reaches`. `visual-sensor` is #262's
+  no-model template sensor (below, "The no-model sensor as an observer"): the player only, the same
+  three predicates, no ground, no text. All of this is decided when a check is proposed.
 - **Only frames with both the observer and the record count.** A frame the observer was not asked
   about (the engine puts the player outside the picture), could not answer, or that lacks the
   engine's box an `inside-region` check needs is a gap. A run with a gap is `needs-review`. An answer
@@ -546,6 +547,42 @@ about (`framesProbed`, else the frames its rows cover), and the observer refuses
 judges anything, a recording whose plan is not its own: a denser plan would stop on a frame the
 recording never saw, and a sparser one would judge fewer frames than were paid for. Tested offline in
 `tests/test_jit_sam_every.py` and `tests/test_jit_sam_every_workflow.py`; no live run has used it.
+
+### The no-model sensor as an observer: `visual-sensor` (added November 16)
+
+[`template_observer.py`](../expectrail/jit/template_observer.py) makes #262's template sensor
+([`agents/template_observations.py`](../agents/template_observations.py), [template-sensor.md](template-sensor.md))
+the `visual-sensor` observer of pixel checks. Given a template bank frozen beforehand from a clean
+replay of the pinned clean game, it looks for the player near the engine's body box on the same planned
+frames as SAM (every Nth and the last), after the same checks of the replay folder (route, capture rates,
+every frame against the replay's digest, every planned frame present) and a check of the trace against
+its digest. It sends nothing and charges nothing: a replay takes 0 images, so the budget reserves $0 for
+it. Its setting is the sensor's algorithm and the bank's digest, so runs judged with two banks are never
+compared. What a frame's row says:
+
+| Sensor status | Row | Read by the judge as |
+| --- | --- | --- |
+| `matched` | the match, `holdsPoint` true | seen where the engine puts it |
+| `displaced` | the match, `holdsPoint` false | looked for there and not found |
+| `not-found` | no box, `absent` true | looked for there and not found (an observation, not a gap) |
+| `unavailable`, `out-of-frame` | not asked | a gap: the check is `needs-review` on that run |
+
+`absent` is the one new thing the judge reads (`pixel.observations`): before, a row with no box was always
+a gap, because SAM's "nothing came back" says nothing; the sensor's `not-found` says it searched readable
+pixels around the engine's box. The run reserves what an observer says a replay can take at most
+(`most_images`) where it says so, and the old count otherwise.
+
+**Not offered to the proposer.** A run is judged by one observer, and a check naming another is not run;
+the propose step is not told which observer will judge, so the proposer is offered only SAM
+(`pixel.PROPOSED`), and a model's answer or a saved proposal naming `visual-sensor` is refused with that
+reason. A saved proposal edited from SAM to the sensor is refused as before. So today `run.generate`
+judges a sensor check only when an intent hands it one (the tests do). Tested offline on synthetic frames
+in `tests/test_jit_template_observer.py`, including end to end through `run.generate` on the simulated
+game: a check that the player is drawn is kept (pass 3 of 3 clean, fail 3 of 3 where the sprite is not
+drawn) and catches a wrong fix, not a good one. No bank has been calibrated for a bench probe, and
+nothing here says how often the sensor is right on the bundled game's frames: the measured false alarms
+are in [template-sensor-measurement.md](template-sensor-measurement.md), and a false alarm on a clean run
+drops a check by the keep rule, so it costs a reproduction, never a false catch.
 
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 

@@ -215,7 +215,9 @@ class OneDefinitionTest(Case):
         (self.game / "linked").symlink_to(Path("..") / "shared")
         work = self.tmp / "work"
         hr.prepare(self.game, work, within=self.checkout)
-        mine = {"expectrail_harness.gd", "expectrail_recorder.gd"}
+        mine = {"expectrail_harness.gd", "expectrail_recorder.gd", "expectrail_roles.gd"}
+        for name in mine:
+            self.assertEqual((work / name).read_bytes(), (REPO / "harness/godot" / name).read_bytes())
         copied = {name for name in held(work) if name not in mine}
         self.assertEqual(copied, {name for name, _ in tree.files(self.game, within=self.checkout, skip=tree.GODOT_SKIP)})
         self.assertFalse((work / ".git").exists() or (work / ".godot").exists())

@@ -195,7 +195,7 @@ def apply_patches(work: Path, patches: list[Path]) -> None:
 def prepare(game: Path, work: Path, patch: Path | None = None, patches: list[Path] | None = None,
             cache: Path | None = None, within: Path | None = None) -> str:
     """Make the copy of the game a replay runs: exactly the files its digest is taken over
-    (``harness.tree``), then the import cache, the patches and the harness's own two scripts.
+    (``harness.tree``), then the import cache, the patches and the harness's own scripts.
     Returns the digest of the game files as they were copied, before anything was added."""
     if work.exists():
         shutil.rmtree(work)
@@ -204,7 +204,7 @@ def prepare(game: Path, work: Path, patch: Path | None = None, patches: list[Pat
         shutil.copytree(cache, work / ".godot")
     ordered = list(patches) if patches is not None else ([patch] if patch is not None else [])
     apply_patches(work, ordered)
-    for name in ("expectrail_harness.gd", "expectrail_recorder.gd"):
+    for name in ("expectrail_harness.gd", "expectrail_recorder.gd", "expectrail_roles.gd"):
         shutil.copy(REPO / "harness" / "godot" / name, work / name)
     project = (work / "project.godot").read_text(encoding="utf-8")
     if "[autoload]" in project:
@@ -322,7 +322,11 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
 
     # If the clean cache is populated and no patches modified assets, skip --import (~7s savings).
     # Patched runs run an incremental --import, which finishes in ~0.2s since all base assets are cached.
-    needs_import = force_import or (not cache) or bool(ordered) or not (work / ".godot" / "imported").is_dir()
+    # A configured project need not check in its .import sidecars. The cache holds .godot only;
+    # importing the staged project also creates its asset-to-cache mappings. Without those, a
+    # Sprite2D can have no texture at replay time even though its cached asset exists.
+    needs_import = (force_import or config is not None or (not cache) or bool(ordered)
+                    or not (work / ".godot" / "imported").is_dir())
     if needs_import:
         try:
             with timing.phase("import"):
@@ -374,6 +378,14 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
         except box.SandboxError as exc:
             raise SystemExit(f"the replay's output was refused: {exc}") from exc
     if proc.returncode != 0 or not (out / "trace.json").exists():
+        if config is not None:
+            # A binding refusal is useful setup information, not just an exit number. Treat
+            # game output as untrusted text: bounded and quoted; it can only explain a refusal.
+            detail = next((line[7:] for line in (proc.stdout + proc.stderr).splitlines()
+                           if line.startswith("ERROR: expectrail: bindings.")), None)
+            if detail:
+                raise SystemExit(f"configured replay refused: {json.dumps(detail[:500])}; "
+                                 f"see {out / 'godot.log'}")
         raise SystemExit(f"godot failed ({proc.returncode}); see {out / 'godot.log'}")
     with timing.phase("record"):
         replay = _replay_record(route, out, game_tree, fps, ordered, route_doc, proc.stdout + proc.stderr, frames,

@@ -139,17 +139,7 @@ class SamAnchorObserver:
     def frames(self, route: dict) -> list[int]:
         """The frames asked about on a replay of ``route``, from the route alone: every ``every``-th frame
         and the last one the route's ticks fill, within ``first``, at most ``max_frames``."""
-        ticks = route.get("ticks") if isinstance(route, dict) else None
-        if not isinstance(ticks, int) or isinstance(ticks, bool) or ticks < 1:
-            raise pixel.PixelError("the route does not say how many ticks it runs")
-        last = (ticks - self.step) // self.step   # the last frame n whose tick n*step+step-1 is in the route
-        if last < 0:
-            return []
-        if self.first is not None:
-            last = min(last, self.first - 1)
-        every = max(self.every, math.ceil(last / (self.max_frames - 1)) if last else 1)
-        picked = sample(list(range(last + 1)), every)
-        return picked if len(picked) <= self.max_frames else [*picked[:self.max_frames - 1], last]
+        return plan_frames(route, self.step, self.every, self.first, self.max_frames)
 
     def most_images(self, route: dict, objects=(), player: bool = True) -> int:
         """The most images one replay of ``route`` can take: one a planned frame for the player (when it is
@@ -182,37 +172,9 @@ class SamAnchorObserver:
         if recorded is not None and recorded != setting:
             raise pixel.PixelError(f"the recorded answers were asked with {json.dumps(recorded, sort_keys=True)}, "
                                    f"and this observer asks with {json.dumps(setting, sort_keys=True)}")
-        try:
-            replay = json.loads((run_dir / "replay.json").read_text(encoding="utf-8"))
-            replayed = str(replay["route"]["name"])
-            capture = replay.get("capture") or {}
-            hashes = list(replay["frameSha256"])
-        except (OSError, ValueError, KeyError, TypeError) as exc:
-            raise pixel.PixelError(f"no readable replay.json with the route and the frames' digests "
-                                   f"({type(exc).__name__})") from exc
-        if replayed != route.get("name"):
-            raise pixel.PixelError(f"the replay is of {replayed[:60]!r}, and the frames were planned for "
-                                   f"{str(route.get('name'))[:60]!r}")
-        if capture.get("fps") != self.fps or capture.get("physicsTicksPerSecond") != self.ticks_per_second:
-            raise pixel.PixelError(f"the frames were planned at {self.fps} fps and {self.ticks_per_second} ticks a "
-                                   f"second, and the replay was captured at {capture.get('fps')} fps and "
-                                   f"{capture.get('physicsTicksPerSecond')} ticks a second")
-        on_disk = frame_files(run_dir / "frames")
-        if not on_disk:
-            raise pixel.PixelError("the replay captured no frames")
-        count = capture.get("frames")
-        if not isinstance(count, int) or isinstance(count, bool) or len(hashes) != count \
-                or not all(0 <= n < count for n in on_disk):
-            raise pixel.PixelError(f"the frames on disk ({len(on_disk)}) are not the replay's "
-                                   f"({count} counted, {len(hashes)} digests)")
         planned = self.frames(route)
-        # A kept replay (expectrail/jit/pixel_jobs.py, store_replay) holds only the frames asked about. Any
-        # frame missing from disk must then be one that is never asked about; a missing frame that is asked
-        # about refuses the replay, so a trimmed folder can never turn a question into a gap.
-        missing = [n for n in planned if n < count and n not in on_disk]
-        if missing:
-            raise pixel.PixelError(f"the frames on disk ({len(on_disk)}) are not the replay's ({count} counted, "
-                                   f"{len(hashes)} digests): frame {missing[0]}, which is asked about, is missing")
+        replay, hashes, on_disk = checked_replay(run_dir, route, planned, self.fps, self.ticks_per_second)
+        replayed = str(replay["route"]["name"])
         # Recorded answers were asked about one plan of frames. This observer must plan exactly those, or
         # its every-th frame, first frames or frame cap differ from the asking job's: a plan with frames the
         # recording never saw would stop part way, and one with fewer would judge less than was paid for.
@@ -307,6 +269,63 @@ class SamAnchorObserver:
         exc = pixel.PixelError(" ".join(why.split())[:300])
         exc.images = client.calls - before
         return exc
+
+
+def plan_frames(route: dict, step: int, every: int, first: int | None, max_frames: int) -> list[int]:
+    """The frames an observer asks about on a replay of ``route``, from the route alone: every ``every``-th
+    frame and the last one the route's ticks fill (``step`` ticks a frame), within the first ``first``, at
+    most ``max_frames``. One plan for every observer, so the budget and the judging see the same frames."""
+    ticks = route.get("ticks") if isinstance(route, dict) else None
+    if not isinstance(ticks, int) or isinstance(ticks, bool) or ticks < 1:
+        raise pixel.PixelError("the route does not say how many ticks it runs")
+    last = (ticks - step) // step   # the last frame n whose tick n*step+step-1 is in the route
+    if last < 0:
+        return []
+    if first is not None:
+        last = min(last, first - 1)
+    every = max(every, math.ceil(last / (max_frames - 1)) if last else 1)
+    picked = sample(list(range(last + 1)), every)
+    return picked if len(picked) <= max_frames else [*picked[:max_frames - 1], last]
+
+
+def checked_replay(run_dir: Path, route: dict, planned, fps: int, ticks_per_second: int):
+    """(replay, frame digests, frames on disk) for a replay an observer is about to be asked about, or a
+    PixelError: the replay is of ``route``, captured at ``fps`` and ``ticks_per_second``, its frames on disk
+    are its own (numbered below the count replay.json gives, one digest a counted frame), and every frame
+    of ``planned`` it counted is on disk. Shared by every observer (sam-3.1-anchor here, visual-sensor in
+    expectrail/jit/template_observer.py), so none of them can be pointed at frames of another replay."""
+    run_dir = Path(run_dir)
+    try:
+        replay = json.loads((run_dir / "replay.json").read_text(encoding="utf-8"))
+        replayed = str(replay["route"]["name"])
+        capture = replay.get("capture") or {}
+        hashes = list(replay["frameSha256"])
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise pixel.PixelError(f"no readable replay.json with the route and the frames' digests "
+                               f"({type(exc).__name__})") from exc
+    if replayed != route.get("name"):
+        raise pixel.PixelError(f"the replay is of {replayed[:60]!r}, and the frames were planned for "
+                               f"{str(route.get('name'))[:60]!r}")
+    if capture.get("fps") != fps or capture.get("physicsTicksPerSecond") != ticks_per_second:
+        raise pixel.PixelError(f"the frames were planned at {fps} fps and {ticks_per_second} ticks a "
+                               f"second, and the replay was captured at {capture.get('fps')} fps and "
+                               f"{capture.get('physicsTicksPerSecond')} ticks a second")
+    on_disk = frame_files(run_dir / "frames")
+    if not on_disk:
+        raise pixel.PixelError("the replay captured no frames")
+    count = capture.get("frames")
+    if not isinstance(count, int) or isinstance(count, bool) or len(hashes) != count \
+            or not all(0 <= n < count for n in on_disk):
+        raise pixel.PixelError(f"the frames on disk ({len(on_disk)}) are not the replay's "
+                               f"({count} counted, {len(hashes)} digests)")
+    # A kept replay (expectrail/jit/pixel_jobs.py, store_replay) holds only the frames asked about. Any
+    # frame missing from disk must then be one that is never asked about; a missing frame that is asked
+    # about refuses the replay, so a trimmed folder can never turn a question into a gap.
+    missing = [n for n in planned if n < count and n not in on_disk]
+    if missing:
+        raise pixel.PixelError(f"the frames on disk ({len(on_disk)}) are not the replay's ({count} counted, "
+                               f"{len(hashes)} digests): frame {missing[0]}, which is asked about, is missing")
+    return replay, hashes, on_disk
 
 
 def _frames_text(frames) -> str:

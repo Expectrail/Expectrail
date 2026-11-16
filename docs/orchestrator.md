@@ -12,6 +12,11 @@ python3 -m expectrail.orchestrator cancel JOB
 python3 -m expectrail.orchestrator report JOB
 ```
 
+Commit inputs use the same service through `expectrail verify --repo PATH --base REF --head REF`.
+The verifier resolves both references and makes its own read-only snapshots before queuing the job;
+it reads the project config and checks from the base commit. See [commit inputs](commit-inputs.md)
+for layout selection, provenance and refusals. Folder inputs continue to work.
+
 `report` also writes the job's evidence viewer, `jobs/<id>/viewer/index.html`, and prints its path
 (docs/viewer.md). `report --json` prints the status alone.
 
@@ -57,9 +62,13 @@ folder is refused; name the routes' own folder (`routes/*.json`) or keep the job
 | `expectrail.verify-request/v1` | What to verify: the adapter, the game folder, routes and specs, a checkout of the head and of the base, the execution class, the time limit, an idempotency key | [`verify-request.v1.schema.json`](../contracts/verify-request.v1.schema.json) |
 | `expectrail.verify-job/v1` | A job's status: phase, decision, reasons, diagnostics, the input digests, the worker and its lease | [`verify-job.v1.schema.json`](../contracts/verify-job.v1.schema.json) |
 
-A request carries no digest. The orchestrator computes them from the files when it creates the job
+A caller supplies no trusted digest. The orchestrator computes them from the files when it creates the job
 (`inputs`): the head's game tree, the base's, and the policy digest, which covers the spec and route
 files read from the base when there is one, so a change cannot edit the checks that judge it.
+For commit inputs, the saved request also holds the verifier-resolved commits, Git trees and
+snapshot digests; the job's `inputSources` records their origin. A folder's caller-supplied commit
+label is discarded on creation. Old records without provenance stay readable without becoming
+verified commit records.
 
 **A game's digest describes what a replay reads.** The request's `headTree` and `baseTree`, the
 gate's record, `replay.json` and the copy a replay runs all come from one walk of the game folder
@@ -112,6 +121,7 @@ Every job has a folder of its own:
 ```
 <jobs-root>/jobs/<id>/request.json   the request, as accepted
                       status.json    replaced whole on every change
+                      inputs/        retained read-only snapshots, for commit inputs
                       work/          the job's scratch space
                       staging/       evidence while it is being written
                       output/        the finished evidence: staging/, renamed once
