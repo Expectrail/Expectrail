@@ -104,10 +104,16 @@ real-replay evidence for this slice is named in its work log; automated use is n
 ## Auto-fix checkbox
 
 Before selecting **Verify**, open the repair controls by checking **Try to fix the game if verification rejects it**.
-The box starts unchecked. The app asks for the attempt limit and dollar cap. The checkbox requests Muse
-and has no fixture picker. Muse still has no enforceable per-request dollar bound, so that live path
-stops with needs-review and `fixer-bound-unavailable`. Use the [CLI fixture example](../README.md#verify-then-repair)
-to try the loop without a model. The separate `expectrail repair JOB --agent llm-patch` selector
-does not change this checkbox or verification's auto-fix agent. Its live path still requires the
-reviewed model, keys and enforced caps; no live repair was run in this audit.
-[App and budget tests](../tests/test_auto_fix.py), [remaining close-out steps](p0-closeout-audit.md).
+The box starts unchecked. The app asks for the fixer, attempt limit and dollar cap before launch.
+Choose **llm-patch (bounded provider requests)** only after the person starting the app has set the
+reviewed provider/model, invocation cap, aggregate fixer cap, vision cap and durable month ledgers.
+No key is entered in the page. Unknown or unpriced models, missing caps and provider violations
+still stop for review. There is no silent model fallback. **Muse** stays refused with
+`fixer-bound-unavailable`; selecting it does not create a bound.
+
+The same explicit selection is `expectrail verify ... --auto-fix --auto-fix-agent llm-patch
+--auto-fix-usd-cap 6 --auto-fix-attempts 1`. The old CLI default remains Muse. The separate
+`expectrail repair JOB --agent llm-patch` uses the same existing loop after a reject.
+A repair's candidate may accept, reject or need review; the original rejected job stays rejected.
+Nothing merges the patch. The [operator steps and evidence](repair-remaining.md) distinguish
+fixture tests, real engine diagnostics and the live run Sean has not performed.

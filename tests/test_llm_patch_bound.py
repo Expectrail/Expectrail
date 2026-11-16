@@ -238,8 +238,10 @@ class LlmPatchBound(unittest.TestCase):
         self.assertEqual(transport.call_count,1);child.assert_not_called()
         self.assertEqual(doc['result']['decision'],'needs-review')
         self.assertEqual(doc['attempts'][0]['budgetStop'],'fixer-provider-violation')
-        self.assertEqual(doc['fixer'],{'source':'llm-patch','sandboxed':False})
-        counter=fixer_budget.read(path.parent/doc['attempts'][0]['fixerInvocation'])
+        self.assertEqual(doc['fixer'],{'source':'llm-patch','sandboxed':False,'providerOnly':True})
+        proof=path.parent/doc['attempts'][0]['fixerInvocation']
+        self.assertEqual(hashlib.sha256(proof.read_bytes()).hexdigest(),doc['attempts'][0]['fixerInvocationSha256'])
+        counter=fixer_budget.read(proof)
         self.assertEqual(counter['outputTokensObserved'],4097)
 
     def test_ingest_cli_has_trusted_agent_option(self):
@@ -265,8 +267,10 @@ class LlmPatchBound(unittest.TestCase):
         self.assertTrue(verify.call_args.kwargs['require_isolation'])
         self.assertEqual(doc['result']['decision'],'needs-review')
         self.assertEqual(doc['attempts'][0]['gateDecision'],'needs-review')
-        self.assertEqual(doc['fixer']['source'],'llm-patch')
-        counter=fixer_budget.read(path.parent/doc['attempts'][0]['fixerInvocation'])
+        self.assertEqual(doc['fixer'],{'source':'llm-patch','sandboxed':False,'providerOnly':True})
+        proof=path.parent/doc['attempts'][0]['fixerInvocation']
+        self.assertEqual(hashlib.sha256(proof.read_bytes()).hexdigest(),doc['attempts'][0]['fixerInvocationSha256'])
+        counter=fixer_budget.read(proof)
         self.assertEqual(counter['status'],'completed')
         self.assertEqual(counter['admittedRequests'],1)
 

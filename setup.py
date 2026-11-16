@@ -38,6 +38,7 @@ BUNDLED_MODULES = {
         "recorded",
         "renderer",
         "repair",
+        "repair_provenance",
         "resources",
         "route",
         "spend",

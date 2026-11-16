@@ -497,6 +497,8 @@ def _repair_section(repair: dict, fresh: str | None = None) -> str:
     stop = doc["stop"]
     body = ('<section aria-label="Recorded repair"><h2>Recorded repair</h2><ol>' + "".join(attempts)
             + f'</ol><p>Stopped: <strong>{esc(stop["reason"])}</strong>. {esc(stop["detail"])}</p>')
+    if doc["fixer"].get("providerOnly"):
+        body += "<p>Provider-only llm-patch: trusted host requests; no sandboxed agent process ran. Invocation reservations accompany the record.</p>"
     if doc["fixer"]["source"] == "fixture":
         body += "<p>Fixture recording for testing. No live fixer ran.</p>"
     if repair["diff"] is not None:
