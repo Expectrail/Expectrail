@@ -183,6 +183,8 @@ def _godot_missing() -> list[str]:
 
 
 def _godot_state(row: dict) -> object:
+    if "roleObjects" in row:
+        return {"player": row.get("player"), "roleObjects": row["roleObjects"]}
     return row.get("player")
 
 

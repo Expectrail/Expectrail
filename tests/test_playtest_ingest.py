@@ -77,6 +77,8 @@ class PlaytestIngest(unittest.TestCase):
         self.assertEqual(doc['intent'],'fix')
         self.assertEqual(doc['bug'],self.report['bug'])
         self.assertEqual(doc['coverage']['reached'],playtest.obligation(self.report)['reached'])
+        # A folder job keeps no commit of its own (#539): the checked target stays with the obligation.
+        self.assertEqual(doc['coverage']['targetCommit'],self.report['target']['commit'])
         summary=json.loads((self.jobs.paths(status['id']).output/'playtest-precheck.log').read_text())
         self.assertEqual([r['checks'][0]['result'] for r in summary],['pass']*3)
         with self.assertRaisesRegex(ValueError,'completed verify job'):

@@ -129,6 +129,8 @@ def prepare(store, report, project, *, timeout_seconds=request.DEFAULT_TIMEOUT_S
         (folder / (name + '.json')).write_text(json.dumps(route) + '\n', encoding='utf-8')
     doc['coverage'] = obligation(report)
     doc['coverage']['routes'] = [name]
+    # A folder job keeps no commit of its own (#539), so the checked target travels with the obligation.
+    doc['coverage']['targetCommit'] = commit
     request.check(doc)
     return doc
 

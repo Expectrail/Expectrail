@@ -629,7 +629,7 @@ def _pixel_from_proposal(saved, offer: str, profile: dict, probe_ids: set[str]) 
                                 f"{pixel.MAX_PIXEL_CHECKS}")
     out, seen = [], set()
     for entry in saved:
-        check, why = pixel.parse_candidate(entry, pixel.bindings_for(), probe_ids)
+        check, why = pixel.parse_candidate(entry, pixel.bindings_for(), probe_ids, pixel.proposed())
         if check is None:
             raise IntentUnavailable(f"PROPOSAL_INVALID: pixel check: {why}"[:300])
         if check != entry or not check["id"].startswith(pixel.ID_PREFIX) or check["id"] in seen:

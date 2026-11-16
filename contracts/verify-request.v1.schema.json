@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://expectrail.tech/contracts/verify-request.v1.schema.json",
   "title": "expectrail.verify-request/v1",
-  "description": "A request to verify one change. It names files and limits; it carries no digest, because the orchestrator computes every digest from the files itself.",
+  "description": "A request to verify one change. It names files or local Git references and limits. The orchestrator computes every digest itself; resolved commit identities and snapshot digests appear only in its saved request.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -73,9 +73,114 @@
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$"
           }
+        },
+        "targetCommit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$",
+          "description": "The commit the report named. Intake checked it equals the project folder's HEAD. It is a statement about that folder, not a commit the verifier resolved (see commitInputs)."
         }
       },
       "description": "Additional replay obligation for ingested reports; never a check or an approval. Only with intent fix and an unchanged base/head."
+    },
+    "commitInputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "baseRef",
+        "headRef"
+      ],
+      "description": "Resolve these references in the named local repository. The job store ignores any supplied checkout/commit/resolved claims and creates its own snapshots. projectPath selects the base committed project config; omitted uses the explicit project layout. resolved is written by the verifier for its saved request.",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "baseRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "headRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "projectPath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "resolved": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "head",
+            "base"
+          ],
+          "properties": {
+            "head": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "commit",
+                "gitTree",
+                "snapshotDigest",
+                "checkout"
+              ],
+              "properties": {
+                "commit": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+                },
+                "gitTree": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+                },
+                "snapshotDigest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "checkout": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                }
+              }
+            },
+            "base": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "commit",
+                "gitTree",
+                "snapshotDigest",
+                "checkout"
+              ],
+              "properties": {
+                "commit": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+                },
+                "gitTree": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+                },
+                "snapshotDigest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "checkout": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "autoFix": {
       "description": "Opt-in repair after a reject. A saved patch is identified by its content.",
@@ -182,7 +287,7 @@
             },
             {
               "type": "string",
-              "pattern": "^[0-9a-f]{40}$"
+              "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
             }
           ]
         }
@@ -214,7 +319,7 @@
                 },
                 {
                   "type": "string",
-                  "pattern": "^[0-9a-f]{40}$"
+                  "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
                 }
               ]
             }
@@ -259,5 +364,22 @@
   "anyOf": [
     {"required": ["intent"], "properties": {"intent": {"const": "fix"}}},
     {"propertyNames": {"pattern": "^(?!bug$)"}}
+  ],
+  "oneOf": [
+    {
+      "required": [
+        "commitInputs"
+      ],
+      "properties": {
+        "base": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "propertyNames": {
+        "pattern": "^(?!commitInputs$)"
+      }
+    }
   ]
 }

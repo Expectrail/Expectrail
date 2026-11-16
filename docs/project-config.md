@@ -17,12 +17,17 @@ The file names:
   node path or a group, plus the texture that object is drawn with (`res://`, a file in the
   project). Two roles may not name the same node or the same group.
 
-It does not name sizes. A trace row's `body` is the player's own collision box for that tick.
-`agents/observations.py` takes the width and height from that box when the row has one, and keeps
-the bottom at the feet (the origin plus `FEET_OFFSET`). The collision's own bottom is not the
-bottom of the box: a collision that rests on the ground while the sprite has sunk must not hide
-the sink. The bundled constants are used only when the row has no box. Coins stay on their
-constant until a row carries a box for them.
+It does not name sizes. Configured Godot replays record every bound role's measured world and
+screen boxes, engine visibility and stable instance identity in each row's `roleObjects`.
+Drawing bounds take precedence over an explicitly labelled collision fallback. Groups are
+resolved on every tick, including new instances. A missing or ambiguous binding refuses the
+replay; a role never found is not a successful empty measurement.
+
+Configured observations use these boxes, including the player's drawn bottom and each coin's
+own size. They do not use the bundled `FEET_OFFSET` or coin-size constants. Older configured
+traces without these measurements still load but cannot supply them. The unconfigured bundled
+path retains its existing behaviour. See [role boxes](role-boxes.md) for supported geometry,
+coordinate timing, visibility limits and the [tests](../tests/test_role_boxes.py).
 
 A provider value, when present, is a `ref:` or `env:` name. An inline secret is refused.
 

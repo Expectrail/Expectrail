@@ -59,7 +59,7 @@ MAX_PROMPT_CHARS = 120
 # The summary for a proposer names these and no other: a field the game added under another name is
 # counted, not named.
 FIELDS = ("body", "coins", "enemies", "enemyBoxes", "facing", "ground", "groundFrom", "objects", "onFloor", "player",
-          "playerVisible", "projectiles", "projectileBoxes", "view")
+          "playerVisible", "projectiles", "projectileBoxes", "roleObjects", "view")
 _ABSENT = object()
 
 

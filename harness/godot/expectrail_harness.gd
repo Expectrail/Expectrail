@@ -55,6 +55,8 @@ var _player_name: String = "Player"
 var _player_node: String = ""
 var _player_group: String = ""
 var _bindings: Dictionary = {}
+const _RolesScript = preload("res://expectrail_roles.gd")
+var _roles: RefCounted = null
 var _player: Node2D = null
 var _recorder: Node = null
 var _layers: Array = []          # every TileMapLayer in the level, found on the first record
@@ -123,6 +125,15 @@ func _ready() -> void:
 			get_tree().quit(2)
 			return
 		_bindings = parsed
+		if not _bindings.is_empty():
+			_roles = _RolesScript.new(_bindings)
+			# The headless display starts at 64x64 until a size is explicitly set. Use the
+			# game's declared size so Camera2D and measured screen boxes have the same
+			# viewport as a drawn replay. Leave the legacy unconfigured replay untouched.
+			if DisplayServer.get_name() == "headless":
+				get_window().size = Vector2i(
+					int(ProjectSettings.get_setting("display/window/size/viewport_width", get_window().size.x)),
+					int(ProjectSettings.get_setting("display/window/size/viewport_height", get_window().size.y)))
 		if not _take_player_binding():
 			return
 	get_tree().node_added.connect(_on_node_added)
@@ -300,7 +311,14 @@ func _matches_binding(node: Node, role: String) -> bool:
 func record() -> void:
 	if _stopped:
 		return
-	if _player == null:
+	if _roles != null:
+		_roles.collect(get_tree())
+		if _roles.error != "":
+			_stop(_roles.error)
+			return
+		_player = _roles.player
+		_sprite = null  # a configured player may despawn and be replaced
+	elif _player == null:
 		_player = _find_player()
 		if _stopped:
 			return
@@ -343,6 +361,8 @@ func record() -> void:
 	var view := get_viewport().get_final_transform() * get_viewport().get_canvas_transform()
 	row["view"] = [snappedf(view.x.x, 0.0001), snappedf(view.x.y, 0.0001), snappedf(view.y.x, 0.0001),
 		snappedf(view.y.y, 0.0001), snappedf(view.origin.x, 0.001), snappedf(view.origin.y, 0.001)]
+	if _roles != null:
+		row["roleObjects"] = _roles.place(view)
 	_trace.append(row)
 	_tick += 1
 	if _tick >= _ticks:
@@ -350,6 +370,11 @@ func record() -> void:
 
 
 func _finish() -> void:
+	if _roles != null:
+		var missing_roles: String = _roles.missing()
+		if missing_roles != "":
+			_stop(missing_roles)
+			return
 	if _trace_path != "":
 		# Events scheduled beyond the route never reached _send. Include their missing actions too.
 		for tick in _events:
@@ -378,6 +403,9 @@ func _finish() -> void:
 		var file := FileAccess.open(_trace_path, FileAccess.WRITE)
 		if not _bindings.is_empty():
 			out["bindings"] = _bindings
+			out["capabilities"]["roleBoxes"] = true
+			var size := get_viewport().get_visible_rect().size
+			out["viewport"] = [size.x, size.y]
 		file.store_string(JSON.stringify(out, "", false))
 		file.close()
 	get_tree().quit(0)

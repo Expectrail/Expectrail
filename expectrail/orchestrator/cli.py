@@ -56,6 +56,11 @@ def describe(status: dict, job_folder: Path | None = None) -> str:
     lines.append(f"job {status['id']}: {status['phase']}" + (f", {status['decision']}" if status["decision"] else ""))
     if status.get("intent", "none") != "none":
         lines.append(f"  Declared intent: {status['intent']}")
+    for side, source in status.get('inputSources', {}).items():
+        if source is not None:
+            text = ('verifier-resolved commit ' + source['commit'] if source['kind'] == 'commit'
+                    else 'supplied folder (not a verified commit)')
+            lines.append(f'  {side.title()} input: {text}')
     if "bug" in status:
         lines.append(f"  Bug report (user supplied; not a check): {status['bug']}")
     lines += [f"  {reason}" for reason in status["reasons"]]
@@ -128,9 +133,10 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
     sub = p.add_subparsers(dest="command", required=True, metavar="COMMAND")
 
     v = sub.add_parser("verify", help="verify a change and say accept, reject or needs review")
-    v.add_argument("--head", type=Path, help="a checkout of the change")
+    v.add_argument("--repo", type=Path, help="resolve base/head references in this local Git repository; no checkout hooks, filters or fetch")
+    v.add_argument("--head", help="a checkout folder, or a commit reference with --repo")
     v.add_argument("--project", type=Path, help="the changed project folder; use its base config to select routes, checks and vision")
-    v.add_argument("--base", type=Path, help="a checkout of what it is compared with; the checks are read from it")
+    v.add_argument("--base", help="the base folder, or a commit reference with --repo; supplies policy")
     v.add_argument("--adapter", default="godot")
     v.add_argument("--game", help="the project folder, relative to the checkout")
     v.add_argument("--routes", help="route files or globs, relative to the checkout, separated by spaces or commas")
@@ -178,7 +184,15 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
     try:
         args = p.parse_args(argv)
         if args.command == "verify":
-            if args.project is None:
+            if args.repo is not None:
+                if args.base is None or args.head is None:
+                    v.error('--repo requires --base REF and --head REF')
+                explicit = [args.game is not None, args.routes is not None, args.specs is not None]
+                if any(explicit) and (not all(explicit) or args.project is not None):
+                    v.error('with --repo give all of --game/--routes/--specs, or select a base config with --project RELATIVE_PATH')
+                if args.base_commit is not None or args.head_commit is not None:
+                    v.error('--repo resolves commit identities itself; do not give --base-commit or --head-commit')
+            elif args.project is None:
                 missing = ["--" + name for name in ("head", "game", "routes", "specs") if getattr(args, name) is None]
                 if missing:
                     v.error("the following arguments are required: " + ", ".join(missing) + " (or use --project)")
@@ -230,7 +244,18 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
             options = dict(head_commit=args.head_commit, base_commit=args.base_commit,
                            execution_class=args.execution_class, timeout_seconds=args.timeout,
                            idempotency_key=args.idempotency_key, intent=args.intent, bug=req.bug_text(args.bug))
-            if args.project is not None:
+            if args.repo is not None:
+                repository = str(args.repo.expanduser().resolve())
+                configured = args.game is None
+                request = req.build(adapter=args.adapter, head=repository, base=repository,
+                    game='project' if configured else args.game,
+                    routes=['routes/*.json'] if configured else [r for r in re.split(r'[\s,]+',args.routes) if r],
+                    specs='specs' if configured else args.specs, **options)
+                request['commitInputs'] = {'repository':repository,'baseRef':args.base,'headRef':args.head}
+                if configured:
+                    request['commitInputs']['projectPath'] = str(args.project or '.')
+                req.check(request)
+            elif args.project is not None:
                 from expectrail import project_job
 
                 request = project_job.prepare(store, args.project, args.base, **options)
