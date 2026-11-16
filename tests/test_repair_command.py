@@ -14,6 +14,7 @@ from agents import fixer
 from expectrail import cli, contracts
 from expectrail.orchestrator import engines, request, runner, sample, store
 from tests.test_two_observers import Game
+from tests import cli_capture
 
 ROOT = Path(__file__).resolve().parents[1]
 FIX = ROOT / "agents/fixtures/fix-collision-mask.patch"
@@ -50,7 +51,7 @@ class RepairCommandTest(unittest.TestCase):
             argv += ["--fixture", str(fixture)]
         with mock.patch.object(runner, "spawn", return_value=None), mock.patch.object(
                 runner, "wait", side_effect=lambda st, child, proc: work(st, child)), \
-                contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+                cli_capture.command_output(out):
             code = cli.main(argv)
         return code, out.getvalue()
 

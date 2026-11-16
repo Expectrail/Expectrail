@@ -190,7 +190,7 @@ class UnixBridge:
         self.thread.start()
 
     def _serve(self) -> None:
-        from agents.gateway_bridge import _pump
+        from agents.gateway_bridge import join
 
         while True:
             try:
@@ -203,8 +203,7 @@ class UnixBridge:
             except OSError:
                 client.close()
                 continue
-            for a, b in ((client, upstream), (upstream, client)):
-                threading.Thread(target=_pump, args=(a, b), daemon=True).start()
+            join(client, upstream)
 
     def close(self) -> None:
         try:

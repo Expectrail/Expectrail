@@ -1,5 +1,4 @@
 """Round two: existing generator/keep rule, scripted transports, no engine or image dependencies."""
-import contextlib
 import copy
 import io
 import json
@@ -15,6 +14,7 @@ from expectrail.orchestrator import engines, playtest, reproduction, request, ru
 from tests import test_playtest_ingest as fixtures
 from tests import jit_fixtures as jit
 from tests.test_two_observers import Game, GROUND_TOP, FEET
+from tests import cli_capture
 
 ROOT = fixtures.REPO
 CHECK = {'id':'facing-follows-motion','statement':'The player faces the way it walks.',
@@ -61,7 +61,7 @@ class GeneratedIngest(unittest.TestCase):
         output=io.StringIO()
         with mock.patch.object(runner,'spawn',side_effect=spawn),mock.patch.object(reproduction,'propose',side_effect=proposal), \
              mock.patch.object(intent,'spark_intent',side_effect=model),mock.patch('urllib.request.urlopen') as http, \
-             mock.patch('agents.fixer.run_fixer') as fixer,contextlib.redirect_stdout(output),contextlib.redirect_stderr(output):
+             mock.patch('agents.fixer.run_fixer') as fixer,cli_capture.command_output(output):
             code=cli.main(args)
             http.assert_not_called();fixer.assert_not_called()
         self.assertEqual(code,2,output.getvalue())

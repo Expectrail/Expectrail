@@ -121,6 +121,7 @@ def check(root: Path, *, offline: bool = False, browser=None) -> list[dict]:
             browser.close()
             manager.stop()
         server.shutdown()
+        server.server_close()
     return findings
 
 

@@ -378,6 +378,7 @@ def smoke(*, stand_in: bool, require_sandbox: bool = False, only: list[str] | No
     finally:
         gate.release.set()
         server.shutdown()
+        server.server_close()
     return doc
 
 
