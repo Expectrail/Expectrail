@@ -529,8 +529,17 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
         # The player is asked about only when a check on this probe names it.
         player = pixel.asks_player(group, bindings)
         # One image a planned frame for the player (when asked) and MAX_BOXES for each named role, on reps
-        # runs of each of the clean game, the bug build and the candidate.
-        usd = len(planned) * pixel.images_per_frame(player, objects) * 3 * reps * price
+        # runs of each of the clean game, the bug build and the candidate; an observer that says how many
+        # images a replay can take at most (``most_images``: none for the no-model visual-sensor) is held to that.
+        most = getattr(observer, "most_images", None)
+        try:
+            per_run = int(most(route, objects, player)) if callable(most) \
+                else len(planned) * pixel.images_per_frame(player, objects)
+        except Exception as exc:  # noqa: BLE001 - an observer that cannot say what it will send is not asked
+            for check in group:
+                not_run(check, f"the observer cannot be asked about these checks: {' '.join(str(exc).split())[:160]}")
+            continue
+        usd = per_run * 3 * reps * price
         try:
             spend.reserve(held + usd, f"pixel checks on {pid} ({observer.name})")
         except OutOfBudget as exc:
