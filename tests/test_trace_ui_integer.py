@@ -154,7 +154,8 @@ class PublicCounterEngineTest(unittest.TestCase):
         for name in ('clean-a', 'clean-b', 'coin-counter-stuck', 'coin-counts-twice'):
             out = Path(cls.tmp.name) / name
             patches = [] if name.startswith('clean-') else [REPO / 'bench/jit/public' / name / 'defect.patch']
-            run(path, out, patches=patches, godot=godot, capture_frames=False)
+            run(path, out, patches=patches, godot=godot, capture_frames=False,
+                trace_specs=[json.loads((REPO / "contracts/examples/trace-spec-ui-integers.v1.json").read_text())])
             cls.episodes[name] = from_run_dir(out, route, episode_id=name)
 
     def test_public_menu_route_exposes_both_recorded_counter_misses(self):
@@ -163,4 +164,8 @@ class PublicCounterEngineTest(unittest.TestCase):
         for name in ('clean-a', 'clean-b'):
             self.assertTrue(all(s['uiIntegers'] == [] for s in self.episodes[name]['samples'][:100]),
                             'the initially hidden menu must not supply a counter reading')
+        rule = json.loads((REPO / 'contracts/examples/trace-spec-ui-integers.v1.json').read_text())
+        judged = {name: evaluate(rule, ep)['result'] for name, ep in self.episodes.items()}
+        self.assertEqual(judged, {'clean-a': 'pass', 'clean-b': 'pass',
+                                  'coin-counter-stuck': 'fail', 'coin-counts-twice': 'fail'})
         print('Public menu engine readings (not a reproduction rate):', got)

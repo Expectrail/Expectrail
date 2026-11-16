@@ -248,10 +248,22 @@ def godot_cmd(godot: Path, display: bool) -> list[str]:
 _FROM_GAME = object()
 
 
+def needs_ui_integers(specs) -> bool:
+    """Whether an evaluated trace spec reads UI integers; an offered signal alone requests nothing."""
+    for spec in specs:
+        op = spec.get("operation", {})
+        if op.get("type") == "relation" and op.get("signal") == "ui_integer_at_end":
+            return True
+        if op.get("type") == "signal_compare" and "ui_integer_at_end" in (
+                op.get("leftSignal"), op.get("rightSignal")):
+            return True
+    return False
+
+
 def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = None, fps: int | None = 60,
         godot: Path | None = None, patches: list[Path] | None = None,
         force_import: bool = False, capture_frames: bool = True, sandbox: str | None = None,
-        within: Path | None = None, *, project: object = _FROM_GAME) -> dict:
+        within: Path | None = None, *, project: object = _FROM_GAME, trace_specs=()) -> dict:
     """Replay one route and write trace.json and replay.json (and the frames, unless capture_frames is
     False: discovery reads only the trace, so it runs headless and skips writing a PNG per frame).
 
@@ -266,6 +278,8 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
     ``expectrail.project.json``. The gate passes the base checkout's config (or None when the base
     has none) so a change under test cannot set the capture rate or the bindings by editing its own
     copy. ``fps`` is None when that rate should come from the config, or 60 when there is none.
+    ``trace_specs`` are the trace contracts evaluated on this replay. UI integer recording is
+    requested only if one reads ui_integer_at_end; default replays do not walk the UI or add a key.
     The bindings go to the harness as values: inside the sandbox the game is a copy, and a path
     from this machine would not be there."""
     game = game or REPO / "game" / "platformer"
@@ -373,6 +387,11 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
             f"--seed={route_doc.get('seed', 1)}"]
     if config is not None:
         cmd += harness_arguments(config)
+    # Like optional configured role recording, the request travels through the harness's
+    # existing user arguments as a value, never a host path, route field or environment switch.
+    if needs_ui_integers(trace_specs):
+        cmd.append("--ui-integers=true")
+
     try:
         with timing.phase("replay"):
             if tool is not None:

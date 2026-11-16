@@ -73,7 +73,11 @@ counter bugs on two of three menu routes each, with no difference in the old tra
 to a missing UI trace reading after the separate menu reach experiment.
 
 This change records bounded **integer-only Label state**, `uiIntegers`, from visible Label nodes
-in the current scene. At most 32 values, bounded magnitude, at most 4096 visited/queued nodes;
+in the current scene. Recording is opt-in per evaluated trace spec: `ui_integer_at_end`
+in a relation or either side of `signal_compare` requests it through the existing harness
+value arguments. No requesting spec means no scene scan and no `uiIntegers` key at all. An offer
+or a general measurement run does not request it. JIT and discovery pass the applicable specs
+for each replay; candidate fingerprints and reproduction runs use the same request. At most 32 values, bounded magnitude, at most 4096 visited/queued nodes;
 overflow means unknown (`null`), never a truncated collection. It records no free-form label text.
 Hidden labels are excluded. `ui_integer_at_end` reads a value only when exactly one such label
 exists at the end of the observed window; absent, empty, multiple (even equal), overflowed and

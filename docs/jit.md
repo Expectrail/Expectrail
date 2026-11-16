@@ -779,7 +779,13 @@ The original hosted baseline score and all its per-defect records are now commit
 Recomputing that score is byte-identical; no new live rate was measured.
 
 `ui_integer_at_end` reads the sole visible integer-only Label value at the last tick of the
-observed window. The Godot recorder writes optional bounded `uiIntegers`; older traces, no label,
+observed window. The recorder collects it only when an evaluated trace spec reads that signal,
+either through `relation.signal` or either side of `signal_compare`. JIT requests it per active
+check/probe, including candidate fingerprints; discovery requests it for applicable specs and
+recaptures a prior probe if a newly proposed spec first needs UI data. The request uses the
+harness's existing value-argument path (`--ui-integers=true`), not a route field or environment
+switch. With no requesting spec, no UI scene walk runs and no `uiIntegers` key is written.
+General measurement/evidence collection does not enable it merely because an offer names the signal. The Godot recorder writes optional bounded `uiIntegers`; older traces, no label,
 multiple labels and collection overflow give no reading. This is engine UI state, not proof of
 pixels. `signal_compare` compares two signals within one route/window (right against left,
 with `eq`, `lte`, `gte`, `lt`, `gt` and nonnegative `toleranceAbs`). A reported collected-coin counter

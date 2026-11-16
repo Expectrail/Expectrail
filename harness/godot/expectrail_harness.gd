@@ -51,6 +51,7 @@ var _ticks: int = 0
 var _tick: int = 0
 var _trace: Array = []
 var _trace_path: String = ""
+var _record_ui_integers := false
 var _player_name: String = "Player"
 var _player_node: String = ""
 var _player_group: String = ""
@@ -113,6 +114,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	seed(int(args.get("seed", "1")))
 	_trace_path = args.get("trace", "")
+	_record_ui_integers = args.get("ui-integers", "false") == "true"
 	_player_name = args.get("player", "Player")
 	_coin_class = StringName(args.get("coins", "Coin"))
 	_sprite_name = args.get("sprite", "Sprite2D")
@@ -322,7 +324,9 @@ func record() -> void:
 		_player = _find_player()
 		if _stopped:
 			return
-	var row := {"tick": _tick, "frame": Engine.get_frames_drawn(), "uiIntegers": _ui_integers()}
+	var row := {"tick": _tick, "frame": Engine.get_frames_drawn()}
+	if _record_ui_integers:
+		row["uiIntegers"] = _ui_integers()
 	if _player != null:
 		row["player"] = [snappedf(_player.global_position.x, 0.001), snappedf(_player.global_position.y, 0.001)]
 		# Lifecycle state, not evidence that the sprite was drawn (vision still judges that).
@@ -404,7 +408,7 @@ func _finish() -> void:
 		if not _bindings.is_empty():
 			out["bindings"] = _bindings
 			out["capabilities"]["roleBoxes"] = true
-			var size := get_viewport().get_visible_rect().size
+			var size := get_window().size  # Captured pixels, not the logical stretch viewport.
 			out["viewport"] = [size.x, size.y]
 		file.store_string(JSON.stringify(out, "", false))
 		file.close()
