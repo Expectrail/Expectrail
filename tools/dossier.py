@@ -26,12 +26,30 @@ GH = 'https://github.com/Expectrail/Expectrail'
 LEDGER = 'docs/capabilities.json'
 PUBLIC = 'bench/jit/public/README.md'
 DEFECTS = 'bench/jit/public/defects.json'
-GATE = 'docs/release-gate.md'
+GATE = 'docs/release/sources/ci-release-gate.md'
+GATE_JSON = 'docs/release/sources/ci-release-gate.json'
+CI_META = 'docs/release/sources/ci-release-metadata.json'
+SYSTEM = 'docs/outside-trials/system-override/results.json'
+SYSTEM_STOP = 'docs/outside-trials/trial-stops/system-override-refusals.json'
+BREAKOUT = 'docs/release/sources/breakout-results.json'
+BREAKOUT_REPORT = 'docs/release/sources/breakout-report.txt'
+BREAKOUT_PROVENANCE = 'docs/release/sources/breakout-provenance.json'
+BREAKOUT_PIN = 'docs/release/sources/breakout-pin.json'
+PLAYTEST_REACH = 'docs/playtester-reach.md'
+PLAYTEST_CI = 'docs/release/sources/playtest-ci.json'
+TEMPLATE = 'docs/template-sensor-untuned-summary.md'
+SPEND_DOC = 'docs/spend-caps.md'
+SPEND_CODE = 'expectrail/spend.py'
+BEFORE = 'docs/release/sources/dossier-before.html'
+ORDINARY = 'docs/release/sources/regenerated-before-fixes.html'
+HOME_BEFORE = 'docs/release/sources/homepage-before.html'
 OUTSIDE = 'docs/outside-projects.md'
 SAMPLES = 'docs/run-it/samples.json'
 SAM = 'docs/sam.md'
 COMMENTS = 'docs/release/sources/outside-comments.json'
-INPUTS = (LEDGER, PUBLIC, DEFECTS, GATE, OUTSIDE, SAMPLES, SAM, COMMENTS)
+INPUTS = (LEDGER, PUBLIC, DEFECTS, GATE, OUTSIDE, SAMPLES, SAM, COMMENTS, GATE_JSON, CI_META,
+          SYSTEM, SYSTEM_STOP, BREAKOUT, BREAKOUT_REPORT, BREAKOUT_PROVENANCE, BREAKOUT_PIN,
+          PLAYTEST_REACH, PLAYTEST_CI, TEMPLATE, SPEND_DOC, SPEND_CODE, BEFORE, ORDINARY, HOME_BEFORE)
 DECISIONS = {'accept', 'reject', 'needs-review'}
 
 
@@ -70,8 +88,10 @@ class Source:
     commit: str
 
     def ref(self, needle=None):
-        if self.path == COMMENTS:
-            return 'sources/outside-comments.json'
+        if self.path == LEDGER:
+            return 'sources/capabilities.json'
+        if self.path.startswith('docs/release/sources/'):
+            return self.path.removeprefix('docs/release/')
         line = 1
         if needle is not None:
             require(needle in self.text, f'{self.path}: source excerpt missing: {needle!r}')
@@ -246,7 +266,7 @@ def outside(src, doc):
         require({r['name'] for r in cases}=={'as pinned','broken','harmless'} and len(cases)==len({r['name'] for r in cases}), 'outside cohort incomplete')
         vision='First vision run on an outside project' in c['body']
         require(vision or 'no model spend' in c['body'], 'outside observation mode not recorded')
-        out+='<h3>'+('Attempted vision run: still unverified' if vision else 'Without vision')+'</h3><p>'+cite('Run',run)+' · '+cite('Published result',c['url'])+' · '+cite('Captured API text',src.ref())+'.</p>'
+        out+='<h3>'+('Attempted vision run (historical): not verified then' if vision else 'Without vision')+'</h3><p>'+cite('Run',run)+' · '+cite('Published result',c['url'])+' · '+cite('Captured API text',src.ref())+'.</p>'
         out+=table(['kinematic-character variant','Observed verdict'], [[esc(r['name']),cite(r['actual'],run)] for r in cases], 'Outside verdicts')
         out+=verdict_summary(cases,c['url'])
         if vision:
@@ -273,6 +293,8 @@ def outside(src, doc):
                   for change, verdict, engine, vision in rows], 'Outside vision verdicts')
     out += ('<p>The full run cost ' + cite(cost, run) + ' at list price. For the hidden sprite, vision '
             'measured the background. ' + cite('Read the outside-project report', doc.ref(heading)) + '.</p></section>')
+    cases = [{'actual': row[1], 'truth': 'bad' if row[0].startswith(('broken', 'invisible')) else 'good'} for row in rows]
+    out += verdict_summary(cases, run)
     return out
 
 
@@ -314,7 +336,7 @@ def percentiles(values):
     return v[math.ceil(len(v)*.50)-1],v[math.ceil(len(v)*.95)-1]
 
 
-def runtimes(ledger,src,sam,blind_cost,repro_cost,comments):
+def runtimes(ledger,src,sam,blind_cost,repro_cost,comments,outside_doc=None):
     out='<h2 id="runtime">Runtime and cost</h2><p>Only comparable records are grouped: identical operation, runner and step, then phase. Different operations and providers are not pooled. Empirical nearest-rank percentiles require repeated records; a single duration is not a measured spread.</p>'
     groups=defaultdict(list)
     for t in ledger.get('timings',[]):
@@ -342,32 +364,330 @@ def runtimes(ledger,src,sam,blind_cost,repro_cost,comments):
     require(len(vision_comments) == 1, 'outside cost source missing or ambiguous')
     c = vision_comments[0]
     amount = one(r'\$(\d+\.\d+) at list price, (\d+) images answered', c['body'], 'outside recorded cost')
-    costs.append(['Outside vision trial, complete run', cite('$' + amount[1], c['url']),
+    costs.append(['Historical unsuccessful outside-vision attempt, complete run', cite('$' + amount[1], c['url']),
                   'List-price amount, not an invoice; ' + cite(amount[2], c['url']) +
                   ' images answered. Cost per variant is not measured.'])
+    if outside_doc is not None:
+        report = outside_doc.text.split('## First outside game verified with vision',1)[1].split('\n## ',1)[0]
+        run = one(GH+r'/actions/runs/\d+',report,'successful outside cost run')[0]
+        amount = one(r'\$(\d+\.\d{2}) at list price',report,'successful outside cost')[1]
+        costs.append(['Successful historical outside vision run, complete four-variant trial',cite('$'+amount,run),'List-price image amount; separate from the older failed attempt, not an invoice.'])
     out+=table(['Scope','Recorded cost or labelled estimate','Boundary'],costs,'Cost evidence')
     out+='<p>Measured billed cost per installed verification, outside-project verification, release-control run and Run it replay: not measured in these cost sources. A no-paid-call replay does not measure runner or deployment cost. Other provider profiles: not measured.</p>'
     return out
 
+
+
+# Inserted into tools.dossier; the generator still reads only its explicit allowlist.
+def current_release_gate(ss, ledger):
+    src, raw, meta = ss[GATE], ss[GATE_JSON].json(), ss[CI_META].json()
+    require(raw['format'] == 'expectrail.release-gate/v0', 'unsupported release control record')
+    require(meta['run']['head_branch'] == 'main' and meta['run']['event'] == 'push', 'release evidence is not main CI')
+    require(len(meta['jobs']) == 1 and meta['jobs'][0]['name'] == 'release-gate' and meta['jobs'][0]['conclusion'] == 'success' and meta['jobs'][0]['status'] == 'completed', 'release CI job did not succeed')
+    run = meta['run']['url']
+    require(raw['commit'] == meta['run']['head_sha'] and run in raw['where'], 'release CI identity differs from its artifact')
+    count = Counter(r['status'] for r in raw['rows'])
+    require(all(raw['counts'].get(k, 0) == count[k] for k in ('held', 'open', 'FAILED', 'not run')), 'release JSON summary disagrees with rows')
+    # The Markdown is preserved verbatim from the same artifact; no local rerun can promote it.
+    published = [row for _, rows in tables(src.text) if rows[0] == ['Control','Status','Why'] for row in rows[1:]]
+    require(published == [[r['control'],r['status'],r['note'].replace('**','').strip('`')] for r in raw['rows']], 'release Markdown differs from the saved JSON')
+    evidence = [e for e in ledger_row(ledger, 'ci-gate')['evidence'] if e['ref'] == run + '/job/' + str(meta['jobs'][0]['id'])]
+    require(len(evidence) == 1, 'latest main release suite is absent from ledger')
+    claim = one(r'(\d+) control rows, held (\d+), open (\d+), failed (\d+), not run (\d+); (\d+) test outcomes', evidence[0]['shows'], 'ledger release counts')
+    require(tuple(map(int, claim.groups())) == (len(raw['rows']), count['held'], count['open'], count['FAILED'], count['not run'], len(raw['tests'])), 'ledger release counts disagree with CI artifact')
+    text = release_gate(src)
+    for name in (GATE,GATE_JSON):
+        require(hashlib.sha256(ss[name].text.encode()).hexdigest()==meta['filesSha256'].get(Path(name).name), 'release artifact source digest differs')
+    require(meta['jobs'][0]['run_id']==meta['run']['id'] and len(meta['artifacts'])==1 and meta['artifacts'][0]['workflow_run']['head_sha']==raw['commit'], 'release job/artifact identity differs')
+    where = one(r'^- Run: (.+)$', src.text, 'release source run', re.M)[1]
+    text = text.replace(cite(where, src.ref('- Run:')), cite('Main CI run ' + str(meta['run']['id']), run))
+    text += '<p>Saved test outcomes: ' + cite(len(raw['tests']), ss[GATE_JSON].ref()) + '. ' + cite('Successful main release-gate job', evidence[0]['ref']) + ' · ' + cite('API identity and artifact digest', ss[CI_META].ref()) + '. No new CI run was started.</p>'
+    return text
+
+
+def outside_updates(ss, ledger):
+    src = ss[OUTSIDE]
+    marker = '## Current evidence:'
+    require(src.text.count(marker)==1, 'current outside trial heading missing or ambiguous')
+    report = src.text.split(marker, 1)[1].split('\n## ', 1)[0]
+    runs = set(re.findall(GH + r'/actions/runs/\d+', report))
+    require(len(runs)==1, 'outside trial run is missing or ambiguous')
+    run = next(iter(runs))
+    data = [rows for _, rows in tables(report) if rows[0][:4] == ['Project', 'Variant', 'Engine check', 'Product verdict without vision']]
+    require(len(data) == 1, 'outside engine-only trial table missing')
+    require('draft check awaiting' not in ledger_row(ledger, 'outside-projects')['limits'], 'ledger still calls approved Dodge check a draft')
+    out = '<h2 id="outside-current">Outside projects: engine trials and onboarding failures</h2>'
+    for project in ('kinematic-character', 'Dodge the Creeps'):
+        rows = [r for r in data[0][1:] if r[0] == project]
+        require(rows and all(r[3] in DECISIONS for r in rows), 'outside engine trial is incomplete')
+        expected = {'pinned', 'broken collision', 'harmless tint', 'invisible sprite'} if project == 'kinematic-character' else {'pinned', 'broken clamp', 'harmless comment'}
+        require({r[1] for r in rows} == expected and len(rows) == len(expected), 'outside variant denominator changed')
+        out += '<h3>' + esc(project) + ': without vision</h3>'
+        out += table(['Variant', 'Engine check', 'Actual product verdict'], [[esc(r[1]), cite(r[2], run), cite(r[3], run)] for r in rows], 'Current outside engine trial')
+        cohort = [{'actual': r[3], 'truth': 'bad' if r[1].startswith(('broken', 'invisible')) else 'good'} for r in rows]
+        out += verdict_summary(cohort, run)
+    out += '<p>Dodge has an approved lifecycle-aware engine play-area check; the broken clamp rejects in CI. No Dodge vision evidence exists. An outside game cannot accept without vision. ' + issue(263) + ' · ' + issue(379) + ' · ' + cite('Recorded scope', src.ref(marker)) + '.</p>'
+    out += '<p>The historical kinematic vision success above is not renderer portability: exact recorded image/questions can miss an answer on a later unchanged capture. ' + issue(515) + ' · ' + cite('Recorded-vision ledger limits', ss[LEDGER].ref('"id": "recorded-vision"')) + '.</p>'
+    system = ss[SYSTEM].json()
+    records = system['results']
+    require(len(records) == 3 and {r['variant'] for r in records} == {'pinned','harmless','broken'}, 'System Override result cohort changed')
+    require(all(r['replays'] == 0 and r['approvedChecks'] == 0 and r['decision'] == 'needs-review' for r in records), 'System Override published stop changed')
+    repeated = ss[SYSTEM_STOP].json()['steps']
+    require(repeated and all('SystemOverride.csproj' in r['output'] and '.NET' in r['output'] for r in repeated), 'System Override named language refusal missing')
+    out += '<h3>System Override: onboarding failed</h3><p>Recorded variant jobs needing review: ' + ratio(sum(r['decision']=='needs-review' for r in records),len(records),ss[SYSTEM].ref()) + '; approved checks and engine replays run: ' + cite(sum(r['replays'] for r in records),ss[SYSTEM].ref()) + '. Original display/disk preflight stopped the jobs; menu/player binding and toolchain issues prevented a usable route. The repeat now refuses the .NET project by name before an engine starts: ' + cite('SystemOverride.csproj; GDScript-only support',ss[SYSTEM_STOP].ref()) + '. Human setup minutes: not measured.</p>'
+    provenance=ss[BREAKOUT_PROVENANCE].json()
+    for name in (BREAKOUT,BREAKOUT_REPORT,BREAKOUT_PIN):
+        require(hashlib.sha256(ss[name].text.encode()).hexdigest()==provenance['files'].get(Path(name).name), 'Breakout record differs from verbatim handover cache')
+    breakout = ss[BREAKOUT].json()
+    require(len(breakout)==3 and {r['variant'] for r in breakout}=={'pinned','harmless','broken'}, 'Breakout cohort missing')
+    require(all(r['decision']=='needs-review' and r['gateCounts']['checks']==0 for r in breakout), 'Breakout stopped result changed')
+    require(len({r['traceSha256'] for r in breakout})==1, 'Breakout menu traces differ')
+    report = ss[BREAKOUT_REPORT].text
+    require('cannot encode mouse positions' in report and 'stays on the Start menu' in report and 'path: "."' in report, 'Breakout recorded stop text changed')
+    out += '<h3>Breakout: onboarding failed</h3>'
+    out += table(['Variant', 'Product verdict', 'Approved checks run', 'Captured frames', 'Distinct paddle positions / ball boxes'], [[esc(r['variant']),cite(r['decision'],ss[BREAKOUT].ref()),cite(r['gateCounts']['checks'],ss[BREAKOUT].ref()),cite(r['frames'],ss[BREAKOUT].ref()),cite(str(r['distinctPlayerPositions'])+' / '+str(r['distinctBallBoxes']),ss[BREAKOUT].ref())] for r in breakout], 'Breakout stopped trials')
+    out += '<p>Needs-review: ' + ratio(sum(r['decision']=='needs-review' for r in breakout),len(breakout),ss[BREAKOUT].ref()) + '. All copies remained on the menu. Keyboard start/steering did not work, the route contract could not encode pointer positions/clicks, and trial registration refused repository-root path. Draft diagnostics are not approved checks or seeded-bug detection. These captures were local and not isolated. ' + cite('Verbatim trial report',ss[BREAKOUT_REPORT].ref()) + ' · ' + cite('Handover origin and hashes',ss[BREAKOUT_PROVENANCE].ref()) + '.</p>'
+    out += '<p>False accepts/rejects for these two onboarding attempts: not measured on an exercised labelled cohort. Their needs-review records and setup stops remain results, not successful onboarding. No model was called. Product follow-up: ' + issue(259) + '; trial scope: ' + issue(263) + '.</p>'
+    return out
+
+
+def playtest_section(ss, ledger):
+    src, ci = ss[PLAYTEST_REACH], ss[PLAYTEST_CI].json()
+    require(ci['jobs'][0]['conclusion']=='success' and ci['jobs'][0]['name']=='seeded-bugs', 'playtest CI job did not pass')
+    names = ('test_approved_ground_check_reproduces_three_times','test_clean_base_is_not_reproduced_without_models','test_anchor_beyond_tolerance_stops_without_models')
+    require(all(sum(name+' (' in line and line.endswith(' ... ok') for line in ci['lines'])==1 for name in names), 'playtest real-engine test results missing')
+    require(any(e['ref']==ci['job'] for e in ledger_row(ledger,'playtest-ingest')['evidence']), 'ledger missing the real-engine playtest CI proof')
+    original, improved, defects = playtest_counts(src, ss[DEFECTS])
+    clean = one(r'Seeds with at least one false report: (\d+)/(\d+) development, (\d+)/(\d+) fresh original, (\d+)/(\d+) fresh improved\.',src.text,'clean playtester sample')
+    dev,ndev,old,nold,new,nnew = map(int,clean.groups())
+    ranges = one(r'(\d+) development seeds \((\d+)[–-](\d+)\) and (\d+) fresh evaluation seeds \((\d+)[–-](\d+)\)',src.text,'playtest seed separation')
+    dn,lo,hi,en,elo,ehi = map(int,ranges.groups())
+    require(hi-lo+1==dn==ndev and ehi-elo+1==en==nold==nnew and hi<elo, 'clean seeds are not disjoint or denominators disagree')
+    evidence = ' '.join(e['shows'] for e in ledger_row(ledger,'seeded-playtester')['evidence'])
+    require(f'{improved}/{defects}' in evidence and f'{dev+old}/{ndev+nold}' in evidence and f'{new}/{nnew}' in evidence, 'playtester figures disagree with ledger')
+    out = '<h2 id="playtest">Playtest reports: implementation and measured reach</h2><p>' + issue(531) + ': report intake, approved-check reproduction, optional generated advisory checks and opt-in repair adapters are implemented. No live model or fixer has run on a report. Engine/transport/repair fixtures do not establish live proposal quality or repair rate. ' + cite('Intake and repair ledger scope',ss[LEDGER].ref('"id": "playtest-ingest"')) + '.</p>'
+    out += '<p>Real pinned Godot, required Bubblewrap: ' + cite(len(names),ci['job']) + ' passed reproduction/control tests in ' + cite('PR ' + ci['pullRequest'].rsplit('/',1)[1],ci['pullRequest']) + ', seeded-bugs job. The fall-through report reproduces against the approved ground check; clean false report and anchor desync stop before models/fixers. ' + cite('Recorded test-result lines',ss[PLAYTEST_CI].ref()) + '.</p>'
+    out += table(['Producer policy / fresh public defects', 'Listed symptoms found / defects', 'Listed symptoms missed / defects'], [['Original',ratio(original,defects,src.ref('Fresh listed visible symptoms found:')),ratio(defects-original,defects,src.ref('Fresh listed visible symptoms found:'))],['Improved, optional offscreen observation',ratio(improved,defects,src.ref('Fresh listed visible symptoms found:')),ratio(defects-improved,defects,src.ref('Fresh listed visible symptoms found:'))]], 'Playtester public reach')
+    out += table(['Clean sample', 'Reporting seeds / clean seeds'], [['Original policy, development',ratio(dev,ndev,src.ref(clean[0]))],['Original policy, previously unused evaluation seeds',ratio(old,nold,src.ref(clean[0]))],['Original policy, distinct seeds across both phases',ratio(dev+old,ndev+nold,src.ref(clean[0]))],['Improved policy, same evaluation seeds (paired, not extra independent seeds)',ratio(new,nnew,src.ref(clean[0]))]], 'Playtester false reports')
+    out += '<p>Zero observed false reports in the stated bounded samples is not a zero general false-report rate. One game, public development, trace symptoms and bounded seeded routes; these are not visual-verification, gate false-accept/reject or repair-rate measurements. The requested upstream draw-order fix is excluded from the defect denominator. No private evaluation content was read.</p>'
+    return out
+
+
+def playtest_counts(src, defects):
+    data = [rows for _,rows in tables(src.text) if rows[0][0]=='Defect / requested fix' and len(rows[0])==5]
+    require(len(data)==1,'fresh paired playtester table missing')
+    names = {d['id'] for d in defects.json()['defects']}
+    records = [r for r in data[0][1:] if r[0] in names]
+    require(len(records)==len(names) and {r[0] for r in records}==names,'playtester defect universe differs from public manifest')
+    pairs=[]
+    for row in records:
+        m=one(r'^(\d+)/(\d+) → (\d+)/(\d+)$',row[3],'playtester symptom seed count')
+        a,na,b,nb=map(int,m.groups());require(0<=a<=na and 0<=b<=nb and na==nb,'invalid playtester seed denominator')
+        pairs.append((a,b))
+    counts=(sum(a>0 for a,b in pairs),sum(b>0 for a,b in pairs),len(records))
+    stated=one(r'Fresh listed visible symptoms found: \*\*(\d+)/(\d+) original → (\d+)/(\d+) improved\*\*',src.text,'playtester aggregate')
+    require(tuple(map(int,stated.groups()))==(counts[0],counts[2],counts[1],counts[2]),'playtester table/aggregate disagree')
+    return counts
+
+
+def template_section(ss, ledger):
+    src=ss[TEMPLATE]
+    data=[rows for _,rows in tables(src.text) if rows[0][:3]==['Clean source / unchanged bank','Previously unseen PNGs with alarms / evaluated','Rate']]
+    require(len(data)==1,'untuned template record missing')
+    evidence=' '.join(e['shows'] for e in ledger_row(ledger,'template-sensor')['evidence']).replace(' ','')
+    rows=[]
+    for row in data[0][1:]:
+        if row[1]=='unavailable':
+            rows.append([esc(row[0]),'unavailable','unavailable',cite(row[3],src.ref())]);continue
+        m=one(r'^(\d+) / (\d+)$',row[1],'template sample');n,total=map(int,m.groups())
+        rate=f'{Decimal(n)*100/Decimal(total):.2f}%'
+        require(Decimal(rate[:-1])==Decimal(row[2].removesuffix('%')), 'template alarm rate/denominator disagree')
+        rate=row[2]
+        require(f'{n}/{total}' in evidence, 'template counts disagree with ledger')
+        rows.append([esc(row[0]),ratio(n,total,src.ref(row[0])),cite(rate,src.ref(row[0])),cite(row[3],src.ref(row[0]))])
+    out='<h2 id="template">Opt-in template sensor: no verdict contribution</h2>'
+    out+=table(['Untuned clean source','Alarm frames / evaluated frames','Clean false-alarm rate','Boundary'],rows,'Template sensor untuned measurements')
+    out+='<p>The new route exceeds the under-two-percent target; pooling routes does not establish it per source. The frozen bank does not transfer to another game. A project-specific bank could not be built under the frozen opaque-art requirements. Opt-in and advisory: the sensor counts toward no verdict. These alarms are not verification false accepts/rejects. '+issue(262)+' · '+cite('Ledger limits',ss[LEDGER].ref('"id": "template-sensor"'))+'.</p>'
+    return out
+
+
+def spend_section(ss,ledger):
+    import ast
+    src=ss[SPEND_CODE]
+    assignments={target.id:node.value for node in ast.parse(src.text).body if isinstance(node,ast.Assign) for target in node.targets if isinstance(target,ast.Name)}
+    def constant(node):
+        if isinstance(node,ast.BinOp) and isinstance(node.op,ast.Div):return constant(node.left)/constant(node.right)
+        if isinstance(node,ast.Dict):return {constant(k):constant(v) for k,v in zip(node.keys,node.values)}
+        return ast.literal_eval(node)
+    costs=constant(assignments['RESERVE_USD']);env=constant(assignments['CAP_ENV'])
+    model=constant(assignments['MODEL_MONTH_LIMIT_USD']);vision=constant(assignments['VISION_MONTH_LIMIT_USD'])
+    claim=' '.join(e['shows'] for e in ledger_row(ledger,'spend-caps')['evidence'])
+    for role,cost in costs.items():
+        quoted=one(r'(?i)'+re.escape(role)+r' \$(\d+(?:\.\d+)?)\s*/(?:image|request|invocation)',claim,'ledger '+role+' hold')
+        require(Decimal(quoted[1])==Decimal(str(cost)), 'role hold disagrees with ledger: '+role)
+    month=one(r'separate \$(\d+) model/vision month limits',claim,'ledger month limits')
+    require(Decimal(month[1])==Decimal(str(model))==Decimal(str(vision)), 'month limits disagree with ledger')
+    out='<h2 id="spend">Spend controls: request holds, not reconciled bills</h2>'
+    out+=table(['Role','Required live cap variable','Reservation unit'],[[esc(role),'<code>'+esc(env[role])+'</code>',cite('$'+format(costs[role],'.4f').rstrip('0').rstrip('.')+(' / invocation' if role=='muse' else ' / image' if role=='vision' else ' / request'),src.ref('RESERVE_USD ='))] for role in costs], 'Role spend holds')
+    out+='<p>Spec drafting holds before each real request, including retries; fixture transports need no cap, but are counted when a cap is set. Wrappers preserve accounting. '+cite('Request-boundary and process-contention tests',GH+'/blob/'+src.commit+'/tests/test_spec_spend_month.py')+' · '+issue(267)+'.</p>'
+    out+='<p><code>EXPECTRAIL_MODEL_MONTH_LEDGER</code> opts in to a combined '+cite('$'+str(int(model)),src.ref('MODEL_MONTH_LIMIT_USD ='))+' UTC-month reservation total for Glimmer, Muse, triage and spec. Vision uses a separate '+cite('$'+str(int(vision)),src.ref('VISION_MONTH_LIMIT_USD ='))+' ledger through <code>EXPECTRAIL_VISION_MONTH_LEDGER</code>. With a ledger unset, only process/role caps apply. Linux process locks and atomic replacement serialize reservations; unreadable/invalid ledgers stop by name rather than reset the month. The first request reserves the role’s whole process cap, and new processes reserve again. '+cite('Recorded accounting semantics',ss[SPEND_DOC].ref())+'.</p>'
+    out+='<p>The Muse invocation hold does not bound the cost inside one fixer invocation. Its internal token bill and external coding-agent calls are not universally metered. Holds remain after failures and unused caps are not vendor refunds. No live cap-exhaustion or provider-billing measurement is claimed. '+cite('Ledger limitations',ss[LEDGER].ref('"id": "spend-caps"'))+'.</p>'
+    return out
 
 def build(root,commit):
     ss=sources(root,commit);ledger=ss[LEDGER].json()
     require(ledger.get('format')=='expectrail.capabilities/v1','unsupported capability ledger')
     require(len({r['id'] for r in ledger['rows']})==len(ledger['rows']),'duplicate ledger mode')
     out=['<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'"><title>Release dossier — Expectrail</title><style>body{font:16px/1.6 system-ui,sans-serif;color:#181536;background:#f6f7fc;margin:0}main{max-width:76rem;margin:auto;padding:2rem 1rem}a{color:#362b81}h1{font-size:2.4rem}h2{margin-top:3rem}table{border-collapse:collapse;width:100%;min-width:44rem;font-size:.92rem}th,td{padding:.7rem;text-align:left;vertical-align:top;border-bottom:1px solid #d2d3e0;overflow-wrap:anywhere}th{background:#e9e8f3}.scroll{overflow:auto;margin:1rem 0}nav{display:flex;gap:1rem;flex-wrap:wrap}.note{border-left:4px solid #e5b218;padding:1rem;background:white}code{overflow-wrap:anywhere}</style></head><body><main data-source-commit="'+commit+'"><a href="../">Expectrail</a><h1>Release evaluation dossier</h1><p class="note">Generated from recorded public evidence, offline. This is an evidence inventory, not release clearance. Historical experiments, demonstrations and incomplete controls stay separate.</p><nav aria-label="Dossier sections"><a href="#ledger">Capability snapshot</a><a href="#blind">Blind aggregates</a><a href="#reproduction">Reproduction</a><a href="#gate">Release controls</a><a href="#outside">Outside trial</a><a href="#samples">Run it</a><a href="#runtime">Runtime and cost</a><a href="#limits">Limitations</a><a href="#pending">Not run yet</a></nav>']
-    out+=['<p>Repository evidence snapshot: '+cite(commit,GH+'/tree/'+commit)+'. Public API comments are separately captured with their original URLs. Source tag and container image digests: not measured in the inputs; no release tag or image identity is invented.</p><h2 id="ledger">Capability ledger snapshot</h2><p>Each row is copied as recorded, including its supported profile, status and evidence grade. A stale row is not silently updated from newer code. No mode is promoted by this dossier.</p>']
+    out+=['<p>Repository baseline: '+cite(commit,GH+'/tree/'+commit)+'. Working-tree input bytes are fingerprinted below; the capability ledger is copied into the generated bundle. Public API records and the failed Breakout handover have their recorded origins. The baseline link does not pretend newly captured sources existed at that commit. Source tag and container image digests: not measured in the inputs; no release tag or image identity is invented.</p><h2 id="ledger">Capability ledger snapshot</h2><p>Each row is copied as recorded, including its supported profile, status and evidence grade. Claims are checked against the recorded sources used below. No evidence grade is promoted by this dossier.</p>']
     out+=[table(['Mode','Status','Grade','Supported profile / environment','Observer','Recorded limits'], [[cite(r['mode'],ss[LEDGER].ref('"id": "'+r['id']+'"')),esc(r['status']),esc(r['grade']),cite(r['profile'],ss[LEDGER].ref('"id": "'+r['id']+'"')),cite(r['observer'],ss[LEDGER].ref('"id": "'+r['id']+'"')),cite(r['limits'],ss[LEDGER].ref('"id": "'+r['id']+'"'))] for r in ledger['rows']], 'Capability snapshot')]
     blind,blind_cost=blind_section(ss[LEDGER],ledger);out.append(blind)
     repro,repro_cost=reproduction(ss[PUBLIC],ss[DEFECTS]);out.append(repro)
-    out.extend([release_gate(ss[GATE]),outside(ss[COMMENTS],ss[OUTSIDE]),runit(ledger,ss[SAMPLES],ss[LEDGER]),runtimes(ledger,ss[LEDGER],ss[SAM],blind_cost,repro_cost,ss[COMMENTS])])
+    out.extend([current_release_gate(ss,ledger),outside(ss[COMMENTS],ss[OUTSIDE]),outside_updates(ss,ledger),
+                playtest_section(ss,ledger),template_section(ss,ledger),spend_section(ss,ledger),
+                runit(ledger,ss[SAMPLES],ss[LEDGER]),runtimes(ledger,ss[LEDGER],ss[SAM],blind_cost,repro_cost,ss[COMMENTS],ss[OUTSIDE])])
     out+=['<h2 id="limits">Known limitations and owners</h2><ul>']
-    limits=[(246,'The game originates its frames and trace; capture the game cannot forge is not established.'),(253,'The replay sandbox shares the host kernel and does not bound total job disk usage.'),(258,'Open release controls remain open; the dossier does not substitute unit-test counts for integration coverage.'),(257,'Observation-timeline controls still need their recorded release-suite evidence.'),(255,'Signed release receipts remain separate work.'),(285,'Reproduction misses and the unavailable baseline score artifact limit the public bench analysis.'),(263,'The outside trial is a small seeded demo cohort, not a successfully verified customer project.'),(330,'The hidden-player reject in the outside vision trial measured the background at the player’s position.'),(265,'Hand-dispatched Run it samples do not establish a deployed visitor service.'),(268,'Comparable repeated runtime samples, billed per-profile costs and environment image digests are incomplete.')]
+    limits=[(246,'The game originates its frames and trace; capture the game cannot forge is not established.'),(253,'Replay isolation is Godot-only and shares the host kernel. Its work/output growth monitor is polling, not a filesystem quota or a bound on every host resource.'),(258,'Open release controls remain open; the dossier does not substitute unit-test counts for integration coverage.'),(257,'Observation-timeline controls still need their recorded release-suite evidence.'),(255,'Signed release receipts remain separate work.'),(285,'Reproduction misses and the unavailable baseline score artifact limit the public bench analysis.'),(263,'One public demo was verified with vision once. Dodge has no vision evidence; independent-author System Override and Breakout onboarding failed. No arbitrary-project or customer success is established.'),(330,'The hidden-player reject in the outside vision trial measured the background at the player’s position.'),(265,'Hand-dispatched Run it samples do not establish a deployed visitor service.'),(324,'Unity remains experimental; replay is shown, but approved seeded verification and visual measurement are not established.'),(515,'Recorded answers require exact image/question bytes and do not transfer across arbitrary renderer builds.'),(379,'An outside game cannot accept without vision; missing evidence needs review unless an engine check already fails.'),(282,'Blind test four is not run; only published earlier aggregate counts appear here.'),(268,'The first-user test, comparable repeated runtime samples, billed per-profile costs and environment image digests remain incomplete.')]
     out.extend('<li>'+esc(text)+' '+issue(n)+'</li>' for n,text in limits)
-    out+=['</ul><h2 id="pending">Not run yet</h2><ul><li>'+issue(282,'Blind test 4')+': <strong>not run yet</strong>. No private material is read and no result is guessed.</li><li>First-user quickstart test: <strong>not run yet</strong>; <strong>needs-sean</strong>. Sean or Timothy must arrange a person unfamiliar with Expectrail. Time to first verdict, obstacles and report comprehension remain unmeasured. '+issue(268)+'</li><li>Dodge the Creeps vision verification: <strong>not run yet</strong>. Its draft check awaits approval. '+issue(263)+' · '+issue(330)+'</li></ul><h2 id="sources">Source inventory and regeneration</h2><p>Regenerate with <code>python -m tools.dossier</code>; use <code>--check</code> to compare without writing. The checker retains the page’s recorded source commit unless an explicit <code>--commit</code> is supplied. Each visible numerical value links to its run or source file. Ratios and counts are computed from those records; error rates are never inferred from missing results.</p>']
+    out+=['</ul><h2 id="pending">Not run yet</h2><ul><li>'+issue(282,'Blind test 4')+': <strong>not run yet</strong>. No private material is read and no result is guessed.</li><li>First-user quickstart test: <strong>not run yet</strong>; <strong>needs-sean</strong>. Sean or Timothy must arrange a person unfamiliar with Expectrail. Time to first verdict, obstacles and report comprehension remain unmeasured. '+issue(268)+'</li><li>Dodge the Creeps vision verification: <strong>not run yet</strong>. Its approved engine check rejects the broken build in CI, but no vision result is recorded. '+issue(263)+' · '+issue(330)+'</li></ul><p><a href="truth-pass.md">Generated audit: every changed figure and wording mismatch</a> · <a href="figure-changes.json">Machine-readable numeric diff</a>.</p><h2 id="sources">Source inventory and regeneration</h2><p>Regenerate with <code>python -m tools.dossier</code>; use <code>--check</code> to compare without writing. The checker retains the page’s recorded source commit unless an explicit <code>--commit</code> is supplied. Each visible numerical value links to its run or source file. Ratios and counts are computed from those records; error rates are never inferred from missing results.</p>']
     out+=[table(['Input','Content digest'],[[cite(s.path,s.ref()),cite(hashlib.sha256(s.text.encode()).hexdigest(),s.ref())] for s in ss.values()],'Source fingerprints')]
     out+=['<p>No crawler follows evidence links. No private manifest, blind-set directory, model or engine is invoked. The captured outside comments are read as text, never instructions. '+issue(268)+'</p></main></body></html>\n']
-    return '\n'.join(out)
+    rendered = '\n'.join(out)
+    from tools.dossier_figures import Figures
+    audit = Figures(rendered, local_sources())
+    require(not audit.missing, 'dossier figure has no source reference: ' + '; '.join(audit.missing[:4]))
+    return rendered
 
+
+def local_sources():
+    return {'sources/capabilities.json', *[name.removeprefix('docs/release/') for name in INPUTS if name.startswith('docs/release/sources/')]}
+
+
+
+def homepage_summary(root, commit):
+    """Generated visible results on the page that links the dossier; no hand-typed totals."""
+    ss=sources(root,commit)
+    gate=ss[GATE_JSON].json();n=len(gate['rows']);c=gate['counts'];run=ss[CI_META].json()['run']['url']
+    _old,found,total=playtest_counts(ss[PLAYTEST_REACH],ss[DEFECTS])
+    clean=one(r'Seeds with at least one false report: (\d+)/(\d+) development, (\d+)/(\d+) fresh original, (\d+)/(\d+) fresh improved\.',ss[PLAYTEST_REACH].text,'homepage clean sample')
+    dev,ndev,old,nold,new,nnew=map(int,clean.groups())
+    table_rows=[r for _,rs in tables(ss[TEMPLATE].text) if rs[0][0]=='Clean source / unchanged bank' for r in rs[1:]]
+    new_route=next(r for r in table_rows if r[0]=='Platformer, new action schedule')
+    return ('<section class="section" id="release-evidence"><h2>Latest recorded evidence</h2>'
+        '<p>Release controls: '+cite(f"{c['held']} / {n} held; {c['open']} / {n} open; {c['FAILED']} / {n} failed; {c['not run']} / {n} not run",run)+'. Control statuses are not candidate error rates.</p>'
+        '<p>Standalone playtester, previously unused public seeds: '+cite(f'{found} / {total} listed defect symptoms',ss[PLAYTEST_REACH].ref('Fresh listed visible symptoms found:'))+'. Original policy: '+cite(f'{dev+old} / {ndev+nold} distinct clean seeds with false reports',ss[PLAYTEST_REACH].ref(clean[0]))+'; improved policy: '+cite(f'{new} / {nnew}',ss[PLAYTEST_REACH].ref(clean[0]))+' on the same evaluation seeds. One game and bounded routes; no general zero-error claim.</p>'
+        '<p>Opt-in template sensor, untuned new route: '+cite(new_route[1]+' clean frames alarm ('+new_route[2]+')',ss[TEMPLATE].ref('Platformer, new action schedule'))+'. It does not transfer to another game and counts toward no verdict.</p>'
+        '<p><a href="release/">Generated release dossier: recorded runs, sources, failures and what remains unmeasured</a>.</p></section>')
+
+
+
+def check_homepage_figures(text, ledger):
+    """Retained historical marketing counters/bars must match the ledger, too."""
+    def evidence(rid):
+        return ' '.join(e['shows'] for e in ledger_row(ledger,rid)['evidence'])
+    sam=evidence('sam-observer');godot=evidence('godot-verify')
+    hits=one(r'(\d+) of (\d+) held-out bugs caught with SAM on; (\d+) of (\d+) without',sam,'homepage historical bugs')
+    hit,bad,engine,engine_bad=map(int,hits.groups())
+    false=one(r'(\d+) of (\d+) fake fixes accepted with SAM, (\d+) of (\d+) without',sam,'homepage historical deceptive fixes')
+    wrong,nwrong,engine_wrong,engine_nwrong=map(int,false.groups())
+    correct=one(r'(\d+) of (\d+) correct fixes accepted',godot,'homepage historical correct fixes')
+    right,ngood=map(int,correct.groups())
+    repairs=one(r'Historical mutation repairs: (\d+)/(\d+) caught seeded bugs fixed',evidence('fix-loop'),'homepage historical repairs')
+    fixed,nfixed=map(int,repairs.groups())
+    discovery=one(r'Blind, it flagged (\d+) of (\d+) defects',ledger_row(ledger,'discovery')['limits'],'homepage historical discovery')
+    found,nfound=map(int,discovery.groups())
+    counters=[(int(a),int(b),int(c)) for a,b,c in re.findall(r'<span data-count="(\d+)"[^>]*>(\d+)</span> of (\d+)',text)]
+    expected=[(hit,bad),(wrong,nwrong),(right,ngood),(fixed,nfixed),(fixed,nfixed),(found,nfound)]
+    require(counters==[(a,a,b) for a,b in expected], 'homepage historical counters disagree with ledger')
+    bars=[tuple(map(int,m)) for m in re.findall(r'<div class="bar(?: win)?"><span>[^<]+</span><b>(\d+) of (\d+)</b>',text)]
+    require(bars==[(engine,engine_bad),(hit,bad),(engine_wrong,engine_nwrong),(wrong,nwrong),(ngood-right,ngood)], 'homepage historical bars disagree with ledger')
+    outside=ledger_row(ledger,'outside-projects')['evidence'][0]
+    price=one(r'\$(\d+\.\d{2}) at list price',outside['shows'],'outside ledger price')[1]
+    require(re.findall(r'>\$(\d+\.\d{2})</a>',text)==[price], 'homepage outside cost disagrees with ledger')
+    require('draft check awaiting approval' not in text, 'homepage still calls approved Dodge check a draft')
+    require('judged three ways' not in text, 'homepage describes a removed third comparison')
+    require('0.9% weighted' not in text and 'frontier models rejected' not in text, 'homepage retains unrepresented numeric comparisons')
+
+def with_homepage_summary(text, fragment):
+    start,end='<!-- dossier-summary:start -->','<!-- dossier-summary:end -->'
+    require(text.count(start)==text.count(end)==1,'homepage generated-summary markers missing or ambiguous')
+    before,rest=text.split(start,1);_old,after=rest.split(end,1)
+    return before+start+'\n'+fragment+'\n'+end+after
+
+
+AUDIT_REASONS = {
+    'ledger': 'Snapshot now includes merged capability rows; stale Dodge/playtest claims are corrected and the standalone playtester sample is recorded. Evidence grades are unchanged.',
+    'gate': 'Replace stale local control results with the latest completed main CI artifact; derive every status and group total from that artifact, not code presence.',
+    'outside-vision': 'Count the successful recorded vision cohort separately, with false accepts/rejects and needs-review denominators; the older unsuccessful attempt stays historical.',
+    'outside-current': 'Add the recorded no-vision CI cohorts and both failed independent-author onboarding attempts. Unexercised drafts are not bug detection.',
+    'playtest': 'Add the passed PR seeded-bugs proof and published paired reach record; original clean samples are disjoint, improved evaluation reuses its sample.',
+    'template': 'Add the untuned per-source alarms and failed cross-art transfer; no verdict contribution or pooled under-target claim.',
+    'spend': 'Read reservation units and separate month limits from code and cross-check the ledger; these are holds, not bills or a cap inside a fixer invocation.',
+    'runtime': 'Retain singleton runtimes without invented percentiles; add the successful outside run cost separately from the historical failed trial.',
+    'sources': 'Record source content fingerprints and captured API/handover provenance. Identity/hash changes are metadata, not new performance measurements.',
+    'limits': 'Update limitations from recorded evidence: disk monitor exists, Unity is experimental, exact-image recording remains limited and outside acceptance still needs vision.',
+    'pending': 'Dodge engine approval is complete; live vision and the first-user/blind release test remain unrun.',
+    'snapshot': 'Record the audited baseline and content identities without claiming newly captured files existed in the baseline commit.'}
+
+
+def audit_document(root, commit, rendered, homepage=None):
+    from tools.dossier_figures import changes
+    ss=sources(root,commit)
+    before=ss[BEFORE].text;ordinary=ss[ORDINARY].text
+    from tools.dossier_figures import Figures
+    def gate_totals(page):
+        return ', '.join(r['figure'] for r in Figures(page,local_sources()).records if r['section']=='gate' and re.fullmatch(r'\d+ / \d+',r['figure']))
+    def summary(page):
+        values=[r['figure'] for r in Figures(page,local_sources()).records if r['section']=='gate' and re.fullmatch(r'\d+ / \d+',r['figure'])]
+        return '; '.join(label+': '+value for label,value in zip(('held','open','failed','not run'),values[:4]))
+    mismatches=[
+        {'page':'docs/release/index.html','claim':'Stale local summary: '+summary(before),'fix':'Unchanged generator on current main inputs: '+summary(ordinary)+'. Latest recorded main CI: '+summary(rendered)+'. These are different runs, not tests retroactively promoted.','source':ss[GATE_JSON].ref()},
+        {'page':'docs/release/index.html','claim':'Dodge draft awaits approval; no trial update','fix':'Approved play-area check; broken CI variant rejects, clean/harmless need review without vision. No Dodge vision evidence.','source':ss[OUTSIDE].ref('## Current evidence:')},
+        {'page':'docs/release/index.html','claim':'Replay sandbox does not bound disk usage','fix':'The Godot work/output polling growth monitor exists; it is not a filesystem quota or a bound on every host resource.','source':ss[LEDGER].ref('"id": "replay-sandbox"')},
+        {'page':'docs/release/index.html','claim':'Outside success has verdicts but no separated error denominators; renderer limitation absent','fix':'Historical successful cohort has separate bad/benign/review denominators. Later exact-image replay can lack an answer; no general portability claimed.','source':ss[LEDGER].ref('"id": "recorded-vision"')},
+        {'page':'docs/capabilities.json:outside-projects','claim':'Dodge has a draft check awaiting approval','fix':'Align the aggregate row with its dedicated Dodge row and recorded CI evidence.','source':ss[OUTSIDE].ref('## Current evidence:')},
+        {'page':'docs/capabilities.json:playtest-ingest','claim':'Required CI reproduction is future work','fix':'Cite the passed PR seeded-bugs tests; no live model/fixer or repair result is promoted.','source':ss[PLAYTEST_CI].ref()},
+        {'page':'docs/index.html','claim':'Dodge has a draft check awaiting approval','fix':'Approved engine check, broken build rejected in CI, no vision evidence.','source':ss[OUTSIDE].ref('## Current evidence:')},
+        {'page':'docs/index.html','claim':'Standalone screenshot-judge/external-model comparisons and the engine-only benign rejection count (all removed values are listed in the generated homepage numeric diff)','fix':'Remove numerical comparisons absent from the capability ledger. The recorded bench evidence is untouched; retained Expectrail/engine comparisons use the ledger’s historical claims.','source':ss[HOME_BEFORE].ref()},
+        {'page':'docs/index.html','claim':'Weighted mutation catch and discovery sabotage/intentional-change counts (all removed values are listed in the generated homepage numeric diff)','fix':'Remove unrepresented homepage figures; keep only ledger-backed historical repair and advisory-discovery figures, labelled with scope. No underlying score is edited.','source':ss[HOME_BEFORE].ref()},
+        {'page':'docs/release/index.html and docs/index.html','claim':'New playtest/sensor/spend/failed-onboarding and current control data missing','fix':'Generate the missing sections and homepage summary from the saved records and code/test sources, with per-source denominators and explicit unmeasured boundaries.','source':ss[LEDGER].ref()}]
+    home_diff=changes(ss[HOME_BEFORE].text,homepage,local_sources()) if homepage is not None else None
+    if home_diff:
+        for row in home_diff['removed']:
+            if not row['sources']:row['sources']=[ss[HOME_BEFORE].ref()]
+    return {'homepageChanges':home_diff,'baselineCommit':commit,'beforeSha256':hashlib.sha256(before.encode()).hexdigest(),
+            'ordinaryRegenerationSha256':hashlib.sha256(ordinary.encode()).hexdigest(),
+            'afterSha256':hashlib.sha256(rendered.encode()).hexdigest(),
+            'interpretation':'Exhaustive changed visible numeric spans, with multiplicity and references. Immutable SHA identities, issue identifiers and p50/p95 labels are metadata excluded from result-figure differences. Each removal/addition is independent; unlike figures are not paired into invented measurements.',
+            'ordinaryRegeneration':changes(before,ordinary,local_sources()),
+            'truthPass':changes(ordinary,rendered,local_sources()),
+            'checkedInToTruthPass':changes(before,rendered,local_sources()),
+            'sectionReasons':AUDIT_REASONS,'mismatches':mismatches}
+
+
+def audit_markdown(doc):
+    def cell(value):return str(value).replace('|','\\|').replace('\n',' ')
+    lines=['# Dossier truth pass: generated figure and wording audit (#268)','',
+           'Generated by `python3 -m tools.dossier`; no run was dispatched. Raw records are unchanged.',
+           'Every changed numeric span, occurrence count and source is in [figure-changes.json](figure-changes.json).',
+           'The [checked-in prior page](sources/dossier-before.html) and [unchanged-generator regeneration on current main](sources/regenerated-before-fixes.html) are frozen for inspection. They are historical snapshots, not current claims.','',
+           '| Scope | Why figures changed |','| --- | --- |']
+    lines.extend('| '+cell(key)+' | '+cell(reason)+' |' for key,reason in doc['sectionReasons'].items())
+    lines+=['','## Every mismatch found','', '| Page / row | Prior claim | Correction and source |','| --- | --- | --- |']
+    lines.extend('| '+cell(row['page'])+' | '+cell(row['claim'])+' | '+cell(row['fix'])+' [Source]('+row['source']+') |' for row in doc['mismatches'])
+    lines+=['','## Figures changed from the checked-in dossier','', '| Section | Direction | Figure text | Occurrences | Source |','| --- | --- | --- | --- | --- |']
+    for direction in ('removed','added'):
+        for row in doc['checkedInToTruthPass'][direction]:
+            sources_='; '.join('[record]('+url+')' for url in row['sources'])
+            lines.append('| '+cell(row['section'])+' | '+direction+' | '+cell(row['figure'])+' | '+str(row['occurrences'])+' | '+sources_+' |')
+    if doc['homepageChanges'] is not None:
+        lines+=['','## Every changed homepage numeric span','', '| Direction | Figure text | Occurrences | Source |','| --- | --- | --- | --- |']
+        for direction in ('removed','added'):
+            for row in doc['homepageChanges'][direction]:
+                links='; '.join('[record]('+url+')' for url in row['sources'])
+                lines.append('| '+direction+' | '+cell(row['figure'])+' | '+str(row['occurrences'])+' | '+links+' |')
+    lines+=['','False accepts, false rejects and needs-review are never pooled. Reproduction misses, report reach and sensor alarms are not verdict error rates. A zero is accompanied by its sample size. The blind release test and first-user test remain unrun; this dossier is not release clearance.','']
+    return '\n'.join(lines)
 
 def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__)
@@ -384,10 +704,33 @@ def main(argv=None):
         if not commit:
             commit=subprocess.check_output(['git','-C',str(args.root),'rev-parse','HEAD'],text=True).strip()
         rendered=build(args.root,commit)
+        home=args.root/'docs/index.html'
+        home_text=home.read_text(encoding='utf-8') if home.is_file() else None
+        final_home=with_homepage_summary(home_text,homepage_summary(args.root,commit)) if home_text is not None and args.out is None else home_text
+        if final_home is not None:
+            check_homepage_figures(final_home,json.loads((args.root/LEDGER).read_text(encoding='utf-8')))
+        audit=audit_document(args.root,commit,rendered,final_home)
+        audit_json=json.dumps(audit,indent=2)+'\n'
+        audit_md=audit_markdown(audit)
         if args.check:
             require(out.is_file() and out.read_text(encoding='utf-8')==rendered,'generated dossier differs; run python -m tools.dossier')
+            snapshot=out.parent/'sources/capabilities.json'
+            require(snapshot.is_file() and snapshot.read_text(encoding='utf-8')==(args.root/LEDGER).read_text(encoding='utf-8'), 'generated capability snapshot differs or is missing')
+            if args.out is None:
+                require((out.parent/'figure-changes.json').is_file() and (out.parent/'figure-changes.json').read_text()==audit_json, 'generated figure audit differs')
+                require((out.parent/'truth-pass.md').is_file() and (out.parent/'truth-pass.md').read_text()==audit_md, 'generated wording audit differs')
+                home=args.root/'docs/index.html';current=home.read_text(encoding='utf-8')
+                require(current==with_homepage_summary(current,homepage_summary(args.root,commit)), 'generated homepage summary differs')
             print('Dossier matches its recorded sources; offline check passed.')
         else:
+            snapshot = out.parent / 'sources/capabilities.json'
+            snapshot.parent.mkdir(parents=True, exist_ok=True)
+            snapshot.write_text((args.root/LEDGER).read_text(encoding='utf-8'), encoding='utf-8')
+            (out.parent/'figure-changes.json').write_text(audit_json,encoding='utf-8')
+            (out.parent/'truth-pass.md').write_text(audit_md,encoding='utf-8')
+            if args.out is None:
+                home=args.root/'docs/index.html'
+                home.write_text(with_homepage_summary(home.read_text(encoding='utf-8'),homepage_summary(args.root,commit)),encoding='utf-8')
             out.parent.mkdir(parents=True,exist_ok=True)
             with tempfile.NamedTemporaryFile(mode='w',encoding='utf-8',dir=out.parent,delete=False) as f:
                 f.write(rendered);name=f.name

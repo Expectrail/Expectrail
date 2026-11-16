@@ -116,21 +116,21 @@
 <div>
 <p class="eyebrow reveal">01 / Why two sources</p>
 <h2 id="single-channel-title" class="reveal">One source of evidence is easy to fool</h2>
-<p class="reveal">Same 8 held-out bugs, 8 good fixes and 7 deceptive ones, judged three ways.</p>
-<p class="source">Runs <a href="https://github.com/Expectrail/Expectrail/actions/runs/41003749744">41003749744</a>, <a href="https://github.com/Expectrail/Expectrail/actions/runs/41003751876">41003751876</a>, <a href="https://github.com/Expectrail/Expectrail/actions/runs/41230177124">41230177124</a> · <a href="https://github.com/Expectrail/Expectrail/blob/main/bench/judge/README.md">judge bench</a>. The screenshot judge also rejected <a href="https://github.com/Expectrail/Expectrail/blob/main/bench/mutation/ai-fixes/README.md">5 of 10 good mutation fixes</a>; frontier models rejected <a href="https://github.com/Expectrail/Expectrail/blob/main/bench/judge/outside-models/README.md">1 to 5 good fixes in 24</a>.</p>
+<p class="reveal">Historical cohort: 8 held-out bugs, 8 good fixes and 7 deceptive ones. The comparison below shows the two ledger-backed observation paths. The zero accepted deceptive fixes applies only to that small sample; it is not a general false-accept rate.</p>
+<p class="source">Runs <a href="https://github.com/Expectrail/Expectrail/actions/runs/41003749744">41003749744</a>, <a href="https://github.com/Expectrail/Expectrail/actions/runs/41003751876">41003751876</a>, <a href="https://github.com/Expectrail/Expectrail/actions/runs/41230177124">41230177124</a> · <a href="https://github.com/Expectrail/Expectrail/blob/main/bench/judge/README.md">judge bench</a>. These are historical small seeded cohorts; they do not measure arbitrary-project accuracy.</p>
 </div>
 <div class="bars">
 <div class="bar-group reveal"><h3>Bugs caught</h3>
 <div class="bar"><span>Engine only</span><b>4 of 8</b><i style="--w:50%"></i></div>
-<div class="bar"><span>Screenshot judge</span><b>not a gate</b><i style="--w:0%"></i></div>
+
 <div class="bar win"><span>Expectrail</span><b>8 of 8</b><i style="--w:100%"></i></div></div>
 <div class="bar-group reveal"><h3>Deceptive fixes accepted <small>lower is better</small></h3>
 <div class="bar"><span>Engine only</span><b>3 of 7</b><i style="--w:43%"></i></div>
-<div class="bar"><span>Screenshot judge</span><b>2 of 7</b><i style="--w:29%"></i></div>
+
 <div class="bar win"><span>Expectrail</span><b>0 of 7</b><i style="--w:0%"></i></div></div>
 <div class="bar-group reveal"><h3>Good fixes rejected <small>lower is better</small></h3>
-<div class="bar"><span>Engine only</span><b>0 of 8</b><i style="--w:0%"></i></div>
-<div class="bar"><span>Screenshot judge</span><b>up to 2 of 8</b><i style="--w:25%"></i></div>
+
+
 <div class="bar win"><span>Expectrail</span><b>0 of 8</b><i style="--w:0%"></i></div></div>
 </div>
 </section>
@@ -139,9 +139,9 @@
 <p class="eyebrow reveal">02 / Trying to break it</p>
 <h2 id="premise-title" class="reveal">We tried to break our own idea</h2>
 <div class="acts">
-<article class="card reveal"><p class="big"><span data-count="0.9" data-decimals="1">0.9</span>%</p><h3>Hand-written checks miss things</h3><p>Of 77 random edits, the checks caught 10, or 0.9% weighted by edit type. Nobody had written a check for the scenery. <a href="https://github.com/Expectrail/Expectrail/blob/main/bench/mutation/README.md">Mutation bench</a></p></article>
-<article class="card reveal"><p class="big"><span data-count="10">10</span> of 10</p><h3>Historical repair measurement</h3><p>In this historical one-game mutation run, Muse Code fixed all 10 caught bugs on the first try. A screenshot judge turned down 5 of those fixes. <a href="https://github.com/Expectrail/Expectrail/actions/runs/41330361829">Run 41330361829</a></p></article>
-<article class="card reveal"><p class="big"><span data-count="7">7</span> of 16</p><h3>Discovery probes some gaps</h3><p>Blind defects found by <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#discovery">advisory discovery</a>, plus 4 of 4 sabotage fixes flagged and no false alarms on 4 design changes. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/discovery.md">Results</a></p></article>
+<article class="card reveal"><p class="big">Limited coverage</p><h3>Hand-written checks miss things</h3><p>Checks cover only the behavior someone specified; uncovered scenery changes can pass. <a href="https://github.com/Expectrail/Expectrail/blob/main/bench/mutation/README.md">Mutation bench</a></p></article>
+<article class="card reveal"><p class="big"><span data-count="10">10</span> of 10</p><h3>Historical repair measurement</h3><p>In this historical one-game mutation run, Muse Code fixed all 10 caught bugs on the first try. This does not establish a live repair through the newer app path. <a href="https://github.com/Expectrail/Expectrail/actions/runs/41330361829">Run 41330361829</a></p></article>
+<article class="card reveal"><p class="big"><span data-count="7">7</span> of 16</p><h3>Discovery probes some gaps</h3><p>Blind defects found by <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#discovery">advisory discovery</a>. These advisory reports cannot reject a change. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/discovery.md">Results</a></p></article>
 </div>
 </section>
 
@@ -188,12 +188,16 @@
 <p class="repair-status">No live repair through the new app/repair path is recorded; CI auto-fix runs only a fixture fixer and is off by default. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/new-work/2026-11-14-loop-story.md">Status and evidence</a>.</p>
 </section>
 
+<!-- dossier-summary:start -->
+<section class="section" id="release-evidence"><h2>Latest recorded evidence</h2><p>Release controls: <a href="https://github.com/Expectrail/Expectrail/actions/runs/43817779257">25 / 35 held; 10 / 35 open; 0 / 35 failed; 0 / 35 not run</a>. Control statuses are not candidate error rates.</p><p>Standalone playtester, previously unused public seeds: <a href="https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/playtester-reach.md#L80">3 / 24 listed defect symptoms</a>. Original policy: <a href="https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/playtester-reach.md#L20">0 / 400 distinct clean seeds with false reports</a>; improved policy: <a href="https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/playtester-reach.md#L20">0 / 200</a> on the same evaluation seeds. One game and bounded routes; no general zero-error claim.</p><p>Opt-in template sensor, untuned new route: <a href="https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L11">8 / 341 clean frames alarm (2.35%)</a>. It does not transfer to another game and counts toward no verdict.</p><p><a href="release/">Generated release dossier: recorded runs, sources, failures and what remains unmeasured</a>.</p></section>
+<!-- dossier-summary:end -->
+
 <section class="section split" id="outside-vision" aria-labelledby="outside-title">
 <div>
 <p class="eyebrow reveal">Outside proof</p>
 <h2 id="outside-title" class="reveal">A game we didn’t write, four right verdicts</h2>
 <p class="reveal">Godot’s kinematic-character demo is the <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#outside-projects">only outside game verified with vision so far</a>. The run cost <a href="https://github.com/Expectrail/Expectrail/actions/runs/43652198623">$2.00</a> at list price. These are recorded historical results: a later unchanged replay lacks an exact answer after a two-pixel PNG difference. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#recorded-vision">Renderer limits</a>.</p>
-<p class="source">For the hidden sprite, vision measured the background and said <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/outside-projects.md#first-outside-game-verified-with-vision-november-14-2026">“past the boundary”</a>; since <a href="https://github.com/Expectrail/Expectrail/pull/481">#481</a> it says “not drawn”, not yet shown live. Dodge the Creeps has <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#outside-projects">a draft check awaiting approval</a>. Older blind tests: <a href="release/#blind">release dossier</a>.</p>
+<p class="source">For the hidden sprite, vision measured the background and said <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/outside-projects.md#first-outside-game-verified-with-vision-november-14-2026">“past the boundary”</a>; since <a href="https://github.com/Expectrail/Expectrail/pull/481">#481</a> it says “not drawn”, not yet shown live. Dodge the Creeps has <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#dodge-the-creeps">an approved engine check that rejects the broken build in CI, but no vision evidence</a>. Older blind tests: <a href="release/#blind">release dossier</a>.</p>
 </div>
 <table class="reveal" aria-label="Recorded verdicts for kinematic-character">
 <thead><tr><th scope="col">Change to the game</th><th scope="col">Verdict</th></tr></thead>

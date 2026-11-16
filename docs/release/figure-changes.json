@@ -1,0 +1,1985 @@
+{
+  "homepageChanges": {
+    "removed": [
+      {
+        "section": "premise-title",
+        "figure": ", plus 4 of 4 sabotage fixes flagged and no false alarms on 4 design changes. ",
+        "occurrences": 1,
+        "sources": [
+          "sources/homepage-before.html"
+        ]
+      },
+      {
+        "section": "premise-title",
+        "figure": "0.9",
+        "occurrences": 1,
+        "sources": [
+          "sources/homepage-before.html"
+        ]
+      },
+      {
+        "section": "premise-title",
+        "figure": "In this historical one-game mutation run, Muse Code fixed all 10 caught bugs on the first try. A screenshot judge turned down 5 of those fixes. ",
+        "occurrences": 1,
+        "sources": [
+          "sources/homepage-before.html"
+        ]
+      },
+      {
+        "section": "premise-title",
+        "figure": "Of 77 random edits, the checks caught 10, or 0.9% weighted by edit type. Nobody had written a check for the scenery. ",
+        "occurrences": 1,
+        "sources": [
+          "sources/homepage-before.html"
+        ]
+      },
+      {
+        "section": "single-channel-title",
+        "figure": "0 of 8",
+        "occurrences": 1,
+        "sources": [
+          "sources/homepage-before.html"
+        ]
+      },
+      {
+        "section": "single-channel-title",
+        "figure": "1 to 5 good fixes in 24",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/main/bench/judge/outside-models/README.md"
+        ]
+      },
+      {
+        "section": "single-channel-title",
+        "figure": "2 of 7",
+        "occurrences": 1,
+        "sources": [
+          "sources/homepage-before.html"
+        ]
+      },
+      {
+        "section": "single-channel-title",
+        "figure": "5 of 10 good mutation fixes",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/main/bench/mutation/ai-fixes/README.md"
+        ]
+      },
+      {
+        "section": "single-channel-title",
+        "figure": "Same 8 held-out bugs, 8 good fixes and 7 deceptive ones, judged three ways.",
+        "occurrences": 1,
+        "sources": [
+          "sources/homepage-before.html"
+        ]
+      },
+      {
+        "section": "single-channel-title",
+        "figure": "up to 2 of 8",
+        "occurrences": 1,
+        "sources": [
+          "sources/homepage-before.html"
+        ]
+      }
+    ],
+    "added": [
+      {
+        "section": "premise-title",
+        "figure": "0 / 200",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/playtester-reach.md#L20"
+        ]
+      },
+      {
+        "section": "premise-title",
+        "figure": "0 / 400 distinct clean seeds with false reports",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/playtester-reach.md#L20"
+        ]
+      },
+      {
+        "section": "premise-title",
+        "figure": "25 / 35 held; 10 / 35 open; 0 / 35 failed; 0 / 35 not run",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43817779257"
+        ]
+      },
+      {
+        "section": "premise-title",
+        "figure": "3 / 24 listed defect symptoms",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/playtester-reach.md#L80"
+        ]
+      },
+      {
+        "section": "premise-title",
+        "figure": "8 / 341 clean frames alarm (2.35%)",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L11"
+        ]
+      },
+      {
+        "section": "premise-title",
+        "figure": "In this historical one-game mutation run, Muse Code fixed all 10 caught bugs on the first try. This does not establish a live repair through the newer app path. ",
+        "occurrences": 1,
+        "sources": []
+      },
+      {
+        "section": "single-channel-title",
+        "figure": "Historical cohort: 8 held-out bugs, 8 good fixes and 7 deceptive ones. The comparison below shows the two ledger-backed observation paths. The zero accepted deceptive fixes applies only to that small sample; it is not a general false-accept rate.",
+        "occurrences": 1,
+        "sources": []
+      }
+    ]
+  },
+  "baselineCommit": "d36c8063449afe6c4113c74d0ff39e926b861b6c",
+  "beforeSha256": "c6fc023fef720d41092fe41a94014d29dea8d6c79be3b1f621d59fb6e652e6b4",
+  "ordinaryRegenerationSha256": "9b5e6eaa8f4e9d026a875b5da30d7687fe59d94d650b91e317a9206768970722",
+  "afterSha256": "fdf8b05ced4df1e2df6944684410dc2b96249c533fac997deef537d1c6b9f4ad",
+  "interpretation": "Exhaustive changed visible numeric spans, with multiplicity and references. Immutable SHA identities, issue identifiers and p50/p95 labels are metadata excluded from result-figure differences. Each removal/addition is independent; unlike figures are not paired into invented measurements.",
+  "ordinaryRegeneration": {
+    "removed": [
+      {
+        "section": "gate",
+        "figure": "13 / 35",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L15"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "18 / 35",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L15"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "2 / 6",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L19",
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L30"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "3 / 6",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L19",
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L30"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "4 / 35",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L15"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "not written yet: it needs the signed receipt (#255)",
+        "occurrences": 3,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L23",
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L24",
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L26"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "undefended: a replay's files are capped one by one, and nothing bounds a job's total disk use yet (#253)",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L80"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Bugs the team seeded, on one game. The planned release is verify-only (#250). Muse Code's spend is not reported per run.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L800"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Godot only: the Unity player and the web replay are not sandboxed. The gate records how many replays were sandboxed and can require it, and the orchestrator's isolated class requires it; no verdict is graded isolated by it, because that grade also needs a trusted job that judges and signs (#254, #255). Not shown in the real tool: that the terminal was reachable before the sandbox got a session of its own. A namespace sandbox on the host's kernel, not a virtual machine. Total disk use of the work copy and the output folder is not limited, only each file; CPU and memory are limited only by the replay's time limit. On Ubuntu 24.04 the runner must allow unprivileged user namespaces first.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L998"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "No run from an MCP client is recorded. The tools are expectrail_draft_spec, expectrail_verify_build and expectrail_trust_check; #252 retires verify_build's fix loop.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L1114"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Not on PyPI: publishing needs an account and a token, which a person sets up. The release workflow has not run: it runs on a tag, and pushing a tag is a person's step. Linux only as packaged. sample and verify need MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP to accept (#379); without them, as in CI, they still replay and an engine failure rejects, and a pass is needs-review.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L1338"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "One game, with bugs the team seeded. The replay is sandboxed only where bubblewrap can run (see replay-sandbox); the gate's record says how many replays were and the gate can refuse to run without it, but no separate trusted job judges and signs the verdict (#254, #255), so nothing here is graded isolated. The approved specs judge frames 0 to 119 of a route.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L18"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "One outside project verified with vision (kinematic-character). Dodge the Creeps has a draft check awaiting Sean's approval and no vision run. A full vision run asks about every frame and cost $2.00 for four variants. The hidden-player reject reads as past the boundary (the model answered with what lies behind the player), not as a missing player. The recorded answers replay only frames whose bytes match.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L1465"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Only the sample command and tests call it: the gate's action and the site do not go through it yet. The isolated execution class runs every replay with the sandbox required and refuses where the machine cannot; its evidence grade stays diagnostic, because the ledger's isolated grade also needs a trusted job that judges and signs (#254, #255). The game is held to the tree the job asked about (the worker's read, the gate's record and each replay's copy must agree, or the job is needs-review), and the verifier judges with the one reading of the specs and routes whose digest is the job's. On a system without /proc a killed worker's children are not found and run on to their own time limit. One host. The cited live run predates the vision default; vision in the orchestrator is tested offline only. Requires MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L1294"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Shown in drills with an injected outage, not in a real one. The drill of the pre-run check (run 41234190741) is not cited: that run ended in failure.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L497"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "The key is generated per run on the verifying side. There is no attestation in CI, no offline trust store and no receipt yet (#255).",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L1081"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Visitors cannot start a run yet: the service that starts runs (apps/run-it-edge) is written and tested against a local stub but not deployed, so the page says it cannot start runs. The runs cited were dispatched by hand. Each sample's vision answers are one recording (November 13): a frame the recording does not hold gets no answer and the sample needs review until it is recorded again. Receipts are not signed (#255).",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L1385"
+        ]
+      }
+    ],
+    "added": [
+      {
+        "section": "gate",
+        "figure": "0 / 6",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L20",
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L31"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "21 / 35",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L15"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "4 real-process tests passed. Covers the receipt verifier (`python3 -m expectrail.receipt trust-check`) run as its own process. The receipts are made by the test from real `expectrail verify` jobs with Godot (their head tree, request and policy digests and their decision) and signed with a key made in the test, because the trusted job writes no receipt yet (#255). The receipt writer and CI attestation are not covered",
+        "occurrences": 2,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L24",
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L27"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "5 / 35",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L15"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "5 / 6",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L20"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "5 real-process tests passed. Covers the receipt verifier (`python3 -m expectrail.receipt trust-check`) run as its own process. The receipts are made by the test from real `expectrail verify` jobs with Godot (their head tree, request and policy digests and their decision) and signed with a key made in the test, because the trusted job writes no receipt yet (#255). The receipt writer and CI attestation are not covered",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L25"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "9 / 35",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L15"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Godot only: the Unity player and the web replay are not sandboxed. The gate records how many replays were sandboxed and can require it, and the orchestrator's isolated class requires it; no verdict is graded isolated by it, because that grade also needs a trusted job that judges and signs (#254, #255). A namespace sandbox on the host's kernel, not a virtual machine. What a replay adds to its work copy and output folder is bounded (4 GiB, 250,000 files) by a measurement every 0.1 s, not a file-system quota, so a game can pass it by what the disk takes in 0.1 s before it is stopped; CPU and memory are limited only by the replay's time limit. On Ubuntu 24.04 the runner must allow unprivileged user namespaces first.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/capabilities.json#L1010"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Godot recordings; exact PNG SHA-256, question kind and prompt; optional capture rendering environments",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/capabilities.json#L1549"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Local module command python3 -m expectrail.receipt trust-check; generated fixture keys; browser receipt checker with the same fixture semantics",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/capabilities.json#L1755"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "No live cap-exhaustion or vendor billing measurement. EXPECTRAIL_MODEL_MONTH_LEDGER opts in to a combined $200 UTC month reservation total; EXPECTRAIL_VISION_MONTH_LEDGER is separate. Whole process caps are reserved per role, including a new reservation in a new process. Holds are conservative reservations, not reconciled bills. External coding agents and feedback transcription/classification are not universally metered.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/capabilities.json#L1626"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "One check, approved by Sean on 2026-11-15, on one route. Engine-only: no vision run and no visual-correctness claim, so no accept on this project. Node visibility is the engine's word that the player is in play, not proof of drawn pixels.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/capabilities.json#L1721"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "One outside project verified with vision (kinematic-character). Dodge has a draft check awaiting Sean's approval and no vision run. Four historical variants used 800 images, $2.00 at list price. The historical hidden-player reject was labelled past the boundary; current NOT-DRAWN handling is tested offline, without a new live measurement. Exact recorded answers do not transfer across arbitrary rendering environments: a later unchanged replay lacks frame 111's answer. See recorded-vision and local-app.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/capabilities.json#L1506"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Opt-in; not wired as a verdict-eligible observer in installed verify or the gate. The new-route 2.35% exceeds the under-2% bar. Does not transfer to kinematic-character. Its own bank could not be built with the frozen alpha requirements; no calibrated-outside result exists. Pooled counts do not establish success per source. Follow-up measurements are local records, not a hosted CI benchmark.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/capabilities.json#L1592"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "PR #522 frozen 408-template platformer bank; local untuned public-route and different-art outside measurements",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/capabilities.json#L1592"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Receipt module: Ed25519 verification with an offline issuer trust store",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/capabilities.json#L1755"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Seeded bugs on one game, not a catch-rate estimate for arbitrary projects. These agent runs do not measure the current installed command's default both-observer path. The approved benchmark specs judge frames 0 to 119. Replay containment is conditional on Bubblewrap; the newer two-job Action and receipt module are separate rows, without an end-to-end trusted signed deployment shown. No isolated grade.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/capabilities.json#L18"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Shown in drills with an injected outage, not in a real one. The drill of the pre-run check (run 41234190741) is not cited: that run ended in failure. This is the agents.judge_ladder path, not a fallback promised by the installed verify command.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/capabilities.json#L497"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Visitors cannot start a run yet: the service that starts runs (apps/run-it-edge) is written and tested against a local stub but not deployed, so the page says it cannot start runs. The runs cited were dispatched by hand. Each sample's vision answers are one recording (November 13): a frame the recording does not hold gets no answer and the sample needs review until it is recorded again. Receipts are not signed (#255). Exact PNG matches depend on rendering output: a renderer difference can leave an unchanged project at needs-review. Missing vision does not override an engine failure. See recorded-vision.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/capabilities.json#L1421"
+        ]
+      }
+    ]
+  },
+  "truthPass": {
+    "removed": [
+      {
+        "section": "gate",
+        "figure": "0 / 3",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L64"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "1 / 6",
+        "occurrences": 2,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L20",
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L31"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "1 / 8",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L72"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "2 real-process tests passed. Covers the pull-request gate's command, which reads the declared intent; the orchestrator's command takes no intent and judges every change as undeclared. The positive side, a contract change approved and merged first and the behaviour after it, is not run: the recorded vision answers cover only the samples' frames and checks",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L68"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "21 / 35",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L15"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "3 / 3",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L64"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "3 / 6",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L31"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "5 / 35",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L15"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "5 / 6",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L20"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "7 / 8",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L72"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "9 / 35",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L15"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "not written yet: it needs the observation timeline (#257)",
+        "occurrences": 2,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L46",
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L47",
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L48",
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L49",
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L50",
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L51",
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/release-gate.md#L52"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "No live cap-exhaustion or vendor billing measurement. EXPECTRAIL_MODEL_MONTH_LEDGER opts in to a combined $200 UTC month reservation total; EXPECTRAIL_VISION_MONTH_LEDGER is separate. Whole process caps are reserved per role, including a new reservation in a new process. Holds are conservative reservations, not reconciled bills. External coding agents and feedback transcription/classification are not universally metered.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/capabilities.json#L1626"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "One outside project verified with vision (kinematic-character). Dodge has a draft check awaiting Sean's approval and no vision run. Four historical variants used 800 images, $2.00 at list price. The historical hidden-player reject was labelled past the boundary; current NOT-DRAWN handling is tested offline, without a new live measurement. Exact recorded answers do not transfer across arbitrary rendering environments: a later unchanged replay lacks frame 111's answer. See recorded-vision and local-app.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/capabilities.json#L1506"
+        ]
+      }
+    ],
+    "added": [
+      {
+        "section": "gate",
+        "figure": "0 / 35",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "0 / 6",
+        "occurrences": 2,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "0 / 8",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "1 / 3",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "10 / 35",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "2 / 3",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "2 real-process tests passed. Covers the isolated class, as above; the port is on this machine's loopback, the nearest address a change could reach. Without the sandbox the first test shows a broken change that reaches it repairing itself and being cleared",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "2 real-process tests passed. Covers the replay sandbox's bound on what a replay adds to its work copy and output folder (4 GiB and 250,000 files by default, lowered to 32 MB here), measured every 0.1 s and after the replay ends, so a game can pass it by what the disk takes in 0.1 s before it is stopped. Without the sandbox the first test shows the same change writing all 96 MB and being cleared. Bounded only where the replay runs in the sandbox (the isolated class); the import cache the verifier keeps between jobs and the job's own files outside the replay are not bounded by it",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "25 / 35",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "3 real-process tests passed. Covers the isolated class (`--execution-class isolated`), where every replay is in the sandbox. The default class sandboxes only where the machine can; without the sandbox the first test shows a broken change that reads a file outside its checkout repairing itself and being cleared",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "4 / 6",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "4 real-process tests passed. Covers the two-job gate (#254): the capture and the trusted judge run as real processes with Godot in the replay sandbox, and the trusted job's step that completes the head checks runs against a stand-in for GitHub's API. The hosted run on a test pull request is not part of this suite",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "6 / 6",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "68",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.json"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "8 / 8",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "8 real-process tests passed. Covers the two-job gate (#254): edits between the jobs, an archive consistent in itself whose recorded base or head game tree differs from its checkout, and checks the change carries. The artifact download needs GitHub and is not run here. What the game itself writes from inside its replay is the forged-trace and rewritten-frame rows",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "Main CI run 43817779257",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43817779257"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "equal-count repeated or stale content is not authenticated by the current game-origin capture (#257, #246); refusing an extra frame alone does not defend the complete control",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "the complete resolution/timeline control is not demonstrated (#257): independent capture geometry and tick binding are absent; only intra-replay PNG dimension changes are refused",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Godot source checkout; offline tests, a local real-engine diagnostic and PR #551 seeded-bugs CI reproduction with required Bubblewrap",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "No live cap-exhaustion or vendor billing measurement. EXPECTRAIL_MODEL_MONTH_LEDGER opts in to a combined $200 UTC month reservation total; EXPECTRAIL_VISION_MONTH_LEDGER is separate. Whole process caps are reserved per role, including a new reservation in a new process. Holds are conservative reservations, not reconciled bills. External coding agents and feedback transcription/classification are not universally metered. The $1.00 Muse invocation hold does not bound its internal token cost.",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "One bundled game; pinned Godot 4.7.2 local headless measurement; development and previously unused evaluation seeds",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "One outside project verified with vision (kinematic-character). Dodge's lifecycle-aware play-area check is approved; its broken clamp build is rejected in CI, while clean/harmless need review without vision. No Dodge vision evidence exists. Four historical variants used 800 images, $2.00 at list price. The historical hidden-player reject was labelled past the boundary; current NOT-DRAWN handling is tested offline, without a new live measurement. Exact recorded answers do not transfer across arbitrary rendering environments: a later unchanged replay lacks frame 111's answer. See recorded-vision and local-app.",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Public development measurement on one game, not blind discovery or a verdict/repair rate. The improved policy has only 200 clean evaluation seeds; 400 is the original policy across development plus evaluation. Zero observed false reports in these samples is not a zero general false-report rate. Not wired into an automatically verified live-model report/fixer run.",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "outside",
+        "figure": "0 / 2",
+        "occurrences": 3,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43652198623",
+          "https://github.com/Expectrail/Expectrail/issues/263#issuecomment-6870786638",
+          "https://github.com/Expectrail/Expectrail/issues/263#issuecomment-6874615831"
+        ]
+      },
+      {
+        "section": "outside",
+        "figure": "0 / 4",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43652198623"
+        ]
+      },
+      {
+        "section": "outside",
+        "figure": "4",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43652198623"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "0",
+        "occurrences": 4,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/outside-trials/system-override/results.json#L1",
+          "sources/breakout-results.json"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "0 / 1",
+        "occurrences": 2,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43748180876"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "0 / 2",
+        "occurrences": 4,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43748180876"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "1 / 1",
+        "occurrences": 3,
+        "sources": [
+          "sources/breakout-results.json"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "120",
+        "occurrences": 3,
+        "sources": [
+          "sources/breakout-results.json"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "2 / 3",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43748180876"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "3",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43748180876"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "3 / 3",
+        "occurrences": 2,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/outside-trials/system-override/results.json#L1",
+          "sources/breakout-results.json"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "3 / 4",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43748180876"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "4",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43748180876"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "fail, first at frame 44",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43748180876"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "fail, first at frame 97",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43748180876"
+        ]
+      },
+      {
+        "section": "playtest",
+        "figure": "0 / 200",
+        "occurrences": 3,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/playtester-reach.md#L20"
+        ]
+      },
+      {
+        "section": "playtest",
+        "figure": "0 / 400",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/playtester-reach.md#L20"
+        ]
+      },
+      {
+        "section": "playtest",
+        "figure": "1 / 24",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/playtester-reach.md#L80"
+        ]
+      },
+      {
+        "section": "playtest",
+        "figure": "21 / 24",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/playtester-reach.md#L80"
+        ]
+      },
+      {
+        "section": "playtest",
+        "figure": "23 / 24",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/playtester-reach.md#L80"
+        ]
+      },
+      {
+        "section": "playtest",
+        "figure": "3",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43808291610/job/133104000066"
+        ]
+      },
+      {
+        "section": "playtest",
+        "figure": "3 / 24",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/playtester-reach.md#L80"
+        ]
+      },
+      {
+        "section": "playtest",
+        "figure": "PR 551",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/pull/551"
+        ]
+      },
+      {
+        "section": "runtime",
+        "figure": "$2.00",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43652198623"
+        ]
+      },
+      {
+        "section": "spend",
+        "figure": "$0.0025 / image",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/expectrail/spend.py#L60"
+        ]
+      },
+      {
+        "section": "spend",
+        "figure": "$0.05 / request",
+        "occurrences": 3,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/expectrail/spend.py#L60"
+        ]
+      },
+      {
+        "section": "spend",
+        "figure": "$1 / invocation",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/expectrail/spend.py#L60"
+        ]
+      },
+      {
+        "section": "spend",
+        "figure": "$200",
+        "occurrences": 2,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/expectrail/spend.py#L391",
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/expectrail/spend.py#L44"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "0 / 97",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L10"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "0.00%",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L10"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "1.83%",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L12"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "100%",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L13"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "19 of 360 raw frames repeat prior hashes",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L11"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "2.35%",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L11"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "23 of 120 raw frames repeat prior PNG hashes",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L10"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "540 / 540",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L13"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "8 / 341",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L11"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "8 / 438",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L12"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "Does not establish under 2% on each route",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L12"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "Frozen builder refuses fully opaque 16\u00d716 art; no calibrated-bank result",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L1"
+        ]
+      }
+    ]
+  },
+  "checkedInToTruthPass": {
+    "removed": [
+      {
+        "section": "gate",
+        "figure": "0 / 3",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L63"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "1 / 6",
+        "occurrences": 2,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L19",
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L30"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "1 / 8",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L71"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "13 / 35",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L15"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "18 / 35",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L15"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "2 / 6",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L19",
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L30"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "2 real-process tests passed. Covers the pull-request gate's command, which reads the declared intent; the orchestrator's command takes no intent and judges every change as undeclared. The positive side, a contract change approved and merged first and the behaviour after it, is not run: the recorded vision answers cover only the samples' frames and checks",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L67"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "3 / 3",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L63"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "3 / 6",
+        "occurrences": 2,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L19",
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L30"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "4 / 35",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L15"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "7 / 8",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L71"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "not written yet: it needs the observation timeline (#257)",
+        "occurrences": 2,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L45",
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L46",
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L47",
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L48",
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L49",
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L50",
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L51"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "not written yet: it needs the signed receipt (#255)",
+        "occurrences": 3,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L23",
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L24",
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L26"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "undefended: a replay's files are capped one by one, and nothing bounds a job's total disk use yet (#253)",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/release-gate.md#L80"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Bugs the team seeded, on one game. The planned release is verify-only (#250). Muse Code's spend is not reported per run.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L800"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Godot only: the Unity player and the web replay are not sandboxed. The gate records how many replays were sandboxed and can require it, and the orchestrator's isolated class requires it; no verdict is graded isolated by it, because that grade also needs a trusted job that judges and signs (#254, #255). Not shown in the real tool: that the terminal was reachable before the sandbox got a session of its own. A namespace sandbox on the host's kernel, not a virtual machine. Total disk use of the work copy and the output folder is not limited, only each file; CPU and memory are limited only by the replay's time limit. On Ubuntu 24.04 the runner must allow unprivileged user namespaces first.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L998"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "No run from an MCP client is recorded. The tools are expectrail_draft_spec, expectrail_verify_build and expectrail_trust_check; #252 retires verify_build's fix loop.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L1114"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Not on PyPI: publishing needs an account and a token, which a person sets up. The release workflow has not run: it runs on a tag, and pushing a tag is a person's step. Linux only as packaged. sample and verify need MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP to accept (#379); without them, as in CI, they still replay and an engine failure rejects, and a pass is needs-review.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L1338"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "One game, with bugs the team seeded. The replay is sandboxed only where bubblewrap can run (see replay-sandbox); the gate's record says how many replays were and the gate can refuse to run without it, but no separate trusted job judges and signs the verdict (#254, #255), so nothing here is graded isolated. The approved specs judge frames 0 to 119 of a route.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L18"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "One outside project verified with vision (kinematic-character). Dodge the Creeps has a draft check awaiting Sean's approval and no vision run. A full vision run asks about every frame and cost $2.00 for four variants. The hidden-player reject reads as past the boundary (the model answered with what lies behind the player), not as a missing player. The recorded answers replay only frames whose bytes match.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L1465"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Only the sample command and tests call it: the gate's action and the site do not go through it yet. The isolated execution class runs every replay with the sandbox required and refuses where the machine cannot; its evidence grade stays diagnostic, because the ledger's isolated grade also needs a trusted job that judges and signs (#254, #255). The game is held to the tree the job asked about (the worker's read, the gate's record and each replay's copy must agree, or the job is needs-review), and the verifier judges with the one reading of the specs and routes whose digest is the job's. On a system without /proc a killed worker's children are not found and run on to their own time limit. One host. The cited live run predates the vision default; vision in the orchestrator is tested offline only. Requires MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L1294"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Shown in drills with an injected outage, not in a real one. The drill of the pre-run check (run 41234190741) is not cited: that run ended in failure.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L497"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "The key is generated per run on the verifying side. There is no attestation in CI, no offline trust store and no receipt yet (#255).",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L1081"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Visitors cannot start a run yet: the service that starts runs (apps/run-it-edge) is written and tested against a local stub but not deployed, so the page says it cannot start runs. The runs cited were dispatched by hand. Each sample's vision answers are one recording (November 13): a frame the recording does not hold gets no answer and the sample needs review until it is recorded again. Receipts are not signed (#255).",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7069378cdd2b41911e41691812a46fe65a1417df/docs/capabilities.json#L1385"
+        ]
+      }
+    ],
+    "added": [
+      {
+        "section": "gate",
+        "figure": "0 / 35",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "0 / 6",
+        "occurrences": 3,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "0 / 8",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "1 / 3",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "10 / 35",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "2 / 3",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "2 real-process tests passed. Covers the isolated class, as above; the port is on this machine's loopback, the nearest address a change could reach. Without the sandbox the first test shows a broken change that reaches it repairing itself and being cleared",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "2 real-process tests passed. Covers the replay sandbox's bound on what a replay adds to its work copy and output folder (4 GiB and 250,000 files by default, lowered to 32 MB here), measured every 0.1 s and after the replay ends, so a game can pass it by what the disk takes in 0.1 s before it is stopped. Without the sandbox the first test shows the same change writing all 96 MB and being cleared. Bounded only where the replay runs in the sandbox (the isolated class); the import cache the verifier keeps between jobs and the job's own files outside the replay are not bounded by it",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "25 / 35",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "3 real-process tests passed. Covers the isolated class (`--execution-class isolated`), where every replay is in the sandbox. The default class sandboxes only where the machine can; without the sandbox the first test shows a broken change that reads a file outside its checkout repairing itself and being cleared",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "4 / 6",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "4 real-process tests passed. Covers the receipt verifier (`python3 -m expectrail.receipt trust-check`) run as its own process. The receipts are made by the test from real `expectrail verify` jobs with Godot (their head tree, request and policy digests and their decision) and signed with a key made in the test, because the trusted job writes no receipt yet (#255). The receipt writer and CI attestation are not covered",
+        "occurrences": 2,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "4 real-process tests passed. Covers the two-job gate (#254): the capture and the trusted judge run as real processes with Godot in the replay sandbox, and the trusted job's step that completes the head checks runs against a stand-in for GitHub's API. The hosted run on a test pull request is not part of this suite",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "5 real-process tests passed. Covers the receipt verifier (`python3 -m expectrail.receipt trust-check`) run as its own process. The receipts are made by the test from real `expectrail verify` jobs with Godot (their head tree, request and policy digests and their decision) and signed with a key made in the test, because the trusted job writes no receipt yet (#255). The receipt writer and CI attestation are not covered",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "6 / 6",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "68",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.json"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "8 / 8",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "8 real-process tests passed. Covers the two-job gate (#254): edits between the jobs, an archive consistent in itself whose recorded base or head game tree differs from its checkout, and checks the change carries. The artifact download needs GitHub and is not run here. What the game itself writes from inside its replay is the forged-trace and rewritten-frame rows",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "Main CI run 43817779257",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43817779257"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "equal-count repeated or stale content is not authenticated by the current game-origin capture (#257, #246); refusing an extra frame alone does not defend the complete control",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "gate",
+        "figure": "the complete resolution/timeline control is not demonstrated (#257): independent capture geometry and tick binding are absent; only intra-replay PNG dimension changes are refused",
+        "occurrences": 1,
+        "sources": [
+          "sources/ci-release-gate.md"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Godot only: the Unity player and the web replay are not sandboxed. The gate records how many replays were sandboxed and can require it, and the orchestrator's isolated class requires it; no verdict is graded isolated by it, because that grade also needs a trusted job that judges and signs (#254, #255). A namespace sandbox on the host's kernel, not a virtual machine. What a replay adds to its work copy and output folder is bounded (4 GiB, 250,000 files) by a measurement every 0.1 s, not a file-system quota, so a game can pass it by what the disk takes in 0.1 s before it is stopped; CPU and memory are limited only by the replay's time limit. On Ubuntu 24.04 the runner must allow unprivileged user namespaces first.",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Godot recordings; exact PNG SHA-256, question kind and prompt; optional capture rendering environments",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Godot source checkout; offline tests, a local real-engine diagnostic and PR #551 seeded-bugs CI reproduction with required Bubblewrap",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Local module command python3 -m expectrail.receipt trust-check; generated fixture keys; browser receipt checker with the same fixture semantics",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "No live cap-exhaustion or vendor billing measurement. EXPECTRAIL_MODEL_MONTH_LEDGER opts in to a combined $200 UTC month reservation total; EXPECTRAIL_VISION_MONTH_LEDGER is separate. Whole process caps are reserved per role, including a new reservation in a new process. Holds are conservative reservations, not reconciled bills. External coding agents and feedback transcription/classification are not universally metered. The $1.00 Muse invocation hold does not bound its internal token cost.",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "One bundled game; pinned Godot 4.7.2 local headless measurement; development and previously unused evaluation seeds",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "One check, approved by Sean on 2026-11-15, on one route. Engine-only: no vision run and no visual-correctness claim, so no accept on this project. Node visibility is the engine's word that the player is in play, not proof of drawn pixels.",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "One outside project verified with vision (kinematic-character). Dodge's lifecycle-aware play-area check is approved; its broken clamp build is rejected in CI, while clean/harmless need review without vision. No Dodge vision evidence exists. Four historical variants used 800 images, $2.00 at list price. The historical hidden-player reject was labelled past the boundary; current NOT-DRAWN handling is tested offline, without a new live measurement. Exact recorded answers do not transfer across arbitrary rendering environments: a later unchanged replay lacks frame 111's answer. See recorded-vision and local-app.",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Opt-in; not wired as a verdict-eligible observer in installed verify or the gate. The new-route 2.35% exceeds the under-2% bar. Does not transfer to kinematic-character. Its own bank could not be built with the frozen alpha requirements; no calibrated-outside result exists. Pooled counts do not establish success per source. Follow-up measurements are local records, not a hosted CI benchmark.",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "PR #522 frozen 408-template platformer bank; local untuned public-route and different-art outside measurements",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Public development measurement on one game, not blind discovery or a verdict/repair rate. The improved policy has only 200 clean evaluation seeds; 400 is the original policy across development plus evaluation. Zero observed false reports in these samples is not a zero general false-report rate. Not wired into an automatically verified live-model report/fixer run.",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Receipt module: Ed25519 verification with an offline issuer trust store",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Seeded bugs on one game, not a catch-rate estimate for arbitrary projects. These agent runs do not measure the current installed command's default both-observer path. The approved benchmark specs judge frames 0 to 119. Replay containment is conditional on Bubblewrap; the newer two-job Action and receipt module are separate rows, without an end-to-end trusted signed deployment shown. No isolated grade.",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Shown in drills with an injected outage, not in a real one. The drill of the pre-run check (run 41234190741) is not cited: that run ended in failure. This is the agents.judge_ladder path, not a fallback promised by the installed verify command.",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Visitors cannot start a run yet: the service that starts runs (apps/run-it-edge) is written and tested against a local stub but not deployed, so the page says it cannot start runs. The runs cited were dispatched by hand. Each sample's vision answers are one recording (November 13): a frame the recording does not hold gets no answer and the sample needs review until it is recorded again. Receipts are not signed (#255). Exact PNG matches depend on rendering output: a renderer difference can leave an unchanged project at needs-review. Missing vision does not override an engine failure. See recorded-vision.",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "outside",
+        "figure": "0 / 2",
+        "occurrences": 3,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43652198623",
+          "https://github.com/Expectrail/Expectrail/issues/263#issuecomment-6870786638",
+          "https://github.com/Expectrail/Expectrail/issues/263#issuecomment-6874615831"
+        ]
+      },
+      {
+        "section": "outside",
+        "figure": "0 / 4",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43652198623"
+        ]
+      },
+      {
+        "section": "outside",
+        "figure": "4",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43652198623"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "0",
+        "occurrences": 4,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/outside-trials/system-override/results.json#L1",
+          "sources/breakout-results.json"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "0 / 1",
+        "occurrences": 2,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43748180876"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "0 / 2",
+        "occurrences": 4,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43748180876"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "1 / 1",
+        "occurrences": 3,
+        "sources": [
+          "sources/breakout-results.json"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "120",
+        "occurrences": 3,
+        "sources": [
+          "sources/breakout-results.json"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "2 / 3",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43748180876"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "3",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43748180876"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "3 / 3",
+        "occurrences": 2,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/outside-trials/system-override/results.json#L1",
+          "sources/breakout-results.json"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "3 / 4",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43748180876"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "4",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43748180876"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "fail, first at frame 44",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43748180876"
+        ]
+      },
+      {
+        "section": "outside-current",
+        "figure": "fail, first at frame 97",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43748180876"
+        ]
+      },
+      {
+        "section": "playtest",
+        "figure": "0 / 200",
+        "occurrences": 3,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/playtester-reach.md#L20"
+        ]
+      },
+      {
+        "section": "playtest",
+        "figure": "0 / 400",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/playtester-reach.md#L20"
+        ]
+      },
+      {
+        "section": "playtest",
+        "figure": "1 / 24",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/playtester-reach.md#L80"
+        ]
+      },
+      {
+        "section": "playtest",
+        "figure": "21 / 24",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/playtester-reach.md#L80"
+        ]
+      },
+      {
+        "section": "playtest",
+        "figure": "23 / 24",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/playtester-reach.md#L80"
+        ]
+      },
+      {
+        "section": "playtest",
+        "figure": "3",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43808291610/job/133104000066"
+        ]
+      },
+      {
+        "section": "playtest",
+        "figure": "3 / 24",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/playtester-reach.md#L80"
+        ]
+      },
+      {
+        "section": "playtest",
+        "figure": "PR 551",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/pull/551"
+        ]
+      },
+      {
+        "section": "runtime",
+        "figure": "$2.00",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/actions/runs/43652198623"
+        ]
+      },
+      {
+        "section": "spend",
+        "figure": "$0.0025 / image",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/expectrail/spend.py#L60"
+        ]
+      },
+      {
+        "section": "spend",
+        "figure": "$0.05 / request",
+        "occurrences": 3,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/expectrail/spend.py#L60"
+        ]
+      },
+      {
+        "section": "spend",
+        "figure": "$1 / invocation",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/expectrail/spend.py#L60"
+        ]
+      },
+      {
+        "section": "spend",
+        "figure": "$200",
+        "occurrences": 2,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/expectrail/spend.py#L391",
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/expectrail/spend.py#L44"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "0 / 97",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L10"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "0.00%",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L10"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "1.83%",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L12"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "100%",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L13"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "19 of 360 raw frames repeat prior hashes",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L11"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "2.35%",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L11"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "23 of 120 raw frames repeat prior PNG hashes",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L10"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "540 / 540",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L13"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "8 / 341",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L11"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "8 / 438",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L12"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "Does not establish under 2% on each route",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L12"
+        ]
+      },
+      {
+        "section": "template",
+        "figure": "Frozen builder refuses fully opaque 16\u00d716 art; no calibrated-bank result",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/template-sensor-untuned-summary.md#L1"
+        ]
+      }
+    ]
+  },
+  "sectionReasons": {
+    "ledger": "Snapshot now includes merged capability rows; stale Dodge/playtest claims are corrected and the standalone playtester sample is recorded. Evidence grades are unchanged.",
+    "gate": "Replace stale local control results with the latest completed main CI artifact; derive every status and group total from that artifact, not code presence.",
+    "outside-vision": "Count the successful recorded vision cohort separately, with false accepts/rejects and needs-review denominators; the older unsuccessful attempt stays historical.",
+    "outside-current": "Add the recorded no-vision CI cohorts and both failed independent-author onboarding attempts. Unexercised drafts are not bug detection.",
+    "playtest": "Add the passed PR seeded-bugs proof and published paired reach record; original clean samples are disjoint, improved evaluation reuses its sample.",
+    "template": "Add the untuned per-source alarms and failed cross-art transfer; no verdict contribution or pooled under-target claim.",
+    "spend": "Read reservation units and separate month limits from code and cross-check the ledger; these are holds, not bills or a cap inside a fixer invocation.",
+    "runtime": "Retain singleton runtimes without invented percentiles; add the successful outside run cost separately from the historical failed trial.",
+    "sources": "Record source content fingerprints and captured API/handover provenance. Identity/hash changes are metadata, not new performance measurements.",
+    "limits": "Update limitations from recorded evidence: disk monitor exists, Unity is experimental, exact-image recording remains limited and outside acceptance still needs vision.",
+    "pending": "Dodge engine approval is complete; live vision and the first-user/blind release test remain unrun.",
+    "snapshot": "Record the audited baseline and content identities without claiming newly captured files existed in the baseline commit."
+  },
+  "mismatches": [
+    {
+      "page": "docs/release/index.html",
+      "claim": "Stale local summary: held: 18 / 35; open: 13 / 35; failed: 0 / 35; not run: 4 / 35",
+      "fix": "Unchanged generator on current main inputs: held: 21 / 35; open: 9 / 35; failed: 0 / 35; not run: 5 / 35. Latest recorded main CI: held: 25 / 35; open: 10 / 35; failed: 0 / 35; not run: 0 / 35. These are different runs, not tests retroactively promoted.",
+      "source": "sources/ci-release-gate.json"
+    },
+    {
+      "page": "docs/release/index.html",
+      "claim": "Dodge draft awaits approval; no trial update",
+      "fix": "Approved play-area check; broken CI variant rejects, clean/harmless need review without vision. No Dodge vision evidence.",
+      "source": "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/outside-projects.md#L59"
+    },
+    {
+      "page": "docs/release/index.html",
+      "claim": "Replay sandbox does not bound disk usage",
+      "fix": "The Godot work/output polling growth monitor exists; it is not a filesystem quota or a bound on every host resource.",
+      "source": "sources/capabilities.json"
+    },
+    {
+      "page": "docs/release/index.html",
+      "claim": "Outside success has verdicts but no separated error denominators; renderer limitation absent",
+      "fix": "Historical successful cohort has separate bad/benign/review denominators. Later exact-image replay can lack an answer; no general portability claimed.",
+      "source": "sources/capabilities.json"
+    },
+    {
+      "page": "docs/capabilities.json:outside-projects",
+      "claim": "Dodge has a draft check awaiting approval",
+      "fix": "Align the aggregate row with its dedicated Dodge row and recorded CI evidence.",
+      "source": "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/outside-projects.md#L59"
+    },
+    {
+      "page": "docs/capabilities.json:playtest-ingest",
+      "claim": "Required CI reproduction is future work",
+      "fix": "Cite the passed PR seeded-bugs tests; no live model/fixer or repair result is promoted.",
+      "source": "sources/playtest-ci.json"
+    },
+    {
+      "page": "docs/index.html",
+      "claim": "Dodge has a draft check awaiting approval",
+      "fix": "Approved engine check, broken build rejected in CI, no vision evidence.",
+      "source": "https://github.com/Expectrail/Expectrail/blob/d36c8063449afe6c4113c74d0ff39e926b861b6c/docs/outside-projects.md#L59"
+    },
+    {
+      "page": "docs/index.html",
+      "claim": "Standalone screenshot-judge/external-model comparisons and the engine-only benign rejection count (all removed values are listed in the generated homepage numeric diff)",
+      "fix": "Remove numerical comparisons absent from the capability ledger. The recorded bench evidence is untouched; retained Expectrail/engine comparisons use the ledger\u2019s historical claims.",
+      "source": "sources/homepage-before.html"
+    },
+    {
+      "page": "docs/index.html",
+      "claim": "Weighted mutation catch and discovery sabotage/intentional-change counts (all removed values are listed in the generated homepage numeric diff)",
+      "fix": "Remove unrepresented homepage figures; keep only ledger-backed historical repair and advisory-discovery figures, labelled with scope. No underlying score is edited.",
+      "source": "sources/homepage-before.html"
+    },
+    {
+      "page": "docs/release/index.html and docs/index.html",
+      "claim": "New playtest/sensor/spend/failed-onboarding and current control data missing",
+      "fix": "Generate the missing sections and homepage summary from the saved records and code/test sources, with per-source denominators and explicit unmeasured boundaries.",
+      "source": "sources/capabilities.json"
+    }
+  ]
+}

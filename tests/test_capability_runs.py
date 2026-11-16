@@ -260,6 +260,15 @@ class LedgerRunsTest(unittest.TestCase):
             if job_id and "timing" in cite:
                 seconds = int(cite["timing"]["seconds"]) + (1 if "phases" in cite["timing"] else 0)
                 run["jobs"].append(_job("timed", job_id=job_id, steps=[_step(cite["timing"]["step"], seconds)]))
+        # New job-specific citations use the recorded public API identities captured for the
+        # dossier. Keep the assertions strict; do not invent a job merely from its ledger URL.
+        for source in ("docs/release/sources/ci-release-metadata.json",
+                       "docs/release/sources/playtest-ci.json"):
+            recorded = json.loads((cap.ROOT / source).read_text(encoding="utf-8"))
+            for job in recorded["jobs"]:
+                number = str(job["run_id"])
+                if number in out:
+                    out[number]["jobs"].append(_job(job["name"], job["conclusion"], job_id=str(job["id"])))
         # The jobs whose saved notices the ledger's counts rest on (tests/capability_notices.json).
         for number, items in SAVED_NOTICES.items():
             for name in dict.fromkeys(item["job"] for item in items):

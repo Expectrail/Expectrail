@@ -165,6 +165,12 @@
           "kind": "test",
           "ref": "tests/test_ci_gate.py",
           "shows": "finding ids that stay the same across pushes, and that the comment job's reader refuses a malformed or oversized artifact"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43817779257/job/133133657309",
+          "conclusion": "success",
+          "shows": "Release gate suite on main 1243413: 35 control rows, held 25, open 10, failed 0, not run 0; 68 test outcomes in the saved release-gate artifact. These are control statuses, not candidate false-accept/reject counts or signed release clearance."
         }
       ],
       "limits": "On blind set 3 the approved checks covered none of the eight defects: what the gate catches is bounded by the checks a project has. This row cites no run on a project the team did not write (#263). The action sandboxes the game where the runner can and the findings record says how many replays ran in the sandbox; refusing to run outside it is an input (require-sandbox) that callers must set themselves. These earlier composite actions compute the verdict in the candidate job and do not publish the two head checks. The merged split is listed separately in ci-head-clearance. This historical evidence does not validate that newer deployment. No catch rate or runtime is published for it."
@@ -1541,9 +1547,25 @@
           "kind": "test",
           "ref": "tests/test_anchored_observer.py",
           "shows": "Offline anchored observer behavior, including absent/occluded visual evidence; no new live outside-game result."
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43748180876",
+          "conclusion": "success",
+          "shows": "Outside trial: kinematic pinned/harmless/invisible need review and broken collision rejects; Dodge pinned/harmless need review and broken clamp rejects at frame 97. No outside game accepts without vision."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/outside-trials/system-override/results.json",
+          "shows": "System Override onboarding failed: all three variant jobs need review, no engine replay and no approved check ran. The repeated .NET refusal is recorded separately."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/release/sources/breakout-results.json",
+          "shows": "Recorded Breakout onboarding failure: pinned, harmless and broken all need review; zero approved checks, 120 frames each, one paddle position and one ball box; the menu never starts. This is a local non-isolated diagnostic, not a new main/CI trial or seeded-defect detection."
         }
       ],
-      "limits": "One outside project verified with vision (kinematic-character). Dodge has a draft check awaiting Sean's approval and no vision run. Four historical variants used 800 images, $2.00 at list price. The historical hidden-player reject was labelled past the boundary; current NOT-DRAWN handling is tested offline, without a new live measurement. Exact recorded answers do not transfer across arbitrary rendering environments: a later unchanged replay lacks frame 111's answer. See recorded-vision and local-app."
+      "limits": "One outside project verified with vision (kinematic-character). Dodge's lifecycle-aware play-area check is approved; its broken clamp build is rejected in CI, while clean/harmless need review without vision. No Dodge vision evidence exists. Four historical variants used 800 images, $2.00 at list price. The historical hidden-player reject was labelled past the boundary; current NOT-DRAWN handling is tested offline, without a new live measurement. Exact recorded answers do not transfer across arbitrary rendering environments: a later unchanged replay lacks frame 111's answer. See recorded-vision and local-app."
     },
     {
       "id": "recorded-vision",
@@ -1647,9 +1669,14 @@
           "kind": "record",
           "ref": "docs/spend-caps.md",
           "shows": "Merged #267 request-boundary spec accounting and model-month reservation semantics."
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_spend.py",
+          "shows": "Code reservation units: vision $0.0025/image, Glimmer $0.05/request, Muse $1.00/invocation, triage $0.05/request, spec $0.05/request. These holds and opt-in separate $200 model/vision month limits are reservations, not vendor bills. Cost inside one fixer invocation remains unbounded by the invocation hold."
         }
       ],
-      "limits": "No live cap-exhaustion or vendor billing measurement. EXPECTRAIL_MODEL_MONTH_LEDGER opts in to a combined $200 UTC month reservation total; EXPECTRAIL_VISION_MONTH_LEDGER is separate. Whole process caps are reserved per role, including a new reservation in a new process. Holds are conservative reservations, not reconciled bills. External coding agents and feedback transcription/classification are not universally metered.",
+      "limits": "No live cap-exhaustion or vendor billing measurement. EXPECTRAIL_MODEL_MONTH_LEDGER opts in to a combined $200 UTC month reservation total; EXPECTRAIL_VISION_MONTH_LEDGER is separate. Whole process caps are reserved per role, including a new reservation in a new process. Holds are conservative reservations, not reconciled bills. External coding agents and feedback transcription/classification are not universally metered. The $1.00 Muse invocation hold does not bound its internal token cost.",
       "docs": [
         "docs/spend-caps.md"
       ],
@@ -1783,7 +1810,7 @@
     {
       "id": "playtest-ingest",
       "mode": "Playtest report intake and approved-check reproduction",
-      "profile": "Godot source checkout; offline synthetic tests and a local real-engine bundled-game diagnostic",
+      "profile": "Godot source checkout; offline tests, a local real-engine diagnostic and PR #551 seeded-bugs CI reproduction with required Bubblewrap",
       "observer": "Existing engine-only collision/position observer in the real proof; normal verify retains both observers",
       "entryPoints": [
         "expectrail.orchestrator.playtest",
@@ -1807,15 +1834,21 @@
         {
           "kind": "test",
           "ref": "tests/test_replay_sandbox.py#PlaytestIngestRealEngineTest",
-          "shows": "Existing seeded-bugs collector runs real Godot with required Bubblewrap; three assertions cover approved fall-through reproduction, clean false report and anchor desync. This is the test wiring, not a claim that its future CI run has passed."
+          "shows": "Existing seeded-bugs collector runs real Godot with required Bubblewrap; three assertions cover approved fall-through reproduction, clean false report and anchor desync. The three tests passed in PR #551 seeded-bugs job 133104000066; the recorded log is linked below."
         },
         {
           "kind": "record",
           "ref": "docs/playtest-evidence/fall-through.json",
           "shows": "Local real Godot diagnostic records the public fall-through report and both controls, with model and fixer boundaries blocked."
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43808291610/job/133104000066",
+          "conclusion": "success",
+          "shows": "PR #551 seeded-bugs: test_approved_ground_check_reproduces_three_times, test_clean_base_is_not_reproduced_without_models and test_anchor_beyond_tolerance_stops_without_models all pass with real pinned Godot and required Bubblewrap. Model/proposer/fixer boundaries remain blocked; no live model/fixer report run is measured."
         }
       ],
-      "limits": "Implemented and tested offline, including real Godot without a model. Not measured with a live model. Local Bubblewrap user namespaces are unavailable; no local sandbox success or future CI success is claimed. Engine-only bundled-game geometry is diagnostic, not configured drawing-role or pixel verification, and never clears a release."
+      "limits": "Implemented intake and approved-check reproduction; real-engine CI proof is engine-only and diagnostic, never release clearance. No live model or fixer has run on a playtest report. No configured drawing-role or pixel-verification claim; local Bubblewrap remained unavailable in the earlier local proof. CI reproduction does not establish general report reach or end-to-end repair rate."
     },
     {
       "id": "playtest-generated-advisory",
@@ -1864,6 +1897,34 @@
         }
       ],
       "limits": "Implemented and tested offline; not measured with a live model. No live fixer, model-quality, real repair-rate or provider-bill measurement. The Muse invocation hold does not bound its internal token bill. Advisory-only, unreproduced and desynchronised reports never start a fixer. Live starts now stop fixer-bound-unavailable until a verified request dollar maximum exists; the fixed-price admission meter is tested only with a stand-in."
+    },
+    {
+      "id": "seeded-playtester",
+      "mode": "Standalone seeded playtester; public trace-symptom reports",
+      "profile": "One bundled game; pinned Godot 4.7.2 local headless measurement; development and previously unused evaluation seeds",
+      "observer": "Fixed trace observations; optional persistent-offscreen observation; no model",
+      "entryPoints": [
+        "tools.playtester.producer",
+        "tools.playtester.scale"
+      ],
+      "status": "experimental",
+      "grade": "diagnostic",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_playtester_scale.py",
+          "shows": "Public patch universe, seed separation, paired policies, report regeneration and denominator checks; imports without numpy/PIL."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/playtester-reach.md",
+          "shows": "Previously unused evaluation seeds: listed symptoms found 1/24 original and 3/24 improved. Clean original policy: 0/200 development and 0/200 evaluation, 0/400 distinct clean seeds overall. Improved policy: 0/200 on the same evaluation seeds, not another independent clean sample. 10,400 successful primary replays; no model or fixer calls."
+        }
+      ],
+      "limits": "Public development measurement on one game, not blind discovery or a verdict/repair rate. The improved policy has only 200 clean evaluation seeds; 400 is the original policy across development plus evaluation. Zero observed false reports in these samples is not a zero general false-report rate. Not wired into an automatically verified live-model report/fixer run.",
+      "docs": [
+        "docs/playtester-reach.md"
+      ]
     }
   ],
   "notModes": {
