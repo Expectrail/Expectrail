@@ -91,3 +91,63 @@ def is_note(line: str) -> bool:
     """Whether a record's reason is one of ``note``'s lines (the comment shows those on any decision)."""
     return isinstance(line, str) and line.startswith("spec ") and (
         line.endswith(": " + MISMATCH_REASON) or line.endswith(": " + LEGACY_NOTE))
+
+
+# Shared by the model-side writer and the installed offline onboarding review.
+import re
+from datetime import datetime, timezone
+from pathlib import Path
+
+POSITIONAL = re.compile(r"\b(left|right|above|below|under|over|top|bottom|behind|in front|near|beside|"
+                        r"next to|inside|outside|on top|underneath|between)\b", re.I)
+
+class ApprovalError(ValueError):
+    pass
+
+
+def lint(spec: dict) -> list[str]:
+    """Problems the schema cannot see."""
+    problems = []
+    objects = spec.get("objects", {})
+    for name, obj in objects.items():
+        if POSITIONAL.search(obj.get("prompt", "")):
+            problems.append(f"object {name!r} prompt {obj['prompt']!r} describes a position; positions belong "
+                            "in the assertion")
+    assertion = spec.get("assertion", {})
+    named = [assertion.get("object"), assertion.get("goal"),
+             (assertion.get("region") or {}).get("relativeTo"), (assertion.get("boundary") or {}).get("relativeTo")]
+    for name in filter(None, named):
+        if name not in objects:
+            problems.append(f"assertion names {name!r}, which is not in objects")
+    if "approval" in spec:
+        problems.append("a draft must not carry an approval; a person adds it")
+    return problems
+
+
+def approve(path: Path, by: str, at: str | None = None, *, expected_sha256: str | None = None) -> dict:
+    """A person signs off on a draft: it must be valid and lint-clean first."""
+    from expectrail.contracts import validate
+    if not isinstance(by, str) or not by.strip() or "\n" in by or "\r" in by:
+        raise ApprovalError("A person's name is required; no approval was written.")
+    by = by.strip()
+    doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    doc.pop("approval", None)
+    validate(doc, "test-spec")
+    problems = lint(doc)
+    if problems:
+        raise ApprovalError("; ".join(problems))
+    # The approval binds to what was approved (#420): the digest of the spec without its approval,
+    # computed here and never typed. Editing the spec afterwards makes the approval not count.
+    try:
+        content = spec_sha256(doc)
+    except ValueError as err:   # a value canonical JSON cannot hold (NaN, an infinity)
+        raise ApprovalError(f"the spec cannot be approved: {err}") from err
+    if expected_sha256 is not None and not hmac.compare_digest(content, expected_sha256):
+        raise ApprovalError("the spec changed since review; no approval was written")
+    doc["approval"] = {"by": by, "at": at or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                       DIGEST_FIELD: content}
+    validate(doc, "test-spec")
+    if state(doc) != BOUND:  # never write an approval that its own readers refuse
+        raise ApprovalError("the approval written does not match the spec it was written for")
+    Path(path).write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+    return doc

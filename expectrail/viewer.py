@@ -1198,22 +1198,47 @@ def _measurement_table(view, key, observer):
     return "".join(parts) + "</tbody></table></div></details>"
 
 
+def frame_figure(frame, label, *, single_file=False, boxes=None, missing="Frame unavailable", images=None):
+    """Shared offline frame/box view for evidence and onboarding; never an external image request."""
+    path = frame.get("path") or ""
+    if single_file and re.fullmatch(r"data:image/png;base64,[a-zA-Z0-9+/]+=*", path):
+        path = path.replace("/", "&#47;").replace("+", "&#43;")
+    elif single_file or not FRAME_NAME.fullmatch(path):
+        return f'<figure><p class="missing-frame">{esc(missing)}</p></figure>'
+    image = f'<img class="snapshot" srcset="{path}" alt="{esc(label)}">'
+    size = frame.get("size")
+    if images is not None and single_file and isinstance(size, (tuple, list)) and len(size) == 2:
+        # Inline SVG can reuse a raster by fragment ID. It saves repeated PNG bytes without
+        # scripts, URLs outside this document, or shrinking the useful preview.
+        image_id = images.get(path)
+        if image_id is None:
+            image_id = f"review-raster-{len(images)}"
+            images[path] = image_id
+            raster = (f'<image id="{image_id}" href="{path}" width="{size[0]}" height="{size[1]}"></image>')
+        else:
+            raster = f'<use href="#{image_id}"></use>'
+        image = (f'<svg class="snapshot" viewBox="0 0 {size[0]} {size[1]}" role="img" '
+                 f'aria-label="{esc(label)}">{raster}</svg>')
+    if boxes and isinstance(size, (tuple, list)) and len(size) == 2 and all(v > 0 for v in size):
+        svg = [f'<svg viewBox="0 0 {size[0]} {size[1]}" preserveAspectRatio="none" aria-hidden="true">']
+        for kind, box in boxes.items():
+            if not (isinstance(box, list) and len(box) == 4 and all(type(v) in (int, float) and math.isfinite(v) for v in box)):
+                continue
+            color = "#f29a38" if kind == "engine" else "#02cee0"
+            svg.append(f'<rect x="{box[0]}" y="{box[1]}" width="{max(0,box[2]-box[0])}" '
+                       f'height="{max(0,box[3]-box[1])}" fill="none" stroke="{color}" stroke-width="2" '
+                       f'vector-effect="non-scaling-stroke"><title>{esc(kind)} box</title></rect>')
+        image = '<div class="stage">' + image + ''.join(svg) + '</svg></div>'
+    return f'<figure>{image}<figcaption>{esc(label)}</figcaption></figure>'
+
+
 def _static_pair(view, tick, single_file):
     parts = ['<div class="pair">']
     for side in ("before", "after"):
         frame = next((f for f in (view.get("frames") or {}).get(side, [])
                       if f.get("frame") == tick), {})
-        path = frame.get("path") or ""
-        label = f"{side.capitalize()} the change, frame {tick}"
-        if single_file and re.fullmatch(r"data:image/png;base64,[a-zA-Z0-9+/]+=*", path):
-            # An HTML character reference preserves the base64 bytes and breaks accidental
-            # token-like words in an image, just as _json_for_script does for the data block.
-            path = path.replace("/", "&#47;").replace("+", "&#43;")
-        elif single_file or not FRAME_NAME.fullmatch(path):
-            parts.append(f'<figure><p class="missing-frame">No {side} frame {tick} in this evidence.</p></figure>')
-            continue
-        parts.append(f'<figure><img class="snapshot" srcset="{path}" alt="{label}">'
-                     f'<figcaption>{label}</figcaption></figure>')
+        parts.append(frame_figure(frame, f"{side.capitalize()} the change, frame {tick}",
+                                  single_file=single_file, missing=f"No {side} frame {tick} in this evidence."))
     return "".join(parts) + "</div>"
 
 

@@ -179,22 +179,7 @@ def _draft_request(transport, body: dict) -> dict:
 
 
 def lint(spec: dict) -> list[str]:
-    """Problems the schema cannot see."""
-    problems = []
-    objects = spec.get("objects", {})
-    for name, obj in objects.items():
-        if POSITIONAL.search(obj.get("prompt", "")):
-            problems.append(f"object {name!r} prompt {obj['prompt']!r} describes a position; positions belong "
-                            "in the assertion")
-    assertion = spec.get("assertion", {})
-    named = [assertion.get("object"), assertion.get("goal"),
-             (assertion.get("region") or {}).get("relativeTo"), (assertion.get("boundary") or {}).get("relativeTo")]
-    for name in filter(None, named):
-        if name not in objects:
-            problems.append(f"assertion names {name!r}, which is not in objects")
-    if "approval" in spec:
-        problems.append("a draft must not carry an approval; a person adds it")
-    return problems
+    return approval.lint(spec)
 
 
 def _parse(response: dict) -> dict:
@@ -247,26 +232,10 @@ def draft(instruction: str, spec_id: str | None = None, model: str = DEFAULT_MOD
 
 
 def approve(path: Path, by: str, at: str | None = None) -> dict:
-    """A person signs off on a draft: it must be valid and lint-clean first."""
-    doc = json.loads(Path(path).read_text(encoding="utf-8"))
-    doc.pop("approval", None)
-    validate(doc, "test-spec")
-    problems = lint(doc)
-    if problems:
-        raise SpecDraftError("; ".join(problems))
-    # The approval binds to what was approved (#420): the digest of the spec without its approval,
-    # computed here and never typed. Editing the spec afterwards makes the approval not count.
     try:
-        content = approval.spec_sha256(doc)
-    except ValueError as err:   # a value canonical JSON cannot hold (NaN, an infinity)
-        raise SpecDraftError(f"the spec cannot be approved: {err}") from err
-    doc["approval"] = {"by": by, "at": at or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                       approval.DIGEST_FIELD: content}
-    validate(doc, "test-spec")
-    if approval.state(doc) != approval.BOUND:  # never write an approval that its own readers refuse
-        raise SpecDraftError("the approval written does not match the spec it was written for")
-    Path(path).write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
-    return doc
+        return approval.approve(path, by, at)
+    except approval.ApprovalError as exc:
+        raise SpecDraftError(str(exc)) from exc
 
 
 def main(argv=None) -> int:
