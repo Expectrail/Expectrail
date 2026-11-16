@@ -305,7 +305,13 @@ class CalibrateBank(unittest.TestCase):
         args, kwargs = cal.call_args
         self.assertEqual([p.name for p in args[0]], ["cal-walk", "cal-air", "cal-fire"])
         self.assertEqual(args[1].name, "cal-validation")
-        self.assertEqual(kwargs["art"], {"player": "player/robot.webp"})
+        # The player, and the enemy from the boxes the engine logs for it (#286), each from its own clean art
+        # in the pinned game.
+        self.assertEqual(kwargs["art"], {"player": "player/robot.webp", "enemy": "enemy/enemy.webp"})
+        self.assertEqual(kwargs["objects"], ("enemy",))
+        for path in kwargs["art"].values():
+            self.assertTrue((template_observer.CLEAN_GAME / path).is_file(), path)
+        self.assertEqual(summary["objects"], {})
         self.assertEqual(kwargs["catalogue"], template_observer.BANK_CATALOGUE)
         self.assertTrue(template_observer.BANK_CATALOGUE.is_file())
         written = json.loads((self.dir / "out" / "bank.json").read_text())

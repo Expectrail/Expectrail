@@ -51,12 +51,13 @@ class TheMenuIsForOneObserver(unittest.TestCase):
             with self.subTest(observer=bad), self.assertRaises(ValueError):
                 pixel.proposed(bad)
 
-    def test_the_sensor_menu_offers_the_player_only(self):
+    def test_the_sensor_menu_offers_the_player_and_the_enemy(self):
+        # The enemy since November 16 (#286): the sensor is pointed at each of its logged boxes.
         m = pixel.menu(B, pixel.proposed(SENSOR))
         self.assertEqual(list(m["observers"]), [SENSOR])
-        self.assertEqual(m["observers"][SENSOR]["objects"], ["player"])
+        self.assertEqual(m["observers"][SENSOR]["objects"], ["enemy", "player"])
         self.assertEqual(m["observers"][SENSOR]["predicates"], ["visible", "inside-region", "never-crosses"])
-        self.assertEqual(sorted(m["notJudgeable"]), ["bullet", "coin", "coins-counter", "enemy", "ground"])
+        self.assertEqual(sorted(m["notJudgeable"]), ["bullet", "coin", "coins-counter", "ground"])
         self.assertNotIn(SAM, json.dumps(m))
 
     def test_a_check_for_the_other_observer_is_refused_with_the_reason(self):

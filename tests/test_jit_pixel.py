@@ -96,18 +96,24 @@ class ParseTest(unittest.TestCase):
         self.assertIn("cannot judge anything yet: not built", why)
 
     def test_the_visual_sensor_is_a_trusted_observer_and_not_offered_to_the_proposer(self):
-        # #262's sensor, as expectrail/jit/template_observer.py builds it: the player only, no ground, no text,
-        # no reaches; and a proposal may name only the observers the proposer is offered.
+        # #262's sensor, as expectrail/jit/template_observer.py builds it: the player, and the enemy at its
+        # logged boxes (whether its bank can see them is the observer's to refuse at judging time,
+        # tests/test_jit_template_observer.py); no ground, no text, no reaches; and a proposal may name only the
+        # observers the proposer is offered.
         check, why = pixel.parse_candidate(candidate(observer="visual-sensor"), B, ["smoke"])
         self.assertIsNone(why)
         self.assertEqual(check["observer"], "visual-sensor")
+        check, why = pixel.parse_candidate(candidate(observer="visual-sensor", object="enemy"), B, ["smoke"])
+        self.assertIsNone(why)
+        self.assertEqual(check["object"], "enemy")
         refused = {
             "visual-sensor cannot judge reaches": candidate(observer="visual-sensor",
                                                             predicate={"type": "reaches", "goal": "player"}),
             "visual-sensor cannot tell 'ground'": candidate(observer="visual-sensor", object="ground"),
             "visual-sensor cannot tell 'coins-counter'": candidate(observer="visual-sensor", object="coins-counter"),
-            "visual-sensor is not pointed at the boxes the engine logs for 'enemy'":
-                candidate(observer="visual-sensor", object="enemy"),
+            "the record gives no position for 'coin'": candidate(observer="visual-sensor", object="coin"),
+            "visual-sensor is not pointed at the boxes the engine logs for 'bullet'":
+                candidate(observer="visual-sensor", object="bullet"),
         }
         for expect, entry in refused.items():
             with self.subTest(expect=expect):

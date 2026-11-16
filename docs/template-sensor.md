@@ -89,6 +89,10 @@ An optional `agreeing` callback may remove detections, never add them.
 Additional named sprites require explicit prediction maps during calibration and
 observation. Every requested object needs its own clean template; missing objects
 are never replaced with engine-only detections. Prompts bind names, not semantics.
+For objects the game has many of, the prediction map is the engine's own logged box
+of each one (`enemyBoxes`, `projectileBoxes`; `object_predictions`), and
+`calibrate_routes(..., objects=...)` records each object's validation apart from the
+player's under `calibration.objects` (docs/jit.md, "The enemy").
 The sensor refuses colour/text semantics even though RGB witnesses help identify art.
 
 ## Frozen ground regions

@@ -123,9 +123,12 @@ OBSERVERS = {
         "available": True,
         "predicates": ("visible", "inside-region", "never-crosses"),
         "anchored": True,
-        # Its bank holds the player's templates only: a second sprite needs its own templates and its own
-        # prediction map (docs/template-sensor.md), which nothing supplies yet.
-        "boxes": (),
+        # The "engine-boxes" roles it can be pointed at when its bank holds that role's templates and their
+        # calibration is met (template_observer.py; a bank without them refuses the role, so its checks are
+        # not run). The enemy only: calibrated on the bundled game, the bullet's clean crops gave no template
+        # with enough opaque detail (docs/new-work/2026-11-16-sensor-enemy.md). It cannot tell which way a
+        # sprite faces: every template is kept mirrored too.
+        "boxes": ("enemy",),
         "cannot": ("ground", "text"),
         "why": {
             "ground": "the template sensor matches sprites against clean templates; it does not segment the ground",
@@ -408,14 +411,17 @@ def named_observations(check: dict, run: dict) -> tuple[dict, list[dict]]:
             continue
         for b in f.get("boxes") or []:
             ident = b.get("id")
-            if b.get("error") or b.get("box") is None:
+            # ``absent``: the observer searched readable pixels around the box and found nothing there
+            # (template_observer.py, ``not-found``): an observation that it is not drawn, not a gap.
+            absent = b.get("absent") is True and b.get("box") is None and not b.get("error")
+            if (b.get("error") or b.get("box") is None) and not absent:
                 gaps.append({"frame": n, "why": f"the observer gave no answer for {role} {ident}"})
                 continue
             if need_engine_box and b.get("promptBox") is None:
                 gaps.append({"frame": n, "why": f"the engine's box of {role} {ident} was not recorded"})
                 continue
             objects: dict = {role: []}
-            if b.get("holdsPoint"):
+            if b.get("holdsPoint") and not absent:
                 objects[role].append({"box": list(b["box"]), "score": float(b.get("score") or 0.0)})
             if need_engine_box:
                 objects["engine-" + role] = [{"box": list(b["promptBox"]), "score": 1.0}]
