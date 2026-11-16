@@ -24,10 +24,21 @@ class LlmPatchBound(unittest.TestCase):
         env.start();self.addCleanup(env.stop)
         self.cfg=providers.ProviderConfig('openai','openai','https://api.openai.com/v1','gpt-4o','stand-in')
         self.messages=[{'role':'user','content':'fix the floor; café 🐈'}]
+        real_capability=spend.read_provider_capability
+        def historical_fixture(path):
+            doc=real_capability(path)
+            for price in doc.get('tokenPrices',[]):
+                if price['model']=='gpt-4o':price['status']='active'
+            return doc
+        patch=mock.patch.object(spend,'read_provider_capability',side_effect=historical_fixture)
+        patch.start();self.addCleanup(patch.stop)
         self.received=[];self.actions=[];self.output=3;self.input=7;self.omit_usage=False
         self.reply='--- a/player.gd\n+++ b/player.gd\n@@ -1 +1 @@\n-broken\n+fixed\n'
         owner=self
         class Model(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                data=json.dumps({'id':owner.cfg.model}).encode()
+                self.send_response(200);self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
             def do_POST(self):
                 body=self.rfile.read(int(self.headers['Content-Length']));owner.received.append(body)
                 status=owner.actions.pop(0) if owner.actions else 200

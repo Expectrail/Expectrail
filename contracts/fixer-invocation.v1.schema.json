@@ -84,7 +84,8 @@
         "fixer-meter-unavailable",
         null,
         "fixer-provider-violation",
-        "fixer-month-ledger-required"
+        "fixer-month-ledger-required",
+        "fixer-model-unavailable"
       ]
     },
     "requests": {
@@ -143,6 +144,10 @@
                 "minimum": 0
               }
             }
+          },
+          "byteTokenBound": {
+            "type": "integer",
+            "minimum": 1
           }
         }
       }
@@ -163,7 +168,8 @@
           "type": "string"
         },
         "model": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "inputNanoUsdPerToken": {
           "type": "integer",
@@ -174,10 +180,61 @@
           "minimum": 1
         },
         "source": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "inputBound": {
-          "const": "utf8-json-bytes-plus-framing-v1"
+          "enum": [
+            "utf8-json-bytes-plus-framing-v1",
+            "utf8-json-bytes-plus-context-ceiling-v1"
+          ]
+        },
+        "status": {
+          "enum": [
+            "active",
+            "deprecated",
+            "withdrawn"
+          ]
+        },
+        "outputTokenField": {
+          "enum": [
+            "max_tokens",
+            "max_completion_tokens"
+          ]
+        },
+        "baseInputNanoUsdPerToken": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "baseOutputNanoUsdPerToken": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "contextTokenCeiling": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "validUntil": {
+          "type": "string"
+        }
+      }
+    },
+    "availability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model",
+        "status"
+      ],
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "available",
+            "unavailable"
+          ]
         }
       }
     }

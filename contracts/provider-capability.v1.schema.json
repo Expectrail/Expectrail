@@ -113,7 +113,39 @@
             "format": "date"
           },
           "inputBound": {
-            "const": "utf8-json-bytes-plus-framing-v1"
+            "enum": [
+              "utf8-json-bytes-plus-framing-v1",
+              "utf8-json-bytes-plus-context-ceiling-v1"
+            ]
+          },
+          "status": {
+            "enum": [
+              "active",
+              "deprecated",
+              "withdrawn"
+            ]
+          },
+          "outputTokenField": {
+            "enum": [
+              "max_tokens",
+              "max_completion_tokens"
+            ]
+          },
+          "baseInputNanoUsdPerToken": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "baseOutputNanoUsdPerToken": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "contextTokenCeiling": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "validUntil": {
+            "type": "string",
+            "format": "date"
           }
         }
       }

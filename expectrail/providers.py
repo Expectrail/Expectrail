@@ -315,7 +315,10 @@ def build_http_payload(
         "messages": messages,
         "max_tokens": max_tokens,
     }
-    if temperature is not None:
+    if config.provider == "openai" and config.model == "gpt-6.1-sol":
+        payload["max_completion_tokens"] = payload.pop("max_tokens")
+        payload["service_tier"] = "default"
+    elif temperature is not None:
         payload["temperature"] = temperature
     if json_schema is not None:
         payload["response_format"] = {
@@ -422,6 +425,8 @@ def chat_completion(
                     return raw
                 except urllib.error.HTTPError as exc:
                     err_body = exc.read().decode("utf-8", errors="replace")
+                    if fixer and exc.code in (404, 410):
+                        invocation.fail('fixer-model-unavailable','provider withdrew or refused the named model; no fallback')
                     # Errors can be billable. Keep every reservation; capture usage if supplied.
                     if fixer:
                         try:

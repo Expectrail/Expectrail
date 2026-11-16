@@ -1,0 +1,58 @@
+{
+  "recordedOn": "2026-11-16",
+  "engine": "4.7.2.stable.official.ed1daf0bf",
+  "realEngine": true,
+  "sandboxed": true,
+  "freshPerRunVisionCache": true,
+  "sourceContextContainsPlayerMaskAndGroundLayer": true,
+  "liveProviderCalls": 0,
+  "grade": "fixture",
+  "scope": "Real subprocess CLI and Godot; localhost scripted fixer and pixel-heuristic vision; one public seeded bug; not model quality or a repair rate",
+  "cases": [
+    {
+      "ending": "accept",
+      "reproduction": "approved",
+      "repairAttempted": true,
+      "gateDecision": "accept",
+      "result": "accept",
+      "stop": "accepted",
+      "fixerRequests": 1,
+      "visionRequests": 158,
+      "fixerReservedNanoUsd": 5842584000,
+      "visionReservedUsd": 0.395,
+      "replays": 19,
+      "observerRule": "both",
+      "liveCalls": 0
+    },
+    {
+      "ending": "reject",
+      "reproduction": "approved",
+      "repairAttempted": true,
+      "gateDecision": "reject",
+      "result": "needs-review",
+      "stop": "attempts-exhausted",
+      "fixerRequests": 1,
+      "visionRequests": 16,
+      "fixerReservedNanoUsd": 5842584000,
+      "visionReservedUsd": 0.04,
+      "replays": 11,
+      "observerRule": "both",
+      "liveCalls": 0
+    },
+    {
+      "ending": "cap",
+      "reproduction": "approved",
+      "repairAttempted": true,
+      "gateDecision": null,
+      "result": "needs-review",
+      "stop": "spend-cap",
+      "fixerRequests": 1,
+      "visionRequests": 8,
+      "fixerReservedNanoUsd": 5842584000,
+      "visionReservedUsd": 0.02,
+      "replays": 7,
+      "observerRule": null,
+      "liveCalls": 0
+    }
+  ]
+}

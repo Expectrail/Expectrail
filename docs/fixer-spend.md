@@ -1,5 +1,7 @@
 # What a fixer invocation can spend (#267)
 
+Current #531 kit: [current model, full-context reservation and $10 cap envelope](live-repair/RUN-SHEET.md). The historical GPT-4o fixer profile below is deprecated and now refused; its offline regression fixtures do not enable it live.
+
 **Muse Code and BYO agent CLI dollar ceilings remain unestablished; those live
 fixers stop `fixer-bound-unavailable`.** Controlled `llm-patch` now has a recorded
 OpenAI GPT-4o tariff, pre-send token reservations and an explicit output cap.
