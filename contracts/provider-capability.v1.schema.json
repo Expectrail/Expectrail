@@ -149,6 +149,77 @@
           }
         }
       }
+    },
+    "textSmoke": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A smoke-only, single-request tariff and server token limits for one model. Not a fixer admission or a role dollar hold.",
+      "required": [
+        "model",
+        "apiBase",
+        "maxInputTokens",
+        "maxOutputTokens",
+        "maxAttempts",
+        "inputNanoUsdPerToken",
+        "outputNanoUsdPerToken",
+        "inputLimitField",
+        "reasoning",
+        "priceSource",
+        "limitSource",
+        "reasoningSource",
+        "checkedOn"
+      ],
+      "properties": {
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "apiBase": {
+          "const": "https://inference.baseten.co/v1"
+        },
+        "maxInputTokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxOutputTokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxAttempts": {
+          "const": 1,
+          "type": "integer"
+        },
+        "inputNanoUsdPerToken": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "outputNanoUsdPerToken": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "inputLimitField": {
+          "const": "truncate_prompt_tokens"
+        },
+        "reasoning": {
+          "const": "always-on-in-output-budget"
+        },
+        "priceSource": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limitSource": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reasoningSource": {
+          "type": "string",
+          "minLength": 1
+        },
+        "checkedOn": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        }
+      }
     }
   }
 }
