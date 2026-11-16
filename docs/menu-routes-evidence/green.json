@@ -10,10 +10,10 @@
     "tests.test_pointer_routes",
     "tests.test_event_input"
   ],
-  "cwd": "/workspace/work/pointer-routes",
+  "cwd": "$REPO",
   "seconds": 82.74692798699834,
   "exitCode": 0,
   "status": "finished",
-  "godotOverride": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+  "godotOverride": "$WORK/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
   "log": "logs/green.log"
 }

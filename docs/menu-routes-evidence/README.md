@@ -9,3 +9,5 @@
 - [Legacy comparison](parity-comparison.json): eight trace byte comparisons plus unchanged decisions, first frames, reasons and coverage. Raw evidence is under `parity/before/` and `parity/after/`. Before is the prior pointer-contract final evidence; after is the new real rendered replay. Default full-suite PATH has Godot 4.6.3; these engine captures and focused real tests use pinned 4.7.2. Legacy captures explicitly disable the sandbox in this restricted machine. No vision observer or paid model is involved.
 
 The full-suite command is `python3 -m unittest discover -s tests -t .`. Only safe environment settings are inherited by the run wrapper; TMPDIR is memory-backed because the workspace disk is nearly full. No assertions were loosened or existing tests skipped to obtain a pass. The additional named full-suite skip is the new Godot-required class; its three tests also passed with the pinned engine as shown above.
+
+Published path spellings were redacted in the registry follow-up; [evidence handling](../outside-trials/breakout-ci/evidence-notes.md) explains the placeholders and original handover records.

@@ -1,0 +1,21 @@
+{
+  "label": "green-final",
+  "startedUtc": "2026-11-16T07:31:06.919295+00:00",
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v",
+    "tests.test_outside_root",
+    "tests.test_outside_trial",
+    "tests.test_auto_route",
+    "tests.test_pointer_routes",
+    "tests.test_menu_routes"
+  ],
+  "cwd": "$REPO",
+  "seconds": 2.6840481229955913,
+  "exitCode": 0,
+  "status": "finished",
+  "godotOverride": null,
+  "log": "logs/green-final.log"
+}

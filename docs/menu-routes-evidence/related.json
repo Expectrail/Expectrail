@@ -13,7 +13,7 @@
     "tests.test_harness",
     "tests.test_package"
   ],
-  "cwd": "/workspace/work/pointer-routes",
+  "cwd": "$REPO",
   "seconds": 9.863195769001322,
   "exitCode": 0,
   "status": "finished",

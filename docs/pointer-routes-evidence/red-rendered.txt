@@ -4,12 +4,12 @@ test_scaled_window_queries_and_button_input_replay_identically_three_times (test
 ERROR: test_scaled_window_queries_and_button_input_replay_identically_three_times (tests.test_pointer_routes.RealDrawnPointerTest.test_scaled_window_queries_and_button_input_replay_identically_three_times)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 186, in test_scaled_window_queries_and_button_input_replay_identically_three_times
+  File "$REPO/tests/test_pointer_routes.py", line 186, in test_scaled_window_queries_and_button_input_replay_identically_three_times
     values=[RealPointerTest.replay(self,Path(tmp),pointer_route(),f'drawn-{i}') for i in range(3)]
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 139, in replay
+  File "$REPO/tests/test_pointer_routes.py", line 139, in replay
     contracts.validate(doc,'route')
-  File "/workspace/work/pointer-routes/expectrail/contracts.py", line 63, in validate
+  File "$REPO/expectrail/contracts.py", line 63, in validate
     raise ContractError(f"{kind}: {where}: {first.message}")
 expectrail.contracts.ContractError: route: events/0: 'action' is a required property
 

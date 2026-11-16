@@ -120,7 +120,7 @@
   },
   "reason": "player is 22.25px past the boundary (above 780, tolerance 20) (first at frame 5, 21 frames)",
   "frame": 5,
-  "framesDir": "/workspace/work/handover-259-pointer-routes/evidence/before/bundled-broken/frames",
+  "framesDir": "$WORK/handover-259-pointer-routes/evidence/before/bundled-broken/frames",
   "visualWhy": null,
   "observed": {
     "engine": "fail",

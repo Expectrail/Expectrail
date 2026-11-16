@@ -1,0 +1,68 @@
+test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane (tests.test_outside_root.DraftTrialTest.test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane) ... 
+  test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane (tests.test_outside_root.DraftTrialTest.test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane) (x=24) ... FAIL
+  test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane (tests.test_outside_root.DraftTrialTest.test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane) (x=36) ... FAIL
+  test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane (tests.test_outside_root.DraftTrialTest.test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane) (x=50.4) ... FAIL
+  test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane (tests.test_outside_root.DraftTrialTest.test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane) (x=80) ... FAIL
+test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane (tests.test_outside_root.DraftTrialTest.test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane) ... ERROR
+
+======================================================================
+ERROR: test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane (tests.test_outside_root.DraftTrialTest.test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$REPO/tests/test_outside_root.py", line 118, in test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane
+    a,b=self.spec['coverage']['reached']
+    ^^^
+ValueError: not enough values to unpack (expected 2, got 1)
+
+======================================================================
+FAIL: test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane (tests.test_outside_root.DraftTrialTest.test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane) (x=24)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$REPO/tests/test_outside_root.py", line 117, in test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane
+    v=self.verdict(self.trace(frozen=x));self.assertEqual(v['result'],'needs-review');self.assertIn('not-reached',v['reason'])
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'pass' != 'needs-review'
+- pass
++ needs-review
+
+
+======================================================================
+FAIL: test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane (tests.test_outside_root.DraftTrialTest.test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane) (x=36)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$REPO/tests/test_outside_root.py", line 117, in test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane
+    v=self.verdict(self.trace(frozen=x));self.assertEqual(v['result'],'needs-review');self.assertIn('not-reached',v['reason'])
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'pass' != 'needs-review'
+- pass
++ needs-review
+
+
+======================================================================
+FAIL: test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane (tests.test_outside_root.DraftTrialTest.test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane) (x=50.4)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$REPO/tests/test_outside_root.py", line 117, in test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane
+    v=self.verdict(self.trace(frozen=x));self.assertEqual(v['result'],'needs-review');self.assertIn('not-reached',v['reason'])
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'pass' != 'needs-review'
+- pass
++ needs-review
+
+
+======================================================================
+FAIL: test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane (tests.test_outside_root.DraftTrialTest.test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane) (x=80)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$REPO/tests/test_outside_root.py", line 117, in test_frozen_paddle_anywhere_cannot_pass_including_in_the_old_left_lane
+    v=self.verdict(self.trace(frozen=x));self.assertEqual(v['result'],'needs-review');self.assertIn('not-reached',v['reason'])
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'pass' != 'needs-review'
+- pass
++ needs-review
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.195s
+
+FAILED (failures=4, errors=1)

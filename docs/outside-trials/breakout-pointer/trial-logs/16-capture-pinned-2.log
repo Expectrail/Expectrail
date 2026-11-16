@@ -1,1 +1,1 @@
-407 frames, device Mesa - llvmpipe (LLVM 19.1.7, 256 bits), not sandboxed (bubblewrap could not start a sandbox: bwrap: setting up uid map: Read-only file system): /dev/shm/expectrail-menu-trial-capture/runs/pinned-2/replay.json
+407 frames, device Mesa - llvmpipe (LLVM 19.1.7, 256 bits), not sandboxed (bubblewrap could not start a sandbox: bwrap: setting up uid map: Read-only file system): $SCRATCH/expectrail-menu-trial-capture/runs/pinned-2/replay.json

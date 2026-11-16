@@ -7,22 +7,22 @@
     "-m",
     "harness.run",
     "--game",
-    "/workspace/work/breakout-pointer-variants/broken",
+    "$WORK/breakout-pointer-variants/broken",
     "--route",
-    "/workspace/work/breakout-pointer-variants/broken/routes/pointer-auto.json",
+    "$WORK/breakout-pointer-variants/broken/routes/pointer-auto.json",
     "--out",
-    "/dev/shm/expectrail-menu-trial-capture/runs/broken",
+    "$SCRATCH/expectrail-menu-trial-capture/runs/broken",
     "--sandbox",
     "auto"
   ],
-  "cwd": "/workspace/work/pointer-routes",
+  "cwd": "$REPO",
   "seconds": 30.815463879000163,
   "exitCode": 0,
   "status": "finished",
   "log": "trial-logs/19-capture-broken.log",
   "environment": {
-    "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
-    "TMPDIR": "/dev/shm/expectrail-menu-trial-capture/tmp",
-    "EXPECTRAIL_TOOLS": "/dev/shm/expectrail-menu-trial-capture/tools"
+    "EXPECTRAIL_GODOT": "$WORK/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+    "TMPDIR": "$SCRATCH/expectrail-menu-trial-capture/tmp",
+    "EXPECTRAIL_TOOLS": "$SCRATCH/expectrail-menu-trial-capture/tools"
   }
 }

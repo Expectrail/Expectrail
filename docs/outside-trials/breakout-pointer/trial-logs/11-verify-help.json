@@ -9,13 +9,13 @@
     "verify",
     "--help"
   ],
-  "cwd": "/workspace/work/pointer-routes",
+  "cwd": "$REPO",
   "seconds": 0.11464726899430389,
   "exitCode": 0,
   "status": "finished",
   "log": "trial-logs/11-verify-help.log",
   "environment": {
-    "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+    "EXPECTRAIL_GODOT": "$WORK/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
     "TMPDIR": null,
     "EXPECTRAIL_TOOLS": null
   }

@@ -1,0 +1,20 @@
+{
+  "label": "before",
+  "startedUtc": "2026-11-16T07:16:50.368779+00:00",
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests",
+    "-t",
+    "."
+  ],
+  "cwd": "$REPO",
+  "seconds": 471.2723144970005,
+  "exitCode": 1,
+  "status": "finished",
+  "godotOverride": null,
+  "log": "logs/before.log"
+}

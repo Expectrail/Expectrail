@@ -3,27 +3,27 @@ OpenGL API 4.5 (Core Profile) Mesa 25.0.7-2+deb13u1 - Compatibility - Using Devi
 
 Movie Maker mode enabled, recording movie in 530×495 @ 60 FPS...
 --------------------------------------------------------------------------------
-Done recording movie at path: /workspace/work/handover-259-pointer-routes/evidence/after/kinematic-character-broken/frames/f.png
+Done recording movie at path: $WORK/handover-259-pointer-routes/evidence/after/kinematic-character-broken/frames/f.png
 180 frames at 60 FPS (movie length: 00:00:03:00), recorded in 00:00:14 (21% of real-time speed).
 CPU render time: 0.08 seconds (average: 0.42 ms/frame)
 GPU render time: 0.55 seconds (average: 3.05 ms/frame)
 Encoding time: 2.52 seconds (average: 14.03 ms/frame)
 --------------------------------------------------------------------------------
 Fontconfig error: No writable cache directories
-ERROR: Could not create directory: '<home>/.local/share/godot'.
+ERROR: Could not create directory: '$HOME/.local/share/godot'.
    at: make_dir_recursive (core/io/dir_access.cpp:179)
-ERROR: Error attempting to create data dir: <home>/.local/share/godot/app_userdata/Kinematic Character 2D.
+ERROR: Error attempting to create data dir: $HOME/.local/share/godot/app_userdata/Kinematic Character 2D.
    at: ensure_user_data_dir (core/os/os.cpp:442)
 ERROR: Could not create directory: 'user://logs'.
    at: make_dir_recursive (core/io/dir_access.cpp:179)
 ERROR: Failed to open log file for writing: user://logs/godot.log
    at: rotate_file (core/io/logger.cpp:169)
-Failed to create <home>/.cache/mesa_shader_cache for shader cache (Read-only file system)---disabling.
-Failed to create <home>/.cache/mesa_shader_cache_db for shader cache (Read-only file system)---disabling.
-Failed to create <home>/.cache/mesa_shader_cache for shader cache (Read-only file system)---disabling.
-Failed to create <home>/.cache/mesa_shader_cache_db for shader cache (Read-only file system)---disabling.
-Failed to create <home>/.cache/mesa_shader_cache for shader cache (Read-only file system)---disabling.
-Failed to create <home>/.cache/mesa_shader_cache_db for shader cache (Read-only file system)---disabling.
+Failed to create $HOME/.cache/mesa_shader_cache for shader cache (Read-only file system)---disabling.
+Failed to create $HOME/.cache/mesa_shader_cache_db for shader cache (Read-only file system)---disabling.
+Failed to create $HOME/.cache/mesa_shader_cache for shader cache (Read-only file system)---disabling.
+Failed to create $HOME/.cache/mesa_shader_cache_db for shader cache (Read-only file system)---disabling.
+Failed to create $HOME/.cache/mesa_shader_cache for shader cache (Read-only file system)---disabling.
+Failed to create $HOME/.cache/mesa_shader_cache_db for shader cache (Read-only file system)---disabling.
 WARNING: Could not set V-Sync mode, as changing V-Sync mode is not supported by the graphics driver.
      at: set_use_vsync (platform/linuxbsd/x11/gl_manager_x11.cpp:372)
 ERROR: Can't create shader cache folder, no shader caching will happen: user://

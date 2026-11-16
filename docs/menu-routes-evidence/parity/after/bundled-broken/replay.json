@@ -6,7 +6,7 @@
   },
   "game": {
     "tree": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280",
-    "patch": "/workspace/work/pointer-routes/bugs/physics-fall-through/v1.patch",
+    "patch": "$REPO/bugs/physics-fall-through/v1.patch",
     "patchSha256": "6514ad59f1311fc109b56c06366871c0aeab316179d80a9921a43a41e7667740"
   },
   "engine": {

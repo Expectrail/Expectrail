@@ -11,7 +11,7 @@
     "-t",
     "."
   ],
-  "cwd": "/workspace/work/pointer-routes",
+  "cwd": "$REPO",
   "seconds": 410.05639950999466,
   "exitCode": 0,
   "status": "finished",

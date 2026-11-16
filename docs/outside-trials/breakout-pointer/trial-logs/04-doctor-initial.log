@@ -16,7 +16,7 @@
       "what": "Godot 4.7.2-stable",
       "status": "ok",
       "required": true,
-      "found": "Godot 4.7.2.stable.official.ed1daf0bf at /workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+      "found": "Godot 4.7.2.stable.official.ed1daf0bf at $WORK/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
       "fix": null
     },
     {
@@ -24,7 +24,7 @@
       "what": "a virtual display (xvfb-run)",
       "status": "ok",
       "required": true,
-      "found": "xvfb-run at /workspace/work/dodge-tools/display/usr/bin/xvfb-run",
+      "found": "xvfb-run at $WORK/dodge-tools/display/usr/bin/xvfb-run",
       "fix": null
     },
     {
@@ -40,7 +40,7 @@
       "what": "1024 MB free for the engine and a run's frames",
       "status": "missing",
       "required": true,
-      "found": "73 MB free in the engine's folder (/workspace/work/pointer-routes/tools); 73 MB free in the temporary folder (/tmp)",
+      "found": "73 MB free in the engine's folder ($REPO/tools); 73 MB free in the temporary folder (/tmp)",
       "fix": "free at least 1024 MB in each folder named above, or name other folders with EXPECTRAIL_TOOLS and TMPDIR"
     },
     {

@@ -1,0 +1,79 @@
+{
+  "pin": "0ac7aed444ea593a023d9b666c211d7ab8acd51e",
+  "sources": {
+    "project.godot": {
+      "sha256": "0a172b6694fe5fd5f401d5ccde1572583329bc774a2aafda7ede47c8a349db2c",
+      "url": "https://github.com/mike0697/Breakout/blob/0ac7aed444ea593a023d9b666c211d7ab8acd51e/project.godot"
+    },
+    "game.tscn": {
+      "sha256": "c8f89051aee486a4028f3934904710f69371cc17fcc8e11d1b4ac775c7b5cc02",
+      "url": "https://github.com/mike0697/Breakout/blob/0ac7aed444ea593a023d9b666c211d7ab8acd51e/game.tscn"
+    },
+    "scenes/paddle.tscn": {
+      "sha256": "cdc59919f9b50dd8c14786ced05b8557433d677c42957698c9a7b1f556e9e08e",
+      "url": "https://github.com/mike0697/Breakout/blob/0ac7aed444ea593a023d9b666c211d7ab8acd51e/scenes/paddle.tscn"
+    },
+    "scenes/walls.tscn": {
+      "sha256": "61d3bdaf8742e2f2783253c6484bc4c2e64accd518235d025c5f199ae384490f",
+      "url": "https://github.com/mike0697/Breakout/blob/0ac7aed444ea593a023d9b666c211d7ab8acd51e/scenes/walls.tscn"
+    },
+    "scenes/ball.tscn": {
+      "sha256": "0a861d18c59f68c6ec48e67606029bb490f8fe0c5c39d7a2a83dec4df4a5ea3c",
+      "url": "https://github.com/mike0697/Breakout/blob/0ac7aed444ea593a023d9b666c211d7ab8acd51e/scenes/ball.tscn"
+    },
+    "scripts/paddle.gd": {
+      "sha256": "146bd66dade7b0f5088fef9f4431e16cf40bc167933f0052e935e63736a94357",
+      "url": "https://github.com/mike0697/Breakout/blob/0ac7aed444ea593a023d9b666c211d7ab8acd51e/scripts/paddle.gd"
+    },
+    "scripts/ball.gd": {
+      "sha256": "9a34dbb664230b92323136286c29ae0cc7dbb70de2fa5b61336ac067a7720853",
+      "url": "https://github.com/mike0697/Breakout/blob/0ac7aed444ea593a023d9b666c211d7ab8acd51e/scripts/ball.gd"
+    }
+  },
+  "viewport": [
+    360.0,
+    640.0
+  ],
+  "wallInnerX": [
+    -0.25,
+    360.25
+  ],
+  "paddleCollisionSize": [
+    48.0,
+    19.0
+  ],
+  "paddleDrawingSize": [
+    47.0,
+    18.0
+  ],
+  "paddleInitialPosition": [
+    168.0,
+    616.0
+  ],
+  "movementCheckpoints": [
+    {
+      "type": "position-at-tick",
+      "tick": 20,
+      "object": "player",
+      "x": 170.4,
+      "y": 616.0,
+      "tolerancePx": 24.0
+    },
+    {
+      "type": "position-at-tick",
+      "tick": 70,
+      "object": "player",
+      "x": 50.4,
+      "y": 616.0,
+      "tolerancePx": 24.0
+    }
+  ],
+  "startReleaseTick": 14,
+  "ballInitialPosition": [
+    216.0,
+    200.0
+  ],
+  "ballCollisionRadius": 4.0,
+  "ballBoundaryY": 204.0,
+  "windowRationale": "Paddle 20..70 lies after click release 14 and within the first sweep; ball 40..50 tests the seeded initial downward launch. Windows are authored policy, not inferred engine facts."
+}

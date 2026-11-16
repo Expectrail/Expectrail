@@ -307,4 +307,4 @@ Route: 407 physics ticks (6.78333 seconds at 60 ticks/second), seed 1.
   pointer move at viewport [182.4, 512.0], tick 375.
   pointer move at viewport [180.0, 512.0], tick 376.
 The bound player (Player) moved during the replay. Movement alone does not prove the actions caused it.
-Wrote /workspace/work/breakout-pointer-source/routes/pointer-auto.json.
+Wrote $WORK/breakout-pointer-source/routes/pointer-auto.json.

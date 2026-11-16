@@ -1,6 +1,6 @@
 from pathlib import Path
 import json,shutil
-r=Path('/workspace/work/pointer-routes');game=Path('/workspace/work/breakout-pointer-source');out=r/'tests/outside/breakout-pointer';out.mkdir(exist_ok=True)
+r=Path('$REPO');game=Path('$WORK/breakout-pointer-source');out=r/'tests/outside/breakout-pointer';out.mkdir(exist_ok=True)
 for folder in ('checks','routes'):(game/folder).mkdir(exist_ok=True);(out/folder).mkdir(exist_ok=True)
 for p in (r/'tests/outside/breakout/checks').glob('*.json'):
  spec=json.loads(p.read_text());assert 'approval' not in spec

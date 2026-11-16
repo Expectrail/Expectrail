@@ -8,10 +8,10 @@
     "-v",
     "tests.test_menu_routes"
   ],
-  "cwd": "/workspace/work/pointer-routes",
+  "cwd": "$REPO",
   "seconds": 28.393333969004743,
   "exitCode": 0,
   "status": "finished",
-  "godotOverride": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+  "godotOverride": "$WORK/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
   "log": "logs/menu-final.log"
 }

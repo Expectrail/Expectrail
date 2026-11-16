@@ -517,3 +517,16 @@ the broken paddle fails its bounds check at checked frame 20. All three CLI jobs
 remain needs-review (drafts, zero approved checks run, no vision). This is not a
 verified outside-project accept. The root-path registry stop remains. See the
 [full trial, commands, stops and evidence](outside-trials/breakout-pointer/report.md).
+
+## Breakout registry follow-up (2026-11-16; local result, CI pending)
+
+Breakout is now the third entry in `tests/outside/projects.json`, at the same MIT
+pin. Root checkout paths are accepted with containment checks; links and overlay
+collisions are refused. Pointer reports show one click and five sweeps. The
+[local trial result and draft derivation](outside-trials/breakout-ci/report.md)
+record needs-review for pinned/harmless/broken, with separate raw engine findings.
+The strengthened paddle draft cannot pass frozen play; broken first fails its
+bounds window at frame 20. No approval or vision was added. The existing
+`Outside projects trial` / `outside-trial` PR job is the required CI proof and has
+**not run on this change yet**. Its declared expected results now fail the trial
+if they differ or an engine diagnostic is missing.

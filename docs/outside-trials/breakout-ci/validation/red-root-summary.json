@@ -1,0 +1,15 @@
+{
+  "label": "red-root-summary",
+  "startedUtc": "2026-11-16T07:22:10.928940+00:00",
+  "command": [
+    "python3",
+    "$WORK/handover-263-breakout-in-trial/test_outside_root.py",
+    "-v"
+  ],
+  "cwd": "$REPO",
+  "seconds": 0.4658702990054735,
+  "exitCode": 1,
+  "status": "finished",
+  "godotOverride": null,
+  "log": "logs/red-root-summary.log"
+}
