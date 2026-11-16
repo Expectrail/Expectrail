@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import stat
 from pathlib import Path
@@ -127,6 +128,24 @@ def check(doc) -> None:
         for side, resolved in selection.get('resolved', {}).items():
             if not Path(resolved['checkout']).is_absolute() or doc[side]['commit'] != resolved['commit']:
                 raise RequestError('saved resolved commit inputs are inconsistent')
+    if 'propose' in doc:
+        if 'coverage' not in doc or doc.get('intent') != 'fix' or doc['base'] is None:
+            raise RequestError('proposal requires playtest coverage, intent fix and a base')
+        for path in doc['propose'].values():
+            try:
+                safe_relative(path, 'a proposal input')
+            except ConfigError as exc:
+                raise RequestError(str(exc)) from exc
+    if 'coverage' in doc:
+        if doc.get('intent') != 'fix' or doc['base'] is None:
+            raise RequestError('playtest coverage requires intent fix and a base')
+        point = doc['coverage']['reached'][0]
+        try:
+            finite = all(math.isfinite(point[key]) for key in ('x', 'y', 'tolerancePx'))
+        except OverflowError:
+            finite = False
+        if not finite:
+            raise RequestError('playtest coverage coordinates and tolerance must be finite')
     # JobStore persists this JSON spelling. A valid report can expand when escaped
     # (for example non-ASCII text); never queue a request the worker cannot read.
     if len((json.dumps(doc, indent=2) + "\n").encode("utf-8")) > MAX_REQUEST_BYTES:
@@ -294,6 +313,12 @@ def inputs(doc: dict) -> dict:
         meaning["intent"] = doc["intent"]
     if "bug" in doc:
         meaning["bug"] = doc["bug"]
+    if "coverage" in doc:
+        meaning["coverage"] = doc["coverage"]
+    if 'propose' in doc:
+        from expectrail.orchestrator.playtest import proposal_inputs
+        meaning['propose'] = doc['propose']
+        meaning['proposalInputs'] = proposal_inputs(doc)
     if "autoFix" in doc:
         meaning["autoFix"] = doc["autoFix"]
     return {"requestDigest": digest(meaning), **resolved}

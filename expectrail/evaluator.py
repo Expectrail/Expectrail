@@ -173,6 +173,11 @@ def _assertion_verdict(spec: dict, observations: dict) -> dict:
         result, reason = "fail", (f"the visual observer did not find {assertion['object']} drawn at its place "
                                   f"in {len(not_drawn)} of {len(window_frames)} frames observed in the window "
                                   f"(frames {frames})")
+        every = (observations.get("analysis") or {}).get("every", 1)
+        if every > 1:
+            reason += (f"; vision sampled every {every} frames: at least {NOT_DRAWN_MIN_RUN} consecutive "
+                       f"samples, spanning up to {(NOT_DRAWN_MIN_RUN - 1) * every + 1} real frames; "
+                       "intervening frames were not judged by vision")
     elif kind == "visible":
         frac = 1 - len(failures) / judged if judged else 0.0
         need = assertion.get("minFraction", 1.0)

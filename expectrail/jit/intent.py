@@ -305,6 +305,11 @@ def _claims(profile: dict) -> list[dict]:
 
 def _probe_entry(p: dict, signals: frozenset[str] = frozenset(OFFERED), evidence: bool = False) -> dict:
     entry = {"id": p["id"], "description": p["description"]}
+    if p.get('source') == 'report':
+        # The caller validated these actions against the trusted profile. No
+        # producer, route name or description is carried into the prompt.
+        route = p['route']
+        entry['inputs'] = {k: route[k] for k in ('ticks', 'seed', 'events') if k in route}
     if p.get("measured"):
         entry["measured"] = {build: ({k: v for k, v in values.items() if v is not None and k in signals}
                                      if values else None)

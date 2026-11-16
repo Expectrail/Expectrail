@@ -123,7 +123,7 @@ def calibration_markdown(doc):
             f"same answer from a point nudged inside the player in {rates['stable']:.0%}.\n")
 
 
-def anchored(project, data, client, out):
+def anchored(project, data, client, out, *, vision_every=1):
     """The visual observer for this game: calibrated on the unchanged game's first route (#330), and
     used only when the calibration says so. Writes calibration.json and calibration.md to ``out``."""
     from expectrail import anchored as an, recorded
@@ -141,20 +141,29 @@ def anchored(project, data, client, out):
     out.mkdir(parents=True, exist_ok=True)
     (out / 'calibration.json').write_text(json.dumps(doc, indent=1) + '\n')
     (out / 'calibration.md').write_text(calibration_markdown(doc))
-    observer = an.AnchoredObserver(client, doc)
+    observer = an.AnchoredObserver(client, doc, every=vision_every)
     return recorded.with_recorded_diagnostics(observer) if isinstance(client, recorded.RecordedClient) else observer
 
 
-def judge(project, data, receipt, out, observer=None, client=None):
+def judge(project, data, receipt, out, observer=None, client=None, *, vision_every=1):
     """Judge every variant. ``observer`` is used as given; with ``client`` instead, the anchored
     observer is calibrated on the unchanged game first (#330)."""
+    if type(vision_every) is not int or vision_every < 1:
+        raise ValueError('vision stride must be a positive integer')
+    if observer is not None and vision_every != 1:
+        raise ValueError('vision sampling requires the calibrated anchored observer')
     if capture_id(project, data) != receipt:
         raise ValueError('capture digest differs from the capture job output')
     # Use the same trusted check selection as the no-key trial, and refuse an
     # invalid selection before calibration can ask a model anything.
     selected_spec = trial.project_spec(project)
     if observer is None:
-        observer = anchored(project, data, client, out)
+        from expectrail.recorded import RecordedClient, RecordingClient
+        # One cache for calibration, all variants, and both kinds of gate question. Exact question
+        # and PNG bytes only; no cross-run persistence and no caching of errors. A recording costs
+        # nothing to ask again, and wrapping it would hide it from the recorded-image diagnosis (#515).
+        asked = client if isinstance(client, RecordedClient) else RecordingClient(client, reuse=True)
+        observer = anchored(project, data, asked, out, vision_every=vision_every)
     cases = variants(project)
     rows = []
     with tempfile.TemporaryDirectory() as tmp:
@@ -179,17 +188,39 @@ def judge(project, data, receipt, out, observer=None, client=None):
             doc = verify.run_gate(repo=policy / case, base=policy / 'pinned' if change else None,
                                   game='project', routes=['routes/*.json'], specs='specs', out=out / case,
                                   work=policy / 'work' / case, replay=saved, rule=record.BOTH,
-                                  require_sandbox=True, visual=observer, expectrail_commit=os.getenv('GITHUB_SHA'))
+                                  require_sandbox=True, visual=observer, expectrail_commit=os.getenv('GITHUB_SHA'),
+                                  vision_every=vision_every)
             decision = doc['decision']
             rows.append({'name': project['name'], 'commit': project['commit'], 'licence': project['licence'],
                          'change': change['name'] if change else None,
                          'what': change and change['what'], 'expect': change and change['expect'],
                          'exit': next(code for code, name in trial.VERDICTS.items() if name == decision),
                          'decision': decision, 'verdict': decision, 'seconds': round(time.monotonic() - start, 1),
+                         'visionEvery': vision_every,
                          'checks': doc['counts'], 'reasons': doc['reasons'],
                          'failures': [f['reason'] for f in doc['findings']]})
-            (out / 'outside-trial.md').write_text(trial.markdown(rows))
+            (out / 'outside-trial.md').write_text(trial.markdown(rows) + sampling_markdown(vision_every))
     return rows
+
+
+def sampling_markdown(every):
+    return (f"\n**Vision sampling:** requested every {every} frame(s) from the check window's first, plus its last. "
+            "Each check uses the shared sampling plan: fractional visibility checks need every frame. "
+            "The engine still checks every frame; calibration and the paired comparison keep their own stride 10. "
+            f"A visual defect shorter than {every} frames may be missed. A sampled non-pass is refined "
+            "on every remaining frame or needs review; a reaches witness can pass from samples. "
+            "Missing-player rejection requires 3 consecutive negative observations in the refined sequence. "
+            "Explicit spec coverage obligations are not relaxed. Default: 1.\n")
+
+
+def positive_stride(value):
+    try:
+        result = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError('vision stride must be a positive integer') from exc
+    if result < 1:
+        raise argparse.ArgumentTypeError('vision stride must be a positive integer')
+    return result
 
 
 def main(argv=None):
@@ -200,6 +231,8 @@ def main(argv=None):
         sub.add_argument('--project', required=True, choices=[p['name'] for p in trial.load_list()])
         sub.add_argument('--out', type=Path, required=True)
         if name == 'judge':
+            sub.add_argument('--vision-every', type=positive_stride, default=1,
+                             help='opt-in anchored vision stride (default 1); shorter defects may be missed')
             sub.add_argument('--data', type=Path, required=True)
             sub.add_argument('--digest', required=True)
             sub.add_argument('--recording', type=Path,
@@ -224,7 +257,7 @@ def main(argv=None):
         # A frame or question not in the recording gets no answer, so the verdict is needs-review.
         client = recorded.RecordedClient(recorded.read_recording(args.recording))
         args.out.mkdir(parents=True)
-        judge(project, args.data, args.digest, args.out, client=client)
+        judge(project, args.data, args.digest, args.out, client=client, vision_every=args.vision_every)
         print(f'Answered from the recording: {client.answered} of {client.calls} questions')
         return 0
     cap = os.getenv(CAP_ENV, '')
@@ -236,7 +269,7 @@ def main(argv=None):
     before = sam_usage()
     client = recorded.RecordingClient(MetaSamClient())
     try:
-        judge(project, args.data, args.digest, args.out, client=client)
+        judge(project, args.data, args.digest, args.out, client=client, vision_every=args.vision_every)
     finally:
         used = {key: value - before[key] for key, value in sam_usage().items()}
         (args.out / 'spend.json').write_text(json.dumps(used, indent=2) + '\n')

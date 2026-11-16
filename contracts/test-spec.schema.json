@@ -379,6 +379,43 @@
                     "minimum": 0
                   }
                 }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "type",
+                  "tick",
+                  "object",
+                  "x",
+                  "y",
+                  "tolerancePx"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "position-at-tick"
+                  },
+                  "tick": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "object": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9-]*$",
+                    "maxLength": 64
+                  },
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "tolerancePx": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "description": "Named world position at exactly tick; inclusive Euclidean tolerance. player is the bound player; enemy-N and projectile-N are tracked engine instance ids. Missing or ambiguous data is unknown."
               }
             ]
           },

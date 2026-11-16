@@ -15,6 +15,99 @@
     "idempotencyKey"
   ],
   "properties": {
+    "propose": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clean",
+        "profile"
+      ],
+      "properties": {
+        "clean": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "response": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "description": "Opt-in advisory JIT on a not-reproduced report. Paths are inside the base checkout. A response is an offline stand-in model reply, never a live transport."
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reached",
+        "routes"
+      ],
+      "properties": {
+        "reached": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "tick",
+              "object",
+              "x",
+              "y",
+              "tolerancePx"
+            ],
+            "properties": {
+              "type": {
+                "const": "position-at-tick"
+              },
+              "tick": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "object": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "maxLength": 64
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "tolerancePx": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "description": "Named world position at exactly tick; inclusive Euclidean tolerance. player is the bound player; enemy-N and projectile-N are tracked engine instance ids. Missing or ambiguous data is unknown."
+          }
+        },
+        "routes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          }
+        },
+        "targetCommit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$",
+          "description": "The commit the report named. Intake checked it equals the project folder's HEAD. It is a statement about that folder, not a commit the verifier resolved (see commitInputs)."
+        }
+      },
+      "description": "Additional replay obligation for ingested reports; never a check or an approval. Only with intent fix and an unchanged base/head."
+    },
     "commitInputs": {
       "type": "object",
       "additionalProperties": false,

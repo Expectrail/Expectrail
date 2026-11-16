@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Expectrail/Expectrail/contracts/trust-store.v2.schema.json",
+  "title": "Trust store v2: issuer public keys and the span each may sign in",
+  "description": "The keys a receipt verifier already holds (expectrail/receipt.py, docs/verify/receipt-check.js). A key is trusted for a receipt only when the key is not revoked and the receipt's issuedAt is at or after validFrom and, when notAfter is given, before notAfter. A revoked key is refused for every receipt, whatever date it carries. A reader that meets a field it does not know refuses the whole store. Public keys only: a private key never goes in this file. v1 (format expectrail.trust-store/v1) has keys with id, publicKey and an optional note, and no dates.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "keys"],
+  "properties": {
+    "format": {"const": "expectrail.trust-store/v2"},
+    "note": {"type": "string"},
+    "keys": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "publicKey", "validFrom"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1, "description": "The receipt's issuerKeyId. Unique in the store; a new key gets a new id."},
+          "publicKey": {"type": "string", "pattern": "^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$", "description": "Canonical base64 of the 32-byte Ed25519 public key."},
+          "note": {"type": "string"},
+          "validFrom": {"type": "string", "format": "date-time", "description": "RFC 3339 with an offset. Receipts issued before this are refused."},
+          "notAfter": {"type": "string", "format": "date-time", "description": "RFC 3339 with an offset, after validFrom. The key was retired: receipts issued at or after this are refused. Its earlier receipts expire within 7 days of it."},
+          "revoked": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["at", "reason"],
+            "description": "The key may be in someone else's hands. Every receipt it signed is refused.",
+            "properties": {
+              "at": {"type": "string", "format": "date-time"},
+              "reason": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      }
+    }
+  }
+}
