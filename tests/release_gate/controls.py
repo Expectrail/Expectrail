@@ -5,6 +5,8 @@ start real processes and assert that clearance is not granted, or an ``open`` re
 has none yet. A row with tests and an ``open`` reason too is a control with a probe that shows it is
 not defended today: its test is an expected failure (``unittest.expectedFailure``), so the day the
 defence lands the probe passes unexpectedly, the suite fails, and someone moves the row to held.
+An open row may instead retain scoped negative controls while a positive case is
+missing. Passing those negative tests must not mark the complete row held.
 
 What "clearance" means: ``expectrail verify`` (the orchestrator's command) exits 0, which it does for a
 job that completed as accept and for nothing else, and the gate's record says ``accept``. On the
@@ -137,10 +139,20 @@ CONTROLS = [
              "repairing itself and being cleared"),
     # --- Observation ------------------------------------------------------------------------------
     row(GROUPS[2], "dropped-frames", "dropped frames", open=NEEDS_257),
-    row(GROUPS[2], "duplicated-frames", "duplicated frames", open=NEEDS_257),
+    row(GROUPS[2], "duplicated-frames", "duplicated frames",
+        [f"{BDL}.EvidenceTest.test_an_extra_frame_with_consistent_manifest_is_refused"],
+        open="equal-count repeated or stale content is not authenticated by the current game-origin "
+             "capture (#257, #246); refusing an extra frame alone does not defend the complete control",
+        scope="the trusted reader rejects a duplicated extra frame even with internally consistent "
+              "replay and manifest digests. Identical pixel hashes can also be legitimate stationary frames"),
     row(GROUPS[2], "out-of-order-frames", "out-of-order frames", open=NEEDS_257),
     row(GROUPS[2], "tick-phase-error", "tick phase error", open=NEEDS_257),
-    row(GROUPS[2], "resolution-change", "resolution change", open=NEEDS_257),
+    row(GROUPS[2], "resolution-change", "resolution change",
+        [f"{BDL}.EvidenceTest.test_a_resolution_change_with_consistent_manifest_is_refused"],
+        open="the complete resolution/timeline control is not demonstrated (#257): independent capture "
+             "geometry and tick binding are absent; only intra-replay PNG dimension changes are refused",
+        scope="the trusted reader refuses varying PNG header dimensions before observation, including "
+              "a capture whose replay and manifest digests are consistent. This is not protected capture"),
     row(GROUPS[2], "two-same-class-targets", "two same-class targets", open=NEEDS_257),
     row(GROUPS[2], "occlusion", "occlusion", open=NEEDS_257),
     # --- Coverage ---------------------------------------------------------------------------------
@@ -159,10 +171,11 @@ CONTROLS = [
     row(GROUPS[4], "intentional-change", "an approved intentional change passes as a contract change",
         [f"{ITN}.IntentTest.test_a_change_declared_intended_that_breaks_an_approved_check_is_rejected",
          f"{ITN}.IntentTest.test_a_change_declared_intended_that_rewrites_the_check_it_breaks_is_judged_by_the_approved_check"],
-        scope="the pull-request gate's command, which reads the declared intent; the orchestrator's command "
-             "takes no intent and judges every change as undeclared. The positive side, a contract change "
-             "approved and merged first and the behaviour after it, is not run: the recorded vision answers "
-             "cover only the samples' frames and checks"),
+        open="positive contract-change case is not run: it needs a person's approval of the changed "
+             "contract and matching recorded visual evidence. The negative controls alone do not prove it",
+        scope="negative controls through the pull-request gate: declaring change or rewriting a check "
+              "does not bypass the base check. The orchestrator now also accepts --intent; that CLI path "
+              "has offline tests, not a new approved contract-change run"),
     row(GROUPS[4], "weakened-tolerance", "a weakened tolerance",
         [f"{ITN}.IntentTest.test_a_tolerance_the_change_weakens_in_its_own_check_is_not_the_one_that_judges_it"],
         scope="runs with a base, where the checks come from the base. Without a base a change's own checks "
