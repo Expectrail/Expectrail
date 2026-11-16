@@ -41,6 +41,8 @@ jobs:
           packages: xvfb libgl1-mesa-dri libglx-mesa0 patch bubblewrap
       - name: Download Godot 4.7.2 and check its SHA-512
         uses: ./.github/actions/get-godot
+      - name: Install the schema checker the registry reader needs
+        run: python -m pip install jsonschema==4.26.0
       - name: Allow unprivileged user namespaces for bubblewrap
         run: |
           if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
