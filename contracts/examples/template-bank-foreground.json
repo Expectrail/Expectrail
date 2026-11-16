@@ -1,0 +1,615 @@
+{
+  "format": "expectrail.template-bank/v1",
+  "config": {
+    "algorithm": "expectrail.template-foreground/v3",
+    "coordinates": "captured-frame pixels; origin top-left; xyxy half-open; y down",
+    "matchThreshold": 0.9,
+    "agreementIoU": 0.5,
+    "searchMarginPx": 8,
+    "scales": [
+      1
+    ],
+    "stridePx": 1,
+    "sampleSide": 12,
+    "minimumContrast": 8.0,
+    "foregroundPurity": 0.95,
+    "rgbTolerance": 2,
+    "rasterTolerancePx": 1,
+    "confirmationCandidates": 32,
+    "minimumForegroundBins": 32,
+    "confirmationParts": 4
+  },
+  "clean": {
+    "gameTree": "bbc81923887944c9e5b581205dfde9913a8621552d83b545855b81eaf8e397c2",
+    "replaySha256": "6cf6e9d6788d04d15a186f2113a3910d6a9852be66d5d4f74eaefa9d1254e1be",
+    "traceSha256": "7947eb5187c25682519da5a566917cf3dd7e4dca160f2f8b48d78758d5f3cc1e"
+  },
+  "templates": [
+    {
+      "object": "player",
+      "frame": 0,
+      "frameSha256": "2a5e2f9358906f04ebe497437e75c02ed9f2d63f332c7b9823e1cd7a979c8055",
+      "box": [
+        24,
+        20,
+        36,
+        36
+      ],
+      "predictedBox": [
+        24,
+        20,
+        36,
+        36
+      ],
+      "sourceReplaySha256": "6cf6e9d6788d04d15a186f2113a3910d6a9852be66d5d4f74eaefa9d1254e1be",
+      "mirrorX": false,
+      "width": 12,
+      "height": 16,
+      "pixels": "5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ua1ZjREKriPLubm5uZdjMO5YVmHX+bm5uZpMHuOL1mbN+bm5uaodV9WgHW8vObm5uaRXICNP2i4debm5uY8sq/Ej5rIR+bm5uamRosoc140N+bm5uZil8J8YsVsqObm5uZzZnFJcjWrcubm5uZUmndXmpmIu+bm5uYrcj+rpr5uW+bm5uZkhKEoUz+7S+bm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm",
+      "pixelsSha256": "0a02f205a466859d1cadeb8befefb2e2047b53b671c8bfcd7808d9415fa01671",
+      "kind": "clean-capture",
+      "rgbPixels": "5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubmtbW1ZmZmNDQ0REREKioquLi4j4+PLi4u5ubm5ubm5ubm5ubmXV1djIyMw8PDubm5YWFhWVlZh4eHX19f5ubm5ubm5ubm5ubmaWlpMDAwe3t7jo6OLy8vWVlZm5ubNzc35ubm5ubm5ubm5ubmqKiodXV1X19fVlZWgICAdXV1vLy8vLy85ubm5ubm5ubm5ubmkZGRXFxcgICAjY2NPz8/aGhouLi4dXV15ubm5ubm5ubm5ubmPDw8srKyr6+vxMTEj4+PmpqayMjIR0dH5ubm5ubm5ubm5ubmpqamRkZGi4uLKCgoc3NzXl5eNDQ0Nzc35ubm5ubm5ubm5ubmYmJil5eXwsLCfHx8YmJixcXFbGxsqKio5ubm5ubm5ubm5ubmc3NzZmZmcXFxSUlJcnJyNTU1q6urcnJy5ubm5ubm5ubm5ubmVFRUmpqad3d3V1dXmpqamZmZiIiIu7u75ubm5ubm5ubm5ubmKysrcnJyPz8/q6urpqamvr6+bm5uW1tb5ubm5ubm5ubm5ubmZGRkhISEoaGhKCgoU1NTPz8/u7u7S0tL5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm",
+      "rgbPixelsSha256": "1bc9b4a0c9b6254ae7e34ba3221b8b770a31290b090e571bf83c11f9b23c15b1",
+      "foregroundMask": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "foregroundMaskSha256": "b9ad0d5166a4bbbcf7b151d4bda51eccb127dcc26a5f0bd0e9ff1c20916e91dd"
+    },
+    {
+      "object": "player",
+      "frame": 0,
+      "frameSha256": "2a5e2f9358906f04ebe497437e75c02ed9f2d63f332c7b9823e1cd7a979c8055",
+      "box": [
+        24,
+        20,
+        36,
+        36
+      ],
+      "predictedBox": [
+        24,
+        20,
+        36,
+        36
+      ],
+      "sourceReplaySha256": "6cf6e9d6788d04d15a186f2113a3910d6a9852be66d5d4f74eaefa9d1254e1be",
+      "mirrorX": true,
+      "width": 12,
+      "height": 16,
+      "pixels": "5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5uYuj7gqRDRmtebm5uZfh1lhucOMXebm5uY3m1kvjnswaebm5ua8vHWAVl91qObm5uZ1uGg/jYBckebm5uZHyJqPxK+yPObm5uY3NF5zKItGpubm5uaobMVifMKXYubm5uZyqzVySXFmc+bm5ua7iJmaV3eaVObm5uZbbr6mqz9yK+bm5uZLuz9TKKGEZObm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm",
+      "pixelsSha256": "3f4aee8f2ed54af6030b66b8859bc3e25bf934e4bda567d68874e4991717ca11",
+      "kind": "clean-capture",
+      "rgbPixels": "5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubmLi4uj4+PuLi4KioqRERENDQ0ZmZmtbW15ubm5ubm5ubm5ubmX19fh4eHWVlZYWFhubm5w8PDjIyMXV1d5ubm5ubm5ubm5ubmNzc3m5ubWVlZLy8vjo6Oe3t7MDAwaWlp5ubm5ubm5ubm5ubmvLy8vLy8dXV1gICAVlZWX19fdXV1qKio5ubm5ubm5ubm5ubmdXV1uLi4aGhoPz8/jY2NgICAXFxckZGR5ubm5ubm5ubm5ubmR0dHyMjImpqaj4+PxMTEr6+vsrKyPDw85ubm5ubm5ubm5ubmNzc3NDQ0Xl5ec3NzKCgoi4uLRkZGpqam5ubm5ubm5ubm5ubmqKiobGxsxcXFYmJifHx8wsLCl5eXYmJi5ubm5ubm5ubm5ubmcnJyq6urNTU1cnJySUlJcXFxZmZmc3Nz5ubm5ubm5ubm5ubmu7u7iIiImZmZmpqaV1dXd3d3mpqaVFRU5ubm5ubm5ubm5ubmW1tbbm5uvr6+pqamq6urPz8/cnJyKysr5ubm5ubm5ubm5ubmS0tLu7u7Pz8/U1NTKCgooaGhhISEZGRk5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm",
+      "rgbPixelsSha256": "71b81345626b4d1a9f5852d298508bee058a365b815f4431188fc87ad4eec5c5",
+      "foregroundMask": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "foregroundMaskSha256": "b9ad0d5166a4bbbcf7b151d4bda51eccb127dcc26a5f0bd0e9ff1c20916e91dd"
+    },
+    {
+      "object": "player",
+      "frame": 0,
+      "frameSha256": "2a5e2f9358906f04ebe497437e75c02ed9f2d63f332c7b9823e1cd7a979c8055",
+      "box": [
+        24,
+        20,
+        36,
+        36
+      ],
+      "predictedBox": [
+        24,
+        20,
+        36,
+        36
+      ],
+      "sourceReplaySha256": "6cf6e9d6788d04d15a186f2113a3910d6a9852be66d5d4f74eaefa9d1254e1be",
+      "mirrorX": false,
+      "width": 12,
+      "height": 16,
+      "pixels": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC1ZjREKriPLgAAAABdjMO5YVmHXwAAAABpMHuOL1mbNwAAAACodV9WgHW8vAAAAACRXICNP2i4dQAAAAA8sq/Ej5rIRwAAAACmRosoc140NwAAAABil8J8YsVsqAAAAABzZnFJcjWrcgAAAABUmndXmpmIuwAAAAArcj+rpr5uWwAAAABkhKEoUz+7SwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "pixelsSha256": "45c27b7ac70c1ad560fe32cc60815212b5f866b9a199c8d09d258fc81da11870",
+      "kind": "approved-art-pose",
+      "rgbPixels": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAtbW1ZmZmNDQ0REREKioquLi4j4+PLi4uAAAAAAAAAAAAAAAAXV1djIyMw8PDubm5YWFhWVlZh4eHX19fAAAAAAAAAAAAAAAAaWlpMDAwe3t7jo6OLy8vWVlZm5ubNzc3AAAAAAAAAAAAAAAAqKiodXV1X19fVlZWgICAdXV1vLy8vLy8AAAAAAAAAAAAAAAAkZGRXFxcgICAjY2NPz8/aGhouLi4dXV1AAAAAAAAAAAAAAAAPDw8srKyr6+vxMTEj4+PmpqayMjIR0dHAAAAAAAAAAAAAAAApqamRkZGi4uLKCgoc3NzXl5eNDQ0Nzc3AAAAAAAAAAAAAAAAYmJil5eXwsLCfHx8YmJixcXFbGxsqKioAAAAAAAAAAAAAAAAc3NzZmZmcXFxSUlJcnJyNTU1q6urcnJyAAAAAAAAAAAAAAAAVFRUmpqad3d3V1dXmpqamZmZiIiIu7u7AAAAAAAAAAAAAAAAKysrcnJyPz8/q6urpqamvr6+bm5uW1tbAAAAAAAAAAAAAAAAZGRkhISEoaGhKCgoU1NTPz8/u7u7S0tLAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "rgbPixelsSha256": "117359bd5f2b380bc762c727e1425deacf1c5c8a263fe6e4076f4f086191b7f2",
+      "foregroundMask": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "foregroundMaskSha256": "b9ad0d5166a4bbbcf7b151d4bda51eccb127dcc26a5f0bd0e9ff1c20916e91dd",
+      "artRegistration": {
+        "anchorPose": 0,
+        "scale": 1,
+        "offset": [
+          0,
+          0
+        ],
+        "agreement": 1.0,
+        "anchorRgbSha256": "1bc9b4a0c9b6254ae7e34ba3221b8b770a31290b090e571bf83c11f9b23c15b1",
+        "pose": 0
+      }
+    },
+    {
+      "object": "player",
+      "frame": 0,
+      "frameSha256": "2a5e2f9358906f04ebe497437e75c02ed9f2d63f332c7b9823e1cd7a979c8055",
+      "box": [
+        24,
+        20,
+        36,
+        36
+      ],
+      "predictedBox": [
+        24,
+        20,
+        36,
+        36
+      ],
+      "sourceReplaySha256": "6cf6e9d6788d04d15a186f2113a3910d6a9852be66d5d4f74eaefa9d1254e1be",
+      "mirrorX": true,
+      "width": 12,
+      "height": 16,
+      "pixels": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAuj7gqRDRmtQAAAABfh1lhucOMXQAAAAA3m1kvjnswaQAAAAC8vHWAVl91qAAAAAB1uGg/jYBckQAAAABHyJqPxK+yPAAAAAA3NF5zKItGpgAAAACobMVifMKXYgAAAAByqzVySXFmcwAAAAC7iJmaV3eaVAAAAABbbr6mqz9yKwAAAABLuz9TKKGEZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "pixelsSha256": "3c2619d92a2a1ef1f316dc20b22e5324f9373fcbd6d901fbaebbf904b380b812",
+      "kind": "approved-art-pose",
+      "rgbPixels": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALi4uj4+PuLi4KioqRERENDQ0ZmZmtbW1AAAAAAAAAAAAAAAAX19fh4eHWVlZYWFhubm5w8PDjIyMXV1dAAAAAAAAAAAAAAAANzc3m5ubWVlZLy8vjo6Oe3t7MDAwaWlpAAAAAAAAAAAAAAAAvLy8vLy8dXV1gICAVlZWX19fdXV1qKioAAAAAAAAAAAAAAAAdXV1uLi4aGhoPz8/jY2NgICAXFxckZGRAAAAAAAAAAAAAAAAR0dHyMjImpqaj4+PxMTEr6+vsrKyPDw8AAAAAAAAAAAAAAAANzc3NDQ0Xl5ec3NzKCgoi4uLRkZGpqamAAAAAAAAAAAAAAAAqKiobGxsxcXFYmJifHx8wsLCl5eXYmJiAAAAAAAAAAAAAAAAcnJyq6urNTU1cnJySUlJcXFxZmZmc3NzAAAAAAAAAAAAAAAAu7u7iIiImZmZmpqaV1dXd3d3mpqaVFRUAAAAAAAAAAAAAAAAW1tbbm5uvr6+pqamq6urPz8/cnJyKysrAAAAAAAAAAAAAAAAS0tLu7u7Pz8/U1NTKCgooaGhhISEZGRkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "rgbPixelsSha256": "973ad6768fdc34c0aecf688f23b7f6f30433b6c7ae4b59b8bcfd8e777bc9a334",
+      "foregroundMask": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAABAQEBAQEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "foregroundMaskSha256": "b9ad0d5166a4bbbcf7b151d4bda51eccb127dcc26a5f0bd0e9ff1c20916e91dd",
+      "artRegistration": {
+        "anchorPose": 0,
+        "scale": 1,
+        "offset": [
+          0,
+          0
+        ],
+        "agreement": 1.0,
+        "anchorRgbSha256": "1bc9b4a0c9b6254ae7e34ba3221b8b770a31290b090e571bf83c11f9b23c15b1",
+        "pose": 0
+      }
+    }
+  ],
+  "sources": [
+    {
+      "gameTree": "bbc81923887944c9e5b581205dfde9913a8621552d83b545855b81eaf8e397c2",
+      "replaySha256": "6cf6e9d6788d04d15a186f2113a3910d6a9852be66d5d4f74eaefa9d1254e1be",
+      "traceSha256": "7947eb5187c25682519da5a566917cf3dd7e4dca160f2f8b48d78758d5f3cc1e"
+    },
+    {
+      "gameTree": "bbc81923887944c9e5b581205dfde9913a8621552d83b545855b81eaf8e397c2",
+      "replaySha256": "ee85d2360b70451845cd28532ccfd8b3eea426fa63b040b458aa2e6bf75b58b9",
+      "traceSha256": "7947eb5187c25682519da5a566917cf3dd7e4dca160f2f8b48d78758d5f3cc1e"
+    },
+    {
+      "gameTree": "bbc81923887944c9e5b581205dfde9913a8621552d83b545855b81eaf8e397c2",
+      "replaySha256": "ab83651d8e35a791a4d7463cbc882f32886191ec9180a40d770a0af61a09cdd2",
+      "traceSha256": "7947eb5187c25682519da5a566917cf3dd7e4dca160f2f8b48d78758d5f3cc1e"
+    },
+    {
+      "gameTree": "bbc81923887944c9e5b581205dfde9913a8621552d83b545855b81eaf8e397c2",
+      "replaySha256": "6bb9a700831bae9815e986b382b2df05e65b5beb33a32521f204019960a633f7",
+      "traceSha256": "7947eb5187c25682519da5a566917cf3dd7e4dca160f2f8b48d78758d5f3cc1e"
+    }
+  ],
+  "calibration": {
+    "selection": "approved-foreground",
+    "selectionSimilarity": 0.995,
+    "sourceFrames": 9,
+    "eligibleFrames": 9,
+    "mirrored": true,
+    "thresholdFloor": 0.9,
+    "thresholdSelected": 0.9,
+    "validationReplaySha256": "6bb9a700831bae9815e986b382b2df05e65b5beb33a32521f204019960a633f7",
+    "positives": 3,
+    "negatives": 3,
+    "positiveMatches": 3,
+    "negativeMatches": 0,
+    "status": "met"
+  },
+  "foregroundSources": [
+    {
+      "object": "player",
+      "path": "robot.png",
+      "sha256": "9864069dc7d99c8aac5468a686ae7510258f4c38304e8042b3fed33c49b7e93e",
+      "alphaMinimum": 250,
+      "paletteRgb": [
+        [
+          40,
+          40,
+          40
+        ],
+        [
+          42,
+          42,
+          42
+        ],
+        [
+          43,
+          43,
+          43
+        ],
+        [
+          46,
+          46,
+          46
+        ],
+        [
+          47,
+          47,
+          47
+        ],
+        [
+          48,
+          48,
+          48
+        ],
+        [
+          52,
+          52,
+          52
+        ],
+        [
+          53,
+          53,
+          53
+        ],
+        [
+          55,
+          55,
+          55
+        ],
+        [
+          60,
+          60,
+          60
+        ],
+        [
+          63,
+          63,
+          63
+        ],
+        [
+          68,
+          68,
+          68
+        ],
+        [
+          70,
+          70,
+          70
+        ],
+        [
+          71,
+          71,
+          71
+        ],
+        [
+          73,
+          73,
+          73
+        ],
+        [
+          75,
+          75,
+          75
+        ],
+        [
+          83,
+          83,
+          83
+        ],
+        [
+          84,
+          84,
+          84
+        ],
+        [
+          86,
+          86,
+          86
+        ],
+        [
+          87,
+          87,
+          87
+        ],
+        [
+          89,
+          89,
+          89
+        ],
+        [
+          91,
+          91,
+          91
+        ],
+        [
+          92,
+          92,
+          92
+        ],
+        [
+          93,
+          93,
+          93
+        ],
+        [
+          94,
+          94,
+          94
+        ],
+        [
+          95,
+          95,
+          95
+        ],
+        [
+          97,
+          97,
+          97
+        ],
+        [
+          98,
+          98,
+          98
+        ],
+        [
+          100,
+          100,
+          100
+        ],
+        [
+          102,
+          102,
+          102
+        ],
+        [
+          104,
+          104,
+          104
+        ],
+        [
+          105,
+          105,
+          105
+        ],
+        [
+          108,
+          108,
+          108
+        ],
+        [
+          110,
+          110,
+          110
+        ],
+        [
+          113,
+          113,
+          113
+        ],
+        [
+          114,
+          114,
+          114
+        ],
+        [
+          115,
+          115,
+          115
+        ],
+        [
+          117,
+          117,
+          117
+        ],
+        [
+          119,
+          119,
+          119
+        ],
+        [
+          123,
+          123,
+          123
+        ],
+        [
+          124,
+          124,
+          124
+        ],
+        [
+          128,
+          128,
+          128
+        ],
+        [
+          132,
+          132,
+          132
+        ],
+        [
+          135,
+          135,
+          135
+        ],
+        [
+          136,
+          136,
+          136
+        ],
+        [
+          139,
+          139,
+          139
+        ],
+        [
+          140,
+          140,
+          140
+        ],
+        [
+          141,
+          141,
+          141
+        ],
+        [
+          142,
+          142,
+          142
+        ],
+        [
+          143,
+          143,
+          143
+        ],
+        [
+          145,
+          145,
+          145
+        ],
+        [
+          151,
+          151,
+          151
+        ],
+        [
+          153,
+          153,
+          153
+        ],
+        [
+          154,
+          154,
+          154
+        ],
+        [
+          155,
+          155,
+          155
+        ],
+        [
+          161,
+          161,
+          161
+        ],
+        [
+          166,
+          166,
+          166
+        ],
+        [
+          168,
+          168,
+          168
+        ],
+        [
+          171,
+          171,
+          171
+        ],
+        [
+          175,
+          175,
+          175
+        ],
+        [
+          178,
+          178,
+          178
+        ],
+        [
+          181,
+          181,
+          181
+        ],
+        [
+          184,
+          184,
+          184
+        ],
+        [
+          185,
+          185,
+          185
+        ],
+        [
+          187,
+          187,
+          187
+        ],
+        [
+          188,
+          188,
+          188
+        ],
+        [
+          190,
+          190,
+          190
+        ],
+        [
+          194,
+          194,
+          194
+        ],
+        [
+          195,
+          195,
+          195
+        ],
+        [
+          196,
+          196,
+          196
+        ],
+        [
+          197,
+          197,
+          197
+        ],
+        [
+          200,
+          200,
+          200
+        ]
+      ],
+      "artSize": [
+        12,
+        16
+      ],
+      "rgbaPixels": "W1tbAHh4eACjo6MAREREAEpKSgA4ODgAeXl5AIaGhgBEREQANDQ0AG5ubgBpaWkAWVlZAEtLSwBLS0sAtra2AL+/vwCjo6MAtLS0ALOzswCnp6cAvLy8ALy8vABRUVEAra2tAD8/PwC1tbX/ZmZm/zQ0NP9ERET/Kioq/7i4uP+Pj4//Li4u/7S0tAB9fX0AKCgoAKOjowBdXV3/jIyM/8PDw/+5ubn/YWFh/1lZWf+Hh4f/X19f/0RERACysrIAbm5uAGNjYwBpaWn/MDAw/3t7e/+Ojo7/Ly8v/1lZWf+bm5v/Nzc3/zQ0NAB/f38Aq6urAKWlpQCoqKj/dXV1/19fX/9WVlb/gICA/3V1df+8vLz/vLy8/0FBQQBEREQAVlZWAKysrACRkZH/XFxc/4CAgP+NjY3/Pz8//2hoaP+4uLj/dXV1/1paWgCZmZkAbGxsAKurqwA8PDz/srKy/6+vr//ExMT/j4+P/5qamv/IyMj/R0dH/6OjowBsbGwAvb29AL+/vwCmpqb/RkZG/4uLi/8oKCj/c3Nz/15eXv80NDT/Nzc3/0dHRwBVVVUAxcXFAHR0dABiYmL/l5eX/8LCwv98fHz/YmJi/8XFxf9sbGz/qKio/6CgoAC1tbUAnZ2dAHV1dQBzc3P/ZmZm/3Fxcf9JSUn/cnJy/zU1Nf+rq6v/cnJy/1paWgBpaWkALS0tAL29vQBUVFT/mpqa/3d3d/9XV1f/mpqa/5mZmf+IiIj/u7u7/11dXQA/Pz8Avb29AIKCggArKyv/cnJy/z8/P/+rq6v/pqam/76+vv9ubm7/W1tb/3NzcwBtbW0AfHx8AI2NjQBkZGT/hISE/6Ghof8oKCj/U1NT/z8/P/+7u7v/S0tL/3V1dQBnZ2cASUlJAEtLSwDDw8MANjY2AMbGxgCwsLAArq6uAHBwcADBwcEAa2trAC8vLwCMjIwAtbW1AHl5eQC1tbUAoKCgACsrKwBJSUkAODg4AIeHhwBSUlIAgICAAEpKSgB4eHgA",
+      "rgbaPixelsSha256": "05cc802a0c2b44cc9cfb02ff370301a5ca0745e40617518d4d8a21799e750b22",
+      "catalogue": {
+        "artPath": "robot.png",
+        "spriteGrid": [
+          1,
+          1
+        ],
+        "poses": [
+          0
+        ],
+        "sourceScene": {
+          "path": "project.godot",
+          "sha256": "fc377fdf27ebfe56dc1567f6b7a7a2aa227b9389f0a7c51db80028f74d6d9893"
+        }
+      }
+    }
+  ],
+  "groundReference": {
+    "coordinates": "trusted clean world coordinates; y down",
+    "sourceReplaySha256": "6cf6e9d6788d04d15a186f2113a3910d6a9852be66d5d4f74eaefa9d1254e1be",
+    "sourceTraceSha256": "7947eb5187c25682519da5a566917cf3dd7e4dca160f2f8b48d78758d5f3cc1e",
+    "polygons": [
+      [
+        [
+          0,
+          36
+        ],
+        [
+          80,
+          36
+        ],
+        [
+          80,
+          70
+        ],
+        [
+          0,
+          70
+        ]
+      ]
+    ]
+  }
+}

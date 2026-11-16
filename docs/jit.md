@@ -443,7 +443,7 @@ setting gives it, and may also write up to four checks in `pixelChecks`:
   prompt adds `pixelChecksOffered` (`pixel.menu`): for each observer that exists, the predicates it
   judges and the bound objects it can be asked about, and every object no observer can judge, with
   why. On the bundled game that is SAM, `visible`, `inside-region` and `never-crosses`, about the
-  player only. The menu is made from the same tables as the refusals, and a test checks that
+  player (and, since November 15, the enemy and the bullet: see below). The menu is made from the same tables as the refusals, and a test checks that
   everything it offers is accepted and nothing it withholds is.
 - The answer's `pixelChecks` go through `parse_candidate`, are renamed `jit-px-<id>` and carry
   `model_prior` authority. A refused one, a repeated id, or one past the fourth is dropped and said.
@@ -516,9 +516,9 @@ and exactly one must be named, or the command exits 2 before anything runs:
 - `--sam-live`: a live call (the key in `MODEL_API_KEY`, the cap in `EXPECTRAIL_SAM_USD_CAP`), its
   images reserved against `--budget-usd` first. This spends money.
 
-`--sam-box` (`body` by default, or `WxH` with `--sam-lift`), `--sam-pad` and `--sam-first` say how SAM
-is asked; with recorded answers they must match how the recording was asked, or the checks are
-dropped with that reason. `--observer none` (the default) leaves every pixel check `not-run`. An
+`--sam-box` (`body` by default, or `WxH` with `--sam-lift`), `--sam-pad`, `--sam-every` and `--sam-first`
+say how SAM is asked; with recorded answers they must match how the recording was asked, or the checks
+are dropped with that reason. `--observer none` (the default) leaves every pixel check `not-run`. An
 observer named without the pixel setting is refused.
 
 `python -m expectrail.repro score --offer signals-reach-evidence-pixel` counts pixel records
@@ -529,6 +529,23 @@ its `pixel` object says how many were pixel checks, and the totals' `pixel` says
 pixel check reproduced and how many only a pixel check did. A pixel row whose status or outcome its own
 runs contradict gives the defect no result. `--screen bench/jit/public/screen.json` (any setting) adds
 what the screen record measured to each row and gives the rate on the screen-only defects apart.
+
+### How often a frame is asked: `--sam-every` (added November 15)
+
+The observer asks about every Nth frame of a probe and its last, at most `MAX_FRAMES` (30) a replay.
+N was fixed at 10; `--sam-every N` (1 to 60, 10 by default) now sets it on `run` and `pixel-ask`, and
+jit.yml's `sam_every` input passes one value to the capture, asking and judging jobs. A sparser plan
+reserves fewer images under the same cap: a probe whose check names the enemy, on a route that fills
+the plan, reserves 30 frames x 3 boxes x 9 runs x $0.0025 = $2.025 at every 10th frame (over the $2
+cap, so `not-run`) and 16 frames, $1.08, at every 20th. The price: `never-crosses` and `inside-region`
+fail on any failing frame, so a sparser plan can only miss failures, and a check the bug breaks only
+between sampled frames is then not kept. 60 (one frame a second) is the sparsest.
+
+The plan must be one plan across the jobs. A recorded answer file says which frames each run was asked
+about (`framesProbed`, else the frames its rows cover), and the observer refuses, before it sends or
+judges anything, a recording whose plan is not its own: a denser plan would stop on a frame the
+recording never saw, and a sparser one would judge fewer frames than were paid for. Tested offline in
+`tests/test_jit_sam_every.py` and `tests/test_jit_sam_every_workflow.py`; no live run has used it.
 
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 
@@ -601,11 +618,37 @@ Since November 15 the harness also logs each enemy's and bullet's own collision 
 trace's `enemyBoxes` and `projectileBoxes`, matched to `enemies` and `projectiles` by id; header
 `capabilities.objectBoxes`; [Godot example](../contracts/examples/trace-godot.json)), and
 `agents/sam_anchor.py` `object_boxes` places them in a frame as `anchors` places the player's.
-`pixel-reach` measures those boxes too, as objects the menu does not offer yet
+`pixel-reach` measures those boxes too, apart from the player's (when this was measured, the menu did not offer them yet)
 ([example](../contracts/examples/repro-pixel-reach-named.json)): inside the enemies' boxes,
 `enemy-walks-backwards` differs on 230 of its 241 differing planned frames; inside the bullets',
-`bullet-behind-scenery` differs on all 67. The menu does not offer `enemy` or `bullet` to
-`sam-3.1-anchor` yet.
+`bullet-behind-scenery` differs on all 67.
+
+**The enemy and the bullet are offered (November 15, later).** `enemy` is a bound role, and `enemy` and
+`bullet` are bound with `"anchor": "engine-boxes"`: every object of the role has its own logged box. The
+observer is pointed at those boxes (`SamAnchorObserver(..., objects=...)`; `pixel.OBSERVERS` lists them
+under `boxes`), so the menu offers both to `sam-3.1-anchor`.
+
+- **Asked:** on every planned frame, one image for each object of the role on screen, widened by the
+  same pad as the player's box. At most `pixel.MAX_BOXES` (3) a frame; a frame with more of them on
+  screen is not asked about and is a gap. A box wholly off screen is not drawn and not asked about.
+  A trace without `objectBoxes` is a gap on every frame: a box is never guessed from a position.
+- **Judged:** each object, by its id, on its own frames, by the reference evaluator. The check fails
+  when any one fails, passes when every one passes, and is `needs-review` on any gap or when none of
+  them was on screen in the window. `inside-region` is each object's own logged box.
+- **Only what a check names is asked:** the replay asks about a role only when a pixel check on that
+  probe names it (`run.py`); the capture job writes those roles into the stored replay
+  (`objects.json`), and the asking job reads them back (untrusted: only roles the observer is pointed
+  at, each once).
+- **The player only when a check names it:** a probe whose pixel checks name only the enemy or the
+  bullet is not asked about the player (`pixel.asks_player`). Its player rows are `asked: false` with
+  the reason, so a player check on such a run could only be `needs-review`, and an answer that says it
+  asked about the player is refused. The capture job writes `"player": false` into `objects.json`.
+- **Reserved:** `pixel.MAX_BOXES` images a frame for each named role, and one for the player only when
+  it is asked about, on every run, before anything is asked, in the in-process replay, in `pixel.cost`
+  and in `pixel-ask`.
+- **Shown offline only.** The tests use a scripted SAM client and synthetic replays
+  (`tests/test_jit_pixel_named.py`, `tests/test_jit_pixel_player.py`). No SAM answer about an enemy or a bullet has been recorded, and no
+  live run has asked one.
 
 ## What this does not claim
 

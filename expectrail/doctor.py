@@ -62,6 +62,7 @@ class Check:
     found: str         # what was found, or what is wrong
     fix: str | None    # what to do about it; None when nothing is wrong
     run: bool = False  # every run needs it: the engine's preflight asks for these
+    environment: dict | None = None  # internal probe data; the public doctor contract is unchanged
 
 
 def _ok(id: str, what: str, found: str, *, required: bool = True, run: bool = False) -> Check:
@@ -143,7 +144,9 @@ def godot(fetch: bool = True) -> tuple[Check, Path | None]:
         return _missing("godot", what, f"the Godot at {path} says it is {_clip(version, 60) or 'nothing'}, not {pinned()}",
                         "unset EXPECTRAIL_GODOT so the pinned engine is fetched, or point it at Godot " + pinned()
                         + ": recorded results are for that version", run=True), None
-    return _ok("godot", what, f"Godot {version} at {path}", run=True), path
+    check = _ok("godot", what, f"Godot {version} at {path}", run=True)
+    check.environment = {"name": "godot", "version": version}
+    return check, path
 
 
 def macos_display_problem() -> str | None:
@@ -240,11 +243,13 @@ def opengl(engine: Path | None, shown: Check) -> Check:
     device = re.search(r"Using Device: (.+)", done.stdout + done.stderr)
     if done.returncode != 0 or not device:
         return _missing("opengl", what, f"the engine drew no frame (exit {done.returncode}, no device named)", mesa, run=True)
-    name = _clip(device.group(1), 80)
+    name = _clip(device.group(1), 500)
+    found = f"the engine drew a frame with {name}"
     if "llvmpipe" not in name.lower():
-        return _ok("opengl", what, f"the engine drew a frame with {name}; this is not Mesa's software renderer, "
-                                   "which every recorded run used, so frames may differ from those", run=True)
-    return _ok("opengl", what, f"the engine drew a frame with {name}", run=True)
+        found += "; this is not Mesa's software renderer, which every recorded run used, so frames may differ from those"
+    check = _ok("opengl", what, found, run=True)
+    check.environment = {"renderer": "opengl3", "device": name}
+    return check
 
 
 def _existing(path: Path) -> Path:
@@ -337,16 +342,38 @@ def for_run() -> list[Check]:
     return [engine, shown, opengl(path, shown), disk()]
 
 
-def checks(*, isolated: bool = False, fetch: bool = True, env: dict | None = None) -> list[Check]:
+def checks(*, isolated: bool = False, fetch: bool = True, env: dict | None = None,
+           project: Path | None = None) -> list[Check]:
     """Every piece `doctor` reports, in the order it prints them."""
     engine, path = godot(fetch)
     shown = display()
     here = engine.status == "ok"
     fetching = "to fetch the engine; it is already here" if here else "to fetch the engine"
-    return [python(), engine, shown, opengl(path, shown), disk(), sandbox(isolated),
+    drawing = opengl(path, shown)
+    found = [python(), engine, shown, drawing, disk(), sandbox(isolated),
             program("patch", "`expectrail sample` and seeded bugs put a patch on a copy of the game", required=True),
             program("curl", fetching, required=False), program("unzip", fetching, required=False),
             *vision_checks(env), chromium()]
+    from expectrail import renderer
+    if project is None and (Path.cwd() / "expectrail.project.json").is_file():
+        project = Path.cwd()
+    if project is not None:
+        report = renderer.project_report(project, renderer.probed(engine, shown, drawing))
+        found.append(Check("recorded-renderer", "the project's recorded vision and this renderer",
+                           "missing" if report["warning"] else "ok", True,
+                           report["message"], report["fix"]))
+        # A recorded provider sends nothing: do not require a live credential for it.
+        if report["recording"] is not None:
+            for check in found:
+                if check.id in ("vision-key", "vision-cap"):
+                    check.required = False
+                    if check.status == "ok":
+                        check.found += "; not required for this project's recorded vision"
+                    else:
+                        setting = "MODEL_API_KEY is absent" if check.id == "vision-key" else "EXPECTRAIL_SAM_USD_CAP is missing or invalid"
+                        check.found = setting + "; this project uses recorded vision, so no live key or spend cap is required"
+                        check.fix = "Only when switching to live vision: " + check.fix
+    return found
 
 
 def missing(found: list[Check]) -> list[Check]:
@@ -425,13 +452,14 @@ def main(argv: list[str] | None = None, *, prog: str = "expectrail doctor") -> i
     p.add_argument("--json", action="store_true", help="print one expectrail.doctor/v1 document")
     p.add_argument("--isolated", action="store_true",
                    help="also require the replay sandbox, as the isolated execution class does")
+    p.add_argument("--project", type=Path, help="compare this project config's recorded vision with this machine")
     p.add_argument("--no-fetch", action="store_true", help="only look for the engine; do not download it")
     try:
         args = p.parse_args(argv)
     except _Usage as exc:
         print(f"{prog}: {exc}\n{p.format_usage().strip()}", file=sys.stderr)
         return EXIT_USAGE
-    found = checks(isolated=args.isolated, fetch=not args.no_fetch)
+    found = checks(isolated=args.isolated, fetch=not args.no_fetch, project=args.project)
     print(json.dumps(document(found), indent=2) if args.json else text(found))
     return EXIT_MISSING if missing(found) else EXIT_OK
 

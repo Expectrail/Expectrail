@@ -37,6 +37,13 @@ answer as untrusted data); and the keep rule decides. The rows go into the run r
 ``pixelChecks`` (``record_row``), and ``kept_rows`` reads them back, deciding from the runs, never from a
 row's own status.
 
+**Objects the game has many of** (``named``: the enemy and the bullet, bound with ``"anchor":
+"engine-boxes"``). The observer is asked about each one on screen, at its own logged box, one image a box
+and at most ``MAX_BOXES`` a frame (sam_observer.py); ``judge`` judges each by its id on its own frames and
+the check holds only when it holds for every one (``_judge_named``). A frame with more of them on screen
+than are asked about, or without the engine's boxes, is a gap; none on screen in the window is
+``needs-review``, never a pass.
+
 What this is not, yet: nothing here calls an observer. The SAM observer is expectrail/jit/sam_observer.py;
 the command line's ``run`` builds it (``--observer``) and the reproduction score counts pixel checks on
 their own (expectrail/repro/score.py), but the workflow does not, and no reproduction rate has been
@@ -64,13 +71,19 @@ NAME = re.compile(r"[a-z0-9][a-z0-9-]*")
 ROLE = re.compile(r"[a-z][a-z0-9-]{0,39}")
 
 # role -> what the role is bound to in the bundled game, and what kind of thing is drawn. "anchor"
-# says the engine's record logs a position for it that an anchored observer can be pointed at; the
-# harness logs the player's body box per tick (agents/observations.py), and agents/sam_anchor.py
-# points SAM at it. Node names are the game's own (game/platformer/*.tscn).
+# says what the engine's record logs that an anchored observer can be pointed at:
+# - "engine-position": one object, the player, whose body box the harness logs per tick
+#   (agents/observations.py); agents/sam_anchor.py ``anchors`` points SAM at it.
+# - "engine-boxes": every object of the role, each with its own collision box and id, logged per tick
+#   since November 15, 2026 (``enemyBoxes``, ``projectileBoxes``; agents/sam_anchor.py ``object_boxes``).
+#   An anchored observer is asked about each box on screen, one image a box (``MAX_BOXES`` a frame).
+# Node names are the game's own (game/platformer/*.tscn).
+ANCHORS = ("engine-position", "engine-boxes")
 BUNDLED_BINDINGS = {
     "player": {"node": "Player", "kind": "sprite", "anchor": "engine-position"},
     "coin": {"node": "Coin", "kind": "sprite"},
-    "bullet": {"node": "Bullet", "kind": "sprite"},
+    "bullet": {"node": "Bullet", "kind": "sprite", "anchor": "engine-boxes"},
+    "enemy": {"node": "Enemy", "kind": "sprite", "anchor": "engine-boxes"},
     "ground": {"node": "TileMapLayer", "kind": "ground"},
     "coins-counter": {"node": "CoinsCounter/Label", "kind": "text"},
 }
@@ -90,6 +103,8 @@ OBSERVERS = {
         "available": True,
         "predicates": ("visible", "inside-region", "never-crosses"),
         "anchored": True,
+        # The "engine-boxes" roles it can be pointed at (sam_observer.py, ``objects``).
+        "boxes": ("bullet", "enemy"),
         # docs/sam.md: SAM 3.1 does not find the ground; words found nothing useful in two outside
         # games (agents/sam_anchor.py); a box says nothing about which digits a label shows.
         "cannot": ("ground", "text"),
@@ -154,9 +169,10 @@ def parse_candidate(entry, bindings: dict, probe_ids, observers: dict = OBSERVER
         kind = bindings[role].get("kind")
         if kind in observer.get("cannot", ()):
             return None, f"{doc['observer']} cannot tell {role!r} ({kind}): {observer['why'][kind]}"
-        if observer.get("anchored") and bindings[role].get("anchor") != "engine-position":
-            return None, (f"{doc['observer']} is asked where the engine's record puts an object, and the record "
-                          f"gives no position for {role!r}")
+        if observer.get("anchored"):
+            why = _anchor_refusal(role, bindings, doc["observer"], observer)
+            if why:
+                return None, why
     if pred["type"] == "inside-region" and observer.get("anchored") and pred["region"]["engine"] != doc["object"]:
         return None, f"{doc['observer']} has the engine's box of {doc['object']!r} only, not of another object"
     return doc, None
@@ -175,9 +191,27 @@ def judgeable(role: str, bindings: dict, name: str, observer: dict) -> str | Non
     kind = bindings[role].get("kind")
     if kind in observer.get("cannot", ()):
         return observer["why"][kind]
-    if observer.get("anchored") and bindings[role].get("anchor") != "engine-position":
-        return f"{name} is asked where the engine's record puts an object, and the record gives no position for it"
+    if observer.get("anchored"):
+        return _anchor_refusal(role, bindings, name, observer, short=True)
     return None
+
+
+def _anchor_refusal(role: str, bindings: dict, name: str, observer: dict, short: bool = False) -> str | None:
+    """None when an anchored observer can be pointed at ``role`` from the engine's record, otherwise why not."""
+    anchor = bindings[role].get("anchor")
+    it = "it" if short else repr(role)
+    if anchor == "engine-position":
+        return None
+    if anchor == "engine-boxes":
+        if role in observer.get("boxes", ()):
+            return None
+        return f"{name} is not pointed at the boxes the engine logs for {it}"
+    return f"{name} is asked where the engine's record puts an object, and the record gives no position for {it}"
+
+
+def named(role: str, bindings: dict = BUNDLED_BINDINGS) -> bool:
+    """True for a role with many objects, each with its own logged box (``engine-boxes``)."""
+    return (bindings.get(role) or {}).get("anchor") == "engine-boxes"
 
 
 def menu(bindings: dict = BUNDLED_BINDINGS, observers: dict = OBSERVERS) -> dict:
@@ -199,8 +233,13 @@ def menu(bindings: dict = BUNDLED_BINDINGS, observers: dict = OBSERVERS) -> dict
         if observer.get("available") and roles:
             out["observers"][name] = {"predicates": list(observer["predicates"]), "objects": roles}
             if observer.get("anchored"):
-                out["observers"][name]["note"] = ("asked about one object a frame, at the place the engine puts it: "
-                                                  "an inside-region region names that same object")
+                note = ("asked about each object at the place the engine puts it: an inside-region region names "
+                        "that same object")
+                many = [r for r in roles if named(r, bindings)]
+                if many:
+                    note += (f". For an object the game has many of ({', '.join(many)}), the check must hold for "
+                             "every one on screen, each judged on its own")
+                out["observers"][name]["note"] = note
     judged = {r for o in out["observers"].values() for r in o["objects"]}
     out["notJudgeable"] = {role: "; ".join(why) for role, why in reasons.items() if role not in judged}
     return out
@@ -290,6 +329,49 @@ def observations(check: dict, run: dict) -> tuple[dict, list[dict]]:
     return {"format": "expectrail.observations/v0", "frames": frames}, gaps
 
 
+def named_observations(check: dict, run: dict) -> tuple[dict, list[dict]]:
+    """For a role the game has many of (``named``): {id: observations} in the reference evaluator's shape,
+    one per object the engine logged on screen in the window, and the gaps.
+
+    Read from the run's ``objects[role]`` (sam_observer.py), one row a planned frame: a frame not asked
+    about (no camera, more of them on screen than the observer asks about, a trace without boxes) is a gap
+    for every object; so is a box the observer gave no answer for. An answer that does not hold the middle
+    of the box it was asked about is about something else drawn there: that object was looked for and not
+    found, an observation and not a gap. An object wholly off screen is not drawn and is not judged."""
+    role = check["object"]
+    window = check.get("window") or {}
+    lo, hi = window.get("fromFrame", 0), window.get("toFrame")
+    need_engine_box = check["predicate"]["type"] == "inside-region"
+    rows = (run.get("objects") or {}).get(role)
+    if not isinstance(rows, list):
+        return {}, [{"frame": None, "why": f"the observer was not asked about {role} on this run"}]
+    per: dict = {}
+    gaps = []
+    for f in sorted(rows, key=lambda f: f["frame"]):
+        n = f["frame"]
+        if n < lo or (hi is not None and n > hi):
+            continue
+        if not f.get("asked"):
+            gaps.append({"frame": n, "why": f"not asked: {f.get('note') or 'no engine boxes'}"})
+            continue
+        for b in f.get("boxes") or []:
+            ident = b.get("id")
+            if b.get("error") or b.get("box") is None:
+                gaps.append({"frame": n, "why": f"the observer gave no answer for {role} {ident}"})
+                continue
+            if need_engine_box and b.get("promptBox") is None:
+                gaps.append({"frame": n, "why": f"the engine's box of {role} {ident} was not recorded"})
+                continue
+            objects: dict = {role: []}
+            if b.get("holdsPoint"):
+                objects[role].append({"box": list(b["box"]), "score": float(b.get("score") or 0.0)})
+            if need_engine_box:
+                objects["engine-" + role] = [{"box": list(b["promptBox"]), "score": 1.0}]
+            per.setdefault(ident, []).append({"frame": n, "objects": objects})
+    return ({ident: {"format": "expectrail.observations/v0", "frames": frames} for ident, frames in per.items()},
+            gaps)
+
+
 def _spec(check: dict, bindings: dict) -> dict:
     """The check as the reference evaluator's spec. Never written out and never approved."""
     pred = check["predicate"]
@@ -321,6 +403,8 @@ def judge(check: dict, run: dict, bindings: dict = BUNDLED_BINDINGS) -> dict:
     if route != check["probe"]:
         return {"result": "needs-review", "reason": f"the run replayed {route!r}, the check judges {check['probe']!r}",
                 "framesJudged": 0, "gaps": []}
+    if named(check["object"], bindings):
+        return _judge_named(check, run, bindings)
     obs, gaps = observations(check, run)
     if gaps:
         return {"result": "needs-review",
@@ -330,6 +414,41 @@ def judge(check: dict, run: dict, bindings: dict = BUNDLED_BINDINGS) -> dict:
     verdict = reference.evaluate(_spec(check, bindings), obs)
     return {"result": verdict["result"], "reason": verdict["reason"], "framesJudged": verdict["framesJudged"],
             "gaps": [], "firstFrame": verdict["firstFrame"]}
+
+
+def _judge_named(check: dict, run: dict, bindings: dict) -> dict:
+    """``judge`` for a role the game has many of: every object on screen is judged on its own frames; the
+    check fails when any one fails, passes when every one passes, and is needs-review on any gap or when
+    none was on screen in the window (nothing seen is never a pass)."""
+    role = check["object"]
+    per, gaps = named_observations(check, run)
+    if gaps:
+        where = "" if gaps[0]["frame"] is None else f"first {gaps[0]['frame']}: "
+        return {"result": "needs-review",
+                "reason": f"{len(gaps)} frames or boxes without both the observer and the engine's record "
+                          f"({where}{gaps[0]['why']})",
+                "framesJudged": 0, "gaps": gaps}
+    if not per:
+        return {"result": "needs-review", "reason": f"no {role} was on screen in the window", "framesJudged": 0,
+                "gaps": []}
+    spec = _spec(check, bindings)
+    verdicts = {ident: reference.evaluate(spec, obs) for ident, obs in per.items()}
+    judged = sum(v["framesJudged"] for v in verdicts.values())
+    failed = sorted(((v["firstFrame"] if v["firstFrame"] is not None else 10**9), str(ident))
+                    for ident, v in verdicts.items() if v["result"] == "fail")
+    if failed:
+        first, ident = failed[0]
+        v = next(v for i, v in verdicts.items() if str(i) == ident)
+        first = v["firstFrame"]
+        return {"result": "fail", "reason": f"{role} {ident}: {v['reason']} ({len(failed)} of {len(per)} failed)",
+                "framesJudged": judged, "gaps": [], "firstFrame": first}
+    unsure = sorted(str(i) for i, v in verdicts.items() if v["result"] != "pass")
+    if unsure:
+        v = verdicts[next(i for i in verdicts if str(i) == unsure[0])]
+        return {"result": "needs-review", "reason": f"{role} {unsure[0]}: {v['reason']}", "framesJudged": judged,
+                "gaps": []}
+    return {"result": "pass", "reason": f"every {role} on screen passed ({len(per)}, {judged} frames)",
+            "framesJudged": judged, "gaps": [], "firstFrame": None}
 
 
 # --- the keep rule ------------------------------------------------------------------------------
@@ -369,11 +488,36 @@ def frames_to_ask(check: dict, frames_probed) -> list[int]:
     return [n for n in frames_probed if n >= lo and (hi is None or n <= hi)]
 
 
-def cost(check: dict, frames_probed, usd_per_image: float, runs: int = 2 * REPEATS) -> float:
-    """What judging the check costs at list price: one image a frame in its window, on every run."""
+# At most this many objects of one role are asked about in a frame, one image each; a frame with more of
+# them on screen is not asked about, and is a gap (sam_observer.py). It bounds what a frame can cost.
+MAX_BOXES = 3
+
+
+def asks_player(checks, bindings: dict = BUNDLED_BINDINGS) -> bool:
+    """True when a check in ``checks`` is about an object the engine gives one position a frame (the
+    player): only then is the observer asked about the player on that probe. A probe whose checks name
+    only roles the game has many of (``named``) pays for their boxes and nothing else."""
+    return any(not named(c["object"], bindings) for c in checks)
+
+
+def images_per_frame(player: bool, objects=()) -> int:
+    """The most images one planned frame can take: one for the player when it is asked about, and up to
+    MAX_BOXES for each named role in ``objects``."""
+    return (1 if player else 0) + MAX_BOXES * len(tuple(objects))
+
+
+def images_a_frame(check: dict, bindings: dict = BUNDLED_BINDINGS) -> int:
+    """The most images one frame of the check's object can take: one, or MAX_BOXES for a role with many."""
+    return MAX_BOXES if named(check["object"], bindings) else 1
+
+
+def cost(check: dict, frames_probed, usd_per_image: float, runs: int = 2 * REPEATS,
+         bindings: dict = BUNDLED_BINDINGS) -> float:
+    """What judging the check costs at list price, at most: one image a frame in its window (MAX_BOXES for a
+    role with many), on every run."""
     if check["observer"] != "sam-3.1-anchor":
         return 0.0
-    return len(frames_to_ask(check, frames_probed)) * runs * usd_per_image
+    return len(frames_to_ask(check, frames_probed)) * images_a_frame(check, bindings) * runs * usd_per_image
 
 
 def reserve(check: dict, frames_probed, spend) -> dict:
@@ -435,11 +579,25 @@ RESULT_ROWS = ("kept", "dropped", "not-run")
 OUTCOMES = ("catch", "no-catch", "needs-review", "not-evaluated")
 
 
-def observe(observer, run_dir, route: dict) -> tuple[dict, dict, int]:
+NOT_ASKED_PLAYER = "the player is not asked about: no check on this probe names it"
+
+
+def observe(observer, run_dir, route: dict, objects=(), player: bool = True) -> tuple[dict, dict, int]:
     """(setting, run, images) from one observer call, checked as untrusted data: a malformed answer is a
-    PixelError, never a pass."""
+    PixelError, never a pass. ``objects`` are the roles the game has many of (``named``) that the observer
+    is also asked about; its run must then carry ``objects[role]`` for each, one row a frame. With
+    ``player`` False (``asks_player``: no check on the probe names the player) the observer is not asked
+    about the player, and an answer that says it asked about the player anyway is refused."""
+    objects = tuple(objects)
+    if not player and not objects:
+        raise PixelError("the observer would be asked about nothing: neither the player nor a named object")
+    kwargs = {}
+    if objects:
+        kwargs["objects"] = objects
+    if not player:
+        kwargs["player"] = False
     try:
-        answer = observer(Path(run_dir), route)
+        answer = observer(Path(run_dir), route, **kwargs)
     except PixelError:
         raise
     except Exception as exc:  # noqa: BLE001 - an observer that fails decides nothing
@@ -455,6 +613,22 @@ def observe(observer, run_dir, route: dict) -> tuple[dict, dict, int]:
     for f in run["frames"]:
         if not isinstance(f, dict) or not isinstance(f.get("frame"), int) or isinstance(f.get("frame"), bool):
             raise PixelError("the observer's answer has a frame without a frame number")
+    if not player and any(f.get("asked") for f in run["frames"]):
+        raise PixelError("the observer was not asked about the player, and its answer says it asked")
+    asked = run.get("objects", {})
+    if not isinstance(asked, dict) or set(asked) != set(objects):
+        raise PixelError(f"the observer was asked about {', '.join(objects) or 'no named object'}, and its "
+                         f"answer is about {', '.join(sorted(map(str, asked))) if isinstance(asked, dict) else 'something else'}")
+    for role, rows in asked.items():
+        if not isinstance(rows, list):
+            raise PixelError(f"the observer's answer about {role} is not a list of frames")
+        for f in rows:
+            if not isinstance(f, dict) or not isinstance(f.get("frame"), int) or isinstance(f.get("frame"), bool):
+                raise PixelError(f"the observer's answer about {role} has a frame without a frame number")
+            boxes = f.get("boxes", [])
+            if not isinstance(boxes, list) or not all(isinstance(b, dict) for b in boxes) or len(boxes) > MAX_BOXES:
+                raise PixelError(f"the observer's answer about {role} at frame {f['frame']} is not a list of "
+                                 f"at most {MAX_BOXES} boxes")
     return setting, run, images
 
 

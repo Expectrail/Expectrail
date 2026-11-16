@@ -26,9 +26,9 @@ INT = "tests.release_gate.gate_interference"
 ITN = "tests.release_gate.gate_intent"
 SBX = "tests.release_gate.gate_sandbox"
 BDL = "tests.release_gate.gate_bundle"
+RCT = "tests.release_gate.gate_receipt"
 
 NEEDS_254 = "not written yet: it needs the trusted job that judges outside the candidate job (#254)"
-NEEDS_255 = "not written yet: it needs the signed receipt (#255)"
 NEEDS_257 = "not written yet: it needs the observation timeline (#257)"
 
 
@@ -42,6 +42,14 @@ def row(group: str, cid: str, control: str, tests=(), open: str | None = None, s
             "baselines": list(baselines)}
 
 
+# The positive control of the receipt rows: the receipt verifier, as its own process, clears the
+# receipt made from the unchanged game's real job when it is asked about that job's own digests.
+RECEIPT_BASELINES = [f"{RCT}.ReceiptTest.test_control_the_unchanged_games_receipt_is_cleared_for_that_job"]
+RECEIPT_SCOPE = ("the receipt verifier (`python3 -m expectrail.receipt trust-check`) run as its own process. The "
+                 "receipts are made by the test from real `expectrail verify` jobs with Godot (their head tree, "
+                 "request and policy digests and their decision) and signed with a key made in the test, because "
+                 "the trusted job writes no receipt yet (#255). The receipt writer and CI attestation are not covered")
+
 # The positive controls of the two-job rows (#254): the trusted judge clears the unchanged game's
 # capture and rejects the seeded bug's, through ``tests.release_gate.bundle``.
 TWO_JOB_BASELINES = [
@@ -52,13 +60,29 @@ TWO_JOB_BASELINES = [
 
 CONTROLS = [
     # --- Identity and authority -------------------------------------------------------------------
-    row(GROUPS[0], "wrong-build-or-head", "wrong build or head", open=NEEDS_255),
-    row(GROUPS[0], "unknown-signer", "unknown signer", open=NEEDS_255),
+    row(GROUPS[0], "wrong-build-or-head", "wrong build or head",
+        [f"{RCT}.ReceiptTest.test_the_unchanged_games_receipt_does_not_clear_the_seeded_bugs_head",
+         f"{RCT}.ReceiptTest.test_a_receipt_for_one_build_of_a_head_does_not_clear_another_build_of_it",
+         f"{RCT}.ReceiptTest.test_a_receipt_for_another_repository_does_not_clear_this_one",
+         f"{RCT}.ReceiptTest.test_a_head_or_build_left_unasked_is_not_a_pass"],
+        scope=RECEIPT_SCOPE, baselines=RECEIPT_BASELINES),
+    row(GROUPS[0], "unknown-signer", "unknown signer",
+        [f"{RCT}.ReceiptTest.test_a_receipt_signed_by_a_key_the_store_does_not_hold_is_not_cleared",
+         f"{RCT}.ReceiptTest.test_a_receipt_naming_the_trusted_key_id_with_another_key_is_not_cleared",
+         f"{RCT}.ReceiptTest.test_a_receipt_carrying_the_trusted_key_but_signed_by_another_is_not_cleared",
+         f"{RCT}.ReceiptTest.test_the_seeded_bugs_reject_edited_to_accept_after_signing_is_not_cleared",
+         f"{RCT}.ReceiptTest.test_a_store_without_the_signers_key_clears_nothing"],
+        scope=RECEIPT_SCOPE, baselines=RECEIPT_BASELINES),
     row(GROUPS[0], "swapped-policy", "swapped policy",
         [f"{IDN}.IdentityTest.test_checks_swapped_between_the_request_and_the_run_judge_nothing",
          f"{IDN}.IdentityTest.test_the_base_checks_swapped_after_the_request_judge_nothing",
          f"{IDN}.IdentityTest.test_checks_swapped_and_put_back_exactly_are_the_checks_that_were_named"]),
-    row(GROUPS[0], "expired-receipt", "expired receipt", open=NEEDS_255),
+    row(GROUPS[0], "expired-receipt", "expired receipt",
+        [f"{RCT}.ReceiptTest.test_a_receipt_past_its_expiry_is_not_cleared",
+         f"{RCT}.ReceiptTest.test_a_receipt_issued_in_the_future_is_not_cleared",
+         f"{RCT}.ReceiptTest.test_a_receipt_valid_for_longer_than_seven_days_is_not_cleared",
+         f"{RCT}.ReceiptTest.test_an_expired_receipt_with_its_dates_edited_after_signing_is_not_cleared"],
+        scope=RECEIPT_SCOPE, baselines=RECEIPT_BASELINES),
     row(GROUPS[0], "changed-head", "changed head",
         [f"{BDL}.HeadTest.test_control_the_head_that_was_judged_is_given_clearance",
          f"{BDL}.HeadTest.test_a_new_head_pushed_before_the_judge_finished_is_not_given_clearance",
@@ -190,6 +214,17 @@ BASELINES = [
     f"{ITN}.IntentBaselineTest.test_the_pull_request_gate_clears_the_unchanged_game_declared_an_intended_change",
 ]
 # The two-job rows have their own positive controls besides these: TWO_JOB_BASELINES, named by those rows.
+
+
+# The rows' own positive controls, each set with the words the summary prints for it. Each set is read on
+# its own: one path that cannot run here (the two-job rows without the replay sandbox) says nothing of
+# another that did.
+ROW_BASELINE_GROUPS = [
+    ("The two-job rows' own positive controls (the trusted judge clears the unchanged game's capture and "
+     "rejects the seeded bug's)", TWO_JOB_BASELINES),
+    ("The receipt rows' own positive control (the receipt verifier clears the receipt made from the unchanged "
+     "game's job, asked about that job's own digests)", RECEIPT_BASELINES),
+]
 
 
 def by_id() -> dict[str, dict]:

@@ -38,13 +38,15 @@ ROOT = Path(__file__).resolve().parent.parent
 LEDGER = ROOT / "docs" / "capabilities.json"
 PAGE = ROOT / "docs" / "capabilities.md"
 SCHEMA = ROOT / "contracts" / "capabilities.v1.schema.json"
-ADVERTS = ("README.md", "docs/index.html")
+ADVERTS = ("README.md", "docs/index.html", "docs/concepts.html", "docs/run-it.md")
 REPO_URL = "https://github.com/Expectrail/Expectrail"
 
 # The modes issue #244 names. A ledger without one of them is incomplete, whatever else it lists.
 REQUIRED = (
     "godot-verify", "ci-gate", "unity-harness", "web-checkout", "sam-observer", "byo-vision",
     "generated-checks", "discovery", "fix-loop", "signing", "mcp-tools", "key-gateway",
+    "recorded-vision", "template-sensor", "spend-caps", "verify-intent", "local-app",
+    "dodge-the-creeps", "verifier-receipts",
 )
 
 _COMMAND = re.compile(r"\bpython3? -m ([a-z_][a-z0-9_]*(?:\.[a-z_][a-z0-9_]*)*)")
@@ -457,6 +459,7 @@ def render(doc: dict) -> str:
         "[`capabilities.json`](capabilities.json); `tests/test_capabilities.py` fails when a row marked",
         "measured has no run link, when a link points at a file that is not there, and when the README or",
         "the site names a command, a switch, a workflow, a doc page or a watched name that no row lists.",
+        "The checked pages are README.md, docs/index.html, docs/concepts.html and docs/run-it.md.",
         "",
         "Every run link carries the run's conclusion as GitHub's API gave it when the row was written. The",
         "test reads that recorded value, not GitHub. A measured or integrated row may cite only runs",

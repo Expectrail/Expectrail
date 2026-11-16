@@ -126,7 +126,7 @@ def calibration_markdown(doc):
 def anchored(project, data, client, out, *, vision_every=1):
     """The visual observer for this game: calibrated on the unchanged game's first route (#330), and
     used only when the calibration says so. Writes calibration.json and calibration.md to ``out``."""
-    from expectrail import anchored as an
+    from expectrail import anchored as an, recorded
 
     first = routes(project)[0]
     run = saved_run(data / 'pinned' / first.stem, first)
@@ -137,11 +137,12 @@ def anchored(project, data, client, out, *, vision_every=1):
         doc = an.judge_calibration(game, run['replaySha256'], [], an.RULES,
                                    model=str(getattr(client, 'model', 'unknown')),
                                    provider=str(getattr(client, 'provider', 'unknown')))
-        doc['why'] = [str(exc)[:200]] + doc['why'][:7]
+        doc['why'] = [(recorded.missing_reason(exc) or str(exc))[:200]] + doc['why'][:7]
     out.mkdir(parents=True, exist_ok=True)
     (out / 'calibration.json').write_text(json.dumps(doc, indent=1) + '\n')
     (out / 'calibration.md').write_text(calibration_markdown(doc))
-    return an.AnchoredObserver(client, doc, every=vision_every)
+    observer = an.AnchoredObserver(client, doc, every=vision_every)
+    return recorded.with_recorded_diagnostics(observer) if isinstance(client, recorded.RecordedClient) else observer
 
 
 def judge(project, data, receipt, out, observer=None, client=None, *, vision_every=1):
@@ -153,6 +154,9 @@ def judge(project, data, receipt, out, observer=None, client=None, *, vision_eve
         raise ValueError('vision sampling requires the calibrated anchored observer')
     if capture_id(project, data) != receipt:
         raise ValueError('capture digest differs from the capture job output')
+    # Use the same trusted check selection as the no-key trial, and refuse an
+    # invalid selection before calibration can ask a model anything.
+    selected_spec = trial.project_spec(project)
     if observer is None:
         from expectrail.recorded import RecordingClient
         # One cache for calibration, all variants, and both kinds of gate question. Exact question
@@ -168,7 +172,7 @@ def judge(project, data, receipt, out, observer=None, client=None, *, vision_eve
             arm = policy / case
             shutil.copytree(trial.REPO / project['routes'], arm / 'routes')
             (arm / 'specs').mkdir()
-            shutil.copyfile(trial.SPEC, arm / 'specs' / trial.SPEC.name)
+            shutil.copyfile(selected_spec, arm / 'specs' / selected_spec.name)
             game = arm / 'project'
             for path in routes(project):
                 run = saved_run(data / case / path.stem, path)

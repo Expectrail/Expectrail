@@ -1,0 +1,79 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "sensor-untuned-kinematic-v1",
+  "description": "Predeclared #262 untuned measurement; see frozen work-log plan.",
+  "ticks": 720,
+  "seed": 26220261116,
+  "events": [
+    {
+      "tick": 13,
+      "action": "move_right",
+      "pressed": true
+    },
+    {
+      "tick": 67,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 79,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 137,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 149,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 193,
+      "action": "move_right",
+      "pressed": false
+    },
+    {
+      "tick": 227,
+      "action": "move_left",
+      "pressed": true
+    },
+    {
+      "tick": 281,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 293,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 407,
+      "action": "move_left",
+      "pressed": false
+    },
+    {
+      "tick": 443,
+      "action": "move_right",
+      "pressed": true
+    },
+    {
+      "tick": 497,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 509,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 623,
+      "action": "move_right",
+      "pressed": false
+    }
+  ]
+}

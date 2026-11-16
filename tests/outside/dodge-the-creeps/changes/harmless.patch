@@ -1,0 +1,11 @@
+--- a/player.gd
++++ b/player.gd
+@@ -4,5 +4,5 @@
+
+ @export var speed = 400 # How fast the player will move (pixels/sec).
+-var screen_size # Size of the game window.
++var screen_size # Size of the play area.
+
+ func _ready():
+
+base-commit: b761b4cd5718a7118f2c95eb55f181d0a5f004f1

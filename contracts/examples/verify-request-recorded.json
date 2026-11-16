@@ -1,0 +1,29 @@
+{
+  "format": "expectrail.verify-request/v1",
+  "project": {
+    "adapter": "godot",
+    "game": "project",
+    "routes": [
+      "routes/*.json"
+    ],
+    "specs": "specs",
+    "visual": {
+      "type": "anchored-recorded",
+      "recording": "project/vision/vision-recording.json",
+      "calibration": "project/vision/calibration.json"
+    }
+  },
+  "head": {
+    "checkout": "/work/checkout/head",
+    "commit": null
+  },
+  "base": {
+    "checkout": "/work/checkout/base",
+    "commit": null
+  },
+  "executionClass": "diagnostic",
+  "limits": {
+    "timeoutSeconds": 1800
+  },
+  "idempotencyKey": "pr-7:1111111"
+}

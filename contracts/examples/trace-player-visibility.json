@@ -1,0 +1,73 @@
+{
+  "format": "expectrail.trace/v0",
+  "ticks": 3,
+  "physicsTicksPerSecond": 60,
+  "rows": [
+    {
+      "tick": 0,
+      "player": [
+        0,
+        0
+      ],
+      "body": [
+        -27,
+        -34,
+        27,
+        34
+      ],
+      "view": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "playerVisible": false
+    },
+    {
+      "tick": 1,
+      "player": [
+        240,
+        450
+      ],
+      "body": [
+        213,
+        416,
+        267,
+        484
+      ],
+      "view": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "playerVisible": true
+    },
+    {
+      "tick": 2,
+      "player": [
+        240,
+        450
+      ],
+      "body": [
+        213,
+        416,
+        267,
+        484
+      ],
+      "view": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "playerVisible": true
+    }
+  ]
+}

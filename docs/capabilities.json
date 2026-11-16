@@ -1,6 +1,6 @@
 {
   "format": "expectrail.capabilities/v1",
-  "updated": "2026-11-14",
+  "updated": "2026-11-15",
   "statuses": {
     "implemented": "The code is in the repository and its tests pass in CI. It has run only on recorded or synthetic inputs, or has no recorded end-to-end run.",
     "integrated": "Wired into the path a user takes (a command, a workflow or the site) and exercised there by a CI job or a recorded run. No published result rests on it.",
@@ -16,7 +16,7 @@
   "rows": [
     {
       "id": "godot-verify",
-      "mode": "Godot verify path: replay a candidate, judge the approved checks, accept or reject",
+      "mode": "Historical Godot agent verification benchmark: replay candidates and judge approved checks",
       "profile": "Godot 4.7.2, 2D, Linux under Xvfb and Mesa; one game (Godot's platformer demo)",
       "observer": "The engine's position log and the gameplay check; SAM 3.1 or Muse Glimmer for the vision checks",
       "entryPoints": [
@@ -78,7 +78,7 @@
           "shows": "the decision rule on recorded observations"
         }
       ],
-      "limits": "One game, with bugs the team seeded. The replay is sandboxed only where bubblewrap can run (see replay-sandbox); the gate's record says how many replays were and the gate can refuse to run without it, but no separate trusted job judges and signs the verdict (#254, #255), so nothing here is graded isolated. The approved specs judge frames 0 to 119 of a route."
+      "limits": "Seeded bugs on one game, not a catch-rate estimate for arbitrary projects. These agent runs do not measure the current installed command's default both-observer path. The approved benchmark specs judge frames 0 to 119. Replay containment is conditional on Bubblewrap; the newer two-job Action and receipt module are separate rows, without an end-to-end trusted signed deployment shown. No isolated grade."
     },
     {
       "id": "godot-harness",
@@ -119,7 +119,7 @@
           "shows": "ten replays bit-identical, stated without a run link"
         }
       ],
-      "limits": "The ten-replay figure has no run link, so the row is not marked measured. Capture needs Linux. The game writes its own frames and trace, so a change written to forge them could."
+      "limits": "The ten-replay figure has no run link, so the row is not marked measured. Capture is demonstrated on Linux; no other capture platform is evidenced in this row. The game writes its own frames and trace, so a change written to forge them could."
     },
     {
       "id": "ci-gate",
@@ -495,7 +495,7 @@
     },
     {
       "id": "judge-fallback",
-      "mode": "When the vision model does not answer: judge again, then Glimmer, then a person",
+      "mode": "Historical agent fix-loop fallback: retry SAM, then Glimmer, then a person",
       "profile": "The live fix loop on the Godot game",
       "observer": "SAM 3.1, then Muse Glimmer checked against the engine",
       "entryPoints": [
@@ -520,7 +520,7 @@
           "shows": "a rejection is never judged again; when SAM stays down, Glimmer checked against the engine decides"
         }
       ],
-      "limits": "Shown in drills with an injected outage, not in a real one. The drill of the pre-run check (run 41234190741) is not cited: that run ended in failure."
+      "limits": "Shown in drills with an injected outage, not in a real one. The drill of the pre-run check (run 41234190741) is not cited: that run ended in failure. This is the agents.judge_ladder path, not a fallback promised by the installed verify command."
     },
     {
       "id": "byo-models",
@@ -560,7 +560,7 @@
           "shows": "request and reply shapes on recorded responses"
         }
       ],
-      "limits": "The README says every number in it was produced with Meta's models: these paths are not benchmarked, and no spend is reported."
+      "limits": "Recorded-response tests cover the listed provider adapters. The cited smoke workflow succeeded, but this audit has not established which provider keys were set; it does not prove a live call to every listed provider. No comparative benchmark or provider spend result is reported. Spec and triage senders enforce role caps; see spend-caps."
     },
     {
       "id": "byo-fixer",
@@ -792,13 +792,19 @@
           "kind": "test",
           "ref": "tests/test_discovery.py",
           "shows": "a flaky failure is a candidate, not a finding; a runner failure is recorded, never a pass"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41326269491",
+          "conclusion": "success",
+          "shows": "Historical sabotage/design-change probe; public aggregate in docs/discovery.md, not a new measurement."
         }
       ],
       "limits": "Advisory: it cannot reject a change. Blind, it flagged 7 of 16 defects. Its profile covers four mechanics of one game and was written after reading four bug reports."
     },
     {
       "id": "fix-loop",
-      "mode": "Fix loop: triage, a fixer in a sandbox, verify every attempt, a morning report",
+      "mode": "Historical agent fix loop: triage, sandboxed fixer, verify attempts and a morning report",
       "profile": "The Godot game, Muse Wonder for triage and Muse Code as the fixer",
       "observer": "As the Godot verify path",
       "entryPoints": [
@@ -870,13 +876,19 @@
           "kind": "test",
           "ref": "tests/test_demo_loop.py",
           "shows": "how a live run is recorded: a crash is recorded and never an accept"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41330361829",
+          "conclusion": "success",
+          "shows": "Historical mutation repairs: 10/10 caught seeded bugs fixed on the first attempt; this is not a live installed repair result."
         }
       ],
-      "limits": "Bugs the team seeded, on one game. The planned release is verify-only (#250). Muse Code's spend is not reported per run."
+      "limits": "Seeded bugs on one game through agents.loop. These live repairs do not establish a live repair through the newer installed repair/auto-fix path, which is fixture-tested separately. Muse Code's spend is not reported per historical run."
     },
     {
       "id": "review-change",
-      "mode": "Review against the failing base: the same checks before and after a fix",
+      "mode": "Historical agent review against a failing base: the same checks before and after a fix",
       "profile": "The Godot game",
       "observer": "As the Godot verify path",
       "entryPoints": [
@@ -919,7 +931,7 @@
           "shows": "the correct fix is a demonstrated repair; without the private routes a live repair is not claimed"
         }
       ],
-      "limits": "Without the private routes a review is inconclusive by design, so reviews on pull requests never claim a repair."
+      "limits": "This legacy agents.review_change path requires private routes to claim a demonstrated repair, so its public-only review is inconclusive. The current installed verify --intent fix path has separate offline public-check demonstrations; see verify-intent. The historical engine-only runs do not measure current default vision behavior."
     },
     {
       "id": "repair",
@@ -957,11 +969,11 @@
           "shows": "The CI workflow runs only on a maintainer's expectrail-autofix label with a published reject for the same head, holds contents: read only, and runs the fixture fixer with isolated replay"
         }
       ],
-      "limits": "Only fixture patches have been used: no live fixer has produced a repair yet, in any run. CI auto-fix is off by default and runs only the fixture fixer. Expectrail never merges a repair."
+      "limits": "Only fixture patches have been used through the new installed repair/auto-fix path; no live fixer result is recorded for that path. Historical agents.loop repairs are listed separately in fix-loop. CI auto-fix is off by default and runs only the fixture fixer. Expectrail never merges a repair."
     },
     {
       "id": "fixer-sandbox",
-      "mode": "Fixer sandbox: the agent reaches only its worktree",
+      "mode": "Fixer sandbox: restrict editable game files and hide verifier policy and keys",
       "profile": "bubblewrap on Linux; a plain worktree without the verifier's files where bubblewrap is missing",
       "observer": "None",
       "entryPoints": [
@@ -992,7 +1004,7 @@
           "shows": "writes outside the editable files are denied; bubblewrap never mounts the host's local directories"
         }
       ],
-      "limits": "A namespace sandbox on the host's kernel, not a virtual machine. Shell commands inside it are logged, not checked. It sandboxes the fixer; the game's replay has its own (replay-sandbox)."
+      "limits": "A namespace sandbox on the host's kernel, not a virtual machine. Shell commands inside it are logged, not checked. It sandboxes the fixer; the game's replay has its own (replay-sandbox). OS containment requires the actual Bubblewrap path; a diagnostic plain-worktree fallback is not isolation. Runtime files and any explicitly configured gateway remain accessible under their mount/network policy."
     },
     {
       "id": "replay-sandbox",
@@ -1027,13 +1039,22 @@
           "kind": "test",
           "ref": "tests/test_replay_sandbox.py",
           "shows": "inside, a program and the real game each fail to open a socket, write outside, read a check or the verifier, and read the starting process's environment, while the same attempts succeed outside; a link left as the trace is refused; the clean game's frame and trace hashes are the same with and without"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43704707400",
+          "conclusion": "success",
+          "shows": "PR #505 CI seeded-bugs job: 56 real-tool tests, none skipped, including terminal containment, unchanged frame hashes and disk-bound enforcement. This is a PR run, not a main acceptance deployment.",
+          "jobs": [
+            "seeded-bugs"
+          ]
         }
       ],
-      "limits": "Godot only: the Unity player and the web replay are not sandboxed. The gate records how many replays were sandboxed and can require it, and the orchestrator's isolated class requires it; no verdict is graded isolated by it, because that grade also needs a trusted job that judges and signs (#254, #255). Not shown in the real tool: that the terminal was reachable before the sandbox got a session of its own. A namespace sandbox on the host's kernel, not a virtual machine. What a replay adds to its work copy and output folder is bounded (4 GiB, 250,000 files) by a measurement every 0.1 s, not a file-system quota, so a game can pass it by what the disk takes in 0.1 s before it is stopped; CPU and memory are limited only by the replay's time limit. On Ubuntu 24.04 the runner must allow unprivileged user namespaces first."
+      "limits": "Godot only: the Unity player and the web replay are not sandboxed. The gate records how many replays were sandboxed and can require it, and the orchestrator's isolated class requires it; no verdict is graded isolated by it, because that grade also needs a trusted job that judges and signs (#254, #255). A namespace sandbox on the host's kernel, not a virtual machine. What a replay adds to its work copy and output folder is bounded (4 GiB, 250,000 files) by a measurement every 0.1 s, not a file-system quota, so a game can pass it by what the disk takes in 0.1 s before it is stopped; CPU and memory are limited only by the replay's time limit. On Ubuntu 24.04 the runner must allow unprivileged user namespaces first."
     },
     {
       "id": "key-gateway",
-      "mode": "Key gateway: the agent has no network of its own and never holds the real key",
+      "mode": "Key gateway: sandboxed agents reach allowed provider hosts through a proxy without holding the real key",
       "profile": "mitmproxy in front of the fixer's sandbox, for Muse Code and for a BYO agent",
       "observer": "None",
       "entryPoints": [
@@ -1106,9 +1127,14 @@
           "kind": "test",
           "ref": "tests/test_agents.py",
           "shows": "generate, sign and verify with Ed25519; a tampered payload fails"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_receipt.py",
+          "shows": "The separate receipt module checks an offline issuer trust store; it does not wire receipts into the historical release-candidate path."
         }
       ],
-      "limits": "The key is generated per run on the verifying side. There is no attestation in CI, no offline trust store and no receipt yet (#255)."
+      "limits": "Historical per-run key on the verifying side; this is not a deployed issuer with distributed trust. The separate receipt module now implements an offline trust store and trust-check (verifier-receipts), but no CI attestation or complete capture/judge/receipt deployment is evidenced here."
     },
     {
       "id": "mcp-tools",
@@ -1136,7 +1162,7 @@
           "shows": "initialize and the tool list"
         }
       ],
-      "limits": "No run from an MCP client is recorded. The tools are expectrail_draft_spec, expectrail_verify_build and expectrail_trust_check; #252 retires verify_build's fix loop."
+      "limits": "Recorded stdio protocol and tool tests only; no run from an MCP client is recorded. expectrail_verify_build still invokes the historical agents.loop, not the installed verify request path; expectrail_trust_check runs the sandbox canary, not receipt trust-check. The third tool is expectrail_draft_spec."
     },
     {
       "id": "spec-writer",
@@ -1161,9 +1187,14 @@
           "kind": "test",
           "ref": "tests/test_spec_writer.py",
           "shows": "a good draft is validated and unapproved; approval is added only to a clean spec"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_spec_spend_month.py",
+          "shows": "Real HTTP, open and provider senders require a cap and hold before every request, including retries; wrapped stand-ins count when configured."
         }
       ],
-      "limits": "A draft needs a person to tighten its prompts and approve it. No agent may approve."
+      "limits": "A draft needs a person to tighten its prompts and approve it. No agent may approve. Real drafting sends require EXPECTRAIL_SPEC_USD_CAP; no new live drafting run was made for the cap change."
     },
     {
       "id": "spark-open",
@@ -1194,7 +1225,7 @@
           "shows": "drafts, sorting and calls are recorded; a failing endpoint is recorded, not hidden"
         }
       ],
-      "limits": "Its drafts need a person as Muse Spark's do. One day's live runs."
+      "limits": "Its drafts need a person as Muse Spark's do. One day's live runs. Its counting wrapper preserves request-boundary spec budgeting; see spend-caps."
     },
     {
       "id": "feedback-intake",
@@ -1293,7 +1324,7 @@
     {
       "id": "orchestrator",
       "mode": "Verification as a job: verify, status, cancel and report, with a folder and a status file per job",
-      "profile": "The Godot game, through the CI gate's verification",
+      "profile": "Godot verification jobs used by the installed command, local app and sample workflow",
       "observer": "The engine's record and a FramesObserver, under the rule both",
       "entryPoints": [
         "expectrail.orchestrator"
@@ -1330,9 +1361,14 @@
           "kind": "test",
           "ref": "tests/test_verify_vision.py",
           "shows": "scripted SAM 3.1 answers; both observers required, missing key or cap still replays: engine failures reject and passing engine checks need review, and the replay never receives the key"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_app_projects.py",
+          "shows": "Configured local app and CLI submit the ordinary worker request with matching policy and input digests, using offline replays and recorded answers."
         }
       ],
-      "limits": "Only the sample command and tests call it: the gate's action and the site do not go through it yet. The isolated execution class runs every replay with the sandbox required and refuses where the machine cannot; its evidence grade stays diagnostic, because the ledger's isolated grade also needs a trusted job that judges and signs (#254, #255). The game is held to the tree the job asked about (the worker's read, the gate's record and each replay's copy must agree, or the job is needs-review), and the verifier judges with the one reading of the specs and routes whose digest is the job's. On a system without /proc a killed worker's children are not found and run on to their own time limit. One host. The cited live run predates the vision default; vision in the orchestrator is tested offline only. Requires MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP."
+      "limits": "The installed command, local app and Run it call this job layer; the split CI Action has its own capture/judge path. The isolated execution class requires replay sandboxing but its ledger grade remains diagnostic: no complete trusted signed deployment is shown. Job, policy and replay tree digests must agree. Without /proc, orphan children of a killed worker run to their own limit. One host. The cited live run predates the vision default; current both-observer decisions are tested offline. Live SAM needs MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP; a configured recorded observer instead needs an exact saved answer."
     },
     {
       "id": "installed-command",
@@ -1379,19 +1415,24 @@
           "shows": "the six quickstart command blocks, expected exits, link anchors and the no-credentials evidence checks on offline stand-ins; CI is configured to execute the published blocks with the real engine in the package job"
         }
       ],
-      "limits": "Not on PyPI: publishing needs an account and a token, which a person sets up. The release workflow has not run: it runs on a tag, and pushing a tag is a person's step. Linux only as packaged. sample and verify need MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP to accept (#379); without them, as in CI, they still replay and an engine failure rejects, and a pass is needs-review."
+      "limits": "Not on PyPI; publishing needs a person's account/token. The tag-triggered release workflow has not run. Linux is the demonstrated packaged platform. Current sample/verify requires both observations to accept: live SAM needs MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP; configured recorded vision needs exact saved image/questions instead. Missing evidence needs review unless a failing check rejects. The cited historical package run predates this default; current defaults are tested offline. Installed trust-check is still a placeholder; the receipt module command exists separately."
     },
     {
       "id": "run-it",
-      "mode": "Run it: a visitor starts a check of one of three sample changes from expectrail.tech and sees the verdict and its evidence",
-      "profile": "The bundled Godot game on a hosted Linux runner, through run-it.yml; the page and its service on expectrail.tech",
+      "mode": "Run it: operator-dispatched sample workflow, plus implemented visitor UI and undeployed start service",
+      "profile": "Bundled Godot game on a hosted Linux runner; visitor service implemented and stub-tested, not deployed",
       "observer": "The engine's record, and the vision model's answers recorded once per sample (a frame not in the recording gets no answer)",
       "entryPoints": [
         "expectrail.runit",
-        "expectrail.runit_site"
+        "expectrail.runit_site",
+        "tools.runit_burst",
+        "tools.runit_smoke",
+        "tools.runit_stub",
+        "expectrail.viewer"
       ],
       "workflows": [
-        "run-it.yml"
+        "run-it.yml",
+        "run-it-record.yml"
       ],
       "docs": [
         "docs/run-it.md"
@@ -1459,7 +1500,7 @@
           "shows": "the home page and the README link the Run it page, and the page and its script are there"
         }
       ],
-      "limits": "Visitors cannot start a run yet: the service that starts runs (apps/run-it-edge) is written and tested against a local stub but not deployed, so the page says it cannot start runs. The runs cited were dispatched by hand. Each sample's vision answers are one recording (November 13): a frame the recording does not hold gets no answer and the sample needs review until it is recorded again. Receipts are not signed (#255)."
+      "limits": "Visitors cannot start a run yet: the service that starts runs (apps/run-it-edge) is written and tested against a local stub but not deployed, so the page says it cannot start runs. The runs cited were dispatched by hand. Each sample's vision answers are one recording (November 13): a frame the recording does not hold gets no answer and the sample needs review until it is recorded again. Receipts are not signed (#255). Exact PNG matches depend on rendering output: a renderer difference can leave an unchanged project at needs-review. Missing vision does not override an engine failure. See recorded-vision."
     },
     {
       "id": "outside-projects",
@@ -1495,9 +1536,249 @@
           "kind": "record",
           "ref": "tests/outside/recordings/kinematic-character/calibration.json",
           "shows": "the calibration of that run, as expectrail.vision-calibration/v1"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_anchored_observer.py",
+          "shows": "Offline anchored observer behavior, including absent/occluded visual evidence; no new live outside-game result."
         }
       ],
-      "limits": "One outside project verified with vision (kinematic-character). Dodge the Creeps has a draft check awaiting Sean's approval and no vision run. A full vision run asks about every frame and cost $2.00 for four variants. The hidden-player reject reads as past the boundary (the model answered with what lies behind the player), not as a missing player. The recorded answers replay only frames whose bytes match."
+      "limits": "One outside project verified with vision (kinematic-character). Dodge has a draft check awaiting Sean's approval and no vision run. Four historical variants used 800 images, $2.00 at list price. The historical hidden-player reject was labelled past the boundary; current NOT-DRAWN handling is tested offline, without a new live measurement. Exact recorded answers do not transfer across arbitrary rendering environments: a later unchanged replay lacks frame 111's answer. See recorded-vision and local-app."
+    },
+    {
+      "id": "recorded-vision",
+      "mode": "Recorded vision and renderer provenance: reuse exact saved image/questions",
+      "profile": "Godot recordings; exact PNG SHA-256, question kind and prompt; optional capture rendering environments",
+      "observer": "Recorded SAM/anchored answers; no live fallback",
+      "entryPoints": [
+        "expectrail.recorded",
+        "tools.recorded_renderer"
+      ],
+      "status": "integrated",
+      "grade": "diagnostic",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43514147344",
+          "conclusion": "success",
+          "jobs": [
+            "verify",
+            "publish"
+          ],
+          "shows": "Operator-dispatched clean sample completed accept using exact recorded vision on real hosted replays. This proves the recorded backend on that capture, not renderer portability."
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_recorded_renderer.py",
+          "shows": "Unknown/mixed provenance, matching and missing questions; diagnostics survive the app, Run it and outside judge without relaxing exact matching."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/measurements/recorded-renderer.json",
+          "shows": "Two saved 180-frame captures: 179 identical PNGs; frame 111 differs by two pixels, one channel level, with different LLVM device strings."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/recorded-renderer.md",
+          "shows": "Offline saved-capture single-check replay: original 120/120 answered and pass; newer 111/112 answered before stopping, needs-review. Not a new full engine/model run."
+        }
+      ],
+      "limits": "Not renderer-portable. A global tolerance admitting the observed two-pixel drift also admits a deliberately subtle player recolour. No tolerance, substituted answer or live fallback exists. Different environments do not invalidate identical PNG bytes; provenance cannot prove the cause of every missing image.",
+      "docs": [
+        "docs/recorded-renderer.md"
+      ]
+    },
+    {
+      "id": "template-sensor",
+      "mode": "Opt-in no-model template/region sensor; experimental observation only",
+      "profile": "PR #522 frozen 408-template platformer bank; local untuned public-route and different-art outside measurements",
+      "observer": "Masked template foreground matches and a calibrated reference map; no model",
+      "entryPoints": [
+        "agents.template_observations",
+        "agents.template_sensor_bench"
+      ],
+      "status": "experimental",
+      "grade": "diagnostic",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_template_foreground.py",
+          "shows": "Foreground/body-part validation and region proofs on synthetic images; tests skip by name without PIL."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/template-sensor-measurement.md",
+          "shows": "Same-frame tuning result: 0/390 clean frames; these frames were used to diagnose and tune the fix."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/template-sensor-untuned-summary.md",
+          "shows": "Separate frozen follow-up, local diagnostic: new route 8/341 (2.35%); unused coins route 0/97; pooled 8/438 (1.83%). Outside robot-bank transfer 540/540 (100%); project calibration refused fully opaque art."
+        }
+      ],
+      "limits": "Opt-in; not wired as a verdict-eligible observer in installed verify or the gate. The new-route 2.35% exceeds the under-2% bar. Does not transfer to kinematic-character. Its own bank could not be built with the frozen alpha requirements; no calibrated-outside result exists. Pooled counts do not establish success per source. Follow-up measurements are local records, not a hosted CI benchmark.",
+      "docs": [
+        "docs/template-sensor-measurement.md",
+        "docs/template-sensor-untuned-summary.md"
+      ]
+    },
+    {
+      "id": "spend-caps",
+      "mode": "Per-role request holds and opt-in monthly reservation ledgers",
+      "profile": "Glimmer, Muse, triage and spec drafting; separate SAM vision ledger; Linux file locks",
+      "observer": "None",
+      "entryPoints": [
+        "expectrail.spend"
+      ],
+      "status": "implemented",
+      "grade": "fixture",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_spec_spend_month.py",
+          "shows": "Real senders with mocked networks refuse missing spec caps and hold on retries; wrappers preserve budgeting; independent processes contend on one model-month file; malformed/unreadable ledgers stop by name."
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_spend.py",
+          "shows": "Role cap validation, holds and job-budget writer/reader."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/spend-caps.md",
+          "shows": "Merged #267 request-boundary spec accounting and model-month reservation semantics."
+        }
+      ],
+      "limits": "No live cap-exhaustion or vendor billing measurement. EXPECTRAIL_MODEL_MONTH_LEDGER opts in to a combined $200 UTC month reservation total; EXPECTRAIL_VISION_MONTH_LEDGER is separate. Whole process caps are reserved per role, including a new reservation in a new process. Holds are conservative reservations, not reconciled bills. External coding agents and feedback transcription/classification are not universally metered.",
+      "docs": [
+        "docs/spend-caps.md"
+      ],
+      "switches": [
+        "EXPECTRAIL_SPEC_USD_CAP",
+        "EXPECTRAIL_GLIMMER_USD_CAP",
+        "EXPECTRAIL_MUSE_USD_CAP",
+        "EXPECTRAIL_TRIAGE_USD_CAP",
+        "EXPECTRAIL_MODEL_MONTH_LEDGER",
+        "EXPECTRAIL_VISION_MONTH_LEDGER"
+      ]
+    },
+    {
+      "id": "verify-intent",
+      "mode": "verify --intent fix|change|none with a bounded bug report",
+      "profile": "Installed Godot request/worker/gate path; replay and model stand-ins in the evidence",
+      "observer": "Engine plus required visual observations",
+      "entryPoints": [
+        "expectrail.orchestrator.cli",
+        "expectrail.gate.intent"
+      ],
+      "status": "implemented",
+      "grade": "fixture",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_verify_intent.py",
+          "shows": "Actual CLI/store/worker/evaluator/decision tests with stand-in replay: fix needs three base failures and three head passes; passing base, flaky reproduction, missing vision/base and unresolved bugs cannot demonstrate repair."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/new-work/2026-11-15-verify-intent.md",
+          "shows": "59 focused checks and 3,710-test suite; no real-engine or live-model measurement. Linked-issue classification is still part 2."
+        }
+      ],
+      "limits": "Bug text is context, not an approved check. Default intent is none; fix must demonstrate a reproduced repair on the judged checks. No new live-engine intent benchmark. Automatic trusted linked-issue classification/comment wiring remains open and needs human-managed workflow permissions."
+    },
+    {
+      "id": "local-app",
+      "mode": "Local app: configure a Godot project and submit ordinary verification jobs",
+      "profile": "Loopback browser app; bundled platformer and configured public kinematic-character; local Linux/Chromium diagnostic",
+      "observer": "Ordinary both-observer path; live or exact recorded answers as configured",
+      "entryPoints": [
+        "expectrail.app",
+        "expectrail.app_page",
+        "expectrail.project_job"
+      ],
+      "status": "integrated",
+      "grade": "diagnostic",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_app_projects.py",
+          "shows": "A second project with different paths, app/CLI request and decision parity, base-policy authority, drafts and missing answers on stand-ins."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/new-work/2026-11-15-app-any-project.md",
+          "shows": "Real Godot 4.7.2 plus desktop/phone Chromium: unchanged configured outside project needs-review in both app and CLI; frame 111 has no exact answer."
+        }
+      ],
+      "limits": "This is a local app, not a hosted arbitrary-project service. No unchanged outside-project accept on the later renderer is claimed. Non-developer first-user test and native macOS/Windows checks remain open; automated browser checks do not substitute. Diagnostic runs did not establish replay isolation.",
+      "docs": [
+        "docs/app.md",
+        "docs/project-config.md"
+      ]
+    },
+    {
+      "id": "dodge-the-creeps",
+      "mode": "Dodge the Creeps: engine play-area trial with an approved lifecycle-aware check",
+      "profile": "Pinned public Godot demo; the outside trial in CI, pinned, harmless and broken, with no vision key",
+      "observer": "Engine body and node visibility while in play; no vision",
+      "entryPoints": [
+        "tools.dodge_play_area",
+        "tools.outside_trial"
+      ],
+      "status": "experimental",
+      "grade": "diagnostic",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_dodge_check.py",
+          "shows": "Correct body/region conversion, visible-only exercised coverage, insufficient hidden coverage and one-pixel escapes."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/new-work/2026-11-15-dodge-in-play.md",
+          "shows": "Three pinned and three harmless diagnostic runs pass the engine check over 183 judged frames; all three broken variants fail at tick 97. Shared rule without vision gives needs-review/reject, reported as decisionIfApproved."
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43746287911",
+          "conclusion": "success",
+          "shows": "With the check approved by Sean: the broken variant (clamp removed) is rejected, first out of the play area at frame 97; the pinned game and the harmless change pass the engine check and end needs-review, because no visual observer ran."
+        }
+      ],
+      "limits": "One check, approved by Sean on 2026-11-15, on one route. Engine-only: no vision run and no visual-correctness claim, so no accept on this project. Node visibility is the engine's word that the player is in play, not proof of drawn pixels.",
+      "docs": [
+        "docs/outside-projects.md"
+      ]
+    },
+    {
+      "id": "verifier-receipts",
+      "mode": "Receipt module: Ed25519 verification with an offline issuer trust store",
+      "profile": "Local module command python3 -m expectrail.receipt trust-check; generated fixture keys; browser receipt checker with the same fixture semantics",
+      "observer": "None",
+      "entryPoints": [
+        "expectrail.receipt"
+      ],
+      "status": "implemented",
+      "grade": "fixture",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_receipt.py",
+          "shows": "Trusted issuer/signature, repository/head/build/policy expectations, bounded validity, complete passing coverage and accept are required; missing bindings and malformed encodings refuse clearance."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/new-work/2026-11-15-receipt-build-and-strict-fields.md",
+          "shows": "Build binding and strict serialization checks; no real CI attestation deployment."
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_verify_receipt_page.py",
+          "shows": "Browser receipt checker parity with the Python module, using throwaway-key fixtures; not a real Expectrail issuer or deployed clearance."
+        }
+      ],
+      "limits": "Not wired into the historical report/release-candidate path or a demonstrated trusted CI issuer. Installed expectrail trust-check remains a placeholder; use the module with its dependencies. No actions attestation, trust-store distribution or key-rotation deployment is demonstrated. Receipt evidence full is a contract label, not promotion to the capability ledger isolated grade."
     }
   ],
   "notModes": {

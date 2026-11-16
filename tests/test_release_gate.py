@@ -195,9 +195,9 @@ class SummaryTest(unittest.TestCase):
             self.assertEqual(self.row(s, "poisoned-import-cache")["status"], rg.OPEN)
 
     def test_a_row_with_its_own_positive_control_is_held_only_when_that_control_passed(self):
-        two_job = [c["id"] for c in controls.CONTROLS if c["baselines"]]
+        two_job = [c["id"] for c in controls.CONTROLS if c["baselines"] == controls.TWO_JOB_BASELINES]
         self.assertEqual(sorted(two_job), ["changed-head", "writes-evidence-or-policy"])
-        self.assertEqual(controls.row_baselines(), controls.TWO_JOB_BASELINES)
+        self.assertEqual(sorted(controls.row_baselines()), sorted(controls.TWO_JOB_BASELINES + controls.RECEIPT_BASELINES))
         s = summary(outcomes())
         self.assertEqual({self.row(s, cid)["status"] for cid in two_job}, {rg.HELD})
         self.assertIn("own positive controls (the trusted judge clears the unchanged game's capture and rejects "
@@ -211,6 +211,36 @@ class SummaryTest(unittest.TestCase):
                 # The other rows do not depend on the two-job path.
                 self.assertEqual(self.row(s, "poisoned-import-cache")["status"], rg.HELD)
                 self.assertIn(words, rg.render(s))
+
+    def test_the_receipt_rows_are_held_only_when_their_own_control_passed_read_apart_from_the_two_job_rows(self):
+        receipt = [c["id"] for c in controls.CONTROLS if c["baselines"] == controls.RECEIPT_BASELINES]
+        self.assertEqual(sorted(receipt), ["expired-receipt", "unknown-signer", "wrong-build-or-head"])
+        self.assertEqual(sorted(c["id"] for c in controls.CONTROLS if c["baselines"]),
+                         sorted(receipt + ["changed-head", "writes-evidence-or-policy"]))
+        receipt_line = "own positive control (the receipt verifier clears the receipt made from the unchanged game's job"
+        # A machine without the replay sandbox: the two-job controls are skipped, the receipt control passed.
+        s = summary(outcomes(**{t: rg.SKIPPED for t in controls.TWO_JOB_BASELINES}))
+        self.assertEqual({self.row(s, cid)["status"] for cid in receipt}, {rg.HELD})
+        text = rg.render(s)
+        self.assertIn("rejects the seeded bug's): not run, so those rows are not run.", text)
+        self.assertIn(receipt_line, text)
+        self.assertIn("own digests): passed.", text)
+        self.assertNotIn("NOT passed", text)
+        for outcome, words in ((rg.FAILURE, "NOT passed"), (rg.SKIPPED, "not run, so those rows are not run")):
+            with self.subTest(outcome):
+                s = summary(outcomes(**{t: outcome for t in controls.RECEIPT_BASELINES}))
+                for cid in receipt:
+                    self.assertEqual(self.row(s, cid)["status"], rg.NOT_RUN)
+                    self.assertIn("own positive control did not pass", self.row(s, cid)["note"])
+                self.assertEqual({self.row(s, cid)["status"] for cid in ("changed-head", "writes-evidence-or-policy")},
+                                 {rg.HELD})
+                self.assertIn(f"own digests): {words}", rg.render(s))
+
+    def test_the_receipt_rows_say_what_they_do_not_cover(self):
+        for cid in ("wrong-build-or-head", "unknown-signer", "expired-receipt"):
+            scope = controls.by_id()[cid]["scope"]
+            self.assertIn("the trusted job writes no receipt yet (#255)", scope)
+            self.assertIn("The receipt writer and CI attestation are not covered", scope)
 
     def test_the_two_job_rows_say_what_they_do_not_cover(self):
         for cid in ("changed-head", "writes-evidence-or-policy"):

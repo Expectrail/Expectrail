@@ -10,7 +10,7 @@ label{display:block;font-weight:600;margin:16px 0 6px}input{width:100%;font:inhe
 input[type=checkbox]{width:auto}
 button{font:inherit;font-weight:600;background:#175c47;color:white;border:2px solid #175c47;border-radius:6px;padding:10px 18px;margin:16px 12px 0 0;cursor:pointer}
 button.secondary{background:white;color:#175c47}button:disabled{opacity:.55;cursor:default}a{color:#175c47}a:focus,button:focus,input:focus{outline:3px solid #b35c12;outline-offset:3px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.note{color:#475a53}#result-text{font-size:1.2rem;font-weight:600}#details,#inspection{white-space:pre-wrap;overflow-wrap:anywhere}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.note{color:#475a53}#result-text{font-size:1.2rem;font-weight:600}#details,#inspection,#rendering{white-space:pre-wrap;overflow-wrap:anywhere}
 [hidden]{display:none!important}summary{cursor:pointer}#error{color:#8e251c;font-weight:600}li{margin:5px 0;overflow-wrap:anywhere}
 @media(max-width:600px){main{padding:16px 12px 36px}section{padding:16px}.grid{grid-template-columns:1fr;gap:0}h1{font-size:1.65rem}button{width:100%;margin-right:0}}
 </style></head><body><main>
@@ -21,12 +21,12 @@ button.secondary{background:white;color:#175c47}button:disabled{opacity:.55;curs
 For your own checks, the routes and approvals come from <strong>Before</strong>. Expectrail does not change these folders.</p>
 <div class="grid"><div><label for="before">Before: full folder path</label><input id="before" placeholder="/Users/you/MyGame-before" autocomplete="off" spellcheck="false"></div>
 <div><label for="after">After: full folder path</label><input id="after" placeholder="/Users/you/MyGame-after" autocomplete="off" spellcheck="false"></div></div>
-<label><input type="checkbox" id="kinematic"> Use the kinematic-character example with recorded vision</label>
-<p id="preset-help" hidden>Choose the unchanged game from the <a href="https://github.com/godotengine/godot-demo-projects/archive/b761b4cd5718a7118f2c95eb55f181d0a5f004f1.zip" target="_blank" rel="noopener noreferrer">pinned Godot demos</a> as Before and your changed copy as After.
-Each folder must contain project.godot. Expectrail supplies the walk route and ground check, replays both folders,
-and uses saved vision answers for matching frames and questions. No key is needed.</p>
-<details id="paths"><summary>Where your game, routes and checks are</summary>
-<p>Paths below are relative to each version's folder. A game folder of <code>.</code> means project.godot is directly inside that folder.</p>
+<p>Each folder contains <code>project.godot</code> and <code>expectrail.project.json</code>.
+The config names the routes and checks. A draft config cannot give an accept.
+The kinematic-character example uses the same config path as your project.</p>
+<details id="paths"><summary>Older projects without a config</summary>
+<label><input type="checkbox" id="manual"> Enter paths manually</label>
+<p>For an existing checkout with routes and checks. Paths are relative to each version's folder.</p>
 <label for="game">Game folder</label><input id="game" value="." spellcheck="false">
 <label for="routes">Route files (patterns separated by spaces or commas)</label><input id="routes" value="routes/*.json" spellcheck="false">
 <label for="specs">Checks folder</label><input id="specs" value="specs" spellcheck="false"></details>
@@ -38,6 +38,7 @@ and uses saved vision answers for matching frames and questions. No key is neede
 <div><label for="attempts">Maximum fix attempts (1 to 10)</label><input id="attempts" type="number" min="1" max="10" value="3"></div>
 <div><label for="usd-cap">Maximum fixer spend in US dollars</label><input id="usd-cap" type="number" min="0" step="any"></div>
 </div>
+<p id="rendering" role="status"></p>
 <button id="verify" type="button">Verify</button><button id="cancel" type="button" class="secondary" disabled>Cancel</button>
 <p id="progress" role="status">No verification has started.</p><ol id="phases" aria-label="Recorded phases"></ol>
 <p id="error" role="alert" hidden></p></section>
@@ -57,23 +58,23 @@ const token = '__TOKEN__';
 try { sessionStorage.setItem('expectrail-token', token); } catch (_) {}
 history.replaceState(null, '', '/');
 const el = id => document.getElementById(id);
-const values = () => el('kinematic').checked ? {preset:'kinematic-character',before:el('before').value,after:el('after').value} : Object.fromEntries(['before','after','game','routes','specs'].map(id => [id,el(id).value]));
+const values = () => ({projectConfig:!el('manual').checked,...Object.fromEntries((el('manual').checked?['before','after','game','routes','specs']:['before','after']).map(id => [id,el(id).value]))});
 el('auto-fix').onchange=()=>{el('repair-settings').hidden=!el('auto-fix').checked;};
-let job = null, busy = false;
+let job = null, busy = false, rendererAcknowledged = null;
+for(const input of document.querySelectorAll('input')) input.addEventListener('input',()=>{
+  rendererAcknowledged=null; el('rendering').textContent=''; if(!job)el('verify').textContent='Verify';
+});
+function rendering(data) {
+  return data.rendering ? [data.rendering.message,data.rendering.fix].filter(Boolean).join('\n') : '';
+}
 const phaseNames = {queued:'Waiting to start',preparing:'Checking inputs and tools',executing:'Running the game',
   observing:'Reading observations',evaluating:'Evaluating checks',completed:'Finished',failed:'Failed',cancelled:'Cancelled'};
 function controls(active) {
   busy=active;
   el('verify').disabled=active; el('inspect').disabled=active; el('cancel').disabled=!active || !job;
-  for (const id of ['kinematic','before','after','game','routes','specs','auto-fix','attempts','usd-cap']) el(id).disabled=active;
-  el('auto-fix').disabled=active || el('kinematic').checked;
+  for (const id of ['manual','before','after','game','routes','specs','auto-fix','attempts','usd-cap']) el(id).disabled=active;
 }
-el('kinematic').onchange=()=>{
-  const selected=el('kinematic').checked;
-  el('preset-help').hidden=!selected; el('paths').hidden=selected;
-  if(selected){el('auto-fix').checked=false;el('repair-settings').hidden=true;}
-  el('inspection').textContent=''; controls(false);
-};
+
 async function api(path, body) {
   const options = {method:body===undefined?'GET':'POST', headers:{'X-Expectrail-Token':token}};
   if(body!==undefined){options.headers['Content-Type']='application/json';options.body=JSON.stringify(body);}
@@ -116,22 +117,34 @@ el('inspect').onclick=async()=>{
   el('error').hidden=true; controls(true);
   try {const body=values(), lines=[];
     for(const side of ['before','after']){const data=await api('/api/inspect',{...body,side,folder:body[side]});
-      lines.push(side==='before'?(body.preset?'Before':'Before (checks used for this run)'):'After',
+      lines.push(side==='before'?'Before (checks used for this run)':'After',
         data.godot?'Godot project found.':'No Godot project found.',
-        `${data.routes} usable routes; ${data.checks} approved checks; ${data.drafts} draft checks.`,data.help,...data.problems,'');}
+        `${data.routes} usable routes; ${data.checks} approved checks; ${data.drafts} draft checks.`,
+        ...(data.routeNames||[]).map(name=>'Route: '+name), ...(data.checkNames||[]).map(name=>'Check: '+name),data.help,rendering(data),...data.problems,'');}
     el('inspection').textContent=lines.join('\n');
   }catch(error){problem(error);} finally{controls(false);}
 };
 el('verify').onclick=async()=>{
   if(job){controls(true);el('verify').textContent='Verify';await poll();return;}
   el('error').hidden=true;el('repair-record').hidden=true;el('report').hidden=true;el('viewer').hidden=true;el('judged-by').textContent='';el('details').textContent='';el('phases').replaceChildren();
-  el('result-text').textContent='No verdict yet.';el('progress').textContent='Creating the job and recording its inputs…';controls(true);
+  el('result-text').textContent='No verdict yet.';el('progress').textContent='Checking the rendering environment before starting…';controls(true);
   try{const body=values();
     if(el('auto-fix').checked){
       body.autoFix=true;body.attempts=el('attempts').valueAsNumber;body.usdCap=el('usd-cap').valueAsNumber;
       if(!Number.isInteger(body.attempts)||body.attempts<1||body.attempts>10) throw new Error('Enter 1 to 10 fix attempts.');
       if(!Number.isFinite(body.usdCap)||body.usdCap<0) throw new Error('Enter a fixer spend cap of zero or more US dollars.');
     }
+    if(body.projectConfig){
+      const inspection=await api('/api/inspect',{...body,side:'before',folder:body.before});
+      el('rendering').textContent=rendering(inspection);
+      const signature=JSON.stringify([body,inspection.rendering]);
+      if(inspection.rendering?.warning && rendererAcknowledged!==signature){
+        rendererAcknowledged=signature;controls(false);el('verify').textContent='Verify with this warning';
+        el('progress').textContent='Nothing has started. Read the rendering warning above before continuing.';return;
+      }
+    }
+    rendererAcknowledged=null;el('verify').textContent='Verify';
+    el('progress').textContent='Creating the job and recording its inputs…';
     const data=await api('/api/jobs',body);job=data.id;controls(true);show(data);if(job)await poll();else await pastRuns();}
   catch(error){problem(error);}
 };

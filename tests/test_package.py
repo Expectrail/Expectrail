@@ -83,7 +83,6 @@ NOT_PACKAGED = {
     "expectrail.spec_writer": "drafts specs with a model; no verification uses a model",
     "expectrail.runit": "the site's Run it samples (#265): reads docs/run-it/ in a clone of the repository",
     "expectrail.runit_site": "the Run it page's results index (#265): the publish job runs it from a clone; built on expectrail.runit",
-    "expectrail.receipt": "receipts and trust-check (#255): needs cryptography and jsonschema, which the standard-library wheel does not ship; packaging it is a later slice",
 }
 # Imports a packaged module makes only on a path a verification never takes.
 NOT_ON_A_VERIFICATION = {
@@ -308,12 +307,51 @@ class InstalledTest(Case):
                          ("completed", "needs-review", ["INPUT_INVALID"]))
         self.assertIn("no Godot project", status["diagnostics"][0]["detail"])
 
-    def test_a_command_that_is_not_built_says_so_and_gives_no_verdict(self):
-        # `doctor` was the example here until it was built (#333).
-        done = self.run_installed("trust-check")
-        self.assertEqual(done.returncode, 5, done.stdout + done.stderr)
-        self.assertIn("not built yet (#255)", done.stderr)
-        self.assertEqual(done.stdout, "")
+    def test_trust_check_without_its_extra_says_what_to_install_and_checks_nothing(self):
+        # The virtual environment has the standard library only: no cryptography, no jsonschema.
+        # (`expectrail trust-check` was the example of a command not built yet until #255 built it;
+        # tests/test_trust_check_command.py keeps a test of that path.)
+        done = self.run_installed("trust-check", "receipt.json", "--trust-store", "store.json")
+        self.assertEqual((done.returncode, done.stdout), (5, ""), done.stderr)
+        self.assertIn("pip install 'expectrail[trust]'", done.stderr)
+        self.assertIn("Nothing was checked", done.stderr)
+        self.assertNotIn("Traceback", done.stderr)
+        self.assertNotIn("not built yet", done.stderr)
+
+    def test_trust_check_from_the_installed_copy_with_its_extra(self):
+        # The same copy with the host's cryptography and jsonschema on the path, as the `trust`
+        # extra would install them. The receipt module and its schema come from the installed copy.
+        import importlib.util as util
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: F401
+        from expectrail import receipt
+        from tests.test_receipt import _base_doc, _key, _store
+
+        extra = sorted({str(Path(util.find_spec(name).origin).parent.parent) for name in ("cryptography", "jsonschema")})
+        work = self.elsewhere / "trust"
+        work.mkdir(exist_ok=True)
+        private, pub = _key()
+        receipt.write_receipt(_base_doc(pub), private, work / "receipt.json")
+        _store("test-issuer", pub, work / "store.json")
+        env = {"PATH": "/usr/bin:/bin", "HOME": str(self.elsewhere / "home"), "PYTHONPATH": os.pathsep.join(extra)}
+
+        def installed(*args: str, code: str | None = None) -> subprocess.CompletedProcess:
+            command = [str(self.python), "-c", code] if code else [str(self.python), "-m", "expectrail.cli", *args]
+            return subprocess.run(command, cwd=self.elsewhere, capture_output=True, text=True, timeout=120, env=env)
+
+        done = installed(code="import json; from expectrail import receipt; "
+                              "print(json.dumps([receipt.__file__, str(receipt.SCHEMAS)]))")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        module, schemas = json.loads(done.stdout)
+        self.assertEqual(module, str(self.site / "expectrail" / "receipt.py"))
+        self.assertEqual(schemas, str(self.site / "expectrail" / "_bundle" / "contracts"))
+        args = ["trust-check", str(work / "receipt.json"), "--trust-store", str(work / "store.json"),
+                "--repo", "Expectrail/Expectrail", "--expect-head", "b" * 64, "--expect-build", "c" * 64]
+        done = installed(*args, "--expect-policy", "d" * 64)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("clearance: yes", done.stdout)
+        done = installed(*args)   # the policy is not given: not clearance
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("policy not checked", done.stdout)
 
     def test_doctor_runs_from_the_installed_copy_and_fetches_nothing_when_told_not_to(self):
         # The installed copy carries doctor, its schema and the harness modules it asks. With

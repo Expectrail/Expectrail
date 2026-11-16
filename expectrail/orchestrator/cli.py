@@ -128,12 +128,13 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
     sub = p.add_subparsers(dest="command", required=True, metavar="COMMAND")
 
     v = sub.add_parser("verify", help="verify a change and say accept, reject or needs review")
-    v.add_argument("--head", type=Path, required=True, help="a checkout of the change")
+    v.add_argument("--head", type=Path, help="a checkout of the change")
+    v.add_argument("--project", type=Path, help="the changed project folder; use its base config to select routes, checks and vision")
     v.add_argument("--base", type=Path, help="a checkout of what it is compared with; the checks are read from it")
     v.add_argument("--adapter", default="godot")
-    v.add_argument("--game", required=True, help="the project folder, relative to the checkout")
-    v.add_argument("--routes", required=True, help="route files or globs, relative to the checkout, separated by spaces or commas")
-    v.add_argument("--specs", required=True, help="the folder of approved test specs, relative to the checkout")
+    v.add_argument("--game", help="the project folder, relative to the checkout")
+    v.add_argument("--routes", help="route files or globs, relative to the checkout, separated by spaces or commas")
+    v.add_argument("--specs", help="the folder of approved test specs, relative to the checkout")
     v.add_argument("--head-commit")
     v.add_argument("--base-commit")
     v.add_argument("--execution-class", choices=req.EXECUTION_CLASSES, default="diagnostic")
@@ -167,6 +168,13 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
 
     try:
         args = p.parse_args(argv)
+        if args.command == "verify":
+            if args.project is None:
+                missing = ["--" + name for name in ("head", "game", "routes", "specs") if getattr(args, name) is None]
+                if missing:
+                    v.error("the following arguments are required: " + ", ".join(missing) + " (or use --project)")
+            elif any(value is not None for value in (args.head, args.game, args.routes, args.specs)):
+                v.error("--project uses the config; do not also give --head, --game, --routes or --specs")
         after = getattr(args, "jobs_root_after", None)
         if after is not None:
             if args.jobs_root is not None and Path(args.jobs_root) != Path(after):
@@ -197,12 +205,17 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
                                                      fixture=args.auto_fix_fixture, recorded=args.auto_fix_recorded)
             except (OSError, ValueError) as exc:
                 raise req.RequestError(str(exc)) from exc
-            request = req.build(adapter=args.adapter, head=args.head, base=args.base, game=args.game,
-                                routes=[r for r in re.split(r"[\s,]+", args.routes) if r], specs=args.specs,
-                                head_commit=args.head_commit, base_commit=args.base_commit,
-                                execution_class=args.execution_class, timeout_seconds=args.timeout,
-                                idempotency_key=args.idempotency_key, intent=args.intent,
-                                bug=req.bug_text(args.bug))
+            options = dict(head_commit=args.head_commit, base_commit=args.base_commit,
+                           execution_class=args.execution_class, timeout_seconds=args.timeout,
+                           idempotency_key=args.idempotency_key, intent=args.intent, bug=req.bug_text(args.bug))
+            if args.project is not None:
+                from expectrail import project_job
+
+                request = project_job.prepare(store, args.project, args.base, **options)
+            else:
+                request = req.build(adapter=args.adapter, head=args.head, base=args.base, game=args.game,
+                                    routes=[r for r in re.split(r"[\s,]+", args.routes) if r], specs=args.specs,
+                                    **options)
             if settings:
                 if not args.json:
                     cost = f"${settings['usdCap']:g} Muse cap" if settings["source"] == "muse" else "offline patch, no fixer spend"

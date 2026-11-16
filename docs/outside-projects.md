@@ -4,13 +4,60 @@ Godot projects the team did not write, verified with the command a stranger woul
 holds only what a recorded run shows, with its link. A project a builder wrote for a test
 (`tests/projects/`) is not an outside project and is never counted here.
 
+## Current evidence: November 15, 2026
+
+The latest trial on merged [PR #473](https://github.com/Expectrail/Expectrail/pull/473) is
+[run 43748180876](https://github.com/Expectrail/Expectrail/actions/runs/43748180876).
+Its `outside-trial` job concluded **success**. The verdicts below come from
+[`outside-trial.md` and the per-job findings in its artifact](https://github.com/Expectrail/Expectrail/actions/runs/43748180876/artifacts/14175650515),
+not from the workflow conclusion alone. Every replay required the sandbox. Both projects use
+MIT-licensed `godotengine/godot-demo-projects` at
+`b761b4cd5718a7118f2c95eb55f181d0a5f004f1`.
+
+| Project | Variant | Engine check | Product verdict without vision | Machine seconds |
+| --- | --- | --- | --- | --- |
+| kinematic-character | pinned | pass | needs-review | 7.4 |
+| kinematic-character | broken collision | fail, first at frame 44 | reject | 11.8 |
+| kinematic-character | harmless tint | pass | needs-review | 11.3 |
+| kinematic-character | invisible sprite | pass | needs-review | 11.5 |
+| Dodge the Creeps | pinned | pass | needs-review | 8.5 |
+| Dodge the Creeps | broken clamp | fail, first at frame 97 | reject | 15.2 |
+| Dodge the Creeps | harmless comment | pass | needs-review | 15.4 |
+
+These are verification command times, **not human setup minutes**. No outside project is accepted
+without vision under the current rule. For kinematic-character, the separate
+[first vision run](#first-outside-game-verified-with-vision-november-14-2026) accepted pinned and
+tinted copies and rejected the broken and invisible copies. No corresponding Dodge vision run is
+recorded here. The audit also found that the vision judge ignored the selected Dodge spec and
+used the bundled ground check; this change makes both trial paths use the same selection, tested
+with saved stand-in captures. It is not a new live Dodge result. A ground check measures the platformer's floor crossing; Dodge's approved bounds
+check measures the in-play origin against the viewport, not collisions, enemies, scoring or drawn art.
+
+Dodge's broken copy first escapes at frame 97 (tick 97), with origin x = 486.666 beyond the
+480-pixel viewport. Its converted box is `[459.666, 395.25, 513.666, 463.25]`; the allowed region is
+`[-27, -54.75, 507, 733.25]`. The finding counts 153 out-of-bounds frames and 58 hidden frames as
+**not exercised**, never passes. The initial hidden origin is no longer a false rejection.
+Sean's content-bound approval of the updated spec is on main; this audit does not change it.
+
+The complete onboarding trial is still missing: a timed `doctor` → `init` → route → clean
+calibration → person-approved checks → three-variant verification session for each project.
+Each currently has one check, not the requested two or three. Static inspection command timings
+are in [the inspection work log](new-work/2026-11-14-draft-project-inspection.md); they do not measure
+human setup. Core changes were needed to fit these games (#338, #346, #348, #388, #398 and #473),
+so the historical trial did **not** prove configuration-only onboarding without core edits.
+The [case-by-case audit](new-work/2026-11-15-project-audit.md) lists remaining evidence and Sean's steps.
+
+The older sections below retain the progression of the trial. Their dated limitations describe
+those runs, not the current results above.
+
 ## How it runs
 
 `tests/outside/projects.json` pins each project to a repository and a full commit. The workflow
 `outside-trial.yml` fetches each one at that commit (nothing of the project is copied into this
-repository), lays out a checkout with our own routes and the bundled approved spec, and runs
+repository), lays out a checkout with our routes and the spec named by the project, and runs
 `expectrail verify` on it. The job holds no secret, has a read-only token, and requires the replay
-sandbox for every replay, because the projects' code is not ours.
+sandbox for every replay, because the projects' code is not ours. A project that omits `spec`
+gets the bundled ground check, as kinematic-character does.
 
 A project may also list **changes**: small patches of ours under `tests/outside/<project>/changes/`,
 each with the verdict it should get. For each one the project as pinned is the base and a patched
@@ -21,7 +68,32 @@ The table shows the expected verdict beside the one given. kinematic-character h
 | --- | --- | --- | --- |
 | `broken` | empties the player's collision mask, so it falls through the floor | reject | a real bug in a game we did not write; the approved check should see the player go below the ground |
 | `harmless` | tints the player's sprite; nothing it does changes | needs-review | the engine's checks pass, as on the project unchanged, but CI has no vision key and an accept needs vision (#379). The engine's record alone gave accept on #398/#401, before vision was required; Sean withdrew call 4 for the engine's record, and an outside project counts as verified only after a run with vision |
-| `invisible` | hides the player's sprite; it moves exactly as before | needs-review | a defect only a visual observer can see (#330): the engine's checks pass, as on the project unchanged. Without vision it is needs-review like any accept; with vision it must stay needs-review, because no player is drawn where the engine says it is. If a vision run ever accepts it, the visual observer is not looking |
+| `invisible` | hides the player's sprite; it moves exactly as before | needs-review | a defect only a visual observer can see (#330): the engine's checks pass, as on the project unchanged. Without vision it is needs-review like any accept; with vision it must not accept. The recorded vision run below rejects it; #481 makes repeated missing-player evidence say “not drawn” |
+
+### Dodge the Creeps checks the player's position
+
+Dodge clamps the player's origin between zero and the size of its viewport. Its check uses
+`inside-region` over the `dodge` route, judging in-play frames. The gate represents the origin as
+a box whose size comes from the clean replay's measured collision body. To include legal positions
+right on an edge, the region extends by the converted box offsets on each side. With the pinned
+scene's fixed view and native window size, this tests the recorded origin. It does not test sprite
+drawing or collision interactions.
+[Pinned player script](https://github.com/godotengine/godot-demo-projects/blob/b761b4cd5718a7118f2c95eb55f181d0a5f004f1/2d/dodge_the_creeps/player.gd)
+and [viewport settings](https://github.com/godotengine/godot-demo-projects/blob/b761b4cd5718a7118f2c95eb55f181d0a5f004f1/2d/dodge_the_creeps/project.godot).
+
+To reproduce the region from a checkout of that pin, run
+`python3 -m tools.dodge_play_area /path/to/2d/dodge_the_creeps/project.godot --trace /path/to/clean/trace.json`.
+Compare the result with `assertion.region.box` in [the Dodge spec](../tests/outside/specs/dodge-play-area.json).
+Sean approved its current content on November 15, 2026. The `coverage.whenPlayerVisible` rule excludes
+pre-round hidden frames as not exercised and still requires 120 judged frames. Changing its content
+requires a new personal approval; do not carry the old approval onto a changed spec.
+
+| Dodge change | Recorded CI verdict (run 43748180876) | Evidence to look for |
+| --- | --- | --- |
+| Remove the position clamp | reject | The route holds right long enough to cross the right edge. Check the finding for the first out-of-bounds position. |
+| Change a comment | needs-review | The engine passes the same bounds check as the unchanged game. Vision did not run. |
+
+Run 43748180876 above uses the play-area check. The earlier ground-check runs below remain historical evidence.
 
 **The first run did not test either change.** [Run 43398657245](https://github.com/Expectrail/Expectrail/actions/runs/43398657245)
 on PR #385 gave all three kinematic-character rows the same verdict, needs-review, with the same
@@ -91,8 +163,8 @@ on a game the team did not write. They are accepts on the engine's record, from 
 check (`player-stays-above-ground`) on one route, with no vision model asked. On November 13, 2026
 Sean withdrew the product manager's call 4 (needs-review until a check written for the game is
 approved) for the engine's record, and set the bar for "verified": an outside project counts as
-verified only after a run in which vision has looked at it too (#327, #379). That run has not been
-made, so **no outside project counts as verified yet**.
+verified only after a run in which vision has looked at it too (#327, #379). At that point the vision run had not been made. The November 14 vision run below subsequently
+verified kinematic-character on its recorded route; Dodge still has no recorded vision accept.
 
 **From #392 on, the trial runs without vision and says so.** `expectrail verify` now needs a vision
 model to accept (#379). CI has no key, so the engine's checks still run (a failure rejects) and a pass
@@ -242,7 +314,9 @@ because the CI outside trial has no vision.
 
 The run's answers are kept in `tests/outside/recordings/kinematic-character/vision-recording.json` (429
 answers). They replay for free with `tools/outside_vision.py judge --recording`, but only for frames
-whose bytes match the ones recorded; whether a fresh capture reproduces them is not yet checked.
+whose bytes match the ones recorded. #515 measured renderer drift at frame 111: exact lookup can
+miss when the renderer differs. This is a limitation of replaying recorded answers, not a new live
+vision result; see [the renderer work log](new-work/2026-11-15-recorded-renderer.md).
 
 ## Anchored vision (#330)
 
@@ -253,9 +327,9 @@ model found it in 0 of 120 frames (run 43559500793). Words cannot name a player 
 **What the judge asks now.** `tools/outside_vision.py judge` uses `expectrail/anchored.py`: in each
 frame the model is asked what is drawn at the middle of the engine's collision box for the player
 (the trace's `body`). A point carries no size the answer could copy. The spec's assertion is judged
-on the box the model answers with. A provider failure remains needs-review. After calibration,
-a successful empty or wrong-sized answer is missing-player evidence; three consecutive such
-observations reject (#481), rather than measuring the background as the player.
+on the box the model answers with, and missing evidence is never a pass. After #481, three consecutive frames with an explicit
+not-drawn answer or an answer whose size cannot be the calibrated player reject with a not-drawn
+reason; provider failures and unrecorded questions remain needs-review.
 
 **When it is used.** Only for a game whose clean run passes these rules (`RULES` in
 `expectrail/anchored.py`), set by Sean on November 14, 2026 after the first live calibration:
@@ -290,8 +364,8 @@ its own request (26 images for a calibration).
 `vision-recording.json` in the run's artifact. `judge --recording FILE` replays those answers with no
 key and no spend; a frame or question not in the recording gets no answer.
 
-Not yet measured: nothing above says how the live model does on kinematic-character. That is the
-first live run after this lands.
+The calibration history above preceded the full vision run. Its measured four-variant result is
+reported in “First outside game verified with vision” above; it does not establish general accuracy.
 
 ## Optional vision sampling and repeated questions (#330)
 

@@ -1,0 +1,69 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "sensor-kinematic-cal-air",
+  "description": "Predeclared #262 untuned measurement; see frozen work-log plan.",
+  "ticks": 720,
+  "seed": 262889102,
+  "events": [
+    {
+      "tick": 29,
+      "action": "move_right",
+      "pressed": true
+    },
+    {
+      "tick": 83,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 95,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 173,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 185,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 269,
+      "action": "move_right",
+      "pressed": false
+    },
+    {
+      "tick": 319,
+      "action": "move_left",
+      "pressed": true
+    },
+    {
+      "tick": 373,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 385,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 463,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 475,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 559,
+      "action": "move_left",
+      "pressed": false
+    }
+  ]
+}

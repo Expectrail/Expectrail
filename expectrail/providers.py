@@ -393,6 +393,9 @@ def chat_completion(
     def _default_transport(u: str, h: dict[str, str], p: dict[str, Any]) -> dict[str, Any]:
         req = urllib.request.Request(u, data=json.dumps(p).encode("utf-8"), headers=h, method="POST")
         for attempt in range(3):
+            if role.upper() == "SPEC":
+                from expectrail.spend import hold
+                hold("spec", live=True)
             try:
                 with urllib.request.urlopen(req, timeout=cfg.timeout) as resp:
                     return json.loads(resp.read().decode("utf-8"))
@@ -412,6 +415,9 @@ def chat_completion(
                 raise RuntimeError(f"HTTP {exc.code} from {cfg.provider} ({u}): {err_body}") from exc
         raise RuntimeError(f"Exhausted retries calling {cfg.provider} ({u})")
 
+    if transport is not None and role.upper() == "SPEC":
+        from expectrail.spend import hold
+        hold("spec", live=False)
     caller = transport or _default_transport
     raw = caller(url, headers, payload)
     if cfg.protocol == "anthropic":

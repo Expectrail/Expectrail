@@ -30,8 +30,9 @@ differed. This measurement replays the clean game once and says so in its record
 
 **Named objects** (since November 15, 2026). The harness also logs the box of every enemy and bullet
 (the trace's ``enemyBoxes`` and ``projectileBoxes``, agents/sam_anchor.py ``object_boxes``). Objects
-the menu does not offer yet but whose boxes are logged are measured as well, apart from the offered
-ones: each probe's ``byObject`` counts, per role, the planned frames differing inside the box of any
+whose boxes are logged are measured as well, apart from the player (``objects``); since the observer
+is pointed at their boxes (expectrail/jit/sam_observer.py), the menu offers them, so ``reachIfNamed``
+is the reach of the menu as it is now: each probe's ``byObject`` counts, per role, the planned frames differing inside the box of any
 object of that role on either build, and each defect's ``reachIfNamed`` is its reach if a pixel check
 could name them too. A frame where none of them is on screen is not a gap; a frame whose record cannot
 say where they are (a trace from before, no camera) is. ``reach`` and ``totals`` keep their meaning.
@@ -64,21 +65,37 @@ class PixelReachError(ValueError):
     """The measurement cannot be made, or its record cannot be used."""
 
 
-def offered(menu: dict | None = None) -> list[str]:
-    """The bound objects ``sam-3.1-anchor`` can be asked about, as the proposer's menu offers them.
-
-    The observer is pointed at the player's body box only (agents/sam_anchor.py ``anchors``), so any other
-    offered object stops the measurement rather than being skipped. Objects the engine logs boxes for but the
-    menu does not offer yet are measured apart, as named objects (``named_objects``)."""
+def _menu_roles(menu: dict | None) -> list[str]:
     from expectrail.jit import pixel
 
     menu = pixel.menu() if menu is None else menu
-    roles = list((menu.get("observers") or {}).get(OBSERVER, {}).get("objects") or [])
+    return list((menu.get("observers") or {}).get(OBSERVER, {}).get("objects") or [])
+
+
+def offered(menu: dict | None = None) -> list[str]:
+    """The offered objects measured in the player's way: the bound objects ``sam-3.1-anchor`` can be asked
+    about, as the proposer's menu offers them, less those the game has many of (``offered_named``).
+
+    One box a frame is placed for these, the player's body box (agents/sam_anchor.py ``anchors``), so any
+    other offered object that is not one with logged boxes stops the measurement rather than being
+    skipped. Objects with logged boxes are measured apart, as named objects (``named_objects``)."""
+    from agents.sam_anchor import OBJECT_BOXES
+
+    roles = [r for r in _menu_roles(menu) if r not in OBJECT_BOXES]
     unmeasurable = [r for r in roles if r != "player"]
     if unmeasurable:
         raise PixelReachError(f"the menu offers {unmeasurable[0]!r} to {OBSERVER}, and this measurement places only the "
-                              "player's box among the offered ones; it would miss it")
+                              "player's box and the logged boxes of " + ", ".join(sorted(OBJECT_BOXES)) +
+                              "; it would miss it")
     return roles
+
+
+def offered_named(menu: dict | None = None) -> list[str]:
+    """The offered objects the game has many of, each with its own logged box (agents/sam_anchor.py
+    ``OBJECT_BOXES``): since the observer is pointed at their boxes (#286), the menu offers them."""
+    from agents.sam_anchor import OBJECT_BOXES
+
+    return sorted(r for r in _menu_roles(menu) if r in OBJECT_BOXES)
 
 
 def _observer():
@@ -229,9 +246,10 @@ def screen_only(screen_record: dict) -> list[str]:
     return [r["id"] for r in screen_record["defects"] if r["sees"] == "screen-only"]
 
 
-def named_objects(roles: list[str], named=None) -> list[str]:
-    """The objects measured beside the offered ones: by default every role the engine logs a box for
-    (agents/sam_anchor.py ``OBJECT_BOXES``) that the menu does not offer yet."""
+def named_objects(roles: list[str], named=None, must=()) -> list[str]:
+    """The objects measured by their logged boxes, beside the player's: by default every role the engine
+    logs a box for (agents/sam_anchor.py ``OBJECT_BOXES``). ``must`` are those the menu offers
+    (``offered_named``): leaving one out would miss what an offered check can be shown, so it is refused."""
     from agents.sam_anchor import OBJECT_BOXES
 
     named = sorted(OBJECT_BOXES) if named is None else list(named)
@@ -239,6 +257,9 @@ def named_objects(roles: list[str], named=None) -> list[str]:
     if unknown:
         raise PixelReachError(f"the engine logs no box for {unknown[0][:40]!r}; it logs one for "
                               f"{', '.join(sorted(OBJECT_BOXES))} and the player")
+    left_out = [r for r in must if r not in named]
+    if left_out:
+        raise PixelReachError(f"the menu offers {left_out[0]!r} to {OBSERVER}; measuring without its boxes would miss it")
     return [r for r in dict.fromkeys(named) if r not in roles]
 
 
@@ -251,7 +272,7 @@ def measure(doc: dict, profile: dict, probes: list[dict], out: Path, defects: li
     from harness.run import GODOT_VERSION
 
     roles = offered(menu)
-    named = named_objects(roles, named)
+    named = named_objects(roles, named, offered_named(menu))
     by_id = {d["id"]: d for d in doc["defects"]}
     unknown = [d for d in defects if d not in by_id]
     if unknown or not defects:
@@ -416,8 +437,8 @@ def render(record: dict) -> str:
     named = record.get("named")
     if named:
         t = record["totalsIfNamed"]
-        lines += ["", f"If a pixel check could also name {', '.join(named)} (the engine logs their boxes; the menu does not "
-                      f"offer them yet): a difference inside an offered or named box: {t['inside-a-box']}. Frames differ, "
+        lines += ["", f"If a pixel check could also name {', '.join(named)} (the engine logs their boxes; since November 15 "
+                      f"the menu offers them to {o['name']}): a difference inside an offered or named box: {t['inside-a-box']}. Frames differ, "
                       f"never inside one: {t['outside-every-box']}. No planned frame differs: {t['no-difference']}.", "",
                   "| Defect | Reach if named | " + " | ".join(
                       f"Planned frames differing inside {role} boxes (probes) | Most pixels inside one {role} box | "

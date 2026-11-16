@@ -1,0 +1,24 @@
+{
+  "format": "expectrail.project/v1",
+  "adapter": "godot",
+  "draft": true,
+  "entryScene": "res://main.tscn",
+  "viewport": [
+    360,
+    240
+  ],
+  "physicsTicksPerSecond": 60,
+  "captureFps": 60,
+  "inputActions": [
+    "move_right"
+  ],
+  "bindings": {
+    "player": {
+      "node": "Actors/Avatar",
+      "texture": "res://square.svg"
+    }
+  },
+  "routes": [
+    "walk.json"
+  ]
+}

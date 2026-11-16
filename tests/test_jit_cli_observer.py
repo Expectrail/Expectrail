@@ -34,7 +34,7 @@ RECORDED = [*SAM, "--sam-answers", str(BOX), "--sam-box", "48x68", "--sam-lift",
 def args_of(*extra, offer=PX) -> argparse.Namespace:
     """The run command's arguments as the parser reads them, from the observer flags alone."""
     ns = {"offer": offer, "observer": "none", "sam_answers": None, "sam_run": [], "sam_live": False,
-          "sam_box": "body", "sam_pad": 4.0, "sam_lift": 0.0, "sam_first": None}
+          "sam_box": "body", "sam_pad": 4.0, "sam_lift": 0.0, "sam_first": None, "sam_every": 10}
     it = iter(extra)
     for flag in it:
         key = flag[2:].replace("-", "_")
@@ -44,7 +44,8 @@ def args_of(*extra, offer=PX) -> argparse.Namespace:
             ns[key].append(next(it))
         else:
             value = next(it)
-            ns[key] = {"sam_answers": Path, "sam_pad": float, "sam_lift": float, "sam_first": int}.get(key, str)(value)
+            ns[key] = {"sam_answers": Path, "sam_pad": float, "sam_lift": float, "sam_first": int,
+                       "sam_every": int}.get(key, str)(value)
     return argparse.Namespace(**ns)
 
 

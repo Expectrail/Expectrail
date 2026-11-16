@@ -710,7 +710,8 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
         return result
     try:
         verdict = evaluate(spec, run["engineObservations"], route=route, trace=run.get("trace"),
-                           expected_frames=window_frames(spec, ticks, run.get("trace"), capture_fps))
+                           expected_frames=window_frames(spec, ticks, run.get("trace"), capture_fps),
+                           capture_fps=capture_fps)
     except Exception as exc:  # noqa: BLE001 - a crash is recorded, never read as a pass
         verdict = None
         engine, engine_reason = "needs-review", f"the evaluator stopped ({type(exc).__name__})"
@@ -752,7 +753,8 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
             every = sampling_plan(spec, vision_every)
             if expected is not None and not complete and not spec.get("coverage"):
                 expected = sample(expected, every)
-            seen_verdict = evaluate(spec, seen, route=route, trace=run.get("trace"), expected_frames=expected)
+            seen_verdict = evaluate(spec, seen, route=route, trace=run.get("trace"), expected_frames=expected,
+                                    capture_fps=capture_fps)
             said = seen_verdict["result"] if seen_verdict["result"] in rec.VISUAL_VERDICTS else "needs-review"
             if vision_every > 1 and said != "pass" and not complete:
                 # A sampled non-pass is provisional. Do not trust analysis metadata claiming

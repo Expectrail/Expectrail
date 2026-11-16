@@ -1,0 +1,79 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "sensor-kinematic-cal-turns",
+  "description": "Predeclared #262 untuned measurement; see frozen work-log plan.",
+  "ticks": 720,
+  "seed": 262889103,
+  "events": [
+    {
+      "tick": 23,
+      "action": "move_left",
+      "pressed": true
+    },
+    {
+      "tick": 61,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 73,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 151,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 163,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 203,
+      "action": "move_left",
+      "pressed": false
+    },
+    {
+      "tick": 257,
+      "action": "move_right",
+      "pressed": true
+    },
+    {
+      "tick": 307,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 319,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 397,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 409,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 487,
+      "action": "jump",
+      "pressed": true
+    },
+    {
+      "tick": 499,
+      "action": "jump",
+      "pressed": false
+    },
+    {
+      "tick": 557,
+      "action": "move_right",
+      "pressed": false
+    }
+  ]
+}

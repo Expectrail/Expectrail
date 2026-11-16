@@ -22,6 +22,9 @@ dependencies = []
 [project.optional-dependencies]
 # Checking documents against the contract schemas (the suite and some tools do; a verification does not).
 contracts = ["jsonschema>=4.20"]
+# `expectrail trust-check` (#255): Ed25519 signatures and the receipt schema. Without these the
+# command says what to install and checks nothing.
+trust = ["cryptography>=42", "jsonschema>=4.20"]
 
 [project.urls]
 Homepage = "https://expectrail.tech"

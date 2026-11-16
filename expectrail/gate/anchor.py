@@ -57,6 +57,7 @@ def _frames(run: dict) -> dict[int, Path]:
 def _ask(run: dict, chosen: list[int], frames: dict[int, Path], client, pad: float) -> list[dict]:
     """One row per chosen frame, as agents.sam_anchor.probe_run writes them, from a run held in memory."""
     from agents.sam_observations import SamError, png_size
+    from expectrail.recorded import missing_reason
 
     size = png_size(frames[chosen[0]])
     where = anchors(run.get("trace") or {}, size, chosen, box=BODY, pad=pad)
@@ -73,7 +74,7 @@ def _ask(run: dict, chosen: list[int], frames: dict[int, Path], client, pad: flo
             if exc.kind in STOP_KINDS or exc.status is not None:
                 raise Stop(exc.kind or f"HTTP {exc.status}") from exc
             rows.append({"frame": n, "world": anchor["world"], "point": anchor["point"], "asked": True,
-                         "box": None, "score": None, "error": "the answer could not be read"})
+                         "box": None, "score": None, "error": missing_reason(exc) or "the answer could not be read"})
             continue
         rows.append({"frame": n, **measure(anchor, answer, png_size(frames[n]))})
     return rows
@@ -120,6 +121,10 @@ def compare(route: str, base: dict, head: dict, client, *, every: int = DEFAULT_
     else:
         row["result"] = "silent"
         row["reason"] = "no frame could be compared (the engine moved the player, or nothing was asked)"
+    detail = next((r.get("error") for r in list(base_rows.values()) + head_rows
+                   if r.get("error", "").endswith("(not-recorded)")), None)
+    if detail:
+        row["reason"] = f"{detail}; {row['reason']}"[:300]
     row["_pictures"] = {n: (b_frames[n], h_frames[n]) for n in row["kept"]}
     return row
 

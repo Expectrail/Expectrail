@@ -1,73 +1,62 @@
-"""The local app's offline kinematic-character preset. Only the observer uses saved answers."""
+"""Prepare the bundled outside example as an ordinary configured project.
+
+This module prepares files only. Verification uses project_job, the normal CLI worker and Gate.
+Existing approved check bytes are copied unchanged; this command never approves a check.
+"""
 from __future__ import annotations
 
-import json
+import argparse
 from pathlib import Path
 import shutil
-import sys
-import tempfile
 
 from harness import tree
-from expectrail import anchored, recorded, resources
-from expectrail.gate import verify
-from expectrail.orchestrator import engines, request, runner
-from expectrail.orchestrator.store import JobStore
+from expectrail import project_config, resources
 
-# The pinned walk's replay.json, game.tree (outside vision run 43652198623).
-BASE_TREE = 'ba5fb112d7603f608f0054c767e45f23469efcfe2861a0d85d2f7f7e3e2e9747'
 OUTSIDE = resources.ROOT / ('outside' if resources.INSTALLED else 'tests/outside')
 ROUTE = OUTSIDE / 'kinematic-character/routes/walk.json'
 SPEC = resources.ROOT / 'agents/specs/player-stays-above-ground.json'
 RECORDING = OUTSIDE / 'recordings/kinematic-character'
-WRONG_BASE = 'Choose the unchanged pinned kinematic-character game as Before.'
+CONFIG = resources.ROOT / 'contracts/examples/project-recorded.json'
 
 
-def checks():
-    with tempfile.TemporaryDirectory() as tmp:
-        root = Path(tmp)
-        copy_policy(root)
-        return verify.read_checks(root, 'specs', ['routes/walk.json'], 'base')
-
-
-def copy_policy(root):
-    for name, source in [('specs', SPEC), ('routes', ROUTE)]:
-        folder = root / name
-        folder.mkdir(parents=True)
-        shutil.copyfile(source, folder / source.name)
-
-
-def create_job(store, before, after):
-    for game in (before, after):
-        if store.root.is_relative_to(game):
-            raise ValueError('The job store must be outside both game folders.')
-    store.root.mkdir(parents=True, exist_ok=True)
-    pair = Path(tempfile.mkdtemp(prefix='kinematic-', dir=store.root))
+def prepare(source, destination):
+    source, destination = Path(source).resolve(), Path(destination).resolve()
+    if destination.exists() or destination.is_relative_to(source):
+        raise ValueError('Choose a new destination outside the source project.')
+    if not (source / 'project.godot').is_file():
+        raise ValueError('The source must contain project.godot.')
+    project_config.load(CONFIG, source)  # The example's scene, player and image must exist.
     try:
-        for side, source in [('before', before), ('after', after)]:
-            digest = tree.copy(source, pair / side / 'project', within=source, skip=tree.GODOT_SKIP)
-            if side == 'before' and digest != BASE_TREE:
-                raise ValueError(WRONG_BASE)
-            copy_policy(pair / side)
-        doc = request.build(adapter='godot', base=pair / 'before', head=pair / 'after', game='project',
-                            routes=['routes/walk.json'], specs='specs')
-        return store.create(doc)
+        tree.copy(source, destination, within=source, skip=tree.GODOT_SKIP)
+        for relative, original in [
+            ('routes/walk.json', ROUTE), ('checks/' + SPEC.name, SPEC),
+            ('vision/calibration.json', RECORDING / 'calibration.json'),
+            ('vision/vision-recording.json', RECORDING / 'vision-recording.json'),
+            (project_config.FILENAME, CONFIG),
+        ]:
+            target = destination / relative
+            if target.exists():
+                raise ValueError(f'The source already contains {relative}; no file is overwritten.')
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(original, target)
+        project_config.read_game(destination)
     except Exception:
-        shutil.rmtree(pair)
+        shutil.rmtree(destination, ignore_errors=True)
         raise
+    return destination
 
 
-def start(store, job_id):
-    return runner.spawn(store, job_id, command=[sys.executable, '-m', 'expectrail.app_kinematic',
-                        str(store.root), str(store.lease_seconds), job_id])
-
-
-def worker(store, job_id):
-    client = recorded.RecordedClient(recorded.read_recording(RECORDING / 'vision-recording.json'))
-    calibration = anchored.check_calibration(json.loads((RECORDING / 'calibration.json').read_bytes()))
-    engine = engines.GodotGate(rule='both', visual=anchored.AnchoredObserver(client, calibration))
-    runner.work(store, job_id, engines={'godot': engine}, own_group=True)
-    print(f'Saved vision answers used for {client.answered} of {client.calls} questions.')
+def main(argv=None):
+    parser = argparse.ArgumentParser(description='Prepare a new configured copy of the bundled outside example; no verification or model call.')
+    parser.add_argument('source', type=Path)
+    parser.add_argument('destination', type=Path)
+    args = parser.parse_args(argv)
+    try:
+        print(prepare(args.source, args.destination))
+    except (ValueError, OSError) as exc:
+        parser.error(str(exc))
+    return 0
 
 
 if __name__ == '__main__':
-    worker(JobStore(Path(sys.argv[1]), lease_seconds=float(sys.argv[2])), sys.argv[3])
+    raise SystemExit(main())

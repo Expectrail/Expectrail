@@ -4,6 +4,7 @@ from __future__ import annotations
 import copy
 import json
 import unittest
+import tempfile
 from pathlib import Path
 
 from expectrail import capabilities as cap
@@ -77,8 +78,8 @@ class LedgerTest(unittest.TestCase):
         self.assertIn("ended\nin failure", section)
 
     def test_no_row_claims_a_grade_above_diagnostic_yet(self):
-        # Isolated needs the replay sandbox, the two-job action and the receipt; none has landed.
-        # When one does, this test changes in the pull request that shows it.
+        # Those components exist separately; no complete trusted signed deployment is evidenced.
+        # Promotion requires a recorded end-to-end deployment, not just merged components.
         self.assertEqual({r["grade"] for r in self.doc["rows"]} - {"fixture", "diagnostic"}, set())
 
     def test_the_example_matches_the_schema(self):
@@ -266,7 +267,7 @@ class AdvertTest(unittest.TestCase):
         return cap.advert_problems(self.doc, texts)
 
     def test_the_readme_and_the_site_are_the_files_read(self):
-        self.assertEqual(sorted(self.texts), ["README.md", "docs/index.html"])
+        self.assertEqual(sorted(self.texts), ["README.md", "docs/concepts.html", "docs/index.html", "docs/run-it.md"])
         self.assertIn("python3 -m agents.loop", self.texts["README.md"])
 
     def test_a_new_command_in_the_readme_fails(self):
@@ -332,6 +333,30 @@ class AdvertTest(unittest.TestCase):
 class CommandLineTest(unittest.TestCase):
     def test_check_passes_on_the_committed_ledger(self):
         self.assertEqual(cap.main(["check"]), 0)
+
+
+class ReleaseAuditTest(unittest.TestCase):
+    def test_all_four_public_pages_are_read_and_checked(self):
+        pages = ("README.md", "docs/index.html", "docs/concepts.html", "docs/run-it.md")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in pages:
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("python3 -m unlisted_sensor", encoding="utf-8")
+            texts = cap.read_adverts(root)
+            self.assertEqual(set(texts), set(pages))
+            found = cap.advert_problems(cap.load(), texts, root)
+            for name in pages:
+                self.assertIn(f"{name}: names the command unlisted_sensor, which no ledger row lists", found)
+
+    def test_removing_a_recently_advertised_mode_is_an_error(self):
+        for rid in ("recorded-vision", "template-sensor", "spend-caps", "verify-intent",
+                    "local-app", "dodge-the-creeps", "verifier-receipts"):
+            with self.subTest(mode=rid):
+                doc = cap.load()
+                doc["rows"] = [r for r in doc["rows"] if r["id"] != rid]
+                self.assertTrue(any(rid in p and "must cover" in p for p in cap.row_problems(doc)))
 
 
 if __name__ == "__main__":

@@ -34,8 +34,10 @@ names it: ``none`` (the default; every pixel check is then ``not-run``, with the
   nothing runs it unless the flag is given.
 
 ``--sam-box`` (``body``, the default: the engine's body box widened by ``--sam-pad`` game px; or ``WxH``
-with ``--sam-lift``) and ``--sam-first`` set how SAM is asked, and must be how a recording was asked: an
-observer that asks otherwise than the recording stops at the first replay.
+with ``--sam-lift``), ``--sam-every`` (every Nth frame and the last; 10 by default, at most 60) and
+``--sam-first`` set how SAM is asked, and must be how a recording was asked: an observer that asks
+otherwise than the recording stops at the first replay, and one that plans other frames than the
+recording was asked about (another ``--sam-every`` or ``--sam-first``) is refused before it asks.
 
 **Pixel checks across three jobs** (expectrail/jit/pixel_jobs.py), so SAM's key never meets the change's
 code: ``run --observer sam-3.1-anchor --pixel-capture DIR`` replays and keeps the frames and asks nothing;
@@ -287,7 +289,7 @@ def _sam_observer(args, client):
 
     try:
         return SamAnchorObserver(client, box=_box(args.sam_box), pad=args.sam_pad, lift=args.sam_lift,
-                                 first=args.sam_first)
+                                 every=args.sam_every, first=args.sam_first)
     except ValueError as exc:
         raise ObserverArgs(str(exc)) from exc
 
@@ -297,6 +299,8 @@ def _add_sam_setting(parser) -> None:
     parser.add_argument("--sam-pad", type=float, default=4.0, help="game px the body box is widened by")
     parser.add_argument("--sam-lift", type=float, default=0.0, help="with a sized box: game px above the origin")
     parser.add_argument("--sam-first", type=int, help="ask about the first N frames only")
+    parser.add_argument("--sam-every", type=int, default=10,
+                        help="ask about every Nth frame and the last (default 10, at most 60); the same in every job")
 
 
 def _pixel_jobs_kwargs(args) -> dict:

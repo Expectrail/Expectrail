@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Expectrail/Expectrail/contracts/model-month.v1.schema.json",
+  "title": "Model role caps reserved in one UTC calendar month",
+  "description": "Opt-in combined $200 month for Glimmer, Muse, triage and spec drafting. Each entry reserves a role cap before its first request; holds are not bills.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "month",
+    "limitUsd",
+    "spentUsd",
+    "entries"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.model-month/v1"
+    },
+    "month": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+    },
+    "limitUsd": {
+      "const": 200
+    },
+    "spentUsd": {
+      "type": "number",
+      "minimum": 0
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "jobId",
+          "reservedUsd",
+          "at",
+          "role"
+        ],
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$"
+          },
+          "reservedUsd": {
+            "type": "number",
+            "minimum": 0
+          },
+          "at": {
+            "type": "string",
+            "minLength": 1
+          },
+          "role": {
+            "enum": [
+              "glimmer",
+              "muse",
+              "triage",
+              "spec"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
