@@ -1,0 +1,56 @@
+{
+  "format": "expectrail.repair-run/v1",
+  "reproduction": {
+    "kind": "approved",
+    "checks": [
+      "player-stays-above-ground"
+    ]
+  },
+  "repairAttempted": true,
+  "parent": {
+    "job": "6fdec1770e3c4a2b9d1e5f7a8b9c0d1e",
+    "decision": "reject",
+    "headTree": "e02fec02ad12faeceb2b991a3302f820ac45271611b12a25fa8b9729d02bff23",
+    "failing": [
+      {
+        "spec": "player-stays-above-ground",
+        "route": "smoke"
+      }
+    ]
+  },
+  "fixer": {
+    "source": "muse",
+    "sandboxed": true
+  },
+  "budget": {
+    "attempts": 3,
+    "usdCap": 1
+  },
+  "attempts": [
+    {
+      "n": 1,
+      "patch": null,
+      "patchSha256": null,
+      "job": null,
+      "decision": null,
+      "reasons": [
+        "fixer-bound-unavailable: no verified maximum billable charge per Muse/BYO request; live fixer disabled"
+      ],
+      "budgetStop": "fixer-bound-unavailable",
+      "fixerInvocation": "attempt-1/fixer-invocation.json"
+    }
+  ],
+  "stop": {
+    "reason": "spend-cap",
+    "detail": "fixer-bound-unavailable: no verified maximum billable charge per Muse/BYO request; live fixer disabled"
+  },
+  "result": {
+    "decision": "needs-review",
+    "job": null,
+    "patch": null
+  },
+  "machineWritten": true,
+  "review": "Expectrail has not accepted a repair. A person must review this run.",
+  "startedAt": "2026-11-14T08:00:00Z",
+  "finishedAt": "2026-11-14T08:03:10Z"
+}

@@ -1,0 +1,69 @@
+{
+  "config": {
+    "format": "expectrail.project/v1",
+    "adapter": "godot",
+    "draft": true,
+    "entryScene": "res://game.tscn",
+    "viewport": [
+      360,
+      640
+    ],
+    "physicsTicksPerSecond": 60,
+    "captureFps": 60,
+    "bindings": {},
+    "inputActions": [
+      "pause"
+    ],
+    "routes": [
+      "routes/draft-first-a04d10e1878d48fb.json"
+    ]
+  },
+  "route": {
+    "format": "expectrail.route/v0",
+    "name": "draft-first-route",
+    "seed": 1,
+    "description": "Draft from the input map. Review the actions and replay before use.",
+    "ticks": 93,
+    "events": [
+      {
+        "tick": 15,
+        "action": "pause",
+        "pressed": true
+      },
+      {
+        "tick": 21,
+        "action": "pause",
+        "pressed": false
+      },
+      {
+        "tick": 36,
+        "action": "pause",
+        "pressed": true
+      },
+      {
+        "tick": 42,
+        "action": "pause",
+        "pressed": false
+      },
+      {
+        "tick": 57,
+        "action": "pause",
+        "pressed": true
+      },
+      {
+        "tick": 63,
+        "action": "pause",
+        "pressed": false
+      }
+    ]
+  },
+  "unresolvedBindings": [
+    "Supply the player node path and its res:// image in bindings.player; the starting scene has no unique player."
+  ],
+  "textureCandidates": [],
+  "playerCandidates": [
+    "Paddle",
+    "Ball"
+  ],
+  "draft": true
+}

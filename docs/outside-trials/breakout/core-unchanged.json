@@ -1,0 +1,6 @@
+{
+  "partATree": "a82e33768e7060912cd955639a84a98301028f0b",
+  "filesCompared": 287,
+  "differentFiles": [],
+  "method": "Compare each safe named product/harness/agents/tools file byte-for-byte with the Part A tree; excluded prohibited path names before reading."
+}

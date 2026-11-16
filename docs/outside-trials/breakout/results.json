@@ -1,0 +1,206 @@
+[
+  {
+    "variant": "pinned",
+    "jobId": "08ea8742cab28367ba3b452dc8c7e152",
+    "decision": "needs-review",
+    "reasons": [
+      "no checks ran",
+      "the project config is a draft (`draft: true`, written by `expectrail init`); review its bindings and remove `draft` before an accept can rest on it.",
+      "vision did not run; see the PROVIDER_FAILED diagnostics for the missing settings"
+    ],
+    "gateCounts": {
+      "checks": 0,
+      "passed": 0,
+      "failed": 0,
+      "needsReview": 0
+    },
+    "frames": 120,
+    "ticks": 120,
+    "distinctPlayerPositions": 1,
+    "distinctBallBoxes": 1,
+    "traceSha256": "467174c420431cde0f2b67028c4fa3df5c1c3e7f7e429f73b64ef19d963c66b9",
+    "engineDraftDiagnostics": [
+      {
+        "spec": "breakout-ball-starts",
+        "result": "fail",
+        "reason": "ball is 104px past the boundary (below 300, tolerance 0) (first at frame 40, 11 frames)",
+        "coverage": {
+          "status": "not-reached",
+          "semanticResult": "fail",
+          "framesObserved": 11,
+          "framesExpected": 11,
+          "framesRequired": 11,
+          "completeWindow": true
+        },
+        "firstFrame": 40
+      },
+      {
+        "spec": "breakout-paddle-bounds",
+        "result": "needs-review",
+        "reason": "not-exercised: 49 judged frames; needs 30; observed 49 of 49 window frames; checkpoint not-reached; no violation in 49 frames",
+        "coverage": {
+          "status": "not-reached",
+          "semanticResult": "not_exercised",
+          "framesObserved": 49,
+          "framesExpected": 49,
+          "framesRequired": 30,
+          "completeWindow": true
+        },
+        "firstFrame": null
+      }
+    ],
+    "diagnosticOnly": true,
+    "renderer": {
+      "name": "godot",
+      "version": "4.7.2.stable.official.ed1daf0bf",
+      "renderer": "opengl3",
+      "device": "Mesa - llvmpipe (LLVM 19.1.7, 256 bits)"
+    },
+    "isolation": {
+      "sandbox": null,
+      "mode": "auto",
+      "reason": "bubblewrap could not start a sandbox: bwrap: setting up uid map: Read-only file system",
+      "network": "host",
+      "filesystem": "host",
+      "processes": "host",
+      "environment": "allowlist",
+      "limits": null
+    }
+  },
+  {
+    "variant": "harmless",
+    "jobId": "5cc8148cd465f764388d35bd3f2db8c4",
+    "decision": "needs-review",
+    "reasons": [
+      "no checks ran",
+      "the project config is a draft (`draft: true`, written by `expectrail init`); review its bindings and remove `draft` before an accept can rest on it.",
+      "vision did not run; see the PROVIDER_FAILED diagnostics for the missing settings"
+    ],
+    "gateCounts": {
+      "checks": 0,
+      "passed": 0,
+      "failed": 0,
+      "needsReview": 0
+    },
+    "frames": 120,
+    "ticks": 120,
+    "distinctPlayerPositions": 1,
+    "distinctBallBoxes": 1,
+    "traceSha256": "467174c420431cde0f2b67028c4fa3df5c1c3e7f7e429f73b64ef19d963c66b9",
+    "engineDraftDiagnostics": [
+      {
+        "spec": "breakout-ball-starts",
+        "result": "fail",
+        "reason": "ball is 104px past the boundary (below 300, tolerance 0) (first at frame 40, 11 frames)",
+        "coverage": {
+          "status": "not-reached",
+          "semanticResult": "fail",
+          "framesObserved": 11,
+          "framesExpected": 11,
+          "framesRequired": 11,
+          "completeWindow": true
+        },
+        "firstFrame": 40
+      },
+      {
+        "spec": "breakout-paddle-bounds",
+        "result": "needs-review",
+        "reason": "not-exercised: 49 judged frames; needs 30; observed 49 of 49 window frames; checkpoint not-reached; no violation in 49 frames",
+        "coverage": {
+          "status": "not-reached",
+          "semanticResult": "not_exercised",
+          "framesObserved": 49,
+          "framesExpected": 49,
+          "framesRequired": 30,
+          "completeWindow": true
+        },
+        "firstFrame": null
+      }
+    ],
+    "diagnosticOnly": true,
+    "renderer": {
+      "name": "godot",
+      "version": "4.7.2.stable.official.ed1daf0bf",
+      "renderer": "opengl3",
+      "device": "Mesa - llvmpipe (LLVM 19.1.7, 256 bits)"
+    },
+    "isolation": {
+      "sandbox": null,
+      "mode": "auto",
+      "reason": "bubblewrap could not start a sandbox: bwrap: setting up uid map: Read-only file system",
+      "network": "host",
+      "filesystem": "host",
+      "processes": "host",
+      "environment": "allowlist",
+      "limits": null
+    }
+  },
+  {
+    "variant": "broken",
+    "jobId": "ef34ac0096918b44e216c4551f59812d",
+    "decision": "needs-review",
+    "reasons": [
+      "no checks ran",
+      "the project config is a draft (`draft: true`, written by `expectrail init`); review its bindings and remove `draft` before an accept can rest on it.",
+      "vision did not run; see the PROVIDER_FAILED diagnostics for the missing settings"
+    ],
+    "gateCounts": {
+      "checks": 0,
+      "passed": 0,
+      "failed": 0,
+      "needsReview": 0
+    },
+    "frames": 120,
+    "ticks": 120,
+    "distinctPlayerPositions": 1,
+    "distinctBallBoxes": 1,
+    "traceSha256": "467174c420431cde0f2b67028c4fa3df5c1c3e7f7e429f73b64ef19d963c66b9",
+    "engineDraftDiagnostics": [
+      {
+        "spec": "breakout-ball-starts",
+        "result": "fail",
+        "reason": "ball is 104px past the boundary (below 300, tolerance 0) (first at frame 40, 11 frames)",
+        "coverage": {
+          "status": "not-reached",
+          "semanticResult": "fail",
+          "framesObserved": 11,
+          "framesExpected": 11,
+          "framesRequired": 11,
+          "completeWindow": true
+        },
+        "firstFrame": 40
+      },
+      {
+        "spec": "breakout-paddle-bounds",
+        "result": "needs-review",
+        "reason": "not-exercised: 49 judged frames; needs 30; observed 49 of 49 window frames; checkpoint not-reached; no violation in 49 frames",
+        "coverage": {
+          "status": "not-reached",
+          "semanticResult": "not_exercised",
+          "framesObserved": 49,
+          "framesExpected": 49,
+          "framesRequired": 30,
+          "completeWindow": true
+        },
+        "firstFrame": null
+      }
+    ],
+    "diagnosticOnly": true,
+    "renderer": {
+      "name": "godot",
+      "version": "4.7.2.stable.official.ed1daf0bf",
+      "renderer": "opengl3",
+      "device": "Mesa - llvmpipe (LLVM 19.1.7, 256 bits)"
+    },
+    "isolation": {
+      "sandbox": null,
+      "mode": "auto",
+      "reason": "bubblewrap could not start a sandbox: bwrap: setting up uid map: Read-only file system",
+      "network": "host",
+      "filesystem": "host",
+      "processes": "host",
+      "environment": "allowlist",
+      "limits": null
+    }
+  }
+]

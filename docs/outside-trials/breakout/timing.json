@@ -1,0 +1,8 @@
+{
+  "numberedCommands": 37,
+  "summedSubprocessSeconds": 192.85912263700448,
+  "elapsedFirstToLastCommandSeconds": 1133.5576859369978,
+  "humanMinutes": null,
+  "humanTiming": "not measured; this was an agent trial, not the first-user test",
+  "scope": "Numbered commands only; initial repository search, pin lookup, read-only inspections and artifact preparation are not included in summed subprocess time. The initial pin lookup was not separately timed."
+}

@@ -1,0 +1,39 @@
+{
+  "format": "expectrail.test-spec/v0",
+  "id": "breakout-ball-starts",
+  "instruction": "After the attempted start at tick 10, the ball should be below its launch area by frames 40..50: its top edge must be below y=300. The ball starts at y=200 and moves downward at at least 400*cos(45 degrees) px/s before a paddle impact. Require the same paddle-left-lane checkpoint to avoid treating a menu as an exercised round. Draft: review timing and coordinate assumptions before approving.",
+  "objects": {
+    "ball": {
+      "prompt": "white ball"
+    }
+  },
+  "assertion": {
+    "type": "never-crosses",
+    "object": "ball",
+    "boundary": {
+      "axis": "y",
+      "value": 300,
+      "side": "below",
+      "tolerancePx": 0
+    }
+  },
+  "window": {
+    "fromFrame": 40,
+    "toFrame": 50
+  },
+  "coverage": {
+    "minFrames": 11,
+    "reached": [
+      {
+        "type": "position-region",
+        "fromTick": 12,
+        "box": [
+          0,
+          590,
+          80,
+          640
+        ]
+      }
+    ]
+  }
+}

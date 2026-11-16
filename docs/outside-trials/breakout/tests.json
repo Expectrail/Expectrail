@@ -1,0 +1,20 @@
+{
+  "before": {
+    "tests": 4179,
+    "seconds": 432.924,
+    "failures": 0,
+    "errors": 0,
+    "skips": 50,
+    "failingTestNames": []
+  },
+  "after": {
+    "tests": 4179,
+    "seconds": 456.857,
+    "failures": 0,
+    "errors": 0,
+    "skips": 50,
+    "failingTestNames": []
+  },
+  "sameFailingTestNames": true,
+  "baseline": "The final Part A full suite, run before any Part B trial files were added, reused as the frozen-core before baseline."
+}

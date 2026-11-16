@@ -1,0 +1,8 @@
+{
+  "selectedUtc": "2026-11-16T04:18:51.266420+00:00",
+  "repository": "https://github.com/mike0697/Breakout.git",
+  "author": "mike0697",
+  "reason": "A real small paddle-and-ball brick game, unlike the platformer and top-down demo trials; an independent individual author rather than godotengine. Selected as the first result of a public repository search for godot4 breakout language:GDScript license:mit (reported size 3664 KiB). No scene, script, README or input map has been read at selection time. Licence and engine/language eligibility will be checked at the pin before running. It will not be swapped for an easier game.",
+  "search": "godot4 breakout language:GDScript license:mit",
+  "integrationInspectedAtSelection": false
+}

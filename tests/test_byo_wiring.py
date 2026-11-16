@@ -209,7 +209,8 @@ class SpecWriterTest(unittest.TestCase):
 
 
 class FixerTest(unittest.TestCase):
-    def test_llm_patch_agent_produces_a_checked_candidate(self):
+    @mock.patch("expectrail.fixer_budget.start")  # Process/model below is an offline stand-in.
+    def test_llm_patch_agent_produces_a_checked_candidate(self, admission):
         from agents.fixer import run_fixer
 
         def fake_llm(prompt, work, out_patch, *, model=None):
@@ -236,7 +237,8 @@ class FixerTest(unittest.TestCase):
             meta = run_fixer(_request(), Path(tmp) / "fix", candidate_patch=FIX)
         self.assertEqual(meta["source"], "fixture")
 
-    def test_cli_agent_runs_in_the_workspace_with_only_its_key(self):
+    @mock.patch("expectrail.fixer_budget.start")  # Process/model below is an offline stand-in.
+    def test_cli_agent_runs_in_the_workspace_with_only_its_key(self, admission):
         from agents.fixer import run_fixer
 
         seen = {}
