@@ -1,0 +1,18 @@
+[
+  {
+    "project": "game/platformer",
+    "exit": 0,
+    "seconds": 13.25224761699792,
+    "identicalTraces": true,
+    "moved": true,
+    "ticks": 2094
+  },
+  {
+    "project": "tests/projects/crate-run/project",
+    "exit": 0,
+    "seconds": 20.24621833099809,
+    "identicalTraces": true,
+    "moved": true,
+    "ticks": 243
+  }
+]

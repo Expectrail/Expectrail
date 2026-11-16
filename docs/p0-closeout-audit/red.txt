@@ -1,0 +1,51 @@
+Recorded local run. Local paths replaced and trailing spaces trimmed; raw log is in the handover.
+Original SHA-256: c18f6dda5eb3df662806adf316507e39dcd84302cf48709633867cc8b64cd8e6
+
+test_available_live_renderer_names_version_without_a_false_warning (tests.test_p0_closeout.AppSetupInspectionTest.test_available_live_renderer_names_version_without_a_false_warning) ... ok
+test_live_vision_inspection_names_missing_tools_before_verification (tests.test_p0_closeout.AppSetupInspectionTest.test_live_vision_inspection_names_missing_tools_before_verification) ...
+  test_live_vision_inspection_names_missing_tools_before_verification (tests.test_p0_closeout.AppSetupInspectionTest.test_live_vision_inspection_names_missing_tools_before_verification) (reason='godot: Godot 4.7.2 is not installed') ... FAIL
+  test_live_vision_inspection_names_missing_tools_before_verification (tests.test_p0_closeout.AppSetupInspectionTest.test_live_vision_inspection_names_missing_tools_before_verification) (reason='display: xvfb-run is missing') ... FAIL
+  test_live_vision_inspection_names_missing_tools_before_verification (tests.test_p0_closeout.AppSetupInspectionTest.test_live_vision_inspection_names_missing_tools_before_verification) (reason='opengl: drawing probe failed') ... FAIL
+test_explicit_llm_patch_reaches_existing_fixer_and_fresh_gate (tests.test_p0_closeout.RepairAgentCommandTest.test_explicit_llm_patch_reaches_existing_fixer_and_fresh_gate) ... FAIL
+test_unknown_agent_never_falls_back_or_constructs_a_fixer (tests.test_p0_closeout.RepairAgentCommandTest.test_unknown_agent_never_falls_back_or_constructs_a_fixer) ... ok
+
+======================================================================
+FAIL: test_live_vision_inspection_names_missing_tools_before_verification (tests.test_p0_closeout.AppSetupInspectionTest.test_live_vision_inspection_names_missing_tools_before_verification) (reason='godot: Godot 4.7.2 is not installed')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/tests/test_p0_closeout.py", line 64, in test_live_vision_inspection_names_missing_tools_before_verification
+    self.assertTrue(report['warning'], report)
+AssertionError: False is not true : {'recording': None, 'status': 'live', 'warning': False, 'fix': None, 'message': 'This machine: unknown rendering environment. No recorded vision selected; live vision requires MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP.'}
+
+======================================================================
+FAIL: test_live_vision_inspection_names_missing_tools_before_verification (tests.test_p0_closeout.AppSetupInspectionTest.test_live_vision_inspection_names_missing_tools_before_verification) (reason='display: xvfb-run is missing')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/tests/test_p0_closeout.py", line 64, in test_live_vision_inspection_names_missing_tools_before_verification
+    self.assertTrue(report['warning'], report)
+AssertionError: False is not true : {'recording': None, 'status': 'live', 'warning': False, 'fix': None, 'message': 'This machine: unknown rendering environment. No recorded vision selected; live vision requires MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP.'}
+
+======================================================================
+FAIL: test_live_vision_inspection_names_missing_tools_before_verification (tests.test_p0_closeout.AppSetupInspectionTest.test_live_vision_inspection_names_missing_tools_before_verification) (reason='opengl: drawing probe failed')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/tests/test_p0_closeout.py", line 64, in test_live_vision_inspection_names_missing_tools_before_verification
+    self.assertTrue(report['warning'], report)
+AssertionError: False is not true : {'recording': None, 'status': 'live', 'warning': False, 'fix': None, 'message': 'This machine: unknown rendering environment. No recorded vision selected; live vision requires MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP.'}
+
+======================================================================
+FAIL: test_explicit_llm_patch_reaches_existing_fixer_and_fresh_gate (tests.test_p0_closeout.RepairAgentCommandTest.test_explicit_llm_patch_reaches_existing_fixer_and_fresh_gate)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/tests/test_p0_closeout.py", line 22, in test_explicit_llm_patch_reaches_existing_fixer_and_fresh_gate
+    self.assertEqual(code, 0, output)
+AssertionError: 5 != 0 : repair: unrecognized arguments: --agent llm-patch
+usage: expectrail repair [-h] [--jobs-root JOBS_ROOT] [--attempts ATTEMPTS]
+                         [--fixture PATCH]
+                         JOB
+
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.847s
+
+FAILED (failures=4)
