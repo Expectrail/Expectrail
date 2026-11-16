@@ -356,6 +356,11 @@ def build_job_budget(job_id: str, *, month: dict | None = None) -> dict:
 
 def _check_capability(doc: dict) -> None:
     _validate(doc, "provider-capability")
+    prices = doc.get("tokenPrices", [])
+    if len({p["model"] for p in prices}) != len(prices):
+        raise ContractError("provider-capability: duplicate token price model")
+    if any(p["model"] not in {m for r in doc["roles"] for m in r["models"]} for p in prices):
+        raise ContractError("provider-capability: price for an unlisted model")
     seen = set()
     for role in doc["roles"]:
         if role["role"] in seen:

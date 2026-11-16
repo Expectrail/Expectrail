@@ -9,7 +9,7 @@ from expectrail.gate import record
 from expectrail.orchestrator import reproduction, request, store
 
 
-def run(jobs, job, *, attempts=3, fixture=None, spawn_worker=None):
+def run(jobs, job, *, attempts=3, fixture=None, spawn_worker=None, agent="muse-code"):
     status, original = jobs.status(job), jobs.request(job)
     if status['phase'] != 'completed' or 'coverage' not in original:
         raise ValueError('ingest repair needs a completed playtest intake')
@@ -46,7 +46,7 @@ def run(jobs, job, *, attempts=3, fixture=None, spawn_worker=None):
     # Deliberately import/call the repair service only after the eligibility check.
     from expectrail import repair
     if eligible:
-        path, doc = repair.repair(jobs, job, attempts=attempts, fixture=fixture, spawn_worker=spawn_worker)
+        path, doc = repair.repair(jobs, job, attempts=attempts, fixture=fixture, spawn_worker=spawn_worker, **({"agent": agent} if agent != "muse-code" else {}))
         attempted = bool(doc['attempts'])
     else:
         folder = Path(tempfile.mkdtemp(prefix='repair-', dir=paths.root))

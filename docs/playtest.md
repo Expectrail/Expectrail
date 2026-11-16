@@ -68,9 +68,10 @@ expectrail ingest report.json --project /path/to/project --repair --json
 ```
 
 Only an approved check that failed all three anchored base replays is eligible
-for the existing sandboxed fix loop. Live fixer startup is currently refused
-with `fixer-bound-unavailable`: no verified dollar maximum for a Muse/BYO request
-is available. See [fixer spend and the blocked-repair ceiling](fixer-spend.md).
+for the existing fix loop. Muse/BYO CLI startup is refused with
+`fixer-bound-unavailable`. The trusted option `--repair-agent llm-patch` enables
+recorded OpenAI GPT-4o text pricing, pre-send reservations and an output cap.
+See [the bounds, caveats and $8.75 cap envelope](llm-patch-spend.md).
 Offline saved patches remain usable. Advisory-only reproduction, `not-reproduced` and
 `anchor-desync` do not construct a fixer transport. The loop writes a machine
 candidate and asks the gate to judge it afresh. Only that gate can accept it.

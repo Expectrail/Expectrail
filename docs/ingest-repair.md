@@ -1,10 +1,11 @@
 # Opt-in repair after playtest intake (#531)
 
-Current #267 behavior: a live fixer cannot start without a verified per-request
-dollar maximum. None is supported yet, so it stops `fixer-bound-unavailable`.
-The invocation cap is `EXPECTRAIL_FIXER_INVOCATION_USD_CAP`; setting one cannot
-certify unknown prices. See [the audit and exact current envelope](fixer-spend.md).
-The earlier unexecuted reservation estimate below is not a live repair quote.
+Current #267 behavior: Muse/BYO CLIs stop `fixer-bound-unavailable`. For the
+controlled OpenAI GPT-4o sender choose `--repair-agent llm-patch` with an
+invocation cap, aggregate Muse cap and model-month ledger. Its pre-send token
+reservations and explicit output cap are tested offline; no live provider bill
+was measured. See [the price policy and $8.75 cap envelope](llm-patch-spend.md).
+The earlier unexecuted hold estimate below is not a live CLI repair quote.
 
 `expectrail ingest REPORT --project PATH` still only reproduces and verifies. Add
 `--repair` to hand an approved reproduction to the shipped #433 repair service,

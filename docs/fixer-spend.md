@@ -1,9 +1,10 @@
 # What a fixer invocation can spend (#267)
 
-**A nonzero live dollar ceiling for Muse Code is not established. Live fixers are
-therefore disabled with `fixer-bound-unavailable`.** A declared dollar cap is not
-permission to spend against an unknown per-request maximum. Offline fixture
-patches still work. No live model or CLI was called for this change.
+**Muse Code and BYO agent CLI dollar ceilings remain unestablished; those live
+fixers stop `fixer-bound-unavailable`.** Controlled `llm-patch` now has a recorded
+OpenAI GPT-4o tariff, pre-send token reservations and an explicit output cap.
+See [the controlled sender, limits and $8.75 cap envelope](llm-patch-spend.md).
+Offline fixture patches still work. No live model or CLI was called.
 
 ## The outbound audit
 
@@ -15,7 +16,7 @@ patches still work. No live model or CLI was called for this change.
 | Muse in Bubblewrap, gateway on | In-sandbox TCP bridge → bound Unix socket → host `UnixBridge` → mitmdump → upstream | Gateway logged completed/error flows, no token/billing meter | The prototype adds host-side pre-send admission; no production tariff enables it |
 | Muse with gateway off, or unsandboxed | Direct host network; proxy environment variables can be ignored | The $1 invocation hold only | Fixer wrapper cannot select this path; legacy raw `run_muse` remains a host judge/trust-probe API with soft holds |
 | BYO agent CLI | `run_byo_agent` → `run_sandboxed`; gateway off shares the host network, gateway on uses the same socket/proxy | No invocation dollar maximum | Refused before provider/key/command preparation |
-| BYO `llm-patch` | Host Python `chat_completion(role='FIXER')`, provider HTTP and retries/schema fallback | No per-invocation bound | Both fixer helper and actual default FIXER sender refuse live sends |
+| BYO `llm-patch` | Host Python `chat_completion(role='FIXER')`, provider HTTP and retries/schema fallback | No per-invocation bound | Controlled GPT-4o text requests reserve from the invocation; all other live tariffs remain refused |
 | Other model roles/raw judge utilities | Their existing senders and transports | Existing role holds/SAM meter, outside this fixer invocation | Not promoted to hard dollar bounds by this change |
 
 The sandboxed Muse screenshot judge also calls the bounded wrapper and is now
@@ -33,12 +34,11 @@ CLI flags or real TLS integration is made.
 
 ## What is enforced, and what is a prototype
 
-The production admission function has no supported live pricing policy. Missing,
-invalid or zero invocation caps send nothing. A positive cap also sends nothing:
-`fixer-bound-unavailable` explains the missing verified maximum. No environment
-flag can turn a fixture tariff into a live tariff. Raw FIXER provider sends and
-BYO helper calls cannot bypass that refusal. This intentionally blocks a live
-repair that previously could start with only the $1 invocation hold.
+The production admission function supports only the recorded controlled
+`llm-patch` tariff described above. Missing, invalid or zero invocation caps
+send nothing. Muse/BYO CLI starts still stop `fixer-bound-unavailable` even
+with a positive cap. No environment flag turns a fixture tariff into a live
+CLI tariff. Raw FIXER sends without controlled invocation admission are refused.
 
 The existing repair loop catches this as a budget stop, ends needs-review and
 retains `fixer-invocation.json` beside its attempt. It does not verify a partial
@@ -112,8 +112,8 @@ bound hidden prompt/reasoning tokens or prove server billing behavior.
 That same file explicitly says the usage export does **not** identify the model or
 mode Muse Code uses. A historical total matching Contributor rates does not bind
 a future invocation. The JIT $1/$4 token prices are explicitly assumptions in
-`expectrail/jit/run.py`, not a usable list-price guarantee. No price was fetched,
-assumed or certified in this work.
+`expectrail/jit/run.py`, not a usable list-price guarantee. Those figures do not certify Muse pricing. The subsequent controlled llm-patch
+change records its distinct OpenAI tariff with a public source.
 
 To permit a nonzero live bound, the host needs a verified endpoint/model/mode and
 complete maximum-charge rule; a provable bound on every billable input unit;
@@ -127,7 +127,7 @@ invented by the stand-in.
 
 ## Sean's end-to-end number
 
-For **the currently executable approved-reproduction path**, with no `--propose`,
+For **the blocked Muse CLI approved-reproduction path**, with no `--propose`,
 Meta SAM image observation explicitly selected and a $2 SAM process cap:
 
 * One intake worker admits at most 800 image attempts at the recorded $0.0025
@@ -149,3 +149,5 @@ cap F, aggregate fixer cap M and SAM cap S per fresh worker, the intended envelo
 would be `min(A × F, M) + (1 + A) × S`, before stricter month admission. Today its
 nonzero fixer term is unavailable; this formula is not offered as an enforced
 live-Muse dollar guarantee.
+
+For an enabled controlled llm-patch repair, use the separate [$8.75 cap-only envelope](llm-patch-spend.md).
