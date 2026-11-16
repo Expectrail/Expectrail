@@ -166,7 +166,10 @@ namespace Expectrail.Harness
             _input = new InputDriver(_map);
             foreach (var e in _route.events ?? new RouteEvent[0])
             {
-                if (e.pointer != null) throw new ArgumentException("Unity adapter does not support pointer route events; use an action route");
+                // JsonUtility gives every event a RoutePointer object, even one without a pointer
+                // key, so test its content, never null. A pointer event also names no action.
+                if (string.IsNullOrEmpty(e.action) || (e.pointer != null && e.pointer.position != null && e.pointer.position.Length > 0))
+                    throw new ArgumentException("Unity adapter does not support pointer route events; use an action route");
                 if (!_input.Knows(e.action)) throw new ArgumentException("the map has no action named " + e.action);
                 if (!_events.TryGetValue(e.tick, out var list)) _events[e.tick] = list = new List<RouteEvent>();
                 list.Add(e);
