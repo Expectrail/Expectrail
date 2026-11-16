@@ -69,7 +69,6 @@ class ParseTest(unittest.TestCase):
             "is not an object this project binds": (candidate(object="boss"), B),
             "probe 'coins' is not on offer": (candidate(probe="coins"), B),
             "the window ends before it starts": (candidate(window={"fromFrame": 50, "toFrame": 10}), B),
-            "cannot judge anything yet": (candidate(observer="visual-sensor"), B),
             "cannot judge reaches": (candidate(predicate={"type": "reaches", "goal": "player"}), B),
             "cannot tell 'ground' (ground)": (candidate(object="ground"), B),
             "cannot tell 'coins-counter' (text)": (candidate(object="coins-counter"), B),
@@ -89,6 +88,38 @@ class ParseTest(unittest.TestCase):
                 check, why = pixel.parse_candidate(entry, bindings, ["smoke"])
                 self.assertIsNone(check)
                 self.assertIn(expect, why)
+
+    def test_an_observer_that_is_not_available_judges_nothing(self):
+        table = {**pixel.OBSERVERS, "visual-sensor": {"available": False, "why": {"available": "not built"}}}
+        check, why = pixel.parse_candidate(candidate(observer="visual-sensor"), B, ["smoke"], table)
+        self.assertIsNone(check)
+        self.assertIn("cannot judge anything yet: not built", why)
+
+    def test_the_visual_sensor_is_a_trusted_observer_and_not_offered_to_the_proposer(self):
+        # #262's sensor, as expectrail/jit/template_observer.py builds it: the player only, no ground, no text,
+        # no reaches; and a proposal may name only the observers the proposer is offered.
+        check, why = pixel.parse_candidate(candidate(observer="visual-sensor"), B, ["smoke"])
+        self.assertIsNone(why)
+        self.assertEqual(check["observer"], "visual-sensor")
+        refused = {
+            "visual-sensor cannot judge reaches": candidate(observer="visual-sensor",
+                                                            predicate={"type": "reaches", "goal": "player"}),
+            "visual-sensor cannot tell 'ground'": candidate(observer="visual-sensor", object="ground"),
+            "visual-sensor cannot tell 'coins-counter'": candidate(observer="visual-sensor", object="coins-counter"),
+            "visual-sensor is not pointed at the boxes the engine logs for 'enemy'":
+                candidate(observer="visual-sensor", object="enemy"),
+        }
+        for expect, entry in refused.items():
+            with self.subTest(expect=expect):
+                check, why = pixel.parse_candidate(entry, B, ["smoke"])
+                self.assertIsNone(check)
+                self.assertIn(expect, why)
+        check, why = pixel.parse_candidate(candidate(observer="visual-sensor"), B, ["smoke"], pixel.proposed())
+        self.assertIsNone(check)
+        self.assertIn("visual-sensor is not offered to the proposer", why)
+        checks, notes = pixel.parse_answer([candidate(observer="visual-sensor")], B, ["smoke"])
+        self.assertEqual(checks, [])
+        self.assertIn("not offered to the proposer", notes[0])
 
     def test_bindings_decide_the_names_not_the_model(self):
         # With #259's config naming a second anchored sprite, the same candidate is accepted.

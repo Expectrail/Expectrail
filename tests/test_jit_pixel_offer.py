@@ -114,7 +114,8 @@ class WhatThePromptOffers(unittest.TestCase):
         self.assertIn("every one on screen, each judged on its own", m["observers"]["sam-3.1-anchor"]["note"])
         self.assertEqual(sorted(m["notJudgeable"]), ["coin", "coins-counter", "ground"])
         self.assertIn("does not find the ground", m["notJudgeable"]["ground"])
-        self.assertIn("not built yet", m["notJudgeable"]["coin"])
+        # The visual sensor (#262) is a trusted observer now, and not offered to the proposer (pixel.PROPOSED).
+        self.assertNotIn("visual-sensor", m["notJudgeable"]["coin"])
 
     def test_everything_the_menu_offers_is_accepted_and_nothing_it_withholds(self):
         """The menu and the refusals are made from the same tables: an offered (observer, predicate,
