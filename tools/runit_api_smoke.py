@@ -18,6 +18,8 @@ import urllib.request
 FORMAT = "expectrail.run-it-api/v1"
 ORIGIN = "https://expectrail.tech"
 SAMPLES = ("clean", "fall-through-bug", "fall-through-repair")
+# Cloudflare's browser integrity check refuses the default Python-urllib agent (error 1010).
+USER_AGENT = "expectrail-runit-smoke/1 (+https://expectrail.tech)"
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -38,7 +40,7 @@ def base_url(value):
 def request(url, method="GET", body=None, origin=ORIGIN, timeout=10):
     # No credentials, cookies, environment keys, redirects, or proxy credentials.
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
-    headers = {"Origin": origin, "Accept": "application/json"}
+    headers = {"Origin": origin, "Accept": "application/json", "User-Agent": USER_AGENT}
     if body is not None:
         headers["Content-Type"] = "application/json"
     req = urllib.request.Request(url, data=None if body is None else json.dumps(body).encode(),
