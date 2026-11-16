@@ -535,6 +535,8 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
         try:
             per_run = int(most(route, objects, player)) if callable(most) \
                 else len(planned) * pixel.images_per_frame(player, objects)
+            if per_run < 0:
+                raise ValueError("it says a replay takes fewer than no images")
         except Exception as exc:  # noqa: BLE001 - an observer that cannot say what it will send is not asked
             for check in group:
                 not_run(check, f"the observer cannot be asked about these checks: {' '.join(str(exc).split())[:160]}")

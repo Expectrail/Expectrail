@@ -13,7 +13,7 @@ sees in the frames:
   never passed later. ``sam-3.1-anchor`` is SAM 3.1 asked about the place the engine's record puts
   the object (agents/sam_anchor.py). ``visual-sensor`` is the no-model sensor of #262 over a frozen
   template bank (expectrail/jit/template_observer.py); it is not offered to the proposer (``PROPOSED``),
-  so only a saved proposal names it.
+  and no proposal may name it yet.
 - **The predicates are the reference evaluator's** (``visible``, ``inside-region``, ``never-crosses``,
   ``reaches``; expectrail/evaluator.py), and ``judge`` hands the decision to that evaluator.
 - **A frame counts only where the observer and the engine's record are both there.** A frame in the
