@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import stat
 from pathlib import Path
@@ -110,6 +111,16 @@ def check(doc) -> None:
         raise RequestError(f"the request does not match contracts/{SCHEMA_PATH.name}: {found[0]}"
                            + (f" (and {len(found) - 1} more)" if len(found) > 1 else ""))
     check_bug(doc)
+    if 'coverage' in doc:
+        if doc.get('intent') != 'fix' or doc['base'] is None:
+            raise RequestError('playtest coverage requires intent fix and a base')
+        point = doc['coverage']['reached'][0]
+        try:
+            finite = all(math.isfinite(point[key]) for key in ('x', 'y', 'tolerancePx'))
+        except OverflowError:
+            finite = False
+        if not finite:
+            raise RequestError('playtest coverage coordinates and tolerance must be finite')
     # JobStore persists this JSON spelling. A valid report can expand when escaped
     # (for example non-ASCII text); never queue a request the worker cannot read.
     if len((json.dumps(doc, indent=2) + "\n").encode("utf-8")) > MAX_REQUEST_BYTES:
@@ -269,6 +280,8 @@ def inputs(doc: dict) -> dict:
         meaning["intent"] = doc["intent"]
     if "bug" in doc:
         meaning["bug"] = doc["bug"]
+    if "coverage" in doc:
+        meaning["coverage"] = doc["coverage"]
     if "autoFix" in doc:
         meaning["autoFix"] = doc["autoFix"]
     return {"requestDigest": digest(meaning), **resolved}

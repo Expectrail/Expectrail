@@ -17,6 +17,8 @@ No outcome here rejects anything. Generated checks are advisory (docs/jit.md, ru
 """
 from __future__ import annotations
 
+from expectrail.coverage import all_of
+
 REPS = 3
 OUTCOMES = ("pass", "fail", "not_exercised", "insufficient_observation", "execution_error")
 
@@ -29,10 +31,6 @@ def combine(results: list[str]) -> str:
         if res in results:
             return res
     return "not_exercised"
-
-
-def all_of(runs: list[str], outcome: str, reps: int = REPS) -> bool:
-    return len(runs) >= reps and all(r == outcome for r in runs[:reps])
 
 
 def validity(reference: list[str], variants: dict[str, list[str]], reps: int = REPS) -> dict:
