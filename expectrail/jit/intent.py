@@ -189,8 +189,15 @@ what is found stays inside the box the engine gives OBJECT in that frame, widene
 "tolerancePx": T}, "minScore": S}: the object stays on that side of the line at V pixels of the frame \
 (y grows downwards).
 - {"type": "reaches", "goal": OBJECT, "distancePx": D}: the object comes within D pixels of OBJECT.
+- {"type": "faces-motion"}: the object is drawn facing the way the engine moves it, on every frame of the \
+window where it moves one way and is seen where the engine puts it. Only for an observer and object \
+"pixelChecksOffered" lists it for.
 A pixel check is kept like any other: it must pass on the clean game and fail on the bug build in \
-three replays of each. A frame the observer cannot answer leaves the check undecided, never passed.
+three replays of each. A frame the observer cannot answer leaves the check undecided, never passed. \
+A probe's "differs" may carry "partlyOnScreen": for each kind of object, the [first, last] runs of \
+captured frames on the clean game where one of them is only partly on screen. An observer may not judge \
+an object it cannot see whole, so a check about that object whose window holds one of those frames can \
+stay undecided: choose a window that avoids them. An empty list means none is partly on screen.
 """
 
 
@@ -347,6 +354,10 @@ def _probe_entry(p: dict, signals: frozenset[str] = frozenset(OFFERED), evidence
             record = dict(record, signals={k: v for k, v in record["signals"].items() if k in signals})
         entry["differs"] = {**{k: d[k] for k in ("ticksPerSecond", "framesPerSecond", "frame") if d.get(k) is not None},
                             "record": record, "screen": d.get("screen")}
+        if isinstance(d.get("partlyOnScreen"), dict):
+            # Only under the pixel setting (expectrail/jit/offer.py attach_evidence): object kinds from a
+            # closed list and frame numbers.
+            entry["differs"]["partlyOnScreen"] = d["partlyOnScreen"]
     return entry
 
 

@@ -121,6 +121,74 @@ def _rates(run_dir: Path) -> tuple[int | None, int | None]:
     return tps, fps
 
 
+# --- objects partly on screen on the clean game (#286) ------------------------------------------------------
+# The no-model sensor judges an object only when the engine's box of it is wholly inside the frame
+# (agents/template_observations.py ``look``: ``out-of-frame`` otherwise), so a pixel check whose window holds
+# a frame where an enemy is only partly on screen is a gap there and cannot be decided. These are the frames,
+# from the engine's record of the clean game (both clean replays, which must agree), per object kind the
+# engine logs boxes for, so a proposer can choose a window without them. Frames are captured frame numbers,
+# counted from 0, the numbers a pixel check's window uses. Read from the same box and camera the observer
+# reads (``object_predictions``), never guessed.
+EDGE_ROLES = ("enemy", "bullet")     # agents/template_observations.py OBJECT_BOXES, in a fixed order
+MAX_EDGE_SPANS = 24
+
+
+def edge_frames(run_dir: Path, of: int, frame: dict | None) -> dict:
+    """{role: None | {"frames": n, "spans": [[first, last], ...]}} for one replay of ``of`` captured frames.
+
+    ``frames`` counts the frames where at least one object of that kind is partly on screen: its box
+    reaches inside the frame and also past an edge. ``spans`` are those frames as inclusive runs, at most
+    MAX_EDGE_SPANS: more runs than that are closed up from the last one on, so the spans then hold more
+    frames than ``frames`` counts, never fewer (avoiding them avoids every edge frame). None for a role is
+    "the record cannot say": the trace does not log object boxes, or a frame has no row, box or camera."""
+    from agents import template_observations as sensor
+
+    out: dict = {role: None for role in EDGE_ROLES}
+    tps, fps = _rates(Path(run_dir))
+    if frame is None or tps is None or fps is None or of < 1:
+        return out
+    try:
+        trace = json.loads((Path(run_dir) / "trace.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return out
+    if not isinstance(trace, dict):
+        return out
+    width, height = frame["width"], frame["height"]
+    for role in EDGE_ROLES:
+        try:
+            where = sensor.object_predictions(trace, list(range(of)), role, fps)
+        except (sensor.SensorError, KeyError, TypeError, AttributeError, ValueError):
+            continue
+        if any(where.get(n) is None for n in range(of)):
+            continue
+        edge = [n for n in range(of) if any(
+            not (b[2] <= 0 or b[3] <= 0 or b[0] >= width or b[1] >= height)          # not wholly off screen
+            and (b[0] < 0 or b[1] < 0 or b[2] > width or b[3] > height)              # and not wholly on it
+            for _ident, b in where[n])]
+        out[role] = {"frames": len(edge), "spans": _spans(edge)}
+    return out
+
+
+def _spans(frames: list[int]) -> list[list[int]]:
+    spans: list[list[int]] = []
+    for n in frames:
+        if spans and n == spans[-1][1] + 1:
+            spans[-1][1] = n
+        else:
+            spans.append([n, n])
+    if len(spans) > MAX_EDGE_SPANS:
+        spans = spans[:MAX_EDGE_SPANS - 1] + [[spans[MAX_EDGE_SPANS - 1][0], spans[-1][1]]]
+    return spans
+
+
+def _edges(a: dict, b: dict, frame: dict | None) -> dict:
+    """The row's ``edges``: the clean game's, where its two replays agree; a role they disagree on is None."""
+    of = len(a["frames"])
+    first, second = edge_frames(Path(a["dir"]), of, frame), edge_frames(Path(b["dir"]), len(b["frames"]), frame)
+    return {"of": of, "objects": {role: first[role] if first[role] == second[role] and len(b["frames"]) == of else None
+                                  for role in EDGE_ROLES}}
+
+
 # --- a visual observer's recorded answers -------------------------------------------------------------------
 
 class Recorded:
@@ -245,7 +313,8 @@ def _one_probe(args) -> tuple[dict, dict]:
                "record": {"fields": fields, "signals": moved} if fields else None,
                "screen": {k: v for k, v in shown.items() if k not in ("width", "height")} if shown else None,
                "observer": observer,
-               "unstable": {"frames": len(noisy_frames), "fields": sorted(noisy_fields), "signals": sorted(noisy_signals)}}
+               "unstable": {"frames": len(noisy_frames), "fields": sorted(noisy_fields), "signals": sorted(noisy_signals)},
+               "edges": _edges(a, b, meta["frame"])}
         return row, meta
     except Exception as exc:  # noqa: BLE001 - a probe that cannot be replayed or compared is a row that says so
         return ({"probe": pid, "sees": "error", "record": None, "screen": None, "observer": None,
@@ -346,9 +415,11 @@ def problems(record) -> list[str]:
     for r in record["rows"]:
         pid, rec, s, obs = r["probe"], r["record"], r["screen"], r["observer"]
         if r["sees"] == "error":
-            if rec is not None or s is not None or obs is not None or not r.get("error"):
+            if rec is not None or s is not None or obs is not None or "edges" in r or not r.get("error"):
                 out.append(f"repro-evidence: {pid}: an error row carries a reason and nothing else")
             continue
+        if "edges" in r:
+            out.extend(f"repro-evidence: {pid}: {why}" for why in _edge_problems(r["edges"], s))
         if "error" in r or r["sees"] != screen._sees(rec["fields"] if rec else [], s):
             out.append(f"repro-evidence: {pid}: {r['sees']!r} does not follow from its row")
         if rec is not None:
@@ -394,6 +465,24 @@ def problems(record) -> list[str]:
     return out
 
 
+def _edge_problems(edges: dict, shown: dict | None) -> list[str]:
+    """What is wrong with a row's ``edges`` beyond its shape: runs in order, apart, inside the frames, and
+    holding at least as many frames as counted (exactly as many unless MAX_EDGE_SPANS closed them up)."""
+    of, out = edges["of"], []
+    if shown is not None and shown["of"] != of:
+        out.append("the frames partly on screen are counted over another number of frames than the screen's")
+    for role, got in edges["objects"].items():
+        if got is None:
+            continue
+        spans, held = got["spans"], sum(last - first + 1 for first, last in got["spans"])
+        apart = all(b[0] > a[1] + 1 for a, b in zip(spans, spans[1:]))
+        if not apart or any(first > last or last >= of for first, last in spans) \
+                or got["frames"] > held or (len(spans) < MAX_EDGE_SPANS and got["frames"] != held) \
+                or (got["frames"] == 0) != (not spans):
+            out.append(f"the frames where {role} is partly on screen do not agree with themselves")
+    return out
+
+
 def load(path: Path, *, base_patches: list[Path] | None = None) -> dict:
     """The record, re-checked as untrusted data. With ``base_patches``, it must be about that bug build."""
     from expectrail.jit.measure import base_digests
@@ -429,7 +518,9 @@ def for_proposer(record: dict, *, probes, objects=(), limit: int = MAX_SHOWN) ->
     model, no renderer.
 
     Probes where the record and the screen both differ come first, then those with more signals
-    moved, then those with the larger share of frames differing. Read by
+    moved, then those with the larger share of frames differing. A probe whose row says where an enemy or
+    a bullet is only partly on screen on the clean game carries those runs of frames as ``partlyOnScreen``
+    (#286); attach_evidence shows them under the pixel setting only. Read by
     expectrail.jit.offer.attach_evidence under the evidence setting only."""
     if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 25:
         raise EvidenceError("the summary shows between 1 and 25 probes")
@@ -466,6 +557,12 @@ def for_proposer(record: dict, *, probes, objects=(), limit: int = MAX_SHOWN) ->
             entry["observer"] = {"frames": list(r["observer"]["frames"]),
                                  "objects": {k: dict(v) for k, v in seen.items() if k in objects},
                                  **({"otherObjects": other} if other else {})}
+        edges = {role: [list(x) for x in got["spans"]]
+                 for role, got in (r.get("edges") or {}).get("objects", {}).items() if got is not None}
+        if edges:
+            # Role names are this module's own (EDGE_ROLES, which the schema holds the record to); a role the
+            # record cannot say about is left out, and a row that can say about none carries nothing.
+            entry["partlyOnScreen"] = edges
         shown.append(entry)
     return {"ticksPerSecond": record["ticksPerSecond"], "framesPerSecond": record["framesPerSecond"],
             "frame": dict(record["frame"]) if record["frame"] else None,

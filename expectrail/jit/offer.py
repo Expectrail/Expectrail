@@ -149,8 +149,10 @@ def attach_evidence(probes: list[dict], path, base: list, offer: str) -> list[st
 
     The record is read as untrusted data: ``evidence.load`` checks it against its schema and itself and
     that it was made for these base patches, and ``evidence.for_proposer`` keeps only this library's
-    probe ids, the trace's own fields and signals, and numbers. Under any other setting nothing is
-    attached, and a file given anyway is said and not read."""
+    probe ids, the trace's own fields and signals, and numbers. Under the pixel setting a probe's
+    ``differs`` also carries ``partlyOnScreen``: the captured frames of the clean game where an enemy or a
+    bullet is only partly on screen, which the no-model sensor does not judge. Under any other setting
+    nothing is attached, and a file given anyway is said and not read."""
     if not shows_evidence(offer):
         return [] if path is None else [f"evidence: not used: the offer {offer} does not offer it"]
     if path is None:
@@ -168,6 +170,9 @@ def attach_evidence(probes: list[dict], path, base: list, offer: str) -> list[st
         p.pop("differs", None)
         if p["id"] in shown:
             p["differs"] = {**header, "record": shown[p["id"]]["record"], "screen": shown[p["id"]]["screen"]}
+            if offers_pixel(offer) and "partlyOnScreen" in shown[p["id"]]:
+                # Under the pixel setting only (#286), so every other setting's prompt is as it was.
+                p["differs"]["partlyOnScreen"] = shown[p["id"]]["partlyOnScreen"]
     notes = []
     if summary["probesNotCompared"]:
         notes.append(f"evidence: {summary['probesNotCompared']} probes could not be compared")

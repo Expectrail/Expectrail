@@ -685,6 +685,33 @@ backwards build on any probe. The nine clean `not-found` boxes on `move-fire-rig
 enemies that were shot and stopped. That is two clean replays, not the keep rule's three, and the checks
 were written by hand, not proposed by a model. Tested offline in `tests/test_jit_sensor_facing.py`.
 
+**Frames to avoid: objects partly on screen (added November 16, night).** The sensor does not judge an
+object whose box reaches past the frame's edge (`out-of-frame`), so a window that holds such a frame is a
+gap there. The evidence record now says where they are, so the proposer can choose a window without them:
+
+- **Written** (`expectrail/repro/evidence.py edge_frames`): each row gets `edges`, from the engine's record of
+  both clean replays, read with the same boxes and camera the observer reads (`object_predictions`). Per
+  kind the engine logs boxes for (enemy, bullet): how many captured frames hold one partly on screen, and
+  those frames as `[first, last]` runs, at most 24 (more are closed up, so the runs may hold more frames,
+  never fewer). A kind is null when the record cannot say: no object boxes logged, a frame without a row,
+  box or camera, or two clean replays that disagree. Records made before this have no `edges` and still
+  read.
+- **Read** (`problems`): runs in order, apart, inside the frames, and holding the frames counted.
+- **Shown** under the pixel setting only (`offer.attach_evidence`): a shown probe's `differs` carries
+  `partlyOnScreen`, and the pixel text says to choose a window that avoids those frames. Every other
+  setting's prompt is unchanged. The pixel text also gives `faces-motion`'s shape now; until this change
+  it was in `pixelChecksOffered` and nowhere told how to write.
+- **Judged**: a gap for a box partly off screen says so ("enemy 3 is partly off screen, ...") instead of
+  "the observer gave no answer".
+
+Measured here (Godot 4.7.2, no model, not in CI): `python3 -m expectrail.repro evidence --defect
+enemy-walks-backwards --probe hold-right --probe reverse --probe move-fire-right --jobs 2` took 3 minutes.
+The enemy is partly on screen on frames 0 to 15 and 17 to 27 of `hold-right` and `move-fire-right`, and also
+87 to 96, 98 to 112 and 114 to 124 of `reverse`; the bullet on 5 frames of `move-fire-right`. The windows
+chosen by hand in the facing measurement above (from frame 30, 130 and 30) are past all of them. The
+record is `contracts/examples/repro-evidence-edges.json`. Tested offline in
+`tests/test_repro_evidence_edges.py`.
+
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 
 The replays run the change's code, and asking SAM needs its key; jit.yml keeps the two in separate jobs
