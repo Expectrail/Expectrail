@@ -128,6 +128,14 @@ def check(doc) -> None:
         for side, resolved in selection.get('resolved', {}).items():
             if not Path(resolved['checkout']).is_absolute() or doc[side]['commit'] != resolved['commit']:
                 raise RequestError('saved resolved commit inputs are inconsistent')
+    if 'propose' in doc:
+        if 'coverage' not in doc or doc.get('intent') != 'fix' or doc['base'] is None:
+            raise RequestError('proposal requires playtest coverage, intent fix and a base')
+        for path in doc['propose'].values():
+            try:
+                safe_relative(path, 'a proposal input')
+            except ConfigError as exc:
+                raise RequestError(str(exc)) from exc
     if 'coverage' in doc:
         if doc.get('intent') != 'fix' or doc['base'] is None:
             raise RequestError('playtest coverage requires intent fix and a base')
@@ -307,6 +315,10 @@ def inputs(doc: dict) -> dict:
         meaning["bug"] = doc["bug"]
     if "coverage" in doc:
         meaning["coverage"] = doc["coverage"]
+    if 'propose' in doc:
+        from expectrail.orchestrator.playtest import proposal_inputs
+        meaning['propose'] = doc['propose']
+        meaning['proposalInputs'] = proposal_inputs(doc)
     if "autoFix" in doc:
         meaning["autoFix"] = doc["autoFix"]
     return {"requestDigest": digest(meaning), **resolved}

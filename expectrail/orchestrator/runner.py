@@ -118,7 +118,7 @@ def work(store: st.JobStore, job_id: str, engines: dict | None = None, *, own_gr
                        f"verified is not what was asked. Ask again")])
         return finish("completed", decision=result.decision, reasons=result.reasons,
                             evidence_grade=result.evidence_grade, publish=True, observers=result.observers,
-                            diagnostics=result.diagnostics)
+                            diagnostics=result.diagnostics, reproduction=getattr(result, 'reproduction', None))
     except spend.BudgetStop as exc:
         costs.stop(exc)
         return review([st.diagnostic("BUDGET_STOP", stage="executing", detail=costs.snapshot()["stopped"])])

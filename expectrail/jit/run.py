@@ -171,7 +171,7 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
              variant_limit: int = 8, approved_claims: frozenset[str] = frozenset(),
              run_id: str | None = None, clock=time.monotonic, offer: str = offer_mod.BASELINE,
              candidate_to_model: str = "shown", observer=None, frame_runner=None,
-             pixel_capture: Path | None = None) -> dict:
+             pixel_capture: Path | None = None, report_route: dict | None = None) -> dict:
     """One change: propose, replay, judge. ``candidate_to_model`` is ``shown`` (the default) or
     ``withheld``: under ``withheld`` the intent is given no byte of the candidate patch and no diff map made
     from it (issue #285, step 6), and the record says so in ``settings.candidate``. The candidate is
@@ -207,11 +207,13 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
     inputs = {"patchSha256": _sha_bytes(cand_bytes), "reportSha256": _sha_bytes(report.encode("utf-8")),
               "basePatchSha256": [_sha_bytes(Path(p).read_bytes()) for p in base_patches],
               "profileSha256": digest_v1(profile)}
+    if report_route is not None:
+        inputs['reportRouteSha256'] = digest_v1(report_route)
     status, reason = "complete", None
     try:
         _pipeline(profile, report, cand_bytes, Path(candidate), list(base_patches), out, runner, intent,
                   variants_fn, game, spend, reps, variant_limit, approved_claims, state, diagnostics, clock, offer,
-                  candidate_to_model)
+                  candidate_to_model, report_route)
     except (PatchError, NothingGenerated) as exc:
         status, reason = "nothing-generated", " ".join(str(exc).split())[:300]
     except Exception as exc:  # noqa: BLE001 - rule 3: anything unexpected is "nothing generated", never a pass
@@ -260,12 +262,25 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
 
 def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner, intent, variants_fn, game,
               spend: Spend, reps, variant_limit, approved_claims, state, diagnostics, clock,
-              offer: str = offer_mod.BASELINE, candidate_to_model: str = "shown") -> None:
+              offer: str = offer_mod.BASELINE, candidate_to_model: str = "shown", report_route=None) -> None:
     from expectrail.jit.diff_map import withheld_map
 
     probes = offer_mod.library(profile["actions"], offer, report)
     for p in probes:
         p["source"] = "reach" if p.get("family") == "reach" else "library"
+    if report_route is not None:
+        from expectrail.contracts import validate
+        validate(report_route, 'route')
+        if report_route['ticks'] > 1800 or any(e['action'] not in profile['actions'] for e in report_route['events']):
+            raise NothingGenerated('REPORT_ROUTE_INVALID: ticks or actions outside the trusted catalog')
+        if any(e['tick'] >= report_route['ticks'] for e in report_route['events']):
+            raise NothingGenerated('REPORT_ROUTE_INVALID: event past route end')
+        # Text from a report cannot become a model instruction or probe id. Only
+        # the trusted catalog actions and numeric input schedule survive here.
+        probes.append({'id': 'ingest-report', 'source': 'report', 'family': 'report', 'tags': [],
+                       'description': 'Replay the submitted inputs from game start.',
+                       'route': dict(report_route, name='ingest-report',
+                                     description='Replay the submitted inputs from game start.')})
     withheld = candidate_to_model == "withheld"
     # What the intent is given about the candidate: all of it, or (withheld) nothing. The candidate's own
     # bytes are still replayed and judged below.
@@ -329,7 +344,8 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
         if p["id"] in routes:
             continue
         try:
-            route = compile_route(p["program"], name=p["id"], description=p["description"], actions=profile["actions"])
+            route = p['route'] if p.get('source') == 'report' else compile_route(
+                p["program"], name=p["id"], description=p["description"], actions=profile["actions"])
         except ProgramError as exc:
             diagnostics.append(f"probe {p['id']} refused by the route compiler: {exc}")
             continue

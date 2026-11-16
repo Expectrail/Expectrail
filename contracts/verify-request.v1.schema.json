@@ -15,6 +15,32 @@
     "idempotencyKey"
   ],
   "properties": {
+    "propose": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clean",
+        "profile"
+      ],
+      "properties": {
+        "clean": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "response": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "description": "Opt-in advisory JIT on a not-reproduced report. Paths are inside the base checkout. A response is an offline stand-in model reply, never a live transport."
+    },
     "coverage": {
       "type": "object",
       "additionalProperties": false,
