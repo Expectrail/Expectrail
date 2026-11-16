@@ -572,11 +572,19 @@ a gap, because SAM's "nothing came back" says nothing; the sensor's `not-found` 
 pixels around the engine's box. The run reserves what an observer says a replay can take at most
 (`most_images`) where it says so, and the old count otherwise.
 
-**Not offered to the proposer.** A run is judged by one observer, and a check naming another is not run;
-the propose step is not told which observer will judge, so the proposer is offered only SAM
-(`pixel.PROPOSED`), and a model's answer or a saved proposal naming `visual-sensor` is refused with that
-reason. A saved proposal edited from SAM to the sensor is refused as before. So today `run.generate`
-judges a sensor check only when an intent hands it one (the tests do). Tested offline on synthetic frames
+**Offered to the proposer when it will judge (since the same day, later).** A run is judged by one
+observer, and a check naming another is not run. So the propose step is told which observer will judge
+(`propose --observer`, `revise --observer`; `sam-3.1-anchor` by default), the prompt's
+`pixelChecksOffered` names that one observer only (`pixel.proposed(observer)`), a model's answer naming
+another is dropped with the reason, and the proposal records the observer (`"observer"`, written only when
+it is not SAM, so a proposal for SAM is byte for byte as before). `run --proposal` replays a proposal only
+for the observer it is given and refuses one made for another (`PROPOSAL_MISMATCH`); `--observer none`
+judges no pixel checks, so it reads a proposal made for any observer, as jit.yml's first replay does; a saved pixel check naming another observer is refused (`PROPOSAL_INVALID`). An
+observer other than SAM under a setting with no pixel checks is refused. `run --observer visual-sensor
+--sensor-bank BANK` builds the sensor (frame plan from `--sam-every` and `--sam-first`; none of SAM's other
+arguments, and no capture or asking job, since it holds no key). jit.yml does not pass any of this yet.
+Tested offline in `tests/test_jit_propose_observer.py`, including propose (a recorded model answer, no
+call), save and replay through `run.generate` with the sensor on the simulated game. Tested offline on synthetic frames
 in `tests/test_jit_template_observer.py`, including end to end through `run.generate` on the simulated
 game: a check that the player is drawn is kept (pass 3 of 3 clean, fail 3 of 3 where the sprite is not
 drawn) and catches a wrong fix, not a good one. No bank has been calibrated for a bench probe, and

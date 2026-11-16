@@ -131,6 +131,26 @@ def of_record_candidate(value) -> str:
     return SHOWN if value is None else check_candidate(value)
 
 
+# --- Which observer will judge the pixel checks (#286) ---------------------------------------------------
+# A run is judged by one observer (expectrail/jit/run.py), so under the pixel setting the proposer is
+# offered only the observer that will judge the run (expectrail/jit/pixel.py, ``proposed``), and the
+# propose step is told which. The proposal records it (``observer``) when it is not ``SAM``, the default,
+# so with SAM every prompt and proposal is byte for byte as before; a proposal that states none was made
+# for SAM. A replay of a proposal for another observer is refused (``from_proposal``), and so is any
+# observer but SAM under a setting that offers no pixel checks.
+SAM = "sam-3.1-anchor"
+
+
+def check_observer(observer, offer: str) -> str:
+    """``observer`` if a proposal under ``offer`` may be made for it, otherwise ValueError."""
+    from expectrail.jit import pixel
+
+    pixel.check_observer(observer)
+    if observer != SAM and not offer_mod.offers_pixel(offer):
+        raise ValueError(f"an observer for pixel checks is named, and the offer {offer} offers no pixel checks")
+    return observer
+
+
 # Told to the model only under the evidence setting (expectrail/jit/offer.py, EVIDENCE), where up to six
 # probes carry "differs": expectrail/repro/evidence.py's summary of what the bug build changes along
 # that probe, from replays of the clean game and the bug build, never of the candidate.
@@ -256,11 +276,14 @@ class IntentUnavailable(RuntimeError):
 
 
 def prompt(report: str, patch_text: str, dmap: dict, profile: dict, probes: list[dict],
-           revision: dict | None = None, offer: str = offer_mod.BASELINE, candidate: str = SHOWN) -> str:
+           revision: dict | None = None, offer: str = offer_mod.BASELINE, candidate: str = SHOWN,
+           observer: str = SAM) -> str:
     """The user prompt. Under ``candidate=WITHHELD`` it has no ``untrustedCandidatePatch`` and no
     ``patchTouches``, and ``patch_text`` and ``dmap``'s files and claims are not read: the same report gives
-    the same prompt whatever the candidate is."""
+    the same prompt whatever the candidate is. Under the pixel setting, ``pixelChecksOffered`` names only
+    ``observer``, the one that will judge the run."""
     signals = frozenset(_offered(offer))
+    check_observer(observer, offer)
     if check_candidate(candidate) == WITHHELD:
         return json.dumps({
             "untrustedBugReport": str(report)[:MAX_REPORT_CHARS],
@@ -268,7 +291,7 @@ def prompt(report: str, patch_text: str, dmap: dict, profile: dict, probes: list
             "actions": profile["actions"],
             "claims": _claims(profile),
             "probesAvailable": [_probe_entry(p, signals, offer_mod.shows_evidence(offer)) for p in probes],
-            **_pixel_offered(offer),
+            **_pixel_offered(offer, observer),
             **({"previousAttempt": revision} if revision is not None else {}),
         }, indent=1)
     claims = _claims(profile)
@@ -282,19 +305,20 @@ def prompt(report: str, patch_text: str, dmap: dict, profile: dict, probes: list
         "claims": claims,
         "probesAvailable": [_probe_entry(p, signals, offer_mod.shows_evidence(offer))
                             for p in probes if p["id"] in set(dmap["probeIds"])],
-        **_pixel_offered(offer),
+        **_pixel_offered(offer, observer),
         **({"previousAttempt": revision} if revision is not None else {}),
     }, indent=1)
 
 
-def _pixel_offered(offer: str) -> dict:
-    """Under the pixel setting, what a pixel check may name (expectrail/jit/pixel.py, ``menu``); otherwise
-    nothing, so every other setting's prompt is byte for byte what it was."""
+def _pixel_offered(offer: str, observer: str = SAM) -> dict:
+    """Under the pixel setting, what a pixel check for a run judged by ``observer`` may name
+    (expectrail/jit/pixel.py, ``menu``); otherwise nothing, so every other setting's prompt is byte for byte
+    what it was."""
     if not offer_mod.offers_pixel(offer):
         return {}
     from expectrail.jit import pixel
 
-    return {"pixelChecksOffered": pixel.menu(pixel.bindings_for())}
+    return {"pixelChecksOffered": pixel.menu(pixel.bindings_for(), pixel.proposed(observer))}
 
 
 def _claims(profile: dict) -> list[dict]:
@@ -354,14 +378,15 @@ def parse_answer(content, profile: dict, existing_probe_ids: set[str],
 
 
 def parse_answer_pixel(content, profile: dict, existing_probe_ids: set[str],
-                       offer: str) -> tuple[list[dict], list[dict], list[dict], list[str]]:
+                       offer: str, observer: str = SAM) -> tuple[list[dict], list[dict], list[dict], list[str]]:
     """(probes, contract entries, pixel checks, diagnostics) under the pixel setting: ``pixelChecks`` is read
-    through expectrail.jit.pixel.parse_answer, and an answer with pixel checks and no trace check is usable.
-    Under any other setting a ``pixelChecks`` list is not read, and that is said."""
-    return _parse(content, profile, existing_probe_ids, offer, pixel_too=True)
+    through expectrail.jit.pixel.parse_answer against ``observer`` only, and an answer with pixel checks and
+    no trace check is usable. Under any other setting a ``pixelChecks`` list is not read, and that is said."""
+    return _parse(content, profile, existing_probe_ids, offer, pixel_too=True, observer=observer)
 
 
-def _parse(content, profile: dict, existing_probe_ids: set[str], offer: str, pixel_too: bool):
+def _parse(content, profile: dict, existing_probe_ids: set[str], offer: str, pixel_too: bool,
+           observer: str = SAM):
     offered = _offered(offer)
     if isinstance(content, list):
         content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
@@ -403,7 +428,8 @@ def _parse(content, profile: dict, existing_probe_ids: set[str], offer: str, pix
         from expectrail.jit import pixel
 
         pixel_checks, pixel_notes = pixel.parse_answer(answer.get("pixelChecks"), pixel.bindings_for(),
-                                                       set(existing_probe_ids) | {p["id"] for p in probes})
+                                                       set(existing_probe_ids) | {p["id"] for p in probes},
+                                                       pixel.proposed(observer))
         notes = [*notes, *pixel_notes]
     elif "pixelChecks" in answer:
         notes = [*notes, f"pixelChecks: not read: the offer {offer} does not offer pixel checks"]
@@ -413,12 +439,15 @@ def _parse(content, profile: dict, existing_probe_ids: set[str], offer: str, pix
     return probes, entries, pixel_checks, notes
 
 
-def spark_intent(transport=None, model: str = MODEL, offer: str = offer_mod.BASELINE, candidate: str = SHOWN):
+def spark_intent(transport=None, model: str = MODEL, offer: str = offer_mod.BASELINE, candidate: str = SHOWN,
+                 observer: str = SAM):
     """An intent callable for run.generate(): one Muse Spark call on the Meta Model API, told what
     ``offer`` offers (expectrail/jit/offer.py). Under ``candidate=WITHHELD`` it is given no byte of the
-    candidate patch: whatever ``patch_text`` it is called with is not put in the prompt."""
+    candidate patch: whatever ``patch_text`` it is called with is not put in the prompt. Under the pixel
+    setting it is offered pixel checks for ``observer`` only, the observer that will judge the run."""
     offer_mod.check(offer)
     check_candidate(candidate)
+    check_observer(observer, offer)
     system_text = system_for(offer, candidate)
     if transport is None:
         from expectrail.spec_writer import http_transport
@@ -428,7 +457,8 @@ def spark_intent(transport=None, model: str = MODEL, offer: str = offer_mod.BASE
 
     def propose(report: str, patch_text: str, dmap: dict, profile: dict, probes: list[dict],
                 revision: dict | None = None) -> dict:
-        user = prompt(report, patch_text, dmap, profile, probes, revision, offer=offer, candidate=candidate)
+        user = prompt(report, patch_text, dmap, profile, probes, revision, offer=offer, candidate=candidate,
+                      observer=observer)
         system = system_text + revise_system(offer) if revision is not None else system_text
         # max_tokens is the completion the budget reserves (run.generate, propose_to_file), so the
         # answer can never cost more than was reserved for it.
@@ -444,7 +474,7 @@ def spark_intent(transport=None, model: str = MODEL, offer: str = offer_mod.BASE
         except Exception as exc:  # noqa: BLE001 - an outage is a recorded reason, never a pass
             raise IntentUnavailable(f"MODEL_UNAVAILABLE: {type(exc).__name__}: {' '.join(str(exc).split())[:160]}") from exc
         new_probes, entries, pixel_checks, notes = parse_answer_pixel(content, profile, {p["id"] for p in probes},
-                                                                      offer=offer)
+                                                                      offer=offer, observer=observer)
         usage = response.get("usage") or {}
         out = {"probes": new_probes, "candidates": entries, "diagnostics": notes,
                "usage": {"model": model, "promptTokens": usage.get("prompt_tokens"),
@@ -458,6 +488,7 @@ def spark_intent(transport=None, model: str = MODEL, offer: str = offer_mod.BASE
     propose.system = system_text
     propose.offer = offer
     propose.candidate = candidate
+    propose.observer = observer
     return propose
 
 
@@ -489,11 +520,15 @@ def propose_to_file(intent, report: str, patch_text: str, profile: dict, probes:
 
     offer = offer_mod.check(getattr(intent, "offer", offer_mod.BASELINE))
     candidate = check_candidate(getattr(intent, "candidate", SHOWN))
+    observer = check_observer(getattr(intent, "observer", SAM), offer)
     doc = {"format": PROPOSAL_FORMAT, "patchSha256": _sha(patch_text), "model": getattr(intent, "model", None),
            "offer": offer, "error": None, "probes": [], "candidates": [], "diagnostics": [], "usage": {},
            "promptSha256": None}
     if offer_mod.offers_pixel(offer):
         doc["pixelChecks"] = []
+    if observer != SAM:
+        # Only then, so a proposal for SAM is byte for byte what it was; one that states none is for SAM.
+        doc["observer"] = observer
     if candidate == WITHHELD:
         # Bound to the report, not to a patch: the model saw none, so the proposal can judge any fix of it.
         patch_text = ""
@@ -506,7 +541,7 @@ def propose_to_file(intent, report: str, patch_text: str, profile: dict, probes:
             spend = Spend(budget_usd, prices or {})
             est = estimate_prompt_tokens(getattr(intent, "system", ""),
                                          prompt(report, patch_text, dmap, profile, probes, offer=offer,
-                                                candidate=candidate))
+                                                candidate=candidate, observer=observer))
             try:
                 spend.reserve(spend.spark_cost(est, RESERVED_COMPLETION_TOKENS), "the intent call")
             except OutOfBudget as exc:
@@ -523,7 +558,8 @@ def propose_to_file(intent, report: str, patch_text: str, profile: dict, probes:
     return doc
 
 
-def from_proposal(path, model: str | None = None, offer: str = offer_mod.BASELINE, candidate: str = SHOWN):
+def from_proposal(path, model: str | None = None, offer: str = offer_mod.BASELINE, candidate: str = SHOWN,
+                  observer: str = SAM):
     """An intent callable that replays a saved proposal. The proposal is re-checked as untrusted data:
     it must be for this exact patch, made under this ``offer``, and every contract must validate again.
     A proposal that states no offer was made before the setting existed, so under ``baseline``.
@@ -531,7 +567,12 @@ def from_proposal(path, model: str | None = None, offer: str = offer_mod.BASELIN
     Under ``candidate=WITHHELD`` it must say it was made with the candidate withheld and be for this
     exact report; it is then for no patch, and replays against any. A proposal made with the candidate
     shown is refused under ``WITHHELD``, and one made with it withheld is refused under ``SHOWN``, so a
-    record never says one thing about what the model saw while the proposal says another."""
+    record never says one thing about what the model saw while the proposal says another.
+
+    ``observer`` is the observer that will judge this run's pixel checks: the proposal must have been made
+    for it (one that states none was made for SAM), and its pixel checks may name only it. ``None`` is a run
+    that judges no pixel checks (every one is then ``not-run``, expectrail/jit/run.py): a proposal for any
+    observer is read, its pixel checks re-checked against the observer it states."""
     from pathlib import Path
 
     from expectrail.contracts import strict_loads
@@ -547,6 +588,8 @@ def from_proposal(path, model: str | None = None, offer: str = offer_mod.BASELIN
 
     offer_mod.check(offer)
     check_candidate(candidate)
+    if observer is not None:
+        check_observer(observer, offer)
     offered = _offered(offer)
 
     def propose(report: str, patch_text: str, dmap: dict, profile: dict, probes: list[dict]) -> dict:
@@ -560,6 +603,14 @@ def from_proposal(path, model: str | None = None, offer: str = offer_mod.BASELIN
         if said != candidate:
             raise IntentUnavailable(f"PROPOSAL_MISMATCH: the proposal was made with the candidate {str(said)[:20]!r}, "
                                     f"and this run has it {candidate!r}")
+        judged_by = doc.get("observer", SAM)
+        try:
+            check_observer(judged_by, offer)
+        except ValueError as exc:
+            raise IntentUnavailable(f"PROPOSAL_INVALID: {exc}"[:300]) from exc
+        if observer is not None and judged_by != observer:
+            raise IntentUnavailable(f"PROPOSAL_MISMATCH: the proposal was made for pixel checks judged by "
+                                    f"{judged_by!r}, and this run's observer is {observer!r}")
         if doc.get("error"):
             raise IntentUnavailable(str(doc["error"])[:300])
         if candidate == WITHHELD:
@@ -592,7 +643,7 @@ def from_proposal(path, model: str | None = None, offer: str = offer_mod.BASELIN
                 raise IntentUnavailable(f"PROPOSAL_INVALID: contract: {exc}"[:300]) from exc
             entries.append({"templateId": "jit", "spec": spec, "approved": False, "applies": applies, "source": "jit"})
         pixel_checks = _pixel_from_proposal(doc.get("pixelChecks"), offer, profile,
-                                            {p["id"] for p in probes} | {p["id"] for p in new_probes})
+                                            {p["id"] for p in probes} | {p["id"] for p in new_probes}, judged_by)
         if not entries and not pixel_checks:
             raise IntentUnavailable("MODEL_OUTPUT_INVALID: the proposal has no contract")
         usage = doc.get("usage") if isinstance(doc.get("usage"), dict) else {}
@@ -617,12 +668,14 @@ def from_proposal(path, model: str | None = None, offer: str = offer_mod.BASELIN
     propose.system = system_for(offer, candidate)
     propose.offer = offer
     propose.candidate = candidate
+    propose.observer = observer
     return propose
 
 
-def _pixel_from_proposal(saved, offer: str, profile: dict, probe_ids: set[str]) -> list[dict]:
+def _pixel_from_proposal(saved, offer: str, profile: dict, probe_ids: set[str], observer: str = SAM) -> list[dict]:
     """A saved proposal's pixel checks, re-checked as untrusted data: each must come out of
-    ``pixel.parse_candidate`` unchanged, with a ``jit-px-`` id, and only the pixel setting may carry any."""
+    ``pixel.parse_candidate`` unchanged against ``observer`` only, with a ``jit-px-`` id, and only the pixel
+    setting may carry any."""
     if saved is None or saved == []:
         return []
     if not offer_mod.offers_pixel(offer):
@@ -634,7 +687,7 @@ def _pixel_from_proposal(saved, offer: str, profile: dict, probe_ids: set[str]) 
                                 f"{pixel.MAX_PIXEL_CHECKS}")
     out, seen = [], set()
     for entry in saved:
-        check, why = pixel.parse_candidate(entry, pixel.bindings_for(), probe_ids, pixel.proposed())
+        check, why = pixel.parse_candidate(entry, pixel.bindings_for(), probe_ids, pixel.proposed(observer))
         if check is None:
             raise IntentUnavailable(f"PROPOSAL_INVALID: pixel check: {why}"[:300])
         if check != entry or not check["id"].startswith(pixel.ID_PREFIX) or check["id"] in seen:
@@ -691,6 +744,7 @@ def revise_to_file(intent, report: str, patch_text: str, profile: dict, probes: 
 
     offer = offer_mod.revisable(getattr(intent, "offer", offer_mod.BASELINE))
     candidate = check_candidate(getattr(intent, "candidate", SHOWN))
+    observer = check_observer(getattr(intent, "observer", SAM), offer)
     first_doc = json.loads(_P(first).read_text(encoding="utf-8"))
     # The record names the patch it judged, so it is checked against the real one; under WITHHELD nothing
     # the model is given is made from it.
@@ -698,7 +752,8 @@ def revise_to_file(intent, report: str, patch_text: str, profile: dict, probes: 
     if candidate == WITHHELD:
         patch_text = ""
     dmap = withheld_map(probes) if candidate == WITHHELD else diff_map(patch_text, profile, probes)
-    r1 = from_proposal(first, offer=offer, candidate=candidate)(report, patch_text, dmap, profile, probes)
+    r1 = from_proposal(first, offer=offer, candidate=candidate, observer=observer)(report, patch_text, dmap, profile,
+                                                                                  probes)
     usage1 = r1.get("usage") or {}
     doc = dict(first_doc, offer=offer, diagnostics=list(notes or []) + list(first_doc.get("diagnostics") or []),
                prior={"replayUsd": round(float(record["spend"]["replayUsd"]), 6), "replays": int(record["spend"]["replays"])},
@@ -727,7 +782,7 @@ def revise_to_file(intent, report: str, patch_text: str, profile: dict, probes: 
                 "rejected": [dict(_shown(r["entry"]), why=r["why"], cleanOutcomes=r["clean"]) for r in rejected]}
     est = estimate_prompt_tokens(getattr(intent, "system", "") + revise_system(offer),
                                  prompt(report, patch_text, dmap, profile, probes, revision, offer=offer,
-                                        candidate=candidate))
+                                        candidate=candidate, observer=observer))
     try:
         spend.reserve(spend.spark_cost(est, RESERVED_COMPLETION_TOKENS), "the revision call")
     except OutOfBudget as exc:
