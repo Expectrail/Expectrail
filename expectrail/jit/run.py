@@ -307,10 +307,19 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
     if saw is not None and saw != candidate_to_model:
         raise NothingGenerated(f"CANDIDATE_MISMATCH: the intent has the candidate {str(saw)[:20]!r}, "
                                f"and this run has it {candidate_to_model!r}")
+    # The observer the proposer was offered pixel checks for (#286; one that states none is a test double or
+    # was offered SAM's), so the reservation prices the prompt it sent. A check naming another observer than
+    # this run's is not run (``_pixel_stage``), so an intent made for another observer is never judged by this one.
+    judged_for = getattr(intent, "observer", None)
     from expectrail.jit import intent as intent_mod
 
+    try:
+        intent_mod.check_observer(judged_for or intent_mod.SAM, offer)
+    except ValueError as exc:
+        raise NothingGenerated(f"OBSERVER_INVALID: {' '.join(str(exc).split())[:160]}") from exc
     est_prompt = intent_mod.estimate_prompt_tokens(getattr(intent, "system", ""), intent_mod.prompt(
-        report, shown_text, dmap, profile, probes, offer=offer, candidate=candidate_to_model))
+        report, shown_text, dmap, profile, probes, offer=offer, candidate=candidate_to_model,
+        observer=judged_for or intent_mod.SAM))
     spend.reserve(spend.spark_cost(est_prompt, intent_mod.RESERVED_COMPLETION_TOKENS), "the intent call")
     try:
         answer = intent(report, shown_text, dmap, profile, probes)
