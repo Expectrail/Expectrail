@@ -4,6 +4,31 @@ Godot projects the team did not write, verified with the command a stranger woul
 holds only what a recorded run shows, with its link. A project a builder wrote for a test
 (`tests/projects/`) is not an outside project and is never counted here.
 
+## Third independent-author trial: November 15, 2026
+
+**System Override** (`aleshg/SystemOverride`, MIT, pin
+`f95712a9e88480251e3ba38880d7144bf3f7b33a`) was chosen before inspecting its
+integration, then fetched at that pin. It was **not onboarded successfully** and
+was not swapped for an easier game. The
+[choice, numbered command/stop log and recorded job documents](outside-trials/system-override/report.md)
+are the evidence; no game was vendored and it is not in the working trial list.
+
+| Third-project attempt | What worked | What did not | Product result / engine finding |
+| --- | --- | --- | --- |
+| inspect / init / manual draft | input map read; unresolved draft written; completed config, route and check validate | menu has no player; generated route presses exit/restart | one draft check, zero approved checks |
+| headless automatic route | began replay 1 of 3 | player not found on any tick; config entryScene is not used for replay selection; .NET toolchain also unresolved | stopped, no route written |
+| pinned | job recorded | display and disk preflight | needs-review / not run |
+| harmless comment | applied patch and reverse-check passed | same preflight | needs-review / not run |
+| hidden spaceship | applied patch and reverse-check passed | same preflight; no bug-detection evidence | needs-review / not run |
+
+No core change was made for this trial; it used the pending role-box prerequisite.
+The failed config-only path is recorded as a trial failure, not a pass on no
+measurements. [Issue text](outside-trials/system-override/issues.md) covers scene
+selection, toolchain refusal and a deleted diagnostic log. Human minutes were
+not measured; command times and every attempted command are recorded separately.
+No check was approved and no model was called. The two earlier demo projects'
+results below are unchanged by this trial.
+
 ## Current evidence: November 15, 2026
 
 The latest trial on merged [PR #473](https://github.com/Expectrail/Expectrail/pull/473) is

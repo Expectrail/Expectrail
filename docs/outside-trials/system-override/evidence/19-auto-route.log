@@ -1,0 +1,2 @@
+Replaying input map: run 1 of 3.
+expectrail route: replay could not finish: configured replay refused: "expectrail: bindings.player Player Spaceship not found on any tick; setup was not exercised"; see /tmp/expectrail-auto-route-qbzcaq91/1/godot.log. No route was written.

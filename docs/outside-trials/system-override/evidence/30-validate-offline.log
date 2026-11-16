@@ -1,0 +1,51 @@
+expectrail.project.json valid against project.v1.schema.json no approval
+routes/thrust-fire.json valid against route.schema.json no approval
+checks/ship-visible.json valid against test-spec.schema.json no approval
+{
+  "folder": "/workspace/work/system-override",
+  "godot": true,
+  "adapter": "godot",
+  "version": "4.1-mono",
+  "routes": 1,
+  "checks": 0,
+  "drafts": 1,
+  "routeNames": [
+    "thrust-fire"
+  ],
+  "checkNames": [],
+  "configDraft": true,
+  "problems": [],
+  "help": "This config is a draft. Review its bindings; it cannot give an accept. No approved checks: name existing checks in approvedContracts. A person must approve them. Vision needs MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP. No key is entered on this page."
+}
+Pinned tracked source unchanged; failed auto-route wrote no output.
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/jsonschema/validators.py", line 462, in _validate_reference
+    resolved = self._resolver.lookup(ref)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/referencing/_core.py", line 684, in lookup
+    raise exceptions.Unresolvable(ref=ref) from None
+referencing.exceptions.Unresolvable: job-budget.v1.schema.json
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/workspace/work/handover-263-third-project/validate-trial.py", line 21, in <module>
+    d=json.loads((out/'logs'/f'{n}.log').read_text());jsonschema.Draft202012Validator(json.loads((repo/'contracts/verify-job.v1.schema.json').read_text()),registry=registry).validate(d)
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/jsonschema/validators.py", line 449, in validate
+    for error in self.iter_errors(*args, **kwargs):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/jsonschema/validators.py", line 383, in iter_errors
+    for error in errors:
+                 ^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/jsonschema/_keywords.py", line 296, in properties
+    yield from validator.descend(
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/jsonschema/validators.py", line 431, in descend
+    for error in errors:
+                 ^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/jsonschema/_keywords.py", line 275, in ref
+    yield from validator._validate_reference(ref=ref, instance=instance)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/jsonschema/validators.py", line 464, in _validate_reference
+    raise exceptions._WrappedReferencingError(err) from err
+jsonschema.exceptions._WrappedReferencingError: Unresolvable: job-budget.v1.schema.json

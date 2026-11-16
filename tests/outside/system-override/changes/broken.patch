@@ -1,0 +1,10 @@
+--- a/scenes/main.tscn
++++ b/scenes/main.tscn
+@@ -211,6 +211,7 @@
+ _segmentGradient = SubResource("Gradient_g8var")
+ 
+ [node name="Player Spaceship" parent="." instance=ExtResource("2_7v4dp")]
++visible = false
+ z_index = 100
+ position = Vector2(-1, -4)
+ 

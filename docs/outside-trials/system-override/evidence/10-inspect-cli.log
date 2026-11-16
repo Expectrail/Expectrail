@@ -1,0 +1,32 @@
+{
+  "entryScene": "res://scenes/main_menu.tscn",
+  "scenes": [
+    "res://scenes/main_menu.tscn"
+  ],
+  "players": [],
+  "textures": [],
+  "unresolvedBindings": [
+    "Supply the player node path and its res:// image in bindings.player; the starting scene has no unique player."
+  ],
+  "cameras": [],
+  "groundLayers": [],
+  "platformBodies": [],
+  "otherCharacters": [],
+  "actions": [
+    "exit",
+    "fire_weapons",
+    "negative_thrust",
+    "positive_thrust",
+    "restart",
+    "side_thrust_left",
+    "side_thrust_right",
+    "zoom_in",
+    "zoom_out"
+  ],
+  "builtInActions": false,
+  "physicsTicksPerSecond": 60,
+  "viewport": [
+    1920,
+    1080
+  ]
+}
