@@ -139,6 +139,13 @@ def contract_patterns() -> dict[str, str]:
 
 # pattern: (a value that matches it, whether that value plus "\n" must be refused)
 SAMPLES = {
+    r"^(tests|tools)/[A-Za-z0-9_./-]+\.py$": ("tests/test_evidence_storage.py", True),
+    "^[A-Za-z0-9_. /-]+$": ("run/docs/raw/a.txt", True),
+    "^docs/[A-Za-z0-9_. /-]+$": ("docs/trial/raw", True),
+    r"^git fetch --no-tags https://github.com/Expectrail/Expectrail\.git [0-9a-f]{40}$":
+        ("git fetch --no-tags https://github.com/Expectrail/Expectrail.git " + "a" * 40, True),
+    "^https://github.com/Expectrail/Expectrail/pull/[1-9][0-9]*$":
+        ("https://github.com/Expectrail/Expectrail/pull/566", True),
     r"^attempt-[0-9]{1,2}/fixer-invocation\.json$": ("attempt-1/fixer-invocation.json", True),
     "^[a-z0-9][a-z0-9-]{3,63}$": ("air-jump-report", True),
     r"^[\x20-\x7e]+$": ("Mesa - llvmpipe (LLVM 20.1.2, 256 bits)", True),

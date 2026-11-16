@@ -1,6 +1,6 @@
 # Numbered command and stop log
 
-Commands ran from the Part A worktree with model-key variables removed. Absolute paths below record this machine; the handover explains reproduction. Full stdout/stderr is in the ZIP at each `logs/` path. Selected product outputs are also checked in under `evidence/cli/`. Source-read logs are in the ZIP; the upstream project is not vendored.
+Commands ran from the Part A worktree with model-key variables removed. Absolute paths below record this machine; the handover explains reproduction. Full stdout/stderr is in the ZIP at each `logs/` path. Selected product outputs are available through the [evidence index](evidence/EVIDENCE.md). Source-read logs are in the ZIP; the upstream project is not vendored.
 
 The repository search and `git ls-remote` pin lookup preceded this logger. Their query, frozen rationale and observed full commit are in `choice.json` and `pin.json`; those setup calls were not separately timed. Before step 17, the external logger had an unclosed-dict typo; it was corrected before any product command ran.
 

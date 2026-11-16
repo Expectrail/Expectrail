@@ -1,9 +1,0 @@
-Replaying input map: run 1 of 3.
-Replaying input map: run 2 of 3.
-Replaying input map: run 3 of 3.
-Three complete traces are identical (headless replays; rendered images were not compared).
-Route: 93 physics ticks (1.55 seconds at 60 ticks/second), seed 1.
-  pause: 3 press(es), 6 ticks (0.1 seconds) each.
-Pauses: 15 ticks (0.25 seconds) before and between actions; 30 ticks after the last release.
-The bound player (Player) did not move at all. This is not demonstrated useful movement coverage.
-Wrote /workspace/work/breakout-trial-source/routes/automatic.json.

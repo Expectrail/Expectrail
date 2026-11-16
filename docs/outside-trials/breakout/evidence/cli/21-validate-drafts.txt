@@ -1,3 +1,0 @@
-Traceback (most recent call last):
-  File "<string>", line 1, in <module>
-ImportError: cannot import name 'schema_problems' from 'expectrail.gate.record' (/workspace/work/trial-stops/expectrail/gate/record.py)

@@ -1,0 +1,222 @@
+{
+  "format": "expectrail.evidence-manifest/v1",
+  "repository": "https://github.com/Expectrail/Expectrail",
+  "branch": "evidence-results",
+  "commit": "3c9dcaeb55a35f4dceb7eb7e8276ab43997cf313",
+  "sourceCommit": "d36c8063449afe6c4113c74d0ff39e926b861b6c",
+  "folder": "docs/outside-trials/breakout/evidence",
+  "archive": "2026-11-16-breakout-menu-trial/docs/outside-trials/breakout/evidence",
+  "fetch": "git fetch --no-tags https://github.com/Expectrail/Expectrail.git 3c9dcaeb55a35f4dceb7eb7e8276ab43997cf313",
+  "files": [
+    {
+      "path": "broken/breakout-ball-starts.json",
+      "size": 1869,
+      "sha256": "c0e00ab512eeb01a7c0d7c55d96113b01db7e9331d8da6936ae604f072968211"
+    },
+    {
+      "path": "broken/breakout-paddle-bounds.json",
+      "size": 786,
+      "sha256": "d321a66199371729dcc8013e20d57171f9e8cf344217274ea652820bf93a4166"
+    },
+    {
+      "path": "broken/engine-observations.json",
+      "size": 70888,
+      "sha256": "6c3924b84a1f989e8e315af58dc6a45c68028c5ebc3e146bbe3015e9a53ec446"
+    },
+    {
+      "path": "broken/gate-findings.json",
+      "size": 1254,
+      "sha256": "ffbab6f3b67672d4968f9e9e0d7161d587f295a752cdcb7f1acc87625053a1ab"
+    },
+    {
+      "path": "broken/godot.log",
+      "size": 2739,
+      "sha256": "95e83cfa98adab2ba7109d22c380d123ca5d7ab76950ca3d339cab598b24acf7"
+    },
+    {
+      "path": "broken/job.json",
+      "size": 2917,
+      "sha256": "f48186f81617583882b301bbc2eed4d155cf6dc96da7d9e210cc014c651df5c2"
+    },
+    {
+      "path": "broken/replay.json",
+      "size": 9682,
+      "sha256": "a6c3b654618d4b9e07a3f0c4758965529d7d84321bd3a5e98b5b398595ad8315"
+    },
+    {
+      "path": "broken/trace.json",
+      "size": 61702,
+      "sha256": "467174c420431cde0f2b67028c4fa3df5c1c3e7f7e429f73b64ef19d963c66b9"
+    },
+    {
+      "path": "cli/07-doctor.txt",
+      "size": 4218,
+      "sha256": "87f37c4a1f4e215432c088e8eb1306dcf2416a9ef702537c833d99674ad93621"
+    },
+    {
+      "path": "cli/08-inspect.txt",
+      "size": 613,
+      "sha256": "ae890d01d5998cb5c682e3a97184d4ff0e1451a37a4bdb9c8e7dadcf8a3d0603"
+    },
+    {
+      "path": "cli/09-init-preview.txt",
+      "size": 1383,
+      "sha256": "baea40c93994047ace54160048aa57f8d829cbf36ac78c15bfcc1ede5cb0a263"
+    },
+    {
+      "path": "cli/10-init-draft.txt",
+      "size": 547,
+      "sha256": "a77bc567a699d681fe03c7f8082d4dff4d4a33d79c2af33437f3deb4e0382f44"
+    },
+    {
+      "path": "cli/15-inspect-configured.txt",
+      "size": 613,
+      "sha256": "ae890d01d5998cb5c682e3a97184d4ff0e1451a37a4bdb9c8e7dadcf8a3d0603"
+    },
+    {
+      "path": "cli/16-auto-route.txt",
+      "size": 565,
+      "sha256": "4eed2bef9f2c0641c590ae1ef00142c36d6c8a9689645e9af27a15d65dac02b5"
+    },
+    {
+      "path": "cli/17-doctor-prerequisites.txt",
+      "size": 4058,
+      "sha256": "9dc663193cee36e0cf0878d3d72a5b4281e068439200b895e0f5b9aeb62b3ac5"
+    },
+    {
+      "path": "cli/19-doctor-with-temporary-space.txt",
+      "size": 4079,
+      "sha256": "2e5b52696ed02d291936b591f89fcbfa20b94d3b63161a7577d3f68f90be1e50"
+    },
+    {
+      "path": "cli/21-validate-drafts.txt",
+      "size": 210,
+      "sha256": "c542d372e21f8f91f5b98419e5255b558e691334efa19fc3ee26642007b9dd6b"
+    },
+    {
+      "path": "cli/22-validate-drafts-corrected.txt",
+      "size": 409,
+      "sha256": "1c48191cde4e81f3c3e6eb93f692e40a311e6065d8cc345f9a0582051fccf72e"
+    },
+    {
+      "path": "cli/26-validate-final-drafts.txt",
+      "size": 111,
+      "sha256": "8ae051ca4aa30a41e04d60142dd0deebe0d449ec6d3e1908f42b18e18404ee86"
+    },
+    {
+      "path": "cli/28-prepare-variants.txt",
+      "size": 256,
+      "sha256": "3972d799caaef8aacf2a91a620daf5854764fc24bad6c9d895d5648d01865507"
+    },
+    {
+      "path": "cli/31-capture-pinned.txt",
+      "size": 240,
+      "sha256": "646fa6239a4643658dcee7fe0c3fbdb3d20ec474d6f290ef472035d8554bf3ff"
+    },
+    {
+      "path": "cli/32-capture-harmless.txt",
+      "size": 242,
+      "sha256": "d83cab9d594466f70ce25821660949bff451e7bd317cfefd08008b9ca97c8439"
+    },
+    {
+      "path": "cli/33-capture-broken.txt",
+      "size": 240,
+      "sha256": "c02997095e95663bfbe9d0a4425ece238311e089af94f4705152e7a75838db1c"
+    },
+    {
+      "path": "cli/34-draft-engine-diagnostics.txt",
+      "size": 983,
+      "sha256": "0b7a08014d9ba38908fde3d1dd56d9bcfa93db2dbabb810f9ce4b3362c06b8cb"
+    },
+    {
+      "path": "cli/35-registration-probe.txt",
+      "size": 70,
+      "sha256": "9dc32f5249b4a15b1879dac3bb46c9e3975e349f339bf25af9465c63de9a3819"
+    },
+    {
+      "path": "cli/36-source-unmodified.txt",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "harmless/breakout-ball-starts.json",
+      "size": 1869,
+      "sha256": "f8c63b07b7011902f2b44f7201fb313139129a8addf2e945fa113fd66506d8ee"
+    },
+    {
+      "path": "harmless/breakout-paddle-bounds.json",
+      "size": 786,
+      "sha256": "c2810334e15337fe90b9a0200de80320d93804fa4ffe8a1d65e01dc36b0d75a7"
+    },
+    {
+      "path": "harmless/engine-observations.json",
+      "size": 70888,
+      "sha256": "2f209de9f8cf45259f2920f83601f1c4d79135ff7d48ce2ebced021588f4ce4d"
+    },
+    {
+      "path": "harmless/gate-findings.json",
+      "size": 1254,
+      "sha256": "4bbeceb7ad0c32ab3c645b21b7ef06b37e84ba82057da421eae80fedfa9fff7a"
+    },
+    {
+      "path": "harmless/godot.log",
+      "size": 2741,
+      "sha256": "61eda1feff69302dd7ad7cc8b751ef5ba13a113183c1cf4002d9b5828ae338bd"
+    },
+    {
+      "path": "harmless/job.json",
+      "size": 2917,
+      "sha256": "a29c3d82d4f13bc652473044ad4307c7a8b01ceba7aa3082e567e258e2cdf2f1"
+    },
+    {
+      "path": "harmless/replay.json",
+      "size": 9682,
+      "sha256": "c2ae4fd418972b12dfa275813faafcfb43c2981b2755a774c027377462cd0a03"
+    },
+    {
+      "path": "harmless/trace.json",
+      "size": 61702,
+      "sha256": "467174c420431cde0f2b67028c4fa3df5c1c3e7f7e429f73b64ef19d963c66b9"
+    },
+    {
+      "path": "pinned/breakout-ball-starts.json",
+      "size": 1869,
+      "sha256": "22c97d7fef2de8c9b8e73a395c0d167c77207c37d734fd9f67a70bfabc9fa96e"
+    },
+    {
+      "path": "pinned/breakout-paddle-bounds.json",
+      "size": 786,
+      "sha256": "c2138cdc1fcce1b31aede4e13b961402b53efb8587e62c6c409392a62b9824ad"
+    },
+    {
+      "path": "pinned/engine-observations.json",
+      "size": 70888,
+      "sha256": "eaef7bd88cbd2d0de57078d2e2e77278f643e0e68680342ec0a4977cfc948d57"
+    },
+    {
+      "path": "pinned/gate-findings.json",
+      "size": 1254,
+      "sha256": "e3e2bfce87bf51dcd9a3beefe826c0e0bb82997a33d2927f22615ca121f1cade"
+    },
+    {
+      "path": "pinned/godot.log",
+      "size": 2739,
+      "sha256": "3fc19f2151a5416cda116c13c99787fb6b990ca1836c3d67aef74f863edae316"
+    },
+    {
+      "path": "pinned/job.json",
+      "size": 2917,
+      "sha256": "44557817204b10e20ab00bb9ac5bbc5fcbd0686daeda3777deeaf6fc732b2ea1"
+    },
+    {
+      "path": "pinned/replay.json",
+      "size": 9682,
+      "sha256": "8f79012cd69ca05da0c85dea7950df153c9eb7eac0e0a003e8d273ad77eadce5"
+    },
+    {
+      "path": "pinned/trace.json",
+      "size": 61702,
+      "sha256": "467174c420431cde0f2b67028c4fa3df5c1c3e7f7e429f73b64ef19d963c66b9"
+    }
+  ]
+}

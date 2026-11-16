@@ -46,7 +46,7 @@ The probe did not modify `tests/outside/projects.json`. The game is not added to
 the working list: gameplay onboarding failed, and this registration is refused.
 
 **Evidence.** Command 35 and
-[evidence/cli/35-registration-probe.txt](evidence/cli/35-registration-probe.txt).
+[evidence/cli/35-registration-probe.txt](evidence/EVIDENCE.md#file-1c193bf479bb7941fbda).
 
 **Where to look.** `_PATH`/`load_list` and `fetch` in `tools/outside_trial.py`.
 From code inspection, `lay_out` also copies the upstream project plus route/spec

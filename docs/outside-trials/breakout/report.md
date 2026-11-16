@@ -30,7 +30,7 @@ and the malformed initial draft are recorded, not attributed to Expectrail.
 1. Inspect/init found Paddle and Ball and requested a binding choice. A manual
    draft config bound the existing `Paddle` and `Ball` nodes and texture files.
 2. Auto-route replayed its pause-only route three times identically, but explicitly
-   reported no movement/useful coverage ([output](evidence/cli/16-auto-route.txt)).
+   reported no movement/useful coverage ([output](evidence/EVIDENCE.md#file-e411ba6e7e5ec06e2150)).
 3. The manual route tries Tab/focus-next, Enter/accept, then pause/resume. It still
    stays on the Start menu. The route contract cannot encode mouse positions or
    clicks. The paddle reads the viewport mouse position; the round remains paused.
@@ -60,8 +60,8 @@ patch and config evidence is in [trial inputs](../../../tests/outside/breakout/R
 
 The values and exact reasons are in [results.json](results.json). Each variant's
 `job.json`, `gate-findings.json`, `trace.json`, `replay.json`, observations and
-unapproved-draft diagnostic verdicts are under [pinned](evidence/pinned/job.json),
-[harmless](evidence/harmless/job.json) and [broken](evidence/broken/job.json).
+unapproved-draft diagnostic verdicts are under [pinned](evidence/EVIDENCE.md#file-e7e96c603e6ecc0544aa),
+[harmless](evidence/EVIDENCE.md#file-77c5fc53c3ea3c5d393c) and [broken](evidence/EVIDENCE.md#file-5deaf97926f1f445bbd7).
 The three 120-tick traces are byte-identical. All positions remain at the menu:
 paddle `[168, 616]`; ball drawing `[212, 196, 220, 204]`. Their world/screen boxes
 and engine visibility were measured by the config-driven role recorder.
