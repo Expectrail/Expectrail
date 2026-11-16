@@ -1,0 +1,763 @@
+[
+  {
+    "step": 1,
+    "label": "init-clone",
+    "startedUtc": "2026-11-16T04:19:30.933266+00:00",
+    "command": [
+      "git",
+      "init",
+      "-q",
+      "/workspace/work/breakout-trial-source"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.015920785001071636,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/01-init-clone.log"
+  },
+  {
+    "step": 2,
+    "label": "set-origin",
+    "startedUtc": "2026-11-16T04:19:31.010705+00:00",
+    "command": [
+      "git",
+      "-C",
+      "/workspace/work/breakout-trial-source",
+      "remote",
+      "add",
+      "origin",
+      "https://github.com/mike0697/Breakout.git"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.0038825460069347173,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/02-set-origin.log"
+  },
+  {
+    "step": 3,
+    "label": "fetch-pin",
+    "startedUtc": "2026-11-16T04:19:31.053271+00:00",
+    "command": [
+      "git",
+      "-C",
+      "/workspace/work/breakout-trial-source",
+      "fetch",
+      "--no-tags",
+      "--depth=1",
+      "origin",
+      "0ac7aed444ea593a023d9b666c211d7ab8acd51e"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 1.0198252679983852,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/03-fetch-pin.log"
+  },
+  {
+    "step": 4,
+    "label": "list-pin-files",
+    "startedUtc": "2026-11-16T04:19:32.132474+00:00",
+    "command": [
+      "git",
+      "-C",
+      "/workspace/work/breakout-trial-source",
+      "ls-tree",
+      "--name-only",
+      "-r",
+      "FETCH_HEAD"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.0038629449991276488,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/04-list-pin-files.log"
+  },
+  {
+    "step": 5,
+    "label": "checkout-pin",
+    "startedUtc": "2026-11-16T04:20:03.393038+00:00",
+    "command": [
+      "git",
+      "-C",
+      "/workspace/work/breakout-trial-source",
+      "checkout",
+      "-q",
+      "--detach",
+      "FETCH_HEAD"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.11518184500164352,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/05-checkout-pin.log"
+  },
+  {
+    "step": 6,
+    "label": "eligibility",
+    "startedUtc": "2026-11-16T04:20:03.587607+00:00",
+    "command": [
+      "python3",
+      "-c",
+      "from pathlib import Path; import json; p=Path(\"/workspace/work/breakout-trial-source\"); print((p/\"LICENSE\").read_text()); print((p/\"README.md\").read_text()); print((p/\"project.godot\").read_text()); print(\"CSharp sources:\",list(p.rglob(\"*.cs\")),list(p.rglob(\"*.csproj\"))); print(\"GDScript files:\",len(list(p.rglob(\"*.gd\"))))"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.032327861998055596,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/06-eligibility.log"
+  },
+  {
+    "step": 7,
+    "label": "doctor",
+    "startedUtc": "2026-11-16T04:20:03.662196+00:00",
+    "command": [
+      "python3",
+      "-m",
+      "expectrail.cli",
+      "doctor",
+      "--project",
+      "/workspace/work/breakout-trial-source",
+      "--no-fetch",
+      "--json"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 1.0700716219944297,
+    "exitCode": 3,
+    "status": "finished",
+    "log": "logs/07-doctor.log"
+  },
+  {
+    "step": 8,
+    "label": "inspect",
+    "startedUtc": "2026-11-16T04:20:04.784826+00:00",
+    "command": [
+      "python3",
+      "-m",
+      "expectrail.cli",
+      "inspect",
+      "/workspace/work/breakout-trial-source",
+      "--json"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.06506725199869834,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/08-inspect.log"
+  },
+  {
+    "step": 9,
+    "label": "init-preview",
+    "startedUtc": "2026-11-16T04:20:04.896814+00:00",
+    "command": [
+      "python3",
+      "-m",
+      "expectrail.cli",
+      "init",
+      "/workspace/work/breakout-trial-source",
+      "--dry-run"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.06511563200183446,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/09-init-preview.log"
+  },
+  {
+    "step": 10,
+    "label": "init-draft",
+    "startedUtc": "2026-11-16T04:20:33.367525+00:00",
+    "command": [
+      "python3",
+      "-m",
+      "expectrail.cli",
+      "init",
+      "/workspace/work/breakout-trial-source"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.11469655399559997,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/10-init-draft.log"
+  },
+  {
+    "step": 11,
+    "label": "read-player-and-scenes",
+    "startedUtc": "2026-11-16T04:20:33.541949+00:00",
+    "command": [
+      "python3",
+      "-c",
+      "from pathlib import Path; p=Path(\"/workspace/work/breakout-trial-source\"); names=[\"scripts/paddle.gd\",\"scripts/ball.gd\",\"scripts/game_manager.gd\",\"scenes/paddle.tscn\",\"scenes/ball.tscn\",\"game.tscn\"]; [(print(\"FILE\",n),print((p/n).read_text())) for n in names]"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.03236135400220519,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/11-read-player-and-scenes.log"
+  },
+  {
+    "step": 12,
+    "label": "route-contract",
+    "startedUtc": "2026-11-16T04:20:33.618825+00:00",
+    "command": [
+      "cat",
+      "contracts/route.schema.json"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.004204397002467886,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/12-route-contract.log"
+  },
+  {
+    "step": 13,
+    "label": "read-draft-contracts",
+    "startedUtc": "2026-11-16T04:23:07.840640+00:00",
+    "command": [
+      "python3",
+      "-c",
+      "from pathlib import Path; import json; r=Path(\"/workspace/work/trial-stops\"); s=json.loads((r/\"contracts/test-spec.schema.json\").read_text()); print(json.dumps({k:s[\"properties\"][k] for k in (\"window\",\"coverage\")},indent=2)); print(json.dumps([x for x in s[\"properties\"][\"assertion\"][\"oneOf\"] if x[\"properties\"][\"type\"].get(\"const\")==\"reaches\"],indent=2))"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.06460333400173113,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/13-read-draft-contracts.log"
+  },
+  {
+    "step": 14,
+    "label": "complete-config",
+    "startedUtc": "2026-11-16T04:23:07.965594+00:00",
+    "command": [
+      "python3",
+      "/workspace/work/handover-259-trial-stops-part-b/configure.py"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.0650964689993998,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/14-complete-config.log"
+  },
+  {
+    "step": 15,
+    "label": "inspect-configured",
+    "startedUtc": "2026-11-16T04:23:08.096553+00:00",
+    "command": [
+      "python3",
+      "-m",
+      "expectrail.cli",
+      "inspect",
+      "/workspace/work/breakout-trial-source",
+      "--json"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.11506827500124928,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/15-inspect-configured.log"
+  },
+  {
+    "step": 16,
+    "label": "auto-route",
+    "startedUtc": "2026-11-16T04:23:08.266184+00:00",
+    "command": [
+      "python3",
+      "-m",
+      "expectrail.cli",
+      "route",
+      "--project",
+      "/workspace/work/breakout-trial-source",
+      "--auto",
+      "--out",
+      "/workspace/work/breakout-trial-source/routes/automatic.json"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 28.934885629998462,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/16-auto-route.log"
+  },
+  {
+    "step": 17,
+    "label": "doctor-prerequisites",
+    "startedUtc": "2026-11-16T04:25:31.745183+00:00",
+    "command": [
+      "python3",
+      "-m",
+      "expectrail.cli",
+      "doctor",
+      "--project",
+      "/workspace/work/breakout-trial-source",
+      "--no-fetch",
+      "--json"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 1.0706190600030823,
+    "exitCode": 3,
+    "status": "finished",
+    "log": "logs/17-doctor-prerequisites.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+      "TMPDIR": "/dev/shm/expectrail-breakout-trial/tmp",
+      "EXPECTRAIL_TOOLS": "/dev/shm/expectrail-breakout-trial/tools",
+      "PATH": "/workspace/work/dodge-tools/display/usr/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback"
+    }
+  },
+  {
+    "step": 18,
+    "label": "display-diagnosis",
+    "startedUtc": "2026-11-16T04:27:11.725218+00:00",
+    "command": [
+      "xvfb-run",
+      "-a",
+      "-e",
+      "/workspace/work/handover-259-trial-stops-part-b/logs/display-errors.log",
+      "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+      "--version"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.31994907099578995,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/18-display-diagnosis.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+      "TMPDIR": "/dev/shm/expectrail-breakout-trial/tmp",
+      "EXPECTRAIL_TOOLS": "/dev/shm/expectrail-breakout-trial/tools",
+      "PATH": "/workspace/work/dodge-tools/display/usr/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback"
+    }
+  },
+  {
+    "step": 19,
+    "label": "doctor-with-temporary-space",
+    "startedUtc": "2026-11-16T04:27:12.135369+00:00",
+    "command": [
+      "python3",
+      "-m",
+      "expectrail.cli",
+      "doctor",
+      "--project",
+      "/workspace/work/breakout-trial-source",
+      "--no-fetch",
+      "--json"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 14.504063161999511,
+    "exitCode": 3,
+    "status": "finished",
+    "log": "logs/19-doctor-with-temporary-space.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+      "TMPDIR": "/dev/shm/expectrail-breakout-trial/tmp",
+      "EXPECTRAIL_TOOLS": "/dev/shm/expectrail-breakout-trial/tools",
+      "PATH": "/workspace/work/dodge-tools/display/usr/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback"
+    }
+  },
+  {
+    "step": 20,
+    "label": "draft-route-checks-patches",
+    "startedUtc": "2026-11-16T04:28:18.078668+00:00",
+    "command": [
+      "python3",
+      "/workspace/work/handover-259-trial-stops-part-b/prepare-drafts.py"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.06425135699828388,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/20-draft-route-checks-patches.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64"
+    }
+  },
+  {
+    "step": 21,
+    "label": "validate-drafts",
+    "startedUtc": "2026-11-16T04:28:18.184738+00:00",
+    "command": [
+      "python3",
+      "-c",
+      "from pathlib import Path;import json;from expectrail import project_config;from expectrail.gate.record import schema_problems;r=Path(\"/workspace/work/trial-stops\");p=Path(\"/workspace/work/breakout-trial-source\");print(\"Config draft:\",project_config.read_game(p)[\"draft\"]);docs=[(p/\"routes/keyboard-start.json\",r/\"contracts/route.schema.json\")]+[(x,r/\"contracts/test-spec.schema.json\") for x in (p/\"checks\").glob(\"*.json\")];bad=[]\nfor doc,schema in docs:\n problems=schema_problems(json.loads(doc.read_text()),json.loads(schema.read_text()));print(doc.name,problems);bad+=problems\nraise SystemExit(bool(bad))"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.06680022600630764,
+    "exitCode": 1,
+    "status": "finished",
+    "log": "logs/21-validate-drafts.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64"
+    }
+  },
+  {
+    "step": 22,
+    "label": "validate-drafts-corrected",
+    "startedUtc": "2026-11-16T04:28:45.269837+00:00",
+    "command": [
+      "python3",
+      "-c",
+      "from pathlib import Path;import json;from expectrail import project_config;from expectrail.gate.record import validate;r=Path(\"/workspace/work/trial-stops\");p=Path(\"/workspace/work/breakout-trial-source\");print(\"Config draft:\",project_config.read_game(p)[\"draft\"]);docs=[(p/\"routes/keyboard-start.json\",r/\"contracts/route.schema.json\")]+[(x,r/\"contracts/test-spec.schema.json\") for x in (p/\"checks\").glob(\"*.json\")]\nfor doc,schema in docs:\n validate(json.loads(doc.read_text()),json.loads(schema.read_text()));print(doc.name,\"valid\")"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.06438097899808781,
+    "exitCode": 1,
+    "status": "finished",
+    "log": "logs/22-validate-drafts-corrected.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64"
+    }
+  },
+  {
+    "step": 23,
+    "label": "verify-help",
+    "startedUtc": "2026-11-16T04:28:45.377900+00:00",
+    "command": [
+      "python3",
+      "-m",
+      "expectrail.cli",
+      "verify",
+      "--help"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.164460138999857,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/23-verify-help.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64"
+    }
+  },
+  {
+    "step": 24,
+    "label": "verify-pinned",
+    "startedUtc": "2026-11-16T04:28:45.589263+00:00",
+    "command": [
+      "python3",
+      "-m",
+      "expectrail.cli",
+      "verify",
+      "--project",
+      "/workspace/work/breakout-trial-source",
+      "--base",
+      "/workspace/work/breakout-trial-source",
+      "--jobs-root",
+      "/workspace/work/handover-259-trial-stops-part-b/jobs/pinned",
+      "--timeout",
+      "180",
+      "--json"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 13.404267183002958,
+    "exitCode": 2,
+    "status": "finished",
+    "log": "logs/24-verify-pinned.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+      "TMPDIR": "/dev/shm/expectrail-breakout-trial/tmp",
+      "EXPECTRAIL_TOOLS": "/dev/shm/expectrail-breakout-trial/tools",
+      "PATH": "/workspace/work/dodge-tools/display/usr/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback"
+    }
+  },
+  {
+    "step": 25,
+    "label": "correct-draft-boundary",
+    "startedUtc": "2026-11-16T04:29:40.442303+00:00",
+    "command": [
+      "python3",
+      "/workspace/work/handover-259-trial-stops-part-b/correct-draft.py"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.06420074999914505,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/25-correct-draft-boundary.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64"
+    }
+  },
+  {
+    "step": 26,
+    "label": "validate-final-drafts",
+    "startedUtc": "2026-11-16T04:29:40.559784+00:00",
+    "command": [
+      "python3",
+      "-c",
+      "from pathlib import Path;import json;from expectrail import project_config;from expectrail.gate.record import validate;r=Path(\"/workspace/work/trial-stops\");p=Path(\"/workspace/work/breakout-trial-source\");print(\"Config draft:\",project_config.read_game(p)[\"draft\"]);docs=[(p/\"routes/keyboard-start.json\",r/\"contracts/route.schema.json\")]+[(x,r/\"contracts/test-spec.schema.json\") for x in (p/\"checks\").glob(\"*.json\")]\nfor doc,schema in docs:\n validate(json.loads(doc.read_text()),json.loads(schema.read_text()));print(doc.name,\"valid\")"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.06443733700143639,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/26-validate-final-drafts.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64"
+    }
+  },
+  {
+    "step": 27,
+    "label": "verify-pinned-valid",
+    "startedUtc": "2026-11-16T04:29:40.691238+00:00",
+    "command": [
+      "python3",
+      "-m",
+      "expectrail.cli",
+      "verify",
+      "--project",
+      "/workspace/work/breakout-trial-source",
+      "--base",
+      "/workspace/work/breakout-trial-source",
+      "--jobs-root",
+      "/workspace/work/handover-259-trial-stops-part-b/jobs/pinned-valid",
+      "--timeout",
+      "180",
+      "--json"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 13.50250650000089,
+    "exitCode": 2,
+    "status": "finished",
+    "log": "logs/27-verify-pinned-valid.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+      "TMPDIR": "/dev/shm/expectrail-breakout-trial/tmp",
+      "EXPECTRAIL_TOOLS": "/dev/shm/expectrail-breakout-trial/tools",
+      "PATH": "/workspace/work/dodge-tools/display/usr/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback"
+    }
+  },
+  {
+    "step": 28,
+    "label": "prepare-variants",
+    "startedUtc": "2026-11-16T04:30:02.679344+00:00",
+    "command": [
+      "python3",
+      "/workspace/work/handover-259-trial-stops-part-b/prepare-variants.py"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.16444812800182262,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/28-prepare-variants.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64"
+    }
+  },
+  {
+    "step": 29,
+    "label": "verify-harmless",
+    "startedUtc": "2026-11-16T04:30:39.945311+00:00",
+    "command": [
+      "python3",
+      "-m",
+      "expectrail.cli",
+      "verify",
+      "--project",
+      "/workspace/work/breakout-trial-variants/harmless",
+      "--base",
+      "/workspace/work/breakout-trial-source",
+      "--jobs-root",
+      "/workspace/work/handover-259-trial-stops-part-b/jobs/harmless",
+      "--timeout",
+      "180",
+      "--json"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 13.497930505000113,
+    "exitCode": 2,
+    "status": "finished",
+    "log": "logs/29-verify-harmless.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+      "TMPDIR": "/dev/shm/expectrail-breakout-trial/tmp",
+      "EXPECTRAIL_TOOLS": "/dev/shm/expectrail-breakout-trial/tools",
+      "PATH": "/workspace/work/dodge-tools/display/usr/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback"
+    }
+  },
+  {
+    "step": 30,
+    "label": "verify-broken",
+    "startedUtc": "2026-11-16T04:30:53.486174+00:00",
+    "command": [
+      "python3",
+      "-m",
+      "expectrail.cli",
+      "verify",
+      "--project",
+      "/workspace/work/breakout-trial-variants/broken",
+      "--base",
+      "/workspace/work/breakout-trial-source",
+      "--jobs-root",
+      "/workspace/work/handover-259-trial-stops-part-b/jobs/broken",
+      "--timeout",
+      "180",
+      "--json"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 13.265210056000797,
+    "exitCode": 2,
+    "status": "finished",
+    "log": "logs/30-verify-broken.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+      "TMPDIR": "/dev/shm/expectrail-breakout-trial/tmp",
+      "EXPECTRAIL_TOOLS": "/dev/shm/expectrail-breakout-trial/tools",
+      "PATH": "/workspace/work/dodge-tools/display/usr/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback"
+    }
+  },
+  {
+    "step": 31,
+    "label": "capture-pinned",
+    "startedUtc": "2026-11-16T04:31:51.004354+00:00",
+    "command": [
+      "python3",
+      "-m",
+      "harness.run",
+      "--route",
+      "/workspace/work/breakout-trial-source/routes/keyboard-start.json",
+      "--game",
+      "/workspace/work/breakout-trial-source",
+      "--out",
+      "/workspace/work/handover-259-trial-stops-part-b/evidence/pinned",
+      "--sandbox",
+      "auto"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 29.687105845994665,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/31-capture-pinned.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+      "TMPDIR": "/dev/shm/expectrail-breakout-trial/tmp",
+      "EXPECTRAIL_TOOLS": "/dev/shm/expectrail-breakout-trial/tools",
+      "PATH": "/workspace/work/dodge-tools/display/usr/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback"
+    }
+  },
+  {
+    "step": 32,
+    "label": "capture-harmless",
+    "startedUtc": "2026-11-16T04:32:20.747897+00:00",
+    "command": [
+      "python3",
+      "-m",
+      "harness.run",
+      "--route",
+      "/workspace/work/breakout-trial-source/routes/keyboard-start.json",
+      "--game",
+      "/workspace/work/breakout-trial-variants/harmless",
+      "--out",
+      "/workspace/work/handover-259-trial-stops-part-b/evidence/harmless",
+      "--sandbox",
+      "auto"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 30.539337246002106,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/32-capture-harmless.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+      "TMPDIR": "/dev/shm/expectrail-breakout-trial/tmp",
+      "EXPECTRAIL_TOOLS": "/dev/shm/expectrail-breakout-trial/tools",
+      "PATH": "/workspace/work/dodge-tools/display/usr/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback"
+    }
+  },
+  {
+    "step": 33,
+    "label": "capture-broken",
+    "startedUtc": "2026-11-16T04:32:51.348283+00:00",
+    "command": [
+      "python3",
+      "-m",
+      "harness.run",
+      "--route",
+      "/workspace/work/breakout-trial-source/routes/keyboard-start.json",
+      "--game",
+      "/workspace/work/breakout-trial-variants/broken",
+      "--out",
+      "/workspace/work/handover-259-trial-stops-part-b/evidence/broken",
+      "--sandbox",
+      "auto"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 29.977642071004084,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/33-capture-broken.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+      "TMPDIR": "/dev/shm/expectrail-breakout-trial/tmp",
+      "EXPECTRAIL_TOOLS": "/dev/shm/expectrail-breakout-trial/tools",
+      "PATH": "/workspace/work/dodge-tools/display/usr/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback"
+    }
+  },
+  {
+    "step": 34,
+    "label": "draft-engine-diagnostics",
+    "startedUtc": "2026-11-16T04:34:32.978738+00:00",
+    "command": [
+      "python3",
+      "/workspace/work/handover-259-trial-stops-part-b/analyse.py"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.21505951399740297,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/34-draft-engine-diagnostics.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64"
+    }
+  },
+  {
+    "step": 35,
+    "label": "registration-probe",
+    "startedUtc": "2026-11-16T04:34:59.055673+00:00",
+    "command": [
+      "python3",
+      "/workspace/work/handover-259-trial-stops-part-b/registration-probe.py"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.11616889300057665,
+    "exitCode": 2,
+    "status": "finished",
+    "log": "logs/35-registration-probe.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64"
+    }
+  },
+  {
+    "step": 36,
+    "label": "source-unmodified",
+    "startedUtc": "2026-11-16T04:34:59.252497+00:00",
+    "command": [
+      "git",
+      "-C",
+      "/workspace/work/breakout-trial-source",
+      "diff",
+      "--exit-code"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.06791490699833957,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/36-source-unmodified.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64"
+    }
+  },
+  {
+    "step": 37,
+    "label": "diagnostics-with-shared-window",
+    "startedUtc": "2026-11-16T04:38:24.174754+00:00",
+    "command": [
+      "python3",
+      "/workspace/work/handover-259-trial-stops-part-b/analyse.py"
+    ],
+    "cwd": "/workspace/work/trial-stops",
+    "seconds": 0.31619793699792353,
+    "exitCode": 0,
+    "status": "finished",
+    "log": "logs/37-diagnostics-with-shared-window.log",
+    "environment": {
+      "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64"
+    }
+  }
+]

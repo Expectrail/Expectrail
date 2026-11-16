@@ -4,6 +4,28 @@ Godot projects the team did not write, verified with the command a stranger woul
 holds only what a recorded run shows, with its link. A project a builder wrote for a test
 (`tests/projects/`) is not an outside project and is never counted here.
 
+## Independent GDScript follow-up: November 16, 2026
+
+**Breakout** (`mike0697/Breakout`, MIT, pin
+`0ac7aed444ea593a023d9b666c211d7ab8acd51e`) was selected before inspecting its
+integration and was not replaced. [The config-only trial](outside-trials/breakout/report.md)
+records every numbered onboarding command and stop, timings, draft checks,
+patches, raw job records and diagnostic engine traces.
+
+| Copy | CLI verdict | What was actually exercised |
+| --- | --- | --- |
+| pinned | needs-review; zero approved checks | menu only; paddle and ball never moved |
+| harmless comment | needs-review; zero approved checks | same menu; no gameplay comparison shown |
+| seeded paddle escape | needs-review; zero approved checks | physics defect never ran; no bug-detection claim |
+
+This is an **unsuccessful gameplay onboarding**, not a third verified game.
+A mouse-controlled paddle cannot be steered by the action-only route format,
+and the attempted keyboard menu route did not start play. The bounds draft is
+not exercised; the ball-launch draft fails equally on all three menus and is
+not ready for approval. [Issue texts](outside-trials/breakout/issues.md) name the
+stops. No core code changed, no check was approved, and no model was called.
+The project was not added to the working trial list.
+
 ## Third independent-author trial: November 15, 2026
 
 **System Override** (`aleshg/SystemOverride`, MIT, pin
@@ -32,7 +54,7 @@ results below are unchanged by this trial.
 **Follow-up:** [the Part A fixes and repeated refusal](outside-trials/trial-stops/report.md)
 now stop this same pin up front, naming `SystemOverride.csproj` and the
 GDScript-only support limit. This does not turn the unsuccessful trial into an
-onboarded project. A new independent GDScript trial has not started.
+onboarded project. The independent GDScript follow-up above also failed to reach active play.
 
 ## Current evidence: November 15, 2026
 

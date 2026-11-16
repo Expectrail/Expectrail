@@ -1,0 +1,5 @@
+Wrote draft expectrail.project.draft.json and draft routes/draft-first-a04d10e1878d48fb.json.
+Supply the player node path and its res:// image in bindings.player; the starting scene has no unique player.
+Complete the config object in the review draft, then save that object alone as expectrail.project.json. Existing active bindings were preserved.
+Review these bindings offline with expectrail onboard --project GAME --source expectrail.project.draft.json (use this game folder for GAME).
+Replay on a clean game and choose the checks to approve.

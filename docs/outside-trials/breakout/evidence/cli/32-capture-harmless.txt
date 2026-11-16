@@ -1,0 +1,1 @@
+120 frames, device Mesa - llvmpipe (LLVM 19.1.7, 256 bits), not sandboxed (bubblewrap could not start a sandbox: bwrap: setting up uid map: Read-only file system): /workspace/work/handover-259-trial-stops-part-b/evidence/harmless/replay.json

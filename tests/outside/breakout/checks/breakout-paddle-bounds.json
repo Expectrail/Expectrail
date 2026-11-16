@@ -1,0 +1,41 @@
+{
+  "format": "expectrail.test-spec/v0",
+  "id": "breakout-paddle-bounds",
+  "instruction": "During the attempted keyboard-start route, after the paddle has reached the left lane (world x 0..80, y 590..640), its entire drawn box must remain in the 360 by 640 play area. If that checkpoint never occurs, the bounds check is not exercised; a motionless menu is not evidence of containment during play. Draft: review the route and checkpoint before approving.",
+  "objects": {
+    "player": {
+      "prompt": "horizontal player paddle"
+    }
+  },
+  "assertion": {
+    "type": "inside-region",
+    "object": "player",
+    "region": {
+      "box": [
+        0,
+        0,
+        360,
+        640
+      ]
+    }
+  },
+  "window": {
+    "fromFrame": 12,
+    "toFrame": 60
+  },
+  "coverage": {
+    "minFrames": 30,
+    "reached": [
+      {
+        "type": "position-region",
+        "fromTick": 12,
+        "box": [
+          0,
+          590,
+          80,
+          640
+        ]
+      }
+    ]
+  }
+}
