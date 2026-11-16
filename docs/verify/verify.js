@@ -51,6 +51,16 @@
     $("outcome").setAttribute("data-tone", tone);
     $("outcome-title").textContent = title;
     $("outcome-means").textContent = means;
+    // What the issuer line can say without saying more than the check decided (issuer_word in receipt.py).
+    function hasReason(r, start) { return r.reasons.some(function (x) { return x.indexOf(start) === 0; }); }
+    function issuerText(r) {
+      if (r.known_issuer) return "in your trust store";
+      if (hasReason(r, "issuer key revoked at ")) return "in your trust store, and revoked";
+      if (hasReason(r, "receipt issued outside the issuer key's validity")) {
+        return "in your trust store, but not valid when the receipt says it was issued";
+      }
+      return "not in your trust store";
+    }
     var details = $("details");
     details.textContent = "";
     if (result.report) {
@@ -59,8 +69,10 @@
       var facts = el("dl");
       facts.className = "facts";
       [["Signature", r.valid_signature ? "valid" : "not valid with a trusted key"],
-       ["Issuer", r.known_issuer ? "in your trust store" : "not in your trust store"],
-       ["Build identity", (notChecked("repository not checked", "head not checked") || notChecked("build not checked")) ? "not checked" : (r.identity_ok ? "matches" : "does not match")],
+       ["Issuer", issuerText(r)],
+       ["Build identity", (notChecked("repository not checked", "head not checked") || notChecked("build not checked")) ? "not checked" :
+         (r.identity_ok ? "matches" : (hasReason(r, "repository mismatch") || hasReason(r, "head digest mismatch") ||
+           hasReason(r, "build digest mismatch") ? "does not match" : "not shown: no valid signature from a trusted key"))],
        ["Policy", notChecked("policy not checked") ? "not checked" : (r.policy_ok ? "matches" : "does not match")],
        ["In date", r.fresh ? "yes" : "no"],
        ["Complete", r.complete ? "yes" : "no"],
