@@ -1,0 +1,12 @@
+{
+  "collectedAt": "2026-11-16",
+  "source": "Unauthenticated GETs from api.github.com; unchanged response objects. Only the gate-marker comment is retained from the comments list.",
+  "selectedHead": "6740d7e5cdcab974e9aa492b898c976e0a76e4d1",
+  "pr": "https://github.com/Expectrail/Expectrail/pull/514",
+  "checkUrls": [
+    "https://github.com/Expectrail/Expectrail/runs/132978252933",
+    "https://github.com/Expectrail/Expectrail/runs/132978249679"
+  ],
+  "captureUrl": "https://github.com/Expectrail/Expectrail/actions/runs/43768258238",
+  "commentNote": "The bot updates one bounded comment. The older identity-refusal comment was overwritten; the current accept comment is context, never old-head evidence. No historical comment was reconstructed."
+}
