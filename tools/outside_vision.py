@@ -158,10 +158,12 @@ def judge(project, data, receipt, out, observer=None, client=None, *, vision_eve
     # invalid selection before calibration can ask a model anything.
     selected_spec = trial.project_spec(project)
     if observer is None:
-        from expectrail.recorded import RecordingClient
+        from expectrail.recorded import RecordedClient, RecordingClient
         # One cache for calibration, all variants, and both kinds of gate question. Exact question
-        # and PNG bytes only; no cross-run persistence and no caching of errors.
-        observer = anchored(project, data, RecordingClient(client, reuse=True), out, vision_every=vision_every)
+        # and PNG bytes only; no cross-run persistence and no caching of errors. A recording costs
+        # nothing to ask again, and wrapping it would hide it from the recorded-image diagnosis (#515).
+        asked = client if isinstance(client, RecordedClient) else RecordingClient(client, reuse=True)
+        observer = anchored(project, data, asked, out, vision_every=vision_every)
     cases = variants(project)
     rows = []
     with tempfile.TemporaryDirectory() as tmp:
