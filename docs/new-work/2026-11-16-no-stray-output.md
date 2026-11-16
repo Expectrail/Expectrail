@@ -33,7 +33,8 @@ collected mid-command puts the warning into such a buffer and breaks the parse.
   has no unclosed-socket warning (the run of #547's branch just before had 11). Two `unclosed file
   <_io.TextIOWrapper>` warnings remain, printed from a test's cleanups; not traced.
 - Not shown: that this was the cause of the one failure the nightly test saw. Its buffer was not kept.
-  The mechanism is shown by a test, and the leaked sockets were in that run's log.
+  The mechanism is shown by a test. The issue reports 18 `ResourceWarning` lines in that run's log;
+  which objects they named was not read here. A full-suite log here had 11 unclosed-socket warnings.
 
 ## Not done
 - The untraced `127.0.0.1` socket warning above. It did not appear in the full run after the fix,
