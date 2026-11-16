@@ -38,3 +38,5 @@ __pycache__/
 
 # The planning tool's per-machine render cache (keyed by the local checkout folder)
 _bmad/render/
+
+!/tools/playtest_fall_through.py
