@@ -1,0 +1,11 @@
+{
+  "format": "expectrail.receipt-attestation/v1",
+  "receiptSha256": "f7e4b52ba63e210a84f8075c4c2494f10650fe61bfd8d3de2f27295818221555",
+  "repository": "Expectrail/Expectrail",
+  "headSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "buildSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "policySha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "decision": "accept",
+  "issuedAt": "2026-11-14T00:00:00Z",
+  "expiresAt": "2026-11-21T00:00:00Z"
+}
