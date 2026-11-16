@@ -1,0 +1,38 @@
+{
+  "format": "expectrail.repair-run/v1",
+  "reproduction": {
+    "kind": "generated-advisory",
+    "checks": [
+      "body-facing"
+    ]
+  },
+  "repairAttempted": false,
+  "parent": {
+    "job": "6fdec1770e3c4a2b9d1e5f7a8b9c0d1e",
+    "decision": "needs-review",
+    "headTree": "e02fec02ad12faeceb2b991a3302f820ac45271611b12a25fa8b9729d02bff23",
+    "failing": []
+  },
+  "fixer": {
+    "source": "not-run",
+    "sandboxed": false
+  },
+  "budget": {
+    "attempts": 3,
+    "usdCap": null
+  },
+  "attempts": [],
+  "stop": {
+    "reason": "needs-review",
+    "detail": "a person must approve a check first; generated advisory checks cannot start repair"
+  },
+  "result": {
+    "decision": "needs-review",
+    "patch": null,
+    "job": null
+  },
+  "machineWritten": true,
+  "review": "No repair was attempted; this report requires review.",
+  "startedAt": "2026-11-14T08:00:00Z",
+  "finishedAt": "2026-11-14T08:03:10Z"
+}

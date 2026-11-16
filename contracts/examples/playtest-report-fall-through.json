@@ -1,0 +1,30 @@
+{
+  "format": "expectrail.playtest-report/v1",
+  "id": "handwritten-fall-through",
+  "producer": {
+    "name": "handwritten",
+    "version": "1"
+  },
+  "target": {
+    "commit": "9cc10ca50d820e9e02a09b41c93f7f01ba7e007f"
+  },
+  "route": {
+    "format": "expectrail.route/v0",
+    "name": "fall-through-wait",
+    "description": "Stand still from the game start; no input.",
+    "ticks": 240,
+    "seed": 1,
+    "events": []
+  },
+  "bug": "When I leave the controls alone, the robot drops straight through the floor instead of standing on it.",
+  "fault": {
+    "preFaultTick": 0,
+    "faultTick": 16,
+    "anchor": {
+      "object": "player",
+      "x": 90.0,
+      "y": 636.646,
+      "tolerancePx": 2
+    }
+  }
+}

@@ -86,7 +86,64 @@ def saved_run(folder, route):
         if sha(png) != digest or not png.startswith(b'\x89PNG\r\n\x1a\n'):
             raise ValueError(f'frame {index} differs from replay.json or is not a PNG')
     return {'tree': replay['game']['tree'], 'trace': trace, 'framesDir': frames,
-            'replaySha256': sha(data), 'isolation': isolation}
+            'replaySha256': sha(data), 'isolation': isolation, 'engine': replay['engine']}
+
+
+def preflight(project, data, receipt, *, for_calibration=True):
+    """Validate every arm, selected policy and usable coverage before a question can be sent."""
+    from tools.outside_vision_plan import calibration_selection, visible
+    from agents.sam_observations import frame_files, window
+    from expectrail.anchored import RULES
+    from harness.run import GODOT_VERSION
+
+    if capture_id(project, data) != receipt:
+        raise ValueError('capture digest differs from the capture job output')
+    selected = trial.project_spec(project)
+    with tempfile.TemporaryDirectory() as tmp:
+        policy = Path(tmp)
+        shutil.copytree(trial.REPO / project['routes'], policy / 'routes')
+        (policy / 'specs').mkdir()
+        shutil.copyfile(selected, policy / 'specs' / selected.name)
+        checks = verify.read_checks(policy, 'specs', ['routes/*.json'])
+        if checks.problems or checks.drafts or len(checks.specs) != 1:
+            raise ValueError('selected outside policy is not one usable approved check: '
+                             + '; '.join(checks.problems or ['draft or missing approved check']))
+        spec = checks.specs[0]
+    runs, engines = {}, set()
+    for case in variants(project):
+        tree = None
+        for path in routes(project):
+            run = saved_run(data / case / path.stem, path)
+            if tree is not None and tree != run['tree']:
+                raise ValueError(f'{case}: routes name different game trees')
+            tree = run['tree']
+            route = json.loads(path.read_bytes())
+            expected = verify.window_frames({}, route['ticks'], run['trace'])
+            if (expected is None or len(run['trace']['rows']) != route['ticks']
+                    or [row['tick'] for row in run['trace']['rows']] != list(range(route['ticks']))
+                    or sorted(frame_files(run['framesDir'])) != expected):
+                raise ValueError(f'{case}/{path.stem}: incomplete route trace or captured frame window')
+            if problem := verify.input_map_problem(run['trace']):
+                raise ValueError(f'{case}/{path.stem}: {problem}; nothing was asked')
+            engine = run['engine']
+            normalized = (engine.get('version') or '').replace('-stable', '.stable')
+            if engine.get('renderer') != 'opengl3' or not normalized.startswith(GODOT_VERSION.replace('-stable', '.stable')):
+                raise ValueError('outside capture must use the pinned Godot version and CI OpenGL3 renderer')
+            engines.add(tuple(engine.get(k) for k in ('name', 'version', 'renderer', 'device')))
+            if for_calibration and spec.get('coverage', {}).get('whenPlayerVisible'):
+                states = [visible(run, n) for n in window(expected, spec)]
+                if any(state is None for state in states):
+                    raise ValueError(f'{case}/{path.stem}: player visibility is unknown before vision')
+                if sum(state is True for state in states) < spec['coverage'].get('minFrames', 2):
+                    raise ValueError(f'{case}/{path.stem}: insufficient in-play coverage before vision')
+            runs[case, path.name] = run
+    if len(engines) != 1:
+        raise ValueError('outside variants were captured under different rendering environments')
+    first = runs['pinned', routes(project)[0].name]
+    selected_frames, _excluded = calibration_selection(first, spec)
+    if for_calibration and spec.get('coverage', {}).get('whenPlayerVisible') and len(selected_frames) < RULES['minFrames']:
+        raise ValueError('fewer than eight visible, unclipped calibration frames; nothing was asked')
+    return selected, spec, runs
 
 
 def capture(project, out):
@@ -123,16 +180,19 @@ def calibration_markdown(doc):
             f"same answer from a point nudged inside the player in {rates['stable']:.0%}.\n")
 
 
-def anchored(project, data, client, out):
+def anchored(project, data, client, out, *, vision_every=1, spec=None, run=None):
     """The visual observer for this game: calibrated on the unchanged game's first route (#330), and
     used only when the calibration says so. Writes calibration.json and calibration.md to ``out``."""
     from expectrail import anchored as an, recorded
 
     first = routes(project)[0]
-    run = saved_run(data / 'pinned' / first.stem, first)
+    run = run or saved_run(data / 'pinned' / first.stem, first)
+    spec = spec or json.loads(trial.project_spec(project).read_bytes())
+    from tools.outside_vision_plan import calibration_run
     game = {'name': project['name'], 'commit': project['commit']}
     try:
-        doc = an.calibrate(game, run, client)
+        with calibration_run(run, spec) as (scoped, every, selected, excluded):
+            doc = an.calibrate(game, scoped, client, every=every)
     except verify.NoAnswer as exc:
         doc = an.judge_calibration(game, run['replaySha256'], [], an.RULES,
                                    model=str(getattr(client, 'model', 'unknown')),
@@ -141,20 +201,35 @@ def anchored(project, data, client, out):
     out.mkdir(parents=True, exist_ok=True)
     (out / 'calibration.json').write_text(json.dumps(doc, indent=1) + '\n')
     (out / 'calibration.md').write_text(calibration_markdown(doc))
-    observer = an.AnchoredObserver(client, doc)
-    return recorded.with_recorded_diagnostics(observer) if isinstance(client, recorded.RecordedClient) else observer
+    observer = an.AnchoredObserver(client, doc, every=vision_every)
+    original = getattr(client, 'inner', client)
+    return recorded.with_recorded_diagnostics(observer) if isinstance(original, recorded.RecordedClient) else observer
 
 
-def judge(project, data, receipt, out, observer=None, client=None):
+def judge(project, data, receipt, out, observer=None, client=None, *, vision_every=1):
     """Judge every variant. ``observer`` is used as given; with ``client`` instead, the anchored
     observer is calibrated on the unchanged game first (#330)."""
-    if capture_id(project, data) != receipt:
-        raise ValueError('capture digest differs from the capture job output')
-    # Use the same trusted check selection as the no-key trial, and refuse an
-    # invalid selection before calibration can ask a model anything.
-    selected_spec = trial.project_spec(project)
+    if type(vision_every) is not int or vision_every < 1:
+        raise ValueError('vision stride must be a positive integer')
+    if observer is not None and vision_every != 1:
+        raise ValueError('vision sampling requires the calibrated anchored observer')
+    selected_spec, spec, validated = preflight(project, data, receipt, for_calibration=observer is None)
     if observer is None:
-        observer = anchored(project, data, client, out)
+        from tools.outside_vision_plan import QuestionClient, plan, markdown_plan
+        from expectrail.recorded import RecordedClient, RecordingClient
+        conditional = spec.get('coverage', {}).get('whenPlayerVisible', False)
+        if conditional:
+            client = QuestionClient(client, conditional=True)
+        elif not isinstance(client, RecordedClient):
+            client = RecordingClient(client, reuse=True)
+        request_plan = plan(project, spec, validated, every=vision_every)
+        out.mkdir(parents=True, exist_ok=True)
+        (out / 'request-plan.json').write_text(json.dumps(request_plan, indent=2) + '\n')
+        print(markdown_plan(request_plan), flush=True)
+        observer = anchored(project, data, client, out, vision_every=vision_every, spec=spec, run=validated['pinned', routes(project)[0].name])
+        # This existing artifact is already uploaded by the outside-vision workflow.
+        with (out / 'calibration.md').open('a') as handle:
+            handle.write(markdown_plan(request_plan) + '\n')
     cases = variants(project)
     rows = []
     with tempfile.TemporaryDirectory() as tmp:
@@ -168,7 +243,7 @@ def judge(project, data, receipt, out, observer=None, client=None):
             shutil.copyfile(selected_spec, arm / 'specs' / selected_spec.name)
             game = arm / 'project'
             for path in routes(project):
-                run = saved_run(data / case / path.stem, path)
+                run = validated[case, path.name]
                 if trees.setdefault(game, run['tree']) != run['tree']:
                     raise ValueError(f'{case}: routes name different game trees')
                 runs[game, sha(path.read_bytes())] = run
@@ -179,17 +254,39 @@ def judge(project, data, receipt, out, observer=None, client=None):
             doc = verify.run_gate(repo=policy / case, base=policy / 'pinned' if change else None,
                                   game='project', routes=['routes/*.json'], specs='specs', out=out / case,
                                   work=policy / 'work' / case, replay=saved, rule=record.BOTH,
-                                  require_sandbox=True, visual=observer, expectrail_commit=os.getenv('GITHUB_SHA'))
+                                  require_sandbox=True, visual=observer, expectrail_commit=os.getenv('GITHUB_SHA'),
+                                  vision_every=vision_every)
             decision = doc['decision']
             rows.append({'name': project['name'], 'commit': project['commit'], 'licence': project['licence'],
                          'change': change['name'] if change else None,
                          'what': change and change['what'], 'expect': change and change['expect'],
                          'exit': next(code for code, name in trial.VERDICTS.items() if name == decision),
                          'decision': decision, 'verdict': decision, 'seconds': round(time.monotonic() - start, 1),
+                         'visionEvery': vision_every,
                          'checks': doc['counts'], 'reasons': doc['reasons'],
                          'failures': [f['reason'] for f in doc['findings']]})
-            (out / 'outside-trial.md').write_text(trial.markdown(rows))
+            (out / 'outside-trial.md').write_text(trial.markdown(rows) + sampling_markdown(vision_every))
     return rows
+
+
+def sampling_markdown(every):
+    return (f"\n**Vision sampling:** requested every {every} frame(s) from the check window's first, plus its last. "
+            "Each check uses the shared sampling plan: fractional visibility checks need every frame. "
+            "The engine still checks every frame; calibration and the paired comparison keep their own stride 10. "
+            f"A visual defect shorter than {every} frames may be missed. A sampled non-pass is refined "
+            "on every remaining frame or needs review; a reaches witness can pass from samples. "
+            "Missing-player rejection requires 3 consecutive negative observations in the refined sequence. "
+            "Explicit spec coverage obligations are not relaxed. Default: 1.\n")
+
+
+def positive_stride(value):
+    try:
+        result = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError('vision stride must be a positive integer') from exc
+    if result < 1:
+        raise argparse.ArgumentTypeError('vision stride must be a positive integer')
+    return result
 
 
 def main(argv=None):
@@ -200,6 +297,8 @@ def main(argv=None):
         sub.add_argument('--project', required=True, choices=[p['name'] for p in trial.load_list()])
         sub.add_argument('--out', type=Path, required=True)
         if name == 'judge':
+            sub.add_argument('--vision-every', type=positive_stride, default=1,
+                             help='opt-in anchored vision stride (default 1); shorter defects may be missed')
             sub.add_argument('--data', type=Path, required=True)
             sub.add_argument('--digest', required=True)
             sub.add_argument('--recording', type=Path,
@@ -224,7 +323,7 @@ def main(argv=None):
         # A frame or question not in the recording gets no answer, so the verdict is needs-review.
         client = recorded.RecordedClient(recorded.read_recording(args.recording))
         args.out.mkdir(parents=True)
-        judge(project, args.data, args.digest, args.out, client=client)
+        judge(project, args.data, args.digest, args.out, client=client, vision_every=args.vision_every)
         print(f'Answered from the recording: {client.answered} of {client.calls} questions')
         return 0
     cap = os.getenv(CAP_ENV, '')
@@ -236,7 +335,7 @@ def main(argv=None):
     before = sam_usage()
     client = recorded.RecordingClient(MetaSamClient())
     try:
-        judge(project, args.data, args.digest, args.out, client=client)
+        judge(project, args.data, args.digest, args.out, client=client, vision_every=args.vision_every)
     finally:
         used = {key: value - before[key] for key, value in sam_usage().items()}
         (args.out / 'spend.json').write_text(json.dumps(used, indent=2) + '\n')

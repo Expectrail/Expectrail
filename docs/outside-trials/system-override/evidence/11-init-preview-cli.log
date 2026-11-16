@@ -1,0 +1,274 @@
+{
+  "config": {
+    "format": "expectrail.project/v1",
+    "adapter": "godot",
+    "draft": true,
+    "entryScene": "res://scenes/main_menu.tscn",
+    "viewport": [
+      1920,
+      1080
+    ],
+    "physicsTicksPerSecond": 60,
+    "captureFps": 60,
+    "bindings": {},
+    "inputActions": [
+      "exit",
+      "fire_weapons",
+      "negative_thrust",
+      "positive_thrust",
+      "restart",
+      "side_thrust_left",
+      "side_thrust_right",
+      "zoom_in",
+      "zoom_out"
+    ],
+    "routes": [
+      "routes/draft-first-ce3465d10472bf4a.json"
+    ]
+  },
+  "route": {
+    "format": "expectrail.route/v0",
+    "name": "draft-first-route",
+    "seed": 1,
+    "description": "Draft from the input map. Review the actions and replay before use.",
+    "ticks": 621,
+    "events": [
+      {
+        "tick": 15,
+        "action": "side_thrust_left",
+        "pressed": true
+      },
+      {
+        "tick": 75,
+        "action": "side_thrust_left",
+        "pressed": false
+      },
+      {
+        "tick": 90,
+        "action": "side_thrust_right",
+        "pressed": true
+      },
+      {
+        "tick": 150,
+        "action": "side_thrust_right",
+        "pressed": false
+      },
+      {
+        "tick": 165,
+        "action": "exit",
+        "pressed": true
+      },
+      {
+        "tick": 171,
+        "action": "exit",
+        "pressed": false
+      },
+      {
+        "tick": 186,
+        "action": "exit",
+        "pressed": true
+      },
+      {
+        "tick": 192,
+        "action": "exit",
+        "pressed": false
+      },
+      {
+        "tick": 207,
+        "action": "exit",
+        "pressed": true
+      },
+      {
+        "tick": 213,
+        "action": "exit",
+        "pressed": false
+      },
+      {
+        "tick": 228,
+        "action": "fire_weapons",
+        "pressed": true
+      },
+      {
+        "tick": 234,
+        "action": "fire_weapons",
+        "pressed": false
+      },
+      {
+        "tick": 249,
+        "action": "fire_weapons",
+        "pressed": true
+      },
+      {
+        "tick": 255,
+        "action": "fire_weapons",
+        "pressed": false
+      },
+      {
+        "tick": 270,
+        "action": "fire_weapons",
+        "pressed": true
+      },
+      {
+        "tick": 276,
+        "action": "fire_weapons",
+        "pressed": false
+      },
+      {
+        "tick": 291,
+        "action": "negative_thrust",
+        "pressed": true
+      },
+      {
+        "tick": 297,
+        "action": "negative_thrust",
+        "pressed": false
+      },
+      {
+        "tick": 312,
+        "action": "negative_thrust",
+        "pressed": true
+      },
+      {
+        "tick": 318,
+        "action": "negative_thrust",
+        "pressed": false
+      },
+      {
+        "tick": 333,
+        "action": "negative_thrust",
+        "pressed": true
+      },
+      {
+        "tick": 339,
+        "action": "negative_thrust",
+        "pressed": false
+      },
+      {
+        "tick": 354,
+        "action": "positive_thrust",
+        "pressed": true
+      },
+      {
+        "tick": 360,
+        "action": "positive_thrust",
+        "pressed": false
+      },
+      {
+        "tick": 375,
+        "action": "positive_thrust",
+        "pressed": true
+      },
+      {
+        "tick": 381,
+        "action": "positive_thrust",
+        "pressed": false
+      },
+      {
+        "tick": 396,
+        "action": "positive_thrust",
+        "pressed": true
+      },
+      {
+        "tick": 402,
+        "action": "positive_thrust",
+        "pressed": false
+      },
+      {
+        "tick": 417,
+        "action": "restart",
+        "pressed": true
+      },
+      {
+        "tick": 423,
+        "action": "restart",
+        "pressed": false
+      },
+      {
+        "tick": 438,
+        "action": "restart",
+        "pressed": true
+      },
+      {
+        "tick": 444,
+        "action": "restart",
+        "pressed": false
+      },
+      {
+        "tick": 459,
+        "action": "restart",
+        "pressed": true
+      },
+      {
+        "tick": 465,
+        "action": "restart",
+        "pressed": false
+      },
+      {
+        "tick": 480,
+        "action": "zoom_in",
+        "pressed": true
+      },
+      {
+        "tick": 486,
+        "action": "zoom_in",
+        "pressed": false
+      },
+      {
+        "tick": 501,
+        "action": "zoom_in",
+        "pressed": true
+      },
+      {
+        "tick": 507,
+        "action": "zoom_in",
+        "pressed": false
+      },
+      {
+        "tick": 522,
+        "action": "zoom_in",
+        "pressed": true
+      },
+      {
+        "tick": 528,
+        "action": "zoom_in",
+        "pressed": false
+      },
+      {
+        "tick": 543,
+        "action": "zoom_out",
+        "pressed": true
+      },
+      {
+        "tick": 549,
+        "action": "zoom_out",
+        "pressed": false
+      },
+      {
+        "tick": 564,
+        "action": "zoom_out",
+        "pressed": true
+      },
+      {
+        "tick": 570,
+        "action": "zoom_out",
+        "pressed": false
+      },
+      {
+        "tick": 585,
+        "action": "zoom_out",
+        "pressed": true
+      },
+      {
+        "tick": 591,
+        "action": "zoom_out",
+        "pressed": false
+      }
+    ]
+  },
+  "unresolvedBindings": [
+    "Supply the player node path and its res:// image in bindings.player; the starting scene has no unique player."
+  ],
+  "textureCandidates": [],
+  "playerCandidates": [],
+  "draft": true
+}

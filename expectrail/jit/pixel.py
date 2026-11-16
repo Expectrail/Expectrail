@@ -12,8 +12,9 @@ sees in the frames:
   check that asks it something it cannot tell is refused when it is proposed (``parse_candidate``),
   never passed later. ``sam-3.1-anchor`` is SAM 3.1 asked about the place the engine's record puts
   the object (agents/sam_anchor.py). ``visual-sensor`` is the no-model sensor of #262 over a frozen
-  template bank (expectrail/jit/template_observer.py); it is not offered to the proposer (``PROPOSED``),
-  and no proposal may name it yet.
+  template bank (expectrail/jit/template_observer.py). A run is judged by one observer, so the proposer
+  is offered only the one that will judge the run (``proposed``): SAM unless the propose step is told
+  otherwise, and a proposal records which (expectrail/jit/intent.py, ``observer``).
 - **The predicates are the reference evaluator's** (``visible``, ``inside-region``, ``never-crosses``,
   ``reaches``; expectrail/evaluator.py), and ``judge`` hands the decision to that evaluator.
 - **A frame counts only where the observer and the engine's record are both there.** A frame in the
@@ -134,20 +135,32 @@ OBSERVERS = {
     },
 }
 
-# The observers the proposer is offered (``menu``), and the only ones a model's answer or a saved proposal
-# may name (``parse_answer``, expectrail/jit/intent.py ``_pixel_from_proposal``). A run is judged by the one
-# observer it is given (expectrail/jit/run.py: a check naming another is not run), and the propose step is
-# not told which, so the proposer is offered only SAM, the observer jit.yml's pixel jobs build.
-# ``visual-sensor`` is judged by ``run.generate`` when it is the run's observer and an intent hands it
-# checks naming it; offering it to the proposer needs the propose step to know the run's observer.
-PROPOSED = ("sam-3.1-anchor",)
-NOT_PROPOSED = ("a run is judged by one observer, and the proposer is offered only the one jit.yml's pixel jobs "
-                "build: " + ", ".join(PROPOSED))
+# The observers a proposal may be made for (``proposed``). A run is judged by the one observer it is given
+# (expectrail/jit/run.py: a check naming another is not run), so the proposer is offered exactly one: the
+# observer that will judge the run, which the propose step is told (expectrail/jit/intent.py, ``observer``)
+# and the proposal records, and a replay of the proposal for another observer is refused. ``DEFAULT_OBSERVER``
+# is SAM, the observer jit.yml's pixel jobs build; with it every prompt and proposal is as it was before
+# the setting existed.
+PROPOSABLE = ("sam-3.1-anchor", "visual-sensor")
+DEFAULT_OBSERVER = "sam-3.1-anchor"
 
 
-def proposed() -> dict:
-    """The observers a proposal may name: ``OBSERVERS`` cut to ``PROPOSED``."""
-    return {name: OBSERVERS[name] for name in PROPOSED}
+def check_observer(observer) -> str:
+    """``observer`` if a proposal may be made for it, otherwise ValueError."""
+    if observer not in PROPOSABLE:
+        raise ValueError(f"unknown observer for pixel checks {str(observer)[:40]!r}: one of {', '.join(PROPOSABLE)}")
+    return observer
+
+
+def proposed(observer: str = DEFAULT_OBSERVER) -> dict:
+    """The observers a proposal for a run judged by ``observer`` may name: that one only."""
+    return {check_observer(observer): OBSERVERS[observer]}
+
+
+def not_proposed(observers: dict) -> str:
+    """Why an observer outside ``observers`` may not be named in a proposal."""
+    return ("a run is judged by one observer, and the proposer is offered only the one that will judge this run: "
+            + ", ".join(sorted(observers)))
 
 
 class PixelError(ValueError):
@@ -190,7 +203,7 @@ def parse_candidate(entry, bindings: dict, probe_ids, observers: dict = OBSERVER
     observer = observers.get(doc["observer"])
     if observer is None:
         if doc["observer"] in OBSERVERS:
-            return None, f"{doc['observer']} is not offered to the proposer: {NOT_PROPOSED}"
+            return None, f"{doc['observer']} is not offered to the proposer: {not_proposed(observers)}"
         return None, f"{doc['observer']!r} is not a trusted observer"
     if not observer.get("available"):
         return None, f"{doc['observer']} cannot judge anything yet: {observer['why']['available']}"

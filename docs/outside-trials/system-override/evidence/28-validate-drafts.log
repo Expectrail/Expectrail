@@ -1,0 +1,10 @@
+expectrail.project.json valid against project.v1.schema.json no approval
+routes/thrust-fire.json valid against route.schema.json no approval
+checks/ship-visible.json valid against test-spec.schema.json no approval
+Traceback (most recent call last):
+  File "/workspace/work/handover-263-third-project/validate-trial.py", line 11, in <module>
+    config=project_config.load(game);assert config['draft'] is True
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/third-project/expectrail/project_config.py", line 58, in load
+    raise ProjectConfigError(f"{name}: no such file")
+expectrail.project_config.ProjectConfigError: system-override: no such file

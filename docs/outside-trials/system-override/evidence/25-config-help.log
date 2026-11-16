@@ -1,0 +1,52 @@
+usage: expectrail verify [-h] [--head HEAD] [--project PROJECT] [--base BASE]
+                         [--adapter ADAPTER] [--game GAME] [--routes ROUTES]
+                         [--specs SPECS] [--head-commit HEAD_COMMIT]
+                         [--base-commit BASE_COMMIT]
+                         [--execution-class {diagnostic,isolated}]
+                         [--timeout TIMEOUT]
+                         [--idempotency-key IDEMPOTENCY_KEY]
+                         [--intent {fix,change,none}] [--bug TEXT|@FILE]
+                         [--detach] [--json] [--auto-fix]
+                         [--auto-fix-attempts N] [--auto-fix-usd-cap USD]
+                         [--auto-fix-fixture PATCH | --auto-fix-recorded PATCH]
+                         [--jobs-root JOBS_ROOT_AFTER]
+
+options:
+  -h, --help            show this help message and exit
+  --head HEAD           a checkout of the change
+  --project PROJECT     the changed project folder; use its base config to
+                        select routes, checks and vision
+  --base BASE           a checkout of what it is compared with; the checks are
+                        read from it
+  --adapter ADAPTER
+  --game GAME           the project folder, relative to the checkout
+  --routes ROUTES       route files or globs, relative to the checkout,
+                        separated by spaces or commas
+  --specs SPECS         the folder of approved test specs, relative to the
+                        checkout
+  --head-commit HEAD_COMMIT
+  --base-commit BASE_COMMIT
+  --execution-class {diagnostic,isolated}
+  --timeout TIMEOUT     seconds before the job stops as needs review
+  --idempotency-key IDEMPOTENCY_KEY
+  --intent {fix,change,none}
+                        fix requires a check to fail on the base and pass on
+                        the head three times each; change and none keep the
+                        existing rule (default: none)
+  --bug TEXT|@FILE      report with --intent fix; capture text or a UTF-8 file
+                        (8192 characters max). Use @@ for a literal leading @.
+                        No URL is fetched; this does not create a check
+  --detach              start the job, print its id and return
+  --json
+  --auto-fix            try to repair a reject in a separate checkout
+  --auto-fix-attempts N
+                        1 to 10 attempts (default 3)
+  --auto-fix-usd-cap USD
+                        maximum Muse spend across attempts
+  --auto-fix-fixture PATCH
+                        use a fixture patch offline
+  --auto-fix-recorded PATCH
+                        replay a recorded patch offline
+  --jobs-root JOBS_ROOT_AFTER
+                        where jobs are kept (default: $EXPECTRAIL_JOBS, else
+                        runs/jobs)

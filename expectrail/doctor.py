@@ -345,6 +345,19 @@ def for_run() -> list[Check]:
 def checks(*, isolated: bool = False, fetch: bool = True, env: dict | None = None,
            project: Path | None = None) -> list[Check]:
     """Every piece `doctor` reports, in the order it prints them."""
+    from expectrail import godot_project, project_config
+    if project is None and (Path.cwd() / "project.godot").is_file():
+        project = Path.cwd()
+    if project is not None and (Path(project) / "project.godot").is_file():
+        try:
+            config = project_config.read_game(project)
+        except project_config.ProjectConfigError:
+            config = None  # The recorded-project diagnostic below still reports an invalid config.
+        try:
+            godot_project.require_gdscript(project, config)
+        except (ValueError, OSError) as exc:
+            return [_missing("project-language", "a supported Godot project", str(exc),
+                             "Use a GDScript-only Godot project; .NET build/import support is not available.")]
     engine, path = godot(fetch)
     shown = display()
     here = engine.status == "ok"
@@ -452,7 +465,7 @@ def main(argv: list[str] | None = None, *, prog: str = "expectrail doctor") -> i
     p.add_argument("--json", action="store_true", help="print one expectrail.doctor/v1 document")
     p.add_argument("--isolated", action="store_true",
                    help="also require the replay sandbox, as the isolated execution class does")
-    p.add_argument("--project", type=Path, help="compare this project config's recorded vision with this machine")
+    p.add_argument("--project", type=Path, help="check project support and compare its recorded vision with this machine")
     p.add_argument("--no-fetch", action="store_true", help="only look for the engine; do not download it")
     try:
         args = p.parse_args(argv)

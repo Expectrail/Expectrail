@@ -88,3 +88,5 @@ result strings describe what that filter would exclude before a fixer; they are 
 The ingest/contract builder owns the integration and arbitrary-report semantics.
 
 Recorded counts and limitations: [docs/playtester-results.md](../../docs/playtester-results.md).
+
+Round-two scale measurements and the optional generic offscreen observation: [SCALE.md](SCALE.md).

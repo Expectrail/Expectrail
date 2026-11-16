@@ -1,0 +1,94 @@
+{
+  "project": "aleshg/SystemOverride",
+  "pin": "f95712a9e88480251e3ba38880d7144bf3f7b33a",
+  "trackedSourceUnchanged": true,
+  "steps": [
+    {
+      "step": 1,
+      "command": [
+        "python3",
+        "-m",
+        "expectrail.cli",
+        "doctor",
+        "--project",
+        "/workspace/work/system-override",
+        "--json",
+        "--no-fetch"
+      ],
+      "seconds": 0.11491089199989801,
+      "exitCode": 3,
+      "output": "{\n  \"format\": \"expectrail.doctor/v1\",\n  \"expectrail\": \"0.1.0\",\n  \"ok\": false,\n  \"checks\": [\n    {\n      \"id\": \"project-language\",\n      \"what\": \"a supported Godot project\",\n      \"status\": \"missing\",\n      \"required\": true,\n      \"found\": \"Detected \\\"SystemOverride.csproj\\\": this project needs Godot .NET; only GDScript projects are supported today. Use a GDScript-only project; installing a Mono/.NET binary alone does not add support to Expectrail. No game was started.\",\n      \"fix\": \"Use a GDScript-only Godot project; .NET build/import support is not available.\"\n    }\n  ]\n}\n"
+    },
+    {
+      "step": 2,
+      "command": [
+        "python3",
+        "-m",
+        "expectrail.cli",
+        "inspect",
+        "/workspace/work/system-override",
+        "--json"
+      ],
+      "seconds": 0.1203657989972271,
+      "exitCode": 5,
+      "output": "expectrail inspect: Detected \"SystemOverride.csproj\": this project needs Godot .NET; only GDScript projects are supported today. Use a GDScript-only project; installing a Mono/.NET binary alone does not add support to Expectrail. No game was started.\n"
+    },
+    {
+      "step": 3,
+      "command": [
+        "python3",
+        "-m",
+        "expectrail.cli",
+        "init",
+        "/workspace/work/system-override",
+        "--dry-run"
+      ],
+      "seconds": 0.1662924150004983,
+      "exitCode": 5,
+      "output": "expectrail init: Detected \"SystemOverride.csproj\": this project needs Godot .NET; only GDScript projects are supported today. Use a GDScript-only project; installing a Mono/.NET binary alone does not add support to Expectrail. No game was started.\n"
+    },
+    {
+      "step": 4,
+      "command": [
+        "python3",
+        "-m",
+        "expectrail.cli",
+        "route",
+        "--project",
+        "/workspace/work/system-override",
+        "--auto",
+        "--out",
+        "/workspace/work/handover-259-trial-stops/evidence/system-override-route.json"
+      ],
+      "seconds": 0.0680973390044528,
+      "exitCode": 5,
+      "output": "expectrail route: Detected \"SystemOverride.csproj\": this project needs Godot .NET; only GDScript projects are supported today. Use a GDScript-only project; installing a Mono/.NET binary alone does not add support to Expectrail. No game was started.. No route was written.\n"
+    }
+  ],
+  "sourceVerification": [
+    {
+      "command": [
+        "git",
+        "-C",
+        "/workspace/work/system-override",
+        "rev-parse",
+        "HEAD"
+      ],
+      "seconds": 0.005533110001124442,
+      "exitCode": 0,
+      "output": "f95712a9e88480251e3ba38880d7144bf3f7b33a\n"
+    },
+    {
+      "command": [
+        "git",
+        "-C",
+        "/workspace/work/system-override",
+        "diff",
+        "--exit-code"
+      ],
+      "seconds": 0.008083407003141474,
+      "exitCode": 0,
+      "output": ""
+    }
+  ]
+}

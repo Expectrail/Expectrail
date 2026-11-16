@@ -1,0 +1,10 @@
+--- a/scripts/PlayerController.cs
++++ b/scripts/PlayerController.cs
+@@ -3,6 +3,7 @@
+ 
+ namespace SystemOverride
+ {
++	// Outside trial: a comment only; player behaviour is unchanged.
+ 	public partial class PlayerController : Node2D
+ 	{
+ 		[Export]

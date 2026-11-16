@@ -1,0 +1,72 @@
+{
+  "project": "aleshg/SystemOverride",
+  "commit": "f95712a9e88480251e3ba38880d7144bf3f7b33a",
+  "licence": "MIT",
+  "choice": "choice.md",
+  "productBase": "a98dcb08c2d7fe068283e97148b07a37d423d91e",
+  "dependencyTree": "1a20e805c43534cd4cb23e5285172312b1c2dfa7",
+  "trial": "blocked; config-only onboarding not demonstrated",
+  "machineCommandSecondsExcludingNestedWrapper": 32.25213343799987,
+  "humanMinutes": "not measured",
+  "results": [
+    {
+      "variant": "pinned",
+      "jobId": "a956ab6a63172ba21835d357e4652850",
+      "decision": "needs-review",
+      "engineFinding": "not run",
+      "replays": 0,
+      "draftChecks": 1,
+      "approvedChecks": 0,
+      "seconds": 1.5925061640009517,
+      "source": "evidence/20-verify-pinned.log",
+      "reasons": [
+        "TOOL_MISSING: xvfb-run is not installed. Fix: sudo apt-get install xvfb",
+        "TOOL_MISSING: not tried: it needs Godot and a display, and one is missing above. Fix: fix what is missing above, then run `expectrail doctor` again",
+        "TOOL_MISSING: 341 MB free in the engine's folder (/workspace/work/third-project/tools); 341 MB free in the temporary folder (/tmp). Fix: free at least 1024 MB in each folder named above, or name other folders with EXPECTRAIL_TOOLS and TMPDIR"
+      ],
+      "headTree": "425c9559ab3e3c9647469f4cf3df5b3ed08659e0973ecad599aa22b80cd8a3db",
+      "baseTree": "425c9559ab3e3c9647469f4cf3df5b3ed08659e0973ecad599aa22b80cd8a3db",
+      "policyDigest": "20e827eac6836d93e311a33ea0c13efcff7d63da40405d1e996b251a01114451"
+    },
+    {
+      "variant": "harmless",
+      "jobId": "c94b53d2ffe4f9effb0ec3d2c0029e46",
+      "decision": "needs-review",
+      "engineFinding": "not run",
+      "replays": 0,
+      "draftChecks": 1,
+      "approvedChecks": 0,
+      "seconds": 1.3033522629993968,
+      "source": "evidence/22-verify-harmless.log",
+      "reasons": [
+        "TOOL_MISSING: xvfb-run is not installed. Fix: sudo apt-get install xvfb",
+        "TOOL_MISSING: not tried: it needs Godot and a display, and one is missing above. Fix: fix what is missing above, then run `expectrail doctor` again",
+        "TOOL_MISSING: 144 MB free in the engine's folder (/workspace/work/third-project/tools); 144 MB free in the temporary folder (/tmp). Fix: free at least 1024 MB in each folder named above, or name other folders with EXPECTRAIL_TOOLS and TMPDIR"
+      ],
+      "headTree": "9974b224b870985da2dad34b2e9a21893fa233d8fb4535096dd8bb2cad6801fc",
+      "baseTree": "425c9559ab3e3c9647469f4cf3df5b3ed08659e0973ecad599aa22b80cd8a3db",
+      "policyDigest": "20e827eac6836d93e311a33ea0c13efcff7d63da40405d1e996b251a01114451"
+    },
+    {
+      "variant": "broken",
+      "jobId": "5df98c1f4102d31546005481131b0afa",
+      "decision": "needs-review",
+      "engineFinding": "not run",
+      "replays": 0,
+      "draftChecks": 1,
+      "approvedChecks": 0,
+      "seconds": 0.9753732580029464,
+      "source": "evidence/23-verify-broken.log",
+      "reasons": [
+        "TOOL_MISSING: xvfb-run is not installed. Fix: sudo apt-get install xvfb",
+        "TOOL_MISSING: not tried: it needs Godot and a display, and one is missing above. Fix: fix what is missing above, then run `expectrail doctor` again",
+        "TOOL_MISSING: 132 MB free in the engine's folder (/workspace/work/third-project/tools); 132 MB free in the temporary folder (/tmp). Fix: free at least 1024 MB in each folder named above, or name other folders with EXPECTRAIL_TOOLS and TMPDIR"
+      ],
+      "headTree": "a4bdc96d0557fa31e343478edc72989fcabea5f4d2c41cdd942ea7fea1750d4e",
+      "baseTree": "425c9559ab3e3c9647469f4cf3df5b3ed08659e0973ecad599aa22b80cd8a3db",
+      "policyDigest": "20e827eac6836d93e311a33ea0c13efcff7d63da40405d1e996b251a01114451"
+    }
+  ],
+  "routeFailure": "evidence/19-auto-route.log",
+  "inWorkingTrialList": false
+}

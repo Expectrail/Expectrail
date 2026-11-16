@@ -1,0 +1,10 @@
+--- a/player/player.tscn
++++ b/player/player.tscn
+@@ -188,6 +188,6 @@
+ [node name="Player" type="CharacterBody2D" unique_id=457318108]
+ scale = Vector2(0.8, 0.8)
+-collision_mask = 14
++collision_mask = 30
+ floor_constant_speed = true
+ platform_on_leave = 2
+ script = ExtResource("3")

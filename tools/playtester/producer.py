@@ -15,6 +15,7 @@ VERSION = "1.0.0"
 FALL = "My character falls below the bottom of the level."
 STUCK = "My character stops moving even though I keep holding a movement button."
 FACING = "My character keeps turning back and forth while I keep moving in one direction."
+OFFSCREEN = "My character goes off screen and stays there while I keep playing."
 
 
 def write_json(path: Path, value: object) -> None:
@@ -135,13 +136,17 @@ def anomalies(route: dict, trace: dict) -> list[dict]:
     return sorted(found.values(), key=lambda f: (f["fault"]["faultTick"], f["bug"]))
 
 
-def reports(route: dict, trace: dict, commit: str) -> list[dict]:
+def reports(route: dict, trace: dict, commit: str, *, viewport=None) -> list[dict]:
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise ValueError("target commit must be a full lowercase Git SHA-1")
     result = []
-    for finding in anomalies(route, trace):
+    observed = anomalies(route, trace)
+    if viewport is not None:
+        from .offscreen import findings
+        observed += findings(trace, viewport)
+    for finding in sorted(observed, key=lambda f: (f["fault"]["faultTick"], f["bug"])):
         report = {"format": "expectrail.playtest-report/v1",
-                  "producer": {"name": "Expectrail", "version": VERSION},
+                  "producer": {"name": "Expectrail", "version": "1.1.0" if viewport is not None else VERSION},
                   "target": {"commit": commit}, "route": route, **finding}
         digest = hashlib.sha256(json.dumps(report, sort_keys=True, allow_nan=False,
                                           separators=(",", ":")).encode()).hexdigest()
@@ -149,13 +154,16 @@ def reports(route: dict, trace: dict, commit: str) -> list[dict]:
     return result
 
 
-def play(project: Path, commit: str, seed: int, out: Path, *, ticks=1200, godot=None) -> list[dict]:
+def play(project: Path, commit: str, seed: int, out: Path, *, ticks=1200, godot=None, viewport=None) -> list[dict]:
     from harness.run import run
 
     if out.exists():
         raise ValueError(f"output already exists: {out}")
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise ValueError("target commit must be a full lowercase Git SHA-1")
+    if viewport is not None:
+        from .offscreen import viewport_size
+        viewport = viewport_size(viewport)
     actions, rate, _ = input_map(project)
     route = make_route(actions, seed, ticks)
     out.mkdir(parents=True)
@@ -164,7 +172,7 @@ def play(project: Path, commit: str, seed: int, out: Path, *, ticks=1200, godot=
     trace = read_trace(out / "replay/trace.json", ticks, rate)
     if trace.get("unknownActions"):
         raise ValueError("engine did not recognise every route action")
-    documents = reports(route, trace, commit)
+    documents = reports(route, trace, commit, viewport=viewport)
     for report in documents:
         write_json(out / "reports" / f"{report['id']}.json", report)
     write_json(out / "summary.json", {"seed": seed, "ticks": ticks, "inputActions": actions,
@@ -180,10 +188,12 @@ def main(argv=None):
     parser.add_argument("--ticks", type=int, default=1200)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--godot", type=Path, help="explicit engine binary; otherwise harness default")
+    parser.add_argument("--viewport", type=int, nargs=2, metavar=("WIDTH", "HEIGHT"),
+                        help="enable persistent offscreen observation; supply measured trace-view dimensions")
     args = parser.parse_args(argv)
     try:
         docs = play(args.project.resolve(), args.commit, args.seed, args.out.resolve(),
-                    ticks=args.ticks, godot=args.godot)
+                    ticks=args.ticks, godot=args.godot, viewport=args.viewport)
     except (ValueError, OSError) as exc:
         parser.exit(2, f"Expectrail playtester: {exc}\n")
     print(f"seed {args.seed}: {len(docs)} report(s); {args.out}")

@@ -149,6 +149,16 @@ def scene_nodes(root, entry):
 
 
 def inspect(root):
+    from expectrail.godot_project import configured_scene, require_gdscript
+    from harness.tree import TreeProblem
+
+    root = Path(root).resolve()
+    config = project_config.read_game(root)
+    try:
+        require_gdscript(root, config)
+    except TreeProblem as exc:
+        raise ValueError(f"cannot inspect project files or symbolic links: {exc}") from exc
+    selected = configured_scene(root, config)
     settings_file = resource(root, "res://project.godot")
     text = settings_file.read_text(encoding="utf-8-sig")
     actions, rate, fallback = route.authored_input_map(text)
@@ -159,7 +169,7 @@ def inspect(root):
         elif "=" in record and section in ("application", "display"):
             key, _, value = record.partition("=")
             settings[section + "/" + key.strip()] = value.strip()
-    entry = entry_scene(root, json.loads(settings.get("application/run/main_scene", '""')))
+    entry = selected or entry_scene(root, json.loads(settings.get("application/run/main_scene", '""')))
     if not entry:
         raise ValueError("Set application/run/main_scene in project.godot to the game's starting scene.")
     nodes, scenes = scene_nodes(root, entry)

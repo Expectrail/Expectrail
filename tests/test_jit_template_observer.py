@@ -282,8 +282,8 @@ class SensorFrames:
 
 
 def handing(checks):
-    """An intent that hands the run these pixel checks and asks no model (no proposal may name the visual
-    sensor yet: pixel.PROPOSED)."""
+    """An intent that hands the run these pixel checks and asks no model (a proposal made for the sensor is
+    in tests/test_jit_propose_observer.py)."""
     def propose(report, patch_text, dmap, profile, probes, revision=None):
         return {"probes": [], "candidates": [], "diagnostics": [], "pixelChecks": copy.deepcopy(checks),
                 "usage": {"model": "none", "promptTokens": 0, "completionTokens": 0}, "promptSha256": None}

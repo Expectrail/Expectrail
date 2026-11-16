@@ -20,6 +20,12 @@
 (function (root) {
   var FORMAT = "expectrail.receipt/v1";
   var TRUST_STORE_FORMAT = "expectrail.trust-store/v1";
+  var TRUST_STORE_V2 = "expectrail.trust-store/v2";
+  // The fields a key entry may have in each format; anything else refuses the store, as in receipt.py.
+  var V1_KEY_FIELDS = ["id", "publicKey", "note"];
+  var V2_KEY_FIELDS = ["id", "publicKey", "note", "validFrom", "notAfter", "revoked"];
+  var V2_STORE_FIELDS = ["format", "keys", "note"];
+  var STORE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/;
   var MICROS_PER_DAY = 86400 * 1000000;
   var MAX_VALIDITY = 7 * MICROS_PER_DAY;
 
@@ -267,12 +273,30 @@
     return doc;
   }
 
+  // A trust store's date: RFC 3339 with an offset and a real date, or the store is refused.
+  function storeTime(v, where) {
+    var t = isStr(v) && STORE_TIME.test(v) ? micros(v) : null;
+    if (t === null) throw new Invalid("trust store: " + where + ": not an RFC 3339 date-time with an offset");
+    return t;
+  }
+
+  // {id: {publicKey, validFrom, notAfter, revokedAt, revokedReason}}: the same entries parse_trust_store() reads.
   function readTrustStore(text) {
     var doc;
     try { doc = parse(text); } catch (e) { throw new Invalid("trust store: " + e.message); }
-    if (!isObj(doc) || doc.format !== TRUST_STORE_FORMAT) throw new Invalid("trust store must be " + TRUST_STORE_FORMAT);
+    if (!isObj(doc) || (doc.format !== TRUST_STORE_FORMAT && doc.format !== TRUST_STORE_V2)) {
+      throw new Invalid("trust store must be " + TRUST_STORE_FORMAT + " or " + TRUST_STORE_V2);
+    }
+    var v2 = doc.format === TRUST_STORE_V2;
+    if (v2) {
+      Object.keys(doc).forEach(function (k) {
+        if (V2_STORE_FIELDS.indexOf(k) === -1) throw new Invalid("trust store: " + k + " is not a field of " + TRUST_STORE_V2);
+      });
+      if ("note" in doc && !isStr(doc.note)) throw new Invalid("trust store: note must be a string");
+    }
     if (!Array.isArray(doc.keys) || !doc.keys.length) throw new Invalid("trust store must contain a non-empty keys list");
     var out = Object.create(null);
+    var idsByKey = Object.create(null);
     doc.keys.forEach(function (entry) {
       if (!isObj(entry)) throw new Invalid("trust-store key entry must be an object");
       if (!isStr(entry.id, 1) || !isStr(entry.publicKey, 1)) throw new Invalid("trust-store key entry needs id and publicKey");
@@ -280,9 +304,61 @@
       if (!PUBLIC_KEY.test(entry.publicKey)) {
         throw new Invalid("trust-store key " + entry.id + ": publicKey is not canonical base64 of a 32-byte Ed25519 key");
       }
-      out[entry.id] = entry.publicKey;
+      // Revocation belongs to a key, not a name for it: one key under two ids refuses the store, as in receipt.py.
+      if (entry.publicKey in idsByKey) {
+        throw new Invalid("trust store lists one publicKey under more than one id: " + idsByKey[entry.publicKey] +
+          " and " + entry.id);
+      }
+      idsByKey[entry.publicKey] = entry.id;
+      var allowed = v2 ? V2_KEY_FIELDS : V1_KEY_FIELDS;
+      Object.keys(entry).forEach(function (k) {
+        if (allowed.indexOf(k) === -1) throw new Invalid("trust-store key " + entry.id + ": " + k + " is not a field of " + doc.format);
+      });
+      if ("note" in entry && !isStr(entry.note)) throw new Invalid("trust-store key " + entry.id + ": note must be a string");
+      var key = {publicKey: entry.publicKey, validFrom: null, notAfter: null, revokedAt: null, revokedReason: null};
+      if (v2) {
+        if (!("validFrom" in entry)) throw new Invalid("trust-store key " + entry.id + ": validFrom is missing");
+        var start = storeTime(entry.validFrom, "key " + entry.id + ": validFrom");
+        if ("notAfter" in entry) {
+          if (storeTime(entry.notAfter, "key " + entry.id + ": notAfter") <= start) {
+            throw new Invalid("trust-store key " + entry.id + ": notAfter must be after validFrom");
+          }
+          key.notAfter = entry.notAfter;
+        }
+        if ("revoked" in entry) {
+          var r = entry.revoked;
+          if (!isObj(r) || Object.keys(r).length !== 2 || !("at" in r) || !("reason" in r)) {
+            throw new Invalid("trust-store key " + entry.id + ": revoked must be {at, reason} and nothing else");
+          }
+          storeTime(r.at, "key " + entry.id + ": revoked/at");
+          if (!isStr(r.reason, 1)) throw new Invalid("trust-store key " + entry.id + ": revoked/reason must be a non-empty string");
+          key.revokedAt = r.at;
+          key.revokedReason = r.reason;
+        }
+        key.validFrom = entry.validFrom;
+      }
+      out[entry.id] = key;
     });
     return out;
+  }
+
+  // Fallback for a store not read by parseTrustStore (which refuses one key under two ids).
+  function revokedElsewhere(trustStore, kid, publicKey) {
+    var ids = Object.keys(trustStore);
+    for (var i = 0; i < ids.length; i++) {
+      var other = trustStore[ids[i]];
+      if (ids[i] !== kid && other && other.publicKey === publicKey && other.revokedAt) return other;
+    }
+    return null;
+  }
+
+  // The receipt says it was issued inside the key's span. An unreadable time is outside, as in receipt.py;
+  // a form this page cannot read at all is cannot-tell (micros throws).
+  function issuedWithin(doc, key) {
+    var issued = micros(doc.issuedAt);
+    if (issued === null || !STORE_TIME.test(doc.issuedAt)) return false;
+    if (issued < micros(key.validFrom)) return false;
+    return key.notAfter === null || issued < micros(key.notAfter);
   }
 
   // ---- time: RFC 3339 only; anything else Python might read differently, so cannot tell ----
@@ -392,12 +468,23 @@
     if (trusted === null) {
       report.reasons.push("unknown issuer (key id not in trust store)");
       report.does_not_establish.push("issuer identity");
-    } else if (trusted !== doc.publicKey) {
+    } else if (trusted.publicKey !== doc.publicKey) {
       report.reasons.push("embedded public key does not match trust store");
+      report.does_not_establish.push("issuer identity");
+    } else if (trusted.revokedAt !== null) {
+      report.reasons.push("issuer key revoked at " + trusted.revokedAt + ": " + trusted.revokedReason);
+      report.does_not_establish.push("issuer identity");
+    } else if (revokedElsewhere(trustStore, kid, trusted.publicKey) !== null) {
+      var twin = revokedElsewhere(trustStore, kid, trusted.publicKey);
+      report.reasons.push("issuer key revoked at " + twin.revokedAt + ": " + twin.revokedReason);
+      report.does_not_establish.push("issuer identity");
+    } else if (trusted.validFrom !== null && !issuedWithin(doc, trusted)) {
+      report.reasons.push("receipt issued outside the issuer key's validity (" + trusted.validFrom + " to " +
+        (trusted.notAfter === null ? "no end" : trusted.notAfter) + ")");
       report.does_not_establish.push("issuer identity");
     } else {
       report.known_issuer = true;
-      if (await verifySignature(doc, trusted)) {
+      if (await verifySignature(doc, trusted.publicKey)) {
         report.valid_signature = true;
         report.establishes.push("signed by known issuer " + kid);
       } else {

@@ -1,0 +1,6 @@
+--- a/player/player.gd
++++ b/player/player.gd
+@@ -1,2 +1,3 @@
++# Fixed the fall-through: the player now collides with the ground.
+ class_name Player
+ extends CharacterBody2D

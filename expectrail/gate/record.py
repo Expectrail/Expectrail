@@ -119,8 +119,10 @@ def observers_words(doc: dict) -> str:
     if visual is None:
         return ("the engine's record; a visual observer is required for an accept and none was asked, so "
                 "nothing here is accepted")
+    sampling = (f"; vision sampled every {block['visionEvery']} frames plus the window's last; "
+                "shorter visual defects may be missed") if block.get("visionEvery", 1) > 1 else ""
     return (f"two observers on every check: the engine's record, and {visual['name']} "
-            f"({visual['model']}, {visual['provider']}) over the captured frames; a check passes only when both pass")
+            f"({visual['model']}, {visual['provider']}) over the captured frames; a check passes only when both pass{sampling}")
 
 
 def kind_of(after: str) -> str | None:

@@ -145,6 +145,7 @@ def precheck(doc, checks, paths, replay, *, rule, visual, advance):
     from expectrail.gate import verify as gate
     from expectrail.coverage import all_of
     from expectrail.orchestrator.engines import Result
+    from expectrail.orchestrator import reproduction
 
     if 'coverage' not in doc:
         return None
@@ -161,9 +162,11 @@ def precheck(doc, checks, paths, replay, *, rule, visual, advance):
     summary = []
     paths.staging.mkdir(parents=True, exist_ok=True)
 
-    def stop(reason):
+    def stop(reason, evidence=None):
         (paths.staging/'playtest-precheck.log').write_text(json.dumps(summary, indent=2)+'\n')
-        return Result('needs-review', [reason], policy=checks.digest)
+        evidence = evidence or reproduction.build('none', [], reason, base_tree=named['baseTree'])
+        reproduction.write(paths.staging, evidence)
+        return Result('needs-review', [reason], policy=checks.digest, reproduction=evidence)
 
     outcomes = {}
     for n in range(1, record.REPAIR_RUNS + 1):
@@ -195,10 +198,49 @@ def precheck(doc, checks, paths, replay, *, rule, visual, advance):
                 if value['result'] != 'not-applicable':
                     outcomes.setdefault(key, []).append(value['result'])
     (paths.staging/'playtest-precheck.log').write_text(json.dumps(summary, indent=2)+'\n')
+    reproduced = [key[0] for key, runs in outcomes.items() if all_of(runs, 'fail', record.REPAIR_RUNS)]
+    if reproduced and not checks.problems:
+        reproduction.write(paths.staging, reproduction.build('approved', reproduced,
+                           'approved-check-reproduced', base_tree=named['baseTree']))
+        return None
+    if doc.get('propose') and not any('fail' in runs for runs in outcomes.values()):
+        evidence = reproduction.propose(doc, paths)
+        return stop(evidence['reason'], evidence)
     if checks.problems or not outcomes:
         return stop('playtest-reproduction-inconclusive: no complete approved check set')
-    if any(all_of(runs, 'fail', record.REPAIR_RUNS) for runs in outcomes.values()):
-        return None  # The normal verifier alone decides the unchanged failing game.
     if all(all_of(runs, 'pass', record.REPAIR_RUNS) for runs in outcomes.values()):
         return stop('not-reproduced')
     return stop('playtest-reproduction-inconclusive: missing evidence or unstable failure')
+
+
+def snapshot_proposal(doc, *, clean_project=None, profile=None, response=None):
+    """Trusted CLI options choose references; no report field chooses policy or a transport."""
+    from harness import tree
+    root = Path(doc['base']['checkout'])
+    folder = root/'advisory';folder.mkdir()
+    clean_project = Path(clean_project or resources.ROOT/'game/platformer').resolve()
+    profile = Path(profile or resources.ROOT/'discovery/platformer.profile.json').resolve()
+    if not (clean_project/'project.godot').is_file():
+        raise request.RequestError('clean reference must be a Godot project')
+    tree.copy(clean_project, folder/'clean', within=clean_project, skip=tree.GODOT_SKIP)
+    (folder/'profile.json').write_bytes(record.read_bytes_capped(profile, 1024*1024, 'mechanics profile'))
+    options = {'clean': 'advisory/clean', 'profile': 'advisory/profile.json'}
+    if response is not None:
+        data = record.read_bytes_capped(Path(response), 1024*1024, 'stand-in model response')
+        record.strict_loads(data.decode('utf-8'))
+        (folder/'response.json').write_bytes(data)
+        options['response'] = 'advisory/response.json'
+    doc['propose'] = options
+    request.check(doc)
+    return doc
+
+
+def proposal_inputs(doc):
+    root = Path(doc['base']['checkout']);config = doc['propose']
+    values = {'cleanTree': request.tree_digest(root/config['clean'], root)}
+    if values['cleanTree'] is None:
+        raise request.RequestError('proposal clean project is missing')
+    for key in ('profile', 'response'):
+        if key in config:
+            values[key] = hashlib.sha256(project_job.regular(root, config[key], 1024*1024)).hexdigest()
+    return values

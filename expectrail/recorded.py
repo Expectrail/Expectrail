@@ -23,6 +23,7 @@ environment remain not-recorded, with a local explanation; provenance never rela
 """
 from __future__ import annotations
 
+import copy
 import json
 import re
 import threading
@@ -278,10 +279,14 @@ class RecordedClient:
 
 
 class RecordingClient:
-    """Wraps a live client for the one recording run of a sample and keeps every answer it gave."""
+    """Wraps a client and keeps its answers. ``reuse=True`` additionally answers identical
+    PNG/kind/prompt requests once per client lifetime. Off by default for existing recording users.
+    Successful empty answers are evidence too; exceptions are never cached."""
 
-    def __init__(self, inner):
+    def __init__(self, inner, *, reuse: bool = False):
         self._inner = inner
+        self._reuse = reuse
+        self._memo = {}
         self.model = inner.model
         self.base = getattr(inner, "base", "")
         self.provider = getattr(inner, "provider", "meta-model-api")
@@ -298,20 +303,31 @@ class RecordingClient:
             self._answers[(kind, sha256_bytes(Path(png)), prompt)] = _clean(detections)
             self._environments.add(json.dumps(capture_environment(png), sort_keys=True))
 
+    def _ask(self, kind, png, prompt, ask):
+        if not self._reuse:
+            found = ask()
+            self._keep(kind, png, prompt, found)
+            return found
+        key = (kind, sha256_bytes(Path(png)), prompt)
+        # Serialize a duplicate's first request too. Never cache a provider error or substitute a
+        # point answer for a box question. Copies prevent callers changing later evidence.
+        with self._lock:
+            if key not in self._memo:
+                found = ask()
+                self._answers[key] = _clean(found)
+                self._memo[key] = copy.deepcopy(found)
+            return copy.deepcopy(self._memo[key])
+
     def segment(self, png: Path, prompt: str) -> list[dict]:
-        found = self._inner.segment(png, prompt)
-        self._keep(SEGMENT, png, prompt, found)
-        return found
+        return self._ask(SEGMENT, png, prompt, lambda: self._inner.segment(png, prompt))
 
     def segment_in(self, png: Path, boxes: list[tuple[int, int, int, int]]) -> list[dict | None]:
-        found = self._inner.segment_in(png, boxes)
-        self._keep(SEGMENT_IN, png, box_prompt(boxes, png_size(Path(png))), found)
-        return found
+        return self._ask(SEGMENT_IN, png, box_prompt(boxes, png_size(Path(png))),
+                         lambda: self._inner.segment_in(png, boxes))
 
     def segment_at(self, png: Path, points: list[tuple[int, int]]) -> list[dict | None]:
-        found = self._inner.segment_at(png, points)
-        self._keep(SEGMENT_AT, png, point_prompt(points, png_size(Path(png))), found)
-        return found
+        return self._ask(SEGMENT_AT, png, point_prompt(points, png_size(Path(png))),
+                         lambda: self._inner.segment_at(png, points))
 
     def recording(self, *, sample: str, recorded_at: str, run: str) -> dict:
         doc = {"format": FORMAT, "sample": sample, "recordedAt": recorded_at, "run": run,

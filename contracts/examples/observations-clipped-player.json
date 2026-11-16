@@ -1,0 +1,154 @@
+{
+  "format": "expectrail.observations/v0",
+  "replay": {
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "model": {
+    "name": "STAND-IN-NOT-VISION",
+    "provider": "stand-in"
+  },
+  "_comment": "Synthetic clipped-edge example. Expected 27x68 visible at the right edge; a same-sized box is shifted down 20 pixels, still holding the question point. Three confident answers fail. The wholly off-screen fourth frame is unjudged, never a pass. No model call.",
+  "frames": [
+    {
+      "frame": 0,
+      "objects": {
+        "player": []
+      },
+      "notDrawn": {
+        "player": {
+          "reason": "place-mismatch",
+          "point": [
+            479,
+            450
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "expectedSize": [
+            27,
+            68
+          ],
+          "observedSize": [
+            27,
+            68
+          ],
+          "answer": {
+            "box": [
+              453,
+              436,
+              480,
+              504
+            ],
+            "score": 0.99
+          },
+          "sizeTolerance": 0.25,
+          "sizeFloorPx": 4.0,
+          "expectedVisibleBox": [
+            453,
+            416,
+            480,
+            484
+          ]
+        }
+      }
+    },
+    {
+      "frame": 1,
+      "objects": {
+        "player": []
+      },
+      "notDrawn": {
+        "player": {
+          "reason": "place-mismatch",
+          "point": [
+            479,
+            450
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "expectedSize": [
+            27,
+            68
+          ],
+          "observedSize": [
+            27,
+            68
+          ],
+          "answer": {
+            "box": [
+              453,
+              436,
+              480,
+              504
+            ],
+            "score": 0.99
+          },
+          "sizeTolerance": 0.25,
+          "sizeFloorPx": 4.0,
+          "expectedVisibleBox": [
+            453,
+            416,
+            480,
+            484
+          ]
+        }
+      }
+    },
+    {
+      "frame": 2,
+      "objects": {
+        "player": []
+      },
+      "notDrawn": {
+        "player": {
+          "reason": "place-mismatch",
+          "point": [
+            479,
+            450
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "expectedSize": [
+            27,
+            68
+          ],
+          "observedSize": [
+            27,
+            68
+          ],
+          "answer": {
+            "box": [
+              453,
+              436,
+              480,
+              504
+            ],
+            "score": 0.99
+          },
+          "sizeTolerance": 0.25,
+          "sizeFloorPx": 4.0,
+          "expectedVisibleBox": [
+            453,
+            416,
+            480,
+            484
+          ]
+        }
+      }
+    },
+    {
+      "frame": 3,
+      "objects": {
+        "player": []
+      },
+      "notExercised": {
+        "player": "outside-view"
+      }
+    }
+  ]
+}

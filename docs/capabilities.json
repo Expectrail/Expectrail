@@ -1,6 +1,6 @@
 {
   "format": "expectrail.capabilities/v1",
-  "updated": "2026-11-15",
+  "updated": "2026-11-16",
   "statuses": {
     "implemented": "The code is in the repository and its tests pass in CI. It has run only on recorded or synthetic inputs, or has no recorded end-to-end run.",
     "integrated": "Wired into the path a user takes (a command, a workflow or the site) and exercised there by a CI job or a recorded run. No published result rests on it.",
@@ -123,8 +123,8 @@
     },
     {
       "id": "ci-gate",
-      "mode": "Earlier composite CI gate: verify a pull request’s game and post one verdict comment",
-      "profile": "Godot 4.7.2 projects on GitHub Actions; historical runs of the earlier composite actions on this repository’s pull requests",
+      "mode": "Earlier composite CI gate: verify a pull request\u2019s game and post one verdict comment",
+      "profile": "Godot 4.7.2 projects on GitHub Actions; historical runs of the earlier composite actions on this repository\u2019s pull requests",
       "observer": "The engine's record; no vision model",
       "entryPoints": [
         "expectrail.gate.verify",
@@ -201,10 +201,10 @@
         {
           "kind": "test",
           "ref": "tests/test_guides.py",
-          "shows": "The published caller matches the merged workflow; the guide names the publisher’s checks and separates game-repository enforcement from Expectrail’s advisory policy; both new pages are in local link/advertisement checks."
+          "shows": "The published caller matches the merged workflow; the guide names the publisher\u2019s checks and separates game-repository enforcement from Expectrail\u2019s advisory policy; both new pages are in local link/advertisement checks."
         }
       ],
-      "limits": "Merged in #429. No hosted acceptance run is cited for this split: App installation, protected-workflow startup, actual fork/artifact handling and branch-rule enforcement still need deployment validation. The bundled clean recording covers smoke; novel frames and combat can lack answers and need review unless a failure rejects. Require Expectrail clearance from the dedicated App in a game repository; Expectrail evidence is reporting. On Expectrail’s own repository clearance is advisory, per Sean’s November 14, 2026 option C; its merge guard does not wait for it. No private-project deployment, catch rate or runtime measured here. Game-originated capture and a shared host kernel remain limits; bypass permission is outside the guarantee. No promotion to isolated or protected grade."
+      "limits": "Merged in #429. No hosted acceptance run is cited for this split: App installation, protected-workflow startup, actual fork/artifact handling and branch-rule enforcement still need deployment validation. The bundled clean recording covers smoke; novel frames and combat can lack answers and need review unless a failure rejects. Require Expectrail clearance from the dedicated App in a game repository; Expectrail evidence is reporting. On Expectrail\u2019s own repository clearance is advisory, per Sean\u2019s November 14, 2026 option C; its merge guard does not wait for it. No private-project deployment, catch rate or runtime measured here. Game-originated capture and a shared host kernel remain limits; bypass permission is outside the guarantee. No promotion to isolated or protected grade."
     },
     {
       "id": "unity-harness",
@@ -1779,6 +1779,91 @@
         }
       ],
       "limits": "Not wired into the historical report/release-candidate path or a demonstrated trusted CI issuer. Installed expectrail trust-check remains a placeholder; use the module with its dependencies. No actions attestation, trust-store distribution or key-rotation deployment is demonstrated. Receipt evidence full is a contract label, not promotion to the capability ledger isolated grade."
+    },
+    {
+      "id": "playtest-ingest",
+      "mode": "Playtest report intake and approved-check reproduction",
+      "profile": "Godot source checkout; offline synthetic tests and a local real-engine bundled-game diagnostic",
+      "observer": "Existing engine-only collision/position observer in the real proof; normal verify retains both observers",
+      "entryPoints": [
+        "expectrail.orchestrator.playtest",
+        "expectrail.orchestrator.cli",
+        "tools.playtest_fall_through"
+      ],
+      "workflows": [
+        "ci.yml"
+      ],
+      "docs": [
+        "docs/playtest.md"
+      ],
+      "status": "implemented",
+      "grade": "diagnostic",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_playtest_ingest.py",
+          "shows": "Offline intake tests cover strict request wiring, three base runs, anchor boundary, untrusted report text and no fixer before reproduction."
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_replay_sandbox.py#PlaytestIngestRealEngineTest",
+          "shows": "Existing seeded-bugs collector runs real Godot with required Bubblewrap; three assertions cover approved fall-through reproduction, clean false report and anchor desync. This is the test wiring, not a claim that its future CI run has passed."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/playtest-evidence/fall-through.json",
+          "shows": "Local real Godot diagnostic records the public fall-through report and both controls, with model and fixer boundaries blocked."
+        }
+      ],
+      "limits": "Implemented and tested offline, including real Godot without a model. Not measured with a live model. Local Bubblewrap user namespaces are unavailable; no local sandbox success or future CI success is claimed. Engine-only bundled-game geometry is diagnostic, not configured drawing-role or pixel verification, and never clears a release."
+    },
+    {
+      "id": "playtest-generated-advisory",
+      "mode": "Opt-in generated advisory reproduction for an uncovered playtest report",
+      "profile": "Godot intake/JIT adapter; stand-in model transports and existing stable keep rule",
+      "observer": "Trace checks on captured base/clean builds; no live proposer measurement",
+      "entryPoints": [
+        "expectrail.jit.ingest",
+        "expectrail.orchestrator.reproduction"
+      ],
+      "docs": [
+        "docs/playtest.md",
+        "docs/playtest-propose.md"
+      ],
+      "status": "implemented",
+      "grade": "fixture",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_ingest_generated.py",
+          "shows": "Offline stand-in proposer tests exercise the existing keep rule, three clean passes and three base failures, advisory-only results and hostile report/model text."
+        }
+      ],
+      "limits": "Implemented and tested offline; not measured with a live model. No live proposal-quality, cost or filtering-rate result. Generated advisory checks cannot approve anything or independently start repair; minimal wheels may lack repository-only JIT."
+    },
+    {
+      "id": "playtest-repair",
+      "mode": "Opt-in repair after an approved playtest reproduction",
+      "profile": "Source and installed orchestrator repair path; fixture candidates with replay/vision stand-ins",
+      "observer": "Existing fresh candidate gate verification; advisory candidate findings veto automation for review",
+      "entryPoints": [
+        "expectrail.orchestrator.ingest_repair",
+        "expectrail.repair"
+      ],
+      "docs": [
+        "docs/playtest.md",
+        "docs/ingest-repair.md"
+      ],
+      "status": "implemented",
+      "grade": "fixture",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_ingest_repair.py",
+          "shows": "Offline fixture tests enter the existing fix loop only after approved reproduction, preserve gate decisions, stop on advisory flags, and exclude private canaries from fixer inputs and retries."
+        }
+      ],
+      "limits": "Implemented and tested offline; not measured with a live model. No live fixer, model-quality, real repair-rate or provider-bill measurement. The Muse invocation hold does not bound its internal token bill. Advisory-only, unreproduced and desynchronised reports never start a fixer."
     }
   ],
   "notModes": {

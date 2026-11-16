@@ -43,6 +43,7 @@ class Result:
     policy: str | None = None
     observers: dict | None = None
     diagnostics: list[dict] = field(default_factory=list)
+    reproduction: dict | None = None
 
 
 class Gate:
@@ -142,6 +143,7 @@ class Gate:
         # A missing provider cannot hide an engine failure. Keep the rule `both`: without a
         # visual answer the gate can reject, but cannot accept. Recheck settings for each job.
         visual = None if diagnostics else visual
+        reproduction = None
         if 'coverage' in request:
             from expectrail.orchestrator import playtest
 
@@ -149,6 +151,8 @@ class Gate:
                                         rule=self._rule, visual=visual, advance=advance)
             if stopped is not None:
                 return stopped
+            from expectrail.orchestrator.reproduction import read
+            reproduction = read(paths.staging)
         document = gate.run_gate(
             repo=Path(request["head"]["checkout"]), game=project["game"], routes=project["routes"],
             specs=project["specs"], out=paths.staging, work=paths.work / "gate",
@@ -167,7 +171,8 @@ class Gate:
             reasons.append("vision did not run; see the PROVIDER_FAILED diagnostics for the missing settings")
         return Result(document["decision"], reasons,
                       trees={"headTree": game.get("headTree"), "baseTree": game.get("baseTree")},
-                      policy=checks.digest, observers=document.get("observers"), diagnostics=diagnostics)
+                      policy=checks.digest, observers=document.get("observers"), diagnostics=diagnostics,
+                      reproduction=reproduction)
 
 
 def _tools(adapter: str) -> list[dict]:

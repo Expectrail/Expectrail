@@ -1,0 +1,22 @@
+{
+  "format": "expectrail.test-spec/v0",
+  "id": "system-override-ship-visible",
+  "instruction": "During the first thrust and fire sequence after entering gameplay, the camera must keep the player spaceship visible. This draft does not check aiming, damage, enemies, or winning.",
+  "objects": {
+    "player": {
+      "prompt": "player spaceship"
+    }
+  },
+  "assertion": {
+    "type": "visible",
+    "object": "player",
+    "minFraction": 1
+  },
+  "window": {
+    "fromFrame": 0,
+    "toFrame": 149
+  },
+  "coverage": {
+    "minFrames": 150
+  }
+}

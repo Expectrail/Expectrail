@@ -1,0 +1,12 @@
+{
+  "format": "expectrail.playtest-reproduction/v1",
+  "kind": "generated-advisory",
+  "advisory": true,
+  "checks": [
+    "jit-facing-follows-motion"
+  ],
+  "reason": "generated-advisory-reproduced",
+  "jitRunSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "baseTree": "2222222222222222222222222222222222222222222222222222222222222222",
+  "cleanTree": "3333333333333333333333333333333333333333333333333333333333333333"
+}
