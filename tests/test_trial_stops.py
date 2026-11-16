@@ -12,13 +12,14 @@ import unittest
 from unittest import mock
 from expectrail import cli, doctor, onboarding, project_config, route
 from harness import run as hr
+from tests import cli_capture
 
 ROOT=Path(__file__).resolve().parent.parent
 
 
 def command(*args):
     text=io.StringIO()
-    with contextlib.redirect_stdout(text),contextlib.redirect_stderr(text):
+    with cli_capture.command_output(text):
         code=cli.main([str(a) for a in args])
     return code,text.getvalue()
 

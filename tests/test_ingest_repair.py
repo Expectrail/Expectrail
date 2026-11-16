@@ -1,5 +1,4 @@
 """#531 repair integration. Synthetic replays and stand-in vision; no live transports."""
-import contextlib
 import copy
 import io
 import json
@@ -12,6 +11,7 @@ from expectrail import cli, contracts, repair
 from expectrail.gate import record
 from expectrail.orchestrator import engines, ingest_repair, playtest, reproduction, runner
 from tests import test_playtest_ingest as intake
+from tests import cli_capture
 
 
 class IngestRepair(unittest.TestCase):
@@ -36,7 +36,7 @@ class IngestRepair(unittest.TestCase):
                     self.after_child(jobs, job)
             return None
         output = io.StringIO()
-        with mock.patch.object(runner, 'spawn', side_effect=spawn), contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+        with mock.patch.object(runner, 'spawn', side_effect=spawn), cli_capture.command_output(output):
             code = cli.main(['ingest', str(path), '--project', str(self.project), '--jobs-root', str(self.jobs.root), '--json', *options])
         return code, output.getvalue()
 
