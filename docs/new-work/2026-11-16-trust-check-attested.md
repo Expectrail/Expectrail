@@ -31,7 +31,7 @@ Stacked on #547 (the attestation module).
   removed (2), the repository test removed (2), the receipt's own signature taken as valid (1), and the
   one-issuer rule removed (1 failure, 1 error).
 - `python3 -m expectrail.capabilities check`: no problem.
-- Full suite: see the pull request.
+- Full suite on this branch merged with main at fd9fa3c (47cde15, not pushed): 4,405 tests, OK, 48 skipped.
 
 ## Not done
 - No workflow attests a receipt yet. That needs `id-token: write` and `attestations: write`, which are Sean's,
