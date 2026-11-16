@@ -220,6 +220,28 @@ class JobStore:
         """The job for this request, and whether it was created now. With an idempotency key, the job
         made earlier for the same key and inputs is returned instead; different inputs are an error."""
         req.check(request)
+        from expectrail.orchestrator import commits
+        prepared = None
+        try:
+            if 'commitInputs' in request:
+                prepared = commits.prepare(self, request)
+                request = prepared.request
+            else:
+                import copy
+                request = copy.deepcopy(request)
+                # Old records remain readable, but caller labels on a new folder
+                # job are not authenticated commit identities.
+                for side in ('head','base'):
+                    if request[side] is not None:
+                        request[side]['commit'] = None
+            return self._create(request, prepared)
+        except (commits.CommitError, UnicodeError) as exc:
+            raise req.RequestError(str(exc)) from exc
+        finally:
+            if prepared is not None:
+                prepared.close()
+
+    def _create(self, request: dict, prepared=None) -> tuple[dict, bool]:
         for side in ("head", "base"):
             if request[side] is not None:
                 game = (Path(request[side]["checkout"]) / request["project"]["game"]).resolve()
@@ -242,7 +264,7 @@ class JobStore:
         inputs = req.inputs(request)
         key = request["idempotencyKey"]
         if key is None:
-            return self._new(request, inputs), True
+            return self._new(request, inputs, prepared=prepared), True
         key_file = self.root / "keys" / (hashlib.sha256(key.encode()).hexdigest() + ".json")
         with self._locked(self.root / "keys" / "lock"):
             if key_file.is_file():
@@ -250,11 +272,11 @@ class JobStore:
                 if seen["requestDigest"] != inputs["requestDigest"]:
                     raise IdempotencyConflict("this idempotency key was used for a request with different inputs")
                 return self.status(seen["id"]), False
-            status = self._new(request, inputs)
+            status = self._new(request, inputs, prepared=prepared)
             _write_atomic(key_file, json.dumps({"id": status["id"], "requestDigest": inputs["requestDigest"]}) + "\n")
             return status, True
 
-    def _new(self, request: dict, inputs: dict) -> dict:
+    def _new(self, request: dict, inputs: dict, prepared=None) -> dict:
         while True:
             job_id = secrets.token_hex(JOB_ID_LENGTH // 2)
             paths = self.paths(job_id)
@@ -264,6 +286,8 @@ class JobStore:
             except FileExistsError:
                 continue
         paths.work.mkdir()
+        if prepared is not None:
+            prepared.adopt(paths.root / 'inputs')
         created = stamp()
         status = {
             "format": FORMAT, "id": job_id, "phase": "queued", "decision": None, "reasons": [], "diagnostics": [],
@@ -275,6 +299,8 @@ class JobStore:
             "worker": None, "lease": self._lease(), "output": None, "history": [{"phase": "queued", "at": created}],
             "createdAt": created, "updatedAt": created, "finishedAt": None, "expectrail": {"version": __version__},
         }
+        from expectrail.orchestrator.commits import sources
+        status['inputSources'] = sources(request)
         check_status(status)
         _write_atomic(paths.request, json.dumps(request, indent=2) + "\n")
         _write_atomic(paths.budget, json.dumps(status["budget"], indent=2) + "\n")
@@ -283,7 +309,18 @@ class JobStore:
 
     # --- reading -----------------------------------------------------------------------------------
     def request(self, job_id: str) -> dict:
-        return req.load(self._existing(job_id).request)
+        paths = self._existing(job_id)
+        doc = req.load(paths.request)
+        if 'commitInputs' in doc:
+            resolved = doc['commitInputs'].get('resolved', {})
+            for side in ('head','base'):
+                raw = paths.root / 'inputs' / 'raw' / side
+                selected = paths.root / 'inputs' / 'selected' / side
+                expected = selected if 'projectPath' in doc['commitInputs'] else raw
+                if (resolved.get(side, {}).get('checkout') != str(raw)
+                        or doc[side]['checkout'] != str(expected)):
+                    raise StoreError('resolved commit snapshots must belong to this job')
+        return doc
 
     def _read(self, paths: JobPaths) -> dict:
         try:
@@ -291,6 +328,14 @@ class JobStore:
         except rec.RecordError as exc:
             raise StoreError(str(exc)) from exc
         check_status(doc)
+        if 'inputSources' in doc:
+            from expectrail.orchestrator.commits import sources
+            try:
+                expected = sources(req.load(paths.request))
+            except (OSError, ValueError) as exc:
+                raise StoreError('cannot verify the saved job input origins') from exc
+            if doc['inputSources'] != expected:
+                raise StoreError('job input origins differ from the saved request')
         return doc
 
     def status(self, job_id: str) -> dict:

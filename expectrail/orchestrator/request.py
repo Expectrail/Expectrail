@@ -110,6 +110,23 @@ def check(doc) -> None:
         raise RequestError(f"the request does not match contracts/{SCHEMA_PATH.name}: {found[0]}"
                            + (f" (and {len(found) - 1} more)" if len(found) > 1 else ""))
     check_bug(doc)
+    if 'commitInputs' in doc:
+        selection = doc['commitInputs']
+        if doc['base'] is None:
+            raise RequestError('commit inputs require both base and head references')
+        if not Path(selection['repository']).is_absolute():
+            raise RequestError('commitInputs.repository must be an absolute local path')
+        for side in ('base','head'):
+            if any(ord(c) < 32 or ord(c) == 127 for c in selection[side+'Ref']):
+                raise RequestError('Git references must be single-line text without control characters')
+        if 'projectPath' in selection:
+            try:
+                safe_relative(selection['projectPath'], 'commit project path', root_ok=True)
+            except ConfigError as exc:
+                raise RequestError(str(exc)) from exc
+        for side, resolved in selection.get('resolved', {}).items():
+            if not Path(resolved['checkout']).is_absolute() or doc[side]['commit'] != resolved['commit']:
+                raise RequestError('saved resolved commit inputs are inconsistent')
     # JobStore persists this JSON spelling. A valid report can expand when escaped
     # (for example non-ASCII text); never queue a request the worker cannot read.
     if len((json.dumps(doc, indent=2) + "\n").encode("utf-8")) > MAX_REQUEST_BYTES:
@@ -251,7 +268,8 @@ def _trees(doc: dict) -> tuple[dict, list[str]]:
 def problems(doc: dict) -> list[str]:
     """What in the files the request names stops a verification before it starts. The worker turns
     each into INPUT_INVALID, so the job completes as needs-review with the reason and nothing runs."""
-    return _trees(doc)[1]
+    from expectrail.orchestrator.commits import snapshot_problems
+    return _trees(doc)[1] + snapshot_problems(doc)
 
 
 def inputs(doc: dict) -> dict:
@@ -265,6 +283,13 @@ def inputs(doc: dict) -> dict:
     meaning = {"project": doc["project"], "executionClass": doc["executionClass"], "limits": doc["limits"],
                "headCommit": doc["head"]["commit"], "baseCommit": doc["base"]["commit"] if doc["base"] else None,
                "hasBase": doc["base"] is not None, **resolved, **({"problems": found} if found else {})}
+    if 'commitInputs' in doc:
+        selection = doc['commitInputs']
+        if 'resolved' not in selection:
+            raise RequestError('commit inputs must be resolved by the job store before computing inputs')
+        meaning['commitInputs'] = {side:{key:selection['resolved'][side][key]
+            for key in ('commit','gitTree','snapshotDigest')} for side in ('head','base')}
+        meaning['commitInputs']['projectPath'] = selection.get('projectPath')
     if doc.get("intent", "none") != "none":
         meaning["intent"] = doc["intent"]
     if "bug" in doc:
