@@ -1,0 +1,169 @@
+{
+  "recordedOn": "2026-11-16",
+  "engine": "4.7.2.stable.official.ed1daf0bf",
+  "grade": "diagnostic",
+  "observerRule": "engine-only",
+  "engineObservation": "existing bundled-game collision/position observer (project=None)",
+  "sandboxRequested": "off",
+  "sandboxAvailableLocally": false,
+  "sandboxProblem": "bubblewrap could not start a sandbox: bwrap: setting up uid map: Read-only file system",
+  "bugPatch": {
+    "path": "bugs/physics-fall-through/v1.patch",
+    "sha256": "6514ad59f1311fc109b56c06366871c0aeab316179d80a9921a43a41e7667740"
+  },
+  "check": {
+    "path": "agents/specs/player-stays-above-ground.json",
+    "sha256": "697e386214c8771819de1f1fb19a36c73209da84dd483b362406cc754416c417"
+  },
+  "anchorSource": {
+    "tick": 0,
+    "player": [
+      90.0,
+      636.646
+    ],
+    "body": [
+      68.75,
+      595.396,
+      111.25,
+      649.896
+    ],
+    "ground": 650.0
+  },
+  "cases": [
+    {
+      "case": "reproduced",
+      "anchorReached": [
+        true,
+        true,
+        true
+      ],
+      "baseGroundCheck": [
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "reproductionKind": "approved",
+      "reproductionLabel": "approved check",
+      "boundaries": {
+        "observerConstructors": 0,
+        "modelConstructors": 0,
+        "modelRequests": 0,
+        "proposerCalls": 0,
+        "fixerCalls": 0,
+        "fixerTransportConstructors": 0
+      },
+      "exit": 1,
+      "decision": "reject",
+      "reasons": [
+        "2 of 2 public checks fail after the change",
+        "spec player-stays-above-ground: approved before content binding"
+      ]
+    },
+    {
+      "case": "not-reproduced",
+      "anchorReached": [
+        true,
+        true,
+        true
+      ],
+      "baseGroundCheck": [
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "reproductionKind": "none",
+      "reproductionLabel": "none",
+      "boundaries": {
+        "observerConstructors": 0,
+        "modelConstructors": 0,
+        "modelRequests": 0,
+        "proposerCalls": 0,
+        "fixerCalls": 0,
+        "fixerTransportConstructors": 0
+      },
+      "exit": 2,
+      "decision": "needs-review",
+      "reasons": [
+        "not-reproduced"
+      ]
+    },
+    {
+      "case": "anchor-desync",
+      "anchorReached": [
+        false
+      ],
+      "baseGroundCheck": [],
+      "reproductionKind": "none",
+      "reproductionLabel": "none",
+      "boundaries": {
+        "observerConstructors": 0,
+        "modelConstructors": 0,
+        "modelRequests": 0,
+        "proposerCalls": 0,
+        "fixerCalls": 0,
+        "fixerTransportConstructors": 0
+      },
+      "exit": 2,
+      "decision": "needs-review",
+      "reasons": [
+        "anchor-desync"
+      ]
+    }
+  ],
+  "realReplayCount": 11,
+  "traceDigests": [
+    {
+      "case": "reproduced",
+      "sha256": "6ee12e09a8e825f620be0c28dbeab1c7cd4a737fbb6da0b0033322ca0ce4e6f1"
+    },
+    {
+      "case": "reproduced",
+      "sha256": "6ee12e09a8e825f620be0c28dbeab1c7cd4a737fbb6da0b0033322ca0ce4e6f1"
+    },
+    {
+      "case": "reproduced",
+      "sha256": "6ee12e09a8e825f620be0c28dbeab1c7cd4a737fbb6da0b0033322ca0ce4e6f1"
+    },
+    {
+      "case": "reproduced",
+      "sha256": "6ee12e09a8e825f620be0c28dbeab1c7cd4a737fbb6da0b0033322ca0ce4e6f1"
+    },
+    {
+      "case": "reproduced",
+      "sha256": "6ee12e09a8e825f620be0c28dbeab1c7cd4a737fbb6da0b0033322ca0ce4e6f1"
+    },
+    {
+      "case": "reproduced",
+      "sha256": "6ee12e09a8e825f620be0c28dbeab1c7cd4a737fbb6da0b0033322ca0ce4e6f1"
+    },
+    {
+      "case": "reproduced",
+      "sha256": "6ee12e09a8e825f620be0c28dbeab1c7cd4a737fbb6da0b0033322ca0ce4e6f1"
+    },
+    {
+      "case": "not-reproduced",
+      "sha256": "fd8d74d479a25394a40d0ef7c09d463955b65046307a171ce3eb9e40934e4705"
+    },
+    {
+      "case": "not-reproduced",
+      "sha256": "fd8d74d479a25394a40d0ef7c09d463955b65046307a171ce3eb9e40934e4705"
+    },
+    {
+      "case": "not-reproduced",
+      "sha256": "fd8d74d479a25394a40d0ef7c09d463955b65046307a171ce3eb9e40934e4705"
+    },
+    {
+      "case": "anchor-desync",
+      "sha256": "6ee12e09a8e825f620be0c28dbeab1c7cd4a737fbb6da0b0033322ca0ce4e6f1"
+    }
+  ],
+  "evidence": "Handover: evidence/index.html. Future CI after patch application: seeded-bugs / run-it-offline / playtest-ingest/index.html.",
+  "notMeasured": [
+    "live model quality or cost",
+    "configured drawing-role observer",
+    "visual correctness",
+    "sandbox execution locally",
+    "live repair rate",
+    "future CI run outcome"
+  ]
+}
