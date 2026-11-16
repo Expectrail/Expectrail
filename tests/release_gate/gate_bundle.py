@@ -145,6 +145,8 @@ class BundleBaselineTest(BundleCase):
 
 
 class EvidenceTest(BundleCase):
+    """Writes to evidence or policy."""
+
     def test_an_extra_frame_with_consistent_manifest_is_refused(self):
         from tests.capture_edits import edit_capture
         target = self.tmp / "extra-frame.zip"
@@ -156,8 +158,6 @@ class EvidenceTest(BundleCase):
         target = self.tmp / "resolution.zip"
         edit_capture(self.clean_bundle, target, "resolution")
         self.assertRefused(target, "frame resolution changed")
-
-    """Writes to evidence or policy."""
 
     def test_an_intact_capture_from_a_different_base_game_is_refused(self):
         self.assertRefused(self.clean_bundle, "base game tree", base=self.bug)

@@ -4,7 +4,7 @@ Audit base: main `ec4c1f55bd077f0be42ead2a777697ac0b11a6c4`, 2026-11-15. The sup
 
 ## Closure
 
-Closes #258 — the **suite inventory** Done when allows explicit open controls: all 35 rows have process tests or named open reasons, the required CI job runs, and the published summary is generated from recorded results. This does **not** mean every control is defended or release clearance is established. The integrator must run the existing required release-gate job on this patch before merging.
+Part of #258 (closing it is Sean's call) — the **suite inventory** Done when allows explicit open controls: all 35 rows have process tests or named open reasons, the required CI job runs, and the published summary is generated from recorded results. This does **not** mean every control is defended or release clearance is established. The integrator must run the existing required release-gate job on this patch before merging.
 
 Part of #254 — controlled hosted seeded-correct/wrong-fix, between-job tamper and new-head trials remain; fork behavior and branch enforcement also remain unproven. A real hosted accept and an identity refusal are now cited below.
 
@@ -12,7 +12,7 @@ Part of #250 — the literal commit-reference invocation, shared orchestrator se
 
 ## #258: every control and every Done when condition
 
-The original published main run has 52 tests: **23 held / 12 open / 0 failed / 0 not run**. Its immutable artifact is `14182474256`, SHA-256 `fc70fc1d38c851de043e83fa3c3ce08c6b1ab6ceb3d053a3a4d339ec24f60a8f`. It was downloaded and its Markdown reproduced byte-for-byte from JSON. The audit corrects the unsupported positive-intent classification to open: **22 held / 13 open**. No CI test is invented, rerun or newly marked passed. The dated [summary](release-gate.md) and [machine record](measurements/release-gate-audit-results.json) state that correction and retain the original 52 outcomes.
+The original published main run has 52 tests: **23 held / 12 open / 0 failed / 0 not run**. Its immutable artifact is `14182474256`, SHA-256 `fc70fc1d38c851de043e83fa3c3ce08c6b1ab6ceb3d053a3a4d339ec24f60a8f`. It was downloaded and its Markdown reproduced byte-for-byte from JSON. The audit corrects the unsupported positive-intent classification to open, which makes that archived run (43766766042) **22 held / 13 open**. Those are the archived run's counts, not the current state: main has since gained the receipt rows (#532), and this pull request's own `release-gate` job (job 133007430719) printed **held 25, open 10, failed 0, not run 0**. No CI test is invented, rerun or newly marked passed. The [machine record](measurements/release-gate-audit-results.json) states the correction and retains the original 52 outcomes. `docs/release-gate.md` is not changed by this pull request: it is written by `python3 -m tools.release_gate` from a run, and still shows main's last render.
 
 The current suite contains 54 test bodies. The two added shape tests have separate local real-process red/green evidence using the actual hosted public capture. They are not claimed as part of the archived 52-test CI run. A setup wrapper supplies that capture rather than making a fresh local replay; test bodies and refusal assertions are unchanged. The two-job API finish tests still use a GitHub stand-in.
 

@@ -26,11 +26,12 @@ negative guards without pretending the full positive case is demonstrated. The
 table-format test now permits that documented case; failed tests still fail the
 summary before its open-reason rule. No test was removed or newly skipped.
 
-The published release report is regenerated from the original 52-test main CI
-record, with an explicit audit correction: original 23 held / 12 open, corrected
-22 held / 13 open. Every recorded test outcome is unchanged. The current suite has
+The audit's machine record is built from the original 52-test main CI record (run
+43766766042), with an explicit correction: original 23 held / 12 open, corrected
+22 held / 13 open for that archived run. This pull request's own `release-gate` job printed
+held 25, open 10. `docs/release-gate.md` is not regenerated here. Every recorded test outcome is unchanged. The current suite has
 54 bodies; no new test is pretended to have run in that old CI run. The JSON names
-the source run/artifact/hash and correction; the Markdown is its normal render.
+the source run/artifact/hash and correction; the published Markdown is left for the next run to write.
 
 ## What was run
 - Baseline full suite before production changes: 4,028 tests in 339.032s,
@@ -77,7 +78,7 @@ the source run/artifact/hash and correction; the Markdown is its normal render.
   zip integrity are verified before delivery; the handover records those checks.
 
 ## Not done
-Closes #258 as its **suite inventory**, per the explicit Done when allowance for
+Part of #258 (closing it is Sean's call), as its **suite inventory**, per the explicit Done when allowance for
 open controls. Thirteen controls remain open; this is not release readiness.
 The two added real-Godot suite tests must also run in the integrator's required
 release-gate job on this patch, normally before merge. The local saved-capture
@@ -108,7 +109,6 @@ expectrail/gate/verify.py or expectrail/anchored.py file changed.
 - `tests/release_gate/gate_bundle.py`
 - `tests/test_ci_gate.py`
 - `tests/test_release_gate.py`
-- `docs/release-gate.md`
 - `docs/measurements/release-gate-audit-results.json`
 - `docs/release-closeout-audit.md`
 - `docs/new-work/2026-11-15-release-closeout-audit.md`
