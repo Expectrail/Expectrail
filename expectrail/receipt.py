@@ -9,6 +9,15 @@ verifier already holds.
     expectrail trust-check RECEIPT --trust-store FILE \\
         [--repo OWNER/NAME] [--expect-head SHA] [--expect-build DIGEST] [--expect-policy DIGEST]
 
+In CI the issuer can instead be the workflow that attested the receipt file (``docs/receipt-attestation.md``):
+
+    expectrail trust-check RECEIPT --attested-by OWNER/NAME/.github/workflows/FILE.yml --repo OWNER/NAME \\
+        [--source-ref refs/heads/main] [--bundle FILE] [--expect-head SHA] [--expect-build DIGEST] [--expect-policy DIGEST]
+
+It runs ``expectrail.attestation``'s check (``gh attestation verify`` with every pin, then each pin again)
+in place of reading a trust store, and keeps every other condition below. Exactly one of
+``--trust-store`` and ``--attested-by`` is given.
+
 ``python -m expectrail.receipt trust-check ...`` is the same check. The two differ only in the exit
 code for a receipt or trust store that cannot be read, or a command line that cannot: 5 from
 ``expectrail`` (as every ``expectrail`` command), 2 from ``python -m expectrail.receipt`` (as it was
@@ -18,7 +27,7 @@ says what to install and checks nothing.
 
 Clearance is an allow-list. It is granted only when every condition was positively
 shown: a known issuer, a valid signature, repository, head, build and policy each
-given and matched, a validity of at most 7 days that contains now, at least one required
+given and matched (the issuer: a trust-store key, or the attesting workflow), a validity of at most 7 days that contains now, at least one required
 check, every required check's result ``pass``, and ``exercised`` covering
 ``required``, on full evidence, with decision ``accept``. Anything not shown is
 listed under ``does_not_establish`` and clearance is refused. A valid signature
@@ -59,6 +68,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PublicKey,
 )
 
+from expectrail import attestation as _attestation
 from expectrail import resources
 from expectrail.contracts import (
     ContractError,
@@ -355,6 +365,34 @@ def revoked_reason(key: TrustKey) -> str:
 _IDENTITY_NOT_CHECKED = ("repository not checked", "head not checked", "build not checked")
 
 
+def _attested_issuer(report: dict, doc: dict, attestation: dict, *, expect_repo: str | None,
+                     receipt_sha256: str | None) -> None:
+    """The issuer step when a GitHub attestation stands in for a trust-store key. Fails closed."""
+    workflow, ref = attestation.get("signerWorkflow"), attestation.get("sourceRef")
+    repo = attestation.get("repository")
+    if attestation.get("attested") is not True:
+        report["reasons"].append("not attested by the named workflow")
+        report["reasons"] += [f"attestation: {r}" for r in attestation.get("reasons") or []]
+        report["does_not_establish"].append("issuer identity")
+        return
+    if not (isinstance(receipt_sha256, str) and attestation.get("receiptSha256") == receipt_sha256):
+        report["reasons"].append("the attestation is for another receipt file")
+        report["does_not_establish"].append("issuer identity")
+        return
+    if not (isinstance(expect_repo, str) and isinstance(repo, str) and repo.lower() == expect_repo.lower()):
+        report["reasons"].append(f"the attestation was checked for repository {repo!r}, not {expect_repo!r}")
+        report["does_not_establish"].append("issuer identity")
+        return
+    report["known_issuer"] = True
+    embedded = doc.get("publicKey")
+    if isinstance(embedded, str) and verify_signature(doc, embedded):
+        report["valid_signature"] = True
+        report["establishes"].append(f"attested by {workflow} at {ref}; signed with the key the receipt carries")
+    else:
+        report["reasons"].append("signature does not verify with the key the receipt carries")
+        report["does_not_establish"].append("signature")
+
+
 def _gap(report: dict, reason: str, gap: str | None = None) -> None:
     """Record something that was not positively shown. The same line is not added twice."""
     if reason not in report["reasons"]:
@@ -377,6 +415,8 @@ def check_receipt(
     expect_policy: str | None = None,
     now: datetime | None = None,
     expect_build: str | None = None,
+    attestation: dict | None = None,
+    receipt_sha256: str | None = None,
 ) -> dict[str, Any]:
     """Verify signature, issuer, identity, policy, freshness and completeness.
 
@@ -391,6 +431,14 @@ def check_receipt(
     falls in ``validFrom`` (inclusive) to ``notAfter`` (exclusive). A revoked key is refused for every
     receipt, under any id it is listed by: whoever holds a stolen key can write any ``issuedAt``. Since a receipt is valid for at
     most 7 days, a retired key's receipts stop clearing 7 days after its ``notAfter`` at the latest.
+
+    With ``attestation`` (a report from ``expectrail.attestation.check``) the issuer is the workflow that
+    attested the receipt file, in place of a trust-store key, and ``trust_store`` is not read. The issuer
+    is known only when that report says attested, it is for the repository ``expect_repo`` names, and
+    its file digest is ``receipt_sha256``, the digest of the bytes ``doc`` was read from. The receipt's
+    own signature must still verify, with the key the receipt carries: the attestation vouches for
+    those bytes, and a receipt whose signature does not hold is refused, not repaired by it. Every other
+    condition is the same as with a trust store.
     """
     now = now or datetime.now(timezone.utc)
     report: dict[str, Any] = {
@@ -410,9 +458,14 @@ def check_receipt(
 
     kid = doc.get("issuerKeyId")
     embedded_pub = doc.get("publicKey")
-    trusted = _as_trust_key(trust_store.get(kid)) if isinstance(kid, str) else None
+    trusted = None if attestation is not None else (
+        _as_trust_key(trust_store.get(kid)) if isinstance(kid, str) else None)
 
-    if trusted is None:
+    if attestation is not None:
+        report["issuer_kind"] = "attestation"
+        report["attestation"] = {k: attestation.get(k) for k in ("signerWorkflow", "sourceRef", "repository")}
+        _attested_issuer(report, doc, attestation, expect_repo=expect_repo, receipt_sha256=receipt_sha256)
+    elif trusted is None:
         report["reasons"].append("unknown issuer (key id not in trust store)")
         report["does_not_establish"].append("issuer identity")
     elif trusted.public_key != embedded_pub:
@@ -553,6 +606,11 @@ _IDENTITY_MISMATCH = ("repository mismatch", "head digest mismatch", "build dige
 
 def issuer_word(report: dict) -> str:
     """The issuer line: known, or why not. A revoked or out-of-date key is in the store, not unknown."""
+    if report.get("issuer_kind") == "attestation":
+        where = report["attestation"]
+        if report["known_issuer"]:
+            return f"attested (by {where['signerWorkflow']} at {where['sourceRef']})"
+        return f"NOT ATTESTED (by {where['signerWorkflow']} at {where['sourceRef']})"
     if report["known_issuer"]:
         return "known"
     if any(line.startswith("issuer key revoked at ") for line in report["reasons"]):
@@ -615,25 +673,66 @@ class _Parser(argparse.ArgumentParser):
 def _trust_check_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("receipt", type=Path)
     parser.add_argument("--repo", default=None, help="OWNER/NAME the receipt must be about")
-    parser.add_argument("--trust-store", type=Path, required=True)
+    issuer = parser.add_argument_group("the issuer (exactly one)")
+    issuer.add_argument("--trust-store", type=Path, default=None, help="a trust store of issuer keys you already hold")
+    issuer.add_argument("--attested-by", default=None, metavar="OWNER/NAME/.github/workflows/FILE.yml",
+                        help="in place of a trust store: the workflow whose GitHub attestation of the receipt file "
+                        "names the issuer (runs gh attestation verify; needs --repo)")
+    parser.add_argument("--source-ref", default=None, help="with --attested-by: the ref the workflow ran on "
+                        "(default refs/heads/main)")
+    parser.add_argument("--bundle", type=Path, default=None, help="with --attested-by: an attestation bundle on "
+                        "disk instead of GitHub's lookup")
     parser.add_argument("--expect-head", default=None)
     parser.add_argument("--expect-build", default=None, help="buildSha256 the receipt must name")
     parser.add_argument("--expect-policy", default=None)
 
 
+def _usage_problem(args: argparse.Namespace) -> str | None:
+    """A combination of options that cannot be used, said plainly; None when there is none."""
+    if (args.trust_store is None) == (args.attested_by is None):
+        return "give exactly one of --trust-store and --attested-by"
+    if args.trust_store is not None and (args.source_ref is not None or args.bundle is not None):
+        return "--source-ref and --bundle go with --attested-by, not --trust-store"
+    if args.attested_by is not None and args.repo is None:
+        return "--attested-by needs --repo: the attestation is checked for that repository"
+    return None
+
+
+def _attested_report(args: argparse.Namespace) -> dict:
+    """Check the receipt file's attestation, then the receipt itself, on the same bytes."""
+    data = args.receipt.read_bytes()
+    doc = strict_loads(data.decode("utf-8"))
+    _validate_receipt(doc)
+    found = _attestation.check(args.receipt, repo=args.repo, signer_workflow=args.attested_by,
+                               source_ref=args.source_ref or _attestation.DEFAULT_REF, bundle=args.bundle)
+    digest = hashlib.sha256(data).hexdigest()
+    if found["receiptSha256"] != digest or args.receipt.read_bytes() != data:
+        raise _attestation.CannotCheck("the receipt file changed while it was being checked")
+    return check_receipt(doc, {}, expect_repo=args.repo, expect_head=args.expect_head,
+                         expect_build=args.expect_build, expect_policy=args.expect_policy,
+                         attestation=found, receipt_sha256=digest)
+
+
 def _trust_check(args: argparse.Namespace, error_code: int) -> int:
+    problem = _usage_problem(args)
+    if problem is not None:
+        print(f"error: {problem}. Nothing was checked.", file=sys.stderr)
+        return error_code
     try:
-        doc = read_receipt(args.receipt)
-        store = load_trust_store(args.trust_store)
-        report = check_receipt(
-            doc,
-            store,
-            expect_repo=args.repo,
-            expect_head=args.expect_head,
-            expect_build=args.expect_build,
-            expect_policy=args.expect_policy,
-        )
-    except (ContractError, ReceiptError, OSError, ValueError) as exc:
+        if args.attested_by is not None:
+            report = _attested_report(args)
+        else:
+            doc = read_receipt(args.receipt)
+            store = load_trust_store(args.trust_store)
+            report = check_receipt(
+                doc,
+                store,
+                expect_repo=args.repo,
+                expect_head=args.expect_head,
+                expect_build=args.expect_build,
+                expect_policy=args.expect_policy,
+            )
+    except (ContractError, ReceiptError, OSError, ValueError, _attestation.CannotCheck) as exc:
         # ValueError covers a file that is not UTF-8 text. Nothing was checked: no report is printed.
         print(f"error: {exc}. Nothing was checked.", file=sys.stderr)
         return error_code
