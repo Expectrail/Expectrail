@@ -88,7 +88,67 @@ def _places(trace: dict, frames: dict[int, Path], chosen: list[int], pad: float)
     from agents.sam_anchor import BODY, anchors
     from agents.sam_observations import png_size
 
-    return anchors(trace, png_size(frames[chosen[0]]), chosen, box=BODY, pad=pad) if chosen else {}
+    if not chosen:
+        return {}
+    from agents.observations import _frame_box, _frame_tick, _view_at
+    import math
+
+    size = png_size(frames[chosen[0]])
+    places = anchors(trace, size, chosen, box=BODY, pad=pad)
+    rows = trace.get("rows") or []
+    step = max(int(trace.get("physicsTicksPerSecond") or 120) // 60, 1)
+    for n, place in places.items():
+        tick = _frame_tick(n, step)
+        row = rows[tick] if tick < len(rows) else {}
+        body, view = row.get("body"), _view_at(rows, tick) if tick < len(rows) else None
+        if not body or not view or "scale" not in place:
+            continue
+        box = _frame_box(view, body)
+        visible = _clip(box, size)
+        if visible is None:
+            place.update(why="the collision body is wholly outside the picture", outside=True)
+        elif visible != box:
+            # Keep the old point whenever it is in the visible part. A centre outside the view
+            # still leaves a question when part of the body is drawn: point inside that part.
+            place.update(bodyBox=box, frameSize=size)
+            point = place["point"]
+            if not (visible[0] <= point[0] < visible[2] and visible[1] <= point[1] < visible[3]):
+                point = [int(math.floor((visible[0] + visible[2]) / 2)),
+                         int(math.floor((visible[1] + visible[3]) / 2))]
+                if not (visible[0] <= point[0] < visible[2] and visible[1] <= point[1] < visible[3]):
+                    place["why"] = "the visible collision body has no interior question pixel"
+                    continue
+                place["point"] = point
+            place.pop("why", None)
+    return places
+
+
+def _clip(box, size):
+    left, top, right, bottom = box
+    clipped = [max(0.0, left), max(0.0, top), min(size[0], right), min(size[1], bottom)]
+    return clipped if clipped[0] < clipped[2] and clipped[1] < clipped[3] else None
+
+
+def _visible_size(place, expected):
+    """Clean calibrated dimensions at the engine body's centre, intersected with the view.
+
+    The body supplies position and visibility, never a new calibrated sprite size. Fully visible
+    frames keep the old comparison and bytes. No estimate of the unseen pixels is judged.
+    """
+    if "bodyBox" not in place:
+        return expected
+    box = _expected_visible_box(place, expected)
+    sx, sy = (s or 1.0 for s in place["scale"])
+    return [(box[2] - box[0]) / sx, (box[3] - box[1]) / sy] if box else None
+
+
+def _expected_visible_box(place, expected):
+    left, top, right, bottom = place["bodyBox"]
+    x, y = (left + right) / 2, (top + bottom) / 2
+    sx, sy = (s or 1.0 for s in place["scale"])
+    half_w, half_h = expected[0] * sx / 2, expected[1] * sy / 2
+    box = _clip([x - half_w, y - half_h, x + half_w, y + half_h], place["frameSize"])
+    return box
 
 
 def _close(a: float, b: float, tolerance: float, floor: float = 0.0) -> bool:
@@ -293,12 +353,18 @@ class AnchoredObserver:
         places = _places(trace, frames, indices, self._pad)
         ground = engine_ground_by_frame(trace, size, indices) if engine else {}
         drawn, rules = self.calibration["drawnSize"], self.calibration["rules"]
-        expected = [drawn["width"], drawn["height"]]
+        full_size = [drawn["width"], drawn["height"]]
+        expected_sizes = {n: _visible_size(places[n], full_size) for n in indices}
         out = {}
 
         def observe(chosen):
             for n in chosen:
                 place, found = places[n], []
+                expected = expected_sizes[n]
+                if place.get("outside") or expected is None:
+                    out[n] = {"frame": n, "objects": {player: []},
+                              "notExercised": {player: "outside-view"}}
+                    continue
                 negative = None
                 if "point" in place and "why" not in place:
                     answered = True
@@ -312,12 +378,27 @@ class AnchoredObserver:
                     answer, measured = None, None
                     if got is not None and got.get("score") is not None:
                         answer = {"box": [float(v) for v in got["box"]], "score": float(got["score"])}
-                        measured = list(_answer_size(got, place["scale"]))
-                        if not all(_close(s, b, rules["sizeTolerance"], rules["sizeFloorPx"])
+                        # A stand-in may return its full engine rectangle. Compare only pixels
+                        # that exist in the image, retaining the raw reply in negative evidence.
+                        compared = got
+                        if "bodyBox" in place:
+                            box = _clip(got["box"], place["frameSize"])
+                            compared = {**got, "box": box} if box else None
+                        measured = list(_answer_size(compared, place["scale"])) if compared else [0.0, 0.0]
+                        if compared is not None and not all(_close(s, b, rules["sizeTolerance"], rules["sizeFloorPx"])
                                    for s, b in zip(measured, expected)):
                             negative = "size-mismatch"
-                        elif _holds(got, place["point"]):
-                            found = [answer]
+                        elif compared is not None:
+                            if "bodyBox" in place:
+                                expected_box = _expected_visible_box(place, full_size)
+                                scales = [s or 1.0 for s in place["scale"]] * 2
+                                limits = [max(rules["sizeTolerance"] * b, rules["sizeFloorPx"]) for b in expected] * 2
+                                if (not _holds(compared, place["point"]) or any(
+                                        abs(a - b) / scale > limit for a, b, scale, limit in
+                                        zip(compared["box"], expected_box, scales, limits))):
+                                    negative = "place-mismatch"
+                            if not negative and _holds(compared, place["point"]):
+                                found = [{"box": [float(v) for v in compared["box"]], "score": answer["score"]}]
                     elif answered and got is None:
                         negative = "no-match"
                 objs = {player: found}
@@ -331,6 +412,8 @@ class AnchoredObserver:
                         "scale": [s or 1.0 for s in place["scale"]], "expectedSize": list(expected),
                         "observedSize": measured, "answer": answer,
                         "sizeTolerance": rules["sizeTolerance"], "sizeFloorPx": rules["sizeFloorPx"]}}
+                    if "bodyBox" in place:
+                        row["notDrawn"][player]["expectedVisibleBox"] = _expected_visible_box(place, full_size)
                 out[n] = row
 
         model = {"name": str(getattr(client, "model", "unknown")),
