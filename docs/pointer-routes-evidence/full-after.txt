@@ -161,7 +161,7 @@ needs review: x
 .frozen: 972a23528bc5370001d30e43b04a4fff2afaad596f9d986bb41589faa0d647c4 (21 files and the clean game)
 .frozen: 972a23528bc5370001d30e43b04a4fff2afaad596f9d986bb41589faa0d647c4 (21 files and the clean game)
 ......freeze holds: 9af1f621c33ce4668eb8ad356a3220ea352d106595b0bc1b4cf877eead5e3053
-................................s...................................................................warning: sam cache not written, continuing without it (OSError: [Errno 30] Read-only file system: '/home/agent/.cache/expectrail')
+................................s...................................................................warning: sam cache not written, continuing without it (OSError: [Errno 30] Read-only file system: '<home>/.cache/expectrail')
 ..........................................................................s.......................................error: pass --consent to confirm the people quoted agreed to their words being sent to Meta's API (or use --offline)
 error: --fixture only works with --offline
 error: --audio needs Voice Transcribe; use --transcript for offline runs
