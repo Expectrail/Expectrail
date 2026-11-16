@@ -1,0 +1,7 @@
+--- a/scripts/paddle.gd
++++ b/scripts/paddle.gd
+@@ -12,3 +12,4 @@
+ 	velocity.x = (target_x - position.x) * speed
+ 	velocity.y = 0
+ 	move_and_slide()
++	position.x = 8.0 # Seeded defect: pin the paddle partly outside the left edge.
