@@ -321,6 +321,31 @@ class CaptureJudgeTest(unittest.TestCase):
         self.assertEqual(json.loads((again / 'calibration.json').read_text())['rates'],
                          json.loads((self.out / 'calibration.json').read_text())['rates'])
 
+    def test_a_recording_reaches_the_observer_unwrapped_and_keeps_its_diagnosis(self):
+        """#515: judge() must not hide a RecordedClient behind the reuse wrapper, or a question the
+        recording lacks loses its "recorded under ...; this replay used ..." reason."""
+        from expectrail import recorded
+        self.live(Sees(), self.out)
+        client = recorded.RecordedClient(recorded.read_recording(self.out / 'vision-recording.json'))
+        real, seen = vision.anchored, {}
+
+        def spy(project, data, asked, out, **kwargs):
+            seen['client'] = asked
+            seen['observer'] = real(project, data, asked, out, **kwargs)
+            return seen['observer']
+
+        with mock.patch.object(vision, 'anchored', spy):
+            vision.judge(self.project, self.data, self.receipt, self.root / 'from-recording', client=client)
+        self.assertIs(seen['client'], client)
+        self.assertIsInstance(seen['observer'], recorded._DiagnosticObserver)
+
+        class Live(Sees):
+            pass
+        with mock.patch.object(vision, 'anchored', spy):
+            vision.judge(self.project, self.data, self.receipt, self.root / 'live', client=Live())
+        self.assertIsInstance(seen['client'], recorded.RecordingClient)
+        self.assertNotIsInstance(seen['observer'], recorded._DiagnosticObserver)
+
     def test_swapping_variant_folders_is_refused(self):
         a, b, tmp = (self.data / v for v in ('broken', 'harmless', 'tmp'))
         a.rename(tmp)

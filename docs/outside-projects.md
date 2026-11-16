@@ -366,3 +366,80 @@ key and no spend; a frame or question not in the recording gets no answer.
 
 The calibration history above preceded the full vision run. Its measured four-variant result is
 reported in “First outside game verified with vision” above; it does not establish general accuracy.
+
+## Optional vision sampling and repeated questions (#330)
+
+`python3 -m tools.outside_vision judge` accepts `--vision-every N`. The default is **1**:
+vision examines every captured frame in each check's window. A larger positive integer is an
+explicit trade-off, subject to the check's shared `sampling_plan`: eligible checks examine every
+Nth frame from the window's first, plus its last. Fractional `visible` checks (a `minFraction`
+below 1), unknown assertion types and explicit frame-count/share obligations use every frame.
+For example, add `--vision-every 4` to a judge command over a saved capture. The capture command
+and workflows keep their current defaults; this does not add a paid workflow dispatch option.
+
+The engine still checks every frame and the gate still requires the complete capture. Only the
+anchored observer's point questions are sampled. Calibration keeps its two questions per selected
+clean frame, every tenth frame plus the last. The paired gate comparison keeps its own box
+questions and stride 10. Specs with explicit coverage obligations keep their full-window
+requirements and may need review when the visual evidence is sampled.
+
+**What sampling can miss:** a visual defect shorter than N frames can fall between samples.
+A sampled non-pass triggers questions on every remaining frame before a verdict is used.
+This can find a `reaches` witness between samples, or show that three negative samples were
+not consecutive missing-player frames. If refinement cannot finish, the gate needs review.
+A sampled `reaches` witness may pass; explicit coverage obligations still require their full window.
+The missing-player rule still needs three consecutive negative observations, now checked against
+the refined full sequence before rejecting. Findings record the requested opt-in in
+`observers.visionEvery` (absence means 1). Saved observations record the effective rate in
+`analysis.every` (1 after full refinement) and the additional frame numbers in `analysis.refined`.
+The report reader and run summary name the requested stride. No approved spec is changed.
+The [offline policy tests](../tests/test_vision_sampling_policy.py) exercise these rules.
+
+The outside judge now reuses a successful answer to the **same PNG bytes, question kind and exact
+prompt** within that judge invocation, including calibration and all variants. It also reuses an
+empty answer, which is evidence; it does not cache provider errors or unknown recording keys.
+A point question and a box question remain different requests. The previous recording wrapper
+removed duplicate keys from its final JSON but still sent each repeated live question. Other
+recording callers retain that behavior unless they explicitly request reuse.
+
+### Where the first run's images went
+
+Source: the code at run commit `89ce6ff6ee8324da03c45be4bbdb944c091289cf`, its saved capture,
+[run 43652198623's judge log](https://github.com/Expectrail/Expectrail/actions/runs/43652198623/job/132623245351),
+and its checked-in [calibration](../tests/outside/recordings/kinematic-character/calibration.json)
+and [answers](../tests/outside/recordings/kinematic-character/vision-recording.json).
+The log reports **802 requests, 800 images answered, $2.00**, at the cap. Those totals are
+run-log evidence. The per-phase allocation below is **not reproducible from this pull request**:
+its reconstruction used a downloaded capture and a handover-only script, neither committed here.
+It is a historical allocation claim, not validation of the current sampling implementation.
+
+| Variant | Calibration | After observer | Before observer | Paired comparison before / after | Answered images | Requests |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Pinned | 38, shared once | 120 | 0 | 0 / 0 | 158 | 158 |
+| Broken | 0 | 0 | 120 | 19 / 7 | 146 | 146 |
+| Tinted (harmless) | 0 | 120 | 120 | 19 / 19 | 278 | 278 |
+| Hidden (invisible) | 0 | 120 | 98 | 0 / 0 | 218 | 220 |
+| Total | 38 | 360 | 338 | 38 / 26 | 800 | 802 |
+
+Calibration is 19 clean frames with two separately asked points. Each check window is 120 frames;
+the capture has 180. Broken fails the engine check, so its after observer is not asked; its paired
+comparison can ask only seven after frames because the player leaves the frame. Hidden exhausts
+the cap during its before observer: one blocked request there, then one blocked request at the
+start of its paired comparison. These were not two extra answered images.
+
+The earlier November 15 offline lookup comparison below is **not reproducible from this pull
+request**: its capture, script and logs were handover-only. It predates the sampling-policy
+rework and must not be used as evidence for this revision's decisions or request savings.
+
+| Judge setting | Questions reaching the recording | Answered | Not recorded | Pinned / broken / tinted / hidden |
+| --- | ---: | ---: | ---: | --- |
+| Reuse exact answers, stride 1 | 448 | 429 | 19 | accept / reject / accept / reject |
+| Reuse exact answers, stride 4 | 187 | 168 | 19 | accept / reject / accept / reject |
+
+The 19 absent answers are hidden-variant box prompts that the capped run never answered. They
+remain unknown; they are not invented or used to accept. The hidden player's point observations
+were reported as rejecting in that earlier comparison. Its uncached baseline and cached stride 1
+were reported as giving the same four decisions. These historical counts
+are recorded-answer lookups, **not a measured new live cost**, and say nothing about other games
+or a new capture's ability to reproduce the PNG bytes. Stand-in tests additionally demonstrate
+that a three-frame defect can be missed at stride 4 while the default rejects it.
