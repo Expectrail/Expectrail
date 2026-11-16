@@ -27,6 +27,10 @@
   "NOT VERIFIED", exit 1, gh's reason "no valid Sigstore verifiers could be initialized". No
   attestation exists for it, so that is the expected outcome; it shows a gh refusal is not a pass.
 - Full suite on the branch merged with main: see the pull request.
+- Second merge of main (for #557): `setup.py`'s `BUNDLED_MODULES` sets for `expectrail` and
+  `expectrail._bundle.agents` now hold one name per line, so two pull requests that each add a module
+  no longer conflict on one line. The names are the union of both sides; `tests.test_package` reads
+  them with `ast` as before.
 
 ## Not done
 - The attesting step in CI (Sean: the permissions; #254's session: the trusted job).

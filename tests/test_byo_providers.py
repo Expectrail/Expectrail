@@ -168,7 +168,8 @@ class TestBYOFixerAndVision(unittest.TestCase):
             self.assertEqual(cmd_codex[0], "codex")
             self.assertIn("full-auto", cmd_codex)
 
-    def test_the_sandbox_record_describes_the_run_not_a_meta_gateway(self) -> None:
+    @patch("expectrail.fixer_budget.start")  # Offline process/gateway transport below is a stand-in.
+    def test_the_sandbox_record_describes_the_run_not_a_meta_gateway(self, admission) -> None:
         """sandbox.json backs the README's isolation claim, so it must describe what ran.
 
         It used to read "host network (the key gateway speaks only to Meta's API)" for every bwrap
@@ -202,7 +203,8 @@ class TestBYOFixerAndVision(unittest.TestCase):
         self.assertEqual(meta["keyEnvs"], ["ANTHROPIC_API_KEY"])
         self.assertNotIn("sk-ant-123", json.dumps(meta))
 
-    def test_behind_the_gateway_the_agent_gets_a_placeholder_and_no_network(self) -> None:
+    @patch("expectrail.fixer_budget.start")  # Offline process/gateway transport below is a stand-in.
+    def test_behind_the_gateway_the_agent_gets_a_placeholder_and_no_network(self, admission) -> None:
         """EXPECTRAIL_BYO_GATEWAY=on: the proxy holds the real key and the agent never sees it, the
         same posture Muse Code already runs in. The allowlist is the provider's host, derived from
         expectrail/providers.py rather than listed again."""
@@ -258,7 +260,8 @@ class TestBYOFixerAndVision(unittest.TestCase):
             agent_key_env("claude-code", {})
         self.assertEqual(agent_key_env("claude-code", {"ANTHROPIC_API_KEY": "a"}), "ANTHROPIC_API_KEY")
 
-    def test_the_sandbox_record_names_no_key_the_agent_did_not_get(self) -> None:
+    @patch("expectrail.fixer_budget.start")  # Offline process/gateway transport below is a stand-in.
+    def test_the_sandbox_record_names_no_key_the_agent_did_not_get(self, admission) -> None:
         import subprocess
         import tempfile
         from pathlib import Path

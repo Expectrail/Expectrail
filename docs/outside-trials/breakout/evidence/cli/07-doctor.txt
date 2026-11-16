@@ -1,0 +1,111 @@
+{
+  "format": "expectrail.doctor/v1",
+  "expectrail": "0.1.0",
+  "ok": false,
+  "checks": [
+    {
+      "id": "python",
+      "what": "Python 3.12 or later",
+      "status": "ok",
+      "required": true,
+      "found": "Python 3.12.14",
+      "fix": null
+    },
+    {
+      "id": "godot",
+      "what": "Godot 4.7.2-stable",
+      "status": "ok",
+      "required": true,
+      "found": "Godot 4.7.2.stable.official.ed1daf0bf at /workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+      "fix": null
+    },
+    {
+      "id": "display",
+      "what": "a virtual display (xvfb-run)",
+      "status": "missing",
+      "required": true,
+      "found": "xvfb-run is not installed",
+      "fix": "sudo apt-get install xvfb"
+    },
+    {
+      "id": "opengl",
+      "what": "OpenGL the engine can draw with (Mesa's software renderer)",
+      "status": "skipped",
+      "required": true,
+      "found": "not tried: it needs Godot and a display, and one is missing above",
+      "fix": "fix what is missing above, then run `expectrail doctor` again"
+    },
+    {
+      "id": "disk",
+      "what": "1024 MB free for the engine and a run's frames",
+      "status": "missing",
+      "required": true,
+      "found": "441 MB free in the engine's folder (/workspace/work/trial-stops/tools); 441 MB free in the temporary folder (/tmp)",
+      "fix": "free at least 1024 MB in each folder named above, or name other folders with EXPECTRAIL_TOOLS and TMPDIR"
+    },
+    {
+      "id": "sandbox",
+      "what": "the replay sandbox (bubblewrap)",
+      "status": "missing",
+      "required": false,
+      "found": "xvfb-run is not installed, and the sandbox cannot use the host's display",
+      "fix": "sudo apt-get install xvfb, then run `expectrail doctor` again; the sandbox needs its own virtual display. Without it replays run outside the sandbox, and the isolated class and `require-sandbox` refuse to run"
+    },
+    {
+      "id": "patch",
+      "what": "`patch` (`expectrail sample` and seeded bugs put a patch on a copy of the game)",
+      "status": "ok",
+      "required": true,
+      "found": "patch at /usr/bin/patch",
+      "fix": null
+    },
+    {
+      "id": "curl",
+      "what": "`curl` (to fetch the engine; it is already here)",
+      "status": "ok",
+      "required": false,
+      "found": "curl at /usr/bin/curl",
+      "fix": null
+    },
+    {
+      "id": "unzip",
+      "what": "`unzip` (to fetch the engine; it is already here)",
+      "status": "ok",
+      "required": false,
+      "found": "unzip at /usr/bin/unzip",
+      "fix": null
+    },
+    {
+      "id": "vision-key",
+      "what": "a key for a visual observer (MODEL_API_KEY)",
+      "status": "missing",
+      "required": true,
+      "found": "MODEL_API_KEY is missing. No vision request is sent. Engine checks still run: a failure rejects; otherwise the result is needs-review.",
+      "fix": "set MODEL_API_KEY in the verifier's environment to its vision model key; never put it in a file"
+    },
+    {
+      "id": "vision-cap",
+      "what": "a vision spend cap (EXPECTRAIL_SAM_USD_CAP)",
+      "status": "missing",
+      "required": true,
+      "found": "EXPECTRAIL_SAM_USD_CAP is missing or invalid. No vision request is sent. Engine checks still run: a failure rejects; otherwise the result is needs-review.",
+      "fix": "set EXPECTRAIL_SAM_USD_CAP to the most this run may spend in US dollars (a finite amount, 0 or more)"
+    },
+    {
+      "id": "chromium",
+      "what": "Playwright Chromium (web replays)",
+      "status": "missing",
+      "required": false,
+      "found": "Playwright Chromium is not installed",
+      "fix": "install requirements-web.txt, then run `python3 -m playwright install chromium`; on Linux also install the browser system dependencies"
+    },
+    {
+      "id": "recorded-renderer",
+      "what": "the project's recorded vision and this renderer",
+      "status": "missing",
+      "required": true,
+      "found": "This machine: unknown rendering environment. The configured recording could not be read safely. display: xvfb-run is not installed",
+      "fix": "sudo apt-get install xvfb Check the project config and use a valid vision recording in a regular file inside the project."
+    }
+  ]
+}

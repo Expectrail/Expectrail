@@ -1,0 +1,14 @@
+{
+  "format": "expectrail.fixer-invocation/v1",
+  "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "basis": "fixed-price-fixture",
+  "capNanoUsd": 300000000,
+  "requestMaxNanoUsd": 100000000,
+  "reservedNanoUsd": 300000000,
+  "admittedRequests": 3,
+  "deniedRequests": 1,
+  "inputTokensObserved": 21,
+  "outputTokensObserved": 9,
+  "status": "stopped",
+  "stopReason": "fixer-invocation-cap"
+}

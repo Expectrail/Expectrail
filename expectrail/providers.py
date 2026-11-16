@@ -391,6 +391,12 @@ def chat_completion(
     )
 
     def _default_transport(u: str, h: dict[str, str], p: dict[str, Any]) -> dict[str, Any]:
+        if role.upper() == "FIXER":
+            from expectrail import spend
+            exc = spend.BudgetStop("fixer-bound-unavailable: direct FIXER sender has no verified dollar maximum", role="muse")
+            exc.code = "fixer-bound-unavailable"
+            spend.note_stop("muse", str(exc))
+            raise exc
         req = urllib.request.Request(u, data=json.dumps(p).encode("utf-8"), headers=h, method="POST")
         for attempt in range(3):
             if role.upper() == "SPEC":

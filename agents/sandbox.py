@@ -359,6 +359,7 @@ def run_muse(
     require_sandbox: bool = False,
     detected: str | None = None,
     provider_only: bool = False,
+    invocation=None,
 ) -> tuple[subprocess.CompletedProcess[str], dict]:
     """Every ``muse exec`` goes through here: under bwrap when ``sandboxed`` and available, else on
     the host with an allowlisted environment; through the key gateway when it is on (agents.gateway).
@@ -371,7 +372,8 @@ def run_muse(
     """
     from expectrail.spend import hold
 
-    hold("muse", live=True)
+    if invocation is None:
+        hold("muse", live=True)
     from agents.gateway import muse_gateway
 
     kind = (detected if detected is not None else detect_sandbox()) if sandboxed else "none"
@@ -387,9 +389,10 @@ def run_muse(
     # A repair gets only the model gateway, even if the host normally disables or widens it.
     if provider_only:
         from agents.gateway import DEFAULT_HOSTS, GATEWAY_ENV, HOSTS_ENV
-        channel = muse_gateway({**os.environ, GATEWAY_ENV: "on", HOSTS_ENV: DEFAULT_HOSTS})
+        channel = muse_gateway({**os.environ, GATEWAY_ENV: "on", HOSTS_ENV: DEFAULT_HOSTS},
+                               **({"invocation": invocation} if invocation is not None else {}))
     else:
-        channel = muse_gateway()
+        channel = muse_gateway(**({"invocation": invocation} if invocation is not None else {}))
     with channel as gateway:
         if gateway is not None:
             base = gateway.muse_env(base, in_sandbox=muse_kind == "bwrap")
@@ -426,9 +429,30 @@ def run_muse_sandboxed(
     detected: str | None = None,
     provider_only: bool = False,
 ) -> tuple[subprocess.CompletedProcess[str], dict]:
-    """``run_muse`` under bwrap when available (the fixer and the sandboxed screenshot judge)."""
-    return run_muse(prompt, work=work, env=env, timeout=timeout, sandboxed=True,
-                    require_sandbox=require_sandbox, detected=detected, provider_only=provider_only)
+    """Fixer entry: require a bound before launching. Live tariffs are currently unavailable."""
+    from expectrail import fixer_budget
+    # A fixer cannot elect the old unmetered/host-network path. No verified live
+    # tariff exists today, so production stops here before warm_muse or any send.
+    invocation = fixer_budget.start(work.parent / "fixer-invocation.json")
+    try:
+        result = run_muse(prompt, work=work, env=env, timeout=timeout, sandboxed=True,
+                          require_sandbox=True, detected=detected, provider_only=True,
+                          invocation=invocation)
+    except subprocess.TimeoutExpired:
+        doc = fixer_budget.counter(invocation.config['record'], expected=invocation.config)
+        if doc['status'] == 'stopped' or doc['reservedNanoUsd'] == doc['capNanoUsd']:
+            fixer_budget.stop(doc['stopReason'] or 'fixer-invocation-cap', 'proxy refused further requests',
+                              invocation.config['record'], doc)
+        raise
+    doc = fixer_budget.counter(invocation.config['record'], expected=invocation.config)
+    if doc['status'] == 'stopped' or doc['reservedNanoUsd'] == doc['capNanoUsd']:
+        fixer_budget.stop(doc['stopReason'] or 'fixer-invocation-cap', 'proxy refused further requests',
+                          invocation.config['record'], doc)
+    if doc['status'] == 'running':
+        from agents.fixer_meter import write
+        doc['status'] = 'completed'
+        write(invocation.config['record'], doc)
+    return result
 
 
 def main(argv: list[str] | None = None) -> int:

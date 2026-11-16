@@ -1,0 +1,49 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "keyboard-start",
+  "seed": 1,
+  "description": "Draft: Tab to the first menu button, Enter to start, then pause/resume. No pointer coordinates are supplied: this cannot steer the mouse-controlled paddle.",
+  "ticks": 120,
+  "events": [
+    {
+      "tick": 5,
+      "action": "ui_focus_next",
+      "pressed": true
+    },
+    {
+      "tick": 6,
+      "action": "ui_focus_next",
+      "pressed": false
+    },
+    {
+      "tick": 10,
+      "action": "ui_accept",
+      "pressed": true
+    },
+    {
+      "tick": 11,
+      "action": "ui_accept",
+      "pressed": false
+    },
+    {
+      "tick": 70,
+      "action": "pause",
+      "pressed": true
+    },
+    {
+      "tick": 71,
+      "action": "pause",
+      "pressed": false
+    },
+    {
+      "tick": 80,
+      "action": "pause",
+      "pressed": true
+    },
+    {
+      "tick": 81,
+      "action": "pause",
+      "pressed": false
+    }
+  ]
+}

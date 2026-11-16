@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/mike0697/Breakout.git",
+  "commit": "0ac7aed444ea593a023d9b666c211d7ab8acd51e",
+  "source": "git ls-remote https://github.com/mike0697/Breakout.git refs/heads/main",
+  "licence": "MIT",
+  "licenceUrl": "https://github.com/mike0697/Breakout/blob/0ac7aed444ea593a023d9b666c211d7ab8acd51e/LICENSE",
+  "copyright": "2025 Michele Pizzeghello"
+}

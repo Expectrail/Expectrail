@@ -223,6 +223,19 @@ def repair(jobs, job, *, attempts=3, fixture=None, recorded=False, spawn_worker=
                          "failing": _public_failures(child_record, checks.specs)}
             except budget_stop as exc:
                 stop, detail = "spend-cap", redact(str(exc))
+                row['reasons'] = [detail]
+                row['budgetStop'] = getattr(exc, 'code', 'spend-cap')
+                source = getattr(exc, 'invocation_record', None)
+                if source is not None:
+                    from expectrail.fixer_budget import read
+                    try:
+                        read(source)  # A corrupt counter is no budget proof.
+                        target = attempt / 'fixer-invocation.json'
+                        shutil.copyfile(source, target)
+                        row['fixerInvocation'] = target.relative_to(folder).as_posix()
+                    except (OSError, ValueError):
+                        row['budgetStop'] = 'fixer-meter-unavailable'
+                        row['reasons'] = ['fixer-meter-unavailable: invocation counter could not be preserved']
                 break
             except (SystemExit, OSError, ValueError, RuntimeError, subprocess.SubprocessError, store.StoreError) as exc:
                 stop, detail = "fixer-failed" if row["patch"] is None else "needs-review", redact(str(exc))

@@ -105,6 +105,7 @@ V1_FORMATS = {
     "expectrail.jit-run/v1": ("jit-run", "jit-run.v1.schema.json"),
     "expectrail.pixel-check/v1": ("pixel-check", "pixel-check.v1.schema.json"),
     "expectrail.project/v1": ("project", "project.v1.schema.json"),
+    "expectrail.fixer-invocation/v1": ("fixer-invocation", "fixer-invocation.v1.schema.json"),
     "expectrail.repair-run/v1": ("repair-run", "repair-run.v1.schema.json"),
 }
 
