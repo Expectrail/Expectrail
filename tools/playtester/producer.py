@@ -91,7 +91,9 @@ def anomalies(route: dict, trace: dict) -> list[dict]:
     bottom = max(ground) if ground else None
     events = {}
     for event in route["events"]:
-        events.setdefault(event["tick"], []).append(event)
+        # These heuristics measure named-action holds, not pointer steering.
+        if "action" in event:
+            events.setdefault(event["tick"], []).append(event)
     held, found, stopped = set(), {}, []
     turning, last_direction, last_held = 0, None, None
     for tick, row in enumerate(rows):

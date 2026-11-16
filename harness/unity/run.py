@@ -244,6 +244,8 @@ def check_route(route_doc: dict, m: dict) -> None:
         raise SystemExit(f"invalid route: {exc}") from exc
     known = {a["name"] for a in m["actions"]}
     for e in route_doc["events"]:
+        if "pointer" in e:
+            raise SystemExit("Unity adapter does not support pointer route events; use an action route")
         if e["action"] not in known:
             raise SystemExit(f"the route presses {e['action']!r}, which the map does not define ({', '.join(sorted(known))})")
         if not 0 <= e["tick"] < route_doc["ticks"]:

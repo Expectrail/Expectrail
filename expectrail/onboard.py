@@ -88,7 +88,9 @@ def inputs(root, config):
     raw = local_file(root, name).read_bytes()
     if hashlib.sha256(raw).hexdigest()[:16] != Path(name).stem.removeprefix("draft-first-"):
         raise ValueError("The saved first route has changed. Review the inputs and run init again.")
-    actions = list(dict.fromkeys(event["action"] for event in json.loads(raw)["events"]))
+    actions = list(dict.fromkeys(event["action"] if "action" in event else
+                                "pointer " + event["pointer"].get("button", "move")
+                                for event in json.loads(raw)["events"]))
     return name, actions
 
 

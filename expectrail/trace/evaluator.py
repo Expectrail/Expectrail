@@ -246,7 +246,7 @@ def _event_response(e: _Eval, ep: dict, op: dict) -> None:
     refractory = _ticks(op["refractorySeconds"], tps, bound="min")
     trig = op["trigger"]
     presses = sorted(i["tick"] for i in ep["inputs"]
-                     if i["action"] == trig["action"] and i["pressed"] == trig["pressed"] and lo <= i["tick"] <= hi)
+                     if i.get("action") == trig["action"] and i["pressed"] == trig["pressed"] and lo <= i["tick"] <= hi)
     responses = sorted(ev["tick"] for ev in ep["events"] if ev["type"] == op["response"])
     used: set[int] = set()
     unmatched = truncated = 0

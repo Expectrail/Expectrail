@@ -288,6 +288,19 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
         raise SystemExit(str(exc)) from exc
     if fps is None:
         fps = int(config["captureFps"]) if config is not None else 60
+    route_doc = json.loads(route.read_text(encoding="utf-8"))
+    if any(isinstance(e, dict) and "pointer" in e for e in route_doc.get("events", [])):
+        # Keep legacy action routes unchanged. The new pointer variant is strict before a
+        # game starts: NaN, ambiguous event shapes and events past the end are refusals.
+        from expectrail.contracts import ContractError, canonical_v1, strict_loads, validate
+        try:
+            route_doc = strict_loads(route.read_text(encoding="utf-8"))
+            canonical_v1(route_doc)
+            validate(route_doc, "route")
+            if any(e["tick"] >= route_doc["ticks"] for e in route_doc["events"]):
+                raise ValueError("an event is outside the route's ticks")
+        except (ContractError, ValueError) as exc:
+            raise SystemExit(f"invalid pointer route: {exc}") from exc
     godot = godot or find_godot()
     out.mkdir(parents=True, exist_ok=True)
     work, frames = out / "work", out / "frames"
@@ -333,8 +346,6 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
             shutil.rmtree(staging)
         if tool is not None:
             (staging / "frames").mkdir(parents=True)
-    route_doc = json.loads(route.read_text(encoding="utf-8"))
-
     # If the clean cache is populated and no patches modified assets, skip --import (~7s savings).
     # Patched runs run an incremental --import, which finishes in ~0.2s since all base assets are cached.
     # A configured project need not check in its .import sidecars. The cache holds .godot only;
