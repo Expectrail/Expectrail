@@ -28,7 +28,7 @@ import sys
 
 from expectrail import __version__, resources
 
-ORCHESTRATOR = ("verify", "status", "cancel", "report", "sample")
+ORCHESTRATOR = ("verify", "status", "cancel", "report", "sample", "ingest")
 # name -> (what it will do, the issue that builds it)
 PLANNED: dict[str, tuple[str, int]] = {}
 # What `trust-check` needs beyond the standard library: the `trust` extra in pyproject.toml.

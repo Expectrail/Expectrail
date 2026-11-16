@@ -142,6 +142,13 @@ class Gate:
         # A missing provider cannot hide an engine failure. Keep the rule `both`: without a
         # visual answer the gate can reject, but cannot accept. Recheck settings for each job.
         visual = None if diagnostics else visual
+        if 'coverage' in request:
+            from expectrail.orchestrator import playtest
+
+            stopped = playtest.precheck(request, checks, paths, self._replay,
+                                        rule=self._rule, visual=visual, advance=advance)
+            if stopped is not None:
+                return stopped
         document = gate.run_gate(
             repo=Path(request["head"]["checkout"]), game=project["game"], routes=project["routes"],
             specs=project["specs"], out=paths.staging, work=paths.work / "gate",

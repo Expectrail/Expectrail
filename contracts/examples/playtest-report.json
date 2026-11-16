@@ -1,0 +1,39 @@
+{
+  "format": "expectrail.playtest-report/v1",
+  "id": "air-jump-report",
+  "producer": {
+    "name": "handwritten",
+    "version": "1"
+  },
+  "target": {
+    "commit": "e18dd3ef5267175166743c17a7b37480a292f3c0"
+  },
+  "route": {
+    "format": "expectrail.route/v0",
+    "name": "air-jump",
+    "ticks": 120,
+    "events": [
+      {
+        "tick": 20,
+        "action": "jump",
+        "pressed": true
+      },
+      {
+        "tick": 21,
+        "action": "jump",
+        "pressed": false
+      }
+    ]
+  },
+  "bug": "The player can keep jumping in mid-air.",
+  "fault": {
+    "preFaultTick": 19,
+    "faultTick": 20,
+    "anchor": {
+      "object": "player",
+      "x": 80,
+      "y": 600,
+      "tolerancePx": 8
+    }
+  }
+}

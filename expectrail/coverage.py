@@ -9,6 +9,11 @@ from __future__ import annotations
 import math
 
 
+def all_of(runs: list[str], outcome: str, reps: int = 3) -> bool:
+    """The shared repetition predicate, originally jit.assess.all_of."""
+    return len(runs) >= reps and all(r == outcome for r in runs[:reps])
+
+
 def evidence_result(*, counterexample: bool, applicable: str, triggered: int, evaluated: int,
                     minimum_triggers: int, minimum_evaluations: int, complete: bool,
                     complete_window: bool) -> str:
@@ -29,6 +34,22 @@ def checkpoint(condition: dict, trace: dict | None) -> bool | None:
     These are route checkpoints from the engine, independent of who judges the visual assertion.
     No missing position, floor flag or coin list is invented. An explicit empty coin list is zero.
     """
+    if condition['type'] == 'position-at-tick':
+        rows = [r for r in (trace or {}).get('rows', []) if r.get('tick') == condition['tick']]
+        if len(rows) != 1:
+            return None
+        row, name = rows[0], condition['object']
+        point = row.get('player') if name == 'player' else None
+        for prefix, field in [('enemy-', 'enemies'), ('projectile-', 'projectiles')]:
+            if name.startswith(prefix) and name[len(prefix):].isdigit():
+                tracked = row.get(field)
+                matches = [p[1:] for p in (tracked if isinstance(tracked, list) else [])
+                           if isinstance(p, list) and len(p) == 3 and str(p[0]) == name[len(prefix):]]
+                point = matches[0] if len(matches) == 1 else None
+        if not isinstance(point, list) or len(point) != 2 or any(
+                type(v) not in (int, float) or not math.isfinite(v) for v in point):
+            return None
+        return math.hypot(point[0] - condition['x'], point[1] - condition['y']) <= condition['tolerancePx']
     rows = [r for r in (trace or {}).get("rows", []) if r.get("tick", -1) >= condition.get("fromTick", 0)]
     if not rows:
         return None
