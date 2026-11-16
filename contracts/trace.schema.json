@@ -20,6 +20,7 @@
       "properties": {
         "enemies": {"enum": ["complete", "initial-instances", "absent"]},
         "projectiles": {"enum": ["complete", "initial-instances", "absent"]},
+        "roleBoxes": {"type": "boolean", "description": "Configured Godot recorder: every row carries roleObjects, including an empty list when no bound instances exist on that tick. Bindings never found anywhere refuse the replay, not a successful empty trace."},
         "objectBoxes": {"type": "boolean", "description": "Added Nov 15, 2026 by the Godot harness (#286): true when every row carries enemyBoxes and projectileBoxes. Absent on a trace from before; a reader then has no box for an enemy or a projectile and never guesses one."},
         "facing": {"type": "boolean"},
         "onFloor": {"type": "boolean"},
@@ -30,6 +31,8 @@
         }
       }
     },
+    "viewport": {"type": "array", "items": {"type": "number", "exclusiveMinimum": 0}, "minItems": 2, "maxItems": 2, "description": "Configured Godot output width and height in captured-frame pixels."},
+    "bindings": {"type": "object", "minProperties": 1, "description": "The project role bindings the harness resolved; role names are the keys."},
     "levelSurfaces": {
       "description": "Every solid surface of the level as a polygon of [x, y] world points.",
       "type": "array",
@@ -75,6 +78,7 @@
             "description": "[xx, xy, yx, yy, ox, oy]: a world point (x, y) lands at (xx*x + yx*y + ox, xy*x + yy*y + oy) in frame pixels. It is the camera of the frame drawn before this row's tick; readers take the next row's view for this tick's frame (agents/observations.py, _view_at).",
             "type": "array", "items": {"type": "number"}, "minItems": 6, "maxItems": 6
           },
+          "roleObjects": {"type": "array", "items": {"$ref": "#/$defs/roleObject"}, "description": "Configured Godot instances, re-resolved each tick. Dynamically spawned instances appear on their first recorded tick. Removed instances disappear; a hidden instance keeps its geometry and visible=false. box uses the following tick camera, as view readers do (the last row keeps its own view)."},
           "objects": {
             "description": "Added Nov 9 for the Unity harness (the Godot harness does not write it): every tracked object as the engine placed it in this row's own frame (the frame of this tick, not the view convention above).",
             "type": "array",
@@ -101,7 +105,24 @@
       }
     }
   },
+  "allOf": [{
+    "if": {"required": ["capabilities"], "properties": {"capabilities": {"required": ["roleBoxes"], "properties": {"roleBoxes": {"const": true}}}}},
+    "then": {"required": ["viewport", "bindings"], "properties": {"rows": {"items": {"required": ["roleObjects"]}}}}
+  }],
   "$defs": {
+    "box": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4},
+    "roleObject": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "role", "worldBox", "box", "visible", "boundsSource"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "description": "Scene-relative path with literal # doubled; replacement instances on that path get #2, #3, etc. Shared across roles bound to the same instance."},
+        "role": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,39}$"},
+        "worldBox": {"$ref": "#/$defs/box", "description": "AABB in world pixels, y down, of the measured geometry after all node transforms."},
+        "box": {"$ref": "#/$defs/box", "description": "AABB in captured-frame pixels, y down, before clipping. Transforms actual geometry vertices, not just the world AABB."},
+        "visible": {"type": "boolean", "description": "Engine lifecycle state: at least one measured drawing is visible in its tree, or the root is visible for a collision-only object. Does not prove pixels were drawn, alpha, occlusion, shaders, or being on screen."},
+        "boundsSource": {"enum": ["drawing", "collision"], "description": "Drawing: visible Sprite2D current rects, AnimatedSprite2D current frame rects or Polygon2D vertices; all measured drawing bounds are retained when the whole instance is hidden. Collision fallback: enabled shapes/polygons when there is no supported drawing. Excludes other bound roots and nested physics bodies."}
+      }
+    },
     "point": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
     "tracked": {"type": "array", "prefixItems": [{"type": "integer"}, {"type": "number"}, {"type": "number"}], "minItems": 3, "maxItems": 3},
     "trackedBox": {"type": "array", "prefixItems": [{"type": "integer"}, {"type": "number"}, {"type": "number"}, {"type": "number"}, {"type": "number"}], "minItems": 5, "maxItems": 5}
