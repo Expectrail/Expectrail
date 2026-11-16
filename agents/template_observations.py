@@ -165,6 +165,79 @@ def object_predictions(trace, frames, role, fps=60):
     return out
 
 
+# How far (world pixels) a logged box must move in one tick to count as moving. The bundled game's enemy
+# walks 22 px a second, 0.18 px a tick at 120 ticks a second; a resting box moves 0.
+MOTION_EPSILON_PX = 1e-3
+HEADINGS = ('right', 'left')
+
+
+def _step(a, b):
+    """'right', 'left' or 'still' for the move from box ``a`` to box ``b`` (their centres), None when unusable."""
+    if not (finite_box(a) and finite_box(b)):
+        return None
+    dx = (b[0] + b[2]) / 2 - (a[0] + a[2]) / 2
+    if abs(dx) <= MOTION_EPSILON_PX:
+        return 'still'
+    return 'right' if dx > 0 else 'left'
+
+
+def object_motion(trace, frames, role, fps=60):
+    """Which way the engine moves each ``role`` object at each frame: {frame: {id: motion}}, or {frame: None}
+    when the record cannot say (no row, malformed entries, or a trace that does not log object boxes).
+
+    A frame's tick is the one ``object_predictions`` reads. The motion is read from the object's own logged
+    world box on the tick before, that tick and the tick after: ``right`` or ``left`` when both steps go that
+    way, ``still`` when neither moves, ``turning`` when they disagree, and None for an object not logged on
+    all three ticks. Only ``right`` and ``left`` are a claim about which way the object should face; the game
+    sets an enemy's facing from its velocity after it moves (game/platformer/enemy/enemy.gd), so a frame
+    where it turns or stands makes no claim and is not judged."""
+    field = OBJECT_BOXES.get(role)
+    if field is None:
+        raise SensorError(f'the engine logs no box for {role!r}')
+    tps = trace.get('physicsTicksPerSecond')
+    if type(tps) is not int or type(fps) is not int or fps <= 0 or tps < fps or tps % fps:
+        raise SensorError('capture fps must divide the recorded physics tick rate')
+    logged = (trace.get('capabilities') or {}).get('objectBoxes') is True
+    rows = trace.get('rows', [])
+    by_tick = {r['tick']: r for r in rows}
+    if len(by_tick) != len(rows):
+        raise SensorError('duplicate trace ticks')
+    step = tps // fps
+
+    def boxes(tick):
+        row = by_tick.get(tick)
+        entries = row.get(field) if row else None
+        if not isinstance(entries, list):
+            return None
+        out = {}
+        for entry in entries:
+            if not (isinstance(entry, list) and len(entry) == 5 and type(entry[0]) is int and finite_box(entry[1:])):
+                return None
+            out[entry[0]] = entry[1:]
+        return out
+
+    out = {}
+    for frame in frames:
+        tick = (frame + 1) * step - 1
+        now = boxes(tick)
+        if not logged or now is None:
+            out[frame] = None
+            continue
+        before, after = boxes(tick - 1), boxes(tick + 1)
+        motion = {}
+        for ident, box in now.items():
+            first = _step(before.get(ident), box) if before is not None and ident in before else None
+            second = _step(box, after.get(ident)) if after is not None and ident in after else None
+            if first is None or second is None:
+                motion[ident] = None
+            elif first == second:
+                motion[ident] = first
+            else:
+                motion[ident] = 'turning'
+        out[frame] = motion
+    return out
+
+
 def _image(path, mode="L"):
     Image, _, _ = imaging()
     with Image.open(path) as image:

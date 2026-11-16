@@ -643,6 +643,48 @@ explosion frames are the likely place), and a check over them is dropped by the 
 catch. Over a whole window, a check about the enemy is `needs-review` whenever one enters at the screen's
 edge. Tested offline in `tests/test_jit_sensor_named.py`.
 
+**Which way the enemy faces (added November 16, evening).** `visible` cannot see `enemy-walks-backwards`:
+the bank keeps every template mirrored. A new predicate, `faces-motion`, can. It says the object is drawn
+facing the way the engine's record moves it, on every frame of the window where it moves one way and is
+seen where the engine puts it. It is offered for the enemy only, and only to `visual-sensor`. SAM is
+refused it at proposal time, and so is any other object.
+
+- **Motion** (`agents/template_observations.py object_motion`): from each enemy's own logged world box on
+  the tick before, the frame's tick and the tick after. `right` or `left` when both steps go that way;
+  `still`, `turning` or unknown otherwise, and those frames make no claim.
+- **Labels** (`agents/template_foreground.py calibrate_routes`): each clean enemy capture is labelled with
+  the way the engine moved the cropped enemy on that tick (`heading`), and its mirrored copy the other way.
+  A pose that looks the same mirrored, by the rule that keeps templates apart, gets no label.
+- **Facing** (`facing`): the heading whose labelled templates match better, by at least the bank's
+  margin (0.02), or none: the sensor cannot tell, which is a gap.
+- **Validation** (`calibration.objects.enemy.facing`): on every validation frame where the enemy moves
+  one way, the facing is decided as drawn and again with the enemy mirrored in place. `met` by the
+  player's rule on both. The bank's reader recomputes it, refuses labels its record does not count,
+  and refuses a label on a pose that looks the same mirrored.
+- **Judging** (`pixel._facing_observations`): the reference evaluator's `visible` over the judged frames,
+  where a frame holds the enemy only when it is drawn facing its motion. A run whose observer does not
+  list the enemy in `facing` is a gap.
+
+Measured here (Godot 4.7.2, no model, not in CI). The recalibrated bank has the same 408 player and 148
+enemy templates; all 148 enemy captures were cut while the enemy walked right (74 labelled `right`, 74
+mirrored copies `left`). Facing on the validation replay: 251 moving frames, 251 decided right as drawn
+and 251 decided the other way mirrored, 0 wrong (`met`). Then on three library probes, every 10th frame,
+the clean game twice and each defect build once:
+
+| Probe | Clean: matched while moving, facing its motion | `enemy-walks-backwards`: facing against it |
+| --- | --- | --- |
+| `hold-right` | 29 of 29 (both replays) | 29 of 29 |
+| `reverse` | 23 of 23 (both replays) | 23 of 23 |
+| `move-fire-right` | 15 of 15 (both replays) | 15 of 15 |
+
+No box was undecided. A `faces-motion` check over the whole window is `needs-review` on every probe,
+because an enemy enters at the screen's edge (partial boxes are gaps). Windowed past those frames (from
+frame 30, 130 and 30), it passed both clean replays and failed the backwards build on all three probes,
+and passed `enemy-slides-when-shot`. `visible` over the same windows did not tell the clean game from the
+backwards build on any probe. The nine clean `not-found` boxes on `move-fire-right` have motion `still`:
+enemies that were shot and stopped. That is two clean replays, not the keep rule's three, and the checks
+were written by hand, not proposed by a model. Tested offline in `tests/test_jit_sensor_facing.py`.
+
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 
 The replays run the change's code, and asking SAM needs its key; jit.yml keeps the two in separate jobs
