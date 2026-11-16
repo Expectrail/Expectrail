@@ -221,7 +221,12 @@ declared, and a fix is held to more:
   stopped; until November 13, 2026 "no checks ran" or the stop reason came first in those two
   cases), and the comment and the review page
   lead with "No check reproduced the reported bug, so this fix is not verified", then how to get a
-  check. A check that still fails after the change rejects, as always.
+  check. When a check did fail on the base but has no pass or fail on the head (it needs review, for
+  example with no vision key, or its replay did not finish), the reason says so: "N check(s) failed
+  before the change but could not be decided after the change", and the comment, the review page and
+  `expectrail verify` lead with "A check failed before the change, but its result after the change
+  could not be decided, so this fix is not verified" (#560). The decision is the same needs-review.
+  A check that still fails after the change rejects, as always.
 - **`change`** (an intended change of behaviour) and **`none`** are judged by the rule above,
   unchanged, and nothing is replayed again.
 - Declaring `fix` can only take an accept away. Anything typed that is not one of the three stops

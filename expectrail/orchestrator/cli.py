@@ -52,7 +52,7 @@ def describe(status: dict, job_folder: Path | None = None) -> str:
     lines = []
     if status["decision"] == "needs-review" and any(
             r.startswith(rec.NOT_DEMONSTRATED + ":") for r in status["reasons"]):
-        lines.append(req.UNVERIFIED_FIX)
+        lines.append(rec.unverified_fix_headline(status))
     lines.append(f"job {status['id']}: {status['phase']}" + (f", {status['decision']}" if status["decision"] else ""))
     if status.get("intent", "none") != "none":
         lines.append(f"  Declared intent: {status['intent']}")
