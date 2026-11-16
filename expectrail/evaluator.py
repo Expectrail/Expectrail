@@ -69,14 +69,15 @@ def _assertion_verdict(spec: dict, observations: dict) -> dict:
 
     judged, missing, failures, first_fail = 0, [], [], None
     not_drawn = []
+    unexercised = []
     reached = None
 
     window_frames = list(_frames(spec, observations))
 
     def counts(frame):
         negative = frame.get("notDrawn", {}).get(assertion["object"])
-        return bool(negative) and (negative["reason"] == "no-match" or
-                                   (negative["reason"] == "size-mismatch" and
+        return not frame.get("notExercised", {}).get(assertion["object"]) and bool(negative) and (negative["reason"] == "no-match" or
+                                   (negative["reason"] in ("size-mismatch", "place-mismatch") and
                                     (negative.get("answer") or {}).get("score", 0) >= scores[assertion["object"]]))
 
     longest = run = 0
@@ -87,6 +88,10 @@ def _assertion_verdict(spec: dict, observations: dict) -> dict:
 
     for frame in window_frames:
         n = frame["frame"]
+        if frame.get("notExercised", {}).get(assertion["object"]):
+            unexercised.append(n)
+            missing.append(n)
+            continue
         if counts(frame) and not negatives_fail:
             # Too few in a row to say the player is not drawn: the frame is missing an object.
             missing.append(n)
@@ -209,6 +214,10 @@ def _assertion_verdict(spec: dict, observations: dict) -> dict:
             result, reason = "pass", f"no violation in {judged} frames"
         else:
             result, reason = "needs-review", "no frame had the objects needed to judge this assertion"
+
+    if result == "pass" and unexercised:
+        result, reason = "needs-review", (f"not-exercised: {assertion['object']} was outside the view in "
+                                           f"{len(unexercised)} frames (first {unexercised[0]})")
 
     return {
         "format": "expectrail.verdict/v0",

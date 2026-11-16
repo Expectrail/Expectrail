@@ -473,3 +473,15 @@ were reported as giving the same four decisions. These historical counts
 are recorded-answer lookups, **not a measured new live cost**, and say nothing about other games
 or a new capture's ability to reproduce the PNG bytes. Stand-in tests additionally demonstrate
 that a three-frame defect can be missed at stride 4 while the default rejects it.
+
+## Dodge vision preparation (November 16, 2026; no model)
+
+[The readiness report](dodge-vision-ready.md) counts the first full Dodge request plan and gives
+Sean's exact existing workflow inputs. Real sandboxed captures and engine-box stand-ins exercise
+calibration, judgment, recording and recorded replay, with zero model calls/spend. They are **not
+vision evidence** and do not add a Dodge accept to the measured results above. The positive
+engine-box control originally gave accept/reject/accept; the first clipped-box control rejected 99
+legal-edge frames of the clean run. [The clipped-player follow-up](dodge-clipped-player.md) fixes
+that visible-size comparison with unchanged thresholds: both physical-body stand-ins now give
+accept/reject/accept and replay their recordings. These remain plumbing controls, not vision evidence.
+The approved check and anchored RULES are unchanged. No live run or workflow was dispatched.
