@@ -751,7 +751,7 @@
             "additionalProperties": {
               "type": "object",
               "additionalProperties": false,
-              "description": "Negative evidence from a calibrated anchored observer, not a provider error. The answered region is retained but is not a player detection. Size-mismatch evidence counts only at the spec object confidence floor; no-match is a successful response with no region.",
+              "description": "Negative evidence from a calibrated anchored observer, not a provider error. Size/place mismatch counts only at the spec object confidence floor; no-match is a successful response with no region. At a clipped edge, comparisons use only the visible part; raw answer is retained.",
               "required": [
                 "reason",
                 "point",
@@ -766,7 +766,8 @@
                 "reason": {
                   "enum": [
                     "size-mismatch",
-                    "no-match"
+                    "no-match",
+                    "place-mismatch"
                   ]
                 },
                 "point": {
@@ -796,7 +797,7 @@
                   },
                   "minItems": 2,
                   "maxItems": 2,
-                  "description": "Width and height in game pixels, from clean calibration drawnSize."
+                  "description": "Clean calibration drawnSize in game pixels, restricted to the visible part at the engine collision body centre when that body intersects an image edge."
                 },
                 "observedSize": {
                   "anyOf": [
@@ -813,7 +814,7 @@
                       "type": "null"
                     }
                   ],
-                  "description": "Answer width and height converted to game pixels, or null for no match."
+                  "description": "Answer dimensions in game pixels, restricted to the image at a clipped edge; null for a successful empty response."
                 },
                 "answer": {
                   "anyOf": [
@@ -831,6 +832,15 @@
                 },
                 "sizeFloorPx": {
                   "const": 4.0
+                },
+                "expectedVisibleBox": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 4,
+                  "maxItems": 4,
+                  "description": "At a clipped edge only: clean calibrated rectangle at the logged body centre, intersected with the image, in captured-frame pixels. Raw answer remains in answer."
                 }
               },
               "allOf": [
@@ -868,10 +878,34 @@
                       }
                     }
                   }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "reason": {
+                        "const": "place-mismatch"
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "expectedVisibleBox"
+                    ]
+                  }
                 }
               ]
             },
             "description": "By spec object name: explicit evidence that the calibrated player was not drawn at its place. Absence of a detection without this evidence remains uncertainty, never an automatic reject."
+          },
+          "notExercised": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "enum": [
+                "outside-view"
+              ]
+            },
+            "description": "By object name: the logged collision body has no positive-area intersection with the view. No question was sent. The evaluator treats it as unjudged, never a pass or negative visual evidence."
           }
         }
       }

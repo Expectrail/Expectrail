@@ -282,8 +282,8 @@ class LookTest(unittest.TestCase):
             self.assertEqual(frame["objects"]["player"], [])
             negative = frame["notDrawn"]["player"]
             self.assertEqual(negative["reason"], "size-mismatch")
-            self.assertEqual(negative["expectedSize"], [16.0, 16.0])
-            self.assertEqual(negative["observedSize"], [48.0, 48.0])
+            self.assertEqual(negative["expectedSize"], [min(16.0, 128.0 - frame["frame"]), 16.0])
+            self.assertEqual(negative["observedSize"], [48.0 if frame["frame"] <= 112 else 144.0 - frame["frame"], 48.0])
             self.assertEqual(negative["answer"]["score"], 0.9)
             self.assertEqual(len(negative["answer"]["box"]), 4)
         verdict = evaluate(SPEC, seen)
