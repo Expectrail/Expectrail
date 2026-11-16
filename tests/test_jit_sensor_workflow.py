@@ -25,6 +25,16 @@ from expectrail.jit import offer as offer_mod
 from expectrail.jit import template_observer
 from tests.test_jit_candidate_workflow import REPO, Scratch, step
 
+try:
+    import PIL  # noqa: F401 - the sensor reads its bank's pixels with Pillow
+    import numpy  # noqa: F401 - and matches with NumPy
+    HAVE_PIXELS = True
+except ModuleNotFoundError as exc:  # the test job's image has neither; the jobs that run the sensor install both
+    if exc.name not in ("PIL", "numpy"):
+        raise
+    HAVE_PIXELS = False
+needs_pixels = unittest.skipUnless(HAVE_PIXELS, "the template sensor needs Pillow and NumPy")
+
 PX = offer_mod.PIXEL
 SENSOR = "visual-sensor"
 SAM = "sam-3.1-anchor"
@@ -273,12 +283,18 @@ class CalibrateBank(unittest.TestCase):
         from agents import template_foreground as foreground
         from agents import template_observations as sensor
 
-        doc = sensor.load_bank(json.loads(EXAMPLE_BANK.read_text())) if bank is None else bank
-        with mock.patch.object(foreground, "calibrate_routes", side_effect=error, return_value=doc) as cal:
+        def calibrated(*args, **kwargs):
+            # Read only once calibration is reached, so the refusals before it need no Pillow.
+            if error is not None:
+                raise error
+            return sensor.load_bank(json.loads(EXAMPLE_BANK.read_text())) if bank is None else bank
+
+        with mock.patch.object(foreground, "calibrate_routes", side_effect=calibrated) as cal:
             out = template_observer.calibrate_bank(self.dir / "out" / "bank.json", self.dir / "work",
                                                    run_replay=self.runner, **kw)
         return out, cal
 
+    @needs_pixels
     def test_the_clean_game_alone_four_routes_no_patch(self):
         summary, cal = self.calibrate()
         self.assertEqual([r["route"]["name"] for r in self.replays], ["cal-walk", "cal-air", "cal-fire", "cal-validation"])
@@ -298,6 +314,7 @@ class CalibrateBank(unittest.TestCase):
         self.assertEqual(summary["templates"], 1)
         self.assertEqual(summary["validation"], "cal-validation")
 
+    @needs_pixels
     def test_the_bank_can_judge(self):
         self.calibrate()
         observer = template_observer.TemplateSensorObserver(self.dir / "out" / "bank.json")
@@ -332,6 +349,7 @@ class CalibrateBank(unittest.TestCase):
             self.calibrate(error=sensor.SensorError("no usable clean calibration frames"))
         self.assertFalse((self.dir / "out" / "bank.json").exists())
 
+    @needs_pixels
     def test_a_bank_without_the_player_is_refused(self):
         from agents import template_observations as sensor
 
