@@ -100,7 +100,8 @@ class TheJobs(unittest.TestCase):
             self.assertNotIn(way, run)
         upload = next(s for s in job["steps"] if s.get("name") == "Keep the record")
         self.assertEqual(upload["with"]["name"],
-                         f"jit-${{{{ matrix.c.case }}}}${{{{ needs.plan.outputs.offer == '{PX}' && '-captured' || '' }}}}")
+                         f"jit-${{{{ matrix.c.case }}}}${{{{ needs.plan.outputs.offer == '{PX}' && "
+                         f"needs.plan.outputs.observer != 'visual-sensor' && '-captured' || '' }}}}")
         self.assertIn("runs/pixel-capture/", upload["with"]["path"].split())
         install = next(s for s in job["steps"] if s.get("uses") == "./.github/actions/apt-install")
         self.assertIn("xvfb", install["with"]["packages"])

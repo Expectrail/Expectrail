@@ -1,5 +1,4 @@
 """Inspect authored scenes without starting the game or approving a check."""
-import contextlib
 import io
 import json
 import shutil
@@ -8,13 +7,14 @@ import unittest
 from pathlib import Path
 
 from expectrail import cli, contracts, project_config
+from tests import cli_capture
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def command(*args):
     stream = io.StringIO()
-    with contextlib.redirect_stdout(stream), contextlib.redirect_stderr(stream):
+    with cli_capture.command_output(stream):
         code = cli.main([str(a) for a in args])
     return code, stream.getvalue()
 

@@ -473,6 +473,7 @@ class PageWordsInBrowserTest(unittest.TestCase):
                 browser.close()
         finally:
             server.shutdown()
+            server.server_close()
         self.assertIn("No clearance", text)
         self.assertIn("in your trust store, and revoked", text)
         self.assertIn("not shown: no valid signature from a trusted key", text)

@@ -45,6 +45,14 @@ name: Generated checks
 # (10 by default, 1 to 60). The capture, asking and judging jobs all take the same value, so the frames
 # kept, asked about and judged are one plan; a job that plans other frames than the answers were asked
 # about judges nothing. A sparser plan reserves fewer images under the same cap.
+#
+# observer (#286): under the pixel setting, who judges the pixel checks. sam-3.1-anchor, the default, is
+# the three jobs above. visual-sensor is the no-model template sensor (expectrail/jit/template_observer.py):
+# it holds no key and sends nothing, so it judges in replay-final and pixel-ask and pixel-judge do not run.
+# Its bank is calibrated once a run by the sensor-bank job, on the clean game alone (four dedicated clean
+# routes, no patch), and every case is judged with that one bank. propose and revise are told which
+# observer will judge (--observer), so the proposer is offered only what that observer can tell: for the
+# sensor, whether and where the player is drawn. sam_every sets the sensor's frame plan too.
 on:
   pull_request:
     paths:
@@ -87,6 +95,11 @@ on:
       sam_every:
         description: Pixel setting only. SAM is asked about every Nth frame of a probe and its last (1 to 60; 10 by default)
         default: '10'
+      observer:
+        description: Pixel setting only. Who judges the pixel checks, SAM 3.1 (sam-3.1-anchor) or the no-model template sensor (visual-sensor)
+        type: choice
+        options: ['sam-3.1-anchor', 'visual-sensor']
+        default: 'sam-3.1-anchor'
 
 permissions:
   contents: read
@@ -173,11 +186,13 @@ jobs:
       offer: ${{ steps.plan.outputs.offer }}
       candidate: ${{ steps.plan.outputs.candidate }}
       sam_every: ${{ steps.plan.outputs.sam_every }}
+      observer: ${{ steps.plan.outputs.observer }}
     env:
       MODE: ${{ inputs.mode }}
       OFFER: ${{ inputs.offer || 'baseline' }}
       CANDIDATE_TO_MODEL: ${{ inputs.candidate || 'shown' }}
       SAM_EVERY: ${{ inputs.sam_every || '10' }}
+      OBSERVER: ${{ inputs.observer || 'sam-3.1-anchor' }}
       CASE: ${{ inputs.case }}
       BASE: ${{ inputs.base_patch }}
       CANDIDATE: ${{ inputs.candidate_patch }}
@@ -200,6 +215,9 @@ jobs:
           echo "candidate=$CANDIDATE_TO_MODEL" >> "$GITHUB_OUTPUT"
           SAM_EVERY="${SAM_EVERY:-10}"; [[ "$SAM_EVERY" =~ ^([1-9]|[1-5][0-9]|60)$ ]] || { echo "::error::sam_every must be a whole number from 1 to 60"; exit 1; }
           echo "sam_every=$SAM_EVERY" >> "$GITHUB_OUTPUT"
+          OBSERVER="${OBSERVER:-sam-3.1-anchor}"; [[ "$OBSERVER" =~ ^(sam-3\.1-anchor|visual-sensor)$ ]] || { echo "::error::observer must be sam-3.1-anchor or visual-sensor"; exit 1; }
+          [[ "$OBSERVER" == "sam-3.1-anchor" || "$OFFER" == "signals-reach-evidence-pixel" ]] || { echo "::error::observer visual-sensor judges pixel checks, which only the signals-reach-evidence-pixel offer has"; exit 1; }
+          echo "observer=$OBSERVER" >> "$GITHUB_OUTPUT"
           if [[ "$MODE" == "bench" ]]; then
             [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "::error::the bench runs only from main"; exit 1; }
             [[ "$OFFER" == "baseline" ]] || { echo "::error::the known-bugs bench is registered under the baseline offer"; exit 1; }
@@ -297,6 +315,7 @@ jobs:
       BUDGET: ${{ needs.plan.outputs.budget }}
       OFFER: ${{ needs.plan.outputs.offer }}
       CANDIDATE_TO_MODEL: ${{ needs.plan.outputs.candidate }}
+      OBSERVER: ${{ needs.plan.outputs.observer }}
       KEY_SET: ${{ secrets.MODEL_API_KEY != '' || secrets.META_API_KEY != '' }}
     steps:
       - name: Check the key
@@ -319,9 +338,10 @@ jobs:
           base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
           ev=(); if [[ -f runs/jit-measure/repro-evidence.json ]]; then ev=(--evidence runs/jit-measure/repro-evidence.json); fi
           wc=(); if [[ "$CANDIDATE_TO_MODEL" == "withheld" ]]; then wc=(--withhold-candidate); fi
+          ob=(); if [[ "$OBSERVER" == "visual-sensor" ]]; then ob=(--observer visual-sensor); fi
           python -m expectrail.jit.cli propose --report-file "$REPORT" --candidate "$CANDIDATE" --out runs/jit-proposal \
             --budget-usd "$BUDGET" "${base[@]}" --measurements runs/jit-measure/jit-measurements.json --offer "$OFFER" "${ev[@]}" \
-            "${wc[@]}"
+            "${wc[@]}" "${ob[@]}"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jit-proposal-${{ matrix.c.case }}
@@ -409,6 +429,7 @@ jobs:
       BUDGET: ${{ needs.plan.outputs.budget }}
       OFFER: ${{ needs.plan.outputs.offer }}
       CANDIDATE_TO_MODEL: ${{ needs.plan.outputs.candidate }}
+      OBSERVER: ${{ needs.plan.outputs.observer }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -437,11 +458,12 @@ jobs:
           base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
           ev=(); if [[ -f runs/jit-measure/repro-evidence.json ]]; then ev=(--evidence runs/jit-measure/repro-evidence.json); fi
           wc=(); if [[ "$CANDIDATE_TO_MODEL" == "withheld" ]]; then wc=(--withhold-candidate); fi
+          ob=(); if [[ "$OBSERVER" == "visual-sensor" ]]; then ob=(--observer visual-sensor); fi
           # Any failure here leaves the first round standing; it can never become a pass or a catch.
           python -m expectrail.jit.cli revise --report-file "$REPORT" --candidate "$CANDIDATE" "${base[@]}" "${ev[@]}" \
             --proposal runs/jit-proposal/jit-proposal.json --record runs/jit-round1/jit-run.json \
             --measurements runs/jit-measure/jit-measurements.json --out runs/jit-proposal-2 \
-            --budget-usd "$BUDGET" --github-output runs/jit-proposal-2/revised.txt --offer "$OFFER" "${wc[@]}" \
+            --budget-usd "$BUDGET" --github-output runs/jit-proposal-2/revised.txt --offer "$OFFER" "${wc[@]}" "${ob[@]}" \
             || { echo "::warning::the revision failed; the first round stands"; echo "revised=false" > runs/jit-proposal-2/revised.txt; }
           [[ -f runs/jit-proposal-2/jit-proposal.json ]] || echo "revised=false" > runs/jit-proposal-2/revised.txt
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -454,10 +476,15 @@ jobs:
     # Runs the game. No secret. The revised proposal, replayed from scratch with the first round's spend
     # carried in; or, when nothing was revised, the first round's record as it is. Under the pixel setting
     # the proposal the revise job wrote is always replayed, and each pixel check's probe is replayed with
-    # frames, which are kept for pixel-ask (--pixel-capture); nothing is asked here, so the pixel rows are
-    # not run, and this record is not the result (pixel-judge's is).
-    needs: [plan, replay, revise]
-    if: github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal'
+    # frames. With SAM, the frames are kept for pixel-ask (--pixel-capture); nothing is asked here, so the
+    # pixel rows are not run, and this record is not the result (pixel-judge's is). With the template
+    # sensor, the pixel checks are judged here with the sensor-bank job's bank, and this record is the result.
+    needs: [plan, replay, revise, sensor-bank]
+    # sensor-bank runs only for the template sensor; when it is skipped this job must still run.
+    if: >-
+      !cancelled() && github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal'
+      && needs.plan.result == 'success' && needs.replay.result == 'success' && needs.revise.result == 'success'
+      && (needs.sensor-bank.result == 'success' || (needs.sensor-bank.result == 'skipped' && needs.plan.outputs.observer != 'visual-sensor'))
     strategy:
       fail-fast: false
       max-parallel: 4
@@ -474,6 +501,7 @@ jobs:
       OFFER: ${{ needs.plan.outputs.offer }}
       CANDIDATE_TO_MODEL: ${{ needs.plan.outputs.candidate }}
       SAM_EVERY: ${{ needs.plan.outputs.sam_every }}
+      OBSERVER: ${{ needs.plan.outputs.observer }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -496,6 +524,14 @@ jobs:
         with:
           name: jit-${{ matrix.c.case }}-round1
           path: runs/jit-round1
+      - name: Pillow and NumPy, for the template sensor
+        if: needs.plan.outputs.observer == 'visual-sensor'
+        run: python -m pip install pillow==12.3.0 numpy==2.5.3
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        if: needs.plan.outputs.observer == 'visual-sensor'
+        with:
+          name: jit-sensor-bank
+          path: runs/sensor-bank
       - name: Replay the revised proposal, or keep the first round
         run: |
           revised=false; grep -qx "revised=true" runs/jit-proposal-2/revised.txt 2>/dev/null && revised=true
@@ -504,7 +540,12 @@ jobs:
           px=()
           if [[ "$OFFER" == "signals-reach-evidence-pixel" && -f runs/jit-proposal-2/jit-proposal.json ]]; then
             SAM_EVERY="${SAM_EVERY:-10}"; [[ "$SAM_EVERY" =~ ^([1-9]|[1-5][0-9]|60)$ ]] || { echo "::error::sam_every must be a whole number from 1 to 60"; exit 1; }
-            px=(--observer sam-3.1-anchor --pixel-capture runs/pixel-capture --sam-every "$SAM_EVERY")
+            if [[ "$OBSERVER" == "visual-sensor" ]]; then
+              [[ -f runs/sensor-bank/bank.json ]] || { echo "::error::observer visual-sensor needs the sensor-bank job's bank"; exit 1; }
+              px=(--observer visual-sensor --sensor-bank runs/sensor-bank/bank.json --sam-every "$SAM_EVERY")
+            else
+              px=(--observer sam-3.1-anchor --pixel-capture runs/pixel-capture --sam-every "$SAM_EVERY")
+            fi
           fi
           mkdir -p "runs/jit/$CASE"
           if [[ "$revised" == "true" || ${#px[@]} -gt 0 ]]; then
@@ -523,8 +564,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          # Under the pixel setting this is not the result: pixel-judge uploads jit-<case>.
-          name: jit-${{ matrix.c.case }}${{ needs.plan.outputs.offer == 'signals-reach-evidence-pixel' && '-captured' || '' }}
+          # Under the pixel setting with SAM this is not the result: pixel-judge uploads jit-<case>.
+          name: jit-${{ matrix.c.case }}${{ needs.plan.outputs.offer == 'signals-reach-evidence-pixel' && needs.plan.outputs.observer != 'visual-sensor' && '-captured' || '' }}
           path: |
             runs/jit/${{ matrix.c.case }}/jit-run.json
             runs/jit/${{ matrix.c.case }}/jit-routes/
@@ -540,7 +581,7 @@ jobs:
     # main can reach the key.
     needs: [plan, replay-final]
     environment: main-only
-    if: github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal' && needs.plan.outputs.offer == 'signals-reach-evidence-pixel'
+    if: github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal' && needs.plan.outputs.offer == 'signals-reach-evidence-pixel' && needs.plan.outputs.observer != 'visual-sensor'
     strategy:
       fail-fast: false
       max-parallel: 4
@@ -597,7 +638,7 @@ jobs:
     # --sam-answers; a missing answer or a changed frame drops the check). With no frames or no answers,
     # replay-final's record is kept as it is, its pixel rows not run. This job's record is the result.
     needs: [plan, revise, replay-final, pixel-ask]
-    if: always() && github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal' && needs.plan.outputs.offer == 'signals-reach-evidence-pixel' && needs.replay-final.result == 'success'
+    if: always() && github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal' && needs.plan.outputs.offer == 'signals-reach-evidence-pixel' && needs.plan.outputs.observer != 'visual-sensor' && needs.replay-final.result == 'success'
     strategy:
       fail-fast: false
       max-parallel: 4
@@ -753,3 +794,43 @@ jobs:
             runs/repro-score/
             runs/repro/
           retention-days: 90
+
+  sensor-bank:
+    # The pixel setting with observer visual-sensor only. Runs the clean game alone, no secret, no patch,
+    # no proposal: four dedicated clean routes, from which the template sensor's bank is calibrated once
+    # for the whole run (expectrail/jit/template_observer.py, calibrate_bank). No bug build or candidate
+    # reaches it, so a change cannot shape the bank that judges it.
+    needs: [plan]
+    if: github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal' && needs.plan.outputs.offer == 'signals-reach-evidence-pixel' && needs.plan.outputs.observer == 'visual-sensor'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt pillow==12.3.0 numpy==2.5.3
+      - name: Install a virtual display and software OpenGL, for the clean frames
+        uses: ./.github/actions/apt-install
+        with:
+          packages: xvfb libgl1-mesa-dri libglx-mesa0
+      - name: Download Godot 4.7.2 and check its SHA-512
+        uses: ./.github/actions/get-godot
+      - name: Calibrate the template bank on the clean game
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+        run: |
+          export PATH="$PWD/tools/godot:$PATH"
+          python -m expectrail.jit.cli sensor-bank --out runs/sensor-bank/bank.json --work runs/sensor-calibration \
+            > sensor-bank-summary.json
+          echo "::notice title=Sensor bank::$(cat sensor-bank-summary.json)"
+          mv sensor-bank-summary.json runs/sensor-bank/summary.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jit-sensor-bank
+          path: runs/sensor-bank/
+          if-no-files-found: error
+          retention-days: 14
