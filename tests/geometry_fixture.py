@@ -17,7 +17,7 @@ def replay_trace(game: Path, route: Path, out: Path, godot: Path) -> dict:
     engine = godot.resolve()
     stat = engine.stat()
     scripts = tuple((hr.REPO / 'harness/godot' / name).read_bytes()
-                    for name in ('expectrail_harness.gd', 'expectrail_recorder.gd'))
+                    for name in ('expectrail_harness.gd', 'expectrail_recorder.gd', 'expectrail_roles.gd'))
     key = (hr.tree_digest(game), route.read_bytes(), str(engine), stat.st_size, stat.st_mtime_ns, scripts)
     if key not in _traces:
         hr.run(route, out, game=game, godot=godot, capture_frames=False)

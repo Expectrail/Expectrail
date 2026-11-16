@@ -1,5 +1,8 @@
 """Observations providers: trace stand-in by default; SAM 3.1 when asked.
 
+Configured Godot traces use measured role geometry from ``agents.godot_roles``.
+Unconfigured traces retain the legacy calculations below.
+
 Default provider ``trace`` builds expectrail.observations/v0 from harness
 trace.json world positions (y-down boxes). Set ``EXPECTRAIL_OBS_PROVIDER=sam``
 (or pass provider=\"sam\") to use SAM 3.1 through the Meta Model API
@@ -150,6 +153,9 @@ def from_trace_synthetic(
     no ground line at all, and a game with no tile ground (Godot's Dodge the Creeps, #263) was
     rejected against a floor guessed at 0.
     """
+    from agents import godot_roles
+    if godot_roles.configured(trace):
+        return godot_roles.observations(trace, replay_sha256, fps, physics_tps)
     rows = list(trace.get("rows") or [])
     tps = physics_tps or int(trace.get("physicsTicksPerSecond") or 120)
     step = max(tps // fps, 1)
@@ -332,6 +338,9 @@ def engine_ground_by_frame(trace: dict, frame_size: tuple[int, int], frames: lis
     the last physics tick before the frame was drawn (see _frame_tick and _view_at). Returns
     {frame: {"ground": [box]}}, with an empty list when the engine logged no ground then.
     """
+    from agents import godot_roles
+    if godot_roles.configured(trace):
+        return godot_roles.ground(trace, frame_size, frames, fps)
     rows = list(trace.get("rows") or [])
     step = max(int(trace.get("physicsTicksPerSecond") or 120) // fps, 1)
     width, height = frame_size
@@ -368,6 +377,9 @@ def engine_refs_by_frame(trace: dict, frame_size: tuple[int, int], frames: list[
     left out, so a caller can tell "the engine has nothing here" from "no coins here". The frame
     size is accepted for symmetry with engine_ground_by_frame; boxes may lie off the frame.
     """
+    from agents import godot_roles
+    if godot_roles.configured(trace):
+        return godot_roles.refs(trace, frames, fps)
     del frame_size
     rows = list(trace.get("rows") or [])
     step = max(int(trace.get("physicsTicksPerSecond") or 120) // fps, 1)
@@ -393,10 +405,20 @@ def engine_refs_by_frame(trace: dict, frame_size: tuple[int, int], frames: list[
 
 def has_engine_refs(trace: dict) -> bool:
     """Whether the trace can place objects in frame pixels (it logs the camera)."""
+    from agents import godot_roles
+    if godot_roles.configured(trace):
+        return trace.get("capabilities", {}).get("roleBoxes") is True and any(
+            isinstance(r.get("roleObjects"), list) for r in trace.get("rows") or [])
     return any(r.get("view") for r in trace.get("rows") or [])
 
 
 def has_engine_ground(trace: dict) -> bool:
+    from agents import godot_roles
+    if godot_roles.configured(trace):
+        if not has_engine_refs(trace):
+            return False
+        if "ground" in trace.get("bindings", {}):
+            return True
     return any(r.get("ground") is not None and r.get("view") for r in trace.get("rows") or [])
 
 
@@ -481,6 +503,9 @@ def with_reference_ground(trace: dict, surfaces: list) -> dict:
     collision but is drawn inside a floor whose art was moved up looks sunk, and fails. Art moved
     down (a robot that looks like it floats) leaves the collision line in charge.
     """
+    from agents import godot_roles
+    if godot_roles.configured(trace):
+        return godot_roles.reference_ground(trace, surfaces)
     out = dict(trace)
     art = trace.get("levelArt") if isinstance(trace.get("levelArt"), dict) else None
     rows = []
