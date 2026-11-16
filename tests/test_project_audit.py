@@ -1,5 +1,4 @@
 """Audit regressions: fail closed on bad setup; exercise a distinct configured Godot project."""
-import contextlib
 import io
 import json
 from pathlib import Path
@@ -10,6 +9,7 @@ from unittest import mock
 
 from expectrail import cli, onboarding, project_config
 from harness import run as hr
+from tests import cli_capture
 
 ROOT = Path(__file__).resolve().parent.parent
 GAME = ROOT / 'tests/projects/config-lane'
@@ -17,7 +17,7 @@ GAME = ROOT / 'tests/projects/config-lane'
 
 def command(*args):
     output=io.StringIO()
-    with contextlib.redirect_stdout(output),contextlib.redirect_stderr(output):
+    with cli_capture.command_output(output):
         code=cli.main([str(a) for a in args])
     return code,output.getvalue()
 

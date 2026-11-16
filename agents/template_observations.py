@@ -102,17 +102,66 @@ def player_predictions(trace, frames, fps=60):
         tick = (frame + 1) * step - 1
         row = by_tick.get(tick, {})
         later = by_tick.get(tick + 1, row if tick == trace.get('ticks', len(rows)) - 1 else {})
-        view, body = later.get('view'), row.get('body')
-        box = None
-        if finite_box(body) and isinstance(view, list) and len(view) == 6 and all(
-                type(x) in (int, float) and math.isfinite(x) for x in view):
-            points = [(view[0]*x + view[2]*y + view[4], view[1]*x + view[3]*y + view[5])
-                      for x in (body[0], body[2]) for y in (body[1], body[3])]
-            box = [min(x for x, y in points), min(y for x, y in points),
-                   max(x for x, y in points), max(y for x, y in points)]
-            if not finite_box(box):
-                box = None
-        out[frame] = {'player': box}
+        out[frame] = {'player': _on_screen(row.get('body'), later.get('view'))}
+    return out
+
+
+def _on_screen(world, view):
+    """A world box through a camera ``view``, all four corners transformed; None when either is unusable."""
+    if not (finite_box(world) and isinstance(view, list) and len(view) == 6 and all(
+            type(x) in (int, float) and math.isfinite(x) for x in view)):
+        return None
+    points = [(view[0]*x + view[2]*y + view[4], view[1]*x + view[3]*y + view[5])
+              for x in (world[0], world[2]) for y in (world[1], world[3])]
+    box = [min(x for x, y in points), min(y for x, y in points),
+           max(x for x, y in points), max(y for x, y in points)]
+    return box if finite_box(box) else None
+
+
+# The objects the game has many of, and the trace row field where the harness logs each one's own collision
+# box with its id (``[id, left, top, right, bottom]``, since November 15, 2026; contracts/trace.schema.json).
+OBJECT_BOXES = {'enemy': 'enemyBoxes', 'bullet': 'projectileBoxes'}
+
+
+def object_predictions(trace, frames, role, fps=60):
+    """Where the engine's record puts every ``role`` object in each frame, as ``player_predictions`` puts the
+    player: {frame: [(id, box), ...]} with each logged collision box through the next tick's camera, or
+    {frame: None} when the record cannot say (no row, no camera, a malformed entry, or a trace whose header
+    does not say it logs object boxes). An empty list is an answer: none was logged on that tick. A box is
+    never guessed from a position. Boxes are frame pixels and may lie partly or wholly off screen."""
+    field = OBJECT_BOXES.get(role)
+    if field is None:
+        raise SensorError(f'the engine logs no box for {role!r}')
+    tps = trace.get('physicsTicksPerSecond')
+    if type(tps) is not int or type(fps) is not int or fps <= 0 or tps < fps or tps % fps:
+        raise SensorError('capture fps must divide the recorded physics tick rate')
+    logged = (trace.get('capabilities') or {}).get('objectBoxes') is True
+    rows = trace.get('rows', [])
+    by_tick = {r['tick']: r for r in rows}
+    if len(by_tick) != len(rows):
+        raise SensorError('duplicate trace ticks')
+    step = tps // fps
+    out = {}
+    for frame in frames:
+        tick = (frame + 1) * step - 1
+        row = by_tick.get(tick)
+        later = by_tick.get(tick + 1, row if tick == trace.get('ticks', len(rows)) - 1 else None)
+        entries = row.get(field) if row else None
+        view = later.get('view') if later else None
+        if not logged or not isinstance(entries, list) or view is None:
+            out[frame] = None
+            continue
+        found = []
+        for entry in entries:
+            if not (isinstance(entry, list) and len(entry) == 5 and type(entry[0]) is int):
+                found = None
+                break
+            box = _on_screen(entry[1:], view)
+            if box is None:
+                found = None
+                break
+            found.append((entry[0], box))
+        out[frame] = found
     return out
 
 
@@ -439,6 +488,51 @@ def calibrate_routes(clean_runs, validation_run, *, clean_tree, config=None, sim
     return load_bank(bank)
 
 
+def matchers_for(bank, names):
+    """One matcher a named object, over that object's own templates only. Refuses an object with none."""
+    config = bank['config']
+    by_name = {name: [t for t in bank['templates'] if t['object'] == name] for name in names}
+    if not names or any(not items for items in by_name.values()):
+        raise SensorError('every requested object needs a clean template; no engine-only object is invented')
+    if config['algorithm'] != ALGORITHM:
+        from agents.template_foreground import ForegroundMatcher as matcher_type
+    else:
+        matcher_type = Matcher
+    return {name: matcher_type(items, config) for name, items in by_name.items()}
+
+
+def look(matcher, image, box, config, foreground, error=None):
+    """The sensor's row for one object in one frame: search near the engine's ``box`` for its templates.
+
+    ``matched`` (found, overlapping the box), ``displaced`` (found, elsewhere), ``not-found`` (readable
+    pixels searched, nothing reached the threshold), ``out-of-frame`` (the box is not wholly on screen) or
+    ``unavailable`` (no readable image, ``error`` says why, or no usable box)."""
+    row = dict(status='unavailable', reason=error or 'engine has no measured search box',
+               predictedBox=box if finite_box(box) else None, searchBox=None, rawBox=None,
+               score=None, templateFrame=None, scale=None)
+    if foreground:
+        row['components'] = None
+    if image is None or not finite_box(box):
+        return row
+    if box[0] < 0 or box[1] < 0 or box[2] > image.width or box[3] > image.height:
+        row.update(status='out-of-frame', reason='predicted crop is not entirely on screen')
+        return row
+    found, roi = matcher.match(image, box)
+    row['searchBox'] = roi
+    if found:
+        if foreground:
+            row['components'] = found['components']
+        row.update(rawBox=found['box'], score=round(found['score'], 6),
+                   templateFrame=found['templateFrame'], scale=round(found['scale'], 6))
+    if found is None or found['score'] < config['matchThreshold']:
+        row.update(status='not-found', reason='no template reached the pixel similarity threshold')
+    elif _iou(found['box'], box) < config['agreementIoU']:
+        row.update(status='displaced', reason='pixel match does not overlap the engine prediction enough')
+    else:
+        row.update(status='matched', reason='pixels match the clean template inside the predicted region')
+    return row
+
+
 def from_replay(trace, *, replay_sha256, frames_dir, bank, spec, fps=60, predicted=None, agreeing=None, completed=None, on_frame=None):
     """Observation document plus per-object measurement reasons; same agreeing callback shape as SAM.
 
@@ -458,14 +552,8 @@ def from_replay(trace, *, replay_sha256, frames_dir, bank, spec, fps=60, predict
     bank = load_bank(bank)
     config = bank['config']
     names = list(spec['objects'])
-    by_name = {name: [t for t in bank['templates'] if t['object'] == name] for name in names}
-    if not names or any(not items for items in by_name.values()):
-        raise SensorError('every requested object needs a clean template; no engine-only object is invented')
+    matchers = matchers_for(bank, names)
     foreground = config['algorithm'] != ALGORITHM
-    if foreground:
-        from agents.template_foreground import ForegroundMatcher
-    matcher_type = ForegroundMatcher if foreground else Matcher
-    matchers = {name: matcher_type(items,config) for name,items in by_name.items()}
     frames = []
     for n in indices:
         if completed is not None and n in completed:
@@ -479,31 +567,8 @@ def from_replay(trace, *, replay_sha256, frames_dir, bank, spec, fps=60, predict
             error = f'frame unavailable ({type(exc).__name__})'
         objects, evidence = {}, {}
         for name in names:
-            box = boxes.get(n, {}).get(name)
-            row = dict(status='unavailable', reason=error or 'engine has no measured search box',
-                       predictedBox=box if finite_box(box) else None, searchBox=None, rawBox=None,
-                       score=None, templateFrame=None, scale=None)
-            if foreground:
-                row['components'] = None
-            objects[name] = []
-            if image is not None and finite_box(box):
-                if box[0] < 0 or box[1] < 0 or box[2] > image.width or box[3] > image.height:
-                    row.update(status='out-of-frame', reason='predicted crop is not entirely on screen')
-                else:
-                    found, roi = matchers[name].match(image, box)
-                    row['searchBox'] = roi
-                    if found:
-                        if foreground:
-                            row['components'] = found['components']
-                        row.update(rawBox=found['box'], score=round(found['score'], 6),
-                                   templateFrame=found['templateFrame'], scale=round(found['scale'], 6))
-                    if found is None or found['score'] < config['matchThreshold']:
-                        row.update(status='not-found', reason='no template reached the pixel similarity threshold')
-                    elif _iou(found['box'], box) < config['agreementIoU']:
-                        row.update(status='displaced', reason='pixel match does not overlap the engine prediction enough')
-                    else:
-                        row.update(status='matched', reason='pixels match the clean template inside the predicted region')
-                        objects[name] = [dict(box=found['box'], score=round(found['score'], 6))]
+            row = look(matchers[name], image, boxes.get(n, {}).get(name), config, foreground, error)
+            objects[name] = ([dict(box=row['rawBox'], score=row['score'])] if row['status'] == 'matched' else [])
             evidence[name] = row
         frame = dict(frame=n, objects=objects, sensor=evidence)
         frames.append(frame)

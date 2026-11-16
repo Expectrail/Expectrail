@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/fixer-invocation.v1.schema.json",
+  "title": "expectrail.fixer-invocation/v1",
+  "description": "Trusted host admission record. NanoUSD reservations are pre-send bounds only for the fixed-price stand-in. Live Muse pricing is unavailable; unavailable records must forward nothing. Observed tokens never refund a reservation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "id",
+    "basis",
+    "capNanoUsd",
+    "requestMaxNanoUsd",
+    "reservedNanoUsd",
+    "admittedRequests",
+    "deniedRequests",
+    "inputTokensObserved",
+    "outputTokensObserved",
+    "status",
+    "stopReason"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.fixer-invocation/v1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "basis": {
+      "enum": [
+        "unavailable",
+        "fixed-price-fixture"
+      ]
+    },
+    "capNanoUsd": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "requestMaxNanoUsd": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "reservedNanoUsd": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "admittedRequests": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "deniedRequests": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "inputTokensObserved": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "outputTokensObserved": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "status": {
+      "enum": [
+        "running",
+        "completed",
+        "stopped",
+        "unavailable"
+      ]
+    },
+    "stopReason": {
+      "enum": [
+        "fixer-invocation-cap",
+        "fixer-invocation-cap-missing",
+        "fixer-bound-unavailable",
+        "fixer-meter-unavailable",
+        null
+      ]
+    }
+  }
+}

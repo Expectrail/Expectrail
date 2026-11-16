@@ -414,8 +414,9 @@ check takes when it speaks about the screen: `expectrail.pixel-check/v1`
   `visible`, `inside-region` (around the engine's box) and `never-crosses` (a fixed line). It cannot
   tell the ground or what a label reads. It sees only objects the record gives a position for (the
   player, in the bundled game), one at a time, so it cannot judge `reaches`. `visual-sensor` is #262's
-  no-model template sensor (below, "The no-model sensor as an observer"): the player only, the same
-  three predicates, no ground, no text. All of this is decided when a check is proposed.
+  no-model template sensor (below, "The no-model sensor as an observer"): the player and, since
+  November 16, the enemy at each of its logged boxes; the same three predicates, no ground, no text, and
+  not which way a sprite faces. All of this is decided when a check is proposed.
 - **Only frames with both the observer and the record count.** A frame the observer was not asked
   about (the engine puts the player outside the picture), could not answer, or that lacks the
   engine's box an `inside-region` check needs is a gap. A run with a gap is `needs-review`. An answer
@@ -582,15 +583,65 @@ for the observer it is given and refuses one made for another (`PROPOSAL_MISMATC
 judges no pixel checks, so it reads a proposal made for any observer, as jit.yml's first replay does; a saved pixel check naming another observer is refused (`PROPOSAL_INVALID`). An
 observer other than SAM under a setting with no pixel checks is refused. `run --observer visual-sensor
 --sensor-bank BANK` builds the sensor (frame plan from `--sam-every` and `--sam-first`; none of SAM's other
-arguments, and no capture or asking job, since it holds no key). jit.yml does not pass any of this yet.
+arguments, and no capture or asking job, since it holds no key). jit.yml passes it since November 16 (below).
 Tested offline in `tests/test_jit_propose_observer.py`, including propose (a recorded model answer, no
 call), save and replay through `run.generate` with the sensor on the simulated game. Tested offline on synthetic frames
 in `tests/test_jit_template_observer.py`, including end to end through `run.generate` on the simulated
 game: a check that the player is drawn is kept (pass 3 of 3 clean, fail 3 of 3 where the sprite is not
-drawn) and catches a wrong fix, not a good one. No bank has been calibrated for a bench probe, and
-nothing here says how often the sensor is right on the bundled game's frames: the measured false alarms
-are in [template-sensor-measurement.md](template-sensor-measurement.md), and a false alarm on a clean run
+drawn) and catches a wrong fix, not a good one. Its measured false alarms on the bundled game's clean frames are in [template-sensor-measurement.md](template-sensor-measurement.md), and a false alarm on a clean run
 drops a check by the keep rule, so it costs a reproduction, never a false catch.
+
+**In jit.yml: the `observer` input (added November 16, later).** `observer` is `sam-3.1-anchor` (the
+default: every job as before) or `visual-sensor`, and the plan refuses `visual-sensor` without the pixel
+setting. With the sensor, propose and revise get `--observer visual-sensor`; a `sensor-bank` job calibrates
+the bank once a run (`python -m expectrail.jit.cli sensor-bank --out BANK --work DIR`,
+`template_observer.calibrate_bank`); replay-final judges the pixel checks itself with that bank
+(`--observer visual-sensor --sensor-bank BANK --sam-every N`) and its record is the result; pixel-ask and
+pixel-judge do not run. The bank job replays the clean game alone, with no patch and no artifact of the
+change: the four dedicated clean routes of the published sensor measurement
+(`agents/template_sensor_bench.py`, `calibration_routes`: three to calibrate from, one separate to
+validate the threshold), with the player's art and pose catalogue named in
+[template-sensor.md](template-sensor.md). If the bank job fails, replay-final does not run and the
+defect is "no result". On the real engine here (Godot 4.7.2, no model) the command took 5 minutes and
+made a 408-template, 27.5 MB bank; two calibrations from identical route files gave byte-identical banks.
+Judged with it, the clean `coins` and `traversal` routes matched the player on every planned frame (13
+and 19 at every 10th frame, 25 and 27 at every frame). That is a check on two public routes, not a
+false-alarm rate on the bench's probes. Tested in `tests/test_jit_sensor_workflow.py`; no dispatch has
+used it.
+
+**The enemy (added November 16, later).** The sensor can also be pointed at every enemy the engine logs a
+box for (`enemyBoxes`, since November 15), the way SAM is: one row a planned frame in the run's
+`objects.enemy`, one entry a box, read by `pixel.named_observations`, which now reads the sensor's
+`not-found` as an observation (`absent`), not a gap. Calibration
+(`agents/template_foreground.py calibrate_routes(..., objects=("enemy",))`) crops, in each clean frame,
+the lowest-id enemy whose logged box is wholly on screen and touches no other object's box, masks it with
+the enemy's own approved art (`enemy/enemy.webp`), and keeps its templates apart from the player's. The
+threshold is still chosen on the player; the enemy's positives and displaced negatives on the validation
+replay at that threshold are recorded in the bank under `calibration.objects.enemy` with its own `met` or
+`unmet`, and the bank's reader recomputes that status from the counts. The observer refuses the enemy
+when its bank has no enemy template, when that calibration is not `met`, or when the bank is not an
+approved-art bank, so those checks are not run. A box partly on screen is a gap; one wholly off screen is
+counted in `outside` and not judged; more than `pixel.MAX_BOXES` on screen is a frame not asked about.
+The bullet is not offered: calibrated the same way, its 16 x 16 clean crops gave no template with enough
+opaque detail.
+
+Measured here (Godot 4.7.2, no model, not in CI), from the four calibration routes `sensor-bank` replays:
+408 player templates (as before) and 148 enemy templates, a 34.8 MB bank; the enemy matched 251 of 251
+validation positives and 0 of 251 negatives (`met`). Judged with it on three library probes:
+
+| Probe | Enemy boxes wholly on screen: matched / not-found | Partly on screen (gaps) |
+| --- | --- | --- |
+| `hold-right` | 31 / 0 | 3 |
+| `reverse` | 25 / 0 | 7 |
+| `move-fire-right` | 16 / 9 | 3 |
+
+The counts were the same, box for box, on the clean game, `enemy-walks-backwards` and
+`enemy-slides-when-shot`, so on these probes `visible` about the enemy reaches neither defect: the bank
+keeps every template mirrored, so a backwards enemy still matches, and a sliding one is still drawn. The
+nine `not-found` on `move-fire-right` are on the clean game too (not diagnosed here; shot enemies'
+explosion frames are the likely place), and a check over them is dropped by the keep rule, never a false
+catch. Over a whole window, a check about the enemy is `needs-review` whenever one enters at the screen's
+edge. Tested offline in `tests/test_jit_sensor_named.py`.
 
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 

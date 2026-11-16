@@ -53,6 +53,31 @@ def _record(entry: dict) -> None:
 
 
 class Gateway:
+    def __init__(self, meter=None):
+        self.meter = meter
+        config = os.environ.get('MUSE_GATEWAY_METER_CONFIG')
+        if meter is None and config:
+            # mitmdump has its own environment; load only our sibling stdlib module.
+            import importlib.util
+            from pathlib import Path
+            source = Path(__file__).with_name('fixer_meter.py')
+            spec = importlib.util.spec_from_file_location('expectrail_fixer_meter', source)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            self.meter = module.Meter(json.loads(Path(config).read_text()))
+
+    def http_connect(self, flow) -> None:
+        # CONNECT is not an HTTP model call. Refuse other destinations before a
+        # tunnel can become a path around the request hook.
+        if self.meter is not None:
+            from mitmproxy import http
+            if flow.request.host != self.meter.config['host'] or flow.request.port != 443:
+                flow.response = http.Response.make(403, b'fixer tunnel refused', {})
+
+    def tcp_start(self, flow) -> None:
+        if self.meter is not None:
+            flow.kill()  # No generic TCP passthrough, even to an allowed hostname.
+
     def request(self, flow) -> None:
         from mitmproxy import http
 
@@ -65,6 +90,23 @@ class Gateway:
             entry.update(status=403, blocked=True)
             _record(entry)
             return
+        if self.meter is not None:
+            if flow.request.headers.get('upgrade'):
+                flow.response = http.Response.make(403, b'fixer upgrade refused', {})
+                return
+            try:
+                refusal = self.meter.admit(host=host, method=flow.request.method,
+                    path=flow.request.path, port=flow.request.port, scheme=flow.request.scheme)
+            except Exception:
+                # A counter/write failure is a closed connection, never unmetered forwarding.
+                self.meter.doc.update(status='stopped', stopReason='fixer-meter-unavailable')
+                refusal = 503
+            if refusal is not None:
+                flow.response = http.Response.make(refusal, b'fixer invocation admission refused',
+                                                   {'content-type': 'text/plain'})
+                entry.update(status=refusal, blocked=True)
+                _record(entry)
+                return
         keys = list(dict.fromkeys(k.lower() for k in flow.request.headers))  # get_all ignores case
         pairs = [(k, v) for k in keys for v in flow.request.headers.get_all(k)]
         new, names = swap(pairs, PLACEHOLDER, REAL_KEY)
@@ -76,9 +118,25 @@ class Gateway:
         flow.metadata["gateway"] = entry
 
     def responseheaders(self, flow) -> None:
-        flow.response.stream = True  # server-sent events reach Muse as they arrive
+        if self.meter is None:
+            flow.response.stream = True  # legacy non-fixer gateway
+        else:
+            # Keep only a bounded tail for diagnostic usage. This does not claim to
+            # stop upstream billing: affordability was reserved BEFORE forwarding.
+            tail = bytearray()
+            def stream(chunk):
+                tail.extend(chunk)
+                if len(tail) > 1024*1024:del tail[:-1024*1024]
+                if not chunk:
+                    self.meter.observe(bytes(tail))
+                    flow.metadata['meterObserved'] = True
+                return chunk
+            flow.response.stream = stream
 
     def response(self, flow) -> None:
+        if self.meter is not None and not flow.metadata.get('meterObserved'):
+            self.meter.observe(flow.response.raw_content or b'')
+            flow.metadata['meterObserved'] = True
         entry = flow.metadata.get("gateway")
         if entry is not None:
             entry["status"] = flow.response.status_code

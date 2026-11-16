@@ -31,15 +31,29 @@ that probe are dropped with the reason, never passed.
 - ``unavailable`` or ``out-of-frame``: no readable frame, no engine box, no camera, or the box is not
   wholly on screen: not asked (a gap, so a check over that frame is ``needs-review``).
 
+**Objects the game has many of** (``objects``: the enemy; pixel.py ``named``). When the bank
+holds a role's templates and its calibration on the validation replay is ``met``
+(``calibration.objects``, agents/template_foreground.py ``calibrate_routes``), the observer is pointed at
+every one of them the engine logged on screen, each at its own logged box (agents/template_observations.py
+``object_predictions``), and the run carries ``objects[role]``: one row a planned frame, with one entry a
+box in the shape pixel.py ``named_observations`` reads. An object wholly off screen is counted in
+``outside``, not judged; one partly on screen is a gap for that box (``out-of-frame``); more than
+pixel.MAX_BOXES on screen is a frame not asked about. A role the bank has no templates for, or whose
+calibration is not ``met``, is refused, so its checks are not run, never passed.
+
 **What it cannot tell** is declared in pixel.py ``OBSERVERS["visual-sensor"]`` and refused when a check is
 proposed: the ground and a label's text (the sensor discards colour semantics and reads no text,
-docs/template-sensor.md), any role other than the player (a bank holds the player's templates, and a
-second sprite needs its own templates and prediction map, which nothing here supplies yet), and
-``reaches`` (it looks for one object near the place the engine puts it).
+docs/template-sensor.md), the coin (the engine logs no box for it), the bullet (its bank holds no
+template of it: on the bundled game its clean crops are too small and flat), and ``reaches`` (it looks for one
+object near the place the engine puts it). Nor which way a sprite faces: the bank keeps every template
+mirrored as well, so an enemy drawn facing backwards is still ``matched`` (``enemy-walks-backwards`` is not
+reached by ``visible``).
 
 The proposer is offered this observer when the propose step is told it will judge the run (pixel.py
 ``proposed``; expectrail/jit/intent.py ``observer``), and the command line builds it (``run --observer
-visual-sensor --sensor-bank BANK``). What this is not, yet: jit.yml does not pass it, and no bank has been calibrated for a bench probe. The sensor's measured
+visual-sensor --sensor-bank BANK``). jit.yml passes it when its ``observer`` input is ``visual-sensor``: a
+``sensor-bank`` job calibrates the bank once a run on the clean game (``calibrate_bank`` below) and the job
+that replays the change judges with it. Not shown yet: this bank's false alarms on the bench's probes. The sensor's measured
 false alarms on clean frames are in docs/template-sensor-measurement.md: a false alarm on a clean run
 drops the check by the keep rule, so it costs a reproduction, never a false catch.
 """
@@ -90,6 +104,20 @@ class TemplateSensorObserver:
         roles = sorted({t["object"] for t in self.bank["templates"]})
         if ROLE not in roles:
             raise ValueError(f"the template bank has no template of the {ROLE} (it has {', '.join(roles) or 'none'})")
+        calibrated = self.bank.get("calibration", {}).get("objects") or {}
+        # The named roles this bank can be pointed at, and why each other one cannot.
+        self.named, self.refused = (), {}
+        foreground = self.bank["config"]["algorithm"] != sensor.ALGORITHM
+        for role in pixel.OBSERVERS[NAME]["boxes"]:
+            if not foreground:
+                # Only an approved-art bank's reader checks a named object's calibration record.
+                self.refused[role] = "its bank is not an approved-art foreground bank"
+            elif role not in roles:
+                self.refused[role] = "its bank holds no template of it"
+            elif (calibrated.get(role) or {}).get("status") != "met":
+                self.refused[role] = "its bank's calibration of it on the validation replay is not met"
+            else:
+                self.named += (role,)
         self.every, self.first, self.max_frames = every, first, max_frames
         self.fps, self.ticks_per_second = fps, ticks_per_second
         self._setting = {"model": self.bank["config"]["algorithm"], "bankSha256": digest(self.bank)}
@@ -110,19 +138,24 @@ class TemplateSensorObserver:
         self._roles(objects, player)
         return 0
 
-    @staticmethod
-    def _roles(objects, player) -> None:
+    def _roles(self, objects, player) -> tuple[str, ...]:
         objects = tuple(objects)
-        if objects:
-            raise pixel.PixelError(f"{NAME} is not pointed at the boxes of {', '.join(map(str, objects))[:60]}: its "
-                                   f"bank holds the {ROLE}'s templates only")
-        if player is not True:
-            raise pixel.PixelError(f"{NAME} would be asked about nothing: it looks for the {ROLE} only")
+        if not isinstance(player, bool):
+            raise pixel.PixelError("whether the player is asked about is true or false")
+        if len(set(objects)) != len(objects):
+            raise pixel.PixelError("each named object is asked about once")
+        for role in objects:
+            if role not in self.named:
+                why = self.refused.get(role, "the engine logs no box for it")
+                raise pixel.PixelError(f"{NAME} is not pointed at the boxes of {str(role)[:40]}: {why}")
+        if not player and not objects:
+            raise pixel.PixelError(f"{NAME} would be asked about nothing: neither the {ROLE} nor a named object")
+        return objects
 
     def __call__(self, run_dir, route: dict, objects=(), player: bool = True) -> dict:
         from agents import template_observations as sensor
 
-        self._roles(objects, player)
+        objects = self._roles(objects, player)
         run_dir = Path(run_dir)
         planned = self.frames(route)
         replay, hashes, on_disk = checked_replay(run_dir, route, planned, self.fps, self.ticks_per_second)
@@ -140,11 +173,14 @@ class TemplateSensorObserver:
         for n in asked:
             if _sha256(on_disk[n]) != hashes[n]:
                 raise pixel.PixelError(f"frame {n} on disk is not the frame the replay recorded")
-        found = self._look(sensor, trace, replay, run_dir, asked) if asked else {}
+        found = self._look(sensor, trace, replay, run_dir, asked) if asked and player else {}
         rows = []
         for n in planned:
             if n not in on_disk:
                 rows.append({"frame": n, "asked": False, "note": "the replay did not capture this frame"})
+                continue
+            if not player:
+                rows.append({"frame": n, "asked": False, "note": pixel.NOT_ASKED_PLAYER})
                 continue
             row = found.get(n)
             if row is None:
@@ -155,7 +191,53 @@ class TemplateSensorObserver:
         summary["notAsked"] = sum(1 for r in rows if not r["asked"])
         run = {"run": run_dir.name, "route": {"name": str(replay["route"]["name"]), "sha256": replay["route"].get("sha256")},
                "framesProbed": planned, "frames": rows, "summary": summary}
+        if objects:
+            run["objects"] = {role: self._look_named(sensor, role, trace, planned, on_disk) for role in objects}
         return {"setting": self.setting(), "run": run, "images": 0}
+
+    def _look_named(self, sensor, role: str, trace: dict, planned: list[int], on_disk: dict) -> list[dict]:
+        """One row a planned frame about every ``role`` object the engine logged: see the module docstring."""
+        foreground = self.bank["config"]["algorithm"] != sensor.ALGORITHM
+        matcher = sensor.matchers_for(self.bank, [role])[role]
+        try:
+            where = sensor.object_predictions(trace, [n for n in planned if n in on_disk], role, self.fps)
+        except sensor.SensorError as exc:
+            raise pixel.PixelError(f"the engine's boxes of {role} cannot be read: {exc}") from exc
+        rows = []
+        for n in planned:
+            if n not in on_disk:
+                rows.append({"frame": n, "asked": False, "note": "the replay did not capture this frame"})
+                continue
+            logged = where.get(n)
+            if logged is None:
+                rows.append({"frame": n, "asked": False,
+                             "note": f"the engine's record gives no boxes of {role} for this frame"})
+                continue
+            try:
+                image = sensor._image(on_disk[n], mode="RGB" if foreground else "L")
+            except (OSError, ValueError) as exc:
+                rows.append({"frame": n, "asked": False, "note": f"frame unavailable ({type(exc).__name__})"})
+                continue
+            shown, outside = [], 0
+            for ident, box in logged:
+                if box[2] <= 0 or box[3] <= 0 or box[0] >= image.width or box[1] >= image.height:
+                    outside += 1
+                else:
+                    shown.append((ident, box))
+            if len(shown) > pixel.MAX_BOXES:
+                rows.append({"frame": n, "asked": False, "outside": outside,
+                             "note": f"{len(shown)} on screen, more than the {pixel.MAX_BOXES} asked about"})
+                continue
+            boxes = []
+            for ident, box in shown:
+                try:
+                    row = sensor.look(matcher, image, box, self.bank["config"], foreground)
+                except (sensor.SensorError, ValueError, KeyError, TypeError) as exc:
+                    raise pixel.PixelError(f"the template sensor could not look at {role} {ident} in frame {n}: "
+                                           f"{' '.join(str(exc).split())[:160]}") from exc
+                boxes.append({"id": ident, **_box_row(row)})
+            rows.append({"frame": n, "asked": True, "boxes": boxes, "outside": outside})
+        return rows
 
     def _look(self, sensor, trace: dict, replay: dict, run_dir: Path, asked: list[int]) -> dict:
         """The sensor's row for each frame in ``asked``. Frames between them are handed to ``from_replay`` as
@@ -179,6 +261,19 @@ class TemplateSensorObserver:
         return {f["frame"]: f["sensor"][ROLE] for f in doc["frames"] if f["frame"] in asked}
 
 
+def _box_row(row: dict) -> dict:
+    """One named object's box in one frame, in the shape pixel.py ``named_observations`` reads."""
+    status = row["status"]
+    out = {"status": status, "promptBox": row["predictedBox"], "score": row["score"]}
+    if status in GAP_STATUSES:
+        return {**out, "box": None, "error": f"{status}: {row.get('reason')}"[:200]}
+    if status not in SEEN:
+        raise pixel.PixelError(f"the template sensor gave a status it does not define: {str(status)[:40]}")
+    if status == "not-found":
+        return {**out, "box": None, "absent": True}
+    return {**out, "box": list(row["rawBox"]), "holdsPoint": status == "matched"}
+
+
 def _row(n: int, row: dict) -> dict:
     """One planned frame's row, in the shape pixel.py ``observations`` reads, from the sensor's own row."""
     status = row["status"]
@@ -192,3 +287,65 @@ def _row(n: int, row: dict) -> dict:
     else:
         out.update(box=list(row["rawBox"]), holdsPoint=status == "matched")
     return out
+
+
+# The bank jit.yml calibrates for this observer (#286): the bundled game's player, from its clean art and four
+# dedicated clean routes (agents/template_sensor_bench.py ``calibration_routes``: three to calibrate from, a
+# fourth, separate, to validate the threshold), with the pose catalogue the published measurement used
+# (docs/template-sensor.md). The same recipe as that measurement, so its clean false-alarm figures describe
+# this bank's algorithm and settings; they are not a measurement of this bank on the bench's probes.
+BANK_ART = {ROLE: "player/robot.webp", "enemy": "enemy/enemy.webp"}
+# The named roles calibrated beside the player, each from the boxes the engine logs for it. Not the bullet:
+# on the bundled game its clean crops (16 x 16) gave no template with enough opaque detail.
+BANK_OBJECTS = ("enemy",)
+BANK_CATALOGUE = Path(__file__).resolve().parents[2] / "contracts" / "examples" / "template-foreground-catalogue.json"
+CLEAN_GAME = Path(__file__).resolve().parents[2] / "game" / "platformer"
+
+
+def calibrate_bank(out, work, *, game=None, godot=None, run_replay=None) -> dict:
+    """Calibrate the ``visual-sensor`` bank on the pinned clean game and write it to ``out``; return a summary.
+
+    Only the clean game is replayed, with no patch: no bug build, candidate or measured route reaches the bank
+    (agents/template_foreground.py ``calibrate_routes`` refuses a patched or other-tree replay). ``work`` holds
+    the routes and the replays and must not exist yet; ``out`` must not exist either, so a bank is never
+    overwritten or silently recalibrated. ``run_replay`` stands in for harness/run.py ``run`` in tests.
+    """
+    from agents import template_foreground as foreground
+    from agents import template_observations as sensor
+    from agents.template_sensor_bench import atomic_json, calibration_routes
+    from harness import run as harness
+
+    out, work = Path(out), Path(work)
+    game = Path(game or CLEAN_GAME).resolve()
+    if out.exists():
+        raise ValueError(f"{out} exists: a bank is never overwritten; name a new file")
+    if work.exists():
+        raise ValueError(f"{work} exists: the calibration replays go in a new folder")
+    if work.resolve() == game or game in work.resolve().parents or game in out.resolve().parents:
+        raise ValueError("the calibration's files go outside the clean game")
+    runner = run_replay or harness.run
+    clean_tree = harness.tree_digest(game)
+    replays = []
+    for route in calibration_routes():
+        path = work / "routes" / f"{route['name']}.json"
+        atomic_json(path, route)
+        target = work / route["name"]
+        runner(path, target, game=game, godot=godot, patches=[], capture_frames=True)
+        replays.append(target)
+    try:
+        bank = foreground.calibrate_routes(replays[:-1], replays[-1], clean_game=game, clean_tree=clean_tree,
+                                           art=dict(BANK_ART), catalogue=BANK_CATALOGUE, objects=BANK_OBJECTS)
+        bank = sensor.load_bank(bank)
+    except (sensor.SensorError, OSError, ValueError, KeyError) as exc:
+        raise ValueError(f"calibration failed: {' '.join(str(exc).split())[:200]}") from exc
+    if ROLE not in {t["object"] for t in bank["templates"]}:
+        raise ValueError(f"calibration produced no template of the {ROLE}")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    temporary = out.with_name(out.name + ".tmp")
+    temporary.write_text(json.dumps(bank, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(out)
+    named = bank["calibration"].get("objects") or {}
+    return {"bank": str(out), "bankSha256": digest(bank), "algorithm": bank["config"]["algorithm"],
+            "templates": len(bank["templates"]), "cleanTree": clean_tree,
+            "objects": {role: {"templates": named[role]["templates"], "status": named[role]["status"]} for role in named},
+            "routes": [r.name for r in replays[:-1]], "validation": replays[-1].name}

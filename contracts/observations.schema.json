@@ -357,6 +357,94 @@
                     "met",
                     "unmet"
                   ]
+                },
+                "objects": {
+                  "description": "Roles the game has many of (enemy, bullet), calibrated beside the player from the boxes the engine logs for them (agents/template_foreground.py calibrate_routes, objects). Each is validated on the validation replay at the threshold chosen on the player, with the player's rule: met when at least 95% of its positives and at most 1% of its negatives match. Absent: only the player was calibrated.",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enemy": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "templates",
+                        "positives",
+                        "negatives",
+                        "positiveMatches",
+                        "negativeMatches",
+                        "status"
+                      ],
+                      "properties": {
+                        "templates": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "positives": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "negatives": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "positiveMatches": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "negativeMatches": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "status": {
+                          "enum": [
+                            "met",
+                            "unmet"
+                          ]
+                        }
+                      }
+                    },
+                    "bullet": {
+                      "$comment": "the same shape as enemy",
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "templates",
+                        "positives",
+                        "negatives",
+                        "positiveMatches",
+                        "negativeMatches",
+                        "status"
+                      ],
+                      "properties": {
+                        "templates": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "positives": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "negatives": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "positiveMatches": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "negativeMatches": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "status": {
+                          "enum": [
+                            "met",
+                            "unmet"
+                          ]
+                        }
+                      }
+                    }
+                  }
                 }
               },
               "required": [

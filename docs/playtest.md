@@ -67,8 +67,11 @@ measured for ingest.
 expectrail ingest report.json --project /path/to/project --repair --json
 ```
 
-Only an approved check that failed all three anchored base replays can start the
-existing sandboxed fix loop. Advisory-only reproduction, `not-reproduced` and
+Only an approved check that failed all three anchored base replays is eligible
+for the existing sandboxed fix loop. Live fixer startup is currently refused
+with `fixer-bound-unavailable`: no verified dollar maximum for a Muse/BYO request
+is available. See [fixer spend and the blocked-repair ceiling](fixer-spend.md).
+Offline saved patches remain usable. Advisory-only reproduction, `not-reproduced` and
 `anchor-desync` do not construct a fixer transport. The loop writes a machine
 candidate and asks the gate to judge it afresh. Only that gate can accept it.
 A candidate advisory-discovery flag stops for review, with the flag named;

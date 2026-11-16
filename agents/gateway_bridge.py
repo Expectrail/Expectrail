@@ -17,7 +17,7 @@ import sys
 import threading
 
 
-def _pump(src: socket.socket, dst: socket.socket) -> None:
+def _pump(src: socket.socket, dst: socket.socket, pair: dict) -> None:
     try:
         while True:
             data = src.recv(65536)
@@ -32,6 +32,21 @@ def _pump(src: socket.socket, dst: socket.socket) -> None:
                 s.shutdown(socket.SHUT_RDWR)
             except OSError:
                 pass
+        # The second direction to stop closes both sockets, so neither is left for the garbage
+        # collector (#561) and neither is closed while the other direction still uses it.
+        with pair["lock"]:
+            pair["open"] -= 1
+            last = pair["open"] == 0
+        if last:
+            src.close()
+            dst.close()
+
+
+def join(client: socket.socket, upstream: socket.socket) -> None:
+    """Copy bytes both ways between two connected sockets; both are closed once both directions stop."""
+    pair = {"lock": threading.Lock(), "open": 2}
+    for a, b in ((client, upstream), (upstream, client)):
+        threading.Thread(target=_pump, args=(a, b, pair), daemon=True).start()
 
 
 def _serve(listener: socket.socket, socket_path: str) -> None:
@@ -42,12 +57,16 @@ def _serve(listener: socket.socket, socket_path: str) -> None:
             return
         try:
             upstream = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            upstream.connect(socket_path)
         except OSError:
             client.close()
             continue
-        for a, b in ((client, upstream), (upstream, client)):
-            threading.Thread(target=_pump, args=(a, b), daemon=True).start()
+        try:
+            upstream.connect(socket_path)
+        except OSError:
+            upstream.close()
+            client.close()
+            continue
+        join(client, upstream)
 
 
 def listen(port: int, socket_path: str) -> socket.socket:

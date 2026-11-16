@@ -151,6 +151,20 @@ def check_bank(bank):
             raise sensor.SensorError('foreground RGB pixels disagree with the recorded luminance pixels')
         if features(rgb, mask, config) is None:
             raise sensor.SensorError('foreground template has insufficient opaque detail')
+    for role, counted in (bank['calibration'].get('objects') or {}).items():
+        # A named object's record is recomputed from what it counts; it cannot claim templates it lacks,
+        # matches it did not count, or a status its counts do not give.
+        if role not in sources:
+            raise sensor.SensorError(f'calibrated object {role} has no trusted art source')
+        if counted['templates'] != sum(item['object'] == role for item in bank['templates']):
+            raise sensor.SensorError(f'calibrated object {role} does not have the templates it records')
+        if counted['positiveMatches'] > counted['positives'] or counted['negativeMatches'] > counted['negatives']:
+            raise sensor.SensorError(f'calibrated object {role} records more matches than it counted')
+        expected = _object_calibration([1]*counted['positiveMatches'] + [0]*(counted['positives']-counted['positiveMatches']),
+                                       [1]*counted['negativeMatches'] + [0]*(counted['negatives']-counted['negativeMatches']),
+                                       1, counted['templates'])
+        if expected != counted:
+            raise sensor.SensorError(f'calibrated object {role} records a status its counts do not give')
     reference = bank.get('groundReference')
     if reference:
         if not any(source['replaySha256'] == reference['sourceReplaySha256']
@@ -291,8 +305,89 @@ class ForegroundMatcher:
         return best, roi
 
 
-def calibrate_routes(clean_runs, validation_run, *, clean_game, clean_tree, art, config=None, similarity=0.995, catalogue=None):
-    """Freeze foreground witnesses from every eligible clean frame, then validate separately."""
+def _touches(a, b):
+    return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+
+
+def _calibration_boxes(trace, frames, fps, objects, size):
+    """{frame: {name: box}}: where calibration crops each object in each clean frame.
+
+    The player wherever its box is wholly on screen. For each role in ``objects`` (the game has many of
+    them; agents/template_observations.py ``object_predictions``), the lowest-id one whose logged box is
+    wholly on screen and touches no other logged box of any object, so a crop never holds two sprites."""
+    width, height = size
+
+    def on(b):
+        return sensor.finite_box(b) and b[0] >= 0 and b[1] >= 0 and b[2] <= width and b[3] <= height
+
+    player = sensor.player_predictions(trace, frames, fps)
+    logged = {role: sensor.object_predictions(trace, frames, role, fps) for role in objects}
+    out = {}
+    for n in frames:
+        everything = [b for b in [player[n]['player']] if sensor.finite_box(b)]
+        for role in objects:
+            everything += [b for _, b in (logged[role][n] or [])]
+        chosen = {}
+        if on(player[n]['player']):
+            chosen['player'] = player[n]['player']
+        for role in objects:
+            for _, box in sorted(logged[role][n] or [], key=lambda e: e[0]):
+                if on(box) and sum(_touches(box, other) for other in everything) == 1:
+                    chosen[role] = box
+                    break
+        if chosen:
+            out[n] = chosen
+    return out
+
+
+def _distinct(path, box, config):
+    """Whether the clean crop at ``box`` passes the bank's contrast rule (template_observations ``load_bank``)."""
+    Image, _, _ = sensor.imaging()
+    crop = sensor._calibration_crop(box)
+    with Image.open(path) as image:
+        patch = image.convert('L').crop(crop)
+    sample = patch.resize((config['sampleSide'],)*2, Image.Resampling.BOX)
+    return min(sensor._contrast(patch), sensor._contrast(sample)) >= config['minimumContrast']
+
+
+def _validate(matcher, settings, image, box, positives, negatives):
+    """One validation frame: the match at the engine's box is a positive, one displaced beside it a negative."""
+    found, _ = matcher.match(image, box)
+    positives.append(found['score'] if found and sensor._iou(found['box'], box) >= settings['agreementIoU'] else 0)
+    distance = box[2]-box[0]+2*settings['searchMarginPx']+8
+    for direction in (1, -1):
+        negative = [box[0]+direction*distance, box[1], box[2]+direction*distance, box[3]]
+        if negative[0] >= 0 and negative[2] <= image.width:
+            found, _ = matcher.match(image, negative)
+            negatives.append(found['score'] if found else 0)
+            break
+
+
+def _object_calibration(positives, negatives, threshold, templates):
+    """One named object's validation at the player's chosen threshold: ``met`` when at least 95% of its
+    positives and at most 1% of its negatives match, the player's rule; ``unmet`` otherwise, including when
+    it has no templates, no positives or no negatives to count."""
+    matched = sum(value >= threshold for value in positives)
+    false = sum(value >= threshold for value in negatives)
+    met = bool(templates and positives and negatives and matched/len(positives) >= .95 and false/len(negatives) <= .01)
+    return dict(templates=templates, positives=len(positives), negatives=len(negatives), positiveMatches=matched,
+                negativeMatches=false, status='met' if met else 'unmet')
+
+
+def calibrate_routes(clean_runs, validation_run, *, clean_game, clean_tree, art, config=None, similarity=0.995, catalogue=None,
+                     objects=()):
+    """Freeze foreground witnesses from every eligible clean frame, then validate separately.
+
+    ``objects`` names roles the game has many of (``enemy``, ``bullet``) to calibrate as well, each from the
+    boxes the engine logs for it and its own approved art in ``art``. The match threshold is chosen on the
+    player, as before; each named object's positives and negatives on the validation replay at that threshold
+    are recorded under ``calibration.objects`` with its own ``met`` or ``unmet``, never folded into the player's."""
+    objects = tuple(objects)
+    if len(set(objects)) != len(objects) or any(r not in sensor.OBJECT_BOXES for r in objects):
+        raise sensor.SensorError('named objects are distinct roles the engine logs boxes for: '
+                                 + ', '.join(sorted(sensor.OBJECT_BOXES)))
+    if any(role not in art for role in objects):
+        raise sensor.SensorError('select approved art for every calibrated object')
     np = numpy()
     Image, _, _ = sensor.imaging()
     settings = dict(DEFAULTS, **(config or {}))
@@ -303,7 +398,10 @@ def calibrate_routes(clean_runs, validation_run, *, clean_game, clean_tree, art,
     if catalogue is not None:
         from agents import template_art
         catalogue = template_art.read_catalogue(catalogue)
-        template_art.attach_sources(clean_game, source_art, catalogue)
+        # The catalogue adds poses for the objects it names (the player); a named object it does not name keeps
+        # its captured templates only. It may not name an object that was not selected.
+        template_art.attach_sources(clean_game, [s for s in source_art if s['object'] in catalogue['objects']
+                                                 or s['object'] not in objects], catalogue)
     palettes = {item['object']: colour_codes(np.asarray(item['paletteRgb'], np.uint8)) for item in source_art}
     selected, vectors, masks, sources = [], [], [], []
     bank, source_frames, eligible_frames, ground = None, 0, 0, None
@@ -315,21 +413,40 @@ def calibrate_routes(clean_runs, validation_run, *, clean_game, clean_tree, art,
                 or sensor.sha(root/'trace.json') != record['trace']['sha256']):
             raise sensor.SensorError('foreground calibration requires the pinned unpatched clean replay')
         files = sensor.frame_files(root/'frames')
-        predictions = sensor.player_predictions(trace, files, record['capture']['fps'])
-        # Reuse the existing clean-source and PNG/trace binding checks, with full crops.
-        eligible = [n for n, boxes in predictions.items() if sensor.finite_box(boxes['player'])]
         base_config = {key: settings[key] for key in sensor.DEFAULTS}
         base_config['algorithm'] = sensor.ALGORITHM
         # Off-screen calibration crops are ineligible; they do not become smaller positives.
-        chosen_frames = []
-        for n in eligible:
-            with Image.open(files[n]) as image:
-                box = predictions[n]['player']
-                if box[0] >= 0 and box[1] >= 0 and box[2] <= image.width and box[3] <= image.height:
-                    chosen_frames.append(n)
+        predicted = None
+        if objects:
+            first = next(iter(files.values()), None)
+            if first is None:
+                raise sensor.SensorError('no eligible foreground calibration frames')
+            with Image.open(first) as image:
+                size = image.size
+            predicted = _calibration_boxes(trace, list(files), record['capture']['fps'], objects, size)
+            # A named object's crop too flat to identify a sprite (the bank's own contrast rule) is not a
+            # template; it is left out here rather than failing the calibration. The player's rule is unchanged.
+            for n, chosen in list(predicted.items()):
+                for role in objects:
+                    if role in chosen and not _distinct(files[n], chosen[role], base_config):
+                        del chosen[role]
+                if not chosen:
+                    del predicted[n]
+            chosen_frames = sorted(predicted)
+        else:
+            predictions = sensor.player_predictions(trace, files, record['capture']['fps'])
+            # Reuse the existing clean-source and PNG/trace binding checks, with full crops.
+            eligible = [n for n, boxes in predictions.items() if sensor.finite_box(boxes['player'])]
+            chosen_frames = []
+            for n in eligible:
+                with Image.open(files[n]) as image:
+                    box = predictions[n]['player']
+                    if box[0] >= 0 and box[1] >= 0 and box[2] <= image.width and box[3] <= image.height:
+                        chosen_frames.append(n)
         if not chosen_frames:
             raise sensor.SensorError('no eligible foreground calibration frames')
-        source = sensor.calibrate(root, clean_tree=clean_tree, frames=chosen_frames, config=base_config)
+        source = sensor.calibrate(root, clean_tree=clean_tree, frames=chosen_frames, config=base_config,
+                                  predicted=predicted)
         bank = bank or source
         sources.append(source['clean']); source_frames += len(files)
         if trace.get('levelSurfaces'):
@@ -356,10 +473,13 @@ def calibrate_routes(clean_runs, validation_run, *, clean_game, clean_tree, art,
                 if mirrored_feature is None:
                     continue
                 weights, vector, mass = mirrored_feature
-                if vectors:
-                    similarities = np.asarray(vectors) @ vector
-                    intersection = np.asarray(masks) @ weights
-                    union = np.asarray(masks).sum(1)+mass-intersection
+                # Distinct appearances are kept per object: one object's template never stands for another's.
+                same = [i for i, kept in enumerate(selected) if kept['object'] == name]
+                if same:
+                    similarities = np.asarray([vectors[i] for i in same]) @ vector
+                    kept_masks = np.asarray([masks[i] for i in same])
+                    intersection = kept_masks @ weights
+                    union = kept_masks.sum(1)+mass-intersection
                     if np.any((similarities >= similarity) & (intersection/union >= .9)):
                         continue
                 item = copy.deepcopy(original)
@@ -371,7 +491,7 @@ def calibrate_routes(clean_runs, validation_run, *, clean_game, clean_tree, art,
                 selected.append(item); vectors.append(vector); masks.append(weights)
                 if len(selected) > 2048:
                     raise sensor.SensorError('foreground calibration exceeds 2048 templates')
-    if not selected:
+    if not any(item['object'] == 'player' for item in selected):
         raise sensor.SensorError('no clean foreground templates have enough opaque detail')
     bank.update(format=FORMAT, config=settings, templates=selected, sources=sources, foregroundSources=source_art)
     if ground:
@@ -392,24 +512,27 @@ def calibrate_routes(clean_runs, validation_run, *, clean_game, clean_tree, art,
     trace = json.loads((root/'trace.json').read_text())
     files = sensor.frame_files(root/'frames')
     boxes = sensor.player_predictions(trace, files, record['capture']['fps'])
-    matcher = ForegroundMatcher(selected, settings)
+    matcher = ForegroundMatcher([item for item in selected if item['object'] == 'player'], settings)
+    named = {role: ForegroundMatcher(items, settings) for role in objects
+             if (items := [item for item in selected if item['object'] == role])}
+    named_boxes = None
     positives, negatives = [], []
+    by_role = {role: ([], []) for role in named}
     for n, path in files.items():
         if n >= len(record['frameSha256']) or sensor.sha(path) != record['frameSha256'][n]:
             raise sensor.SensorError('foreground validation pixels differ from their replay')
         with Image.open(path) as image:
-            image = image.convert('RGB'); box = boxes[n]['player']
+            image = image.convert('RGB')
+            if named and named_boxes is None:
+                named_boxes = _calibration_boxes(trace, list(files), record['capture']['fps'], tuple(named), image.size)
+            for role in named:
+                box = (named_boxes.get(n) or {}).get(role)
+                if box is not None:
+                    _validate(named[role], settings, image, box, *by_role[role])
+            box = boxes[n]['player']
             if not sensor.finite_box(box) or box[0] < 0 or box[1] < 0 or box[2] > image.width or box[3] > image.height:
                 continue
-            found, _ = matcher.match(image, box)
-            positives.append(found['score'] if found and sensor._iou(found['box'], box) >= settings['agreementIoU'] else 0)
-            distance = box[2]-box[0]+2*settings['searchMarginPx']+8
-            for direction in (1, -1):
-                negative = [box[0]+direction*distance, box[1], box[2]+direction*distance, box[3]]
-                if negative[0] >= 0 and negative[2] <= image.width:
-                    found, _ = matcher.match(image, negative)
-                    negatives.append(found['score'] if found else 0)
-                    break
+            _validate(matcher, settings, image, box, positives, negatives)
     floor = settings['matchThreshold']; chosen, status = floor, 'unmet'
     for threshold in sorted({floor} | {n/100 for n in range(math.ceil(floor*100), 101)}):
         if positives and negatives and sum(value >= threshold for value in positives)/len(positives) >= .95 and sum(value >= threshold for value in negatives)/len(negatives) <= .01:
@@ -421,6 +544,10 @@ def calibrate_routes(clean_runs, validation_run, *, clean_game, clean_tree, art,
     bank['calibration'].update(thresholdFloor=floor, thresholdSelected=chosen,
         validationReplaySha256=validation_sha, positives=len(positives), negatives=len(negatives),
         positiveMatches=sum(value >= chosen for value in positives), negativeMatches=sum(value >= chosen for value in negatives), status=status)
+    if objects:
+        bank['calibration']['objects'] = {
+            role: _object_calibration(*by_role.get(role, ([], [])), chosen, sum(item['object'] == role for item in selected))
+            for role in objects}
     # The clean checkout remains the source authority throughout calibration.
     if art_sources(clean_game, art, clean_tree) != original_sources:
         raise sensor.SensorError('trusted foreground art changed during calibration')

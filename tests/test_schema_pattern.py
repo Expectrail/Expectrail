@@ -139,6 +139,7 @@ def contract_patterns() -> dict[str, str]:
 
 # pattern: (a value that matches it, whether that value plus "\n" must be refused)
 SAMPLES = {
+    r"^attempt-[0-9]{1,2}/fixer-invocation\.json$": ("attempt-1/fixer-invocation.json", True),
     "^[a-z0-9][a-z0-9-]{3,63}$": ("air-jump-report", True),
     r"^[\x20-\x7e]+$": ("Mesa - llvmpipe (LLVM 20.1.2, 256 bits)", True),
     "^[0-9]{4}-(0[1-9]|1[0-2])$": ("2026-11", True),
