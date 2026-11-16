@@ -179,9 +179,11 @@ def run_llm_patch_fixer(
     model: str | None = None,
 ) -> dict[str, Any]:
     """Generate and apply a unified git diff directly via any BYO-LLM API without requiring a local agent CLI."""
-    from expectrail.fixer_budget import start
-    start(out_patch.parent / "fixer-invocation.json")
+    from expectrail.fixer_budget import start, _cap
+    if not _cap():
+        start(out_patch.parent / "fixer-invocation.json")
     cfg = resolve_provider(role="FIXER", model=model if model not in ("muse-code", "llm-patch") else None)
+    invocation = start(out_patch.parent / "fixer-invocation.json", config=cfg)
     repo_context = _collect_candidate_files(worktree)
     messages = [
         {
@@ -198,7 +200,10 @@ def run_llm_patch_fixer(
             "content": f"{prompt_text}\n\nRepository Files:\n{repo_context}",
         },
     ]
-    raw = chat_completion(messages, role="FIXER", config=cfg, max_tokens=4096, temperature=0.0)
+    try:
+        raw = chat_completion(messages, role="FIXER", config=cfg, max_tokens=4096, temperature=0.0, invocation=invocation)
+    finally:
+        invocation.finish()
     reply_text = extract_message_text(cfg, raw)
     diff_text = extract_unified_diff(reply_text)
     if not diff_text:
@@ -249,7 +254,8 @@ def run_byo_agent(
     returns a synthetic process (exit 0 when the diff applied, 1 when it did not).
     """
     from expectrail.fixer_budget import start
-    start(out / "fixer-invocation.json")
+    if agent != "llm-patch":
+        start(out / "fixer-invocation.json")
     from agents.gateway import BYO_GATEWAY_ENV, byo_gateway
     from agents.keys import BYO_AGENT_KEY_ENVS, byo_agent_env
     from agents.sandbox import detect_sandbox, muse_kind_for, run_sandboxed

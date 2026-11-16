@@ -1852,7 +1852,8 @@
       ],
       "docs": [
         "docs/playtest.md",
-        "docs/ingest-repair.md"
+        "docs/ingest-repair.md",
+        "docs/llm-patch-spend.md"
       ],
       "status": "implemented",
       "grade": "fixture",
@@ -1861,9 +1862,14 @@
           "kind": "test",
           "ref": "tests/test_ingest_repair.py",
           "shows": "Offline fixture tests enter the existing fix loop only after approved reproduction, preserve gate decisions, stop on advisory flags, and exclude private canaries from fixer inputs and retries."
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_llm_patch_bound.py",
+          "shows": "Offline local-server tests cover pre-send token-price admission, exact body/output cap, concurrency, retries, violations and existing repair-loop integration."
         }
       ],
-      "limits": "Implemented and tested offline; not measured with a live model. No live fixer, model-quality, real repair-rate or provider-bill measurement. The Muse invocation hold does not bound its internal token bill. Advisory-only, unreproduced and desynchronised reports never start a fixer. Live starts now stop fixer-bound-unavailable until a verified request dollar maximum exists; the fixed-price admission meter is tested only with a stand-in."
+      "limits": "Implemented and tested offline; not measured with a live model. Muse/BYO CLIs stop fixer-bound-unavailable. Controlled llm-patch supports only recorded OpenAI GPT-4o text prices, conservative byte input bounds and an explicit output cap; reservations, usage violations and repair-loop integration use a local stand-in server. Provider conformance, bills, repair quality and repair rates are unmeasured. Advisory-only, unreproduced and desynchronised reports never start a fixer."
     }
   ],
   "notModes": {
