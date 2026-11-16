@@ -1,0 +1,20 @@
+{
+  "label": "after",
+  "startedUtc": "2026-11-16T06:42:27.720426+00:00",
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests",
+    "-t",
+    "."
+  ],
+  "cwd": "/workspace/work/pointer-routes",
+  "seconds": 469.06839046099776,
+  "exitCode": 1,
+  "status": "finished",
+  "godotOverride": null,
+  "log": "logs/after.log"
+}

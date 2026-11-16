@@ -1,0 +1,6 @@
+test_no_reproduction_and_desync_construct_no_transport (tests.test_ingest_repair.IngestRepair.test_no_reproduction_and_desync_construct_no_transport) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.504s
+
+OK

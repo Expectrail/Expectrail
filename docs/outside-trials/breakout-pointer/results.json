@@ -1,0 +1,204 @@
+{
+  "pin": "0ac7aed444ea593a023d9b666c211d7ab8acd51e",
+  "routeTicks": 407,
+  "pinnedTracesByteIdentical": true,
+  "harmlessTraceIdenticalToPinned": true,
+  "cliDecision": {
+    "pinned": "needs-review",
+    "harmless": "needs-review",
+    "broken": "needs-review"
+  },
+  "cliChecksRun": 0,
+  "rows": [
+    {
+      "case": "pinned-1",
+      "traceSha256": "dc0c5b024d72ac267efc023d449ec63d70fed24a3ec4c6c73992041d2bf97126",
+      "ticks": 407,
+      "distinctPlayerPositions": 70,
+      "draftEngineDiagnostics": [
+        {
+          "id": "breakout-ball-starts",
+          "result": "pass",
+          "reason": "no violation in 11 frames",
+          "firstFrame": null,
+          "framesJudged": 11,
+          "coverage": {
+            "status": "exercised",
+            "semanticResult": "pass",
+            "framesObserved": 11,
+            "framesExpected": 11,
+            "framesRequired": 11,
+            "completeWindow": true
+          }
+        },
+        {
+          "id": "breakout-paddle-bounds",
+          "result": "pass",
+          "reason": "no violation in 51 frames",
+          "firstFrame": null,
+          "framesJudged": 51,
+          "coverage": {
+            "status": "exercised",
+            "semanticResult": "pass",
+            "framesObserved": 51,
+            "framesExpected": 51,
+            "framesRequired": 40,
+            "completeWindow": true
+          }
+        }
+      ]
+    },
+    {
+      "case": "pinned-2",
+      "traceSha256": "dc0c5b024d72ac267efc023d449ec63d70fed24a3ec4c6c73992041d2bf97126",
+      "ticks": 407,
+      "distinctPlayerPositions": 70,
+      "draftEngineDiagnostics": [
+        {
+          "id": "breakout-ball-starts",
+          "result": "pass",
+          "reason": "no violation in 11 frames",
+          "firstFrame": null,
+          "framesJudged": 11,
+          "coverage": {
+            "status": "exercised",
+            "semanticResult": "pass",
+            "framesObserved": 11,
+            "framesExpected": 11,
+            "framesRequired": 11,
+            "completeWindow": true
+          }
+        },
+        {
+          "id": "breakout-paddle-bounds",
+          "result": "pass",
+          "reason": "no violation in 51 frames",
+          "firstFrame": null,
+          "framesJudged": 51,
+          "coverage": {
+            "status": "exercised",
+            "semanticResult": "pass",
+            "framesObserved": 51,
+            "framesExpected": 51,
+            "framesRequired": 40,
+            "completeWindow": true
+          }
+        }
+      ]
+    },
+    {
+      "case": "pinned-3",
+      "traceSha256": "dc0c5b024d72ac267efc023d449ec63d70fed24a3ec4c6c73992041d2bf97126",
+      "ticks": 407,
+      "distinctPlayerPositions": 70,
+      "draftEngineDiagnostics": [
+        {
+          "id": "breakout-ball-starts",
+          "result": "pass",
+          "reason": "no violation in 11 frames",
+          "firstFrame": null,
+          "framesJudged": 11,
+          "coverage": {
+            "status": "exercised",
+            "semanticResult": "pass",
+            "framesObserved": 11,
+            "framesExpected": 11,
+            "framesRequired": 11,
+            "completeWindow": true
+          }
+        },
+        {
+          "id": "breakout-paddle-bounds",
+          "result": "pass",
+          "reason": "no violation in 51 frames",
+          "firstFrame": null,
+          "framesJudged": 51,
+          "coverage": {
+            "status": "exercised",
+            "semanticResult": "pass",
+            "framesObserved": 51,
+            "framesExpected": 51,
+            "framesRequired": 40,
+            "completeWindow": true
+          }
+        }
+      ]
+    },
+    {
+      "case": "harmless",
+      "traceSha256": "dc0c5b024d72ac267efc023d449ec63d70fed24a3ec4c6c73992041d2bf97126",
+      "ticks": 407,
+      "distinctPlayerPositions": 70,
+      "draftEngineDiagnostics": [
+        {
+          "id": "breakout-ball-starts",
+          "result": "pass",
+          "reason": "no violation in 11 frames",
+          "firstFrame": null,
+          "framesJudged": 11,
+          "coverage": {
+            "status": "exercised",
+            "semanticResult": "pass",
+            "framesObserved": 11,
+            "framesExpected": 11,
+            "framesRequired": 11,
+            "completeWindow": true
+          }
+        },
+        {
+          "id": "breakout-paddle-bounds",
+          "result": "pass",
+          "reason": "no violation in 51 frames",
+          "firstFrame": null,
+          "framesJudged": 51,
+          "coverage": {
+            "status": "exercised",
+            "semanticResult": "pass",
+            "framesObserved": 51,
+            "framesExpected": 51,
+            "framesRequired": 40,
+            "completeWindow": true
+          }
+        }
+      ]
+    },
+    {
+      "case": "broken",
+      "traceSha256": "54f9dc3184c33dc1718f3a57494e8cbdfcbe6d65809f0c1b072285b69dd431c4",
+      "ticks": 407,
+      "distinctPlayerPositions": 2,
+      "draftEngineDiagnostics": [
+        {
+          "id": "breakout-ball-starts",
+          "result": "pass",
+          "reason": "no violation in 11 frames",
+          "firstFrame": null,
+          "framesJudged": 11,
+          "coverage": {
+            "status": "exercised",
+            "semanticResult": "pass",
+            "framesObserved": 11,
+            "framesExpected": 11,
+            "framesRequired": 11,
+            "completeWindow": true
+          }
+        },
+        {
+          "id": "breakout-paddle-bounds",
+          "result": "fail",
+          "reason": "player [-15.5, 607.0, 31.5, 625.0] leaves region [0, 0, 360, 640] (first at frame 20, 51 frames)",
+          "firstFrame": 20,
+          "framesJudged": 51,
+          "coverage": {
+            "status": "exercised",
+            "semanticResult": "fail",
+            "framesObserved": 51,
+            "framesExpected": 51,
+            "framesRequired": 40,
+            "completeWindow": true
+          }
+        }
+      ]
+    }
+  ]
+}

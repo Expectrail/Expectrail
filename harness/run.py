@@ -251,7 +251,7 @@ _FROM_GAME = object()
 def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = None, fps: int | None = 60,
         godot: Path | None = None, patches: list[Path] | None = None,
         force_import: bool = False, capture_frames: bool = True, sandbox: str | None = None,
-        within: Path | None = None, *, project: object = _FROM_GAME) -> dict:
+        within: Path | None = None, *, project: object = _FROM_GAME, input_probe: bool = False) -> dict:
     """Replay one route and write trace.json and replay.json (and the frames, unless capture_frames is
     False: discovery reads only the trace, so it runs headless and skips writing a PNG per frame).
 
@@ -382,6 +382,8 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
         cmd += [selected_scene]  # Godot's scene argument, before the harness's -- arguments.
     cmd += ["--disable-vsync", "--", f"--route={route_arg}", f"--trace={trace_arg}",
             f"--seed={route_doc.get('seed', 1)}"]
+    if input_probe:
+        cmd += ["--input-probe=1"]
     if config is not None:
         cmd += harness_arguments(config)
     try:

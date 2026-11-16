@@ -1,0 +1,2740 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "auto-input-map",
+  "seed": 1,
+  "description": "Draft pointer sweep from script hints and engine viewport; replay must demonstrate movement. Start: UI/GameMenu/CenterContainer/VBoxContainer/Start, pressed \u2192 GameManager:_on_start_pressed, viewport [180.0, 290.0].",
+  "ticks": 407,
+  "events": [
+    {
+      "tick": 12,
+      "pointer": {
+        "position": [
+          180.0,
+          290.0
+        ]
+      }
+    },
+    {
+      "tick": 13,
+      "pointer": {
+        "position": [
+          180.0,
+          290.0
+        ],
+        "button": "left",
+        "pressed": true
+      }
+    },
+    {
+      "tick": 14,
+      "pointer": {
+        "position": [
+          180.0,
+          290.0
+        ],
+        "button": "left",
+        "pressed": false
+      }
+    },
+    {
+      "tick": 17,
+      "pointer": {
+        "position": [
+          177.6,
+          293.7
+        ]
+      }
+    },
+    {
+      "tick": 18,
+      "pointer": {
+        "position": [
+          175.2,
+          297.4
+        ]
+      }
+    },
+    {
+      "tick": 19,
+      "pointer": {
+        "position": [
+          172.8,
+          301.1
+        ]
+      }
+    },
+    {
+      "tick": 20,
+      "pointer": {
+        "position": [
+          170.4,
+          304.8
+        ]
+      }
+    },
+    {
+      "tick": 21,
+      "pointer": {
+        "position": [
+          168.0,
+          308.5
+        ]
+      }
+    },
+    {
+      "tick": 22,
+      "pointer": {
+        "position": [
+          165.6,
+          312.2
+        ]
+      }
+    },
+    {
+      "tick": 23,
+      "pointer": {
+        "position": [
+          163.2,
+          315.9
+        ]
+      }
+    },
+    {
+      "tick": 24,
+      "pointer": {
+        "position": [
+          160.8,
+          319.6
+        ]
+      }
+    },
+    {
+      "tick": 25,
+      "pointer": {
+        "position": [
+          158.4,
+          323.3
+        ]
+      }
+    },
+    {
+      "tick": 26,
+      "pointer": {
+        "position": [
+          156.0,
+          327.0
+        ]
+      }
+    },
+    {
+      "tick": 27,
+      "pointer": {
+        "position": [
+          153.6,
+          330.7
+        ]
+      }
+    },
+    {
+      "tick": 28,
+      "pointer": {
+        "position": [
+          151.2,
+          334.4
+        ]
+      }
+    },
+    {
+      "tick": 29,
+      "pointer": {
+        "position": [
+          148.8,
+          338.1
+        ]
+      }
+    },
+    {
+      "tick": 30,
+      "pointer": {
+        "position": [
+          146.4,
+          341.8
+        ]
+      }
+    },
+    {
+      "tick": 31,
+      "pointer": {
+        "position": [
+          144.0,
+          345.5
+        ]
+      }
+    },
+    {
+      "tick": 32,
+      "pointer": {
+        "position": [
+          141.6,
+          349.2
+        ]
+      }
+    },
+    {
+      "tick": 33,
+      "pointer": {
+        "position": [
+          139.2,
+          352.9
+        ]
+      }
+    },
+    {
+      "tick": 34,
+      "pointer": {
+        "position": [
+          136.8,
+          356.6
+        ]
+      }
+    },
+    {
+      "tick": 35,
+      "pointer": {
+        "position": [
+          134.4,
+          360.3
+        ]
+      }
+    },
+    {
+      "tick": 36,
+      "pointer": {
+        "position": [
+          132.0,
+          364.0
+        ]
+      }
+    },
+    {
+      "tick": 37,
+      "pointer": {
+        "position": [
+          129.6,
+          367.7
+        ]
+      }
+    },
+    {
+      "tick": 38,
+      "pointer": {
+        "position": [
+          127.2,
+          371.4
+        ]
+      }
+    },
+    {
+      "tick": 39,
+      "pointer": {
+        "position": [
+          124.8,
+          375.1
+        ]
+      }
+    },
+    {
+      "tick": 40,
+      "pointer": {
+        "position": [
+          122.4,
+          378.8
+        ]
+      }
+    },
+    {
+      "tick": 41,
+      "pointer": {
+        "position": [
+          120.0,
+          382.5
+        ]
+      }
+    },
+    {
+      "tick": 42,
+      "pointer": {
+        "position": [
+          117.6,
+          386.2
+        ]
+      }
+    },
+    {
+      "tick": 43,
+      "pointer": {
+        "position": [
+          115.2,
+          389.9
+        ]
+      }
+    },
+    {
+      "tick": 44,
+      "pointer": {
+        "position": [
+          112.8,
+          393.6
+        ]
+      }
+    },
+    {
+      "tick": 45,
+      "pointer": {
+        "position": [
+          110.4,
+          397.3
+        ]
+      }
+    },
+    {
+      "tick": 46,
+      "pointer": {
+        "position": [
+          108.0,
+          401.0
+        ]
+      }
+    },
+    {
+      "tick": 47,
+      "pointer": {
+        "position": [
+          105.6,
+          404.7
+        ]
+      }
+    },
+    {
+      "tick": 48,
+      "pointer": {
+        "position": [
+          103.2,
+          408.4
+        ]
+      }
+    },
+    {
+      "tick": 49,
+      "pointer": {
+        "position": [
+          100.8,
+          412.1
+        ]
+      }
+    },
+    {
+      "tick": 50,
+      "pointer": {
+        "position": [
+          98.4,
+          415.8
+        ]
+      }
+    },
+    {
+      "tick": 51,
+      "pointer": {
+        "position": [
+          96.0,
+          419.5
+        ]
+      }
+    },
+    {
+      "tick": 52,
+      "pointer": {
+        "position": [
+          93.6,
+          423.2
+        ]
+      }
+    },
+    {
+      "tick": 53,
+      "pointer": {
+        "position": [
+          91.2,
+          426.9
+        ]
+      }
+    },
+    {
+      "tick": 54,
+      "pointer": {
+        "position": [
+          88.8,
+          430.6
+        ]
+      }
+    },
+    {
+      "tick": 55,
+      "pointer": {
+        "position": [
+          86.4,
+          434.3
+        ]
+      }
+    },
+    {
+      "tick": 56,
+      "pointer": {
+        "position": [
+          84.0,
+          438.0
+        ]
+      }
+    },
+    {
+      "tick": 57,
+      "pointer": {
+        "position": [
+          81.6,
+          441.7
+        ]
+      }
+    },
+    {
+      "tick": 58,
+      "pointer": {
+        "position": [
+          79.2,
+          445.4
+        ]
+      }
+    },
+    {
+      "tick": 59,
+      "pointer": {
+        "position": [
+          76.8,
+          449.1
+        ]
+      }
+    },
+    {
+      "tick": 60,
+      "pointer": {
+        "position": [
+          74.4,
+          452.8
+        ]
+      }
+    },
+    {
+      "tick": 61,
+      "pointer": {
+        "position": [
+          72.0,
+          456.5
+        ]
+      }
+    },
+    {
+      "tick": 62,
+      "pointer": {
+        "position": [
+          69.6,
+          460.2
+        ]
+      }
+    },
+    {
+      "tick": 63,
+      "pointer": {
+        "position": [
+          67.2,
+          463.9
+        ]
+      }
+    },
+    {
+      "tick": 64,
+      "pointer": {
+        "position": [
+          64.8,
+          467.6
+        ]
+      }
+    },
+    {
+      "tick": 65,
+      "pointer": {
+        "position": [
+          62.4,
+          471.3
+        ]
+      }
+    },
+    {
+      "tick": 66,
+      "pointer": {
+        "position": [
+          60.0,
+          475.0
+        ]
+      }
+    },
+    {
+      "tick": 67,
+      "pointer": {
+        "position": [
+          57.6,
+          478.7
+        ]
+      }
+    },
+    {
+      "tick": 68,
+      "pointer": {
+        "position": [
+          55.2,
+          482.4
+        ]
+      }
+    },
+    {
+      "tick": 69,
+      "pointer": {
+        "position": [
+          52.8,
+          486.1
+        ]
+      }
+    },
+    {
+      "tick": 70,
+      "pointer": {
+        "position": [
+          50.4,
+          489.8
+        ]
+      }
+    },
+    {
+      "tick": 71,
+      "pointer": {
+        "position": [
+          48.0,
+          493.5
+        ]
+      }
+    },
+    {
+      "tick": 72,
+      "pointer": {
+        "position": [
+          45.6,
+          497.2
+        ]
+      }
+    },
+    {
+      "tick": 73,
+      "pointer": {
+        "position": [
+          43.2,
+          500.9
+        ]
+      }
+    },
+    {
+      "tick": 74,
+      "pointer": {
+        "position": [
+          40.8,
+          504.6
+        ]
+      }
+    },
+    {
+      "tick": 75,
+      "pointer": {
+        "position": [
+          38.4,
+          508.3
+        ]
+      }
+    },
+    {
+      "tick": 76,
+      "pointer": {
+        "position": [
+          36.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 92,
+      "pointer": {
+        "position": [
+          40.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 93,
+      "pointer": {
+        "position": [
+          45.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 94,
+      "pointer": {
+        "position": [
+          50.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 95,
+      "pointer": {
+        "position": [
+          55.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 96,
+      "pointer": {
+        "position": [
+          60.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 97,
+      "pointer": {
+        "position": [
+          64.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 98,
+      "pointer": {
+        "position": [
+          69.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 99,
+      "pointer": {
+        "position": [
+          74.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 100,
+      "pointer": {
+        "position": [
+          79.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 101,
+      "pointer": {
+        "position": [
+          84.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 102,
+      "pointer": {
+        "position": [
+          88.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 103,
+      "pointer": {
+        "position": [
+          93.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 104,
+      "pointer": {
+        "position": [
+          98.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 105,
+      "pointer": {
+        "position": [
+          103.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 106,
+      "pointer": {
+        "position": [
+          108.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 107,
+      "pointer": {
+        "position": [
+          112.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 108,
+      "pointer": {
+        "position": [
+          117.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 109,
+      "pointer": {
+        "position": [
+          122.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 110,
+      "pointer": {
+        "position": [
+          127.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 111,
+      "pointer": {
+        "position": [
+          132.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 112,
+      "pointer": {
+        "position": [
+          136.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 113,
+      "pointer": {
+        "position": [
+          141.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 114,
+      "pointer": {
+        "position": [
+          146.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 115,
+      "pointer": {
+        "position": [
+          151.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 116,
+      "pointer": {
+        "position": [
+          156.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 117,
+      "pointer": {
+        "position": [
+          160.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 118,
+      "pointer": {
+        "position": [
+          165.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 119,
+      "pointer": {
+        "position": [
+          170.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 120,
+      "pointer": {
+        "position": [
+          175.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 121,
+      "pointer": {
+        "position": [
+          180.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 122,
+      "pointer": {
+        "position": [
+          184.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 123,
+      "pointer": {
+        "position": [
+          189.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 124,
+      "pointer": {
+        "position": [
+          194.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 125,
+      "pointer": {
+        "position": [
+          199.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 126,
+      "pointer": {
+        "position": [
+          204.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 127,
+      "pointer": {
+        "position": [
+          208.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 128,
+      "pointer": {
+        "position": [
+          213.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 129,
+      "pointer": {
+        "position": [
+          218.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 130,
+      "pointer": {
+        "position": [
+          223.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 131,
+      "pointer": {
+        "position": [
+          228.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 132,
+      "pointer": {
+        "position": [
+          232.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 133,
+      "pointer": {
+        "position": [
+          237.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 134,
+      "pointer": {
+        "position": [
+          242.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 135,
+      "pointer": {
+        "position": [
+          247.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 136,
+      "pointer": {
+        "position": [
+          252.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 137,
+      "pointer": {
+        "position": [
+          256.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 138,
+      "pointer": {
+        "position": [
+          261.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 139,
+      "pointer": {
+        "position": [
+          266.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 140,
+      "pointer": {
+        "position": [
+          271.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 141,
+      "pointer": {
+        "position": [
+          276.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 142,
+      "pointer": {
+        "position": [
+          280.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 143,
+      "pointer": {
+        "position": [
+          285.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 144,
+      "pointer": {
+        "position": [
+          290.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 145,
+      "pointer": {
+        "position": [
+          295.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 146,
+      "pointer": {
+        "position": [
+          300.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 147,
+      "pointer": {
+        "position": [
+          304.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 148,
+      "pointer": {
+        "position": [
+          309.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 149,
+      "pointer": {
+        "position": [
+          314.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 150,
+      "pointer": {
+        "position": [
+          319.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 151,
+      "pointer": {
+        "position": [
+          324.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 167,
+      "pointer": {
+        "position": [
+          319.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 168,
+      "pointer": {
+        "position": [
+          314.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 169,
+      "pointer": {
+        "position": [
+          309.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 170,
+      "pointer": {
+        "position": [
+          304.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 171,
+      "pointer": {
+        "position": [
+          300.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 172,
+      "pointer": {
+        "position": [
+          295.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 173,
+      "pointer": {
+        "position": [
+          290.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 174,
+      "pointer": {
+        "position": [
+          285.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 175,
+      "pointer": {
+        "position": [
+          280.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 176,
+      "pointer": {
+        "position": [
+          276.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 177,
+      "pointer": {
+        "position": [
+          271.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 178,
+      "pointer": {
+        "position": [
+          266.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 179,
+      "pointer": {
+        "position": [
+          261.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 180,
+      "pointer": {
+        "position": [
+          256.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 181,
+      "pointer": {
+        "position": [
+          252.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 182,
+      "pointer": {
+        "position": [
+          247.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 183,
+      "pointer": {
+        "position": [
+          242.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 184,
+      "pointer": {
+        "position": [
+          237.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 185,
+      "pointer": {
+        "position": [
+          232.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 186,
+      "pointer": {
+        "position": [
+          228.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 187,
+      "pointer": {
+        "position": [
+          223.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 188,
+      "pointer": {
+        "position": [
+          218.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 189,
+      "pointer": {
+        "position": [
+          213.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 190,
+      "pointer": {
+        "position": [
+          208.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 191,
+      "pointer": {
+        "position": [
+          204.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 192,
+      "pointer": {
+        "position": [
+          199.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 193,
+      "pointer": {
+        "position": [
+          194.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 194,
+      "pointer": {
+        "position": [
+          189.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 195,
+      "pointer": {
+        "position": [
+          184.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 196,
+      "pointer": {
+        "position": [
+          180.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 197,
+      "pointer": {
+        "position": [
+          175.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 198,
+      "pointer": {
+        "position": [
+          170.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 199,
+      "pointer": {
+        "position": [
+          165.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 200,
+      "pointer": {
+        "position": [
+          160.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 201,
+      "pointer": {
+        "position": [
+          156.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 202,
+      "pointer": {
+        "position": [
+          151.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 203,
+      "pointer": {
+        "position": [
+          146.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 204,
+      "pointer": {
+        "position": [
+          141.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 205,
+      "pointer": {
+        "position": [
+          136.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 206,
+      "pointer": {
+        "position": [
+          132.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 207,
+      "pointer": {
+        "position": [
+          127.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 208,
+      "pointer": {
+        "position": [
+          122.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 209,
+      "pointer": {
+        "position": [
+          117.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 210,
+      "pointer": {
+        "position": [
+          112.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 211,
+      "pointer": {
+        "position": [
+          108.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 212,
+      "pointer": {
+        "position": [
+          103.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 213,
+      "pointer": {
+        "position": [
+          98.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 214,
+      "pointer": {
+        "position": [
+          93.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 215,
+      "pointer": {
+        "position": [
+          88.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 216,
+      "pointer": {
+        "position": [
+          84.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 217,
+      "pointer": {
+        "position": [
+          79.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 218,
+      "pointer": {
+        "position": [
+          74.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 219,
+      "pointer": {
+        "position": [
+          69.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 220,
+      "pointer": {
+        "position": [
+          64.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 221,
+      "pointer": {
+        "position": [
+          60.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 222,
+      "pointer": {
+        "position": [
+          55.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 223,
+      "pointer": {
+        "position": [
+          50.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 224,
+      "pointer": {
+        "position": [
+          45.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 225,
+      "pointer": {
+        "position": [
+          40.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 226,
+      "pointer": {
+        "position": [
+          36.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 242,
+      "pointer": {
+        "position": [
+          40.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 243,
+      "pointer": {
+        "position": [
+          45.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 244,
+      "pointer": {
+        "position": [
+          50.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 245,
+      "pointer": {
+        "position": [
+          55.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 246,
+      "pointer": {
+        "position": [
+          60.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 247,
+      "pointer": {
+        "position": [
+          64.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 248,
+      "pointer": {
+        "position": [
+          69.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 249,
+      "pointer": {
+        "position": [
+          74.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 250,
+      "pointer": {
+        "position": [
+          79.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 251,
+      "pointer": {
+        "position": [
+          84.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 252,
+      "pointer": {
+        "position": [
+          88.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 253,
+      "pointer": {
+        "position": [
+          93.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 254,
+      "pointer": {
+        "position": [
+          98.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 255,
+      "pointer": {
+        "position": [
+          103.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 256,
+      "pointer": {
+        "position": [
+          108.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 257,
+      "pointer": {
+        "position": [
+          112.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 258,
+      "pointer": {
+        "position": [
+          117.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 259,
+      "pointer": {
+        "position": [
+          122.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 260,
+      "pointer": {
+        "position": [
+          127.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 261,
+      "pointer": {
+        "position": [
+          132.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 262,
+      "pointer": {
+        "position": [
+          136.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 263,
+      "pointer": {
+        "position": [
+          141.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 264,
+      "pointer": {
+        "position": [
+          146.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 265,
+      "pointer": {
+        "position": [
+          151.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 266,
+      "pointer": {
+        "position": [
+          156.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 267,
+      "pointer": {
+        "position": [
+          160.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 268,
+      "pointer": {
+        "position": [
+          165.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 269,
+      "pointer": {
+        "position": [
+          170.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 270,
+      "pointer": {
+        "position": [
+          175.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 271,
+      "pointer": {
+        "position": [
+          180.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 272,
+      "pointer": {
+        "position": [
+          184.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 273,
+      "pointer": {
+        "position": [
+          189.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 274,
+      "pointer": {
+        "position": [
+          194.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 275,
+      "pointer": {
+        "position": [
+          199.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 276,
+      "pointer": {
+        "position": [
+          204.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 277,
+      "pointer": {
+        "position": [
+          208.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 278,
+      "pointer": {
+        "position": [
+          213.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 279,
+      "pointer": {
+        "position": [
+          218.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 280,
+      "pointer": {
+        "position": [
+          223.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 281,
+      "pointer": {
+        "position": [
+          228.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 282,
+      "pointer": {
+        "position": [
+          232.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 283,
+      "pointer": {
+        "position": [
+          237.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 284,
+      "pointer": {
+        "position": [
+          242.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 285,
+      "pointer": {
+        "position": [
+          247.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 286,
+      "pointer": {
+        "position": [
+          252.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 287,
+      "pointer": {
+        "position": [
+          256.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 288,
+      "pointer": {
+        "position": [
+          261.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 289,
+      "pointer": {
+        "position": [
+          266.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 290,
+      "pointer": {
+        "position": [
+          271.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 291,
+      "pointer": {
+        "position": [
+          276.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 292,
+      "pointer": {
+        "position": [
+          280.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 293,
+      "pointer": {
+        "position": [
+          285.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 294,
+      "pointer": {
+        "position": [
+          290.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 295,
+      "pointer": {
+        "position": [
+          295.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 296,
+      "pointer": {
+        "position": [
+          300.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 297,
+      "pointer": {
+        "position": [
+          304.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 298,
+      "pointer": {
+        "position": [
+          309.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 299,
+      "pointer": {
+        "position": [
+          314.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 300,
+      "pointer": {
+        "position": [
+          319.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 301,
+      "pointer": {
+        "position": [
+          324.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 317,
+      "pointer": {
+        "position": [
+          321.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 318,
+      "pointer": {
+        "position": [
+          319.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 319,
+      "pointer": {
+        "position": [
+          316.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 320,
+      "pointer": {
+        "position": [
+          314.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 321,
+      "pointer": {
+        "position": [
+          312.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 322,
+      "pointer": {
+        "position": [
+          309.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 323,
+      "pointer": {
+        "position": [
+          307.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 324,
+      "pointer": {
+        "position": [
+          304.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 325,
+      "pointer": {
+        "position": [
+          302.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 326,
+      "pointer": {
+        "position": [
+          300.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 327,
+      "pointer": {
+        "position": [
+          297.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 328,
+      "pointer": {
+        "position": [
+          295.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 329,
+      "pointer": {
+        "position": [
+          292.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 330,
+      "pointer": {
+        "position": [
+          290.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 331,
+      "pointer": {
+        "position": [
+          288.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 332,
+      "pointer": {
+        "position": [
+          285.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 333,
+      "pointer": {
+        "position": [
+          283.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 334,
+      "pointer": {
+        "position": [
+          280.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 335,
+      "pointer": {
+        "position": [
+          278.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 336,
+      "pointer": {
+        "position": [
+          276.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 337,
+      "pointer": {
+        "position": [
+          273.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 338,
+      "pointer": {
+        "position": [
+          271.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 339,
+      "pointer": {
+        "position": [
+          268.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 340,
+      "pointer": {
+        "position": [
+          266.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 341,
+      "pointer": {
+        "position": [
+          264.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 342,
+      "pointer": {
+        "position": [
+          261.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 343,
+      "pointer": {
+        "position": [
+          259.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 344,
+      "pointer": {
+        "position": [
+          256.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 345,
+      "pointer": {
+        "position": [
+          254.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 346,
+      "pointer": {
+        "position": [
+          252.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 347,
+      "pointer": {
+        "position": [
+          249.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 348,
+      "pointer": {
+        "position": [
+          247.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 349,
+      "pointer": {
+        "position": [
+          244.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 350,
+      "pointer": {
+        "position": [
+          242.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 351,
+      "pointer": {
+        "position": [
+          240.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 352,
+      "pointer": {
+        "position": [
+          237.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 353,
+      "pointer": {
+        "position": [
+          235.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 354,
+      "pointer": {
+        "position": [
+          232.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 355,
+      "pointer": {
+        "position": [
+          230.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 356,
+      "pointer": {
+        "position": [
+          228.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 357,
+      "pointer": {
+        "position": [
+          225.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 358,
+      "pointer": {
+        "position": [
+          223.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 359,
+      "pointer": {
+        "position": [
+          220.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 360,
+      "pointer": {
+        "position": [
+          218.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 361,
+      "pointer": {
+        "position": [
+          216.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 362,
+      "pointer": {
+        "position": [
+          213.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 363,
+      "pointer": {
+        "position": [
+          211.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 364,
+      "pointer": {
+        "position": [
+          208.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 365,
+      "pointer": {
+        "position": [
+          206.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 366,
+      "pointer": {
+        "position": [
+          204.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 367,
+      "pointer": {
+        "position": [
+          201.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 368,
+      "pointer": {
+        "position": [
+          199.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 369,
+      "pointer": {
+        "position": [
+          196.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 370,
+      "pointer": {
+        "position": [
+          194.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 371,
+      "pointer": {
+        "position": [
+          192.0,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 372,
+      "pointer": {
+        "position": [
+          189.6,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 373,
+      "pointer": {
+        "position": [
+          187.2,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 374,
+      "pointer": {
+        "position": [
+          184.8,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 375,
+      "pointer": {
+        "position": [
+          182.4,
+          512.0
+        ]
+      }
+    },
+    {
+      "tick": 376,
+      "pointer": {
+        "position": [
+          180.0,
+          512.0
+        ]
+      }
+    }
+  ]
+}

@@ -4,7 +4,7 @@ Godot routes can put pointer inputs in the existing `expectrail.route/v0` `event
 array, alongside named actions. The [schema](../contracts/route.schema.json) and
 [example](../contracts/examples/route-pointer.json) define the format. The
 [tests](../tests/test_pointer_routes.py) exercise a button and a pointer-steered
-paddle in a small fixture; this is not evidence of successful Breakout onboarding.
+paddle in a small fixture. The later [Breakout trial](outside-trials/breakout-pointer/report.md) records config-only onboarding at the unchanged public pin.
 
 ```json
 {"tick": 2, "pointer": {"position": [80, 30]}}
@@ -38,8 +38,27 @@ named actions. The current Unity adapter and trusted action-catalog report-route
 path refuse pointers explicitly; neither silently replays a partial route. Web
 routes use their separate, unchanged contract.
 
-This is the route-contract half of #259's pointer/menu follow-up. `init` and
-`route --auto` still use their existing action-map generation. Automatically
-finding a start control, reporting pointer steering in `inspect`, generating
-pointer sweeps, and rerunning Breakout at its pinned commit remain to be built
-and measured. No draft check was approved by this change.
+`inspect` now reports authored pointer-read hints and possible start controls without
+running the project. `init` and `route --auto` use an opt-in disposable headless
+probe when those hints require it. The engine reports visible/enabled buttons,
+root-viewport boxes and actual `pressed` connections under the optional trace
+[`inputProbe`](../contracts/examples/trace-input-probe.json) field. A start-labelled
+control needs one matching start handler; ambiguous, disabled, truncated or
+unconnected menu evidence is refused with the controls found. This is a conservative
+heuristic for common GDScript scenes, not understanding arbitrary UI code or translated
+labels. Unknown start logic needs a user-supplied route.
+
+When there are no authored movement actions and a body script reads the pointer,
+the draft clicks the measured start control and sweeps across the measured viewport.
+Script hints alone do not prove movement. `route --auto` writes the route only after
+three complete identical headless traces and observable bound-player movement;
+a stationary pointer plan is refused. `init` writes a draft for review and does
+not claim that it verified a game. A control-only input map is refused instead
+of emitting a pause-only route. Reviewing a saved draft does not execute its game.
+
+Ordinary action routes do not request a probe. Eight real rendered legacy replays
+retain [identical trace bytes and decisions](menu-routes-evidence/parity-comparison.json).
+The [menu/paddle fixture tests](../tests/test_menu_routes.py) have offline stand-ins
+and real Godot tests. The [Breakout report](outside-trials/breakout-pointer/report.md)
+separates raw draft engine diagnostics from the CLI's needs-review decisions.
+No draft check was approved.

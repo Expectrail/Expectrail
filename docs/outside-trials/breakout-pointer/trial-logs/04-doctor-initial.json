@@ -1,0 +1,25 @@
+{
+  "step": 4,
+  "label": "doctor-initial",
+  "startedUtc": "2026-11-16T06:44:14.119208+00:00",
+  "command": [
+    "python3",
+    "-m",
+    "expectrail.cli",
+    "doctor",
+    "--project",
+    "/workspace/work/breakout-pointer-source",
+    "--no-fetch",
+    "--json"
+  ],
+  "cwd": "/workspace/work/pointer-routes",
+  "seconds": 14.822871536998719,
+  "exitCode": 3,
+  "status": "finished",
+  "log": "trial-logs/04-doctor-initial.log",
+  "environment": {
+    "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+    "TMPDIR": null,
+    "EXPECTRAIL_TOOLS": null
+  }
+}

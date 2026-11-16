@@ -1,0 +1,3 @@
+Draft checks written before measuring variants; neither has an approval. Config draft remains true.
+Bounds window 20..70, minimum 40; ball window 40..50, minimum 11; both require left-lane checkpoint.
+Reuse exactly the prior harmless comment and broken paddle-at-x=8 patches from tests/outside/breakout/changes.
