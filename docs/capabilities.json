@@ -1853,7 +1853,8 @@
       "docs": [
         "docs/playtest.md",
         "docs/ingest-repair.md",
-        "docs/llm-patch-spend.md"
+        "docs/llm-patch-spend.md",
+        "docs/live-repair.md"
       ],
       "status": "implemented",
       "grade": "fixture",
@@ -1867,9 +1868,14 @@
           "kind": "test",
           "ref": "tests/test_llm_patch_bound.py",
           "shows": "Offline local-server tests cover pre-send token-price admission, exact body/output cap, concurrency, retries, violations and existing repair-loop integration."
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_live_repair_kit.py",
+          "shows": "Offline current-model admission/withdrawal/cap-plan tests and optional validation of real Godot localhost rehearsal records."
         }
       ],
-      "limits": "Implemented and tested offline; not measured with a live model. Muse/BYO CLIs stop fixer-bound-unavailable. Controlled llm-patch supports only recorded OpenAI GPT-4o text prices, conservative byte input bounds and an explicit output cap; reservations, usage violations and repair-loop integration use a local stand-in server. Provider conformance, bills, repair quality and repair rates are unmeasured. Advisory-only, unreproduced and desynchronised reports never start a fixer."
+      "limits": "Implemented and tested offline; not measured with a live model. The live-repair kit selects reviewed OpenAI gpt-6.1-sol, full-context token reservation, standard-tier output limit and model availability/expiry refusal; Muse/BYO CLIs remain refused. A real Godot localhost rehearsal tests wiring with scripted fixer/vision responses, not model quality, invoices or a repair rate. No workflow was activated or dispatched."
     }
   ],
   "notModes": {

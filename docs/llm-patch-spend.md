@@ -1,5 +1,7 @@
 # A controlled request ceiling for llm-patch (#267)
 
+Current #531 kit: [current model, full-context reservation and $10 cap envelope](live-repair/RUN-SHEET.md). The historical GPT-4o fixer profile below is deprecated and now refused; its offline regression fixtures do not enable it live.
+
 `llm-patch` builds its requests in trusted host code. It now reserves a maximum
 before every send. Muse Code and BYO agent CLIs still stop with
 `fixer-bound-unavailable`; their processes choose their own requests. No live
