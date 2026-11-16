@@ -1,0 +1,43 @@
+{
+  "format": "expectrail.verify-request/v1",
+  "project": {
+    "adapter": "godot",
+    "game": "game/platformer",
+    "routes": [
+      "routes/*.json"
+    ],
+    "specs": "specs"
+  },
+  "head": {
+    "checkout": "/srv/jobs/example/inputs/raw/head",
+    "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "base": {
+    "checkout": "/srv/jobs/example/inputs/raw/base",
+    "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "executionClass": "diagnostic",
+  "limits": {
+    "timeoutSeconds": 1800
+  },
+  "idempotencyKey": "pr-7:1111111",
+  "commitInputs": {
+    "repository": "/srv/project",
+    "baseRef": "v1",
+    "headRef": "main",
+    "resolved": {
+      "base": {
+        "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "gitTree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "snapshotDigest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "checkout": "/srv/jobs/example/inputs/raw/base"
+      },
+      "head": {
+        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "gitTree": "cccccccccccccccccccccccccccccccccccccccc",
+        "snapshotDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "checkout": "/srv/jobs/example/inputs/raw/head"
+      }
+    }
+  }
+}

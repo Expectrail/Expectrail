@@ -25,6 +25,134 @@
     "expectrail"
   ],
   "properties": {
+    "inputSources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "head",
+        "base"
+      ],
+      "description": "Verifier provenance, never inferred from legacy caller commit labels. Omission in an old record means provenance was not recorded; it is not a verified commit.",
+      "properties": {
+        "head": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "folder"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "repository",
+                "ref",
+                "commit",
+                "gitTree",
+                "snapshotDigest"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "commit"
+                },
+                "repository": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                },
+                "ref": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                "commit": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+                },
+                "gitTree": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+                },
+                "snapshotDigest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              }
+            }
+          ]
+        },
+        "base": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "folder"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind",
+                    "repository",
+                    "ref",
+                    "commit",
+                    "gitTree",
+                    "snapshotDigest"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "commit"
+                    },
+                    "repository": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4096
+                    },
+                    "ref": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1024
+                    },
+                    "commit": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+                    },
+                    "gitTree": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+                    },
+                    "snapshotDigest": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
     "intent": {"enum": ["fix", "change", "none"], "default": "none", "description": "The verification intent copied from the saved request. Omitted means none."},
     "bug": {"type": "string", "minLength": 1, "maxLength": 8192, "pattern": "\\S", "description": "The request's captured user-supplied bug report, only with intent fix. It is context, not a check. Control characters other than tab and line endings are refused by the reader."},
     "budget": {"$ref": "job-budget.v1.schema.json", "description": "Last recorded per-job holds, also saved as job-budget.json beside status.json; not a bill. Absent in older jobs. A stopped budget requires needs-review when completed."},
