@@ -337,13 +337,22 @@ def prepare(root, folder, batch, bundle, *, parent=None, new_branch=False):
     return doc
 
 
+NO_BASE_EVENTS = ("schedule", "workflow_dispatch")
+
+
 def base_commit(root, env=None):
-    """Resolve the PR's immutable base, including in a shallow CI checkout."""
+    """Resolve the PR's immutable base, including in a shallow CI checkout.
+
+    Returns None only for a scheduled or manual CI run, which has no change to charge.
+    """
     env = os.environ if env is None else env
     if env.get("GITHUB_EVENT_PATH"):
         event = json.loads(Path(env["GITHUB_EVENT_PATH"]).read_text())
         value = event.get("pull_request", {}).get("base", {}).get("sha") or event.get("before")
         if not value or value == "0" * 40:
+            # A scheduled or manual run has no pull request to charge; the limit is a PR rule.
+            if env.get("GITHUB_EVENT_NAME") in NO_BASE_EVENTS:
+                return None
             raise ValueError("CI event has no comparison base; cannot enforce evidence limit")
     else:
         try:
@@ -446,7 +455,11 @@ def main(argv=None):
             print(f"Prepared {len(doc['files'])} files at {doc['commit']}; nothing pushed.")
             return 0
         if a.command == "budget":
-            result = budget(a.repo, a.base or base_commit(a.repo))
+            base = a.base or base_commit(a.repo)
+            if base is None:
+                print("Evidence limit not applicable: this scheduled or manual run has no pull request base.")
+                return 0
+            result = budget(a.repo, base)
             print(json.dumps(result, indent=2))
             return int(bool(result["errors"]))
         errors = (verify(a.manifest, tree=a.tree, repo=a.git) if a.command == "verify"

@@ -283,6 +283,20 @@ class EvidenceStorageTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "no comparison base"):
             storage.base_commit(clone, {"GITHUB_EVENT_PATH": str(event)})
 
+    def test_scheduled_and_manual_runs_have_no_base_but_other_events_still_refuse(self):
+        event = Path(self.temp.name) / "event.json"
+        event.write_text('{}')
+        for name in ("schedule", "workflow_dispatch"):
+            with self.subTest(event=name):
+                self.assertIsNone(storage.base_commit(self.root, {"GITHUB_EVENT_PATH": str(event),
+                                                                  "GITHUB_EVENT_NAME": name}))
+        for name in ("pull_request", "push", ""):
+            with self.subTest(event=name), self.assertRaisesRegex(ValueError, "no comparison base"):
+                storage.base_commit(self.root, {"GITHUB_EVENT_PATH": str(event), "GITHUB_EVENT_NAME": name})
+        event.write_text(json.dumps({"pull_request": {"base": {"sha": self.base}}}))
+        self.assertEqual(storage.base_commit(self.root, {"GITHUB_EVENT_PATH": str(event),
+                                                         "GITHUB_EVENT_NAME": "schedule"}), self.base)
+
     def test_import_without_numpy_or_pillow(self):
         result = subprocess.run([os.sys.executable, "-c", "import sys; sys.modules['numpy']=None; sys.modules['PIL']=None; from tools import evidence_storage"],
                                 cwd=storage.ROOT, capture_output=True, text=True)
@@ -291,7 +305,10 @@ class EvidenceStorageTest(unittest.TestCase):
 
 class RepositoryEvidenceTest(unittest.TestCase):
     def test_pr_docs_evidence_stays_within_reviewed_budget(self):
-        result = storage.budget(storage.ROOT, storage.base_commit(storage.ROOT))
+        base = storage.base_commit(storage.ROOT)
+        if base is None:
+            self.skipTest("scheduled or manual run: no pull request base, so the PR evidence limit does not apply")
+        result = storage.budget(storage.ROOT, base)
         self.assertEqual(result["errors"], [], json.dumps(result, indent=2))
 
     def test_committed_evidence_indexes_and_doc_links_match_manifests(self):
