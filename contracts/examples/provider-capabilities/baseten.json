@@ -13,5 +13,20 @@
       "reserveUsd": 0.05,
       "basis": "Hold of $0.05 before each triage request. The bill is not known until the provider answers; a recorded Muse call on 2026-10-27 was $0.01 (bench/cost)."
     }
-  ]
+  ],
+  "textSmoke": {
+    "model": "meta-models/muse-spark-open",
+    "apiBase": "https://inference.baseten.co/v1",
+    "maxInputTokens": 256,
+    "maxOutputTokens": 2048,
+    "maxAttempts": 1,
+    "inputNanoUsdPerToken": 1250,
+    "outputNanoUsdPerToken": 4250,
+    "inputLimitField": "truncate_prompt_tokens",
+    "reasoning": "always-on-in-output-budget",
+    "priceSource": "https://www.baseten.co/library/muse-spark-open/ (USD 1.25 input / 4.25 output per million tokens; uncached input)",
+    "limitSource": "https://docs.baseten.co/reference/inference-api/llm-openapi-spec.json (truncate_prompt_tokens and max_tokens)",
+    "reasoningSource": "https://docs.baseten.co/inference/model-apis/reasoning.md (always on; max_tokens includes reasoning; no supported off switch for this model)",
+    "checkedOn": "2026-11-16"
+  }
 }
