@@ -336,14 +336,14 @@ class CaptureJudgeTest(unittest.TestCase):
 
         with mock.patch.object(vision, 'anchored', spy):
             vision.judge(self.project, self.data, self.receipt, self.root / 'from-recording', client=client)
-        self.assertIs(seen['client'], client)
+        self.assertIs(seen['client'].inner, client)
         self.assertIsInstance(seen['observer'], recorded._DiagnosticObserver)
 
         class Live(Sees):
             pass
         with mock.patch.object(vision, 'anchored', spy):
             vision.judge(self.project, self.data, self.receipt, self.root / 'live', client=Live())
-        self.assertIsInstance(seen['client'], recorded.RecordingClient)
+        self.assertNotIsInstance(seen['client'].inner, recorded.RecordedClient)
         self.assertNotIsInstance(seen['observer'], recorded._DiagnosticObserver)
 
     def test_swapping_variant_folders_is_refused(self):

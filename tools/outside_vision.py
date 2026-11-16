@@ -86,7 +86,64 @@ def saved_run(folder, route):
         if sha(png) != digest or not png.startswith(b'\x89PNG\r\n\x1a\n'):
             raise ValueError(f'frame {index} differs from replay.json or is not a PNG')
     return {'tree': replay['game']['tree'], 'trace': trace, 'framesDir': frames,
-            'replaySha256': sha(data), 'isolation': isolation}
+            'replaySha256': sha(data), 'isolation': isolation, 'engine': replay['engine']}
+
+
+def preflight(project, data, receipt, *, for_calibration=True):
+    """Validate every arm, selected policy and usable coverage before a question can be sent."""
+    from tools.outside_vision_plan import calibration_selection, visible
+    from agents.sam_observations import frame_files, window
+    from expectrail.anchored import RULES
+    from harness.run import GODOT_VERSION
+
+    if capture_id(project, data) != receipt:
+        raise ValueError('capture digest differs from the capture job output')
+    selected = trial.project_spec(project)
+    with tempfile.TemporaryDirectory() as tmp:
+        policy = Path(tmp)
+        shutil.copytree(trial.REPO / project['routes'], policy / 'routes')
+        (policy / 'specs').mkdir()
+        shutil.copyfile(selected, policy / 'specs' / selected.name)
+        checks = verify.read_checks(policy, 'specs', ['routes/*.json'])
+        if checks.problems or checks.drafts or len(checks.specs) != 1:
+            raise ValueError('selected outside policy is not one usable approved check: '
+                             + '; '.join(checks.problems or ['draft or missing approved check']))
+        spec = checks.specs[0]
+    runs, engines = {}, set()
+    for case in variants(project):
+        tree = None
+        for path in routes(project):
+            run = saved_run(data / case / path.stem, path)
+            if tree is not None and tree != run['tree']:
+                raise ValueError(f'{case}: routes name different game trees')
+            tree = run['tree']
+            route = json.loads(path.read_bytes())
+            expected = verify.window_frames({}, route['ticks'], run['trace'])
+            if (expected is None or len(run['trace']['rows']) != route['ticks']
+                    or [row['tick'] for row in run['trace']['rows']] != list(range(route['ticks']))
+                    or sorted(frame_files(run['framesDir'])) != expected):
+                raise ValueError(f'{case}/{path.stem}: incomplete route trace or captured frame window')
+            if problem := verify.input_map_problem(run['trace']):
+                raise ValueError(f'{case}/{path.stem}: {problem}; nothing was asked')
+            engine = run['engine']
+            normalized = (engine.get('version') or '').replace('-stable', '.stable')
+            if engine.get('renderer') != 'opengl3' or not normalized.startswith(GODOT_VERSION.replace('-stable', '.stable')):
+                raise ValueError('outside capture must use the pinned Godot version and CI OpenGL3 renderer')
+            engines.add(tuple(engine.get(k) for k in ('name', 'version', 'renderer', 'device')))
+            if for_calibration and spec.get('coverage', {}).get('whenPlayerVisible'):
+                states = [visible(run, n) for n in window(expected, spec)]
+                if any(state is None for state in states):
+                    raise ValueError(f'{case}/{path.stem}: player visibility is unknown before vision')
+                if sum(state is True for state in states) < spec['coverage'].get('minFrames', 2):
+                    raise ValueError(f'{case}/{path.stem}: insufficient in-play coverage before vision')
+            runs[case, path.name] = run
+    if len(engines) != 1:
+        raise ValueError('outside variants were captured under different rendering environments')
+    first = runs['pinned', routes(project)[0].name]
+    selected_frames, _excluded = calibration_selection(first, spec)
+    if for_calibration and spec.get('coverage', {}).get('whenPlayerVisible') and len(selected_frames) < RULES['minFrames']:
+        raise ValueError('fewer than eight visible, unclipped calibration frames; nothing was asked')
+    return selected, spec, runs
 
 
 def capture(project, out):
@@ -123,16 +180,19 @@ def calibration_markdown(doc):
             f"same answer from a point nudged inside the player in {rates['stable']:.0%}.\n")
 
 
-def anchored(project, data, client, out, *, vision_every=1):
+def anchored(project, data, client, out, *, vision_every=1, spec=None, run=None):
     """The visual observer for this game: calibrated on the unchanged game's first route (#330), and
     used only when the calibration says so. Writes calibration.json and calibration.md to ``out``."""
     from expectrail import anchored as an, recorded
 
     first = routes(project)[0]
-    run = saved_run(data / 'pinned' / first.stem, first)
+    run = run or saved_run(data / 'pinned' / first.stem, first)
+    spec = spec or json.loads(trial.project_spec(project).read_bytes())
+    from tools.outside_vision_plan import calibration_run
     game = {'name': project['name'], 'commit': project['commit']}
     try:
-        doc = an.calibrate(game, run, client)
+        with calibration_run(run, spec) as (scoped, every, selected, excluded):
+            doc = an.calibrate(game, scoped, client, every=every)
     except verify.NoAnswer as exc:
         doc = an.judge_calibration(game, run['replaySha256'], [], an.RULES,
                                    model=str(getattr(client, 'model', 'unknown')),
@@ -142,7 +202,9 @@ def anchored(project, data, client, out, *, vision_every=1):
     (out / 'calibration.json').write_text(json.dumps(doc, indent=1) + '\n')
     (out / 'calibration.md').write_text(calibration_markdown(doc))
     observer = an.AnchoredObserver(client, doc, every=vision_every)
-    return recorded.with_recorded_diagnostics(observer) if isinstance(client, recorded.RecordedClient) else observer
+    # The caller's own client decides the recorded-image diagnosis (#515), not the question wrapper.
+    original = getattr(client, 'inner', client)
+    return recorded.with_recorded_diagnostics(observer) if isinstance(original, recorded.RecordedClient) else observer
 
 
 def judge(project, data, receipt, out, observer=None, client=None, *, vision_every=1):
@@ -152,18 +214,22 @@ def judge(project, data, receipt, out, observer=None, client=None, *, vision_eve
         raise ValueError('vision stride must be a positive integer')
     if observer is not None and vision_every != 1:
         raise ValueError('vision sampling requires the calibrated anchored observer')
-    if capture_id(project, data) != receipt:
-        raise ValueError('capture digest differs from the capture job output')
-    # Use the same trusted check selection as the no-key trial, and refuse an
-    # invalid selection before calibration can ask a model anything.
-    selected_spec = trial.project_spec(project)
+    selected_spec, spec, validated = preflight(project, data, receipt, for_calibration=observer is None)
     if observer is None:
-        from expectrail.recorded import RecordedClient, RecordingClient
-        # One cache for calibration, all variants, and both kinds of gate question. Exact question
-        # and PNG bytes only; no cross-run persistence and no caching of errors. A recording costs
-        # nothing to ask again, and wrapping it would hide it from the recorded-image diagnosis (#515).
-        asked = client if isinstance(client, RecordedClient) else RecordingClient(client, reuse=True)
-        observer = anchored(project, data, asked, out, vision_every=vision_every)
+        from tools.outside_vision_plan import QuestionClient, plan, markdown_plan
+        # One wrapper for calibration, all variants and both kinds of gate question: it reuses an
+        # exact successful answer (same PNG bytes, kind and prompt) within this job, never an error,
+        # and keeps the caller's client reachable as ``inner``.
+        client = QuestionClient(client, conditional=spec.get('coverage', {}).get('whenPlayerVisible', False))
+        request_plan = plan(project, spec, validated)
+        out.mkdir(parents=True, exist_ok=True)
+        (out / 'request-plan.json').write_text(json.dumps(request_plan, indent=2) + '\n')
+        print(markdown_plan(request_plan), flush=True)
+        observer = anchored(project, data, client, out, vision_every=vision_every, spec=spec,
+                            run=validated['pinned', routes(project)[0].name])
+        # This existing artifact is already uploaded by the outside-vision workflow.
+        with (out / 'calibration.md').open('a') as handle:
+            handle.write(markdown_plan(request_plan) + '\n')
     cases = variants(project)
     rows = []
     with tempfile.TemporaryDirectory() as tmp:
@@ -177,7 +243,7 @@ def judge(project, data, receipt, out, observer=None, client=None, *, vision_eve
             shutil.copyfile(selected_spec, arm / 'specs' / selected_spec.name)
             game = arm / 'project'
             for path in routes(project):
-                run = saved_run(data / case / path.stem, path)
+                run = validated[case, path.name]
                 if trees.setdefault(game, run['tree']) != run['tree']:
                     raise ValueError(f'{case}: routes name different game trees')
                 runs[game, sha(path.read_bytes())] = run
