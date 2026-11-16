@@ -1176,5 +1176,53 @@ class LostWorkerTest(unittest.TestCase):
                          ("failed", None, ["WORKER_LOST"]))
         self.assertEqual(st.processes_of(job), [])
 
+
+@unittest.skipUnless(REQUIRED or os.environ.get('EXPECTRAIL_PLAYTEST_DIAGNOSTIC') == '1',
+                     '#531 real Godot + Bubblewrap intake: run in seeded-bugs with EXPECTRAIL_SANDBOX_TESTS=required; explicit local diagnostic opt-in is available')
+class PlaytestIngestRealEngineTest(unittest.TestCase):
+    """Collected by CI's existing tests.test_replay_sandbox invocation; no workflow edit."""
+
+    @classmethod
+    def setUpClass(cls):
+        if REQUIRED:
+            real_tool(True)
+        real_godot()
+        from tools.playtest_fall_through import record
+        target = Path(os.environ.get('EXPECTRAIL_PLAYTEST_EVIDENCE', str(REPO / 'runs/run-it/playtest-ingest')))
+        cls.proof = record(target, sandbox='require' if REQUIRED else 'off')
+        cls.cases = {r['case']: r for r in cls.proof['cases']}
+
+    def test_approved_ground_check_reproduces_three_times(self):
+        case = self.cases['reproduced']
+        self.assertEqual(case['anchorReached'], [True] * 3)
+        self.assertEqual(case['baseGroundCheck'], ['fail'] * 3)
+        self.assertEqual(case['reproductionKind'], 'approved')
+        self.assertEqual(case['reproductionLabel'], 'approved check')
+        self.assertTrue(all(n == 0 for n in case['boundaries'].values()), case['boundaries'])
+        self.assertEqual(case['decision'], 'reject')
+        if REQUIRED:
+            self.assertEqual(self.proof['sandboxRequested'], 'require')
+            self.assertTrue(all(r['isolation']['sandbox'] is not None for r in self.proof['replays']))
+        else:
+            self.assertEqual(self.proof['sandboxRequested'], 'off')
+            self.assertTrue(all(r['isolation']['sandbox'] is None for r in self.proof['replays']))
+
+    def test_clean_base_is_not_reproduced_without_models(self):
+        case = self.cases['not-reproduced']
+        self.assertEqual(case['anchorReached'], [True] * 3)
+        self.assertEqual(case['baseGroundCheck'], ['pass'] * 3)
+        self.assertEqual(case['reproductionKind'], 'none')
+        self.assertEqual(case['reasons'], ['not-reproduced'])
+        self.assertTrue(all(n == 0 for n in case['boundaries'].values()), case['boundaries'])
+
+    def test_anchor_beyond_tolerance_stops_without_models(self):
+        case = self.cases['anchor-desync']
+        self.assertEqual(case['anchorReached'], [False])
+        self.assertEqual(case['baseGroundCheck'], [])
+        self.assertEqual(case['reproductionKind'], 'none')
+        self.assertEqual(case['reasons'], ['anchor-desync'])
+        self.assertTrue(all(n == 0 for n in case['boundaries'].values()), case['boundaries'])
+
+
 if __name__ == "__main__":
     unittest.main()

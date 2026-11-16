@@ -48,6 +48,19 @@ rehearse) asks SAM about them and runs no game; ``run --observer sam-3.1-anchor 
 and 1 when it asked nothing. ``pixel-budget --record jit-run.json --budget-usd X`` prints what the asking
 job may spend: the cap less the capture record's spend (expectrail/jit/pixel_jobs.py, ``budget_left``).
 
+**The template sensor** (#262, expectrail/jit/template_observer.py): ``run --observer visual-sensor
+--sensor-bank BANK`` judges pixel checks with no model and no request, over a template bank frozen
+beforehand from a clean replay (agents/template_observations.py). It plans its frames as SAM does
+(``--sam-every``, ``--sam-first``) and takes none of SAM's other arguments. It runs in the job that replays
+the change, since it holds no key.
+
+**The observer a proposal is for.** A run is judged by one observer, so ``propose`` and ``revise`` take
+``--observer`` too (``sam-3.1-anchor``, the default, or ``visual-sensor``; the pixel setting only): the
+proposer is offered pixel checks for that observer only, and the proposal records it. ``run --proposal``
+replays a proposal only for the observer ``run`` is given and refuses one made for another; ``--observer
+none`` judges no pixel checks, so it reads a proposal made for any observer (its pixel checks are
+``not-run``), as jit.yml's first replay does.
+
 ``--withhold-candidate`` on ``propose``, ``revise`` and ``run`` gives the model no byte of the candidate
 patch (issue #285, step 6): the checks then come from the report and the bug build alone, and a fix
 cannot shape the checks that judge it. Every step of one change takes it or none does; a proposal made
@@ -190,12 +203,25 @@ def _candidate(args) -> str:
     return "withheld" if getattr(args, "withhold_candidate", False) else "shown"
 
 
+def _judged_by(args) -> str | None:
+    """The observer that judges the pixel checks: ``propose`` and ``revise``'s ``--observer``, or ``run``'s
+    (None for ``--observer none``: that run judges no pixel checks)."""
+    name = getattr(args, "observer", SAM)
+    return None if name == "none" else name
+
+
 def _intent_settings(args) -> dict:
-    # ``candidate`` only when it is withheld, so the default call is the one it always was.
-    return {"offer": args.offer, **({"candidate": "withheld"} if _candidate(args) == "withheld" else {})}
+    # ``candidate`` only when it is withheld and ``observer`` only when it is not SAM, so the default call is
+    # the one it always was. A model asked by a run that judges no pixel checks is offered SAM's, as before.
+    observer = _judged_by(args) or SAM
+    return {"offer": args.offer, **({"candidate": "withheld"} if _candidate(args) == "withheld" else {}),
+            **({"observer": observer} if observer != SAM else {})}
 
 
-OBSERVERS = ("none", "sam-3.1-anchor")
+SAM = "sam-3.1-anchor"
+SENSOR = "visual-sensor"
+OBSERVERS = ("none", SAM, SENSOR)
+PROPOSAL_OBSERVERS = (SAM, SENSOR)   # expectrail/jit/pixel.py, PROPOSABLE
 BUILDS = ("pixel-reference", "pixel-base", "pixel-candidate")   # the replay folders of expectrail/jit/run.py
 
 
@@ -244,6 +270,11 @@ def observer_from(args):
     name = getattr(args, "observer", "none")
     sam_args = [a for a in ("sam_answers", "sam_live", "sam_run") if getattr(args, a, None)]
     capture, stored = getattr(args, "pixel_capture", None), getattr(args, "pixel_replays", None)
+    bank = getattr(args, "sensor_bank", None)
+    if bank and name != SENSOR:
+        raise ObserverArgs(f"--sensor-bank is the template bank of --observer {SENSOR}")
+    if name == SENSOR:
+        return _sensor_observer(args, sam_args, capture or stored)
     if name == "none":
         if sam_args:
             raise ObserverArgs("--sam-answers, --sam-live and --sam-run need --observer sam-3.1-anchor")
@@ -263,6 +294,29 @@ def observer_from(args):
         raise ObserverArgs("--pixel-replays judges captured frames from the answers pixel-ask wrote: it needs "
                            "--sam-answers, never --sam-live (the key would meet the change's code)")
     return _sam_observer(args, *_sam_client(args))
+
+
+def _sensor_observer(args, sam_args, jobs):
+    """The template sensor (#262) over ``--sensor-bank``: it asks no one, so it takes nothing of SAM's but the
+    frame plan, and runs in the job that replays the change (no capture or asking job)."""
+    if args.offer != PIXEL:
+        raise ObserverArgs(f"--observer is for pixel checks, which only the {PIXEL} setting offers")
+    if not args.sensor_bank:
+        raise ObserverArgs(f"--observer {SENSOR} needs --sensor-bank FILE (a template bank frozen from a clean replay)")
+    if sam_args:
+        raise ObserverArgs(f"--observer {SENSOR} asks no one: it takes no --sam-answers, --sam-live or --sam-run")
+    if jobs:
+        raise ObserverArgs(f"--observer {SENSOR} holds no key, so it judges in the job that replays: it takes no "
+                           "--pixel-capture or --pixel-replays")
+    if (args.sam_box, args.sam_pad, args.sam_lift) != ("body", 4.0, 0.0):
+        raise ObserverArgs(f"--observer {SENSOR} searches near the engine's body box: it takes no --sam-box, "
+                           "--sam-pad or --sam-lift")
+    from expectrail.jit.template_observer import TemplateSensorObserver
+
+    try:
+        return TemplateSensorObserver(args.sensor_bank, every=args.sam_every, first=args.sam_first)
+    except ValueError as exc:
+        raise ObserverArgs(str(exc)) from exc
 
 
 def _sam_client(args) -> tuple:
@@ -342,6 +396,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--sam-run", action="append", default=[], metavar="BUILD=RUN",
                    help="the recorded run that answers for a build's replays")
     r.add_argument("--sam-live", action="store_true", help="ask SAM live: spends money (key and cap from the environment)")
+    r.add_argument("--sensor-bank", type=Path, help=f"the template bank of --observer {SENSOR} (frozen from a clean replay)")
     _add_sam_setting(r)
     r.add_argument("--pixel-capture", type=Path, metavar="DIR",
                    help="replay the pixel checks' probes with frames and keep them in DIR for pixel-ask; ask nothing")
@@ -374,6 +429,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="the evidence file the measure command wrote; read only under the evidence setting")
     pp.add_argument("--withhold-candidate", action="store_true",
                     help="give the model no byte of the candidate patch (issue #285, step 6)")
+    pp.add_argument("--observer", choices=PROPOSAL_OBSERVERS, default=SAM,
+                    help="the observer that will judge the pixel checks (the pixel setting only); the same as run's")
     pp.add_argument("--offer", choices=ALL_OFFERS, default=DEFAULT_OFFER,
                     help="what the generator is offered (expectrail/jit/offer.py); the same for every step")
     rv = sub.add_parser("revise")
@@ -393,6 +450,8 @@ def main(argv: list[str] | None = None) -> int:
     rv.add_argument("--github-output", type=Path, help="append revised=true|false here (a workflow's GITHUB_OUTPUT)")
     rv.add_argument("--withhold-candidate", action="store_true",
                     help="give the model no byte of the candidate patch (issue #285, step 6)")
+    rv.add_argument("--observer", choices=PROPOSAL_OBSERVERS, default=SAM,
+                    help="the observer that will judge the pixel checks (the pixel setting only); the same as run's")
     rv.add_argument("--offer", choices=REVISABLE, default=DEFAULT_OFFER,
                     help="what the generator is offered (expectrail/jit/offer.py); the same for every step")
     ms = sub.add_parser("measure")
@@ -473,6 +532,8 @@ def main(argv: list[str] | None = None) -> int:
         profile = load_strict(args.profile, "mechanics-profile")
         if args.budget_usd < 0:
             ap.error("budget must not be negative")
+        if args.observer != SAM and args.offer != PIXEL:
+            ap.error(f"--observer is for pixel checks, which only the {PIXEL} setting offers")
         prices = {k: v for k, v in (("sparkUsdPerMTokIn", args.spark_usd_per_mtok_in),
                                     ("sparkUsdPerMTokOut", args.spark_usd_per_mtok_out)) if v is not None}
         report = args.report_file.read_text(encoding="utf-8", errors="replace")
@@ -499,6 +560,8 @@ def main(argv: list[str] | None = None) -> int:
         profile = load_strict(args.profile, "mechanics-profile")
         if args.budget_usd < 0:
             ap.error("budget must not be negative")
+        if args.observer != SAM and args.offer != PIXEL:
+            ap.error(f"--observer is for pixel checks, which only the {PIXEL} setting offers")
         prices = {k: v for k, v in (("sparkUsdPerMTokIn", args.spark_usd_per_mtok_in),
                                     ("sparkUsdPerMTokOut", args.spark_usd_per_mtok_out)) if v is not None}
         report = args.report_file.read_text(encoding="utf-8", errors="replace")
@@ -555,14 +618,15 @@ def main(argv: list[str] | None = None) -> int:
             from expectrail.jit.intent import IntentUnavailable, from_proposal
 
             try:
-                intent = from_proposal(args.proposal, offer=args.offer, candidate=_candidate(args))
+                intent = from_proposal(args.proposal, offer=args.offer, candidate=_candidate(args),
+                                       observer=_judged_by(args))
             except IntentUnavailable as exc:
                 reason = str(exc)
 
                 def intent(*_a, _reason=reason):
                     raise IntentUnavailable(_reason)
                 intent.model, intent.system, intent.offer = None, "", args.offer
-                intent.candidate = _candidate(args)
+                intent.candidate, intent.observer = _candidate(args), _judged_by(args) or SAM
         elif args.model == "spark":
             from expectrail.jit.intent import spark_intent
 

@@ -37,11 +37,9 @@ docs/template-sensor.md), any role other than the player (a bank holds the playe
 second sprite needs its own templates and prediction map, which nothing here supplies yet), and
 ``reaches`` (it looks for one object near the place the engine puts it).
 
-What this is not, yet: the proposer is not offered this observer, and neither a model's answer nor a saved
-proposal may name it (pixel.py ``PROPOSED``), because the propose step is not told which observer will
-judge the run; ``run.generate`` judges checks naming it when it is the run's observer and an intent hands
-it such checks (tests/test_jit_template_observer.py). The command line does not build it, jit.yml does not,
-and no bank has been calibrated for a bench probe. The sensor's measured
+The proposer is offered this observer when the propose step is told it will judge the run (pixel.py
+``proposed``; expectrail/jit/intent.py ``observer``), and the command line builds it (``run --observer
+visual-sensor --sensor-bank BANK``). What this is not, yet: jit.yml does not pass it, and no bank has been calibrated for a bench probe. The sensor's measured
 false alarms on clean frames are in docs/template-sensor-measurement.md: a false alarm on a clean run
 drops the check by the keep rule, so it costs a reproduction, never a false catch.
 """
