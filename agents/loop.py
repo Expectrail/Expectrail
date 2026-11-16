@@ -33,6 +33,8 @@ Exit 0 only if every run ends with verification accept. Crashes never forge acce
 """
 from __future__ import annotations
 
+from expectrail.spend import BudgetStop
+
 import argparse
 import json
 import shutil
@@ -407,6 +409,13 @@ def one_run(
         if ladder is not None:
             payload["judge"] = ladder
         return _with_timing(payload)
+    except BudgetStop as exc:
+        reason = str(exc)
+        write_preflight_stop(out / "morning", reason)
+        return _with_timing({"decision": "needs-review", "error": reason,
+                             "budgetStop": getattr(exc, "code", "spend-cap"),
+                             "trust": trust, "morning": None, "gameplay": None,
+                             "verificationProvenance": "none"})
     except (Exception, SystemExit) as exc:  # noqa: BLE001 — overnight loop must not forge accept
         (out / "loop-error.txt").write_text(traceback.format_exc(), encoding="utf-8")
         payload = {

@@ -1863,7 +1863,7 @@
           "shows": "Offline fixture tests enter the existing fix loop only after approved reproduction, preserve gate decisions, stop on advisory flags, and exclude private canaries from fixer inputs and retries."
         }
       ],
-      "limits": "Implemented and tested offline; not measured with a live model. No live fixer, model-quality, real repair-rate or provider-bill measurement. The Muse invocation hold does not bound its internal token bill. Advisory-only, unreproduced and desynchronised reports never start a fixer."
+      "limits": "Implemented and tested offline; not measured with a live model. No live fixer, model-quality, real repair-rate or provider-bill measurement. The Muse invocation hold does not bound its internal token bill. Advisory-only, unreproduced and desynchronised reports never start a fixer. Live starts now stop fixer-bound-unavailable until a verified request dollar maximum exists; the fixed-price admission meter is tested only with a stand-in."
     }
   ],
   "notModes": {

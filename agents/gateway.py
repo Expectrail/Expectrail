@@ -138,15 +138,22 @@ def _free_port() -> int:
 
 
 def start_mitmdump(mitmdump: str, conf: Path, log: Path, real: str, placeholder: str,
-                   hosts: str) -> tuple[subprocess.Popen, str, Path]:
+                   hosts: str, *, invocation=None) -> tuple[subprocess.Popen, str, Path]:
     """mitmdump with the gateway addon on a free local port: (process, proxy URL, CA certificate)."""
     port = _free_port()
     env = {k: v for k, v in os.environ.items() if k not in ("META_API_KEY", "MODEL_API_KEY")}
     env.update(MUSE_GATEWAY_KEY=real, MUSE_GATEWAY_PLACEHOLDER=placeholder, MUSE_GATEWAY_LOG=str(log),
                MUSE_GATEWAY_HOSTS=hosts)
+    env.pop('MUSE_GATEWAY_METER_CONFIG', None)
+    if invocation is not None:
+        config = conf / 'invocation.json'
+        config.write_text(json.dumps(invocation.config), encoding='utf-8')
+        env['MUSE_GATEWAY_METER_CONFIG'] = str(config)
     with open(conf / "mitmdump.err", "w") as err:  # the child keeps its own copy of the descriptor
         proc = subprocess.Popen([mitmdump, "-q", "-s", str(ADDON), "--listen-host", "127.0.0.1",
-                                 "--listen-port", str(port), "--set", f"confdir={conf}"],
+                                 "--listen-port", str(port), "--set", f"confdir={conf}",
+                                 *(["--set", "connection_strategy=lazy", "--set", "rawtcp=false"]
+                                   if invocation is not None else [])],
                                 env=env, stdout=subprocess.DEVNULL, stderr=err)
     ca = conf / "mitmproxy-ca-cert.pem"
     deadline = time.time() + 60
@@ -257,16 +264,19 @@ class Gateway:
 
 
 @contextmanager
-def muse_gateway(environ: Mapping[str, str] | None = None) -> Iterator[Gateway | None]:
+def muse_gateway(environ: Mapping[str, str] | None = None, *, invocation=None) -> Iterator[Gateway | None]:
     """The gateway for one Muse Code run, or None when it is off. Stopped (proxy and bridge) on exit."""
     env = environ if environ is not None else os.environ
+    if invocation is not None and not enabled(env):
+        raise GatewayError("a fixer invocation cannot disable its admission proxy")
     if not enabled(env):
         yield None
         return
     real = env.get("META_API_KEY", "")
     if not real:
         raise GatewayError(f"{GATEWAY_ENV}=on needs META_API_KEY: the gateway holds it for Muse Code")
-    with _running(real, env.get(HOSTS_ENV, DEFAULT_HOSTS), env) as gw:
+    with _running(real, env.get(HOSTS_ENV, DEFAULT_HOSTS), env,
+                  **({"invocation": invocation} if invocation is not None else {})) as gw:
         yield gw
 
 
@@ -295,7 +305,7 @@ def byo_gateway(agent: str, environ: Mapping[str, str] | None = None) -> Iterato
 
 
 @contextmanager
-def _running(real: str, hosts: str, env: Mapping[str, str]) -> Iterator[Gateway]:
+def _running(real: str, hosts: str, env: Mapping[str, str], *, invocation=None) -> Iterator[Gateway]:
     """A started proxy and bridge holding ``real`` for ``hosts``; both stopped on exit."""
     mitmdump = find_mitmdump(env)
     if not mitmdump or not Path(mitmdump).exists() and not shutil.which(mitmdump):
@@ -308,7 +318,8 @@ def _running(real: str, hosts: str, env: Mapping[str, str]) -> Iterator[Gateway]
     sandbox_dir.mkdir()
     log = workdir / "gateway-log.jsonl"
     placeholder = placeholder_for(real)
-    proc, proxy, ca = start_mitmdump(mitmdump, conf, log, real, placeholder, hosts)
+    proc, proxy, ca = start_mitmdump(mitmdump, conf, log, real, placeholder, hosts,
+                                   **({"invocation": invocation} if invocation is not None else {}))
     bridge = None
     try:
         shutil.copyfile(ca, sandbox_dir / "ca.pem")

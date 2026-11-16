@@ -179,6 +179,8 @@ def run_llm_patch_fixer(
     model: str | None = None,
 ) -> dict[str, Any]:
     """Generate and apply a unified git diff directly via any BYO-LLM API without requiring a local agent CLI."""
+    from expectrail.fixer_budget import start
+    start(out_patch.parent / "fixer-invocation.json")
     cfg = resolve_provider(role="FIXER", model=model if model not in ("muse-code", "llm-patch") else None)
     repo_context = _collect_candidate_files(worktree)
     messages = [
@@ -246,6 +248,8 @@ def run_byo_agent(
     Returns (process, sandbox meta). ``llm-patch`` applies the model's diff to ``work`` itself and
     returns a synthetic process (exit 0 when the diff applied, 1 when it did not).
     """
+    from expectrail.fixer_budget import start
+    start(out / "fixer-invocation.json")
     from agents.gateway import BYO_GATEWAY_ENV, byo_gateway
     from agents.keys import BYO_AGENT_KEY_ENVS, byo_agent_env
     from agents.sandbox import detect_sandbox, muse_kind_for, run_sandboxed
