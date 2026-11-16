@@ -1,0 +1,7 @@
+Config draft: True
+keyboard-start.json valid
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+  File "/workspace/work/trial-stops/expectrail/gate/record.py", line 623, in validate
+    raise RecordError(f"does not match the findings schema: {found[0]}"
+expectrail.gate.record.RecordError: does not match the findings schema: /assertion: matches 0 of the oneOf options, not exactly one
