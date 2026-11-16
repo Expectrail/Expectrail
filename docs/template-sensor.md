@@ -92,7 +92,10 @@ are never replaced with engine-only detections. Prompts bind names, not semantic
 For objects the game has many of, the prediction map is the engine's own logged box
 of each one (`enemyBoxes`, `projectileBoxes`; `object_predictions`), and
 `calibrate_routes(..., objects=...)` records each object's validation apart from the
-player's under `calibration.objects` (docs/jit.md, "The enemy").
+player's under `calibration.objects` (docs/jit.md, "The enemy"). The enemy's clean
+captures are also labelled with the way the engine moved it (`heading`), and its facing
+is validated as drawn and mirrored in place (`calibration.objects.enemy.facing`; docs/jit.md,
+"Which way the enemy faces").
 The sensor refuses colour/text semantics even though RGB witnesses help identify art.
 
 ## Frozen ground regions

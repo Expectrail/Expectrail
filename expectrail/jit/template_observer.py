@@ -45,9 +45,17 @@ calibration is not ``met``, is refused, so its checks are not run, never passed.
 proposed: the ground and a label's text (the sensor discards colour semantics and reads no text,
 docs/template-sensor.md), the coin (the engine logs no box for it), the bullet (its bank holds no
 template of it: on the bundled game its clean crops are too small and flat), and ``reaches`` (it looks for one
-object near the place the engine puts it). Nor which way a sprite faces: the bank keeps every template
-mirrored as well, so an enemy drawn facing backwards is still ``matched`` (``enemy-walks-backwards`` is not
-reached by ``visible``).
+object near the place the engine puts it).
+
+**Which way the enemy faces** (``faces-motion``). The bank keeps every template mirrored as well, so an enemy
+drawn facing backwards is still ``matched`` and ``visible`` cannot see ``enemy-walks-backwards``. When the
+bank's facing validation is ``met`` (``calibration.objects.enemy.facing``; agents/template_foreground.py
+``_validate_facing``), each enemy box row also carries ``motion``, the way the engine moves that enemy
+(agents/template_observations.py ``object_motion``: from its own logged box on the ticks either side), and,
+for a box ``matched`` while it moves one way, ``facing``: the heading (``right`` or ``left``) whose labelled
+templates match it better by the bank's margin, or None when the sensor cannot tell, with both scores. The
+run lists the roles it tells the facing of (``facing``); pixel.py ``named_observations`` reads a
+faces-motion check from these and nothing else, and a run that does not list the role is a gap.
 
 The proposer is offered this observer when the propose step is told it will judge the run (pixel.py
 ``proposed``; expectrail/jit/intent.py ``observer``), and the command line builds it (``run --observer
@@ -118,6 +126,11 @@ class TemplateSensorObserver:
                 self.refused[role] = "its bank's calibration of it on the validation replay is not met"
             else:
                 self.named += (role,)
+        # The named roles whose facing the bank's validation backs (calibration.objects.<role>.facing ``met``):
+        # only for these does a box row say which way the object faces (``facing``), so ``faces-motion`` can be
+        # judged; for any other the run says nothing about facing, and a faces-motion check is a gap.
+        self.facing = tuple(role for role in self.named
+                            if ((calibrated.get(role) or {}).get("facing") or {}).get("status") == "met")
         self.every, self.first, self.max_frames = every, first, max_frames
         self.fps, self.ticks_per_second = fps, ticks_per_second
         self._setting = {"model": self.bank["config"]["algorithm"], "bankSha256": digest(self.bank)}
@@ -193,14 +206,22 @@ class TemplateSensorObserver:
                "framesProbed": planned, "frames": rows, "summary": summary}
         if objects:
             run["objects"] = {role: self._look_named(sensor, role, trace, planned, on_disk) for role in objects}
+            run["facing"] = [role for role in objects if role in self.facing]
         return {"setting": self.setting(), "run": run, "images": 0}
 
     def _look_named(self, sensor, role: str, trace: dict, planned: list[int], on_disk: dict) -> list[dict]:
         """One row a planned frame about every ``role`` object the engine logged: see the module docstring."""
         foreground = self.bank["config"]["algorithm"] != sensor.ALGORITHM
         matcher = sensor.matchers_for(self.bank, [role])[role]
+        headings = moves = None
         try:
             where = sensor.object_predictions(trace, [n for n in planned if n in on_disk], role, self.fps)
+            if role in self.facing:
+                from agents import template_foreground
+
+                headings = template_foreground.heading_matchers(
+                    [t for t in self.bank["templates"] if t["object"] == role], self.bank["config"])
+                moves = sensor.object_motion(trace, [n for n in planned if n in on_disk], role, self.fps)
         except sensor.SensorError as exc:
             raise pixel.PixelError(f"the engine's boxes of {role} cannot be read: {exc}") from exc
         rows = []
@@ -235,9 +256,32 @@ class TemplateSensorObserver:
                 except (sensor.SensorError, ValueError, KeyError, TypeError) as exc:
                     raise pixel.PixelError(f"the template sensor could not look at {role} {ident} in frame {n}: "
                                            f"{' '.join(str(exc).split())[:160]}") from exc
-                boxes.append({"id": ident, **_box_row(row)})
+                entry = {"id": ident, **_box_row(row)}
+                if moves is not None:
+                    entry.update(self._facing(role, headings, image, box, (moves.get(n) or {}).get(ident), row["status"]))
+                boxes.append(entry)
             rows.append({"frame": n, "asked": True, "boxes": boxes, "outside": outside})
         return rows
+
+    def _facing(self, role, headings, image, box, motion, status) -> dict:
+        """What a box row says about facing: the engine's ``motion`` always, and, for an object matched where
+        the engine puts it while it moves one way, which way it is drawn facing (``facing``: ``right``,
+        ``left``, or None when the sensor cannot tell) with each heading's score."""
+        from agents import template_foreground
+        from agents import template_observations as sensor
+
+        out = {"motion": motion}
+        if status != "matched" or motion not in sensor.HEADINGS:
+            return out
+        if headings is None:
+            return {**out, "facing": None, "facingScores": None}
+        try:
+            margin = self.bank["calibration"]["objects"][role]["facing"]["margin"]
+            decided = template_foreground.facing(headings, image, box, self.bank["config"], margin)
+        except (sensor.SensorError, ValueError, KeyError, TypeError) as exc:
+            raise pixel.PixelError(f"the template sensor could not tell which way an object faces: "
+                                   f"{' '.join(str(exc).split())[:160]}") from exc
+        return {**out, "facing": decided["facing"], "facingScores": decided["scores"]}
 
     def _look(self, sensor, trace: dict, replay: dict, run_dir: Path, asked: list[int]) -> dict:
         """The sensor's row for each frame in ``asked``. Frames between them are handed to ``from_replay`` as

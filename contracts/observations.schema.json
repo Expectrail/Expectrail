@@ -400,6 +400,72 @@
                             "met",
                             "unmet"
                           ]
+                        },
+                        "facing": {
+                          "description": "The object's facing (#286; agents/template_foreground.py _validate_facing), for objects whose sprite the game flips with their motion (the enemy). Its clean captures are labelled with the way the engine moved the cropped object (template heading), and on every validation frame showing it moving one way the drawn object is decided from the right- and left-labelled templates alone, and again with it mirrored in place. met by the player's rule on both: at least 95% decided right and at most 1% decided wrong, with templates both ways. The reader recomputes the status. Absent: the sensor does not tell which way this object faces.",
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "margin",
+                            "templates",
+                            "moving",
+                            "agree",
+                            "disagree",
+                            "mirroredAgree",
+                            "mirroredDisagree",
+                            "status"
+                          ],
+                          "properties": {
+                            "margin": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "templates": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "right",
+                                "left"
+                              ],
+                              "properties": {
+                                "right": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "left": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                }
+                              }
+                            },
+                            "moving": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "agree": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "disagree": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "mirroredAgree": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "mirroredDisagree": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "status": {
+                              "enum": [
+                                "met",
+                                "unmet"
+                              ]
+                            }
+                          }
                         }
                       }
                     },
