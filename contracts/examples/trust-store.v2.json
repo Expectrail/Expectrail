@@ -1,0 +1,28 @@
+{
+  "format": "expectrail.trust-store/v2",
+  "note": "An example only. Its three keys are throwaway: their private halves were discarded when the example was made. They are not Expectrail issuer keys.",
+  "keys": [
+    {
+      "id": "example-2026-10",
+      "publicKey": "pl3ZUNllPUN+z0X23K6mshunbeFKcF3WI7rJGoN+r4g=",
+      "validFrom": "2026-10-01T00:00:00Z",
+      "notAfter": "2026-11-01T00:00:00Z",
+      "note": "retired: receipts it issued before November 1 are checked as usual until they expire"
+    },
+    {
+      "id": "example-2026-11",
+      "publicKey": "y02oO15LdMpoDFv6Z3aF6p1Zh4U6x5fVTD5DGw1PsFQ=",
+      "validFrom": "2026-11-01T00:00:00Z",
+      "note": "the key in use"
+    },
+    {
+      "id": "example-lost-laptop",
+      "publicKey": "cNKVvIazbizOB3ESfcI1hzeANyncFL9Av7OCdlldN3w=",
+      "validFrom": "2026-10-15T00:00:00Z",
+      "revoked": {
+        "at": "2026-10-20T09:30:00Z",
+        "reason": "the laptop that held it was lost"
+      }
+    }
+  ]
+}

@@ -108,10 +108,10 @@ footer { border-top:1px solid var(--mist); padding:22px 0 40px; font:400 0.9rem/
         <textarea id="receipt-text" spellcheck="false" placeholder="…or paste the receipt's JSON here"></textarea>
       </div>
       <div class="field">
-        <label for="store-text">Trust store (expectrail.trust-store/v1)</label>
+        <label for="store-text">Trust store (expectrail.trust-store/v1 or v2)</label>
         <input type="file" id="store-file" accept=".json,application/json" aria-label="Choose a trust store file">
         <textarea id="store-text" spellcheck="false" placeholder="…or paste the trust store's JSON here"></textarea>
-        <p class="hint">The keys you already trust. A key carried inside the receipt is never trusted on its own, and a trust store that came with the receipt from the same place proves little.</p>
+        <p class="hint">The keys you already trust. A key carried inside the receipt is never trusted on its own, and a trust store that came with the receipt from the same place proves little. In a v2 store a retired key is trusted only for receipts issued before it retired, and a revoked key for none (<a href="https://github.com/Expectrail/Expectrail/blob/main/docs/trust-store.md">where to get Expectrail's store, and how keys rotate</a>).</p>
       </div>
     </div>
     <div class="expect">
