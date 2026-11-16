@@ -278,6 +278,14 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
             raise SystemExit(str(exc)) from exc
     else:
         config = project
+    from expectrail.godot_project import configured_scene, require_gdscript
+    try:
+        require_gdscript(game, config, within=within)
+        selected_scene = configured_scene(game, config)
+    except tree.TreeProblem as exc:
+        raise SystemExit(f"the game cannot be replayed as it stands: {exc}") from exc
+    except (ValueError, OSError) as exc:
+        raise SystemExit(str(exc)) from exc
     if fps is None:
         fps = int(config["captureFps"]) if config is not None else 60
     godot = godot or find_godot()
@@ -310,6 +318,13 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
             raise SystemExit("the game folder changed while the replay was being set up: the copy made for "
                              f"this replay ({copied[:12]}) is not the game read at the start ({game_tree[:12]}). "
                              "Nothing was run.")
+        try:
+            require_gdscript(work, config)
+            configured_scene(work, config)
+        except tree.TreeProblem as exc:
+            raise SystemExit(f"the game cannot be replayed as it stands: {exc}") from exc
+        except (ValueError, OSError) as exc:
+            raise SystemExit(str(exc)) from exc
         if frames.exists():
             shutil.rmtree(frames)
         frames.mkdir()
@@ -352,6 +367,8 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
                        "--write-movie", movie, "--fixed-fps", str(fps)]
     else:
         cmd = [engine, "--headless", "--path", project, "--audio-driver", "Dummy", "--fixed-fps", str(fps)]
+    if selected_scene is not None:
+        cmd += [selected_scene]  # Godot's scene argument, before the harness's -- arguments.
     cmd += ["--disable-vsync", "--", f"--route={route_arg}", f"--trace={trace_arg}",
             f"--seed={route_doc.get('seed', 1)}"]
     if config is not None:

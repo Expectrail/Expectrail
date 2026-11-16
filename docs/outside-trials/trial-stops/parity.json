@@ -1,0 +1,146 @@
+[
+  {
+    "case": "bundled-pinned",
+    "traceSha256": "a2b64f71e7c3ed3e55b11c1dcebb66e8ff5587a8e570da62927f56a08574d51c",
+    "traceBytesIdentical": true,
+    "frameHashesIdentical": true,
+    "engine": "pass",
+    "decision": "needs-review",
+    "firstFailingFrame": null,
+    "reason": "the engine's record passes; no visual observer was asked, so this is not a pass",
+    "renderer": {
+      "name": "godot",
+      "version": "4.7.2.stable.official.ed1daf0bf",
+      "renderer": "opengl3",
+      "device": "Mesa - llvmpipe (LLVM 19.1.7, 256 bits)"
+    },
+    "before": "evidence/before/bundled-pinned/check.json",
+    "after": "evidence/after/bundled-pinned/check.json"
+  },
+  {
+    "case": "bundled-broken",
+    "traceSha256": "16e103dd4282d1f16259d777dfbe2908984453af4622e68fc0774b409ef27db0",
+    "traceBytesIdentical": true,
+    "frameHashesIdentical": true,
+    "engine": "fail",
+    "decision": "reject",
+    "firstFailingFrame": 5,
+    "reason": "player is 22.25px past the boundary (above 780, tolerance 20) (first at frame 5, 21 frames)",
+    "renderer": {
+      "name": "godot",
+      "version": "4.7.2.stable.official.ed1daf0bf",
+      "renderer": "opengl3",
+      "device": "Mesa - llvmpipe (LLVM 19.1.7, 256 bits)"
+    },
+    "before": "evidence/before/bundled-broken/check.json",
+    "after": "evidence/after/bundled-broken/check.json"
+  },
+  {
+    "case": "kinematic-character-pinned",
+    "traceSha256": "d3e80ebba2515c39bfa22251ece8135707ace842c3002daa8ef8ad50173deb05",
+    "traceBytesIdentical": true,
+    "frameHashesIdentical": true,
+    "engine": "pass",
+    "decision": "needs-review",
+    "firstFailingFrame": null,
+    "reason": "the engine's record passes; no visual observer was asked, so this is not a pass",
+    "renderer": {
+      "name": "godot",
+      "version": "4.7.2.stable.official.ed1daf0bf",
+      "renderer": "opengl3",
+      "device": "Mesa - llvmpipe (LLVM 19.1.7, 256 bits)"
+    },
+    "before": "evidence/before/kinematic-character-pinned/check.json",
+    "after": "evidence/after/kinematic-character-pinned/check.json"
+  },
+  {
+    "case": "kinematic-character-harmless",
+    "traceSha256": "d3e80ebba2515c39bfa22251ece8135707ace842c3002daa8ef8ad50173deb05",
+    "traceBytesIdentical": true,
+    "frameHashesIdentical": true,
+    "engine": "pass",
+    "decision": "needs-review",
+    "firstFailingFrame": null,
+    "reason": "the engine's record passes; no visual observer was asked, so this is not a pass",
+    "renderer": {
+      "name": "godot",
+      "version": "4.7.2.stable.official.ed1daf0bf",
+      "renderer": "opengl3",
+      "device": "Mesa - llvmpipe (LLVM 19.1.7, 256 bits)"
+    },
+    "before": "evidence/before/kinematic-character-harmless/check.json",
+    "after": "evidence/after/kinematic-character-harmless/check.json"
+  },
+  {
+    "case": "kinematic-character-broken",
+    "traceSha256": "93d462b0a3469ac5dbda8e1942e7c9e8f3fb61170c08d4636f226d8309dcef6a",
+    "traceBytesIdentical": true,
+    "frameHashesIdentical": true,
+    "engine": "fail",
+    "decision": "reject",
+    "firstFailingFrame": 44,
+    "reason": "player is 71.749px past the boundary (above 304.5, tolerance 20) (first at frame 44, 10 frames)",
+    "renderer": {
+      "name": "godot",
+      "version": "4.7.2.stable.official.ed1daf0bf",
+      "renderer": "opengl3",
+      "device": "Mesa - llvmpipe (LLVM 19.1.7, 256 bits)"
+    },
+    "before": "evidence/before/kinematic-character-broken/check.json",
+    "after": "evidence/after/kinematic-character-broken/check.json"
+  },
+  {
+    "case": "dodge-the-creeps-pinned",
+    "traceSha256": "7f7783d69988b3d6d05c6f7d18cce43a211af31a2c52e735003954588b11f9e0",
+    "traceBytesIdentical": true,
+    "frameHashesIdentical": true,
+    "engine": "pass",
+    "decision": "needs-review",
+    "firstFailingFrame": null,
+    "reason": "the engine's record passes; no visual observer was asked, so this is not a pass",
+    "renderer": {
+      "name": "godot",
+      "version": "4.7.2.stable.official.ed1daf0bf",
+      "renderer": "opengl3",
+      "device": "Mesa - llvmpipe (LLVM 19.1.7, 256 bits)"
+    },
+    "before": "evidence/before/dodge-the-creeps-pinned/check.json",
+    "after": "evidence/after/dodge-the-creeps-pinned/check.json"
+  },
+  {
+    "case": "dodge-the-creeps-harmless",
+    "traceSha256": "7f7783d69988b3d6d05c6f7d18cce43a211af31a2c52e735003954588b11f9e0",
+    "traceBytesIdentical": true,
+    "frameHashesIdentical": true,
+    "engine": "pass",
+    "decision": "needs-review",
+    "firstFailingFrame": null,
+    "reason": "the engine's record passes; no visual observer was asked, so this is not a pass",
+    "renderer": {
+      "name": "godot",
+      "version": "4.7.2.stable.official.ed1daf0bf",
+      "renderer": "opengl3",
+      "device": "Mesa - llvmpipe (LLVM 19.1.7, 256 bits)"
+    },
+    "before": "evidence/before/dodge-the-creeps-harmless/check.json",
+    "after": "evidence/after/dodge-the-creeps-harmless/check.json"
+  },
+  {
+    "case": "dodge-the-creeps-broken",
+    "traceSha256": "166a891fac61e08fcb275d59b397253252d027c0ddb3db794094b5460b4e1412",
+    "traceBytesIdentical": true,
+    "frameHashesIdentical": true,
+    "engine": "fail",
+    "decision": "reject",
+    "firstFailingFrame": 97,
+    "reason": "player [459.666, 395.25, 513.666, 463.25] leaves region [-27.0, -54.75, 507.0, 733.25] (first at frame 97, 153 frames); 58 frames not exercised (player hidden)",
+    "renderer": {
+      "name": "godot",
+      "version": "4.7.2.stable.official.ed1daf0bf",
+      "renderer": "opengl3",
+      "device": "Mesa - llvmpipe (LLVM 19.1.7, 256 bits)"
+    },
+    "before": "evidence/before/dodge-the-creeps-broken/check.json",
+    "after": "evidence/after/dodge-the-creeps-broken/check.json"
+  }
+]

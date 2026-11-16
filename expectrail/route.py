@@ -74,6 +74,9 @@ def input_map(project: Path) -> tuple[list[str], int, bool]:
         config = read_game(project)
     except ProjectConfigError as exc:
         raise RouteError(str(exc)) from exc
+    from expectrail.godot_project import configured_scene, require_gdscript
+    require_gdscript(project, config)
+    configured_scene(project, config)
     if config is not None:
         actions = list(config["inputActions"])
         return sorted(actions) or list(FALLBACK_ACTIONS), int(config["physicsTicksPerSecond"]), not bool(actions)
@@ -202,6 +205,36 @@ def describe(route: dict, rate: int, trace: dict) -> list[str]:
     return lines
 
 
+def _retain_failure(work: Path, out: Path, error: BaseException) -> RouteError:
+    """Keep only bounded, regular diagnostic files, never a game tree or symlink target."""
+    from expectrail.gate.record import read_bytes_capped
+    import stat
+
+    try:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        saved = Path(tempfile.mkdtemp(prefix=out.name + ".failed-", dir=out.parent)).resolve()
+        for number in ("1", "2", "3"):
+            source = work / number / "godot.log"
+            if not source.exists() and not source.is_symlink():
+                continue
+            target = saved / number / "godot.log"
+            target.parent.mkdir()
+            try:
+                if source.parent.is_symlink() or not stat.S_ISREG(source.lstat().st_mode):
+                    raise ValueError("engine failure log is not a regular file in the replay folder")
+                target.write_bytes(read_bytes_capped(source, 2 * 1024 * 1024, "engine failure log"))
+            except (ValueError, OSError) as exc:
+                target.write_text(f"Engine log could not be retained: {exc}\n", encoding="utf-8")
+        detail = str(error).replace(str(work), str(saved))
+        diagnostic = saved / "failure.txt"
+        diagnostic.write_text(f"{type(error).__name__}: {detail}\n", encoding="utf-8")
+        return RouteError(f"{detail}; diagnostics kept at {diagnostic}")
+    except OSError as exc:
+        detail = str(error).replace(str(work), "<removed replay scratch>")
+        return RouteError(f"{detail}; could not retain diagnostics ({type(exc).__name__}). "
+                          "Check space and permissions in the output folder; no log path is available")
+
+
 def auto_route(project: Path, out: Path, *, replay=None) -> int:
     """The real harness and offline stand-ins use exactly the same three-run decision path."""
     if out.exists() or out.is_symlink():
@@ -222,7 +255,10 @@ def auto_route(project: Path, out: Path, *, replay=None) -> int:
         traces, trees = [], []
         for n in range(1, 4):
             print(f"Replaying input map: run {n} of 3.", flush=True)
-            result = replay(candidate, work / str(n), game=project, capture_frames=False)
+            try:
+                result = replay(candidate, work / str(n), game=project, capture_frames=False)
+            except (SystemExit, OSError, ValueError, subprocess.SubprocessError) as exc:
+                raise _retain_failure(work, out, exc) from exc
             trees.append(result["game"]["tree"])
             traces.append(read_trace(work / str(n) / "trace.json", route["ticks"], rate))
         if len(set(trees)) != 1:

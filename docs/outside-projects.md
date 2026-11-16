@@ -29,6 +29,11 @@ not measured; command times and every attempted command are recorded separately.
 No check was approved and no model was called. The two earlier demo projects'
 results below are unchanged by this trial.
 
+**Follow-up:** [the Part A fixes and repeated refusal](outside-trials/trial-stops/report.md)
+now stop this same pin up front, naming `SystemOverride.csproj` and the
+GDScript-only support limit. This does not turn the unsuccessful trial into an
+onboarded project. A new independent GDScript trial has not started.
+
 ## Current evidence: November 15, 2026
 
 The latest trial on merged [PR #473](https://github.com/Expectrail/Expectrail/pull/473) is
