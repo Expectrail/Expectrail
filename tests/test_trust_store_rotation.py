@@ -126,6 +126,30 @@ class RotationTest(unittest.TestCase):
             {"format": rc.TRUST_STORE_FORMAT, "note": "n", "keys": [{"id": "a", "publicKey": pub(self.a), "note": "k"}]}
         ))["clearance"])
 
+    def test_a_revoked_key_cannot_clear_under_another_id(self):
+        # The merge guard's probe on #540: K revoked as "old", the same K listed as "alias".
+        store = v2({"id": "old", "publicKey": pub(self.a), "validFrom": T0,
+                    "revoked": {"at": "2026-11-01T00:00:00Z", "reason": "leaked"}},
+                   {"id": "alias", "publicKey": pub(self.a), "validFrom": "2026-01-01T00:00:00Z"})
+        with self.assertRaises(rc.ReceiptError) as caught:
+            rc.parse_trust_store(store)
+        self.assertEqual(str(caught.exception), "trust store lists one publicKey under more than one id: old and alias")
+
+    def test_a_store_built_in_code_with_one_key_under_two_ids_is_still_refused(self):
+        # The fallback for a store that never went through parse_trust_store.
+        doc = receipt(self.a, "alias", NOW.strftime("%Y-%m-%dT%H:%M:%SZ"))
+        for revoked_first in (True, False):
+            with self.subTest(revoked_first=revoked_first):
+                old = rc.TrustKey(pub(self.a), T0, None, "2026-11-01T00:00:00Z", "leaked")
+                alias = rc.TrustKey(pub(self.a), "2026-01-01T00:00:00Z")
+                store = {"old": old, "alias": alias} if revoked_first else {"alias": alias, "old": old}
+                report = rc.check_receipt(doc, store, expect_repo=page.REPO, expect_head=page.HEAD,
+                                          expect_build=page.BUILD, expect_policy=page.POLICY, now=NOW)
+                self.assertFalse(report["clearance"])
+                self.assertFalse(report["known_issuer"])
+                self.assertFalse(report["valid_signature"])
+                self.assertIn("issuer key revoked at 2026-11-01T00:00:00Z: leaked", report["reasons"])
+
     def test_a_store_built_in_code_with_plain_keys_still_works(self):
         doc = receipt(self.a, "a", "2026-11-12T00:00:00Z")
         report = rc.check_receipt(doc, {"a": pub(self.a)}, expect_repo=page.REPO, expect_head=page.HEAD,
@@ -170,6 +194,14 @@ def bad_stores(public_key: str) -> dict[str, str]:
         "v2 revoked as true": with_(revoked=True),
         "v2 revoked at not a date": with_(revoked={"at": "today", "reason": "lost"}),
         "v2 duplicate id": v2(good, dict(good)),
+        # One key under two ids: revoking one id would leave the key trusted under the other (#540 review).
+        "v1 one key under two ids": json.dumps({"format": rc.TRUST_STORE_FORMAT, "keys": [
+            {"id": "a", "publicKey": public_key}, {"id": "alias", "publicKey": public_key}]}),
+        "v2 one key under two ids, one revoked": v2(
+            dict(good, revoked={"at": "2026-11-01T00:00:00Z", "reason": "leaked"}),
+            {"id": "alias", "publicKey": public_key, "validFrom": "2026-01-01T00:00:00Z"}),
+        "v2 one key under two ids, neither revoked": v2(
+            good, {"id": "alias", "publicKey": public_key, "validFrom": "2026-01-01T00:00:00Z"}),
         "v2 empty keys": v2(),
     }
 
@@ -383,6 +415,10 @@ class PageParityTest(unittest.TestCase):
         self.assertEqual(outcome["offset and fraction, just inside"], "no-clearance")  # expired by NOW; issuer known
         for name in bad_stores(pub(a)):
             self.assertEqual(outcome[name], "invalid", name)
+        names = [c[0] for c in cases]
+        for name in ("v1 one key under two ids", "v2 one key under two ids, one revoked"):
+            self.assertEqual(js[names.index(name)]["message"],
+                             "trust store lists one publicKey under more than one id: a and alias", name)
         for name in ("retired key, issued at notAfter", "retired key, issued after", "new key, issued before start",
                      "revoked, issued before revocation", "revoked, issued after", "offset and fraction, just outside",
                      "issued with no offset", "issued on an impossible date"):

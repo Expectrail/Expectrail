@@ -296,6 +296,7 @@
     }
     if (!Array.isArray(doc.keys) || !doc.keys.length) throw new Invalid("trust store must contain a non-empty keys list");
     var out = Object.create(null);
+    var idsByKey = Object.create(null);
     doc.keys.forEach(function (entry) {
       if (!isObj(entry)) throw new Invalid("trust-store key entry must be an object");
       if (!isStr(entry.id, 1) || !isStr(entry.publicKey, 1)) throw new Invalid("trust-store key entry needs id and publicKey");
@@ -303,6 +304,12 @@
       if (!PUBLIC_KEY.test(entry.publicKey)) {
         throw new Invalid("trust-store key " + entry.id + ": publicKey is not canonical base64 of a 32-byte Ed25519 key");
       }
+      // Revocation belongs to a key, not a name for it: one key under two ids refuses the store, as in receipt.py.
+      if (entry.publicKey in idsByKey) {
+        throw new Invalid("trust store lists one publicKey under more than one id: " + idsByKey[entry.publicKey] +
+          " and " + entry.id);
+      }
+      idsByKey[entry.publicKey] = entry.id;
       var allowed = v2 ? V2_KEY_FIELDS : V1_KEY_FIELDS;
       Object.keys(entry).forEach(function (k) {
         if (allowed.indexOf(k) === -1) throw new Invalid("trust-store key " + entry.id + ": " + k + " is not a field of " + doc.format);
@@ -333,6 +340,16 @@
       out[entry.id] = key;
     });
     return out;
+  }
+
+  // Fallback for a store not read by parseTrustStore (which refuses one key under two ids).
+  function revokedElsewhere(trustStore, kid, publicKey) {
+    var ids = Object.keys(trustStore);
+    for (var i = 0; i < ids.length; i++) {
+      var other = trustStore[ids[i]];
+      if (ids[i] !== kid && other && other.publicKey === publicKey && other.revokedAt) return other;
+    }
+    return null;
   }
 
   // The receipt says it was issued inside the key's span. An unreadable time is outside, as in receipt.py;
@@ -456,6 +473,10 @@
       report.does_not_establish.push("issuer identity");
     } else if (trusted.revokedAt !== null) {
       report.reasons.push("issuer key revoked at " + trusted.revokedAt + ": " + trusted.revokedReason);
+      report.does_not_establish.push("issuer identity");
+    } else if (revokedElsewhere(trustStore, kid, trusted.publicKey) !== null) {
+      var twin = revokedElsewhere(trustStore, kid, trusted.publicKey);
+      report.reasons.push("issuer key revoked at " + twin.revokedAt + ": " + twin.revokedReason);
       report.does_not_establish.push("issuer identity");
     } else if (trusted.validFrom !== null && !issuedWithin(doc, trusted)) {
       report.reasons.push("receipt issued outside the issuer key's validity (" + trusted.validFrom + " to " +

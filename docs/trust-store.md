@@ -30,6 +30,10 @@ Rules both readers keep (`expectrail/receipt.py` and `docs/verify/receipt-check.
   rather than new optional fields, because a reader that skipped a `revoked` it did not understand
   would go on trusting the key it was meant to stop trusting. A verifier from before v2 refuses a
   v2 store ("trust store must be expectrail.trust-store/v1") and checks nothing.
+- **One public key, one id.** A store that lists the same `publicKey` under two ids is refused
+  whole, in v1 and v2: revocation and dates belong to the key, and a second id would let a receipt
+  name the one that was not revoked. Rotation always means a new key, so no real store needs this.
+  A store built in code that skips the reader still refuses a key revoked under any of its ids.
 - **Dates are RFC 3339 with an offset**, and real dates. `notAfter` must be after `validFrom`.
 - **Retired** (`notAfter`): the key is trusted for receipts it says it issued before `notAfter`. A
   receipt is valid for at most 7 days, so a retired key stops clearing anything 7 days after its

@@ -261,6 +261,7 @@ def parse_trust_store(text: str) -> dict[str, TrustKey]:
     if not isinstance(keys, list) or not keys:
         raise ReceiptError("trust store must contain a non-empty keys list")
     out: dict[str, TrustKey] = {}
+    ids_by_key: dict[str, str] = {}
     for entry in keys:
         if not isinstance(entry, dict):
             raise ReceiptError("trust-store key entry must be an object")
@@ -272,6 +273,11 @@ def parse_trust_store(text: str) -> dict[str, TrustKey]:
             raise ReceiptError(f"duplicate key id in trust store: {kid}")
         if not PUBLIC_KEY_RE.fullmatch(pub):
             raise ReceiptError(f"trust-store key {kid}: publicKey is not canonical base64 of a 32-byte Ed25519 key")
+        if pub in ids_by_key:
+            # Revocation and validity belong to a key, not to a name for it. One key under two ids would let
+            # a receipt name the id that was not revoked, so a store that does this is refused whole.
+            raise ReceiptError(duplicate_public_key_reason(ids_by_key[pub], kid))
+        ids_by_key[pub] = kid
         allowed = _V2_KEY_FIELDS if v2 else _V1_KEY_FIELDS
         extra = sorted(set(entry) - allowed)
         if extra:
@@ -300,6 +306,22 @@ def parse_trust_store(text: str) -> dict[str, TrustKey]:
             revoked_at, revoked_reason = revoked["at"], revoked["reason"]
         out[kid] = TrustKey(pub, entry["validFrom"], not_after, revoked_at, revoked_reason)
     return out
+
+
+def duplicate_public_key_reason(first: str, second: str) -> str:
+    return f"trust store lists one publicKey under more than one id: {first} and {second}"
+
+
+def _revoked_elsewhere(trust_store: dict, kid: str, public_key: str) -> TrustKey | None:
+    """A revoked entry with the same public key under another id, in a store that was not parsed.
+
+    ``parse_trust_store`` refuses such a store; this is the fallback for a store built in code.
+    """
+    for other_id, value in trust_store.items():
+        other = _as_trust_key(value)
+        if other_id != kid and other is not None and other.public_key == public_key and other.revoked_at is not None:
+            return other
+    return None
 
 
 def _as_trust_key(value: object) -> TrustKey | None:
@@ -367,7 +389,7 @@ def check_receipt(
 
     A v2 store's key is a known issuer only when it is not revoked and the receipt's ``issuedAt``
     falls in ``validFrom`` (inclusive) to ``notAfter`` (exclusive). A revoked key is refused for every
-    receipt: whoever holds a stolen key can write any ``issuedAt``. Since a receipt is valid for at
+    receipt, under any id it is listed by: whoever holds a stolen key can write any ``issuedAt``. Since a receipt is valid for at
     most 7 days, a retired key's receipts stop clearing 7 days after its ``notAfter`` at the latest.
     """
     now = now or datetime.now(timezone.utc)
@@ -398,6 +420,9 @@ def check_receipt(
         report["does_not_establish"].append("issuer identity")
     elif trusted.revoked_at is not None:
         report["reasons"].append(revoked_reason(trusted))
+        report["does_not_establish"].append("issuer identity")
+    elif (twin := _revoked_elsewhere(trust_store, kid, trusted.public_key)) is not None:
+        report["reasons"].append(revoked_reason(twin))
         report["does_not_establish"].append("issuer identity")
     elif trusted.has_window and not _issued_within(doc, trusted):
         report["reasons"].append(key_window_reason(trusted))

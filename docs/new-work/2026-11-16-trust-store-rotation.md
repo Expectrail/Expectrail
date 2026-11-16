@@ -24,6 +24,11 @@
   from a trusted key)" unless a digest really differs. The issuer line says a revoked key, or a key
   outside its dates, is in the trust store and why it is not trusted, instead of "UNKNOWN" / "not in
   your trust store".
+- After the merge guard's review: both readers refuse a store that lists one `publicKey` under more
+  than one id, in v1 and v2, with the same reason line ("trust store lists one publicKey under more
+  than one id: A and B"). Before, a key revoked under one id still cleared under another. As a
+  fallback for a store built in code that never went through the reader, `check_receipt` (and the
+  page's `checkReceipt`) refuses a key when any entry with the same public key is revoked.
 - `docs/trust-store.md`: the two formats, where Expectrail's store will be published
   (`trust/expectrail.json`, by reviewed pull request, checked by tag and SHA-256, never taken from
   where the receipt came from), and the rotation and leaked-key steps.
@@ -45,6 +50,13 @@
   the page's revoked wording fails it.
 - Looked at the Verify page in Chromium at 1280 px and 390 px with a revoked v2 key: the result card
   reads No clearance, the revocation reason is listed, the layout holds at phone width.
+- After the review: `python3 -m unittest tests.test_trust_store_rotation tests.test_verify_receipt_page`:
+  28 tests, OK. New: the guard's probe (K revoked as `old`, the same K as `alias`) refused with the
+  reason line; the code-built-store fallback, in both orders; three duplicate-key stores in the
+  refused-whole list and in the page/trust-check agreement test, with the page's message checked.
+  Mutations: Python's duplicate refusal removed (7 failures), Python's fallback removed (2), the
+  page's duplicate refusal removed (4). The page's fallback is not reachable through its public
+  `check()` (stores always go through its reader), so it has no test of its own.
 - Full suite on the branch merged with main: see the pull request.
 
 ## Not done
