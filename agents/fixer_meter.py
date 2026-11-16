@@ -1,6 +1,6 @@
-"""Host-owned admission meter. Fixed-price fixtures only; no live tariff is certified.
+"""Host-owned admission meter shared by fixtures and controlled token reservations.
 
-No token/billing inference: response usage is diagnostic. Only an independently
+Response usage is diagnostic. Only an independently
 bounded per-request charge could justify the pre-send reservation this meter uses.
 Standard library only so the existing isolated mitmproxy process can load it.
 """
@@ -51,16 +51,20 @@ class Meter:
             if (host != self.config['host'] or method != 'POST' or path != self.config['path']
                     or port != 443 or scheme != 'https'):
                 self.doc['deniedRequests'] += 1;self.persist();return 403
-            if self.doc['status'] != 'running':
-                self.doc['deniedRequests'] += 1;self.persist()
-                return 503 if self.doc['stopReason']=='fixer-meter-unavailable' else 429
-            if self.doc['reservedNanoUsd'] + self.config['requestMaxNanoUsd'] > self.doc['capNanoUsd']:
-                self.doc.update(status='stopped',stopReason='fixer-invocation-cap')
-                self.doc['deniedRequests'] += 1;self.persist();return 429
-            self.doc['reservedNanoUsd'] += self.config['requestMaxNanoUsd']
-            self.doc['admittedRequests'] += 1
-            self.persist()  # A failed write raises before a request can be forwarded.
-            return None
+            return self.reserve_locked(self.config['requestMaxNanoUsd'])
+
+    def reserve_locked(self, amount):
+        """Shared pre-forward admission; caller holds the invocation lock. No refunds."""
+        if self.doc['status'] != 'running':
+            self.doc['deniedRequests'] += 1;self.persist()
+            return 503 if self.doc['stopReason']=='fixer-meter-unavailable' else 429
+        if self.doc['reservedNanoUsd'] + amount > self.doc['capNanoUsd']:
+            self.doc.update(status='stopped',stopReason='fixer-invocation-cap')
+            self.doc['deniedRequests'] += 1;self.persist();return 429
+        self.doc['reservedNanoUsd'] += amount
+        self.doc['admittedRequests'] += 1
+        self.persist()  # A failed write raises before a request can be forwarded.
+        return None
 
     def observe(self, content):
         # Usage received after a request cannot make that request affordable retroactively.

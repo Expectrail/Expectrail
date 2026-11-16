@@ -315,7 +315,10 @@ def build_http_payload(
         "messages": messages,
         "max_tokens": max_tokens,
     }
-    if temperature is not None:
+    if config.provider == "openai" and config.model == "gpt-6.1-sol":
+        payload["max_completion_tokens"] = payload.pop("max_tokens")
+        payload["service_tier"] = "default"
+    elif temperature is not None:
         payload["temperature"] = temperature
     if json_schema is not None:
         payload["response_format"] = {
@@ -373,6 +376,7 @@ def chat_completion(
     schema_name: str = "expectrail_response",
     strict: bool = True,
     transport: Callable[[str, dict[str, str], dict[str, Any]], dict[str, Any]] | None = None,
+    invocation=None,
 ) -> dict[str, Any]:
     """Execute a chat completion across any configured BYO-LLM provider and return raw response dict.
 
@@ -391,41 +395,69 @@ def chat_completion(
     )
 
     def _default_transport(u: str, h: dict[str, str], p: dict[str, Any]) -> dict[str, Any]:
-        if role.upper() == "FIXER":
-            from expectrail import spend
-            exc = spend.BudgetStop("fixer-bound-unavailable: direct FIXER sender has no verified dollar maximum", role="muse")
+        from contextlib import nullcontext
+        fixer = role.upper() == "FIXER"
+        if fixer and invocation is None:
+            from expectrail.spend import BudgetStop
+            exc = BudgetStop("fixer-bound-unavailable: no controlled invocation admission", role="muse")
             exc.code = "fixer-bound-unavailable"
-            spend.note_stop("muse", str(exc))
             raise exc
-        req = urllib.request.Request(u, data=json.dumps(p).encode("utf-8"), headers=h, method="POST")
-        for attempt in range(3):
-            if role.upper() == "SPEC":
-                from expectrail.spend import hold
-                hold("spec", live=True)
-            try:
-                with urllib.request.urlopen(req, timeout=cfg.timeout) as resp:
-                    return json.loads(resp.read().decode("utf-8"))
-            except urllib.error.HTTPError as exc:
-                err_body = exc.read().decode("utf-8", errors="replace")
-                if exc.code in RETRY_STATUS and attempt < 2:
-                    time.sleep(1.0 * (attempt + 1))
-                    continue
-                if (
-                    exc.code == 400
-                    and "response_format" in p
-                    and any(tok in err_body.lower() for tok in ("response_format", "json_schema", "schema"))
-                ):
-                    p_fallback = dict(p)
-                    p_fallback.pop("response_format", None)
-                    return _default_transport(u, h, p_fallback)
-                raise RuntimeError(f"HTTP {exc.code} from {cfg.provider} ({u}): {err_body}") from exc
-        raise RuntimeError(f"Exhausted retries calling {cfg.provider} ({u})")
+        # Lock spans send and observation: a usage violation stops concurrent sends too.
+        with invocation.lock if fixer else nullcontext():
+            body = json.dumps(p, allow_nan=False).encode("utf-8")
+            req = urllib.request.Request(u, data=body, headers=h, method="POST")
+            class NoRedirect(urllib.request.HTTPRedirectHandler):
+                def redirect_request(self, req, fp, code, msg, headers, newurl):
+                    return None
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect()) if fixer else None
+            for attempt in range(3):
+                if role.upper() == "SPEC":
+                    from expectrail.spend import hold
+                    hold("spec", live=True)
+                if fixer:
+                    reservation = invocation.reserve_request(cfg, u, p, body)
+                try:
+                    open_request = opener.open if fixer else urllib.request.urlopen
+                    with open_request(req, timeout=cfg.timeout) as resp:
+                        raw = json.loads(resp.read().decode("utf-8"))
+                    if fixer:
+                        invocation.observe_request(reservation, raw)
+                    return raw
+                except urllib.error.HTTPError as exc:
+                    err_body = exc.read().decode("utf-8", errors="replace")
+                    if fixer and exc.code in (404, 410):
+                        invocation.fail('fixer-model-unavailable','provider withdrew or refused the named model; no fallback')
+                    # Errors can be billable. Keep every reservation; capture usage if supplied.
+                    if fixer:
+                        try:
+                            error_json = json.loads(err_body)
+                            if isinstance(error_json, dict) and "usage" in error_json:
+                                invocation.observe_request(reservation, error_json)
+                        except ValueError:
+                            pass
+                    if exc.code in RETRY_STATUS and attempt < 2:
+                        time.sleep(1.0 * (attempt + 1))
+                        continue
+                    if (exc.code == 400 and "response_format" in p and
+                            any(tok in err_body.lower() for tok in ("response_format", "json_schema", "schema"))):
+                        p_fallback = dict(p)
+                        p_fallback.pop("response_format", None)
+                        return _default_transport(u, h, p_fallback)
+                    raise RuntimeError(f"HTTP {exc.code} from {cfg.provider} ({u}): {err_body}") from exc
+            raise RuntimeError(f"Exhausted retries calling {cfg.provider} ({u})")
 
     if transport is not None and role.upper() == "SPEC":
         from expectrail.spend import hold
         hold("spec", live=False)
     caller = transport or _default_transport
-    raw = caller(url, headers, payload)
+    if transport is not None and role.upper() == "FIXER" and invocation is not None:
+        with invocation.lock:
+            body = json.dumps(payload, allow_nan=False).encode("utf-8")
+            reservation = invocation.reserve_request(cfg, url, payload, body)
+            raw = caller(url, headers, payload)
+            invocation.observe_request(reservation, raw)
+    else:
+        raw = caller(url, headers, payload)
     if cfg.protocol == "anthropic":
         text = extract_message_text(cfg, raw)
         return {

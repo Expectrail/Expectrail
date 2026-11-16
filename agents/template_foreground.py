@@ -30,6 +30,15 @@ LIMITATIONS = [
     'Frozen clean collision regions are a reference map, not segmentation of current ground pixels.',
 ]
 PIXEL_FIELDS = ('rgbPixels', 'rgbPixelsSha256', 'foregroundMask', 'foregroundMaskSha256')
+# Named objects whose facing is calibrated (#286): each clean capture of one is labelled with the way the
+# engine moved it on that tick (``heading``; its mirrored copy the other way), and ``facing`` decides which
+# way a drawn one faces from its right- and left-labelled templates alone. The enemy only: the game flips its
+# sprite with its velocity (game/platformer/enemy/enemy.gd). A pose that looks the same mirrored is labelled
+# neither way: it cannot say which way it faces.
+FACING_OBJECTS = ('enemy',)
+# The facing decided is the heading whose templates match the drawn object better by at least this much.
+FACING_MARGIN = 0.02
+OPPOSITE = {'right': 'left', 'left': 'right'}
 
 
 def numpy():
@@ -163,8 +172,14 @@ def check_bank(bank):
         expected = _object_calibration([1]*counted['positiveMatches'] + [0]*(counted['positives']-counted['positiveMatches']),
                                        [1]*counted['negativeMatches'] + [0]*(counted['negatives']-counted['negativeMatches']),
                                        1, counted['templates'])
-        if expected != counted:
+        if expected != {k: v for k, v in counted.items() if k != 'facing'}:
             raise sensor.SensorError(f'calibrated object {role} records a status its counts do not give')
+        if 'facing' in counted:
+            _check_facing(bank, role, counted['facing'], config)
+    labelled = {item['object'] for item in bank['templates'] if 'heading' in item}
+    for role in labelled:
+        if 'facing' not in ((bank['calibration'].get('objects') or {}).get(role) or {}):
+            raise sensor.SensorError(f'templates of {role} are labelled with a heading its calibration does not record')
     reference = bank.get('groundReference')
     if reference:
         if not any(source['replaySha256'] == reference['sourceReplaySha256']
@@ -174,6 +189,33 @@ def check_bank(bank):
                 type(v) not in (int, float) or not math.isfinite(v) for v in point) for point in polygon)
                for polygon in reference['polygons']):
             raise sensor.SensorError('invalid frozen clean ground polygon')
+
+
+def _check_facing(bank, role, record, config):
+    """A named object's facing record, read back: its object is one whose facing is calibrated, its template
+    counts are the bank's, no labelled template is a clean capture that looks the same mirrored, its counts
+    add up, and its status is the one they give."""
+    np = numpy()
+    if role not in FACING_OBJECTS:
+        raise sensor.SensorError(f'the facing of {role} is not calibrated')
+    labelled = [item for item in bank['templates'] if item['object'] == role and 'heading' in item]
+    for item in labelled:
+        if item['kind'] != 'clean-capture':
+            raise sensor.SensorError(f'a heading is recorded on a {role} template that is not a clean capture')
+        rgb = np.frombuffer(base64.b64decode(item['rgbPixels']), np.uint8).reshape(item['height'], item['width'], 3)
+        mask = np.frombuffer(base64.b64decode(item['foregroundMask']), np.uint8).reshape(item['height'], item['width'])
+        if symmetric(rgb, mask, config, bank['calibration'].get('selectionSimilarity', 0.995)):
+            raise sensor.SensorError(f'a {role} template that looks the same mirrored is labelled with a heading')
+    counts = {h: sum(item['heading'] == h for item in labelled) for h in sensor.HEADINGS}
+    if record['templates'] != counts:
+        raise sensor.SensorError(f'the facing of {role} does not have the labelled templates it records')
+    if record['agree'] + record['disagree'] > record['moving'] or \
+            record['mirroredAgree'] + record['mirroredDisagree'] > record['moving']:
+        raise sensor.SensorError(f'the facing of {role} records more decisions than frames')
+    expected = _facing_calibration(record['moving'], record['agree'], record['disagree'], record['mirroredAgree'],
+                                   record['mirroredDisagree'], counts['right'], counts['left'], record['margin'])
+    if expected != record:
+        raise sensor.SensorError(f'the facing of {role} records a status its counts do not give')
 
 
 class ForegroundMatcher:
@@ -305,16 +347,81 @@ class ForegroundMatcher:
         return best, roi
 
 
+def symmetric(rgb, mask, config, similarity):
+    """Whether a crop looks the same mirrored, by the rule that keeps two templates apart: a pose for which
+    it does cannot say which way it faces, so it gets no ``heading``."""
+    np = numpy()
+    one, other = features(rgb, mask, config), features(rgb[:, ::-1], mask[:, ::-1], config)
+    if one is None or other is None:
+        return True
+    (w1, v1, m1), (w2, v2, m2) = one, other
+    intersection = float(np.dot(w1, w2))
+    return float(np.dot(v1, v2)) >= similarity and intersection/(m1+m2-intersection) >= .9
+
+
+def heading_matchers(templates, config):
+    """{'right': matcher, 'left': matcher} over the templates labelled each way, or None without both."""
+    by = {h: [t for t in templates if t.get('heading') == h] for h in sensor.HEADINGS}
+    if not all(by.values()):
+        return None
+    return {h: ForegroundMatcher(items, config) for h, items in by.items()}
+
+
+def facing(matchers, image, box, config, margin=FACING_MARGIN):
+    """Which way the object drawn at ``box`` faces: {'facing': 'right' | 'left' | None, 'scores': {...}}.
+
+    Each heading's score is its best confirmed match overlapping ``box`` (0 when none does). The facing is the
+    heading that scores at least the match threshold and beats the other by ``margin``; otherwise None: the
+    sensor cannot tell, which a check reads as a gap, never as either way."""
+    scores = {}
+    for heading in sensor.HEADINGS:
+        found, _ = matchers[heading].match(image, box)
+        ok = found is not None and sensor._iou(found['box'], box) >= config['agreementIoU']
+        scores[heading] = round(float(found['score']), 6) if ok else 0.0
+    best = max(sensor.HEADINGS, key=lambda h: (scores[h], h == 'right'))
+    other = OPPOSITE[best]
+    decided = scores[best] >= config['matchThreshold'] and scores[best] - scores[other] >= margin
+    return {'facing': best if decided else None, 'scores': scores}
+
+
+def mirrored_about(image, box):
+    """``image`` with the region around ``box`` mirrored about the box's centre: the object drawn there now
+    faces the other way. The region is the box widened by its own width each side, clipped evenly."""
+    Image, _, _ = sensor.imaging()
+    centre = (box[0]+box[2])/2
+    half = min(box[2]-box[0], centre, image.width-centre)
+    left, right = max(0, round(centre-half)), min(image.width, round(centre+half))
+    top, bottom = max(0, math.floor(box[1])), min(image.height, math.ceil(box[3]))
+    out = image.copy()
+    if right-left >= 2 and bottom > top:
+        region = image.crop((left, top, right, bottom)).transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+        out.paste(region, (left, top))
+    return out
+
+
+def _facing_calibration(moving, agree, disagree, mirrored_agree, mirrored_disagree, right, left, margin):
+    """A named object's facing on the validation replay. ``moving`` frames show it moving one way; on each,
+    the drawn object (``agree`` / ``disagree``: decided its way or the other) and the same frame with it
+    mirrored (``mirroredAgree`` / ``mirroredDisagree``: decided the other way or its way). ``met`` by the
+    player's rule on both: at least 95% decided right and at most 1% decided wrong, with templates both ways."""
+    met = bool(right and left and moving and agree/moving >= .95 and disagree/moving <= .01
+               and mirrored_agree/moving >= .95 and mirrored_disagree/moving <= .01)
+    return dict(margin=margin, templates=dict(right=right, left=left), moving=moving, agree=agree,
+                disagree=disagree, mirroredAgree=mirrored_agree, mirroredDisagree=mirrored_disagree,
+                status='met' if met else 'unmet')
+
+
 def _touches(a, b):
     return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
 
 
-def _calibration_boxes(trace, frames, fps, objects, size):
+def _calibration_boxes(trace, frames, fps, objects, size, ids=None):
     """{frame: {name: box}}: where calibration crops each object in each clean frame.
 
     The player wherever its box is wholly on screen. For each role in ``objects`` (the game has many of
     them; agents/template_observations.py ``object_predictions``), the lowest-id one whose logged box is
-    wholly on screen and touches no other logged box of any object, so a crop never holds two sprites."""
+    wholly on screen and touches no other logged box of any object, so a crop never holds two sprites.
+    ``ids``, when given, is filled with {frame: {role: id}}: which one was chosen."""
     width, height = size
 
     def on(b):
@@ -331,9 +438,11 @@ def _calibration_boxes(trace, frames, fps, objects, size):
         if on(player[n]['player']):
             chosen['player'] = player[n]['player']
         for role in objects:
-            for _, box in sorted(logged[role][n] or [], key=lambda e: e[0]):
+            for ident, box in sorted(logged[role][n] or [], key=lambda e: e[0]):
                 if on(box) and sum(_touches(box, other) for other in everything) == 1:
                     chosen[role] = box
+                    if ids is not None:
+                        ids.setdefault(n, {})[role] = ident
                     break
         if chosen:
             out[n] = chosen
@@ -374,6 +483,32 @@ def _object_calibration(positives, negatives, threshold, templates):
                 negativeMatches=false, status='met' if met else 'unmet')
 
 
+def _validate_facing(templates, config, files, trace, fps, role, boxes, ids, margin=FACING_MARGIN):
+    """``_facing_calibration`` of ``role`` on the validation replay, at the bank's chosen threshold: every frame
+    whose calibration crop shows the object moving one way is decided as drawn, and again mirrored."""
+    Image, _, _ = sensor.imaging()
+    right = sum(t.get('heading') == 'right' for t in templates)
+    left = sum(t.get('heading') == 'left' for t in templates)
+    matchers = heading_matchers(templates, config)
+    moves = sensor.object_motion(trace, list(files), role, fps)
+    moving = agree = disagree = mirrored_agree = mirrored_disagree = 0
+    for n, path in files.items():
+        box, ident = (boxes.get(n) or {}).get(role), (ids.get(n) or {}).get(role)
+        motion = (moves.get(n) or {}).get(ident)
+        if box is None or motion not in sensor.HEADINGS or matchers is None:
+            continue
+        moving += 1
+        with Image.open(path) as image:
+            image = image.convert('RGB')
+            drawn = facing(matchers, image, box, config, margin)['facing']
+            flipped = facing(matchers, mirrored_about(image, box), box, config, margin)['facing']
+        agree += drawn == motion
+        disagree += drawn == OPPOSITE[motion]
+        mirrored_agree += flipped == OPPOSITE[motion]
+        mirrored_disagree += flipped == motion
+    return _facing_calibration(moving, agree, disagree, mirrored_agree, mirrored_disagree, right, left, margin)
+
+
 def calibrate_routes(clean_runs, validation_run, *, clean_game, clean_tree, art, config=None, similarity=0.995, catalogue=None,
                      objects=()):
     """Freeze foreground witnesses from every eligible clean frame, then validate separately.
@@ -404,8 +539,11 @@ def calibrate_routes(clean_runs, validation_run, *, clean_game, clean_tree, art,
                                                  or s['object'] not in objects], catalogue)
     palettes = {item['object']: colour_codes(np.asarray(item['paletteRgb'], np.uint8)) for item in source_art}
     selected, vectors, masks, sources = [], [], [], []
+    # (route index, frame, role) -> the way the engine moved the cropped object on that frame's tick.
+    headings, sources_seen = {}, -1
     bank, source_frames, eligible_frames, ground = None, 0, 0, None
     for root in map(Path, clean_runs):
+        sources_seen += 1
         record = json.loads((root/'replay.json').read_text())
         trace = json.loads((root/'trace.json').read_text())
         if (record['game']['tree'] != clean_tree or record['game'].get('patch') is not None
@@ -423,7 +561,14 @@ def calibrate_routes(clean_runs, validation_run, *, clean_game, clean_tree, art,
                 raise sensor.SensorError('no eligible foreground calibration frames')
             with Image.open(first) as image:
                 size = image.size
-            predicted = _calibration_boxes(trace, list(files), record['capture']['fps'], objects, size)
+            chosen_ids = {}
+            predicted = _calibration_boxes(trace, list(files), record['capture']['fps'], objects, size, chosen_ids)
+            for role in objects:
+                if role in FACING_OBJECTS:
+                    moves = sensor.object_motion(trace, list(files), role, record['capture']['fps'])
+                    for n, picked in chosen_ids.items():
+                        if role in picked:
+                            headings[(sources_seen, n, role)] = (moves.get(n) or {}).get(picked[role])
             # A named object's crop too flat to identify a sprite (the bank's own contrast rule) is not a
             # template; it is left out here rather than failing the calibration. The player's rule is unchanged.
             for n, chosen in list(predicted.items()):
@@ -466,6 +611,9 @@ def calibrate_routes(clean_runs, validation_run, *, clean_game, clean_tree, art,
             if feature is None:
                 continue
             eligible_frames += 1
+            heading = headings.get((sources_seen, original['frame'], name))
+            if heading not in sensor.HEADINGS or symmetric(rgb, mask, settings, similarity):
+                heading = None
             for mirrored in (False, True):
                 pixels = rgb[:, ::-1] if mirrored else rgb
                 foreground = mask[:, ::-1] if mirrored else mask
@@ -485,6 +633,8 @@ def calibrate_routes(clean_runs, validation_run, *, clean_game, clean_tree, art,
                 item = copy.deepcopy(original)
                 item['mirrorX'] = mirrored
                 item['kind'] = 'clean-capture'
+                if heading is not None:
+                    item['heading'] = OPPOSITE[heading] if mirrored else heading
                 item['pixels'], item['pixelsSha256'] = encode(Image.fromarray(pixels).convert('L').tobytes())
                 item['rgbPixels'], item['rgbPixelsSha256'] = encode(pixels.tobytes())
                 item['foregroundMask'], item['foregroundMaskSha256'] = encode(foreground.tobytes())
@@ -500,7 +650,12 @@ def calibrate_routes(clean_runs, validation_run, *, clean_game, clean_tree, art,
         template_art.extend_templates(bank)
     bank['calibration'].update(selection='approved-foreground', selectionSimilarity=similarity,
                                sourceFrames=source_frames, eligibleFrames=eligible_frames, mirrored=True)
-    bank = sensor.load_bank(bank)
+    # Read back before validation. Headings are recorded with the facing validation below, so they are read
+    # back with it, at the end; here the bank is read without them.
+    unlabelled = copy.deepcopy(bank)
+    for item in unlabelled['templates']:
+        item.pop('heading', None)
+    sensor.load_bank(unlabelled)
     root = Path(validation_run)
     record = json.loads((root/'replay.json').read_text())
     if record['game']['tree'] != clean_tree or record['game'].get('patch') is not None or record['game'].get('patchSha256') is not None:
@@ -524,7 +679,9 @@ def calibrate_routes(clean_runs, validation_run, *, clean_game, clean_tree, art,
         with Image.open(path) as image:
             image = image.convert('RGB')
             if named and named_boxes is None:
-                named_boxes = _calibration_boxes(trace, list(files), record['capture']['fps'], tuple(named), image.size)
+                named_ids = {}
+                named_boxes = _calibration_boxes(trace, list(files), record['capture']['fps'], tuple(named), image.size,
+                                                 named_ids)
             for role in named:
                 box = (named_boxes.get(n) or {}).get(role)
                 if box is not None:
@@ -548,6 +705,11 @@ def calibrate_routes(clean_runs, validation_run, *, clean_game, clean_tree, art,
         bank['calibration']['objects'] = {
             role: _object_calibration(*by_role.get(role, ([], [])), chosen, sum(item['object'] == role for item in selected))
             for role in objects}
+        for role in objects:
+            if role in FACING_OBJECTS:
+                bank['calibration']['objects'][role]['facing'] = _validate_facing(
+                    [item for item in selected if item['object'] == role], bank['config'], files, trace,
+                    record['capture']['fps'], role, named_boxes or {}, named_ids if named_boxes else {})
     # The clean checkout remains the source authority throughout calibration.
     if art_sources(clean_game, art, clean_tree) != original_sources:
         raise sensor.SensorError('trusted foreground art changed during calibration')

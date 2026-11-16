@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 from pathlib import Path
 import glob
@@ -71,8 +72,11 @@ def _child(jobs, original, checkout, inputs, *, require_isolation, spawn_worker)
     return runner.wait(jobs, child["id"], spawn_worker(jobs, child["id"]))
 
 
-def repair(jobs, job, *, attempts=3, fixture=None, recorded=False, spawn_worker=None):
+def repair(jobs, job, *, attempts=3, fixture=None, recorded=False, spawn_worker=None, agent="muse-code"):
     from agents import fixer
+
+    if agent not in ("muse-code", "llm-patch"):
+        raise ValueError("repair agent must be muse-code or llm-patch")
 
     if recorded and fixture is None:
         raise ValueError("a recorded repair needs its saved patch")
@@ -112,11 +116,11 @@ def repair(jobs, job, *, attempts=3, fixture=None, recorded=False, spawn_worker=
     rr = {"format": "expectrail.repair-request/v0", "id": job, "base": {"tree": inputs["headTree"]},
           "failing": failing, "budget": {"attempts": attempts}}
     folder = Path(tempfile.mkdtemp(prefix="repair-", dir=paths.root))
-    source = ("recorded" if recorded else "fixture") if fixture is not None else "muse"
+    source = ("recorded" if recorded else "fixture") if fixture is not None else ("llm-patch" if agent == "llm-patch" else "muse")
     doc = {"format": "expectrail.repair-run/v1",
            "parent": {"job": job, "decision": "reject", "headTree": inputs["headTree"],
                       "failing": [{"spec": f["spec"]["id"], "route": f["route"]["name"]} for f in failing]},
-           "fixer": {"source": source, "sandboxed": fixture is None},
+           "fixer": {"source": source, "sandboxed": fixture is None and agent != "llm-patch"},
            "budget": {"attempts": attempts, "usdCap": cap}, "startedAt": store.stamp(), "attempts": [],
            "machineWritten": True, "review": contracts.schema_v1("repair-run")["properties"]["review"]["enum"][0],
            "result": {"decision": "needs-review", "job": None, "patch": None}}
@@ -169,7 +173,14 @@ def repair(jobs, job, *, attempts=3, fixture=None, recorded=False, spawn_worker=
                 output = Path(tmp) / str(n)
                 meta = fixer.run_fixer(rr, output, game=workspace, attempt=n, allow_empty=True,
                                        require_sandbox=True, candidate_patch=fixture, prior_reject=prior,
-                                       adapter=adapter, agent="muse-code", provider_only=True)
+                                       adapter=adapter, agent=agent, provider_only=True)
+                invocation_path = output / "fixer-invocation.json"
+                if invocation_path.exists():
+                    from expectrail import fixer_budget
+                    invocation_doc = fixer_budget.read(invocation_path)
+                    invocation_copy = attempt / "fixer-invocation.json"
+                    invocation_copy.write_text(json.dumps(invocation_doc, indent=2) + "\n")
+                    row["fixerInvocation"] = str(invocation_copy.relative_to(folder))
                 if not meta["ok"]:
                     stop, detail = "fixer-failed", "the fixer produced no patch"
                     break

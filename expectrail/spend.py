@@ -356,6 +356,23 @@ def build_job_budget(job_id: str, *, month: dict | None = None) -> dict:
 
 def _check_capability(doc: dict) -> None:
     _validate(doc, "provider-capability")
+    prices = doc.get("tokenPrices", [])
+    if len({p["model"] for p in prices}) != len(prices):
+        raise ContractError("provider-capability: duplicate token price model")
+    if any(p["model"] not in {m for r in doc["roles"] for m in r["models"]} for p in prices):
+        raise ContractError("provider-capability: price for an unlisted model")
+    for price in prices:
+        from datetime import date
+        try:
+            date.fromisoformat(price['checkedOn'])
+            if 'validUntil' in price:date.fromisoformat(price['validUntil'])
+        except ValueError as exc:
+            raise ContractError('provider-capability: invalid price review date') from exc
+        if price['inputBound']=='utf8-json-bytes-plus-context-ceiling-v1' and 'contextTokenCeiling' not in price:
+            raise ContractError('provider-capability: missing reviewed context ceiling')
+        for side in ('Input','Output'):
+            if price.get('base'+side+'NanoUsdPerToken', 0) > price[side.lower()+'NanoUsdPerToken']:
+                raise ContractError('provider-capability: reservation rate below base price')
     seen = set()
     for role in doc["roles"]:
         if role["role"] in seen:

@@ -56,7 +56,10 @@ class TheMenuIsForOneObserver(unittest.TestCase):
         m = pixel.menu(B, pixel.proposed(SENSOR))
         self.assertEqual(list(m["observers"]), [SENSOR])
         self.assertEqual(m["observers"][SENSOR]["objects"], ["enemy", "player"])
-        self.assertEqual(m["observers"][SENSOR]["predicates"], ["visible", "inside-region", "never-crosses"])
+        # faces-motion since November 16 (#286): which way the enemy is drawn facing, against its motion.
+        self.assertEqual(m["observers"][SENSOR]["predicates"],
+                         ["visible", "inside-region", "never-crosses", "faces-motion"])
+        self.assertIn("faces-motion is about enemy only", m["observers"][SENSOR]["note"])
         self.assertEqual(sorted(m["notJudgeable"]), ["bullet", "coin", "coins-counter", "ground"])
         self.assertNotIn(SAM, json.dumps(m))
 

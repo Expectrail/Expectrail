@@ -404,7 +404,7 @@ func _finish() -> void:
 		if not _bindings.is_empty():
 			out["bindings"] = _bindings
 			out["capabilities"]["roleBoxes"] = true
-			var size := get_viewport().get_visible_rect().size
+			var size := get_window().size  # Captured pixels, not the logical stretch viewport.
 			out["viewport"] = [size.x, size.y]
 		file.store_string(JSON.stringify(out, "", false))
 		file.close()

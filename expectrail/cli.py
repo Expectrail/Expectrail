@@ -5,6 +5,7 @@
     expectrail sample              three real verifications of the bundled game: as it is, broken, repaired
     expectrail doctor [--json]     does this machine have what a verification needs?
     expectrail trust-check RECEIPT --trust-store FILE [--repo OWNER/NAME] [--expect-head SHA] ...
+    expectrail trust-check RECEIPT --attested-by OWNER/NAME/.github/workflows/FILE.yml --repo OWNER/NAME ...
                                    does this receipt clear this change? (needs the `trust` extra)
     expectrail --version
 

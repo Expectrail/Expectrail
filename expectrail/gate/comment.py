@@ -242,6 +242,12 @@ def _summary(record: dict) -> str:
                  f"before the change {rec.REPAIR_RUNS} times of {rec.REPAIR_RUNS}." if rec.intent_of(record) == "fix" else "")
         return (f"**{'The' if total == 1 else 'All'} {_n(total, 'check')} {'passes' if total == 1 else 'pass'} after this change.**{shown} Accepted means this change passed these "
                 "checks on these routes, not that the game is correct.")
+    if rec.unverified_fix(record) and rec.unverified_fix_headline(record) == rec.UNDECIDED_FIX:
+        # Issue #560: a check failed on the base, so the bug was seen; after the change it was not decided.
+        n = rec.undecided_after_failure(record["checks"])
+        return (f"**{rec.UNDECIDED_FIX}.** {_n(n, 'check')} failed before the change and could not be decided "
+                "after it (needs review, or the replay did not finish), so nothing shows the bug is fixed. "
+                "A person should look at the evidence after the change.")
     if rec.unverified_fix(record):
         # Issue #284: for a change that says it fixes a bug, "no check failed" is not "the fix is good".
         return ("**No check reproduced the reported bug, so this fix is not verified.** No check failed before "

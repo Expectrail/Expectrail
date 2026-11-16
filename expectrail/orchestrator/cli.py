@@ -52,7 +52,7 @@ def describe(status: dict, job_folder: Path | None = None) -> str:
     lines = []
     if status["decision"] == "needs-review" and any(
             r.startswith(rec.NOT_DEMONSTRATED + ":") for r in status["reasons"]):
-        lines.append(req.UNVERIFIED_FIX)
+        lines.append(rec.unverified_fix_headline(status))
     lines.append(f"job {status['id']}: {status['phase']}" + (f", {status['decision']}" if status["decision"] else ""))
     if status.get("intent", "none") != "none":
         lines.append(f"  Declared intent: {status['intent']}")
@@ -171,6 +171,7 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
     ingest.add_argument('--profile', type=Path, help='trusted mechanics profile (default: bundled platformer profile)')
     ingest.add_argument('--proposal-response', type=Path, help='saved stand-in response instead of live transport; live needs the existing spec-role cap')
     ingest.add_argument('--repair', action='store_true', help='opt in to the existing sandboxed repair loop after approved reproduction')
+    ingest.add_argument('--repair-agent', choices=('muse-code', 'llm-patch'), default='muse-code', help='trusted operator choice of fixer (default muse-code)')
     ingest.add_argument('--repair-attempts', type=int, default=3, help='maximum candidates, 1 to 10 (default 3)')
     ingest.add_argument('--repair-fixture', type=Path, help='saved offline candidate patch; no fixer transport')
     _jobs_root_after(ingest)
@@ -236,7 +237,7 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
                 raise req.RequestError('proposal options require --propose')
             if args.repair and args.detach:
                 raise req.RequestError('--repair requires foreground ingest; omit --detach')
-            if not args.repair and (args.repair_fixture is not None or args.repair_attempts != 3):
+            if not args.repair and (args.repair_fixture is not None or args.repair_attempts != 3 or args.repair_agent != "muse-code"):
                 raise req.RequestError('repair options require --repair')
             if not 1 <= args.repair_attempts <= 10:
                 raise req.RequestError('--repair-attempts must be between 1 and 10')
@@ -254,7 +255,7 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
             if args.repair:
                 from expectrail.orchestrator import ingest_repair
                 path, doc = ingest_repair.run(store, status['id'], attempts=args.repair_attempts,
-                                               fixture=args.repair_fixture)
+                                               fixture=args.repair_fixture, **({"agent": args.repair_agent} if args.repair_agent != "muse-code" else {}))
                 print(json.dumps(doc, indent=2) if args.json else
                       f"Reproduction: {doc['reproduction']['kind']}\nRepair attempted: {doc['repairAttempted']}"
                       f"\n{doc['result']['decision']}: {doc['stop']['detail']}\nRepair record: {path}")

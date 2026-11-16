@@ -47,7 +47,7 @@
       }
     },
     "fixer": {
-      "description": "Who wrote candidates, or not-run when intake blocked repair. sandboxed is false for offline patches or when no fixer ran.",
+      "description": "Who wrote candidates, or not-run when intake blocked repair. sandboxed is false for offline patches, when no fixer ran, or for llm-patch where trusted host code builds requests and no agent process runs.",
       "type": "object",
       "additionalProperties": false,
       "required": ["source", "sandboxed"],
