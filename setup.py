@@ -12,7 +12,7 @@ BUNDLED_MODULES = {
     # docs/), the spec writer (model-side) and change evidence (the fix loop's).
     "expectrail": {"__init__", "anchored", "app", "app_kinematic", "app_page", "approval", "auto_fix", "cli", "contracts", "coverage", "diagnostics", "doctor", "evaluator", "legacy", "observers", "onboard", "onboarding", "project_config", "project_job", "providers", "receipt", "recorded", "renderer", "repair", "resources", "route", "spend", "timing", "viewer"},
     "expectrail._bundle.harness": {"__init__", "adapters", "run", "sandbox", "tree"},
-    "expectrail._bundle.agents": {"__init__", "byo_fixer", "fixer", "fixer_guard_hook", "gateway", "gateway_bridge", "guard", "keys", "muse_gateway_addon", "patchutil", "sandbox", "anchor_rule", "observations", "sam_anchor", "sam_observations", "glimmer_client", "byo_vision", "engine_check"},
+    "expectrail._bundle.agents": {"__init__", "byo_fixer", "fixer", "fixer_guard_hook", "gateway", "gateway_bridge", "guard", "keys", "muse_gateway_addon", "patchutil", "sandbox", "anchor_rule", "observations", "sam_anchor", "sam_observations", "godot_roles", "glimmer_client", "byo_vision", "engine_check"},
     # Data only: no module of these folders is packaged.
     "expectrail._bundle.contracts": set(),
     "expectrail._bundle.game": set(),

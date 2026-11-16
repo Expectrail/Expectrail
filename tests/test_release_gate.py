@@ -81,9 +81,11 @@ class TableTest(unittest.TestCase):
                     if expected:
                         self.assertTrue(c["open"], "an expected failure belongs to an open row")
                     elif c["open"]:
-                        # An open row may hold plain tests beside its probe, but needs a probe.
-                        self.assertTrue(any(getattr(method(x), "__unittest_expecting_failure__", False)
-                                            for x in c["tests"]), f"{c['id']}: tests and an open reason, no probe")
+                        # Guard: test change intended (#258). Scoped negative tests can remain
+                        # useful while the complete (positive) case stays explicitly open.
+                        self.assertTrue(c.get("scope") or any(
+                            getattr(method(x), "__unittest_expecting_failure__", False)
+                            for x in c["tests"]), f"{c['id']}: open tests need a probe or scoped partial coverage")
 
     def test_the_gate_modules_are_not_collected_by_the_main_suite(self):
         self.assertTrue(rg.gate_modules())
@@ -107,6 +109,15 @@ def summary(found: dict) -> dict:
 
 
 class SummaryTest(unittest.TestCase):
+    def test_negative_intent_controls_do_not_claim_an_approved_contract_change_was_shown(self):
+        # Both rejection tests can pass while the positive, person-approved
+        # contract-change case is untested. That complete row must stay open.
+        s = summary(outcomes())
+        row = self.row(s, "intentional-change")
+        self.assertEqual(row["status"], rg.OPEN)
+        self.assertIn("positive", row["note"])
+        self.assertIn("approval", row["note"])
+
     def row(self, s: dict, cid: str) -> dict:
         return next(r for r in s["rows"] if r["id"] == cid)
 

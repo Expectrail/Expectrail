@@ -1,0 +1,30 @@
+{
+  "format": "expectrail.verify-request/v1",
+  "project": {
+    "adapter": "godot",
+    "game": "game/platformer",
+    "routes": [
+      "routes/*.json"
+    ],
+    "specs": "specs"
+  },
+  "head": {
+    "checkout": "/srv/project",
+    "commit": null
+  },
+  "base": {
+    "checkout": "/srv/project",
+    "commit": null
+  },
+  "executionClass": "diagnostic",
+  "limits": {
+    "timeoutSeconds": 1800
+  },
+  "idempotencyKey": "pr-7:1111111",
+  "commitInputs": {
+    "repository": "/srv/project",
+    "baseRef": "v1",
+    "headRef": "main",
+    "projectPath": "."
+  }
+}

@@ -11,8 +11,9 @@ sees in the frames:
 - **The observer is a trusted one** (``OBSERVERS``), and it declares what it can and cannot tell. A
   check that asks it something it cannot tell is refused when it is proposed (``parse_candidate``),
   never passed later. ``sam-3.1-anchor`` is SAM 3.1 asked about the place the engine's record puts
-  the object (agents/sam_anchor.py). ``visual-sensor`` is the no-model sensor of #262; it is declared
-  so a check can name it, and refused until it exists.
+  the object (agents/sam_anchor.py). ``visual-sensor`` is the no-model sensor of #262 over a frozen
+  template bank (expectrail/jit/template_observer.py); it is not offered to the proposer (``PROPOSED``),
+  and no proposal may name it yet.
 - **The predicates are the reference evaluator's** (``visible``, ``inside-region``, ``never-crosses``,
   ``reaches``; expectrail/evaluator.py), and ``judge`` hands the decision to that evaluator.
 - **A frame counts only where the observer and the engine's record are both there.** A frame in the
@@ -114,11 +115,39 @@ OBSERVERS = {
             "reaches": "it is asked about one object per frame, at the place the engine puts it, so it cannot judge two",
         },
     },
+    # The no-model template sensor of #262 (agents/template_observations.py), built into an observer in
+    # expectrail/jit/template_observer.py: a frozen bank of the player's templates from a trusted clean
+    # replay, searched for near the engine's body box. Nothing is sent anywhere and nothing is charged.
     "visual-sensor": {
-        "available": False,
-        "why": {"available": "the no-model visual sensor (#262) is not built yet"},
+        "available": True,
+        "predicates": ("visible", "inside-region", "never-crosses"),
+        "anchored": True,
+        # Its bank holds the player's templates only: a second sprite needs its own templates and its own
+        # prediction map (docs/template-sensor.md), which nothing supplies yet.
+        "boxes": (),
+        "cannot": ("ground", "text"),
+        "why": {
+            "ground": "the template sensor matches sprites against clean templates; it does not segment the ground",
+            "text": "the template sensor reads no text (docs/template-sensor.md)",
+            "reaches": "it looks for one object near the place the engine puts it, so it cannot judge two",
+        },
     },
 }
+
+# The observers the proposer is offered (``menu``), and the only ones a model's answer or a saved proposal
+# may name (``parse_answer``, expectrail/jit/intent.py ``_pixel_from_proposal``). A run is judged by the one
+# observer it is given (expectrail/jit/run.py: a check naming another is not run), and the propose step is
+# not told which, so the proposer is offered only SAM, the observer jit.yml's pixel jobs build.
+# ``visual-sensor`` is judged by ``run.generate`` when it is the run's observer and an intent hands it
+# checks naming it; offering it to the proposer needs the propose step to know the run's observer.
+PROPOSED = ("sam-3.1-anchor",)
+NOT_PROPOSED = ("a run is judged by one observer, and the proposer is offered only the one jit.yml's pixel jobs "
+                "build: " + ", ".join(PROPOSED))
+
+
+def proposed() -> dict:
+    """The observers a proposal may name: ``OBSERVERS`` cut to ``PROPOSED``."""
+    return {name: OBSERVERS[name] for name in PROPOSED}
 
 
 class PixelError(ValueError):
@@ -160,6 +189,8 @@ def parse_candidate(entry, bindings: dict, probe_ids, observers: dict = OBSERVER
         return None, "the window ends before it starts"
     observer = observers.get(doc["observer"])
     if observer is None:
+        if doc["observer"] in OBSERVERS:
+            return None, f"{doc['observer']} is not offered to the proposer: {NOT_PROPOSED}"
         return None, f"{doc['observer']!r} is not a trusted observer"
     if not observer.get("available"):
         return None, f"{doc['observer']} cannot judge anything yet: {observer['why']['available']}"
@@ -214,12 +245,14 @@ def named(role: str, bindings: dict = BUNDLED_BINDINGS) -> bool:
     return (bindings.get(role) or {}).get("anchor") == "engine-boxes"
 
 
-def menu(bindings: dict = BUNDLED_BINDINGS, observers: dict = OBSERVERS) -> dict:
+def menu(bindings: dict = BUNDLED_BINDINGS, observers: dict | None = None) -> dict:
     """What the prompt offers: for each trusted observer that exists, the predicates it can judge and the
     bound objects it can be asked about; and every bound object no observer can judge, with why.
 
     Made from the same tables ``parse_candidate`` refuses by, so the model is never offered a check that
     would be refused, and a refusal it meets anyway names the same reason."""
+    if observers is None:
+        observers = proposed()
     out = {"observers": {}, "notJudgeable": {}}
     reasons: dict = {role: [] for role in sorted(bindings)}
     for name, observer in sorted(observers.items()):
@@ -245,9 +278,12 @@ def menu(bindings: dict = BUNDLED_BINDINGS, observers: dict = OBSERVERS) -> dict
     return out
 
 
-def parse_answer(entries, bindings: dict, probe_ids, observers: dict = OBSERVERS) -> tuple[list[dict], list[str]]:
+def parse_answer(entries, bindings: dict, probe_ids, observers: dict | None = None) -> tuple[list[dict], list[str]]:
     """(checks, diagnostics) from the model's ``pixelChecks``: at most MAX_PIXEL_CHECKS are read, each
-    through ``parse_candidate``, renamed ``jit-px-<id>``; a refused one or a repeated id is dropped and said."""
+    through ``parse_candidate`` against the observers the proposer is offered (``proposed``, unless
+    ``observers`` is given), renamed ``jit-px-<id>``; a refused one or a repeated id is dropped and said."""
+    if observers is None:
+        observers = proposed()
     if entries is None:
         return [], []
     if not isinstance(entries, list):
@@ -314,11 +350,14 @@ def observations(check: dict, run: dict) -> tuple[dict, list[dict]]:
         if not f.get("asked"):
             gaps.append({"frame": n, "why": f"not asked: {f.get('note') or 'no engine position'}"})
             continue
-        if f.get("error") or f.get("box") is None:
+        absent = f.get("absent") is True and f.get("box") is None and not f.get("error")
+        if (f.get("error") or f.get("box") is None) and not absent:
             gaps.append({"frame": n, "why": "the observer gave no answer"})
             continue
         objects: dict = {role: []}
-        if f.get("holdsPoint"):
+        # ``absent``: the observer searched readable pixels around the engine's box and found nothing
+        # (expectrail/jit/template_observer.py, ``not-found``): an observation, not a gap.
+        if f.get("holdsPoint") and not absent:
             objects[role].append({"box": list(f["box"]), "score": float(f.get("score") or 0.0)})
         if need_engine_box:
             if f.get("promptBox") is None:
