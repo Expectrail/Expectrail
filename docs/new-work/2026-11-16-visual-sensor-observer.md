@@ -43,7 +43,8 @@ Test changes to existing files:
   not drawn), catches a wrong fix and not a good one, with $0 reserved and 0 SAM images.
 - The pixel and SAM test modules (`tests.test_jit_pixel*`, `tests.test_jit_sam_observer`,
   `tests.test_repro_pixel_reach`, `tests.test_repro_score_pixel`): OK.
-- The full suite on the branch merged with main: in the pull request.
+- The full suite on the branch merged with main 8d8cb4d (`python3 -m unittest discover -s tests -t .`, after
+  the pinned fetch): 4,169 tests, OK, 43 skipped.
 - No engine, no model, no SAM call, no dispatch. Nothing was spent.
 
 ## Not done
