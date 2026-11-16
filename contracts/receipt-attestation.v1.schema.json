@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/receipt-attestation.v1.schema.json",
+  "title": "expectrail.receipt-attestation/v1",
+  "description": "The predicate of a GitHub artifact attestation whose subject is an Expectrail receipt file. Every field but format and receiptSha256 is copied from the receipt; the reader refuses an attestation where any copy differs from the receipt it is checked against. Predicate type: https://expectrail.tech/attestation/receipt/v1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "receiptSha256", "repository", "headSha256", "buildSha256", "policySha256", "decision",
+               "issuedAt", "expiresAt"],
+  "properties": {
+    "format": {"const": "expectrail.receipt-attestation/v1"},
+    "receiptSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$",
+                      "description": "SHA-256 of the receipt file's exact bytes: the attestation's subject digest."},
+    "repository": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
+    "headSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "buildSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "policySha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "decision": {"enum": ["accept", "reject", "needs-review"]},
+    "issuedAt": {"type": "string", "format": "date-time"},
+    "expiresAt": {"type": "string", "format": "date-time"}
+  }
+}
