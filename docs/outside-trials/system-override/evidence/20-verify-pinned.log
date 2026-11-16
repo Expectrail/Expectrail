@@ -1,0 +1,88 @@
+{
+  "format": "expectrail.verify-job/v1",
+  "id": "a956ab6a63172ba21835d357e4652850",
+  "phase": "completed",
+  "decision": "needs-review",
+  "reasons": [
+    "TOOL_MISSING: xvfb-run is not installed. Fix: sudo apt-get install xvfb",
+    "TOOL_MISSING: not tried: it needs Godot and a display, and one is missing above. Fix: fix what is missing above, then run `expectrail doctor` again",
+    "TOOL_MISSING: 341 MB free in the engine's folder (/workspace/work/third-project/tools); 341 MB free in the temporary folder (/tmp). Fix: free at least 1024 MB in each folder named above, or name other folders with EXPECTRAIL_TOOLS and TMPDIR"
+  ],
+  "diagnostics": [
+    {
+      "code": "TOOL_MISSING",
+      "stage": "preparing",
+      "detail": "xvfb-run is not installed. Fix: sudo apt-get install xvfb",
+      "fix": "install it (./harness/get_godot.sh, xvfb) and run again"
+    },
+    {
+      "code": "TOOL_MISSING",
+      "stage": "preparing",
+      "detail": "not tried: it needs Godot and a display, and one is missing above. Fix: fix what is missing above, then run `expectrail doctor` again",
+      "fix": "install it (./harness/get_godot.sh, xvfb) and run again"
+    },
+    {
+      "code": "TOOL_MISSING",
+      "stage": "preparing",
+      "detail": "341 MB free in the engine's folder (/workspace/work/third-project/tools); 341 MB free in the temporary folder (/tmp). Fix: free at least 1024 MB in each folder named above, or name other folders with EXPECTRAIL_TOOLS and TMPDIR",
+      "fix": "install it (./harness/get_godot.sh, xvfb) and run again"
+    }
+  ],
+  "inputs": {
+    "requestDigest": "fee49fbb618612e45b3d20b31a0202cfcd3d99e735642147e0470c4d1961757b",
+    "headTree": "425c9559ab3e3c9647469f4cf3df5b3ed08659e0973ecad599aa22b80cd8a3db",
+    "baseTree": "425c9559ab3e3c9647469f4cf3df5b3ed08659e0973ecad599aa22b80cd8a3db",
+    "policyDigest": "20e827eac6836d93e311a33ea0c13efcff7d63da40405d1e996b251a01114451"
+  },
+  "executionClass": "diagnostic",
+  "evidenceGrade": null,
+  "budget": {
+    "format": "expectrail.job-budget/v1",
+    "jobId": "a956ab6a63172ba21835d357e4652850",
+    "capsUsd": {
+      "vision": null,
+      "glimmer": null,
+      "muse": null,
+      "triage": null,
+      "spec": null
+    },
+    "phases": [],
+    "totalReservedUsd": 0,
+    "stopped": null,
+    "visionMonth": {
+      "limitUsd": 200.0,
+      "spentUsd": 0.0,
+      "runWorstCaseUsd": null,
+      "admitted": false
+    }
+  },
+  "worker": {
+    "pid": 358283,
+    "pgid": 358283
+  },
+  "lease": {
+    "heartbeatAt": "2026-11-16T00:53:23.597484Z",
+    "expiresAt": "2026-11-16T00:53:53.597484Z"
+  },
+  "output": null,
+  "history": [
+    {
+      "phase": "queued",
+      "at": "2026-11-16T00:53:23.213054Z"
+    },
+    {
+      "phase": "preparing",
+      "at": "2026-11-16T00:53:23.597450Z"
+    },
+    {
+      "phase": "completed",
+      "at": "2026-11-16T00:53:24.017779Z"
+    }
+  ],
+  "createdAt": "2026-11-16T00:53:23.213054Z",
+  "updatedAt": "2026-11-16T00:53:24.017807Z",
+  "finishedAt": "2026-11-16T00:53:24.017779Z",
+  "expectrail": {
+    "version": "0.1.0"
+  }
+}

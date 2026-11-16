@@ -1,0 +1,35 @@
+{
+  "config": {
+    "format": "expectrail.project/v1",
+    "adapter": "godot",
+    "draft": true,
+    "entryScene": "res://scenes/main_menu.tscn",
+    "viewport": [
+      1920,
+      1080
+    ],
+    "physicsTicksPerSecond": 60,
+    "captureFps": 60,
+    "bindings": {},
+    "inputActions": [
+      "exit",
+      "fire_weapons",
+      "negative_thrust",
+      "positive_thrust",
+      "restart",
+      "side_thrust_left",
+      "side_thrust_right",
+      "zoom_in",
+      "zoom_out"
+    ],
+    "routes": [
+      "routes/draft-first-ce3465d10472bf4a.json"
+    ]
+  },
+  "unresolvedBindings": [
+    "Supply the player node path and its res:// image in bindings.player; the starting scene has no unique player."
+  ],
+  "textureCandidates": [],
+  "playerCandidates": [],
+  "draft": true
+}

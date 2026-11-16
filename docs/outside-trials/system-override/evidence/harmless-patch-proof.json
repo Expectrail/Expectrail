@@ -1,0 +1,7 @@
+{
+  "variant": "harmless",
+  "file": "scripts/PlayerController.cs",
+  "beforeSha256": "02d54dc3801e322472655c870ca1c9d4a8d89cb0c002a6eb70ce332ca3f8407a",
+  "afterSha256": "dfb8dca7a2d53cb7c1a284da8052b60c47b6808b3e560ab0bf021cb8dfbbe226",
+  "reverseCheckPassed": true
+}

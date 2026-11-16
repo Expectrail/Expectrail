@@ -1,0 +1,24 @@
+expectrail.project.json valid against project.v1.schema.json no approval
+routes/thrust-fire.json valid against route.schema.json no approval
+checks/ship-visible.json valid against test-spec.schema.json no approval
+{
+  "folder": "/workspace/work/system-override",
+  "godot": true,
+  "adapter": "godot",
+  "version": "4.1-mono",
+  "routes": 1,
+  "checks": 0,
+  "drafts": 1,
+  "routeNames": [
+    "thrust-fire"
+  ],
+  "checkNames": [],
+  "configDraft": true,
+  "problems": [],
+  "help": "This config is a draft. Review its bindings; it cannot give an accept. No approved checks: name existing checks in approvedContracts. A person must approve them. Vision needs MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP. No key is entered on this page."
+}
+Pinned tracked source unchanged; failed auto-route wrote no output.
+20-verify-pinned needs-review no replay output; zero reserved USD
+22-verify-harmless needs-review no replay output; zero reserved USD
+23-verify-broken needs-review no replay output; zero reserved USD
+Pre-inspection choice unchanged.

@@ -1,0 +1,1 @@
+expectrail route: expectrail.project.json: bindings.player has unknown field 'sprite'; a binding is a node or a group, and a texture, not a size. No route was written.

@@ -1,0 +1,7 @@
+Removed only completed pinned job source snapshots; job record and logs kept.
+harmless scripts/PlayerController.cs patched and reverse-check passed
+{"label": "22-verify-harmless", "startedUtc": "2026-11-16T00:54:09.784542+00:00", "command": ["python3", "-m", "expectrail.cli", "verify", "--project", "/workspace/work/handover-263-third-project/game-harmless", "--base", "/workspace/work/system-override", "--jobs-root", "/workspace/work/handover-263-third-project/jobs", "--timeout", "120", "--json"], "cwd": "/workspace/work/third-project", "seconds": 1.3033522629993968, "exitCode": 2, "status": "finished", "godotOverride": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64", "log": "logs/22-verify-harmless.log"}
+Removed only completed harmless public-game snapshot copies.
+broken scenes/main.tscn patched and reverse-check passed
+{"label": "23-verify-broken", "startedUtc": "2026-11-16T00:54:11.200057+00:00", "command": ["python3", "-m", "expectrail.cli", "verify", "--project", "/workspace/work/handover-263-third-project/game-broken", "--base", "/workspace/work/system-override", "--jobs-root", "/workspace/work/handover-263-third-project/jobs", "--timeout", "120", "--json"], "cwd": "/workspace/work/third-project", "seconds": 0.9753732580029464, "exitCode": 2, "status": "finished", "godotOverride": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64", "log": "logs/23-verify-broken.log"}
+Removed only completed broken public-game snapshot copies.

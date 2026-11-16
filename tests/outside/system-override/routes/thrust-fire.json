@@ -1,0 +1,29 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "thrust-fire",
+  "seed": 1,
+  "description": "Draft: initial pause, positive thrust for one second, then fire for half a second. Intended gameplay entry comes from the config; no menu click or mouse aiming is represented.",
+  "ticks": 150,
+  "events": [
+    {
+      "tick": 15,
+      "action": "positive_thrust",
+      "pressed": true
+    },
+    {
+      "tick": 75,
+      "action": "positive_thrust",
+      "pressed": false
+    },
+    {
+      "tick": 90,
+      "action": "fire_weapons",
+      "pressed": true
+    },
+    {
+      "tick": 120,
+      "action": "fire_weapons",
+      "pressed": false
+    }
+  ]
+}

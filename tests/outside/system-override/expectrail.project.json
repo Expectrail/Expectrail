@@ -1,0 +1,39 @@
+{
+  "format": "expectrail.project/v1",
+  "adapter": "godot",
+  "draft": true,
+  "entryScene": "res://scenes/main.tscn",
+  "viewport": [
+    1920,
+    1080
+  ],
+  "physicsTicksPerSecond": 60,
+  "captureFps": 60,
+  "bindings": {
+    "player": {
+      "node": "Player Spaceship",
+      "texture": "res://graphics/spaceships/sp001_nova_star.png"
+    }
+  },
+  "inputActions": [
+    "exit",
+    "fire_weapons",
+    "negative_thrust",
+    "positive_thrust",
+    "restart",
+    "side_thrust_left",
+    "side_thrust_right",
+    "zoom_in",
+    "zoom_out"
+  ],
+  "routes": [
+    "routes/thrust-fire.json"
+  ],
+  "approvedContracts": [
+    "checks/ship-visible.json"
+  ],
+  "toolchain": {
+    "engine": "godot",
+    "version": "4.1-mono"
+  }
+}
