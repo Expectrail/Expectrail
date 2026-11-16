@@ -39,7 +39,9 @@ second sprite needs its own templates and prediction map, which nothing here sup
 
 The proposer is offered this observer when the propose step is told it will judge the run (pixel.py
 ``proposed``; expectrail/jit/intent.py ``observer``), and the command line builds it (``run --observer
-visual-sensor --sensor-bank BANK``). What this is not, yet: jit.yml does not pass it, and no bank has been calibrated for a bench probe. The sensor's measured
+visual-sensor --sensor-bank BANK``). jit.yml passes it when its ``observer`` input is ``visual-sensor``: a
+``sensor-bank`` job calibrates the bank once a run on the clean game (``calibrate_bank`` below) and the job
+that replays the change judges with it. Not shown yet: this bank's false alarms on the bench's probes. The sensor's measured
 false alarms on clean frames are in docs/template-sensor-measurement.md: a false alarm on a clean run
 drops the check by the keep rule, so it costs a reproduction, never a false catch.
 """
@@ -192,3 +194,60 @@ def _row(n: int, row: dict) -> dict:
     else:
         out.update(box=list(row["rawBox"]), holdsPoint=status == "matched")
     return out
+
+
+# The bank jit.yml calibrates for this observer (#286): the bundled game's player, from its clean art and four
+# dedicated clean routes (agents/template_sensor_bench.py ``calibration_routes``: three to calibrate from, a
+# fourth, separate, to validate the threshold), with the pose catalogue the published measurement used
+# (docs/template-sensor.md). The same recipe as that measurement, so its clean false-alarm figures describe
+# this bank's algorithm and settings; they are not a measurement of this bank on the bench's probes.
+BANK_ART = {ROLE: "player/robot.webp"}
+BANK_CATALOGUE = Path(__file__).resolve().parents[2] / "contracts" / "examples" / "template-foreground-catalogue.json"
+CLEAN_GAME = Path(__file__).resolve().parents[2] / "game" / "platformer"
+
+
+def calibrate_bank(out, work, *, game=None, godot=None, run_replay=None) -> dict:
+    """Calibrate the ``visual-sensor`` bank on the pinned clean game and write it to ``out``; return a summary.
+
+    Only the clean game is replayed, with no patch: no bug build, candidate or measured route reaches the bank
+    (agents/template_foreground.py ``calibrate_routes`` refuses a patched or other-tree replay). ``work`` holds
+    the routes and the replays and must not exist yet; ``out`` must not exist either, so a bank is never
+    overwritten or silently recalibrated. ``run_replay`` stands in for harness/run.py ``run`` in tests.
+    """
+    from agents import template_foreground as foreground
+    from agents import template_observations as sensor
+    from agents.template_sensor_bench import atomic_json, calibration_routes
+    from harness import run as harness
+
+    out, work = Path(out), Path(work)
+    game = Path(game or CLEAN_GAME).resolve()
+    if out.exists():
+        raise ValueError(f"{out} exists: a bank is never overwritten; name a new file")
+    if work.exists():
+        raise ValueError(f"{work} exists: the calibration replays go in a new folder")
+    if work.resolve() == game or game in work.resolve().parents or game in out.resolve().parents:
+        raise ValueError("the calibration's files go outside the clean game")
+    runner = run_replay or harness.run
+    clean_tree = harness.tree_digest(game)
+    replays = []
+    for route in calibration_routes():
+        path = work / "routes" / f"{route['name']}.json"
+        atomic_json(path, route)
+        target = work / route["name"]
+        runner(path, target, game=game, godot=godot, patches=[], capture_frames=True)
+        replays.append(target)
+    try:
+        bank = foreground.calibrate_routes(replays[:-1], replays[-1], clean_game=game, clean_tree=clean_tree,
+                                           art=dict(BANK_ART), catalogue=BANK_CATALOGUE)
+        bank = sensor.load_bank(bank)
+    except (sensor.SensorError, OSError, ValueError, KeyError) as exc:
+        raise ValueError(f"calibration failed: {' '.join(str(exc).split())[:200]}") from exc
+    if ROLE not in {t["object"] for t in bank["templates"]}:
+        raise ValueError(f"calibration produced no template of the {ROLE}")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    temporary = out.with_name(out.name + ".tmp")
+    temporary.write_text(json.dumps(bank, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(out)
+    return {"bank": str(out), "bankSha256": digest(bank), "algorithm": bank["config"]["algorithm"],
+            "templates": len(bank["templates"]), "cleanTree": clean_tree,
+            "routes": [r.name for r in replays[:-1]], "validation": replays[-1].name}

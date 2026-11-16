@@ -52,7 +52,9 @@ job may spend: the cap less the capture record's spend (expectrail/jit/pixel_job
 --sensor-bank BANK`` judges pixel checks with no model and no request, over a template bank frozen
 beforehand from a clean replay (agents/template_observations.py). It plans its frames as SAM does
 (``--sam-every``, ``--sam-first``) and takes none of SAM's other arguments. It runs in the job that replays
-the change, since it holds no key.
+the change, since it holds no key. ``sensor-bank --out BANK --work DIR`` calibrates that bank on the clean
+game alone (``template_observer.calibrate_bank``: four dedicated clean routes, no patch), as jit.yml's
+``sensor-bank`` job does once a run when its ``observer`` input is ``visual-sensor``.
 
 **The observer a proposal is for.** A run is judged by one observer, so ``propose`` and ``revise`` take
 ``--observer`` too (``sam-3.1-anchor``, the default, or ``visual-sensor``; the pixel setting only): the
@@ -465,6 +467,11 @@ def main(argv: list[str] | None = None) -> int:
                     help="the bug report; with --offer signals-reach it only orders the reach probes")
     ms.add_argument("--evidence-jobs", type=int, default=1,
                     help="replays at once for the evidence (the evidence setting only)")
+    sb = sub.add_parser("sensor-bank", help=f"calibrate the template bank of --observer {SENSOR} on the clean game")
+    sb.add_argument("--out", type=Path, required=True, help="the bank file to write (must not exist)")
+    sb.add_argument("--work", type=Path, required=True, help="a new folder for the calibration routes and replays")
+    sb.add_argument("--game", type=Path, help="the clean game (default: game/platformer in this checkout)")
+    sb.add_argument("--godot", type=Path, help="the Godot binary (default: the pinned one, as for run)")
     bp = sub.add_parser("bench-pins", help="print the pins a bench registration records")
     bc = sub.add_parser("bench-check", help="exit 1 unless the bench registration is signed and its pins hold")
     bc.add_argument("--prereg", type=Path)
@@ -489,6 +496,16 @@ def main(argv: list[str] | None = None) -> int:
         text = diff_games(args.base, args.head)
         args.out.write_text(text, encoding="utf-8")
         print(json.dumps({"bytes": len(text.encode("utf-8")), "empty": not text.strip()}))
+        return 0
+    if args.cmd == "sensor-bank":
+        from expectrail.jit.template_observer import calibrate_bank
+
+        try:
+            summary = calibrate_bank(args.out, args.work, game=args.game, godot=args.godot)
+        except ValueError as exc:
+            print(f"sensor-bank: {exc}", file=sys.stderr)
+            return 1
+        print(json.dumps(summary))
         return 0
     if args.cmd == "measure":
         from expectrail.jit.measure import measure

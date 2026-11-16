@@ -582,15 +582,31 @@ for the observer it is given and refuses one made for another (`PROPOSAL_MISMATC
 judges no pixel checks, so it reads a proposal made for any observer, as jit.yml's first replay does; a saved pixel check naming another observer is refused (`PROPOSAL_INVALID`). An
 observer other than SAM under a setting with no pixel checks is refused. `run --observer visual-sensor
 --sensor-bank BANK` builds the sensor (frame plan from `--sam-every` and `--sam-first`; none of SAM's other
-arguments, and no capture or asking job, since it holds no key). jit.yml does not pass any of this yet.
+arguments, and no capture or asking job, since it holds no key). jit.yml passes it since November 16 (below).
 Tested offline in `tests/test_jit_propose_observer.py`, including propose (a recorded model answer, no
 call), save and replay through `run.generate` with the sensor on the simulated game. Tested offline on synthetic frames
 in `tests/test_jit_template_observer.py`, including end to end through `run.generate` on the simulated
 game: a check that the player is drawn is kept (pass 3 of 3 clean, fail 3 of 3 where the sprite is not
-drawn) and catches a wrong fix, not a good one. No bank has been calibrated for a bench probe, and
-nothing here says how often the sensor is right on the bundled game's frames: the measured false alarms
-are in [template-sensor-measurement.md](template-sensor-measurement.md), and a false alarm on a clean run
+drawn) and catches a wrong fix, not a good one. Its measured false alarms on the bundled game's clean frames are in [template-sensor-measurement.md](template-sensor-measurement.md), and a false alarm on a clean run
 drops a check by the keep rule, so it costs a reproduction, never a false catch.
+
+**In jit.yml: the `observer` input (added November 16, later).** `observer` is `sam-3.1-anchor` (the
+default: every job as before) or `visual-sensor`, and the plan refuses `visual-sensor` without the pixel
+setting. With the sensor, propose and revise get `--observer visual-sensor`; a `sensor-bank` job calibrates
+the bank once a run (`python -m expectrail.jit.cli sensor-bank --out BANK --work DIR`,
+`template_observer.calibrate_bank`); replay-final judges the pixel checks itself with that bank
+(`--observer visual-sensor --sensor-bank BANK --sam-every N`) and its record is the result; pixel-ask and
+pixel-judge do not run. The bank job replays the clean game alone, with no patch and no artifact of the
+change: the four dedicated clean routes of the published sensor measurement
+(`agents/template_sensor_bench.py`, `calibration_routes`: three to calibrate from, one separate to
+validate the threshold), with the player's art and pose catalogue named in
+[template-sensor.md](template-sensor.md). If the bank job fails, replay-final does not run and the
+defect is "no result". On the real engine here (Godot 4.7.2, no model) the command took 5 minutes and
+made a 408-template, 27.5 MB bank; two calibrations from identical route files gave byte-identical banks.
+Judged with it, the clean `coins` and `traversal` routes matched the player on every planned frame (13
+and 19 at every 10th frame, 25 and 27 at every frame). That is a check on two public routes, not a
+false-alarm rate on the bench's probes. Tested in `tests/test_jit_sensor_workflow.py`; no dispatch has
+used it.
 
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 
