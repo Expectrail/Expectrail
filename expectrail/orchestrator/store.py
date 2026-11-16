@@ -112,6 +112,14 @@ def check_status(doc) -> None:
         req.check_bug(doc)
     except req.RequestError as exc:
         raise StoreError(str(exc)) from exc
+    if 'reproduction' in doc:
+        from expectrail.orchestrator.reproduction import check
+        try:
+            check(doc['reproduction'])
+        except (ValueError, rec.RecordError) as exc:
+            raise StoreError(str(exc)) from exc
+        if doc['reproduction']['kind'] == 'generated-advisory' and doc['decision'] != 'needs-review':
+            raise StoreError('generated advisory reproduction requires needs-review')
     if "budget" in doc:
         try:
             costs.check(doc["budget"], doc["id"])
@@ -301,6 +309,9 @@ class JobStore:
         }
         from expectrail.orchestrator.commits import sources
         status['inputSources'] = sources(request)
+        if 'coverage' in request:
+            from expectrail.orchestrator.reproduction import build
+            status['reproduction'] = build('none', [], 'not-evaluated', base_tree=inputs['baseTree'])
         check_status(status)
         _write_atomic(paths.request, json.dumps(request, indent=2) + "\n")
         _write_atomic(paths.budget, json.dumps(status["budget"], indent=2) + "\n")
@@ -453,7 +464,7 @@ class JobStore:
 
     def finish(self, job_id: str, phase: str, *, decision: str | None = None, reasons: list[str] | None = None,
                diagnostics: list[dict] | None = None, evidence_grade: str | None = None,
-               publish: bool = False, observers: dict | None = None) -> dict:
+               publish: bool = False, observers: dict | None = None, reproduction: dict | None = None) -> dict:
         """Take the job to a final phase, once. If it is already final, nothing changes and the status
         as it stands is returned: the first finish wins, so a cancel cannot be undone by a late result.
 
@@ -462,11 +473,11 @@ class JobStore:
         instead, so neither decision ever stands without evidence, whatever the caller passed.
         ``publish`` only matters for needs-review, which may have none."""
         return self._finish(job_id, phase, decision=decision, reasons=reasons, diagnostics=diagnostics,
-                            evidence_grade=evidence_grade, publish=publish, observers=observers)[0]
+                            evidence_grade=evidence_grade, publish=publish, observers=observers, reproduction=reproduction)[0]
 
     def _finish(self, job_id: str, phase: str, *, decision: str | None = None, reasons: list[str] | None = None,
                 diagnostics: list[dict] | None = None, evidence_grade: str | None = None,
-                publish: bool = False, observers: dict | None = None) -> tuple[dict, bool]:
+                publish: bool = False, observers: dict | None = None, reproduction: dict | None = None) -> tuple[dict, bool]:
         """``finish``, also saying whether this call is the one that made the job final."""
         if phase not in FINAL:
             raise StoreError(f"{phase!r} is not a final phase")
@@ -502,6 +513,8 @@ class JobStore:
                        evidenceGrade=evidence_grade if phase == "completed" else None, finishedAt=finished)
             if decision == "reject" and "autoFix" in self.request(job_id):
                 doc["repair"] = {"state": "running"}
+            if reproduction is not None:
+                doc['reproduction'] = reproduction
             if observers is not None:
                 doc["observers"] = observers
             doc["history"].append({"phase": phase, "at": finished})

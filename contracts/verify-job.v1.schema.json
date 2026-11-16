@@ -25,6 +25,82 @@
     "expectrail"
   ],
   "properties": {
+    "reproduction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "kind",
+        "advisory",
+        "checks",
+        "reason",
+        "jitRunSha256",
+        "baseTree",
+        "cleanTree"
+      ],
+      "properties": {
+        "format": {
+          "const": "expectrail.playtest-reproduction/v1"
+        },
+        "kind": {
+          "enum": [
+            "approved",
+            "generated-advisory",
+            "none"
+          ]
+        },
+        "advisory": {
+          "const": true
+        },
+        "checks": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "jitRunSha256": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          ]
+        },
+        "baseTree": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          ]
+        },
+        "cleanTree": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          ]
+        }
+      }
+    },
     "inputSources": {
       "type": "object",
       "additionalProperties": false,

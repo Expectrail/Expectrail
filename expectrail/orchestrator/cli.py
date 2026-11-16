@@ -63,6 +63,8 @@ def describe(status: dict, job_folder: Path | None = None) -> str:
             lines.append(f'  {side.title()} input: {text}')
     if "bug" in status:
         lines.append(f"  Bug report (user supplied; not a check): {status['bug']}")
+    if 'reproduction' in status:
+        lines.append('  Reproduction: ' + status['reproduction']['kind'])
     lines += [f"  {reason}" for reason in status["reasons"]]
     lines += [f"  {d['code']} ({d['stage']}): {d['detail']} Fix: {d['fix']}" for d in status["diagnostics"]]
     if "observers" in status:
@@ -164,6 +166,10 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
     ingest.add_argument('--execution-class', choices=req.EXECUTION_CLASSES, default='diagnostic')
     ingest.add_argument('--detach', action='store_true')
     ingest.add_argument('--json', action='store_true')
+    ingest.add_argument('--propose', action='store_true', help='try existing advisory generated checks after no approved reproduction')
+    ingest.add_argument('--clean-project', type=Path, help='trusted clean Godot project (default: bundled clean game)')
+    ingest.add_argument('--profile', type=Path, help='trusted mechanics profile (default: bundled platformer profile)')
+    ingest.add_argument('--proposal-response', type=Path, help='saved stand-in response instead of live transport; live needs the existing spec-role cap')
     _jobs_root_after(ingest)
 
     for name, text in (("status", "show a job's status"), ("cancel", "cancel a job and stop what it started"),
@@ -223,8 +229,13 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
         if args.command == "ingest":
             from expectrail.orchestrator import playtest
 
+            if not args.propose and any(v is not None for v in (args.clean_project, args.profile, args.proposal_response)):
+                raise req.RequestError('proposal options require --propose')
             request = playtest.prepare(store, playtest.load(args.report), args.project,
                                        timeout_seconds=args.timeout, execution_class=args.execution_class)
+            if args.propose:
+                playtest.snapshot_proposal(request, clean_project=args.clean_project, profile=args.profile,
+                                            response=args.proposal_response)
             status, created = store.create(request)
             proc = runner.spawn(store, status['id']) if created else None
             if args.detach:

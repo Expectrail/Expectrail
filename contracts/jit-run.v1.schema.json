@@ -20,6 +20,7 @@
       "properties": {
         "patchSha256": {"$ref": "#/$defs/sha256"},
         "reportSha256": {"$ref": "#/$defs/sha256"},
+        "reportRouteSha256": {"$ref": "#/$defs/sha256"},
         "basePatchSha256": {"type": "array", "items": {"$ref": "#/$defs/sha256"}},
         "profileSha256": {"$ref": "#/$defs/sha256"},
         "model": {"type": ["string", "null"], "maxLength": 100},
@@ -76,7 +77,7 @@
       }}},
     "probes": {"type": "array", "items": {
       "type": "object", "additionalProperties": false, "required": ["id", "source", "routeSha256"],
-      "properties": {"id": {"$ref": "#/$defs/id"}, "source": {"enum": ["library", "reach", "jit"]},
+      "properties": {"id": {"$ref": "#/$defs/id"}, "source": {"enum": ["library", "reach", "jit", "report"]},
                      "routeSha256": {"$ref": "#/$defs/sha256"}}}},
     "variants": {"type": "array", "items": {
       "type": "object", "additionalProperties": false, "required": ["id", "kind", "file", "line", "patchSha256"],
