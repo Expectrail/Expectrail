@@ -33,7 +33,7 @@ DEFAULT_TIMEOUT_SECONDS = 1800
 MAX_REQUEST_BYTES = 64 * 1024
 MAX_BUG_CHARS = 8192
 INTENTS = rec.INTENTS
-UNVERIFIED_FIX = "No check reproduced the reported bug, so this fix is not verified"
+UNVERIFIED_FIX = rec.UNVERIFIED_FIX
 
 
 class RequestError(ValueError):
