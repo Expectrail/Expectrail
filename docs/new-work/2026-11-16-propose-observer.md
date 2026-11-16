@@ -39,7 +39,8 @@ as it was.
   sensor on the simulated game is kept (3 of 3 each way), catches a wrong fix and not a good one, with 0
   SAM images.
 - `python3 -m unittest discover -s tests -t . -p "test_jit*.py"` before the new file: 446 tests, OK.
-- The full suite after the pinned fetch: see the pull request.
+- The full suite on the branch (main ed6f296 plus the change), after the pinned fetch
+  (`python3 -m unittest discover -s tests -t .`): 4,307 tests, OK, 44 skipped.
 - No engine, no model, no SAM call, no dispatch. Nothing was spent.
 
 ## Not done
