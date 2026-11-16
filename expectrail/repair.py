@@ -25,7 +25,7 @@ def _public_failures(findings, specs):
     return [{"spec": {"id": f["spec"], "instruction": sentences[f["spec"]]},
              "verdict": {"result": "fail", "reason": redact(f["reason"]), "firstFrame": f["frame"]},
              "route": {"name": f["route"]}}
-            for f in findings["findings"] if f["after"] == "fail"]
+            for f in findings["findings"] if f["after"] == "fail" and f["spec"] in sentences]
 
 
 def _editable(game, excluded):
@@ -57,10 +57,13 @@ def _live_budget():
 
 
 def _child(jobs, original, checkout, inputs, *, require_isolation, spawn_worker):
-    req = request.build(**original["project"], head=checkout, base=Path(original["head"]["checkout"]),
+    req = request.build(**{k: v for k, v in original["project"].items() if k != "visual"},
+                        head=checkout, base=Path(original["head"]["checkout"]),
                         base_commit=original["head"]["commit"],
                         execution_class="isolated" if require_isolation else original["executionClass"],
                         timeout_seconds=original["limits"]["timeoutSeconds"], intent="fix")
+    if "visual" in original["project"]:
+        req["project"]["visual"] = original["project"]["visual"]
     child, _ = jobs.create(req)
     if child["inputs"]["baseTree"] != inputs["headTree"] or child["inputs"]["policyDigest"] != inputs["policyDigest"]:
         jobs.cancel(child["id"])
@@ -115,7 +118,7 @@ def repair(jobs, job, *, attempts=3, fixture=None, recorded=False, spawn_worker=
                       "failing": [{"spec": f["spec"]["id"], "route": f["route"]["name"]} for f in failing]},
            "fixer": {"source": source, "sandboxed": fixture is None},
            "budget": {"attempts": attempts, "usdCap": cap}, "startedAt": store.stamp(), "attempts": [],
-           "machineWritten": True, "review": contracts.schema_v1("repair-run")["properties"]["review"]["const"],
+           "machineWritten": True, "review": contracts.schema_v1("repair-run")["properties"]["review"]["enum"][0],
            "result": {"decision": "needs-review", "job": None, "patch": None}}
     stop, detail = "attempts-exhausted", "every candidate was rejected"
     prior = None
@@ -193,6 +196,15 @@ def repair(jobs, job, *, attempts=3, fixture=None, recorded=False, spawn_worker=
                 child = _child(jobs, original, checkout, inputs, require_isolation=fixture is None,
                                spawn_worker=spawn_worker or runner.spawn)
                 row.update(job=child["id"], decision=child["decision"], reasons=[redact(s) for s in child["reasons"][:32]])
+                row['gateDecision'] = child['decision']
+                # Only verifier-owned output is read, never a path or flag supplied by the report.
+                flags = candidate_flags(jobs.paths(child['id']).output, child['inputs']['headTree'])
+                if flags:
+                    row.update(decision='needs-review', advisoryDiscovery=flags,
+                               reasons=[('advisory-discovery: ' + flag)[:600] for flag in flags][:32])
+                    stop, detail = 'needs-review', 'advisory-discovery: ' + ', '.join(flags)
+                    detail = detail[:600]
+                    break
                 if child["phase"] != "completed" or child["decision"] == "needs-review":
                     stop = "cancelled" if child["phase"] == "cancelled" else "needs-review"
                     detail = f"fresh verify job {child['id']}: {child['decision'] or child['phase']}"
@@ -215,14 +227,50 @@ def repair(jobs, job, *, attempts=3, fixture=None, recorded=False, spawn_worker=
             except (SystemExit, OSError, ValueError, RuntimeError, subprocess.SubprocessError, store.StoreError) as exc:
                 stop, detail = "fixer-failed" if row["patch"] is None else "needs-review", redact(str(exc))
                 row["reasons"] = [detail]
+                if row["decision"] is not None and stop == "needs-review":
+                    row["decision"] = "needs-review"
                 break
     doc.update(stop={"reason": stop, "detail": detail}, finishedAt=store.stamp())
-    contracts.validate_v1(doc, "repair-run")
-    target = folder / "repair-run.json"
-    staging = folder / "repair-run.tmp"
-    staging.write_bytes(contracts.canonical_v1(doc) + b"\n")
+    if doc["result"]["decision"] != "accept":
+        doc["review"] = contracts.schema_v1("repair-run")["properties"]["review"]["enum"][1]
+    return write_run(folder, doc)
+
+
+def candidate_flags(output, head_tree):
+    """Read an existing discovery-run from the trusted candidate verification output.
+
+    Discovery runs are optional. A finding on the candidate vetoes automatic repair success;
+    its contents are never copied to a repair request or a retry. No discovery is started here.
+    """
+    output = Path(output)
+    flags = set()
+    findings = output / 'findings.json'
+    if findings.exists():
+        judged = record.read_record(findings)
+        if judged['game']['headTree'] != head_tree:
+            raise ValueError('candidate findings do not name the verified candidate tree')
+        flags.update(c['specId'] for c in judged.get('generatedChecks', {}).get('catches', []))
+    path = output / 'discovery-run.json'
+    if not path.exists():
+        return sorted(flags)
+    doc = record.read_json(path, label='candidate discovery')
+    contracts.validate_v1(doc, 'discovery-run')
+    candidates = {s['name'] for s in doc['snapshots'] if s['treeSha256'] == head_tree}
+    if not candidates:
+        raise ValueError('candidate discovery does not name the verified candidate tree')
+    flags.update(f['id'] for f in doc['findings'] if f['snapshot'] in candidates)
+    return sorted(flags)
+
+
+def write_run(folder, doc):
+    """Shared writer, also used for an opted-in ingest that cannot start a repair."""
+    contracts.validate_v1(doc, 'repair-run')
+    target = Path(folder) / 'repair-run.json'
+    staging = target.with_suffix('.tmp')
+    staging.write_bytes(contracts.canonical_v1(doc) + b'\n')
     staging.replace(target)
     return target, doc
+
 
 
 def main(argv):
