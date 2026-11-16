@@ -1,0 +1,473 @@
+{
+ "format": "expectrail.jit-run/v1",
+ "runId": "ci-43465090517-repro-enemy-walks-backwards-round1",
+ "advisory": true,
+ "status": "complete",
+ "reason": null,
+ "inputs": {
+  "patchSha256": "96f6aa972c0ea9d9dc84c4843ec04b1b850e908fd26b6798d63f24d67b9f8d33",
+  "reportSha256": "2d0791b44e241cba8f286713a5dc7846f6140e6d8cffd8b9e47c5c070e944896",
+  "basePatchSha256": [
+   "d5f98a8deb2af9da727330d119c1755cae4f00d436aa59e818610c20d789080b"
+  ],
+  "profileSha256": "7ad60a7ddc662fab9bcade5b743a34278a3b1a3f14af59a23f6e38a902fe65ec",
+  "model": "muse-spark-1.3",
+  "promptSha256": "4e3ab02f9a083d76d70aa37290bd875026296ff72ea8777a94c1dffee610de2c"
+ },
+ "settings": {
+  "reps": 3,
+  "variantLimit": 8,
+  "budgetUsd": 2.0,
+  "offer": "baseline"
+ },
+ "diffMap": {
+  "files": [
+   {
+    "path": "README.md",
+    "claims": [],
+    "addedLines": [
+     2
+    ],
+    "removedLines": []
+   }
+  ],
+  "claims": [],
+  "probeIds": [
+   "wait-long",
+   "hold-right",
+   "hold-left",
+   "reverse",
+   "jump-w0-x1",
+   "jump-w0-x2",
+   "jump-w0-x8",
+   "jump-w40-x1",
+   "jump-w40-x2",
+   "jump-w40-x8",
+   "jump-w80-x1",
+   "jump-w80-x2",
+   "jump-w80-x8",
+   "jump-w120-x1",
+   "jump-w120-x2",
+   "jump-w120-x8",
+   "shoot-right-every48",
+   "shoot-right-every12",
+   "shoot-left-every48",
+   "shoot-left-every12",
+   "move-fire-right",
+   "move-fire-left",
+   "jump-l40-x1",
+   "jump-l40-x2",
+   "jump-l40-x8"
+  ],
+  "allProbes": true
+ },
+ "proposed": [
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-enemy-faces-travel-wait",
+    "origin": "AUTO_DIFF",
+    "statement": "Enemies face the direction they walk while patrolling their platform.",
+    "expectationRef": {
+     "claimId": "enemy.patrol",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "enemy"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "direction_agreement",
+     "subject": "actor",
+     "maxMismatchCount": 20,
+     "minSpeedPxPerSec": 10,
+     "graceTicks": 20,
+     "minTravelPx": 50,
+     "horizonTicks": 800
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "wait-long"
+    ]
+   },
+   "probeIds": [
+    "wait-long"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-enemy-faces-travel-right",
+    "origin": "AUTO_DIFF",
+    "statement": "Enemies face the direction they walk while the player moves right.",
+    "expectationRef": {
+     "claimId": "enemy.patrol",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "enemy"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "direction_agreement",
+     "subject": "actor",
+     "maxMismatchCount": 10,
+     "minSpeedPxPerSec": 5,
+     "graceTicks": 15,
+     "minTravelPx": 20,
+     "horizonTicks": 200
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "hold-right"
+    ]
+   },
+   "probeIds": [
+    "hold-right"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-enemy-faces-travel-left",
+    "origin": "AUTO_DIFF",
+    "statement": "Enemies face the direction they walk while the player moves left.",
+    "expectationRef": {
+     "claimId": "enemy.patrol",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "enemy"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "direction_agreement",
+     "subject": "actor",
+     "maxMismatchCount": 10,
+     "minSpeedPxPerSec": 5,
+     "graceTicks": 15,
+     "minTravelPx": 20,
+     "horizonTicks": 200
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "hold-left"
+    ]
+   },
+   "probeIds": [
+    "hold-left"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-enemy-faces-travel-reverse",
+    "origin": "AUTO_DIFF",
+    "statement": "Enemies face the direction they walk across direction changes by the player.",
+    "expectationRef": {
+     "claimId": "enemy.patrol",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "enemy"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "direction_agreement",
+     "subject": "actor",
+     "maxMismatchCount": 15,
+     "minSpeedPxPerSec": 8,
+     "graceTicks": 20,
+     "minTravelPx": 30,
+     "horizonTicks": 400
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "reverse"
+    ]
+   },
+   "probeIds": [
+    "reverse"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-enemy-faces-travel-shootr",
+    "origin": "AUTO_DIFF",
+    "statement": "Enemies face the direction they walk while the player shoots facing right.",
+    "expectationRef": {
+     "claimId": "enemy.patrol",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "enemy"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "direction_agreement",
+     "subject": "actor",
+     "maxMismatchCount": 10,
+     "minSpeedPxPerSec": 5,
+     "graceTicks": 10,
+     "minTravelPx": 10,
+     "horizonTicks": 120
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "shoot-right-every48"
+    ]
+   },
+   "probeIds": [
+    "shoot-right-every48"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-enemy-faces-travel-shootl",
+    "origin": "AUTO_DIFF",
+    "statement": "Enemies face the direction they walk while the player shoots facing left.",
+    "expectationRef": {
+     "claimId": "enemy.patrol",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "enemy"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "direction_agreement",
+     "subject": "actor",
+     "maxMismatchCount": 10,
+     "minSpeedPxPerSec": 5,
+     "graceTicks": 10,
+     "minTravelPx": 10,
+     "horizonTicks": 120
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "shoot-left-every48"
+    ]
+   },
+   "probeIds": [
+    "shoot-left-every48"
+   ]
+  }
+ ],
+ "probes": [
+  {
+   "id": "hold-left",
+   "source": "library",
+   "routeSha256": "d0c42842b6ce4ddb5fd2ac8a72672ca4c72e2645519c037658c98696ee438dba"
+  },
+  {
+   "id": "hold-right",
+   "source": "library",
+   "routeSha256": "9c1617e416ffef6b94643a19acd53d5596a014f46ba65910426bd1d4d93a87c6"
+  },
+  {
+   "id": "reverse",
+   "source": "library",
+   "routeSha256": "d449b338f6c7efcc184c1a9140941d7e77047f0e98271125127b191f1c29ef80"
+  },
+  {
+   "id": "shoot-left-every48",
+   "source": "library",
+   "routeSha256": "f657f374af462f695bf01fa6a9e77fbe5d2a9a5d932f395aed17e729025bd1cf"
+  },
+  {
+   "id": "shoot-right-every48",
+   "source": "library",
+   "routeSha256": "a294d061444e538ee9b0eb58eb71995e96df89f223edb44a7440f45f12879034"
+  },
+  {
+   "id": "wait-long",
+   "source": "library",
+   "routeSha256": "0746f1753d65ce9bcd3ae28a70802c951b87c8e10c9b213f3bff1f08d9be29cd"
+  }
+ ],
+ "variants": [
+  {
+   "id": "base",
+   "kind": "base",
+   "file": "",
+   "line": 0,
+   "patchSha256": "d5f98a8deb2af9da727330d119c1755cae4f00d436aa59e818610c20d789080b"
+  }
+ ],
+ "validity": [
+  {
+   "specId": "jit-enemy-faces-travel-wait",
+   "valid": false,
+   "reference": [
+    "not_exercised"
+   ],
+   "killed": [],
+   "reasons": [
+    "did not pass on the reference: not_exercised"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  },
+  {
+   "specId": "jit-enemy-faces-travel-right",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  },
+  {
+   "specId": "jit-enemy-faces-travel-left",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  },
+  {
+   "specId": "jit-enemy-faces-travel-reverse",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  },
+  {
+   "specId": "jit-enemy-faces-travel-shootr",
+   "valid": false,
+   "reference": [
+    "not_exercised"
+   ],
+   "killed": [],
+   "reasons": [
+    "did not pass on the reference: not_exercised"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  },
+  {
+   "specId": "jit-enemy-faces-travel-shootl",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  }
+ ],
+ "catches": [],
+ "counts": {
+  "proposed": 6,
+  "valid": 0,
+  "strong": 0,
+  "weak": 0
+ },
+ "spend": {
+  "usd": 0.0361,
+  "capUsd": 2.0,
+  "sparkUsd": 0.0335,
+  "replayUsd": 0.0026,
+  "samUsd": 0.0,
+  "samImages": 0,
+  "replays": 18,
+  "promptTokens": 8775,
+  "completionTokens": 6187,
+  "prices": {
+   "sparkUsdPerMTokIn": 1.0,
+   "sparkUsdPerMTokOut": 4.0,
+   "runnerUsdPerMinute": 0.008,
+   "samUsdPerImage": 0.0025,
+   "source": "assumed"
+  }
+ },
+ "diagnostics": []
+}

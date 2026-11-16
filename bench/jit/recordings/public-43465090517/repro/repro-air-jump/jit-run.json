@@ -1,0 +1,654 @@
+{
+ "format": "expectrail.jit-run/v1",
+ "runId": "ci-43465090517-repro-air-jump-round1",
+ "advisory": true,
+ "status": "complete",
+ "reason": null,
+ "inputs": {
+  "patchSha256": "96f6aa972c0ea9d9dc84c4843ec04b1b850e908fd26b6798d63f24d67b9f8d33",
+  "reportSha256": "29a13ffaf433209099c3cdde979019a18901fffdc41b2b243230085c391294ab",
+  "basePatchSha256": [
+   "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679"
+  ],
+  "profileSha256": "7ad60a7ddc662fab9bcade5b743a34278a3b1a3f14af59a23f6e38a902fe65ec",
+  "model": "muse-spark-1.3",
+  "promptSha256": "1982235cee6bbe4b518a14d9a59953d126673f114c4a2aef0bf5d7ea202d966d"
+ },
+ "settings": {
+  "reps": 3,
+  "variantLimit": 8,
+  "budgetUsd": 2.0,
+  "offer": "baseline"
+ },
+ "diffMap": {
+  "files": [
+   {
+    "path": "README.md",
+    "claims": [],
+    "addedLines": [
+     2
+    ],
+    "removedLines": []
+   }
+  ],
+  "claims": [],
+  "probeIds": [
+   "wait-long",
+   "hold-right",
+   "hold-left",
+   "reverse",
+   "jump-w0-x1",
+   "jump-w0-x2",
+   "jump-w0-x8",
+   "jump-w40-x1",
+   "jump-w40-x2",
+   "jump-w40-x8",
+   "jump-w80-x1",
+   "jump-w80-x2",
+   "jump-w80-x8",
+   "jump-w120-x1",
+   "jump-w120-x2",
+   "jump-w120-x8",
+   "shoot-right-every48",
+   "shoot-right-every12",
+   "shoot-left-every48",
+   "shoot-left-every12",
+   "move-fire-right",
+   "move-fire-left",
+   "jump-l40-x1",
+   "jump-l40-x2",
+   "jump-l40-x8"
+  ],
+  "allProbes": true
+ },
+ "proposed": [
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c1",
+    "origin": "AUTO_DIFF",
+    "statement": "Pressing jump eight times without landing still produces at most one air jump.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "air_jumps",
+     "comparator": "eq",
+     "toleranceAbs": 0,
+     "left": "jump-w0-x2",
+     "right": "jump-w0-x8"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "pair",
+    "left": "jump-w0-x2",
+    "right": "jump-w0-x8"
+   },
+   "probeIds": [
+    "jump-w0-x2",
+    "jump-w0-x8"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c2",
+    "origin": "AUTO_DIFF",
+    "statement": "After walking right briefly, extra jump presses in the air do not add air jumps.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "air_jumps",
+     "comparator": "eq",
+     "toleranceAbs": 0,
+     "left": "jump-w40-x2",
+     "right": "jump-w40-x8"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "pair",
+    "left": "jump-w40-x2",
+    "right": "jump-w40-x8"
+   },
+   "probeIds": [
+    "jump-w40-x2",
+    "jump-w40-x8"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c3",
+    "origin": "AUTO_DIFF",
+    "statement": "After walking right longer, extra jump presses in the air do not add air jumps.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "air_jumps",
+     "comparator": "eq",
+     "toleranceAbs": 0,
+     "left": "jump-w80-x2",
+     "right": "jump-w80-x8"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "pair",
+    "left": "jump-w80-x2",
+    "right": "jump-w80-x8"
+   },
+   "probeIds": [
+    "jump-w80-x2",
+    "jump-w80-x8"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c4",
+    "origin": "AUTO_DIFF",
+    "statement": "After walking right to a different spot, extra jump presses in the air do not add air jumps.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "air_jumps",
+     "comparator": "eq",
+     "toleranceAbs": 0,
+     "left": "jump-w120-x2",
+     "right": "jump-w120-x8"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "pair",
+    "left": "jump-w120-x2",
+    "right": "jump-w120-x8"
+   },
+   "probeIds": [
+    "jump-w120-x2",
+    "jump-w120-x8"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c5",
+    "origin": "AUTO_DIFF",
+    "statement": "After walking left, extra jump presses in the air do not add air jumps.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "air_jumps",
+     "comparator": "eq",
+     "toleranceAbs": 0,
+     "left": "jump-l40-x2",
+     "right": "jump-l40-x8"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "pair",
+    "left": "jump-l40-x2",
+    "right": "jump-l40-x8"
+   },
+   "probeIds": [
+    "jump-l40-x2",
+    "jump-l40-x8"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c6",
+    "origin": "AUTO_DIFF",
+    "statement": "Pressing jump extra times in the air does not raise the player higher than a double jump.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "max_rise_px",
+     "comparator": "eq",
+     "toleranceAbs": 20,
+     "left": "jump-l40-x2",
+     "right": "jump-l40-x8"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "pair",
+    "left": "jump-l40-x2",
+    "right": "jump-l40-x8"
+   },
+   "probeIds": [
+    "jump-l40-x2",
+    "jump-l40-x8"
+   ]
+  }
+ ],
+ "probes": [
+  {
+   "id": "jump-l40-x2",
+   "source": "library",
+   "routeSha256": "ad66e9df192dfa2ae341196ce8c8634a6bc386e4ab1aec4e2cebf7bfd8d5743f"
+  },
+  {
+   "id": "jump-l40-x8",
+   "source": "library",
+   "routeSha256": "8808601f37e61321def50dfb3a0fdc566b8aa1996b73baad47457e12404ed857"
+  },
+  {
+   "id": "jump-w0-x2",
+   "source": "library",
+   "routeSha256": "b6cca17fb249a7685d9b7a1d01ed02e04251c0b1c343f96c145c5f6001bfe128"
+  },
+  {
+   "id": "jump-w0-x8",
+   "source": "library",
+   "routeSha256": "209cf72abe2851ee92b765d6cbb4fcda1bc032bebd259b7aa5de64e5e3500293"
+  },
+  {
+   "id": "jump-w120-x2",
+   "source": "library",
+   "routeSha256": "ca4d763028dcf7ef8d83a47cfef24a0fae3ef5db138e215b070156bae5c5849a"
+  },
+  {
+   "id": "jump-w120-x8",
+   "source": "library",
+   "routeSha256": "a227fc1afba206f0f9cedc3df7965af5d25059d29bdfb5d14a0bcd927ca13063"
+  },
+  {
+   "id": "jump-w40-x2",
+   "source": "library",
+   "routeSha256": "742850d7ab0d04de56d1aa2e23ac9c56bb3b725f8ada293947ef4c4aa4b65d79"
+  },
+  {
+   "id": "jump-w40-x8",
+   "source": "library",
+   "routeSha256": "bb8ffadfe5b02a47813a5e3a1949e9a3421342a0f92ef63c3a26c6f118a72778"
+  },
+  {
+   "id": "jump-w80-x2",
+   "source": "library",
+   "routeSha256": "36e5b2628fb9e3b554277bc9ff2e5a70d38f09428572a8a70f5c2c5a76bb7995"
+  },
+  {
+   "id": "jump-w80-x8",
+   "source": "library",
+   "routeSha256": "2a9eb2a3cd276d5c259f8ac3a36489647ea9dd6930dc5d39a243e21f79737d5a"
+  }
+ ],
+ "variants": [
+  {
+   "id": "base",
+   "kind": "base",
+   "file": "",
+   "line": 0,
+   "patchSha256": "a38199518d3070e8fa0b16060fcfff51e43a359ffc0167824d8cdf18e0061679"
+  }
+ ],
+ "validity": [
+  {
+   "specId": "jit-c1",
+   "valid": true,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [
+    "base"
+   ],
+   "reasons": [],
+   "candidate": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "catch"
+  },
+  {
+   "specId": "jit-c2",
+   "valid": true,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [
+    "base"
+   ],
+   "reasons": [],
+   "candidate": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "catch"
+  },
+  {
+   "specId": "jit-c3",
+   "valid": true,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [
+    "base"
+   ],
+   "reasons": [],
+   "candidate": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "catch"
+  },
+  {
+   "specId": "jit-c4",
+   "valid": true,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [
+    "base"
+   ],
+   "reasons": [],
+   "candidate": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "catch"
+  },
+  {
+   "specId": "jit-c5",
+   "valid": true,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [
+    "base"
+   ],
+   "reasons": [],
+   "candidate": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "catch"
+  },
+  {
+   "specId": "jit-c6",
+   "valid": true,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [
+    "base"
+   ],
+   "reasons": [],
+   "candidate": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "outcome": "catch"
+  }
+ ],
+ "catches": [
+  {
+   "specId": "jit-c1",
+   "statement": "Pressing jump eight times without landing still produces at most one air jump.",
+   "claimId": "player.jump",
+   "strength": "strong",
+   "probeIds": [
+    "jump-w0-x2",
+    "jump-w0-x8"
+   ],
+   "candidate": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "base": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "killed": [
+    "base"
+   ]
+  },
+  {
+   "specId": "jit-c2",
+   "statement": "After walking right briefly, extra jump presses in the air do not add air jumps.",
+   "claimId": "player.jump",
+   "strength": "strong",
+   "probeIds": [
+    "jump-w40-x2",
+    "jump-w40-x8"
+   ],
+   "candidate": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "base": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "killed": [
+    "base"
+   ]
+  },
+  {
+   "specId": "jit-c3",
+   "statement": "After walking right longer, extra jump presses in the air do not add air jumps.",
+   "claimId": "player.jump",
+   "strength": "strong",
+   "probeIds": [
+    "jump-w80-x2",
+    "jump-w80-x8"
+   ],
+   "candidate": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "base": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "killed": [
+    "base"
+   ]
+  },
+  {
+   "specId": "jit-c4",
+   "statement": "After walking right to a different spot, extra jump presses in the air do not add air jumps.",
+   "claimId": "player.jump",
+   "strength": "strong",
+   "probeIds": [
+    "jump-w120-x2",
+    "jump-w120-x8"
+   ],
+   "candidate": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "base": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "killed": [
+    "base"
+   ]
+  },
+  {
+   "specId": "jit-c5",
+   "statement": "After walking left, extra jump presses in the air do not add air jumps.",
+   "claimId": "player.jump",
+   "strength": "strong",
+   "probeIds": [
+    "jump-l40-x2",
+    "jump-l40-x8"
+   ],
+   "candidate": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "base": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "killed": [
+    "base"
+   ]
+  },
+  {
+   "specId": "jit-c6",
+   "statement": "Pressing jump extra times in the air does not raise the player higher than a double jump.",
+   "claimId": "player.jump",
+   "strength": "strong",
+   "probeIds": [
+    "jump-l40-x2",
+    "jump-l40-x8"
+   ],
+   "candidate": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "base": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "killed": [
+    "base"
+   ]
+  }
+ ],
+ "counts": {
+  "proposed": 6,
+  "valid": 6,
+  "strong": 6,
+  "weak": 0
+ },
+ "spend": {
+  "usd": 0.0655,
+  "capUsd": 2.0,
+  "sparkUsd": 0.0416,
+  "replayUsd": 0.0239,
+  "samUsd": 0.0,
+  "samImages": 0,
+  "replays": 90,
+  "promptTokens": 8763,
+  "completionTokens": 8213,
+  "prices": {
+   "sparkUsdPerMTokIn": 1.0,
+   "sparkUsdPerMTokOut": 4.0,
+   "runnerUsdPerMinute": 0.008,
+   "samUsdPerImage": 0.0025,
+   "source": "assumed"
+  }
+ },
+ "diagnostics": []
+}

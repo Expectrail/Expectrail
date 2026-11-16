@@ -322,7 +322,7 @@ func record() -> void:
 		_player = _find_player()
 		if _stopped:
 			return
-	var row := {"tick": _tick, "frame": Engine.get_frames_drawn()}
+	var row := {"tick": _tick, "frame": Engine.get_frames_drawn(), "uiIntegers": _ui_integers()}
 	if _player != null:
 		row["player"] = [snappedf(_player.global_position.x, 0.001), snappedf(_player.global_position.y, 0.001)]
 		# Lifecycle state, not evidence that the sprite was drawn (vision still judges that).
@@ -409,6 +409,38 @@ func _finish() -> void:
 		file.store_string(JSON.stringify(out, "", false))
 		file.close()
 	get_tree().quit(0)
+
+
+func _ui_integers():
+	# Bounded engine Label state, not proof of drawn pixels. Scan the current scene only;
+	# the harness and its diagnostic UI must never become game evidence.
+	var scene := get_tree().current_scene
+	if scene == null:
+		return null
+	var pending: Array[Node] = [scene]
+	var found: Array[int] = []
+	var visited := 0
+	while not pending.is_empty():
+		var node: Node = pending.pop_back()
+		visited += 1
+		if visited > 4096:
+			return null
+		if node is Label and node.is_visible_in_tree():
+			var text: String = node.text
+			# No free-form strings enter the trace or a later model prompt.
+			if text.length() <= 12 and text.is_valid_int():
+				var number := text.to_int()
+				if absi(number) > 1000000000 or found.size() >= 32:
+					return null
+				found.append(number)
+			elif text.is_valid_int():
+				return null
+		for child in node.get_children():
+			if pending.size() >= 4096:
+				return null
+			pending.append(child)
+	found.sort()
+	return found
 
 
 func _coin_positions() -> Array:
