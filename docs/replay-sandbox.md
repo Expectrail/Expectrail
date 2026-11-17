@@ -90,7 +90,9 @@ that off first (`kernel.apparmor_restrict_unprivileged_userns=0`), as the fixer'
 - The fixer's sandbox (`agents/sandbox.py`) is a separate one. Since November 12 it also runs in a
   session of its own with no input, so the agent cannot open the terminal the loop was started from
   (#309); it has none of this sandbox's other limits.
-- Godot only. The Unity player and the web replay are not sandboxed yet.
+- Recorded real-engine proof is Godot. The Unity player now uses this launcher;
+  native Unity boundary/hash proof remains pending. The Unity Editor build and
+  web replay are outside this sandbox.
 - No verdict is graded `isolated` by it. The gate records it and can require it (below); the grade
   also needs a separate trusted job that judges and signs (#254, #255).
 
@@ -115,3 +117,11 @@ The [2026-11-15 acceptance audit](replay-sandbox-audit.md) maps every #253 Done-
 case to its test, records the two already-fixed reader gaps, and adds headless Godot
 verdict tests with positive controls and boundary-removal red evidence. Unity and
 web replay, and explicit UID reporting from the original Build list, remain open.
+
+The [November 16 close-out audit](replay-sandbox-closeout.md) records the exact
+Godot CI cases already on main, the new Unity player implementation and native
+probe tests, UID/GID reporting, and the workflow proposal Sean must install.
+Unity accepts `--sandbox auto|require|off` and the same environment mode; the
+selected runtime folder, route and map are read-only inputs. New accounts name
+the launch real UID/GID explicitly, in an independent user namespace when isolated.
+No native Unity run or stronger evidence grade is claimed by that implementation.

@@ -139,7 +139,7 @@ class ModeTest(unittest.TestCase):
         self.assertEqual(isolation, {
             "sandbox": {"tool": "bubblewrap", "version": "0.9.0"}, "mode": "require", "reason": None,
             "network": "none", "filesystem": "confined", "processes": "own", "environment": "allowlist",
-            "limits": {"scratchBytes": box.SCRATCH_BYTES, "fileBytes": box.FILE_BYTES, "processes": box.PROCESSES,
+            "uid": os.getuid(), "gid": os.getgid(), "limits": {"scratchBytes": box.SCRATCH_BYTES, "fileBytes": box.FILE_BYTES, "processes": box.PROCESSES,
                        "diskBytes": box.DISK_BYTES, "diskEntries": box.DISK_ENTRIES}})
 
     def test_a_replay_from_before_the_disk_bound_still_matches_the_contract(self):
@@ -1222,6 +1222,10 @@ class PlaytestIngestRealEngineTest(unittest.TestCase):
         self.assertEqual(case['reproductionKind'], 'none')
         self.assertEqual(case['reasons'], ['anchor-desync'])
         self.assertTrue(all(n == 0 for n in case['boundaries'].values()), case['boundaries'])
+
+
+# The existing seeded-bugs collection also exercises the shared Unity launcher.
+from tests.unity_sandbox_cases import PlayerBoundaryTest, NativeUnityBoundaryTest
 
 
 if __name__ == "__main__":

@@ -1,0 +1,23 @@
+{
+  "source": "https://github.com/Expectrail/Expectrail/actions/runs/43759283144/job/132950211768",
+  "commit": "0d2786af0f9bd2362136898a1707cff86e02e8dc",
+  "dateRead": "2026-11-16",
+  "scope": "Historical merged #253 audit CI; not a run of the new Unity launcher or UID/GID fields.",
+  "lines": [
+    "2026-11-15T20:39:39.4802760Z   EXPECTRAIL_SANDBOX_TESTS: required",
+    "2026-11-15T20:39:54.0920049Z test_control_without_the_sandbox_the_game_reaches_all_four (tests.test_replay_sandbox.GameEscapeTest.test_control_without_the_sandbox_the_game_reaches_all_four) ... ok",
+    "2026-11-15T20:39:58.8569709Z test_inside_the_game_reaches_none_and_the_replay_says_it_was_isolated (tests.test_replay_sandbox.GameEscapeTest.test_inside_the_game_reaches_none_and_the_replay_says_it_was_isolated) ... ok",
+    "2026-11-15T20:40:06.2474399Z test_check_and_verifier_reads_cannot_repair_a_game_into_accept (tests.test_replay_sandbox.GameVerdictTest.test_check_and_verifier_reads_cannot_repair_a_game_into_accept) ... ok",
+    "2026-11-15T20:40:13.4954384Z test_environment_secret_cannot_repair_a_game_into_accept (tests.test_replay_sandbox.GameVerdictTest.test_environment_secret_cannot_repair_a_game_into_accept) ... ok",
+    "2026-11-15T20:40:20.7470709Z test_socket_denial_prevents_a_game_from_repairing_itself_into_accept (tests.test_replay_sandbox.GameVerdictTest.test_socket_denial_prevents_a_game_from_repairing_itself_into_accept) ... ok",
+    "2026-11-15T20:40:28.1038070Z test_write_denial_prevents_a_game_from_repairing_itself_into_accept (tests.test_replay_sandbox.GameVerdictTest.test_write_denial_prevents_a_game_from_repairing_itself_into_accept) ... ok",
+    "2026-11-15T20:41:05.7588766Z test_the_clean_game_gives_the_same_hashes_with_and_without (tests.test_replay_sandbox.SameReplayTest.test_the_clean_game_gives_the_same_hashes_with_and_without) ... ok",
+    "2026-11-15T20:41:05.7590420Z Ran 60 tests in 79.868s",
+    "2026-11-15T20:41:05.7590776Z OK",
+    "2026-11-15T20:41:05.7954672Z   EXPECTRAIL_SANDBOX: require",
+    "2026-11-15T20:43:18.5738765Z   EXPECTRAIL_SANDBOX: require",
+    "2026-11-15T20:44:30.1999025Z   EXPECTRAIL_SANDBOX: require",
+    "2026-11-15T20:45:48.0225102Z   EXPECTRAIL_SANDBOX: require",
+    "2026-11-15T20:46:16.7910432Z OK"
+  ]
+}

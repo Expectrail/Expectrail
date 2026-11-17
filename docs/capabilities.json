@@ -1009,7 +1009,7 @@
     {
       "id": "replay-sandbox",
       "mode": "Replay sandbox: the game runs with no network, its own process tree and only its work copy, one output folder and its inputs",
-      "profile": "Linux with a bubblewrap that has --disable-userns and --size (the harness tries the real command and finds out), Godot only; elsewhere the replay runs without it and replay.json says why",
+      "profile": "Linux with a bubblewrap that has --disable-userns and --size (the harness tries the real command). Recorded integration is Godot; the Unity player wrapper is implemented with offline transport tests, native isolation proof pending. Elsewhere replay.json names the diagnostic fallback.",
       "observer": "None",
       "entryPoints": [
         "harness.sandbox",
@@ -1050,7 +1050,7 @@
           ]
         }
       ],
-      "limits": "Godot only: the Unity player and the web replay are not sandboxed. The gate records how many replays were sandboxed and can require it, and the orchestrator's isolated class requires it; no verdict is graded isolated by it, because that grade also needs a trusted job that judges and signs (#254, #255). A namespace sandbox on the host's kernel, not a virtual machine. What a replay adds to its work copy and output folder is bounded (4 GiB, 250,000 files) by a measurement every 0.1 s, not a file-system quota, so a game can pass it by what the disk takes in 0.1 s before it is stopped; CPU and memory are limited only by the replay's time limit. On Ubuntu 24.04 the runner must allow unprivileged user namespaces first."
+      "limits": "Recorded real-engine integration is Godot. The Unity player now uses the shared launcher (unit transport tests); its portable-process and native-player boundary/hash cases require a new real-tool run, not supplied by the old Godot evidence. The Unity Editor build remains outside this replay sandbox, and unified Unity verify remains unavailable. The web replay is not sandboxed. The gate records how many replays were sandboxed and can require it, and the orchestrator's isolated class requires it; no verdict is graded isolated by it, because that grade also needs a trusted job that judges and signs (#254, #255). A namespace sandbox on the host's kernel, not a virtual machine. What a replay adds to its work copy and output folder is bounded (4 GiB, 250,000 files) by a measurement every 0.1 s, not a file-system quota, so a game can pass it by what the disk takes in 0.1 s before it is stopped; CPU and memory are limited only by the replay's time limit. On Ubuntu 24.04 the runner must allow unprivileged user namespaces first."
     },
     {
       "id": "key-gateway",
