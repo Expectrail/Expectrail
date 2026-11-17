@@ -88,7 +88,7 @@
         "figure": "0 / 200",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/playtester-reach.md#L20"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L20"
         ]
       },
       {
@@ -96,7 +96,7 @@
         "figure": "0 / 400 distinct clean seeds with false reports",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/playtester-reach.md#L20"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L20"
         ]
       },
       {
@@ -112,7 +112,7 @@
         "figure": "3 / 24 listed defect symptoms",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/playtester-reach.md#L80"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L80"
         ]
       },
       {
@@ -120,7 +120,7 @@
         "figure": "8 / 341 clean frames alarm (2.35%)",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L11"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L11"
         ]
       },
       {
@@ -137,10 +137,10 @@
       }
     ]
   },
-  "baselineCommit": "036f0e600f1a646f0fcacb75a9a61e0bda8b07df",
+  "baselineCommit": "89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1",
   "beforeSha256": "c6fc023fef720d41092fe41a94014d29dea8d6c79be3b1f621d59fb6e652e6b4",
   "ordinaryRegenerationSha256": "9b5e6eaa8f4e9d026a875b5da30d7687fe59d94d650b91e317a9206768970722",
-  "afterSha256": "fb332cf951481c05f0c8f99880f019c9363c55c246ed2d4fedfd8c077778dcf0",
+  "afterSha256": "a7855ab5ed35b9fec56376272e7ad5e32b33deb24a94e681a25aa94f9c26ceee",
   "interpretation": "Exhaustive changed visible numeric spans, with multiplicity and references. Immutable SHA identities, issue identifiers and p50/p95 labels are metadata excluded from result-figure differences. Each removal/addition is independent; unlike figures are not paired into invented measurements.",
   "ordinaryRegeneration": {
     "removed": [
@@ -570,6 +570,14 @@
         "sources": [
           "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/capabilities.json#L1506"
         ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Visitors cannot start a run yet: the service that starts runs (apps/run-it-edge) is written and tested against a local stub but not deployed, so the page says it cannot start runs. The runs cited were dispatched by hand. Each sample's vision answers are one recording (November 13): a frame the recording does not hold gets no answer and the sample needs review until it is recorded again. Receipts are not signed (#255). Exact PNG matches depend on rendering output: a renderer difference can leave an unchanged project at needs-review. Missing vision does not override an engine failure. See recorded-vision.",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/7d61695f77534c175a57934ca06cb73b55c7417c/docs/capabilities.json#L1421"
+        ]
       }
     ],
     "added": [
@@ -727,6 +735,14 @@
       },
       {
         "section": "ledger",
+        "figure": "Bundled platformer, base 5d25639; recorded SAM answers and the frozen no-model sensor; no live client",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
         "figure": "Godot source checkout; offline tests, a local real-engine diagnostic and PR #551 seeded-bugs CI reproduction with required Bubblewrap",
         "occurrences": 1,
         "sources": [
@@ -751,6 +767,14 @@
       },
       {
         "section": "ledger",
+        "figure": "No successful deployed visitor run is established by these records. The latest merged nightly note records health refusal and closed admission pending Sean. The runs cited were dispatched by hand. Each sample's vision answers are one recording (November 13): a frame the recording does not hold gets no answer and the sample needs review until it is recorded again. Receipts are not signed (#255). Exact PNG matches depend on rendering output: a renderer difference can leave an unchanged project at needs-review. Missing vision does not override an engine failure. See recorded-vision. Nightly checker code is merged, but its deployed workflow/smoke was not run; admission is closed pending Sean. Earlier hand-dispatched samples do not establish visitor service.",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
         "figure": "One bundled game; pinned Godot 4.7.2 local headless measurement; development and previously unused evaluation seeds",
         "occurrences": 1,
         "sources": [
@@ -768,6 +792,14 @@
       {
         "section": "ledger",
         "figure": "Public development measurement on one game, not blind discovery or a verdict/repair rate. The improved policy has only 200 clean evaluation seeds; 400 is the original policy across development plus evaluation. Zero observed false reports in these samples is not a zero general false-report rate. Not wired into an automatically verified live-model report/fixer run.",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "Recorded SAM 3.1 answers and the no-model template sensor, scored against the engine's boxes",
         "occurrences": 1,
         "sources": [
           "sources/capabilities.json"
@@ -812,7 +844,7 @@
         "figure": "0",
         "occurrences": 4,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/outside-trials/system-override/results.json#L1",
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/outside-trials/system-override/results.json#L1",
           "sources/breakout-results.json"
         ]
       },
@@ -869,7 +901,7 @@
         "figure": "3 / 3",
         "occurrences": 2,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/outside-trials/system-override/results.json#L1",
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/outside-trials/system-override/results.json#L1",
           "sources/breakout-results.json"
         ]
       },
@@ -910,7 +942,7 @@
         "figure": "0 / 200",
         "occurrences": 3,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/playtester-reach.md#L20"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L20"
         ]
       },
       {
@@ -918,7 +950,7 @@
         "figure": "0 / 400",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/playtester-reach.md#L20"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L20"
         ]
       },
       {
@@ -926,7 +958,7 @@
         "figure": "1 / 24",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/playtester-reach.md#L80"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L80"
         ]
       },
       {
@@ -934,7 +966,7 @@
         "figure": "21 / 24",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/playtester-reach.md#L80"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L80"
         ]
       },
       {
@@ -942,7 +974,7 @@
         "figure": "23 / 24",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/playtester-reach.md#L80"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L80"
         ]
       },
       {
@@ -958,7 +990,7 @@
         "figure": "3 / 24",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/playtester-reach.md#L80"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L80"
         ]
       },
       {
@@ -967,6 +999,230 @@
         "occurrences": 1,
         "sources": [
           "https://github.com/Expectrail/Expectrail/pull/551"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "0",
+        "occurrences": 6,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "0 / 115",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "0 / 120",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "0.9",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "103",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "11 / 11",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "110 / 112",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "113",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "113 / 115",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "115 / 115",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "118 / 120",
+        "occurrences": 2,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "12 / 17",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "120 / 120",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "17 / 17",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "2 / 112",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "2 / 115",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "2 / 120",
+        "occurrences": 2,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "223 / 227",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "3",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "3 / 11",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "4 / 227",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "40 / 115",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "40 / 120",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "556 templates",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "73",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "75 / 115",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "80 / 120",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "PR #569",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/pull/569"
         ]
       },
       {
@@ -982,7 +1238,7 @@
         "figure": "$0.0025 / image",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/expectrail/spend.py#L60"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/expectrail/spend.py#L60"
         ]
       },
       {
@@ -990,7 +1246,7 @@
         "figure": "$0.05 / request",
         "occurrences": 3,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/expectrail/spend.py#L60"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/expectrail/spend.py#L60"
         ]
       },
       {
@@ -998,7 +1254,7 @@
         "figure": "$1 / invocation",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/expectrail/spend.py#L60"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/expectrail/spend.py#L60"
         ]
       },
       {
@@ -1006,8 +1262,8 @@
         "figure": "$200",
         "occurrences": 2,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/expectrail/spend.py#L408",
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/expectrail/spend.py#L44"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/expectrail/spend.py#L408",
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/expectrail/spend.py#L44"
         ]
       },
       {
@@ -1015,7 +1271,7 @@
         "figure": "0 / 97",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L10"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L10"
         ]
       },
       {
@@ -1023,7 +1279,7 @@
         "figure": "0.00%",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L10"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L10"
         ]
       },
       {
@@ -1031,7 +1287,7 @@
         "figure": "1.83%",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L12"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L12"
         ]
       },
       {
@@ -1039,7 +1295,7 @@
         "figure": "100%",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L13"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L13"
         ]
       },
       {
@@ -1047,7 +1303,7 @@
         "figure": "19 of 360 raw frames repeat prior hashes",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L11"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L11"
         ]
       },
       {
@@ -1055,7 +1311,7 @@
         "figure": "2.35%",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L11"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L11"
         ]
       },
       {
@@ -1063,7 +1319,7 @@
         "figure": "23 of 120 raw frames repeat prior PNG hashes",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L10"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L10"
         ]
       },
       {
@@ -1071,7 +1327,7 @@
         "figure": "540 / 540",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L13"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L13"
         ]
       },
       {
@@ -1079,7 +1335,7 @@
         "figure": "8 / 341",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L11"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L11"
         ]
       },
       {
@@ -1087,7 +1343,7 @@
         "figure": "8 / 438",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L12"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L12"
         ]
       },
       {
@@ -1095,7 +1351,7 @@
         "figure": "Does not establish under 2% on each route",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L12"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L12"
         ]
       },
       {
@@ -1103,7 +1359,7 @@
         "figure": "Frozen builder refuses fully opaque 16\u00d716 art; no calibrated-bank result",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L1"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L1"
         ]
       }
     ]
@@ -1485,6 +1741,14 @@
       },
       {
         "section": "ledger",
+        "figure": "Bundled platformer, base 5d25639; recorded SAM answers and the frozen no-model sensor; no live client",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
         "figure": "Godot only: the Unity player and the web replay are not sandboxed. The gate records how many replays were sandboxed and can require it, and the orchestrator's isolated class requires it; no verdict is graded isolated by it, because that grade also needs a trusted job that judges and signs (#254, #255). A namespace sandbox on the host's kernel, not a virtual machine. What a replay adds to its work copy and output folder is bounded (4 GiB, 250,000 files) by a measurement every 0.1 s, not a file-system quota, so a game can pass it by what the disk takes in 0.1 s before it is stopped; CPU and memory are limited only by the replay's time limit. On Ubuntu 24.04 the runner must allow unprivileged user namespaces first.",
         "occurrences": 1,
         "sources": [
@@ -1518,6 +1782,14 @@
       {
         "section": "ledger",
         "figure": "No live cap-exhaustion or vendor billing measurement. EXPECTRAIL_MODEL_MONTH_LEDGER opts in to a combined $200 UTC month reservation total; EXPECTRAIL_VISION_MONTH_LEDGER is separate. Whole process caps are reserved per role, including a new reservation in a new process. Holds are conservative reservations, not reconciled bills. External coding agents and feedback transcription/classification are not universally metered. The $1.00 Muse invocation hold does not bound its internal token cost.",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
+        "figure": "No successful deployed visitor run is established by these records. The latest merged nightly note records health refusal and closed admission pending Sean. The runs cited were dispatched by hand. Each sample's vision answers are one recording (November 13): a frame the recording does not hold gets no answer and the sample needs review until it is recorded again. Receipts are not signed (#255). Exact PNG matches depend on rendering output: a renderer difference can leave an unchanged project at needs-review. Missing vision does not override an engine failure. See recorded-vision. Nightly checker code is merged, but its deployed workflow/smoke was not run; admission is closed pending Sean. Earlier hand-dispatched samples do not establish visitor service.",
         "occurrences": 1,
         "sources": [
           "sources/capabilities.json"
@@ -1581,6 +1853,14 @@
       },
       {
         "section": "ledger",
+        "figure": "Recorded SAM 3.1 answers and the no-model template sensor, scored against the engine's boxes",
+        "occurrences": 1,
+        "sources": [
+          "sources/capabilities.json"
+        ]
+      },
+      {
+        "section": "ledger",
         "figure": "Seeded bugs on one game, not a catch-rate estimate for arbitrary projects. These agent runs do not measure the current installed command's default both-observer path. The approved benchmark specs judge frames 0 to 119. Replay containment is conditional on Bubblewrap; the newer two-job Action and receipt module are separate rows, without an end-to-end trusted signed deployment shown. No isolated grade.",
         "occurrences": 1,
         "sources": [
@@ -1590,14 +1870,6 @@
       {
         "section": "ledger",
         "figure": "Shown in drills with an injected outage, not in a real one. The drill of the pre-run check (run 41234190741) is not cited: that run ended in failure. This is the agents.judge_ladder path, not a fallback promised by the installed verify command.",
-        "occurrences": 1,
-        "sources": [
-          "sources/capabilities.json"
-        ]
-      },
-      {
-        "section": "ledger",
-        "figure": "Visitors cannot start a run yet: the service that starts runs (apps/run-it-edge) is written and tested against a local stub but not deployed, so the page says it cannot start runs. The runs cited were dispatched by hand. Each sample's vision answers are one recording (November 13): a frame the recording does not hold gets no answer and the sample needs review until it is recorded again. Receipts are not signed (#255). Exact PNG matches depend on rendering output: a renderer difference can leave an unchanged project at needs-review. Missing vision does not override an engine failure. See recorded-vision.",
         "occurrences": 1,
         "sources": [
           "sources/capabilities.json"
@@ -1642,7 +1914,7 @@
         "figure": "0",
         "occurrences": 4,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/outside-trials/system-override/results.json#L1",
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/outside-trials/system-override/results.json#L1",
           "sources/breakout-results.json"
         ]
       },
@@ -1699,7 +1971,7 @@
         "figure": "3 / 3",
         "occurrences": 2,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/outside-trials/system-override/results.json#L1",
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/outside-trials/system-override/results.json#L1",
           "sources/breakout-results.json"
         ]
       },
@@ -1740,7 +2012,7 @@
         "figure": "0 / 200",
         "occurrences": 3,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/playtester-reach.md#L20"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L20"
         ]
       },
       {
@@ -1748,7 +2020,7 @@
         "figure": "0 / 400",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/playtester-reach.md#L20"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L20"
         ]
       },
       {
@@ -1756,7 +2028,7 @@
         "figure": "1 / 24",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/playtester-reach.md#L80"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L80"
         ]
       },
       {
@@ -1764,7 +2036,7 @@
         "figure": "21 / 24",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/playtester-reach.md#L80"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L80"
         ]
       },
       {
@@ -1772,7 +2044,7 @@
         "figure": "23 / 24",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/playtester-reach.md#L80"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L80"
         ]
       },
       {
@@ -1788,7 +2060,7 @@
         "figure": "3 / 24",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/playtester-reach.md#L80"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L80"
         ]
       },
       {
@@ -1797,6 +2069,230 @@
         "occurrences": 1,
         "sources": [
           "https://github.com/Expectrail/Expectrail/pull/551"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "0",
+        "occurrences": 6,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "0 / 115",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "0 / 120",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "0.9",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "103",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "11 / 11",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "110 / 112",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "113",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "113 / 115",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "115 / 115",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "118 / 120",
+        "occurrences": 2,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "12 / 17",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "120 / 120",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "17 / 17",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "2 / 112",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "2 / 115",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "2 / 120",
+        "occurrences": 2,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "223 / 227",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "3",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "3 / 11",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "4 / 227",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "40 / 115",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "40 / 120",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "556 templates",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "73",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "75 / 115",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "80 / 120",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1"
+        ]
+      },
+      {
+        "section": "post-review",
+        "figure": "PR #569",
+        "occurrences": 1,
+        "sources": [
+          "https://github.com/Expectrail/Expectrail/pull/569"
         ]
       },
       {
@@ -1812,7 +2308,7 @@
         "figure": "$0.0025 / image",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/expectrail/spend.py#L60"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/expectrail/spend.py#L60"
         ]
       },
       {
@@ -1820,7 +2316,7 @@
         "figure": "$0.05 / request",
         "occurrences": 3,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/expectrail/spend.py#L60"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/expectrail/spend.py#L60"
         ]
       },
       {
@@ -1828,7 +2324,7 @@
         "figure": "$1 / invocation",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/expectrail/spend.py#L60"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/expectrail/spend.py#L60"
         ]
       },
       {
@@ -1836,8 +2332,8 @@
         "figure": "$200",
         "occurrences": 2,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/expectrail/spend.py#L408",
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/expectrail/spend.py#L44"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/expectrail/spend.py#L408",
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/expectrail/spend.py#L44"
         ]
       },
       {
@@ -1845,7 +2341,7 @@
         "figure": "0 / 97",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L10"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L10"
         ]
       },
       {
@@ -1853,7 +2349,7 @@
         "figure": "0.00%",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L10"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L10"
         ]
       },
       {
@@ -1861,7 +2357,7 @@
         "figure": "1.83%",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L12"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L12"
         ]
       },
       {
@@ -1869,7 +2365,7 @@
         "figure": "100%",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L13"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L13"
         ]
       },
       {
@@ -1877,7 +2373,7 @@
         "figure": "19 of 360 raw frames repeat prior hashes",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L11"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L11"
         ]
       },
       {
@@ -1885,7 +2381,7 @@
         "figure": "2.35%",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L11"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L11"
         ]
       },
       {
@@ -1893,7 +2389,7 @@
         "figure": "23 of 120 raw frames repeat prior PNG hashes",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L10"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L10"
         ]
       },
       {
@@ -1901,7 +2397,7 @@
         "figure": "540 / 540",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L13"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L13"
         ]
       },
       {
@@ -1909,7 +2405,7 @@
         "figure": "8 / 341",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L11"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L11"
         ]
       },
       {
@@ -1917,7 +2413,7 @@
         "figure": "8 / 438",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L12"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L12"
         ]
       },
       {
@@ -1925,7 +2421,7 @@
         "figure": "Does not establish under 2% on each route",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L12"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L12"
         ]
       },
       {
@@ -1933,7 +2429,7 @@
         "figure": "Frozen builder refuses fully opaque 16\u00d716 art; no calibrated-bank result",
         "occurrences": 1,
         "sources": [
-          "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/template-sensor-untuned-summary.md#L1"
+          "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L1"
         ]
       }
     ]
@@ -1963,7 +2459,7 @@
       "page": "docs/release/index.html",
       "claim": "Dodge draft awaits approval; no trial update",
       "fix": "Approved play-area check; broken CI variant rejects, clean/harmless need review without vision. No Dodge vision evidence.",
-      "source": "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/outside-projects.md#L59"
+      "source": "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/outside-projects.md#L59"
     },
     {
       "page": "docs/release/index.html",
@@ -1981,7 +2477,7 @@
       "page": "docs/capabilities.json:outside-projects",
       "claim": "Dodge has a draft check awaiting approval",
       "fix": "Align the aggregate row with its dedicated Dodge row and recorded CI evidence.",
-      "source": "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/outside-projects.md#L59"
+      "source": "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/outside-projects.md#L59"
     },
     {
       "page": "docs/capabilities.json:playtest-ingest",
@@ -1993,7 +2489,7 @@
       "page": "docs/index.html",
       "claim": "Dodge has a draft check awaiting approval",
       "fix": "Approved engine check, broken build rejected in CI, no vision evidence.",
-      "source": "https://github.com/Expectrail/Expectrail/blob/036f0e600f1a646f0fcacb75a9a61e0bda8b07df/docs/outside-projects.md#L59"
+      "source": "https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/outside-projects.md#L59"
     },
     {
       "page": "docs/index.html",

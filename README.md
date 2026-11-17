@@ -266,14 +266,17 @@ Recent capability boundaries: [recorded vision and renderer limits](docs/capabil
 ## Evidence and limits
 
 Use the [capability ledger](docs/capabilities.md) to distinguish **implemented**, **integrated**,
-**measured** and **experimental** modes. Each row keeps its recorded evidence beside its limits.
+**measured** and **experimental** modes. Each row keeps its recorded evidence beside its limits. The offline CI guard checks every
+top-level Markdown doc as well as this README and the public site pages.
+The [generated release dossier](docs/release/index.html#post-review) includes the merges since #569,
+with figures traced to recorded runs and explicit unrun work.
 [Godot verification row](docs/capabilities.md#godot-verify).
 
 [The interactive demo](https://expectrail.tech/demo/) shows saved captures; viewing it verifies
 nothing. [Demo row](docs/capabilities.md#interactive-demo).
 [Run it](https://expectrail.tech/run-it/) says whether it can start a run right now. The ledger
-currently says visitors cannot start runs because the service is not deployed; its cited sample
-runs were dispatched by hand. [Run it row](docs/capabilities.md#run-it).
+records historical sample runs dispatched by hand. The merged nightly checker has not run
+against the deployed service; its latest record reports a health refusal and closed admission. [Run it row](docs/capabilities.md#run-it).
 
 ## Development and license
 

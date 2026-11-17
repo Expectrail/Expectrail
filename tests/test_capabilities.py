@@ -267,7 +267,8 @@ class AdvertTest(unittest.TestCase):
         return cap.advert_problems(self.doc, texts)
 
     def test_the_readme_and_the_site_are_the_files_read(self):
-        self.assertEqual(sorted(self.texts), ["README.md", "docs/concepts.html", "docs/index.html", "docs/run-it.md"])
+        expected = set(cap.ADVERTS) | {p.relative_to(ROOT).as_posix() for p in (ROOT / "docs").glob("*.md")}
+        self.assertEqual(set(self.texts), expected)
         self.assertIn("python3 -m agents.loop", self.texts["README.md"])
 
     def test_a_new_command_in_the_readme_fails(self):
@@ -284,6 +285,11 @@ class AdvertTest(unittest.TestCase):
         self.assertEqual(self._with("README.md", "set `EXPECTRAIL_FIXER_TIMEOUT=60`"), [])
 
     def test_a_workflow_no_row_lists_fails(self):
+        # The full documentation inventory now owns this historical workflow. Remove its
+        # ownership in this fixture to retain the original unknown-workflow assertion.
+        for row in self.doc["rows"]:
+            row["workflows"] = [w for w in row.get("workflows", []) if w != "mutation-bench.yml"]
+        self.texts = {"README.md": ""}
         self.assertEqual(self._with("README.md", "see `.github/workflows/mutation-bench.yml`"),
                          ["README.md: names the workflow mutation-bench.yml, which no ledger row lists"])
         self.assertEqual(self._with("README.md", "an `action.yml` at the root"), [])
@@ -293,6 +299,8 @@ class AdvertTest(unittest.TestCase):
                          ["README.md: names the doc docs/unreal.md, which no ledger row lists"])
 
     def test_a_watched_name_with_no_row_fails(self):
+        self.doc["rows"] = [r for r in self.doc["rows"] if r["id"] != "unsupported-roadmap"]
+        self.texts = {"README.md": "", "docs/index.html": ""}
         self.assertEqual(self._with("README.md", "Expectrail also judges Unreal games."),
                          ["README.md: names Unreal, which no ledger row lists"])
         self.assertEqual(self._with("docs/index.html", "<p>Now on <b>GameMaker</b>.</p>"),
@@ -327,7 +335,10 @@ class AdvertTest(unittest.TestCase):
     def test_a_thing_that_is_not_a_mode_needs_its_reason_in_the_ledger(self):
         del self.doc["notModes"]["commands"]["unittest"]
         self.assertEqual(cap.advert_problems(self.doc, self.texts),
-                         ["README.md: names the command unittest, which no ledger row lists"])
+                         [f"{name}: names the command unittest, which no ledger row lists"
+                          for name, text in sorted(self.texts.items()) if "unittest" in cap._COMMAND.findall(text)])
+        self.assertIn("README.md: names the command unittest, which no ledger row lists",
+                      cap.advert_problems(self.doc, self.texts))
 
 
 class CommandLineTest(unittest.TestCase):
