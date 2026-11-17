@@ -1,0 +1,32 @@
+{
+ "asExpected": true,
+ "decision": "accept",
+ "diagnostics": [],
+ "expectrailCommit": "791f50b99b1e6a11e262088ed8b56255fa2494ad",
+ "findings": "findings.json",
+ "finishedAt": "2026-11-17T20:51:48Z",
+ "format": "expectrail.run-it-result/v1",
+ "phase": "completed",
+ "receipt": {
+  "signed": false,
+  "why": "not signed yet (#255)"
+ },
+ "requestId": "ca404751-be8c-4a47-aac4-329521bceb20",
+ "sample": {
+  "expected": "accept",
+  "id": "fall-through-repair",
+  "title": "The change that repairs it"
+ },
+ "startedAt": "2026-11-17T20:51:07Z",
+ "viewer": "viewer/index.html",
+ "vision": {
+  "answered": 135,
+  "asked": 135,
+  "model": "sam-3.1",
+  "notRecorded": 0,
+  "recorded": true,
+  "recordedAt": "2026-11-13",
+  "run": "43509232715",
+  "why": null
+ }
+}
