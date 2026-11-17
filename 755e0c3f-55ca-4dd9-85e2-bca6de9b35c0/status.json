@@ -1,0 +1,32 @@
+{
+ "asExpected": true,
+ "decision": "reject",
+ "diagnostics": [],
+ "expectrailCommit": "bf31c92e8f655249e6dec05d0ca40a16df95df6e",
+ "findings": "findings.json",
+ "finishedAt": "2026-11-17T17:09:12Z",
+ "format": "expectrail.run-it-result/v1",
+ "phase": "completed",
+ "receipt": {
+  "signed": false,
+  "why": "not signed yet (#255)"
+ },
+ "requestId": "755e0c3f-55ca-4dd9-85e2-bca6de9b35c0",
+ "sample": {
+  "expected": "reject",
+  "id": "fall-through-bug",
+  "title": "A change that breaks it"
+ },
+ "startedAt": "2026-11-17T17:08:28Z",
+ "viewer": "viewer/index.html",
+ "vision": {
+  "answered": 135,
+  "asked": 135,
+  "model": "sam-3.1",
+  "notRecorded": 0,
+  "recorded": true,
+  "recordedAt": "2026-11-13",
+  "run": "43508788240",
+  "why": null
+ }
+}
