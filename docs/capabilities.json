@@ -1434,11 +1434,14 @@
         "tools.runit_burst",
         "tools.runit_smoke",
         "tools.runit_stub",
+        "tools.runit_api_smoke",
+        "tools.runit_published",
         "expectrail.viewer"
       ],
       "workflows": [
         "run-it.yml",
-        "run-it-record.yml"
+        "run-it-record.yml",
+        "run-it-nightly.yml"
       ],
       "docs": [
         "docs/run-it.md"
