@@ -50,6 +50,26 @@ COMMENTS = 'docs/release/sources/outside-comments.json'
 INPUTS = (LEDGER, PUBLIC, DEFECTS, GATE, OUTSIDE, SAMPLES, SAM, COMMENTS, GATE_JSON, CI_META,
           SYSTEM, SYSTEM_STOP, BREAKOUT, BREAKOUT_REPORT, BREAKOUT_PROVENANCE, BREAKOUT_PIN,
           PLAYTEST_REACH, PLAYTEST_CI, TEMPLATE, SPEND_DOC, SPEND_CODE, BEFORE, ORDINARY, HOME_BEFORE)
+# Fixed public recovery inventory. Never enumerate the bench or follow a source link.
+RECOVERED = 'bench/jit/recordings/public-43465090517/'
+RECOVERY_META = RECOVERED + 'source.json'
+RECOVERY_SCORE = RECOVERED + 'repro-score/repro-score.json'
+RECOVERY_IDS = ('air-jump body-flip bullet-behind-scenery bullet-through-enemy camera-cut-top '
+                'camera-stops-right coin-counter-stuck coin-counts-twice coin-stays double-jump-once '
+                'enemy-fast-left enemy-ledge enemy-missing enemy-slides-when-shot enemy-walks-backwards '
+                'floaty-fall gun-cooldown gun-cooldown-long jump-always-full jump-needs-rest '
+                'no-shooting-in-air platforms-not-solid slides-after-stop slow-left').split()
+RECOVERY_FILES = tuple('repro/repro-' + name + '/jit-run.json' for name in RECOVERY_IDS) + (
+    'repro-score/repro-score.json', 'repro-score/repro-score.md')
+CLOSEOUT = 'docs/measurements/template-closeout-result.json'
+CLOSEOUT_PLAN = 'docs/measurements/template-closeout-plan.json'
+REPRO_AUDIT = 'docs/repro-audit.md'
+UI_PARITY = 'docs/ui-recording-parity.md'
+EDGES = 'docs/new-work/2026-11-16-enemy-edge-frames.md'
+RENDERER = 'docs/recorded-renderer-closeout.md'
+NIGHTLY = 'docs/new-work/2026-11-17-runit-nightly.md'
+INPUTS += (RECOVERY_META, *(RECOVERED + name for name in RECOVERY_FILES), CLOSEOUT,
+           CLOSEOUT_PLAN, REPRO_AUDIT, UI_PARITY, EDGES, RENDERER, NIGHTLY)
 DECISIONS = {'accept', 'reject', 'needs-review'}
 
 
@@ -222,7 +242,7 @@ def reproduction(src, meta):
         group[families[r[0]]].append(r)
     ref = src.ref(quoted)
     out = '<h2 id="reproduction">Public reproduction bench</h2><p>Reproduced: ' + ratio(totals['reproduced'], totals['defects'], ref) + '; no result: ' + ratio(totals['noResult'], totals['defects'], ref) + '. Trace-visible subset: ' + ratio(totals['reproducedTraceVisible'], totals['traceVisible'], ref) + '. ' + cite('Recorded run', run) + ' · ' + issue(285) + ' · ' + cite('Publication', GH+'/pull/396') + '.</p>'
-    out += '<p>This measures reproduction, not fix verification. Not-reproduced is not needs-review. False accepts, false rejects and verification needs-review: not measured by this scorer. Kept checks passed the clean-build repetitions by definition; this selection rule is not an independent false-reject measurement. The score artifact is not committed; these are the published log totals and per-defect table, cross-checked against each other.</p>'
+    out += '<p>This measures reproduction, not fix verification. Not-reproduced is not needs-review. False accepts, false rejects and verification needs-review: not measured by this scorer. Kept checks passed the clean-build repetitions by definition; this selection rule is not an independent false-reject measurement. The recovered score artifact and public run records are now committed; their digests and totals are checked below against this historical publication. This is not a new current-code rate.</p>'
     out += table(['Defect family', 'Reproduced / attempted', 'Not reproduced / attempted'], [[cite(family, meta.ref('"family": "'+family+'"')), ratio(sum(r[5]=='reproduced' for r in rs),len(rs),ref), ratio(sum(r[5]!='reproduced' for r in rs),len(rs),ref)] for family,rs in sorted(group.items())], 'Public defect families')
     out += table(['Public defect', 'Family', 'Reproduction', 'Recorded model spend'], [[cite(r[0],src.ref('| `'+r[0]+'` | '+' | '.join(r[1:])+' |')), cite(families[r[0]],meta.ref('"id": "'+r[0]+'"')), esc(r[5]), cite(r[6],run)] for r in rows], 'Public reproduction cases')
     out += '<p>Assertion-family breakdown: not measured in the published reproduction totals. Family labels above come from ' + cite('the public defect manifest',meta.ref()) + ', not inferred private categories.</p>'
@@ -534,6 +554,101 @@ def spend_section(ss,ledger):
     out+='<p>The Muse invocation hold does not bound the cost inside one fixer invocation. Its internal token bill and external coding-agent calls are not universally metered. Holds remain after failures and unused caps are not vendor refunds. No live cap-exhaustion or provider-billing measurement is claimed. '+cite('Ledger limitations',ss[LEDGER].ref('"id": "spend-caps"'))+'.</p>'
     return out
 
+def recovered_reproduction(ss):
+    meta = ss[RECOVERY_META].json()
+    require(meta['repository'] == 'Expectrail/Expectrail' and
+            meta['runUrl'] == GH + '/actions/runs/' + str(meta['runId']) and
+            meta['runId'] == 43465090517, 'recovered run identity changed')
+    require(meta['githubArtifactDigest'] == 'sha256:' + meta['downloadedArchiveSha256'],
+            'recorded archive digest differs from GitHub artifact digest')
+    require(set(meta['files']) == set(RECOVERY_FILES), 'public recovery inventory changed')
+    for name in RECOVERY_FILES:
+        require(hashlib.sha256(ss[RECOVERED + name].text.encode()).hexdigest() == meta['files'][name],
+                'recovered file digest differs: ' + name)
+    score = ss[RECOVERY_SCORE].json()
+    quoted = json.loads(one(r'^\{"defects":.*\}$', ss[PUBLIC].text,
+                           'published scorer totals', re.M)[0], parse_float=Decimal)
+    require(all(score['totals'].get(k) == v for k, v in quoted.items()),
+            'recovered score totals disagree with publication')
+    require(score['offer'] == 'baseline' and score['reps'] == 3,
+            'recovered score is not the historical baseline')
+    records = {r['id']: r for r in score['rows']}
+    require(set(records) == set(RECOVERY_IDS), 'recovered score defect inventory differs')
+    for name in RECOVERY_IDS:
+        row = records[name]
+        require(row['recordSha256'] == meta['files']['repro/repro-' + name + '/jit-run.json'],
+                'recovered scorer record identity differs')
+        pub = one(r'^\| `' + re.escape(name) + r'` \| (.+) \|$',
+                  ss[PUBLIC].text.split('## The baseline:', 1)[1].split('\n## ', 1)[0], 'published defect row', re.M)[1].split(' | ')
+        require([row['proposed'], row['kept'], len(row['reproducing'])] == list(map(int, pub[1:4]))
+                and row['outcome'].replace('-', ' ') == pub[4]
+                and row['spendUsd'] == Decimal(pub[5].removeprefix('$')),
+                'recovered per-defect counts disagree with publication: ' + name)
+    return '<p>Recovered baseline artifact: ' + cite('recorded run', meta['runUrl']) + ' · ' + cite(
+        'score', ss[RECOVERY_SCORE].ref()) + ' · ' + cite('file and archive digests', ss[RECOVERY_META].ref()) +         '. Every recovered file digest and each published defect count is checked offline. The original archive is not downloaded by this generator. The candidate was shown; later offers and candidate-withheld reproduction remain unmeasured.</p>'
+
+
+def frozen_template_closeout(ss):
+    # The existing pure counter recomputes every summary value from committed frame rows.
+    # It does not load images, numpy/PIL, schemas, an engine or uncommitted artifacts.
+    from tools.template_sensor_closeout import summarize_runs
+    doc = json.loads(ss[CLOSEOUT].text)
+    plan = json.loads(ss[CLOSEOUT_PLAN].text)
+    require(doc['format'] == 'expectrail.template-closeout/v1', 'unsupported frozen closeout')
+    require(hashlib.sha256(ss[CLOSEOUT_PLAN].text.encode()).hexdigest() == doc['planSha256']
+            and plan['base'] == doc['baseCommit'] and plan['sensorFiles'] == doc['sensorFiles'],
+            'frozen plan identity differs')
+    summary = summarize_runs(doc['runs'], doc['pixelOnlyProof'])
+    require(summary == doc['summary'], 'frozen closeout summary differs from frame evidence')
+    require(doc['scope']['optIn'] and not doc['scope']['defaultVerdictChanged']
+            and not doc['scope']['calibrationOrThresholdsChangedAfterFreeze']
+            and doc['scope']['modelCalls'] == 0, 'frozen advisory scope changed')
+    ref = ss[CLOSEOUT].ref()
+    out = '<h3>Frozen no-model closeout: a separate cohort</h3><p>Frozen bank: ' + cite(
+        str(doc['bank']['templates']) + ' templates', ref) + '; threshold ' + cite(
+        doc['bank']['threshold'], ref) + '. This does not replace the earlier untuned result. The bank and cohort differ; no cross-game transfer or general recall claim follows.</p>'
+    data = []
+    for row in summary['runs']:
+        raw, novel = row['raw'], row['newPixels']
+        data.append([esc(row['name']), ratio(raw['counts']['matched'], raw['measured'], ref),
+                     ratio(len(raw['alarmFrames']), raw['measured'], ref),
+                     ratio(novel['counts']['matched'], novel['measured'], ref),
+                     ratio(len(novel['alarmFrames']), novel['measured'], ref),
+                     cite(len(row['pairedNewPixels']), ref),
+                     cite(novel['counts']['unavailable'] + novel['counts']['out-of-frame'], ref)])
+    out += table(['Case', 'Raw matched / measurable', 'Raw alarms / measurable',
+                  'New-pixel matched / measurable', 'New-pixel alarms / measurable',
+                  'Paired new-pixel detections', 'New-pixel unknown'], data, 'Frozen sensor frame counts')
+    pooled = summary['pooledClean']['newPixels']
+    out += '<p>Pooled new-pixel clean agreement: ' + ratio(pooled['matched'], pooled['measured'], ref) +         '; clean false alarms: ' + ratio(pooled['alarms'], pooled['measured'], ref) +         '. Raw and new-pixel rows overlap; paired detections exclude the clean alarms and are not additional independent frames. Out-of-frame or unavailable evidence stays unknown, never a pass.</p>'
+    proof = doc['pixelOnlyProof']
+    require(proof['entireTraceRowsIdentical'] and proof['identicalPredictions'] and
+            proof['identicalEngineCueRows'] and proof['cleanCueSha256'] == proof['hiddenCueSha256'],
+            'pixel-only proof identity differs')
+    out += '<p>The hidden images were evaluated with the paired clean trace and predictions; the complete recorded trace rows are identical. This establishes a pixel-only distinction in this paired example. Opt-in, advisory, no verdict contribution; no new calibration or model calls by this generator. Full capture artifacts are not revalidated here. ' + cite('Frozen plan', ss[CLOSEOUT_PLAN].ref()) + '.</p>'
+    return out
+
+
+def post_review_updates(ss):
+    updates = [
+        (573, REPRO_AUDIT, 'Recovered public baseline and bounded integer UI fields',
+         'An opt-in exact Label path/field can supply an integer signal. Menu reach is still missing from automatic offers. Local UI signal tests do not establish a new hosted reproduction rate.'),
+        (582, EDGES, 'Partial enemy frame boxes',
+         'The recorded local engine probes expose partial-edge intervals; the proposer receives per-frame context. No model has proposed a check using it, and SAM edge accuracy is unmeasured.'),
+        (583, RENDERER, 'Exact renderer closeout',
+         'Unknown/mismatched local renderer metadata gives a named skip; required mode still fails. A successful CI job that skipped a missing pinned engine is not compatibility evidence. No tolerant recording reuse or new full-engine accept is established.'),
+        (585, CLOSEOUT, 'Frozen advisory sensor measurement',
+         'Frame-level clean agreement, alarms and paired seeded detections are computed below. This bank/cohort remains separate from the earlier untuned failure and failed transfer.'),
+        (586, NIGHTLY, 'Published-result nightly checker',
+         'Checker implementation and fixture/loopback tests are recorded. The workflow and deployed smoke were not run; the recorded health refusal and closed admissions remain. Sean must arrange admission. No live dispatch is made here.')]
+    out = '<h2 id="post-review">Changes merged since ' + cite('PR #569', GH + '/pull/569') + '</h2>'
+    out += table(['Merge', 'Change', 'Recorded scope and missing evidence'], [[cite('#' + str(n), GH + '/pull/' + str(n)),
+                  cite(title, ss[path].ref()), esc(scope)] for n, path, title, scope in updates], 'Post-review evidence inventory')
+    out += recovered_reproduction(ss)
+    out += '<p>Integer UI scope: ' + cite('recording/parity limits', ss[UI_PARITY].ref()) + '. No arbitrary UI or pixel-reading capability is inferred.</p>'
+    return out + frozen_template_closeout(ss)
+
+
 def build(root,commit):
     ss=sources(root,commit);ledger=ss[LEDGER].json()
     require(ledger.get('format')=='expectrail.capabilities/v1','unsupported capability ledger')
@@ -544,10 +659,10 @@ def build(root,commit):
     blind,blind_cost=blind_section(ss[LEDGER],ledger);out.append(blind)
     repro,repro_cost=reproduction(ss[PUBLIC],ss[DEFECTS]);out.append(repro)
     out.extend([current_release_gate(ss,ledger),outside(ss[COMMENTS],ss[OUTSIDE]),outside_updates(ss,ledger),
-                playtest_section(ss,ledger),template_section(ss,ledger),spend_section(ss,ledger),
+                playtest_section(ss,ledger),template_section(ss,ledger),post_review_updates(ss),spend_section(ss,ledger),
                 runit(ledger,ss[SAMPLES],ss[LEDGER]),runtimes(ledger,ss[LEDGER],ss[SAM],blind_cost,repro_cost,ss[COMMENTS],ss[OUTSIDE])])
     out+=['<h2 id="limits">Known limitations and owners</h2><ul>']
-    limits=[(246,'The game originates its frames and trace; capture the game cannot forge is not established.'),(253,'Replay isolation is Godot-only and shares the host kernel. Its work/output growth monitor is polling, not a filesystem quota or a bound on every host resource.'),(258,'Open release controls remain open; the dossier does not substitute unit-test counts for integration coverage.'),(257,'Observation-timeline controls still need their recorded release-suite evidence.'),(255,'Signed release receipts remain separate work.'),(285,'Reproduction misses and the unavailable baseline score artifact limit the public bench analysis.'),(263,'One public demo was verified with vision once. Dodge has no vision evidence; independent-author System Override and Breakout onboarding failed. No arbitrary-project or customer success is established.'),(330,'The hidden-player reject in the outside vision trial measured the background at the player’s position.'),(265,'Hand-dispatched Run it samples do not establish a deployed visitor service.'),(324,'Unity remains experimental; replay is shown, but approved seeded verification and visual measurement are not established.'),(515,'Recorded answers require exact image/question bytes and do not transfer across arbitrary renderer builds.'),(379,'An outside game cannot accept without vision; missing evidence needs review unless an engine check already fails.'),(282,'Blind test four is not run; only published earlier aggregate counts appear here.'),(268,'The first-user test, comparable repeated runtime samples, billed per-profile costs and environment image digests remain incomplete.')]
+    limits=[(246,'The game originates its frames and trace; capture the game cannot forge is not established.'),(253,'Replay isolation is Godot-only and shares the host kernel. Its work/output growth monitor is polling, not a filesystem quota or a bound on every host resource.'),(258,'Open release controls remain open; the dossier does not substitute unit-test counts for integration coverage.'),(257,'Observation-timeline controls still need their recorded release-suite evidence.'),(255,'Signed release receipts remain separate work.'),(285,'Reproduction misses remain; recovered baseline records do not establish a current-code or candidate-withheld reproduction rate.'),(263,'One public demo was verified with vision once. Dodge has no vision evidence; independent-author System Override and Breakout onboarding failed. No arbitrary-project or customer success is established.'),(330,'The hidden-player reject in the outside vision trial measured the background at the player’s position.'),(265,'Hand-dispatched Run it samples do not establish a deployed visitor service.'),(324,'Unity remains experimental; replay is shown, but approved seeded verification and visual measurement are not established.'),(515,'Recorded answers require exact image/question bytes and do not transfer across arbitrary renderer builds.'),(379,'An outside game cannot accept without vision; missing evidence needs review unless an engine check already fails.'),(282,'Blind test four is not run; only published earlier aggregate counts appear here.'),(268,'The first-user test, comparable repeated runtime samples, billed per-profile costs and environment image digests remain incomplete.')]
     out.extend('<li>'+esc(text)+' '+issue(n)+'</li>' for n,text in limits)
     out+=['</ul><h2 id="pending">Not run yet</h2><ul><li>'+issue(282,'Blind test 4')+': <strong>not run yet</strong>. No private material is read and no result is guessed.</li><li>First-user quickstart test: <strong>not run yet</strong>; <strong>needs-sean</strong>. Sean or Timothy must arrange a person unfamiliar with Expectrail. Time to first verdict, obstacles and report comprehension remain unmeasured. '+issue(268)+'</li><li>Dodge the Creeps vision verification: <strong>not run yet</strong>. Its approved engine check rejects the broken build in CI, but no vision result is recorded. '+issue(263)+' · '+issue(330)+'</li></ul><p><a href="truth-pass.md">Generated audit: every changed figure and wording mismatch</a> · <a href="figure-changes.json">Machine-readable numeric diff</a>.</p><h2 id="sources">Source inventory and regeneration</h2><p>Regenerate with <code>python -m tools.dossier</code>; use <code>--check</code> to compare without writing. The checker retains the page’s recorded source commit unless an explicit <code>--commit</code> is supplied. Each visible numerical value links to its run or source file. Ratios and counts are computed from those records; error rates are never inferred from missing results.</p>']
     out+=[table(['Input','Content digest'],[[cite(s.path,s.ref()),cite(hashlib.sha256(s.text.encode()).hexdigest(),s.ref())] for s in ss.values()],'Source fingerprints')]

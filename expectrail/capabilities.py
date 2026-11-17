@@ -53,7 +53,13 @@ _COMMAND = re.compile(r"\bpython3? -m ([a-z_][a-z0-9_]*(?:\.[a-z_][a-z0-9_]*)*)"
 _SWITCH = re.compile(r"\bEXPECTRAIL_[A-Z_]+\*?")
 _WORKFLOW = re.compile(r"(?<![A-Za-z0-9_-])([a-z0-9][a-z0-9-]*\.yml)\b")
 _DOC = re.compile(r"\bdocs/([a-z0-9-]+\.md)\b")
-_ONE = {"commands": "command", "switches": "switch", "workflows": "workflow", "docs": "doc"}
+_ONE = {"commands": "command", "switches": "switch", "workflows": "workflow", "docs": "doc",
+        "invocations": "CLI mode"}
+_CODE = re.compile(r"```[^\n]*\n([\s\S]*?)```|`([^`\n]+)`|<code\b[^>]*>([\s\S]*?)</code>", re.I)
+_CLI = re.compile(r"(?<![\w.-])(?:python3?\s+-m\s+expectrail\.cli|expectrail)\s+"
+                  r"(?:--(?:jobs-root|timeout)\s+\S+\s+)*([a-z][a-z0-9-]*)\b")
+_MODE_FLAGS = {"ingest": ("--propose", "--repair"), "route": ("--auto",),
+               "verify": ("--auto-fix", "--intent")}
 _RUN = re.compile(r"^https://github\.com/Expectrail/Expectrail/actions/runs/[0-9]+(/job/[0-9]+)?$")
 # A count as a row quotes it: "8 of 8", "3 of 12".
 _QUOTED = re.compile(r"(?<![\w.,$])(\d+) of (\d+)(?![\w]|[.,]\d)")
@@ -345,7 +351,24 @@ def claims(name: str, text: str, workflows: set[str]) -> dict[str, set[str]]:
         "switches": set(_SWITCH.findall(text)),
         "workflows": {w for w in _WORKFLOW.findall(text) if w in workflows},
         "docs": {"docs/" + d for d in _DOC.findall(text)},
+        "invocations": cli_modes(text),
     }
+
+
+def cli_modes(text: str) -> set[str]:
+    """Installed CLI modes in command examples, rather than ordinary prose."""
+    found = set()
+    for block in _CODE.finditer(text):
+        code = html.unescape(next(value for value in block.groups() if value is not None))
+        code = re.sub(r"<[^>]+>", " ", code).replace("\\\n", " ")
+        for match in _CLI.finditer(code):
+            verb = match[1]
+            found.add("expectrail " + verb)
+            rest = code[match.end():].split("\n", 1)[0]
+            for flag in _MODE_FLAGS.get(verb, ()):
+                if re.search(r"(?<![\w-])" + re.escape(flag) + r"(?![\w-])", rest):
+                    found.add("expectrail " + verb + " " + flag)
+    return found
 
 
 def meta_models(readme: str) -> list[str]:
@@ -372,14 +395,17 @@ def advert_problems(doc: dict, texts: dict[str, str], root: Path = ROOT) -> list
         "switches": {s for r in rows for s in r.get("switches", [])} | set(doc["notModes"]["switches"]),
         "workflows": {w for r in rows for w in r.get("workflows", [])} | set(doc["notModes"]["workflows"]),
         "docs": {d for r in rows for d in r.get("docs", [])} | set(doc["notModes"]["docs"]),
+        "invocations": {n for r in rows for n in r.get("names", []) if n.startswith("expectrail ")},
     }
     names = {n for r in rows for n in r.get("names", [])}
     wf_dir = root / ".github" / "workflows"
     workflows = {p.name for p in wf_dir.glob("*.yml")} if wf_dir.is_dir() else set()
     out: list[str] = []
     for name, text in sorted(texts.items()):
+        if name.startswith("docs/") and name.endswith(".md") and name not in listed["docs"]:
+            out.append(f"{name}: public documentation page has no ledger row or explicit non-mode reason")
         found = claims(name, text, workflows)
-        for kind in ("commands", "switches", "workflows", "docs"):
+        for kind in ("commands", "switches", "workflows", "docs", "invocations"):
             for item in sorted(found[kind]):
                 ok = _switch_listed(item, listed[kind]) if kind == "switches" else item in listed[kind]
                 if not ok:
@@ -396,7 +422,17 @@ def advert_problems(doc: dict, texts: dict[str, str], root: Path = ROOT) -> list
 
 
 def read_adverts(root: Path = ROOT) -> dict[str, str]:
-    return {name: (root / name).read_text(encoding="utf-8") for name in ADVERTS}
+    """The README, every top-level Markdown doc, and the existing public HTML surfaces."""
+    if (root / "docs").is_symlink():
+        raise LedgerError("docs: advertising symlinks are refused before reading their targets")
+    names = set(ADVERTS) | {p.relative_to(root).as_posix() for p in (root / "docs").glob("*.md")}
+    result = {}
+    for name in sorted(names):
+        path = root / name
+        if path.is_symlink():
+            raise LedgerError(f"{name}: advertising symlinks are refused before reading their targets")
+        result[name] = path.read_text(encoding="utf-8")
+    return result
 
 
 def problems(doc: dict, root: Path = ROOT, texts: dict[str, str] | None = None) -> list[str]:
