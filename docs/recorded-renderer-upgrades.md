@@ -28,7 +28,12 @@ EXPECTRAIL_ENGINE_TESTS=required python -m unittest tests.test_recorded_renderer
 
 It names each incompatible recording, both engine/renderer/device versions, and recordings whose
 provenance is unknown. Outside that required CI setting, a missing engine, display or renderer is
-a named skip, not a match. It scans `docs/run-it/vision/*.json` and vision-recording documents under
+a named skip, not a match. A different rendering environment is also a named local skip
+(`recorded-renderer-mismatch`), as is valid legacy evidence with unknown provenance
+(`recorded-renderer-unknown`). The skip names the files, recorded and local environments, and fix;
+it never certifies compatibility or supplies a game verdict. A corrupt recording or an empty
+collection is still a failure locally. The required command above fails for all of these cases;
+only known matching environments pass readiness. Run with `-v` to see the complete skip reason. It scans `docs/run-it/vision/*.json` and vision-recording documents under
 `tests/outside/recordings/`. The offline comparison and app/doctor tests also run in the full suite.
 
 **Initial rollout:** the four Run it files currently have no rendering metadata. Their old workflow
