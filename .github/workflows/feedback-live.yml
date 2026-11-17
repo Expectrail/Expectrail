@@ -26,7 +26,7 @@ permissions:
 
 jobs:
   feedback-live:
-    environment: main-only
+    environment: spend
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     # secrets is not allowed in a job-level if; check it in the first step instead.
