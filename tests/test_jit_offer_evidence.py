@@ -79,15 +79,20 @@ class TheSetting(unittest.TestCase):
         self.assertEqual(offer.check(EV), EV)
         self.assertTrue(offer.shows_evidence(EV))
         self.assertFalse(offer.shows_evidence("baseline") or offer.shows_evidence("signals-reach"))
-        self.assertEqual(offer.meanings(EV), offer.meanings("signals-reach"))
+        self.assertEqual(offer.meanings(EV), {**offer.meanings("signals-reach"), **intent.EVIDENCE_SIGNALS})
         self.assertEqual(offer.library(PROF["actions"], EV, REPORT), offer.library(PROF["actions"], "signals-reach", REPORT))
         with self.assertRaises(offer.OfferError):
             offer.shows_evidence("everything")
 
-    def test_its_system_prompt_is_signals_reach_with_one_paragraph_more(self):
+    def test_its_system_prompt_adds_evidence_and_the_ui_comparison_language(self):
         system = intent.system_for(EV)
         self.assertEqual(system.count(intent.EVIDENCE_TEXT), 1)
-        self.assertEqual(system.replace(intent.EVIDENCE_TEXT, "", 1), intent.system_for("signals-reach"))
+        self.assertEqual(sha(system), "b636a55f714bd12fc3b52b6a613a02625ffa21b55df42fcf84f8daabe85bdb00")
+        self.assertIn("signal_compare", system)
+        self.assertIn("ui_integer_at_end", system)
+        self.assertNotIn("signal_compare", intent.system_for("signals-reach"))
+        for name, meaning in offer.meanings(EV).items():
+            self.assertIn(f"- {name}: {meaning}", system)
         self.assertNotIn(intent.EVIDENCE_TEXT, intent.system_for("baseline"))
         # The paragraph says the checks still read signals only: the closed language has no pixel predicate yet (#286).
         self.assertIn("Checks still read only the signals", intent.EVIDENCE_TEXT)

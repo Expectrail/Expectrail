@@ -121,7 +121,7 @@ class Workflow(unittest.TestCase):
         revise = text[text.index("  revise:"):text.index("  replay-final:")]
         # Up to pixel-ask, the one job after it that holds a key (#286; tests/test_jit_pixel_workflow.py).
         final = text[text.index("  replay-final:"):text.index("  pixel-ask:")]
-        self.assertIn("environment: main-only", revise)
+        self.assertIn("environment: spend", revise)  # main-only plus Sean's approval (#265)
         self.assertNotIn("get_godot", revise)
         self.assertNotIn("get-godot", revise)   # the action every other job gets the engine through
         self.assertNotIn("secrets.", final)

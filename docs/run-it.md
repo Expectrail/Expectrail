@@ -307,8 +307,9 @@ so a stolen token cannot spend without Sean.
 Follow [the deployment guide](run-it-deploy.md). It separates account, token, secret and DNS actions
 from automatic deployment, keeps admissions closed for the first smoke check, and names the remaining
 live evidence. The three original vision recordings already exist; do not spend on recording them
-again to deploy. No workflow change is needed for the first launch. The nightly deployed check,
-deployed burst and first visitor test remain to be done; receipts remain unsigned (#255).
+again to deploy. No workflow change is needed for the first launch. The nightly deployed check is
+`run-it-nightly.yml`; it has not run yet. The deployed burst and first visitor test
+remain to be done; receipts remain unsigned (#255).
 
 ### Deployed HTTP smoke
 
@@ -320,3 +321,12 @@ no run. After the launch decision, `--expect-open true` also starts one recorded
 sample and checks progress. Follow the [deployment guide](run-it-deploy.md) for
 the complete closed/open sequence. This HTTP check does not replace the browser
 visitor test.
+
+With `--follow`, an open check waits for the run to be published and then reads
+what a visitor is shown, from the same address the page reads
+(`tools/runit_published.py`): the published `status.json` must name this request
+and sample, have completed, decide what the sample is expected to decide, and have
+answered every vision question from the recording; `findings.json` must agree; the
+evidence viewer must be the viewer's page; `latest.json` must name this run or a
+later one. Anything it cannot read is a FAIL. The scheduled workflow
+`run-it-nightly.yml` runs this every day (see the deployment guide).

@@ -1,0 +1,12 @@
+Recorded local run. Local paths replaced and trailing spaces trimmed; raw log is in the handover.
+Original SHA-256: c14d550e364165a99facd1b1dc08400138aeb65ab6efb2467fb91c29a58591da
+
+test_available_live_renderer_names_version_without_a_false_warning (tests.test_p0_closeout.AppSetupInspectionTest.test_available_live_renderer_names_version_without_a_false_warning) ... ok
+test_live_vision_inspection_names_missing_tools_before_verification (tests.test_p0_closeout.AppSetupInspectionTest.test_live_vision_inspection_names_missing_tools_before_verification) ... ok
+test_explicit_llm_patch_reaches_existing_fixer_and_fresh_gate (tests.test_p0_closeout.RepairAgentCommandTest.test_explicit_llm_patch_reaches_existing_fixer_and_fresh_gate) ... ok
+test_unknown_agent_never_falls_back_or_constructs_a_fixer (tests.test_p0_closeout.RepairAgentCommandTest.test_unknown_agent_never_falls_back_or_constructs_a_fixer) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 1.624s
+
+OK

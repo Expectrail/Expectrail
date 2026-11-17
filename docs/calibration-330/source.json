@@ -1,0 +1,149 @@
+{
+  "baseCommit": "5d25639b7e53e5989cf2eb062544727eeefb02e1",
+  "label": "Offline local captures and exact recorded answers; no live model calls or spend. Not a hosted gate run.",
+  "sensor": {
+    "files": {
+      "agents/template_observations.py": "b4d57fca5350d148056b00dacf99ab534b185b03609c2b9f6de269b35dd9f910",
+      "agents/template_foreground.py": "a987638f4b49cd3c4f2f50bb0d0bc3ccdc60f9d4827e5848df4323a214a766fa",
+      "agents/template_art.py": "c2f5831c401f8474fcbaf7a4e7e6b7f5d252177b05a1aabdb12e7f0ee17cfaef",
+      "agents/template_regions.py": "5df59a80c5ece9ba5f8ee8efbc419f39e93f5cafcf350fd5039bd89fcf8971db",
+      "agents/template_sensor_bench.py": "72ac56152b74816db4086fa6dababc445bf0bb0395c43dfa98a555eb761051ff",
+      "expectrail/jit/template_observer.py": "0c43b7a742ac16008733b4685b91540a8811fdbb85c00205b92d3c5514cca3af",
+      "contracts/observations.schema.json": "764f13ec2a8bae4cf47e547c871f7904c7fd58374f1f1aee7ffd8cb476dd9a0f",
+      "contracts/template-foreground-catalogue.schema.json": "14f094cc3fed0d233983c94de1438c9d2c464b1b1cd35372f82d070764e9c92a",
+      "contracts/examples/template-foreground-catalogue.json": "81e75655f50563ff8b59f13cce8a60a30e01cc552513dcb2bab6234b17e805c1",
+      "contracts/template-bank.schema.json": "42bc51527d946cf5e037db514294bb9ccc5a5b9c57ee41c5909a5c338ff3ac22"
+    },
+    "bankRawSha256": "24a726dcebecc94975e3082a559e45774fa6067a489bc9508e61a9cd01486442",
+    "bankCanonicalSha256": "a89f0a15ddd3c41925f514e7829c99249d82c3962fddaa5a5162dc11848d081e",
+    "calibration": "Previously frozen #262 bank from separate calibration routes, no proof frame used to build it."
+  },
+  "sam": {
+    "path": "docs/run-it/vision/clean.json",
+    "rawSha256": "0a2e44b1bf6745912721e698dced26244d4634b04c3afe064e63d1acf9c87786",
+    "run": "https://github.com/Expectrail/Expectrail/actions/runs/43508479160",
+    "missingAmbiguousRecording": "https://github.com/Expectrail/Expectrail/actions/runs/40653267793",
+    "artifactLookup": "Public API returned artifacts: []; surviving job 122698142572 log gives aggregate counts only. No raw answers manufactured."
+  },
+  "sampling": {
+    "every": 10,
+    "includeLast": true,
+    "selectionFrames": 13,
+    "proofCleanFrames": 12,
+    "excludedIdenticalSelectionPngs": 1,
+    "brokenFramesEach": 13,
+    "proofRouteRawSha256": "ade80b5ca8dec0c9a4133c7921384a0edf9666d5832af2905746e886436ca685",
+    "selectionRoute": "harness/routes/smoke.json",
+    "selectionRouteSha256": "0db750ef7ab79124ccd80c63c03f117d84c579281f7ca487f0877f829660f02d"
+  },
+  "captures": {
+    "behind-scenery": {
+      "replayRawSha256": "9d2ba0ce2e962ca39215393db52f2293de165b296f6900a1827877e0670ca3dc",
+      "traceRawSha256": "dc36cb583f23ed23582af5dfbbbe28c301d632fe847ce6157771743b0f50dcc7",
+      "game": {
+        "tree": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280",
+        "patch": "/workspace/work/330/patches/behind-scenery.patch",
+        "patchSha256": "6a303134ae455f35a59cc1340cfe1a7b9ddcc328733ea7d7fc4d64e593878963"
+      },
+      "engine": {
+        "name": "godot",
+        "version": "4.7.2.stable.official.ed1daf0bf",
+        "renderer": "opengl3",
+        "device": "Mesa - llvmpipe (LLVM 19.1.7, 256 bits)"
+      },
+      "capturedFrames": 120
+    },
+    "clean": {
+      "replayRawSha256": "106dfa54082e806b72d38b33efe03ba924203b134902a2acc01a22c8f9834c23",
+      "traceRawSha256": "dc36cb583f23ed23582af5dfbbbe28c301d632fe847ce6157771743b0f50dcc7",
+      "game": {
+        "tree": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280",
+        "patch": null,
+        "patchSha256": null
+      },
+      "engine": {
+        "name": "godot",
+        "version": "4.7.2.stable.official.ed1daf0bf",
+        "renderer": "opengl3",
+        "device": "Mesa - llvmpipe (LLVM 19.1.7, 256 bits)"
+      },
+      "capturedFrames": 120
+    },
+    "hidden": {
+      "replayRawSha256": "45acd2f84191c1a7ef7d8eb820b3459916c8da5c3af58e4d2c580dfb43e7177c",
+      "traceRawSha256": "dc36cb583f23ed23582af5dfbbbe28c301d632fe847ce6157771743b0f50dcc7",
+      "game": {
+        "tree": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280",
+        "patch": "/workspace/work/330/patches/hidden.patch",
+        "patchSha256": "2733a53296743bdae109eff41bb480f118fece5474492d28a8e73a409de4c705"
+      },
+      "engine": {
+        "name": "godot",
+        "version": "4.7.2.stable.official.ed1daf0bf",
+        "renderer": "opengl3",
+        "device": "Mesa - llvmpipe (LLVM 19.1.7, 256 bits)"
+      },
+      "capturedFrames": 120
+    },
+    "selection": {
+      "replayRawSha256": "4e27883cbf30f49228f9fd86f2d6444cc40c04fe93fa2f895211454052da453e",
+      "traceRawSha256": "a2b64f71e7c3ed3e55b11c1dcebb66e8ff5587a8e570da62927f56a08574d51c",
+      "game": {
+        "tree": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280",
+        "patch": null,
+        "patchSha256": null
+      },
+      "engine": {
+        "name": "godot",
+        "version": "4.7.2.stable.official.ed1daf0bf",
+        "renderer": "opengl3",
+        "device": "Mesa - llvmpipe (LLVM 19.1.7, 256 bits)"
+      },
+      "capturedFrames": 120
+    },
+    "shifted-off-body": {
+      "replayRawSha256": "97e1cce94b1f8150c648b13b6ccc71480f4fb471055eecb61d76b2697c45e76d",
+      "traceRawSha256": "dc36cb583f23ed23582af5dfbbbe28c301d632fe847ce6157771743b0f50dcc7",
+      "game": {
+        "tree": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280",
+        "patch": "/workspace/work/330/patches/shifted-off-body.patch",
+        "patchSha256": "898213464fb2d4eb136fbb90f4abd34382ff0e6a9e337deb0e52cdbcc875d987"
+      },
+      "engine": {
+        "name": "godot",
+        "version": "4.7.2.stable.official.ed1daf0bf",
+        "renderer": "opengl3",
+        "device": "Mesa - llvmpipe (LLVM 19.1.7, 256 bits)"
+      },
+      "capturedFrames": 120
+    },
+    "texture-blanked": {
+      "replayRawSha256": "31ced9f7d9f7404847a39e339b0bdb953ded11231e5d5013d1b34170cea6eb60",
+      "traceRawSha256": "dc36cb583f23ed23582af5dfbbbe28c301d632fe847ce6157771743b0f50dcc7",
+      "game": {
+        "tree": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280",
+        "patch": "/workspace/work/330/patches/texture-blanked.patch",
+        "patchSha256": "c0a080b52cc44d67de61f1fae22479013c10228ef6e244e41d5d5941f4dc8db7"
+      },
+      "engine": {
+        "name": "godot",
+        "version": "4.7.2.stable.official.ed1daf0bf",
+        "renderer": "opengl3",
+        "device": "Mesa - llvmpipe (LLVM 19.1.7, 256 bits)"
+      },
+      "capturedFrames": 120
+    }
+  },
+  "records": {
+    "proof-route.json": "ade80b5ca8dec0c9a4133c7921384a0edf9666d5832af2905746e886436ca685",
+    "sam-recorded.json": "116500dd9df6f58e2ea4f215c2b02ffdc2675d34c1223a8266204e6e1bb36ef4",
+    "template.json": "4c5022184210874d26b8a7742178855a4a785b6560b5f49b6185caded6efdc6d",
+    "stale-pixel-gate.json": "4d1f3b3de05cc1ce53a01bdc415be72873c4c5ccd48ca8fba92f4c139d26e481"
+  },
+  "patches": {
+    "behind-scenery.patch": "6a303134ae455f35a59cc1340cfe1a7b9ddcc328733ea7d7fc4d64e593878963",
+    "hidden.patch": "2733a53296743bdae109eff41bb480f118fece5474492d28a8e73a409de4c705",
+    "shifted-off-body.patch": "898213464fb2d4eb136fbb90f4abd34382ff0e6a9e337deb0e52cdbcc875d987",
+    "texture-blanked.patch": "c0a080b52cc44d67de61f1fae22479013c10228ef6e244e41d5d5941f4dc8db7"
+  }
+}

@@ -298,7 +298,7 @@ jobs:
     # Holds the model key. Reads the patch and the report as text, and the measure job's numbers;
     # replays nothing. In main-only (#223): only a dispatch from main can reach the key.
     needs: [plan, measure]
-    environment: main-only
+    environment: spend
     if: github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal'
     strategy:
       fail-fast: false
@@ -412,7 +412,7 @@ jobs:
     # left of the same budget (expectrail/jit/intent.py, revise_to_file). Always writes the proposal
     # replay-final uses (revised, or the first one unchanged) and says which. Nothing here is a pass.
     needs: [plan, measure, replay]
-    environment: main-only
+    environment: spend
     if: github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal'
     strategy:
       fail-fast: false
@@ -580,7 +580,7 @@ jobs:
     # has left after replay-final's record; over that, nothing is sent. In main-only: only a dispatch from
     # main can reach the key.
     needs: [plan, replay-final]
-    environment: main-only
+    environment: spend
     if: github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal' && needs.plan.outputs.offer == 'signals-reach-evidence-pixel' && needs.plan.outputs.observer != 'visual-sensor'
     strategy:
       fail-fast: false

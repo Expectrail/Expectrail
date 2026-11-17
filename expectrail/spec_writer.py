@@ -183,6 +183,11 @@ def lint(spec: dict) -> list[str]:
 
 
 def _parse(response: dict) -> dict:
+    from expectrail.providers import OutputLimitReached, raise_for_output_limit
+    try:
+        raise_for_output_limit(response)
+    except OutputLimitReached as err:
+        raise SpecDraftError(str(err)) from err
     try:
         content = response["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError) as err:

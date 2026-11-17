@@ -283,7 +283,7 @@ class TheGeneratorIsNotOfferedThemBeforeTheBaseline(unittest.TestCase):
 
     def test_the_held_signals_are_these_three_and_the_rest_are_offered(self):
         self.assertEqual(set(intent.NOT_YET_OFFERED), set(NEW))
-        self.assertEqual(set(intent.OFFERED), set(signals.SIGNALS) - set(NEW))
+        self.assertEqual(set(intent.OFFERED), set(signals.SIGNALS) - set(NEW) - set(intent.EVIDENCE_SIGNALS))
         self.assertEqual(len(intent.OFFERED), 11)
 
     def test_the_system_prompt_names_every_offered_signal_and_none_of_the_held(self):

@@ -38,7 +38,7 @@ class Figures(HTMLParser):
         if any(t in {'style','script'} for t,_ in self.stack) or not re.search(r'\d',text):
             return
         href=next((u for t,u in reversed(self.stack) if t=='a'),None)
-        valid=href and (re.match(r'https://github\.com/Expectrail/Expectrail/(?:blob/|actions/runs/|issues/|commit/|tree/|pull/)',href) or href=='sources/outside-comments.json')
+        valid=href and (re.match(r'https://github\.com/Expectrail/Expectrail/(?:blob/|actions/runs/|issues/|commit/|tree/|pull/)',href) or href in d.local_sources())
         (self.linked if valid else self.missing).append(text)
 
 
@@ -173,6 +173,7 @@ raise SystemExit(dossier.main(['--root',sys.argv[2],'--out',sys.argv[3],'--commi
 
     def test_check_uses_the_recorded_commit_and_detects_stale_output(self):
         root=self.fixture();out=root/'page.html';out.write_text(d.build(root,self.commit))
+        snapshot=root/'sources/capabilities.json';snapshot.parent.mkdir();snapshot.write_text((root/d.LEDGER).read_text())
         with mock.patch.object(subprocess,'check_output',side_effect=AssertionError('check must use recorded source commit')),contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(d.main(['--root',str(root),'--out',str(out),'--check']),0)
         out.write_text(out.read_text().replace('Generated from recorded public evidence','Edited without regeneration'))

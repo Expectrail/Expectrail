@@ -98,6 +98,8 @@ def load(path: Path, kind: str | None = None) -> dict:
 V1_FORMATS = {
     **{f"expectrail.{kind}/v1": (kind, f"{kind}.v1.schema.json")
        for kind in ("onboard-review", "onboard-answers", "onboard-timing")},
+    "expectrail.template-closeout/v1": ("template-closeout", "template-closeout.v1.schema.json"),
+    "expectrail.observer-calibration/v1": ("observer-calibration", "observer-calibration.v1.schema.json"),
     "expectrail.playtest-reproduction/v1": ("playtest-reproduction", "playtest-reproduction.v1.schema.json"),
     "expectrail.episode/v1": ("episode", "episode.v1.schema.json"),
     "expectrail.trace-spec/v1": ("trace-spec", "trace-spec.v1.schema.json"),

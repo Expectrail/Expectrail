@@ -1,5 +1,9 @@
 # The public reproduction bench
 
+[November 16 audit: completion criteria, recorded miss breakdown, remaining measurements and costs](../../../docs/repro-audit.md).
+The [original hosted baseline records](../recordings/public-43465090517/) are now recovered and committed,
+with archive/file digests. Later signal tests are not a new reproduction rate.
+
 Issue #285 asks for one number: of the reported bugs in a bench, the share for which a generated check
 fails on the buggy build 3 times of 3 and passes on the clean game 3 times of 3. This folder is the
 bench that number will be measured on. Everything in it is public, and reproduction is developed on
@@ -444,11 +448,20 @@ No visual observer was read: no recorded answers were given.
 | `move-fire-left` | screen-only | none | none | 153 of 158, from frame 5 | 8079 (frame 27) | 516, 671, 824, 806 | not read |
 
 Nothing differs on: `wait-long`, `hold-right`, `hold-left`, `reverse`, `jump-w0-x1`, `jump-w0-x2`, `jump-w0-x8`, `jump-w40-x1`, `jump-w40-x2`, `jump-w40-x8`, `jump-w80-x1`, `jump-w80-x2`, `jump-w80-x8`, `jump-w120-x1`, `jump-w120-x2`, `jump-w120-x8`, `jump-l40-x1`, `jump-l40-x2`, `jump-l40-x8`.
+
+Frames of the clean game where an object is only partly on screen, which a pixel check's window should avoid: `wait-long` (575 frames): enemy 0-61 | `hold-right` (170 frames): enemy 0-15, 17-27 | `hold-left` (170 frames): enemy 0-12 | `reverse` (170 frames): enemy 0-15, 17-27, 87-96, 98-112, 114-124 | `jump-w0-x1` (50 frames): enemy 0-49 | `jump-w0-x2` (60 frames): enemy 0-59 | `jump-w0-x8` (120 frames): enemy 0-61 | `jump-w40-x1` (70 frames): enemy 0-15, 17-27, 57-69 | `jump-w40-x2` (80 frames): enemy 0-15, 17-27, 57-79 | `jump-w40-x8` (140 frames): enemy 0-15, 17-27, 57-139 | `jump-w80-x1` (90 frames): enemy 0-15, 17-27 | `jump-w80-x2` (100 frames): enemy 0-15, 17-27 | `jump-w80-x8` (160 frames): enemy 0-15, 17-27 | `jump-w120-x1` (110 frames): enemy 0-15, 17-27 | `jump-w120-x2` (120 frames): enemy 0-15, 17-27 | `jump-w120-x8` (180 frames): enemy 0-15, 17-27 | `shoot-right-every48` (117 frames): enemy 0-116; bullet 67, 91 | `shoot-right-every12` (117 frames): enemy 0-116; bullet 67, 91 | `shoot-left-every48` (123 frames): enemy 0-14 | `shoot-left-every12` (123 frames): enemy 0-14 | `move-fire-right` (158 frames): enemy 0-15, 17-27; bullet 73, 83-84, 108, 132 | `move-fire-left` (158 frames): enemy 0-12 | `jump-l40-x1` (70 frames): enemy 0-12 | `jump-l40-x2` (80 frames): enemy 0-12 | `jump-l40-x8` (140 frames): enemy 0-12.
 <!-- evidence:bullet-behind-scenery:end -->
 
 **`enemy-walks-backwards`, on the library's 25 probes.** Screen only, on every probe, from the first
 frame. On 13 of them the difference is a strip at most 75 px wide at the right edge of the picture,
 and on 5 of those only 17 frames differ.
+
+This record and `bullet-behind-scenery`'s were made again on November 17 (the same command, Godot
+4.7.2, no model, not in CI). Every field of every row is what the November 11 records held; each row
+now also has `edges`, the clean game's frames where an enemy or a bullet is only partly on screen,
+which the no-model sensor does not judge. The line under the table lists them. On `jump-w0-x1`,
+`jump-w0-x2` and the two `shoot-right-*` probes the enemy is partly on screen on every frame, so no
+pixel check about it can be decided on those.
 
 <!-- evidence:enemy-walks-backwards:start -->
 25 probes, Godot 4.7.2-stable, frames of 1600 x 960, 120 ticks and 60 frames a second, no model asked. The record and the screen both differ: 0. Only the screen differs: 25. Only the record differs: 0. Nothing differs: 0.
@@ -482,6 +495,8 @@ No visual observer was read: no recorded answers were given.
 | `jump-l40-x1` | screen-only | none | none | 17 of 70, from frame 0 | 3262 (frame 5) | 1531, 660, 1600, 790 | not read |
 | `jump-l40-x2` | screen-only | none | none | 17 of 80, from frame 0 | 3262 (frame 5) | 1531, 660, 1600, 790 | not read |
 | `jump-l40-x8` | screen-only | none | none | 17 of 140, from frame 0 | 3262 (frame 5) | 1531, 660, 1600, 790 | not read |
+
+Frames of the clean game where an object is only partly on screen, which a pixel check's window should avoid: `wait-long` (575 frames): enemy 0-61 | `hold-right` (170 frames): enemy 0-15, 17-27 | `hold-left` (170 frames): enemy 0-12 | `reverse` (170 frames): enemy 0-15, 17-27, 87-96, 98-112, 114-124 | `jump-w0-x1` (50 frames): enemy 0-49 | `jump-w0-x2` (60 frames): enemy 0-59 | `jump-w0-x8` (120 frames): enemy 0-61 | `jump-w40-x1` (70 frames): enemy 0-15, 17-27, 57-69 | `jump-w40-x2` (80 frames): enemy 0-15, 17-27, 57-79 | `jump-w40-x8` (140 frames): enemy 0-15, 17-27, 57-139 | `jump-w80-x1` (90 frames): enemy 0-15, 17-27 | `jump-w80-x2` (100 frames): enemy 0-15, 17-27 | `jump-w80-x8` (160 frames): enemy 0-15, 17-27 | `jump-w120-x1` (110 frames): enemy 0-15, 17-27 | `jump-w120-x2` (120 frames): enemy 0-15, 17-27 | `jump-w120-x8` (180 frames): enemy 0-15, 17-27 | `shoot-right-every48` (117 frames): enemy 0-116; bullet 67, 91 | `shoot-right-every12` (117 frames): enemy 0-116; bullet 67, 91 | `shoot-left-every48` (123 frames): enemy 0-14 | `shoot-left-every12` (123 frames): enemy 0-14 | `move-fire-right` (158 frames): enemy 0-15, 17-27; bullet 73, 83-84, 108, 132 | `move-fire-left` (158 frames): enemy 0-12 | `jump-l40-x1` (70 frames): enemy 0-12 | `jump-l40-x2` (80 frames): enemy 0-12 | `jump-l40-x8` (140 frames): enemy 0-12.
 <!-- evidence:enemy-walks-backwards:end -->
 
 **`coin-stays`, on the library's 25 probes.**

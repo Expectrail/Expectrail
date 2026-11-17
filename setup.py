@@ -13,6 +13,7 @@ BUNDLED_MODULES = {
     "expectrail": {
         "__init__",
         "anchored",
+        "calibration",
         "app",
         "app_kinematic",
         "app_page",

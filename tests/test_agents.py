@@ -274,7 +274,7 @@ class VerifierDecideTest(unittest.TestCase):
             self.assertIn("source=`unavailable`", report)
 
     def test_harness_clean_abort_falls_back_and_still_decides(self):
-        """Godot SIGABRT on clean-replay must not leave verification.json unwritten."""
+        """Simulated SIGABRT (stand-in): a clean replay failure still writes verification.json."""
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp)
             candidate_obs = load(REPO / "agents" / "fixtures" / "obs-freeze.json", "observations")

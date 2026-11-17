@@ -211,6 +211,6 @@ class CombatRecordingTest(Case):
         self.assertEqual(wf["permissions"], {})
         self.assertEqual(wf["jobs"]["record"]["permissions"], {"contents": "read"})
         self.assertEqual(wf["jobs"]["propose"]["permissions"], {"contents": "write"})
-        self.assertEqual(wf["jobs"]["record"]["environment"], "main-only")
+        self.assertEqual(wf["jobs"]["record"]["environment"], "spend")  # main-only plus Sean's approval (#265)
         self.assertNotIn("environment", wf["jobs"]["propose"])
         self.assertNotIn("secrets.", yaml.safe_dump(wf["jobs"]["propose"]))

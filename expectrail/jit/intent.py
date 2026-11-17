@@ -65,14 +65,27 @@ NOT_YET_OFFERED = {
     "player_screen_y_range_px": "how far apart the player's highest and lowest places on the screen are, in "
                                 "frame pixels",
 }
+EVIDENCE_SIGNALS = {
+    "ui_integer_at_end": "the sole visible integer-only Label value on the last tick; no reading when absent, "
+                         "ambiguous or not recorded; engine state, not proof of drawn pixels",
+}
 assert not set(SIGNAL_MEANINGS) & set(NOT_YET_OFFERED)
-assert set(SIGNAL_MEANINGS) | set(NOT_YET_OFFERED) == set(SIGNALS), "every signal needs a meaning for the prompt"
+assert set(SIGNAL_MEANINGS) | set(NOT_YET_OFFERED) | set(EVIDENCE_SIGNALS) == set(SIGNALS), "every signal needs a meaning for the prompt"
 OFFERED = tuple(sorted(SIGNAL_MEANINGS))
 
 
 def _offered(offer: str) -> dict[str, str]:
     """{signal: meaning} the model is told about under ``offer`` (expectrail/jit/offer.py)."""
-    return dict(SIGNAL_MEANINGS) if offer_mod.check(offer) == offer_mod.BASELINE else {**SIGNAL_MEANINGS, **NOT_YET_OFFERED}
+    return offer_mod.meanings(offer)
+
+
+def _operation_unoffered(op: dict, offer: str) -> str | None:
+    if op.get("type") == "signal_compare" and not offer_mod.shows_evidence(offer):
+        return "signal_compare is not offered yet"
+    for key in ("signal", "leftSignal", "rightSignal"):
+        if key in op and op[key] not in _offered(offer):
+            return f"the signal {op[key]} is not offered yet"
+    return None
 
 
 # --- Step 6 of issue #285: checks from the report and the base build alone -------------------------------
@@ -189,8 +202,15 @@ what is found stays inside the box the engine gives OBJECT in that frame, widene
 "tolerancePx": T}, "minScore": S}: the object stays on that side of the line at V pixels of the frame \
 (y grows downwards).
 - {"type": "reaches", "goal": OBJECT, "distancePx": D}: the object comes within D pixels of OBJECT.
+- {"type": "faces-motion"}: the object is drawn facing the way the engine moves it, on every frame of the \
+window where it moves one way and is seen where the engine puts it. Only for an observer and object \
+"pixelChecksOffered" lists it for.
 A pixel check is kept like any other: it must pass on the clean game and fail on the bug build in \
-three replays of each. A frame the observer cannot answer leaves the check undecided, never passed.
+three replays of each. A frame the observer cannot answer leaves the check undecided, never passed. \
+A probe's "differs" may carry "partlyOnScreen": for each kind of object, the [first, last] runs of \
+captured frames on the clean game where one of them is only partly on screen. An observer may not judge \
+an object it cannot see whole, so a check about that object whose window holds one of those frames can \
+stay undecided: choose a window that avoids them. An empty list means none is partly on screen.
 """
 
 
@@ -237,7 +257,12 @@ any threshold between the two with a margin. A signal that reads the same on bot
 example a height capped by a platform overhead) cannot show the bug on that probe: use another probe \
 or another signal. Propose four to eight checks, each on a different probe or signal, so that one \
 wrong guess does not leave the change unchecked.
-""" + (EVIDENCE_TEXT if offer_mod.shows_evidence(offer) else "") + (PIXEL_TEXT if offer_mod.offers_pixel(offer) else "") + """
+""" + ((EVIDENCE_TEXT + "\nAlso allowed: {\"type\": \"signal_compare\", \"leftSignal\": SIGNAL, "
+         "\"rightSignal\": SIGNAL, \"comparator\": \"eq\"|\"lte\"|\"gte\"|\"lt\"|\"gt\", \"toleranceAbs\": t}. "
+         "It compares rightSignal with leftSignal in the SAME probe, within t. "
+         "For a report about a collected-coin counter, compare ui_integer_at_end with coins_collected; "
+         "an undefined or ambiguous reading is never a pass. This reads engine UI state, not pixels.\n")
+        if offer_mod.shows_evidence(offer) else "") + (PIXEL_TEXT if offer_mod.offers_pixel(offer) else "") + """
 What each signal measures, over one replay:
 """ + "\n".join(f"- {k}: {v}" for k, v in sorted(meanings.items())) + """
 
@@ -347,6 +372,10 @@ def _probe_entry(p: dict, signals: frozenset[str] = frozenset(OFFERED), evidence
             record = dict(record, signals={k: v for k, v in record["signals"].items() if k in signals})
         entry["differs"] = {**{k: d[k] for k in ("ticksPerSecond", "framesPerSecond", "frame") if d.get(k) is not None},
                             "record": record, "screen": d.get("screen")}
+        if isinstance(d.get("partlyOnScreen"), dict):
+            # Only under the pixel setting (expectrail/jit/offer.py attach_evidence): object kinds from a
+            # closed list and frame numbers.
+            entry["differs"]["partlyOnScreen"] = d["partlyOnScreen"]
     return entry
 
 
@@ -387,7 +416,7 @@ def parse_answer_pixel(content, profile: dict, existing_probe_ids: set[str],
 
 def _parse(content, profile: dict, existing_probe_ids: set[str], offer: str, pixel_too: bool,
            observer: str = SAM):
-    offered = _offered(offer)
+    _offered(offer)  # validate the named offer before reading untrusted input
     if isinstance(content, list):
         content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
     if not isinstance(content, str) or not content.strip():
@@ -414,10 +443,10 @@ def _parse(content, profile: dict, existing_probe_ids: set[str], offer: str, pix
             op["left"], op["right"] = a["left"], a["right"]
         elif a["kind"] == "probes":
             a["ids"] = [renamed.get(i, i) for i in a["ids"]]
-    held = [e for e in entries if e["spec"]["operation"].get("signal") in set(NOT_YET_OFFERED) - set(offered)]
+    held = [e for e in entries if _operation_unoffered(e["spec"]["operation"], offer)]
     if held:
         entries = [e for e in entries if e not in held]
-        notes = [*notes, *(f"dropped {e['spec']['id']}: the signal {e['spec']['operation']['signal']} is not offered yet"
+        notes = [*notes, *(f"dropped {e['spec']['id']}: {_operation_unoffered(e['spec']['operation'], offer)}"
                            for e in held)]
     try:
         entries = _as_jit(entries)
@@ -590,7 +619,7 @@ def from_proposal(path, model: str | None = None, offer: str = offer_mod.BASELIN
     check_candidate(candidate)
     if observer is not None:
         check_observer(observer, offer)
-    offered = _offered(offer)
+    _offered(offer)  # validate the named offer before reading untrusted input
 
     def propose(report: str, patch_text: str, dmap: dict, profile: dict, probes: list[dict]) -> dict:
         if not isinstance(doc, dict) or doc.get("format") != PROPOSAL_FORMAT:
@@ -637,8 +666,8 @@ def from_proposal(path, model: str | None = None, offer: str = offer_mod.BASELIN
                         or not spec["id"].startswith("jit-") or applies.get("kind") not in ("all", "probes", "pair"):
                     raise ContractError("not a generated check")
                 validate_v1(spec, "trace-spec")
-                if spec["operation"].get("signal") in set(NOT_YET_OFFERED) - set(offered):
-                    raise ContractError(f"the signal {spec['operation']['signal']} is not offered yet")
+                if _operation_unoffered(spec["operation"], offer):
+                    raise ContractError(_operation_unoffered(spec["operation"], offer))
             except (ContractError, KeyError, TypeError, AttributeError) as exc:
                 raise IntentUnavailable(f"PROPOSAL_INVALID: contract: {exc}"[:300]) from exc
             entries.append({"templateId": "jit", "spec": spec, "approved": False, "applies": applies, "source": "jit"})
