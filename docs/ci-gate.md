@@ -1,5 +1,8 @@
 # The CI gate: Expectrail on a game repository's pull requests
 
+The [frozen hosted trial handover and Done when audit](254-hosted-trials.md)
+prepare the remaining #254 experiments for Sean without dispatching them.
+
 ## Require Expectrail clearance on the protected branch
 
 Install the pull request caller, its reusable capture workflow and the trusted publisher together
