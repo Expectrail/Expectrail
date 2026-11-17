@@ -34,6 +34,21 @@ lack recorded answers. A missing answer needs review unless a failure already re
 A correct-fix trial must use a trusted recording covering the checks exercised. Neither job calls
 a paid model.
 
+## Gate command exit codes
+
+`python -m expectrail.gate.verify` returns **0 for accept, 1 for reject and 2 for
+needs-review**. A stopped verification still writes `findings.json` and returns 2.
+Code **3** means the command refused before verification: for example a nonempty
+output folder, invalid PR identity, or an unreadable/mismatched PR event. It must
+not overwrite a record or run the game in those cases. Argument-parser errors
+use argparse's exit 2 and do not promise a findings record.
+
+With PR identity and `GITHUB_EVENT_PATH`, the command checks that the event names
+the same PR and commits before replay. A local test using synthetic PR identities
+must supply its own event or clear that variable; inheriting the CI runner's real
+PR event tests identity refusal instead of the local verdict's exit code. The
+exit mapping has not changed in #588.
+
 ## On Expectrail's own repository
 
 Sean decided on November 14, 2026 (option C on #254): on this repository's own pull requests,
@@ -161,7 +176,7 @@ Both use the actions from the checked-out repository (`./.github/actions/...`) i
 | verify | `require-sandbox` | `false` | `true` refuses to replay the game outside the replay sandbox ([replay-sandbox.md](replay-sandbox.md)): where the runner cannot provide it nothing is replayed and the decision is needs-review. To let the sandbox start, `true` also sets `kernel.apparmor_restrict_unprivileged_userns=0` on the runner (Ubuntu 24.04 ships it on); on a hosted runner that ends with the job, on a self-hosted runner it stays until reboot. `false` changes no setting and sandboxes the game only where the runner already allows it; the record and the comment say how many replays were |
 | verify | `artifact-name` | `expectrail-gate` | The evidence artifact's name |
 | verify | `generated-checks` | empty | An advisory block of checks generated for this change ([jit.md](jit.md)), shown in the comment and the review page; it never changes the decision, and one that cannot be read shows as "no generated checks" |
-| verify | `intent` | `from-pull-request` | What the change is for: `fix`, `change` or `none`, or `from-pull-request`, which reads a label `intent:...` or a description line `Expectrail-Intent: ...` from the event ([a change declared a fix](#a-change-declared-a-fix)); on any other event it is `none` |
+| verify | `intent` | `from-pull-request` | What the change is for: `fix`, `change` or `none`, or `from-pull-request`, which reads closing-keyword links, a label `intent:...` or a description line `Expectrail-Intent: ...` from the event ([a change declared a fix](#a-change-declared-a-fix)); on any other event it is `none`. With PR identity and the event available, a stricter PR declaration overrides an explicit `none` or `change` |
 | comment | `github-token` | the run's token | Reads the verify run's artifact and writes the comment |
 | comment | `artifact-name` | `expectrail-gate` | Must match the verify action's |
 | comment | `watch` | empty | More paths the verdict depends on, one per line (end a folder with `/`); the comment warns when the pull request changes one |
@@ -239,6 +254,7 @@ demonstrated that its own runs do not show. A record from before the field reads
 
 **On a pull request** (added November 13, 2026) the intent is read from the pull request itself:
 
+- a closing-keyword link such as `Fixes #284`, `Closes #284` or `Resolves #284`, in any case; or
 - a label `intent:fix`, `intent:change` or `intent:none`, or
 - a line of the description that starts `Expectrail-Intent:` followed by `fix`, `change` or `none`
   and nothing else, for example `Expectrail-Intent: fix`.
@@ -247,6 +263,14 @@ Nothing declared is `none`. With several declarations the strictest wins (`fix`,
 then `none`), and a value that is not one of the three (`intent:bugfix`, `Expectrail-Intent: maybe`)
 is a fix. So adding a label or a line can only move a change towards the stricter path, never away
 from it (`python3 -m expectrail.gate.intent`).
+
+Every closing-keyword link is read as `fix`, including links to issues about features or code,
+cross-repository references and quoted examples. This conservative choice needs no issue-label API
+lookup or new permission. Plain `Part of #284` and `See #284` are not closing declarations. Neither
+`intent:none` nor `Expectrail-Intent: none` can cancel a closing link. Findings and CI bundles keep
+the matched phrase and its 1-based PR-body line in `pullRequest.fixLinks`; reports and comments show
+that source. A changed source line invalidates the captured metadata even if intent stays `fix`.
+See the [case audit and measured counts](linked-bug-fix.md).
 
 Both halves read it. The verify action's `intent` input defaults to `from-pull-request`: it reads the
 declaration from the `pull_request` event file and passes it to the gate (an event file that cannot
@@ -269,10 +293,9 @@ without a demonstrated repair.
 
 What this does not do yet:
 
-- **A pull request that links a bug issue is not yet treated as a fix.** The description says
-  "Closes #N", not whether #N is a bug, and reading the linked issue's labels from the trusted job
-  would need the `issues: read` permission, which only a person may add. `declared(...,
-  links_bug=True)` is there for a caller that knows; neither half of the gate passes it today.
+- **Links are not classified by issue labels.** Every closing-keyword reference is a fix. A future
+  distinction would need an issue lookup and Sean's permission review; an optional
+  [permission proposal](proposals/284-issue-labels.yml.txt) is provided, not installed.
 - **Only approved checks can demonstrate a repair.** A generated check cannot count yet (#271), so
   for most reported bugs today the honest answer is needs review.
 - The three runs are three replays of the same route on the same machine. That shows the check is

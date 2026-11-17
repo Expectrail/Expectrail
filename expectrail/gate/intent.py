@@ -8,6 +8,9 @@ A pull request declares its intent with a label or a line in its description:
 - a line of the description that starts ``Expectrail-Intent:``, followed by ``fix``, ``change`` or
   ``none`` and nothing else (the key's case and the spaces around the value do not matter).
 
+A closing-keyword link (Fixes/Closes/Resolves and their GitHub variants) is a fix,
+even with a none/change declaration. Every such link is treated strictly; no label lookup is made.
+
 Nothing declared is ``none``. When there are several declarations the strictest wins: ``fix`` over
 ``change`` over ``none``. A declaration whose value is not one of the three (a label ``intent:bugfix``,
 a line ``Expectrail-Intent: maybe``) is read as ``fix``. So no label or line can make acceptance
@@ -33,6 +36,11 @@ LABEL_PREFIX = "intent:"
 # A line that starts with the key is a declaration; its value is the whole rest of the line.
 LINE = re.compile(r"[ \t]*expectrail-intent[ \t]*:(.*)", re.IGNORECASE)
 MAX_BODY = 65536          # GitHub keeps at most this many characters of a description
+MAX_LINKS = 10
+# Deliberately conservative, including quoted/code text and cross-repository links.
+# Without an issue-label lookup every closing reference imposes fix.
+REFERENCE = r"(?:https?://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[0-9]+|[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\#[0-9]+|\#[0-9]+)"
+CLOSING = re.compile(r"\b(?:fix(?:e[sd])?|close[sd]?|resolve[sd]?)\b\s*:?\s*" + REFERENCE + r"\b", re.IGNORECASE)
 MAX_LABELS = 100
 MAX_EVENT_BYTES = 25 * 1024 * 1024
 
@@ -59,9 +67,10 @@ def _value(raw: str) -> str:
 def declared(labels, body, *, links_bug: bool = False) -> Declared:
     """The intent from a pull request's labels (names, or label objects with a ``name``) and its
     description. ``links_bug`` is for a caller that knows the pull request links an issue labelled
-    as a bug: it is then a fix, whatever else it says. Neither half of the CI gate knows that today
-    (the description says "Closes #N", not whether #N is a bug), so both pass False."""
-    found: list[tuple[str, str]] = []
+    as a bug: it is then a fix, whatever else it says. Every closing-keyword
+    reference is also a fix, because no issue-label permission/lookup is required."""
+    found: list[tuple[str, str]] = [
+        ('fix', f"closing-keyword line {link['line']}: {link['text']}") for link in closing_links(body)]
     for label in list(labels or [])[:MAX_LABELS]:
         name = label.get("name") if isinstance(label, dict) else label
         if isinstance(name, str) and name.lower().startswith(LABEL_PREFIX):
@@ -80,6 +89,67 @@ def declared(labels, body, *, links_bug: bool = False) -> Declared:
     return Declared(intent, sources)
 
 
+def closing_links(body) -> list[dict]:
+    """Bounded matching phrases, never executable text or an issue-label lookup."""
+    text = body if isinstance(body, str) else ''
+    links = []
+    for match in CLOSING.finditer(text[:MAX_BODY]):
+        link = {'line': text.count('\n', 0, match.start()) + 1,
+                'text': _clip(match.group(), 320)}
+        if link not in links:
+            links.append(link)
+        if len(links) == MAX_LINKS:
+            break
+    return links
+
+
+def pull_request_metadata(pr: dict) -> dict:
+    """The existing PR identity, with the closing lines used by both CI halves."""
+    result = {'number': pr['number'], 'headSha': pr['head']['sha'], 'baseSha': pr['base'].get('sha')}
+    links = closing_links(pr.get('body'))
+    if links:
+        result['fixLinks'] = links
+    return result
+
+
+def _event_pr(path: Path):
+    with Path(path).open('rb') as stream:
+        raw = stream.read(MAX_EVENT_BYTES + 1)
+    if len(raw) > MAX_EVENT_BYTES:
+        raise ValueError('the event file is too large to read')
+    event = json.loads(raw.decode('utf-8'))
+    return event.get('pull_request') if isinstance(event, dict) else None
+
+
+def ci_context(metadata, selected: str, event_path=None):
+    """Legacy action's event adds provenance and can only tighten explicit intent.
+
+    No event is consulted for a local command without PR identity. An unreadable
+    or mismatched CI context refuses the command, never supplies a weaker result.
+    """
+    if metadata is None or not event_path:
+        return metadata, selected
+    pr = _event_pr(Path(event_path))
+    if not isinstance(pr, dict):
+        raise ValueError('the event does not identify this pull request')
+    try:
+        actual = pull_request_metadata(pr)
+    except (KeyError, TypeError) as exc:
+        raise ValueError('the event has no usable pull request identity') from exc
+    if (actual['number'] != metadata['number'] or actual['headSha'] != metadata['headSha']
+            or (metadata['baseSha'] is not None and actual['baseSha'] != metadata['baseSha'])):
+        raise ValueError('the event names a different pull request or commit')
+    result = dict(metadata)
+    if actual.get('fixLinks'):
+        result['fixLinks'] = actual['fixLinks']
+    declared = of_pull_request(pr).intent
+    # Unknown CLI values keep the existing stopped-record path; do not turn an
+    # invalid command into an accepted fix merely because it also has a link.
+    if selected in INTENTS:
+        selected = min((selected, declared), key=INTENTS.index)
+    return result, selected
+
+
 def of_pull_request(pr: dict | None) -> Declared:
     """The intent a pull request object (as the REST API and the event give it) declares."""
     pr = pr if isinstance(pr, dict) else {}
@@ -90,10 +160,7 @@ def of_pull_request(pr: dict | None) -> Declared:
 def of_event(path: Path) -> Declared:
     """The intent the pull request in a ``pull_request`` event file declares; ``none`` for any other
     event. An event file that cannot be read stops the caller: it is never read as ``none``."""
-    if path.stat().st_size > MAX_EVENT_BYTES:
-        raise ValueError("the event file is too large to read")
-    event = json.loads(path.read_text(encoding="utf-8"))
-    pr = event.get("pull_request") if isinstance(event, dict) else None
+    pr = _event_pr(path)
     return of_pull_request(pr) if isinstance(pr, dict) else Declared("none")
 
 
