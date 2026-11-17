@@ -520,6 +520,8 @@ def read_record(path: Path, *, generated: VerifiedGenerated | None = None) -> di
 def check_record(doc, *, generated: VerifiedGenerated | None = None) -> None:
     generated = generated if generated is not None else _COUNTING_CONTEXT.get()
     validate(doc, schema())
+    if (doc.get('pullRequest') or {}).get('fixLinks') and intent_of(doc) != 'fix':
+        raise RecordError('a closing-keyword link requires fix intent')
     check_consistency(doc, generated=generated)
 
 
@@ -932,7 +934,10 @@ def _repair_words(doc: dict) -> str:
 
 
 def repair_words(doc: dict) -> str:
-    words = _repair_words(doc)
+    """Shared, escaped by every report/comment reader; provenance never chooses a check."""
+    links = (doc.get('pullRequest') or {}).get('fixLinks', [])
+    source = '; '.join(f"closing-keyword line {link['line']}: {link['text']}" for link in links)
+    words = (source + '; ' if source else '') + _repair_words(doc)
     rows = (doc.get('countingChecks') or {}).get('rows', [])
     if not rows:
         return words

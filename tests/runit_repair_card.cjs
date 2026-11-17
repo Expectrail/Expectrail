@@ -30,7 +30,8 @@ const requests = [];
 const responses = {
   "samples.json": manifest,
   "/api/health": {format: "expectrail.run-it-api/v1", kind: "health", open: true},
-  "/results/latest.json": {format: "expectrail.run-it-latest/v1", samples: {"recorded-fix": {requestId: "old"}}}
+  "/results/latest.json": {format: "expectrail.run-it-latest/v1", samples: {"recorded-fix": {requestId: "old", finishedAt: "2026-11-14T00:00:00Z"}}},
+  "earlier/latest.json": {format: "expectrail.run-it-latest/v1", samples: {"recorded-fix": {requestId: "cached-old", finishedAt: "2026-11-13T00:00:00Z"}}}
 };
 async function fetch(url) {
   requests.push(url);
