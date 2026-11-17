@@ -77,7 +77,7 @@ jobs:
           PY
 
   run:
-    environment: main-only
+    environment: spend
     needs: plan
     if: ${{ needs.plan.result == 'success' }}
     runs-on: ubuntu-24.04

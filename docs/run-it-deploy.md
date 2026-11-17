@@ -124,6 +124,11 @@ fresh quota counters. Never delete storage to reset a quota.
 
 ## D. Add the two runtime secrets in the dashboard
 
+**Before this section:** the `spend` environment must exist and the change that moves every model-key
+job into it must be merged ([spend-environment.md](spend-environment.md)). A fine-grained token cannot be
+limited to one workflow: with Actions write it can start any workflow, Run it's or a paid one. With
+`spend` in place, a paid run it starts waits for Sean's approval and spends nothing without it.
+
 50. Open GitHub **Settings → Developer settings → Personal access tokens → Fine-grained tokens** from your profile menu (not repository Settings).
 51. Select **Generate new token**.
 52. Name it `Expectrail Run it dispatch`.
