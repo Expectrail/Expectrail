@@ -112,7 +112,12 @@ def write_page(out: Path, record: dict, frames: dict[str, dict]) -> Path:
         f"<h1>Expectrail gate {_badge(decision)}</h1>",
         f"<p>{esc(DECISION_MEANS[decision])}</p>",
     ]
-    if decision == "needs-review" and rec.unverified_fix(record):
+    if decision == "needs-review" and rec.unverified_fix(record) and rec.unverified_fix_headline(record) == rec.UNDECIDED_FIX:
+        n = rec.undecided_after_failure(record["checks"])
+        parts.append(f"<p><strong>{esc(rec.UNDECIDED_FIX)}.</strong> {n} check{'s' if n != 1 else ''} failed before "
+                     "the change and could not be decided after it (needs review, or the replay did not finish), so "
+                     "nothing shows the bug is fixed. A person should look at the evidence after the change.</p>")
+    elif decision == "needs-review" and rec.unverified_fix(record):
         parts.append("<p><strong>No check reproduced the reported bug, so this fix is not verified.</strong> "
                      f"No check failed before the change {rec.REPAIR_RUNS} times of {rec.REPAIR_RUNS} and passed "
                      "after it, so the checks passing now says nothing about the bug. Add a check that fails on the "

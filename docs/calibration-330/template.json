@@ -1,0 +1,1309 @@
+{
+  "format": "expectrail.observer-calibration/v1",
+  "machineWritten": true,
+  "observer": {
+    "identity": {
+      "name": "template",
+      "provider": "local",
+      "model": "expectrail.template-foreground/v3"
+    },
+    "evidence": "no-model",
+    "sourceSha256": "a89f0a15ddd3c41925f514e7829c99249d82c3962fddaa5a5162dc11848d081e"
+  },
+  "art": {
+    "player/robot.webp": "8b542410d2487dbfd0576a3422aa0030e6ae3189946121ff2c75448f74960549"
+  },
+  "artSha256": "65138e3a910c2042e0a3ac406acafaabc31652cdf8c92d6cea27d4a160b04d8a",
+  "minimumFloor": 0.9,
+  "candidates": [
+    {
+      "prompt": "player/robot.webp",
+      "floor": 0.949981,
+      "rows": [
+        {
+          "frame": 0,
+          "expectedBox": [
+            757.5,
+            671.0,
+            842.5,
+            780.0
+          ],
+          "replaySha256": "a682b17c977b3c05555219307e28261613689f26e4331c5721356ca4fa7e7e49",
+          "frameSha256": "f884f228f4bb6cd681ca2aacfe15948b231581cb9177030e4e3f901a3c8c123c",
+          "detections": [
+            {
+              "box": [
+                757,
+                670,
+                843,
+                780
+              ],
+              "score": 0.999998
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 10,
+          "expectedBox": [
+            760.5,
+            670.9960000000001,
+            845.5,
+            779.9960000000001
+          ],
+          "replaySha256": "a682b17c977b3c05555219307e28261613689f26e4331c5721356ca4fa7e7e49",
+          "frameSha256": "a7c9b5b49316045a11dd57cf04f723f8e35e56985ce85c3d407ac66d85e9ecc9",
+          "detections": [
+            {
+              "box": [
+                760,
+                670,
+                846,
+                780
+              ],
+              "score": 1.0
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 20,
+          "expectedBox": [
+            762.5,
+            670.9960000000001,
+            847.5,
+            779.9960000000001
+          ],
+          "replaySha256": "a682b17c977b3c05555219307e28261613689f26e4331c5721356ca4fa7e7e49",
+          "frameSha256": "1a030160f1aeaa8b84fdd3b90fc7127f7ad86fb99f3320fb349c42b75554db6f",
+          "detections": [
+            {
+              "box": [
+                762,
+                670,
+                848,
+                780
+              ],
+              "score": 1.0
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 30,
+          "expectedBox": [
+            762.5,
+            670.9960000000001,
+            847.5,
+            779.9960000000001
+          ],
+          "replaySha256": "a682b17c977b3c05555219307e28261613689f26e4331c5721356ca4fa7e7e49",
+          "frameSha256": "0ba238ccce48c8c819279a7592dc5383c069293e5800218a506d95b6b72d8232",
+          "detections": [
+            {
+              "box": [
+                762,
+                670,
+                848,
+                780
+              ],
+              "score": 0.999994
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 40,
+          "expectedBox": [
+            762.5,
+            557.2059999999999,
+            847.5,
+            666.2059999999999
+          ],
+          "replaySha256": "a682b17c977b3c05555219307e28261613689f26e4331c5721356ca4fa7e7e49",
+          "frameSha256": "94fa4c2b6b765a23fae82e8e8b975a7c493c443496fae69fcb1e3312471ef684",
+          "detections": [
+            {
+              "box": [
+                769,
+                555,
+                855,
+                665
+              ],
+              "score": 1.0
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 50,
+          "expectedBox": [
+            762.5,
+            490.28999999999996,
+            847.5,
+            599.29
+          ],
+          "replaySha256": "a682b17c977b3c05555219307e28261613689f26e4331c5721356ca4fa7e7e49",
+          "frameSha256": "a6bf782560d24fdfa1cf68c68a5637215376ef4e59e7b03d65dfb2bc0ec5211e",
+          "detections": [
+            {
+              "box": [
+                763,
+                496,
+                849,
+                606
+              ],
+              "score": 1.0
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 60,
+          "expectedBox": [
+            762.5,
+            552.3720000000001,
+            847.5,
+            661.3720000000001
+          ],
+          "replaySha256": "a682b17c977b3c05555219307e28261613689f26e4331c5721356ca4fa7e7e49",
+          "frameSha256": "274b1fe9100cf58ac55c9ba27e6c97fa3804e5413b173a6dad5dcc3f23770422",
+          "detections": [
+            {
+              "box": [
+                764,
+                552,
+                850,
+                662
+              ],
+              "score": 1.0
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 70,
+          "expectedBox": [
+            762.552,
+            659.0799999999999,
+            847.552,
+            768.0799999999999
+          ],
+          "replaySha256": "a682b17c977b3c05555219307e28261613689f26e4331c5721356ca4fa7e7e49",
+          "frameSha256": "3cccaa39de308ae44882a3fb89a7325460c2fd210bf1b6b4149a35d27b1d48f4",
+          "detections": [
+            {
+              "box": [
+                762,
+                664,
+                848,
+                774
+              ],
+              "score": 1.0
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 80,
+          "expectedBox": [
+            762.499,
+            505.9000000000001,
+            847.499,
+            614.9000000000001
+          ],
+          "replaySha256": "a682b17c977b3c05555219307e28261613689f26e4331c5721356ca4fa7e7e49",
+          "frameSha256": "77b767a07a3d58d9fde7c821f43cc18f4b66f14d6e645ef8342c6a22290ef74e",
+          "detections": [
+            {
+              "box": [
+                762,
+                513,
+                848,
+                623
+              ],
+              "score": 1.0
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 90,
+          "expectedBox": [
+            762.499,
+            584.6500000000001,
+            847.499,
+            693.6500000000001
+          ],
+          "replaySha256": "a682b17c977b3c05555219307e28261613689f26e4331c5721356ca4fa7e7e49",
+          "frameSha256": "e5149bf40e1d637d15d09446bb3516db9cb6cb34974eb9e7202f208ce11742a6",
+          "detections": [
+            {
+              "box": [
+                760,
+                588,
+                846,
+                698
+              ],
+              "score": 1.0
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 100,
+          "expectedBox": [
+            762.367,
+            598.846,
+            847.367,
+            707.846
+          ],
+          "replaySha256": "a682b17c977b3c05555219307e28261613689f26e4331c5721356ca4fa7e7e49",
+          "frameSha256": "1c495860cbc99c3059aa529d53bb4dd19d58a61d387fcda4cf237746f1be17a2",
+          "detections": [
+            {
+              "box": [
+                759,
+                598,
+                844,
+                708
+              ],
+              "score": 1.0
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 110,
+          "expectedBox": [
+            757.8670000000001,
+            606.174,
+            842.8670000000001,
+            715.174
+          ],
+          "replaySha256": "a682b17c977b3c05555219307e28261613689f26e4331c5721356ca4fa7e7e49",
+          "frameSha256": "aeaf2777d4709b35cbcf0ebe684be885c69a2aa5b1936fe5b5c7cbb17edfbbb3",
+          "detections": [
+            {
+              "box": [
+                757,
+                606,
+                843,
+                716
+              ],
+              "score": 0.999996
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 119,
+          "expectedBox": [
+            758.5999999999999,
+            606.174,
+            843.5999999999999,
+            715.174
+          ],
+          "replaySha256": "a682b17c977b3c05555219307e28261613689f26e4331c5721356ca4fa7e7e49",
+          "frameSha256": "e509fec6b85b9c332c727c23082b6695aa4f3ef983cc2fb2b2112934784ef9a8",
+          "detections": [
+            {
+              "box": [
+                757,
+                606,
+                843,
+                716
+              ],
+              "score": 0.999981
+            }
+          ],
+          "error": null
+        }
+      ]
+    }
+  ],
+  "selected": "player/robot.webp",
+  "clean": [
+    {
+      "frame": 10,
+      "expectedBox": [
+        758.25,
+        670.8499999999999,
+        843.25,
+        779.8499999999999
+      ],
+      "replaySha256": "4fe43bd091b145695c9267c6adeac82d1976a6a4b02e520e209af84f011aea71",
+      "frameSha256": "fe9f9db31c95ab5d845f053b2815bf7985cb28d1a46e1c0aacda21efa059eca7",
+      "detections": [
+        {
+          "box": [
+            758,
+            670,
+            844,
+            780
+          ],
+          "score": 1.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "frame": 20,
+      "expectedBox": [
+        762.5,
+        670.9960000000001,
+        847.5,
+        779.9960000000001
+      ],
+      "replaySha256": "4fe43bd091b145695c9267c6adeac82d1976a6a4b02e520e209af84f011aea71",
+      "frameSha256": "eabfe8a32e590767c41fd2b1dafbb4924b08f7ef3a4edfc8b7bba5c0159fe299",
+      "detections": [
+        {
+          "box": [
+            762,
+            670,
+            848,
+            780
+          ],
+          "score": 0.999996
+        }
+      ],
+      "error": null
+    },
+    {
+      "frame": 30,
+      "expectedBox": [
+        762.5,
+        670.9960000000001,
+        847.5,
+        779.9960000000001
+      ],
+      "replaySha256": "4fe43bd091b145695c9267c6adeac82d1976a6a4b02e520e209af84f011aea71",
+      "frameSha256": "66311dcfefe21d0b06e51166871c36c82e261007f3053382975b3e3adca659a6",
+      "detections": [
+        {
+          "box": [
+            760,
+            670,
+            846,
+            780
+          ],
+          "score": 0.999987
+        }
+      ],
+      "error": null
+    },
+    {
+      "frame": 40,
+      "expectedBox": [
+        762.5,
+        670.9960000000001,
+        847.5,
+        779.9960000000001
+      ],
+      "replaySha256": "4fe43bd091b145695c9267c6adeac82d1976a6a4b02e520e209af84f011aea71",
+      "frameSha256": "df5648b92b888ce1197f8196f386c558b445dc949304d87684f5d668672e48af",
+      "detections": [
+        {
+          "box": [
+            757,
+            669,
+            843,
+            779
+          ],
+          "score": 1.0
+        }
+      ],
+      "error": null
+    },
+    {
+      "frame": 50,
+      "expectedBox": [
+        762.5,
+        670.9960000000001,
+        847.5,
+        779.9960000000001
+      ],
+      "replaySha256": "4fe43bd091b145695c9267c6adeac82d1976a6a4b02e520e209af84f011aea71",
+      "frameSha256": "d939b4ee92218e1f4f5e2e3b79ca5f5e779468488ef6cb9b41aca3c91955274c",
+      "detections": [
+        {
+          "box": [
+            759,
+            670,
+            845,
+            780
+          ],
+          "score": 0.999999
+        }
+      ],
+      "error": null
+    },
+    {
+      "frame": 60,
+      "expectedBox": [
+        761.75,
+        670.9960000000001,
+        846.75,
+        779.9960000000001
+      ],
+      "replaySha256": "4fe43bd091b145695c9267c6adeac82d1976a6a4b02e520e209af84f011aea71",
+      "frameSha256": "c59b7db71b69f1541d79c6b4651c6dfbc3149b1e9a0f666bf8d1959300c96a8a",
+      "detections": [
+        {
+          "box": [
+            762,
+            670,
+            848,
+            780
+          ],
+          "score": 0.99994
+        }
+      ],
+      "error": null
+    },
+    {
+      "frame": 70,
+      "expectedBox": [
+        757.5,
+        670.992,
+        842.5,
+        779.992
+      ],
+      "replaySha256": "4fe43bd091b145695c9267c6adeac82d1976a6a4b02e520e209af84f011aea71",
+      "frameSha256": "a13f884809bd0b7c299251fbb541426ea2f16904dd36e16561ec51f9541b6ee9",
+      "detections": [
+        {
+          "box": [
+            757,
+            670,
+            843,
+            780
+          ],
+          "score": 0.999997
+        }
+      ],
+      "error": null
+    },
+    {
+      "frame": 80,
+      "expectedBox": [
+        757.5,
+        670.992,
+        842.5,
+        779.992
+      ],
+      "replaySha256": "4fe43bd091b145695c9267c6adeac82d1976a6a4b02e520e209af84f011aea71",
+      "frameSha256": "209a153e627fcf5b6e392e8240d9c0f63e16f8b171383622db121717f4d20417",
+      "detections": [
+        {
+          "box": [
+            757,
+            670,
+            843,
+            780
+          ],
+          "score": 0.999997
+        }
+      ],
+      "error": null
+    },
+    {
+      "frame": 90,
+      "expectedBox": [
+        757.5,
+        670.992,
+        842.5,
+        779.992
+      ],
+      "replaySha256": "4fe43bd091b145695c9267c6adeac82d1976a6a4b02e520e209af84f011aea71",
+      "frameSha256": "93ae6e3360c932d089768065394343c86da6e2a370f6a081427d58cdb90fd36a",
+      "detections": [
+        {
+          "box": [
+            757,
+            671,
+            843,
+            780
+          ],
+          "score": 0.999786
+        }
+      ],
+      "error": null
+    },
+    {
+      "frame": 100,
+      "expectedBox": [
+        757.5,
+        670.992,
+        842.5,
+        779.992
+      ],
+      "replaySha256": "4fe43bd091b145695c9267c6adeac82d1976a6a4b02e520e209af84f011aea71",
+      "frameSha256": "02410151725e629c9fabff6541c368e29c4d97537a3b0d4e285070cba9b8a04b",
+      "detections": [
+        {
+          "box": [
+            757,
+            671,
+            843,
+            780
+          ],
+          "score": 0.999998
+        }
+      ],
+      "error": null
+    },
+    {
+      "frame": 110,
+      "expectedBox": [
+        757.5,
+        670.992,
+        842.5,
+        779.992
+      ],
+      "replaySha256": "4fe43bd091b145695c9267c6adeac82d1976a6a4b02e520e209af84f011aea71",
+      "frameSha256": "4dce1fa4436aa55fccb60cebeb9b698a9c00ee1b24d02c427444bcf848ecdb7a",
+      "detections": [
+        {
+          "box": [
+            757,
+            671,
+            843,
+            780
+          ],
+          "score": 0.999998
+        }
+      ],
+      "error": null
+    },
+    {
+      "frame": 119,
+      "expectedBox": [
+        757.5,
+        670.992,
+        842.5,
+        779.992
+      ],
+      "replaySha256": "4fe43bd091b145695c9267c6adeac82d1976a6a4b02e520e209af84f011aea71",
+      "frameSha256": "4d8ac9f2b054e904a9ec7dbf0af1b1778cfbb95df4ed11cbb2ae7edbfa4b32ba",
+      "detections": [
+        {
+          "box": [
+            757,
+            670,
+            843,
+            780
+          ],
+          "score": 0.999999
+        }
+      ],
+      "error": null
+    }
+  ],
+  "broken": [
+    {
+      "name": "hidden",
+      "patchSha256": "2733a53296743bdae109eff41bb480f118fece5474492d28a8e73a409de4c705",
+      "rows": [
+        {
+          "frame": 0,
+          "expectedBox": [
+            757.5,
+            671.0,
+            842.5,
+            780.0
+          ],
+          "replaySha256": "933ebaf22ca055915430e862f27ff4743f8e20f27ef4ba8cc6b54ebf94d96d7e",
+          "frameSha256": "787dbf416b632299096d3b6d979284f0feab65ac4d4254612f05711ff68513de",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 10,
+          "expectedBox": [
+            758.25,
+            670.8499999999999,
+            843.25,
+            779.8499999999999
+          ],
+          "replaySha256": "933ebaf22ca055915430e862f27ff4743f8e20f27ef4ba8cc6b54ebf94d96d7e",
+          "frameSha256": "5bc8313d43436d647b3ca0f18286a89d38e5c193009bd0f9c9993cdd82da3621",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 20,
+          "expectedBox": [
+            762.5,
+            670.9960000000001,
+            847.5,
+            779.9960000000001
+          ],
+          "replaySha256": "933ebaf22ca055915430e862f27ff4743f8e20f27ef4ba8cc6b54ebf94d96d7e",
+          "frameSha256": "16ad27033c30a7a1f0a51e51b57856023d5f640bcd2c484d31a495a2c709d6e4",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 30,
+          "expectedBox": [
+            762.5,
+            670.9960000000001,
+            847.5,
+            779.9960000000001
+          ],
+          "replaySha256": "933ebaf22ca055915430e862f27ff4743f8e20f27ef4ba8cc6b54ebf94d96d7e",
+          "frameSha256": "e2960a7fdcd7f99fb1707bf0e6f17daa55b810b69eae4c880fc1001e09a63780",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 40,
+          "expectedBox": [
+            762.5,
+            670.9960000000001,
+            847.5,
+            779.9960000000001
+          ],
+          "replaySha256": "933ebaf22ca055915430e862f27ff4743f8e20f27ef4ba8cc6b54ebf94d96d7e",
+          "frameSha256": "583fcbf14ccb38663142164f1e75d0a918fc135a8a984b591a47b2438fd13123",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 50,
+          "expectedBox": [
+            762.5,
+            670.9960000000001,
+            847.5,
+            779.9960000000001
+          ],
+          "replaySha256": "933ebaf22ca055915430e862f27ff4743f8e20f27ef4ba8cc6b54ebf94d96d7e",
+          "frameSha256": "7508a569f03fa6ccd05d80ebcc1c4a5f86156e01ca801894e4912b354767ee4c",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 60,
+          "expectedBox": [
+            761.75,
+            670.9960000000001,
+            846.75,
+            779.9960000000001
+          ],
+          "replaySha256": "933ebaf22ca055915430e862f27ff4743f8e20f27ef4ba8cc6b54ebf94d96d7e",
+          "frameSha256": "8d970d789a7a82eeef4616a8904f24429708399a9d1dab4e1e839d4fe7a13efb",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 70,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "933ebaf22ca055915430e862f27ff4743f8e20f27ef4ba8cc6b54ebf94d96d7e",
+          "frameSha256": "dc2a26dd90c1b85774b9ea3899ddb572eb9c90096f862e135f7fd13f5421ed99",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 80,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "933ebaf22ca055915430e862f27ff4743f8e20f27ef4ba8cc6b54ebf94d96d7e",
+          "frameSha256": "564716e7081471a06c56eea1b1a857b6f3580ffb879fa94adfaae942e756c025",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 90,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "933ebaf22ca055915430e862f27ff4743f8e20f27ef4ba8cc6b54ebf94d96d7e",
+          "frameSha256": "cdfefca4c2d198a323a3cf663a2a88c8dacd4bd05a80969de1b9b38908c4f9a4",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 100,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "933ebaf22ca055915430e862f27ff4743f8e20f27ef4ba8cc6b54ebf94d96d7e",
+          "frameSha256": "a6dd029b0b9ef82b0a5ae61299749b3ede193f55d054a13666686ad3566bd0d0",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 110,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "933ebaf22ca055915430e862f27ff4743f8e20f27ef4ba8cc6b54ebf94d96d7e",
+          "frameSha256": "ae946c95817cfc60a6666e369b1c8e73b11da093ab7377272de5279e3a955a29",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 119,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "933ebaf22ca055915430e862f27ff4743f8e20f27ef4ba8cc6b54ebf94d96d7e",
+          "frameSha256": "7535ae62a1411ffc97af2bd0f7e84f9a9c610ec69db64b5b4b2509b771d9131a",
+          "detections": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "behind-scenery",
+      "patchSha256": "6a303134ae455f35a59cc1340cfe1a7b9ddcc328733ea7d7fc4d64e593878963",
+      "rows": [
+        {
+          "frame": 0,
+          "expectedBox": [
+            757.5,
+            671.0,
+            842.5,
+            780.0
+          ],
+          "replaySha256": "9292a8c4a9cf1d707c36895c93cd45884d933d84a57520395bcc35a1fd4163bf",
+          "frameSha256": "69aa24d1e1c0ab01d673c8b7d102b47b318b40e4ea3cf9cc1046dbd51bb89c3e",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 10,
+          "expectedBox": [
+            758.25,
+            670.8499999999999,
+            843.25,
+            779.8499999999999
+          ],
+          "replaySha256": "9292a8c4a9cf1d707c36895c93cd45884d933d84a57520395bcc35a1fd4163bf",
+          "frameSha256": "47e601a3382fba84bcc3efd5f41ac4bfa3dd11daafde68ef76adc488ae26e491",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 20,
+          "expectedBox": [
+            762.5,
+            670.9960000000001,
+            847.5,
+            779.9960000000001
+          ],
+          "replaySha256": "9292a8c4a9cf1d707c36895c93cd45884d933d84a57520395bcc35a1fd4163bf",
+          "frameSha256": "219b7598e8b6d60e3ede804dfcc2cb05d7b68be1dbc46f8edfe7ae5fcc669895",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 30,
+          "expectedBox": [
+            762.5,
+            670.9960000000001,
+            847.5,
+            779.9960000000001
+          ],
+          "replaySha256": "9292a8c4a9cf1d707c36895c93cd45884d933d84a57520395bcc35a1fd4163bf",
+          "frameSha256": "7f336279f0206a825d180a330a35937f18a73ebc1b9c07467043ce6ba4a51870",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 40,
+          "expectedBox": [
+            762.5,
+            670.9960000000001,
+            847.5,
+            779.9960000000001
+          ],
+          "replaySha256": "9292a8c4a9cf1d707c36895c93cd45884d933d84a57520395bcc35a1fd4163bf",
+          "frameSha256": "003593745baab91bc1b548197ef881952400a3e08689f2a116a9f0cbd7ae8afe",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 50,
+          "expectedBox": [
+            762.5,
+            670.9960000000001,
+            847.5,
+            779.9960000000001
+          ],
+          "replaySha256": "9292a8c4a9cf1d707c36895c93cd45884d933d84a57520395bcc35a1fd4163bf",
+          "frameSha256": "bceb4de47023ba3e54cf0f070c69168620c0360b4a5c5dc159ac08a8e25222be",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 60,
+          "expectedBox": [
+            761.75,
+            670.9960000000001,
+            846.75,
+            779.9960000000001
+          ],
+          "replaySha256": "9292a8c4a9cf1d707c36895c93cd45884d933d84a57520395bcc35a1fd4163bf",
+          "frameSha256": "edc25b90d8bd9be39a83d8441ec1b4cecc2a4991dc31c37db2da91c68450b200",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 70,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "9292a8c4a9cf1d707c36895c93cd45884d933d84a57520395bcc35a1fd4163bf",
+          "frameSha256": "f6247c5a6c241374843c03526601393d5c9808b27dff48a7c75b8eb074035f03",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 80,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "9292a8c4a9cf1d707c36895c93cd45884d933d84a57520395bcc35a1fd4163bf",
+          "frameSha256": "84f0c8c92f221d96aacb47439f61277ccd324fb9bce85bdcaa5210b77e50e990",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 90,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "9292a8c4a9cf1d707c36895c93cd45884d933d84a57520395bcc35a1fd4163bf",
+          "frameSha256": "ce89e99fdbeec34277e017176cd62cf7c7efdd1a78b4c6481b081240a85db973",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 100,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "9292a8c4a9cf1d707c36895c93cd45884d933d84a57520395bcc35a1fd4163bf",
+          "frameSha256": "3b77556dcef21066f5e43902d733256e08fa90f317b285cff241817237bb3917",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 110,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "9292a8c4a9cf1d707c36895c93cd45884d933d84a57520395bcc35a1fd4163bf",
+          "frameSha256": "4c38e708321048b43a2a05b79dc93cd187988bf9da795dea7df3df214bae4af0",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 119,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "9292a8c4a9cf1d707c36895c93cd45884d933d84a57520395bcc35a1fd4163bf",
+          "frameSha256": "ae049da47284210a45845f545787bfd57b1a910ab5e65cc589b5f410f96a2110",
+          "detections": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "texture-blanked",
+      "patchSha256": "c0a080b52cc44d67de61f1fae22479013c10228ef6e244e41d5d5941f4dc8db7",
+      "rows": [
+        {
+          "frame": 0,
+          "expectedBox": [
+            757.5,
+            671.0,
+            842.5,
+            780.0
+          ],
+          "replaySha256": "42f11402c4430d454a21f10c1e609c88a410a1c78d9b5f285a48777ff747f708",
+          "frameSha256": "787dbf416b632299096d3b6d979284f0feab65ac4d4254612f05711ff68513de",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 10,
+          "expectedBox": [
+            758.25,
+            670.8499999999999,
+            843.25,
+            779.8499999999999
+          ],
+          "replaySha256": "42f11402c4430d454a21f10c1e609c88a410a1c78d9b5f285a48777ff747f708",
+          "frameSha256": "5bc8313d43436d647b3ca0f18286a89d38e5c193009bd0f9c9993cdd82da3621",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 20,
+          "expectedBox": [
+            762.5,
+            670.9960000000001,
+            847.5,
+            779.9960000000001
+          ],
+          "replaySha256": "42f11402c4430d454a21f10c1e609c88a410a1c78d9b5f285a48777ff747f708",
+          "frameSha256": "16ad27033c30a7a1f0a51e51b57856023d5f640bcd2c484d31a495a2c709d6e4",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 30,
+          "expectedBox": [
+            762.5,
+            670.9960000000001,
+            847.5,
+            779.9960000000001
+          ],
+          "replaySha256": "42f11402c4430d454a21f10c1e609c88a410a1c78d9b5f285a48777ff747f708",
+          "frameSha256": "e2960a7fdcd7f99fb1707bf0e6f17daa55b810b69eae4c880fc1001e09a63780",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 40,
+          "expectedBox": [
+            762.5,
+            670.9960000000001,
+            847.5,
+            779.9960000000001
+          ],
+          "replaySha256": "42f11402c4430d454a21f10c1e609c88a410a1c78d9b5f285a48777ff747f708",
+          "frameSha256": "583fcbf14ccb38663142164f1e75d0a918fc135a8a984b591a47b2438fd13123",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 50,
+          "expectedBox": [
+            762.5,
+            670.9960000000001,
+            847.5,
+            779.9960000000001
+          ],
+          "replaySha256": "42f11402c4430d454a21f10c1e609c88a410a1c78d9b5f285a48777ff747f708",
+          "frameSha256": "7508a569f03fa6ccd05d80ebcc1c4a5f86156e01ca801894e4912b354767ee4c",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 60,
+          "expectedBox": [
+            761.75,
+            670.9960000000001,
+            846.75,
+            779.9960000000001
+          ],
+          "replaySha256": "42f11402c4430d454a21f10c1e609c88a410a1c78d9b5f285a48777ff747f708",
+          "frameSha256": "8d970d789a7a82eeef4616a8904f24429708399a9d1dab4e1e839d4fe7a13efb",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 70,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "42f11402c4430d454a21f10c1e609c88a410a1c78d9b5f285a48777ff747f708",
+          "frameSha256": "dc2a26dd90c1b85774b9ea3899ddb572eb9c90096f862e135f7fd13f5421ed99",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 80,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "42f11402c4430d454a21f10c1e609c88a410a1c78d9b5f285a48777ff747f708",
+          "frameSha256": "564716e7081471a06c56eea1b1a857b6f3580ffb879fa94adfaae942e756c025",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 90,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "42f11402c4430d454a21f10c1e609c88a410a1c78d9b5f285a48777ff747f708",
+          "frameSha256": "cdfefca4c2d198a323a3cf663a2a88c8dacd4bd05a80969de1b9b38908c4f9a4",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 100,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "42f11402c4430d454a21f10c1e609c88a410a1c78d9b5f285a48777ff747f708",
+          "frameSha256": "a6dd029b0b9ef82b0a5ae61299749b3ede193f55d054a13666686ad3566bd0d0",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 110,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "42f11402c4430d454a21f10c1e609c88a410a1c78d9b5f285a48777ff747f708",
+          "frameSha256": "ae946c95817cfc60a6666e369b1c8e73b11da093ab7377272de5279e3a955a29",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 119,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "42f11402c4430d454a21f10c1e609c88a410a1c78d9b5f285a48777ff747f708",
+          "frameSha256": "7535ae62a1411ffc97af2bd0f7e84f9a9c610ec69db64b5b4b2509b771d9131a",
+          "detections": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "shifted-off-body",
+      "patchSha256": "898213464fb2d4eb136fbb90f4abd34382ff0e6a9e337deb0e52cdbcc875d987",
+      "rows": [
+        {
+          "frame": 0,
+          "expectedBox": [
+            757.5,
+            671.0,
+            842.5,
+            780.0
+          ],
+          "replaySha256": "958d5099cd9288c0463971eccc79e6788c0090a179a8c60f9649d288bc7c915b",
+          "frameSha256": "e774fda81b50231023daba37b7ab7b900a269d279ab6aedbeace28a2f4ada433",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 10,
+          "expectedBox": [
+            758.25,
+            670.8499999999999,
+            843.25,
+            779.8499999999999
+          ],
+          "replaySha256": "958d5099cd9288c0463971eccc79e6788c0090a179a8c60f9649d288bc7c915b",
+          "frameSha256": "658929aab7d909ac2ef8df686ab82ef92f692704c25fc5b08a8159129c5b1886",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 20,
+          "expectedBox": [
+            762.5,
+            670.9960000000001,
+            847.5,
+            779.9960000000001
+          ],
+          "replaySha256": "958d5099cd9288c0463971eccc79e6788c0090a179a8c60f9649d288bc7c915b",
+          "frameSha256": "b594fbab8a5436436df540b7fa33052cbb97f898c626cb218622850ad880d49a",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 30,
+          "expectedBox": [
+            762.5,
+            670.9960000000001,
+            847.5,
+            779.9960000000001
+          ],
+          "replaySha256": "958d5099cd9288c0463971eccc79e6788c0090a179a8c60f9649d288bc7c915b",
+          "frameSha256": "99b56acb69a5dee27f2fc612340a24e1ae50e4ab32290c5f0544a5fb85413de8",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 40,
+          "expectedBox": [
+            762.5,
+            670.9960000000001,
+            847.5,
+            779.9960000000001
+          ],
+          "replaySha256": "958d5099cd9288c0463971eccc79e6788c0090a179a8c60f9649d288bc7c915b",
+          "frameSha256": "7b1cfe72cf7cbb6d54ed57313045e2c4f2bf30ca47d78076dd305fd3d50e8224",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 50,
+          "expectedBox": [
+            762.5,
+            670.9960000000001,
+            847.5,
+            779.9960000000001
+          ],
+          "replaySha256": "958d5099cd9288c0463971eccc79e6788c0090a179a8c60f9649d288bc7c915b",
+          "frameSha256": "8d8808352c126475986d848dde4b6d8d32ac1328105354d512cd6da619c77cd2",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 60,
+          "expectedBox": [
+            761.75,
+            670.9960000000001,
+            846.75,
+            779.9960000000001
+          ],
+          "replaySha256": "958d5099cd9288c0463971eccc79e6788c0090a179a8c60f9649d288bc7c915b",
+          "frameSha256": "c525ba6eddf91fb9f0f2878e5c57c5b15eea1967f20d3e06af17f44ea5f85182",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 70,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "958d5099cd9288c0463971eccc79e6788c0090a179a8c60f9649d288bc7c915b",
+          "frameSha256": "cd1059d07d1cc9217a674624798642c90a98835f558cbd05b87238162ce71597",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 80,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "958d5099cd9288c0463971eccc79e6788c0090a179a8c60f9649d288bc7c915b",
+          "frameSha256": "222c1a137a649140ad897d7714ee6073f472d434c6311403c3bb122e15b045e9",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 90,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "958d5099cd9288c0463971eccc79e6788c0090a179a8c60f9649d288bc7c915b",
+          "frameSha256": "13e21a4884324ce9d4abb586f6592b4aeec0f2c7eb3fa798a56c9cc64fb55fe3",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 100,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "958d5099cd9288c0463971eccc79e6788c0090a179a8c60f9649d288bc7c915b",
+          "frameSha256": "e87e51d19d3cbfd74b29c38bb087eb12d332ebb1dcf38d16a6cc4af82ebfcedc",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 110,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "958d5099cd9288c0463971eccc79e6788c0090a179a8c60f9649d288bc7c915b",
+          "frameSha256": "0e5ac989102c61e0a9d5b874a0279da569521d3ae45d7e3915ae4840d2fafb6d",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 119,
+          "expectedBox": [
+            757.5,
+            670.992,
+            842.5,
+            779.992
+          ],
+          "replaySha256": "958d5099cd9288c0463971eccc79e6788c0090a179a8c60f9649d288bc7c915b",
+          "frameSha256": "12a0bfc0706ff7e4f0b2b422f229f1acd5af9d021e1f81304b2085be5cee04f9",
+          "detections": [],
+          "error": null
+        }
+      ]
+    }
+  ],
+  "enabled": true,
+  "why": [],
+  "missed": []
+}

@@ -1,0 +1,590 @@
+{
+ "format": "expectrail.jit-run/v1",
+ "runId": "ci-43465090517-repro-bullet-behind-scenery",
+ "advisory": true,
+ "status": "complete",
+ "reason": null,
+ "inputs": {
+  "patchSha256": "96f6aa972c0ea9d9dc84c4843ec04b1b850e908fd26b6798d63f24d67b9f8d33",
+  "reportSha256": "dd5dd449bb6f00675b16641a2475bba9c1af03e09a58a54f26e9021283b480c4",
+  "basePatchSha256": [
+   "52c90da34798edd5624fbd52980b8f5a2ef1a8253b78623c4ef93296122f5cf5"
+  ],
+  "profileSha256": "7ad60a7ddc662fab9bcade5b743a34278a3b1a3f14af59a23f6e38a902fe65ec",
+  "model": "muse-spark-1.3",
+  "promptSha256": "18027218e0f446401a85454e30c95bc84e53f1d75f52e57cbff5cfeb89cf6ca2"
+ },
+ "settings": {
+  "reps": 3,
+  "variantLimit": 8,
+  "budgetUsd": 2.0,
+  "offer": "baseline"
+ },
+ "diffMap": {
+  "files": [
+   {
+    "path": "README.md",
+    "claims": [],
+    "addedLines": [
+     2
+    ],
+    "removedLines": []
+   }
+  ],
+  "claims": [],
+  "probeIds": [
+   "wait-long",
+   "hold-right",
+   "hold-left",
+   "reverse",
+   "jump-w0-x1",
+   "jump-w0-x2",
+   "jump-w0-x8",
+   "jump-w40-x1",
+   "jump-w40-x2",
+   "jump-w40-x8",
+   "jump-w80-x1",
+   "jump-w80-x2",
+   "jump-w80-x8",
+   "jump-w120-x1",
+   "jump-w120-x2",
+   "jump-w120-x8",
+   "shoot-right-every48",
+   "shoot-right-every12",
+   "shoot-left-every48",
+   "shoot-left-every12",
+   "move-fire-right",
+   "move-fire-left",
+   "jump-l40-x1",
+   "jump-l40-x2",
+   "jump-l40-x8"
+  ],
+  "allProbes": true
+ },
+ "proposed": [
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-r-jit-d1",
+    "origin": "AUTO_DIFF",
+    "statement": "Standing still and pressing shoot repeatedly still produces bullets.",
+    "expectationRef": {
+     "claimId": "weapon.cooldown",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "projectile"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "min_event_count",
+     "event": "projectile_spawn",
+     "min": 2
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "shoot-right-every12"
+    ]
+   },
+   "probeIds": [
+    "shoot-right-every12"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-r-jit-d2",
+    "origin": "AUTO_DIFF",
+    "statement": "Bullets fired by rapid presses while facing left stay spaced by the gun cooldown.",
+    "expectationRef": {
+     "claimId": "weapon.cooldown",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "projectile"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "min_event_interval",
+     "event": "projectile_spawn",
+     "seconds": 0.3
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "shoot-left-every12"
+    ]
+   },
+   "probeIds": [
+    "shoot-left-every12"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-r-jit-d3",
+    "origin": "AUTO_DIFF",
+    "statement": "The player faces the direction it moves while walking left.",
+    "expectationRef": {
+     "claimId": "player.facing",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "direction_agreement",
+     "subject": "actor",
+     "maxMismatchCount": 5,
+     "minSpeedPxPerSec": 50,
+     "graceTicks": 10,
+     "minTravelPx": 100,
+     "horizonTicks": 200
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "hold-left"
+    ]
+   },
+   "probeIds": [
+    "hold-left"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-r-jit-d4",
+    "origin": "AUTO_DIFF",
+    "statement": "Enemies settle without dropping off their platform while the player walks right.",
+    "expectationRef": {
+     "claimId": "enemy.patrol",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "enemy"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "max_entity_drop",
+     "settleTicks": 30,
+     "maxDropPx": 20
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "hold-right"
+    ]
+   },
+   "probeIds": [
+    "hold-right"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-r-jit-d5",
+    "origin": "AUTO_DIFF",
+    "statement": "Shooting while advancing right destroys an enemy so fewer enemies remain than when standing still shooting.",
+    "expectationRef": {
+     "claimId": "enemy.patrol",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "enemy"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "enemies_at_end",
+     "comparator": "lt",
+     "toleranceAbs": 0,
+     "left": "shoot-right-every48",
+     "right": "move-fire-right"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "pair",
+    "left": "shoot-right-every48",
+    "right": "move-fire-right"
+   },
+   "probeIds": [
+    "shoot-right-every48",
+    "move-fire-right"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-r-jit-d6",
+    "origin": "AUTO_DIFF",
+    "statement": "Pressing jump twice rises higher than pressing jump once after walking right.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "max_rise_px",
+     "comparator": "gt",
+     "toleranceAbs": 5,
+     "left": "jump-w40-x1",
+     "right": "jump-w40-x2"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "pair",
+    "left": "jump-w40-x1",
+    "right": "jump-w40-x2"
+   },
+   "probeIds": [
+    "jump-w40-x1",
+    "jump-w40-x2"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-r-jit-d7",
+    "origin": "AUTO_DIFF",
+    "statement": "Pressing shoot while facing right spawns a bullet promptly.",
+    "expectationRef": {
+     "claimId": "weapon.cooldown",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "projectile"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "event_response",
+     "trigger": {
+      "action": "shoot",
+      "pressed": true
+     },
+     "response": "projectile_spawn",
+     "withinSeconds": 0.2,
+     "refractorySeconds": 0.3
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "shoot-right-every48"
+    ]
+   },
+   "probeIds": [
+    "shoot-right-every48"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-r-jit-d8",
+    "origin": "AUTO_DIFF",
+    "statement": "A single jump from standing rises less than 80 pixels above the floor.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "max_episode_rise",
+     "maxPx": 80
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "jump-w0-x1"
+    ]
+   },
+   "probeIds": [
+    "jump-w0-x1"
+   ]
+  }
+ ],
+ "probes": [
+  {
+   "id": "hold-left",
+   "source": "library",
+   "routeSha256": "d0c42842b6ce4ddb5fd2ac8a72672ca4c72e2645519c037658c98696ee438dba"
+  },
+  {
+   "id": "hold-right",
+   "source": "library",
+   "routeSha256": "9c1617e416ffef6b94643a19acd53d5596a014f46ba65910426bd1d4d93a87c6"
+  },
+  {
+   "id": "jump-w0-x1",
+   "source": "library",
+   "routeSha256": "05fbc284b8bda5425ab338a4ef235d9c07ccd95caeb2782fb017c5119a4596cf"
+  },
+  {
+   "id": "jump-w40-x1",
+   "source": "library",
+   "routeSha256": "67f3bdeec4fc32f4f42bb8e19138917a0c5e84cc54c762fce78172e34341a325"
+  },
+  {
+   "id": "jump-w40-x2",
+   "source": "library",
+   "routeSha256": "742850d7ab0d04de56d1aa2e23ac9c56bb3b725f8ada293947ef4c4aa4b65d79"
+  },
+  {
+   "id": "move-fire-right",
+   "source": "library",
+   "routeSha256": "fadad3101620ee5b4bd6929af6d35e1ad44eccf2aa5246b938b10b761984b409"
+  },
+  {
+   "id": "shoot-left-every12",
+   "source": "library",
+   "routeSha256": "e0742f3a18c47208c93e0d0ce97ce163daf65b44faff41efe7f811d0de0df6fe"
+  },
+  {
+   "id": "shoot-right-every12",
+   "source": "library",
+   "routeSha256": "e774115a4ccb465aa723e31e0bd4711fab5f5ad0553f9c6633ffdf05cee85dae"
+  },
+  {
+   "id": "shoot-right-every48",
+   "source": "library",
+   "routeSha256": "a294d061444e538ee9b0eb58eb71995e96df89f223edb44a7440f45f12879034"
+  }
+ ],
+ "variants": [
+  {
+   "id": "base",
+   "kind": "base",
+   "file": "",
+   "line": 0,
+   "patchSha256": "52c90da34798edd5624fbd52980b8f5a2ef1a8253b78623c4ef93296122f5cf5"
+  }
+ ],
+ "validity": [
+  {
+   "specId": "jit-r-jit-d1",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  },
+  {
+   "specId": "jit-r-jit-d2",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  },
+  {
+   "specId": "jit-r-jit-d3",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  },
+  {
+   "specId": "jit-r-jit-d4",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  },
+  {
+   "specId": "jit-r-jit-d5",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  },
+  {
+   "specId": "jit-r-jit-d6",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  },
+  {
+   "specId": "jit-r-jit-d7",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  },
+  {
+   "specId": "jit-r-jit-d8",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  }
+ ],
+ "catches": [],
+ "counts": {
+  "proposed": 8,
+  "valid": 0,
+  "strong": 0,
+  "weak": 0
+ },
+ "spend": {
+  "usd": 0.0863,
+  "capUsd": 2.0,
+  "sparkUsd": 0.0774,
+  "replayUsd": 0.009,
+  "samUsd": 0.0,
+  "samImages": 0,
+  "replays": 68,
+  "promptTokens": 18912,
+  "completionTokens": 14615,
+  "prices": {
+   "sparkUsdPerMTokIn": 1.0,
+   "sparkUsdPerMTokOut": 4.0,
+   "runnerUsdPerMinute": 0.008,
+   "samUsdPerImage": 0.0025,
+   "source": "assumed"
+  }
+ },
+ "diagnostics": [
+  "revision: includes the first round's 32 replays"
+ ]
+}

@@ -23,9 +23,10 @@ is checked against the ``[input]`` section of the game's ``project.godot``, and 
 declare is an error, never a route that presses nothing.
 
 **Not offered to generated checks.** No offer of ``expectrail/jit/offer.py`` imports this module. A
-menu probe's difference on the coin counter is on the screen only (the engine's record has no field
-for a label's text), so a check written in today's closed language could not use it; that is #286.
-What it changes is what the evidence (``expectrail.repro.evidence``) can see.
+menu probe's difference on the coin counter was screen-only in the November 13 records. The #285
+audit adds bounded integer Label state and a same-route signal comparison, tested on these routes.
+The menu action still must be explicitly configured; no generator offer imports this module or
+adds it to the action catalog, so those routes are not yet an automatic report-only path.
 
 The harness keeps running while the game pauses its tree (``harness/godot/expectrail_harness.gd``,
 ``tests/test_pause_input.py``); before November 13, 2026 a route that paused never reached its end.

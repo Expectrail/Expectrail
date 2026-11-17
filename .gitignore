@@ -2,6 +2,7 @@
 .godot/
 /runs/
 /tools/*
+!/tools/template_sensor_closeout.py
 !/tools/__init__.py
 !/tools/merge_guard.py
 !/tools/outside_trial.py
@@ -15,6 +16,7 @@
 !/tools/runit_smoke.py
 !/tools/make_receipt_samples.py
 !/tools/runit_api_smoke.py
+!/tools/runit_published.py
 !/tools/release_gate.py
 !/tools/dossier.py
 !/tools/capture_spike/

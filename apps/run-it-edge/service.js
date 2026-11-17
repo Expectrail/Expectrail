@@ -112,7 +112,10 @@ export function memoryStore() {
 // --- GitHub, the only endpoints this function calls ------------------------------------------------
 
 export function github(token, fetchFn) {
-  const options = () => ({ redirect: "error", signal: AbortSignal.timeout(10_000) });
+  // Cloudflare Workers accept only "follow" or "manual" here: "error" makes every fetch throw before
+  // it is sent (seen on the first open deploy, November 17). "manual" hands a redirect back as its
+  // own response, which is never followed: dispatch refuses it below and read() requires 200.
+  const options = () => ({ redirect: "manual", signal: AbortSignal.timeout(10_000) });
   const api = `https://api.github.com/repos/${REPO}/actions`;
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -134,7 +137,8 @@ export function github(token, fetchFn) {
       });
       if (r.status !== 204 && r.status !== 200) {
         const error = new Error(`GitHub answered ${r.status}`);
-        error.refused = [401, 403, 404, 422, 429].includes(r.status);
+        // A redirect is refused too: GitHub did not take the dispatch, so no run started.
+        error.refused = [401, 403, 404, 422, 429].includes(r.status) || (r.status >= 300 && r.status < 400);
         throw error;
       }
     },

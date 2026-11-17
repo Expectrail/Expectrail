@@ -365,7 +365,7 @@ class WorkflowTest(unittest.TestCase):
         capture, judge = (wf['jobs'][k] for k in ('capture', 'judge'))
         self.assertNotIn('secrets.', json.dumps(capture))
         self.assertNotIn('environment', capture)
-        self.assertEqual(judge['environment'], 'main-only')
+        self.assertEqual(judge['environment'], 'spend')  # main-only plus Sean's approval (#265)
         self.assertEqual(judge['needs'], 'capture')
         self.assertIn("refs/heads/main", judge['if'])
         steps = json.dumps(judge['steps']).lower()
