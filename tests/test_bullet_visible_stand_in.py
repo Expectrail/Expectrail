@@ -74,12 +74,9 @@ class TheCapturePlan(unittest.TestCase):
         boxes = {0: {"boxes": []}, 10: {"boxes": [{}]}, 20: {"boxes": [{}] * 4}, 22: {"why": "no camera"}}
 
         def checked(folder, route, frames, fps, tps):
-            png = tmp / "f.png"
-            if not png.exists():
-                from PIL import Image
-                Image.new("RGB", (64, 48)).save(png)
-            return {}, [], {n: png for n in frames}
+            return {}, [], {n: folder / "frames" / f"f{n:08d}.png" for n in frames}
         with mock.patch("expectrail.jit.sam_observer.checked_replay", checked), \
+                mock.patch.object(stand_in, "_frame_size", lambda path: (64, 48)), \
                 mock.patch("agents.sam_anchor.object_boxes", lambda trace, size, frames, role: boxes):
             got = stand_in.measure(tmp)
         entry = got["probes"]["move-fire-left"]

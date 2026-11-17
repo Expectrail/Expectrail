@@ -115,8 +115,6 @@ def measure(capture: Path) -> dict:
     folder kept: {"probes": {probe: {"planned": [...], "bullets": {build: {"<n>": [count, ...]}}}}}, one count
     a planned frame. Read with ``pixel_jobs.replays`` and ``sam_observer.checked_replay``, so only a folder
     that a capture job could have written, and replays whose frames are their own, are measured."""
-    from PIL import Image
-
     from agents import sam_anchor
     from expectrail.jit import pixel, pixel_jobs, sam_observer
 
@@ -129,8 +127,7 @@ def measure(capture: Path) -> dict:
                                           sam_observer.MAX_FRAMES)
         _, _, files = sam_observer.checked_replay(folder, route, frames, sam_observer.DEFAULT_FPS,
                                                   sam_observer.DEFAULT_TICKS_PER_SECOND)
-        with Image.open(files[frames[0]]) as image:
-            size = image.size
+        size = _frame_size(files[frames[0]])
         trace = json.loads((folder / "trace.json").read_text(encoding="utf-8"))
         boxes = sam_anchor.object_boxes(trace, size, frames, "bullet")
         counts = [len(boxes[n]["boxes"]) if "boxes" in boxes[n] else None for n in frames]
@@ -141,6 +138,14 @@ def measure(capture: Path) -> dict:
     return {"source": "tools/bullet_visible_stand_in.py measure", "every": sam_observer.DEFAULT_EVERY,
             "maxBoxes": pixel.MAX_BOXES,
             "probes": {p: probes[p] for p in sorted(probes)}}
+
+
+def _frame_size(path) -> tuple[int, int]:
+    """(width, height) of one captured frame. Pillow is needed only to measure a real capture."""
+    from PIL import Image
+
+    with Image.open(path) as image:
+        return image.size
 
 
 def window_problems(plan: dict, probe: str, window: dict) -> list[str]:
