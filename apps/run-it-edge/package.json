@@ -3,5 +3,8 @@
   "private": true,
   "type": "module",
   "description": "The Run it edge function (#265). No dependencies.",
-  "scripts": { "test": "node --test test/service.test.mjs" }
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "burst": "node burst.mjs"
+  }
 }
