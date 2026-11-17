@@ -21,7 +21,8 @@ Two things are held, each with the real engine:
 
 Since #354 (November 14, 2026), `ShapesTest` holds the cases #349 left open: a body 2.5 px wide or
 less, a turned circle or capsule, a shape on a child area, a shape that grows; and
-`NarrowedRobotOnSlopeTest` holds today's answer to the open choice of whose columns judge a change.
+`NarrowedRobotOnSlopeTest` holds Sean's decision of whose columns judge a change: the candidate's
+own (#354, November 14, 2026; `DecisionRecordedTest` checks that `docs/harness.md` says so).
 
 CI sets EXPECTRAIL_ENGINE_TESTS=required in `capture-smoke`, so a skip there is a failure.
 Standard library only.
@@ -515,14 +516,15 @@ class SlopeTest(unittest.TestCase):
 
 
 class NarrowedRobotOnSlopeTest(unittest.TestCase):
-    """#354 gap 2: whose collision sets the columns is not decided (docs/harness.md, "Not decided").
+    """#354 gap 2: the candidate's own collision sets the columns (Sean, November 14, 2026;
+    docs/harness.md, "Decided (#354").
 
     The bundled robot with its shape made 6 px wide and lifted 10 px (`size = Vector2(6, 54.5)`,
     `position = Vector2(0, -24)`), walked up the slope. This holds the rule the harness has today,
     the candidate's own columns, and the size of what is at stake: its feet are 5.9 to 10.0 px below
     the ground logged at its own columns, against 17.2 to 32.8 px at the robot's 20 px (measured on
-    #354 with the span fixed at 20). If Sean chooses the base commit's columns, this test changes
-    with that choice. The robot unchanged is SlopeTest."""
+    #354 with the span fixed at 20). The visual observer, not the ground, covers a fake fix that
+    shrinks the collision. The robot unchanged is SlopeTest."""
 
     @classmethod
     def setUpClass(cls):
@@ -549,13 +551,42 @@ class NarrowedRobotOnSlopeTest(unittest.TestCase):
         self.assertGreater(len(on_slope), 100)
         gaps = [(r["player"][1] + FEET) - r["ground"] for r in on_slope]
         # At its own columns: 5.9 to 10.0 px. At the robot's 20 px it was 17.2 to 32.8, past the
-        # approved check's 20 px; at its own it is within them. That is the open choice.
+        # approved check's 20 px; at its own it is within them. That is the decided rule.
         self.assertGreater(min(gaps), 5.0, min(gaps))
         self.assertLess(max(gaps), 11.0, max(gaps))
 
     def test_on_flat_ground_the_columns_change_nothing(self):
         flat = {r["ground"] for r in self.rows if r["player"][0] < 800 and r.get("ground") is not None}
         self.assertEqual(flat, {650.0})
+
+
+class DecisionRecordedTest(unittest.TestCase):
+    """#354 gap 2 is decided; the harness doc records the rule and the test that holds it, and no
+    longer calls it open. No engine needed."""
+
+    DOC = REPO / "docs" / "harness.md"
+
+    def section(self) -> str:
+        text = self.DOC.read_text(encoding="utf-8")
+        start = text.index("## The ground under the player")
+        end = text.index("\n## ", start + 1)
+        return text[start:end]
+
+    def test_the_decision_is_written_as_the_rule(self):
+        section = self.section()
+        self.assertIn("**Decided (#354, Sean, November 14, 2026): the candidate's own collision sets the gate's columns.**",
+                      section)
+        self.assertIn("`NarrowedRobotOnSlopeTest` holds this rule", section)
+        self.assertIn("visual observer", section)
+
+    def test_nothing_still_calls_it_open(self):
+        for text in (self.section(), Path(__file__).read_text(encoding="utf-8")):
+            self.assertNotIn("Not " + "decided (#354", text)
+            self.assertNotIn("Until Sean " + "chooses", text)
+            self.assertNotIn("the open " + "choice", text)
+
+    def test_the_test_it_names_exists(self):
+        self.assertTrue(issubclass(NarrowedRobotOnSlopeTest, unittest.TestCase))
 
 
 if __name__ == "__main__":
