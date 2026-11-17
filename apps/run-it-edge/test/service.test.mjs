@@ -440,7 +440,9 @@ test("GitHub requests have deadlines, refuse redirects, and never log provider e
   let calls = 0;
   const svc = createService({ env: ENV, log: s => logs.push(s), fetch: async (url, init) => {
     calls++;
-    assert.equal(init.redirect, "error");
+    // Workers accept only "follow" or "manual"; "follow" would follow a redirect, so "manual".
+    assert.ok(["follow", "manual"].includes(init.redirect), `Workers refuse redirect: ${init.redirect}`);
+    assert.equal(init.redirect, "manual");
     assert.ok(init.signal instanceof AbortSignal);
     throw new Error(ENV.GITHUB_TOKEN);
   }});
@@ -533,4 +535,19 @@ test("the unrecorded recorded-fix sample is refused before admission and counts 
   const ok = await run("clean", { ip: "203.0.113.9" });
   assert.equal(ok.status < 300, true, JSON.stringify(ok.doc));
   void gh;
+});
+
+test("a redirect answer to the dispatch is a refusal: nothing is started, counted or followed", async () => {
+  const urls = [];
+  const svc = createService({ env: ENV, log: () => {}, fetch: async (url, init) => {
+    urls.push(url);
+    assert.equal(init.redirect, "manual");
+    return new Response(null, { status: 302, headers: { Location: "https://example.invalid/elsewhere" } });
+  }});
+  const res = await svc.handle(new Request("https://api.expectrail.tech/run", {
+    method: "POST", headers: { Origin: ORIGIN }, body: '{"sample":"clean"}',
+  }));
+  assert.equal(res.status, 502);
+  assert.equal(urls.length, 1);
+  assert.ok(urls.every(u => u.startsWith("https://api.github.com/")));
 });
