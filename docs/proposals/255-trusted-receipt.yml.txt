@@ -1,0 +1,158 @@
+# PROPOSAL ONLY — #255; Sean reviews/installs this as .github/workflows/expectrail-comment.yml.
+# No workflow is changed by this patch. Merge the producer/checker into trusted main first.
+# Source workflow: main 401236c97bdd9bbe80377dcdb92c78747ece878c.
+# actions/attest v4 tag observed 2026-11-17; pinned full commit from the public repository.
+# Only the existing trusted judge gets the two new permissions. Candidate/capture unchanged.
+# When installing, update the exact trusted-job permission literal in
+# tests.test_ci_gate.WorkflowSafetyTest.test_the_trusted_workflow_runs_only_on_workflow_run_with_minimal_permissions
+# in the SAME reviewed change to add id-token:write and attestations:write. Keep every
+# candidate read-only/no-secret, trusted-checkout, data-only and App-source assertion.
+# Guard: test change intended (#255)
+# Reason for that future test change: require the newly reviewed exact attesting-job permissions.
+name: Expectrail comment
+on:
+  workflow_run:
+    workflows: [Expectrail verify]
+    types: [in_progress, completed]
+permissions: {}
+concurrency:
+  group: expectrail-judge-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
+  cancel-in-progress: false
+jobs:
+  judge:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.path == '.github/workflows/expectrail-verify.yml'
+    environment: main-only
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Load the trusted check publisher
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - name: Issue a token for the clearance publisher
+        id: publisher
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349
+        with:
+          app-id: ${{ vars.EXPECTRAIL_CHECKS_APP_ID }}
+          private-key: ${{ secrets.EXPECTRAIL_CHECKS_PRIVATE_KEY }}
+          permission-checks: write
+      - name: Start the checks and identify the base
+        id: start
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECKS_TOKEN: ${{ steps.publisher.outputs.token }}
+          CHECKS_APP: ${{ steps.publisher.outputs.app-slug }}
+        run: python3 -m tools.ci_checks start
+      - if: steps.start.outputs.base != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ steps.start.outputs.base }}
+          path: policy
+          persist-credentials: false
+      - if: steps.start.outputs.base != ''
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+      - if: steps.start.outputs.base != ''
+        run: python -m pip install jsonschema==4.26.0 pillow==12.3.0 cryptography==42.0.2
+      - name: Fetch the published capture and verify its digest
+        if: steps.start.outputs.base != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -m tools.ci_checks download
+      - name: Read the candidate revision as data
+        if: steps.start.outputs.base != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ github.event.workflow_run.head_repository.full_name }}
+          ref: ${{ github.event.workflow_run.head_sha }}
+          path: head-data
+          persist-credentials: false
+      - name: Evaluate the saved runs from the base commit
+        if: steps.start.outputs.base != ''
+        id: judge
+        working-directory: policy
+        env:
+          HEAD_CHECKOUT: ${{ github.workspace }}/head-data
+          GAME: game/platformer
+          SPECS: agents/specs
+          ROUTES: |
+            harness/routes/smoke.json
+            harness/routes/combat.json
+          RECORDING: docs/run-it/vision/clean.json
+        run: python -m tools.ci_checks judge
+      - name: Write the trusted recorded-CI receipt and its predicate
+        if: steps.start.outputs.base != '' && steps.judge.outcome == 'success'
+        id: receipt
+        working-directory: policy
+        env:
+          RECEIPT_REPOSITORY: ${{ github.repository }}
+        run: |
+          python -m expectrail.gate.ci_receipt write --report "$RUNNER_TEMP/expectrail-report" --capture "$RUNNER_TEMP/capture.zip" --state "$RUNNER_TEMP/gate-state.json" --repo "$RECEIPT_REPOSITORY" --recorded-vision
+          python -m expectrail.attestation predicate "$RUNNER_TEMP/expectrail-report/receipt.json" --out "$RUNNER_TEMP/expectrail-report/receipt-predicate.json"
+      - name: Attest the exact receipt file
+        if: steps.receipt.outcome == 'success'
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-path: ${{ runner.temp }}/expectrail-report/receipt.json
+          predicate-type: https://expectrail.tech/attestation/receipt/v1
+          predicate-path: ${{ runner.temp }}/expectrail-report/receipt-predicate.json
+          push-to-registry: false
+          create-storage-record: false
+      - name: Retain the public Sigstore proof with the report
+        if: steps.attest.outcome == 'success'
+        id: proof
+        env:
+          RECEIPT_ATTESTATION_BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: cp -- "$RECEIPT_ATTESTATION_BUNDLE" "$RUNNER_TEMP/expectrail-report/receipt-attestation.sigstore.json"
+      - name: Name an incomplete receipt or attestation without hiding an earlier evidence error
+        if: >-
+          always() && steps.start.outputs.base != '' &&
+          (steps.receipt.outcome != 'success' || steps.attest.outcome != 'success' || steps.proof.outcome != 'success')
+        env:
+          RECEIPT_WRITE_OUTCOME: ${{ steps.receipt.outcome }}
+          RECEIPT_ATTEST_OUTCOME: ${{ steps.attest.outcome }}
+          RECEIPT_PROOF_OUTCOME: ${{ steps.proof.outcome }}
+        run: |
+          python3 - <<'PY_REASON'
+          import os
+          from pathlib import Path
+          root = Path(os.environ["RUNNER_TEMP"])
+          problem = root / "problem.txt"
+          missing = [name for name, key in (("receipt", "RECEIPT_WRITE_OUTCOME"), ("attestation", "RECEIPT_ATTEST_OUTCOME"), ("proof", "RECEIPT_PROOF_OUTCOME")) if os.environ.get(key) != "success"]
+          code = "CI_RECEIPT_MISSING" if os.environ.get("RECEIPT_WRITE_OUTCOME") != "success" else "CI_ATTESTATION_MISSING"
+          if not problem.exists():
+              problem.write_text(code + ": " + ", ".join(missing) + " did not finish\n")
+          report = root / "expectrail-report"
+          if report.is_dir():
+              (report / "receipt-status.txt").write_text(problem.read_text())
+          PY_REASON
+      - name: Publish the trusted report
+        if: always() && steps.start.outputs.matched == 'true'
+        id: report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: expectrail-report
+          path: ${{ runner.temp }}/expectrail-report
+          retention-days: 14
+          if-no-files-found: error
+      - name: Complete the head checks and update the bounded comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECKS_TOKEN: ${{ steps.publisher.outputs.token }}
+          REPORT_URL: ${{ steps.report.outputs.artifact-url }}
+          # Status functions such as cancelled() are allowed only in `if:`; GitHub refuses the whole
+          # file otherwise, and the judge never starts (it did, from #429's merge until this fix).
+          REPORT_READY: ${{ steps.judge.outcome == 'success' && steps.receipt.outcome == 'success' && steps.attest.outcome == 'success' && steps.proof.outcome == 'success' && steps.report.outcome == 'success' && job.status != 'cancelled' }}
+        run: python3 -m tools.ci_checks finish
