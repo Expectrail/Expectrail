@@ -96,6 +96,7 @@ def load(path: Path, kind: str | None = None) -> dict:
 # An exact format registry: each v1 format ID maps to its kind and schema file. The v0 helpers above
 # (kind_of, schema, validate, load) are unchanged.
 V1_FORMATS = {
+    "expectrail.setup-report/v1": ("setup-report", "setup-report.v1.schema.json"),
     "expectrail.template-closeout/v1": ("template-closeout", "template-closeout.v1.schema.json"),
     "expectrail.observer-calibration/v1": ("observer-calibration", "observer-calibration.v1.schema.json"),
     "expectrail.playtest-reproduction/v1": ("playtest-reproduction", "playtest-reproduction.v1.schema.json"),

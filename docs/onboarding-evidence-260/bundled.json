@@ -1,0 +1,2012 @@
+{
+  "format": "expectrail.setup-report/v1",
+  "mode": "calibrate",
+  "source": {
+    "gameTreeSha256": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280",
+    "configSha256": "650ea4aaec0412e008a44bcd8c5ab5dc9cc9c5a6a2e76dbbe1586c0ae85c78f5",
+    "routeSha256": "6c5f4b5e6ea4d33f8183ffe275fae9753a3e77fc9d497ba72e8b0aff3334569b",
+    "routeTicks": 240,
+    "physicsTicksPerSecond": 120,
+    "captureFps": 60,
+    "viewport": [
+      800,
+      480
+    ],
+    "entryScene": "res://game_singleplayer.tscn",
+    "bindingRoles": [
+      "player"
+    ]
+  },
+  "runs": [
+    {
+      "replaySha256": "70cb12591961909cc12aef15a1fe1cc648ac6b68faa92b3abdaae46e4bcb2f08",
+      "traceSha256": "e9eab45d3ae3cc770687f0670944e66bd119a177263f15a7ffe706f7f4a92bf1",
+      "engineVersion": "4.7.2.stable.official.ed1daf0bf"
+    },
+    {
+      "replaySha256": "70cb12591961909cc12aef15a1fe1cc648ac6b68faa92b3abdaae46e4bcb2f08",
+      "traceSha256": "e9eab45d3ae3cc770687f0670944e66bd119a177263f15a7ffe706f7f4a92bf1",
+      "engineVersion": "4.7.2.stable.official.ed1daf0bf"
+    },
+    {
+      "replaySha256": "70cb12591961909cc12aef15a1fe1cc648ac6b68faa92b3abdaae46e4bcb2f08",
+      "traceSha256": "e9eab45d3ae3cc770687f0670944e66bd119a177263f15a7ffe706f7f4a92bf1",
+      "engineVersion": "4.7.2.stable.official.ed1daf0bf"
+    }
+  ],
+  "inspection": null,
+  "calibration": {
+    "rows": 120,
+    "playerVisible": 120,
+    "playerSeveral": 0,
+    "playerWidth": {
+      "n": 120,
+      "min": 64.0,
+      "median": 64.0,
+      "max": 64.0
+    },
+    "playerHeight": {
+      "n": 120,
+      "min": 64.0,
+      "median": 64.0,
+      "max": 64.0
+    },
+    "groundRows": 120,
+    "onFloorBottomMinusGround": {
+      "n": 66,
+      "min": -31.353,
+      "median": 4.747,
+      "max": 4.75
+    },
+    "onFloorOffGround": {
+      "rows": 29,
+      "spans": [
+        [
+          183,
+          183
+        ],
+        [
+          185,
+          185
+        ],
+        [
+          187,
+          187
+        ],
+        [
+          189,
+          189
+        ],
+        [
+          191,
+          191
+        ],
+        [
+          193,
+          193
+        ],
+        [
+          195,
+          195
+        ],
+        [
+          197,
+          197
+        ],
+        [
+          199,
+          199
+        ],
+        [
+          201,
+          201
+        ],
+        [
+          203,
+          203
+        ],
+        [
+          205,
+          205
+        ],
+        [
+          207,
+          207
+        ],
+        [
+          209,
+          209
+        ],
+        [
+          211,
+          211
+        ],
+        [
+          213,
+          213
+        ],
+        [
+          215,
+          215
+        ],
+        [
+          217,
+          217
+        ],
+        [
+          219,
+          219
+        ],
+        [
+          221,
+          221
+        ],
+        [
+          223,
+          223
+        ],
+        [
+          225,
+          225
+        ],
+        [
+          227,
+          227
+        ],
+        [
+          229,
+          229
+        ],
+        [
+          231,
+          231
+        ],
+        [
+          233,
+          233
+        ],
+        [
+          235,
+          235
+        ],
+        [
+          237,
+          237
+        ],
+        [
+          239,
+          239
+        ]
+      ],
+      "onGround": {
+        "n": 37,
+        "min": 4.745,
+        "median": 4.748,
+        "max": 4.75
+      }
+    },
+    "airborneBottomMinusGround": {
+      "n": 54,
+      "min": -85.605,
+      "median": -60.88,
+      "max": 1.874
+    },
+    "coinsVisiblePerFrame": {
+      "n": 120,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    "coinWidth": null,
+    "coinHeight": null,
+    "frameMeasurements": [
+      {
+        "frame": 0,
+        "tick": 1,
+        "playerBoxes": [
+          [
+            368.0,
+            330.75,
+            432.0,
+            394.75
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 1,
+        "tick": 3,
+        "playerBoxes": [
+          [
+            368.0,
+            330.75,
+            432.0,
+            394.75
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 2,
+        "tick": 5,
+        "playerBoxes": [
+          [
+            368.0,
+            330.75,
+            432.0,
+            394.75
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 3,
+        "tick": 7,
+        "playerBoxes": [
+          [
+            368.0,
+            330.75,
+            432.0,
+            394.75
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 4,
+        "tick": 9,
+        "playerBoxes": [
+          [
+            368.0,
+            330.75,
+            432.0,
+            394.75
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 5,
+        "tick": 11,
+        "playerBoxes": [
+          [
+            368.25,
+            330.746,
+            432.25,
+            394.746
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 6,
+        "tick": 13,
+        "playerBoxes": [
+          [
+            368.5,
+            330.745,
+            432.5,
+            394.745
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 7,
+        "tick": 15,
+        "playerBoxes": [
+          [
+            368.75,
+            330.745,
+            432.75,
+            394.745
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 8,
+        "tick": 17,
+        "playerBoxes": [
+          [
+            369.0,
+            330.749,
+            433.0,
+            394.749
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 9,
+        "tick": 19,
+        "playerBoxes": [
+          [
+            369.25,
+            330.749,
+            433.25,
+            394.749
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 10,
+        "tick": 21,
+        "playerBoxes": [
+          [
+            369.5,
+            330.748,
+            433.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 11,
+        "tick": 23,
+        "playerBoxes": [
+          [
+            369.75,
+            330.748,
+            433.75,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 12,
+        "tick": 25,
+        "playerBoxes": [
+          [
+            370.0,
+            330.748,
+            434.0,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 13,
+        "tick": 27,
+        "playerBoxes": [
+          [
+            370.25,
+            330.748,
+            434.25,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 14,
+        "tick": 29,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 15,
+        "tick": 31,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 16,
+        "tick": 33,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 17,
+        "tick": 35,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 18,
+        "tick": 37,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 19,
+        "tick": 39,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 20,
+        "tick": 41,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 21,
+        "tick": 43,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 22,
+        "tick": 45,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 23,
+        "tick": 47,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 24,
+        "tick": 49,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 25,
+        "tick": 51,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 26,
+        "tick": 53,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 27,
+        "tick": 55,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 28,
+        "tick": 57,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 29,
+        "tick": 59,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 30,
+        "tick": 61,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 31,
+        "tick": 63,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 32,
+        "tick": 65,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 33,
+        "tick": 67,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 34,
+        "tick": 69,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 35,
+        "tick": 71,
+        "playerBoxes": [
+          [
+            370.526,
+            324.79,
+            434.526,
+            388.79
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 36,
+        "tick": 73,
+        "playerBoxes": [
+          [
+            370.5,
+            313.436,
+            434.5,
+            377.436
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 37,
+        "tick": 75,
+        "playerBoxes": [
+          [
+            370.5,
+            302.665,
+            434.5,
+            366.665
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 38,
+        "tick": 77,
+        "playerBoxes": [
+          [
+            370.5,
+            292.478,
+            434.5,
+            356.478
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 39,
+        "tick": 79,
+        "playerBoxes": [
+          [
+            370.5,
+            282.874,
+            434.5,
+            346.874
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 40,
+        "tick": 81,
+        "playerBoxes": [
+          [
+            370.5,
+            273.853,
+            434.5,
+            337.853
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 41,
+        "tick": 83,
+        "playerBoxes": [
+          [
+            370.5,
+            265.415,
+            434.5,
+            329.415
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 42,
+        "tick": 85,
+        "playerBoxes": [
+          [
+            370.5,
+            257.561,
+            434.5,
+            321.561
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 43,
+        "tick": 87,
+        "playerBoxes": [
+          [
+            370.5,
+            253.374,
+            434.5,
+            317.374
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 44,
+        "tick": 89,
+        "playerBoxes": [
+          [
+            370.5,
+            249.77,
+            434.5,
+            313.77
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 45,
+        "tick": 91,
+        "playerBoxes": [
+          [
+            370.5,
+            246.749,
+            434.5,
+            310.749
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 46,
+        "tick": 93,
+        "playerBoxes": [
+          [
+            370.5,
+            244.311,
+            434.5,
+            308.311
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 47,
+        "tick": 95,
+        "playerBoxes": [
+          [
+            370.5,
+            242.457,
+            434.5,
+            306.457
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 48,
+        "tick": 97,
+        "playerBoxes": [
+          [
+            370.5,
+            241.186,
+            434.5,
+            305.186
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 49,
+        "tick": 99,
+        "playerBoxes": [
+          [
+            370.5,
+            240.499,
+            434.5,
+            304.499
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 50,
+        "tick": 101,
+        "playerBoxes": [
+          [
+            370.5,
+            240.395,
+            434.5,
+            304.395
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 51,
+        "tick": 103,
+        "playerBoxes": [
+          [
+            370.5,
+            240.874,
+            434.5,
+            304.874
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 52,
+        "tick": 105,
+        "playerBoxes": [
+          [
+            370.5,
+            241.936,
+            434.5,
+            305.936
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 53,
+        "tick": 107,
+        "playerBoxes": [
+          [
+            370.5,
+            243.582,
+            434.5,
+            307.582
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 54,
+        "tick": 109,
+        "playerBoxes": [
+          [
+            370.5,
+            245.811,
+            434.5,
+            309.811
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 55,
+        "tick": 111,
+        "playerBoxes": [
+          [
+            370.5,
+            248.624,
+            434.5,
+            312.624
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 56,
+        "tick": 113,
+        "playerBoxes": [
+          [
+            370.5,
+            252.02,
+            434.5,
+            316.02
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 57,
+        "tick": 115,
+        "playerBoxes": [
+          [
+            370.5,
+            255.999,
+            434.5,
+            319.999
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 58,
+        "tick": 117,
+        "playerBoxes": [
+          [
+            370.5,
+            260.561,
+            434.5,
+            324.561
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 59,
+        "tick": 119,
+        "playerBoxes": [
+          [
+            370.5,
+            265.707,
+            434.5,
+            329.707
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 60,
+        "tick": 121,
+        "playerBoxes": [
+          [
+            370.5,
+            271.436,
+            434.5,
+            335.436
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 61,
+        "tick": 123,
+        "playerBoxes": [
+          [
+            370.5,
+            277.749,
+            434.5,
+            341.749
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 62,
+        "tick": 125,
+        "playerBoxes": [
+          [
+            370.5,
+            284.645,
+            434.5,
+            348.645
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 63,
+        "tick": 127,
+        "playerBoxes": [
+          [
+            370.5,
+            292.124,
+            434.5,
+            356.124
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 64,
+        "tick": 129,
+        "playerBoxes": [
+          [
+            370.5,
+            300.186,
+            434.5,
+            364.186
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 65,
+        "tick": 131,
+        "playerBoxes": [
+          [
+            370.5,
+            308.832,
+            434.5,
+            372.832
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 66,
+        "tick": 133,
+        "playerBoxes": [
+          [
+            370.5,
+            318.061,
+            434.5,
+            382.061
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 67,
+        "tick": 135,
+        "playerBoxes": [
+          [
+            370.5,
+            327.874,
+            434.5,
+            391.874
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 68,
+        "tick": 137,
+        "playerBoxes": [
+          [
+            370.5,
+            330.745,
+            434.5,
+            394.745
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 69,
+        "tick": 139,
+        "playerBoxes": [
+          [
+            370.5,
+            330.748,
+            434.5,
+            394.748
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 70,
+        "tick": 141,
+        "playerBoxes": [
+          [
+            370.526,
+            324.79,
+            434.526,
+            388.79
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 71,
+        "tick": 143,
+        "playerBoxes": [
+          [
+            370.5,
+            313.436,
+            434.5,
+            377.436
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 72,
+        "tick": 145,
+        "playerBoxes": [
+          [
+            370.5,
+            302.665,
+            434.5,
+            366.665
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 73,
+        "tick": 147,
+        "playerBoxes": [
+          [
+            370.5,
+            292.478,
+            434.5,
+            356.478
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 74,
+        "tick": 149,
+        "playerBoxes": [
+          [
+            370.5,
+            282.874,
+            434.5,
+            346.874
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 75,
+        "tick": 151,
+        "playerBoxes": [
+          [
+            370.5,
+            273.853,
+            434.5,
+            337.853
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 76,
+        "tick": 153,
+        "playerBoxes": [
+          [
+            370.5,
+            265.415,
+            434.5,
+            329.415
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 77,
+        "tick": 155,
+        "playerBoxes": [
+          [
+            370.5,
+            257.561,
+            434.5,
+            321.561
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 78,
+        "tick": 157,
+        "playerBoxes": [
+          [
+            370.5,
+            250.29,
+            434.5,
+            314.29
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 79,
+        "tick": 159,
+        "playerBoxes": [
+          [
+            370.5,
+            247.471,
+            434.5,
+            311.471
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 80,
+        "tick": 161,
+        "playerBoxes": [
+          [
+            370.5,
+            248.2,
+            434.5,
+            312.2
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 81,
+        "tick": 163,
+        "playerBoxes": [
+          [
+            370.5,
+            249.513,
+            434.5,
+            313.513
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 82,
+        "tick": 165,
+        "playerBoxes": [
+          [
+            370.5,
+            251.408,
+            434.5,
+            315.408
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 83,
+        "tick": 167,
+        "playerBoxes": [
+          [
+            370.5,
+            253.888,
+            434.5,
+            317.888
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 84,
+        "tick": 169,
+        "playerBoxes": [
+          [
+            370.5,
+            256.95,
+            434.5,
+            320.95
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 85,
+        "tick": 171,
+        "playerBoxes": [
+          [
+            370.5,
+            260.596,
+            434.5,
+            324.596
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 86,
+        "tick": 173,
+        "playerBoxes": [
+          [
+            370.5,
+            264.825,
+            434.5,
+            328.825
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 87,
+        "tick": 175,
+        "playerBoxes": [
+          [
+            370.5,
+            269.638,
+            434.5,
+            333.638
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 88,
+        "tick": 177,
+        "playerBoxes": [
+          [
+            370.5,
+            275.033,
+            434.5,
+            339.033
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 89,
+        "tick": 179,
+        "playerBoxes": [
+          [
+            370.5,
+            281.013,
+            434.5,
+            345.013
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 90,
+        "tick": 181,
+        "playerBoxes": [
+          [
+            370.5,
+            287.575,
+            434.5,
+            351.575
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": false
+      },
+      {
+        "frame": 91,
+        "tick": 183,
+        "playerBoxes": [
+          [
+            370.5,
+            294.647,
+            434.5,
+            358.647
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 92,
+        "tick": 185,
+        "playerBoxes": [
+          [
+            370.683,
+            294.673,
+            434.683,
+            358.673
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 93,
+        "tick": 187,
+        "playerBoxes": [
+          [
+            370.683,
+            294.673,
+            434.683,
+            358.673
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 94,
+        "tick": 189,
+        "playerBoxes": [
+          [
+            370.683,
+            294.673,
+            434.683,
+            358.673
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 95,
+        "tick": 191,
+        "playerBoxes": [
+          [
+            370.683,
+            294.673,
+            434.683,
+            358.673
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 96,
+        "tick": 193,
+        "playerBoxes": [
+          [
+            370.683,
+            294.673,
+            434.683,
+            358.673
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 97,
+        "tick": 195,
+        "playerBoxes": [
+          [
+            370.683,
+            294.673,
+            434.683,
+            358.673
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 98,
+        "tick": 197,
+        "playerBoxes": [
+          [
+            370.683,
+            294.673,
+            434.683,
+            358.673
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 99,
+        "tick": 199,
+        "playerBoxes": [
+          [
+            370.683,
+            294.673,
+            434.683,
+            358.673
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 100,
+        "tick": 201,
+        "playerBoxes": [
+          [
+            370.433,
+            294.673,
+            434.433,
+            358.673
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 101,
+        "tick": 203,
+        "playerBoxes": [
+          [
+            370.183,
+            294.673,
+            434.183,
+            358.673
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 102,
+        "tick": 205,
+        "playerBoxes": [
+          [
+            369.933,
+            294.673,
+            433.933,
+            358.673
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 103,
+        "tick": 207,
+        "playerBoxes": [
+          [
+            369.68,
+            294.922,
+            433.68,
+            358.922
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 104,
+        "tick": 209,
+        "playerBoxes": [
+          [
+            369.412,
+            295.568,
+            433.412,
+            359.568
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 105,
+        "tick": 211,
+        "playerBoxes": [
+          [
+            369.135,
+            296.376,
+            433.135,
+            360.376
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 106,
+        "tick": 213,
+        "playerBoxes": [
+          [
+            368.876,
+            297.172,
+            432.876,
+            361.172
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 107,
+        "tick": 215,
+        "playerBoxes": [
+          [
+            368.638,
+            297.739,
+            432.638,
+            361.739
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 108,
+        "tick": 217,
+        "playerBoxes": [
+          [
+            368.423,
+            298.136,
+            432.423,
+            362.136
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 109,
+        "tick": 219,
+        "playerBoxes": [
+          [
+            368.183,
+            298.337,
+            432.183,
+            362.337
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 110,
+        "tick": 221,
+        "playerBoxes": [
+          [
+            368.183,
+            298.337,
+            432.183,
+            362.337
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 111,
+        "tick": 223,
+        "playerBoxes": [
+          [
+            368.183,
+            298.337,
+            432.183,
+            362.337
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 112,
+        "tick": 225,
+        "playerBoxes": [
+          [
+            368.183,
+            298.337,
+            432.183,
+            362.337
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 113,
+        "tick": 227,
+        "playerBoxes": [
+          [
+            368.183,
+            298.337,
+            432.183,
+            362.337
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 114,
+        "tick": 229,
+        "playerBoxes": [
+          [
+            368.183,
+            298.337,
+            432.183,
+            362.337
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 115,
+        "tick": 231,
+        "playerBoxes": [
+          [
+            368.183,
+            298.337,
+            432.183,
+            362.337
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 116,
+        "tick": 233,
+        "playerBoxes": [
+          [
+            368.183,
+            298.337,
+            432.183,
+            362.337
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 117,
+        "tick": 235,
+        "playerBoxes": [
+          [
+            368.183,
+            298.337,
+            432.183,
+            362.337
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 118,
+        "tick": 237,
+        "playerBoxes": [
+          [
+            368.183,
+            298.337,
+            432.183,
+            362.337
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      },
+      {
+        "frame": 119,
+        "tick": 239,
+        "playerBoxes": [
+          [
+            368.55,
+            298.337,
+            432.55,
+            362.337
+          ]
+        ],
+        "coinBoxes": [],
+        "ground": 390.0,
+        "onFloor": true
+      }
+    ],
+    "unjudgeable": [],
+    "unjudgeableRows": 0
+  },
+  "stability": {
+    "identical": true,
+    "changedTicks": [],
+    "changedHeaders": []
+  }
+}

@@ -1,4 +1,8 @@
-"""Inspect saved Godot text scenes. No game, editor, or project script is started."""
+"""Inspect saved scenes and, when requested, measure clean public engine replays.
+
+Static inspection and init do not start project scripts. --at-tick and calibrate
+explicitly run the local pinned engine; neither invokes a visual model.
+"""
 from __future__ import annotations
 
 import hashlib
@@ -251,7 +255,9 @@ def proposal(root, info):
     filename = "routes/draft-first-" + hashlib.sha256(encode(draft)).hexdigest()[:16] + ".json"
     config = {"format": project_config.FORMAT, "adapter": "godot", "draft": True,
               "entryScene": info["entryScene"], "viewport": info["viewport"],
-              "physicsTicksPerSecond": info["physicsTicksPerSecond"], "captureFps": 60,
+              "physicsTicksPerSecond": info["physicsTicksPerSecond"],
+              "captureFps": next(n for n in range(min(info["physicsTicksPerSecond"],60),0,-1)
+                                 if info["physicsTicksPerSecond"] % n == 0),
               "bindings": {},
               "inputActions": info["actions"], "routes": [filename]}
     if len(info["players"]) == 1:
@@ -299,13 +305,214 @@ def publish(root, docs, force):
     return config.name
 
 
+def check_setup_report(doc):
+    """Schema and semantic reader shared by CLI output and saved setup reports. No extras."""
+    from expectrail import resources
+    from expectrail.gate.record import errors
+    json.dumps(doc, allow_nan=False)
+    schema = json.loads((resources.ROOT / 'contracts/setup-report.v1.schema.json').read_text())
+    problems = errors(doc, schema)
+    if problems:
+        raise ValueError('Setup report is invalid: ' + problems[0])
+    src = doc['source']
+    step = src['physicsTicksPerSecond'] // src['captureFps']
+    if src['physicsTicksPerSecond'] % src['captureFps'] or step < 1:
+        raise ValueError('Setup captureFps must divide physicsTicksPerSecond; correct the project config.')
+    if doc['mode'] == 'inspect':
+        if len(doc['runs']) != 1 or doc['inspection'] is None or doc['calibration'] is not None or (doc['stability'] is not None):
+            raise ValueError('An inspection needs one run and its measured tick only.')
+        if doc['inspection']['tick'] + 1 >= src['routeTicks']:
+            raise ValueError('Inspection tick is outside its replay.')
+        for obj in doc['inspection']['objects']:
+            if obj['role'] not in src['bindingRoles']:
+                raise ValueError('Inspection contains an unbound role.')
+            b = obj['screenBox']
+            w, h = src['viewport']
+            inside = b[2] > 0 and b[3] > 0 and (b[0] < w) and (b[1] < h)
+            if obj['onScreen'] != inside:
+                raise ValueError('Inspection onScreen disagrees with its measured box.')
+    else:
+        if len(doc['runs']) != 3 or doc['inspection'] is not None or doc['calibration'] is None or (doc['stability'] is None):
+            raise ValueError('A calibration needs three runs, measurements and stability.')
+        from agents.unity_observations import calibrate
+        data = doc['calibration']['frameMeasurements']
+        if len(data) != src['routeTicks'] // step or any((r['frame'] != i or r['tick'] != (i + 1) * step - 1 for i, r in enumerate(data))):
+            raise ValueError('Calibration must account for every captured frame at its actual physics tick.')
+        if calibrate({}, measured=data) != doc['calibration']:
+            raise ValueError('Calibration statistics disagree with their measured frames.')
+        stable = doc['stability']
+        if stable['identical'] != (not stable['changedTicks'] and (not stable['changedHeaders'])):
+            raise ValueError('Stability disagrees with its recorded differences.')
+        if stable['identical'] and len({r['traceSha256'] for r in doc['runs']}) != 1:
+            raise ValueError('Identical stability requires the same complete trace digest on all three runs.')
+
+def read_setup_report(path):
+    from expectrail.contracts import strict_loads
+    doc = strict_loads(Path(path).read_text(encoding='utf-8'))
+    check_setup_report(doc)
+    return doc
+
+def _local_engine(explicit):
+    import shutil, subprocess
+    from harness.run import GODOT_VERSION, tools_dir
+    choices = [Path(explicit)] if explicit else [tools_dir() / 'godot' / f'Godot_v{GODOT_VERSION}_linux.x86_64']
+    if not explicit:
+        choices += [Path(p) for name in ('godot', 'godot4') if (p := shutil.which(name))]
+    for binary in choices:
+        if not binary.is_file():
+            continue
+        try:
+            found = subprocess.run([str(binary), '--version'], capture_output=True, text=True, timeout=10)
+        except (OSError, subprocess.SubprocessError):
+            continue
+        version = found.stdout.strip()
+        wanted = GODOT_VERSION.replace('-', '.')
+        if found.returncode == 0 and (version == wanted or version.startswith(wanted + '.')):
+            return binary.resolve()
+    raise ValueError('Use --godot PATH to an executable local Godot ' + GODOT_VERSION + ', or install the pinned engine with expectrail doctor. No engine was downloaded.')
+
+def _runtime_config(root):
+    config = project_config.read_game(root)
+    if config is None:
+        proposed = proposal(root, inspect(root))
+        if proposed.get('unresolvedBindings'):
+            raise ValueError('Set bindings.player.node/group and texture in expectrail.project.json: ' + '; '.join(proposed['unresolvedBindings']))
+        config = proposed['config']
+    return config
+
+def _setup_replay(root, config, route_path, target, engine):
+    import subprocess, contextlib
+    from harness import run as harness
+    target.mkdir(parents=True, exist_ok=True)
+    try:
+        with (target / 'command.log').open('w') as output, contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+            replay = harness.run(route_path, target, game=root, project=config, godot=engine, capture_frames=False, fps=None)
+        trace = route.read_trace(target / 'trace.json', json.loads(route_path.read_bytes())['ticks'], config['physicsTicksPerSecond'])
+        if trace.get('capabilities', {}).get('roleBoxes') is not True:
+            raise ValueError('No bound role geometry was logged. Use the current pinned harness and correct bindings in expectrail.project.json.')
+        return (replay, trace)
+    except (SystemExit, OSError, ValueError, subprocess.SubprocessError) as exc:
+        detail = []
+        for file in (target / 'godot.log', target / 'command.log'):
+            if file.is_file() and (not file.is_symlink()):
+                for line in file.read_text(errors='replace').splitlines():
+                    if 'expectrail:' in line or 'bindings.' in line:
+                        detail.append(line.strip()[:300])
+        reason = '; '.join(dict.fromkeys(detail)) or str(exc)
+        raise ValueError(f"{reason}. Fix the named binding/project setting or engine error; replay log: {target / 'godot.log'}") from exc
+
+def _measured_frames(trace, replay):
+    from agents.observations import from_trace_synthetic
+    fps = replay['capture']['fps']
+    step = trace['physicsTicksPerSecond'] // fps
+    observed = from_trace_synthetic(trace, fps=fps)
+    by_frame = {f['frame']: f for f in observed['frames']}
+    result = []
+    for frame in range(trace['ticks'] // step):
+        tick = (frame + 1) * step - 1
+        objects = by_frame.get(frame, {}).get('objects', {})
+        ground = objects.get('ground', [])
+        floor = trace['rows'][tick].get('onFloor')
+        result.append({'frame': frame, 'tick': tick, 'playerBoxes': [d['box'] for d in objects.get('player', [])], 'coinBoxes': [d['box'] for d in objects.get('coin', [])], 'ground': ground[0]['box'][1] if len(ground) == 1 else None, 'onFloor': floor if type(floor) is bool else None})
+    return result
+
+def runtime_setup(root, *, mode, at_tick=0, route_path=None, out=None, godot=None):
+    """Read-only public-project replay diagnostics; no model, approval or tolerance tuning."""
+    from expectrail.contracts import digest, strict_loads
+    from agents.unity_observations import calibrate
+    root = Path(root).resolve()
+    config = _runtime_config(root)
+    if config['physicsTicksPerSecond'] % config['captureFps']:
+        raise ValueError('Set captureFps in expectrail.project.json to a divisor of physicsTicksPerSecond.')
+    if out is not None:
+        out = Path(out).absolute()
+        if out.exists() or out.is_symlink() or out.resolve() == root or (root in out.resolve().parents):
+            raise ValueError('Choose a new --out folder outside the project; existing files were preserved.')
+    if mode == 'inspect':
+        if type(at_tick) is not int or not 0 <= at_tick <= 7200:
+            raise ValueError('Set --at-tick to an integer from 0 to 7200.')
+        document = {'format': 'expectrail.route/v0', 'name': 'setup-inspect', 'seed': 1, 'ticks': at_tick + 2, 'events': []}
+    else:
+        if route_path is None:
+            raise ValueError('Supply --route PATH to a clean public route JSON file.')
+        candidate = Path(route_path)
+        if not candidate.is_absolute():
+            candidate = root / candidate
+        if candidate.is_symlink() or not candidate.is_file():
+            raise ValueError(f'Restore --route {candidate} as a regular public route JSON file or choose another --route.')
+        try:
+            from expectrail.contracts import schema
+            from expectrail.gate.record import errors
+            document = strict_loads(candidate.read_text(encoding='utf-8'))
+            problems = errors(document, schema('route'))
+            if problems:
+                raise ValueError(problems[0])
+            if any((e['tick'] >= document['ticks'] for e in document['events'])):
+                raise ValueError('each event tick must be before the route ends')
+        except (OSError, ValueError, KeyError) as exc:
+            raise ValueError(f'Fix --route {candidate}: {exc}') from exc
+        if document['ticks'] > 7200:
+            raise ValueError('Shorten --route to at most 7200 physics ticks for setup calibration.')
+        if document['ticks'] < config['physicsTicksPerSecond'] // config['captureFps']:
+            raise ValueError('Extend --route to include at least one captured frame.')
+        unknown = {e['action'] for e in document['events'] if 'action' in e} - set(config['inputActions'] or route.FALLBACK_ACTIONS)
+        if unknown:
+            raise ValueError('Add these --route actions to inputActions in expectrail.project.json or fix the route: ' + ', '.join(sorted(unknown)))
+    engine = _local_engine(godot)
+    with tempfile.TemporaryDirectory(prefix='expectrail-setup-') as temp:
+        work = out or Path(temp)
+        if out is not None:
+            work.mkdir(parents=True)
+        route_file = work / 'route.json'
+        route_file.write_bytes(encode(document))
+        (work / 'config.json').write_bytes(encode(config))
+        runs = []
+        traces = []
+        replays = []
+        try:
+            for n in range(1, 2 if mode == 'inspect' else 4):
+                replay, trace = _setup_replay(root, config, route_file, work / str(n), engine)
+                runs.append({'replaySha256': digest(replay), 'traceSha256': hashlib.sha256((work / str(n) / 'trace.json').read_bytes()).hexdigest(), 'engineVersion': replay['engine']['version']})
+                traces.append(trace)
+                replays.append(replay)
+        except ValueError as exc:
+            if out is not None:
+                raise
+            raise route._retain_failure(work, root.parent / 'expectrail-setup', exc) from exc
+        if len({r['game']['tree'] for r in replays}) != 1:
+            raise ValueError('Keep the clean project unchanged between calibration replays; its tree digest changed.')
+        source = {'gameTreeSha256': replays[0]['game']['tree'], 'configSha256': digest(config), 'routeSha256': digest(document), 'routeTicks': document['ticks'], 'physicsTicksPerSecond': config['physicsTicksPerSecond'], 'captureFps': config['captureFps'], 'viewport': traces[0]['viewport'], 'entryScene': config['entryScene'], 'bindingRoles': sorted(config['bindings'])}
+        report = {'format': 'expectrail.setup-report/v1', 'mode': mode, 'source': source, 'runs': runs, 'inspection': None, 'calibration': None, 'stability': None}
+        if mode == 'inspect':
+            row = traces[0]['rows'][at_tick]
+            width, height = source['viewport']
+            objects = []
+            for obj in row['roleObjects']:
+                box = obj['box']
+                on_screen = box[2] > 0 and box[3] > 0 and (box[0] < width) and (box[1] < height)
+                objects.append({'role': obj['role'], 'nodePath': obj['id'], 'screenBox': box, 'worldBox': obj['worldBox'], 'visible': obj['visible'], 'onScreen': on_screen, 'boundsSource': obj['boundsSource']})
+            report['inspection'] = {'tick': at_tick, 'objects': objects}
+        else:
+            changed, headers = route.differences(traces)
+            report['calibration'] = calibrate({}, measured=_measured_frames(traces[0], replays[0]))
+            report['stability'] = {'identical': not changed and (not headers), 'changedTicks': changed, 'changedHeaders': headers}
+        check_setup_report(report)
+        if out is not None:
+            (work / 'report.json').write_bytes(encode(report))
+        return report
+
+
 def main(command, argv):
     parser = route.Parser(prog=f"expectrail {command}", description=__doc__)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("game", type=Path, nargs="?")
     group.add_argument("--project", type=Path)
-    if command == "inspect":
+    if command in ("inspect", "calibrate"):
         parser.add_argument("--json", action="store_true")
+        parser.add_argument("--godot", type=Path, help="local pinned engine; setup never downloads one")
+        parser.add_argument("--out", type=Path, help="new evidence folder outside the project")
+        if command == "inspect":parser.add_argument("--at-tick", type=int, help="measure bound objects on this physics tick")
+        else:parser.add_argument("--route", type=Path, required=True, help="public clean route, relative to project or absolute")
     else:
         parser.add_argument("--adapter", choices=["godot"], default="godot")
         parser.add_argument("--dry-run", action="store_true", help="print both drafts without writing")
@@ -313,6 +520,20 @@ def main(command, argv):
     try:
         args = parser.parse_args(argv)
         root = (args.game or args.project).resolve()
+        if command == 'calibrate' or (command == 'inspect' and args.at_tick is not None):
+            report=runtime_setup(root,mode=command,at_tick=getattr(args,'at_tick',0),
+                                 route_path=getattr(args,'route',None),out=args.out,godot=args.godot)
+            if args.json or command=='inspect':print(json.dumps(report,indent=2))
+            else:
+                from agents.unity_observations import calibration_line
+                c = report['calibration']
+                print('Engine-record calibration: ' + calibration_line(c))
+                print(f"Unjudgeable frames: {c['unjudgeableRows']}; see JSON for frame, tick and reason.")
+                print(f"Three complete traces identical: {report['stability']['identical']}. Engine diagnostics only; no vision or tolerance was tuned.")
+            if report['stability'] is not None and not report['stability']['identical']:
+                print('Fix replay nondeterminism in the clean project (seed, clock, input or camera); compare the saved differing ticks/headers.',file=sys.stderr)
+                return 5
+            return 0
         info = inspect(root)
         if command == "inspect":
             if args.json:

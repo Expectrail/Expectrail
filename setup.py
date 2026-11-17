@@ -64,6 +64,7 @@ BUNDLED_MODULES = {
         "sam_anchor",
         "sam_observations",
         "godot_roles",
+        "unity_observations",
         "glimmer_client",
         "byo_vision",
         "engine_check",
