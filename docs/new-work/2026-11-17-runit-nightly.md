@@ -21,6 +21,8 @@ listed it as Sean's to arrange; it needs no secret and no new permission, so it 
   secret, no environment, no model; actions pinned to commits. Closed check while the repository
   variable `RUN_IT_EXPECT_OPEN` is unset or `false`; when it is `true`, one recorded sample a day,
   rotating, followed to its published result. Output kept as the `run-it-nightly` artifact.
+  The schedule is written `17 9 * * 0-6` (every day): the first push wrote `"17 9 * * *"`, and the
+  merge guard reads a quoted value ending in `*` as a YAML alias and stops for a person.
 - `docs/run-it-deploy.md` and `docs/run-it.md` describe it. The ledger's `run-it` row lists the
   workflow and the two tools. `.gitignore` allows the new tool.
 

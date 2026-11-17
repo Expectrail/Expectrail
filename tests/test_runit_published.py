@@ -412,6 +412,14 @@ class NightlyWorkflowTest(unittest.TestCase):
             self.assertIn(sample, run)
             self.assertTrue((REPO / "docs" / "run-it" / "vision" / f"{sample}.json").is_file(), sample)
 
+    def test_it_runs_every_day_and_the_merge_guard_can_read_it(self):
+        from tools import merge_guard
+        self.assertEqual(self.wf[True]["schedule"], [{"cron": "17 9 * * 0-6"}])
+        # A quoted cron ending in `*` ("... * *") counts as a YAML alias to the guard, which then
+        # leaves the pull request for a person (#586). 0-6 is every day without one.
+        self.assertEqual(merge_guard.aliases(self.text), 0)
+        self.assertEqual(merge_guard.unread_added(None, self.text), {"escape": 0, "alias": 0, "anchor": 0})
+
     def test_every_action_is_pinned_to_a_commit(self):
         for step in self.wf["jobs"]["deployed"]["steps"]:
             if "uses" in step:
