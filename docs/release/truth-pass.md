@@ -24,12 +24,12 @@ The [checked-in prior page](sources/dossier-before.html.txt) and [unchanged-gene
 | Page / row | Prior claim | Correction and source |
 | --- | --- | --- |
 | docs/release/index.html | Stale local summary: held: 18 / 35; open: 13 / 35; failed: 0 / 35; not run: 4 / 35 | Unchanged generator on current main inputs: held: 21 / 35; open: 9 / 35; failed: 0 / 35; not run: 5 / 35. Latest recorded main CI: held: 25 / 35; open: 10 / 35; failed: 0 / 35; not run: 0 / 35. These are different runs, not tests retroactively promoted. [Source](sources/ci-release-gate.json) |
-| docs/release/index.html | Dodge draft awaits approval; no trial update | Approved play-area check; broken CI variant rejects, clean/harmless need review without vision. No Dodge vision evidence. [Source](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/outside-projects.md#L59) |
+| docs/release/index.html | Dodge draft awaits approval; no trial update | Approved play-area check; broken CI variant rejects, clean/harmless need review without vision. No Dodge vision evidence. [Source](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/outside-projects.md#L59) |
 | docs/release/index.html | Replay sandbox does not bound disk usage | The Godot work/output polling growth monitor exists; it is not a filesystem quota or a bound on every host resource. [Source](sources/capabilities.json) |
 | docs/release/index.html | Outside success has verdicts but no separated error denominators; renderer limitation absent | Historical successful cohort has separate bad/benign/review denominators. Later exact-image replay can lack an answer; no general portability claimed. [Source](sources/capabilities.json) |
-| docs/capabilities.json:outside-projects | Dodge has a draft check awaiting approval | Align the aggregate row with its dedicated Dodge row and recorded CI evidence. [Source](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/outside-projects.md#L59) |
+| docs/capabilities.json:outside-projects | Dodge has a draft check awaiting approval | Align the aggregate row with its dedicated Dodge row and recorded CI evidence. [Source](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/outside-projects.md#L59) |
 | docs/capabilities.json:playtest-ingest | Required CI reproduction is future work | Cite the passed PR seeded-bugs tests; no live model/fixer or repair result is promoted. [Source](sources/playtest-ci.json) |
-| docs/index.html | Dodge has a draft check awaiting approval | Approved engine check, broken build rejected in CI, no vision evidence. [Source](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/outside-projects.md#L59) |
+| docs/index.html | Dodge has a draft check awaiting approval | Approved engine check, broken build rejected in CI, no vision evidence. [Source](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/outside-projects.md#L59) |
 | docs/index.html | Standalone screenshot-judge/external-model comparisons and the engine-only benign rejection count (all removed values are listed in the generated homepage numeric diff) | Remove numerical comparisons absent from the capability ledger. The recorded bench evidence is untouched; retained Expectrail/engine comparisons use the ledger’s historical claims. [Source](sources/homepage-before.html.txt) |
 | docs/index.html | Weighted mutation catch and discovery sabotage/intentional-change counts (all removed values are listed in the generated homepage numeric diff) | Remove unrepresented homepage figures; keep only ledger-backed historical repair and advisory-discovery figures, labelled with scope. No underlying score is edited. [Source](sources/homepage-before.html.txt) |
 | docs/release/index.html and docs/index.html | New playtest/sensor/spend/failed-onboarding and current control data missing | Generate the missing sections and homepage summary from the saved records and code/test sources, with per-source denominators and explicit unmeasured boundaries. [Source](sources/capabilities.json) |
@@ -104,71 +104,71 @@ The [checked-in prior page](sources/dossier-before.html.txt) and [unchanged-gene
 | outside | added | 0 / 2 | 3 | [record](https://github.com/Expectrail/Expectrail/actions/runs/43652198623); [record](https://github.com/Expectrail/Expectrail/issues/263#issuecomment-6870786638); [record](https://github.com/Expectrail/Expectrail/issues/263#issuecomment-6874615831) |
 | outside | added | 0 / 4 | 1 | [record](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
 | outside | added | 4 | 1 | [record](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
-| outside-current | added | 0 | 4 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/outside-trials/system-override/results.json#L1); [record](sources/breakout-results.json) |
+| outside-current | added | 0 | 4 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/outside-trials/system-override/results.json#L1); [record](sources/breakout-results.json) |
 | outside-current | added | 0 / 1 | 2 | [record](https://github.com/Expectrail/Expectrail/actions/runs/43748180876) |
 | outside-current | added | 0 / 2 | 4 | [record](https://github.com/Expectrail/Expectrail/actions/runs/43748180876) |
 | outside-current | added | 1 / 1 | 3 | [record](sources/breakout-results.json) |
 | outside-current | added | 120 | 3 | [record](sources/breakout-results.json) |
 | outside-current | added | 2 / 3 | 1 | [record](https://github.com/Expectrail/Expectrail/actions/runs/43748180876) |
 | outside-current | added | 3 | 1 | [record](https://github.com/Expectrail/Expectrail/actions/runs/43748180876) |
-| outside-current | added | 3 / 3 | 2 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/outside-trials/system-override/results.json#L1); [record](sources/breakout-results.json) |
+| outside-current | added | 3 / 3 | 2 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/outside-trials/system-override/results.json#L1); [record](sources/breakout-results.json) |
 | outside-current | added | 3 / 4 | 1 | [record](https://github.com/Expectrail/Expectrail/actions/runs/43748180876) |
 | outside-current | added | 4 | 1 | [record](https://github.com/Expectrail/Expectrail/actions/runs/43748180876) |
 | outside-current | added | fail, first at frame 44 | 1 | [record](https://github.com/Expectrail/Expectrail/actions/runs/43748180876) |
 | outside-current | added | fail, first at frame 97 | 1 | [record](https://github.com/Expectrail/Expectrail/actions/runs/43748180876) |
-| playtest | added | 0 / 200 | 3 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/playtester-reach.md#L20) |
-| playtest | added | 0 / 400 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/playtester-reach.md#L20) |
-| playtest | added | 1 / 24 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/playtester-reach.md#L80) |
-| playtest | added | 21 / 24 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/playtester-reach.md#L80) |
-| playtest | added | 23 / 24 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/playtester-reach.md#L80) |
+| playtest | added | 0 / 200 | 3 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L20) |
+| playtest | added | 0 / 400 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L20) |
+| playtest | added | 1 / 24 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L80) |
+| playtest | added | 21 / 24 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L80) |
+| playtest | added | 23 / 24 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L80) |
 | playtest | added | 3 | 1 | [record](https://github.com/Expectrail/Expectrail/actions/runs/43808291610/job/133104000066) |
-| playtest | added | 3 / 24 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/playtester-reach.md#L80) |
+| playtest | added | 3 / 24 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L80) |
 | playtest | added | PR 551 | 1 | [record](https://github.com/Expectrail/Expectrail/pull/551) |
-| post-review | added | 0 | 6 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 0 / 115 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 0 / 120 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 0.9 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 103 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 11 / 11 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 110 / 112 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 113 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 113 / 115 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 115 / 115 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 118 / 120 | 2 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 12 / 17 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 120 / 120 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 17 / 17 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 2 / 112 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 2 / 115 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 2 / 120 | 2 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 223 / 227 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 3 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 3 / 11 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 4 / 227 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 40 / 115 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 40 / 120 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 556 templates | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 73 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 75 / 115 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
-| post-review | added | 80 / 120 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 0 | 6 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 0 / 115 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 0 / 120 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 0.9 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 103 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 11 / 11 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 110 / 112 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 113 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 113 / 115 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 115 / 115 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 118 / 120 | 2 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 12 / 17 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 120 / 120 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 17 / 17 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 2 / 112 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 2 / 115 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 2 / 120 | 2 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 223 / 227 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 3 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 3 / 11 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 4 / 227 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 40 / 115 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 40 / 120 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 556 templates | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 73 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 75 / 115 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
+| post-review | added | 80 / 120 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/measurements/template-closeout-result.json#L1) |
 | post-review | added | PR #569 | 1 | [record](https://github.com/Expectrail/Expectrail/pull/569) |
 | runtime | added | $2.00 | 1 | [record](https://github.com/Expectrail/Expectrail/actions/runs/43652198623) |
-| spend | added | $0.0025 / image | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/expectrail/spend.py#L60) |
-| spend | added | $0.05 / request | 3 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/expectrail/spend.py#L60) |
-| spend | added | $1 / invocation | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/expectrail/spend.py#L60) |
-| spend | added | $200 | 2 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/expectrail/spend.py#L408); [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/expectrail/spend.py#L44) |
-| template | added | 0 / 97 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/template-sensor-untuned-summary.md#L10) |
-| template | added | 0.00% | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/template-sensor-untuned-summary.md#L10) |
-| template | added | 1.83% | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/template-sensor-untuned-summary.md#L12) |
-| template | added | 100% | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/template-sensor-untuned-summary.md#L13) |
-| template | added | 19 of 360 raw frames repeat prior hashes | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/template-sensor-untuned-summary.md#L11) |
-| template | added | 2.35% | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/template-sensor-untuned-summary.md#L11) |
-| template | added | 23 of 120 raw frames repeat prior PNG hashes | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/template-sensor-untuned-summary.md#L10) |
-| template | added | 540 / 540 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/template-sensor-untuned-summary.md#L13) |
-| template | added | 8 / 341 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/template-sensor-untuned-summary.md#L11) |
-| template | added | 8 / 438 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/template-sensor-untuned-summary.md#L12) |
-| template | added | Does not establish under 2% on each route | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/template-sensor-untuned-summary.md#L12) |
-| template | added | Frozen builder refuses fully opaque 16×16 art; no calibrated-bank result | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/template-sensor-untuned-summary.md#L1) |
+| spend | added | $0.0025 / image | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/expectrail/spend.py#L60) |
+| spend | added | $0.05 / request | 3 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/expectrail/spend.py#L60) |
+| spend | added | $1 / invocation | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/expectrail/spend.py#L60) |
+| spend | added | $200 | 2 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/expectrail/spend.py#L408); [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/expectrail/spend.py#L44) |
+| template | added | 0 / 97 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L10) |
+| template | added | 0.00% | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L10) |
+| template | added | 1.83% | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L12) |
+| template | added | 100% | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L13) |
+| template | added | 19 of 360 raw frames repeat prior hashes | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L11) |
+| template | added | 2.35% | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L11) |
+| template | added | 23 of 120 raw frames repeat prior PNG hashes | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L10) |
+| template | added | 540 / 540 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L13) |
+| template | added | 8 / 341 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L11) |
+| template | added | 8 / 438 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L12) |
+| template | added | Does not establish under 2% on each route | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L12) |
+| template | added | Frozen builder refuses fully opaque 16×16 art; no calibrated-bank result | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L1) |
 
 ## Every changed homepage numeric span
 
@@ -184,11 +184,11 @@ The [checked-in prior page](sources/dossier-before.html.txt) and [unchanged-gene
 | removed | 5 of 10 good mutation fixes | 1 | [record](https://github.com/Expectrail/Expectrail/blob/main/bench/mutation/ai-fixes/README.md) |
 | removed | Same 8 held-out bugs, 8 good fixes and 7 deceptive ones, judged three ways. | 1 | [record](sources/homepage-before.html.txt) |
 | removed | up to 2 of 8 | 1 | [record](sources/homepage-before.html.txt) |
-| added | 0 / 200 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/playtester-reach.md#L20) |
-| added | 0 / 400 distinct clean seeds with false reports | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/playtester-reach.md#L20) |
+| added | 0 / 200 | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L20) |
+| added | 0 / 400 distinct clean seeds with false reports | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L20) |
 | added | 25 / 35 held; 10 / 35 open; 0 / 35 failed; 0 / 35 not run | 1 | [record](https://github.com/Expectrail/Expectrail/actions/runs/43817779257) |
-| added | 3 / 24 listed defect symptoms | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/playtester-reach.md#L80) |
-| added | 8 / 341 clean frames alarm (2.35%) | 1 | [record](https://github.com/Expectrail/Expectrail/blob/5172744867bbbfc7c7609c81e9736bab3c6f6fef/docs/template-sensor-untuned-summary.md#L11) |
+| added | 3 / 24 listed defect symptoms | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/playtester-reach.md#L80) |
+| added | 8 / 341 clean frames alarm (2.35%) | 1 | [record](https://github.com/Expectrail/Expectrail/blob/89f2ea1f4ecefaab7f56bd797cb1a93d627f7ec1/docs/template-sensor-untuned-summary.md#L11) |
 | added | In this historical one-game mutation run, Muse Code fixed all 10 caught bugs on the first try. This does not establish a live repair through the newer app path.  | 1 |  |
 | added | Historical cohort: 8 held-out bugs, 8 good fixes and 7 deceptive ones. The comparison below shows the two ledger-backed observation paths. The zero accepted deceptive fixes applies only to that small sample; it is not a general false-accept rate. | 1 |  |
 

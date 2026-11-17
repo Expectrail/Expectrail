@@ -710,7 +710,8 @@
       "profile": "The Godot game; Muse Spark proposes in the closed trace language",
       "observer": "The engine's trace",
       "entryPoints": [
-        "expectrail.jit.cli"
+        "expectrail.jit.cli",
+        "tools.faces_motion_stand_in"
       ],
       "workflows": [
         "jit-blind.yml",
@@ -1877,7 +1878,8 @@
       "observer": "Engine plus required visual observations",
       "entryPoints": [
         "expectrail.orchestrator.cli",
-        "expectrail.gate.intent"
+        "expectrail.gate.intent",
+        "tools.linked_bug_bench"
       ],
       "status": "implemented",
       "grade": "fixture",
@@ -1896,6 +1898,9 @@
       "limits": "Bug text is context, not an approved check. Default intent is none; fix must demonstrate a reproduced repair on the judged checks. No new live-engine intent benchmark. Automatic trusted linked-issue classification/comment wiring remains open and needs human-managed workflow permissions.",
       "names": [
         "expectrail verify --intent"
+      ],
+      "docs": [
+        "docs/linked-bug-fix.md"
       ]
     },
     {
@@ -2263,14 +2268,15 @@
   ],
   "notModes": {
     "commands": {
-      "pip": "installs the requirements",
-      "unittest": "runs the test suite",
-      "http.server": "serves the demo page locally",
-      "venv": "creates a Python virtual environment for the quickstart",
+      "agents": "Documentation placeholder for agent modules; not an executable product mode.",
       "expectrail.capabilities": "Offline ledger maintenance, not a game verification mode.",
       "expectrail.timing": "Recorded-run timing parser; no engine execution.",
+      "http.server": "serves the demo page locally",
+      "pip": "installs the requirements",
       "tools.merge_guard": "Repository maintenance; not a user verification mode.",
-      "agents": "Documentation placeholder for agent modules; not an executable product mode."
+      "tools.onboard_examples": "writes the example pages for the onboarding docs; not a verification mode",
+      "unittest": "runs the test suite",
+      "venv": "creates a Python virtual environment for the quickstart"
     },
     "switches": {},
     "docs": {
@@ -2281,6 +2287,8 @@
       "docs/first-user-test.md": "Unrun first-user protocol, not a measured product mode.",
       "docs/future-work.md": "what is not built",
       "docs/new-work.md": "the log of what was built and run",
+      "docs/onboarding-ci.md": "notes on running the onboarding review without image extras in CI, not a verification mode",
+      "docs/onboarding-review.md": "how a person reviews a game on the onboarding page before approving; the review page itself verifies nothing",
       "docs/spend-environment.md": "repository settings for paid runs (who approves a model spend), not a verification mode"
     },
     "workflows": {
