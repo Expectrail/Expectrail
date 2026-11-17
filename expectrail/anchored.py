@@ -73,11 +73,10 @@ MAX_WHY = 200
 
 
 def _body_size(trace: dict, frame: int) -> tuple[float, float] | None:
-    from agents.observations import _frame_tick
+    from expectrail.observation_timeline import tick_for
 
     rows = list(trace.get("rows") or [])
-    step = max(int(trace.get("physicsTicksPerSecond") or 120) // 60, 1)
-    tick = _frame_tick(frame, step)
+    tick = tick_for(trace, frame)
     body = rows[tick].get("body") if tick < len(rows) else None
     if not body:
         return None
@@ -90,17 +89,17 @@ def _places(trace: dict, frames: dict[int, Path], chosen: list[int], pad: float)
 
     if not chosen:
         return {}
-    from agents.observations import _frame_box, _frame_tick, _view_at
+    from agents.observations import _frame_box
+    from expectrail.observation_timeline import tick_for, view_for
     import math
 
     size = png_size(frames[chosen[0]])
     places = anchors(trace, size, chosen, box=BODY, pad=pad)
     rows = trace.get("rows") or []
-    step = max(int(trace.get("physicsTicksPerSecond") or 120) // 60, 1)
     for n, place in places.items():
-        tick = _frame_tick(n, step)
+        tick = tick_for(trace, n)
         row = rows[tick] if tick < len(rows) else {}
-        body, view = row.get("body"), _view_at(rows, tick) if tick < len(rows) else None
+        body, view = row.get("body"), view_for(trace, n) if tick < len(rows) else None
         if not body or not view or "scale" not in place:
             continue
         box = _frame_box(view, body)
@@ -423,11 +422,13 @@ class AnchoredObserver:
             model["engineObjects"] = ["ground"]
 
         def document(refined=None):
-            return {"format": "expectrail.observations/v0", "replay": {"sha256": run["replaySha256"]}, "model": model,
+            from expectrail.observation_timeline import emit
+            document = {"format": "expectrail.observations/v0", "replay": {"sha256": run["replaySha256"]}, "model": model,
                     "frames": [out[n] for n in sorted(out)],
                     "analysis": {"framesCaptured": len(frames), "framesInWindow": in_window,
                                  "framesAnalyzed": len(out), "every": 1 if refined else every,
                                  "refined": refined, "confirmed": 0}}
+            return emit(document, trace, folder, version="anchored-observer/1")
 
         observe(first)
         seen = document()

@@ -29,6 +29,7 @@ BUNDLED_MODULES = {
         "godot_project",
         "legacy",
         "observers",
+        "observation_timeline",
         "onboard",
         "onboarding",
         "project_config",

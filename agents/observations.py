@@ -124,8 +124,9 @@ def _logged_ground_point(row: dict, view: list | None) -> tuple[float, float] | 
 
 
 def _frame_box(view: list, box: list[float]) -> list[float]:
-    (ax, ay), (bx, by) = _to_frame(view, box[0], box[1]), _to_frame(view, box[2], box[3])
-    return [round(min(ax, bx), 3), round(min(ay, by), 3), round(max(ax, bx), 3), round(max(ay, by), 3)]
+    points = [_to_frame(view, x, y) for x in (box[0], box[2]) for y in (box[1], box[3])]
+    return [round(min(p[0] for p in points), 3), round(min(p[1] for p in points), 3),
+            round(max(p[0] for p in points), 3), round(max(p[1] for p in points), 3)]
 
 
 def from_trace_synthetic(
@@ -158,17 +159,20 @@ def from_trace_synthetic(
         return godot_roles.observations(trace, replay_sha256, fps, physics_tps)
     rows = list(trace.get("rows") or [])
     tps = physics_tps or int(trace.get("physicsTicksPerSecond") or 120)
-    step = max(tps // fps, 1)
+    from expectrail import observation_timeline as timeline
+    mapping_trace = trace if not physics_tps else {**trace, "physicsTicksPerSecond": physics_tps}
+    count = timeline.frame_count(mapping_trace, fps)  # legacy fractional clocks are refused, never rounded
+    step = tps // fps if "captureTimeline" not in trace else None
     floor = _floor_y(rows)
     start_x = _start_x(rows)
-    in_frame = any(r.get("view") for r in rows)   # today's harness logs the camera in every row
+    in_frame = "captureTimeline" in trace or any(r.get("view") for r in rows)   # today's harness logs the camera in every row
     measured = any(r.get("ground") is not None for r in rows)
 
     frames = []
     if in_frame:
-        for n in range(len(rows) // step):
-            tick = _frame_tick(n, step)
-            row, view = rows[tick], _view_at(rows, tick)
+        for n in range(count):
+            tick = timeline.tick_for(mapping_trace, n, fps)
+            row, view = rows[tick], timeline.view_for(mapping_trace, n, fps)
             player = row.get("player")
             objects: dict = {"ground": [], "player": []}
             if player is not None and view:
@@ -197,7 +201,7 @@ def from_trace_synthetic(
                                       "score": 0.94, "track": 1}]
             frames.append({"frame": tick // step, "objects": objects})
 
-    return {
+    document = {
         "format": "expectrail.observations/v0",
         "replay": {"sha256": replay_sha256},
         "model": {
@@ -212,6 +216,7 @@ def from_trace_synthetic(
         },
         "frames": frames,
     }
+    return timeline.emit(document, trace, version="trace-synthetic/1")
 
 
 def _load_sam_provider() -> Callable[..., dict]:
@@ -335,21 +340,23 @@ def engine_ground_by_frame(trace: dict, frame_size: tuple[int, int], frames: lis
     """The level's ground line for each captured frame, in that frame's pixels.
 
     From the harness's ``ground`` (world y of the tile surface under the player) and ``view`` on
-    the last physics tick before the frame was drawn (see _frame_tick and _view_at). Returns
+    the captured physics tick and transform (legacy traces use the old phase). Returns
     {frame: {"ground": [box]}}, with an empty list when the engine logged no ground then.
     """
     from agents import godot_roles
     if godot_roles.configured(trace):
         return godot_roles.ground(trace, frame_size, frames, fps)
     rows = list(trace.get("rows") or [])
-    step = max(int(trace.get("physicsTicksPerSecond") or 120) // fps, 1)
+    from expectrail import observation_timeline as timeline
     width, height = frame_size
     out: dict[int, dict] = {}
     for n in frames:
-        tick = _frame_tick(n, step)
+        tick = timeline.tick_for(trace, n, fps)
         if tick >= len(rows):
             continue
-        row, view = rows[tick], _view_at(rows, tick)
+        row, view = rows[tick], timeline.view_for(trace, n, fps)
+        if "captureTimeline" in trace:
+            width, height = timeline.placement(trace, n, fps)["viewport"]
         point = _logged_ground_point(row, view)
         if point is None:
             out[n] = {"ground": []}
@@ -382,13 +389,13 @@ def engine_refs_by_frame(trace: dict, frame_size: tuple[int, int], frames: list[
         return godot_roles.refs(trace, frames, fps)
     del frame_size
     rows = list(trace.get("rows") or [])
-    step = max(int(trace.get("physicsTicksPerSecond") or 120) // fps, 1)
+    from expectrail import observation_timeline as timeline
     out: dict[int, dict[str, list[list[float]]]] = {}
     for n in frames:
-        tick = _frame_tick(n, step)
+        tick = timeline.tick_for(trace, n, fps)
         if tick >= len(rows):
             continue
-        row, view = rows[tick], _view_at(rows, tick)
+        row, view = rows[tick], timeline.view_for(trace, n, fps)
         if not view:
             continue
         player = row.get("player")
