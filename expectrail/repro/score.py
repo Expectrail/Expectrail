@@ -71,7 +71,8 @@ screen record does not show it, and ``undetermined`` cannot be written where it 
 
 A defect with no usable record is ``no-result``: counted in the bench, never as reproduced. So is a record
 made from one of the repository's stand-in proposals (``STAND_INS``: the rehearsal fixture, the hand-written
-``faces-motion`` checks of tools/faces_motion_stand_in.py): its checks were not proposed by a model.
+``faces-motion`` checks of tools/faces_motion_stand_in.py and ``visible`` bullet checks of
+tools/bullet_visible_stand_in.py): its checks were not proposed by a model.
 
 **One offer per score.** What the generator was offered is a setting of the run (expectrail/jit/offer.py,
 ``settings.offer`` in each record). A score counts the records of one setting, ``baseline`` unless it is
