@@ -1,0 +1,18 @@
+{
+  "planSha256": "87f75acc7ca0032de92342ca70ebd33f6c0f3526dc6edf63bc9438577e547cb1",
+  "bankSha256": "24a726dcebecc94975e3082a559e45774fa6067a489bc9508e61a9cd01486442",
+  "excludedSha256": "d84bdfa3795c65a1b4dd6eb47d9ac72aadd2f7314124b8ac0239897295d4ec9c",
+  "excludedUniquePngs": 5844,
+  "sensorFiles": {
+    "agents/template_observations.py": "b4d57fca5350d148056b00dacf99ab534b185b03609c2b9f6de269b35dd9f910",
+    "agents/template_foreground.py": "a987638f4b49cd3c4f2f50bb0d0bc3ccdc60f9d4827e5848df4323a214a766fa",
+    "agents/template_art.py": "c2f5831c401f8474fcbaf7a4e7e6b7f5d252177b05a1aabdb12e7f0ee17cfaef",
+    "agents/template_regions.py": "5df59a80c5ece9ba5f8ee8efbc419f39e93f5cafcf350fd5039bd89fcf8971db",
+    "agents/template_sensor_bench.py": "72ac56152b74816db4086fa6dababc445bf0bb0395c43dfa98a555eb761051ff",
+    "expectrail/jit/template_observer.py": "0c43b7a742ac16008733b4685b91540a8811fdbb85c00205b92d3c5514cca3af",
+    "contracts/observations.schema.json": "764f13ec2a8bae4cf47e547c871f7904c7fd58374f1f1aee7ffd8cb476dd9a0f",
+    "contracts/template-foreground-catalogue.schema.json": "14f094cc3fed0d233983c94de1438c9d2c464b1b1cd35372f82d070764e9c92a",
+    "contracts/examples/template-foreground-catalogue.json": "81e75655f50563ff8b59f13cce8a60a30e01cc552513dcb2bab6234b17e805c1",
+    "contracts/template-bank.schema.json": "42bc51527d946cf5e037db514294bb9ccc5a5b9c57ee41c5909a5c338ff3ac22"
+  }
+}

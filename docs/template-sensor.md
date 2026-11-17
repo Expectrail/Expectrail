@@ -5,6 +5,7 @@ It reads pixels without a model, network request or API key. No default observer
 verdict rule, approval, or source game is changed. This checkout-only sensor is not
 added to the verification wheel. See [the measurement](template-sensor-measurement.md)
 for the reproduced baseline and paired public results.
+The [closeout measurement](template-sensor-closeout.md) publishes independent player agreement and false-alarm rates for the current main bank; its [Done when audit](template-sensor-closeout-audit.md) keeps historical limits explicit.
 
 ## Foreground witnesses
 
