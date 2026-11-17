@@ -1,0 +1,20 @@
+{
+  "kind": "Exact selected test-result lines from public CI log; no new run",
+  "run": "https://github.com/Expectrail/Expectrail/actions/runs/43808291610",
+  "job": "https://github.com/Expectrail/Expectrail/actions/runs/43808291610/job/133104000066",
+  "pullRequest": "https://github.com/Expectrail/Expectrail/pull/551",
+  "jobs": [
+    {
+      "id": 133104000066,
+      "name": "seeded-bugs",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 43808291610
+    }
+  ],
+  "lines": [
+    "2026-11-16T05:12:04.9910640Z test_anchor_beyond_tolerance_stops_without_models (tests.test_replay_sandbox.PlaytestIngestRealEngineTest.test_anchor_beyond_tolerance_stops_without_models) ... ok",
+    "2026-11-16T05:12:04.9911854Z test_approved_ground_check_reproduces_three_times (tests.test_replay_sandbox.PlaytestIngestRealEngineTest.test_approved_ground_check_reproduces_three_times) ... ok",
+    "2026-11-16T05:12:04.9913077Z test_clean_base_is_not_reproduced_without_models (tests.test_replay_sandbox.PlaytestIngestRealEngineTest.test_clean_base_is_not_reproduced_without_models) ... ok"
+  ]
+}

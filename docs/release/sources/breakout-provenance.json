@@ -1,0 +1,11 @@
+{
+  "kind": "Verbatim records from the recorded failed Breakout onboarding handover, copied without applying its patch or executing its scripts",
+  "archive": "Expectrail-259-part-b-breakout-trial-handover.zip",
+  "url": "https://drive.google.com/file/d/1G2daoA83jLM5z3umPaOZH-O7zXXNlgo6/view",
+  "archiveSha256": "fda158bba7a785eef4d37d7ad53883b7cfe3b71e658a4518d7369ca7c05fbf18",
+  "files": {
+    "breakout-results.json": "aed75e7728fda2b821132ae208e307c148137a3b304b5e2b490dfba9af95c670",
+    "breakout-report.txt": "a1e602e1f417bd0dc46ba3fadefe5051a0f2123af8cd24b7d3108ad80fe4e041",
+    "breakout-pin.json": "0d4cd3e7ce7045cb8ce594029cdf00b78b7d97f880ad7ff14623ce7e25e8f430"
+  }
+}
