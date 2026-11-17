@@ -52,6 +52,8 @@ def routes_for(checks, folder):
 
 
 def capture(policy, base, head, pr, intent, archive, replay=verify.harness_replay):
+    if pr.get("fixLinks") and intent != "fix":
+        raise ValueError("closing-keyword links require fix capture")
     checks = verify.read_checks(base, policy.specs, policy.routes, "base")
     mine = verify.read_checks(head, policy.specs, policy.routes)
     changed = {"specs": verify.changed_count(mine.spec_entries, checks.spec_entries),
@@ -135,6 +137,8 @@ def judge(policy, base, pr, intent, archive, out, observer, *, head_checkout):
             if isinstance(manifest, dict) and (manifest.get("format") != FORMAT or manifest.get("writerRef") != pr["baseSha"]):
                 raise ValueError("writer and reader versions differ; pin both to the same base commit")
             contracts.validate(manifest, SCHEMA)
+            if manifest['pullRequest'].get('fixLinks') and manifest['intent'] != 'fix':
+                raise ValueError('closing-keyword links require fix capture')
             if manifest["pullRequest"] != pr or manifest["intent"] != intent or manifest["checksSha256"] != checks.digest:
                 raise ValueError("pull request, commit, intent or base policy differs")
             routes = routes_for(checks, root / "routes")
@@ -194,7 +198,7 @@ def judge(policy, base, pr, intent, archive, out, observer, *, head_checkout):
 
 if __name__ == "__main__":
     import sys
-    from expectrail.gate.intent import of_pull_request
+    from expectrail.gate.intent import of_pull_request, pull_request_metadata
     pr = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_bytes())["pull_request"]
-    capture(Policy.configured(), Path.cwd(), Path(sys.argv[1]), {"number": pr["number"],
-            "baseSha": pr["base"]["sha"], "headSha": pr["head"]["sha"]}, of_pull_request(pr).intent, Path(sys.argv[2]))
+    capture(Policy.configured(), Path.cwd(), Path(sys.argv[1]), pull_request_metadata(pr),
+            of_pull_request(pr).intent, Path(sys.argv[2]))

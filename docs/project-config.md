@@ -73,6 +73,24 @@ Review whether the route starts the game, moves the intended player and exercise
 the behaviour you care about. The route command can test repeatability with three
 replays. A person still chooses and approves the checks. Init measures no gameplay.
 
+## See the bound objects at one tick
+
+Once `expectrail.project.json` binds the objects, `--at-tick N` replays the game headless along the
+config's first route (or `--route ROUTE`) and prints, for each bound object at physics tick N, its
+node path, its box in captured-frame pixels, its box in world units and the engine's visible flag.
+Add `--json` for an `expectrail.inspection/v1` record (`contracts/inspection.v1.schema.json`).
+
+```sh
+expectrail inspect "$game" --at-tick 60
+expectrail inspect "$game" --at-tick 60 --route routes/walk.json --json
+```
+
+This is setup information, not a verdict and not pixel evidence: a box is the bounds of the
+drawing (or, labelled, the collision shape), not its opaque pixels, and visible is the engine's
+flag. A bound role with no object at that tick (not spawned yet, or removed) is listed as having
+none, never given a box. A tick past the route, a missing config or route, and a binding the replay
+never finds are refused with what to change.
+
 ## Verify the configured project in the app or CLI
 
 `routes` lists route files or patterns inside the project. `approvedContracts` lists individual

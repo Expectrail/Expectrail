@@ -120,7 +120,7 @@ def start(api, ctx, run, details, publisher):
 
 def current(api, ctx, run, state):
     pr = comment.find_pull_request(api, ctx)
-    return (pr and identity(pr) == state["pr"] and intent.of_pull_request(pr).intent == state["intent"]
+    return (pr and intent.pull_request_metadata(pr) == state["pr"] and intent.of_pull_request(pr).intent == state["intent"]
             and latest(api, ctx, run))
 
 
@@ -170,7 +170,7 @@ def main(mode):
         ids = start(comment.http_api(os.environ["CHECKS_TOKEN"]), ctx, run, report_ctx.run_url, os.environ["CHECKS_APP"])
         if event["action"] != "completed":
             return
-        state = {"pr": identity(pr), "intent": intent.of_pull_request(pr).intent, "ids": ids}
+        state = {"pr": intent.pull_request_metadata(pr), "intent": intent.of_pull_request(pr).intent, "ids": ids}
         base = None
         try:
             if run["conclusion"] != "success":
