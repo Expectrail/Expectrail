@@ -35,7 +35,7 @@ class TheDeclaration(unittest.TestCase):
     def test_nothing_declared_is_none(self):
         self.assertEqual(gi.declared([], ""), gi.Declared("none"))
         self.assertEqual(gi.declared(None, None).intent, "none")
-        self.assertEqual(intent(["P0", "agent-pr", "bug"], "Closes #12\n\nFixes the floor."), "none")
+        self.assertEqual(intent(["P0", "agent-pr", "bug"], "Closes #12\n\nFixes the floor."), "fix")
         self.assertIn("nothing is declared", gi.declared([], "").words())
 
     def test_a_label_declares(self):
@@ -184,10 +184,15 @@ class TheTrustedJob(GateCase):
 
     def test_the_same_accept_is_shown_when_nothing_or_change_or_none_is_declared(self):
         doc = self.readable(self.accepted())
-        for labels, body in (((), ""), (["intent:none"], ""), (["intent:change"], ""), (["bug", "P0"], "Closes #3")):
+        for labels, body in (((), ""), (["intent:none"], ""), (["intent:change"], ""), (["bug", "P0"], "See #3")):
             result, comment = self.run_with(doc, labels, body)
             self.assertEqual((result["decision"], result["problem"]), ("accept", None), (labels, body))
             self.assertIn("### Expectrail: accept", comment)
+        # The old closing-link case is retained, now with the stricter result.
+        result, comment = self.run_with(doc, ["bug", "P0"], "Closes #3")
+        self.assertEqual(result["decision"], "needs-review")
+        self.assertIn("rule for a fix was not applied", result["problem"])
+        self.assertNotIn("### Expectrail: accept", comment)
 
     def test_a_record_judged_as_a_fix_is_shown_whatever_is_declared(self):
         doc = self.readable(fix_record())

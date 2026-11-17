@@ -1490,7 +1490,9 @@ def main(argv: list[str] | None = None) -> int:
     commit = args.expectrail_commit
     try:
         pr = _pull_request(args.pr, args.head_sha, args.base_sha)
-    except ConfigError as exc:
+        from expectrail.gate.intent import ci_context
+        pr, args.intent = ci_context(pr, args.intent, os.environ.get("GITHUB_EVENT_PATH"))
+    except (ConfigError, ValueError, OSError) as exc:
         print(f"::error title=Expectrail gate::{exc}")
         return 3
     try:

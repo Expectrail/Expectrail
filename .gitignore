@@ -7,6 +7,7 @@
 !/tools/merge_guard.py
 !/tools/outside_trial.py
 !/tools/outside_vision.py
+!/tools/onboard_examples.py
 !/tools/recorded_renderer.py
 !/tools/quickstart.py
 !/tools/quickstart_timer.py
@@ -42,3 +43,5 @@ __pycache__/
 _bmad/render/
 
 !/tools/playtest_fall_through.py
+!/tools/faces_motion_stand_in.py
+!/tools/bullet_visible_stand_in.py

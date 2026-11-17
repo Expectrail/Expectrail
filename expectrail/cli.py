@@ -47,7 +47,7 @@ def usage() -> str:
         ("sample", "three real verifications of the bundled game: as it is, broken, repaired"),
         ("repair", "propose and verify a fix for a rejected job"),
         ("onboard", "build an offline binding review page from an init draft"),
-        ("inspect", "list the player, inputs, cameras and ground in a Godot project"),
+        ("inspect", "list the player, inputs, cameras and ground in a Godot project; --at-tick N measures them in a replay"),
         ("init", "propose a draft project config and first input route"),
         ("route", "make a first route from a Godot input map and check three identical replays"),
         ("app", "open the local browser app"),
