@@ -23,7 +23,10 @@ baseline stays what it was:
   (the clean game twice, the bug build once); the propose and revise steps put the summary that
   ``evidence.for_proposer`` makes on at most six probes of the prompt (``differs``). Like the
   measurements, it comes from the clean game and the bug build only, never the candidate (#285, step 6).
-  No visual observer is asked or read for it.
+  No visual observer is asked or read for it. Since the #285 audit, the two evidence settings also
+  offer the bounded integer Label signal and same-route signal_compare operation; baseline and
+  signals-reach keep their former vocabulary. Menu routes are still separate, explicitly configured
+  experiments (expectrail/repro/menu.py).
 - ``signals-reach-evidence-pixel`` (#286): everything the evidence setting offers, and **pixel checks**
   (expectrail/jit/pixel.py): the proposer may also write checks about what is drawn, in the closed
   shape ``expectrail.pixel-check/v1``, over the objects the project binds and only with the predicates a
@@ -114,10 +117,11 @@ def revisable(offer) -> str:
 
 def meanings(offer: str) -> dict[str, str]:
     """{signal: what it measures} for the signals the generator is told about under ``offer``."""
-    from expectrail.jit.intent import NOT_YET_OFFERED, SIGNAL_MEANINGS
+    from expectrail.jit.intent import EVIDENCE_SIGNALS, NOT_YET_OFFERED, SIGNAL_MEANINGS
 
     check(offer)
-    return dict(SIGNAL_MEANINGS) if offer == BASELINE else {**SIGNAL_MEANINGS, **NOT_YET_OFFERED}
+    result = dict(SIGNAL_MEANINGS) if offer == BASELINE else {**SIGNAL_MEANINGS, **NOT_YET_OFFERED}
+    return {**result, **EVIDENCE_SIGNALS} if shows_evidence(offer) else result
 
 
 def signals(offer: str) -> tuple[str, ...]:

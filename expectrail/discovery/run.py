@@ -32,6 +32,7 @@ from expectrail.discovery.probes import library
 from expectrail.discovery.route_compiler import ProgramError, compile_route
 from expectrail.discovery.templates import applies_to, instantiate
 from expectrail.trace import signals
+from harness.run import needs_ui_integers
 from expectrail.trace.evaluator import evaluate
 from expectrail.trace.normalize import EpisodeError, from_run_dir
 
@@ -66,11 +67,12 @@ class Budget:
 
 
 def _episode(runner, route: dict, route_path: Path, run_dir: Path, patches: list[Path], episode_id: str,
-             diagnostics: list[str]) -> dict | None:
+             diagnostics: list[str], *, trace_specs=()) -> dict | None:
     if run_dir.exists():
         shutil.rmtree(run_dir)
     try:
-        runner(route_path, run_dir, patches=patches)
+        extra = {"trace_specs": list(trace_specs)} if needs_ui_integers(trace_specs) else {}
+        runner(route_path, run_dir, patches=patches, **extra)
         return from_run_dir(run_dir, route, episode_id=episode_id)
     except (EpisodeError, OSError, ValueError, TimeoutError, Exception) as exc:  # noqa: BLE001
         diagnostics.append(f"{episode_id}: {type(exc).__name__}: {' '.join(str(exc).split())[:160]}")
@@ -153,6 +155,11 @@ def discover(profile_path: Path, snapshots: list[dict], out: Path, *, runner=Non
     snap_meta = []
     episodes: dict[str, dict[str, dict | None]] = {}
 
+    def specs_for(probe):
+        return [e["spec"] for e in entries if applies_to(e, probe) or
+                (e["applies"]["kind"] == "pair" and probe["id"] in
+                 (e["applies"]["left"], e["applies"]["right"]))]
+
     def run_probes(snap: dict, plist: list[dict]) -> None:
         eps = episodes.setdefault(snap["name"], {})
         patches = [Path(snap["patch"])] if snap.get("patch") else []
@@ -161,7 +168,7 @@ def discover(profile_path: Path, snapshots: list[dict], out: Path, *, runner=Non
                 break
             route, path = routes[probe["id"]]
             ep = _episode(runner, route, path, out / snap["name"] / probe["id"], patches,
-                          f"{snap['name']}-{probe['id']}", diagnostics)
+                          f"{snap['name']}-{probe['id']}", diagnostics, trace_specs=specs_for(probe))
             eps[probe["id"]] = ep
             if ep is not None:
                 (out / snap["name"] / probe["id"] / "episode.json").write_text(json.dumps(ep) + "\n", encoding="utf-8")
@@ -189,11 +196,16 @@ def discover(profile_path: Path, snapshots: list[dict], out: Path, *, runner=Non
             new = [dict(p, source="planner", tags=sorted(set(p.get("tags") or []))) for p in plan.get("probes", [])
                    ][: bud.limits["maxPlannerProbes"]]
             new = [p for p in new if p["id"] not in routes and add_route(p)]
-            probes += new
-            for snap in snapshots:
-                run_probes(snap, new)
+            already_requested = {p["id"] for p in probes if needs_ui_integers(specs_for(p))}
             planner_candidates = plan.get("candidates", [])[: bud.limits["maxPlannerCandidates"]]
             entries += planner_candidates
+            # Existing probes were captured before the planner's spec existed. Recapture only
+            # those newly requiring UI data; ordinary planned checks reuse the original trace.
+            recapture = [p for p in probes if p["id"] not in already_requested
+                         and needs_ui_integers(specs_for(p))]
+            probes += new
+            for snap in snapshots:
+                run_probes(snap, [*new, *recapture])
             stages.append({"name": "planner", "status": "complete",
                            "detail": f"{len(new)} probes and {len(planner_candidates)} contracts proposed; "
                                      f"{plan.get('usage', {})}"})
@@ -237,7 +249,7 @@ def discover(profile_path: Path, snapshots: list[dict], out: Path, *, runner=Non
                         break
                     route, path = routes[pid]
                     eps[pid] = _episode(runner, route, path, out / snap["name"] / f"{pid}-repro{n}", patches,
-                                        f"{snap['name']}-{pid}-repro{n}", diagnostics)
+                                        f"{snap['name']}-{pid}-repro{n}", diagnostics, trace_specs=[entry["spec"]])
                 if len(eps) < len(first["probeIds"]):
                     break
                 runs += 1

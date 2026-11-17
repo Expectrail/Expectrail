@@ -1,0 +1,477 @@
+{
+ "format": "expectrail.jit-run/v1",
+ "runId": "ci-43465090517-repro-camera-cut-top-round1",
+ "advisory": true,
+ "status": "complete",
+ "reason": null,
+ "inputs": {
+  "patchSha256": "96f6aa972c0ea9d9dc84c4843ec04b1b850e908fd26b6798d63f24d67b9f8d33",
+  "reportSha256": "3a72fad0c5603dcd225d7e9141b0a190c26b64d7d65afbaf44f56d604db7837c",
+  "basePatchSha256": [
+   "58aa8ecdbfa68434dde777cd3229da2f73afc6a34e145509e24402a5e3875b62"
+  ],
+  "profileSha256": "7ad60a7ddc662fab9bcade5b743a34278a3b1a3f14af59a23f6e38a902fe65ec",
+  "model": "muse-spark-1.3",
+  "promptSha256": "5bcc4ab3a59bd0ff96828840a242e1e3c33c2c12bdf4c9686d50b0d69b12c316"
+ },
+ "settings": {
+  "reps": 3,
+  "variantLimit": 8,
+  "budgetUsd": 2.0,
+  "offer": "baseline"
+ },
+ "diffMap": {
+  "files": [
+   {
+    "path": "README.md",
+    "claims": [],
+    "addedLines": [
+     2
+    ],
+    "removedLines": []
+   }
+  ],
+  "claims": [],
+  "probeIds": [
+   "wait-long",
+   "hold-right",
+   "hold-left",
+   "reverse",
+   "jump-w0-x1",
+   "jump-w0-x2",
+   "jump-w0-x8",
+   "jump-w40-x1",
+   "jump-w40-x2",
+   "jump-w40-x8",
+   "jump-w80-x1",
+   "jump-w80-x2",
+   "jump-w80-x8",
+   "jump-w120-x1",
+   "jump-w120-x2",
+   "jump-w120-x8",
+   "shoot-right-every48",
+   "shoot-right-every12",
+   "shoot-left-every48",
+   "shoot-left-every12",
+   "move-fire-right",
+   "move-fire-left",
+   "jump-l40-x1",
+   "jump-l40-x2",
+   "jump-l40-x8"
+  ],
+  "allProbes": true
+ },
+ "proposed": [
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c1-double-higher",
+    "origin": "AUTO_DIFF",
+    "statement": "A double jump rises higher than a single jump.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "max_rise_px",
+     "comparator": "gt",
+     "toleranceAbs": 10,
+     "left": "jump-w0-x1",
+     "right": "jump-w0-x2"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "pair",
+    "left": "jump-w0-x1",
+    "right": "jump-w0-x2"
+   },
+   "probeIds": [
+    "jump-w0-x1",
+    "jump-w0-x2"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c2-only-one-air-jump",
+    "origin": "AUTO_DIFF",
+    "statement": "Pressing jump more than twice does not add extra air jumps.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "air_jumps",
+     "comparator": "eq",
+     "toleranceAbs": 0,
+     "left": "jump-w0-x2",
+     "right": "jump-w0-x8"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "pair",
+    "left": "jump-w0-x2",
+    "right": "jump-w0-x8"
+   },
+   "probeIds": [
+    "jump-w0-x2",
+    "jump-w0-x8"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c3-cooldown-limits",
+    "origin": "AUTO_DIFF",
+    "statement": "Tapping shoot faster than the cooldown does not fire more bullets.",
+    "expectationRef": {
+     "claimId": "weapon.cooldown",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "projectile"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "projectile_count",
+     "comparator": "eq",
+     "toleranceAbs": 0,
+     "left": "shoot-right-every48",
+     "right": "shoot-right-every12"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "pair",
+    "left": "shoot-right-every48",
+    "right": "shoot-right-every12"
+   },
+   "probeIds": [
+    "shoot-right-every48",
+    "shoot-right-every12"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c4-facing",
+    "origin": "AUTO_DIFF",
+    "statement": "The player faces the way it moves when walking back and forth.",
+    "expectationRef": {
+     "claimId": "player.facing",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "direction_agreement",
+     "subject": "actor",
+     "maxMismatchCount": 5,
+     "minSpeedPxPerSec": 50,
+     "graceTicks": 15,
+     "minTravelPx": 100,
+     "horizonTicks": 540
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "reverse"
+    ]
+   },
+   "probeIds": [
+    "reverse"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c5-no-fall",
+    "origin": "AUTO_DIFF",
+    "statement": "Enemies do not drop off their platform while standing still.",
+    "expectationRef": {
+     "claimId": "enemy.patrol",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "enemy"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "max_entity_drop",
+     "settleTicks": 60,
+     "maxDropPx": 60
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "wait-long"
+    ]
+   },
+   "probeIds": [
+    "wait-long"
+   ]
+  },
+  {
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c6-patrol-moves",
+    "origin": "AUTO_DIFF",
+    "statement": "Enemies patrol their platform covering noticeable horizontal range.",
+    "expectationRef": {
+     "claimId": "enemy.patrol",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "enemy"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "min_motion_extent",
+     "minPx": 30
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "hold-right"
+    ]
+   },
+   "probeIds": [
+    "hold-right"
+   ]
+  }
+ ],
+ "probes": [
+  {
+   "id": "hold-right",
+   "source": "library",
+   "routeSha256": "9c1617e416ffef6b94643a19acd53d5596a014f46ba65910426bd1d4d93a87c6"
+  },
+  {
+   "id": "jump-w0-x1",
+   "source": "library",
+   "routeSha256": "05fbc284b8bda5425ab338a4ef235d9c07ccd95caeb2782fb017c5119a4596cf"
+  },
+  {
+   "id": "jump-w0-x2",
+   "source": "library",
+   "routeSha256": "b6cca17fb249a7685d9b7a1d01ed02e04251c0b1c343f96c145c5f6001bfe128"
+  },
+  {
+   "id": "jump-w0-x8",
+   "source": "library",
+   "routeSha256": "209cf72abe2851ee92b765d6cbb4fcda1bc032bebd259b7aa5de64e5e3500293"
+  },
+  {
+   "id": "reverse",
+   "source": "library",
+   "routeSha256": "d449b338f6c7efcc184c1a9140941d7e77047f0e98271125127b191f1c29ef80"
+  },
+  {
+   "id": "shoot-right-every12",
+   "source": "library",
+   "routeSha256": "e774115a4ccb465aa723e31e0bd4711fab5f5ad0553f9c6633ffdf05cee85dae"
+  },
+  {
+   "id": "shoot-right-every48",
+   "source": "library",
+   "routeSha256": "a294d061444e538ee9b0eb58eb71995e96df89f223edb44a7440f45f12879034"
+  },
+  {
+   "id": "wait-long",
+   "source": "library",
+   "routeSha256": "0746f1753d65ce9bcd3ae28a70802c951b87c8e10c9b213f3bff1f08d9be29cd"
+  }
+ ],
+ "variants": [
+  {
+   "id": "base",
+   "kind": "base",
+   "file": "",
+   "line": 0,
+   "patchSha256": "58aa8ecdbfa68434dde777cd3229da2f73afc6a34e145509e24402a5e3875b62"
+  }
+ ],
+ "validity": [
+  {
+   "specId": "jit-c1-double-higher",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  },
+  {
+   "specId": "jit-c2-only-one-air-jump",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  },
+  {
+   "specId": "jit-c3-cooldown-limits",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  },
+  {
+   "specId": "jit-c4-facing",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  },
+  {
+   "specId": "jit-c5-no-fall",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  },
+  {
+   "specId": "jit-c6-patrol-moves",
+   "valid": false,
+   "reference": [
+    "pass",
+    "pass",
+    "pass"
+   ],
+   "killed": [],
+   "reasons": [
+    "killed no near-miss variant"
+   ],
+   "candidate": [],
+   "outcome": "not-evaluated"
+  }
+ ],
+ "catches": [],
+ "counts": {
+  "proposed": 6,
+  "valid": 0,
+  "strong": 0,
+  "weak": 0
+ },
+ "spend": {
+  "usd": 0.0517,
+  "capUsd": 2.0,
+  "sparkUsd": 0.0471,
+  "replayUsd": 0.0046,
+  "samUsd": 0.0,
+  "samImages": 0,
+  "replays": 32,
+  "promptTokens": 8789,
+  "completionTokens": 9588,
+  "prices": {
+   "sparkUsdPerMTokIn": 1.0,
+   "sparkUsdPerMTokOut": 4.0,
+   "runnerUsdPerMinute": 0.008,
+   "samUsdPerImage": 0.0025,
+   "source": "assumed"
+  }
+ },
+ "diagnostics": [
+  "intent: MODEL_OUTPUT_INVALID: candidate model-c7-climb-rise-bound applies to unknown probes"
+ ]
+}

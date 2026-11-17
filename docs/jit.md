@@ -1,8 +1,11 @@
 # Generated checks: tests written for one change
 
-Built November 10, 2026, for issue #204. **Nothing on this page is measured yet.** The code, the
-record, the gate wiring and the offline tests are in place; every number the issue asks for is still
-to be run, and the [measurement plan](#measurement-plan) says how.
+Built November 10, 2026, for issue #204. The public reproduction baseline was measured on
+November 13: 17/24 defects, including 16/19 trace-visible defects, in
+[run 43465090517](https://github.com/Expectrail/Expectrail/actions/runs/43465090517).
+The [#285 audit](repro-audit.md) traces the figures to the original records and lists the later
+offers and candidate-withheld measurements still missing. The [measurement plan](#measurement-plan)
+covers the broader unrun cases.
 
 For each change an agent proposes, Expectrail can now generate checks aimed at that change, keep only
 the ones that are valid and deterministic, run them on the candidate, and report what they catch. It
@@ -808,3 +811,34 @@ under `boxes`), so the menu offers both to `sam-3.1-anchor`.
 
 Promoting a generated check to an approved spec (a person does it by hand), new trace-language
 operators, letting generated checks reject, Unity, and Flutter.
+
+
+## Public reproduction audit and integer UI state (#285, November 16)
+
+See [the completion table, miss breakdown and Sean's dispatch/cost plan](repro-audit.md).
+The original hosted baseline score and all its per-defect records are now committed under
+[`bench/jit/recordings/public-43465090517/`](../bench/jit/recordings/public-43465090517/).
+Recomputing that score is byte-identical; no new live rate was measured.
+
+`ui_integer_at_end` reads the sole visible integer-only Label value at the last tick of the
+observed window. The recorder collects it only when an evaluated trace spec reads that signal,
+either through `relation.signal` or either side of `signal_compare`. JIT requests it per active
+check/probe, including candidate fingerprints; discovery requests it for applicable specs and
+recaptures a prior probe if a newly proposed spec first needs UI data. The request uses the
+harness's existing value-argument path (`--ui-integers=true`), not a route field or environment
+switch. With no requesting spec, no UI scene walk runs and no `uiIntegers` key is written.
+General measurement/evidence collection does not enable it merely because an offer names the signal. The Godot recorder writes optional bounded `uiIntegers`; older traces, no label,
+multiple labels and collection overflow give no reading. This is engine UI state, not proof of
+pixels. `signal_compare` compares two signals within one route/window (right against left,
+with `eq`, `lte`, `gte`, `lt`, `gt` and nonnegative `toleranceAbs`). A reported collected-coin counter
+can compare `ui_integer_at_end` with `coins_collected`, without a guessed count. Undefined readings
+never pass. Schemas and handwritten examples cover raw trace, episode and trace spec.
+
+Both are offered only in `signals-reach-evidence` and `signals-reach-evidence-pixel`; parsers and
+saved-proposal readers enforce this. The baseline and `signals-reach` prompts and probes stay
+unchanged. `tests/test_trace_ui_integer.py` covers parsing, unknown/ambiguous/malformed data,
+window/tolerance semantics, old traces, the comparison, and a real pinned-engine public menu route:
+clean 5 twice, stuck 0, doubled 10. These are offline signal tests, not model reproduction evidence.
+Menu probes still require an explicit trusted menu action and are not offered automatically to
+generated checks. Multi-label/formatted/custom-drawn UI and the two orientation/layering misses
+remain limitations. No observer or verdict is enabled by this change.

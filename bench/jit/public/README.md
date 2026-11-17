@@ -1,5 +1,9 @@
 # The public reproduction bench
 
+[November 16 audit: completion criteria, recorded miss breakdown, remaining measurements and costs](../../../docs/repro-audit.md).
+The [original hosted baseline records](../recordings/public-43465090517/) are now recovered and committed,
+with archive/file digests. Later signal tests are not a new reproduction rate.
+
 Issue #285 asks for one number: of the reported bugs in a bench, the share for which a generated check
 fails on the buggy build 3 times of 3 and passes on the clean game 3 times of 3. This folder is the
 bench that number will be measured on. Everything in it is public, and reproduction is developed on
