@@ -60,6 +60,7 @@ ignore:
   - {rule: OBAAF-GHA-024, path: .github/workflows/web-bench.yml, job: heldout-bench, until: 2027-02-17, reason: "HELDOUT_TOKEN from spend (main only plus Sean's approval, #265); main-only holds the copy for free jobs."}
   - {rule: OBAAF-GHA-024, path: .github/workflows/web-fix.yml, job: plan, until: 2027-02-17, reason: "HELDOUT_TOKEN from spend (main only plus Sean's approval, #265); main-only holds the copy for free jobs."}
   - {rule: OBAAF-GHA-024, path: .github/workflows/web-fix.yml, job: run, until: 2027-02-17, reason: "HELDOUT_TOKEN from spend (main only plus Sean's approval, #265); main-only holds the copy for free jobs."}
+  - rule: OBAAF-GHA-001
     path: .github/workflows/expectrail-comment.yml
     job: judge
     reason: >-
