@@ -69,7 +69,9 @@ separates them from the others, and a person's hand finding (expectrail/repro/br
 reader recomputes both from the row's ``visibility`` and ``screen``, so neither can be written where the
 screen record does not show it, and ``undetermined`` cannot be written where it does.
 
-A defect with no usable record is ``no-result``: counted in the bench, never as reproduced.
+A defect with no usable record is ``no-result``: counted in the bench, never as reproduced. So is a record
+made from one of the repository's stand-in proposals (``STAND_INS``: the rehearsal fixture, the hand-written
+``faces-motion`` checks of tools/faces_motion_stand_in.py): its checks were not proposed by a model.
 
 **One offer per score.** What the generator was offered is a setting of the run (expectrail/jit/offer.py,
 ``settings.offer`` in each record). A score counts the records of one setting, ``baseline`` unless it is
@@ -140,6 +142,10 @@ PIXEL_PREFIX = "jit-px-"
 # package never imports the model's code (tests/test_repro_bench.py); a test holds them to the pipeline's.
 SHOWN, WITHHELD = "shown", "withheld"
 CANDIDATE_SETTINGS = (SHOWN, WITHHELD)
+# The repository's own stand-ins for a model (inputs.model of a record made from a hand-written or rehearsal
+# proposal). Their checks were written by a person or an agent, not proposed by a model, so a record made
+# from one is no result: a reproduction rate counts generated checks only (#286, the faces-motion stand-in).
+STAND_INS = ("rehearsal-fixture", "hand-written-stand-in")
 
 
 class ScoreError(ValueError):
@@ -211,6 +217,9 @@ def _read(defect: dict, path: Path, root: Path, offer: str = offer_mod.BASELINE,
         return None, "the record is for another defect"
     if inputs["reportSha256"] != _sha_text(root / defect["report"]):
         return None, "the record is for another report"
+    if inputs.get("model") in STAND_INS:
+        return None, (f"the checks were written by hand ({inputs['model']}), not proposed by a model, and the "
+                      "bench counts generated checks only")
     made = record["settings"].get("offer", offer_mod.BASELINE)
     if made != offer:
         return None, f"the record was made with offer {made}, and this score counts offer {offer}"

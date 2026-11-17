@@ -1,0 +1,53 @@
+{
+  "format": "expectrail.ci-bundle/v1",
+  "writerRef": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "pullRequest": {
+    "number": 1,
+    "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "fixLinks": [
+      {
+        "line": 2,
+        "text": "Fixes #284"
+      }
+    ]
+  },
+  "intent": "fix",
+  "checksSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "changed": {
+    "specs": 0,
+    "routes": 0
+  },
+  "runs": [
+    {
+      "group": "base-1",
+      "route": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "replay": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    {
+      "group": "base-2",
+      "route": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "replay": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    {
+      "group": "base-3",
+      "route": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "replay": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    {
+      "group": "head-1",
+      "route": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "replay": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    {
+      "group": "head-2",
+      "route": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "replay": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    {
+      "group": "head-3",
+      "route": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "replay": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    }
+  ]
+}
