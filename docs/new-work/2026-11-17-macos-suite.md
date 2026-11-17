@@ -22,7 +22,7 @@ Making the job a required check is Sean's decision once its counts are clean.
 ## What was run
 - `python3 -m unittest tests.test_macos_suite`: 11 tests, OK (the summary's cases, and the workflow's
   permissions, report-only shape, time limit, and that the guard reads no alias in it).
-- The full suite on the branch merged with main at aefed02, with this change: 4,815 tests, OK, 55 skipped.
+- The full suite on the branch merged with main at 55e4636: 4,840 tests, OK, 55 skipped (and 4,815, OK, 55 skipped at aefed02).
 - `python3 -m tools.merge_guard --base origin/main --head HEAD`: nothing to report in 5 files.
 - The macOS job itself: recorded in the pull request once GitHub has run it.
 
