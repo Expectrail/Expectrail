@@ -72,7 +72,7 @@ jobs:
 
   # Named heldout-bench so agents.bench_collect reads its annotations as it reads the game's.
   heldout-bench:
-    environment: main-only
+    environment: spend
     needs: web-list
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -166,7 +166,7 @@ jobs:
           echo "cases=$cases" >> "$GITHUB_OUTPUT"
 
   web-judge:
-    environment: main-only
+    environment: spend
     needs: web-judge-list
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -219,7 +219,7 @@ jobs:
   # Prompt calibration: SAM on each public session's last frame, every candidate prompt scored
   # against where the page drew the element. Public patches only; nothing here edits a spec.
   web-probe:
-    environment: main-only
+    environment: spend
     if: inputs.bench == 'probe'
     runs-on: ubuntu-24.04
     timeout-minutes: 30

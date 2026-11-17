@@ -1,0 +1,1184 @@
+{
+  "format": "expectrail.observer-calibration/v1",
+  "machineWritten": true,
+  "observer": {
+    "identity": {
+      "name": "template",
+      "model": "throwaway-test-double",
+      "provider": "local"
+    },
+    "evidence": "stand-in",
+    "sourceSha256": "5e0e10e849ec8643ec039339d2ead157d0d6a85326c4059d1e83e8266dc87d01"
+  },
+  "art": {
+    "texture.png": "f1381199052362105343004e43a55af217312b435733675ab9f550a2ddadfeef"
+  },
+  "artSha256": "3c7236099d6adad92560130abadb13dd93518f65b82d3dde48ec20db1a020d15",
+  "minimumFloor": 0.0,
+  "candidates": [
+    {
+      "prompt": "small robot character",
+      "floor": 0.9,
+      "rows": [
+        {
+          "frame": 0,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "13e9334827163fae827954c99d2afb461e27cb5669aa7a8e692d4578ade73ceb",
+          "detections": [
+            {
+              "box": [
+                10,
+                10,
+                20,
+                20
+              ],
+              "score": 0.95
+            },
+            {
+              "box": [
+                40,
+                40,
+                50,
+                50
+              ],
+              "score": 0.99
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 1,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "1f8836ee0469da0dbf6ddd52c6d138959524c981923ced84dbdbb1049827c599",
+          "detections": [
+            {
+              "box": [
+                10,
+                10,
+                20,
+                20
+              ],
+              "score": 0.95
+            },
+            {
+              "box": [
+                40,
+                40,
+                50,
+                50
+              ],
+              "score": 0.99
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 2,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "13e7f5f8caaf89850cd9b5e51a88a2e3c847f59bfad0254e1a68edf71e3fd686",
+          "detections": [
+            {
+              "box": [
+                10,
+                10,
+                20,
+                20
+              ],
+              "score": 0.95
+            },
+            {
+              "box": [
+                40,
+                40,
+                50,
+                50
+              ],
+              "score": 0.99
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 3,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "f7db8c3b1875837291912951acd9f6163702b91f669dcdfabad618b78fcaccf5",
+          "detections": [
+            {
+              "box": [
+                10,
+                10,
+                20,
+                20
+              ],
+              "score": 0.95
+            },
+            {
+              "box": [
+                40,
+                40,
+                50,
+                50
+              ],
+              "score": 0.99
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 4,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "28aebfde220a0cc90a81c9d9fbb0b4ce4415a2262a8600a85d34d8cc04084c7f",
+          "detections": [
+            {
+              "box": [
+                10,
+                10,
+                20,
+                20
+              ],
+              "score": 0.95
+            },
+            {
+              "box": [
+                40,
+                40,
+                50,
+                50
+              ],
+              "score": 0.99
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 5,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "72629a9845eca4e2b31223c2e41bdc9c0bb14fef826b2e8eb26995c7a57682ed",
+          "detections": [
+            {
+              "box": [
+                10,
+                10,
+                20,
+                20
+              ],
+              "score": 0.95
+            },
+            {
+              "box": [
+                40,
+                40,
+                50,
+                50
+              ],
+              "score": 0.99
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 6,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "6ec108a481725da49a13042ec52a7896edd495117831c6f71fedbc693292d035",
+          "detections": [
+            {
+              "box": [
+                10,
+                10,
+                20,
+                20
+              ],
+              "score": 0.95
+            },
+            {
+              "box": [
+                40,
+                40,
+                50,
+                50
+              ],
+              "score": 0.99
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 7,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "9f2193906924ec9533d87f667551211d74af0fa329febf85e06747d1cfff8775",
+          "detections": [
+            {
+              "box": [
+                10,
+                10,
+                20,
+                20
+              ],
+              "score": 0.95
+            },
+            {
+              "box": [
+                40,
+                40,
+                50,
+                50
+              ],
+              "score": 0.99
+            }
+          ],
+          "error": null
+        }
+      ]
+    },
+    {
+      "prompt": "blue robot",
+      "floor": 0.9,
+      "rows": [
+        {
+          "frame": 0,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "13e9334827163fae827954c99d2afb461e27cb5669aa7a8e692d4578ade73ceb",
+          "detections": [
+            {
+              "box": [
+                10,
+                10,
+                20,
+                20
+              ],
+              "score": 0.95
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 1,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "1f8836ee0469da0dbf6ddd52c6d138959524c981923ced84dbdbb1049827c599",
+          "detections": [
+            {
+              "box": [
+                10,
+                10,
+                20,
+                20
+              ],
+              "score": 0.95
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 2,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "13e7f5f8caaf89850cd9b5e51a88a2e3c847f59bfad0254e1a68edf71e3fd686",
+          "detections": [
+            {
+              "box": [
+                10,
+                10,
+                20,
+                20
+              ],
+              "score": 0.95
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 3,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "f7db8c3b1875837291912951acd9f6163702b91f669dcdfabad618b78fcaccf5",
+          "detections": [
+            {
+              "box": [
+                10,
+                10,
+                20,
+                20
+              ],
+              "score": 0.95
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 4,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "28aebfde220a0cc90a81c9d9fbb0b4ce4415a2262a8600a85d34d8cc04084c7f",
+          "detections": [
+            {
+              "box": [
+                10,
+                10,
+                20,
+                20
+              ],
+              "score": 0.95
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 5,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "72629a9845eca4e2b31223c2e41bdc9c0bb14fef826b2e8eb26995c7a57682ed",
+          "detections": [
+            {
+              "box": [
+                10,
+                10,
+                20,
+                20
+              ],
+              "score": 0.95
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 6,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "6ec108a481725da49a13042ec52a7896edd495117831c6f71fedbc693292d035",
+          "detections": [
+            {
+              "box": [
+                10,
+                10,
+                20,
+                20
+              ],
+              "score": 0.95
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 7,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "9f2193906924ec9533d87f667551211d74af0fa329febf85e06747d1cfff8775",
+          "detections": [
+            {
+              "box": [
+                10,
+                10,
+                20,
+                20
+              ],
+              "score": 0.95
+            }
+          ],
+          "error": null
+        }
+      ]
+    }
+  ],
+  "selected": "blue robot",
+  "clean": [
+    {
+      "frame": 0,
+      "expectedBox": [
+        10,
+        10,
+        20,
+        20
+      ],
+      "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "frameSha256": "8a5b88fb953df0e3aee73bcc92374141d7f03e7beaac8c8be4ef9a11dc8233da",
+      "detections": [
+        {
+          "box": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "score": 0.95
+        }
+      ],
+      "error": null
+    },
+    {
+      "frame": 1,
+      "expectedBox": [
+        10,
+        10,
+        20,
+        20
+      ],
+      "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "frameSha256": "4bff34492701282c5cc5ce55c8de7c5ee62ac12e65acc044b687026ee221c0c0",
+      "detections": [
+        {
+          "box": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "score": 0.95
+        }
+      ],
+      "error": null
+    },
+    {
+      "frame": 2,
+      "expectedBox": [
+        10,
+        10,
+        20,
+        20
+      ],
+      "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "frameSha256": "c0e1c169cc9c66f42fb124cd78ae835ff34e72447a28437f11cca348fbc1fac0",
+      "detections": [
+        {
+          "box": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "score": 0.95
+        }
+      ],
+      "error": null
+    },
+    {
+      "frame": 3,
+      "expectedBox": [
+        10,
+        10,
+        20,
+        20
+      ],
+      "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "frameSha256": "5faf0e0a9cef1291a6b975904fb1dc9e09f370f031468eb75d454dccda069aef",
+      "detections": [
+        {
+          "box": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "score": 0.95
+        }
+      ],
+      "error": null
+    },
+    {
+      "frame": 4,
+      "expectedBox": [
+        10,
+        10,
+        20,
+        20
+      ],
+      "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "frameSha256": "5c602354e48390299e1fd39ae92cd96ed5c183949a2a04dc78461dec5a15c55a",
+      "detections": [
+        {
+          "box": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "score": 0.95
+        }
+      ],
+      "error": null
+    },
+    {
+      "frame": 5,
+      "expectedBox": [
+        10,
+        10,
+        20,
+        20
+      ],
+      "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "frameSha256": "e2ecc48312feead26494628d2f4e0ca649426b31072dba0533dbd66db2df4839",
+      "detections": [
+        {
+          "box": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "score": 0.95
+        }
+      ],
+      "error": null
+    },
+    {
+      "frame": 6,
+      "expectedBox": [
+        10,
+        10,
+        20,
+        20
+      ],
+      "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "frameSha256": "4a72cbb48970a0d69c69deef273b66ab1c5b948fa8d2b960e637011d9f081ee9",
+      "detections": [
+        {
+          "box": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "score": 0.95
+        }
+      ],
+      "error": null
+    },
+    {
+      "frame": 7,
+      "expectedBox": [
+        10,
+        10,
+        20,
+        20
+      ],
+      "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "frameSha256": "6b30fddbc608384b2c1fa8b250714847b954f0f8ae3d399403abfa237fda2a86",
+      "detections": [
+        {
+          "box": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "score": 0.95
+        }
+      ],
+      "error": null
+    }
+  ],
+  "broken": [
+    {
+      "name": "hidden",
+      "patchSha256": "e564b4081d7a9ea4b00dada53bdae70c99b87b6fce869f0c3dd4d2bfa1e53e1c",
+      "rows": [
+        {
+          "frame": 0,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "e4a0e6a1d31440daac0a7c6c365e50362a3108deb062e5556e5d91e5ec7f7045",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 1,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "b329edb225eab6e718de915dc73f52dedffef4acc85998764806cff5fbe9e98b",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 2,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "c712a748cddd4ab4c6d02f8a74a99f241e3efdaddcbc061a6d39e77b840ede17",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 3,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "a2f2867d8ed59f4a35357aec0027f657702c0535f6c9eb9b01d428226189257e",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 4,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "fa349618ae0a2446d303fdfb4c6482347ef2e83f349efd1cc3df573f86c6ea52",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 5,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "a12b30dd606d04b4335cdcbddde514f1196fec660d2d2e04e654b62bb34cb4d9",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 6,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "9fe9d1fab15935575cb2eb0c497c46d41b9658c2f029aae480cb52a0f3e9938b",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 7,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "390c33efbd5b4496cf0d1acbc5f247651a1e68c98e89313c97e31b892456d9a5",
+          "detections": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "behind-scenery",
+      "patchSha256": "34e35d4f6d536bd61e0359776d5d6f2aa5bd53ea88f127c7b87d6b696183d131",
+      "rows": [
+        {
+          "frame": 0,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "c33f16324d9beca07e1b6e56526b6fadeb078a9f3b64bab7a36d444a4524557b",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 1,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "9b7bbcc44e445ace476eb8984b6794e532f8ff45fe67a780c182207df97f8edf",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 2,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "9cd33d26e67b9a44b45e4d74da84588ea56c242b0e066f06a1d684b4049980a0",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 3,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "4640646419996070dc341e27b8f96863b42dce10d35574ed5652e43e2908b92b",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 4,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "c488086bf8c25e5e9be243af54d58c4d75f5c0d67ffa7185d43073b22786f153",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 5,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "a45fad2795ae21fc729d2d1f58719e9dd1ba88b64897ca449d83f8cf4f8cabed",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 6,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "524f9072345e7ad79636d45ae53c0f7add8d8f5f45615290287481e2971e9e84",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 7,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "252a7288004ae019962c70a0c50235fa99b29aa3e0fb01ae2f1c0fa742c7ddfd",
+          "detections": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "texture-blanked",
+      "patchSha256": "c092725df492e731bdee68bf9e6bf8a7560d42e0569474cc3ea059d62e37e4b6",
+      "rows": [
+        {
+          "frame": 0,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "4305ff1fda7668a252f0fd7f9847a7b869b050f9f22e6e91549eb7c89b9ccd03",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 1,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "8402b4edb988427d3fb6a92393b821f61e01cf5cf2b48a5c7afc2416d6abdb79",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 2,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "fe9a8831082d4e6a98a3c1cf4fa5408b40a701d800df14e3e4240d632b123558",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 3,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "8fadcefaae3443cab40cb419727c01c3a82ce56522435231d8a662b8b27e44bd",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 4,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "e875ebc6fdbbb4a25075b37e9e057259f527e64286253389342ce7c72987f122",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 5,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "92dd9cf279d5b1894bf3d7565ba4a6057730853b072bc6dad333c68064bc88cb",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 6,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "f9800f2b31e9b591aae4f86af0e7ff6ce6a48f0f978f59b500733d131d46f8dd",
+          "detections": [],
+          "error": null
+        },
+        {
+          "frame": 7,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "ccd74d1e3d3e15f592af91dca24dd46ae2b561e27f6e6eba37abb3e7f3cd6ed4",
+          "detections": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "shifted-off-body",
+      "patchSha256": "9366ab7b13b1913d0b1cacd840f5f7b0e362ef83d71d1bd4edbc52b9ec4b22be",
+      "rows": [
+        {
+          "frame": 0,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "bd5b5a6356b07f3a8dc0db61f457ab2993c573e91f60eeed5381ff015eccce2e",
+          "detections": [
+            {
+              "box": [
+                40,
+                10,
+                50,
+                20
+              ],
+              "score": 0.99
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 1,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "8802f7c5c04fa6b1aab3c69c131d69e4f7952c13d0872bb50c87e35208fbc4f8",
+          "detections": [
+            {
+              "box": [
+                40,
+                10,
+                50,
+                20
+              ],
+              "score": 0.99
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 2,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "ece30fb0ab08d6e69db2ee72eec5de9e83158fcf8bda25003d5c89ad07cf838c",
+          "detections": [
+            {
+              "box": [
+                40,
+                10,
+                50,
+                20
+              ],
+              "score": 0.99
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 3,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "db32689f89870ee260a8430854527d8a2ccd1e82ae277421876bbcae24ba9bc9",
+          "detections": [
+            {
+              "box": [
+                40,
+                10,
+                50,
+                20
+              ],
+              "score": 0.99
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 4,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "65dbedfc27776be3327fcce280f9188eea678948cfd118f249214452b67e6a4b",
+          "detections": [
+            {
+              "box": [
+                40,
+                10,
+                50,
+                20
+              ],
+              "score": 0.99
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 5,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "efdff6775886c339fb490b196d2aeb1cb6b688bca6652d7060f8a32c5d0c30f0",
+          "detections": [
+            {
+              "box": [
+                40,
+                10,
+                50,
+                20
+              ],
+              "score": 0.99
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 6,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "f89df0dd6288ffcb416b084aa9b484d305f2299827bd108e5178817edb1ce3ef",
+          "detections": [
+            {
+              "box": [
+                40,
+                10,
+                50,
+                20
+              ],
+              "score": 0.99
+            }
+          ],
+          "error": null
+        },
+        {
+          "frame": 7,
+          "expectedBox": [
+            10,
+            10,
+            20,
+            20
+          ],
+          "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "frameSha256": "3a27d1a2cbd5b814b4082ac076eb1cea560a8e1094f4cd24a1865cd866bd9682",
+          "detections": [
+            {
+              "box": [
+                40,
+                10,
+                50,
+                20
+              ],
+              "score": 0.99
+            }
+          ],
+          "error": null
+        }
+      ]
+    }
+  ],
+  "enabled": true,
+  "why": [],
+  "missed": []
+}

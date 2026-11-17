@@ -1,0 +1,69 @@
+{
+ "format": "expectrail.jit-proposal/v0",
+ "patchSha256": null,
+ "model": "hand-written-stand-in",
+ "offer": "signals-reach-evidence-pixel",
+ "error": null,
+ "probes": [],
+ "candidates": [],
+ "diagnostics": [
+  "hand-written stand-in: no model was called (tools/faces_motion_stand_in.py)"
+ ],
+ "usage": {
+  "model": "hand-written-stand-in"
+ },
+ "promptSha256": null,
+ "pixelChecks": [
+  {
+   "format": "expectrail.pixel-check/v1",
+   "id": "jit-px-enemy-faces-motion-hold-right",
+   "statement": "While holding right, from frame 30 on, every enemy on screen is drawn facing the way the engine moves it, in every frame where it walks one way.",
+   "object": "enemy",
+   "observer": "visual-sensor",
+   "probe": "hold-right",
+   "window": {
+    "fromFrame": 30
+   },
+   "predicate": {
+    "type": "faces-motion"
+   },
+   "authority": "model_prior",
+   "origin": "AUTO_DIFF"
+  },
+  {
+   "format": "expectrail.pixel-check/v1",
+   "id": "jit-px-enemy-faces-motion-reverse",
+   "statement": "While walking right and then back left, from frame 130 on, every enemy on screen is drawn facing the way the engine moves it, in every frame where it walks one way.",
+   "object": "enemy",
+   "observer": "visual-sensor",
+   "probe": "reverse",
+   "window": {
+    "fromFrame": 130
+   },
+   "predicate": {
+    "type": "faces-motion"
+   },
+   "authority": "model_prior",
+   "origin": "AUTO_DIFF"
+  },
+  {
+   "format": "expectrail.pixel-check/v1",
+   "id": "jit-px-enemy-faces-motion-move-fire-right",
+   "statement": "While walking right and firing, from frame 30 on, every enemy on screen is drawn facing the way the engine moves it, in every frame where it walks one way.",
+   "object": "enemy",
+   "observer": "visual-sensor",
+   "probe": "move-fire-right",
+   "window": {
+    "fromFrame": 30
+   },
+   "predicate": {
+    "type": "faces-motion"
+   },
+   "authority": "model_prior",
+   "origin": "AUTO_DIFF"
+  }
+ ],
+ "observer": "visual-sensor",
+ "candidate": "withheld",
+ "reportSha256": "2d0791b44e241cba8f286713a5dc7846f6140e6d8cffd8b9e47c5c070e944896"
+}
