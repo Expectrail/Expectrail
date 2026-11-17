@@ -20,16 +20,11 @@ project config is read from that same base checkout: its capture rate and bindin
 arms, the held-out routes and the repeat runs play. A head config that differs is not an accept.
 Without a base, the head's own checks and its own config are used, and the record says so.
 
-Only specs with a person's approval judge a change. The evaluator decides each spec on the engine's
-position log (``agents.observations.from_trace_synthetic``): no model key is used, and a spec about
-an object the log does not hold (anything but the player and the ground) needs review.
-
-That is the rule ``engine-only``, which this command line still runs: the job that runs a pull
-request's code holds no model key (#254). ``run_gate`` also takes the rule ``both`` (#327): every
-check is then judged by the engine's record and by a visual observer over the captured frames
-(``expectrail.observers``), a check passes only when both pass, and with no visual observer nothing
-is accepted. A record judged that way says so in its ``observers`` block; a record without the
-block was judged ``engine-only``.
+Only specs with a person's approval judge a change. This command uses both the engine's
+record and a FramesObserver. An accept needs both; missing vision means needs-review, while
+an engine failure still rejects. The two-job CI path captures without a key and judges saved
+captures in the trusted job. Never put a model key in an untrusted game's environment.
+The explicit engine-only library rule is a diagnostic control, not the default verdict.
 
 ``--heldout`` points at a checkout of private routes (``manifest.json`` listing ``routes[].file``).
 They are replayed on the head without frames, every spec is judged on each, and only counts leave:
@@ -974,7 +969,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
              base: Path | None = None, heldout: Path | None = None, pr: dict | None = None,
              expectrail_commit: str | None = None, replay: Replay = harness_replay,
              generated_checks: Path | None = None, require_sandbox: bool = False,
-             checks: Checks | None = None, rule: str = rec.ENGINE_ONLY, visual=None,
+             checks: Checks | None = None, rule: str = rec.BOTH, visual=None,
              on_phase: Callable[[str], object] | None = None, heldout_frames_to_visual: bool = False,
              intent: str = "none", adapter: str = DEFAULT_ADAPTER,
              anchor_every: int = ANCHOR_EVERY, changed_checks: dict | None = None, vision_every: int = 1) -> dict:
@@ -992,7 +987,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     nothing runs. A ``replay`` given by the caller is used in place of the adapter's.
 
     ``rule`` is which observers judge (``rec.RULES``). ``engine-only`` is the engine's record alone,
-    as the pull-request gate runs until its two-job form exists (#254). ``both`` (#327) judges every
+    an explicit diagnostic control. The default ``both`` (#327) judges every
     check with the engine's record and with ``visual`` (an ``expectrail.observers.FramesObserver``)
     over the captured frames: a check passes only when both pass, a failure on either rejects, and
     with ``visual`` None, or an observer that cannot be set up or does not answer, nothing is
@@ -1054,7 +1049,12 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     observer = None   # how the record names the visual observer; None when none judged
     if visual is not None:
         try:
-            observer = visual.describe()
+            observer = dict(visual.describe())
+            # This is the observation adapter's version. The provider model identifier remains
+            # separate; no provider weights revision is inferred from our package version.
+            observer.setdefault("version", getattr(visual, "version", __version__)
+                                if type(visual).__module__.startswith(("expectrail.", "agents."))
+                                else getattr(visual, "version", "unreported"))
             rec.validate(observer, rec.schema()["properties"]["observers"]["properties"]["visual"])
         except NoAnswer as exc:
             problems.append(f"the visual observer could not be used: {_why(exc)}")
@@ -1286,7 +1286,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
         problems.append("the project config differs from the base's (added, removed or changed); "
                         "the gate reads the base's capture rate and bindings, and this is not an accept."
                         + detail)
-    observer_block = {"rule": rule, "visual": observer} if rule == rec.BOTH else None
+    observer_block = {"rule": rule, "engine": engine_observer(), "visual": observer} if rule == rec.BOTH else None
     if observer_block is not None and vision_every != 1:
         observer_block["visionEvery"] = vision_every
     decision, reasons = rec.decide(counts, held, isolation, check_problems, intent=intent, repair=repair,
@@ -1410,6 +1410,11 @@ def _adapter_name(adapter) -> str:
     return "unknown"
 
 
+def engine_observer() -> dict:
+    """The engine observation adapter's release, separate from the replay engine's version."""
+    return {"name": "expectrail.engine-record", "version": __version__}
+
+
 def stopped_record(reason: str, *, pr: dict | None, game: str | None, checks_from: str,
                    expectrail_commit: str | None, require_sandbox: bool = False,
                    rule: str = rec.ENGINE_ONLY, intent: str = "none", adapter: str = DEFAULT_ADAPTER) -> dict:
@@ -1432,7 +1437,7 @@ def stopped_record(reason: str, *, pr: dict | None, game: str | None, checks_fro
         "reasons": reasons[:1] + [_clip(reason)] + reasons[1:] if intent == "fix" else [_clip(reason)] + reasons,
         "pullRequest": pr, "game": {"path": game_path, "headTree": None, "baseTree": None},
         "checksFrom": checks_from, "checksChanged": {"specs": 0, "routes": 0}, "specs": [], "drafts": 0, "checkProblems": 0,
-        **({"observers": {"rule": rec.BOTH, "visual": None}} if rule == rec.BOTH else {}),
+        **({"observers": {"rule": rec.BOTH, "engine": engine_observer(), "visual": None}} if rule == rec.BOTH else {}),
         **({"intent": intent} if intent != "none" else {}), **({"repair": repair} if repair is not None else {}),
         "routes": [], "counts": counts, "checks": [], "findings": [], "heldOut": held,
         "isolation": rec.isolation_summary([], require_sandbox), "reviewPage": None,
@@ -1493,20 +1498,22 @@ def main(argv: list[str] | None = None) -> int:
     except ConfigError as exc:
         print(f"::error title=Expectrail gate::{exc}")
         return 3
+    from expectrail.observers import FramesObserver
+
     try:
         document = run_gate(repo=args.repo, game=args.game, routes=re.split(r"[\s,]+", args.routes),
                             specs=args.specs, out=out, work=work, base=args.base, heldout=args.heldout, pr=pr,
                             expectrail_commit=commit, generated_checks=args.generated_checks,
-                            require_sandbox=args.require_sandbox, intent=args.intent, adapter=args.adapter)
+                            require_sandbox=args.require_sandbox, intent=args.intent, adapter=args.adapter, rule=rec.BOTH, visual=FramesObserver())
     except ConfigError as exc:
         document = stopped_record(f"the gate's inputs cannot be used: {exc}", pr=pr, game=args.game,
                                   checks_from=checks_from, expectrail_commit=commit,
-                                  require_sandbox=args.require_sandbox, intent=args.intent, adapter=args.adapter)
+                                  require_sandbox=args.require_sandbox, intent=args.intent, adapter=args.adapter, rule=rec.BOTH)
     except Exception as exc:  # noqa: BLE001 - a crash still leaves a record, so the comment says so
         traceback.print_exc()
         document = stopped_record(f"the gate stopped ({type(exc).__name__}); see the verify job's log", pr=pr,
                                   game=args.game, checks_from=checks_from, expectrail_commit=commit,
-                                  require_sandbox=args.require_sandbox, intent=args.intent, adapter=args.adapter)
+                                  require_sandbox=args.require_sandbox, intent=args.intent, adapter=args.adapter, rule=rec.BOTH)
     if not (out / "findings.json").is_file():
         out.mkdir(parents=True, exist_ok=True)
         (out / "findings.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")

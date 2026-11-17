@@ -139,7 +139,7 @@ class GateCase(unittest.TestCase):
              pr: dict | None = None, **kw) -> dict:
         pr = pr if pr is not None else {"number": 7, "headSha": HEAD, "baseSha": BASE if base else None}
         with contextlib.redirect_stdout(io.StringIO()) as log:
-            doc = gv.run_gate(repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
+            doc = gv.run_gate(rule=kw.pop("rule", "engine-only"), repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
                               out=self.tmp / out_name, work=self.tmp / (out_name + "-work"), base=base,
                               heldout=heldout, pr=pr, replay=self.replay, **kw)
         self.log = log.getvalue()
@@ -408,7 +408,7 @@ class VerifyTest(GateCase):
                 head = make_repo(self.tmp / f"head-{n}")
                 breaker(head)
                 with contextlib.redirect_stdout(io.StringIO()):
-                    doc = gv.run_gate(repo=head, game="game/platformer", routes=["routes/*.json", "routes/*/*.json"],
+                    doc = gv.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/*.json", "routes/*/*.json"],
                                       specs="specs", out=self.tmp / f"out-{n}", work=self.tmp / f"work-{n}", base=None,
                                       heldout=None, pr={"number": 7, "headSha": HEAD, "baseSha": None}, replay=self.replay)
                 self.assertEqual((doc["decision"], doc["checkProblems"]), ("needs-review", 1))
@@ -531,7 +531,7 @@ class VerifyTest(GateCase):
             raise SystemExit("stop: the arguments are what this test reads")
 
         with mock.patch("harness.run.run", side_effect=run), contextlib.redirect_stdout(io.StringIO()):
-            gv.run_gate(repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
+            gv.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
                         out=self.tmp / "harness-out", work=self.tmp / "harness-work", base=base,
                         pr={"number": 7, "headSha": HEAD, "baseSha": BASE})
         self.assertGreaterEqual(len(seen), 2)  # the head arm and the base arm
@@ -594,7 +594,7 @@ class VerifyTest(GateCase):
             raise SystemExit("stop: the arguments are what this test reads")
 
         with mock.patch("harness.run.run", side_effect=run), contextlib.redirect_stdout(io.StringIO()):
-            gv.run_gate(repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
+            gv.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
                         out=self.tmp / "bind-out", work=self.tmp / "bind-work", base=base,
                         pr={"number": 7, "headSha": HEAD, "baseSha": BASE})
         self.assertGreaterEqual(len(seen), 2)
@@ -771,7 +771,7 @@ class IsolationTest(GateCase):
         with mock.patch.object(box, "probe", return_value=(None, "bubblewrap (bwrap) is not installed")), \
                 mock.patch("harness.run.run", side_effect=AssertionError("the game was replayed")):
             with self.assertRaisesRegex(gv.ConfigError, "required and this machine cannot provide it: bubblewrap"):
-                gv.run_gate(repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
+                gv.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
                             out=self.tmp / "o", work=self.tmp / "w", require_sandbox=True)
             with contextlib.redirect_stdout(io.StringIO()) as log:
                 code = gv.main(["--repo", str(head), "--game", "game/platformer", "--routes", "routes/*.json", "--specs",
@@ -798,7 +798,7 @@ class IsolationTest(GateCase):
             with self.subTest(required=required), mock.patch.object(box, "probe", return_value=(object(), None)), \
                     mock.patch("harness.run.run", side_effect=run), contextlib.redirect_stdout(io.StringIO()):
                 asked.clear()
-                gv.run_gate(repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
+                gv.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
                             out=self.tmp / f"o{required}", work=self.tmp / f"w{required}", require_sandbox=required)
                 self.assertEqual(asked, [expected])
 

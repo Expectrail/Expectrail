@@ -296,7 +296,8 @@ class LoopStopTest(unittest.TestCase):
         self.assertNotIn("preflight", result)
 
     def test_a_run_on_fixtures_alone_spends_nothing_to_protect_so_it_asks_nothing(self):
-        with tempfile.TemporaryDirectory() as tmp, mock.patch("agents.loop.sam_health.check") as check:
+        with tempfile.TemporaryDirectory() as tmp, mock.patch("agents.loop.sam_health.check") as check, \
+                mock.patch.dict(os.environ, {"EXPECTRAIL_OBS_PROVIDER": "trace"}):
             result = loop.one_run(Path(tmp) / "run", use_muse=False, offline_triage=True,
                                   observations=FIXTURES / "obs-fixed.json", candidate_patch=None, skip_harness=True,
                                   run_trust=False)

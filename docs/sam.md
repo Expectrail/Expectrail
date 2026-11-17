@@ -11,7 +11,25 @@ plain code. This page is the handoff for wiring SAM in for real and calibrating 
   (`tests/test_sam.py`).
 - **Live since October 28.** The probe has run against the real API: about one second per request,
   every response parsed. Findings and the specs they led to are below.
-- CI on pull requests keeps using the position-log stand-in (`trace` provider). It has no key.
+- Verification requires both the engine record and visual evidence. `expectrail verify` constructs
+  the visual observer; the two-job CI judge uses recorded answers. Without usable visual evidence,
+  passing engine checks are needs-review, never accept. See [the gate](ci-gate.md#two-observers-one-rule).
+- The raw gate command uses the same two-observer rule. The older `agents.verifier` command requires
+  its visual checks too. Its library's explicit trace-provider benchmark counterfactual is diagnostic
+  evidence, not product clearance. Existing benchmark tables below are historical measurements.
+- Findings and job records name the engine observer and visual adapter versions, separately from the
+  provider/model identifier. Versionless historical records remain readable; no version is inferred.
+
+For a before/after checkout comparison, one command uses both observers:
+
+```sh
+expectrail verify --head . --base ../expectrail-before --game game/platformer --routes harness/routes/smoke.json --specs agents/specs
+```
+
+The base folder supplies the approved checks. With the default live backend, set `MODEL_API_KEY`
+and `EXPECTRAIL_SAM_USD_CAP` in the verifier's environment first. Without either, passing engine
+checks need review and no request is sent. Tests use recorded answers or scripted transports;
+no live accuracy or spend measurement is claimed by this change.
 
 ## What the live probes found (October 28)
 
@@ -210,9 +228,9 @@ project is $200 in a calendar month and never more (#327). The cap is one run's 
 a run reserves that whole cap against the month before anything is sent, and the run is refused
 when the month plus the cap would pass $200. The file is not in the repository, so a pull request
 cannot write it. With the variable unset the month is not counted and only this run's cap applies.
-**No workflow in this repository sets the cap or the ledger yet, so every live SAM call from a
-workflow stops with the missing-cap reason until one does.** That is on purpose: Sean goes through
-each live run and its cap first.
+A live workflow must set its own cap; without one SAM sends nothing. The existing Fix matrix
+judge step still needs the explicit cap described in the prepared dispatch below. Sean reviews
+each live run's cap and the remaining monthly budget before dispatch.
 
 **From GitHub, no setup.** Actions, then **SAM probe**, then **Run workflow**. It renders the clean
 game and every seeded bug, probes every 10th frame (13 frames a run), and puts `probe.md` in the
@@ -726,3 +744,64 @@ a format change can never be cached as a frame with no player in it.
   missing texture or a hidden sprite would still come back empty. It also makes vision less
   independent of the engine, so if we use it we say so.
 - **Masks.** Boxes are all the evaluator uses today.
+
+## The next judge benchmark: prepared, not run (#327)
+
+The offline tests do not establish the live target of eight good fixes accepted and zero of seven
+bad fixes accepted. `python3 -m agents.judge_bench --list` names the 15 public candidates: 8 good
+and 7 bad. `agents.verifier.judge_candidate` now feeds those same seed-plus-fix trees through the
+shared gate with both observers and decision B. Its reference is the unchanged clean tree;
+`intent=none` measures the resulting game's behaviour, not the separate declared-fix policy.
+It reads no private route or blind-set material. The old `agents.judge_bench` engine-only column
+remains a diagnostic comparison, never product clearance.
+
+Only the case construction, dispatch plumbing and summary reader were tested here: a stand-in
+judge sees all 15 trees, the eight good copies have the clean tree's exact digest, and no request
+is sent. That is not an accuracy measurement. The shared gate's recorded-answer tests exercise
+accept, reject and missing vision separately.
+
+Sean alone may dispatch **Fix matrix** (`fix-matrix.yml`) after this patch and the edits below
+are reviewed and merged to main, with `bench=judge`,
+`set=dev`, the fifteen explicit case IDs below, `live=true`, `sam_cache=off`, `judge_glimmer=off` and
+`judge_outside=off`. **The current workflow needs these reviewed edits first**; this patch changes
+no workflow, permissions, environments or secrets:
+
+1. Add `EXPECTRAIL_SAM_USD_CAP: '3.75'` to the **Judge the candidate** step's existing `env`.
+2. Replace that step's `args=...` / `module=...` setup through the `python -m "$module"` line with
+   the following. Keep its existing `code=$?`, summary and exit handling afterwards. This invokes
+   only the shared gate; the separate screenshot, outside and Glimmer judges are not started.
+
+```sh
+[ "$LIVE" = true ] && [ "$GLIMMER" = off ] && [ "$OUTSIDE" = off ] || exit 2
+set +e
+python - "$CASE" <<'PY_DISPATCH' > judge.log 2>&1
+import json, sys
+from pathlib import Path
+from agents.verifier import judge_candidate
+row = judge_candidate(sys.argv[1], Path("runs/judge"))
+print(json.dumps(row))
+raise SystemExit(1 if row.get("error") else 0)
+PY_DISPATCH
+```
+
+3. In the existing **Keep the result** step, also retain the public findings and their evidence:
+   add `-o -path '*/expectrailSam/*'` inside its file-name
+   parentheses. These are the public benchmark's records; no private routes are passed to the gate.
+   The existing `result.json` summary remains readable, and now its `expectrailSam` column is the
+   shared gate's result. Do not mix these new rows into an old benchmark directory.
+
+After those edits are reviewed, merged, and Sean reserves the maximum against the month's $200 budget:
+
+```sh
+gh workflow run fix-matrix.yml --ref main -f bench=judge -f set=dev -f live=true -f cases='bad/fall-through-comment-only,bad/fall-through-freeze,bad/fall-through-hide-player,bad/fall-through-lower-floor,bad/fall-through-sink-player,bad/layering-hide-trees,bad/sinking-overcorrected,good/layering/v1,good/layering/v2,good/missing-texture/v1,good/missing-texture/v2,good/physics-fall-through/v1,good/physics-fall-through/v2,good/sinking/v1,good/sinking/v2' -f sam_cache=off -f judge_glimmer=off -f judge_outside=off
+```
+
+At the recorded list price above, $2.50 per 1,000 images, the per-candidate cap permits at most
+1,500 image attempts. Fifteen independent jobs can reserve at most **$56.25** (22,500 attempts),
+including retries; cache hits can reduce sends. This is a ceiling, not measured spend. The old
+1,164-image cold verification in the cache discussion is historical evidence, not a prediction
+for this new path. No other paid judge or warm-cache job is enabled by these settings.
+
+If a cap stops a case, report needs-review separately from rejects and accepts. Read every job's
+conclusion and `result.json` before claiming the 8/8 and 0/7 target; an error is not a verdict.
+Report actual request counts and spend from that run. This dispatch has **not run**.

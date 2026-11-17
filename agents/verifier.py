@@ -18,7 +18,7 @@ reject (EXPECTRAIL_HELDOUT_AFTER_FAIL=run replays them anyway).
 Optional `suite` on the verification document records candidate/clean/held-out
 provenance (harness vs fixture vs fixture-fallback vs unavailable).
 
-With EXPECTRAIL_OBS_PROVIDER=sam, the specs in SAM_SPECS (player always visible, coins
+By default, the specs in SAM_SPECS (player always visible, coins
 visible) are also judged on SAM 3.1's view of the candidate, clean and held-out replays, and
 every one must pass. SAM cannot see the ground in this game's art, so the ground spec is judged
 against the clean level's ground line (from an unpatched reference replay, so a candidate cannot
@@ -93,8 +93,12 @@ SAM_CLEAN_SCORE_FLOOR = 0.60
 
 
 def sam_on() -> bool:
-    """True when SAM should judge the visual specs. An unknown provider fails here, early."""
-    return resolve_provider() == "sam"
+    """Vision is the verifier default; explicit trace is a benchmark control, never CLI clearance.
+
+    Unknown providers fail early. The low-level observation converter still defaults to trace;
+    choosing to convert engine data is different from accepting a verification.
+    """
+    return resolve_provider(os.environ.get("EXPECTRAIL_OBS_PROVIDER") or "sam") == "sam"
 
 
 # Ids a SAM spec may not take: its evidence files and held-out results would collide with these.
@@ -432,8 +436,13 @@ def verify(
     held_out_observations_path: Path | None = None,
     skip_harness: bool = False,
     attempt: int = 1,
+    require_visual: bool = False,
 ) -> dict:
     """Verify one candidate and write verification.json, with timing.json (expectrail.timing) beside it.
+
+    The command line always requires vision. The historical benchmark API keeps its explicit
+    trace-provider counterfactual for comparison only; such records name engine-only and are not
+    product clearance. Product callers use the shared gate through expectrail verify.
 
     The timing is written after the decision and is never read back here. If it cannot be written, for
     any reason, the verification stands and timing-error.txt says why.
@@ -443,9 +452,10 @@ def verify(
             request, candidate, out, route=route, observations_path=observations_path,
             clean_observations_path=clean_observations_path,
             held_out_observations_path=held_out_observations_path, skip_harness=skip_harness, attempt=attempt,
+            require_visual=require_visual,
         )
     try:
-        timing.write(recorder, out / "timing.json", TIMED, decision=doc["decision"], sam=sam_on())
+        timing.write(recorder, out / "timing.json", TIMED, decision=doc["decision"], sam=sam_on() or require_visual)
     except Exception as exc:  # noqa: BLE001 - the verdict is written; no fault in a side record may lose it
         _timing_failed(out, exc)
     else:
@@ -484,6 +494,7 @@ def _verify(
     held_out_observations_path: Path | None = None,
     skip_harness: bool = False,
     attempt: int = 1,
+    require_visual: bool = False,
 ) -> dict:
     validate(request, "repair-request")
     out.mkdir(parents=True, exist_ok=True)
@@ -532,7 +543,7 @@ def _verify(
     reg_spec = load(REGRESSION_SPEC, "test-spec")
     if failing.get("spec", {}).get("id") == reg_spec["id"]:
         reg_spec = failing["spec"]
-    use_sam = sam_on()
+    use_sam = sam_on() or require_visual
     sam_spec_docs = sam_specs(reg_spec["id"]) if use_sam else []
     from agents.sam_observations import vision_label
 
@@ -770,12 +781,13 @@ def _verify(
     suite = {"candidate": candidate_arm, "clean": clean_arm, "heldOut": held_arm}
     decision, reasons = decide(checks)
     return _write_verification(
-        out, request, candidate, attempt, checks, decision, reasons, suite=suite,
+        out, request, candidate, attempt, checks, decision, reasons, suite=suite, use_visual=use_sam, require_visual=require_visual,
     )
 
 
 def _write_verification(
     out, request, candidate, attempt, checks, decision, reasons, *, suite: dict | None = None,
+    use_visual: bool = False, require_visual: bool = False,
 ) -> dict:
     from expectrail import __version__ as eval_version
 
@@ -793,6 +805,22 @@ def _write_verification(
         "decision": decision,
         "reasons": reasons,
     }
+    from expectrail.observers import FramesObserver
+    from expectrail.gate.verify import NoAnswer, engine_observer
+
+    observer = None
+    if use_visual:
+        try:
+            observer = dict(FramesObserver().describe(), version=eval_version)
+        except NoAnswer:
+            pass
+    doc["observers"] = {"rule": "both" if use_visual else "engine-only",
+                        "engine": engine_observer(), "visual": observer}
+    if require_visual and (observer is None or any(c["result"] == "needs-review" for c in checks)):
+        if doc["decision"] == "accept":
+            doc["decision"] = "needs-review"
+        doc["reasons"].append("the visual observer has incomplete evidence; configure the vision provider and its "
+                              "spending cap and supply captured frames; no accept from engine evidence alone")
     if suite is not None:
         doc["suite"] = suite
         (out / "suite-provenance.json").write_text(json.dumps(suite, indent=2) + "\n", encoding="utf-8")
@@ -924,6 +952,67 @@ def public_route_checks(
     return checks, arm_doc
 
 
+def judge_candidate(key: str, out: Path, *, gate=None, visual=None) -> dict:
+    """The public fifteen-candidate benchmark on the product gate, including decision B.
+
+    This can spend when given a live observer: Sean dispatches it with a per-process cap.
+    Tests inject a gate and never render or send. The unchanged clean tree is the reference:
+    candidates are seed plus proposed fix, and good candidates restore that tree exactly.
+    This measures final behaviour, not the separate declared-fix reproduction policy.
+    The existing judge-bench/v0 summary reader consumes result.json unchanged.
+    """
+    import shutil
+    import tempfile
+    import time
+
+    from agents.judge_bench import cases, dev_variants, undo_patch, GAME, FIXTURES, FORMAT, _correct
+    from agents.sam_observations import sam_usage, sam_images_since
+    from expectrail.gate.verify import run_gate
+    from expectrail.observers import FramesObserver
+    from harness.run import apply_patches
+
+    case = cases().get(key)
+    if case is None:
+        raise ValueError("unknown public judge candidate")
+    work = Path(out) / key.replace("/", "_")
+    work.mkdir(parents=True, exist_ok=False)
+    start, usage = time.perf_counter(), sam_usage()
+    row = {"format": FORMAT, "case": key, "label": case["label"], "why": case["why"],
+           "bug": case["bug"], "live": gate is None, "decisions": {}, "reasons": {}}
+    try:
+        seed = dev_variants()[case["bug"]]
+        candidate = work / "candidate.patch"
+        if case["fixture"] is None:
+            undo_patch(seed, candidate)
+        else:
+            shutil.copyfile(FIXTURES / (case["fixture"] + ".patch"), candidate)
+        with tempfile.TemporaryDirectory(prefix="judge-public-") as tmp:
+            base, head = Path(tmp) / "base", Path(tmp) / "head"
+            for tree in (base, head):
+                shutil.copytree(GAME, tree / "game", ignore=shutil.ignore_patterns(".godot"))
+                (tree / "routes").mkdir()
+                shutil.copyfile(REPO / "harness/routes/smoke.json", tree / "routes/smoke.json")
+                (tree / "specs").mkdir()
+                for spec in (REGRESSION_SPEC, *(REPO / p for p in SAM_SPECS)):
+                    shutil.copyfile(spec, tree / "specs" / spec.name)
+            apply_patches(head / "game", [seed, candidate.resolve()])
+            document = (gate or run_gate)(repo=head, base=base, game="game", routes=["routes/smoke.json"],
+                                          specs="specs", out=work / "expectrailSam",
+                                          work=Path(tmp) / "replays", rule="both",
+                                          visual=visual if visual is not None else FramesObserver(), intent="none",
+                                          expectrail_commit=os.environ.get("GITHUB_SHA"))
+        row["decisions"]["expectrailSam"] = document["decision"]
+        row["reasons"]["expectrailSam"] = document["reasons"][:6]
+        row["correct"] = {"expectrailSam": _correct(case["label"], document["decision"])}
+    except Exception as exc:  # leave a failed case, never turn an incomplete run into a verdict
+        (work / "judge-error.txt").write_text(traceback.format_exc(), encoding="utf-8")
+        row["error"] = f"{type(exc).__name__}: shared gate benchmark did not finish"
+    row["wallClockSeconds"] = round(time.perf_counter() - start, 1)
+    row["samImages"] = sam_images_since(usage)
+    (work / "result.json").write_text(json.dumps(row, indent=2) + "\n", encoding="utf-8")
+    return row
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--request", type=Path, required=True)
@@ -943,7 +1032,7 @@ def main(argv: list[str] | None = None) -> int:
         observations_path=args.observations,
         clean_observations_path=args.clean_observations,
         held_out_observations_path=args.held_out_observations,
-        skip_harness=args.skip_harness, attempt=args.attempt,
+        skip_harness=args.skip_harness, attempt=args.attempt, require_visual=True,
     )
     print(f"{doc['decision']}: {'; '.join(doc['reasons'])}")
     return 0 if doc["decision"] == "accept" else 1

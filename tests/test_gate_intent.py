@@ -219,7 +219,10 @@ class TheGate(GateCase):
         args = ["--repo", str(head), "--game", "game/platformer", "--routes", "routes/*.json", "--specs", "specs",
                 "--base", str(base), "--pr", "7", "--head-sha", HEAD, "--base-sha", BASE]
         real = gv.run_gate
-        gv.run_gate = lambda **kw: real(replay=self.replay, **kw)      # the command itself, on the fake replay
+        def engine_control(**kw):
+            kw.update(rule=rec.ENGINE_ONLY, visual=None)  # explicit trace-only intent fixture
+            return real(replay=self.replay, **kw)
+        gv.run_gate = engine_control
         self.addCleanup(setattr, gv, "run_gate", real)
         codes = {}
         for intent in ("fix", "none", "nonsense"):

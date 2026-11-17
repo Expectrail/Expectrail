@@ -422,7 +422,7 @@ class GodotEngineTest(Case):
 
     def gate(self, head: Path, base: Path | None, name: str) -> dict:
         with contextlib.redirect_stdout(io.StringIO()):
-            return gate.run_gate(repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
+            return gate.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
                                  out=self.tmp / name, work=self.tmp / f"{name}-work", base=base, replay=FakeReplay())
 
     def test_it_decides_as_the_gate_does(self):

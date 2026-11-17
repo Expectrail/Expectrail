@@ -91,7 +91,7 @@ def validate_results(work):
         assert status==jobs.status(status['id'])
         findings=record.read_record(jobs.paths(status['id']).output/'findings.json')
         assert findings['decision']==status['decision']
-        assert findings['observers']==status['observers']=={'rule':'both','visual':None}
+        assert findings['observers']==status['observers']=={'rule':'both','engine':{'name':'expectrail.engine-record','version':'0.1.0'},'visual':None}
         assert findings['checks'] and findings['isolation']['replays']>0
         for check in findings['checks']:
             assert check['observed']['after']['engine'] in ('pass','fail')
