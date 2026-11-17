@@ -40,21 +40,26 @@ lanes:
 # environments that only main's workflows can use. Model keys live in spend, which also waits for
 # Sean's approval on every run (#265); the held-out token is in main-only, with a copy in spend.
 protected_secrets:
-  HELDOUT_TOKEN: spend
+  HELDOUT_TOKEN: main-only
   "*_API_KEY": spend
 
 # Reviewed findings. Each entry says why it does not apply and expires, so it is reviewed again.
 ignore:
-  # The held-out token also lives in main-only, which, like spend, only main may deploy to; these
-  # jobs read the private set without a model key, so they run without Sean's approval (#265).
-  - {rule: OBAAF-GHA-024, path: .github/workflows/ci.yml, job: agents-harness-private, until: 2027-02-17, reason: "HELDOUT_TOKEN from main-only (main only, no model key); spend holds the copy for paid jobs (#265)."}
-  - {rule: OBAAF-GHA-024, path: .github/workflows/discovery-blind.yml, job: list, until: 2027-02-17, reason: "HELDOUT_TOKEN from main-only (main only, no model key); spend holds the copy for paid jobs (#265)."}
-  - {rule: OBAAF-GHA-024, path: .github/workflows/fix-matrix.yml, job: plan, until: 2027-02-17, reason: "HELDOUT_TOKEN from main-only (main only, no model key); spend holds the copy for paid jobs (#265)."}
-  - {rule: OBAAF-GHA-024, path: .github/workflows/jit-blind.yml, job: verify, until: 2027-02-17, reason: "HELDOUT_TOKEN from main-only (main only, no model key); spend holds the copy for paid jobs (#265)."}
-  - {rule: OBAAF-GHA-024, path: .github/workflows/private-scan.yml, job: private-export-scan, until: 2027-02-17, reason: "HELDOUT_TOKEN from main-only (main only, no model key); spend holds the copy for paid jobs (#265)."}
-  - {rule: OBAAF-GHA-024, path: .github/workflows/sam-probe.yml, job: heldout-list, until: 2027-02-17, reason: "HELDOUT_TOKEN from main-only (main only, no model key); spend holds the copy for paid jobs (#265)."}
-  - {rule: OBAAF-GHA-024, path: .github/workflows/web-bench.yml, job: web-list, until: 2027-02-17, reason: "HELDOUT_TOKEN from main-only (main only, no model key); spend holds the copy for paid jobs (#265)."}
-  - rule: OBAAF-GHA-001
+  # The held-out token's paid users read spend's copy: spend, like main-only, deploys only from main,
+  # and it also waits for Sean's approval (#265). The free users read main-only's.
+  - {rule: OBAAF-GHA-024, path: .github/workflows/ci.yml, job: agents-oct29-film, until: 2027-02-17, reason: "HELDOUT_TOKEN from spend (main only plus Sean's approval, #265); main-only holds the copy for free jobs."}
+  - {rule: OBAAF-GHA-024, path: .github/workflows/discovery-blind.yml, job: blind, until: 2027-02-17, reason: "HELDOUT_TOKEN from spend (main only plus Sean's approval, #265); main-only holds the copy for free jobs."}
+  - {rule: OBAAF-GHA-024, path: .github/workflows/fix-matrix.yml, job: sam-warm, until: 2027-02-17, reason: "HELDOUT_TOKEN from spend (main only plus Sean's approval, #265); main-only holds the copy for free jobs."}
+  - {rule: OBAAF-GHA-024, path: .github/workflows/fix-matrix.yml, job: run, until: 2027-02-17, reason: "HELDOUT_TOKEN from spend (main only plus Sean's approval, #265); main-only holds the copy for free jobs."}
+  - {rule: OBAAF-GHA-024, path: .github/workflows/fix-matrix.yml, job: judge-run, until: 2027-02-17, reason: "HELDOUT_TOKEN from spend (main only plus Sean's approval, #265); main-only holds the copy for free jobs."}
+  - {rule: OBAAF-GHA-024, path: .github/workflows/fix-matrix.yml, job: demo-run, until: 2027-02-17, reason: "HELDOUT_TOKEN from spend (main only plus Sean's approval, #265); main-only holds the copy for free jobs."}
+  - {rule: OBAAF-GHA-024, path: .github/workflows/glimmer-probe.yml, job: glimmer, until: 2027-02-17, reason: "HELDOUT_TOKEN from spend (main only plus Sean's approval, #265); main-only holds the copy for free jobs."}
+  - {rule: OBAAF-GHA-024, path: .github/workflows/jit-blind.yml, job: entry, until: 2027-02-17, reason: "HELDOUT_TOKEN from spend (main only plus Sean's approval, #265); main-only holds the copy for free jobs."}
+  - {rule: OBAAF-GHA-024, path: .github/workflows/sam-probe.yml, job: sam-verify, until: 2027-02-17, reason: "HELDOUT_TOKEN from spend (main only plus Sean's approval, #265); main-only holds the copy for free jobs."}
+  - {rule: OBAAF-GHA-024, path: .github/workflows/sam-probe.yml, job: heldout-bench, until: 2027-02-17, reason: "HELDOUT_TOKEN from spend (main only plus Sean's approval, #265); main-only holds the copy for free jobs."}
+  - {rule: OBAAF-GHA-024, path: .github/workflows/web-bench.yml, job: heldout-bench, until: 2027-02-17, reason: "HELDOUT_TOKEN from spend (main only plus Sean's approval, #265); main-only holds the copy for free jobs."}
+  - {rule: OBAAF-GHA-024, path: .github/workflows/web-fix.yml, job: plan, until: 2027-02-17, reason: "HELDOUT_TOKEN from spend (main only plus Sean's approval, #265); main-only holds the copy for free jobs."}
+  - {rule: OBAAF-GHA-024, path: .github/workflows/web-fix.yml, job: run, until: 2027-02-17, reason: "HELDOUT_TOKEN from spend (main only plus Sean's approval, #265); main-only holds the copy for free jobs."}
     path: .github/workflows/expectrail-comment.yml
     job: judge
     reason: >-
