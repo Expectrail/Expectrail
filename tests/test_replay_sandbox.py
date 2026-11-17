@@ -1224,5 +1224,25 @@ class PlaytestIngestRealEngineTest(unittest.TestCase):
         self.assertTrue(all(n == 0 for n in case['boundaries'].values()), case['boundaries'])
 
 
+@unittest.skipUnless(REQUIRED or os.environ.get('EXPECTRAIL_REPAIR_DIAGNOSTIC') == '1',
+                     '#433 real Godot + Bubblewrap repair: seeded-bugs sets EXPECTRAIL_SANDBOX_TESTS=required; local nonisolated diagnostic requires explicit opt-in')
+class RepairCommandsRealEngineTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if REQUIRED: real_tool(True)
+        cls.engine = real_godot()
+
+    def check(self, case):
+        from tests.repair_cli_fixture import exercise
+        with tempfile.TemporaryDirectory(prefix='expectrail-repair-cli-') as tmp, \
+             mock.patch.dict(os.environ, {'EXPECTRAIL_GODOT': str(self.engine)}):
+            proof = exercise(Path(tmp) / case, case, isolated=REQUIRED)
+        print(json.dumps(proof, sort_keys=True))
+
+    def test_verify_then_repair_is_demonstrated_by_the_fresh_gate(self): self.check('direct')
+    def test_auto_fix_is_demonstrated_by_the_fresh_gate(self): self.check('auto')
+    def test_never_successful_fixer_records_every_rejected_attempt(self): self.check('exhausted')
+
+
 if __name__ == "__main__":
     unittest.main()

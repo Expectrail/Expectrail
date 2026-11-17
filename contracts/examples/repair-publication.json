@@ -1,0 +1,23 @@
+{
+  "repository": "org/game",
+  "baseBranch": "main",
+  "game": "game",
+  "format": "expectrail.repair-publication/v1",
+  "pullRequest": 8,
+  "run": 45,
+  "attempt": 1,
+  "fixerSource": "fixture",
+  "changes": [
+    {
+      "path": "game/player.gd",
+      "mode": "100644",
+      "content": "Zml4ZWQK"
+    }
+  ],
+  "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "headTree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "artifactSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "recordSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "patchSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+}
