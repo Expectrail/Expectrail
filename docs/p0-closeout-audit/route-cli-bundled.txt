@@ -1,0 +1,26 @@
+Recorded local run. Local paths replaced and trailing spaces trimmed; raw log is in the handover.
+Original SHA-256: ccaac0575d926a0270447c0c8f6ce9ed92d770db74f511c7e1f966c9a6534663
+
+Replaying input map: run 1 of 3.
+Replaying input map: run 2 of 3.
+Replaying input map: run 3 of 3.
+Three complete traces are identical (headless replays; rendered images were not compared).
+Route: 2094 physics ticks (17.45 seconds at 120 ticks/second), seed 1.
+  move_left: 1 press(es), 120 ticks (1 seconds) each.
+  move_left_p1: 1 press(es), 120 ticks (1 seconds) each.
+  move_left_p2: 1 press(es), 120 ticks (1 seconds) each.
+  move_right: 1 press(es), 120 ticks (1 seconds) each.
+  move_right_p1: 1 press(es), 120 ticks (1 seconds) each.
+  move_right_p2: 1 press(es), 120 ticks (1 seconds) each.
+  jump: 3 press(es), 12 ticks (0.1 seconds) each.
+  jump_p1: 3 press(es), 12 ticks (0.1 seconds) each.
+  jump_p2: 3 press(es), 12 ticks (0.1 seconds) each.
+  shoot: 3 press(es), 12 ticks (0.1 seconds) each.
+  shoot_p1: 3 press(es), 12 ticks (0.1 seconds) each.
+  shoot_p2: 3 press(es), 12 ticks (0.1 seconds) each.
+  splitscreen: 3 press(es), 12 ticks (0.1 seconds) each.
+  toggle_fullscreen: 3 press(es), 12 ticks (0.1 seconds) each.
+  toggle_pause: 3 press(es), 12 ticks (0.1 seconds) each.
+Pauses: 30 ticks (0.25 seconds) before and between actions; 60 ticks after the last release.
+The bound player (Player) moved during the replay. Movement alone does not prove the actions caused it.
+Wrote <artifacts>/cli-routes/bundled.json.

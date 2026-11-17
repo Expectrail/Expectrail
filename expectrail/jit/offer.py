@@ -23,7 +23,10 @@ baseline stays what it was:
   (the clean game twice, the bug build once); the propose and revise steps put the summary that
   ``evidence.for_proposer`` makes on at most six probes of the prompt (``differs``). Like the
   measurements, it comes from the clean game and the bug build only, never the candidate (#285, step 6).
-  No visual observer is asked or read for it.
+  No visual observer is asked or read for it. Since the #285 audit, the two evidence settings also
+  offer the bounded integer Label signal and same-route signal_compare operation; baseline and
+  signals-reach keep their former vocabulary. Menu routes are still separate, explicitly configured
+  experiments (expectrail/repro/menu.py).
 - ``signals-reach-evidence-pixel`` (#286): everything the evidence setting offers, and **pixel checks**
   (expectrail/jit/pixel.py): the proposer may also write checks about what is drawn, in the closed
   shape ``expectrail.pixel-check/v1``, over the objects the project binds and only with the predicates a
@@ -114,10 +117,11 @@ def revisable(offer) -> str:
 
 def meanings(offer: str) -> dict[str, str]:
     """{signal: what it measures} for the signals the generator is told about under ``offer``."""
-    from expectrail.jit.intent import NOT_YET_OFFERED, SIGNAL_MEANINGS
+    from expectrail.jit.intent import EVIDENCE_SIGNALS, NOT_YET_OFFERED, SIGNAL_MEANINGS
 
     check(offer)
-    return dict(SIGNAL_MEANINGS) if offer == BASELINE else {**SIGNAL_MEANINGS, **NOT_YET_OFFERED}
+    result = dict(SIGNAL_MEANINGS) if offer == BASELINE else {**SIGNAL_MEANINGS, **NOT_YET_OFFERED}
+    return {**result, **EVIDENCE_SIGNALS} if shows_evidence(offer) else result
 
 
 def signals(offer: str) -> tuple[str, ...]:
@@ -149,8 +153,10 @@ def attach_evidence(probes: list[dict], path, base: list, offer: str) -> list[st
 
     The record is read as untrusted data: ``evidence.load`` checks it against its schema and itself and
     that it was made for these base patches, and ``evidence.for_proposer`` keeps only this library's
-    probe ids, the trace's own fields and signals, and numbers. Under any other setting nothing is
-    attached, and a file given anyway is said and not read."""
+    probe ids, the trace's own fields and signals, and numbers. Under the pixel setting a probe's
+    ``differs`` also carries ``partlyOnScreen``: the captured frames of the clean game where an enemy or a
+    bullet is only partly on screen, which the no-model sensor does not judge. Under any other setting
+    nothing is attached, and a file given anyway is said and not read."""
     if not shows_evidence(offer):
         return [] if path is None else [f"evidence: not used: the offer {offer} does not offer it"]
     if path is None:
@@ -168,6 +174,9 @@ def attach_evidence(probes: list[dict], path, base: list, offer: str) -> list[st
         p.pop("differs", None)
         if p["id"] in shown:
             p["differs"] = {**header, "record": shown[p["id"]]["record"], "screen": shown[p["id"]]["screen"]}
+            if offers_pixel(offer) and "partlyOnScreen" in shown[p["id"]]:
+                # Under the pixel setting only (#286), so every other setting's prompt is as it was.
+                p["differs"]["partlyOnScreen"] = shown[p["id"]]["partlyOnScreen"]
     notes = []
     if summary["probesNotCompared"]:
         notes.append(f"evidence: {summary['probesNotCompared']} probes could not be compared")

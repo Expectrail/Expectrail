@@ -1,0 +1,21 @@
+{
+  "label": "Saved-replay transport stand-in; real captured engine trace + pixels, no engine/model call.\nThis is local opt-in plumbing proof, not a release-gate acceptance or SAM vision evidence.",
+  "calibrationSha256": "cf3fc4af4f947f0d142eac3f3bc0ab69ef054f894b7933523039cad1ae29bf70",
+  "checksSource": "unchanged specs/player-always-visible.json",
+  "fresh": {
+    "decision": "accept",
+    "reasons": [
+      "all 1 checks pass",
+      "spec player-always-visible: approved before content binding"
+    ]
+  },
+  "stale": {
+    "decision": "needs-review",
+    "reasons": [
+      "1 of 1 public checks could not be decided",
+      "the engine's record passes 1 check that no visual observer was asked about, so this is not an accept: an accept needs the visual observer's evidence",
+      "the visual observer could not be used: calibration is stale: texture digest changed",
+      "spec player-always-visible: approved before content binding"
+    ]
+  }
+}

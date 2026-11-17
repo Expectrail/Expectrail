@@ -1,0 +1,2025 @@
+{
+  "format": "expectrail.capabilities/v1",
+  "updated": "2026-11-16",
+  "statuses": {
+    "implemented": "The code is in the repository and its tests pass in CI. It has run only on recorded or synthetic inputs, or has no recorded end-to-end run.",
+    "integrated": "Wired into the path a user takes (a command, a workflow or the site) and exercised there by a CI job or a recorded run. No published result rests on it.",
+    "measured": "A recorded CI run produced a result that the README, the site or a bench record publishes. The row links the run.",
+    "experimental": "Built and possibly run, but parked, a trial, or advisory and unmeasured. Do not rely on it; it may change or go."
+  },
+  "grades": {
+    "fixture": "Saved or synthetic data, for demos and tests. Never clears a release.",
+    "diagnostic": "A real run: the engine or the browser ran, or a live model answered, on a developer's machine or a CI runner, with isolation as declared. Does not clear a release.",
+    "isolated": "The game ran sandboxed with no network, the checks came from the base commit, and a separate trusted job judged and signed. No row has this grade yet: the replay sandbox and the two-job Action alone do not establish the full boundary; signed judging and deployment evidence are still needed.",
+    "protected": "Isolated, plus capture the game cannot forge. Reserved until the capture spike (#246) shows a way; the check refuses this grade."
+  },
+  "rows": [
+    {
+      "id": "godot-verify",
+      "mode": "Historical Godot agent verification benchmark: replay candidates and judge approved checks",
+      "profile": "Godot 4.7.2, 2D, Linux under Xvfb and Mesa; one game (Godot's platformer demo)",
+      "observer": "The engine's position log and the gameplay check; SAM 3.1 or Muse Glimmer for the vision checks",
+      "entryPoints": [
+        "agents.verifier",
+        "agents.gate1",
+        "expectrail.evaluator"
+      ],
+      "workflows": [
+        "ci.yml"
+      ],
+      "names": [
+        "Godot"
+      ],
+      "grade": "diagnostic",
+      "status": "measured",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41003749744",
+          "conclusion": "success",
+          "counts": [
+            {
+              "says": "8 of 8",
+              "n": 8,
+              "of": 8,
+              "titled": "Held-out bench *",
+              "not": [
+                "Held-out bench clean"
+              ],
+              "count": "caught with SAM on: yes"
+            },
+            {
+              "says": "no false alarm",
+              "n": 1,
+              "of": 1,
+              "titled": "Held-out bench clean",
+              "count": "false alarm with SAM on: no"
+            }
+          ],
+          "shows": "8 of 8 held-out bugs caught with SAM 3.1 on, no false alarm on the clean game"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
+          "conclusion": "success",
+          "jobs": [
+            "agents-harness-verify"
+          ],
+          "shows": "CI on main, job agents-harness-verify: real replays with SAM off accept the correct fix and reject the fix that freezes the player"
+        },
+        {
+          "kind": "record",
+          "ref": "bench/judge/README.md",
+          "shows": "0 of 7 fixes that only look right accepted and 8 of 8 correct fixes accepted, three runs"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_agents.py",
+          "shows": "the decision rule on recorded observations"
+        }
+      ],
+      "limits": "Seeded bugs on one game, not a catch-rate estimate for arbitrary projects. These agent runs do not measure the current installed command's default both-observer path. The approved benchmark specs judge frames 0 to 119. Replay containment is conditional on Bubblewrap; the newer two-job Action and receipt module are separate rows, without an end-to-end trusted signed deployment shown. No isolated grade."
+    },
+    {
+      "id": "godot-harness",
+      "mode": "Godot harness: replay a fixed route, capture every frame and the engine's trace",
+      "profile": "Godot 4.7.2, Linux under Xvfb and Mesa",
+      "observer": "None: it produces the frames and the trace the observers read",
+      "entryPoints": [
+        "harness.run",
+        "harness.replay_check",
+        "harness.check_seeded"
+      ],
+      "workflows": [
+        "ci.yml"
+      ],
+      "docs": [
+        "docs/harness.md"
+      ],
+      "grade": "diagnostic",
+      "status": "integrated",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
+          "conclusion": "success",
+          "jobs": [
+            "capture-smoke"
+          ],
+          "shows": "CI on main, job capture-smoke: the smoke route rendered twice and compared"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_harness.py",
+          "shows": "the import cache, the scrubbed environment the game gets, and that every route and seeded bug patch is valid"
+        },
+        {
+          "kind": "record",
+          "ref": "docs/harness.md",
+          "shows": "ten replays bit-identical, stated without a run link"
+        }
+      ],
+      "limits": "The ten-replay figure has no run link, so the row is not marked measured. Capture is demonstrated on Linux; no other capture platform is evidenced in this row. The game writes its own frames and trace, so a change written to forge them could."
+    },
+    {
+      "id": "ci-gate",
+      "mode": "Earlier composite CI gate: verify a pull request\u2019s game and post one verdict comment",
+      "profile": "Godot 4.7.2 projects on GitHub Actions; historical runs of the earlier composite actions on this repository\u2019s pull requests",
+      "observer": "The engine's record; no vision model",
+      "entryPoints": [
+        "expectrail.gate.verify",
+        "expectrail.gate.comment"
+      ],
+      "workflows": [],
+      "docs": [
+        "docs/ci-gate.md"
+      ],
+      "grade": "diagnostic",
+      "status": "integrated",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42926526666",
+          "conclusion": "success",
+          "jobs": [
+            "verify"
+          ],
+          "shows": "the verify workflow completed with success on a pull request of this repository"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42926734313",
+          "conclusion": "success",
+          "jobs": [
+            "comment"
+          ],
+          "shows": "the comment workflow completed with success after it"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42942805407",
+          "conclusion": "success",
+          "shows": "blind set 3, at 0906f29: the gate with the approved checks alone accepted all 34 candidates, so it caught 0 of 8 wrong fixes; it also rejected none of the 8 correct fixes or 2 intentional changes"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_ci_gate.py",
+          "shows": "finding ids that stay the same across pushes, and that the comment job's reader refuses a malformed or oversized artifact"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43817779257/job/133133657309",
+          "conclusion": "success",
+          "shows": "Release gate suite on main 1243413: 35 control rows, held 25, open 10, failed 0, not run 0; 68 test outcomes in the saved release-gate artifact. These are control statuses, not candidate false-accept/reject counts or signed release clearance."
+        }
+      ],
+      "limits": "On blind set 3 the approved checks covered none of the eight defects: what the gate catches is bounded by the checks a project has. This row cites no run on a project the team did not write (#263). The action sandboxes the game where the runner can and the findings record says how many replays ran in the sandbox; refusing to run outside it is an input (require-sandbox) that callers must set themselves. These earlier composite actions compute the verdict in the candidate job and do not publish the two head checks. The merged split is listed separately in ci-head-clearance. This historical evidence does not validate that newer deployment. No catch rate or runtime is published for it."
+    },
+    {
+      "id": "ci-head-clearance",
+      "mode": "Two-job Action: capture candidate evidence, judge on the base and publish head checks",
+      "profile": "Godot 4.7.2; Linux capture under mandatory Bubblewrap; trusted GitHub Actions publisher; offline stand-ins in the cited tests",
+      "observer": "Engine observations plus recorded base-side visual answers, under the rule both; no paid model calls in either workflow job",
+      "entryPoints": [
+        "tools.ci_bundle",
+        "tools.ci_checks"
+      ],
+      "workflows": [
+        "expectrail-verify.yml",
+        "expectrail-capture.yml",
+        "expectrail-comment.yml"
+      ],
+      "docs": [
+        "docs/ci-gate.md"
+      ],
+      "switches": [
+        "EXPECTRAIL_CHECKS_APP_ID",
+        "EXPECTRAIL_CHECKS_PRIVATE_KEY"
+      ],
+      "grade": "fixture",
+      "status": "implemented",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_ci_gate.py",
+          "shows": "SplitGateTest: six sandbox-required stand-in captures for a fix, base-side both-observer judging, regression rejection, missing visual answer needs-review, interruption and tampering refusal. HeadChecksTest: dedicated publisher, accept-only clearance, current-head/run-attempt/intent checks, workflow identity and artifact digest checks through a simulated API."
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_guides.py",
+          "shows": "The published caller matches the merged workflow; the guide names the publisher\u2019s checks and separates game-repository enforcement from Expectrail\u2019s advisory policy; both new pages are in local link/advertisement checks."
+        }
+      ],
+      "limits": "Merged in #429. No hosted acceptance run is cited for this split: App installation, protected-workflow startup, actual fork/artifact handling and branch-rule enforcement still need deployment validation. The bundled clean recording covers smoke; novel frames and combat can lack answers and need review unless a failure rejects. Require Expectrail clearance from the dedicated App in a game repository; Expectrail evidence is reporting. On Expectrail\u2019s own repository clearance is advisory, per Sean\u2019s November 14, 2026 option C; its merge guard does not wait for it. No private-project deployment, catch rate or runtime measured here. Game-originated capture and a shared host kernel remain limits; bypass permission is outside the guarantee. No promotion to isolated or protected grade."
+    },
+    {
+      "id": "unity-harness",
+      "mode": "Unity harness and approved specs",
+      "profile": "Unity, the Platformio game, on GitHub Actions",
+      "observer": "The engine's record (renderer bounds, the ground tilemap); SAM 3.1 probed, not scored",
+      "entryPoints": [
+        "harness.unity.run",
+        "agents.unity_observations"
+      ],
+      "workflows": [
+        "unity.yml"
+      ],
+      "docs": [
+        "docs/unity.md"
+      ],
+      "names": [
+        "Unity"
+      ],
+      "grade": "diagnostic",
+      "status": "experimental",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42758583740",
+          "conclusion": "success",
+          "jobs": [
+            "build",
+            "replay (a)",
+            "replay (b)",
+            "cross-runner"
+          ],
+          "shows": "Unity workflow run 19: the jobs build, replay (a), replay (b) and cross-runner all completed with success"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42877487075",
+          "conclusion": "success",
+          "jobs": [
+            "build",
+            "replay (a)",
+            "replay (b)",
+            "cross-runner"
+          ],
+          "shows": "Unity workflow run 23: the same four jobs all completed with success"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_unity_specs.py",
+          "shows": "the three specs are valid and lint clean, and the Godot loaders do not read them"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_unity_harness.py",
+          "shows": "the harness against a fake player: a short, gapped or malformed trace fails the run"
+        }
+      ],
+      "limits": "Parked until after the fund. The three specs in specs/unity/ are approved (#235), but no seeded Unity bug has been judged against them, the verifier is not wired to them, and SAM is not scored on this game's art. docs/unity.md's calibration numbers are the line the replay jobs of runs 42758583740 and 42877487075 print; they were first read from runs 42754753371 and 42758198963, which ended in failure, and this row does not rest on those."
+    },
+    {
+      "id": "web-checkout",
+      "mode": "Web checkout: the same verifier on a web page",
+      "profile": "Chromium, Bootstrap's checkout example, desktop and phone sessions",
+      "observer": "The page's layout boxes; SAM 3.1, counted only where the page drew the element",
+      "entryPoints": [
+        "agents.web_bench",
+        "agents.web_fix",
+        "agents.web_judge",
+        "harness.web"
+      ],
+      "workflows": [
+        "web-bench.yml",
+        "web-fix.yml"
+      ],
+      "names": [
+        "Chromium"
+      ],
+      "grade": "diagnostic",
+      "status": "measured",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41109233666",
+          "conclusion": "success",
+          "counts": [
+            {
+              "says": "8 of 8",
+              "n": 8,
+              "of": 8,
+              "titled": "Dev bench *",
+              "count": "caught with SAM on: yes"
+            },
+            {
+              "says": "4 of 8",
+              "n": 4,
+              "of": 8,
+              "titled": "Dev bench *",
+              "count": "caught with SAM off: yes",
+              "otherwise": "caught with SAM off: no"
+            },
+            {
+              "says": "no false alarm",
+              "n": 1,
+              "of": 1,
+              "titled": "Held-out bench clean",
+              "count": "false alarm with SAM on: no"
+            }
+          ],
+          "shows": "8 of 8 development bugs caught with SAM on, 4 of 8 with SAM off, no false alarm"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41130091655",
+          "conclusion": "success",
+          "counts": [
+            {
+              "says": "4 of 4",
+              "n": 4,
+              "of": 4,
+              "titled": "Held-out bench *",
+              "not": [
+                "Held-out bench clean"
+              ],
+              "count": "caught with SAM on: yes"
+            },
+            {
+              "says": "2 of 4",
+              "n": 2,
+              "of": 4,
+              "titled": "Held-out bench *",
+              "not": [
+                "Held-out bench clean"
+              ],
+              "count": "caught with SAM off: yes",
+              "otherwise": "caught with SAM off: no"
+            }
+          ],
+          "shows": "4 of 4 private bugs caught with SAM on, 2 of 4 with SAM off"
+        },
+        {
+          "kind": "record",
+          "ref": "bench/web/judge.md",
+          "shows": "0 of 5 changes that only look right accepted with SAM"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_web.py",
+          "shows": "the clean page passes every spec, and a SAM box counts only on the page's paint box for the element"
+        }
+      ],
+      "limits": "One static page and three checks, written by the team that built the verifier. The vision check leans on the page's own geometry. Supporting evidence, not the product."
+    },
+    {
+      "id": "sam-observer",
+      "mode": "SAM observer: SAM 3.1 finds what a check names in each frame",
+      "profile": "Meta's model API; the Godot game and the checkout page",
+      "observer": "SAM 3.1",
+      "entryPoints": [
+        "agents.sam_observations",
+        "agents.sam_probe"
+      ],
+      "workflows": [
+        "sam-probe.yml"
+      ],
+      "docs": [
+        "docs/sam.md"
+      ],
+      "names": [
+        "SAM 3.1"
+      ],
+      "grade": "diagnostic",
+      "status": "measured",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41003749744",
+          "conclusion": "success",
+          "counts": [
+            {
+              "says": "8 of 8",
+              "n": 8,
+              "of": 8,
+              "titled": "Held-out bench *",
+              "not": [
+                "Held-out bench clean"
+              ],
+              "count": "caught with SAM on: yes"
+            },
+            {
+              "says": "4 of 8",
+              "n": 4,
+              "of": 8,
+              "titled": "Held-out bench *",
+              "not": [
+                "Held-out bench clean"
+              ],
+              "count": "caught with SAM off: yes",
+              "otherwise": "caught with SAM off: no"
+            }
+          ],
+          "shows": "8 of 8 held-out bugs caught with SAM on; 4 of 8 without a vision model"
+        },
+        {
+          "kind": "record",
+          "ref": "bench/judge/README.md",
+          "shows": "0 of 7 fake fixes accepted with SAM, 3 of 7 without"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_sam.py",
+          "shows": "the client on recorded replies: an unrecognised answer is an error, never nothing found"
+        }
+      ],
+      "limits": "SAM does not see the ground, so the ground line always comes from the engine. Needs a Meta key and is paid per image. Measured on one game and one page.",
+      "switches": [
+        "EXPECTRAIL_SAM_USD_CAP"
+      ]
+    },
+    {
+      "id": "glimmer-observer",
+      "mode": "Open-weight observer: Muse Glimmer checked against the engine",
+      "profile": "Muse Glimmer 30B on a Fireworks deployment; the Godot game",
+      "observer": "Muse Glimmer, its boxes counted only where the engine agrees",
+      "entryPoints": [
+        "agents.glimmer_client",
+        "agents.engine_check"
+      ],
+      "workflows": [
+        "glimmer-probe.yml"
+      ],
+      "docs": [
+        "docs/open-weights.md"
+      ],
+      "names": [
+        "Muse Glimmer",
+        "Fireworks"
+      ],
+      "grade": "diagnostic",
+      "status": "measured",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41003751876",
+          "conclusion": "success",
+          "counts": [
+            {
+              "says": "8 of 8",
+              "n": 8,
+              "of": 8,
+              "titled": "Held-out bench *",
+              "not": [
+                "Held-out bench clean"
+              ],
+              "count": "caught with Glimmer+engine (no SAM): yes"
+            },
+            {
+              "says": "no false alarm",
+              "n": 1,
+              "of": 1,
+              "titled": "Held-out bench clean",
+              "count": "false alarm with Glimmer+engine (no SAM): no"
+            }
+          ],
+          "shows": "8 of 8 held-out bugs caught with Glimmer in place of SAM, no false alarm"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41230177124",
+          "conclusion": "success",
+          "counts": [
+            {
+              "says": "0 of 7",
+              "n": 0,
+              "of": 7,
+              "titled": "Judge summary expectrailGlimmer",
+              "reads": "bad fixes accepted {n} of {of}"
+            }
+          ],
+          "shows": "the judge benchmark with Glimmer: 0 of 7 fake fixes accepted, one run"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_glimmer.py",
+          "shows": "the client on recorded answers: a surprise is needs-review, never a pass"
+        }
+      ],
+      "limits": "Its boxes are too loose for the ground check, which is then judged on the engine's log alone. One judge run. The fallback for SAM, not its equal."
+    },
+    {
+      "id": "judge-fallback",
+      "mode": "Historical agent fix-loop fallback: retry SAM, then Glimmer, then a person",
+      "profile": "The live fix loop on the Godot game",
+      "observer": "SAM 3.1, then Muse Glimmer checked against the engine",
+      "entryPoints": [
+        "agents.judge_ladder",
+        "agents.sam_health"
+      ],
+      "docs": [
+        "docs/fallbacks.md"
+      ],
+      "grade": "diagnostic",
+      "status": "integrated",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41244537695",
+          "conclusion": "success",
+          "shows": "fourth drill: Glimmer accepted after two SAM failures"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_judge_ladder.py",
+          "shows": "a rejection is never judged again; when SAM stays down, Glimmer checked against the engine decides"
+        }
+      ],
+      "limits": "Shown in drills with an injected outage, not in a real one. The drill of the pre-run check (run 41234190741) is not cited: that run ended in failure. This is the agents.judge_ladder path, not a fallback promised by the installed verify command."
+    },
+    {
+      "id": "byo-models",
+      "mode": "Bring your own model for spec drafting and triage",
+      "profile": "Anthropic, OpenAI, Gemini, OpenRouter or a local Ollama, per role",
+      "observer": "None",
+      "entryPoints": [
+        "expectrail.providers",
+        "agents.byo_smoke",
+        "agents.triage"
+      ],
+      "workflows": [
+        "byo-smoke.yml"
+      ],
+      "switches": [
+        "EXPECTRAIL_LLM_*",
+        "EXPECTRAIL_SPEC_*",
+        "EXPECTRAIL_TRIAGE_*"
+      ],
+      "names": [
+        "OpenRouter",
+        "Gemini",
+        "Ollama"
+      ],
+      "grade": "diagnostic",
+      "status": "integrated",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42867299018",
+          "conclusion": "success",
+          "shows": "the smoke workflow, dispatched from main, completed with success; it sends one real prompt to each provider whose key is set, and which providers those were is in the run, not checked for this row"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_byo_providers.py",
+          "shows": "request and reply shapes on recorded responses"
+        }
+      ],
+      "limits": "Recorded-response tests cover the listed provider adapters. The cited smoke workflow succeeded, but this audit has not established which provider keys were set; it does not prove a live call to every listed provider. No comparative benchmark or provider spend result is reported. Spec and triage senders enforce role caps; see spend-caps."
+    },
+    {
+      "id": "byo-fixer",
+      "mode": "Bring your own coding agent as the fixer",
+      "profile": "Claude Code, Codex, aider, any command, or a direct model diff, in the fixer's workspace",
+      "observer": "None",
+      "entryPoints": [
+        "agents.byo_fixer"
+      ],
+      "workflows": [
+        "byo-live.yml"
+      ],
+      "switches": [
+        "EXPECTRAIL_FIXER_*"
+      ],
+      "names": [
+        "Claude Code",
+        "Codex",
+        "aider"
+      ],
+      "grade": "diagnostic",
+      "status": "integrated",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42752549697",
+          "conclusion": "success",
+          "shows": "Claude Code behind the key gateway reached an accepted fix on one seeded defect"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_byo_wiring.py",
+          "shows": "a command-line agent runs in the workspace with only its own key; the fixer may not hold the vision model's key"
+        }
+      ],
+      "limits": "One accepted fix on one seeded defect with one agent. This row cites no live run for Codex, aider or a custom command. An agent's own model calls are not metered."
+    },
+    {
+      "id": "byo-vision",
+      "mode": "Bring your own vision backend",
+      "profile": "Any open-vocabulary detector behind one HTTP endpoint, or a vision-language model checked against the engine",
+      "observer": "local-http, or byo-vlm-engine",
+      "entryPoints": [
+        "agents.byo_vision"
+      ],
+      "switches": [
+        "EXPECTRAIL_VISION_BACKEND",
+        "EXPECTRAIL_LOCAL_VISION_URL",
+        "EXPECTRAIL_VLM_*",
+        "EXPECTRAIL_KEYFRAMES_ONLY"
+      ],
+      "names": [
+        "Grounding DINO",
+        "Florence-2",
+        "YOLO-World"
+      ],
+      "grade": "fixture",
+      "status": "implemented",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_byo_wiring.py",
+          "shows": "a vision-language model alone does not decide a verdict; a vision failure is an error and no score is guessed"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_byo_providers.py",
+          "shows": "coordinate normalisation, the out-of-frame guard and keyframe sampling"
+        }
+      ],
+      "limits": "Tested with recorded responses only. No live run with any detector or model is recorded."
+    },
+    {
+      "id": "generated-checks",
+      "mode": "Generated checks: checks proposed for one change from its bug report and patch",
+      "profile": "The Godot game; Muse Spark proposes in the closed trace language",
+      "observer": "The engine's trace",
+      "entryPoints": [
+        "expectrail.jit.cli"
+      ],
+      "workflows": [
+        "jit-blind.yml",
+        "jit.yml"
+      ],
+      "docs": [
+        "docs/jit.md"
+      ],
+      "grade": "diagnostic",
+      "status": "experimental",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42942805407",
+          "conclusion": "success",
+          "shows": "blind set 3, at 0906f29: with generated checks added, 3 of 8 wrong fixes caught against 0 of 8 with the approved checks alone; no false catch on 8 correct fixes and 2 intentional changes; $3.67 for 34 candidates"
+        },
+        {
+          "kind": "record",
+          "ref": "bench/jit/blind-3/preregistration.json",
+          "shows": "the registration signed before the run, its amendments, and the recorded result"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42908014398",
+          "conclusion": "success",
+          "shows": "the first live run worked end to end and found nothing: 2 checks proposed, 0 valid"
+        },
+        {
+          "kind": "record",
+          "ref": "bench/jit/README.md",
+          "shows": "the bench and its rehearsal on stand-ins"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_jit_pipeline.py",
+          "shows": "the keep rule on a simulated game: a check is valid only if it passes the reference three times of three and kills a near miss"
+        }
+      ],
+      "limits": "One blind run on eight defects in one game: evidence, not a rate. On 5 of the 8 defects the generator wrote no check that reproduced the defect. Report-only: a generated check cannot reject a change, and there is no path yet to promote one (#271)."
+    },
+    {
+      "id": "discovery",
+      "mode": "Advisory discovery: generic probes judged by rules read from the game's code",
+      "profile": "The Godot game, headless",
+      "observer": "The engine's trace",
+      "entryPoints": [
+        "expectrail.discovery.cli",
+        "expectrail.discovery.freeze"
+      ],
+      "workflows": [
+        "discovery.yml",
+        "discovery-blind.yml"
+      ],
+      "docs": [
+        "docs/discovery.md"
+      ],
+      "grade": "diagnostic",
+      "status": "measured",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41248745687",
+          "conclusion": "success",
+          "counts": [
+            {
+              "says": "4 of 8",
+              "n": 4,
+              "of": 8,
+              "titled": "Blind *",
+              "not": [
+                "Blind time *"
+              ],
+              "where": {
+                "kind": "defect"
+              },
+              "has": {
+                "flagged": true
+              }
+            },
+            {
+              "says": "no healthy build flagged",
+              "n": 3,
+              "of": 3,
+              "titled": "Blind *",
+              "not": [
+                "Blind time *"
+              ],
+              "where": {
+                "kind": [
+                  "clean",
+                  "intentional"
+                ]
+              },
+              "has": {
+                "flagged": false
+              }
+            }
+          ],
+          "shows": "blind, fresh set 1: 4 of 8 defects flagged, no healthy build flagged"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41319184209",
+          "conclusion": "success",
+          "counts": [
+            {
+              "says": "3 of 8",
+              "n": 3,
+              "of": 8,
+              "titled": "Blind *",
+              "not": [
+                "Blind time *"
+              ],
+              "where": {
+                "kind": "defect"
+              },
+              "has": {
+                "flagged": true
+              }
+            },
+            {
+              "says": "no healthy build flagged",
+              "n": 3,
+              "of": 3,
+              "titled": "Blind *",
+              "not": [
+                "Blind time *"
+              ],
+              "where": {
+                "kind": [
+                  "clean",
+                  "intentional"
+                ]
+              },
+              "has": {
+                "flagged": false
+              }
+            }
+          ],
+          "shows": "blind, fresh set 2: 3 of 8 defects flagged, no healthy build flagged"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41238187197",
+          "conclusion": "success",
+          "shows": "development: the four reported bugs found, 2 of 8 development bugs"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_discovery.py",
+          "shows": "a flaky failure is a candidate, not a finding; a runner failure is recorded, never a pass"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41326269491",
+          "conclusion": "success",
+          "shows": "Historical sabotage/design-change probe; public aggregate in docs/discovery.md, not a new measurement."
+        }
+      ],
+      "limits": "Advisory: it cannot reject a change. Blind, it flagged 7 of 16 defects. Its profile covers four mechanics of one game and was written after reading four bug reports."
+    },
+    {
+      "id": "fix-loop",
+      "mode": "Historical agent fix loop: triage, sandboxed fixer, verify attempts and a morning report",
+      "profile": "The Godot game, Muse Wonder for triage and Muse Code as the fixer",
+      "observer": "As the Godot verify path",
+      "entryPoints": [
+        "agents.loop",
+        "agents.fixer",
+        "agents.triage",
+        "agents.prove_live"
+      ],
+      "workflows": [
+        "fix-matrix.yml"
+      ],
+      "docs": [
+        "docs/report-first.md"
+      ],
+      "names": [
+        "Muse Code",
+        "Muse Wonder"
+      ],
+      "grade": "diagnostic",
+      "status": "measured",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/40990485265",
+          "conclusion": "success",
+          "counts": [
+            {
+              "says": "10 of 10",
+              "n": 10,
+              "of": 10,
+              "titled": "Demo run *",
+              "not": [
+                "Demo run * *"
+              ],
+              "count": "decision accept"
+            },
+            {
+              "says": "each on the first attempt",
+              "n": 10,
+              "of": 10,
+              "titled": "Demo run *",
+              "not": [
+                "Demo run * *"
+              ],
+              "count": "attempts 1: accept"
+            }
+          ],
+          "shows": "the demo path live: 10 of 10 runs accepted, each on the first attempt"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41223748922",
+          "conclusion": "success",
+          "counts": [
+            {
+              "says": "3 of 3",
+              "n": 3,
+              "of": 3,
+              "titled": "Demo run *",
+              "not": [
+                "Demo run * *"
+              ],
+              "count": "decision accept"
+            }
+          ],
+          "shows": "after the report-first change: 3 of 3 accepted from the plain report"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_demo_loop.py",
+          "shows": "how a live run is recorded: a crash is recorded and never an accept"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41330361829",
+          "conclusion": "success",
+          "shows": "Historical mutation repairs: 10/10 caught seeded bugs fixed on the first attempt; this is not a live installed repair result."
+        }
+      ],
+      "limits": "Seeded bugs on one game through agents.loop. These live repairs do not establish a live repair through the newer installed repair/auto-fix path, which is fixture-tested separately. Muse Code's spend is not reported per historical run."
+    },
+    {
+      "id": "review-change",
+      "mode": "Historical agent review against a failing base: the same checks before and after a fix",
+      "profile": "The Godot game",
+      "observer": "As the Godot verify path",
+      "entryPoints": [
+        "agents.review_change",
+        "agents.review_html"
+      ],
+      "docs": [
+        "docs/review.md"
+      ],
+      "grade": "diagnostic",
+      "status": "integrated",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
+          "conclusion": "success",
+          "jobs": [
+            "agents-harness-verify"
+          ],
+          "shows": "CI on main, job agents-harness-verify: the correct fix reviewed as failing before and passing after, and the lower-the-floor fix rejected, on real replays with SAM off"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41223748922",
+          "conclusion": "success",
+          "counts": [
+            {
+              "says": "repair demonstrated",
+              "n": 3,
+              "of": 3,
+              "titled": "Demo run * review",
+              "count": "REPAIR DEMONSTRATED"
+            }
+          ],
+          "shows": "each live fix's review: repair demonstrated"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_review_change.py",
+          "shows": "the correct fix is a demonstrated repair; without the private routes a live repair is not claimed"
+        }
+      ],
+      "limits": "This legacy agents.review_change path requires private routes to claim a demonstrated repair, so its public-only review is inconclusive. The current installed verify --intent fix path has separate offline public-check demonstrations; see verify-intent. The historical engine-only runs do not measure current default vision behavior."
+    },
+    {
+      "id": "repair",
+      "mode": "Verify, then repair: after a reject, and only when the user turns auto-fix on, a fixer proposes a patch on a separate copy and each candidate is judged by a fresh verification; the original reject stands and a person reviews any accepted patch",
+      "profile": "The bundled Godot game, on a developer's machine (expectrail repair, expectrail verify --auto-fix, the local app's checkbox) or on a hosted Linux runner when a maintainer labels a rejected pull request (expectrail-autofix.yml)",
+      "observer": "Each candidate is judged by the same gate as any verification, in a new job; the fixer never talks to the verifier",
+      "entryPoints": [
+        "expectrail.repair",
+        "expectrail.auto_fix",
+        "tools.ci_autofix"
+      ],
+      "workflows": [
+        "expectrail-autofix.yml"
+      ],
+      "docs": [
+        "docs/ci-gate.md",
+        "docs/app.md"
+      ],
+      "grade": "fixture",
+      "status": "implemented",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_repair_command.py",
+          "shows": "With a fixture patch, a rejected job's repair applies the patch to a copy, verifies it in a new job and records an accept; the original job's reject is unchanged"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_auto_fix.py",
+          "shows": "verify --auto-fix starts a repair only on reject, keeps the reject as the verdict, and refuses a live fixer without a spend cap before any call"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_ci_autofix.py",
+          "shows": "The CI workflow runs only on a maintainer's expectrail-autofix label with a published reject for the same head, holds contents: read only, and runs the fixture fixer with isolated replay"
+        }
+      ],
+      "limits": "Only fixture patches have been used through the new installed repair/auto-fix path; no live fixer result is recorded for that path. Historical agents.loop repairs are listed separately in fix-loop. CI auto-fix is off by default and runs only the fixture fixer. Expectrail never merges a repair."
+    },
+    {
+      "id": "fixer-sandbox",
+      "mode": "Fixer sandbox: restrict editable game files and hide verifier policy and keys",
+      "profile": "bubblewrap on Linux; a plain worktree without the verifier's files where bubblewrap is missing",
+      "observer": "None",
+      "entryPoints": [
+        "agents.sandbox",
+        "agents.guard"
+      ],
+      "workflows": [
+        "ci.yml"
+      ],
+      "names": [
+        "bubblewrap"
+      ],
+      "grade": "diagnostic",
+      "status": "integrated",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
+          "conclusion": "success",
+          "jobs": [
+            "agents-sandbox"
+          ],
+          "shows": "CI on main, job agents-sandbox: the bubblewrap guard tests on a hosted runner"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_guard.py",
+          "shows": "writes outside the editable files are denied; bubblewrap never mounts the host's local directories"
+        }
+      ],
+      "limits": "A namespace sandbox on the host's kernel, not a virtual machine. Shell commands inside it are logged, not checked. It sandboxes the fixer; the game's replay has its own (replay-sandbox). OS containment requires the actual Bubblewrap path; a diagnostic plain-worktree fallback is not isolation. Runtime files and any explicitly configured gateway remain accessible under their mount/network policy."
+    },
+    {
+      "id": "replay-sandbox",
+      "mode": "Replay sandbox: the game runs with no network, its own process tree and only its work copy, one output folder and its inputs",
+      "profile": "Linux with a bubblewrap that has --disable-userns and --size (the harness tries the real command and finds out), Godot only; elsewhere the replay runs without it and replay.json says why",
+      "observer": "None",
+      "entryPoints": [
+        "harness.sandbox",
+        "harness.run",
+        "expectrail.gate.verify"
+      ],
+      "workflows": [
+        "ci.yml",
+        "expectrail-verify.yml"
+      ],
+      "names": [
+        "bubblewrap"
+      ],
+      "grade": "diagnostic",
+      "status": "integrated",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43115035122",
+          "conclusion": "success",
+          "jobs": [
+            "seeded-bugs"
+          ],
+          "shows": "CI on main (0356aef), job seeded-bugs, bubblewrap 0.9.0: the 34 sandbox tests with none skipped, every seeded-bug replay with the sandbox required, and three verifications through the gate and the orchestrator's worker with the sandbox required (accept, reject, accept)"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_replay_sandbox.py",
+          "shows": "inside, a program and the real game each fail to open a socket, write outside, read a check or the verifier, and read the starting process's environment, while the same attempts succeed outside; a link left as the trace is refused; the clean game's frame and trace hashes are the same with and without"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43704707400",
+          "conclusion": "success",
+          "shows": "PR #505 CI seeded-bugs job: 56 real-tool tests, none skipped, including terminal containment, unchanged frame hashes and disk-bound enforcement. This is a PR run, not a main acceptance deployment.",
+          "jobs": [
+            "seeded-bugs"
+          ]
+        }
+      ],
+      "limits": "Godot only: the Unity player and the web replay are not sandboxed. The gate records how many replays were sandboxed and can require it, and the orchestrator's isolated class requires it; no verdict is graded isolated by it, because that grade also needs a trusted job that judges and signs (#254, #255). A namespace sandbox on the host's kernel, not a virtual machine. What a replay adds to its work copy and output folder is bounded (4 GiB, 250,000 files) by a measurement every 0.1 s, not a file-system quota, so a game can pass it by what the disk takes in 0.1 s before it is stopped; CPU and memory are limited only by the replay's time limit. On Ubuntu 24.04 the runner must allow unprivileged user namespaces first."
+    },
+    {
+      "id": "key-gateway",
+      "mode": "Key gateway: sandboxed agents reach allowed provider hosts through a proxy without holding the real key",
+      "profile": "mitmproxy in front of the fixer's sandbox, for Muse Code and for a BYO agent",
+      "observer": "None",
+      "entryPoints": [
+        "agents.gateway",
+        "agents.muse_gateway"
+      ],
+      "workflows": [
+        "byo-gateway-probe.yml"
+      ],
+      "switches": [
+        "EXPECTRAIL_BYO_GATEWAY"
+      ],
+      "docs": [
+        "docs/obaaf.md"
+      ],
+      "grade": "diagnostic",
+      "status": "measured",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/41074472926",
+          "conclusion": "success",
+          "shows": "Muse Code behind the gateway: 19 requests, 5.5 s inside the sandbox"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42752549697",
+          "conclusion": "success",
+          "shows": "Claude Code behind the gateway: an accepted fix in 100,962 ms against 100,989 ms without it; one off-list host refused"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_gateway.py",
+          "shows": "off unless turned on; on without the key or the proxy is an error, never a fallback"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_muse_gateway.py",
+          "shows": "only Meta's hosts are allowed, and the placeholder is swapped for the key there and nowhere else"
+        }
+      ],
+      "limits": "One probe per agent. For a BYO agent it is off by default outside CI's live runs."
+    },
+    {
+      "id": "signing",
+      "mode": "Signing: a release candidate signed outside the fixer's reach, and the trust probe",
+      "profile": "Ed25519, a key generated per run on the verifier's side",
+      "observer": "None",
+      "entryPoints": [
+        "agents.signing",
+        "agents.trust",
+        "agents.report"
+      ],
+      "workflows": [
+        "ci.yml"
+      ],
+      "grade": "diagnostic",
+      "status": "integrated",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
+          "conclusion": "success",
+          "jobs": [
+            "agents-gate1"
+          ],
+          "shows": "CI on main, job agents-gate1: the trust probe ran and the canary read was denied; the release candidate validates"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_agents.py",
+          "shows": "generate, sign and verify with Ed25519; a tampered payload fails"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_receipt.py",
+          "shows": "The separate receipt module checks an offline issuer trust store; it does not wire receipts into the historical release-candidate path."
+        }
+      ],
+      "limits": "Historical per-run key on the verifying side; this is not a deployed issuer with distributed trust. The separate receipt module now implements an offline trust store and trust-check (verifier-receipts), but no CI attestation or complete capture/judge/receipt deployment is evidenced here."
+    },
+    {
+      "id": "mcp-tools",
+      "mode": "MCP tools: draft a spec, run the loop once, run the trust probe",
+      "profile": "A stdio MCP server for Claude Code, Cursor or any MCP client",
+      "observer": "None",
+      "entryPoints": [
+        "agents.mcp_server"
+      ],
+      "names": [
+        "MCP",
+        "Cursor"
+      ],
+      "grade": "fixture",
+      "status": "implemented",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_byo_wiring.py",
+          "shows": "the draft-spec tool writes a valid, unapproved spec; a bad line gets a parse error"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_byo_providers.py",
+          "shows": "initialize and the tool list"
+        }
+      ],
+      "limits": "Recorded stdio protocol and tool tests only; no run from an MCP client is recorded. expectrail_verify_build still invokes the historical agents.loop, not the installed verify request path; expectrail_trust_check runs the sandbox canary, not receipt trust-check. The third tool is expectrail_draft_spec."
+    },
+    {
+      "id": "spec-writer",
+      "mode": "Spec writer: a model drafts a check from one sentence, a person approves it",
+      "profile": "Muse Spark through Meta's API",
+      "observer": "None",
+      "entryPoints": [
+        "expectrail.spec_writer"
+      ],
+      "names": [
+        "Muse Spark"
+      ],
+      "grade": "diagnostic",
+      "status": "integrated",
+      "evidence": [
+        {
+          "kind": "record",
+          "ref": "bench/spec-writer-live/README.md",
+          "shows": "the live draft the ground check started from"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_spec_writer.py",
+          "shows": "a good draft is validated and unapproved; approval is added only to a clean spec"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_spec_spend_month.py",
+          "shows": "Real HTTP, open and provider senders require a cap and hold before every request, including retries; wrapped stand-ins count when configured."
+        }
+      ],
+      "limits": "A draft needs a person to tighten its prompts and approve it. No agent may approve. Real drafting sends require EXPECTRAIL_SPEC_USD_CAP; no new live drafting run was made for the cap change."
+    },
+    {
+      "id": "spark-open",
+      "mode": "Open-weight spec drafting and feedback sorting",
+      "profile": "Muse Spark Open on Baseten",
+      "observer": "None",
+      "entryPoints": [
+        "agents.spark_open"
+      ],
+      "workflows": [
+        "spark-open.yml"
+      ],
+      "names": [
+        "Muse Spark Open",
+        "Baseten"
+      ],
+      "grade": "diagnostic",
+      "status": "integrated",
+      "evidence": [
+        {
+          "kind": "record",
+          "ref": "bench/spark-open/README.md",
+          "shows": "live on October 30: its drafts of the three checks were valid, and its ground draft gave the approved spec's verdict on 9 seeded runs"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_spark_open.py",
+          "shows": "drafts, sorting and calls are recorded; a failing endpoint is recorded, not hidden"
+        }
+      ],
+      "limits": "Its drafts need a person as Muse Spark's do. One day's live runs. Its counting wrapper preserves request-boundary spec budgeting; see spend-caps."
+    },
+    {
+      "id": "feedback-intake",
+      "mode": "Feedback intake: a recorded playtest becomes draft specs that wait for a person",
+      "profile": "Muse Voice Transcribe and Muse Spark; CI uses a recorded transcript",
+      "observer": "None",
+      "entryPoints": [
+        "agents.feedback",
+        "agents.film_feedback"
+      ],
+      "workflows": [
+        "feedback-live.yml",
+        "ci.yml"
+      ],
+      "docs": [
+        "docs/feedback-recording.md"
+      ],
+      "names": [
+        "Muse Voice Transcribe"
+      ],
+      "grade": "fixture",
+      "status": "implemented",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223",
+          "conclusion": "success",
+          "jobs": [
+            "feedback-offline"
+          ],
+          "shows": "CI on main, job feedback-offline: the intake on a recorded transcript"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_feedback.py",
+          "shows": "requests to weaken a check are caught; raw speech never becomes a draft"
+        }
+      ],
+      "limits": "Built, not yet run live on audio."
+    },
+    {
+      "id": "interactive-demo",
+      "mode": "Interactive demo: twelve cases with their captured clips, checks and verdicts",
+      "profile": "A static page on expectrail.tech; clips captured with the Godot harness",
+      "observer": "None: it shows recorded results",
+      "entryPoints": [
+        "harness.demo_clips"
+      ],
+      "grade": "fixture",
+      "status": "integrated",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_demo_page.py",
+          "shows": "every diff line on the page is copied from its patch, and every clip is the file the manifest names"
+        },
+        {
+          "kind": "record",
+          "ref": "docs/demo/assets/manifest.json",
+          "shows": "each clip's patches, route, commit and digests"
+        }
+      ],
+      "limits": "Saved captures and written case texts. Viewing it verifies nothing."
+    },
+    {
+      "id": "cocos-trial",
+      "mode": "COCOS 4 build trial",
+      "profile": "COCOS 4 beta, a 2D project built for the web on a hosted Linux runner",
+      "observer": "None",
+      "entryPoints": [],
+      "docs": [
+        "docs/cocos-trial.md"
+      ],
+      "names": [
+        "COCOS",
+        "Cocos"
+      ],
+      "grade": "diagnostic",
+      "status": "experimental",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/42680755693",
+          "conclusion": "failure",
+          "conclusionNote": "The run ended in failure; docs/cocos-trial.md says which steps worked and which did not.",
+          "shows": "the trial run docs/cocos-trial.md cites for the build running in Chromium; its one job, trial, ended in failure"
+        },
+        {
+          "kind": "record",
+          "ref": "docs/cocos-trial.md",
+          "shows": "the conditions, and the two approaches that failed"
+        }
+      ],
+      "limits": "A build trial only, and the run it cites ended in failure. No harness, check or verdict exists for a COCOS game."
+    },
+    {
+      "id": "orchestrator",
+      "mode": "Verification as a job: verify, status, cancel and report, with a folder and a status file per job",
+      "profile": "Godot verification jobs used by the installed command, local app and sample workflow",
+      "observer": "The engine's record and a FramesObserver, under the rule both",
+      "entryPoints": [
+        "expectrail.orchestrator"
+      ],
+      "workflows": [
+        "ci.yml"
+      ],
+      "docs": [
+        "docs/orchestrator.md"
+      ],
+      "grade": "diagnostic",
+      "status": "integrated",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43115035122",
+          "conclusion": "success",
+          "jobs": [
+            "seeded-bugs"
+          ],
+          "shows": "CI on main (0356aef), job seeded-bugs: the sample command ran three real Godot verifications as jobs, each in a worker of its own with the replay sandbox required: accept for the game as it is, reject for the seeded bug, accept for the repair"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_orchestrator.py",
+          "shows": "two jobs keep to their own folders; a cancelled job stays cancelled and what it started is stopped; a killed worker leaves a failed job; a job out of time is needs-review; a missing tool is a diagnostic and needs-review; the Godot engine decides as the gate does, on a stand-in replay"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_tree.py",
+          "shows": "one walk of a game folder makes every digest and every copy: the copy holds exactly the files the digest covers; the bundled games keep their digests; a link that leaves the checkout, a loop or a pipe stops a replay before anything is copied; a replay of another tree than the record names is not used"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_verify_vision.py",
+          "shows": "scripted SAM 3.1 answers; both observers required, missing key or cap still replays: engine failures reject and passing engine checks need review, and the replay never receives the key"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_app_projects.py",
+          "shows": "Configured local app and CLI submit the ordinary worker request with matching policy and input digests, using offline replays and recorded answers."
+        }
+      ],
+      "limits": "The installed command, local app and Run it call this job layer; the split CI Action has its own capture/judge path. The isolated execution class requires replay sandboxing but its ledger grade remains diagnostic: no complete trusted signed deployment is shown. Job, policy and replay tree digests must agree. Without /proc, orphan children of a killed worker run to their own limit. One host. The cited live run predates the vision default; current both-observer decisions are tested offline. Live SAM needs MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP; a configured recorded observer instead needs an exact saved answer."
+    },
+    {
+      "id": "installed-command",
+      "mode": "The installed expectrail command: doctor checks the machine, sample runs three real verifications of the bundled game, verify takes a Godot project by path",
+      "profile": "A wheel built from the repository and installed with pip into a clean venv on a hosted Linux runner; the bundled Godot game and a second Godot project",
+      "observer": "The engine's record and a FramesObserver, under the rule both: with no vision settings (as in CI) an engine failure rejects and a pass is needs-review",
+      "entryPoints": [
+        "expectrail.cli",
+        "expectrail.doctor"
+      ],
+      "workflows": [
+        "ci.yml",
+        "release.yml"
+      ],
+      "docs": [
+        "docs/install.md",
+        "docs/app.md"
+      ],
+      "grade": "diagnostic",
+      "status": "integrated",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43476504903",
+          "conclusion": "success",
+          "jobs": [
+            "package"
+          ],
+          "shows": "CI on main (eba2518), job package: the wheel was built and installed into a clean venv; the installed doctor passed, exited 3 and named the fix with the engine taken away, and a usage error exited 5; the installed sample decided accept, reject, accept; the installed verify accepted a second Godot project given by path"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_package.py",
+          "shows": "what the wheel holds and leaves out; the installed command runs outside the checkout; doctor's checks and its JSON document"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_release_workflow.py",
+          "shows": "a version tag builds the wheel and attaches it to the run only when the tag is the package's version; the workflow reads only, holds no secret and publishes nowhere"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_quickstart.py",
+          "shows": "the six quickstart command blocks, expected exits, link anchors and the no-credentials evidence checks on offline stand-ins; CI is configured to execute the published blocks with the real engine in the package job"
+        }
+      ],
+      "limits": "Not on PyPI; publishing needs a person's account/token. The tag-triggered release workflow has not run. Linux is the demonstrated packaged platform. Current sample/verify requires both observations to accept: live SAM needs MODEL_API_KEY and EXPECTRAIL_SAM_USD_CAP; configured recorded vision needs exact saved image/questions instead. Missing evidence needs review unless a failing check rejects. The cited historical package run predates this default; current defaults are tested offline. The installed trust-check is the receipt module's check (verifier-receipts) and needs the trust extra."
+    },
+    {
+      "id": "run-it",
+      "mode": "Run it: operator-dispatched sample workflow, plus implemented visitor UI and undeployed start service",
+      "profile": "Bundled Godot game on a hosted Linux runner; visitor service implemented and stub-tested, not deployed",
+      "observer": "The engine's record, and the vision model's answers recorded once per sample (a frame not in the recording gets no answer)",
+      "entryPoints": [
+        "expectrail.runit",
+        "expectrail.runit_site",
+        "tools.runit_burst",
+        "tools.runit_smoke",
+        "tools.runit_stub",
+        "expectrail.viewer"
+      ],
+      "workflows": [
+        "run-it.yml",
+        "run-it-record.yml"
+      ],
+      "docs": [
+        "docs/run-it.md"
+      ],
+      "grade": "diagnostic",
+      "status": "implemented",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43514147344",
+          "conclusion": "success",
+          "jobs": [
+            "verify",
+            "publish"
+          ],
+          "shows": "run-it.yml dispatched by hand on main (ccc54d5) for the sample clean: verify replayed the real game and decided accept, as the sample expects, with 120 of 120 vision questions answered from the recording of November 13 and none left unanswered; publish checked the folder and committed it to run-it-results"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43514430601",
+          "conclusion": "success",
+          "jobs": [
+            "verify",
+            "publish"
+          ],
+          "shows": "run-it.yml dispatched by hand on main (ccc54d5) for the sample fall-through-repair: verify replayed the real game and decided accept, as the sample expects, with 135 of 135 vision questions answered from the recording of November 13 and none left unanswered; publish checked the folder and committed it to run-it-results"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43514715045",
+          "conclusion": "success",
+          "jobs": [
+            "verify",
+            "publish"
+          ],
+          "shows": "run-it.yml dispatched by hand on main (ccc54d5) for the sample fall-through-bug: verify replayed the real game and decided reject, as the sample expects, with 135 of 135 vision questions answered from the recording of November 13 and none left unanswered; publish checked the folder and committed it to run-it-results"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43513054013",
+          "conclusion": "success",
+          "jobs": [
+            "seeded-bugs"
+          ],
+          "shows": "CI on main (ccc54d5), job seeded-bugs: the same command offline on each sample with real sandboxed replays decided accept, reject, accept, each with the vision answers recorded on 2026-11-13, and the publish check passed on each folder"
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43453709805",
+          "conclusion": "success",
+          "jobs": [
+            "verify",
+            "publish"
+          ],
+          "shows": "run-it.yml dispatched by hand on main (f9c364b) for the sample fall-through-bug: verify replayed the real game and decided reject, as the sample expects, then publish checked the folder and committed it to run-it-results; no vision answers were recorded, so the run said nothing could be accepted"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_runit.py",
+          "shows": "nothing is accepted without recorded vision answers; a frame not in the recording is no answer and needs review; the publish check refuses anything outside its allowlist; the verify job holds no secret and the publish job runs no sample code"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_runit_links.py",
+          "shows": "the home page and the README link the Run it page, and the page and its script are there"
+        }
+      ],
+      "limits": "Visitors cannot start a run yet: the service that starts runs (apps/run-it-edge) is written and tested against a local stub but not deployed, so the page says it cannot start runs. The runs cited were dispatched by hand. Each sample's vision answers are one recording (November 13): a frame the recording does not hold gets no answer and the sample needs review until it is recorded again. Receipts are not signed (#255). Exact PNG matches depend on rendering output: a renderer difference can leave an unchanged project at needs-review. Missing vision does not override an engine failure. See recorded-vision."
+    },
+    {
+      "id": "outside-projects",
+      "mode": "Verify a change to a Godot project Expectrail did not write, through its project list, routes and change patches, with the anchored visual observer",
+      "profile": "Pinned outside Godot projects (kinematic-character, Dodge the Creeps) fetched at a fixed commit, on hosted Linux runners: outside-trial.yml without vision, outside-vision.yml with a sandboxed capture job and a main-only judge",
+      "observer": "The engine's record and, on outside-vision.yml, the anchored visual observer (a point at the middle of the engine's collision box), used only when its calibration on the unchanged game passes",
+      "entryPoints": [
+        "tools.outside_trial",
+        "tools.outside_vision",
+        "expectrail.anchored"
+      ],
+      "workflows": [
+        "outside-trial.yml",
+        "outside-vision.yml"
+      ],
+      "docs": [
+        "docs/outside-projects.md"
+      ],
+      "grade": "diagnostic",
+      "status": "integrated",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43652198623",
+          "conclusion": "success",
+          "jobs": [
+            "capture",
+            "judge"
+          ],
+          "shows": "outside-vision.yml dispatched by Sean on main after #470 for kinematic-character: calibration used (found 19 of 19, size 19 of 19, nudged point 19 of 19); the project as pinned accept, broken reject, harmless (tinted sprite) accept, invisible (hidden sprite) reject, all with the anchored visual observer; 800 images, $2.00 at list price"
+        },
+        {
+          "kind": "record",
+          "ref": "tests/outside/recordings/kinematic-character/calibration.json",
+          "shows": "the calibration of that run, as expectrail.vision-calibration/v1"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_anchored_observer.py",
+          "shows": "Offline anchored observer behavior, including absent/occluded visual evidence; no new live outside-game result."
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43748180876",
+          "conclusion": "success",
+          "shows": "Outside trial: kinematic pinned/harmless/invisible need review and broken collision rejects; Dodge pinned/harmless need review and broken clamp rejects at frame 97. No outside game accepts without vision."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/outside-trials/system-override/results.json",
+          "shows": "System Override onboarding failed: all three variant jobs need review, no engine replay and no approved check ran. The repeated .NET refusal is recorded separately."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/release/sources/breakout-results.json",
+          "shows": "Recorded Breakout onboarding failure: pinned, harmless and broken all need review; zero approved checks, 120 frames each, one paddle position and one ball box; the menu never starts. This is a local non-isolated diagnostic, not a new main/CI trial or seeded-defect detection."
+        }
+      ],
+      "limits": "One outside project verified with vision (kinematic-character). Dodge's lifecycle-aware play-area check is approved; its broken clamp build is rejected in CI, while clean/harmless need review without vision. No Dodge vision evidence exists. Four historical variants used 800 images, $2.00 at list price. The historical hidden-player reject was labelled past the boundary; current NOT-DRAWN handling is tested offline, without a new live measurement. Exact recorded answers do not transfer across arbitrary rendering environments: a later unchanged replay lacks frame 111's answer. See recorded-vision and local-app."
+    },
+    {
+      "id": "recorded-vision",
+      "mode": "Recorded vision and renderer provenance: reuse exact saved image/questions",
+      "profile": "Godot recordings; exact PNG SHA-256, question kind and prompt; optional capture rendering environments",
+      "observer": "Recorded SAM/anchored answers; no live fallback",
+      "entryPoints": [
+        "expectrail.recorded",
+        "tools.recorded_renderer"
+      ],
+      "status": "integrated",
+      "grade": "diagnostic",
+      "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43514147344",
+          "conclusion": "success",
+          "jobs": [
+            "verify",
+            "publish"
+          ],
+          "shows": "Operator-dispatched clean sample completed accept using exact recorded vision on real hosted replays. This proves the recorded backend on that capture, not renderer portability."
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_recorded_renderer.py",
+          "shows": "Unknown/mixed provenance, matching and missing questions; diagnostics survive the app, Run it and outside judge without relaxing exact matching."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/measurements/recorded-renderer.json",
+          "shows": "Two saved 180-frame captures: 179 identical PNGs; frame 111 differs by two pixels, one channel level, with different LLVM device strings."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/recorded-renderer.md",
+          "shows": "Offline saved-capture single-check replay: original 120/120 answered and pass; newer 111/112 answered before stopping, needs-review. Not a new full engine/model run."
+        }
+      ],
+      "limits": "Not renderer-portable. A global tolerance admitting the observed two-pixel drift also admits a deliberately subtle player recolour. No tolerance, substituted answer or live fallback exists. Different environments do not invalidate identical PNG bytes; provenance cannot prove the cause of every missing image.",
+      "docs": [
+        "docs/recorded-renderer.md"
+      ]
+    },
+    {
+      "id": "template-sensor",
+      "mode": "Opt-in no-model template/region sensor; experimental observation only",
+      "profile": "PR #522 frozen 408-template platformer bank; local untuned public-route and different-art outside measurements",
+      "observer": "Masked template foreground matches and a calibrated reference map; no model",
+      "entryPoints": [
+        "agents.template_observations",
+        "agents.template_sensor_bench"
+      ],
+      "status": "experimental",
+      "grade": "diagnostic",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_template_foreground.py",
+          "shows": "Foreground/body-part validation and region proofs on synthetic images; tests skip by name without PIL."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/template-sensor-measurement.md",
+          "shows": "Same-frame tuning result: 0/390 clean frames; these frames were used to diagnose and tune the fix."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/template-sensor-untuned-summary.md",
+          "shows": "Separate frozen follow-up, local diagnostic: new route 8/341 (2.35%); unused coins route 0/97; pooled 8/438 (1.83%). Outside robot-bank transfer 540/540 (100%); project calibration refused fully opaque art."
+        }
+      ],
+      "limits": "Opt-in; not wired as a verdict-eligible observer in installed verify or the gate. The new-route 2.35% exceeds the under-2% bar. Does not transfer to kinematic-character. Its own bank could not be built with the frozen alpha requirements; no calibrated-outside result exists. Pooled counts do not establish success per source. Follow-up measurements are local records, not a hosted CI benchmark.",
+      "docs": [
+        "docs/template-sensor-measurement.md",
+        "docs/template-sensor-untuned-summary.md"
+      ]
+    },
+    {
+      "id": "spend-caps",
+      "mode": "Per-role request holds and opt-in monthly reservation ledgers",
+      "profile": "Glimmer, Muse, triage and spec drafting; separate SAM vision ledger; Linux file locks",
+      "observer": "None",
+      "entryPoints": [
+        "expectrail.spend"
+      ],
+      "status": "implemented",
+      "grade": "fixture",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_spec_spend_month.py",
+          "shows": "Real senders with mocked networks refuse missing spec caps and hold on retries; wrappers preserve budgeting; independent processes contend on one model-month file; malformed/unreadable ledgers stop by name."
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_spend.py",
+          "shows": "Role cap validation, holds and job-budget writer/reader."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/spend-caps.md",
+          "shows": "Merged #267 request-boundary spec accounting and model-month reservation semantics."
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_spend.py",
+          "shows": "Code reservation units: vision $0.0025/image, Glimmer $0.05/request, Muse $1.00/invocation, triage $0.05/request, spec $0.05/request. These holds and opt-in separate $200 model/vision month limits are reservations, not vendor bills. Cost inside one fixer invocation remains unbounded by the invocation hold."
+        }
+      ],
+      "limits": "No live cap-exhaustion or vendor billing measurement. EXPECTRAIL_MODEL_MONTH_LEDGER opts in to a combined $200 UTC month reservation total; EXPECTRAIL_VISION_MONTH_LEDGER is separate. Whole process caps are reserved per role, including a new reservation in a new process. Holds are conservative reservations, not reconciled bills. External coding agents and feedback transcription/classification are not universally metered. The $1.00 Muse invocation hold does not bound its internal token cost.",
+      "docs": [
+        "docs/spend-caps.md"
+      ],
+      "switches": [
+        "EXPECTRAIL_SPEC_USD_CAP",
+        "EXPECTRAIL_GLIMMER_USD_CAP",
+        "EXPECTRAIL_MUSE_USD_CAP",
+        "EXPECTRAIL_TRIAGE_USD_CAP",
+        "EXPECTRAIL_MODEL_MONTH_LEDGER",
+        "EXPECTRAIL_VISION_MONTH_LEDGER"
+      ]
+    },
+    {
+      "id": "verify-intent",
+      "mode": "verify --intent fix|change|none with a bounded bug report",
+      "profile": "Installed Godot request/worker/gate path; replay and model stand-ins in the evidence",
+      "observer": "Engine plus required visual observations",
+      "entryPoints": [
+        "expectrail.orchestrator.cli",
+        "expectrail.gate.intent"
+      ],
+      "status": "implemented",
+      "grade": "fixture",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_verify_intent.py",
+          "shows": "Actual CLI/store/worker/evaluator/decision tests with stand-in replay: fix needs three base failures and three head passes; passing base, flaky reproduction, missing vision/base and unresolved bugs cannot demonstrate repair."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/new-work/2026-11-15-verify-intent.md",
+          "shows": "59 focused checks and 3,710-test suite; no real-engine or live-model measurement. Linked-issue classification is still part 2."
+        }
+      ],
+      "limits": "Bug text is context, not an approved check. Default intent is none; fix must demonstrate a reproduced repair on the judged checks. No new live-engine intent benchmark. Automatic trusted linked-issue classification/comment wiring remains open and needs human-managed workflow permissions."
+    },
+    {
+      "id": "local-app",
+      "mode": "Local app: configure a Godot project and submit ordinary verification jobs",
+      "profile": "Loopback browser app; bundled platformer and configured public kinematic-character; local Linux/Chromium diagnostic",
+      "observer": "Ordinary both-observer path; live or exact recorded answers as configured",
+      "entryPoints": [
+        "expectrail.app",
+        "expectrail.app_page",
+        "expectrail.project_job"
+      ],
+      "status": "integrated",
+      "grade": "diagnostic",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_app_projects.py",
+          "shows": "A second project with different paths, app/CLI request and decision parity, base-policy authority, drafts and missing answers on stand-ins."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/new-work/2026-11-15-app-any-project.md",
+          "shows": "Real Godot 4.7.2 plus desktop/phone Chromium: unchanged configured outside project needs-review in both app and CLI; frame 111 has no exact answer."
+        }
+      ],
+      "limits": "This is a local app, not a hosted arbitrary-project service. No unchanged outside-project accept on the later renderer is claimed. Non-developer first-user test and native macOS/Windows checks remain open; automated browser checks do not substitute. Diagnostic runs did not establish replay isolation.",
+      "docs": [
+        "docs/app.md",
+        "docs/project-config.md"
+      ]
+    },
+    {
+      "id": "dodge-the-creeps",
+      "mode": "Dodge the Creeps: engine play-area trial with an approved lifecycle-aware check",
+      "profile": "Pinned public Godot demo; the outside trial in CI, pinned, harmless and broken, with no vision key",
+      "observer": "Engine body and node visibility while in play; no vision",
+      "entryPoints": [
+        "tools.dodge_play_area",
+        "tools.outside_trial"
+      ],
+      "status": "experimental",
+      "grade": "diagnostic",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_dodge_check.py",
+          "shows": "Correct body/region conversion, visible-only exercised coverage, insufficient hidden coverage and one-pixel escapes."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/new-work/2026-11-15-dodge-in-play.md",
+          "shows": "Three pinned and three harmless diagnostic runs pass the engine check over 183 judged frames; all three broken variants fail at tick 97. Shared rule without vision gives needs-review/reject, reported as decisionIfApproved."
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43746287911",
+          "conclusion": "success",
+          "shows": "With the check approved by Sean: the broken variant (clamp removed) is rejected, first out of the play area at frame 97; the pinned game and the harmless change pass the engine check and end needs-review, because no visual observer ran."
+        }
+      ],
+      "limits": "One check, approved by Sean on 2026-11-15, on one route. Engine-only: no vision run and no visual-correctness claim, so no accept on this project. Node visibility is the engine's word that the player is in play, not proof of drawn pixels.",
+      "docs": [
+        "docs/outside-projects.md"
+      ]
+    },
+    {
+      "id": "verifier-receipts",
+      "mode": "Receipt module: Ed25519 verification with an offline issuer trust store",
+      "profile": "expectrail trust-check and python3 -m expectrail.receipt trust-check; generated fixture keys; the issuer from a trust store, or from a GitHub attestation of the receipt file checked with gh (stand-in gh output in the tests); browser receipt checker with the same trust-store semantics",
+      "observer": "None",
+      "entryPoints": [
+        "expectrail.receipt",
+        "expectrail.attestation"
+      ],
+      "status": "implemented",
+      "grade": "fixture",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_receipt.py",
+          "shows": "Trusted issuer/signature, repository/head/build/policy expectations, bounded validity, complete passing coverage and accept are required; missing bindings and malformed encodings refuse clearance."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/new-work/2026-11-15-receipt-build-and-strict-fields.md",
+          "shows": "Build binding and strict serialization checks; no real CI attestation deployment."
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_verify_receipt_page.py",
+          "shows": "Browser receipt checker parity with the Python module, using throwaway-key fixtures; not a real Expectrail issuer or deployed clearance."
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_trust_check_attested.py",
+          "shows": "trust-check with --attested-by: clearance only when the attestation check verified this exact file for the asked repository, the receipt's own signature holds and every other condition is shown; gh refusing, a moved pin, a file changed while read and an unusable command line refuse or check nothing. gh's output is written by the tests; no real attestation."
+        }
+      ],
+      "limits": "Not wired into the historical report/release-candidate path or a demonstrated trusted CI issuer. The installed expectrail trust-check needs the trust extra. No workflow attests a receipt yet (that needs id-token: write and attestations: write, a person's change), so the attestation path has only been run on gh output the tests wrote. No trust-store distribution or key-rotation deployment is demonstrated. Receipt evidence full is a contract label, not promotion to the capability ledger isolated grade."
+    },
+    {
+      "id": "playtest-ingest",
+      "mode": "Playtest report intake and approved-check reproduction",
+      "profile": "Godot source checkout; offline tests, a local real-engine diagnostic and PR #551 seeded-bugs CI reproduction with required Bubblewrap",
+      "observer": "Existing engine-only collision/position observer in the real proof; normal verify retains both observers",
+      "entryPoints": [
+        "expectrail.orchestrator.playtest",
+        "expectrail.orchestrator.cli",
+        "tools.playtest_fall_through"
+      ],
+      "workflows": [
+        "ci.yml"
+      ],
+      "docs": [
+        "docs/playtest.md"
+      ],
+      "status": "implemented",
+      "grade": "diagnostic",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_playtest_ingest.py",
+          "shows": "Offline intake tests cover strict request wiring, three base runs, anchor boundary, untrusted report text and no fixer before reproduction."
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_replay_sandbox.py#PlaytestIngestRealEngineTest",
+          "shows": "Existing seeded-bugs collector runs real Godot with required Bubblewrap; three assertions cover approved fall-through reproduction, clean false report and anchor desync. The three tests passed in PR #551 seeded-bugs job 133104000066; the recorded log is linked below."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/playtest-evidence/fall-through.json",
+          "shows": "Local real Godot diagnostic records the public fall-through report and both controls, with model and fixer boundaries blocked."
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43808291610/job/133104000066",
+          "conclusion": "success",
+          "shows": "PR #551 seeded-bugs: test_approved_ground_check_reproduces_three_times, test_clean_base_is_not_reproduced_without_models and test_anchor_beyond_tolerance_stops_without_models all pass with real pinned Godot and required Bubblewrap. Model/proposer/fixer boundaries remain blocked; no live model/fixer report run is measured."
+        }
+      ],
+      "limits": "Implemented intake and approved-check reproduction; real-engine CI proof is engine-only and diagnostic, never release clearance. No live model or fixer has run on a playtest report. No configured drawing-role or pixel-verification claim; local Bubblewrap remained unavailable in the earlier local proof. CI reproduction does not establish general report reach or end-to-end repair rate."
+    },
+    {
+      "id": "playtest-generated-advisory",
+      "mode": "Opt-in generated advisory reproduction for an uncovered playtest report",
+      "profile": "Godot intake/JIT adapter; stand-in model transports and existing stable keep rule",
+      "observer": "Trace checks on captured base/clean builds; no live proposer measurement",
+      "entryPoints": [
+        "expectrail.jit.ingest",
+        "expectrail.orchestrator.reproduction"
+      ],
+      "docs": [
+        "docs/playtest.md",
+        "docs/playtest-propose.md"
+      ],
+      "status": "implemented",
+      "grade": "fixture",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_ingest_generated.py",
+          "shows": "Offline stand-in proposer tests exercise the existing keep rule, three clean passes and three base failures, advisory-only results and hostile report/model text."
+        }
+      ],
+      "limits": "Implemented and tested offline; not measured with a live model. No live proposal-quality, cost or filtering-rate result. Generated advisory checks cannot approve anything or independently start repair; minimal wheels may lack repository-only JIT."
+    },
+    {
+      "id": "playtest-repair",
+      "mode": "Opt-in repair after an approved playtest reproduction",
+      "profile": "Source and installed orchestrator repair path; fixture candidates with replay/vision stand-ins",
+      "observer": "Existing fresh candidate gate verification; advisory candidate findings veto automation for review",
+      "entryPoints": [
+        "expectrail.orchestrator.ingest_repair",
+        "expectrail.repair"
+      ],
+      "docs": [
+        "docs/playtest.md",
+        "docs/ingest-repair.md",
+        "docs/llm-patch-spend.md",
+        "docs/live-repair.md"
+      ],
+      "status": "implemented",
+      "grade": "fixture",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_ingest_repair.py",
+          "shows": "Offline fixture tests enter the existing fix loop only after approved reproduction, preserve gate decisions, stop on advisory flags, and exclude private canaries from fixer inputs and retries."
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_llm_patch_bound.py",
+          "shows": "Offline local-server tests cover pre-send token-price admission, exact body/output cap, concurrency, retries, violations and existing repair-loop integration."
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_live_repair_kit.py",
+          "shows": "Offline current-model admission/withdrawal/cap-plan tests and optional validation of real Godot localhost rehearsal records."
+        }
+      ],
+      "limits": "Implemented and tested offline; not measured with a live model. The live-repair kit selects reviewed OpenAI gpt-6.1-sol, full-context token reservation, standard-tier output limit and model availability/expiry refusal; Muse/BYO CLIs remain refused. A real Godot localhost rehearsal tests wiring with scripted fixer/vision responses, not model quality, invoices or a repair rate. No workflow was activated or dispatched. Advisory-only, unreproduced and desynchronised reports never start a fixer. Live Muse starts stop fixer-bound-unavailable until a verified request dollar maximum exists; the fixed-price admission meter is tested only with a stand-in. The Muse invocation hold does not bound its internal token bill."
+    },
+    {
+      "id": "seeded-playtester",
+      "mode": "Standalone seeded playtester; public trace-symptom reports",
+      "profile": "One bundled game; pinned Godot 4.7.2 local headless measurement; development and previously unused evaluation seeds",
+      "observer": "Fixed trace observations; optional persistent-offscreen observation; no model",
+      "entryPoints": [
+        "tools.playtester.producer",
+        "tools.playtester.scale"
+      ],
+      "status": "experimental",
+      "grade": "diagnostic",
+      "evidence": [
+        {
+          "kind": "test",
+          "ref": "tests/test_playtester_scale.py",
+          "shows": "Public patch universe, seed separation, paired policies, report regeneration and denominator checks; imports without numpy/PIL."
+        },
+        {
+          "kind": "record",
+          "ref": "docs/playtester-reach.md",
+          "shows": "Previously unused evaluation seeds: listed symptoms found 1/24 original and 3/24 improved. Clean original policy: 0/200 development and 0/200 evaluation, 0/400 distinct clean seeds overall. Improved policy: 0/200 on the same evaluation seeds, not another independent clean sample. 10,400 successful primary replays; no model or fixer calls."
+        }
+      ],
+      "limits": "Public development measurement on one game, not blind discovery or a verdict/repair rate. The improved policy has only 200 clean evaluation seeds; 400 is the original policy across development plus evaluation. Zero observed false reports in these samples is not a zero general false-report rate. Not wired into an automatically verified live-model report/fixer run.",
+      "docs": [
+        "docs/playtester-reach.md"
+      ]
+    }
+  ],
+  "notModes": {
+    "commands": {
+      "pip": "installs the requirements",
+      "unittest": "runs the test suite",
+      "http.server": "serves the demo page locally",
+      "venv": "creates a Python virtual environment for the quickstart"
+    },
+    "switches": {},
+    "docs": {
+      "docs/capabilities.md": "this ledger",
+      "docs/contracts.md": "describes the formats, not a mode",
+      "docs/evaluation.md": "the evaluation plan",
+      "docs/future-work.md": "what is not built",
+      "docs/new-work.md": "the log of what was built and run"
+    },
+    "workflows": {}
+  },
+  "nameWatch": [
+    "Godot",
+    "Unity",
+    "Unreal",
+    "COCOS",
+    "Cocos",
+    "GameMaker",
+    "Chromium",
+    "Playwright",
+    "SAM 3.1",
+    "Muse Code",
+    "Muse Wonder",
+    "Muse Spark",
+    "Muse Spark Open",
+    "Muse Glimmer",
+    "Muse Voice Transcribe",
+    "Claude Code",
+    "Codex",
+    "aider",
+    "Cursor",
+    "Ollama",
+    "OpenRouter",
+    "Gemini",
+    "Grounding DINO",
+    "Florence-2",
+    "YOLO-World",
+    "Baseten",
+    "Fireworks",
+    "MCP",
+    "bubblewrap"
+  ],
+  "timings": [
+    {
+      "what": "One Godot verification of a seeded bug with its fix: replay, judge, write the report and the release candidate",
+      "runner": "GitHub-hosted ubuntu-24.04, SAM off",
+      "seconds": 29,
+      "resolutionSeconds": 1,
+      "run": "https://github.com/Expectrail/Expectrail/actions/runs/42934646223/job/130241583383",
+      "step": "Harness-backed Gate 1 accept (seed + fix candidate)",
+      "notMeasured": "The time per phase (import, replay, evaluate): the step is timed as a whole, from the job's step timestamps. One run, so no spread.",
+      "conclusion": "success"
+    },
+    {
+      "what": "One Godot verification of a seeded bug with its fix (agents.verifier.verify alone: three replays, the reference level, the candidate and the clean game, and judging them)",
+      "runner": "GitHub-hosted ubuntu-24.04, SAM off, no private routes",
+      "seconds": 33.1,
+      "resolutionSeconds": 0.1,
+      "run": "https://github.com/Expectrail/Expectrail/actions/runs/43081720384/job/130735694019",
+      "step": "Harness-backed Gate 1 accept (seed + fix candidate)",
+      "notMeasured": "Spread: this is one run, on the pull request that added the timing (#301), not on main. A cold import cache: the step before had warmed it, so a first verification on a fresh machine pays a full import this does not show. The private routes, which add a replay each, and SAM, which adds model calls to evaluate. The fixer and the report in the same step are outside the 33.1 s; the step took 34 s by its timestamps.",
+      "conclusion": "success",
+      "phases": {
+        "import": 2.8,
+        "replay": 29.9,
+        "evaluate": 0.3,
+        "other": 0.1
+      },
+      "phasesFrom": "the job's notice \"Verification wall time\", which prints timing.json; the file is in the run's agents-harness-verify artifact"
+    }
+  ]
+}

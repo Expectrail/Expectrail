@@ -1,0 +1,206 @@
+{
+ "basePatchSha256": [
+  "d5f98a8deb2af9da727330d119c1755cae4f00d436aa59e818610c20d789080b"
+ ],
+ "engine": "Godot 4.7.2-stable",
+ "engineRetries": 0,
+ "format": "expectrail.repro-evidence/v1",
+ "frame": {
+  "height": 960,
+  "width": 1600
+ },
+ "framesPerSecond": 60,
+ "maxFramesExamined": 8,
+ "observer": null,
+ "probes": [
+  "hold-right",
+  "reverse",
+  "move-fire-right"
+ ],
+ "renderer": "Mesa - llvmpipe (LLVM 20.1.2, 256 bits)",
+ "replaysPerBuild": {
+  "bugBuild": 1,
+  "clean": 2
+ },
+ "rows": [
+  {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 27,
+      "spans": [
+       [
+        0,
+        15
+       ],
+       [
+        17,
+        27
+       ]
+      ]
+     }
+    },
+    "of": 170
+   },
+   "observer": null,
+   "probe": "hold-right",
+   "record": null,
+   "screen": {
+    "atFrame": 72,
+    "box": [
+     808,
+     187,
+     1600,
+     793
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 170,
+    "of": 170,
+    "pixels": 17126
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 63,
+      "spans": [
+       [
+        0,
+        15
+       ],
+       [
+        17,
+        27
+       ],
+       [
+        87,
+        96
+       ],
+       [
+        98,
+        112
+       ],
+       [
+        114,
+        124
+       ]
+      ]
+     }
+    },
+    "of": 170
+   },
+   "observer": null,
+   "probe": "reverse",
+   "record": null,
+   "screen": {
+    "atFrame": 72,
+    "box": [
+     1169,
+     190,
+     1600,
+     793
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 170,
+    "of": 170,
+    "pixels": 17126
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  },
+  {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 5,
+      "spans": [
+       [
+        73,
+        73
+       ],
+       [
+        83,
+        84
+       ],
+       [
+        108,
+        108
+       ],
+       [
+        132,
+        132
+       ]
+      ]
+     },
+     "enemy": {
+      "frames": 27,
+      "spans": [
+       [
+        0,
+        15
+       ],
+       [
+        17,
+        27
+       ]
+      ]
+     }
+    },
+    "of": 158
+   },
+   "observer": null,
+   "probe": "move-fire-right",
+   "record": null,
+   "screen": {
+    "atFrame": 45,
+    "box": [
+     947,
+     185,
+     1600,
+     793
+    ],
+    "examined": 8,
+    "firstFrame": 0,
+    "frames": 158,
+    "of": 158,
+    "pixels": 15749
+   },
+   "sees": "screen-only",
+   "unstable": {
+    "fields": [],
+    "frames": 0,
+    "signals": []
+   }
+  }
+ ],
+ "ticksPerSecond": 120,
+ "totals": {
+  "error": 0,
+  "neither": 0,
+  "probes": 3,
+  "record-and-screen": 0,
+  "record-only": 0,
+  "screen-only": 3
+ }
+}

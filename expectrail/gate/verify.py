@@ -1292,7 +1292,8 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     decision, reasons = rec.decide(counts, held, isolation, check_problems, intent=intent, repair=repair,
                                    required_routes_missing=rec.missing_required_routes(spec_records, route_records),
                                    observers=observer_block,
-                                   base_judged=any(c["before"] is not None for c in checks), anchor=anchor_doc)
+                                   base_judged=any(c["before"] is not None for c in checks), anchor=anchor_doc,
+                                   undecided_after_failure=rec.undecided_after_failure(checks))
     if rule == rec.BOTH:
         # Why a check the engine's record passes is not a pass, in the record's own words.
         held_up = [c for c in checks if c["after"] == "needs-review" and c["observed"]["after"]["engine"] == "pass"]
@@ -1489,7 +1490,9 @@ def main(argv: list[str] | None = None) -> int:
     commit = args.expectrail_commit
     try:
         pr = _pull_request(args.pr, args.head_sha, args.base_sha)
-    except ConfigError as exc:
+        from expectrail.gate.intent import ci_context
+        pr, args.intent = ci_context(pr, args.intent, os.environ.get("GITHUB_EVENT_PATH"))
+    except (ConfigError, ValueError, OSError) as exc:
         print(f"::error title=Expectrail gate::{exc}")
         return 3
     try:

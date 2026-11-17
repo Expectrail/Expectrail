@@ -54,7 +54,7 @@ jobs:
           echo "ids=$ids" >> "$GITHUB_OUTPUT"
 
   entry:
-    environment: main-only
+    environment: spend
     needs: verify
     if: github.event_name == 'workflow_dispatch'
     name: entry (${{ matrix.id }})

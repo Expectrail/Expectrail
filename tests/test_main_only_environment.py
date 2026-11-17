@@ -1,4 +1,4 @@
-"""Model keys and the held-out token are reachable only through the main-only environment.
+"""Model keys and the held-out token are reachable only through main-only environments.
 
 Anyone with write access, or a coding agent acting for them, could read any repository secret by
 pushing a branch with a new workflow. So HELDOUT_TOKEN (which reads the private held-out repository)
@@ -6,9 +6,16 @@ and every model API key live in the `main-only` environment, which only `main` m
 every job that uses one declares it. These tests keep it that way: a job that names one of these
 secrets outside the environment, or a job in the environment that a pull request can start, fails.
 
+Model keys live in `spend`, which also deploys only from `main` and in addition waits for Sean's
+approval on every run (#265, decision A, November 16, 2026). A token that can start workflows (the
+Run it service holds one) can then start a paid run but never spend without that approval. The
+held-out token and the judge's signing key stay in `main-only`, which runs without approval.
+`spend` holds a copy of HELDOUT_TOKEN for the jobs that need both.
+
 The Unity licence is the one other secret; it lives in the `unity` environment, which requires a
 maintainer's approval for every run (.github/obaaf.yml records that review). No key may live in an
-approval-only environment: approving a run would hand a branch's code the key.
+approval-only environment: approving a run would hand a branch's code the key. `spend` is not
+approval-only: it is main-only plus approval.
 """
 from __future__ import annotations
 
@@ -37,6 +44,9 @@ def secret_refs(text: str) -> set[str]:
 
 def is_protected(name: str) -> bool:
     return name.endswith("_API_KEY") or name in {"HELDOUT_TOKEN", "EXPECTRAIL_CHECKS_PRIVATE_KEY"}
+
+
+MAIN_ONLY = ("main-only", "spend")  # environments that only main may deploy to
 
 
 # Jobs in main-only that start when another workflow finishes (workflow_run) would run main's copy
@@ -71,9 +81,24 @@ class MainOnlyEnvironmentTest(unittest.TestCase):
                 if used:
                     key = f"{path.name}:{name}"
                     users.append(key)
-                    self.assertEqual(environment(job), "main-only",
-                                     f"{key} uses a model key or HELDOUT_TOKEN outside main-only")
+                    if any(s.endswith("_API_KEY") for s in used):
+                        self.assertEqual(environment(job), "spend",
+                                         f"{key} uses a model key outside spend (Sean approves every paid run)")
+                    else:
+                        self.assertEqual(environment(job), "main-only",
+                                         f"{key} uses HELDOUT_TOKEN or the signing key outside main-only")
         self.assertGreater(len(users), 20)
+
+    def test_spend_holds_every_model_key_user_and_nothing_else(self):
+        spend = []
+        for path, doc, _ in workflows():
+            for name, job in (doc.get("jobs") or {}).items():
+                if environment(job) == "spend":
+                    used = {s for s in secret_refs(yaml.safe_dump(job)) if is_protected(s)}
+                    self.assertTrue(any(s.endswith("_API_KEY") for s in used),
+                                    f"{path.name}:{name} is in spend without a model key: approval for nothing")
+                    spend.append(f"{path.name}:{name}")
+        self.assertGreaterEqual(len(spend), 30)
 
     def test_the_only_other_secrets_are_unitys_behind_approval(self):
         for path, doc, _ in workflows():
@@ -104,7 +129,7 @@ class MainOnlyEnvironmentTest(unittest.TestCase):
                 return any(limited(n, seen + (name,)) for n in needs if n not in seen)
 
             for name, job in jobs.items():
-                if environment(job) != "main-only":
+                if environment(job) not in MAIN_ONLY:
                     continue
                 key = f"{path.name}:{name}"
                 if "workflow_run" in triggers:
@@ -132,7 +157,7 @@ class MainOnlyEnvironmentTest(unittest.TestCase):
         """A push or merge-group trigger that is not limited to main would start main-only jobs on
         other branches, where the environment refuses them."""
         for path, doc, _ in workflows():
-            if not any(environment(j) == "main-only" for j in (doc.get("jobs") or {}).values()):
+            if not any(environment(j) in MAIN_ONLY for j in (doc.get("jobs") or {}).values()):
                 continue
             on = doc.get("on", doc.get(True)) or {}
             if not isinstance(on, dict):

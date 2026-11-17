@@ -1,0 +1,43 @@
+{
+  "repository": "Expectrail/Expectrail",
+  "ref": "3adf65eca0883c0af97ff9e4c526f815a21a1c15",
+  "retrievedAt": "2026-11-17T08:01:09.206416+00:00",
+  "files": {
+    "latest.json": {
+      "gitBlob": "b4bbe8c34c7a133899ac8dfd3663100f5320d3f0",
+      "sha256": "ad90126c0cb3a04198e49c6d28f21aee7ff7d30573129d222548cffd4b77eee0",
+      "bytes": 389
+    },
+    "builder1-recorded-clean/status.json": {
+      "gitBlob": "35fb43b549c0de37331ca9ff431cbdc651fe5b4a",
+      "sha256": "c58abbd049d58833c55f80a9fb72546e64886e7bfc71c2c4aa46ccf251bfa8f2",
+      "bytes": 718
+    },
+    "builder1-recorded-clean/findings.json": {
+      "gitBlob": "30f72147d0205cfc18f3b607b7d698a138a940ca",
+      "sha256": "aa1a3fe0291ed823800617d54ac9e371b5947f2e63b997fce41156bf9873b44f",
+      "bytes": 1981
+    },
+    "builder1-recorded-bug/status.json": {
+      "gitBlob": "55a467cea0ba95a960247b76fa452340acb0ad51",
+      "sha256": "54ebdd22b7899c9c3f394374aad69cd50bb1aaa5edca4c3aeacc6821099517d3",
+      "bytes": 733
+    },
+    "builder1-recorded-bug/findings.json": {
+      "gitBlob": "fc2f83b9fd9ca186dc4a9a6f3ec6ed3c7944697e",
+      "sha256": "eb2bb596958d7cf42e42e4059acd74c55f3fce4c02f2f29cf95d241f902f54d5",
+      "bytes": 5495
+    },
+    "builder1-recorded-repair/status.json": {
+      "gitBlob": "fb4aa9e8e0703628df9f26eee59ed20769b9673a",
+      "sha256": "fedb6eab4ab51310ffe4f5425b7d7ff2af6212ac812fd19afa9b521a01bd16a1",
+      "bytes": 742
+    },
+    "builder1-recorded-repair/findings.json": {
+      "gitBlob": "b6f29f4811cb911860934917cf8365fb4b3ce70c",
+      "sha256": "acb60309f48807eb45cf175cbddd5beec4cc0a1a0d5f3378e9c4968aa95326ec",
+      "bytes": 5216
+    }
+  },
+  "scope": "Earlier published sample results, copied exactly; no new run, receipt or full image capture."
+}

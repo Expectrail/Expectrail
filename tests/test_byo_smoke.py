@@ -33,10 +33,11 @@ class ProbedProvidersTest(unittest.TestCase):
         overridden at the vision call site, so probing it here only produced a false 404."""
         self.assertNotIn("fireworks", byo_smoke.PROBED)
 
-    def test_the_token_budget_cannot_truncate_a_one_word_answer(self):
-        """At 16 a model that spends tokens before it speaks looks like a provider that said
-        nothing, which is what the probe's first run reported for Spark Open and Muse Spark."""
+    def test_default_token_budget_is_bounded_but_does_not_guarantee_text(self):
+        """A finite allowance can run out on reasoning. Baseten's separate allowance is
+        tested against its capability record; other providers retain their 256-token cap."""
         self.assertGreaterEqual(byo_smoke.MAX_TOKENS, 256)
+        self.assertEqual(byo_smoke.MAX_TOKENS, 256)
 
     def test_the_probe_never_reads_the_verifiers_sam_key(self):
         """MODEL_API_KEY is the verifier's. agents/keys.py keeps it away from the fixer; the probe
@@ -78,7 +79,7 @@ class WorkflowTest(unittest.TestCase):
         # dispatch from main, never on a pull request's code.
         self.assertNotIn("pull_request", self.triggers)
         self.assertNotIn("pull_request_target", self.triggers)
-        self.assertEqual(self.doc["jobs"]["byo-smoke"]["environment"], "main-only")
+        self.assertEqual(self.doc["jobs"]["byo-smoke"]["environment"], "spend")  # main-only plus Sean's approval (#265)
 
 class LiveWorkflowGatewayTest(unittest.TestCase):
     """byo-live.yml defaults the key gateway on; the library does not, and must not.
@@ -149,8 +150,8 @@ class ProbeTest(unittest.TestCase):
             row = byo_smoke.probe(
                 "anthropic",
                 transport=lambda u, h, p: {"model": "m", "content": [], "stop_reason": "max_tokens"})
-        self.assertEqual(row["result"], "fail")
-        self.assertIn("no text", row["detail"])
+        self.assertEqual(row["result"], "output-limit")
+        self.assertIn("output limit reached before any text", row["detail"])
         self.assertIn("stop_reason=max_tokens", row["detail"])
 
     def test_the_stop_reason_is_read_from_either_shape(self):

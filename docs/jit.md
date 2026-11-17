@@ -1,8 +1,11 @@
 # Generated checks: tests written for one change
 
-Built November 10, 2026, for issue #204. **Nothing on this page is measured yet.** The code, the
-record, the gate wiring and the offline tests are in place; every number the issue asks for is still
-to be run, and the [measurement plan](#measurement-plan) says how.
+Built November 10, 2026, for issue #204. The public reproduction baseline was measured on
+November 13: 17/24 defects, including 16/19 trace-visible defects, in
+[run 43465090517](https://github.com/Expectrail/Expectrail/actions/runs/43465090517).
+The [#285 audit](repro-audit.md) traces the figures to the original records and lists the later
+offers and candidate-withheld measurements still missing. The [measurement plan](#measurement-plan)
+covers the broader unrun cases.
 
 For each change an agent proposes, Expectrail can now generate checks aimed at that change, keep only
 the ones that are valid and deterministic, run them on the candidate, and report what they catch. It
@@ -643,6 +646,102 @@ explosion frames are the likely place), and a check over them is dropped by the 
 catch. Over a whole window, a check about the enemy is `needs-review` whenever one enters at the screen's
 edge. Tested offline in `tests/test_jit_sensor_named.py`.
 
+**Which way the enemy faces (added November 16, evening).** `visible` cannot see `enemy-walks-backwards`:
+the bank keeps every template mirrored. A new predicate, `faces-motion`, can. It says the object is drawn
+facing the way the engine's record moves it, on every frame of the window where it moves one way and is
+seen where the engine puts it. It is offered for the enemy only, and only to `visual-sensor`. SAM is
+refused it at proposal time, and so is any other object.
+
+- **Motion** (`agents/template_observations.py object_motion`): from each enemy's own logged world box on
+  the tick before, the frame's tick and the tick after. `right` or `left` when both steps go that way;
+  `still`, `turning` or unknown otherwise, and those frames make no claim.
+- **Labels** (`agents/template_foreground.py calibrate_routes`): each clean enemy capture is labelled with
+  the way the engine moved the cropped enemy on that tick (`heading`), and its mirrored copy the other way.
+  A pose that looks the same mirrored, by the rule that keeps templates apart, gets no label.
+- **Facing** (`facing`): the heading whose labelled templates match better, by at least the bank's
+  margin (0.02), or none: the sensor cannot tell, which is a gap.
+- **Validation** (`calibration.objects.enemy.facing`): on every validation frame where the enemy moves
+  one way, the facing is decided as drawn and again with the enemy mirrored in place. `met` by the
+  player's rule on both. The bank's reader recomputes it, refuses labels its record does not count,
+  and refuses a label on a pose that looks the same mirrored.
+- **Judging** (`pixel._facing_observations`): the reference evaluator's `visible` over the judged frames,
+  where a frame holds the enemy only when it is drawn facing its motion. A run whose observer does not
+  list the enemy in `facing` is a gap.
+
+Measured here (Godot 4.7.2, no model, not in CI). The recalibrated bank has the same 408 player and 148
+enemy templates; all 148 enemy captures were cut while the enemy walked right (74 labelled `right`, 74
+mirrored copies `left`). Facing on the validation replay: 251 moving frames, 251 decided right as drawn
+and 251 decided the other way mirrored, 0 wrong (`met`). Then on three library probes, every 10th frame,
+the clean game twice and each defect build once:
+
+| Probe | Clean: matched while moving, facing its motion | `enemy-walks-backwards`: facing against it |
+| --- | --- | --- |
+| `hold-right` | 29 of 29 (both replays) | 29 of 29 |
+| `reverse` | 23 of 23 (both replays) | 23 of 23 |
+| `move-fire-right` | 15 of 15 (both replays) | 15 of 15 |
+
+No box was undecided. A `faces-motion` check over the whole window is `needs-review` on every probe,
+because an enemy enters at the screen's edge (partial boxes are gaps). Windowed past those frames (from
+frame 30, 130 and 30), it passed both clean replays and failed the backwards build on all three probes,
+and passed `enemy-slides-when-shot`. `visible` over the same windows did not tell the clean game from the
+backwards build on any probe. The nine clean `not-found` boxes on `move-fire-right` have motion `still`:
+enemies that were shot and stopped. That is two clean replays, not the keep rule's three, and the checks
+were written by hand, not proposed by a model. Tested offline in `tests/test_jit_sensor_facing.py`.
+
+**Frames to avoid: objects partly on screen (added November 16, night).** The sensor does not judge an
+object whose box reaches past the frame's edge (`out-of-frame`), so a window that holds such a frame is a
+gap there. The evidence record now says where they are, so the proposer can choose a window without them:
+
+- **Written** (`expectrail/repro/evidence.py edge_frames`): each row gets `edges`, from the engine's record of
+  both clean replays, read with the same boxes and camera the observer reads (`object_predictions`). Per
+  kind the engine logs boxes for (enemy, bullet): how many captured frames hold one partly on screen, and
+  those frames as `[first, last]` runs, at most 24 (more are closed up, so the runs may hold more frames,
+  never fewer). A kind is null when the record cannot say: no object boxes logged, a frame without a row,
+  box or camera, or two clean replays that disagree. Records made before this have no `edges` and still
+  read.
+- **Read** (`problems`): runs in order, apart, inside the frames, and holding the frames counted.
+- **Shown** under the pixel setting only (`offer.attach_evidence`): a shown probe's `differs` carries
+  `partlyOnScreen`, and the pixel text says to choose a window that avoids those frames. Every other
+  setting's prompt is unchanged. The pixel text also gives `faces-motion`'s shape now; until this change
+  it was in `pixelChecksOffered` and nowhere told how to write.
+- **Judged**: a gap for a box partly off screen says so ("enemy 3 is partly off screen, ...") instead of
+  "the observer gave no answer".
+
+Measured here (Godot 4.7.2, no model, not in CI): `python3 -m expectrail.repro evidence --defect
+enemy-walks-backwards --probe hold-right --probe reverse --probe move-fire-right --jobs 2` took 3 minutes.
+The enemy is partly on screen on frames 0 to 15 and 17 to 27 of `hold-right` and `move-fire-right`, and also
+87 to 96, 98 to 112 and 114 to 124 of `reverse`; the bullet on 5 frames of `move-fire-right`. The windows
+chosen by hand in the facing measurement above (from frame 30, 130 and 30) are past all of them. The
+record is `contracts/examples/repro-evidence-edges.json`. Tested offline in
+`tests/test_repro_evidence_edges.py`.
+
+**The bench's records carry them (November 17).** The public bench's evidence for its two screen-only
+defects with an enemy or a bullet in them, `bench/jit/public/evidence-enemy-walks-backwards.json` and
+`evidence-bullet-behind-scenery.json`, were made again on all 25 library probes with the same command and
+no `--probe` (Godot 4.7.2 here, no model, not in CI). Every field of every row is what the November 11
+records held; each row now also has `edges`, so a pixel-setting propose step given these records has the
+frames to avoid. `evidence-render` prints them as one line under the table. What they show for the enemy:
+on 4 probes (`jump-w0-x1`, `jump-w0-x2`, `shoot-right-every48`, `shoot-right-every12`) it is partly on
+screen on every captured frame, so no pixel check about the enemy can be decided there. On 15 probes no
+frame after frame 27 has it partly on screen (the three `jump-w80-*` and `jump-w120-*`, `hold-right`,
+`move-fire-right`, and the seven that go left, from frame 13 or 15). `edges` does not say whether the
+enemy is wholly on screen or wholly off it on the other frames; the trace's boxes do, and the sensor judges
+that. The other two bench records (`coin-stays`, `no-shooting-in-air`) were not made again; they have no
+`edges`.
+
+**The keep rule, through `jit run` (November 17, later).** The three windowed `faces-motion` checks of the
+facing measurement are now a saved proposal,
+[`bench/jit/stand-in/enemy-walks-backwards-faces-motion/`](../bench/jit/stand-in/enemy-walks-backwards-faces-motion/README.md),
+written by `python3 -m tools.faces_motion_stand_in`. It is a hand-written stand-in, not a model's proposal
+(`model: hand-written-stand-in`), made under the pixel setting for the sensor with the candidate withheld;
+each window starts after the last frame the bench's evidence lists the enemy partly on screen. `jit run
+--proposal` replayed it on the real engine here (Godot 4.7.2, no model, not in CI, 13 minutes) against
+`enemy-walks-backwards` and the no-fix candidate: all three checks were kept, passing the clean game 3 of 3
+and failing the bug build 3 of 3, and failing the bug build with the no-fix candidate 3 of 3. The record is
+committed beside the proposal. The reproduction score gives a record made from a stand-in no result
+(`score.STAND_INS`, which also names the rehearsal fixture), so this never counts as a reproduction. What it
+leaves is the model's half: whether a propose step, given the same evidence, writes such a check.
+
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 
 The replays run the change's code, and asking SAM needs its key; jit.yml keeps the two in separate jobs
@@ -766,3 +865,34 @@ under `boxes`), so the menu offers both to `sam-3.1-anchor`.
 
 Promoting a generated check to an approved spec (a person does it by hand), new trace-language
 operators, letting generated checks reject, Unity, and Flutter.
+
+
+## Public reproduction audit and integer UI state (#285, November 16)
+
+See [the completion table, miss breakdown and Sean's dispatch/cost plan](repro-audit.md).
+The original hosted baseline score and all its per-defect records are now committed under
+[`bench/jit/recordings/public-43465090517/`](../bench/jit/recordings/public-43465090517/).
+Recomputing that score is byte-identical; no new live rate was measured.
+
+`ui_integer_at_end` reads the sole visible integer-only Label value at the last tick of the
+observed window. The recorder collects it only when an evaluated trace spec reads that signal,
+either through `relation.signal` or either side of `signal_compare`. JIT requests it per active
+check/probe, including candidate fingerprints; discovery requests it for applicable specs and
+recaptures a prior probe if a newly proposed spec first needs UI data. The request uses the
+harness's existing value-argument path (`--ui-integers=true`), not a route field or environment
+switch. With no requesting spec, no UI scene walk runs and no `uiIntegers` key is written.
+General measurement/evidence collection does not enable it merely because an offer names the signal. The Godot recorder writes optional bounded `uiIntegers`; older traces, no label,
+multiple labels and collection overflow give no reading. This is engine UI state, not proof of
+pixels. `signal_compare` compares two signals within one route/window (right against left,
+with `eq`, `lte`, `gte`, `lt`, `gt` and nonnegative `toleranceAbs`). A reported collected-coin counter
+can compare `ui_integer_at_end` with `coins_collected`, without a guessed count. Undefined readings
+never pass. Schemas and handwritten examples cover raw trace, episode and trace spec.
+
+Both are offered only in `signals-reach-evidence` and `signals-reach-evidence-pixel`; parsers and
+saved-proposal readers enforce this. The baseline and `signals-reach` prompts and probes stay
+unchanged. `tests/test_trace_ui_integer.py` covers parsing, unknown/ambiguous/malformed data,
+window/tolerance semantics, old traces, the comparison, and a real pinned-engine public menu route:
+clean 5 twice, stuck 0, doubled 10. These are offline signal tests, not model reproduction evidence.
+Menu probes still require an explicit trusted menu action and are not offered automatically to
+generated checks. Multi-label/formatted/custom-drawn UI and the two orientation/layering misses
+remain limitations. No observer or verdict is enabled by this change.

@@ -1,0 +1,18 @@
+{
+  "format": "expectrail.onboard-timing/v1",
+  "startedAt": "2026-11-16T00:00:00Z",
+  "readyAt": "2026-11-16T00:00:02Z",
+  "machineSeconds": 2,
+  "humanSeconds": null,
+  "approvedAt": null,
+  "person": null,
+  "state": "review-ready",
+  "stages": [
+    {
+      "name": "observer tuning",
+      "status": "skipped",
+      "seconds": 0,
+      "reason": "No recorded observer answers were supplied."
+    }
+  ]
+}

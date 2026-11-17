@@ -1,0 +1,47 @@
+{
+  "format": "expectrail.trace/v0",
+  "ticks": 2,
+  "physicsTicksPerSecond": 120,
+  "rows": [
+    {
+      "tick": 0,
+      "player": [
+        0,
+        0
+      ],
+      "coins": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          3,
+          0
+        ],
+        [
+          4,
+          0
+        ]
+      ],
+      "uiIntegers": []
+    },
+    {
+      "tick": 1,
+      "player": [
+        0,
+        0
+      ],
+      "uiIntegers": [
+        5
+      ]
+    }
+  ]
+}

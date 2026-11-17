@@ -23,9 +23,14 @@ def check(binary, source, game):
     subprocess.run([binary, "onboard", "--project", game, "--out", page], cwd=game.parent, check=True)
     assert contents(game) == before
     parsed = Page(page)
-    assert "script" not in parsed.tags and len(parsed.images) == len(info["textures"])
+    assert ("script" not in parsed.tags if pending else parsed.tags.count("script") == 2)
+    if pending:
+        assert len(parsed.images) == len(info["textures"])
     assert all(image.startswith("data:image/") for image in parsed.images)
-    assert all(action in page.read_text() for action in info["actions"])
+    if pending:
+        assert all(action in page.read_text() for action in info["actions"])
+    else:
+        assert parsed.payload is not None
     if pending:
         proposal = json.loads((game / "expectrail.project.draft.json").read_bytes())["config"]
     else:

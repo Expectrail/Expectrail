@@ -145,7 +145,7 @@ class WorkflowTest(unittest.TestCase):
 
     def test_the_record_job_holds_the_key_writes_nothing_and_is_capped(self):
         job = self.doc["jobs"]["record"]
-        self.assertEqual(job["environment"], "main-only")
+        self.assertEqual(job["environment"], "spend")  # main-only plus Sean's approval (#265)
         self.assertEqual(job["permissions"], {"contents": "read"})
         self.assertLessEqual(job["timeout-minutes"], 30)
         body = yaml.safe_dump(job)
