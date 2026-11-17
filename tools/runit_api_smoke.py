@@ -23,6 +23,9 @@ ORIGIN = "https://expectrail.tech"
 SAMPLES = ("clean", "fall-through-bug", "fall-through-repair")
 # Cloudflare's browser integrity check refuses the default Python-urllib agent (error 1010).
 USER_AGENT = "expectrail-runit-smoke/1 (+https://expectrail.tech)"
+# Worker status waits up to 250ms for freshness; its background refresh shares 2s total.
+# Five seconds leaves transport/scheduling margin while still respecting --wait below.
+STATUS_TIMEOUT = 5
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -113,7 +116,7 @@ def smoke(url, *, expect_open="auto", sample="fall-through-bug", wait=180, poll=
         stage = "progress"
         deadline = clock() + wait
         while clock() < deadline:
-            code, headers, doc = send(url + "/status/" + rid, timeout=min(10, max(.01, deadline - clock())))
+            code, headers, doc = send(url + "/status/" + rid, timeout=min(STATUS_TIMEOUT, max(.01, deadline - clock())))
             if (code != 200 or doc.get("kind") != "status" or doc.get("requestId") != rid
                     or doc.get("sample") != sample or cors(headers) != ORIGIN
                     or doc.get("standIn") is not health["standIn"]):
