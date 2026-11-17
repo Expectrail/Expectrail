@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   spark-open:
-    environment: main-only
+    environment: spend
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     # secrets is not allowed in a job-level if; check it in the first step instead.

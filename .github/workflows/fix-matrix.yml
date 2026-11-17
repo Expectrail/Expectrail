@@ -89,7 +89,7 @@ jobs:
   # Judge the clean game once for the whole run (see sam_cache above). Runs beside the plan job; the
   # jobs that verify wait for it, and run without it if it fails or is skipped.
   sam-warm:
-    environment: main-only
+    environment: spend
     if: ${{ inputs.sam_cache != 'off' && inputs.set != 'reported' && inputs.judge_drill == 'off' && inputs.judge_outside != 'on' && (inputs.live || inputs.bench == 'demo') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -166,7 +166,7 @@ jobs:
   # Three one-line prompts (a few cents): no proxy (must fail), on the host, inside bubblewrap.
   # Muse's logs here only ever saw the placeholder; they are kept for seven days.
   gateway-probe:
-    environment: main-only
+    environment: spend
     if: ${{ inputs.bench == 'gateway' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -269,7 +269,7 @@ jobs:
           PY
 
   run:
-    environment: main-only
+    environment: spend
     needs: [plan, sam-warm]
     if: ${{ !cancelled() && needs.plan.result == 'success' }}
     runs-on: ubuntu-24.04
@@ -512,7 +512,7 @@ jobs:
           PY
 
   judge-run:
-    environment: main-only
+    environment: spend
     needs: [judge-plan, sam-warm]
     if: ${{ !cancelled() && needs.judge-plan.result == 'success' }}
     runs-on: ubuntu-24.04
@@ -765,7 +765,7 @@ jobs:
           echo "runs=$(python3 -c "import json,sys; print(json.dumps(list(range(1, int(sys.argv[1]) + 1))))" "$RUNS")" >> "$GITHUB_OUTPUT"
 
   demo-run:
-    environment: main-only
+    environment: spend
     needs: [demo-plan, sam-warm]
     if: ${{ !cancelled() && needs.demo-plan.result == 'success' }}
     runs-on: ubuntu-24.04

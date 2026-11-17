@@ -1,0 +1,43 @@
+{
+  "format": "expectrail.inspection/v1",
+  "project": {
+    "entryScene": "res://main.tscn",
+    "configSha256": "d81957151a57a1c700c02403d73438a4fb69a111907d14b9d647a2badaea31a0",
+    "gameTree": "7cc2b03ea5552574d00ed441b4fbc4dab941c82e2d5e6f99c55860a1327285d9"
+  },
+  "route": {
+    "name": "config-lane",
+    "sha256": "4204c760e17f8c92c14fc5d1683f014c511aa3489c5b92514c7845072bb72cbb",
+    "from": "config"
+  },
+  "tick": 60,
+  "lastTick": 119,
+  "physicsTicksPerSecond": 60,
+  "viewport": [
+    360,
+    240
+  ],
+  "objects": [
+    {
+      "role": "player",
+      "node": "Actors/Avatar",
+      "generation": 1,
+      "box": [
+        168.0,
+        108.0,
+        192.0,
+        132.0
+      ],
+      "worldBox": [
+        189.999,
+        103.925,
+        213.999,
+        127.925
+      ],
+      "visible": true,
+      "onScreen": true,
+      "boundsSource": "drawing"
+    }
+  ],
+  "absent": []
+}

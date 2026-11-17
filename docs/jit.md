@@ -715,6 +715,33 @@ chosen by hand in the facing measurement above (from frame 30, 130 and 30) are p
 record is `contracts/examples/repro-evidence-edges.json`. Tested offline in
 `tests/test_repro_evidence_edges.py`.
 
+**The bench's records carry them (November 17).** The public bench's evidence for its two screen-only
+defects with an enemy or a bullet in them, `bench/jit/public/evidence-enemy-walks-backwards.json` and
+`evidence-bullet-behind-scenery.json`, were made again on all 25 library probes with the same command and
+no `--probe` (Godot 4.7.2 here, no model, not in CI). Every field of every row is what the November 11
+records held; each row now also has `edges`, so a pixel-setting propose step given these records has the
+frames to avoid. `evidence-render` prints them as one line under the table. What they show for the enemy:
+on 4 probes (`jump-w0-x1`, `jump-w0-x2`, `shoot-right-every48`, `shoot-right-every12`) it is partly on
+screen on every captured frame, so no pixel check about the enemy can be decided there. On 15 probes no
+frame after frame 27 has it partly on screen (the three `jump-w80-*` and `jump-w120-*`, `hold-right`,
+`move-fire-right`, and the seven that go left, from frame 13 or 15). `edges` does not say whether the
+enemy is wholly on screen or wholly off it on the other frames; the trace's boxes do, and the sensor judges
+that. The other two bench records (`coin-stays`, `no-shooting-in-air`) were not made again; they have no
+`edges`.
+
+**The keep rule, through `jit run` (November 17, later).** The three windowed `faces-motion` checks of the
+facing measurement are now a saved proposal,
+[`bench/jit/stand-in/enemy-walks-backwards-faces-motion/`](../bench/jit/stand-in/enemy-walks-backwards-faces-motion/README.md),
+written by `python3 -m tools.faces_motion_stand_in`. It is a hand-written stand-in, not a model's proposal
+(`model: hand-written-stand-in`), made under the pixel setting for the sensor with the candidate withheld;
+each window starts after the last frame the bench's evidence lists the enemy partly on screen. `jit run
+--proposal` replayed it on the real engine here (Godot 4.7.2, no model, not in CI, 13 minutes) against
+`enemy-walks-backwards` and the no-fix candidate: all three checks were kept, passing the clean game 3 of 3
+and failing the bug build 3 of 3, and failing the bug build with the no-fix candidate 3 of 3. The record is
+committed beside the proposal. The reproduction score gives a record made from a stand-in no result
+(`score.STAND_INS`, which also names the rehearsal fixture), so this never counts as a reproduction. What it
+leaves is the model's half: whether a propose step, given the same evidence, writes such a check.
+
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 
 The replays run the change's code, and asking SAM needs its key; jit.yml keeps the two in separate jobs

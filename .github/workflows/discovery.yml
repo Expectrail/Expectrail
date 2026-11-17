@@ -130,7 +130,7 @@ jobs:
 
   discovery-planner:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.planner == 'spark' }}
-    environment: main-only
+    environment: spend
     name: discovery-planner (${{ matrix.build }})
     runs-on: ubuntu-24.04
     timeout-minutes: 40

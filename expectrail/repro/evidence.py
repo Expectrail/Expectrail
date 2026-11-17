@@ -577,6 +577,34 @@ def _show(v) -> str:
     return "no reading" if v is None else f"{v:g}"
 
 
+def _render_edges(rows: list[dict]) -> str:
+    """One line naming, per probe, the clean game's frames where an enemy or a bullet is only partly on
+    screen (the row's ``edges``), or "" when no row carries ``edges``. A kind the record cannot say for is
+    named as such; a probe where no kind is partly on screen and every kind could be said is left out."""
+    if not any("edges" in r for r in rows):
+        return ""
+    parts, plain = [], []
+    for r in rows:
+        if "edges" not in r:
+            continue
+        said = []
+        for role in EDGE_ROLES:
+            got = r["edges"]["objects"].get(role)
+            if got is None:
+                said.append(f"{role} cannot say")
+            elif got["spans"]:
+                said.append(f"{role} " + ", ".join(f"{a}" if a == b else f"{a}-{b}" for a, b in got["spans"]))
+        if said:
+            parts.append(f"`{r['probe']}` ({r['edges']['of']} frames): " + "; ".join(said))
+        else:
+            plain.append(r["probe"])
+    line = ("Frames of the clean game where an object is only partly on screen, which a pixel check's window "
+            "should avoid: " + (" | ".join(parts) if parts else "none") + ".")
+    if plain and parts:
+        line += f" None on the other {len(plain)} probe{'' if len(plain) == 1 else 's'}."
+    return line
+
+
 def render(record: dict) -> str:
     """The record as a table, one row a probe on which anything differs, and a line for the rest."""
     t = record["totals"]
@@ -624,6 +652,9 @@ def render(record: dict) -> str:
     for r in record["rows"]:
         if r["sees"] == "error":
             lines += ["", f"`{r['probe']}` could not be compared: `{r['error'].replace('`', chr(39))}`"]
+    edged = _render_edges(record["rows"])
+    if edged:
+        lines += ["", edged]
     noisy = [r for r in record["rows"] if r["unstable"]["frames"] or r["unstable"]["fields"] or r["unstable"]["signals"]]
     if noisy:
         lines += ["", "Unstable between two replays of the clean game, and so not counted: "

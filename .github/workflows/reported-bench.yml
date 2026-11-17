@@ -125,7 +125,7 @@ jobs:
   reported-bench-sam:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.sam }}
     needs: reported-list
-    environment: main-only
+    environment: spend
     name: reported-bench-sam (${{ matrix.variant }})
     runs-on: ubuntu-24.04
     timeout-minutes: 45

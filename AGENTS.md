@@ -32,6 +32,30 @@ The roadmap is at https://claude.ai/artifact/19H7AMWjV7K6fVpt18DLQx and every de
 - No secrets in files, logs or artifacts. Never create accounts or enter credentials.
 - No model spend unless the issue says so and states a budget.
 
+## Working disciplines (Superpowers)
+
+Agents on a harness that can install the Superpowers plugin (Claude Code and Codex among them) use the skills below.
+This file wins wherever a skill says otherwise, and a skill never widens what an agent may do: everything under
+"What only a person may do" still stops for a person. An agent without the plugin follows the same disciplines
+through the rules above.
+
+| Skill | Use it | Here that means |
+| --- | --- | --- |
+| `verification-before-completion` | Before writing that something works, before a commit, before a pull request | The run is named in the pull request with its result |
+| `systematic-debugging` | On any failing or flaky test, or a result you did not expect | Find the cause before changing code. Never weaken the test |
+| `test-driven-development` | For a feature or a bug fix in code | The failing test comes first. Not needed for a change that is only documents |
+| `using-git-worktrees` | When starting work | A worktree on a new branch from current main |
+| `requesting-code-review`, `receiving-code-review` | Before opening a pull request; when the guard or a person asks for changes | Fix on the same branch and say what was run |
+| `writing-plans` | When an issue will take more than one pull request | Post the plan as a comment on the issue, not as a file under `docs/superpowers/` |
+
+Where the plugin's defaults give way:
+
+- `brainstorming`: only when the issue or Sean asks for a design. The design goes on the issue, not under
+  `docs/superpowers/`. An agent does not pick its own design work.
+- `finishing-a-development-branch`: always choose "Push and create a Pull Request". Never merge locally.
+- `subagent-driven-development`, `dispatching-parallel-agents`: only when the issue or Sean allows it, and inside any
+  budget the issue states.
+
 ## What only a person may do
 
 Agents stop and label the issue or pull request `needs-sean` for any of these, and never do them:
