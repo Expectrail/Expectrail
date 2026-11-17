@@ -84,7 +84,7 @@ jobs:
 
   # Judge the clean game's smoke route once, so a job asks SAM only about frames that differ from it.
   sam-warm:
-    environment: main-only
+    environment: spend
     needs: plan
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -122,7 +122,7 @@ jobs:
           retention-days: 14
 
   run:
-    environment: main-only
+    environment: spend
     needs: [plan, sam-warm]
     if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && needs.plan.result == 'success' }}  # a live dispatch only
     runs-on: ubuntu-24.04

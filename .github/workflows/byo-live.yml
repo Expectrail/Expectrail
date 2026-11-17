@@ -37,7 +37,7 @@ permissions:
 
 jobs:
   byo-live:
-    environment: main-only
+    environment: spend
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:

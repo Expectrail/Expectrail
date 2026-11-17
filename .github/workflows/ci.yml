@@ -1035,7 +1035,7 @@ jobs:
 
   # Live Muse screenshot judge vs Expectrail (Gate 2). Manual — spends Meta credit.
   agents-bench-compare-live:
-    environment: main-only
+    environment: spend
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -1087,7 +1087,7 @@ jobs:
   # Oct 29 Fix+Trust film: Muse in bubblewrap + poison + Godot replay + held-out + Ed25519.
   # Manual only — each run spends Meta credit. Set META_API_KEY (+ HELDOUT_TOKEN for private set).
   agents-oct29-film:
-    environment: main-only
+    environment: spend
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -1202,7 +1202,7 @@ jobs:
   # Playbook item 1 (lighter film): live Muse Code → verifier accept. Manual only.
   # Prefer agents-oct29-film for the Fix+Trust camera run.
   agents-live-muse:
-    environment: main-only
+    environment: spend
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     # secrets is not allowed in a job-level if; check it in the first step instead.

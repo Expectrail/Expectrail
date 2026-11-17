@@ -502,7 +502,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("needs.plan.result == 'success'", self.doc["jobs"]["run"]["if"])
         self.assertIn("github.event_name == 'workflow_dispatch'", self.doc["jobs"]["run"]["if"])
         for job in ("sam-warm", "run"):
-            self.assertEqual(self.doc["jobs"][job].get("environment"), "main-only")
+            self.assertEqual(self.doc["jobs"][job].get("environment"), "spend")  # main-only plus Sean's approval (#265)
 
     def test_a_live_run_starts_from_main_on_the_committed_list(self):
         steps = str(self.doc["jobs"]["plan"]["steps"])

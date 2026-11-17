@@ -46,6 +46,24 @@
  },
  "rows": [
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 62,
+      "spans": [
+       [
+        0,
+        61
+       ]
+      ]
+     }
+    },
+    "of": 575
+   },
    "observer": null,
    "probe": "wait-long",
    "record": null,
@@ -58,6 +76,28 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 27,
+      "spans": [
+       [
+        0,
+        15
+       ],
+       [
+        17,
+        27
+       ]
+      ]
+     }
+    },
+    "of": 170
+   },
    "observer": null,
    "probe": "hold-right",
    "record": null,
@@ -70,6 +110,24 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 13,
+      "spans": [
+       [
+        0,
+        12
+       ]
+      ]
+     }
+    },
+    "of": 170
+   },
    "observer": null,
    "probe": "hold-left",
    "record": null,
@@ -82,6 +140,40 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 63,
+      "spans": [
+       [
+        0,
+        15
+       ],
+       [
+        17,
+        27
+       ],
+       [
+        87,
+        96
+       ],
+       [
+        98,
+        112
+       ],
+       [
+        114,
+        124
+       ]
+      ]
+     }
+    },
+    "of": 170
+   },
    "observer": null,
    "probe": "reverse",
    "record": null,
@@ -94,6 +186,24 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 50,
+      "spans": [
+       [
+        0,
+        49
+       ]
+      ]
+     }
+    },
+    "of": 50
+   },
    "observer": null,
    "probe": "jump-w0-x1",
    "record": null,
@@ -106,6 +216,24 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 60,
+      "spans": [
+       [
+        0,
+        59
+       ]
+      ]
+     }
+    },
+    "of": 60
+   },
    "observer": null,
    "probe": "jump-w0-x2",
    "record": null,
@@ -118,6 +246,24 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 62,
+      "spans": [
+       [
+        0,
+        61
+       ]
+      ]
+     }
+    },
+    "of": 120
+   },
    "observer": null,
    "probe": "jump-w0-x8",
    "record": null,
@@ -130,6 +276,32 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 40,
+      "spans": [
+       [
+        0,
+        15
+       ],
+       [
+        17,
+        27
+       ],
+       [
+        57,
+        69
+       ]
+      ]
+     }
+    },
+    "of": 70
+   },
    "observer": null,
    "probe": "jump-w40-x1",
    "record": null,
@@ -142,6 +314,32 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 50,
+      "spans": [
+       [
+        0,
+        15
+       ],
+       [
+        17,
+        27
+       ],
+       [
+        57,
+        79
+       ]
+      ]
+     }
+    },
+    "of": 80
+   },
    "observer": null,
    "probe": "jump-w40-x2",
    "record": null,
@@ -154,6 +352,32 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 110,
+      "spans": [
+       [
+        0,
+        15
+       ],
+       [
+        17,
+        27
+       ],
+       [
+        57,
+        139
+       ]
+      ]
+     }
+    },
+    "of": 140
+   },
    "observer": null,
    "probe": "jump-w40-x8",
    "record": null,
@@ -166,6 +390,28 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 27,
+      "spans": [
+       [
+        0,
+        15
+       ],
+       [
+        17,
+        27
+       ]
+      ]
+     }
+    },
+    "of": 90
+   },
    "observer": null,
    "probe": "jump-w80-x1",
    "record": null,
@@ -178,6 +424,28 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 27,
+      "spans": [
+       [
+        0,
+        15
+       ],
+       [
+        17,
+        27
+       ]
+      ]
+     }
+    },
+    "of": 100
+   },
    "observer": null,
    "probe": "jump-w80-x2",
    "record": null,
@@ -190,6 +458,28 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 27,
+      "spans": [
+       [
+        0,
+        15
+       ],
+       [
+        17,
+        27
+       ]
+      ]
+     }
+    },
+    "of": 160
+   },
    "observer": null,
    "probe": "jump-w80-x8",
    "record": null,
@@ -202,6 +492,28 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 27,
+      "spans": [
+       [
+        0,
+        15
+       ],
+       [
+        17,
+        27
+       ]
+      ]
+     }
+    },
+    "of": 110
+   },
    "observer": null,
    "probe": "jump-w120-x1",
    "record": null,
@@ -214,6 +526,28 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 27,
+      "spans": [
+       [
+        0,
+        15
+       ],
+       [
+        17,
+        27
+       ]
+      ]
+     }
+    },
+    "of": 120
+   },
    "observer": null,
    "probe": "jump-w120-x2",
    "record": null,
@@ -226,6 +560,28 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 27,
+      "spans": [
+       [
+        0,
+        15
+       ],
+       [
+        17,
+        27
+       ]
+      ]
+     }
+    },
+    "of": 180
+   },
    "observer": null,
    "probe": "jump-w120-x8",
    "record": null,
@@ -238,6 +594,33 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 2,
+      "spans": [
+       [
+        67,
+        67
+       ],
+       [
+        91,
+        91
+       ]
+      ]
+     },
+     "enemy": {
+      "frames": 117,
+      "spans": [
+       [
+        0,
+        116
+       ]
+      ]
+     }
+    },
+    "of": 117
+   },
    "observer": null,
    "probe": "shoot-right-every48",
    "record": null,
@@ -263,6 +646,33 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 2,
+      "spans": [
+       [
+        67,
+        67
+       ],
+       [
+        91,
+        91
+       ]
+      ]
+     },
+     "enemy": {
+      "frames": 117,
+      "spans": [
+       [
+        0,
+        116
+       ]
+      ]
+     }
+    },
+    "of": 117
+   },
    "observer": null,
    "probe": "shoot-right-every12",
    "record": null,
@@ -288,6 +698,24 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 15,
+      "spans": [
+       [
+        0,
+        14
+       ]
+      ]
+     }
+    },
+    "of": 123
+   },
    "observer": null,
    "probe": "shoot-left-every48",
    "record": null,
@@ -313,6 +741,24 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 15,
+      "spans": [
+       [
+        0,
+        14
+       ]
+      ]
+     }
+    },
+    "of": 123
+   },
    "observer": null,
    "probe": "shoot-left-every12",
    "record": null,
@@ -338,6 +784,45 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 5,
+      "spans": [
+       [
+        73,
+        73
+       ],
+       [
+        83,
+        84
+       ],
+       [
+        108,
+        108
+       ],
+       [
+        132,
+        132
+       ]
+      ]
+     },
+     "enemy": {
+      "frames": 27,
+      "spans": [
+       [
+        0,
+        15
+       ],
+       [
+        17,
+        27
+       ]
+      ]
+     }
+    },
+    "of": 158
+   },
    "observer": null,
    "probe": "move-fire-right",
    "record": null,
@@ -363,6 +848,24 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 13,
+      "spans": [
+       [
+        0,
+        12
+       ]
+      ]
+     }
+    },
+    "of": 158
+   },
    "observer": null,
    "probe": "move-fire-left",
    "record": null,
@@ -388,6 +891,24 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 13,
+      "spans": [
+       [
+        0,
+        12
+       ]
+      ]
+     }
+    },
+    "of": 70
+   },
    "observer": null,
    "probe": "jump-l40-x1",
    "record": null,
@@ -400,6 +921,24 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 13,
+      "spans": [
+       [
+        0,
+        12
+       ]
+      ]
+     }
+    },
+    "of": 80
+   },
    "observer": null,
    "probe": "jump-l40-x2",
    "record": null,
@@ -412,6 +951,24 @@
    }
   },
   {
+   "edges": {
+    "objects": {
+     "bullet": {
+      "frames": 0,
+      "spans": []
+     },
+     "enemy": {
+      "frames": 13,
+      "spans": [
+       [
+        0,
+        12
+       ]
+      ]
+     }
+    },
+    "of": 140
+   },
    "observer": null,
    "probe": "jump-l40-x8",
    "record": null,

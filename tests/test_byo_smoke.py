@@ -79,7 +79,7 @@ class WorkflowTest(unittest.TestCase):
         # dispatch from main, never on a pull request's code.
         self.assertNotIn("pull_request", self.triggers)
         self.assertNotIn("pull_request_target", self.triggers)
-        self.assertEqual(self.doc["jobs"]["byo-smoke"]["environment"], "main-only")
+        self.assertEqual(self.doc["jobs"]["byo-smoke"]["environment"], "spend")  # main-only plus Sean's approval (#265)
 
 class LiveWorkflowGatewayTest(unittest.TestCase):
     """byo-live.yml defaults the key gateway on; the library does not, and must not.
