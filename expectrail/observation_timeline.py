@@ -181,10 +181,11 @@ def emit(document, trace, frames_dir=None, *, version="1"):
 
 
 @lru_cache(maxsize=1)
-def _validator():
-    from jsonschema import Draft202012Validator
+def _schema():
+    # A normal wheel has no optional dependencies. Use the same strict, standard-library
+    # schema reader as the gate and recordings, including the v1 provenance requirements.
     path = resources.ROOT / "contracts/observations.schema.json"
-    return Draft202012Validator(json.loads(path.read_text()))
+    return json.loads(path.read_text())
 
 
 def singular_names(spec):
@@ -222,14 +223,16 @@ def ambiguity(spec, document):
 
 def validate(spec, document, *, trusted=None, expected_frames=None, source_kind=None):
     """Completeness/provenance before geometry. Returns a named gap, never repairs evidence."""
+    if document.get("format") == OBSERVATIONS:
+        from expectrail.gate.record import errors
+        found = errors(document, _schema())
+        if found:
+            return "observation-timeline: invalid observations at " + found[0]
     issue = ambiguity(spec, document)
     if issue:
         return issue
     if document.get("format") != OBSERVATIONS:
         return "observation-timeline: legacy observations have no capture provenance" if trusted else None
-    error = next(_validator().iter_errors(document), None)
-    if error is not None:
-        return "observation-timeline: invalid observations at " + "/".join(map(str, error.path))
     timeline = document["timeline"]
     reference = trusted or timeline
     if any(timeline[k] != reference[k] for k in ("format", "traceSha256", "physicsTicksPerSecond", "captureFps")):
