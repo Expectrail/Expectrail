@@ -715,6 +715,20 @@ chosen by hand in the facing measurement above (from frame 30, 130 and 30) are p
 record is `contracts/examples/repro-evidence-edges.json`. Tested offline in
 `tests/test_repro_evidence_edges.py`.
 
+**The bench's records carry them (November 17).** The public bench's evidence for its two screen-only
+defects with an enemy or a bullet in them, `bench/jit/public/evidence-enemy-walks-backwards.json` and
+`evidence-bullet-behind-scenery.json`, were made again on all 25 library probes with the same command and
+no `--probe` (Godot 4.7.2 here, no model, not in CI). Every field of every row is what the November 11
+records held; each row now also has `edges`, so a pixel-setting propose step given these records has the
+frames to avoid. `evidence-render` prints them as one line under the table. What they show for the enemy:
+on 4 probes (`jump-w0-x1`, `jump-w0-x2`, `shoot-right-every48`, `shoot-right-every12`) it is partly on
+screen on every captured frame, so no pixel check about the enemy can be decided there. On 15 probes no
+frame after frame 27 has it partly on screen (the three `jump-w80-*` and `jump-w120-*`, `hold-right`,
+`move-fire-right`, and the seven that go left, from frame 13 or 15). `edges` does not say whether the
+enemy is wholly on screen or wholly off it on the other frames; the trace's boxes do, and the sensor judges
+that. The other two bench records (`coin-stays`, `no-shooting-in-air`) were not made again; they have no
+`edges`.
+
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 
 The replays run the change's code, and asking SAM needs its key; jit.yml keeps the two in separate jobs

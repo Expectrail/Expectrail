@@ -14,7 +14,7 @@ from agents import template_observations as sensor
 from expectrail.contracts import load_strict
 from expectrail.jit import intent, offer, pixel
 from expectrail.jit.probes import jit_library
-from expectrail.repro import evidence
+from expectrail.repro import bench, evidence
 from tests.test_discovery import PROFILE
 from tests.test_repro_bench import STUB
 from tests.test_repro_screen import FRAMES, H, W, Drawn
@@ -209,6 +209,47 @@ class TheExample(unittest.TestCase):
                                  "reverse": [[0, 15], [17, 27], [87, 96], [98, 112], [114, 124]]})
 
 
+class Rendered(unittest.TestCase):
+    """The table a person reads names the frames to avoid, and a record without them renders as before."""
+
+    def setUp(self):
+        self.record = evidence.load(evidence.REPO / "contracts" / "examples" / "repro-evidence-edges.json")
+
+    def test_the_line_names_each_probe_and_kind_with_its_runs(self):
+        text = evidence.render(self.record)
+        line = [x for x in text.splitlines() if x.startswith("Frames of the clean game")]
+        self.assertEqual(len(line), 1)
+        self.assertIn("`hold-right` (170 frames): enemy 0-15, 17-27", line[0])
+        self.assertIn("`reverse` (170 frames): enemy 0-15, 17-27, 87-96, 98-112, 114-124", line[0])
+        self.assertIn("`move-fire-right` (158 frames): enemy 0-15, 17-27; bullet 73, 83-84, 108, 132", line[0])
+
+    def test_a_kind_the_record_cannot_say_for_is_named_and_a_clear_probe_is_counted(self):
+        record = copy.deepcopy(self.record)
+        record["rows"][0]["edges"]["objects"] = {"enemy": None, "bullet": {"frames": 0, "spans": []}}
+        record["rows"][1]["edges"]["objects"] = {"enemy": {"frames": 0, "spans": []},
+                                                 "bullet": {"frames": 0, "spans": []}}
+        line = [x for x in evidence.render(record).splitlines() if x.startswith("Frames of the clean game")][0]
+        self.assertIn(f"`{record['rows'][0]['probe']}` (170 frames): enemy cannot say", line)
+        self.assertNotIn(f"`{record['rows'][1]['probe']}`", line)
+        self.assertTrue(line.endswith("None on the other 1 probe."), line)
+
+    def test_no_probe_partly_on_screen_says_none(self):
+        record = copy.deepcopy(self.record)
+        for r in record["rows"]:
+            r["edges"]["objects"] = {"enemy": {"frames": 0, "spans": []}, "bullet": {"frames": 0, "spans": []}}
+        self.assertIn("should avoid: none.", evidence.render(record))
+
+    def test_a_record_without_them_renders_with_no_such_line(self):
+        record = copy.deepcopy(self.record)
+        for r in record["rows"]:
+            del r["edges"]
+        text = evidence.render(record)
+        self.assertNotIn("partly on screen", text)
+        self.assertEqual(text, evidence.render(record))
+        example = json.loads((evidence.REPO / "contracts" / "examples" / "repro-evidence.json").read_text())
+        self.assertNotIn("partly on screen", evidence.render(example))
+
+
 class Shown(Base):
     def setUp(self):
         super().setUp()
@@ -254,6 +295,60 @@ class Shown(Base):
         self.assertIn('"partlyOnScreen"', system)
         self.assertIn('{"type": "faces-motion"}', system)
         self.assertNotIn("partlyOnScreen", intent.system_for(offer.EVIDENCE))
+
+
+class TheBenchRecords(unittest.TestCase):
+    """The public bench's evidence for its screen-only enemy and bullet defects, made again on Godot 4.7.2 on
+    November 17 with ``edges`` (bench/jit/public/evidence-<defect>.json), as a pixel-setting propose step reads
+    them. Every other field of every row is what the November 11 records held."""
+
+    PUBLIC = evidence.REPO / "bench" / "jit" / "public"
+    SCREEN_ONLY = ("enemy-walks-backwards", "bullet-behind-scenery")
+
+    def setUp(self):
+        self.profile = load_strict(PROFILE, "mechanics-profile")
+        self.patches = {d["id"]: evidence.REPO / d["patch"] for d in bench.load()["defects"]}
+        self.records = {name: evidence.load(self.PUBLIC / f"evidence-{name}.json", base_patches=[self.patches[name]])
+                        for name in self.SCREEN_ONLY}
+
+    def test_every_row_says_where_both_kinds_are_partly_on_screen(self):
+        for name, record in self.records.items():
+            self.assertEqual(len(record["rows"]), 25, name)
+            for r in record["rows"]:
+                self.assertIn("edges", r, (name, r["probe"]))
+                self.assertEqual(set(r["edges"]["objects"]), set(evidence.EDGE_ROLES), (name, r["probe"]))
+                self.assertTrue(all(v is not None for v in r["edges"]["objects"].values()), (name, r["probe"]))
+
+    def test_the_edges_are_the_clean_game_s_so_both_records_agree_on_them(self):
+        # Two runs, two bug builds, the same clean replays: edges come from the clean game only.
+        a, b = ({r["probe"]: r["edges"] for r in self.records[n]["rows"]} for n in self.SCREEN_ONLY)
+        self.assertEqual(a, b)
+
+    def test_the_enemy_probes_measured_on_november_16_read_the_same(self):
+        example = {r["probe"]: r["edges"] for r in
+                   evidence.load(evidence.REPO / "contracts" / "examples" / "repro-evidence-edges.json")["rows"]}
+        rows = {r["probe"]: r["edges"] for r in self.records["enemy-walks-backwards"]["rows"]}
+        for probe, edges in example.items():
+            self.assertEqual(rows[probe], edges, probe)
+
+    def test_on_some_probes_the_enemy_is_never_wholly_on_screen(self):
+        # Measured: on these the enemy is partly on screen on every captured frame, so no window of a pixel
+        # check about the enemy can be judged there; the proposer is shown that rather than left to find out.
+        rows = {r["probe"]: r["edges"] for r in self.records["enemy-walks-backwards"]["rows"]}
+        whole = sorted(p for p, e in rows.items() if e["objects"]["enemy"]["frames"] == e["of"])
+        self.assertEqual(whole, ["jump-w0-x1", "jump-w0-x2", "shoot-right-every12", "shoot-right-every48"])
+
+    def test_under_the_pixel_setting_the_proposer_gets_them_and_under_evidence_it_does_not(self):
+        for name in self.SCREEN_ONLY:
+            path = self.PUBLIC / f"evidence-{name}.json"
+            px = offer.library(self.profile["actions"], offer.PIXEL, "")
+            self.assertEqual(offer.attach_evidence(px, path, [self.patches[name]], offer.PIXEL), [], name)
+            shown = [p for p in px if "differs" in p]
+            self.assertTrue(shown, name)
+            self.assertTrue(all("enemy" in p["differs"]["partlyOnScreen"] for p in shown), name)
+            ev = offer.library(self.profile["actions"], offer.EVIDENCE, "")
+            offer.attach_evidence(ev, path, [self.patches[name]], offer.EVIDENCE)
+            self.assertTrue(all("partlyOnScreen" not in p.get("differs", {}) for p in ev), name)
 
 
 class Judged(unittest.TestCase):
