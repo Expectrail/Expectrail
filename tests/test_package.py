@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import sysconfig
+import tarfile
 import tempfile
 import tomllib
 import unittest
@@ -109,6 +110,79 @@ class Case(unittest.TestCase):
         self.wheel = zipfile.ZipFile(BUILT["wheel"])
         self.addCleanup(self.wheel.close)
         self.names = self.wheel.namelist()
+
+
+class QuickstartPackageTest(unittest.TestCase):
+    def setUp(self):
+        from tools import quickstart
+        self.quickstart = quickstart
+
+    def test_curated_checkout_preserves_the_three_public_sample_recordings(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / 'checkout'
+            self.quickstart.copy_checkout(self.quickstart.ROOT, target)
+            for name in ('clean', 'fall-through-bug', 'fall-through-repair'):
+                relative = Path('docs/run-it/vision') / (name + '.json')
+                with self.subTest(recording=name):
+                    self.assertEqual((target / relative).read_bytes(),
+                                     (self.quickstart.ROOT / relative).read_bytes())
+
+    def test_curated_checkout_builds_a_wheel_with_identical_sample_recordings(self):
+        missing = [name for name in ('pip', 'setuptools')
+                   if importlib.util.find_spec(name) is None]
+        if missing:
+            reason = 'offline quickstart wheel build requires ' + ', '.join(missing)
+            if os.environ.get('EXPECTRAIL_PACKAGE_TESTS') == 'required':
+                self.fail(reason)
+            self.skipTest(reason)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.quickstart.copy_checkout(self.quickstart.ROOT, root / 'checkout')
+            done = subprocess.run([sys.executable, '-m', 'pip', 'wheel', '.', '--no-deps',
+                                   '--no-build-isolation', '--no-index', '-w', str(root / 'dist')],
+                                  cwd=root / 'checkout', capture_output=True, text=True)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            wheels = list((root / 'dist').glob('expectrail-*.whl'))
+            self.assertEqual(len(wheels), 1)
+            with zipfile.ZipFile(wheels[0]) as wheel:
+                for name in ('clean', 'fall-through-bug', 'fall-through-repair'):
+                    with self.subTest(recording=name):
+                        self.assertEqual(wheel.read('expectrail/_bundle/sample-vision/' + name + '.json'),
+                                         (self.quickstart.ROOT / 'docs/run-it/vision' / (name + '.json')).read_bytes())
+
+    def test_curated_checkout_sdist_builds_the_complete_sample_wheel(self):
+        missing = [name for name in ('pip', 'setuptools')
+                   if importlib.util.find_spec(name) is None]
+        if missing:
+            reason = 'offline quickstart sdist build requires ' + ', '.join(missing)
+            if os.environ.get('EXPECTRAIL_PACKAGE_TESTS') == 'required':
+                self.fail(reason)
+            self.skipTest(reason)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.quickstart.copy_checkout(REPO, root / 'checkout')
+            done = subprocess.run([sys.executable, 'setup.py', 'sdist', '--dist-dir', str(root / 'sdist')],
+                                  cwd=root / 'checkout', capture_output=True, text=True)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            archives = list((root / 'sdist').glob('expectrail-*.tar.gz'))
+            self.assertEqual(len(archives), 1)
+            with tarfile.open(archives[0]) as archive:
+                for name in ('clean', 'fall-through-bug', 'fall-through-repair'):
+                    relative = f'docs/run-it/vision/{name}.json'
+                    members = [m for m in archive.getmembers() if m.name.endswith('/' + relative)]
+                    self.assertEqual(len(members), 1, relative)
+                    self.assertEqual(archive.extractfile(members[0]).read(), (REPO / relative).read_bytes())
+            done = subprocess.run([sys.executable, '-m', 'pip', 'wheel', str(archives[0]), '--no-deps',
+                                   '--no-build-isolation', '--no-index', '--no-cache-dir', '-w', str(root / 'wheel')],
+                                  capture_output=True, text=True)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            wheels = list((root / 'wheel').glob('expectrail-*.whl'))
+            self.assertEqual(len(wheels), 1)
+            with zipfile.ZipFile(wheels[0]) as wheel:
+                for name in ('clean', 'fall-through-bug', 'fall-through-repair'):
+                    self.assertEqual(wheel.read(f'expectrail/_bundle/sample-vision/{name}.json'),
+                                     (REPO / f'docs/run-it/vision/{name}.json').read_bytes())
+
 
 
 class ContentsTest(Case):

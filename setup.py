@@ -138,6 +138,12 @@ def without_path_bootstrap(source):
 
 
 class BuildPy(build_py):
+    def get_source_files(self):
+        # sdist asks build_py for its inputs too. These are required wheel data,
+        # even though their public originals live outside the Python packages.
+        recordings = [f'docs/run-it/vision/{name}.json' for name in SAMPLE_RECORDINGS]
+        return super().get_source_files() + recordings
+
     def find_package_modules(self, package, package_dir):
         modules = super().find_package_modules(package, package_dir)
         keep = BUNDLED_MODULES.get(package)
