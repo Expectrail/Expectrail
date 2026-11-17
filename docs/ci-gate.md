@@ -34,6 +34,21 @@ lack recorded answers. A missing answer needs review unless a failure already re
 A correct-fix trial must use a trusted recording covering the checks exercised. Neither job calls
 a paid model.
 
+## Gate command exit codes
+
+`python -m expectrail.gate.verify` returns **0 for accept, 1 for reject and 2 for
+needs-review**. A stopped verification still writes `findings.json` and returns 2.
+Code **3** means the command refused before verification: for example a nonempty
+output folder, invalid PR identity, or an unreadable/mismatched PR event. It must
+not overwrite a record or run the game in those cases. Argument-parser errors
+use argparse's exit 2 and do not promise a findings record.
+
+With PR identity and `GITHUB_EVENT_PATH`, the command checks that the event names
+the same PR and commits before replay. A local test using synthetic PR identities
+must supply its own event or clear that variable; inheriting the CI runner's real
+PR event tests identity refusal instead of the local verdict's exit code. The
+exit mapping has not changed in #588.
+
 ## On Expectrail's own repository
 
 Sean decided on November 14, 2026 (option C on #254): on this repository's own pull requests,
