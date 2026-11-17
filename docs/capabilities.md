@@ -119,12 +119,13 @@ harness run, and `other` is the harness copying the game, applying patches and h
 | command | `tools.merge_guard` | Repository maintenance; not a user verification mode. |
 | command | `agents` | Documentation placeholder for agent modules; not an executable product mode. |
 | doc | `docs/capabilities.md` | this ledger |
+| doc | `docs/capability-audit-2026-11-15.md` | Historical evidence audit; no separate execution mode. |
 | doc | `docs/contracts.md` | describes the formats, not a mode |
 | doc | `docs/evaluation.md` | the evaluation plan |
+| doc | `docs/first-user-test.md` | Unrun first-user protocol, not a measured product mode. |
 | doc | `docs/future-work.md` | what is not built |
 | doc | `docs/new-work.md` | the log of what was built and run |
-| doc | `docs/first-user-test.md` | Unrun first-user protocol, not a measured product mode. |
-| doc | `docs/capability-audit-2026-11-15.md` | Historical evidence audit; no separate execution mode. |
+| doc | `docs/spend-environment.md` | repository settings for paid runs (who approves a model spend), not a verification mode |
 | workflow | `merge-guard.yml` | Repository integration administration, not a verification mode. |
 
 ## Changing the ledger

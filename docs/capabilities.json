@@ -2275,12 +2275,13 @@
     "switches": {},
     "docs": {
       "docs/capabilities.md": "this ledger",
+      "docs/capability-audit-2026-11-15.md": "Historical evidence audit; no separate execution mode.",
       "docs/contracts.md": "describes the formats, not a mode",
       "docs/evaluation.md": "the evaluation plan",
+      "docs/first-user-test.md": "Unrun first-user protocol, not a measured product mode.",
       "docs/future-work.md": "what is not built",
       "docs/new-work.md": "the log of what was built and run",
-      "docs/first-user-test.md": "Unrun first-user protocol, not a measured product mode.",
-      "docs/capability-audit-2026-11-15.md": "Historical evidence audit; no separate execution mode."
+      "docs/spend-environment.md": "repository settings for paid runs (who approves a model spend), not a verification mode"
     },
     "workflows": {
       "merge-guard.yml": "Repository integration administration, not a verification mode."
