@@ -56,6 +56,7 @@ from expectrail.jit import offer as offer_mod
 from expectrail.jit.diff_map import PatchError, diff_map
 from expectrail.trace.evaluator import evaluate
 from expectrail.trace.normalize import from_run_dir
+from harness.run import needs_ui_integers
 
 FORMAT = "expectrail.jit-run/v1"
 RECORD_NAME = "jit-run.json"
@@ -381,7 +382,7 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
 
     prints: dict[tuple[str, str, int], str] = {}
 
-    def replay(name: str, patches: list[Path], pid: str, n: int, with_runner=None) -> dict:
+    def replay(name: str, patches: list[Path], pid: str, n: int, with_runner=None, *, trace_specs=()) -> dict:
         spend.reserve(spend.replay_estimate(), f"replay {name}/{pid}#{n}")
         route, path = routes[pid]
         run_dir = out / "jit-replays" / name / f"{pid}-{n}"
@@ -389,7 +390,8 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
             shutil.rmtree(run_dir)
         t0 = clock()
         try:
-            (with_runner or runner)(path, run_dir, patches=patches)
+            extra = {"trace_specs": list(trace_specs)} if needs_ui_integers(trace_specs) else {}
+            (with_runner or runner)(path, run_dir, patches=patches, **extra)
             ep = from_run_dir(run_dir, route, episode_id=f"{name}-{pid}-{n}")
             prints[(name, pid, n)] = _sha_bytes((run_dir / "trace.json").read_bytes())
         except Exception as exc:  # noqa: BLE001 - rule 3
@@ -407,7 +409,8 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
         active = list(todo)
         for n in range(1, count + 1):
             pids = sorted({i for _, ids in active for i in ids})
-            eps = {pid: replay(name, patches, pid, n) for pid in pids}
+            eps = {pid: replay(name, patches, pid, n,
+                               trace_specs=[e["spec"] for e, ids in active if pid in ids]) for pid in pids}
             for e, ids in active:
                 results[e["spec"]["id"]].append(_evaluate(e, ids, eps))
             if stop_early:
@@ -430,7 +433,8 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
     cand_print: dict[str, str] = {}
     if on_ref and vlist:
         for pid in sorted({i for _, ids in on_ref for i in ids}):
-            replay("candidate-print", [*base_patches, candidate], pid, 1)
+            replay("candidate-print", [*base_patches, candidate], pid, 1,
+                   trace_specs=[e["spec"] for e, ids in on_ref if pid in ids])
             cand_print[pid] = prints[("candidate-print", pid, 1)]
     vdir = out / "jit-variants"
     vdir.mkdir(exist_ok=True)

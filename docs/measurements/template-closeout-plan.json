@@ -1,0 +1,607 @@
+{
+  "format": "expectrail.sensor-closeout-plan/v1",
+  "recordedAt": "2026-11-16T23:15:43.449644+00:00",
+  "base": "d877ddb647161e4af28aa554e7886d91e1b83f5b",
+  "sensorFiles": {
+    "agents/template_observations.py": "b4d57fca5350d148056b00dacf99ab534b185b03609c2b9f6de269b35dd9f910",
+    "agents/template_foreground.py": "a987638f4b49cd3c4f2f50bb0d0bc3ccdc60f9d4827e5848df4323a214a766fa",
+    "agents/template_art.py": "c2f5831c401f8474fcbaf7a4e7e6b7f5d252177b05a1aabdb12e7f0ee17cfaef",
+    "agents/template_regions.py": "5df59a80c5ece9ba5f8ee8efbc419f39e93f5cafcf350fd5039bd89fcf8971db",
+    "agents/template_sensor_bench.py": "72ac56152b74816db4086fa6dababc445bf0bb0395c43dfa98a555eb761051ff",
+    "expectrail/jit/template_observer.py": "0c43b7a742ac16008733b4685b91540a8811fdbb85c00205b92d3c5514cca3af",
+    "contracts/observations.schema.json": "764f13ec2a8bae4cf47e547c871f7904c7fd58374f1f1aee7ffd8cb476dd9a0f",
+    "contracts/template-foreground-catalogue.schema.json": "14f094cc3fed0d233983c94de1438c9d2c464b1b1cd35372f82d070764e9c92a",
+    "contracts/examples/template-foreground-catalogue.json": "81e75655f50563ff8b59f13cce8a60a30e01cc552513dcb2bab6234b17e805c1",
+    "contracts/template-bank.schema.json": "42bc51527d946cf5e037db514294bb9ccc5a5b9c57ee41c5909a5c338ff3ac22"
+  },
+  "cleanTree": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280",
+  "calibration": {
+    "entrypoint": "expectrail.jit.template_observer.calibrate_bank",
+    "routes": [
+      {
+        "format": "expectrail.route/v0",
+        "name": "cal-walk",
+        "ticks": 720,
+        "seed": 262,
+        "description": "Clean template calibration only; never a measured route.",
+        "events": [
+          {
+            "tick": 100,
+            "action": "move_right",
+            "pressed": true
+          },
+          {
+            "tick": 280,
+            "action": "move_left",
+            "pressed": true
+          },
+          {
+            "tick": 280,
+            "action": "move_right",
+            "pressed": false
+          },
+          {
+            "tick": 460,
+            "action": "move_left",
+            "pressed": false
+          },
+          {
+            "tick": 500,
+            "action": "move_right",
+            "pressed": true
+          },
+          {
+            "tick": 640,
+            "action": "move_right",
+            "pressed": false
+          }
+        ]
+      },
+      {
+        "format": "expectrail.route/v0",
+        "name": "cal-air",
+        "ticks": 720,
+        "seed": 262,
+        "description": "Clean template calibration only; never a measured route.",
+        "events": [
+          {
+            "tick": 10,
+            "action": "move_right",
+            "pressed": true
+          },
+          {
+            "tick": 40,
+            "action": "jump",
+            "pressed": true
+          },
+          {
+            "tick": 50,
+            "action": "jump",
+            "pressed": false
+          },
+          {
+            "tick": 90,
+            "action": "jump",
+            "pressed": true
+          },
+          {
+            "tick": 100,
+            "action": "jump",
+            "pressed": false
+          },
+          {
+            "tick": 180,
+            "action": "jump",
+            "pressed": true
+          },
+          {
+            "tick": 190,
+            "action": "jump",
+            "pressed": false
+          },
+          {
+            "tick": 220,
+            "action": "jump",
+            "pressed": true
+          },
+          {
+            "tick": 230,
+            "action": "jump",
+            "pressed": false
+          },
+          {
+            "tick": 300,
+            "action": "move_right",
+            "pressed": false
+          },
+          {
+            "tick": 330,
+            "action": "move_left",
+            "pressed": true
+          },
+          {
+            "tick": 370,
+            "action": "jump",
+            "pressed": true
+          },
+          {
+            "tick": 380,
+            "action": "jump",
+            "pressed": false
+          },
+          {
+            "tick": 420,
+            "action": "jump",
+            "pressed": true
+          },
+          {
+            "tick": 430,
+            "action": "jump",
+            "pressed": false
+          },
+          {
+            "tick": 570,
+            "action": "move_left",
+            "pressed": false
+          }
+        ]
+      },
+      {
+        "format": "expectrail.route/v0",
+        "name": "cal-fire",
+        "ticks": 720,
+        "seed": 262,
+        "description": "Clean template calibration only; never a measured route.",
+        "events": [
+          {
+            "tick": 10,
+            "action": "move_right",
+            "pressed": true
+          },
+          {
+            "tick": 30,
+            "action": "shoot",
+            "pressed": true
+          },
+          {
+            "tick": 36,
+            "action": "shoot",
+            "pressed": false
+          },
+          {
+            "tick": 90,
+            "action": "shoot",
+            "pressed": true
+          },
+          {
+            "tick": 96,
+            "action": "shoot",
+            "pressed": false
+          },
+          {
+            "tick": 150,
+            "action": "shoot",
+            "pressed": true
+          },
+          {
+            "tick": 156,
+            "action": "shoot",
+            "pressed": false
+          },
+          {
+            "tick": 210,
+            "action": "move_right",
+            "pressed": false
+          },
+          {
+            "tick": 230,
+            "action": "move_left",
+            "pressed": true
+          },
+          {
+            "tick": 270,
+            "action": "shoot",
+            "pressed": true
+          },
+          {
+            "tick": 276,
+            "action": "shoot",
+            "pressed": false
+          },
+          {
+            "tick": 330,
+            "action": "shoot",
+            "pressed": true
+          },
+          {
+            "tick": 336,
+            "action": "shoot",
+            "pressed": false
+          },
+          {
+            "tick": 390,
+            "action": "shoot",
+            "pressed": true
+          },
+          {
+            "tick": 396,
+            "action": "shoot",
+            "pressed": false
+          },
+          {
+            "tick": 420,
+            "action": "move_left",
+            "pressed": false
+          },
+          {
+            "tick": 450,
+            "action": "move_right",
+            "pressed": true
+          },
+          {
+            "tick": 480,
+            "action": "shoot",
+            "pressed": true
+          },
+          {
+            "tick": 486,
+            "action": "shoot",
+            "pressed": false
+          },
+          {
+            "tick": 540,
+            "action": "shoot",
+            "pressed": true
+          },
+          {
+            "tick": 546,
+            "action": "shoot",
+            "pressed": false
+          },
+          {
+            "tick": 600,
+            "action": "shoot",
+            "pressed": true
+          },
+          {
+            "tick": 606,
+            "action": "shoot",
+            "pressed": false
+          },
+          {
+            "tick": 630,
+            "action": "move_right",
+            "pressed": false
+          }
+        ]
+      },
+      {
+        "format": "expectrail.route/v0",
+        "name": "cal-validation",
+        "ticks": 720,
+        "seed": 263,
+        "description": "Clean template calibration only; never a measured route.",
+        "events": [
+          {
+            "tick": 17,
+            "action": "move_right",
+            "pressed": true
+          },
+          {
+            "tick": 37,
+            "action": "shoot",
+            "pressed": true
+          },
+          {
+            "tick": 43,
+            "action": "shoot",
+            "pressed": false
+          },
+          {
+            "tick": 47,
+            "action": "jump",
+            "pressed": true
+          },
+          {
+            "tick": 57,
+            "action": "jump",
+            "pressed": false
+          },
+          {
+            "tick": 97,
+            "action": "jump",
+            "pressed": true
+          },
+          {
+            "tick": 107,
+            "action": "jump",
+            "pressed": false
+          },
+          {
+            "tick": 187,
+            "action": "jump",
+            "pressed": true
+          },
+          {
+            "tick": 197,
+            "action": "jump",
+            "pressed": false
+          },
+          {
+            "tick": 227,
+            "action": "jump",
+            "pressed": true
+          },
+          {
+            "tick": 237,
+            "action": "jump",
+            "pressed": false
+          },
+          {
+            "tick": 307,
+            "action": "move_right",
+            "pressed": false
+          },
+          {
+            "tick": 337,
+            "action": "move_left",
+            "pressed": true
+          },
+          {
+            "tick": 377,
+            "action": "jump",
+            "pressed": true
+          },
+          {
+            "tick": 387,
+            "action": "jump",
+            "pressed": false
+          },
+          {
+            "tick": 387,
+            "action": "shoot",
+            "pressed": true
+          },
+          {
+            "tick": 393,
+            "action": "shoot",
+            "pressed": false
+          },
+          {
+            "tick": 427,
+            "action": "jump",
+            "pressed": true
+          },
+          {
+            "tick": 437,
+            "action": "jump",
+            "pressed": false
+          },
+          {
+            "tick": 577,
+            "action": "move_left",
+            "pressed": false
+          }
+        ]
+      }
+    ],
+    "art": {
+      "player": "player/robot.webp",
+      "enemy": "enemy/enemy.webp"
+    },
+    "namedObjects": [
+      "enemy"
+    ],
+    "rule": "Freeze once before any evaluation capture; no changes after."
+  },
+  "evaluationRoutes": [
+    {
+      "format": "expectrail.route/v0",
+      "name": "sensor-closeout-a",
+      "ticks": 240,
+      "seed": 262117,
+      "description": "Pre-registered #262 closeout evaluation; never calibration or tuning.",
+      "events": [
+        {
+          "tick": 11,
+          "action": "move_right",
+          "pressed": true
+        },
+        {
+          "tick": 53,
+          "action": "jump",
+          "pressed": true
+        },
+        {
+          "tick": 65,
+          "action": "jump",
+          "pressed": false
+        },
+        {
+          "tick": 97,
+          "action": "shoot",
+          "pressed": true
+        },
+        {
+          "tick": 103,
+          "action": "shoot",
+          "pressed": false
+        },
+        {
+          "tick": 133,
+          "action": "move_right",
+          "pressed": false
+        },
+        {
+          "tick": 151,
+          "action": "move_left",
+          "pressed": true
+        },
+        {
+          "tick": 173,
+          "action": "jump",
+          "pressed": true
+        },
+        {
+          "tick": 183,
+          "action": "jump",
+          "pressed": false
+        },
+        {
+          "tick": 205,
+          "action": "move_left",
+          "pressed": false
+        }
+      ]
+    },
+    {
+      "format": "expectrail.route/v0",
+      "name": "sensor-closeout-b",
+      "ticks": 240,
+      "seed": 262118,
+      "description": "Pre-registered #262 closeout evaluation; never calibration or tuning.",
+      "events": [
+        {
+          "tick": 17,
+          "action": "move_left",
+          "pressed": true
+        },
+        {
+          "tick": 49,
+          "action": "shoot",
+          "pressed": true
+        },
+        {
+          "tick": 55,
+          "action": "shoot",
+          "pressed": false
+        },
+        {
+          "tick": 77,
+          "action": "move_left",
+          "pressed": false
+        },
+        {
+          "tick": 89,
+          "action": "move_right",
+          "pressed": true
+        },
+        {
+          "tick": 119,
+          "action": "jump",
+          "pressed": true
+        },
+        {
+          "tick": 131,
+          "action": "jump",
+          "pressed": false
+        },
+        {
+          "tick": 149,
+          "action": "shoot",
+          "pressed": true
+        },
+        {
+          "tick": 155,
+          "action": "shoot",
+          "pressed": false
+        },
+        {
+          "tick": 193,
+          "action": "move_right",
+          "pressed": false
+        },
+        {
+          "tick": 211,
+          "action": "jump",
+          "pressed": true
+        },
+        {
+          "tick": 223,
+          "action": "jump",
+          "pressed": false
+        }
+      ]
+    }
+  ],
+  "seededPatches": {
+    "invisible-player": [
+      {
+        "path": "bugs/physics-fall-through/v1.patch",
+        "sha256": "6514ad59f1311fc109b56c06366871c0aeab316179d80a9921a43a41e7667740"
+      },
+      {
+        "path": "agents/fixtures/fix-but-hide-player.patch",
+        "sha256": "a4b279fb31b706c9cade6103f0863974a717982f341f03adffaa28c75571cae6"
+      }
+    ],
+    "sinking": [
+      {
+        "path": "bugs/sinking/v2.patch",
+        "sha256": "a59b67fe2e67d25885a63076c5030428e5ca03cb70d006caba33d20b0601f101"
+      }
+    ],
+    "fall-through": [
+      {
+        "path": "bugs/physics-fall-through/v1.patch",
+        "sha256": "6514ad59f1311fc109b56c06366871c0aeab316179d80a9921a43a41e7667740"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "clean-a",
+      "route": 0,
+      "patches": []
+    },
+    {
+      "name": "clean-b",
+      "route": 1,
+      "patches": []
+    },
+    {
+      "name": "invisible-player",
+      "route": 0,
+      "patches": [
+        "bugs/physics-fall-through/v1.patch",
+        "agents/fixtures/fix-but-hide-player.patch"
+      ]
+    },
+    {
+      "name": "sinking",
+      "route": 0,
+      "patches": [
+        "bugs/sinking/v2.patch"
+      ]
+    },
+    {
+      "name": "fall-through",
+      "route": 0,
+      "patches": [
+        "bugs/physics-fall-through/v1.patch"
+      ]
+    }
+  ],
+  "sample": {
+    "fps": 60,
+    "framesPerCase": 120,
+    "requestedFrames": 600,
+    "rule": "Every captured frame; never skip an adverse score."
+  },
+  "exclusions": {
+    "priorHashFileSha256": "d84bdfa3795c65a1b4dd6eb47d9ac72aadd2f7314124b8ac0239897295d4ec9c",
+    "historicalReplayManifests": 18,
+    "historicalUniquePngs": 5844,
+    "rule": "Primary new-pixel rates exclude historical and all calibration/validation PNG hashes before matching; raw rates also published."
+  },
+  "counts": {
+    "agreement": "matched / (matched + not-found + displaced)",
+    "falseAlarm": "clean union of not-found, displaced and applicable region crossings / measured presence frames",
+    "unknown": "unavailable and out-of-frame reported separately, never counted as passes",
+    "paired": "seed event with matched clean frame at same index; both hashes new for new-pixel pairs",
+    "invisibleProof": "body/camera/player-visible search inputs identical across clean and hidden builds; re-evaluate hidden PNGs with clean trace to prove pixels cause the difference"
+  },
+  "noTuning": "Do not change sensor code, thresholds, bank, routes, exclusions or denominators after viewing evaluations.",
+  "limits": "No verdict readiness, under-2% generalization, cross-game, independent frame-recall or performance claim.",
+  "originalPlanSha256": "b61219ef553409a657a1f92b607dea88f5cbd469c52ba1a67c799af6b6d7071b"
+}

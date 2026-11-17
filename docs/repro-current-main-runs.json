@@ -1,0 +1,6 @@
+{
+  "query": "https://api.github.com/repos/Expectrail/Expectrail/actions/workflows/jit.yml/runs?branch=main&head_sha=d36c8063449afe6c4113c74d0ff39e926b861b6c&per_page=100",
+  "checkedAt": "2026-11-16T17:20:32.999125+00:00",
+  "totalCount": 0,
+  "runs": []
+}

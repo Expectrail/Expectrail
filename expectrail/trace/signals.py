@@ -239,6 +239,18 @@ def player_screen_y_range_px(ep: dict) -> float | None:
     return _screen_range(ep, 2)
 
 
+def ui_integer_at_end(ep: dict) -> int | None:
+    """The sole visible integer Label at the window's end, or no reading.
+
+    Engine text state only. No inference from coins, earlier rows, hidden labels or another
+    field. Duplicate values on two labels are still ambiguous. Older traces have no reading.
+    """
+    if not ep["samples"]:
+        return None
+    values = ep["samples"][-1].get("uiIntegers")
+    return values[0] if isinstance(values, list) and len(values) == 1 else None
+
+
 SIGNALS = {
     "max_rise_px": max_rise_px,
     "projectile_count": projectile_count,
@@ -252,6 +264,7 @@ SIGNALS = {
     "airborne_ticks": airborne_ticks,
     "air_jumps": air_jumps,
     "coins_collected": coins_collected,
+    "ui_integer_at_end": ui_integer_at_end,
     "player_screen_x_range_px": player_screen_x_range_px,
     "player_screen_y_range_px": player_screen_y_range_px,
 }

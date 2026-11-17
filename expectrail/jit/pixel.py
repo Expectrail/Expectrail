@@ -437,7 +437,7 @@ def named_observations(check: dict, run: dict) -> tuple[dict, list[dict]]:
             # (template_observer.py, ``not-found``): an observation that it is not drawn, not a gap.
             absent = b.get("absent") is True and b.get("box") is None and not b.get("error")
             if (b.get("error") or b.get("box") is None) and not absent:
-                gaps.append({"frame": n, "why": f"the observer gave no answer for {role} {ident}"})
+                gaps.append({"frame": n, "why": _no_answer(role, ident, b)})
                 continue
             if need_engine_box and b.get("promptBox") is None:
                 gaps.append({"frame": n, "why": f"the engine's box of {role} {ident} was not recorded"})
@@ -453,6 +453,16 @@ def named_observations(check: dict, run: dict) -> tuple[dict, list[dict]]:
 
 
 MOTIONS = ("right", "left")
+
+
+def _no_answer(role: str, ident, box: dict) -> str:
+    """Why a box is a gap. A box the no-model sensor did not look at because the engine puts it partly off
+    screen says so (template_observer.py, ``out-of-frame``), so a reader can tell a window that reaches an
+    edge from an observer that failed; the proposer is told those frames beforehand (repro/evidence.py
+    ``edge_frames``)."""
+    if box.get("status") == "out-of-frame":
+        return f"{role} {ident} is partly off screen, and the observer judges only an object it sees whole"
+    return f"the observer gave no answer for {role} {ident}"
 
 
 def _facing_observations(check: dict, run: dict, rows: list, lo: int, hi) -> tuple[dict, list[dict]]:
@@ -478,7 +488,7 @@ def _facing_observations(check: dict, run: dict, rows: list, lo: int, hi) -> tup
         for b in f.get("boxes") or []:
             ident = b.get("id")
             if b.get("error") or (b.get("box") is None and b.get("absent") is not True):
-                gaps.append({"frame": n, "why": f"the observer gave no answer for {role} {ident}"})
+                gaps.append({"frame": n, "why": _no_answer(role, ident, b)})
                 continue
             if b.get("status") != "matched" or not b.get("holdsPoint") or b.get("motion") not in MOTIONS:
                 continue
