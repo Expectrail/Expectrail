@@ -61,7 +61,7 @@ def usage() -> str:
     return "\n".join(lines)
 
 
-# Explicit no-spend profile used by Dockerfile.harness. Ordinary verify and the legacy
+# Explicit no-spend profile used by Dockerfile.sample. Ordinary verify and the legacy
 # no-vision quickstart retain their existing rules and outcomes.
 SAMPLE_RECORDINGS_ENV = 'EXPECTRAIL_VLM_SAMPLE_RECORDINGS'
 

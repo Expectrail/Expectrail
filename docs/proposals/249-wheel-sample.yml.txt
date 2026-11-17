@@ -21,10 +21,10 @@ wheel-sample:
         EXPECTRAIL_TOOLS="$RUNNER_TEMP/wheel-engine" GODOT_KEEP_DOWNLOAD=1 bash harness/get_godot.sh
         mkdir -p "$RUNNER_TEMP/wheel-context/dist" "$RUNNER_TEMP/wheel-context/engine-cache"
         cp "$RUNNER_TEMP/wheel-engine/godot_cache/"*.zip "$RUNNER_TEMP/wheel-context/engine-cache/"
-        cp Dockerfile.harness "$RUNNER_TEMP/wheel-context/"
+        cp Dockerfile.sample "$RUNNER_TEMP/wheel-context/"
         cp dist/expectrail-*.whl "$RUNNER_TEMP/wheel-context/dist/"
         docker build --platform linux/amd64 --progress=plain \
-          -f "$RUNNER_TEMP/wheel-context/Dockerfile.harness" \
+          -f "$RUNNER_TEMP/wheel-context/Dockerfile.sample" \
           -t expectrail-wheel-local "$RUNNER_TEMP/wheel-context" 2>&1 | tee wheel-install.log
     - name: Doctor and actual sample with network disabled
       shell: bash

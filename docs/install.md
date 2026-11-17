@@ -136,7 +136,7 @@ It has not run yet: no tag has been pushed and it has not been dispatched.
 
 The wheel also carries the three original public Run it vision recordings, byte for byte.
 `EXPECTRAIL_VLM_SAMPLE_RECORDINGS=1` explicitly selects them **only for doctor and the bundled
-sample**. This is the default profile in `Dockerfile.harness`, not a change to ordinary verify.
+sample**. This is the default profile in `Dockerfile.sample`, not a change to ordinary verify.
 Without the profile, the existing no-key quickstart still needs review on clean/repaired builds.
 
 ```sh
@@ -158,9 +158,9 @@ python3 -m pip wheel . --no-deps --no-build-isolation --no-index -w dist
 EXPECTRAIL_TOOLS=/tmp/expectrail-wheel-engine GODOT_KEEP_DOWNLOAD=1 bash harness/get_godot.sh
 mkdir -p /tmp/expectrail-wheel-context/dist /tmp/expectrail-wheel-context/engine-cache
 cp /tmp/expectrail-wheel-engine/godot_cache/*.zip /tmp/expectrail-wheel-context/engine-cache/
-cp Dockerfile.harness /tmp/expectrail-wheel-context/
+cp Dockerfile.sample /tmp/expectrail-wheel-context/
 cp dist/expectrail-*.whl /tmp/expectrail-wheel-context/dist/
-docker build --platform linux/amd64 -f /tmp/expectrail-wheel-context/Dockerfile.harness \
+docker build --platform linux/amd64 -f /tmp/expectrail-wheel-context/Dockerfile.sample \
   -t expectrail-wheel-local /tmp/expectrail-wheel-context
 docker run --rm --network none expectrail-wheel-local expectrail doctor
 docker run --rm --network none expectrail-wheel-local expectrail sample --json

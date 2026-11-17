@@ -13,7 +13,7 @@ runner and gate with exact recorded vision. Only doctor and the bundled sample
 select this profile; ordinary verification and the no-key quickstart keep their
 existing outcomes. A real project always uses normal project doctor. Missing or
 invalid recordings block the profile; missing exact image/question answers need
-review, with no live fallback. Dockerfile.harness selects the profile explicitly.
+review, with no live fallback. Dockerfile.sample selects the profile explicitly.
 
 The pinned Ubuntu image installs just the wheel into a new Python environment.
 Its build context holds only the Dockerfile, wheel and public pinned Godot archive.
@@ -88,8 +88,13 @@ isolated-execution claim. Part of #249/#365; closure is not claimed for unrun re
 
 ## Files
 
-- setup.py; packaging/doctor/sample portions of expectrail/cli.py; Dockerfile.harness
+- setup.py; packaging/doctor/sample portions of expectrail/cli.py; Dockerfile.sample
 - README.md; docs/install.md; docs/proposals/249-wheel-sample.yml.txt
 - tests/test_package.py; tests/test_wheel_sample.py
 - tests/test_orchestrator.py; tests/test_replay_sandbox.py
 - docs/new-work/2026-11-17-wheel-sample.md
+
+## Review follow-up (architect)
+The wheel-only sample image now lives in `Dockerfile.sample`. `Dockerfile.harness` is restored to
+main's checkout harness image, so `harness/docker_run.sh` and docs/harness.md work as before. Not run
+here: Docker (no daemon in this environment).
