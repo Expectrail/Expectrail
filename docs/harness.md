@@ -138,24 +138,28 @@ what is logged. `NarrowedRobotOnSlopeTest` holds those numbers. The gate reads t
 The fix loop's verifier does not: it works the ground out again from the clean level with a fixed
 20 px (`surface_under` in `agents/observations.py`).
 
-**Not decided (#354, for Sean): whose collision sets the gate's columns.** No verdict differs today:
-the approved check's window ends at frame 119 and its routes are on flat ground, where the columns
-do not change the ground (650 in every row of `smoke`, `coins`, `combat` and `traversal`). It
-matters from the day a check or a route reaches a slope, a step's edge or a ledge. Two designs:
+**Decided (#354, Sean, November 14, 2026): the candidate's own collision sets the gate's columns.**
+When a change resizes the player, the gate reads the ground under the collision the changed game
+has, which is what the harness does. Sean's reason: when a change really resizes the player, the
+ground must be read under what the changed game stands on, and reading it under the base game's
+size would misjudge a legitimate resize. The risk is a fake fix that shrinks the collision to dodge
+the ground check: the narrowed robot above reads a ground 11 to 23 px lower on the slope, so
+`player-stays-above-ground` (20 px) passes there where it fails at the robot's columns, and a
+widened body could likewise reach a higher surface. The visual observer covers that risk, because it
+judges the drawn sprite, not the collision box. `NarrowedRobotOnSlopeTest` holds this rule with the
+real engine.
 
-1. **The candidate's own (today).** The ground is read under the body the change actually has. It
-   is right for a change that legitimately resizes the player. Its risk: a change can move the
-   columns that judge it. The narrowed robot above reads a ground 11 to 23 px lower on the slope, so
-   `player-stays-above-ground` (20 px) passes there where it fails at the robot's columns; a widened
-   body could likewise reach a higher surface.
-2. **The base commit's.** The harness is told the base game's span and reads every candidate's
-   ground at it, as the checks already come from the base commit. A change cannot move what judges
-   it. Its cost: the base span has to be measured on the base game and passed into each replay (a
-   new harness input and a field in the trace header), and a change that resizes the player on
-   purpose is judged at columns its body no longer has, so a correct resize can read as sinking or
-   floating near an edge (needs an intentional-change approval, as any other contract change).
+No verdict differs today: the approved check's window ends at frame 119 and its routes are on flat
+ground, where the columns do not change the ground (650 in every row of `smoke`, `coins`, `combat`
+and `traversal`). It matters from the day a check or a route reaches a slope, a step's edge or a
+ledge.
 
-Until Sean chooses, the harness keeps design 1, and this paragraph is the record of the choice.
+The design not taken was **the base commit's** collision: the harness would be told the base game's
+span and read every candidate's ground at it, as the checks already come from the base commit. A
+change could not move what judges it, but the base span would have to be measured on the base game
+and passed into each replay (a new harness input and a field in the trace header), and a change
+that resizes the player on purpose would be judged at columns its body no longer has, so a correct
+resize could read as sinking or floating near an edge.
 
 A row with nothing under the body has no `ground`, and a check against the ground cannot be decided
 there: it is needs-review, never a guess (#346).
