@@ -1,0 +1,72 @@
+{
+ "format": "expectrail.jit-proposal/v0",
+ "patchSha256": null,
+ "model": "hand-written-stand-in",
+ "offer": "signals-reach-evidence-pixel",
+ "error": null,
+ "probes": [],
+ "candidates": [],
+ "diagnostics": [
+  "hand-written stand-in: no model was called (tools/bullet_visible_stand_in.py)"
+ ],
+ "usage": {
+  "model": "hand-written-stand-in"
+ },
+ "promptSha256": null,
+ "pixelChecks": [
+  {
+   "format": "expectrail.pixel-check/v1",
+   "id": "jit-px-bullet-visible-shoot-left-every12",
+   "statement": "While standing and firing left every 12 ticks, from frame 50 on, every bullet on screen is drawn where the engine puts it, in every frame, in front of the scenery.",
+   "object": "bullet",
+   "observer": "sam-3.1-anchor",
+   "probe": "shoot-left-every12",
+   "window": {
+    "fromFrame": 50
+   },
+   "predicate": {
+    "type": "visible",
+    "minFraction": 1.0
+   },
+   "authority": "model_prior",
+   "origin": "AUTO_DIFF"
+  },
+  {
+   "format": "expectrail.pixel-check/v1",
+   "id": "jit-px-bullet-visible-move-fire-left",
+   "statement": "While walking left and firing, from frame 90 on, every bullet on screen is drawn where the engine puts it, in every frame, in front of the scenery.",
+   "object": "bullet",
+   "observer": "sam-3.1-anchor",
+   "probe": "move-fire-left",
+   "window": {
+    "fromFrame": 90
+   },
+   "predicate": {
+    "type": "visible",
+    "minFraction": 1.0
+   },
+   "authority": "model_prior",
+   "origin": "AUTO_DIFF"
+  },
+  {
+   "format": "expectrail.pixel-check/v1",
+   "id": "jit-px-bullet-visible-move-fire-right",
+   "statement": "While walking right and firing, from frame 10 to frame 80, every bullet on screen is drawn where the engine puts it, in every frame, in front of the scenery.",
+   "object": "bullet",
+   "observer": "sam-3.1-anchor",
+   "probe": "move-fire-right",
+   "window": {
+    "fromFrame": 10,
+    "toFrame": 80
+   },
+   "predicate": {
+    "type": "visible",
+    "minFraction": 1.0
+   },
+   "authority": "model_prior",
+   "origin": "AUTO_DIFF"
+  }
+ ],
+ "candidate": "withheld",
+ "reportSha256": "dd5dd449bb6f00675b16641a2475bba9c1af03e09a58a54f26e9021283b480c4"
+}

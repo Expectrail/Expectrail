@@ -742,6 +742,21 @@ committed beside the proposal. The reproduction score gives a record made from a
 (`score.STAND_INS`, which also names the rehearsal fixture), so this never counts as a reproduction. What it
 leaves is the model's half: whether a propose step, given the same evidence, writes such a check.
 
+**The bullet, for SAM (November 17, evening).** `bullet-behind-scenery`, the other screen-only defect, can
+only be asked about through SAM: the sensor's bank holds no bullet template. Three `visible` bullet checks
+are a saved stand-in proposal for `sam-3.1-anchor`,
+[`bench/jit/stand-in/bullet-behind-scenery-visible/`](../bench/jit/stand-in/bullet-behind-scenery-visible/README.md),
+written by `python3 -m tools.bullet_visible_stand_in` (no model; `STAND_INS` gives a record of it no result).
+Its windows leave out frames with more than `pixel.MAX_BOXES` bullets on screen, which SAM is not asked
+about: `move-fire-left` has four on frame 80 on every replay, so a window holding it could never be kept.
+`jit run --proposal --pixel-capture` captured the three probes on the real engine here (Godot 4.7.2, no
+model, no SAM, not in CI, 10.5 minutes, 27 replays). On every replay the engine logged the same bullets on
+all three builds; the bug build does not draw them where it puts them. `pixel-ask` with the asking job's
+budget at jit.yml's default cap ($2 less the capture's $0.2089) refused before asking anything: the 27
+replays need up to 1,296 images, $3.24. The asking job plans every 10th frame of each probe's route
+whatever the checks' windows, so a window does not lower the reservation; at the $2 cap one bullet check on
+one probe can be asked about, not three. Whether SAM sees a bullet drawn behind the scenery is untested.
+
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 
 The replays run the change's code, and asking SAM needs its key; jit.yml keeps the two in separate jobs
