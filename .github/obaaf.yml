@@ -36,11 +36,12 @@ lanes:
   ".github/workflows/byo-smoke.yml#byo-smoke": probe             # one live call per provider, nothing acts on it
 
 # Secrets that must never be available outside an environment (OBAAF-GHA-024). Anyone with write
-# access could read a repository secret by pushing a workflow on a branch, so these live only in the
-# main-only environment, which only main's workflows can use.
+# access could read a repository secret by pushing a workflow on a branch, so these live only in
+# environments that only main's workflows can use. Model keys live in spend, which also waits for
+# Sean's approval on every run (#265); the held-out token is in main-only, with a copy in spend.
 protected_secrets:
-  HELDOUT_TOKEN: main-only
-  "*_API_KEY": main-only
+  HELDOUT_TOKEN: [main-only, spend]
+  "*_API_KEY": spend
 
 # Reviewed findings. Each entry says why it does not apply and expires, so it is reviewed again.
 ignore:
