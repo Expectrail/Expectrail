@@ -2,9 +2,10 @@
   "name": "expectrail-run-it-edge",
   "private": true,
   "type": "module",
-  "description": "The Run it edge function (#265). No dependencies.",
+  "description": "The Run it edge function (#265). No production dependencies; optional pinned runtime tests in runtime/.",
   "scripts": {
-    "test": "node --test test/*.test.mjs",
+    "test": "node --test test/burst.test.mjs test/service.test.mjs test/status.test.mjs",
+    "test:runtime": "node --test test/runtime.test.mjs",
     "burst": "node burst.mjs"
   }
 }

@@ -30,9 +30,14 @@ export const ID = /^[a-z0-9-]{1,40}$/;
 export const MAX_BODY_BYTES = 1024;
 // How long a status read from GitHub is reused, so visitors polling cannot spend the token's limit.
 export const STATUS_TTL_MS = 10 * 1000;
+// A status answer waits briefly for a fresh observation, then serves its last known state.
+// All upstream reads in that refresh share one budget (including JSON bodies).
+export const STATUS_RESPONSE_MS = 250;
+export const STATUS_REFRESH_MS = 2000;
 // A dispatched run that GitHub has not listed by then is lost: failed, no verdict.
 export const LOST_AFTER_MS = 5 * 60 * 1000;
-// verify's 15 minutes, publish's 5, and the wait for a runner: a run still going after this is failed.
+// verify's 15 minutes, publish's 5, and runner wait: a confirmed active run past this tracking limit
+// is failed. An unreadable status keeps its last state and reservation, even beyond this age.
 export const GIVE_UP_MS = 30 * 60 * 1000;
 export const KEEP_RUNS = 200;
 const ACTIVE = new Set(["queued", "running", "publishing"]);
@@ -111,11 +116,26 @@ export function memoryStore() {
 
 // --- GitHub, the only endpoints this function calls ------------------------------------------------
 
+// Race body reads too: a transport or test double may ignore an aborted signal.
+// Late answers are observed but cannot resume the cancelled sequence or mutate service state.
+function abortable(operation, signal) {
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise((resolve, reject) => {
+    const clean = () => signal.removeEventListener("abort", abort);
+    const abort = () => { clean(); reject(signal.reason); };
+    signal.addEventListener("abort", abort, { once: true });
+    Promise.resolve().then(() => {
+      if (signal.aborted) throw signal.reason;
+      return operation();
+    }).then(value => { clean(); resolve(value); }, error => { clean(); reject(error); });
+  });
+}
+
 export function github(token, fetchFn) {
   // Cloudflare Workers accept only "follow" or "manual" here: "error" makes every fetch throw before
   // it is sent (seen on the first open deploy, November 17). "manual" hands a redirect back as its
   // own response, which is never followed: dispatch refuses it below and read() requires 200.
-  const options = () => ({ redirect: "manual", signal: AbortSignal.timeout(10_000) });
+  const options = signal => ({ redirect: "manual", signal: signal || AbortSignal.timeout(10_000) });
   const api = `https://api.github.com/repos/${REPO}/actions`;
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -123,10 +143,11 @@ export function github(token, fetchFn) {
     "X-GitHub-Api-Version": "2022-11-28",
     "User-Agent": "expectrail-run-it",
   };
-  async function read(url) {
-    const r = await fetchFn(url, { ...options(), headers });
+  async function read(url, signal, authenticated = true) {
+    const opts = options(signal);
+    const r = await abortable(() => fetchFn(url, { ...opts, headers: authenticated ? headers : { "User-Agent": "expectrail-run-it" } }), opts.signal);
     if (r.status !== 200) throw new Error(`GitHub answered ${r.status}`);
-    return r.json();
+    return abortable(() => r.json(), opts.signal);
   }
   return {
     async dispatch(sample, requestId) {
@@ -143,18 +164,18 @@ export function github(token, fetchFn) {
       }
     },
     // run-it.yml names each run "Run it <request id>", so the run is found by that name.
-    async findRun(requestId, sinceMs) {
+    async findRun(requestId, sinceMs, signal) {
       const since = iso(sinceMs - 60 * 1000);
-      const doc = await read(`${api}/workflows/${WORKFLOW}/runs?event=workflow_dispatch&branch=${REF}&per_page=50&created=%3E%3D${since}`);
+      const doc = await read(`${api}/workflows/${WORKFLOW}/runs?event=workflow_dispatch&branch=${REF}&per_page=50&created=%3E%3D${since}`, signal);
       const runs = Array.isArray(doc.workflow_runs) ? doc.workflow_runs : [];
       const run = runs.find((w) => w && w.display_title === `Run it ${requestId}`);
       return run && Number.isSafeInteger(run.id) ? run.id : null;
     },
-    async run(runId) {
-      const run = await read(`${api}/runs/${runId}`);
+    async run(runId, signal) {
+      const run = await read(`${api}/runs/${runId}`, signal);
       let publishing = false;
       if (run.status === "in_progress") {
-        const jobs = await read(`${api}/runs/${runId}/jobs?per_page=10`);
+        const jobs = await read(`${api}/runs/${runId}/jobs?per_page=10`, signal);
         const list = Array.isArray(jobs.jobs) ? jobs.jobs : [];
         const verify = list.find((j) => j && j.name === "verify");
         publishing = Boolean(verify && verify.status === "completed" && verify.conclusion === "success");
@@ -163,11 +184,9 @@ export function github(token, fetchFn) {
     },
     // The published status.json's phase, or null when it cannot be read. Used only for the breaker:
     // a run that published a failed phase counts as a failed run.
-    async publishedPhase(requestId) {
+    async publishedPhase(requestId, signal) {
       try {
-        const r = await fetchFn(`https://raw.githubusercontent.com/${REPO}/run-it-results/${requestId}/status.json`, { ...options(), headers: { "User-Agent": "expectrail-run-it" } });
-        if (r.status !== 200) return null;
-        const doc = await r.json();
+        const doc = await read(`https://raw.githubusercontent.com/${REPO}/run-it-results/${requestId}/status.json`, signal, false);
         return doc && typeof doc.phase === "string" ? doc.phase : null;
       } catch {
         return null;
@@ -190,10 +209,11 @@ export function stateOf(run) {
 // --- the service -----------------------------------------------------------------------------------
 
 export function createService({ env = {}, store = memoryStore(), fetch: fetchFn = globalThis.fetch, now = Date.now,
-                                newId = () => crypto.randomUUID(), log = () => {} } = {}) {
+                                newId = () => crypto.randomUUID(), log = () => {}, waitUntil = () => {} } = {}) {
   const config = readConfig(env);
   const gh = github(config.token, fetchFn);
   let chain = Promise.resolve();
+  const refreshing = new Map();
 
   // One request at a time changes the state: everything after an await sees what the one before wrote.
   function serial(fn) {
@@ -231,37 +251,75 @@ export function createService({ env = {}, store = memoryStore(), fetch: fetchFn 
     return { format: FORMAT, kind: "status", requestId, sample: run.sample, state: run.state, updatedAt: iso(run.updatedAt), standIn: false };
   }
 
-  // Bring one run's state up to date from GitHub, at most once per STATUS_TTL_MS.
-  async function refresh(requestId, run) {
+  // Network work stays outside the admission lock. Only the final state change is serialized.
+  async function refresh(requestId, previous) {
+    const original = await store.get(`run:${requestId}`);
+    if (!original) return previous; // a pruned run is never resurrected by a late refresh
+    const run = { ...original };
     if (!ACTIVE.has(run.state)) return run;
     const t = now();
     if (run.checkedAt && t - run.checkedAt < STATUS_TTL_MS) return run;
     run.checkedAt = t;
     let state = run.state;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(new DOMException("Status refresh deadline", "TimeoutError")), STATUS_REFRESH_MS);
     try {
-      if (!run.runId) run.runId = await gh.findRun(requestId, run.dispatchedAt);
-      if (run.runId) state = stateOf(await gh.run(run.runId));
-      else if (t - run.dispatchedAt > LOST_AFTER_MS) state = "failed";
-    } catch (e) {
-      log(`status of ${requestId} could not be read`);   // keep the last state; GitHub may answer next time
-    }
-    if (ACTIVE.has(state) && t - run.dispatchedAt > GIVE_UP_MS) state = "failed";
-    if (state !== run.state) {
-      run.state = state;
-      run.updatedAt = t;
-    }
-    if (!ACTIVE.has(run.state)) {
-      let outcome = run.state === "published" ? "ok" : "failed";
-      if (run.state === "published") {
-        const phase = await gh.publishedPhase(requestId);
-        outcome = phase === "completed" ? "ok" : phase === null ? "unknown" : "failed";
+      let observed = false;
+      try {
+        if (!run.runId) run.runId = await gh.findRun(requestId, run.dispatchedAt, controller.signal);
+        if (run.runId) state = stateOf(await gh.run(run.runId, controller.signal));
+        else if (t - run.dispatchedAt > LOST_AFTER_MS) state = "failed";
+        observed = true;
+      } catch {
+        log(`status of ${requestId} could not be read`);
       }
-      await finished(outcome);
-      const active = await store.get("active");
-      if (active === requestId) await store.delete("active");
+      // Age alone is not evidence that the run failed when its status could not be read.
+      if (observed && ACTIVE.has(state) && t - run.dispatchedAt > GIVE_UP_MS) state = "failed";
+      if (state !== run.state) { run.state = state; run.updatedAt = t; }
+      let outcome = "unknown";
+      if (!ACTIVE.has(run.state)) {
+        outcome = "failed";
+        if (run.state === "published") {
+          const phase = await gh.publishedPhase(requestId, controller.signal);
+          outcome = phase === "completed" ? "ok" : phase === null ? "unknown" : "failed";
+        }
+      }
+      return await serial(async () => {
+        const current = await store.get(`run:${requestId}`);
+        if (!current) return previous;
+        if (current.dispatchedAt !== original.dispatchedAt || current.checkedAt !== original.checkedAt ||
+            current.state !== original.state) return current;
+        if (!ACTIVE.has(run.state)) {
+          await finished(outcome);
+          if (await store.get("active") === requestId) await store.delete("active");
+        }
+        await store.put(`run:${requestId}`, run);
+        return run;
+      });
+    } finally {
+      clearTimeout(timer);
     }
-    await store.put(`run:${requestId}`, run);
-    return run;
+  }
+
+  function refreshOnce(requestId, run) {
+    if (refreshing.has(requestId)) return refreshing.get(requestId);
+    if (!ACTIVE.has(run.state) || (run.checkedAt && now() - run.checkedAt < STATUS_TTL_MS)) return Promise.resolve(run);
+    const task = refresh(requestId, run).catch(() => {
+      log(`status of ${requestId} could not be saved`);
+      return run;
+    }).finally(() => refreshing.delete(requestId));
+    refreshing.set(requestId, task);
+    waitUntil(task);
+    return task;
+  }
+
+  async function promptly(task, known) {
+    let timer;
+    try {
+      return await Promise.race([task, new Promise(resolve => {
+        timer = setTimeout(() => resolve(known), STATUS_RESPONSE_MS);
+      })]);
+    } finally { clearTimeout(timer); }
   }
 
   async function health() {
@@ -272,7 +330,7 @@ export function createService({ env = {}, store = memoryStore(), fetch: fetchFn 
     if (!ID.test(requestId)) return [404, refusal("unknown-request", "No run with this request id is known here.")];
     const run = await store.get(`run:${requestId}`);
     if (!run) return [404, refusal("unknown-request", "No run with this request id is known here.")];
-    return [200, statusBody(requestId, await refresh(requestId, run))];
+    return [200, statusBody(requestId, await promptly(refreshOnce(requestId, run), run))];
   }
 
   async function start(raw, request) {
@@ -299,8 +357,9 @@ export function createService({ env = {}, store = memoryStore(), fetch: fetchFn 
     const activeId = await store.get("active");
     if (activeId) {
       const run = await store.get(`run:${activeId}`);
-      if (run && ACTIVE.has((await refresh(activeId, run)).state)) {
-        return [409, refusal("busy", "Another visitor's run is going. Try again in a minute.", null, 60)];
+      if (run && ACTIVE.has(run.state)) {
+        refreshOnce(activeId, run);
+        return [409, refusal("busy", "Another request is still reserved or running. Try again in a minute.", null, 60)];
       }
       await store.delete("active");
     }
@@ -400,7 +459,7 @@ export function createService({ env = {}, store = memoryStore(), fetch: fetchFn 
       }
       if (request.method === "GET" && path === "/health") return reply(request, 200, await serial(health));
       if (request.method === "GET" && path.startsWith("/status/")) {
-        const [code, doc] = await serial(() => status(path.slice("/status/".length)));
+        const [code, doc] = await status(path.slice("/status/".length));
         return reply(request, code, doc);
       }
       if (request.method === "POST" && path === "/run") {

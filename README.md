@@ -272,8 +272,8 @@ Use the [capability ledger](docs/capabilities.md) to distinguish **implemented**
 [The interactive demo](https://expectrail.tech/demo/) shows saved captures; viewing it verifies
 nothing. [Demo row](docs/capabilities.md#interactive-demo).
 [Run it](https://expectrail.tech/run-it/) says whether it can start a run right now. The ledger
-currently says visitors cannot start runs because the service is not deployed; its cited sample
-runs were dispatched by hand. [Run it row](docs/capabilities.md#run-it).
+links Sean's recorded November 17 visitor runs through the deployed service. The page shows the
+current admission state; receipts remain unsigned. [Run it row](docs/capabilities.md#run-it).
 
 ## Development and license
 
