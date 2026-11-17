@@ -671,7 +671,9 @@ class VerifyTest(GateCase):
         self.assertTrue(any("project.godot" in r for r in doc["reasons"]))
         self.assertEqual(doc["checks"], [])
 
+    @mock.patch.dict(os.environ, {"GITHUB_EVENT_PATH": ""})
     def test_the_command_line_exit_codes_and_a_stopped_run_still_leaves_a_record(self):
+        # This local-command fixture owns PR 3; the surrounding CI event belongs to another PR.
         head = make_repo(self.tmp / "head", bug=True)
         with contextlib.redirect_stdout(io.StringIO()):
             code = gv.main(["--repo", str(head), "--game", "../escape", "--routes", "routes/*.json", "--specs",

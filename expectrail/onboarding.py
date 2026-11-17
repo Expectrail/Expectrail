@@ -511,8 +511,12 @@ def main(command, argv):
         parser.add_argument("--json", action="store_true")
         parser.add_argument("--godot", type=Path, help="local pinned engine; setup never downloads one")
         parser.add_argument("--out", type=Path, help="new evidence folder outside the project")
-        if command == "inspect":parser.add_argument("--at-tick", type=int, help="measure bound objects on this physics tick")
-        else:parser.add_argument("--route", type=Path, required=True, help="public clean route, relative to project or absolute")
+        if command == "inspect":
+            parser.add_argument("--at-tick", type=int, metavar="N",
+                                help="replay the config's bindings headless and report each bound object at tick N")
+            parser.add_argument("--route", type=Path, help="with --at-tick: the route to replay (default: the config's first)")
+        else:
+            parser.add_argument("--route", type=Path, required=True, help="public clean route, relative to project or absolute")
     else:
         parser.add_argument("--adapter", choices=["godot"], default="godot")
         parser.add_argument("--dry-run", action="store_true", help="print both drafts without writing")
@@ -520,10 +524,25 @@ def main(command, argv):
     try:
         args = parser.parse_args(argv)
         root = (args.game or args.project).resolve()
-        if command == 'calibrate' or (command == 'inspect' and args.at_tick is not None):
-            report=runtime_setup(root,mode=command,at_tick=getattr(args,'at_tick',0),
-                                 route_path=getattr(args,'route',None),out=args.out,godot=args.godot)
-            if args.json or command=='inspect':print(json.dumps(report,indent=2))
+        if command == "inspect" and args.route is not None and args.at_tick is None:
+            raise ValueError("--route is used with --at-tick N; add --at-tick, or drop --route for the saved-scene listing")
+        if command == "inspect" and args.at_tick is not None and (args.out or args.godot):
+            # Evidence-writing measurement (#260): the same runtime setup as calibrate, at one tick.
+            print(json.dumps(runtime_setup(root, mode=command, at_tick=args.at_tick, route_path=args.route,
+                                           out=args.out, godot=args.godot), indent=2))
+            return 0
+        if command == "inspect" and args.at_tick is not None:
+            if not 0 <= args.at_tick <= 7200:
+                raise ValueError('Set --at-tick to an integer from 0 to 7200.')
+            from expectrail import inspection
+
+            doc = inspection.document(root, args.at_tick, args.route)
+            print(json.dumps(doc, indent=2) if args.json else "\n".join(inspection.describe(doc)))
+            return 0
+        if command == 'calibrate':
+            report=runtime_setup(root,mode=command,at_tick=0,
+                                 route_path=args.route,out=args.out,godot=args.godot)
+            if args.json:print(json.dumps(report,indent=2))
             else:
                 from agents.unity_observations import calibration_line
                 c = report['calibration']

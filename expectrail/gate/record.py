@@ -462,6 +462,8 @@ def read_record(path: Path) -> dict:
 
 def check_record(doc) -> None:
     validate(doc, schema())
+    if (doc.get('pullRequest') or {}).get('fixLinks') and intent_of(doc) != 'fix':
+        raise RecordError('a closing-keyword link requires fix intent')
     check_consistency(doc)
 
 
@@ -841,7 +843,7 @@ def check_repair(doc: dict) -> None:
         raise RecordError("the count of demonstrations does not match the repair rows")
 
 
-def repair_words(doc: dict) -> str:
+def _repair_words(doc: dict) -> str:
     """One line on what the change was declared as and whether its repair was shown, for the page and the comment."""
     intent = intent_of(doc)
     if intent == "none":
@@ -856,6 +858,13 @@ def repair_words(doc: dict) -> str:
                 f"{REPAIR_RUNS} times of {REPAIR_RUNS} and passes after it {REPAIR_RUNS} times of {REPAIR_RUNS}"
                 + (f" (and {more} more)" if more else ""))
     return "a fix, and no check demonstrated the repair"
+
+
+def repair_words(doc: dict) -> str:
+    """Shared, escaped by every report/comment reader; provenance never chooses a check."""
+    links = (doc.get('pullRequest') or {}).get('fixLinks', [])
+    source = '; '.join(f"closing-keyword line {link['line']}: {link['text']}" for link in links)
+    return (source + '; ' if source else '') + _repair_words(doc)
 
 
 def check_generated(gen: dict) -> None:

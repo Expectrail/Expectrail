@@ -1,0 +1,20 @@
+# PROPOSAL ONLY. Not installed. No permission change is needed for #284 part 2.
+# Current policy: every closing-keyword link is fix, without an issue lookup.
+# Only Sean may widen workflow permissions. If he later requests issue-label
+# classification, this is the exact proposed replacement of jobs.judge.permissions
+# in .github/workflows/expectrail-comment.yml, preserving all current entries:
+jobs:
+  judge:
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+      issues: read # proposed additional permission; linked issue labels only
+# This fragment is not a complete workflow and enables no new behavior by itself.
+# It does not grant the clearance App any additional permission.
+# Sean must separately review a reader implementation and its capture/judge parity
+# before installing this. Missing labels, denied reads or lookup failures must
+# retain fix; no silent downgrade or fallback to none. Cross-repository links
+# cannot be assumed readable with this repository's token. No secrets are needed.
+# No such reader or API calls are part of this patch. Keep current strict policy
+# unless that separate change has evidence and explicit approval from Sean.
