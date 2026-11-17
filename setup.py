@@ -28,6 +28,7 @@ BUNDLED_MODULES = {
         "evaluator",
         "fixer_budget",
         "godot_project",
+        "inspection",
         "legacy",
         "observers",
         "onboard",

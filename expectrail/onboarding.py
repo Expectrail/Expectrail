@@ -306,6 +306,9 @@ def main(command, argv):
     group.add_argument("--project", type=Path)
     if command == "inspect":
         parser.add_argument("--json", action="store_true")
+        parser.add_argument("--at-tick", type=int, metavar="N",
+                            help="replay the config's bindings headless and report each bound object at tick N")
+        parser.add_argument("--route", type=Path, help="with --at-tick: the route to replay (default: the config's first)")
     else:
         parser.add_argument("--adapter", choices=["godot"], default="godot")
         parser.add_argument("--dry-run", action="store_true", help="print both drafts without writing")
@@ -313,6 +316,14 @@ def main(command, argv):
     try:
         args = parser.parse_args(argv)
         root = (args.game or args.project).resolve()
+        if command == "inspect" and args.route is not None and args.at_tick is None:
+            raise ValueError("--route is used with --at-tick N; add --at-tick, or drop --route for the saved-scene listing")
+        if command == "inspect" and args.at_tick is not None:
+            from expectrail import inspection
+
+            doc = inspection.document(root, args.at_tick, args.route)
+            print(json.dumps(doc, indent=2) if args.json else "\n".join(inspection.describe(doc)))
+            return 0
         info = inspect(root)
         if command == "inspect":
             if args.json:
