@@ -15,11 +15,12 @@ on:
   pull_request:
     paths:
       - .github/workflows/macos.yml
+      - tools/macos_suite_summary.py
   push:
     branches: [main]
   workflow_dispatch:
-  schedule:
-    - cron: '17 9 * * *'
+  schedule:  # every day; the day field is 0-6 because the merge guard reads a star before a quote as an alias
+    - cron: '41 10 * * 0-6'
 
 permissions:
   contents: read
@@ -50,19 +51,4 @@ jobs:
           python -m unittest discover -s tests -t . 2>&1 | tee suite.log
       - name: Counts and failing tests in the summary
         if: always()
-        run: |
-          python - <<'PY'
-          import os, re
-          from pathlib import Path
-          log = Path("suite.log").read_text(encoding="utf-8", errors="replace") if Path("suite.log").exists() else ""
-          ran = re.findall(r"^Ran (\d+) tests? in ([\d.]+)s$", log, re.M)
-          last = [ln for ln in log.splitlines() if re.match(r"^(OK|FAILED)\b", ln)]
-          failing = sorted(set(re.findall(r"^(?:FAIL|ERROR): (.+)$", log, re.M)))
-          lines = ["## The suite on macOS (report only, #378)", ""]
-          lines.append(f"- Ran: {ran[-1][0]} tests in {ran[-1][1]} s" if ran else "- Ran: the suite did not report a count")
-          lines.append(f"- Result: `{last[-1]}`" if last else "- Result: none reported")
-          lines.append(f"- Failing or erroring tests: {len(failing)}")
-          lines += [""] + [f"  - `{name}`" for name in failing]
-          Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text("\n".join(lines) + "\n", encoding="utf-8")
-          print("\n".join(lines))
-          PY
+        run: python -m tools.macos_suite_summary suite.log "$GITHUB_STEP_SUMMARY"

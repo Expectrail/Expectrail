@@ -44,3 +44,4 @@ _bmad/render/
 
 !/tools/playtest_fall_through.py
 !/tools/faces_motion_stand_in.py
+!/tools/macos_suite_summary.py
