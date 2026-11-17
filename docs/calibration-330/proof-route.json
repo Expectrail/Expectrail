@@ -1,0 +1,19 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "calibration-330-proof-v1",
+  "ticks": 240,
+  "seed": 330,
+  "description": "Declared before capture: held-out proof for the fixed calibration loop; no jumps or firing.",
+  "events": [
+    {
+      "tick": 19,
+      "action": "move_right",
+      "pressed": true
+    },
+    {
+      "tick": 119,
+      "action": "move_right",
+      "pressed": false
+    }
+  ]
+}
