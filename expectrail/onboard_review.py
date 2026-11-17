@@ -20,6 +20,7 @@ from expectrail.gate.record import read_bytes_capped
 
 MAX_PAGE_BYTES = 120 * 1024
 MAX_IMAGE_BYTES = 12 * 1024
+MAX_NATIVE_ART_BYTES = 16 * 1024
 
 
 def now():
@@ -85,6 +86,61 @@ def thumbnail(path, *, crop=None, side=240):
                     return out.getvalue(), image.size
     except (OSError, ValueError):
         return None
+    return None
+
+
+def webp_size(data):
+    """Read a bounded WebP canvas header; the browser decodes the original art, not Python."""
+    if (len(data) < 30 or data[:4] != b'RIFF' or data[8:12] != b'WEBP'
+            or int.from_bytes(data[4:8], 'little') + 8 != len(data)):
+        return None
+    kind = data[12:16]
+    length = int.from_bytes(data[16:20], 'little')
+    if 20 + length > len(data):
+        return None
+    if kind == b'VP8L' and length >= 5 and data[20] == 0x2f:
+        bits = int.from_bytes(data[21:25], 'little')
+        if bits >> 29:
+            return None
+        size = ((bits & 0x3fff) + 1, ((bits >> 14) & 0x3fff) + 1)
+    elif kind == b'VP8 ' and length >= 10 and not data[20] & 1 and data[23:26] == b'\x9d\x01\x2a':
+        size = (int.from_bytes(data[26:28], 'little') & 0x3fff,
+                int.from_bytes(data[28:30], 'little') & 0x3fff)
+    elif kind == b'VP8X' and length >= 10 and data[21:24] == b'\0\0\0':
+        size = (int.from_bytes(data[24:27], 'little') + 1, int.from_bytes(data[27:30], 'little') + 1)
+    else:
+        return None
+    return size if all(0 < n <= 4096 for n in size) else None
+
+
+def native_sprite(state, path):
+    """A small original WebP can be embedded without an optional image decoder.
+
+    This is a sprite preview only. It never invents a measured frame/crop or makes an
+    unmeasured object reviewable. PNG thumbnails keep their existing byte budget.
+    """
+    try:
+        data = read(path, MAX_NATIVE_ART_BYTES)
+    except (OSError, ValueError):
+        return None
+    size = webp_size(data)
+    if size is None:
+        return None
+    name = f'sprites/{sha(data)}.webp'
+    dest = state / name; dest.parent.mkdir(exist_ok=True); dest.write_bytes(data)
+    return {'path': name, 'sha256': sha(data), 'size': list(size), 'frame': 0, 'mime': 'image/webp'}
+
+
+def native_sprite_bytes(state, frame):
+    """Read only the unchanged, bounded original art saved for this review."""
+    try:
+        path = local(Path(state).resolve(), frame['path'])
+        data = read(path, MAX_NATIVE_ART_BYTES)
+        if (frame.get('mime') == 'image/webp' and sha(data) == frame.get('sha256')
+                and webp_size(data) == tuple(frame.get('size') or ())):
+            return data
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
     return None
 
 
@@ -306,6 +362,7 @@ def prepare(root, state, *, source=None, evidence=None, broken=(), recording=Non
         if binding.get('texture'):
             path=local(root,binding['texture'].removeprefix('res://'));small=thumbnail(path,side=96)
             if small:sprite=asset(state,*small,0)
+            else:sprite=native_sprite(state,path) or sprite
         can_review = len(samples)==3 and sprite is not None
         objects.append({'role':role,'reviewable':can_review})
         details.append({'role':role,'prompt':prompt,'selector':binding.get('node',binding.get('group','Engine reference')),
