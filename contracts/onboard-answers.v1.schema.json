@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/onboard-answers.v1.schema.json",
+  "title": "Onboard Answers",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "reviewFile",
+    "reviewSha256",
+    "person",
+    "openedAt",
+    "answeredAt",
+    "objects",
+    "checks"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.onboard-answers/v1"
+    },
+    "reviewFile": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "reviewSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "person": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "openedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "answeredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "objects": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    }
+  }
+}

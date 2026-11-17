@@ -31,6 +31,8 @@ BUNDLED_MODULES = {
         "legacy",
         "observers",
         "onboard",
+        "onboard_page",
+        "onboard_review",
         "onboarding",
         "project_config",
         "project_job",
