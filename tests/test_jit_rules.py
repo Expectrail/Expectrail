@@ -390,7 +390,7 @@ class Rule1ThroughTheGate(unittest.TestCase):
 
         def gate(name, **kw):
             head, base = make_repo(tmp / f"{name}-head"), make_repo(tmp / f"{name}-base", bug=True)
-            return gv.run_gate(repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
+            return gv.run_gate(rule=kw.pop("rule", "engine-only"), repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
                                out=tmp / f"{name}-out", work=tmp / f"{name}-work", base=base,
                                pr={"number": 7, "headSha": HEAD, "baseSha": BASE}, replay=FakeReplay(), **kw)
 

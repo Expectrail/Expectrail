@@ -21,10 +21,11 @@ so that every frame SAM would be asked about in it (``sam_observer.plan_frames``
 
 and so that the clean game has a bullet on screen in at least one of them on every captured replay.
 
-A window does not lower what SAM is asked: the capture, the asking job and the in-process replay all plan
-every ``DEFAULT_EVERY``-th frame of the probe's route, whatever the windows of the checks on it
-(``reserved_images``). The three checks reserve 1,296 images, $3.24 at list price, more than jit.yml's
-per-change cap of $2 (``CAP_USD``).
+The capture, the asking job, the in-process replay and the judging job ask SAM only about the planned
+frames inside the windows of the checks on a probe (#605; expectrail/jit/pixel.py ``planned``), so the three
+checks reserve 675 images, $1.69 at list price (``reserved_images``), under jit.yml's per-change cap of $2
+(``CAP_USD``) less the capture's own spend. Before #605 every ``DEFAULT_EVERY``-th frame of each probe's
+route was asked about, whatever the windows: 1,296 images, $3.24, and the asking job refused.
 
     python3 -m tools.bullet_visible_stand_in --out DIR          # writes DIR/jit-proposal.json
     python3 -m tools.bullet_visible_stand_in --measure CAPTURE  # writes PLAN from a --pixel-capture folder
@@ -125,9 +126,12 @@ def measure(capture: Path) -> dict:
         route = json.loads((folder / "route.json").read_text(encoding="utf-8"))
         frames = sam_observer.plan_frames(route, TICKS_A_FRAME, sam_observer.DEFAULT_EVERY, None,
                                           sam_observer.MAX_FRAMES)
-        _, _, files = sam_observer.checked_replay(folder, route, frames, sam_observer.DEFAULT_FPS,
+        # A capture keeps only the planned frames inside the checks' windows (#605); the bullets are counted
+        # from the engine's record on every planned frame, so the plan reads the same either way.
+        kept = pixel.in_windows(frames, pixel_jobs.windows_of(folder))
+        _, _, files = sam_observer.checked_replay(folder, route, kept, sam_observer.DEFAULT_FPS,
                                                   sam_observer.DEFAULT_TICKS_PER_SECOND)
-        size = _frame_size(files[frames[0]])
+        size = _frame_size(files[kept[0]])
         trace = json.loads((folder / "trace.json").read_text(encoding="utf-8"))
         boxes = sam_anchor.object_boxes(trace, size, frames, "bullet")
         counts = [len(boxes[n]["boxes"]) if "boxes" in boxes[n] else None for n in frames]
@@ -174,10 +178,16 @@ def window_problems(plan: dict, probe: str, window: dict) -> list[str]:
 
 
 def reserved_images(plan: dict) -> int:
-    """Images pixel-ask reserves for the checks' probes (expectrail/jit/pixel_jobs.py ``ask``): every planned
-    frame of each probe's route, windows or not, MAX_BOXES a frame, on nine replays (three builds, three each)."""
-    return sum(len(plan["probes"][probe]["planned"]) * plan["maxBoxes"] * 9
-               for probe in sorted({probe for probe, _, _ in PROBES}))
+    """Images pixel-ask reserves for the checks' probes (expectrail/jit/pixel_jobs.py ``ask``): the planned
+    frames of each probe's route inside the windows of its checks (#605), MAX_BOXES a frame, on nine replays
+    (three builds, three each)."""
+    from expectrail.jit import pixel
+
+    windows: dict = {}
+    for probe, window, _ in PROBES:
+        windows.setdefault(probe, []).append(window)
+    return sum(len(pixel.in_windows(plan["probes"][probe]["planned"], windows[probe])) * plan["maxBoxes"] * 9
+               for probe in sorted(windows))
 
 
 def stand_in():

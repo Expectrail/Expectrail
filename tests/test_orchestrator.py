@@ -422,7 +422,7 @@ class GodotEngineTest(Case):
 
     def gate(self, head: Path, base: Path | None, name: str) -> dict:
         with contextlib.redirect_stdout(io.StringIO()):
-            return gate.run_gate(repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
+            return gate.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
                                  out=self.tmp / name, work=self.tmp / f"{name}-work", base=base, replay=FakeReplay())
 
     def test_it_decides_as_the_gate_does(self):
@@ -769,9 +769,26 @@ class ProcessTest(Case):
         proc = self.spawn(job)
         self.running(job)
         os.killpg(proc.pid, signal.SIGKILL)
+        # Reap the known-dead worker before timing recognition. Real descendant cleanup
+        # scans the host process table and may take longer than recognition itself.
+        proc.wait(timeout=5)
+        child = self.child_of(job)
+        detected = []
+        real_lose = self.store.lose
         started = time.monotonic()
-        status = runner.wait(self.store, job, proc, poll_seconds=0.05)
-        self.assertLess(time.monotonic() - started, 0.5)
+
+        def lose(*args, **kwargs):
+            detected.append(time.monotonic() - started)
+            return real_lose(*args, **kwargs)   # keep the real cleanup, and check it below
+
+        no_poll = mock.Mock(wraps=time)
+        no_poll.sleep.side_effect = AssertionError("a known-dead worker must not wait for a poll or its lease")
+        with mock.patch.object(self.store, "lose", side_effect=lose), mock.patch.object(runner, "time", no_poll):
+            status = runner.wait(self.store, job, proc, poll_seconds=0.05)
+        self.assertEqual(len(detected), 1)
+        self.assertLess(detected[0], 0.5)
+        no_poll.sleep.assert_not_called()
+        self.assertTrue(gone(child), "the dead worker's child outlived real cleanup")
         self.assertEqual((status["phase"], [d["code"] for d in status["diagnostics"]]), ("failed", ["WORKER_LOST"]))
 
     def test_a_job_that_runs_out_of_time_is_needs_review_and_is_stopped(self):

@@ -1,0 +1,133 @@
+# PROPOSAL ONLY. Sean must review and add this himself. Not an active workflow.
+name: One literal repair case
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Literal repair or auto-fix path
+        type: choice
+        options: [auto, manual]
+        default: auto
+        required: true
+      confirm:
+        description: 'Authorize ONE public fall-through report; default ceiling $10'
+        type: boolean
+        required: true
+        default: false
+      fixer_invocation:
+        description: 'USD per llm-patch invocation (recommended 6)'
+        type: string
+        required: true
+        default: '6'
+      fixer_total:
+        description: 'USD across fixer invocations (recommended 6)'
+        type: string
+        required: true
+        default: '6'
+      vision:
+        description: 'USD per verification worker (recommended 2)'
+        type: string
+        required: true
+        default: '2'
+      attempts:
+        description: 'Exactly one candidate attempt for this measurement'
+        type: string
+        required: true
+        default: '1'
+      output_tokens:
+        description: 'Maximum completion tokens including reasoning, 1..4096'
+        type: string
+        required: true
+        default: '4096'
+      disabled_caps:
+        description: 'Other role caps; all must remain zero'
+        type: string
+        required: true
+        default: '{"spec":0,"triage":0,"glimmer":0}'
+      month_caps:
+        description: 'Compiled monthly limits; cannot be raised by this kit'
+        type: string
+        required: true
+        default: '{"model":200,"vision":200}'
+permissions:
+  contents: read
+concurrency:
+  group: expectrail-one-literal-repair
+  cancel-in-progress: false
+jobs:
+  repair:
+    if: github.repository == 'Expectrail/Expectrail' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.confirm
+    runs-on: [self-hosted, linux, x64, expectrail-live]
+    environment: live-repair
+    timeout-minutes: 45
+    env:
+      MODE: ${{ inputs.mode }}
+      FIXER_INVOCATION: ${{ inputs.fixer_invocation }}
+      FIXER_TOTAL: ${{ inputs.fixer_total }}
+      VISION: ${{ inputs.vision }}
+      ATTEMPTS: ${{ inputs.attempts }}
+      OUTPUT_TOKENS: ${{ inputs.output_tokens }}
+      DISABLED_CAPS: ${{ inputs.disabled_caps }}
+      MONTH_CAPS: ${{ inputs.month_caps }}
+      LEDGER_DIR: ${{ vars.EXPECTRAIL_LEDGER_DIR }}
+      EXPECTRAIL_GODOT: ${{ vars.EXPECTRAIL_GODOT_BINARY }}
+      OUT: runs/live-repair-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Check inputs and persistent state before loading provider keys
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, stat
+          from pathlib import Path
+          from expectrail.gate.record import strict_loads
+          for name,expected in [('DISABLED_CAPS',{'spec':0,'triage':0,'glimmer':0}),('MONTH_CAPS',{'model':200,'vision':200})]:
+              value=strict_loads(os.environ[name])
+              if value!=expected or any(type(x) is not int for x in value.values()):
+                  raise SystemExit(name+' must match the documented compiled policy')
+          ledger=Path(os.environ['LEDGER_DIR'])
+          if not ledger.is_absolute() or ledger.resolve().is_relative_to(Path.cwd()) or not ledger.is_dir():
+              raise SystemExit('provision a persistent ledger directory outside the checkout first')
+          if stat.S_IMODE(ledger.stat().st_mode) & 0o077:
+              raise SystemExit('ledger directory must be private to the runner (mode 0700)')
+          PY
+          python3 -m tools.repair_live_case --mode "$MODE" --fixer-invocation "$FIXER_INVOCATION" --fixer-total "$FIXER_TOTAL" --vision "$VISION" --attempts "$ATTEMPTS" --output-tokens "$OUTPUT_TOKENS" > cap-plan.json
+          cat cap-plan.json
+          python3 - <<'PY'
+          import os, subprocess
+          from pathlib import Path
+          from harness.run import GODOT_VERSION
+          engine=Path(os.environ['EXPECTRAIL_GODOT'])
+          if not engine.is_absolute() or not engine.is_file():raise SystemExit('provision the pinned engine first')
+          version=subprocess.check_output([str(engine),'--version'],text=True).strip()
+          expected=GODOT_VERSION.replace('-','.')
+          if version!=expected and not version.startswith(expected+'.'):raise SystemExit('wrong Godot version: '+version)
+          print(version)
+          PY
+          python3 - <<'PY'
+          from harness.sandbox import probe
+          tool,why=probe(True)
+          if tool is None:raise SystemExit(why)
+          PY
+      - name: Run the literal CLI on the public bundled bug
+        shell: bash
+        env:
+          EXPECTRAIL_FIXER_API_KEY: ${{ secrets.EXPECTRAIL_OPENAI_FIXER_KEY }}
+          MODEL_API_KEY: ${{ secrets.EXPECTRAIL_META_VISION_KEY }}
+          EXPECTRAIL_MODEL_MONTH_LEDGER: ${{ vars.EXPECTRAIL_LEDGER_DIR }}/model-month.json
+          EXPECTRAIL_VISION_MONTH_LEDGER: ${{ vars.EXPECTRAIL_LEDGER_DIR }}/vision-month.json
+        run: |
+          python3 -m tools.repair_live_case --mode "$MODE" --run --out "$OUT" --fixer-invocation "$FIXER_INVOCATION" --fixer-total "$FIXER_TOTAL" --vision "$VISION" --attempts "$ATTEMPTS" --output-tokens "$OUTPUT_TOKENS"
+      - name: Upload this run's evidence even on needs-review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: one-literal-repair-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            cap-plan.json
+            runs/live-repair-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: warn
+          retention-days: 7

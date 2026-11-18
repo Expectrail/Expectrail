@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Expectrail/Expectrail/contracts/receipt.v1.schema.json",
   "title": "Receipt v1: attested verification outcome",
-  "description": "A signed statement of what was checked, on which build, under which policy, and what the decision was. Verification uses a trust store of issuer public keys; a key carried only inside the receipt is never trusted. Canonical JSON (sorted keys, no spaces); duplicate keys and non-finite numbers are rejected.",
+  "description": "A signed statement of what was checked, on which build, under which policy, and what the decision was. Verification uses a trust store of issuer public keys; a key carried only inside the receipt is never trusted. Canonical JSON (sorted keys, no spaces); duplicate keys and non-finite numbers are rejected. In CI, issuer identity can instead come from an attestation pinned to the repository and signing workflow. A carried key alone is never an issuer identity.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -42,11 +42,13 @@
     },
     "baseSha256": {
       "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Recorded CI producer: SHA-256 of the lowercase ASCII Git base commit ID."
     },
     "headSha256": {
       "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Recorded CI producer: SHA-256 of the lowercase ASCII Git head commit ID."
     },
     "buildSha256": {
       "type": "string",
@@ -55,11 +57,13 @@
     },
     "policySha256": {
       "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Recorded CI producer: canonical digest of its pinned base, captured checks digest, both-observer rule, required sandbox and recorded-vision profile; see docs/ci-gate.md."
     },
     "routeSetSha256": {
       "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Recorded CI producer: canonical digest of the public route-name to route-SHA-256 mapping."
     },
     "versions": {
       "type": "object",
@@ -90,7 +94,7 @@
             "type": "string",
             "pattern": "^[0-9a-f]{64}$"
           },
-          "description": "Named digests of every evidence artifact."
+          "description": "Named digests of every evidence artifact. Recorded CI names capture.zip and regular files under report/ relative to the evidence root; its end-to-end checker hashes each one and refuses unsafe paths."
         }
       }
     },

@@ -96,7 +96,7 @@ class Case(unittest.TestCase):
     def gate(self, head: Path, base: Path | None = None, **kw) -> dict:
         self.n += 1
         with contextlib.redirect_stdout(io.StringIO()):
-            return gv.run_gate(repo=head, game=kw.pop("game", "app"), routes=["routes/*.json"], specs="specs",
+            return gv.run_gate(rule=kw.pop("rule", "engine-only"), repo=head, game=kw.pop("game", "app"), routes=["routes/*.json"], specs="specs",
                                out=self.tmp / f"out{self.n}", work=self.tmp / f"work{self.n}", base=base, **kw)
 
     def job(self, head: Path, adapter: str, *, game: str = "app", base: Path | None = None, table=None) -> tuple[dict, st.JobStore]:
@@ -348,7 +348,14 @@ class CommandLineTest(Case):
     def main(self, head: Path, *extra: str) -> tuple[int, dict]:
         self.n += 1
         out = self.tmp / f"cli{self.n}"
-        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+        # This registry fixture supplies engine traces only. The separate default-vision tests
+        # exercise the CLI's real both-observer policy; keep this adapter control explicit.
+        real_gate = gv.run_gate
+        def engine_control(**kwargs):
+            kwargs.update(rule=rec.ENGINE_ONLY, visual=None)
+            return real_gate(**kwargs)
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()), \
+                mock.patch.object(gv, "run_gate", side_effect=engine_control):
             code = gv.main(["--repo", str(head), "--game", "app", "--routes", "routes/*.json", "--specs", "specs",
                             "--out", str(out), *extra])
         document = json.loads((out / "findings.json").read_text(encoding="utf-8"))

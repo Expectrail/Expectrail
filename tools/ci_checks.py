@@ -66,15 +66,16 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def download(api, ctx, run, archive, token):
+def download(api, ctx, run, archive, token, *, artifact_name=None, max_bytes=None):
     from tools.ci_bundle import MAX_BYTES
-    name = f"expectrail-{int(run['run_attempt'])}.zip"
+    name = artifact_name or f"expectrail-{int(run['run_attempt'])}.zip"
+    bound = MAX_BYTES if max_bytes is None else min(MAX_BYTES, max_bytes)
     listing = api("GET", f"/repos/{ctx.repo}/actions/runs/{int(ctx.run_id)}/artifacts?name={name}")
     matches = [a for a in listing["artifacts"] if a["name"] == name and not a["expired"]]
     if len(matches) != 1:
         raise ValueError("EVIDENCE_MISMATCH: expected one artifact from this attempt")
     item, = matches
-    if (not 0 < item["size_in_bytes"] <= MAX_BYTES
+    if (not 0 < item["size_in_bytes"] <= bound
             or not re.fullmatch(r"sha256:[a-f0-9]{64}", item.get("digest") or "")):
         raise ValueError("EVIDENCE_MISMATCH: invalid GitHub artifact size or digest")
     url = f"https://api.github.com/repos/{ctx.repo}/actions/artifacts/{int(item['id'])}/zip"

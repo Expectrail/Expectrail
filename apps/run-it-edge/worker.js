@@ -24,6 +24,7 @@ export class RunIt {
         delete: (key) => storage.delete(key),
       },
       log: (message) => console.log(`run-it: ${message}`),
+      waitUntil: (promise) => state.waitUntil(promise),
     });
   }
 

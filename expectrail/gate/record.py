@@ -477,6 +477,29 @@ def _depth(value, level: int = 1) -> int:
     return level
 
 
+def unlinked_below(base, relative: str) -> Path:
+    """``base / relative``, refusing a link anywhere from ``base`` down (#378).
+
+    A record's own folder may be reached through a link (on macOS every temporary folder is:
+    ``/var`` is a link to ``/private/var``), so links above ``base`` are allowed. Below it, every
+    component of ``relative`` must be a real folder or file and stay inside ``base``: no ``..``,
+    no absolute path, no link. As a fallback the resolved path must still equal the resolved
+    ``base`` joined with ``relative``, so anything the walk misses is still refused.
+    """
+    base = Path(base)
+    rel = Path(relative)
+    if rel.is_absolute() or not rel.parts or any(part in ("", ".", "..") for part in rel.parts):
+        raise RecordError(f"{relative!r} is not a plain path inside its record")
+    current = base
+    for part in rel.parts:
+        current = current / part
+        if current.is_symlink():
+            raise RecordError(f"{relative!r} is reached through a link inside its record")
+    if current.resolve() != base.resolve().joinpath(*rel.parts):
+        raise RecordError(f"{relative!r} does not stay inside its record")
+    return current
+
+
 def read_bytes_capped(path: Path, cap: int = MAX_RECORD_BYTES, label: str = "findings.json") -> bytes:
     """A regular file's bytes, refusing a symlink, a non-file or anything over ``cap``."""
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)

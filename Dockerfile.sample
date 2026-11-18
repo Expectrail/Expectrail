@@ -1,0 +1,29 @@
+# Context: this Dockerfile, one wheel and the public pinned Godot archive; no checkout.
+FROM ubuntu:24.04@sha256:73b999393d07f2bf65a40373778a44dc9a6d54ad7718d29247d8ff9413c4d6a8
+
+ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 LIBGL_ALWAYS_SOFTWARE=1 LP_NUM_THREADS=1
+WORKDIR /work
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-venv xvfb xauth libgl1-mesa-dri libglx-mesa0 \
+    libfontconfig1 libxcursor1 libxinerama1 libxrandr2 libxi6 libxrender1 libxext6 libx11-6 \
+    curl unzip patch bubblewrap ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV PATH="/opt/expectrail/bin:${PATH}" EXPECTRAIL_TOOLS=/opt/engine
+# Read-only build mounts keep wheel/archive inputs out of the final image and avoid
+# duplicating them across layers on a VFS daemon. Engine validation cannot fetch anything.
+RUN --network=none --mount=type=bind,source=dist,target=/wheels,ro \
+    --mount=type=bind,source=engine-cache,target=/engine-cache,ro \
+    python3 -m venv /opt/expectrail && \
+    /opt/expectrail/bin/python -m pip install --no-index --no-deps /wheels/expectrail-*.whl && \
+    mkdir -p /opt/engine/godot_cache && cp /engine-cache/*.zip /opt/engine/godot_cache/ && \
+    python -c 'from expectrail import resources; import subprocess; subprocess.run(["bash", str(resources.ROOT / "harness/get_godot.sh")], check=True)' && \
+    rm -rf /opt/engine/godot_cache && \
+    useradd --create-home --uid 10001 expectrail && chown expectrail:expectrail /work
+
+USER expectrail
+# Explicit sample-only saved-answer profile. Arbitrary projects still need their own vision.
+# Every replay/check is real; unmatched image/questions need review, never a live fallback.
+ENV EXPECTRAIL_GODOT=/opt/engine/godot/Godot_v4.7.2-stable_linux.x86_64 \
+    EXPECTRAIL_TOOLS=/work/tools EXPECTRAIL_VLM_SAMPLE_RECORDINGS=1
+CMD ["expectrail", "sample"]
