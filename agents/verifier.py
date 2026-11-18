@@ -816,6 +816,10 @@ def _write_verification(
             pass
     doc["observers"] = {"rule": "both" if use_visual else "engine-only",
                         "engine": engine_observer(), "visual": observer}
+    if not use_visual and not require_visual and not sam_on():
+        diagnostic = "engine-only diagnostic: vision did not run. This result cannot clear a change."
+        doc["reasons"].append(diagnostic)
+        print(diagnostic, file=sys.stderr)
     if require_visual and (observer is None or any(c["result"] == "needs-review" for c in checks)):
         if doc["decision"] == "accept":
             doc["decision"] = "needs-review"

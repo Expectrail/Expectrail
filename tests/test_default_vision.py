@@ -85,6 +85,8 @@ class LegacyCommandTest(unittest.TestCase):
                                       skip_harness=True, observations_path=REPO / "agents/fixtures/obs-fixed.json")
                 self.assertEqual(doc["decision"], expected)
                 self.assertEqual(doc["observers"]["rule"], "engine-only" if provider == "trace" else "both")
+                if provider == "trace":
+                    self.assertIn("engine-only diagnostic", " ".join(doc["reasons"]))
                 network.assert_not_called()
 
     def test_trace_fixture_cannot_clear_a_command_line_verification(self):
