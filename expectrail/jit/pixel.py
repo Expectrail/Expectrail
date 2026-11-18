@@ -16,7 +16,8 @@ sees in the frames:
   is offered only the one that will judge the run (``proposed``): SAM unless the propose step is told
   otherwise, and a proposal records which (expectrail/jit/intent.py, ``observer``).
 - **The predicates are the reference evaluator's** (``visible``, ``inside-region``, ``never-crosses``,
-  ``reaches``; expectrail/evaluator.py), and ``judge`` hands the decision to that evaluator.
+  ``reaches``; expectrail/evaluator.py), and ``judge`` hands the decision to that evaluator. ``faces-motion``
+  is that evaluator's ``visible`` over the frames where the object's facing is observed (below).
 - **A frame counts only where the observer and the engine's record are both there.** A frame in the
   window that the observer was not asked about (the engine puts the object outside the picture),
   could not answer, or that lacks the engine's box an ``inside-region`` check needs, is a gap; a
@@ -45,6 +46,13 @@ and at most ``MAX_BOXES`` a frame (sam_observer.py); ``judge`` judges each by it
 the check holds only when it holds for every one (``_judge_named``). A frame with more of them on screen
 than are asked about, or without the engine's boxes, is a gap; none on screen in the window is
 ``needs-review``, never a pass.
+
+**Which way an object is drawn facing** (``faces-motion``, the enemy only, ``visual-sensor`` only;
+``OBSERVERS[...]["facing"]``). Judged over the frames where the engine moves the object one way and the
+observer sees it where the engine puts it: each such frame holds the object when the observer says it is
+drawn facing that way and is empty when it says the other, and the reference evaluator's ``visible`` decides
+(``_facing_observations``, ``_spec``). A frame whose facing the observer could not tell is a gap. It reaches
+a defect that draws the sprite mirrored (``enemy-walks-backwards``), which ``visible`` cannot.
 
 What this is not, yet: nothing here calls an observer. The SAM observer is expectrail/jit/sam_observer.py;
 the command line's ``run`` builds it (``--observer``) and the reproduction score counts pixel checks on
@@ -114,6 +122,7 @@ OBSERVERS = {
             "ground": "SAM 3.1 does not find the ground (docs/sam.md)",
             "text": "a box from SAM says nothing about what a label reads",
             "reaches": "it is asked about one object per frame, at the place the engine puts it, so it cannot judge two",
+            "faces-motion": "a box and a mask from SAM say nothing about which way a sprite faces",
         },
     },
     # The no-model template sensor of #262 (agents/template_observations.py), built into an observer in
@@ -121,19 +130,24 @@ OBSERVERS = {
     # replay, searched for near the engine's body box. Nothing is sent anywhere and nothing is charged.
     "visual-sensor": {
         "available": True,
-        "predicates": ("visible", "inside-region", "never-crosses"),
+        "predicates": ("visible", "inside-region", "never-crosses", "faces-motion"),
         "anchored": True,
+        # The roles ``faces-motion`` may name: those whose bank labels each clean capture with the way the engine
+        # moved it and whose facing validation is met (agents/template_foreground.py ``_validate_facing``). A run
+        # whose bank does not back it says nothing about facing, and the check is a gap (``named_observations``).
+        "facing": ("enemy",),
         # The "engine-boxes" roles it can be pointed at when its bank holds that role's templates and their
         # calibration is met (template_observer.py; a bank without them refuses the role, so its checks are
         # not run). The enemy only: calibrated on the bundled game, the bullet's clean crops gave no template
-        # with enough opaque detail (docs/new-work/2026-11-16-sensor-enemy.md). It cannot tell which way a
-        # sprite faces: every template is kept mirrored too.
+        # with enough opaque detail (docs/new-work/2026-11-16-sensor-enemy.md). Every template is kept mirrored
+        # too, so ``visible`` matches an enemy drawn facing either way; ``faces-motion`` is what tells the two apart.
         "boxes": ("enemy",),
         "cannot": ("ground", "text"),
         "why": {
             "ground": "the template sensor matches sprites against clean templates; it does not segment the ground",
             "text": "the template sensor reads no text (docs/template-sensor.md)",
             "reaches": "it looks for one object near the place the engine puts it, so it cannot judge two",
+            "faces-motion": "its bank labels which way the enemy faces, and no other object",
         },
     },
 }
@@ -222,6 +236,8 @@ def parse_candidate(entry, bindings: dict, probe_ids, observers: dict = OBSERVER
                 return None, why
     if pred["type"] == "inside-region" and observer.get("anchored") and pred["region"]["engine"] != doc["object"]:
         return None, f"{doc['observer']} has the engine's box of {doc['object']!r} only, not of another object"
+    if pred["type"] == "faces-motion" and doc["object"] not in observer.get("facing", ()):
+        return None, f"{doc['observer']} cannot judge faces-motion about {doc['object']!r}: {observer['why']['faces-motion']}"
     return doc, None
 
 
@@ -288,6 +304,10 @@ def menu(bindings: dict = BUNDLED_BINDINGS, observers: dict | None = None) -> di
                 if many:
                     note += (f". For an object the game has many of ({', '.join(many)}), the check must hold for "
                              "every one on screen, each judged on its own")
+                facing = [r for r in roles if r in observer.get("facing", ())]
+                if "faces-motion" in observer["predicates"] and facing:
+                    note += (f". faces-motion is about {', '.join(facing)} only: drawn facing the way the engine moves "
+                             "it, on every frame where it moves one way and is seen where the engine puts it")
                 out["observers"][name]["note"] = note
     judged = {r for o in out["observers"].values() for r in o["objects"]}
     out["notJudgeable"] = {role: "; ".join(why) for role, why in reasons.items() if role not in judged}
@@ -400,6 +420,8 @@ def named_observations(check: dict, run: dict) -> tuple[dict, list[dict]]:
     rows = (run.get("objects") or {}).get(role)
     if not isinstance(rows, list):
         return {}, [{"frame": None, "why": f"the observer was not asked about {role} on this run"}]
+    if check["predicate"]["type"] == "faces-motion":
+        return _facing_observations(check, run, rows, lo, hi)
     per: dict = {}
     gaps = []
     for f in sorted(rows, key=lambda f: f["frame"]):
@@ -415,7 +437,7 @@ def named_observations(check: dict, run: dict) -> tuple[dict, list[dict]]:
             # (template_observer.py, ``not-found``): an observation that it is not drawn, not a gap.
             absent = b.get("absent") is True and b.get("box") is None and not b.get("error")
             if (b.get("error") or b.get("box") is None) and not absent:
-                gaps.append({"frame": n, "why": f"the observer gave no answer for {role} {ident}"})
+                gaps.append({"frame": n, "why": _no_answer(role, ident, b)})
                 continue
             if need_engine_box and b.get("promptBox") is None:
                 gaps.append({"frame": n, "why": f"the engine's box of {role} {ident} was not recorded"})
@@ -426,6 +448,58 @@ def named_observations(check: dict, run: dict) -> tuple[dict, list[dict]]:
             if need_engine_box:
                 objects["engine-" + role] = [{"box": list(b["promptBox"]), "score": 1.0}]
             per.setdefault(ident, []).append({"frame": n, "objects": objects})
+    return ({ident: {"format": "expectrail.observations/v0", "frames": frames} for ident, frames in per.items()},
+            gaps)
+
+
+MOTIONS = ("right", "left")
+
+
+def _no_answer(role: str, ident, box: dict) -> str:
+    """Why a box is a gap. A box the no-model sensor did not look at because the engine puts it partly off
+    screen says so (template_observer.py, ``out-of-frame``), so a reader can tell a window that reaches an
+    edge from an observer that failed; the proposer is told those frames beforehand (repro/evidence.py
+    ``edge_frames``)."""
+    if box.get("status") == "out-of-frame":
+        return f"{role} {ident} is partly off screen, and the observer judges only an object it sees whole"
+    return f"the observer gave no answer for {role} {ident}"
+
+
+def _facing_observations(check: dict, run: dict, rows: list, lo: int, hi) -> tuple[dict, list[dict]]:
+    """``named_observations`` for ``faces-motion``: {id: observations} over the frames where the engine moves
+    the object one way (``motion`` ``right`` or ``left``) and the observer saw it where the engine puts it
+    (``matched``). Such a frame holds the object when it is drawn facing that way and is empty when it is drawn
+    facing the other, so the reference evaluator's ``visible`` decides (``_spec``). A frame where it stands,
+    turns, is not drawn or is drawn elsewhere makes no claim about facing and is not judged; ``visible`` is the
+    check for those. A moving, matched object whose facing the observer did not say, or could not tell, is a
+    gap; so is every frame of a run whose observer says nothing about this object's facing."""
+    role = check["object"]
+    if role not in (run.get("facing") or []):
+        return {}, [{"frame": None, "why": f"the observer does not say which way {role} faces on this run"}]
+    per: dict = {}
+    gaps = []
+    for f in sorted(rows, key=lambda f: f["frame"]):
+        n = f["frame"]
+        if n < lo or (hi is not None and n > hi):
+            continue
+        if not f.get("asked"):
+            gaps.append({"frame": n, "why": f"not asked: {f.get('note') or 'no engine boxes'}"})
+            continue
+        for b in f.get("boxes") or []:
+            ident = b.get("id")
+            if b.get("error") or (b.get("box") is None and b.get("absent") is not True):
+                gaps.append({"frame": n, "why": _no_answer(role, ident, b)})
+                continue
+            if b.get("status") != "matched" or not b.get("holdsPoint") or b.get("motion") not in MOTIONS:
+                continue
+            if "facing" not in b:
+                gaps.append({"frame": n, "why": f"the observer did not say which way {role} {ident} faces"})
+                continue
+            if b["facing"] not in MOTIONS:
+                gaps.append({"frame": n, "why": f"the observer could not tell which way {role} {ident} faces"})
+                continue
+            drawn = [{"box": list(b["box"]), "score": 1.0}] if b["facing"] == b["motion"] else []
+            per.setdefault(ident, []).append({"frame": n, "objects": {role: drawn}})
     return ({ident: {"format": "expectrail.observations/v0", "frames": frames} for ident, frames in per.items()},
             gaps)
 
@@ -446,6 +520,12 @@ def _spec(check: dict, bindings: dict) -> dict:
                      "tolerancePx": pred.get("tolerancePx", 0)}
     elif pred["type"] == "never-crosses":
         assertion = {"type": "never-crosses", "object": role, "boundary": dict(pred["boundary"])}
+    elif pred["type"] == "faces-motion":
+        # Over ``_facing_observations``: a judged frame holds the object only when it is drawn facing the way the
+        # engine moves it, so "visible in every judged frame" is "faces its motion in every judged frame".
+        objects[role] = {"prompt": f"{bindings[role]['node']} drawn facing the way the engine moves it",
+                         "minScore": 0.0}
+        assertion = {"type": "visible", "object": role, "minFraction": 1.0}
     else:
         raise PixelError(f"{pred['type']} has no anchored reading")
     spec = {"format": "expectrail.test-spec/v0", "id": check["id"], "instruction": check["statement"],
@@ -463,6 +543,9 @@ def judge(check: dict, run: dict, bindings: dict = BUNDLED_BINDINGS) -> dict:
                 "framesJudged": 0, "gaps": []}
     if named(check["object"], bindings):
         return _judge_named(check, run, bindings)
+    if check["predicate"]["type"] == "faces-motion":
+        return {"result": "needs-review", "reason": "faces-motion is judged only for objects the engine logs boxes for",
+                "framesJudged": 0, "gaps": []}
     obs, gaps = observations(check, run)
     if gaps:
         return {"result": "needs-review",
@@ -486,11 +569,17 @@ def _judge_named(check: dict, run: dict, bindings: dict) -> dict:
                 "reason": f"{len(gaps)} frames or boxes without both the observer and the engine's record "
                           f"({where}{gaps[0]['why']})",
                 "framesJudged": 0, "gaps": gaps}
+    facing = check["predicate"]["type"] == "faces-motion"
     if not per:
-        return {"result": "needs-review", "reason": f"no {role} was on screen in the window", "framesJudged": 0,
+        what = "seen moving one way" if facing else "on screen"
+        return {"result": "needs-review", "reason": f"no {role} was {what} in the window", "framesJudged": 0,
                 "gaps": []}
     spec = _spec(check, bindings)
     verdicts = {ident: reference.evaluate(spec, obs) for ident, obs in per.items()}
+    if facing:
+        # The evaluator counts frames "found"; here a frame found is one drawn facing the way it moves.
+        for v in verdicts.values():
+            v["reason"] = v["reason"].replace(f"{role} found in", "drawn facing the way the engine moves it in", 1)
     judged = sum(v["framesJudged"] for v in verdicts.values())
     failed = sorted(((v["firstFrame"] if v["firstFrame"] is not None else 10**9), str(ident))
                     for ident, v in verdicts.items() if v["result"] == "fail")
@@ -544,6 +633,61 @@ def frames_to_ask(check: dict, frames_probed) -> list[int]:
     window = check.get("window") or {}
     lo, hi = window.get("fromFrame", 0), window.get("toFrame")
     return [n for n in frames_probed if n >= lo and (hi is None or n <= hi)]
+
+
+# --- the frames a probe's checks need (#605) -----------------------------------------------------
+#
+# The observer's plan (sam_observer.py ``plan_frames``) is every ``every``-th frame of the probe's route. A
+# check judges only the planned frames in its window (``observations``), so the observer is asked only
+# about the planned frames inside the union of the windows of the checks on that probe: ``in_windows``.
+# The in-process replay, the capture, the asking job and the judging job all plan this way, so they
+# reserve, store, ask and judge the same frames. A check without a window judges the whole route, and then
+# the whole plan is asked about (``probe_windows`` gives None).
+
+NO_PLANNED_FRAME = "its window holds no frame the observer would be asked about, so it can judge nothing"
+MAX_WINDOW_FRAME = 1_000_000
+
+
+def checked_window(window, where: str = "a window") -> dict:
+    """A window as the observer plans with it: ``{"fromFrame": n}`` or ``{"fromFrame": n, "toFrame": m}``,
+    whole numbers from 0, or a PixelError. Read from untrusted files too (pixel_jobs.py ``windows_of``)."""
+    def frame(value) -> bool:
+        return isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= MAX_WINDOW_FRAME
+
+    if not isinstance(window, dict) or not {"fromFrame"} <= set(window) <= {"fromFrame", "toFrame"} \
+            or not all(frame(v) for v in window.values()):
+        raise PixelError(f"{where} is not {{fromFrame}} or {{fromFrame, toFrame}} in whole frames from 0")
+    return {k: window[k] for k in ("fromFrame", "toFrame") if k in window}
+
+
+def probe_windows(checks) -> list[dict] | None:
+    """The windows the observer is asked about on a probe whose checks are ``checks``: each distinct window
+    once, in a fixed order, or None when a check has no window (it judges the whole route)."""
+    out = []
+    for check in checks:
+        if not check.get("window"):
+            return None
+        window = checked_window(check["window"], f"the window of {str(check.get('id'))[:60]}")
+        if window not in out:
+            out.append(window)
+    return sorted(out, key=lambda w: (w["fromFrame"], w.get("toFrame", MAX_WINDOW_FRAME + 1)))
+
+
+def in_windows(frames, windows) -> list[int]:
+    """The frames of ``frames`` inside at least one of ``windows`` (None: all of them), in their order."""
+    frames = [int(n) for n in frames]
+    if windows is None:
+        return frames
+    keep = set()
+    for i, window in enumerate(windows):
+        keep.update(frames_to_ask({"window": checked_window(window, f"window {i + 1}")}, frames))
+    return [n for n in frames if n in keep]
+
+
+def planned(observer, route: dict, windows=None) -> list[int]:
+    """The frames ``observer`` asks about on a replay of ``route`` for checks with ``windows``: its plan
+    (``observer.frames``) inside the windows."""
+    return in_windows(observer.frames(route), windows)
 
 
 # At most this many objects of one role are asked about in a frame, one image each; a frame with more of
@@ -640,12 +784,15 @@ OUTCOMES = ("catch", "no-catch", "needs-review", "not-evaluated")
 NOT_ASKED_PLAYER = "the player is not asked about: no check on this probe names it"
 
 
-def observe(observer, run_dir, route: dict, objects=(), player: bool = True) -> tuple[dict, dict, int]:
+def observe(observer, run_dir, route: dict, objects=(), player: bool = True,
+            windows=None) -> tuple[dict, dict, int]:
     """(setting, run, images) from one observer call, checked as untrusted data: a malformed answer is a
     PixelError, never a pass. ``objects`` are the roles the game has many of (``named``) that the observer
     is also asked about; its run must then carry ``objects[role]`` for each, one row a frame. With
     ``player`` False (``asks_player``: no check on the probe names the player) the observer is not asked
-    about the player, and an answer that says it asked about the player anyway is refused."""
+    about the player, and an answer that says it asked about the player anyway is refused. With
+    ``windows`` (``probe_windows``) the observer is asked only about its planned frames inside them
+    (``planned``), and an answer that says it probed other frames is refused."""
     objects = tuple(objects)
     if not player and not objects:
         raise PixelError("the observer would be asked about nothing: neither the player nor a named object")
@@ -654,6 +801,18 @@ def observe(observer, run_dir, route: dict, objects=(), player: bool = True) -> 
         kwargs["objects"] = objects
     if not player:
         kwargs["player"] = False
+    expected = None
+    if windows is not None:
+        windows = [checked_window(w) for w in windows]
+        try:
+            expected = planned(observer, route, windows)
+        except PixelError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - an observer that cannot plan is not asked
+            raise PixelError(f"the observer could not say which frames it would ask about ({type(exc).__name__})") from exc
+        if not expected:
+            raise PixelError("the windows hold no frame the observer would be asked about")
+        kwargs["windows"] = windows
     try:
         answer = observer(Path(run_dir), route, **kwargs)
     except PixelError:
@@ -671,12 +830,19 @@ def observe(observer, run_dir, route: dict, objects=(), player: bool = True) -> 
     for f in run["frames"]:
         if not isinstance(f, dict) or not isinstance(f.get("frame"), int) or isinstance(f.get("frame"), bool):
             raise PixelError("the observer's answer has a frame without a frame number")
+    if expected is not None and (run.get("framesProbed") != expected
+                                 or [f["frame"] for f in run["frames"]] != expected):
+        raise PixelError(f"the observer was asked about {len(expected)} frames in the checks' windows, and its "
+                         f"answer is about others")
     if not player and any(f.get("asked") for f in run["frames"]):
         raise PixelError("the observer was not asked about the player, and its answer says it asked")
     asked = run.get("objects", {})
     if not isinstance(asked, dict) or set(asked) != set(objects):
         raise PixelError(f"the observer was asked about {', '.join(objects) or 'no named object'}, and its "
                          f"answer is about {', '.join(sorted(map(str, asked))) if isinstance(asked, dict) else 'something else'}")
+    facing = run.get("facing", [])
+    if not isinstance(facing, list) or not set(facing) <= set(objects) or len(set(facing)) != len(facing):
+        raise PixelError("the observer's answer says it tells the facing of an object it was not asked about")
     for role, rows in asked.items():
         if not isinstance(rows, list):
             raise PixelError(f"the observer's answer about {role} is not a list of frames")
@@ -687,6 +853,8 @@ def observe(observer, run_dir, route: dict, objects=(), player: bool = True) -> 
             if not isinstance(boxes, list) or not all(isinstance(b, dict) for b in boxes) or len(boxes) > MAX_BOXES:
                 raise PixelError(f"the observer's answer about {role} at frame {f['frame']} is not a list of "
                                  f"at most {MAX_BOXES} boxes")
+        if expected is not None and [f["frame"] for f in rows] != expected:
+            raise PixelError(f"the observer's answer about {role} is about frames outside the checks' windows")
     return setting, run, images
 
 

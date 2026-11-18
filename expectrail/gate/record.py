@@ -223,13 +223,46 @@ def unverified_fix(doc: dict) -> bool:
     return intent_of(doc) == "fix" and not (doc.get("repair") or {}).get("demonstrated")
 
 
-def _not_demonstrated(counts: dict, repair: dict | None, base_judged: bool) -> str:
+# A check that failed on the base and has no pass or fail after the change (issue #560): the bug was
+# seen, but nothing shows whether it is fixed. Its words are in the reason, so a reader that has only the
+# reasons (the job's status) can tell this case from "no check failed before the change".
+UNDECIDED_AFTER = "could not be decided after the change"
+UNVERIFIED_FIX = "No check reproduced the reported bug, so this fix is not verified"
+UNDECIDED_FIX = ("A check failed before the change, but its result after the change could not be decided, "
+                 "so this fix is not verified")
+
+
+def undecided_after_failure(checks: list[dict]) -> int:
+    """How many checks failed on the base and have neither pass nor fail after the change: they need
+    review, or the replay did not finish. Such a check is not a repair row (rows are REPAIRED checks)."""
+    return sum(1 for c in checks if c.get("before") == "fail" and c.get("after") in ("needs-review", "replay-error"))
+
+
+def unverified_fix_headline(doc: dict) -> str:
+    """The headline for an unverified fix, true to the record. A record or status that carries its
+    checks is read from them; one that carries only reasons is read from the repair reason's words."""
+    checks = doc.get("checks")
+    if isinstance(checks, list):
+        return UNDECIDED_FIX if undecided_after_failure(checks) else UNVERIFIED_FIX
+    said = [r for r in doc.get("reasons") or [] if isinstance(r, str) and r.startswith(NOT_DEMONSTRATED + ":")]
+    return UNDECIDED_FIX if any(UNDECIDED_AFTER in r for r in said) else UNVERIFIED_FIX
+
+
+def _not_demonstrated(counts: dict, repair: dict | None, base_judged: bool, undecided: int = 0) -> str:
     """The reason line for a fix whose repair no check demonstrated. It starts with the reason's name."""
     head = f"{NOT_DEMONSTRATED}: this change is declared as a fix, and "
     rows = (repair or {}).get("rows") or []
+    more = (f"; {undecided} other check{'s' if undecided != 1 else ''} failed before the change and "
+            f"{UNDECIDED_AFTER}") if undecided else ""
     if rows:
         return (head + f"{len(rows)} check{'s' if len(rows) != 1 else ''} failed before the change and passed after it "
-                f"once, but not {REPAIR_RUNS} times of {REPAIR_RUNS} on both sides, so the repair is not demonstrated")
+                f"once, but not {REPAIR_RUNS} times of {REPAIR_RUNS} on both sides, so the repair is not demonstrated"
+                + more)
+    if undecided:
+        one = undecided == 1
+        return (head + f"{undecided} check{'' if one else 's'} failed before the change but "
+                f"{UNDECIDED_AFTER} (needs review, or the replay did not finish), so nothing shows "
+                "the bug is fixed and the repair is not demonstrated")
     if not counts["checks"]:
         return head + "no check ran, so nothing shows the bug or its repair"
     if not base_judged:
@@ -241,7 +274,7 @@ def _not_demonstrated(counts: dict, repair: dict | None, base_judged: bool) -> s
 def decide(counts: dict, held: dict, isolation: dict | None = None, check_problems: int = 0, *,
            intent: str = "none", repair: dict | None = None, base_judged: bool = True,
            anchor: dict | None = None, required_routes_missing: int = 0,
-           observers: dict | None = None) -> tuple[str, list[str]]:
+           observers: dict | None = None, undecided_after_failure: int = 0) -> tuple[str, list[str]]:
     """accept, reject or needs-review, and why.
 
     Accept only when at least one check ran and every public and held-out check passed. Any failure
@@ -257,7 +290,8 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
     the decision is needs-review with the reason ``repair-not-demonstrated``: "no check failed" is not
     "the fix is good" when no check touched the bug. It never turns a reject into anything else, and
     for ``change`` and ``none`` the rule is the one above, unchanged. ``base_judged`` only words the
-    reason: whether any check has a result on the base. For an unverified fix the
+    reason: whether any check has a result on the base, and so does ``undecided_after_failure``: how
+    many checks failed on the base and could not be decided after it. For an unverified fix the
     ``repair-not-demonstrated`` reason is always the first, whatever else is wrong.
 
     ``anchor`` is the record's ``anchor`` block (the player's place asked of the vision model on both
@@ -275,7 +309,8 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
     if reasons:
         return "reject", reasons
     if not counts["checks"]:
-        return "needs-review", ([_not_demonstrated(counts, repair, base_judged)] if unverified else []) + ["no checks ran"]
+        first = [_not_demonstrated(counts, repair, base_judged, undecided_after_failure)] if unverified else []
+        return "needs-review", first + ["no checks ran"]
     if required_routes_missing:
         reasons.append(f"not-exercised: {required_routes_missing} required route(s) were not selected or run")
     if held.get("status") == "judged" and held.get("routes", 0) and not held["checks"]:
@@ -302,7 +337,7 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
     if stands:
         reasons.append(stands)
     if unverified:
-        reasons.insert(0, _not_demonstrated(counts, repair, base_judged))
+        reasons.insert(0, _not_demonstrated(counts, repair, base_judged, undecided_after_failure))
     if reasons:
         return "needs-review", reasons
     total = counts["checks"] + held["checks"]
@@ -380,6 +415,29 @@ def _depth(value, level: int = 1) -> int:
     return level
 
 
+def unlinked_below(base, relative: str) -> Path:
+    """``base / relative``, refusing a link anywhere from ``base`` down (#378).
+
+    A record's own folder may be reached through a link (on macOS every temporary folder is:
+    ``/var`` is a link to ``/private/var``), so links above ``base`` are allowed. Below it, every
+    component of ``relative`` must be a real folder or file and stay inside ``base``: no ``..``,
+    no absolute path, no link. As a fallback the resolved path must still equal the resolved
+    ``base`` joined with ``relative``, so anything the walk misses is still refused.
+    """
+    base = Path(base)
+    rel = Path(relative)
+    if rel.is_absolute() or not rel.parts or any(part in ("", ".", "..") for part in rel.parts):
+        raise RecordError(f"{relative!r} is not a plain path inside its record")
+    current = base
+    for part in rel.parts:
+        current = current / part
+        if current.is_symlink():
+            raise RecordError(f"{relative!r} is reached through a link inside its record")
+    if current.resolve() != base.resolve().joinpath(*rel.parts):
+        raise RecordError(f"{relative!r} does not stay inside its record")
+    return current
+
+
 def read_bytes_capped(path: Path, cap: int = MAX_RECORD_BYTES, label: str = "findings.json") -> bytes:
     """A regular file's bytes, refusing a symlink, a non-file or anything over ``cap``."""
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
@@ -427,6 +485,8 @@ def read_record(path: Path) -> dict:
 
 def check_record(doc) -> None:
     validate(doc, schema())
+    if (doc.get('pullRequest') or {}).get('fixLinks') and intent_of(doc) != 'fix':
+        raise RecordError('a closing-keyword link requires fix intent')
     check_consistency(doc)
 
 
@@ -705,6 +765,7 @@ def check_consistency(doc: dict) -> None:
     check_repair(doc)
     decision, _reasons = decide(counts, held, isolation, doc.get("checkProblems", 0),
                                 intent=intent_of(doc), repair=doc.get("repair"), anchor=doc.get("anchor"),
+                                undecided_after_failure=undecided_after_failure(doc["checks"]),
                                 required_routes_missing=missing_required_routes(doc["specs"], doc["routes"]),
                                 observers=doc.get("observers"))
     if doc["decision"] != decision:
@@ -805,7 +866,7 @@ def check_repair(doc: dict) -> None:
         raise RecordError("the count of demonstrations does not match the repair rows")
 
 
-def repair_words(doc: dict) -> str:
+def _repair_words(doc: dict) -> str:
     """One line on what the change was declared as and whether its repair was shown, for the page and the comment."""
     intent = intent_of(doc)
     if intent == "none":
@@ -820,6 +881,13 @@ def repair_words(doc: dict) -> str:
                 f"{REPAIR_RUNS} times of {REPAIR_RUNS} and passes after it {REPAIR_RUNS} times of {REPAIR_RUNS}"
                 + (f" (and {more} more)" if more else ""))
     return "a fix, and no check demonstrated the repair"
+
+
+def repair_words(doc: dict) -> str:
+    """Shared, escaped by every report/comment reader; provenance never chooses a check."""
+    links = (doc.get('pullRequest') or {}).get('fixLinks', [])
+    source = '; '.join(f"closing-keyword line {link['line']}: {link['text']}" for link in links)
+    return (source + '; ' if source else '') + _repair_words(doc)
 
 
 def check_generated(gen: dict) -> None:

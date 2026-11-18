@@ -137,7 +137,7 @@ class App:
             doc = project_job.prepare(self.store, Path(field(body, 'after')), Path(field(body, 'before')))
         else:
             doc = build(body)
-        settings, _ = auto_fix.configure(body.get('autoFix', False), body.get('attempts'), body.get('usdCap'))
+        settings, _ = auto_fix.configure(body.get('autoFix', False), body.get('attempts'), body.get('usdCap'), agent=body.get('repairAgent'))
         if settings:
             doc['autoFix'] = settings
         from harness.adapters import get

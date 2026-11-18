@@ -4,11 +4,23 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from agents import film_feedback as film
 from harness.run import REPO
 from expectrail import spec_writer
+
+
+# Historical trace fixtures: explicitly select the diagnostic benchmark control.
+def setUpModule():
+    global _trace_control
+    _trace_control = mock.patch.dict("os.environ", {"EXPECTRAIL_OBS_PROVIDER": "trace"})
+    _trace_control.start()
+
+
+def tearDownModule():
+    _trace_control.stop()
 
 
 class FilmFeedbackTest(unittest.TestCase):

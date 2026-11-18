@@ -1,5 +1,8 @@
 # The CI gate: Expectrail on a game repository's pull requests
 
+The [frozen hosted trial handover and Done when audit](254-hosted-trials.md)
+prepare the remaining #254 experiments for Sean without dispatching them.
+
 ## Require Expectrail clearance on the protected branch
 
 Install the pull request caller, its reusable capture workflow and the trusted publisher together
@@ -33,6 +36,21 @@ clean recording covers the smoke sample. Other frames and questions, including o
 lack recorded answers. A missing answer needs review unless a failure already rejects the change.
 A correct-fix trial must use a trusted recording covering the checks exercised. Neither job calls
 a paid model.
+
+## Gate command exit codes
+
+`python -m expectrail.gate.verify` returns **0 for accept, 1 for reject and 2 for
+needs-review**. A stopped verification still writes `findings.json` and returns 2.
+Code **3** means the command refused before verification: for example a nonempty
+output folder, invalid PR identity, or an unreadable/mismatched PR event. It must
+not overwrite a record or run the game in those cases. Argument-parser errors
+use argparse's exit 2 and do not promise a findings record.
+
+With PR identity and `GITHUB_EVENT_PATH`, the command checks that the event names
+the same PR and commits before replay. A local test using synthetic PR identities
+must supply its own event or clear that variable; inheriting the CI runner's real
+PR event tests identity refusal instead of the local verdict's exit code. The
+exit mapping has not changed in #588.
 
 ## On Expectrail's own repository
 
@@ -161,7 +179,7 @@ Both use the actions from the checked-out repository (`./.github/actions/...`) i
 | verify | `require-sandbox` | `false` | `true` refuses to replay the game outside the replay sandbox ([replay-sandbox.md](replay-sandbox.md)): where the runner cannot provide it nothing is replayed and the decision is needs-review. To let the sandbox start, `true` also sets `kernel.apparmor_restrict_unprivileged_userns=0` on the runner (Ubuntu 24.04 ships it on); on a hosted runner that ends with the job, on a self-hosted runner it stays until reboot. `false` changes no setting and sandboxes the game only where the runner already allows it; the record and the comment say how many replays were |
 | verify | `artifact-name` | `expectrail-gate` | The evidence artifact's name |
 | verify | `generated-checks` | empty | An advisory block of checks generated for this change ([jit.md](jit.md)), shown in the comment and the review page; it never changes the decision, and one that cannot be read shows as "no generated checks" |
-| verify | `intent` | `from-pull-request` | What the change is for: `fix`, `change` or `none`, or `from-pull-request`, which reads a label `intent:...` or a description line `Expectrail-Intent: ...` from the event ([a change declared a fix](#a-change-declared-a-fix)); on any other event it is `none` |
+| verify | `intent` | `from-pull-request` | What the change is for: `fix`, `change` or `none`, or `from-pull-request`, which reads closing-keyword links, a label `intent:...` or a description line `Expectrail-Intent: ...` from the event ([a change declared a fix](#a-change-declared-a-fix)); on any other event it is `none`. With PR identity and the event available, a stricter PR declaration overrides an explicit `none` or `change` |
 | comment | `github-token` | the run's token | Reads the verify run's artifact and writes the comment |
 | comment | `artifact-name` | `expectrail-gate` | Must match the verify action's |
 | comment | `watch` | empty | More paths the verdict depends on, one per line (end a folder with `/`); the comment warns when the pull request changes one |
@@ -186,7 +204,7 @@ also checks out the base commit. It then does this:
    changes once the pull request merges. Without a base (a push, or `compare-base: false`), the head's
    own checks are used, and the comment says so.
 2. Replays every route on the head and on the base through the Godot harness ([harness.md](harness.md)).
-3. Judges every approved spec on every route with the evaluator, on the engine's position log. Each
+3. Judges every approved spec on every route with both the engine record and visual evidence. Each
    check gets the review's comparison words ([review.md](review.md)): `REPAIRED`, `PRESERVED`,
    `REGRESSION`, `UNRESOLVED` or `INCONCLUSIVE`.
 4. Replays the held-out routes on the head, if configured, and keeps counts only.
@@ -221,7 +239,12 @@ declared, and a fix is held to more:
   stopped; until November 13, 2026 "no checks ran" or the stop reason came first in those two
   cases), and the comment and the review page
   lead with "No check reproduced the reported bug, so this fix is not verified", then how to get a
-  check. A check that still fails after the change rejects, as always.
+  check. When a check did fail on the base but has no pass or fail on the head (it needs review, for
+  example with no vision key, or its replay did not finish), the reason says so: "N check(s) failed
+  before the change but could not be decided after the change", and the comment, the review page and
+  `expectrail verify` lead with "A check failed before the change, but its result after the change
+  could not be decided, so this fix is not verified" (#560). The decision is the same needs-review.
+  A check that still fails after the change rejects, as always.
 - **`change`** (an intended change of behaviour) and **`none`** are judged by the rule above,
   unchanged, and nothing is replayed again.
 - Declaring `fix` can only take an accept away. Anything typed that is not one of the three stops
@@ -234,6 +257,7 @@ demonstrated that its own runs do not show. A record from before the field reads
 
 **On a pull request** (added November 13, 2026) the intent is read from the pull request itself:
 
+- a closing-keyword link such as `Fixes #284`, `Closes #284` or `Resolves #284`, in any case; or
 - a label `intent:fix`, `intent:change` or `intent:none`, or
 - a line of the description that starts `Expectrail-Intent:` followed by `fix`, `change` or `none`
   and nothing else, for example `Expectrail-Intent: fix`.
@@ -242,6 +266,14 @@ Nothing declared is `none`. With several declarations the strictest wins (`fix`,
 then `none`), and a value that is not one of the three (`intent:bugfix`, `Expectrail-Intent: maybe`)
 is a fix. So adding a label or a line can only move a change towards the stricter path, never away
 from it (`python3 -m expectrail.gate.intent`).
+
+Every closing-keyword link is read as `fix`, including links to issues about features or code,
+cross-repository references and quoted examples. This conservative choice needs no issue-label API
+lookup or new permission. Plain `Part of #284` and `See #284` are not closing declarations. Neither
+`intent:none` nor `Expectrail-Intent: none` can cancel a closing link. Findings and CI bundles keep
+the matched phrase and its 1-based PR-body line in `pullRequest.fixLinks`; reports and comments show
+that source. A changed source line invalidates the captured metadata even if intent stays `fix`.
+See the [case audit and measured counts](linked-bug-fix.md).
 
 Both halves read it. The verify action's `intent` input defaults to `from-pull-request`: it reads the
 declaration from the `pull_request` event file and passes it to the gate (an event file that cannot
@@ -264,10 +296,9 @@ without a demonstrated repair.
 
 What this does not do yet:
 
-- **A pull request that links a bug issue is not yet treated as a fix.** The description says
-  "Closes #N", not whether #N is a bug, and reading the linked issue's labels from the trusted job
-  would need the `issues: read` permission, which only a person may add. `declared(...,
-  links_bug=True)` is there for a caller that knows; neither half of the gate passes it today.
+- **Links are not classified by issue labels.** Every closing-keyword reference is a fix. A future
+  distinction would need an issue lookup and Sean's permission review; an optional
+  [permission proposal](proposals/284-issue-labels.yml.txt) is provided, not installed.
 - **Only approved checks can demonstrate a repair.** A generated check cannot count yet (#271), so
   for most reported bugs today the honest answer is needs review.
 - The three runs are three replays of the same route on the same machine. That shows the check is
@@ -315,9 +346,9 @@ states, never from what an observer returned. Then:
 - An answer whose `replay.sha256` is not this replay's is no answer.
 - When the gate cannot tell how many frames the route should have, nothing passes.
 
-A failure seen in part of the window is still a failure; only a pass has to cover it. The rule
-`engine-only` is not changed by this: there a log that stops early still passes on the rows it has,
-as on main (#357).
+A failure seen in part of the window is still a failure; only a pass has to cover it. The explicit
+`engine-only` diagnostic control also requires the complete engine window and route ticks (#357);
+a short log cannot pass. It is not a product clearance mode.
 
 **Held-out frames stay in unless a person says otherwise.** A visual observer over frames sends them
 to the model's provider. Under `both` the held-out routes are replayed without frames and the visual
@@ -325,9 +356,13 @@ observer is not asked about them, so a failure on the engine's record still coun
 check passes; the reasons say so. `run_gate(heldout_frames_to_visual=True)` sends them (and keeps no
 answer cache). Nothing passes that flag, and whether anything may is Sean's decision.
 
-`run_gate` takes the rule (`rule="both"`, with `visual=` an `expectrail.observers.FramesObserver`), and
+`run_gate` defaults to `rule="both"`; its caller supplies `visual=` an
+`expectrail.observers.FramesObserver`. With no observer it cannot accept. The raw gate command
+constructs this observer, and
 so does the orchestrator's engine (`GodotGate(rule="both", visual=...)`). The record then has
-`observers` (the rule, and the visual observer's name, provider and model), and every row has
+`observers` (the rule, the engine observer's name/version, and the visual observer's name, adapter
+version, provider and model). The version is the observation adapter's release, not a claim about
+provider weights. Old records without versions remain readable; absence means unreported. Every row has
 `observed`: what each observer said before and after, and the SHA256 of the visual observer's answer.
 That answer, an observations document, is in the artifact at
 `observations/<head or base>/<route>/<spec>.visual.json`, with its verdict at
@@ -340,15 +375,15 @@ callable on a stored answer), "two observers on every check" rests on the record
 routes are judged by the same rule (see above for their frames). `contracts/examples/findings-both-observers.json` is such a record; it was made with
 the tests' stand-in replay and stand-in model, not by a live run.
 
-What is and is not in use, as of November 13, 2026:
+What is and is not in use:
 
 - The orchestrator (`verify`, `sample`, and the app through verify) constructs a `FramesObserver`
   and uses `both`. Its findings record and job status carry the `observers` block; `report` says
   which observers judged in plain words.
-- The earlier verify action uses `engine-only`. The two-job gate above uses `both`.
+- The raw gate command and two-job gate above use `both`. An explicit library `engine-only` call
+  remains for diagnostic comparisons and tests; it is not product clearance.
 - No live model was asked to test this change. Tests use scripted SAM 3.1 wire-format answers.
-- Decision B (#327) remains: an anchored-box difference needs review, never a reject. #373 is
-  still open at the start of this work; this change does not implement or alter that check.
+- Decision B (#327) remains: an anchored-box difference needs review, never a reject.
 
 Verification (`expectrail verify`, `expectrail sample`, and the app through verify) needs
 `MODEL_API_KEY` and `EXPECTRAIL_SAM_USD_CAP` in the verifier's environment. It judges with both the
@@ -512,13 +547,9 @@ and searches every output file, the log and the comment for its route names.
   open pull requests may see the held-out set anyway, and set `require-sandbox: 'true'` with it.
   This repository does not pass it on pull requests (OBAAF-GHA-001). A fork's pull request never gets
   it, because GitHub gives forks no secrets and the action checks the head repository too.
-- **On a pull request the position log is the only observer.** No model key is used, so SAM 3.1 does
-  not judge, and the comment and the review page say so on every verdict ("Judged on: the engine's
-  record only"). That is not the full verdict: see [Two observers](#two-observers-one-rule) below. The
-  harness logs the node named `Player`, and the stand-in observations use the platformer demo's player
-  size ([sam.md](sam.md), `agents/observations.py`). A spec about any other object needs review. On
-  another game, a spec's `tolerancePx` is measured against that size, so its meaning is approximate.
-  Giving the verify job a model key would put the key next to the pull request's code.
+- **A pull request needs both observers.** The capture job holds no vision key. The trusted judge
+  uses recorded visual answers; a missing answer is needs-review. It never falls back to an
+  engine-only accept. See [Two observers](#two-observers-one-rule) and the two-job setup above.
 - **Godot only, one way to replay.** Each route costs one replay on the head and one on the base. The
   smoke route took about 33 seconds in the 2-core container without a GPU that this was built on.
 - **Artifacts of a public repository are public.** Everything in the evidence artifact can be
@@ -576,3 +607,134 @@ Open the job summary for the outcome and instructions. The artifact contains
 `repair-run.json` and, only for an accepted repair, its patch. A person reviews and
 applies it. This workflow uses no live fixer or model key, including on forks. It
 never pushes, comments, opens a pull request or changes the published clearance.
+
+## Trusted CI receipts (#255): proposal and offline checker
+
+The code can write the existing `expectrail.receipt/v1` from a trusted recorded-CI
+judgment and check a receipt end to end. **The attesting workflow is a proposal;
+no real CI receipt was attested or verified for this change.** Sean installs
+[the complete proposed trusted workflow](proposals/255-trusted-receipt.yml.txt)
+after the producer/checker reaches the trusted default branch. It leaves the
+candidate/capture jobs unchanged. The [new example](../contracts/examples/receipt-ci.v1.json)
+is generated by an offline replay/`gh` stand-in test. Its carried key alone grants
+no authority; it has no real GitHub attestation.
+
+The producer is `python -m expectrail.gate.ci_receipt write`. It consumes the
+existing trusted gate's findings, saved public capture and `ci_checks.start`
+state. It binds PR/base/head/intent, captured policy, routes, replay digests and
+game trees; it calls the existing receipt signer/reader. It never replays,
+observes, proposes, repairs or decides a change. The gate's decision is copied.
+Accept with both observers and required, complete sandbox accounting can have
+full evidence; other decisions stay partial and cannot clear in trust-check.
+The profile is explicitly recorded vision, with no live fallback: model API cost
+is $0. The producer requires the gate's `recorded: ...` bank stamp; a live-provider
+report is refused even with the CLI flag. This producer does not account for a live observer/fixer profile or GitHub
+runner billing. A future live profile needs its own measured spend input.
+
+The fresh Ed25519 key stays in memory; only its public key and signature are
+written. The receipt expires after 24 hours. The proposed job's 14-day artifact
+retention does not extend that expiry or clear a later head. The signature checks
+the canonical body; the GitHub attestation checks the exact receipt file bytes.
+
+### What Sean installs and checks
+
+1. Review the proposal's two added permissions, **only on the trusted judge**:
+   `id-token: write` and `attestations: write`. Its top-level permissions remain
+   empty. Keep the existing `workflow_run`/PR-path guard, protected `main-only`
+   environment, trusted checkout and dedicated App publisher. Fork PRs can trigger
+   this parent job; their checkout is data, and their code never runs with its
+   credentials. The candidate retains `contents: read`, no environment/secrets and
+   no persisted checkout credentials. No new static signing secret is needed.
+2. Keep the receipt and predicate after successful trusted judgment, using code
+   from `policy`. `--recorded-vision` states the one supported $0 API profile.
+   The producer refuses mismatched state/capture/result, missing engine version,
+   private-suite results and an existing output; it never overwrites a receipt.
+3. Review `actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6`, the public `v4`
+   tag read on **2026-11-17**. Its [pinned action inputs](https://github.com/actions/attest/blob/1e69f48acb82d1966a394da916b4c1698aa569d6/action.yml)
+   provide `subject-path`, `predicate-type`, `predicate-path`, and output
+   `bundle-path`. The subject is only `receipt.json`; the custom type is
+   `https://expectrail.tech/attestation/receipt/v1`. Registry push and storage
+   records are disabled. Preserve the public Sigstore bundle with the report.
+   The added cryptography pin is the existing `requirements-dev.txt` value.
+4. Keep receipt/attestation/proof success in `REPORT_READY`. Their failure is
+   named `CI_RECEIPT_MISSING` or `CI_ATTESTATION_MISSING`; the proposal preserves an
+   earlier error such as `EVIDENCE_MISMATCH`. A failed attesting step cannot leave
+   a successful clearance. A successful receipt for reject/needs-review still
+   carries that original gate decision.
+5. In that same person-reviewed installation, update the **exact** permission
+   expectation in `WorkflowSafetyTest.test_the_trusted_workflow_runs_only_on_workflow_run_with_minimal_permissions`
+   to the new five-key dictionary shown in the proposal. Keep every candidate
+   read-only/no-secret, trusted-checkout, data-only and publisher-source assertion.
+   The current test remains unchanged in this patch because the workflow has not
+   changed. The new proposal test checks the planned role boundary separately.
+
+Installing the proposal and recording a real receipt remains Sean's action. The
+attestation-backed path needs no permanent issuer key. Publishing the first
+trusted offline issuer key/store is still the separate human step in
+[trust-store.md](trust-store.md).
+
+### Read a real run without trusting its own claims
+
+Use an independently known repository, signing workflow/ref, PR head, intended
+build and approved policy. Do not copy the expected identity/build/policy from the
+receipt you are checking. For this recorded-CI producer:
+
+- `headSha256` / `baseSha256`: SHA-256 of the lowercase ASCII 40-digit Git commit ID.
+- `buildSha256`: the gate's game-tree digest of the intended head build.
+- `policySha256`: `ci_receipt.policy_digest(BASE_SHA, checks.digest)`, where `checks`
+  is `verify.read_checks(TRUSTED_BASE, SPECS, ROUTES, "base")`. The canonical hash
+  includes the base commit (therefore its verifier and recording bank), captured
+  checks digest, both-observer rule, required sandbox and recorded-CI profile.
+- `routeSetSha256`: the canonical public route-name to route-SHA-256 mapping.
+
+The verifier version includes its base commit, the adapter version comes from the
+saved replay, and the observer version names the recorded profile and its model
+stamp. The receipt's required-check IDs are canonical SHA-256 digests of
+`[spec ID, route name]`; its bound findings/report contain the readable names.
+
+Download the trusted `expectrail-report` into `evidence/report`. Preserve the
+candidate capture ZIP's exact bytes as `evidence/capture.zip`; do not unpack and
+repack them. For example, with independently selected run/artifact IDs:
+
+```bash
+gh run download TRUSTED_RUN --repo OWNER/NAME --name expectrail-report --dir evidence/report
+gh api repos/OWNER/NAME/actions/artifacts/CAPTURE_ARTIFACT_ID/zip > evidence/capture.zip
+```
+
+Use the public artifact metadata to select the capture from the correct
+run/attempt (`expectrail-ATTEMPT.zip`). A wrong download fails the digest check.
+The receipt hashes every original report evidence file plus `capture.zip`.
+Receipt, predicate and Sigstore proof are verification metadata added afterwards;
+the attestation binds the receipt itself, avoiding a circular self-hash.
+
+```bash
+python -m expectrail.gate.ci_receipt check evidence/report/receipt.json \
+  --repo OWNER/NAME \
+  --signer-workflow OWNER/NAME/.github/workflows/expectrail-comment.yml \
+  --source-ref refs/heads/main \
+  --bundle evidence/report/receipt-attestation.sigstore.json \
+  --evidence-root evidence \
+  --expect-head HEAD_DIGEST --expect-build BUILD_DIGEST --expect-policy POLICY_DIGEST
+```
+
+Use the actual trusted default ref if it differs from `refs/heads/main`, including
+the disposable #254 repository. Install `expectrail[trust]` and GitHub CLI first.
+The checker calls `attestation.check` (which runs `gh attestation verify` with all
+pins and validates its JSON again), then the existing trust-check implementation
+on the same receipt bytes. It independently hashes every named artifact and names
+every missing, changed, unsafe or linked file. No signed text selects a command,
+model, check or approval. Receipt changes during verification refuse the check.
+
+Exit **0** means the pinned issuer, independent expectations, freshness, full
+required-check coverage, original accept decision and all supplied artifact bytes
+held. Exit **1** means no clearance and names the failed conditions. Exit **2**
+means nothing checked/unusable input, naming a missing receipt/`gh`/dependency,
+unreadable receipt/verification output or a receipt that changes while checked. `write` returns 0 for a written receipt and 2 for refusal.
+A verified attestation on partial evidence gives **no clearance**.
+
+This establishes who attested these bytes and what the trusted gate recorded.
+It does not prove a repair rate, completeness of the check set, new live vision
+accuracy, an authenticated capture beyond the existing pipeline, a hosted fork
+secret boundary or branch enforcement. Keep #255 open until Sean installs the
+proposal and records a real receipt through `gh attestation verify`,
+`attestation check` and `trust-check` with the independent pins and actual evidence.

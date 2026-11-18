@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/repair-publication.v1.schema.json",
+  "title": "expectrail.repair-publication/v1",
+  "description": "Authenticated draft preparation, never approval or a gate verdict. Serialized plans are audit data; only unchanged in-process prepared plans can publish.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "repository",
+    "baseBranch",
+    "game",
+    "baseSha",
+    "headSha",
+    "headTree",
+    "artifactSha256",
+    "recordSha256",
+    "patchSha256",
+    "pullRequest",
+    "run",
+    "attempt",
+    "fixerSource",
+    "format",
+    "changes"
+  ],
+  "properties": {
+    "repository": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "baseBranch": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "game": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "baseSha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "headSha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "headTree": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "artifactSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "recordSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "patchSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "pullRequest": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "run": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "fixerSource": {
+      "enum": [
+        "fixture",
+        "recorded",
+        "muse",
+        "claude",
+        "codex",
+        "aider",
+        "llm-patch"
+      ]
+    },
+    "format": {
+      "const": "expectrail.repair-publication/v1"
+    },
+    "changes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 512,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "mode",
+          "content"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "mode": {
+            "enum": [
+              "100644",
+              "100755"
+            ]
+          },
+          "content": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 8388608
+          }
+        }
+      }
+    }
+  }
+}

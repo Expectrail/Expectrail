@@ -54,6 +54,7 @@ var _ticks: int = 0
 var _tick: int = 0
 var _trace: Array = []
 var _trace_path: String = ""
+var _record_ui_integers := false
 var _player_name: String = "Player"
 var _player_node: String = ""
 var _player_group: String = ""
@@ -121,6 +122,7 @@ func _ready() -> void:
 			int(ProjectSettings.get_setting("display/window/size/viewport_width", get_window().size.x)),
 			int(ProjectSettings.get_setting("display/window/size/viewport_height", get_window().size.y)))
 	_trace_path = args.get("trace", "")
+	_record_ui_integers = args.get("ui-integers", "false") == "true"
 	_player_name = args.get("player", "Player")
 	_coin_class = StringName(args.get("coins", "Coin"))
 	_sprite_name = args.get("sprite", "Sprite2D")
@@ -396,6 +398,8 @@ func record() -> void:
 		if _stopped:
 			return
 	var row := {"tick": _tick, "frame": Engine.get_frames_drawn()}
+	if _record_ui_integers:
+		row["uiIntegers"] = _ui_integers()
 	if _player != null:
 		row["player"] = [snappedf(_player.global_position.x, 0.001), snappedf(_player.global_position.y, 0.001)]
 		# Lifecycle state, not evidence that the sprite was drawn (vision still judges that).
@@ -517,11 +521,43 @@ func _finish() -> void:
 		if not _bindings.is_empty():
 			out["bindings"] = _bindings
 			out["capabilities"]["roleBoxes"] = true
-			var size := get_viewport().get_visible_rect().size
+			var size := get_window().size  # Captured pixels, not the logical stretch viewport.
 			out["viewport"] = [size.x, size.y]
 		file.store_string(JSON.stringify(out, "", false))
 		file.close()
 	get_tree().quit(0)
+
+
+func _ui_integers():
+	# Bounded engine Label state, not proof of drawn pixels. Scan the current scene only;
+	# the harness and its diagnostic UI must never become game evidence.
+	var scene := get_tree().current_scene
+	if scene == null:
+		return null
+	var pending: Array[Node] = [scene]
+	var found: Array[int] = []
+	var visited := 0
+	while not pending.is_empty():
+		var node: Node = pending.pop_back()
+		visited += 1
+		if visited > 4096:
+			return null
+		if node is Label and node.is_visible_in_tree():
+			var text: String = node.text
+			# No free-form strings enter the trace or a later model prompt.
+			if text.length() <= 12 and text.is_valid_int():
+				var number := text.to_int()
+				if absi(number) > 1000000000 or found.size() >= 32:
+					return null
+				found.append(number)
+			elif text.is_valid_int():
+				return null
+		for child in node.get_children():
+			if pending.size() >= 4096:
+				return null
+			pending.append(child)
+	found.sort()
+	return found
 
 
 func _coin_positions() -> Array:

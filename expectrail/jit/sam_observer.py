@@ -141,11 +141,11 @@ class SamAnchorObserver:
         and the last one the route's ticks fill, within ``first``, at most ``max_frames``."""
         return plan_frames(route, self.step, self.every, self.first, self.max_frames)
 
-    def most_images(self, route: dict, objects=(), player: bool = True) -> int:
+    def most_images(self, route: dict, objects=(), player: bool = True, windows=None) -> int:
         """The most images one replay of ``route`` can take: one a planned frame for the player (when it is
-        asked about), and up to pixel.MAX_BOXES a planned frame for each role in ``objects``. What the
-        budget reserves for."""
-        return len(self.frames(route)) * pixel.images_per_frame(player, self._objects(objects))
+        asked about), and up to pixel.MAX_BOXES a planned frame for each role in ``objects``, the planned
+        frames being those inside ``windows`` (pixel.py ``planned``; None: all). What the budget reserves for."""
+        return len(pixel.planned(self, route, windows)) * pixel.images_per_frame(player, self._objects(objects))
 
     def _objects(self, objects) -> tuple[str, ...]:
         objects = tuple(objects)
@@ -160,7 +160,7 @@ class SamAnchorObserver:
             raise pixel.PixelError("named objects are asked about with their logged boxes, so only with box 'body'")
         return objects
 
-    def __call__(self, run_dir, route: dict, objects=(), player: bool = True) -> dict:
+    def __call__(self, run_dir, route: dict, objects=(), player: bool = True, windows=None) -> dict:
         run_dir = Path(run_dir)
         objects = self._objects(objects)
         if not isinstance(player, bool):
@@ -172,7 +172,10 @@ class SamAnchorObserver:
         if recorded is not None and recorded != setting:
             raise pixel.PixelError(f"the recorded answers were asked with {json.dumps(recorded, sort_keys=True)}, "
                                    f"and this observer asks with {json.dumps(setting, sort_keys=True)}")
-        planned = self.frames(route)
+        # Only the planned frames inside the checks' windows are asked about (#605; pixel.py ``planned``).
+        planned = pixel.planned(self, route, windows)
+        if not planned:
+            raise pixel.PixelError("the checks' windows hold no frame this observer would be asked about")
         replay, hashes, on_disk = checked_replay(run_dir, route, planned, self.fps, self.ticks_per_second)
         replayed = str(replay["route"]["name"])
         # Recorded answers were asked about one plan of frames. This observer must plan exactly those, or
@@ -185,7 +188,7 @@ class SamAnchorObserver:
                 raise pixel.PixelError(f"the recorded answers were asked about {len(recorded_plan)} frames "
                                        f"({_frames_text(recorded_plan)}), and this observer plans {len(planned)} "
                                        f"({_frames_text(planned)}): ask and judge with the same --sam-every and "
-                                       f"--sam-first")
+                                       f"--sam-first, and checks with the same windows")
         try:
             trace = load_trace(run_dir)
             first = next(iter(on_disk))

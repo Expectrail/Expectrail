@@ -1,0 +1,69 @@
+Recorded local run. Local paths replaced and trailing spaces trimmed; raw log is in the handover.
+Original SHA-256: e90961dff3faa73c33a0569d137c789ac0bee32315c0d5651b71e6c7eef26b74
+
+test_bundled_game (tests.test_auto_route_engine.AutoRouteEngineTest.test_bundled_game) ... ok
+test_crate_run (tests.test_auto_route_engine.AutoRouteEngineTest.test_crate_run) ... ok
+test_pause_and_resume_keep_clock_running_and_game_obeys_pause (tests.test_auto_route_engine.AutoRouteEngineTest.test_pause_and_resume_keep_clock_running_and_game_obeys_pause) ... ok
+test_unseeded_random_source_reports_ticks_without_writing_route (tests.test_auto_route_engine.AutoRouteEngineTest.test_unseeded_random_source_reports_ticks_without_writing_route) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 54.509s
+
+OK
+Replaying input map: run 1 of 3.
+Replaying input map: run 2 of 3.
+Replaying input map: run 3 of 3.
+Three complete traces are identical (headless replays; rendered images were not compared).
+Route: 2094 physics ticks (17.45 seconds at 120 ticks/second), seed 1.
+  move_left: 1 press(es), 120 ticks (1 seconds) each.
+  move_left_p1: 1 press(es), 120 ticks (1 seconds) each.
+  move_left_p2: 1 press(es), 120 ticks (1 seconds) each.
+  move_right: 1 press(es), 120 ticks (1 seconds) each.
+  move_right_p1: 1 press(es), 120 ticks (1 seconds) each.
+  move_right_p2: 1 press(es), 120 ticks (1 seconds) each.
+  jump: 3 press(es), 12 ticks (0.1 seconds) each.
+  jump_p1: 3 press(es), 12 ticks (0.1 seconds) each.
+  jump_p2: 3 press(es), 12 ticks (0.1 seconds) each.
+  shoot: 3 press(es), 12 ticks (0.1 seconds) each.
+  shoot_p1: 3 press(es), 12 ticks (0.1 seconds) each.
+  shoot_p2: 3 press(es), 12 ticks (0.1 seconds) each.
+  splitscreen: 3 press(es), 12 ticks (0.1 seconds) each.
+  toggle_fullscreen: 3 press(es), 12 ticks (0.1 seconds) each.
+  toggle_pause: 3 press(es), 12 ticks (0.1 seconds) each.
+Pauses: 30 ticks (0.25 seconds) before and between actions; 60 ticks after the last release.
+The bound player (Player) moved during the replay. Movement alone does not prove the actions caused it.
+Wrote /tmp/expectrail-auto-route-test-23l184ho/route.json.
+
+Engine: {'name': 'godot', 'version': '4.7.2.stable.official.ed1daf0bf', 'renderer': 'opengl3', 'device': None}
+Replaying input map: run 1 of 3.
+Replaying input map: run 2 of 3.
+Replaying input map: run 3 of 3.
+Three complete traces are identical (headless replays; rendered images were not compared).
+Route: 243 physics ticks (4.05 seconds at 60 ticks/second), seed 1.
+  left: 1 press(es), 60 ticks (1 seconds) each.
+  right: 1 press(es), 60 ticks (1 seconds) each.
+  jump: 3 press(es), 6 ticks (0.1 seconds) each.
+Pauses: 15 ticks (0.25 seconds) before and between actions; 30 ticks after the last release.
+The bound player (Player) moved during the replay. Movement alone does not prove the actions caused it.
+Wrote /tmp/expectrail-auto-route-test-6diptso8/route.json.
+
+Engine: {'name': 'godot', 'version': '4.7.2.stable.official.ed1daf0bf', 'renderer': 'opengl3', 'device': None}
+Replaying input map: run 1 of 3.
+Replaying input map: run 2 of 3.
+Replaying input map: run 3 of 3.
+Three complete traces are identical (headless replays; rendered images were not compared).
+Route: 168 physics ticks (2.8 seconds at 60 ticks/second), seed 1.
+  right: 1 press(es), 60 ticks (1 seconds) each.
+  toggle_pause: 3 press(es), 6 ticks (0.1 seconds) each.
+Pauses: 15 ticks (0.25 seconds) before and between actions; 30 ticks after the last release.
+The bound player (Player) moved during the replay. Movement alone does not prove the actions caused it.
+Wrote /tmp/expectrail-auto-route-test-q3zx40ym/route.json.
+
+Engine: {'name': 'godot', 'version': '4.7.2.stable.official.ed1daf0bf', 'renderer': 'opengl3', 'device': None}
+Replaying input map: run 1 of 3.
+Replaying input map: run 2 of 3.
+Replaying input map: run 3 of 3.
+The project is not yet deterministic under the harness. No route was written.
+Differing ticks (zero-based; ranges inclusive): 0-242.
+
+Engine: {'name': 'godot', 'version': '4.7.2.stable.official.ed1daf0bf', 'renderer': 'opengl3', 'device': None}

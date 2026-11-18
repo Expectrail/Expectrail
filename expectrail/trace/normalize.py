@@ -140,6 +140,13 @@ def normalize(trace: dict, route: dict, *, episode_id: str, trace_bytes: bytes |
                         "enemies": collection("enemies", enemies_cap),
                         "projectiles": collection("projectiles", projectiles_cap),
                         "coins": coins, "view": view})
+        if "uiIntegers" in r:
+            values = r["uiIntegers"]
+            if values is not None and (not isinstance(values, list) or len(values) > 32
+                    or any(type(v) is not int or abs(v) > 10**9 for v in values)):
+                raise EpisodeError(f"tick {tick}: malformed uiIntegers")
+            samples[-1]["uiIntegers"] = None if values is None else list(values)
+
     ticks = [s["tick"] for s in samples]
     if ticks != sorted(ticks) or len(set(ticks)) != len(ticks):
         raise EpisodeError("ticks are not strictly increasing")

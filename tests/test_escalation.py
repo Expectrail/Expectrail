@@ -45,6 +45,18 @@ REJECTED = {"decision": "reject", "checks": [
 ]}
 
 
+
+# Historical trace fixtures: explicitly select the diagnostic benchmark control.
+def setUpModule():
+    global _trace_control
+    _trace_control = mock.patch.dict("os.environ", {"EXPECTRAIL_OBS_PROVIDER": "trace"})
+    _trace_control.start()
+
+
+def tearDownModule():
+    _trace_control.stop()
+
+
 class PolicyTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

@@ -10,7 +10,7 @@
   "basePatchSha256": [
    "cd11e09f47aebbc823f2c6e4968876698b9c8d5332e81392f4baec03473f532f"
   ],
-  "profileSha256": "7ad60a7ddc662fab9bcade5b743a34278a3b1a3f14af59a23f6e38a902fe65ec",
+  "profileSha256": "e5fbddb4b9b1ad1028294bcb4e1c67fb7553179e9a7b508f99e279349c603bcb",
   "model": "muse-spark-1.3",
   "promptSha256": "7222d51bc71cbe70237844c68498a694bb7c8da10779bbe93536917a5eb4d30b"
  },

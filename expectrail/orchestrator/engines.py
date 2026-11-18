@@ -83,6 +83,11 @@ class Gate:
         if adapter is None or not adapter.can_verify():
             # The registry changed after this engine was made. Nothing is run on a guess.
             return [st.diagnostic("INPUT_INVALID", stage="preparing", detail=why_not(self.name))]
+        from expectrail.orchestrator import private_context as heldout
+        try:
+            heldout.validate(request)
+        except req.RequestError:
+            return [st.diagnostic("INPUT_INVALID", stage="preparing", detail=heldout.REFUSED)]
         head = Path(request["head"]["checkout"])
         game = head / request["project"]["game"]
         if not adapter.is_project(game):
@@ -153,15 +158,18 @@ class Gate:
                 return stopped
             from expectrail.orchestrator.reproduction import read
             reproduction = read(paths.staging)
-        document = gate.run_gate(
-            repo=Path(request["head"]["checkout"]), game=project["game"], routes=project["routes"],
-            specs=project["specs"], out=paths.staging, work=paths.work / "gate",
-            base=Path(base["checkout"]) if base else None,
-            # The isolated class: every replay in the sandbox, or the gate refuses and nothing is accepted.
-            require_sandbox=request["executionClass"] == "isolated",
-            intent=request.get("intent", "none"),
-            checks=checks, rule=self._rule, visual=visual, on_phase=advance, adapter=self.name,
-            **({"replay": self._replay} if self._replay is not None else {}))
+        from expectrail.orchestrator import private_context as heldout
+        with heldout.snapshot(request) as private_root:
+            document = gate.run_gate(
+                repo=Path(request["head"]["checkout"]), game=project["game"], routes=project["routes"],
+                specs=project["specs"], out=paths.staging, work=paths.work / "gate",
+                base=Path(base["checkout"]) if base else None,
+                # The isolated class: every replay in the sandbox, or the gate refuses and nothing is accepted.
+                require_sandbox=request["executionClass"] == "isolated",
+                heldout=private_root, heldout_frames_to_visual=request.get("heldOut", {}).get("framesToVisual", False),
+                intent=request.get("intent", "none"),
+                checks=checks, rule=self._rule, visual=visual, on_phase=advance, adapter=self.name,
+                **({"replay": self._replay} if self._replay is not None else {}))
         # The grade stays `diagnostic` even when every replay was sandboxed: the ledger's `isolated`
         # also needs a separate trusted job that judges and signs (#254, #255). What the sandbox did
         # is in the evidence: findings.json, `isolation`.

@@ -436,6 +436,19 @@
                 "minItems": 6
               }
             ]
+          },
+          "uiIntegers": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "maxItems": 32,
+            "items": {
+              "type": "integer",
+              "minimum": -1000000000,
+              "maximum": 1000000000
+            },
+            "description": "Optional bounded engine Label state from the raw trace; absent means unknown. Never inferred from coins or another field."
           }
         }
       }

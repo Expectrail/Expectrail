@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://expectrail.tech/contracts/fixer-invocation.v1.schema.json",
   "title": "expectrail.fixer-invocation/v1",
-  "description": "Trusted host admission record. NanoUSD reservations are pre-send bounds only for the fixed-price stand-in. Live Muse pricing is unavailable; unavailable records must forward nothing. Observed tokens never refund a reservation.",
+  "description": "Host-owned pre-send reservations. Token-priced requests use an explicit output cap and recorded tariff. Response usage is diagnostic and never refunds a reservation.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -30,7 +30,8 @@
     "basis": {
       "enum": [
         "unavailable",
-        "fixed-price-fixture"
+        "fixed-price-fixture",
+        "token-price"
       ]
     },
     "capNanoUsd": {
@@ -81,8 +82,161 @@
         "fixer-invocation-cap-missing",
         "fixer-bound-unavailable",
         "fixer-meter-unavailable",
-        null
+        null,
+        "fixer-provider-violation",
+        "fixer-month-ledger-required",
+        "fixer-model-unavailable"
       ]
+    },
+    "requests": {
+      "type": "array",
+      "maxItems": 1024,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bodyBytes",
+          "bodySha256",
+          "inputTokenBound",
+          "outputTokenCap",
+          "reservedNanoUsd",
+          "reportedUsage"
+        ],
+        "properties": {
+          "bodyBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "bodySha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "inputTokenBound": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "outputTokenCap": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reservedNanoUsd": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reportedUsage": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "required": [
+              "inputTokens",
+              "outputTokens"
+            ],
+            "properties": {
+              "inputTokens": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "outputTokens": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "byteTokenBound": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "pricing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "model",
+        "inputNanoUsdPerToken",
+        "outputNanoUsdPerToken",
+        "source",
+        "inputBound"
+      ],
+      "properties": {
+        "provider": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "inputNanoUsdPerToken": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "outputNanoUsdPerToken": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "inputBound": {
+          "enum": [
+            "utf8-json-bytes-plus-framing-v1",
+            "utf8-json-bytes-plus-context-ceiling-v1"
+          ]
+        },
+        "status": {
+          "enum": [
+            "active",
+            "deprecated",
+            "withdrawn"
+          ]
+        },
+        "outputTokenField": {
+          "enum": [
+            "max_tokens",
+            "max_completion_tokens"
+          ]
+        },
+        "baseInputNanoUsdPerToken": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "baseOutputNanoUsdPerToken": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "contextTokenCeiling": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "validUntil": {
+          "type": "string"
+        }
+      }
+    },
+    "availability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model",
+        "status"
+      ],
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "available",
+            "unavailable"
+          ]
+        }
+      }
     }
   }
 }

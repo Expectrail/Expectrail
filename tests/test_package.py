@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import sysconfig
+import tarfile
 import tempfile
 import tomllib
 import unittest
@@ -29,7 +30,9 @@ REPO = Path(__file__).resolve().parent.parent
 BUNDLE = "expectrail/_bundle/"
 # What the build reads. Anything else in the tree cannot reach the wheel.
 SOURCES = ("pyproject.toml", "setup.py", "README.md", "LICENSE", "NOTICE", "expectrail", "harness", "agents",
-           "contracts", "game", "bugs/physics-fall-through", "tests/outside/kinematic-character/routes/walk.json",
+           "contracts", "game", "bugs/physics-fall-through",
+           "docs/run-it/vision/clean.json", "docs/run-it/vision/fall-through-bug.json",
+           "docs/run-it/vision/fall-through-repair.json", "tests/outside/kinematic-character/routes/walk.json",
            "tests/outside/recordings/kinematic-character/calibration.json",
            "tests/outside/recordings/kinematic-character/vision-recording.json")
 BUILT: dict = {}
@@ -39,7 +42,7 @@ def setUpModule():
     spec = importlib.util.find_spec("setuptools")
     if spec is None:
         return
-    tmp = Path(tempfile.mkdtemp(prefix="expectrail-package-"))
+    tmp = Path(tempfile.mkdtemp(prefix="expectrail-package-")).resolve()  # Python reports resolved paths (#378)
     BUILT["tmp"] = tmp
     src = tmp / "src"
     for name in SOURCES:
@@ -70,6 +73,80 @@ def module_lists() -> dict[str, set[str]]:
     raise AssertionError("setup.py has no BUNDLED_MODULES")
 
 
+def setup_helpers() -> dict:
+    """setup.py's module-level functions and constants, without calling setup()."""
+    module = ast.parse((REPO / "setup.py").read_text(encoding="utf-8"))
+    keep = [node for node in module.body if isinstance(node, (ast.FunctionDef, ast.Assign))]
+    namespace: dict = {}
+    exec(compile(ast.Module(body=keep, type_ignores=[]), "setup.py", "exec"), namespace)
+    return namespace
+
+
+class ReadmeOrderTest(unittest.TestCase):
+    def test_a_reader_meets_the_name_before_the_install_command(self):
+        # #614, point 3. tools.quickstart_timer still requires the first `sh` block to be the install.
+        text = (REPO / "README.md").read_text(encoding="utf-8")
+        first_block = text.index("```")
+        self.assertLess(text.index('alt="Expectrail"'), first_block)
+        self.assertLess(text.index("\n# Expectrail\n"), first_block)
+        self.assertTrue(text[first_block:].startswith("```sh\npython3 -m pip install .\n```"))
+
+
+class QualifyStringImportsTest(unittest.TestCase):
+    """#614: the builder qualifies module names given as strings, and refuses what it cannot read."""
+
+    def setUp(self):
+        self.qualify = setup_helpers()["qualify_imports"]
+
+    def test_literal_module_names_in_import_calls_are_qualified(self):
+        cases = {
+            'import importlib\nm = importlib.import_module("agents.sam_observations")\n':
+                'import importlib\nm = importlib.import_module("expectrail._bundle.agents.sam_observations")\n',
+            "from importlib import import_module\nm = import_module('harness.run')\n":
+                "from importlib import import_module\nm = import_module('expectrail._bundle.harness.run')\n",
+            'm = __import__("harness")\n': 'm = __import__("expectrail._bundle.harness")\n',
+            'import importlib.util\ns = importlib.util.find_spec("agents.fixer")\n':
+                'import importlib.util\ns = importlib.util.find_spec("expectrail._bundle.agents.fixer")\n',
+            'import runpy\nrunpy.run_module("agents.loop")\n':
+                'import runpy\nrunpy.run_module("expectrail._bundle.agents.loop")\n',
+            'import importlib\nm = importlib.import_module(name="agents.x")\n':
+                'import importlib\nm = importlib.import_module(name="expectrail._bundle.agents.x")\n',
+        }
+        for source, expected in cases.items():
+            with self.subTest(source=source):
+                self.assertEqual(self.qualify(source), expected)
+
+    def test_other_strings_are_left_byte_for_byte(self):
+        source = ('import importlib\n'
+                  'a = importlib.import_module(".sam_observations", __package__)\n'
+                  'b = importlib.import_module("json")\n'
+                  "c = __import__('shutil')\n"
+                  'd = "agents/observations.py"\n'
+                  'e = f"agents.sam_observations is not installed: {a}"\n'
+                  'f = "harness and agents"\n'
+                  'g = "agentsx.y"\n')
+        self.assertEqual(self.qualify(source), source)
+
+    def test_what_it_cannot_read_stops_the_build(self):
+        for source in ('import importlib\nm = importlib.import_module(name)\n',
+                       'import importlib\nm = importlib.import_module(f"agents.{x}")\n',
+                       'import importlib\nm = importlib.import_module("agents." + x)\n',
+                       'import importlib\nm = importlib.import_module()\n',
+                       'import sys\ncmd = [sys.executable, "-m", "agents.loop"]\n',
+                       'NAME = "harness.run"\n'):
+            with self.subTest(source=source), self.assertRaises(ValueError) as caught:
+                self.qualify(source)
+            self.assertIn("line 2" if source.count("\n") == 2 else "line 1", str(caught.exception))
+
+    def test_the_repositorys_observations_module_imports_its_provider_relatively(self):
+        # The source itself needs no rewrite; the builder's rewrite is the fallback.
+        text = (REPO / "agents/observations.py").read_text(encoding="utf-8")
+        self.assertNotIn('import_module("agents.', text)
+        staged = self.qualify(text)
+        self.assertEqual(staged.count('importlib.import_module(".sam_observations", __package__)'), 2)
+        self.assertNotIn('import_module("expectrail._bundle.', staged)
+
+
 # Parts of the `expectrail` package that are not in the wheel, each with why. A new subpackage or
 # module must be put in the wheel or added here: the test below fails until one is chosen.
 NOT_PACKAGED = {
@@ -86,14 +163,14 @@ NOT_PACKAGED = {
 }
 # Imports a packaged module makes only on a path a verification never takes.
 NOT_ON_A_VERIFICATION = {
-    "agents.trust": "only the standalone fixer demo plants a poisoned README; repair never requests it",
+    "expectrail._bundle.agents.trust": "only the standalone fixer demo plants a poisoned README; repair never requests it",
     # harness.adapters is in the wheel: the verify path takes its engine from the registry. The
     # registry also lists the web and Unity adapters, whose runners are imported only inside their
     # own `run`. Neither adapter has a verify path, so no verification can reach those imports.
-    "harness.web": "only inside the web adapter's run; the adapter has no verify path (harness.adapters.verifying)",
-    "harness.web.run": "the same import: the web adapter's runner",
-    "harness.unity": "only inside the Unity adapter's run; the adapter has no verify path",
-    "harness.unity.run": "the same import: the Unity adapter's runner",
+    "expectrail._bundle.harness.web": "only inside the web adapter's run; the adapter has no verify path (harness.adapters.verifying)",
+    "expectrail._bundle.harness.web.run": "the same import: the web adapter's runner",
+    "expectrail._bundle.harness.unity": "only inside the Unity adapter's run; the adapter has no verify path",
+    "expectrail._bundle.harness.unity.run": "the same import: the Unity adapter's runner",
 }
 
 
@@ -107,6 +184,79 @@ class Case(unittest.TestCase):
         self.wheel = zipfile.ZipFile(BUILT["wheel"])
         self.addCleanup(self.wheel.close)
         self.names = self.wheel.namelist()
+
+
+class QuickstartPackageTest(unittest.TestCase):
+    def setUp(self):
+        from tools import quickstart
+        self.quickstart = quickstart
+
+    def test_curated_checkout_preserves_the_three_public_sample_recordings(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / 'checkout'
+            self.quickstart.copy_checkout(self.quickstart.ROOT, target)
+            for name in ('clean', 'fall-through-bug', 'fall-through-repair'):
+                relative = Path('docs/run-it/vision') / (name + '.json')
+                with self.subTest(recording=name):
+                    self.assertEqual((target / relative).read_bytes(),
+                                     (self.quickstart.ROOT / relative).read_bytes())
+
+    def test_curated_checkout_builds_a_wheel_with_identical_sample_recordings(self):
+        missing = [name for name in ('pip', 'setuptools')
+                   if importlib.util.find_spec(name) is None]
+        if missing:
+            reason = 'offline quickstart wheel build requires ' + ', '.join(missing)
+            if os.environ.get('EXPECTRAIL_PACKAGE_TESTS') == 'required':
+                self.fail(reason)
+            self.skipTest(reason)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.quickstart.copy_checkout(self.quickstart.ROOT, root / 'checkout')
+            done = subprocess.run([sys.executable, '-m', 'pip', 'wheel', '.', '--no-deps',
+                                   '--no-build-isolation', '--no-index', '-w', str(root / 'dist')],
+                                  cwd=root / 'checkout', capture_output=True, text=True)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            wheels = list((root / 'dist').glob('expectrail-*.whl'))
+            self.assertEqual(len(wheels), 1)
+            with zipfile.ZipFile(wheels[0]) as wheel:
+                for name in ('clean', 'fall-through-bug', 'fall-through-repair'):
+                    with self.subTest(recording=name):
+                        self.assertEqual(wheel.read('expectrail/_bundle/sample-vision/' + name + '.json'),
+                                         (self.quickstart.ROOT / 'docs/run-it/vision' / (name + '.json')).read_bytes())
+
+    def test_curated_checkout_sdist_builds_the_complete_sample_wheel(self):
+        missing = [name for name in ('pip', 'setuptools')
+                   if importlib.util.find_spec(name) is None]
+        if missing:
+            reason = 'offline quickstart sdist build requires ' + ', '.join(missing)
+            if os.environ.get('EXPECTRAIL_PACKAGE_TESTS') == 'required':
+                self.fail(reason)
+            self.skipTest(reason)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.quickstart.copy_checkout(REPO, root / 'checkout')
+            done = subprocess.run([sys.executable, 'setup.py', 'sdist', '--dist-dir', str(root / 'sdist')],
+                                  cwd=root / 'checkout', capture_output=True, text=True)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            archives = list((root / 'sdist').glob('expectrail-*.tar.gz'))
+            self.assertEqual(len(archives), 1)
+            with tarfile.open(archives[0]) as archive:
+                for name in ('clean', 'fall-through-bug', 'fall-through-repair'):
+                    relative = f'docs/run-it/vision/{name}.json'
+                    members = [m for m in archive.getmembers() if m.name.endswith('/' + relative)]
+                    self.assertEqual(len(members), 1, relative)
+                    self.assertEqual(archive.extractfile(members[0]).read(), (REPO / relative).read_bytes())
+            done = subprocess.run([sys.executable, '-m', 'pip', 'wheel', str(archives[0]), '--no-deps',
+                                   '--no-build-isolation', '--no-index', '--no-cache-dir', '-w', str(root / 'wheel')],
+                                  capture_output=True, text=True)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            wheels = list((root / 'wheel').glob('expectrail-*.whl'))
+            self.assertEqual(len(wheels), 1)
+            with zipfile.ZipFile(wheels[0]) as wheel:
+                for name in ('clean', 'fall-through-bug', 'fall-through-repair'):
+                    self.assertEqual(wheel.read(f'expectrail/_bundle/sample-vision/{name}.json'),
+                                     (REPO / f'docs/run-it/vision/{name}.json').read_bytes())
+
 
 
 class ContentsTest(Case):
@@ -155,7 +305,8 @@ class ContentsTest(Case):
             return [f"{base}.py", f"{base}/__init__.py"]
 
         def in_repo(module: str) -> bool:
-            path = REPO.joinpath(*module.split("."))
+            source_module = module.removeprefix("expectrail._bundle.")
+            path = REPO.joinpath(*source_module.split("."))
             return path.with_suffix(".py").is_file() or (path / "__init__.py").is_file()
 
         asked: dict[str, str] = {}
@@ -192,6 +343,34 @@ class ContentsTest(Case):
             self.assertFalse(any(word in name for word in ("fresh", "heldout", "fixtures", "/.godot/", "__pycache__")), name)
             self.assertFalse(name.startswith(("expectrail/discovery", "expectrail/jit", "expectrail/repro")), name)
         self.assertEqual([n for n in self.names if n.startswith(BUNDLE + "bugs/")], [BUNDLE + "bugs/physics-fall-through/v1.patch"])
+
+    def test_private_imports_never_need_legacy_top_level_names_or_path_bootstrap(self):
+        for name in (n for n in self.names if n.endswith('.py')):
+            for node in ast.walk(ast.parse(self.wheel.read(name).decode())):
+                if isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                    self.assertNotIn(node.module.split('.')[0], ('harness', 'agents'), name)
+                elif isinstance(node, ast.Import):
+                    for alias in node.names:
+                        self.assertNotIn(alias.name.split('.')[0], ('harness', 'agents'), name)
+        self.assertNotIn('_sys.path.insert(', self.wheel.read('expectrail/__init__.py').decode())
+        for sample in ('clean', 'fall-through-bug', 'fall-through-repair'):
+            self.assertEqual(self.wheel.read(BUNDLE + 'sample-vision/' + sample + '.json'),
+                             (REPO / 'docs/run-it/vision' / (sample + '.json')).read_bytes())
+
+    def test_no_string_in_the_wheel_names_a_top_level_harness_or_agents_module(self):
+        # #614: `importlib.import_module("agents.x")` and `-m agents.x` are not import statements, so the
+        # statement rewrite misses them; in the installed copy they would load a foreign `agents`, or nothing.
+        found = []
+        helpers = setup_helpers()
+        for name in (n for n in self.names if n.endswith('.py')):
+            text = self.wheel.read(name).decode()
+            # Nothing left for the builder to qualify, and nothing it cannot read.
+            self.assertEqual(helpers['qualify_imports'](text), text, name)
+            for node in ast.walk(ast.parse(text)):
+                if isinstance(node, ast.Constant) and isinstance(node.value, str) \
+                        and helpers['names_private_module'](node.value):
+                    found.append(f"{name}:{node.lineno}: {node.value!r}")
+        self.assertEqual(found, [])
 
     def test_the_bundled_game_is_the_repositorys_game_file_for_file(self):
         out = BUILT["tmp"] / "game-check"
@@ -233,7 +412,7 @@ class InstalledTest(Case):
         self.assertEqual(done.returncode, 0, done.stderr)
         for arg in ("JOB", "--fixture", "--attempts", "--jobs-root"):
             self.assertIn(arg, done.stdout)
-        done = self.run_installed(code="from expectrail import repair; from agents import fixer; print(fixer.__file__)")
+        done = self.run_installed(code="from expectrail import repair; from expectrail._bundle.agents import fixer; print(fixer.__file__)")
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn(str(self.site / "expectrail/_bundle/agents/fixer.py"), done.stdout)
         done = self.run_installed("repair", "0" * 32, "--jobs-root", str(self.elsewhere / "repair-jobs"))
@@ -251,9 +430,9 @@ class InstalledTest(Case):
     def test_the_harness_it_runs_is_its_own_and_it_writes_outside_the_package(self):
         done = self.run_installed(code=(
             "import json, sys, importlib.util as u\n"
-            "import expectrail, harness.run as hr\n"
+            "import expectrail; import expectrail._bundle.harness.run as hr\n"
             "from expectrail import resources\n"
-            "from agents.observations import from_trace_synthetic\n"
+            "from expectrail._bundle.agents.observations import from_trace_synthetic\n"
             "import expectrail.orchestrator.cli, expectrail.gate.verify\n"
             "print(json.dumps({'harness': hr.__file__, 'tools': str(hr.tools_dir()), 'cache': str(hr.get_cache_dir()),\n"
             "                  'game': (hr.REPO / 'game' / 'platformer' / 'project.godot').is_file(),\n"
@@ -270,6 +449,52 @@ class InstalledTest(Case):
         home = str(self.elsewhere / "home")
         self.assertEqual(found["tools"], f"{home}/.cache/expectrail")
         self.assertTrue(found["cache"].startswith(f"{home}/.cache/expectrail/"), found)
+
+    def test_importing_expectrail_does_not_shadow_foreign_harness_or_agents(self):
+        foreign = self.elsewhere / 'foreign'
+        foreign.mkdir()
+        for name in ('harness', 'agents'):
+            (foreign / (name + '.py')).write_text('IDENTITY = "foreign"\n')
+        done = self.run_installed(code=(
+            'import sys\n'
+            f'sys.path.insert(0, {str(foreign)!r})\n'
+            'import harness, agents\n'
+            'before = list(sys.path)\n'
+            'import expectrail, expectrail.doctor, expectrail.repair\n'
+            'import expectrail.gate.verify, expectrail._bundle.harness.run\n'
+            'assert sys.path == before, (before, sys.path)\n'
+            'assert harness.IDENTITY == agents.IDENTITY == "foreign"\n'
+            'assert sys.modules["harness"] is harness and sys.modules["agents"] is agents\n'
+            'print("private imports coexist; sys.path unchanged")\n'))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(done.stdout.strip(), 'private imports coexist; sys.path unchanged')
+
+    def test_the_vision_provider_loads_from_the_bundle_with_a_foreign_agents_package_on_the_path(self):
+        # #614's case: the string import in `_load_sam_provider` and `from_trace(provider="sam")`.
+        foreign = self.elsewhere / 'foreign-package'
+        (foreign / 'agents').mkdir(parents=True)
+        (foreign / 'agents' / '__init__.py').write_text('IDENTITY = "foreign"\n')
+        (foreign / 'agents' / 'sam_observations.py').write_text(
+            'IDENTITY = "foreign"\ndef from_replay(*a, **k):\n    raise AssertionError("foreign provider")\n')
+        done = self.run_installed(code=(
+            'import sys\n'
+            f'sys.path.insert(0, {str(foreign)!r})\n'
+            'import agents, agents.sam_observations as theirs\n'
+            'from expectrail._bundle.agents import observations as o\n'
+            'fn = o._load_sam_provider()\n'
+            'mod = sys.modules[fn.__module__]\n'
+            'assert fn.__module__ == "expectrail._bundle.agents.sam_observations", fn.__module__\n'
+            'assert theirs.IDENTITY == agents.IDENTITY == "foreign"\n'
+            'assert sys.modules["agents.sam_observations"] is theirs\n'
+            'print(mod.__file__)\n'))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(done.stdout.strip(), str(self.site / 'expectrail/_bundle/agents/sam_observations.py'))
+        # And with no foreign package at all: the provider still loads (before the fix: "No module named 'agents'").
+        done = self.run_installed(code=(
+            'from expectrail._bundle.agents import observations as o\n'
+            'print(o._load_sam_provider().__module__)\n'))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(done.stdout.strip(), 'expectrail._bundle.agents.sam_observations')
 
     def test_app_runs_from_installed_copy_without_external_packages(self):
         done = self.run_installed("app", "--help")

@@ -22,6 +22,9 @@ EXT = re.compile(r'ExtResource\("([^"]+)"\)')
 def resource(root, uri):
     if not isinstance(uri, str) or not uri.startswith("res://"):
         raise ValueError(f"Use a res:// path in the project for {uri!r}.")
+    # Both sides in one spelling: a project reached through a link (every temporary folder on macOS
+    # is under /var, a link to /private/var) is still the same project (#378).
+    root = Path(root).resolve()
     path = (root / uri[6:]).resolve()
     if not path.is_relative_to(root) or not path.is_file():
         raise ValueError(f"Restore {uri} inside the project or correct the scene reference.")
@@ -33,6 +36,7 @@ def entry_scene(root, uri):
         raise ValueError("Set application/run/main_scene to a Godot scene path.")
     if not uri.startswith("uid://"):
         return uri
+    root = Path(root).resolve()
     matches = []
     for directory, dirs, names in os.walk(root):
         dirs[:] = [d for d in dirs if not d.startswith(".")]
@@ -326,6 +330,9 @@ def main(command, argv):
     group.add_argument("--project", type=Path)
     if command == "inspect":
         parser.add_argument("--json", action="store_true")
+        parser.add_argument("--at-tick", type=int, metavar="N",
+                            help="replay the config's bindings headless and report each bound object at tick N")
+        parser.add_argument("--route", type=Path, help="with --at-tick: the route to replay (default: the config's first)")
     else:
         parser.add_argument("--adapter", choices=["godot"], default="godot")
         parser.add_argument("--dry-run", action="store_true", help="print both drafts without writing")
@@ -333,6 +340,14 @@ def main(command, argv):
     try:
         args = parser.parse_args(argv)
         root = (args.game or args.project).resolve()
+        if command == "inspect" and args.route is not None and args.at_tick is None:
+            raise ValueError("--route is used with --at-tick N; add --at-tick, or drop --route for the saved-scene listing")
+        if command == "inspect" and args.at_tick is not None:
+            from expectrail import inspection
+
+            doc = inspection.document(root, args.at_tick, args.route)
+            print(json.dumps(doc, indent=2) if args.json else "\n".join(inspection.describe(doc)))
+            return 0
         info = inspect(root)
         if command == "inspect":
             if args.json:

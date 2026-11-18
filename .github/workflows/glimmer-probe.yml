@@ -60,7 +60,7 @@ permissions:
 
 jobs:
   glimmer:
-    environment: main-only
+    environment: spend
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:

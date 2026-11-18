@@ -252,7 +252,7 @@ class ProbeWorkflowTest(unittest.TestCase):
         self.assertIn("persist-credentials: false", self.capture)
 
     def test_the_job_that_holds_the_key_never_fetches_or_starts_outside_code(self):
-        self.assertIn("environment: main-only", self.probe)
+        self.assertIn("environment: spend", self.probe)  # main-only plus Sean's approval (#265)
         self.assertIn("needs: capture", self.probe)
         for word in ("outside_trial", "harness.run", "get-godot", "git fetch", "git clone", "godot", "xvfb", "bubblewrap"):
             self.assertNotIn(word, self.probe)

@@ -1,0 +1,72 @@
+{
+  "format": "expectrail.onboard-review/v1",
+  "project": "/tmp/expectrail-onboard-example",
+  "configPath": "expectrail.project.json",
+  "configFileSha256": null,
+  "config": {
+    "format": "expectrail.project/v1",
+    "draft": true,
+    "adapter": "godot",
+    "version": "4.7",
+    "toolchain": {
+      "engine": "godot",
+      "version": "4.7"
+    },
+    "entryScene": "res://main.tscn",
+    "viewport": [
+      640,
+      360
+    ],
+    "physicsTicksPerSecond": 60,
+    "captureFps": 60,
+    "inputActions": [
+      "left",
+      "right",
+      "jump"
+    ],
+    "bindings": {
+      "player": {
+        "node": "Player",
+        "texture": "res://crate.svg"
+      }
+    }
+  },
+  "route": {
+    "path": "routes/example.json",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "document": {
+      "format": "expectrail.route/v0",
+      "name": "example",
+      "ticks": 3,
+      "seed": 1,
+      "events": []
+    },
+    "existed": false
+  },
+  "inputs": [],
+  "objects": [
+    {
+      "role": "player",
+      "reviewable": false
+    }
+  ],
+  "specs": [],
+  "timing": {
+    "format": "expectrail.onboard-timing/v1",
+    "startedAt": "2026-11-16T00:00:00Z",
+    "readyAt": "2026-11-16T00:00:02Z",
+    "machineSeconds": 2,
+    "humanSeconds": null,
+    "approvedAt": null,
+    "person": null,
+    "state": "review-ready",
+    "stages": [
+      {
+        "name": "observer tuning",
+        "status": "skipped",
+        "seconds": 0,
+        "reason": "No recorded observer answers were supplied."
+      }
+    ]
+  }
+}

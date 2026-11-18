@@ -39,6 +39,19 @@ def _sam_pass(specs, *_args, **_kwargs):
     return [(s, {"spec": s["id"], "result": "pass"}, None) for s in specs]
 
 
+
+# These historical fixtures exercise the explicit engine-only benchmark control.
+# Default two-observer verdicts are covered by test_default_vision and test_two_observers.
+def setUpModule():
+    global _trace_control
+    _trace_control = mock.patch.dict("os.environ", {"EXPECTRAIL_OBS_PROVIDER": "trace"})
+    _trace_control.start()
+
+
+def tearDownModule():
+    _trace_control.stop()
+
+
 class BaseArmMatchesVerifyTest(unittest.TestCase):
     def test_fixture_observations(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -342,7 +342,8 @@
                 "air_jumps",
                 "coins_collected",
                 "player_screen_x_range_px",
-                "player_screen_y_range_px"
+                "player_screen_y_range_px",
+                "ui_integer_at_end"
               ]
             },
             "comparator": {
@@ -365,6 +366,73 @@
             "right": {
               "type": "string",
               "pattern": "^[a-z0-9][a-z0-9._/-]*$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "leftSignal",
+            "rightSignal",
+            "comparator",
+            "toleranceAbs"
+          ],
+          "properties": {
+            "type": {
+              "const": "signal_compare"
+            },
+            "leftSignal": {
+              "enum": [
+                "max_rise_px",
+                "projectile_count",
+                "min_projectile_interval_ticks",
+                "facing_flips",
+                "facing_mismatch_fraction",
+                "max_enemy_drop_px",
+                "min_enemy_extent_px",
+                "enemies_at_end",
+                "player_dx_px",
+                "airborne_ticks",
+                "air_jumps",
+                "coins_collected",
+                "player_screen_x_range_px",
+                "player_screen_y_range_px",
+                "ui_integer_at_end"
+              ]
+            },
+            "rightSignal": {
+              "enum": [
+                "max_rise_px",
+                "projectile_count",
+                "min_projectile_interval_ticks",
+                "facing_flips",
+                "facing_mismatch_fraction",
+                "max_enemy_drop_px",
+                "min_enemy_extent_px",
+                "enemies_at_end",
+                "player_dx_px",
+                "airborne_ticks",
+                "air_jumps",
+                "coins_collected",
+                "player_screen_x_range_px",
+                "player_screen_y_range_px",
+                "ui_integer_at_end"
+              ]
+            },
+            "comparator": {
+              "enum": [
+                "lte",
+                "gte",
+                "lt",
+                "gt",
+                "eq"
+              ]
+            },
+            "toleranceAbs": {
+              "type": "number",
+              "minimum": 0
             }
           }
         }

@@ -89,6 +89,14 @@ class PointerReadersTest(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit,'Unity.*pointer'):
             unity.check_route(pointer_route(),{'actions':[]})
 
+    def test_unity_player_guard_does_not_trust_a_null_pointer(self):
+        # Unity's JsonUtility builds a RoutePointer for every event, so a null test refused every
+        # action route in the real player (the canary). The guard must read the pointer's content.
+        source=(ROOT/'harness/unity/package/Runtime/Harness.cs').read_text()
+        self.assertNotIn('if (e.pointer != null) throw',source)
+        self.assertIn('string.IsNullOrEmpty(e.action)',source)
+        self.assertIn('e.pointer.position.Length > 0',source)
+
     def test_action_catalog_ingestion_refuses_pointer_in_plain_words(self):
         from expectrail.jit import run as jit
         with mock.patch.object(jit.offer_mod,'library',return_value=[]):

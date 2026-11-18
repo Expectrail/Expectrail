@@ -6,7 +6,7 @@ PAGE = r'''<!doctype html>
 :root{font-family:system-ui,sans-serif;color:#182c29;background:#f4f6f1;line-height:1.55}
 *{box-sizing:border-box}body{margin:0}main{max-width:900px;margin:auto;padding:32px 24px 64px}
 h1{font-size:2rem;line-height:1.2}h2{font-size:1.25rem}section{background:white;padding:24px;margin:20px 0;border:1px solid #ccd5cb;border-radius:12px}
-label{display:block;font-weight:600;margin:16px 0 6px}input{width:100%;font:inherit;border:1px solid #687d74;border-radius:5px;padding:10px;min-width:0}
+label{display:block;font-weight:600;margin:16px 0 6px}input,select{width:100%;font:inherit;border:1px solid #687d74;border-radius:5px;padding:10px;min-width:0}
 input[type=checkbox]{width:auto}
 button{font:inherit;font-weight:600;background:#175c47;color:white;border:2px solid #175c47;border-radius:6px;padding:10px 18px;margin:16px 12px 0 0;cursor:pointer}
 button.secondary{background:white;color:#175c47}button:disabled{opacity:.55;cursor:default}a{color:#175c47}a:focus,button:focus,input:focus{outline:3px solid #b35c12;outline-offset:3px}
@@ -35,6 +35,7 @@ The kinematic-character example uses the same config path as your project.</p>
 <p>Uses the same verifier as the Expectrail command. Only run games you trust.</p>
 <label><input id="auto-fix" type="checkbox"> Try to fix the game if verification rejects it</label>
 <div id="repair-settings" class="grid" hidden>
+<div><label for="fix-agent">Fixer</label><select id="fix-agent"><option value="llm-patch">llm-patch (bounded provider requests)</option><option value="muse-code">Muse (live bound unavailable; stops for review)</option></select></div>
 <div><label for="attempts">Maximum fix attempts (1 to 10)</label><input id="attempts" type="number" min="1" max="10" value="3"></div>
 <div><label for="usd-cap">Maximum fixer spend in US dollars</label><input id="usd-cap" type="number" min="0" step="any"></div>
 </div>
@@ -61,7 +62,7 @@ const el = id => document.getElementById(id);
 const values = () => ({projectConfig:!el('manual').checked,...Object.fromEntries((el('manual').checked?['before','after','game','routes','specs']:['before','after']).map(id => [id,el(id).value]))});
 el('auto-fix').onchange=()=>{el('repair-settings').hidden=!el('auto-fix').checked;};
 let job = null, busy = false, rendererAcknowledged = null;
-for(const input of document.querySelectorAll('input')) input.addEventListener('input',()=>{
+for(const input of document.querySelectorAll('input,select')) input.addEventListener('input',()=>{
   rendererAcknowledged=null; el('rendering').textContent=''; if(!job)el('verify').textContent='Verify';
 });
 function rendering(data) {
@@ -72,7 +73,7 @@ const phaseNames = {queued:'Waiting to start',preparing:'Checking inputs and too
 function controls(active) {
   busy=active;
   el('verify').disabled=active; el('inspect').disabled=active; el('cancel').disabled=!active || !job;
-  for (const id of ['manual','before','after','game','routes','specs','auto-fix','attempts','usd-cap']) el(id).disabled=active;
+  for (const id of ['manual','before','after','game','routes','specs','auto-fix','attempts','usd-cap','fix-agent']) el(id).disabled=active;
 }
 
 async function api(path, body) {
@@ -130,7 +131,7 @@ el('verify').onclick=async()=>{
   el('result-text').textContent='No verdict yet.';el('progress').textContent='Checking the rendering environment before starting…';controls(true);
   try{const body=values();
     if(el('auto-fix').checked){
-      body.autoFix=true;body.attempts=el('attempts').valueAsNumber;body.usdCap=el('usd-cap').valueAsNumber;
+      body.autoFix=true;body.repairAgent=el('fix-agent').value;body.attempts=el('attempts').valueAsNumber;body.usdCap=el('usd-cap').valueAsNumber;
       if(!Number.isInteger(body.attempts)||body.attempts<1||body.attempts>10) throw new Error('Enter 1 to 10 fix attempts.');
       if(!Number.isFinite(body.usdCap)||body.usdCap<0) throw new Error('Enter a fixer spend cap of zero or more US dollars.');
     }

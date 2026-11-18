@@ -25,8 +25,9 @@ name: Generated checks
 # written into each proposal and record. baseline, the default, is the generator as it was before
 # issue #285's steps 3 and 4; signals-reach also offers the three held-back signals and the reach
 # probes; signals-reach-evidence also gives the proposer step 5's evidence, which the measure job makes
-# by replaying every probe with frames (repro-evidence.json). The known-bugs bench is registered under
-# baseline and refuses any other.
+# by replaying every probe with frames (repro-evidence.json); signals-reach-evidence-menu also offers the
+# menu probes, each a library walk and then one tap of the profile's menu action (expectrail/repro/menu.py).
+# The known-bugs bench is registered under baseline and refuses any other.
 #
 # signals-reach-evidence-pixel (#286) also lets the proposer propose pixel checks, about what is drawn, judged
 # by SAM 3.1 (expectrail/jit/pixel.py, sam_observer.py). SAM's key and the change's code never meet, so a
@@ -85,7 +86,7 @@ on:
       offer:
         description: What the generator is offered (expectrail/jit/offer.py); bench mode takes baseline only
         type: choice
-        options: ['baseline', 'signals-reach', 'signals-reach-evidence', 'signals-reach-evidence-pixel']
+        options: ['baseline', 'signals-reach', 'signals-reach-evidence', 'signals-reach-evidence-menu', 'signals-reach-evidence-pixel']
         default: 'baseline'
       candidate:
         description: Whether the model is shown the candidate patch (shown) or given no byte of it (withheld); bench mode takes shown only
@@ -209,7 +210,7 @@ jobs:
       - name: Plan the cases
         id: plan
         run: |
-          [[ "$OFFER" =~ ^(baseline|signals-reach|signals-reach-evidence|signals-reach-evidence-pixel)$ ]] || { echo "::error::offer must be baseline, signals-reach, signals-reach-evidence or signals-reach-evidence-pixel"; exit 1; }
+          [[ "$OFFER" =~ ^(baseline|signals-reach|signals-reach-evidence|signals-reach-evidence-menu|signals-reach-evidence-pixel)$ ]] || { echo "::error::offer must be baseline, signals-reach, signals-reach-evidence, signals-reach-evidence-menu or signals-reach-evidence-pixel"; exit 1; }
           echo "offer=$OFFER" >> "$GITHUB_OUTPUT"
           [[ "$CANDIDATE_TO_MODEL" =~ ^(shown|withheld)$ ]] || { echo "::error::candidate must be shown or withheld"; exit 1; }
           echo "candidate=$CANDIDATE_TO_MODEL" >> "$GITHUB_OUTPUT"
@@ -298,7 +299,7 @@ jobs:
     # Holds the model key. Reads the patch and the report as text, and the measure job's numbers;
     # replays nothing. In main-only (#223): only a dispatch from main can reach the key.
     needs: [plan, measure]
-    environment: main-only
+    environment: spend
     if: github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal'
     strategy:
       fail-fast: false
@@ -334,6 +335,8 @@ jobs:
       - name: Propose checks (one Muse Spark call)
         env:
           MODEL_API_KEY: ${{ secrets.MODEL_API_KEY || secrets.META_API_KEY }}
+          # The spec sender sends nothing without a cap (expectrail/spend.py, #267): the change's per-defect budget.
+          EXPECTRAIL_SPEC_USD_CAP: ${{ needs.plan.outputs.budget }}
         run: |
           base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
           ev=(); if [[ -f runs/jit-measure/repro-evidence.json ]]; then ev=(--evidence runs/jit-measure/repro-evidence.json); fi
@@ -412,7 +415,7 @@ jobs:
     # left of the same budget (expectrail/jit/intent.py, revise_to_file). Always writes the proposal
     # replay-final uses (revised, or the first one unchanged) and says which. Nothing here is a pass.
     needs: [plan, measure, replay]
-    environment: main-only
+    environment: spend
     if: github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal'
     strategy:
       fail-fast: false
@@ -453,6 +456,8 @@ jobs:
       - name: Revise the rejected checks (at most one Muse Spark call)
         env:
           MODEL_API_KEY: ${{ secrets.MODEL_API_KEY || secrets.META_API_KEY }}
+          # The spec sender sends nothing without a cap (expectrail/spend.py, #267): the change's per-defect budget.
+          EXPECTRAIL_SPEC_USD_CAP: ${{ needs.plan.outputs.budget }}
         run: |
           mkdir -p runs/jit-proposal-2
           base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
@@ -580,7 +585,7 @@ jobs:
     # has left after replay-final's record; over that, nothing is sent. In main-only: only a dispatch from
     # main can reach the key.
     needs: [plan, replay-final]
-    environment: main-only
+    environment: spend
     if: github.event_name == 'workflow_dispatch' && inputs.mode != 'rehearsal' && needs.plan.outputs.offer == 'signals-reach-evidence-pixel' && needs.plan.outputs.observer != 'visual-sensor'
     strategy:
       fail-fast: false

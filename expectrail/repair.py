@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 from pathlib import Path
 import glob
@@ -64,6 +65,8 @@ def _child(jobs, original, checkout, inputs, *, require_isolation, spawn_worker)
                         timeout_seconds=original["limits"]["timeoutSeconds"], intent="fix")
     if "visual" in original["project"]:
         req["project"]["visual"] = original["project"]["visual"]
+    if "heldOut" in original:
+        req["heldOut"] = dict(original["heldOut"])
     child, _ = jobs.create(req)
     if child["inputs"]["baseTree"] != inputs["headTree"] or child["inputs"]["policyDigest"] != inputs["policyDigest"]:
         jobs.cancel(child["id"])
@@ -71,8 +74,11 @@ def _child(jobs, original, checkout, inputs, *, require_isolation, spawn_worker)
     return runner.wait(jobs, child["id"], spawn_worker(jobs, child["id"]))
 
 
-def repair(jobs, job, *, attempts=3, fixture=None, recorded=False, spawn_worker=None):
+def repair(jobs, job, *, attempts=3, fixture=None, recorded=False, spawn_worker=None, agent="muse-code"):
     from agents import fixer
+
+    if agent not in ("muse-code", "llm-patch"):
+        raise ValueError("repair agent must be muse-code or llm-patch")
 
     if recorded and fixture is None:
         raise ValueError("a recorded repair needs its saved patch")
@@ -99,8 +105,13 @@ def repair(jobs, job, *, attempts=3, fixture=None, recorded=False, spawn_worker=
     findings = record.read_record(paths.output / "findings.json")
     if findings["decision"] != "reject" or findings["game"]["headTree"] != inputs["headTree"]:
         raise ValueError("the findings do not match the rejected job")
-    if findings["heldOut"]["status"] != "not-used":
-        raise ValueError("this job used held-out routes that a public verify request cannot reproduce")
+    from expectrail.orchestrator import private_context as heldout
+    if "heldOut" in original:
+        heldout.validate(original)
+        if findings["heldOut"]["status"] != "judged" or not findings["heldOut"]["checks"]:
+            raise ValueError("the rejected job has no completed held-out judgement")
+    elif findings["heldOut"]["status"] != "not-used":
+        raise ValueError("the rejected job has no pinned operator held-out context")
     failing = _public_failures(findings, checks.specs)
     if not 1 <= len(failing) <= 64:
         raise ValueError("repair needs between 1 and 64 public failing checks")
@@ -112,14 +123,16 @@ def repair(jobs, job, *, attempts=3, fixture=None, recorded=False, spawn_worker=
     rr = {"format": "expectrail.repair-request/v0", "id": job, "base": {"tree": inputs["headTree"]},
           "failing": failing, "budget": {"attempts": attempts}}
     folder = Path(tempfile.mkdtemp(prefix="repair-", dir=paths.root))
-    source = ("recorded" if recorded else "fixture") if fixture is not None else "muse"
+    source = ("recorded" if recorded else "fixture") if fixture is not None else ("llm-patch" if agent == "llm-patch" else "muse")
     doc = {"format": "expectrail.repair-run/v1",
            "parent": {"job": job, "decision": "reject", "headTree": inputs["headTree"],
                       "failing": [{"spec": f["spec"]["id"], "route": f["route"]["name"]} for f in failing]},
-           "fixer": {"source": source, "sandboxed": fixture is None},
+           "fixer": {"source": source, "sandboxed": fixture is None and agent != "llm-patch"},
            "budget": {"attempts": attempts, "usdCap": cap}, "startedAt": store.stamp(), "attempts": [],
            "machineWritten": True, "review": contracts.schema_v1("repair-run")["properties"]["review"]["enum"][0],
            "result": {"decision": "needs-review", "job": None, "patch": None}}
+    if source == "llm-patch":
+        doc["fixer"]["providerOnly"] = True
     stop, detail = "attempts-exhausted", "every candidate was rejected"
     prior = None
     with tempfile.TemporaryDirectory(prefix="repair-work-", dir=folder) as tmp:
@@ -169,7 +182,15 @@ def repair(jobs, job, *, attempts=3, fixture=None, recorded=False, spawn_worker=
                 output = Path(tmp) / str(n)
                 meta = fixer.run_fixer(rr, output, game=workspace, attempt=n, allow_empty=True,
                                        require_sandbox=True, candidate_patch=fixture, prior_reject=prior,
-                                       adapter=adapter, agent="muse-code", provider_only=True)
+                                       adapter=adapter, agent=agent, provider_only=True)
+                invocation_path = output / "fixer-invocation.json"
+                if invocation_path.exists():
+                    from expectrail import fixer_budget
+                    invocation_doc = fixer_budget.read(invocation_path)
+                    invocation_copy = attempt / "fixer-invocation.json"
+                    invocation_copy.write_text(json.dumps(invocation_doc, indent=2) + "\n")
+                    row["fixerInvocation"] = str(invocation_copy.relative_to(folder))
+                    row["fixerInvocationSha256"] = hashlib.sha256(invocation_copy.read_bytes()).hexdigest()
                 if not meta["ok"]:
                     stop, detail = "fixer-failed", "the fixer produced no patch"
                     break
@@ -233,6 +254,7 @@ def repair(jobs, job, *, attempts=3, fixture=None, recorded=False, spawn_worker=
                         target = attempt / 'fixer-invocation.json'
                         shutil.copyfile(source, target)
                         row['fixerInvocation'] = target.relative_to(folder).as_posix()
+                        row['fixerInvocationSha256'] = hashlib.sha256(target.read_bytes()).hexdigest()
                     except (OSError, ValueError):
                         row['budgetStop'] = 'fixer-meter-unavailable'
                         row['reasons'] = ['fixer-meter-unavailable: invocation counter could not be preserved']
@@ -291,11 +313,13 @@ def main(argv):
     p.add_argument("job", metavar="JOB")
     p.add_argument("--jobs-root", help=JOBS_ROOT_HELP)
     p.add_argument("--attempts", type=int, default=3, help="maximum candidates, 1 to 10 (default 3)")
-    p.add_argument("--fixture", type=Path, metavar="PATCH", help="use a fixed patch without starting Muse")
+    p.add_argument("--fixture", type=Path, metavar="PATCH", help="use a fixed patch without starting a fixer")
+    p.add_argument("--agent", choices=("muse-code", "llm-patch"), default="muse-code",
+                   help="fixer path (default: muse-code); live use still requires its enforced spend bound")
     try:
         args = p.parse_args(argv)
         jobs = store.JobStore(Path(args.jobs_root or os.environ.get("EXPECTRAIL_JOBS") or "runs/jobs"))
-        path, doc = repair(jobs, args.job, attempts=args.attempts, fixture=args.fixture)
+        path, doc = repair(jobs, args.job, attempts=args.attempts, fixture=args.fixture, agent=args.agent)
     except (UsageError, OSError, ValueError, store.StoreError) as exc:
         print(f"repair: {exc}", file=sys.stderr)
         return 5

@@ -589,10 +589,37 @@
                   "type": "string",
                   "minLength": 1,
                   "maxLength": 80
+                },
+                "version": {
+                  "description": "Observation adapter version, not a claim about the provider weights revision; absent in historical records.",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
                 }
               }
             }
           ]
+        },
+        "engine": {
+          "description": "Engine observation adapter and its Expectrail release version. Optional on historical records.",
+          "type": "object",
+          "required": [
+            "name",
+            "version"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            }
+          }
         }
       }
     }

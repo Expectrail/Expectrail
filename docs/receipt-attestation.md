@@ -48,12 +48,40 @@ the ref are compared exactly.
 **What it does not establish:** clearance. A verified attestation says who wrote the receipt, not that
 it clears your change; that is `expectrail trust-check`'s question. The command says so in its output.
 
+## Clearance from an attested receipt
+
+`trust-check` can take the attestation in place of a trust-store key:
+
+```
+expectrail trust-check RECEIPT --attested-by OWNER/NAME/.github/workflows/FILE.yml --repo OWNER/NAME \
+    --expect-head SHA --expect-build DIGEST --expect-policy DIGEST [--source-ref refs/heads/main] [--bundle FILE]
+```
+
+(`python -m expectrail.receipt trust-check` takes the same options.) It runs the check above, then
+the receipt's own conditions, on the same bytes:
+
+- The issuer line is `attested (by WORKFLOW at REF)` only when the attestation check verified this
+  file for `--repo`. Otherwise it is `NOT ATTESTED`, with the attestation's reasons, and there is no
+  clearance.
+- The receipt's signature must still verify, with the key the receipt carries. The workflow vouches
+  for the file's bytes; a receipt whose signature does not hold inside them is refused, not repaired by
+  the attestation. That key need not be in any trust store, so a revoked or retired trust-store key
+  plays no part on this path.
+- Every other condition is the same as with a trust store: repository, head, build and policy each
+  asked and matched, at most 7 days and now inside them, every required check exercised and passed on
+  full evidence, and decision accept.
+- Exactly one of `--trust-store` and `--attested-by` is given, and `--attested-by` needs `--repo`.
+  Anything the attestation check cannot read (gh missing, output it cannot read, the file changing
+  while it is read, a command line it cannot use) checks nothing: exit 5 from `expectrail`, 2 from
+  `python -m expectrail.receipt`.
+
+The Verify a receipt page (`docs/verify/`) cannot run gh, so it checks trust-store receipts only.
+
 ## What is left
 
 - **The writer in CI** (Sean): the trusted job runs the `predicate` command and `actions/attest` with
   `subject-path` the receipt and `predicate-path` the predicate. That needs `id-token: write` and
   `attestations: write`, a person's change under `AGENTS.md`, and it sits in the job split #254's
   session owns.
-- A real attestation checked with this command. Until then, gh's output in the tests is written by
+- A real attestation checked with these commands. Until then, gh's output in the tests is written by
   the tests, in the shape `gh attestation verify --format json` prints.
-- Combining the two paths in `trust-check` (the attestation standing in for a trust-store key in CI).

@@ -37,7 +37,8 @@ names it: ``none`` (the default; every pixel check is then ``not-run``, with the
 with ``--sam-lift``), ``--sam-every`` (every Nth frame and the last; 10 by default, at most 60) and
 ``--sam-first`` set how SAM is asked, and must be how a recording was asked: an observer that asks
 otherwise than the recording stops at the first replay, and one that plans other frames than the
-recording was asked about (another ``--sam-every`` or ``--sam-first``) is refused before it asks.
+recording was asked about (another ``--sam-every`` or ``--sam-first``, or checks with other windows: #605)
+is refused before it asks.
 
 **Pixel checks across three jobs** (expectrail/jit/pixel_jobs.py), so SAM's key never meets the change's
 code: ``run --observer sam-3.1-anchor --pixel-capture DIR`` replays and keeps the frames and asks nothing;
@@ -514,7 +515,8 @@ def main(argv: list[str] | None = None) -> int:
         report = args.report_file.read_text(encoding="utf-8", errors="replace") if args.report_file else ""
         if not 1 <= args.evidence_jobs <= 8:
             ap.error("--evidence-jobs is between 1 and 8")
-        probes = offered_library(profile["actions"], args.offer, report)
+        probes = offered_library(profile["actions"], args.offer, report, profile=profile,
+                                 game=getattr(args, "game", None))
         doc = measure(profile, args.base, args.out, probes=probes, game=args.game)
         made = None
         if shows_evidence(args.offer) and args.base:
@@ -554,7 +556,8 @@ def main(argv: list[str] | None = None) -> int:
         prices = {k: v for k, v in (("sparkUsdPerMTokIn", args.spark_usd_per_mtok_in),
                                     ("sparkUsdPerMTokOut", args.spark_usd_per_mtok_out)) if v is not None}
         report = args.report_file.read_text(encoding="utf-8", errors="replace")
-        probes = offered_library(profile["actions"], args.offer, report)
+        probes = offered_library(profile["actions"], args.offer, report, profile=profile,
+                                 game=getattr(args, "game", None))
         notes = attach_measurements(probes, args.measurements, args.base)
         notes += attach_evidence(probes, args.evidence, args.base, args.offer)
         try:
@@ -582,7 +585,8 @@ def main(argv: list[str] | None = None) -> int:
         prices = {k: v for k, v in (("sparkUsdPerMTokIn", args.spark_usd_per_mtok_in),
                                     ("sparkUsdPerMTokOut", args.spark_usd_per_mtok_out)) if v is not None}
         report = args.report_file.read_text(encoding="utf-8", errors="replace")
-        probes = offered_library(profile["actions"], args.offer, report)
+        probes = offered_library(profile["actions"], args.offer, report, profile=profile,
+                                 game=getattr(args, "game", None))
         notes = attach_measurements(probes, args.measurements, args.base)
         measured = not notes
         notes += attach_evidence(probes, args.evidence, args.base, args.offer)
