@@ -187,8 +187,8 @@ class SamAnchorObserver:
             if recorded_plan is not None and recorded_plan != planned:
                 raise pixel.PixelError(f"the recorded answers were asked about {len(recorded_plan)} frames "
                                        f"({_frames_text(recorded_plan)}), and this observer plans {len(planned)} "
-                                       f"({_frames_text(planned)}): ask and judge with the same --sam-every, "
-                                       f"--sam-first and checks' windows")
+                                       f"({_frames_text(planned)}): ask and judge with the same --sam-every and "
+                                       f"--sam-first, and checks with the same windows")
         try:
             trace = load_trace(run_dir)
             first = next(iter(on_disk))
