@@ -1,0 +1,54 @@
+# The full suite on a macOS runner, reported and not gated (#378).
+#
+# The local app (#370) is for people who don't use a terminal, and many of them are on Macs, so what
+# the suite assumes about Linux has to be measured on a Mac rather than guessed. This job runs the
+# whole suite on GitHub's macOS image and writes the counts and every failing test to the job's
+# summary. It never fails the run: the suite step has `continue-on-error`, so a failure on macOS does
+# not turn a pull request's checks or main red. Making it a required check is Sean's decision, once
+# the counts are clean (docs/new-work/2026-11-16-macos-assumptions.md).
+#
+# No Godot, no Chromium and no bubblewrap are installed here: the tests that need them skip, as they
+# do on a Mac that lacks them. No secret, no model, no environment.
+name: macOS suite
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/macos.yml
+      - tools/macos_suite_summary.py
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:  # every day; the day field is 0-6 because the merge guard reads a star before a quote as an alias
+    - cron: '41 10 * * 0-6'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-suite-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  suite:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Fetch the baseline commit (the discovery freeze and the mutation registration are checked against it)
+        run: git fetch --no-tags --depth=1 origin c169a5e0da304773587304ed47bc8aabcec80da7
+      - name: The full suite on macOS (reported, never gating)
+        id: suite
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python -m unittest discover -s tests -t . 2>&1 | tee suite.log
+      - name: Counts and failing tests in the summary
+        if: always()
+        run: python -m tools.macos_suite_summary suite.log "$GITHUB_STEP_SUMMARY"

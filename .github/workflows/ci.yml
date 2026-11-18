@@ -728,6 +728,8 @@ jobs:
     timeout-minutes: 30
     env:
       HELDOUT_TOKEN_SET: ${{ secrets.HELDOUT_TOKEN != '' }}
+            # Engine-only diagnostic for the private routes. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace
     steps:
       - name: Skip without the held-out token (forks)
         if: env.HELDOUT_TOKEN_SET != 'true'

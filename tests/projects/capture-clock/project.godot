@@ -1,0 +1,15 @@
+config_version=5
+
+[application]
+config/name="Expectrail capture clock fixture"
+run/main_scene="res://main.tscn"
+
+[display]
+window/size/viewport_width=128
+window/size/viewport_height=96
+
+[physics]
+common/physics_ticks_per_second=120
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
