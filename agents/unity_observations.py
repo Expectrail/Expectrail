@@ -71,11 +71,8 @@ def ground_line(rows: list[dict], i: int) -> float | None:
     return _to_frame(view, float(player[0]), float(ground))[1]
 
 
-def ground_boxes(rows: list[dict], i: int, frame_size: tuple[int, int] = FRAME_SIZE, view=None) -> list[dict]:
-    row = rows[i]
-    y = (_to_frame(view, float(row["player"][0]), float(row["ground"]))[1]
-         if view is not None and row.get("player") is not None and row.get("ground") is not None
-         else None if view is not None else ground_line(rows, i))
+def ground_boxes(rows: list[dict], i: int, frame_size: tuple[int, int] = FRAME_SIZE) -> list[dict]:
+    y = ground_line(rows, i)
     if y is None:
         return []
     width, height = frame_size
@@ -201,9 +198,9 @@ def reference_agreement(trace: dict, config: dict | None = None) -> dict:
             "onlyLogged": only_logged, "onlyReference": only_reference}
 
 
-def _boxes(rows: list[dict], i: int, name: str, frame_size: tuple[int, int], view=None) -> list[dict]:
+def _boxes(rows: list[dict], i: int, name: str, frame_size: tuple[int, int]) -> list[dict]:
     if name == GROUND:
-        return ground_boxes(rows, i, frame_size, view)
+        return ground_boxes(rows, i, frame_size)
     if name in ROLES:
         return role_boxes(rows[i], name, frame_size)
     raise ValueError(f"the Unity trace has no object called {name!r}: it names roles {sorted(ROLES)} and {GROUND!r}")
@@ -213,31 +210,20 @@ def observations(trace: dict, spec: dict, replay_sha256: str = "0" * 64,
                  frame_size: tuple[int, int] = FRAME_SIZE) -> dict:
     rows = list(trace.get("rows") or [])
     names = list(spec.get("objects") or {})
-    from expectrail.observation_timeline import placement
-    frames = []
-    for i, row in enumerate(rows):
-        at = placement(trace, i, trace["physicsTicksPerSecond"]) if "captureTimeline" in trace else None
-        size, view = (at["viewport"], at["transform"]) if at else (frame_size, None)
-        frames.append({"frame": row.get("frame", i), "objects": {name: _boxes(rows, i, name, size, view) for name in names}})
-    document = {"format": "expectrail.observations/v0", "replay": {"sha256": replay_sha256},
+    frames = [{"frame": row.get("frame", i), "objects": {name: _boxes(rows, i, name, frame_size) for name in names}}
+              for i, row in enumerate(rows)]
+    return {"format": "expectrail.observations/v0", "replay": {"sha256": replay_sha256},
             "model": {"name": MODEL_NAME, "prompts": {n: o.get("prompt", n) for n, o in spec["objects"].items()},
                       "units": "frame pixels",
                       "boxes": "renderer bounds of the objects the harness found visible; the ground line from the level's tiles"},
             "frames": frames}
-    from expectrail.observation_timeline import emit
-    return emit(document, trace, version="unity-engine/1")
 
 
 def engine_objects(trace: dict, names: list[str], frame_size: tuple[int, int] = FRAME_SIZE) -> dict[int, dict]:
     """{frame: {name: [detection, ...]}} for objects SAM is not asked to find."""
     rows = list(trace.get("rows") or [])
-    from expectrail.observation_timeline import placement
-    out = {}
-    for i, row in enumerate(rows):
-        at = placement(trace, i, trace["physicsTicksPerSecond"]) if "captureTimeline" in trace else None
-        size, view = (at["viewport"], at["transform"]) if at else (frame_size, None)
-        out[row.get("frame", i)] = {name: _boxes(rows, i, name, size, view) for name in names}
-    return out
+    return {row.get("frame", i): {name: _boxes(rows, i, name, frame_size) for name in names}
+            for i, row in enumerate(rows)}
 
 
 def _iou(a: list[float], b: list[float]) -> float:

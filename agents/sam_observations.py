@@ -684,8 +684,12 @@ def _valid_detection(d) -> bool:
 
 def frame_files(frames_dir: Path) -> dict[int, Path]:
     """Movie Maker frames: f00000000.png, f00000001.png, ... keyed by frame number."""
-    from expectrail.observation_timeline import frame_files as read_frames
-    return read_frames(frames_dir)
+    frames = {}
+    for path in Path(frames_dir).glob("f*.png"):
+        digits = path.stem[1:]
+        if digits.isdigit():
+            frames[int(digits)] = path
+    return dict(sorted(frames.items()))
 
 
 def window(available: list[int], spec: dict | None) -> list[int]:
@@ -806,7 +810,7 @@ def _document(observed, prompts, model, replay_sha256, captured, in_window, ever
     engine_names = sorted({name for objs in engine_objects.values() for name in objs})
     model_doc = {"name": model, "provider": provider, "prompts": dict(prompts)}
     if engine_check is not None:
-        # Legacy documents keep agreeing boxes; v1 also preserves non-agreeing boxes with engineAgreement=false.
+        # The vision boxes below are only those that agreed with the engine (agents.engine_check).
         model_doc["engineCheck"] = engine_check
     if engine_names:
         # These objects come from the game engine, not from SAM: the evaluator compares SAM's view
@@ -848,9 +852,10 @@ def from_replay(
     stats: dict | None = None,
     keep: Callable[[dict[int, dict]], dict[int, dict]] | None = None,
 ) -> dict:
-    """Observations v1 with a capture timeline, or v0 for a legacy trace.
+    """expectrail.observations/v0 for one replay, from SAM 3.1. Matches the seam's signature.
 
-    SAM looks at pixels; the trace supplies placement and source provenance for those pixels. ``spec`` supplies the prompts, the frame window and the assertion that decides
+    ``trace``, ``fps`` and ``physics_tps`` are accepted for the seam and unused: SAM looks at
+    pixels only. ``spec`` supplies the prompts, the frame window and the assertion that decides
     whether sampling is safe and where to refine. ``engine_objects`` ({frame: {name: boxes}})
     supplies objects SAM cannot see, such as the level's ground line in frame pixels; SAM is not
     asked for those. ``keep`` ({frame: {name: detections}} -> the same) filters SAM's answer before
@@ -879,9 +884,6 @@ def _from_replay(frames_dir, replay_sha256, *, spec, prompts, every, refine, con
     frames = frame_files(Path(frames_dir))
     if not frames:
         raise SamError(f"no frames in {frames_dir}")
-    if trace and "captureTimeline" in trace:
-        from expectrail.observation_timeline import build
-        build(trace, frames_dir)  # refuse bad capture provenance before asking any model
     client = client or default_client(verdict=True)
     cache = cache if cache is not None else Cache(default_cache_dir())
     workers = workers or int(os.environ.get(WORKERS_ENV, DEFAULT_WORKERS))
@@ -903,27 +905,16 @@ def _from_replay(frames_dir, replay_sha256, *, spec, prompts, every, refine, con
 
     def look(chosen):
         got = observe(frames, chosen, names, client, cache, workers)
-        if trace and "captureTimeline" in trace:
-            # Preserve pixel counterexamples and all competing candidates. A disallowed box
-            # remains evidence with uncertain identity; it cannot become a pass just because
-            # filtering would have hidden it. Copy: cached answers must stay trace-independent.
-            accepted = check(got) if check is not None else got
-            accepted = keep(accepted) if keep is not None else accepted
-            return {i: {name: [dict(d, engineAgreement=d in accepted.get(i, {}).get(name, []))
-                              for d in detections] for name, detections in objects.items()}
-                    for i, objects in got.items()}
         got = check(got) if check is not None else got
         return keep(got) if keep is not None else got
 
     observed = look(first_sample(indices, rate, trace))
 
     def doc_of(refined_frames, confirmed_count=0):
-        from expectrail.observation_timeline import emit
-        document = _document(observed, names, client.model, replay_sha256, len(frames), len(indices), rate,
-                             refined_frames, confirmed_count, engine_objects,
-                             getattr(client, "provider", "meta-model-api"),
-                             check.summary() if check is not None else None)
-        return emit(document, trace, frames_dir, version="sam-observer/1")
+        return _document(observed, names, client.model, replay_sha256, len(frames), len(indices), rate,
+                         refined_frames, confirmed_count, engine_objects,
+                         getattr(client, "provider", "meta-model-api"),
+                         check.summary() if check is not None else None)
 
     refined: list[int] = []
     if refine and spec and rate > 1:

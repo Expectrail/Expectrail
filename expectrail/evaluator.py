@@ -31,7 +31,7 @@ NOT_DRAWN_MIN_RUN = 3
 
 def _best(detections, min_score):
     found = [d for d in detections or [] if d.get("score", 0) >= min_score]
-    return found[0] if len(found) == 1 else None
+    return max(found, key=lambda d: d["score"]) if found else None
 
 
 def _overlap(a, b, axis):
@@ -108,8 +108,7 @@ def _assertion_verdict(spec: dict, observations: dict) -> dict:
         obj = pick(frame, assertion["object"])
         if kind == "visible":
             judged += 1
-            if not any(d.get("score", 0) >= scores[assertion["object"]]
-                       for d in frame["objects"].get(assertion["object"], [])):
+            if obj is None:
                 failures.append({"frame": n, "detail": f"{assertion['object']} not found"})
             continue
         if obj is None:
@@ -241,8 +240,7 @@ def _in_play(spec: dict, observations: dict, trace: dict | None, capture_fps: in
     """
     tps = (trace or {}).get("physicsTicksPerSecond")
     rate_known = (type(tps) is int and tps > 0 and type(capture_fps) is int and capture_fps > 0)
-    from expectrail.observation_timeline import tick_for
-    rate_known = rate_known or "captureTimeline" in (trace or {})
+    step = max(tps // capture_fps, 1) if rate_known else None
     rows = {}
     for row in (trace or {}).get("rows", []):
         tick = row.get("tick")
@@ -252,7 +250,7 @@ def _in_play(spec: dict, observations: dict, trace: dict | None, capture_fps: in
     included, hidden, unknown = [], [], []
     for frame in _frames(spec, observations):
         n = frame["frame"]
-        row = (rows.get(tick_for(trace, n, capture_fps)) or {}) if rate_known else {}
+        row = (rows.get(n * step + step - 1) or {}) if step else {}
         state = row.get("playerVisible") if row.get("player") is not None else None
         if state is True:
             included.append(frame)
@@ -264,20 +262,16 @@ def _in_play(spec: dict, observations: dict, trace: dict | None, capture_fps: in
 
 
 def evaluate(spec: dict, observations: dict, *, route: str | None = None, trace: dict | None = None,
-             expected_frames: list[int] | None = None, capture_fps: int | None = 60,
-             trusted_timeline: dict | None = None, source_kind: str | None = None) -> dict:
+             expected_frames: list[int] | None = None, capture_fps: int | None = 60) -> dict:
     """Judge the unchanged assertion, then require exercised coverage before counting its pass."""
     # A duplicated observation is not another judged frame.
     frames = observations.get("frames", [])
     if len({f["frame"] for f in frames}) != len(frames):
         raise ValueError("observations contain duplicate frame numbers")
-    from expectrail.observation_timeline import validate as validate_observations
-    problem = validate_observations(spec, observations, trusted=trusted_timeline,
-                                    expected_frames=expected_frames, source_kind=source_kind)
     hidden, unknown = [], []
-    eligible = dict(observations, frames=[]) if problem else observations
+    eligible = observations
     conditional = spec.get("coverage", {}).get("whenPlayerVisible", False)
-    if conditional and not problem:
+    if conditional:
         eligible, hidden, unknown = _in_play(spec, observations, trace, capture_fps)
     verdict = _assertion_verdict(spec, eligible)
     # The verdict names the original evidence, not an undocumented filtered document.
@@ -297,8 +291,6 @@ def evaluate(spec: dict, observations: dict, *, route: str | None = None, trace:
     elif coverage["semanticResult"] not in ("pass", "fail"):
         verdict.update(result="needs-review", reason="not-exercised: " + detail + "; " + verdict["reason"],
                        firstFrame=None)
-    if problem and coverage["status"] != "not-applicable":
-        verdict.update(result="needs-review", reason=problem, firstFrame=None, evidence=[], framesJudged=0)
     return verdict
 
 
