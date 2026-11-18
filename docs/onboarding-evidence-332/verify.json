@@ -1,0 +1,96 @@
+{
+  "format": "expectrail.verify-job/v1",
+  "id": "80f036c8109385287167746072af6005",
+  "phase": "completed",
+  "decision": "needs-review",
+  "reasons": [
+    "no checks ran",
+    "the project config is a draft (`draft: true`, written by `expectrail init`); review its bindings and remove `draft` before an accept can rest on it.",
+    "vision did not run; see the PROVIDER_FAILED diagnostics for the missing settings"
+  ],
+  "diagnostics": [
+    {
+      "code": "PROVIDER_FAILED",
+      "stage": "observing",
+      "detail": "MODEL_API_KEY is missing. No vision request is sent. Engine checks still run: a failure rejects; otherwise the result is needs-review.",
+      "fix": "set MODEL_API_KEY in the verifier's environment to its vision model key; never put it in a file"
+    },
+    {
+      "code": "PROVIDER_FAILED",
+      "stage": "observing",
+      "detail": "EXPECTRAIL_SAM_USD_CAP is missing or invalid. No vision request is sent. Engine checks still run: a failure rejects; otherwise the result is needs-review.",
+      "fix": "set EXPECTRAIL_SAM_USD_CAP to the most this run may spend in US dollars (a finite amount, 0 or more)"
+    }
+  ],
+  "inputs": {
+    "requestDigest": "6371e7ce7480fba25aa416ddc5c07cd6a0e0aaf3891d413a5325127a685eebf6",
+    "headTree": "27ee31ef21c8b2d96ae70ee56a278f7ba24d7e8f4c6c5c5108f616ac3b161ebd",
+    "baseTree": null,
+    "policyDigest": "a2b953fecd8b3ea357b73f733bcdbf3c7955f2311125dd013217cdb4055988ff"
+  },
+  "executionClass": "diagnostic",
+  "evidenceGrade": "diagnostic",
+  "budget": {
+    "format": "expectrail.job-budget/v1",
+    "jobId": "80f036c8109385287167746072af6005",
+    "capsUsd": {
+      "vision": null,
+      "glimmer": null,
+      "muse": null,
+      "triage": null,
+      "spec": null
+    },
+    "phases": [],
+    "totalReservedUsd": 0,
+    "stopped": null,
+    "visionMonth": {
+      "limitUsd": 200.0,
+      "spentUsd": 0.0,
+      "runWorstCaseUsd": null,
+      "admitted": false
+    }
+  },
+  "worker": {
+    "pid": 1196953,
+    "pgid": 1196953
+  },
+  "lease": {
+    "heartbeatAt": "2026-11-17T20:56:21.084270Z",
+    "expiresAt": "2026-11-17T20:56:51.084270Z"
+  },
+  "output": "output",
+  "history": [
+    {
+      "phase": "queued",
+      "at": "2026-11-17T20:56:07.781488Z"
+    },
+    {
+      "phase": "preparing",
+      "at": "2026-11-17T20:56:07.942120Z"
+    },
+    {
+      "phase": "executing",
+      "at": "2026-11-17T20:56:21.084246Z"
+    },
+    {
+      "phase": "completed",
+      "at": "2026-11-17T20:56:21.102583Z"
+    }
+  ],
+  "createdAt": "2026-11-17T20:56:07.781488Z",
+  "updatedAt": "2026-11-17T20:56:21.102614Z",
+  "finishedAt": "2026-11-17T20:56:21.102583Z",
+  "expectrail": {
+    "version": "0.1.0"
+  },
+  "inputSources": {
+    "head": {
+      "kind": "folder"
+    },
+    "base": null
+  },
+  "observers": {
+    "rule": "both",
+    "visual": null
+  }
+}

@@ -1,0 +1,352 @@
+{
+  "main": "791f50b99b1e6a11e262088ed8b56255fa2494ad",
+  "local601": "63c97ffc3508ce7d11ad424b28b8bff7d95a823b",
+  "project": "tests/projects/config-lane",
+  "cloneSeconds": 7.503693350998219,
+  "setupMinutesExcludingClone": 1.4235450056008025,
+  "setupMinutesIncludingClone": 1.5486065614507727,
+  "humanMinutes": null,
+  "steps": [
+    {
+      "name": "environment",
+      "command": [
+        "/workspace/work/331-fix/venv/bin/python",
+        "-c",
+        "import importlib.util,json,sys; print(json.dumps({'python':sys.version.split()[0], 'numpy':importlib.util.find_spec('numpy') is not None, 'PIL':importlib.util.find_spec('PIL') is not None}))"
+      ],
+      "seconds": 0.051017780002439395,
+      "exit": 0,
+      "stdoutSha256": "b0204bbaebb9d4cb2b3837e8e5be1d9e6df58fd5bffdd1313dbea4d53ac03d81",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "init-dry-run",
+      "command": [
+        "/workspace/work/331-fix/venv/bin/python",
+        "-m",
+        "expectrail.cli",
+        "init",
+        "--project",
+        "/workspace/work/332-final/rehearsal-final/config-lane",
+        "--dry-run"
+      ],
+      "seconds": 0.08467980899149552,
+      "exit": 0,
+      "stdoutSha256": "38e970806b52007ac2aac09b0e68b0d984cc7562d116aa7a579062d4845257d8",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "save-draft",
+      "command": [
+        "/workspace/work/331-fix/venv/bin/python",
+        "-m",
+        "expectrail.cli",
+        "init",
+        "--project",
+        "/workspace/work/332-final/rehearsal-final/config-lane",
+        "--force"
+      ],
+      "seconds": 0.06610683602048084,
+      "exit": 0,
+      "stdoutSha256": "1e248d0df15b0c1bc288fc19f52acb887bad861a2a08d26f4a8a00a0ef1d4dc5",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "inspect",
+      "command": [
+        "/workspace/work/331-fix/venv/bin/python",
+        "-m",
+        "expectrail.cli",
+        "inspect",
+        "--project",
+        "/workspace/work/332-final/rehearsal-final/config-lane",
+        "--at-tick",
+        "45",
+        "--json"
+      ],
+      "seconds": 10.043423612019978,
+      "exit": 0,
+      "stdoutSha256": "79eaa810bdea7fe37b7ad220cbe778b22b1c8c917b84166ca14d45be8b43b31b",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "calibrate",
+      "command": [
+        "/workspace/work/331-fix/venv/bin/python",
+        "-m",
+        "expectrail.cli",
+        "calibrate",
+        "--project",
+        "/workspace/work/332-final/rehearsal-final/config-lane",
+        "--route",
+        "routes/draft-first-94bd8d9993ad35b8.json",
+        "--godot",
+        "/workspace/work/Expectrail-285/tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+        "--json",
+        "--out",
+        "/workspace/work/332-final/rehearsal-final/calibration"
+      ],
+      "seconds": 36.464108174986904,
+      "exit": 0,
+      "stdoutSha256": "e37b72c169c5aa974a8097ba187f02e7d7d80222dbca74ed10dba8f1752728bc",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "review-page",
+      "command": [
+        "/workspace/work/331-fix/venv/bin/python",
+        "-m",
+        "expectrail.cli",
+        "onboard",
+        "--project",
+        "/workspace/work/332-final/rehearsal-final/config-lane",
+        "--godot",
+        "/workspace/work/Expectrail-285/tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+        "--out",
+        "/workspace/work/332-final/rehearsal-final/review.html"
+      ],
+      "seconds": 24.02572045099805,
+      "exit": 0,
+      "stdoutSha256": "7fb7d3e95017df812131a3ff8522afae818b0656f57fafc285718fc8220566d4",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "simulate-answers",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "/workspace/work/332-final/simulate_review.mjs",
+        "/workspace/work/332-final/rehearsal-final/review.html",
+        "/workspace/work/332-final/rehearsal-final/simulated-answers.json"
+      ],
+      "seconds": 1.0678205220028758,
+      "exit": 0,
+      "stdoutSha256": "288136d2e0fd9689e86fbafac8ef83a19fb11c624cad97edb37abdc678251f3a",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "check-answers",
+      "command": [
+        "/workspace/work/331-fix/venv/bin/python",
+        "-m",
+        "expectrail.cli",
+        "onboard",
+        "--check-answers",
+        "/workspace/work/332-final/rehearsal-final/simulated-answers.json"
+      ],
+      "seconds": 0.15657024100073613,
+      "exit": 0,
+      "stdoutSha256": "bdbc7287d98c46943291da78c7ae21afeca6b64ac43c765132bd743b0dd32deb",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "verify",
+      "command": [
+        "/workspace/work/331-fix/venv/bin/python",
+        "-m",
+        "expectrail.cli",
+        "verify",
+        "--project",
+        "/workspace/work/332-final/rehearsal-final/config-lane",
+        "--jobs-root",
+        "/workspace/work/332-final/rehearsal-final/jobs",
+        "--json",
+        "--timeout",
+        "120"
+      ],
+      "seconds": 13.504270690027624,
+      "exit": 2,
+      "stdoutSha256": "3b97bb8124101ebd0d813e9d996d059013ba4b546d6aed616fa04b1a5c421d26",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "environment": {
+    "python": "3.12.14",
+    "numpy": false,
+    "PIL": false
+  },
+  "route": {
+    "path": "routes/draft-first-94bd8d9993ad35b8.json",
+    "ticks": 105
+  },
+  "inspection": {
+    "format": "expectrail.inspection/v1",
+    "project": {
+      "entryScene": "res://main.tscn",
+      "configSha256": "f41282a3cf8b226b8767172bd3f5a6d32a659602d1ca26bd3c338c24c5199f86",
+      "gameTree": "cad49f02a534b1838f7824656d7577e2b163cda5eb539251ad1fcc3282b2b8ed"
+    },
+    "route": {
+      "name": "draft-first-route",
+      "sha256": "94bd8d9993ad35b8ace1ffd9328563ef38a9e9b07cba1968875fc0d5e13e448d",
+      "from": "config"
+    },
+    "tick": 45,
+    "lastTick": 104,
+    "physicsTicksPerSecond": 60,
+    "viewport": [
+      360,
+      240
+    ],
+    "objects": [
+      {
+        "role": "player",
+        "node": "Actors/Avatar",
+        "generation": 1,
+        "box": [
+          168.0,
+          108.0,
+          192.0,
+          132.0
+        ],
+        "worldBox": [
+          130.0,
+          103.925,
+          154.0,
+          127.925
+        ],
+        "visible": true,
+        "onScreen": true,
+        "boundsSource": "drawing"
+      }
+    ],
+    "absent": []
+  },
+  "calibration": {
+    "rows": 105,
+    "playerVisible": 105,
+    "playerSeveral": 0,
+    "playerWidth": {
+      "n": 105,
+      "min": 24.0,
+      "median": 24.0,
+      "max": 24.0
+    },
+    "playerHeight": {
+      "n": 105,
+      "min": 24.0,
+      "median": 24.0,
+      "max": 24.0
+    },
+    "groundRows": 105,
+    "onFloorBottomMinusGround": {
+      "n": 105,
+      "min": -0.075,
+      "median": -0.075,
+      "max": 0.0
+    },
+    "onFloorOffGround": {
+      "rows": 0,
+      "spans": [],
+      "onGround": {
+        "n": 105,
+        "min": -0.075,
+        "median": -0.075,
+        "max": 0.0
+      }
+    },
+    "airborneBottomMinusGround": null,
+    "coinsVisiblePerFrame": {
+      "n": 105,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    "coinWidth": null,
+    "coinHeight": null,
+    "unjudgeable": [],
+    "unjudgeableRows": 0
+  },
+  "identicalCalibrationReplays": 3,
+  "calibrationTraceSha256": "6f2c986dd1cc8849d00d6fd7e66ecf17561c06345c4ce8a230f7e52543417c37",
+  "review": {
+    "bytes": 13591,
+    "objectReviewable": true,
+    "checks": 1,
+    "stages": [
+      {
+        "name": "project and first route",
+        "status": "completed",
+        "seconds": 0.04927484999643639,
+        "reason": null
+      },
+      {
+        "name": "clean replay",
+        "status": "completed",
+        "seconds": 23.86161661701044,
+        "reason": null
+      },
+      {
+        "name": "observer tuning",
+        "status": "skipped",
+        "seconds": 0,
+        "reason": "Recorded answers are displayed when available; no new calibration/proof run is claimed."
+      },
+      {
+        "name": "observer proof",
+        "status": "skipped",
+        "seconds": 0,
+        "reason": "Recorded answers are displayed when available; no new calibration/proof run is claimed."
+      }
+    ],
+    "sha256": "11eb26408893adf0d8f0d335d9537f47b3a57369e8ebe53308a9e4aa676abf1a"
+  },
+  "simulation": {
+    "automated": true,
+    "choices": 2,
+    "measured": 1,
+    "sprites": [
+      [
+        24,
+        24
+      ]
+    ],
+    "frameOverlays": 3,
+    "externalRequests": []
+  },
+  "answersCheck": {
+    "selectedChecks": [],
+    "allObjectsConfirmed": false,
+    "applied": false
+  },
+  "verify": {
+    "phase": "completed",
+    "decision": "needs-review",
+    "reasons": [
+      "no checks ran",
+      "the project config is a draft (`draft: true`, written by `expectrail init`); review its bindings and remove `draft` before an accept can rest on it.",
+      "vision did not run; see the PROVIDER_FAILED diagnostics for the missing settings"
+    ],
+    "diagnostics": [
+      {
+        "code": "PROVIDER_FAILED",
+        "stage": "observing",
+        "detail": "MODEL_API_KEY is missing. No vision request is sent. Engine checks still run: a failure rejects; otherwise the result is needs-review.",
+        "fix": "set MODEL_API_KEY in the verifier's environment to its vision model key; never put it in a file"
+      },
+      {
+        "code": "PROVIDER_FAILED",
+        "stage": "observing",
+        "detail": "EXPECTRAIL_SAM_USD_CAP is missing or invalid. No vision request is sent. Engine checks still run: a failure rejects; otherwise the result is needs-review.",
+        "fix": "set EXPECTRAIL_SAM_USD_CAP to the most this run may spend in US dollars (a finite amount, 0 or more)"
+      }
+    ]
+  },
+  "modelCalls": 0,
+  "approvalsApplied": 0,
+  "cloneCommand": [
+    "git",
+    "clone",
+    "--filter=blob:none",
+    "--single-branch",
+    "--branch",
+    "main",
+    "https://github.com/Expectrail/Expectrail.git"
+  ],
+  "sourceSha256": {
+    "expectrail/onboard.py": "af4fe1110c1782b86d9a4a2e87019da1f1375219cd558e850567c396bdf8d696",
+    "expectrail/onboard_page.py": "2c1dccf9a7a74e8c878eb92f6a8fab7f5b54ec93304d2883b85bdc32d0ab2695",
+    "expectrail/onboard_review.py": "e0dff2371e3634865622ef1d11542783186459bf70d00c107a7271fde200cab6"
+  },
+  "measuredCodePatchSha256": "df90f75996fe789e8e723b25e01f8a411909668749ee4ba2086417bbfe7e8d47",
+  "machineSetupSeconds": 85.41270033604815
+}

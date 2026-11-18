@@ -61,11 +61,11 @@ def choice(kind, key, *, allowed=True):
 
 def figure(state, frame, label, *, boxes=False, images=None):
     if not frame:return '<p class="muted">No measured frame available.</p>'
-    if frame.get('mime') == 'image/webp':
+    if frame.get('mime') in ('image/webp', 'image/svg+xml'):
         from expectrail.onboard_review import native_sprite_bytes
         raw = native_sprite_bytes(state,frame)
         if raw is None:return '<p class="muted">The saved sprite is missing or changed.</p>'
-        source = 'data:image/webp;base64,' + base64.b64encode(raw).decode()
+        source = 'data:' + frame['mime'] + ';base64,' + base64.b64encode(raw).decode()
         return (f'<figure><img src="{source}" alt="{escape(label,quote=True)}">'
                 f'<figcaption>{escape(label)}</figcaption></figure>')
     raw=viewer._frame_bytes(state,frame)

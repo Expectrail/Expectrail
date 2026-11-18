@@ -4,12 +4,14 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import struct
 import subprocess
 import tempfile
 import time
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -38,9 +40,9 @@ def local(root, name, *, exists=True):
         raise ValueError('A review path must stay inside its project.')
     path = root / rel
     if any(p.is_symlink() for p in (path, *path.parents)) or not path.resolve().is_relative_to(root):
-        raise ValueError('A review input or destination is a symbolic link or leaves its project.')
+        raise ValueError('A review input or destination is a symbolic link or leaves its project. Use regular files within the project.')
     if (exists or path.exists()) and not path.is_file():
-        raise ValueError(f'Review input is missing: {name}')
+        raise ValueError(f'Review input is missing: {name}. Restore it or generate a new review page.')
     return path
 
 
@@ -72,6 +74,11 @@ def thumbnail(path, *, crop=None, side=240):
         import io
         from PIL import Image
     except ImportError:
+        # The browser can scale a small original. Keep its real dimensions so
+        # overlays remain in the same coordinate system; never fake a crop.
+        if (crop is None and data.startswith(b'\x89PNG\r\n\x1a\n')
+                and len(data) <= MAX_IMAGE_BYTES and max(width, height) <= 1024):
+            return data, (width, height)
         return None
     try:
         with Image.open(Path(path)) as source:
@@ -113,8 +120,60 @@ def webp_size(data):
     return size if all(0 < n <= 4096 for n in size) else None
 
 
+def svg_size(data):
+    """Accept only bounded, self-contained SVG shapes, never active SVG content.
+
+    This conservative preview subset is rendered as an image, never inlined into
+    the page. Unsupported art keeps its existing raster/crop fallback.
+    """
+    from xml.etree import ElementTree
+
+    if len(data) > MAX_NATIVE_ART_BYTES:
+        return None
+    try:
+        text = data.decode('utf-8')
+        if '\0' in text or any(token in text.upper() for token in ('<!DOCTYPE', '<!ENTITY', '<?')):
+            return None
+        root = ElementTree.fromstring(text)
+        prefix = '{http://www.w3.org/2000/svg}'
+        if root.tag != prefix + 'svg':
+            return None
+        dimensions = []
+        for key in ('width', 'height'):
+            value = root.attrib.get(key, '')
+            if not re.fullmatch(r'[1-9][0-9]*(?:px)?', value):
+                return None
+            number = int(value.removesuffix('px'))
+            if number > 4096:
+                return None
+            dimensions.append(number)
+        tags = {'svg', 'g', 'rect', 'path', 'circle', 'ellipse', 'line', 'polyline', 'polygon'}
+        attrs = {'id', 'width', 'height', 'viewBox', 'x', 'y', 'x1', 'y1', 'x2', 'y2',
+                 'rx', 'ry', 'r', 'cx', 'cy', 'd', 'points', 'transform', 'fill',
+                 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-linecap',
+                 'stroke-linejoin', 'stroke-opacity', 'opacity', 'preserveAspectRatio'}
+        stack = [(root, 0)]
+        count = 0
+        while stack:
+            node, depth = stack.pop()
+            count += 1
+            if count > 256 or depth > 16 or node.tag not in {prefix + tag for tag in tags}:
+                return None
+            if (node.text and node.text.strip()) or (node.tail and node.tail.strip()):
+                return None
+            for name, value in node.attrib.items():
+                if name not in attrs or '\\' in value or re.search(r'url\s*\(', value, re.IGNORECASE):
+                    return None
+                if name in ('fill', 'stroke') and not re.fullmatch(r'(?:#[0-9a-fA-F]{3,8}|[A-Za-z]+)', value):
+                    return None
+            stack.extend((child, depth + 1) for child in node)
+        return tuple(dimensions)
+    except (ElementTree.ParseError, ValueError, TypeError):
+        return None
+
+
 def native_sprite(state, path):
-    """A small original WebP can be embedded without an optional image decoder.
+    """A small original WebP or static SVG can be embedded without an image decoder.
 
     This is a sprite preview only. It never invents a measured frame/crop or makes an
     unmeasured object reviewable. PNG thumbnails keep their existing byte budget.
@@ -124,11 +183,15 @@ def native_sprite(state, path):
     except (OSError, ValueError):
         return None
     size = webp_size(data)
+    extension, mime = 'webp', 'image/webp'
+    if size is None:
+        size = svg_size(data)
+        extension, mime = 'svg', 'image/svg+xml'
     if size is None:
         return None
-    name = f'sprites/{sha(data)}.webp'
+    name = f'sprites/{sha(data)}.{extension}'
     dest = state / name; dest.parent.mkdir(exist_ok=True); dest.write_bytes(data)
-    return {'path': name, 'sha256': sha(data), 'size': list(size), 'frame': 0, 'mime': 'image/webp'}
+    return {'path': name, 'sha256': sha(data), 'size': list(size), 'frame': 0, 'mime': mime}
 
 
 def native_sprite_bytes(state, frame):
@@ -136,8 +199,9 @@ def native_sprite_bytes(state, frame):
     try:
         path = local(Path(state).resolve(), frame['path'])
         data = read(path, MAX_NATIVE_ART_BYTES)
-        if (frame.get('mime') == 'image/webp' and sha(data) == frame.get('sha256')
-                and webp_size(data) == tuple(frame.get('size') or ())):
+        size_reader = {'image/webp': webp_size, 'image/svg+xml': svg_size}.get(frame.get('mime'))
+        if (size_reader is not None and sha(data) == frame.get('sha256')
+                and size_reader(data) == tuple(frame.get('size') or ())):
             return data
     except (OSError, ValueError, KeyError, TypeError):
         pass
@@ -304,7 +368,7 @@ def prepare(root, state, *, source=None, evidence=None, broken=(), recording=Non
             with tempfile.TemporaryDirectory(prefix='expectrail-onboard-capture-') as temp:
                 temp = Path(temp); route_path = temp / 'route.json'; route_path.write_bytes(route_raw)
                 try:
-                    run(route_path, temp / 'clean', game=root, project=config, godot=engine)
+                    run(route_path, temp / 'clean', game=root, project=config, godot=engine, fps=None)
                     # Keep only the source capture until thumbnails have been made below.
                     shutil.copytree(temp / 'clean', state / 'capture', ignore=shutil.ignore_patterns('work','sandbox'))
                     clean = capture_data(state / 'capture')
@@ -396,7 +460,20 @@ def prepare(root, state, *, source=None, evidence=None, broken=(), recording=Non
                     'observer':'Recorded answers' if client else 'No observer answers supplied; engine boxes only'}
 
 
-def approve_answers(path):
+@dataclass(frozen=True)
+class _AnswerPlan:
+    root: Path
+    selected: list[dict]
+    timing: dict
+    timing_path: Path
+    config: dict
+    config_path: Path
+    route: dict
+    route_path: Path
+    confirmed_objects: bool
+
+
+def _read_answers(path):
     answers=load_strict(Path(path),'onboard-answers')
     person=answers['person'].strip()
     if not person or '\n' in person or '\r' in person:raise ValueError("A person's name is required; nothing was approved.")
@@ -413,14 +490,12 @@ def approve_answers(path):
         raise ValueError('The answers do not match the objects and draft checks on this page.')
     for item in record['inputs']:
         if sha(read(local(root,item['path'])))!=item['sha256']:raise ValueError(f"Reviewed input changed: {item['path']}. Create a new review page.")
-    bodies={}
     for spec in record['specs']:
         body=strict_loads(read(local(root,spec['path'])).decode());validate(body,'test-spec')
         if approval.spec_sha256(body)!=spec['specSha256'] or sha(read(local(root,spec['path'])))!=spec['fileSha256']:
             raise ValueError(f"Check {spec['id']} changed since review; no approvals were written.")
         problems=approval.lint({k:v for k,v in body.items() if k!='approval'})
         if problems:raise ValueError('; '.join(problems))
-        bodies[spec['id']]=body
     selected=[s for s in record['specs'] if not s['approved'] and answers['checks'][s['id']]]
     all_objects=all(answers['objects'].values()) and all(o['reviewable'] for o in record['objects'])
     if selected and not all_objects:raise ValueError('Confirm the measured objects before approving checks; no approvals were written.')
@@ -435,13 +510,34 @@ def approve_answers(path):
     if route_record['existed'] and sha(read(dest))!=route_record['sha256']:raise ValueError('The reviewed route changed.')
     config_path=local(root,record['configPath'],exists=record['configFileSha256'] is not None)
     if record['configFileSha256'] is None and config_path.exists():raise ValueError('A config appeared after review; it was preserved.')
-    for spec in selected:approval.approve(local(root,spec['path']),person,at=stamp,expected_sha256=spec['specSha256'])
-    if all_objects:
-        if not route_record['existed']:
-            dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(encoded(route_record['document']))
-        config_path.write_bytes(encoded(config))
-    timing=deepcopy(record['timing']);timing.update(person=person,approvedAt=stamp if all_objects else None,
-        humanSeconds=(at-opened).total_seconds(),state='approved' if all_objects else 'declined')
-    validate_v1(timing,'onboard-timing')
-    timing_path.write_bytes(encoded(timing))
-    return {'approved':[s['id'] for s in selected],'person':person,'timing':timing}
+    timing = deepcopy(record['timing'])
+    timing.update(person=person, approvedAt=stamp if all_objects else None,
+                  humanSeconds=(at-opened).total_seconds(),
+                  state='approved' if all_objects else 'declined')
+    validate_v1(timing, 'onboard-timing')
+    return _AnswerPlan(root, selected, timing, timing_path, config, config_path,
+                       route_record, dest, all_objects)
+
+
+def check_answers(path):
+    """Validate a saved review against the current project without applying it."""
+    plan = _read_answers(path)
+    return {'selectedChecks': [spec['id'] for spec in plan.selected],
+            'allObjectsConfirmed': plan.confirmed_objects,
+            'applied': False}
+
+
+def approve_answers(path):
+    plan = _read_answers(path)
+    person = plan.timing['person']
+    for spec in plan.selected:
+        approval.approve(local(plan.root, spec['path']), person,
+                         at=plan.timing['approvedAt'], expected_sha256=spec['specSha256'])
+    if plan.confirmed_objects:
+        if not plan.route['existed']:
+            plan.route_path.parent.mkdir(parents=True, exist_ok=True)
+            plan.route_path.write_bytes(encoded(plan.route['document']))
+        plan.config_path.write_bytes(encoded(plan.config))
+    plan.timing_path.write_bytes(encoded(plan.timing))
+    return {'approved': [spec['id'] for spec in plan.selected], 'person': person,
+            'timing': plan.timing}
