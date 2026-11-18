@@ -21,8 +21,9 @@ def provider_only(path, doc):
         expected = f"attempt-{attempt['n']}/fixer-invocation.json"
         if attempt.get('fixerInvocation') != expected:
             raise ValueError('record has no bound invocation proof')
-        target = Path(path).parent / expected
-        if target.resolve() != target.absolute(): raise ValueError('linked invocation proof')
+        try:
+            target = record.unlinked_below(Path(path).parent, expected)
+        except record.RecordError: raise ValueError('linked invocation proof') from None
         raw = record.read_bytes_capped(target, 2*1024*1024, 'fixer invocation proof')
         if hashlib.sha256(raw).hexdigest() != attempt.get('fixerInvocationSha256'):
             raise ValueError('invocation proof digest differs')
