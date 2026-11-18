@@ -1,0 +1,19 @@
+{
+  "before": {
+    "tests": 4287,
+    "seconds": 459.696,
+    "failingNames": [],
+    "skips": 51,
+    "ok": true,
+    "log": "logs/before.log"
+  },
+  "after": {
+    "tests": 4300,
+    "seconds": 450.78,
+    "failingNames": [],
+    "skips": 53,
+    "ok": true,
+    "log": "logs/after.log"
+  },
+  "sameFailingNames": true
+}

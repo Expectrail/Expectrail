@@ -175,8 +175,8 @@ class BothObserversTest(Case):
     def test_both_pass_is_an_accept_and_the_record_says_who_judged(self):
         doc = self.gate(repo(self.tmp / "head"))
         self.assertEqual((doc["decision"], doc["counts"]["passed"]), ("accept", 1))
-        self.assertEqual(doc["observers"], {"rule": "both", "visual": {"name": "sam", "provider": "meta-model-api",
-                                                                      "model": "sam-3.1"}})
+        self.assertEqual(doc["observers"], {"rule": "both", "engine": {"name": "expectrail.engine-record", "version": "0.1.0"}, "visual": {"name": "sam", "provider": "meta-model-api",
+                                                                      "model": "sam-3.1", "version": "0.1.0"}})
         seen = self.row(doc)["observed"]
         self.assertEqual((seen["before"], seen["after"]["engine"], seen["after"]["visual"]), (None, "pass", "pass"))
         self.assertTrue(self.game.asked)
@@ -199,7 +199,7 @@ class BothObserversTest(Case):
     def test_no_visual_observer_accepts_nothing_and_says_why(self):
         doc = self.gate(repo(self.tmp / "head"), visual=None)
         self.assertEqual((doc["decision"], doc["counts"]["needsReview"]), ("needs-review", 1))
-        self.assertEqual(doc["observers"], {"rule": "both", "visual": None})
+        self.assertEqual(doc["observers"], {"rule": "both", "engine": {"name": "expectrail.engine-record", "version": "0.1.0"}, "visual": None})
         self.assertEqual(self.row(doc)["observed"]["after"],
                          {"engine": "pass", "visual": "not-asked", "visualAnswerSha256": None})
         self.assertTrue(any("no visual observer was asked" in r and "not an accept" in r for r in doc["reasons"]),
@@ -557,7 +557,7 @@ class EngineOnlyTest(Case):
         self.assertEqual(rec.errors(stopped, old), [])
         self.assertIn("the engine's record only", rec.observers_words(doc))
         self.assertEqual(gv.stopped_record("stopped", pr=None, game="game", checks_from="head", expectrail_commit=None,
-                                           rule=rec.BOTH)["observers"], {"rule": "both", "visual": None})
+                                           rule=rec.BOTH)["observers"], {"rule": "both", "engine": {"name": "expectrail.engine-record", "version": "0.1.0"}, "visual": None})
 
     def test_an_explicit_engine_only_block_is_read_too(self):
         doc = self.gate(repo(self.tmp / "head"), rule=rec.ENGINE_ONLY, visual=None)

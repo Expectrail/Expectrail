@@ -266,12 +266,17 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
               offer: str = offer_mod.BASELINE, candidate_to_model: str = "shown", report_route=None) -> None:
     from expectrail.jit.diff_map import withheld_map
 
-    probes = offer_mod.library(profile["actions"], offer, report)
+    probes = offer_mod.library(profile["actions"], offer, report, profile=profile, game=game)
     for p in probes:
-        p["source"] = "reach" if p.get("family") == "reach" else "library"
+        p["source"] = p["family"] if p.get("family") in ("reach", "menu") else "library"
+    # The actions each probe this run made may press (a menu probe also presses the profile's menu action).
+    # A probe the model proposes is compiled with the catalog alone, whatever it says it is.
+    made_here = {p["id"]: offer_mod.route_actions(profile, p) for p in probes if p.get("source") != "report"}
     if report_route is not None:
         from expectrail.contracts import validate
         validate(report_route, 'route')
+        if any('pointer' in e for e in report_route['events']):
+            raise NothingGenerated('REPORT_ROUTE_INVALID: pointer input is not supported by the trusted action catalog')
         if report_route['ticks'] > 1800 or any(e['action'] not in profile['actions'] for e in report_route['events']):
             raise NothingGenerated('REPORT_ROUTE_INVALID: ticks or actions outside the trusted catalog')
         if any(e['tick'] >= report_route['ticks'] for e in report_route['events']):
@@ -350,12 +355,13 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
     routes: dict[str, tuple[dict, Path]] = {}
     route_dir = out / "jit-routes"
     route_dir.mkdir(exist_ok=True)
-    for p in probes + answer.get("probes", []):
+    for i, p in enumerate(probes + answer.get("probes", [])):
         if p["id"] in routes:
             continue
+        names = made_here[p["id"]] if i < len(probes) and p.get("source") != "report" else profile["actions"]
         try:
             route = p['route'] if p.get('source') == 'report' else compile_route(
-                p["program"], name=p["id"], description=p["description"], actions=profile["actions"])
+                p["program"], name=p["id"], description=p["description"], actions=names)
         except ProgramError as exc:
             diagnostics.append(f"probe {p['id']} refused by the route compiler: {exc}")
             continue
@@ -534,9 +540,13 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
         else:
             by_probe.setdefault(check["probe"], []).append(check)
 
+    by_probe, plans, refused = _pixel_plans(by_probe, routes, observer)
+    for check, why in refused:
+        not_run(check, why)
+
     if state["pixel"].get("capture") is not None:
         _pixel_capture(by_probe, routes, base_patches, candidate, out, replay, reps, state["pixel"]["capture"],
-                       frame_runner, observer)
+                       frame_runner, observer, plans)
         for check in [c for g in by_probe.values() for c in g]:
             rows[check["id"]] = pixel.record_row(check, "not-run", pixel_jobs.CAPTURED)
         state["pixelChecks"] = [rows[c["id"]] for c in checks]
@@ -546,12 +556,7 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
     held = 0.0  # observer images reserved and not yet sent, across probes
     for pid, group in sorted(by_probe.items()):
         route = routes[pid][0]
-        try:
-            planned = [int(n) for n in observer.frames(route)]
-        except Exception as exc:  # noqa: BLE001 - an observer that cannot say what it will ask is not asked
-            for check in group:
-                not_run(check, f"the observer could not say which frames it would ask about ({type(exc).__name__})")
-            continue
+        windows, planned = plans[pid]
         # The roles the game has many of that a check on this probe names: the observer is asked about
         # each of their boxes too, up to pixel.MAX_BOXES a frame.
         objects = sorted({c["object"] for c in group if pixel.named(c["object"], bindings)})
@@ -562,8 +567,12 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
         # images a replay can take at most (``most_images``: none for the no-model visual-sensor) is held to that.
         most = getattr(observer, "most_images", None)
         try:
-            per_run = int(most(route, objects, player)) if callable(most) \
-                else len(planned) * pixel.images_per_frame(player, objects)
+            if not callable(most):
+                per_run = len(planned) * pixel.images_per_frame(player, objects)
+            elif windows is None:
+                per_run = int(most(route, objects, player))
+            else:
+                per_run = int(most(route, objects, player, windows=windows))
             if per_run < 0:
                 raise ValueError("it says a replay takes fewer than no images")
         except Exception as exc:  # noqa: BLE001 - an observer that cannot say what it will send is not asked
@@ -586,7 +595,7 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
                 replay(name, patches, pid, n, with_runner=frame_runner)
                 try:
                     setting, run, images = pixel.observe(observer, out / "jit-replays" / name / f"{pid}-{n}", route,
-                                                         objects, player)
+                                                         objects, player, windows)
                 except pixel.PixelError as exc:
                     # An observer that stops part way has still sent what it sent: charge it, then stop.
                     sent = getattr(exc, "images", 0)
@@ -646,34 +655,65 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
     state["pixelChecks"] = [rows[c["id"]] for c in checks]
 
 
+def _pixel_plans(by_probe: dict, routes: dict, observer) -> tuple[dict, dict, list]:
+    """(checks by probe, plans, refused): what the observer is asked about on each probe (#605), its plan
+    inside the union of the windows of the checks on that probe (pixel.py ``planned``), as
+    {probe: (windows, frames)}. A check whose window holds no planned frame could judge nothing, so it is
+    refused and asks for nothing, as is every check on a probe the observer cannot plan; a probe left with
+    no check is not replayed. ``refused`` is [(check, why), ...]."""
+    from expectrail.jit import pixel
+
+    kept: dict[str, list[dict]] = {}
+    plans: dict[str, tuple[list | None, list[int]]] = {}
+    refused: list[tuple[dict, str]] = []
+    for pid in sorted(by_probe):
+        route = routes[pid][0]
+        try:
+            whole = [int(n) for n in observer.frames(route)]
+        except Exception as exc:  # noqa: BLE001 - an observer that cannot say what it will ask is not asked
+            refused.extend((c, f"the observer could not say which frames it would ask about ({type(exc).__name__})")
+                           for c in by_probe[pid])
+            continue
+        group = []
+        for check in by_probe[pid]:
+            if pixel.frames_to_ask(check, whole):
+                group.append(check)
+            else:
+                refused.append((check, pixel.NO_PLANNED_FRAME))
+        if group:
+            windows = pixel.probe_windows(group)
+            kept[pid], plans[pid] = group, (windows, pixel.in_windows(whole, windows))
+    return kept, plans, refused
+
+
 def _pixel_capture(by_probe: dict, routes: dict, base_patches: list, candidate: Path, out: Path, replay, reps: int,
-                   store: Path, frame_runner, observer) -> None:
+                   store: Path, frame_runner, observer, plans: dict | None = None) -> None:
     """The capture job (expectrail/jit/pixel_jobs.py, step 1): each pixel check's probe replayed with frames
     on the clean game, the bug build and the candidate, ``reps`` times each, and every folder kept in
-    ``store`` with only the frames ``observer`` will ask about. A probe whose frames the observer cannot
-    plan is not replayed (the judging run then does not run its checks, as it would not here). A replay
-    that fails ends the run (rule 3), as any replay does."""
-    from expectrail.jit import pixel_jobs
+    ``store`` with only the frames ``observer`` will ask about: its plan inside the checks' windows
+    (``_pixel_plans``), with the windows written beside the replay so the asking job plans the same. A
+    probe whose frames the observer cannot plan is not replayed (the judging run then does not run its
+    checks, as it would not here). A replay that fails ends the run (rule 3), as any replay does."""
+    from expectrail.jit import pixel, pixel_jobs
 
     store = Path(store)
     store.mkdir(parents=True, exist_ok=True)
     builds = (("pixel-reference", []), ("pixel-base", list(base_patches)), ("pixel-candidate", [*base_patches, candidate]))
-    from expectrail.jit import pixel
-
     bindings = pixel.bindings_for()
+    if plans is None:
+        by_probe, plans, _ = _pixel_plans(by_probe, routes, observer)
     for pid in sorted(by_probe):
-        route = routes[pid][0]
-        try:
-            planned = [int(n) for n in observer.frames(route)]
-        except Exception:  # noqa: S112 - as in _pixel_stage: an observer that cannot plan is not asked
+        if pid not in plans:
             continue
+        route = routes[pid][0]
+        windows, planned = plans[pid]
         objects = sorted({c["object"] for c in by_probe[pid] if pixel.named(c["object"], bindings)})
         player = pixel.asks_player(by_probe[pid], bindings)
         for name, patches in builds:
             for n in range(1, reps + 1):
                 replay(name, patches, pid, n, with_runner=frame_runner)
                 pixel_jobs.store_replay(out / "jit-replays" / name / f"{pid}-{n}", store, route, planned, objects,
-                                        player)
+                                        player, windows)
 
 
 def _variants(game, base_patches, candidate, limit):

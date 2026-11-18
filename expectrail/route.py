@@ -180,6 +180,12 @@ def describe(route: dict, rate: int, trace: dict) -> list[str]:
     lines = [f"Route: {route['ticks']} physics ticks ({route['ticks'] / rate:g} seconds at {rate} ticks/second), seed 1."]
     held, durations = {}, {}
     for event in route["events"]:
+        if "pointer" in event:
+            point = event["pointer"]
+            button = (f"{point['button']} {'down' if point['pressed'] else 'up'}"
+                      if "button" in point else "move")
+            lines.append(f"  pointer {button} at viewport {point['position']}, tick {event['tick']}.")
+            continue
         if event["pressed"]:
             held[event["action"]] = event["tick"]
         else:
@@ -188,8 +194,9 @@ def describe(route: dict, rate: int, trace: dict) -> list[str]:
         lines.append(f"  {action}: {len(stretches)} press(es), {stretches[0]} ticks "
                      f"({stretches[0] / rate:g} seconds) each.")
     pause = max(1, round(rate / 4))
-    lines.append(f"Pauses: {pause} ticks ({pause / rate:g} seconds) before and between actions; "
-                 f"{2 * pause} ticks after the last release.")
+    if not any("pointer" in e for e in route["events"]):
+        lines.append(f"Pauses: {pause} ticks ({pause / rate:g} seconds) before and between actions; "
+                     f"{2 * pause} ticks after the last release.")
     positions = [row["player"] for row in trace["rows"] if "player" in row]
     moved = bool(positions) and any(p != positions[0] for p in positions[1:])
     if not route["events"]:

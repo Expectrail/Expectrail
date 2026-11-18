@@ -1,0 +1,348 @@
+{
+  "format": "expectrail.episode/v1",
+  "id": "pointer-example",
+  "adapter": "godot-platformer/v1",
+  "source": {
+    "routeName": "pointer-menu-paddle",
+    "routeSha256": "39b909fb0da3a7f6d095d2a7980e594557486e3c4d2eaaa7ee452063e9d4f629",
+    "traceSha256": "45dff2458eec450ea56b0724d2ae35c92dd89972667931e05d3c1d0190faacf7",
+    "replaySha256": null
+  },
+  "physicsTicksPerSecond": 60,
+  "captureFps": null,
+  "frameMapping": null,
+  "capabilities": {
+    "player": true,
+    "onFloor": false,
+    "facing": false,
+    "enemies": "unknown",
+    "projectiles": "unknown",
+    "coins": "unknown",
+    "view": false
+  },
+  "completeness": {
+    "contiguous": true,
+    "firstTick": 0,
+    "lastTick": 17,
+    "gaps": []
+  },
+  "inputs": [
+    {
+      "tick": 2,
+      "pointer": {
+        "position": [
+          80,
+          30
+        ]
+      }
+    },
+    {
+      "tick": 3,
+      "pointer": {
+        "position": [
+          80,
+          30
+        ],
+        "button": "left",
+        "pressed": true
+      }
+    },
+    {
+      "tick": 4,
+      "pointer": {
+        "position": [
+          80,
+          30
+        ],
+        "button": "left",
+        "pressed": false
+      }
+    },
+    {
+      "tick": 6,
+      "pointer": {
+        "position": [
+          40,
+          120
+        ]
+      }
+    },
+    {
+      "tick": 10,
+      "pointer": {
+        "position": [
+          260,
+          120
+        ]
+      }
+    },
+    {
+      "tick": 12,
+      "pointer": {
+        "position": [
+          200,
+          120
+        ],
+        "button": "right",
+        "pressed": true
+      }
+    },
+    {
+      "tick": 13,
+      "pointer": {
+        "position": [
+          180,
+          120
+        ]
+      }
+    },
+    {
+      "tick": 14,
+      "pointer": {
+        "position": [
+          180,
+          120
+        ],
+        "button": "right",
+        "pressed": false
+      }
+    }
+  ],
+  "samples": [
+    {
+      "tick": 0,
+      "player": [
+        160.0,
+        150.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": null,
+      "view": null
+    },
+    {
+      "tick": 1,
+      "player": [
+        160.0,
+        150.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": null,
+      "view": null
+    },
+    {
+      "tick": 2,
+      "player": [
+        160.0,
+        150.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": null,
+      "view": null
+    },
+    {
+      "tick": 3,
+      "player": [
+        160.0,
+        150.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": null,
+      "view": null
+    },
+    {
+      "tick": 4,
+      "player": [
+        160.0,
+        150.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": null,
+      "view": null
+    },
+    {
+      "tick": 5,
+      "player": [
+        160.0,
+        150.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": null,
+      "view": null
+    },
+    {
+      "tick": 6,
+      "player": [
+        160.0,
+        150.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": null,
+      "view": null
+    },
+    {
+      "tick": 7,
+      "player": [
+        160.0,
+        150.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": null,
+      "view": null
+    },
+    {
+      "tick": 8,
+      "player": [
+        160.0,
+        150.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": null,
+      "view": null
+    },
+    {
+      "tick": 9,
+      "player": [
+        160.0,
+        150.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": null,
+      "view": null
+    },
+    {
+      "tick": 10,
+      "player": [
+        160.0,
+        150.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": null,
+      "view": null
+    },
+    {
+      "tick": 11,
+      "player": [
+        160.0,
+        150.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": null,
+      "view": null
+    },
+    {
+      "tick": 12,
+      "player": [
+        160.0,
+        150.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": null,
+      "view": null
+    },
+    {
+      "tick": 13,
+      "player": [
+        160.0,
+        150.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": null,
+      "view": null
+    },
+    {
+      "tick": 14,
+      "player": [
+        160.0,
+        150.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": null,
+      "view": null
+    },
+    {
+      "tick": 15,
+      "player": [
+        160.0,
+        150.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": null,
+      "view": null
+    },
+    {
+      "tick": 16,
+      "player": [
+        160.0,
+        150.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": null,
+      "view": null
+    },
+    {
+      "tick": 17,
+      "player": [
+        160.0,
+        150.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": null,
+      "view": null
+    }
+  ],
+  "events": []
+}

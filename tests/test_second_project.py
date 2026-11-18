@@ -208,7 +208,7 @@ class RealGodotTest(Case):
         self.assertIn("the engine's record passes 1 check that no visual observer was asked about, so this is "
                       "not an accept: an accept needs the visual observer's evidence", status["reasons"])
         self.assertEqual(sorted(d["code"] for d in status["diagnostics"]), ["PROVIDER_FAILED", "PROVIDER_FAILED"])
-        self.assertEqual(status["observers"], {"rule": "both", "visual": None})
+        self.assertEqual(status["observers"], {"rule": "both", "engine": {"name": "expectrail.engine-record", "version": "0.1.0"}, "visual": None})
 
     def test_the_bundled_game_passes_the_engine_and_needs_vision_to_accept(self):
         head = smp.checkout(self.tmp / "bundled", bug=False)

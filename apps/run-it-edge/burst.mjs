@@ -61,7 +61,8 @@ function fixture() {
   };
   function restart(extra = {}) {
     env = { ...env, ...extra };
-    object = new RunIt({ storage }, env);
+    // A Durable Object's state has waitUntil (#265 status bound): background refreshes run on it.
+    object = new RunIt({ storage, waitUntil: promise => { promise.catch(() => {}); } }, env);
   }
   const originalFetch = globalThis.fetch, originalNow = Date.now, originalLog = console.log;
   globalThis.fetch = fakeFetch; Date.now = () => t;

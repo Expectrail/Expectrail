@@ -299,6 +299,28 @@ the screen from the frame the menu opens on, in the corner where the count is dr
 the engine's record; the records and the table are on the bench's page. Like the two other
 screen-only defects, they wait on checks that can speak about what is drawn (#286).
 
+**The menu setting** (November 18, 2026, issue #285; `--offer signals-reach-evidence-menu`). Since the
+#285 audit a check can read the engine's one integer Label (`ui_integer_at_end`) and compare it with
+`coins_collected` on the same probe. This setting is the evidence setting plus the three menu probes,
+so a generated check can do that where the counter is drawn. The menu action comes from the reviewed
+mechanics profile's new optional `menuActions` (`["toggle_pause"]` in
+`discovery/platformer.profile.json`), never from the report, the patch or the model, and it is refused
+unless `project.godot` declares it. Only the menu probes press it: the prompt's `actions` list stays the
+catalog, and a probe the model writes is compiled with the catalog alone (`offer.route_actions`). A run
+under this setting with a profile that names no menu action generates nothing. Records say `menu` as the
+source of such a probe. Every other setting's prompt and probe list are unchanged. Not yet run live.
+
+**What the proposer is shown on a menu probe** (November 18, 2026, issue #285). The harness records the
+counter only when asked, and until this change the measure step and the evidence asked on no replay: on
+Godot 4.7.2 the measure step read `ui_integer_at_end` as no reading on every menu probe, clean and bug
+build alike, so the prompt showed nothing about the counter where it is drawn. Now the measure step's and
+the evidence's replays of a menu probe, and of no other probe, ask for it (`offer.replay_options`, the
+harness's `ui_integers`). On the real engine, `hold-right-then-toggle-pause` measures 5 on the clean game,
+10 on `coin-counts-twice` and 0 on `coin-counter-stuck` (`tests/test_jit_menu_reading.py`), and its
+evidence on `coin-counts-twice` now shows `uiIntegers` differing from tick 310 and the signal reading 5
+against 10. These are readings, not a reproduction rate; no model was asked. Every other probe's replays
+are as before.
+
 **What each defect changes on the screen** (November 12, 2026; [`expectrail/repro/screen.py`](../expectrail/repro/screen.py),
 `expectrail.repro-screen/v1`). Every library probe was replayed with its frames captured, on the
 clean game twice and on each defect build once (650 replays on the real engine, in a cloud
@@ -757,6 +779,25 @@ replays need up to 1,296 images, $3.24. The asking job plans every 10th frame of
 whatever the checks' windows, so a window does not lower the reservation; at the $2 cap one bullet check on
 one probe can be asked about, not three. Whether SAM sees a bullet drawn behind the scenery is untested.
 
+**Only the windows' frames are asked about (#605, November 18).** Since then the observer is asked only
+about its planned frames inside the union of the windows of the checks on a probe (`pixel.planned`; a check
+without a window keeps the whole plan). The in-process replay (`run.py` `_pixel_plans`), the capture (which
+writes the windows beside each kept replay as `windows.json`, untrusted like `objects.json`), the asking job
+(`pixel_jobs.ask`, which reads them back and refuses malformed ones) and the judging job plan the same frames,
+and `pixel.observe` refuses an answer about other frames. The judging job refuses recorded answers planned
+for other windows (`RecordedSamClient.plan_of`), so their checks are dropped, never passed. A check whose
+window holds no planned frame is `not-run` and asks for nothing. The three bullet checks now reserve 675
+images, $1.69, under what the asking job gets at the $2 cap ($1.79). Shown offline only
+(`tests/test_jit_pixel_windows.py`); no capture of the bench probes was remade, and SAM was not asked.
+
+**The bullet capture, remade with the windows (November 18, afternoon).** The same `jit run --proposal
+--pixel-capture` on the real engine here (Godot 4.7.2, no model, no SAM, not in CI, 9.3 minutes, 27
+replays) kept 225 frames, 49 MB (the whole-probe capture kept 86 MB). The record differs from the first only
+in the profile's hash (`menuActions`, #622) and the replay time, so the capture's spend is $0.1987.
+`pixel-budget` gave the asking job $1.8013, and `pixel-ask` on that capture no longer refused: it reserved
+675 images, $1.6875, and began asking. With the recorded rehearsal answers (`--sam-answers`, asked under
+another setting) it stopped at the first replay and sent nothing, as it must. SAM itself has not been asked.
+
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 
 The replays run the change's code, and asking SAM needs its key; jit.yml keeps the two in separate jobs
@@ -855,7 +896,8 @@ under `boxes`), so the menu offers both to `sam-3.1-anchor`.
   asked about the player is refused. The capture job writes `"player": false` into `objects.json`.
 - **Reserved:** `pixel.MAX_BOXES` images a frame for each named role, and one for the player only when
   it is asked about, on every run, before anything is asked, in the in-process replay, in `pixel.cost`
-  and in `pixel-ask`.
+  and in `pixel-ask`. The frames are the planned frames inside the checks' windows (#605): the capture
+  writes the windows into the stored replay (`windows.json`) and the asking job reads them back.
 - **Shown offline only.** The tests use a scripted SAM client and synthetic replays
   (`tests/test_jit_pixel_named.py`, `tests/test_jit_pixel_player.py`). No SAM answer about an enemy or a bullet has been recorded, and no
   live run has asked one.

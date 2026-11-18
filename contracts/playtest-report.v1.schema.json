@@ -86,27 +86,102 @@
         "events": {
           "type": "array",
           "items": {
-            "type": "object",
-            "required": [
-              "tick",
-              "action",
-              "pressed"
-            ],
-            "additionalProperties": false,
-            "properties": {
-              "tick": {
-                "type": "integer",
-                "minimum": 0
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [
+                  "tick",
+                  "action",
+                  "pressed"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "tick": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "action": {
+                    "type": "string",
+                    "description": "an input action defined by the game, e.g. move_right"
+                  },
+                  "pressed": {
+                    "type": "boolean"
+                  }
+                }
               },
-              "action": {
-                "type": "string",
-                "description": "an input action defined by the game, e.g. move_right"
-              },
-              "pressed": {
-                "type": "boolean"
+              {
+                "type": "object",
+                "required": [
+                  "tick",
+                  "pointer"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "tick": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "pointer": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "required": [
+                          "position"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                          "position": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1000000
+                            },
+                            "description": "[x,y] in the root game viewport, top-left origin, +x right, +y down. The harness refuses points outside the viewport. Not window/desktop pixels or world coordinates."
+                          }
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "position",
+                          "button",
+                          "pressed"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                          "position": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1000000
+                            },
+                            "description": "[x,y] in the root game viewport, top-left origin, +x right, +y down. The harness refuses points outside the viewport. Not window/desktop pixels or world coordinates."
+                          },
+                          "button": {
+                            "enum": [
+                              "left",
+                              "right",
+                              "middle"
+                            ]
+                          },
+                          "pressed": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
               }
-            }
-          }
+            ]
+          },
+          "description": "Inputs are applied before game physics at their named tick, in array order within that tick. Pointer state persists between events. A pointer button event also sets its position; move events preserve held buttons. Godot supports pointers; the Unity adapter refuses them explicitly."
         }
       },
       "$comment": "Embedded route.schema.json, with only the report tick cap added; kept equal by a regression test. No snapshot field is permitted."

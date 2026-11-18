@@ -1,0 +1,54 @@
+# Proposal only: Sean can add this job to CI. No workflow is changed by this file.
+# The Docker build context contains ONLY a Dockerfile, wheel and pinned public engine archive, never source or bench data.
+wheel-sample:
+  runs-on: ubuntu-24.04
+  timeout-minutes: 20
+  permissions:
+    contents: read
+  steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+      with:
+        python-version: '3.12'
+    - name: Build wheel without optional model/browser packages
+      run: |
+        python -m pip install -r requirements-build.txt
+        python -m pip wheel . --no-deps --no-build-isolation --no-index -w dist
+    - name: Install wheel in pinned clean container
+      shell: bash
+      run: |
+        set -euo pipefail
+        EXPECTRAIL_TOOLS="$RUNNER_TEMP/wheel-engine" GODOT_KEEP_DOWNLOAD=1 bash harness/get_godot.sh
+        mkdir -p "$RUNNER_TEMP/wheel-context/dist" "$RUNNER_TEMP/wheel-context/engine-cache"
+        cp "$RUNNER_TEMP/wheel-engine/godot_cache/"*.zip "$RUNNER_TEMP/wheel-context/engine-cache/"
+        cp Dockerfile.sample "$RUNNER_TEMP/wheel-context/"
+        cp dist/expectrail-*.whl "$RUNNER_TEMP/wheel-context/dist/"
+        docker build --platform linux/amd64 --progress=plain \
+          -f "$RUNNER_TEMP/wheel-context/Dockerfile.sample" \
+          -t expectrail-wheel-local "$RUNNER_TEMP/wheel-context" 2>&1 | tee wheel-install.log
+    - name: Doctor and actual sample with network disabled
+      shell: bash
+      run: |
+        set -euo pipefail
+        docker run --rm --network none expectrail-wheel-local expectrail doctor 2>&1 | tee wheel-doctor.log
+        docker run --rm --network none expectrail-wheel-local expectrail sample --json > wheel-sample.json
+        python - <<'PY'
+        import json
+        data = json.load(open('wheel-sample.json'))
+        assert len(data) == 3
+        assert [r['status']['phase'] for r in data] == ['completed'] * 3
+        assert [r['status']['decision'] for r in data] == ['accept', 'reject', 'accept']
+        assert all(r['asExpected'] for r in data)
+        print('Real sample: accept / reject / accept. Saved vision; no network or model.')
+        PY
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      if: always()
+      with:
+        name: wheel-sample-no-model
+        path: |
+          dist/*.whl
+          wheel-install.log
+          wheel-doctor.log
+          wheel-sample.json
+# Keep existing required tool tests and their required switches. In particular, the #365
+# permission-denial test fails (rather than skips) if required mode cannot test POSIX denial.

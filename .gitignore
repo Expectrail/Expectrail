@@ -46,3 +46,5 @@ _bmad/render/
 !/tools/faces_motion_stand_in.py
 !/tools/bullet_visible_stand_in.py
 !/tools/macos_suite_summary.py
+!/tools/spend_cap_audit.py
+!/tools/spend_cap_gaps.json

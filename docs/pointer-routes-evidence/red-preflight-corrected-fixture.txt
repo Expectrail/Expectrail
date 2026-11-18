@@ -1,0 +1,45 @@
+test_invalid_pointer_is_refused_before_engine_lookup (tests.test_pointer_routes.PointerReadersTest.test_invalid_pointer_is_refused_before_engine_lookup) ... FAIL
+test_pointer_tick_outside_route_is_refused (tests.test_pointer_routes.PointerReadersTest.test_pointer_tick_outside_route_is_refused) ... FAIL
+
+======================================================================
+FAIL: test_invalid_pointer_is_refused_before_engine_lookup (tests.test_pointer_routes.PointerReadersTest.test_invalid_pointer_is_refused_before_engine_lookup)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 110, in test_invalid_pointer_is_refused_before_engine_lookup
+    hr.run(p,root/'out',game=ROOT/'tests/projects/pointer-menu',capture_frames=False)
+  File "/workspace/work/pointer-routes/harness/run.py", line 291, in run
+    route_doc = json.loads(route.read_text(encoding="utf-8"))
+                     ^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+AssertionError: engine started
+
+======================================================================
+FAIL: test_pointer_tick_outside_route_is_refused (tests.test_pointer_routes.PointerReadersTest.test_pointer_tick_outside_route_is_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 118, in test_pointer_tick_outside_route_is_refused
+    hr.run(p,root/'out',game=ROOT/'tests/projects/pointer-menu',capture_frames=False)
+  File "/workspace/work/pointer-routes/harness/run.py", line 291, in run
+    route_doc = json.loads(route.read_text(encoding="utf-8"))
+                     ^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+AssertionError: engine started
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.006s
+
+FAILED (failures=2)
