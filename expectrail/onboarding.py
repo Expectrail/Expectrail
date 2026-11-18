@@ -22,6 +22,9 @@ EXT = re.compile(r'ExtResource\("([^"]+)"\)')
 def resource(root, uri):
     if not isinstance(uri, str) or not uri.startswith("res://"):
         raise ValueError(f"Use a res:// path in the project for {uri!r}.")
+    # Both sides in one spelling: a project reached through a link (every temporary folder on macOS
+    # is under /var, a link to /private/var) is still the same project (#378).
+    root = Path(root).resolve()
     path = (root / uri[6:]).resolve()
     if not path.is_relative_to(root) or not path.is_file():
         raise ValueError(f"Restore {uri} inside the project or correct the scene reference.")
@@ -33,6 +36,7 @@ def entry_scene(root, uri):
         raise ValueError("Set application/run/main_scene to a Godot scene path.")
     if not uri.startswith("uid://"):
         return uri
+    root = Path(root).resolve()
     matches = []
     for directory, dirs, names in os.walk(root):
         dirs[:] = [d for d in dirs if not d.startswith(".")]
