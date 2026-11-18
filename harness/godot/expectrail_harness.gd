@@ -78,6 +78,10 @@ var _projectile_class: StringName = &"Bullet"
 var _projectiles: Array = []     # [id, node] of every projectile seen entering the tree
 var _next_id := 0
 var _stopped := false
+var _capture_fps := 0
+var _capture_frames: Array = []
+var _capture_tick := -1
+var _finished_document: Dictionary = {}
 
 # How far above the player's origin a surface may sit and still count as the ground under it:
 # a robot sunk into the ground by less than this is measured against the surface it sank into.
@@ -117,6 +121,9 @@ func _ready() -> void:
 	seed(int(args.get("seed", "1")))
 	_trace_path = args.get("trace", "")
 	_record_ui_integers = args.get("ui-integers", "false") == "true"
+	_capture_fps = int(args.get("capture-fps", "0"))
+	if _capture_fps > 0:
+		RenderingServer.frame_pre_draw.connect(_capture_placement)
 	_player_name = args.get("player", "Player")
 	_coin_class = StringName(args.get("coins", "Coin"))
 	_sprite_name = args.get("sprite", "Sprite2D")
@@ -440,6 +447,28 @@ func record() -> void:
 		_finish()
 
 
+func _capture_placement() -> void:
+	# Movie Maker writes this draw. Record its actual physics interval and camera;
+	# 50 ticks at 60 fps includes draws with no new physics tick. Never divide rates.
+	var last_tick := _tick - 1
+	var view := get_viewport().get_final_transform() * get_viewport().get_canvas_transform()
+	var size := get_window().size
+	_capture_frames.append({"frame": _capture_frames.size(), "tick": last_tick,
+		"tickInterval": [mini(_capture_tick + 1, last_tick), last_tick],
+		"phase": "post-physics-pre-draw", "viewport": [size.x, size.y],
+		"transform": [snappedf(view.x.x, 0.0001), snappedf(view.x.y, 0.0001),
+			snappedf(view.y.x, 0.0001), snappedf(view.y.y, 0.0001),
+			snappedf(view.origin.x, 0.001), snappedf(view.origin.y, 0.001)]})
+	_capture_tick = last_tick
+	# _finish runs on the last physics tick, before its last draw. Include that
+	# draw before exit, without adding a game tick or changing when the game quits.
+	if not _finished_document.is_empty():
+		_finished_document["captureTimeline"] = {"fps": _capture_fps, "frames": _capture_frames}
+		var file := FileAccess.open(_trace_path, FileAccess.WRITE)
+		file.store_string(JSON.stringify(_finished_document, "", false))
+		file.close()
+
+
 func _finish() -> void:
 	if _roles != null:
 		var missing_roles: String = _roles.missing()
@@ -477,6 +506,9 @@ func _finish() -> void:
 			out["capabilities"]["roleBoxes"] = true
 			var size := get_window().size  # Captured pixels, not the logical stretch viewport.
 			out["viewport"] = [size.x, size.y]
+		if _capture_fps > 0:
+			out["captureTimeline"] = {"fps": _capture_fps, "frames": _capture_frames}
+			_finished_document = out
 		file.store_string(JSON.stringify(out, "", false))
 		file.close()
 	get_tree().quit(0)

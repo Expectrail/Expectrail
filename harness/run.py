@@ -399,6 +399,8 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
         cmd += [selected_scene]  # Godot's scene argument, before the harness's -- arguments.
     cmd += ["--disable-vsync", "--", f"--route={route_arg}", f"--trace={trace_arg}",
             f"--seed={route_doc.get('seed', 1)}"]
+    if capture_frames:
+        cmd += [f"--capture-fps={fps}"]
     if config is not None:
         cmd += harness_arguments(config)
     # Like optional configured role recording, the request travels through the harness's
@@ -489,6 +491,12 @@ def _replay_record(route: Path, out: Path, game_tree: str, fps: int, ordered: li
         "trace": {"path": "trace.json", "sha256": sha256_file(out / "trace.json")},
         "isolation": isolation,
     }
+    if "captureTimeline" in trace:
+        from expectrail.observation_timeline import build, TimelineError
+        try:
+            replay["timeline"] = build(trace, frames, ticks=route_doc["ticks"])
+        except (TimelineError, OSError) as exc:
+            replay["timelineProblem"] = str(exc) if isinstance(exc, TimelineError) else "capture images could not be read"
     (out / "replay.json").write_text(json.dumps(replay, indent=2) + "\n", encoding="utf-8")
     return replay
 
