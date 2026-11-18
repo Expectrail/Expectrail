@@ -44,7 +44,7 @@ The kinematic-character example uses the same config path as your project.</p>
 <p id="progress" role="status">No verification has started.</p><ol id="phases" aria-label="Recorded phases"></ol>
 <p id="error" role="alert" hidden></p></section>
 <section aria-labelledby="result-heading"><h2 id="result-heading">3. Result</h2>
-<p id="result-text">No result yet.</p><p id="judged-by"></p><p id="details"></p>
+<p id="result-text" role="status">No result yet.</p><p id="next-step"></p><p id="judged-by"></p><p id="details"></p>
 <a id="repair-record" target="_blank" rel="noopener noreferrer" hidden>Open repair record</a>
 <a id="report" target="_blank" rel="noopener noreferrer" hidden>Open this job's existing report</a>
 <div id="evidence-viewer"><h3>Evidence viewer</h3><a id="viewer" target="_blank" rel="noopener noreferrer" hidden>Open this job's evidence viewer</a><p id="viewer-note" class="note">Available when a job from this app session finishes.</p></div>
@@ -86,16 +86,38 @@ async function api(path, body) {
 function problem(error) {
   el('error').textContent=error.message; el('error').hidden=false;
   el('result-text').textContent='Could not be carried out — no result is available here.';
-  el('details').textContent='If a job already started, it may still be running. Keep the app open and use Retry status or Cancel.';
+  el('next-step').textContent = job ? 'Use Retry status to reconnect, or Cancel to stop the job.'
+    : 'Read the message above, check the folders, and try again. Check Past runs if a job may have started.';
+  el('details').textContent='';
+  el('viewer-note').hidden=true;
   el('repair-record').hidden=true; el('report').hidden=true; el('viewer').hidden=true; el('judged-by').textContent='';
   // Losing the connection does not cancel a worker. Keep its controls so it can be recovered.
   controls(Boolean(job)); el('verify').textContent=job?'Retry status':'Verify'; el('verify').disabled=false;
 }
+const screens = {
+  queued: ['Waiting to start', 'Keep this page open. Use Cancel if you no longer want to verify this change.'],
+  running: ['Verification is running', 'Follow the progress above, or use Cancel to stop this run.'],
+  cancelled: ['Verification cancelled', 'Choose Verify whenever you are ready to try again.'],
+  failed: ['Verification stopped unexpectedly', 'Read the details below, then try Verify again. If it stops again, share the details with your project maintainer.'],
+  'could-not-be-carried-out': ['Verification could not be carried out', 'Follow the instructions below, then choose Verify again.'],
+  accept: ['Accept', 'Open the evidence to see which routes and checks passed.'],
+  reject: ['Reject', 'Open the evidence to see what failed. Try Verify again after fixing the change.'],
+  'needs-review': ['Needs review', 'Open the evidence and read what was left unchecked before deciding what to do with the change.']
+};
 function show(data) {
   el('error').hidden=true;
   el('progress').textContent=phaseNames[data.phase] || 'Status unavailable';
   el('phases').replaceChildren(...data.history.map(entry=>{const li=document.createElement('li');li.textContent=phaseNames[entry.phase] || entry.phase;return li;}));
-  el('result-text').textContent=data.summary || 'Could not be carried out — no result is available here.';
+  const [title, next] = screens[data.screen];
+  el('result-text').textContent = ['accept','reject','needs-review'].includes(data.screen) ? data.summary : title;
+  if (['cancelled','failed','could-not-be-carried-out'].includes(data.screen)) {
+    el('result-text').textContent += ' — no verdict was reached.';
+  }
+  const active = data.state === 'running';
+  el('next-step').textContent = active && !data.sessionOwned
+    ? 'Refresh past runs to check for an update. This run belongs to another app session.'
+    : active || !['accept','reject','needs-review'].includes(data.screen) || data.viewer || data.report
+      ? next : 'Read the saved result and details below. Start a new verification to get evidence you can open here.';
   el('judged-by').textContent=data.judgedBy;
   el('details').textContent=[...data.reasons,...data.diagnostics.flatMap(d=>[d.detail,d.fix])].filter((s,i,a)=>s&&a.indexOf(s)===i).join('\n');
   el('repair-record').hidden=!data.repairUrl;
@@ -127,7 +149,7 @@ el('inspect').onclick=async()=>{
 };
 el('verify').onclick=async()=>{
   if(job){controls(true);el('verify').textContent='Verify';await poll();return;}
-  el('error').hidden=true;el('repair-record').hidden=true;el('report').hidden=true;el('viewer').hidden=true;el('judged-by').textContent='';el('details').textContent='';el('phases').replaceChildren();
+  el('error').hidden=true;el('repair-record').hidden=true;el('report').hidden=true;el('viewer').hidden=true;el('judged-by').textContent='';el('details').textContent='';el('next-step').textContent='';el('phases').replaceChildren();
   el('result-text').textContent='No verdict yet.';el('progress').textContent='Checking the rendering environment before starting…';controls(true);
   try{const body=values();
     if(el('auto-fix').checked){

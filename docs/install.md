@@ -4,6 +4,36 @@ Expectrail is a Python package with one command, `expectrail`. This page says ho
 what the package holds, and what is not built yet. It is not on PyPI: publishing needs an account
 and a token, which only a person sets up (#249).
 
+## Open the local app on a prepared Linux computer
+
+Ask the person who set up your computer for the Expectrail wheel that includes
+`app --open-browser`. The file is called `expectrail-0.1.0-py3-none-any.whl`.
+They need to have set up Python 3.12 or later with `venv`, a
+default browser, and the Godot replay prerequisites listed below. The project
+folders, routes and approved checks should also be ready.
+
+1. Download the wheel to **Downloads**. Keep its original filename.
+2. Open **Terminal**. Paste this single line, then press Enter. Expectrail
+   installs in your own account and opens your default browser.
+
+```sh
+python3 -m venv "$HOME/.local/share/expectrail/app-env" && "$HOME/.local/share/expectrail/app-env/bin/python" -m pip install --no-deps "$HOME/Downloads/expectrail-0.1.0-py3-none-any.whl" && "$HOME/.local/share/expectrail/app-env/bin/expectrail" app --open-browser
+```
+
+Leave the Terminal window open while you use the app. In the browser, enter
+the **Before** and **After** folder paths, click **Check folders**, then
+**Verify**. Stay on that page to see the result and open its evidence. If your
+browser does not open, the Terminal window shows the local address.
+
+This flow uses Terminal once to install and open the app. On later visits,
+paste `"$HOME/.local/share/expectrail/app-env/bin/expectrail" app --open-browser`
+into Terminal to reopen it. The project comparison, progress, cancellation and
+evidence are in the browser.
+A maintainer still prepares the system tools, configures live vision if wanted,
+and handles Git and route setup outside the app. Without vision, a failed
+engine check can reject and a passing engine check needs review. A published
+desktop installer and a first-user trial remain open.
+
 ## From a checkout
 
 ```bash

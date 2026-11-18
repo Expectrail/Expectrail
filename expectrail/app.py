@@ -14,6 +14,7 @@ import stat
 import sys
 import threading
 import tempfile
+import webbrowser
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from expectrail import app_page, auto_fix, project_job, viewer
@@ -174,6 +175,12 @@ class App:
         doc = self.store.status(job_id)  # validates the record; unfinished/empty is never success
         phase = doc['phase']
         state = doc['decision'] if phase == 'completed' else phase if phase in FINAL else 'running'
+        if phase == 'queued':
+            screen = 'queued'
+        elif state == 'needs-review' and not doc['output']:
+            screen = 'could-not-be-carried-out'
+        else:
+            screen = state
         report = None
         if job_id in self.owned and phase == 'completed' and doc['output']:
             try:
@@ -189,7 +196,7 @@ class App:
             if 'review' in repair:
                 summary += ' ' + repair['review']
         return {key: doc[key] for key in ('id', 'phase', 'decision', 'history', 'reasons', 'diagnostics', 'createdAt')} | {
-            'state': state, 'summary': summary, 'sessionOwned': job_id in self.owned, 'report': report,
+            'state': state, 'screen': screen, 'summary': summary, 'sessionOwned': job_id in self.owned, 'report': report,
             'repairRunning': repair.get('state') == 'running',
             'repairUrl': f'/repairs/{job_id}/repair-run.json' if 'record' in repair and job_id in self.owned else None,
             'before': (request['base'] or {}).get('checkout'), 'after': request['head']['checkout'],
@@ -473,6 +480,7 @@ def create_server(store=None, *, start=runner.spawn):
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='expectrail app', description='Open Expectrail locally on 127.0.0.1.')
     parser.add_argument('--jobs-root', type=Path, help='Job storage outside both game folders.')
+    parser.add_argument('--open-browser', action='store_true', help='Open the local page in your default browser.')
     try:
         args = parser.parse_args(argv)
     except SystemExit as exc:
@@ -482,7 +490,18 @@ def main(argv=None):
     except OSError as exc:
         print(f'Expectrail could not start: {exc}. No verification was run.', file=sys.stderr)
         return 5
-    print(f'Open http://127.0.0.1:{server.server_port}/?token={server.token}', flush=True)
+    url = f'http://127.0.0.1:{server.server_port}/?token={server.token}'
+    print(f'Open {url}', flush=True)
+    if args.open_browser:
+        def open_page():
+            try:
+                if webbrowser.open(url):
+                    return
+            except (OSError, webbrowser.Error):
+                pass
+            print('Your browser did not open. Copy the local address above into your browser.', flush=True)
+
+        threading.Thread(target=open_page, daemon=True).start()
     print('Keep this process running. Press Ctrl+C to stop the app and cancel unfinished jobs.', flush=True)
     try:
         server.serve_forever()
