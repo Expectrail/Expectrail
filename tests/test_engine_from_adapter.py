@@ -31,7 +31,6 @@ from harness import adapters
 from harness import tree
 from tests.coverage_replays import complete_trace
 from tests.test_ci_gate import FIXTURES, ROUTES, SPEC, FakeReplay, make_repo
-from tests.test_sam import png_bytes
 
 REPO = Path(__file__).resolve().parent.parent
 NAME = "probe"
@@ -59,21 +58,11 @@ class Probe:
         name = "trace-fallthrough.json" if (Path(game) / "BUG").exists() else "trace-fixed.json"
         out.mkdir(parents=True, exist_ok=True)
         trace = complete_trace(json.loads((FIXTURES / name).read_text()), json.loads(route.read_text())["ticks"])
-        if capture_frames:
-            # Successful harness captures now include their measured placement. The fixture's
-            # floor is at origin y=640 plus the bundled player's 13.25-pixel feet offset.
-            for row in trace["rows"]:
-                row.update(ground=653.25, view=[1, 0, 0, 1, 0, 0])
-            trace["captureTimeline"] = {"fps": 60, "frames": [
-                {"frame": n, "tick": min(2*n+1, trace["ticks"]-1),
-                 "tickInterval": [2*n, min(2*n+1, trace["ticks"]-1)],
-                 "phase": "post-physics-pre-draw", "viewport": [1600, 960],
-                 "transform": [1, 0, 0, 1, 0, 0]} for n in range((trace["ticks"]+1)//2)]}
-            (out / "frames").mkdir(exist_ok=True)
-            image = png_bytes(1600, 960, 0)
-            for frame in trace["captureTimeline"]["frames"]:
-                (out / "frames" / f"f{frame['frame']:08d}.png").write_bytes(image)
         (out / "trace.json").write_text(json.dumps(trace))
+        if capture_frames:
+            (out / "frames").mkdir(exist_ok=True)
+            for n in range(40):
+                (out / "frames" / f"f{n:08d}.png").write_bytes(b"\x89PNG\r\n\x1a\n" + f"{name}:{n}".encode())
         document = {"game": {"tree": tree.digest(Path(game), within=within, skip=(OWN,))}, "isolation": None}
         (out / "replay.json").write_text(json.dumps(document), encoding="utf-8")
         return document

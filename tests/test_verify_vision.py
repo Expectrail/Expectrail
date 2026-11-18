@@ -14,7 +14,6 @@ from expectrail.gate import record
 from expectrail.orchestrator import engines, request, runner, store, cli
 from harness import run, sandbox
 from tests.test_two_observers import Game, repo
-from tests.test_sam import W, H
 
 
 class VerifyVisionTest(unittest.TestCase):
@@ -107,13 +106,6 @@ class VerifyVisionTest(unittest.TestCase):
                 project = Path(cmd[cmd.index('--path') + 1])
                 out = Path(trace_arg).parent
                 played = game.replay(route, project, out, True)
-                # This test stands in for current engine execution, so return the current
-                # harness contract alongside Game's unchanged rows and scripted pixels.
-                played['trace']['captureTimeline'] = {'fps': 60, 'frames': [
-                    {'frame': n, 'tick': 2*n+1, 'tickInterval': [2*n, 2*n+1],
-                     'phase': 'post-physics-pre-draw', 'viewport': [W, H],
-                     'transform': [1, 0, 0, 1, 0, 0]}
-                    for n in range(len(played['trace']['rows'])//2)]}
                 Path(trace_arg).write_text(json.dumps(played['trace']))
                 return subprocess.CompletedProcess(cmd, 0, '', '')
 

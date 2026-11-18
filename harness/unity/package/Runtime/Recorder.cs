@@ -147,8 +147,6 @@ namespace Expectrail.Harness
 
         /// <summary>Call once a frame after LateUpdate, before any row is recorded, so the next row has
         /// the camera of the frame drawn before it (the view convention of the Godot traces).</summary>
-        public double[] CaptureView() => _lastView;
-
         public double[] TakeView()
         {
             var previous = _lastView;
