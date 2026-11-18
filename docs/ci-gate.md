@@ -204,7 +204,7 @@ also checks out the base commit. It then does this:
    changes once the pull request merges. Without a base (a push, or `compare-base: false`), the head's
    own checks are used, and the comment says so.
 2. Replays every route on the head and on the base through the Godot harness ([harness.md](harness.md)).
-3. Judges every approved spec on every route with the evaluator, on the engine's position log. Each
+3. Judges every approved spec on every route with both the engine record and visual evidence. Each
    check gets the review's comparison words ([review.md](review.md)): `REPAIRED`, `PRESERVED`,
    `REGRESSION`, `UNRESOLVED` or `INCONCLUSIVE`.
 4. Replays the held-out routes on the head, if configured, and keeps counts only.
@@ -346,9 +346,9 @@ states, never from what an observer returned. Then:
 - An answer whose `replay.sha256` is not this replay's is no answer.
 - When the gate cannot tell how many frames the route should have, nothing passes.
 
-A failure seen in part of the window is still a failure; only a pass has to cover it. The rule
-`engine-only` is not changed by this: there a log that stops early still passes on the rows it has,
-as on main (#357).
+A failure seen in part of the window is still a failure; only a pass has to cover it. The explicit
+`engine-only` diagnostic control also requires the complete engine window and route ticks (#357);
+a short log cannot pass. It is not a product clearance mode.
 
 **Held-out frames stay in unless a person says otherwise.** A visual observer over frames sends them
 to the model's provider. Under `both` the held-out routes are replayed without frames and the visual
@@ -356,9 +356,13 @@ observer is not asked about them, so a failure on the engine's record still coun
 check passes; the reasons say so. `run_gate(heldout_frames_to_visual=True)` sends them (and keeps no
 answer cache). Nothing passes that flag, and whether anything may is Sean's decision.
 
-`run_gate` takes the rule (`rule="both"`, with `visual=` an `expectrail.observers.FramesObserver`), and
+`run_gate` defaults to `rule="both"`; its caller supplies `visual=` an
+`expectrail.observers.FramesObserver`. With no observer it cannot accept. The raw gate command
+constructs this observer, and
 so does the orchestrator's engine (`GodotGate(rule="both", visual=...)`). The record then has
-`observers` (the rule, and the visual observer's name, provider and model), and every row has
+`observers` (the rule, the engine observer's name/version, and the visual observer's name, adapter
+version, provider and model). The version is the observation adapter's release, not a claim about
+provider weights. Old records without versions remain readable; absence means unreported. Every row has
 `observed`: what each observer said before and after, and the SHA256 of the visual observer's answer.
 That answer, an observations document, is in the artifact at
 `observations/<head or base>/<route>/<spec>.visual.json`, with its verdict at
@@ -371,15 +375,15 @@ callable on a stored answer), "two observers on every check" rests on the record
 routes are judged by the same rule (see above for their frames). `contracts/examples/findings-both-observers.json` is such a record; it was made with
 the tests' stand-in replay and stand-in model, not by a live run.
 
-What is and is not in use, as of November 13, 2026:
+What is and is not in use:
 
 - The orchestrator (`verify`, `sample`, and the app through verify) constructs a `FramesObserver`
   and uses `both`. Its findings record and job status carry the `observers` block; `report` says
   which observers judged in plain words.
-- The earlier verify action uses `engine-only`. The two-job gate above uses `both`.
+- The raw gate command and two-job gate above use `both`. An explicit library `engine-only` call
+  remains for diagnostic comparisons and tests; it is not product clearance.
 - No live model was asked to test this change. Tests use scripted SAM 3.1 wire-format answers.
-- Decision B (#327) remains: an anchored-box difference needs review, never a reject. #373 is
-  still open at the start of this work; this change does not implement or alter that check.
+- Decision B (#327) remains: an anchored-box difference needs review, never a reject.
 
 Verification (`expectrail verify`, `expectrail sample`, and the app through verify) needs
 `MODEL_API_KEY` and `EXPECTRAIL_SAM_USD_CAP` in the verifier's environment. It judges with both the
@@ -543,13 +547,9 @@ and searches every output file, the log and the comment for its route names.
   open pull requests may see the held-out set anyway, and set `require-sandbox: 'true'` with it.
   This repository does not pass it on pull requests (OBAAF-GHA-001). A fork's pull request never gets
   it, because GitHub gives forks no secrets and the action checks the head repository too.
-- **On a pull request the position log is the only observer.** No model key is used, so SAM 3.1 does
-  not judge, and the comment and the review page say so on every verdict ("Judged on: the engine's
-  record only"). That is not the full verdict: see [Two observers](#two-observers-one-rule) below. The
-  harness logs the node named `Player`, and the stand-in observations use the platformer demo's player
-  size ([sam.md](sam.md), `agents/observations.py`). A spec about any other object needs review. On
-  another game, a spec's `tolerancePx` is measured against that size, so its meaning is approximate.
-  Giving the verify job a model key would put the key next to the pull request's code.
+- **A pull request needs both observers.** The capture job holds no vision key. The trusted judge
+  uses recorded visual answers; a missing answer is needs-review. It never falls back to an
+  engine-only accept. See [Two observers](#two-observers-one-rule) and the two-job setup above.
 - **Godot only, one way to replay.** Each route costs one replay on the head and one on the base. The
   smoke route took about 33 seconds in the 2-core container without a GPU that this was built on.
 - **Artifacts of a public repository are public.** Everything in the evidence artifact can be
