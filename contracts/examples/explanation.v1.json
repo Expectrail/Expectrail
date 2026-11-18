@@ -1,0 +1,37 @@
+{
+ "format": "expectrail.explanation/v1",
+ "decision": "reject",
+ "recordSha256": "59f37d028ba8e14d42526fd1d951ad9dce066781994736b07dfaae40d21ab105",
+ "author": {
+  "kind": "model",
+  "model": "stand-in",
+  "recorded": true,
+  "promptSha256": "c7772da3c9c22f3eb03520139f8e5bc6b6e16bbb6f54cc0d2c4a08939de974b6"
+ },
+ "points": [
+  {
+   "text": "After the change the player sinks 22.25px past the ground line on the combat route, beyond the tolerance of 20, from frame 5 for 21 frames. Before the change this check passed.",
+   "cites": [
+    "35745b6a03ca"
+   ],
+   "says": {
+    "35745b6a03ca": {
+     "before": "pass",
+     "after": "fail"
+    }
+   }
+  },
+  {
+   "text": "The smoke route fails the same check from frame 5 as well.",
+   "cites": [
+    "d53dfb482f64",
+    "check:player-stays-above-ground@smoke"
+   ],
+   "says": {
+    "d53dfb482f64": {
+     "after": "fail"
+    }
+   }
+  }
+ ]
+}

@@ -76,6 +76,29 @@ visual panels say that those measurements were not supplied; no timeline was rec
 guessed from a pass/fail label. New gate runs include the visual timelines when their saved
 observations and verdicts can be verified.
 
+## A written explanation
+
+A job folder may hold `explanation.json` (`expectrail.explanation/v1`,
+[schema](../contracts/explanation.v1.schema.json)). `expectrail report` then adds an
+**Explanation** section below the findings. Each point names the evidence it is about, and a
+finding's id is a button that opens that finding. The page says who wrote it (the model, and
+whether its answer was replayed from a recording) and that it decides nothing.
+
+It is shown only when `python3 -m expectrail.explanation check FINDINGS FILE` passes:
+- its decision is the verifier's and the record's, and it was written for this record (`recordSha256`);
+- every id it cites is in the record (a finding's id, or `check:<spec>@<route>`), and every verdict it states is the record's;
+- the text is printable ASCII, and every number in a point appears in the evidence that point cites;
+- a failing or passing word needs that verdict stated in the same point, and a decision word must match the decision;
+- no verdict word is negated, and nothing claims certainty beyond these checks ("proves", "all", "always").
+
+Anything else is **withheld**. The page then shows why, and none of the explanation's text. The
+banner, the decision, the reasons and the exit code never change because of an explanation.
+
+`python3 -m expectrail.explanation prompt FINDINGS` prints the question for a model.
+`from-answer FINDINGS ANSWER --model NAME [--recorded] --out FILE` turns the answer into the file.
+Expectrail fills in the decision and the record's digest, never the model. No model is called by
+any of these commands. Asking one live, with a budget, is not built yet.
+
 ## Keys
 
 `←` `→` step a captured frame (`Shift` for five), `Home` `End`, `d` the first measured difference, `f` the finding’s frame, `o`
@@ -86,4 +109,4 @@ overlays on or off, `n` `p` the next or previous finding. Clicking a timeline ju
 The two-minute trial still needs a person who has not seen the run. Ask them to find the failed
 relation and its reproduction command in the failing sample, then record the elapsed time on
 [#264](https://github.com/Expectrail/Expectrail/issues/264).
-No model-written explanation is included.
+No model is asked for an explanation yet: the commands above format and check one, and the tests use a stand-in answer.

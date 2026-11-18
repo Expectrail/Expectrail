@@ -112,6 +112,7 @@ V1_FORMATS = {
     "expectrail.project/v1": ("project", "project.v1.schema.json"),
     "expectrail.fixer-invocation/v1": ("fixer-invocation", "fixer-invocation.v1.schema.json"),
     "expectrail.repair-run/v1": ("repair-run", "repair-run.v1.schema.json"),
+    "expectrail.explanation/v1": ("explanation", "explanation.v1.schema.json"),
 }
 
 
