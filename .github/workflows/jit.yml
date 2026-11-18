@@ -334,6 +334,8 @@ jobs:
       - name: Propose checks (one Muse Spark call)
         env:
           MODEL_API_KEY: ${{ secrets.MODEL_API_KEY || secrets.META_API_KEY }}
+          # The spec sender sends nothing without a cap (expectrail/spend.py, #267): the change's per-defect budget.
+          EXPECTRAIL_SPEC_USD_CAP: ${{ needs.plan.outputs.budget }}
         run: |
           base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
           ev=(); if [[ -f runs/jit-measure/repro-evidence.json ]]; then ev=(--evidence runs/jit-measure/repro-evidence.json); fi
@@ -453,6 +455,8 @@ jobs:
       - name: Revise the rejected checks (at most one Muse Spark call)
         env:
           MODEL_API_KEY: ${{ secrets.MODEL_API_KEY || secrets.META_API_KEY }}
+          # The spec sender sends nothing without a cap (expectrail/spend.py, #267): the change's per-defect budget.
+          EXPECTRAIL_SPEC_USD_CAP: ${{ needs.plan.outputs.budget }}
         run: |
           mkdir -p runs/jit-proposal-2
           base=(); if [[ -n "$BASE" ]]; then base=(--base "$BASE"); fi
