@@ -50,6 +50,10 @@ def copy_checkout(source, target):
     parsed = ast.parse((source/'setup.py').read_text())
     modules = next(ast.literal_eval(n.value) for n in parsed.body if isinstance(n,ast.Assign)
                    and any(isinstance(t,ast.Name) and t.id=='BUNDLED_MODULES' for t in n.targets))
+    recordings = next(ast.literal_eval(n.value) for n in parsed.body if isinstance(n,ast.Assign)
+                      and any(isinstance(t,ast.Name) and t.id=='SAMPLE_RECORDINGS' for t in n.targets))
+    for name in recordings:
+        copy(f'docs/run-it/vision/{name}.json')
     for package in ('expectrail','expectrail._bundle.harness','expectrail._bundle.agents'):
         folder = package.rsplit('.',1)[-1]
         for module in modules[package]:copy(f'{folder}/{module}.py')

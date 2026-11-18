@@ -613,12 +613,57 @@ class DiskBoundTest(unittest.TestCase):
             box.watched([sys.executable, "-c", script], roots=[self.game, self.out], timeout=30)
 
     def test_a_folder_the_game_makes_unreadable_is_cannot_tell(self):
-        if os.geteuid() == 0:
-            self.skipTest("root reads any folder; the mocked refusal above covers this case here")
+        probe = self.tmp / "permission-probe"
+        probe.mkdir()
+        probe.chmod(0)
+        try:
+            try:
+                with os.scandir(probe) as listing:
+                    list(listing)
+            except PermissionError:
+                pass   # this uid/filesystem can really test permission denial
+            else:
+                reason = ("chmod-directory-denial-unavailable: this uid/filesystem can enumerate a mode-000 "
+                          "directory (for example root or DAC-bypass privileges)")
+                if REQUIRED:
+                    self.fail(reason + "; EXPECTRAIL_SANDBOX_TESTS=required forbids skipping")
+                self.skipTest(reason)
+        finally:
+            probe.chmod(0o700)
         script = (f"import os\nd = {str(self.out / 'hidden')!r}\nos.mkdir(d)\n"
                   f"open(os.path.join(d, 'big'), 'wb').write(b'x' * 4194304)\nos.chmod(d, 0)")
-        with self.assertRaisesRegex(box.DiskBoundError, "could not be measured"):
+        # This case tests the final unreadable state, not the intermediate size bound.
+        # Preserve the oversized file, but measure after chmod: a legal scheduling pause
+        # between the write and chmod must not turn this into the separate byte-limit test.
+        with mock.patch.object(box, "DISK_INTERVAL", 3600.0), \
+                self.assertRaisesRegex(box.DiskBoundError, "could not be measured"):
             box.watched([sys.executable, "-c", script], roots=[self.game, self.out], timeout=30)
+
+    def test_permission_bypass_is_named_and_required_mode_never_skips_it(self):
+        for required in (False, True):
+            case = DiskBoundTest('test_a_folder_the_game_makes_unreadable_is_cannot_tell')
+            case.setUp()
+            self.addCleanup(case.doCleanups)
+            listing = mock.MagicMock()
+            listing.__enter__.return_value = iter(())  # a privileged enumeration succeeds
+            expected = case.failureException if required else unittest.SkipTest
+            with self.subTest(required=required), mock.patch.object(sys.modules[__name__], 'REQUIRED', required), \
+                    mock.patch.object(os, 'scandir', return_value=listing), self.assertRaises(expected) as caught:
+                case.test_a_folder_the_game_makes_unreadable_is_cannot_tell()
+            self.assertIn('chmod-directory-denial-unavailable', str(caught.exception))
+            if required:
+                self.assertIn('required forbids skipping', str(caught.exception))
+
+    def test_unreadability_assertion_survives_a_pause_after_the_oversized_write(self):
+        real = box.watched
+
+        def paused(cmd, **options):
+            cmd = list(cmd)
+            cmd[2] = cmd[2].replace('os.chmod(d, 0)', 'import time; time.sleep(0.15); os.chmod(d, 0)')
+            return real(cmd, **options)
+
+        with mock.patch.object(box, 'watched', side_effect=paused):
+            self.test_a_folder_the_game_makes_unreadable_is_cannot_tell()
 
     def test_a_file_that_disappears_while_it_is_counted_is_skipped(self):
         (self.out / "gone").write_bytes(b"g")
