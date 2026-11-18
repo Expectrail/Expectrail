@@ -515,7 +515,8 @@ def main(argv: list[str] | None = None) -> int:
         report = args.report_file.read_text(encoding="utf-8", errors="replace") if args.report_file else ""
         if not 1 <= args.evidence_jobs <= 8:
             ap.error("--evidence-jobs is between 1 and 8")
-        probes = offered_library(profile["actions"], args.offer, report)
+        probes = offered_library(profile["actions"], args.offer, report, profile=profile,
+                                 game=getattr(args, "game", None))
         doc = measure(profile, args.base, args.out, probes=probes, game=args.game)
         made = None
         if shows_evidence(args.offer) and args.base:
@@ -555,7 +556,8 @@ def main(argv: list[str] | None = None) -> int:
         prices = {k: v for k, v in (("sparkUsdPerMTokIn", args.spark_usd_per_mtok_in),
                                     ("sparkUsdPerMTokOut", args.spark_usd_per_mtok_out)) if v is not None}
         report = args.report_file.read_text(encoding="utf-8", errors="replace")
-        probes = offered_library(profile["actions"], args.offer, report)
+        probes = offered_library(profile["actions"], args.offer, report, profile=profile,
+                                 game=getattr(args, "game", None))
         notes = attach_measurements(probes, args.measurements, args.base)
         notes += attach_evidence(probes, args.evidence, args.base, args.offer)
         try:
@@ -583,7 +585,8 @@ def main(argv: list[str] | None = None) -> int:
         prices = {k: v for k, v in (("sparkUsdPerMTokIn", args.spark_usd_per_mtok_in),
                                     ("sparkUsdPerMTokOut", args.spark_usd_per_mtok_out)) if v is not None}
         report = args.report_file.read_text(encoding="utf-8", errors="replace")
-        probes = offered_library(profile["actions"], args.offer, report)
+        probes = offered_library(profile["actions"], args.offer, report, profile=profile,
+                                 game=getattr(args, "game", None))
         notes = attach_measurements(probes, args.measurements, args.base)
         measured = not notes
         notes += attach_evidence(probes, args.evidence, args.base, args.offer)

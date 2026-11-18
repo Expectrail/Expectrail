@@ -189,23 +189,28 @@ class TheCommands(unittest.TestCase):
 
 
 class NotOfferedToTheGenerator(unittest.TestCase):
-    """The menu probes are for measurement. No offer of the generator reads them, and the mechanics
-    profile's catalog, which every offer's prompt is built from, does not name the menu action."""
+    """The menu probes are offered to the generator under one setting only, ``signals-reach-evidence-menu``
+    (expectrail/jit/offer.py, since November 18, 2026; tests/test_jit_offer_menu.py). No other offer reads
+    them, only offer.py under expectrail/jit/ reads this module, and the mechanics profile's catalog, which
+    every offer's prompt is built from, does not name the menu action."""
 
-    def test_nothing_under_jit_reads_the_menu_module(self):
+    def test_nothing_under_jit_but_the_offer_reads_the_menu_module(self):
         for path in sorted((REPO / "expectrail" / "jit").glob("*.py")):
             text = path.read_text(encoding="utf-8")
             for word in ("repro.menu", "repro import menu", "menu_probes", "toggle_pause"):
+                if path.name == "offer.py" and word in ("repro.menu", "menu_probes"):
+                    continue
                 self.assertNotIn(word, text, f"{path.name}: {word}")
 
     def test_the_profile_does_not_name_the_menu_action(self):
         self.assertEqual(load_strict(PROFILE, "mechanics-profile")["actions"], ACTIONS)
 
-    def test_no_offer_imports_the_menu_module(self):
+    def test_no_offer_but_the_menu_setting_imports_the_menu_module(self):
         code = ("import sys\n"
                 "from expectrail.jit import offer\n"
-                "for o in offer.OFFERS:\n"
-                "    offer.library(['move_left', 'move_right', 'jump', 'shoot'], o, 'the pause menu says 0')\n"
+                "for o in offer.ALL:\n"
+                "    if o != offer.MENU:\n"
+                "        offer.library(['move_left', 'move_right', 'jump', 'shoot'], o, 'the pause menu says 0')\n"
                 "print('expectrail.repro.menu' in sys.modules)\n")
         got = subprocess.run([sys.executable, "-c", code], cwd=REPO, capture_output=True, text=True, check=True)
         self.assertEqual(got.stdout.strip(), "False")

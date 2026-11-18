@@ -129,9 +129,10 @@ def capture_probe(profile: dict, probe: dict, patches: list[str], work: Path, ru
     """Replay one probe with frames. ({"frames": [sha256 per frame], "fields": {name: [value per tick]},
     "dir": the folder that holds frames/, "renderer": str | None}, replays made again)."""
     from expectrail.discovery.route_compiler import compile_route
+    from expectrail.jit.offer import route_actions
 
     route = compile_route(probe["program"], name=probe["id"], description=probe["description"],
-                          actions=profile["actions"])
+                          actions=route_actions(profile, probe))
     route_path = work / "routes" / f"{probe['id']}.json"
     route_path.parent.mkdir(parents=True, exist_ok=True)
     route_path.write_text(json.dumps(route, indent=1) + "\n", encoding="utf-8")
