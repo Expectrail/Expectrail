@@ -49,6 +49,17 @@
       "minItems": 1,
       "uniqueItems": true
     },
+    "menuActions": {
+      "description": "Input actions that open a menu (issue #285): never in actions, so no generated probe presses one. Only the menu probes of the signals-reach-evidence-menu offer do (expectrail/repro/menu.py), after a walk; each must be declared by the game's project.godot. Absent means the profile names no menu action, and that offer cannot be run with it.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]{0,39}$"
+      },
+      "minItems": 1,
+      "maxItems": 2,
+      "uniqueItems": true
+    },
     "selectors": {
       "type": "object",
       "additionalProperties": false,

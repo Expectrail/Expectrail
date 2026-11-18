@@ -234,6 +234,16 @@ def system_for(offer: str, candidate: str = SHOWN) -> str:
     return text
 
 
+# Added under the menu setting only (expectrail/jit/offer.py, ``MENU``), so every other setting's prompt is
+# byte for byte what it was.
+MENU_TEXT = """
+Some library probes end on a menu: after a walk they wait, tap a menu action once and wait while the \
+menu is drawn (their description says which). What only a menu shows, such as a counter drawn on the \
+pause menu, can be read on those probes alone, for example with ui_integer_at_end. Only those probes \
+may press a menu action: a probe you write may use only the actions listed in "actions".
+"""
+
+
 def _system_shown(offer: str) -> str:
     meanings = _offered(offer)
     return """You write checks for one proposed change to a 2D platformer. You are given a bug report, the \
@@ -262,7 +272,8 @@ wrong guess does not leave the change unchecked.
          "It compares rightSignal with leftSignal in the SAME probe, within t. "
          "For a report about a collected-coin counter, compare ui_integer_at_end with coins_collected; "
          "an undefined or ambiguous reading is never a pass. This reads engine UI state, not pixels.\n")
-        if offer_mod.shows_evidence(offer) else "") + (PIXEL_TEXT if offer_mod.offers_pixel(offer) else "") + """
+        if offer_mod.shows_evidence(offer) else "") + (MENU_TEXT if offer_mod.offers_menu(offer) else "") \
+        + (PIXEL_TEXT if offer_mod.offers_pixel(offer) else "") + """
 What each signal measures, over one replay:
 """ + "\n".join(f"- {k}: {v}" for k, v in sorted(meanings.items())) + """
 

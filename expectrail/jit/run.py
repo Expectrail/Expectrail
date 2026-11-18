@@ -266,9 +266,12 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
               offer: str = offer_mod.BASELINE, candidate_to_model: str = "shown", report_route=None) -> None:
     from expectrail.jit.diff_map import withheld_map
 
-    probes = offer_mod.library(profile["actions"], offer, report)
+    probes = offer_mod.library(profile["actions"], offer, report, profile=profile, game=game)
     for p in probes:
-        p["source"] = "reach" if p.get("family") == "reach" else "library"
+        p["source"] = p["family"] if p.get("family") in ("reach", "menu") else "library"
+    # The actions each probe this run made may press (a menu probe also presses the profile's menu action).
+    # A probe the model proposes is compiled with the catalog alone, whatever it says it is.
+    made_here = {p["id"]: offer_mod.route_actions(profile, p) for p in probes if p.get("source") != "report"}
     if report_route is not None:
         from expectrail.contracts import validate
         validate(report_route, 'route')
@@ -350,12 +353,13 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
     routes: dict[str, tuple[dict, Path]] = {}
     route_dir = out / "jit-routes"
     route_dir.mkdir(exist_ok=True)
-    for p in probes + answer.get("probes", []):
+    for i, p in enumerate(probes + answer.get("probes", [])):
         if p["id"] in routes:
             continue
+        names = made_here[p["id"]] if i < len(probes) and p.get("source") != "report" else profile["actions"]
         try:
             route = p['route'] if p.get('source') == 'report' else compile_route(
-                p["program"], name=p["id"], description=p["description"], actions=profile["actions"])
+                p["program"], name=p["id"], description=p["description"], actions=names)
         except ProgramError as exc:
             diagnostics.append(f"probe {p['id']} refused by the route compiler: {exc}")
             continue
