@@ -16,8 +16,7 @@ class UnknownActionsTest(Case):
 
         def recorded(route, game, out, frames):
             result = replay(route, game, out, frames)
-            # The gate names folders by their resolved path; compare in that spelling (#378).
-            field = before if base is not None and game.resolve().is_relative_to(base.resolve()) else head
+            field = before if base is not None and game.is_relative_to(base) else head
             if field is ABSENT:
                 result["trace"].pop("unknownActions", None)
             else:

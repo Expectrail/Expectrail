@@ -127,8 +127,7 @@ class KitPlan(unittest.TestCase):
             env=kit.environment(args)
             self.assertEqual(env['EXPECTRAIL_SAM_CONFIRM'],'1')
             self.assertEqual(env['EXPECTRAIL_KEYFRAMES_ONLY'],'0')
-            # The kit resolves --out; on macOS every temporary folder is reached through a link (#378).
-            self.assertEqual(env['EXPECTRAIL_SAM_CACHE'],os.path.realpath(tmp)+'/new-run/sam-cache')
+            self.assertEqual(env['EXPECTRAIL_SAM_CACHE'],tmp+'/new-run/sam-cache')
     def test_existing_fixer_context_contains_the_real_fault_and_ground_layer(self):
         from agents.byo_fixer import _collect_candidate_files
         with tempfile.TemporaryDirectory() as tmp:

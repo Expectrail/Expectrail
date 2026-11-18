@@ -49,7 +49,7 @@ class HTTPTest(unittest.TestCase):
         from expectrail import app
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
-        self.root = Path(self.tmp.name).resolve()  # the app records resolved folders (#378)
+        self.root = Path(self.tmp.name)
         self.before = make_repo(self.root / 'before', bug=True)
         self.after = make_repo(self.root / 'after')
         self.store = JobStore(self.root / 'jobs')
