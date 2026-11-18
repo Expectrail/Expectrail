@@ -790,6 +790,14 @@ window holds no planned frame is `not-run` and asks for nothing. The three bulle
 images, $1.69, under what the asking job gets at the $2 cap ($1.79). Shown offline only
 (`tests/test_jit_pixel_windows.py`); no capture of the bench probes was remade, and SAM was not asked.
 
+**The bullet capture, remade with the windows (November 18, afternoon).** The same `jit run --proposal
+--pixel-capture` on the real engine here (Godot 4.7.2, no model, no SAM, not in CI, 9.3 minutes, 27
+replays) kept 225 frames, 49 MB (the whole-probe capture kept 86 MB). The record differs from the first only
+in the profile's hash (`menuActions`, #622) and the replay time, so the capture's spend is $0.1987.
+`pixel-budget` gave the asking job $1.8013, and `pixel-ask` on that capture no longer refused: it reserved
+675 images, $1.6875, and began asking. With the recorded rehearsal answers (`--sam-answers`, asked under
+another setting) it stopped at the first replay and sent nothing, as it must. SAM itself has not been asked.
+
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 
 The replays run the change's code, and asking SAM needs its key; jit.yml keeps the two in separate jobs

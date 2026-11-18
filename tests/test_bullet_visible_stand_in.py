@@ -254,8 +254,8 @@ RECORD = stand_in.COMMITTED.parent / "jit-run.json"
 
 
 class TheCaptureRecord(unittest.TestCase):
-    """The capture of November 17 (Godot 4.7.2, no model, no SAM): `jit run --proposal --pixel-capture` on the
-    committed stand-in, at jit.yml's default cap of $2."""
+    """The capture of November 18, with the windows (Godot 4.7.2, no model, no SAM): `jit run --proposal
+    --pixel-capture` on the committed stand-in, at jit.yml's default cap of $2."""
 
     def setUp(self):
         self.doc = load_strict(RECORD, "jit-run")
@@ -293,9 +293,25 @@ class TheCaptureRecord(unittest.TestCase):
         self.assertIsNone(why)
         self.assertAlmostEqual(left, stand_in.CAP_USD - self.doc["spend"]["usd"], places=4)
         plan = json.loads(stand_in.PLAN.read_text(encoding="utf-8"))
-        # #605: the windows' frames alone ($1.6875) fit in what the capture left ($1.7911). Before #605 the
-        # whole probes ($3.24) did not, and the committed capture's pixel-ask refused (the README's record).
+        # #605: the windows' frames alone ($1.6875) fit in what the capture left. Before #605 the whole probes
+        # ($3.24) did not, and the November 17 capture's pixel-ask refused (the README's record).
         self.assertLess(stand_in.reserved_images(plan) * DEFAULT_PRICES["samUsdPerImage"], left)
+
+    def test_it_records_what_pixel_ask_was_given_and_reserved_on_november_18(self):
+        """The README's run: pixel-budget printed 1.8013, and pixel-ask on the capture reserved 675 images."""
+        from expectrail.jit import pixel_jobs
+        from expectrail.jit.run import DEFAULT_PRICES
+
+        left, _ = pixel_jobs.budget_left(RECORD, stand_in.CAP_USD)
+        self.assertEqual(f"{left:.4f}", "1.8013")
+        self.assertEqual(self.doc["spend"]["usd"], 0.1987)
+        plan = json.loads(stand_in.PLAN.read_text(encoding="utf-8"))
+        images = stand_in.reserved_images(plan)
+        self.assertEqual(images, 675)
+        self.assertAlmostEqual(images * DEFAULT_PRICES["samUsdPerImage"], 1.6875)
+        readme = (stand_in.COMMITTED.parent / "README.md").read_text(encoding="utf-8")
+        self.assertIn('"plannedImages": 675', readme)
+        self.assertIn("--budget-usd 1.8013", readme)
 
     def test_the_reproduction_score_gives_it_no_result(self):
         from expectrail.repro import bench, score
