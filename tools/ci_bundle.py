@@ -127,9 +127,13 @@ class Attempts(verify.SavedReplays):
 
 
 def judge(policy, base, pr, intent, archive, out, observer, *, head_checkout):
+    # The saved runs are looked up by game folder, and the gate names the base's folder by its
+    # resolved path. Both are spelled the same way here, so a checkout or temporary folder reached
+    # through a link (every temporary folder on macOS) is not read as "no Godot project" (#378).
+    base = Path(base).resolve()
     checks = verify.read_checks(base, policy.specs, policy.routes, "base")
     with tempfile.TemporaryDirectory() as tmp:
-        root = Path(tmp)
+        root = Path(tmp).resolve()
         data, head = root / "data", root / "head-policy"
         try:
             unpack(archive, data)

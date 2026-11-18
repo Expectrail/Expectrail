@@ -27,6 +27,7 @@ padding:.55rem .8rem;text-decoration:none;font-weight:600}.save:focus-visible{ou
 
 
 def local_file(root, name):
+    root = Path(root).resolve()  # one spelling for both sides, as in onboarding.resource (#378)
     path = root / name
     if path.is_symlink() or not path.resolve().is_relative_to(root) or not path.is_file():
         raise ValueError(f"Expected {name} inside the game. Check the path or run expectrail init again.")

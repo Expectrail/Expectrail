@@ -42,7 +42,7 @@ def setUpModule():
     spec = importlib.util.find_spec("setuptools")
     if spec is None:
         return
-    tmp = Path(tempfile.mkdtemp(prefix="expectrail-package-"))
+    tmp = Path(tempfile.mkdtemp(prefix="expectrail-package-")).resolve()  # Python reports resolved paths (#378)
     BUILT["tmp"] = tmp
     src = tmp / "src"
     for name in SOURCES:

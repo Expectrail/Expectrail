@@ -127,9 +127,10 @@ def publish(path, out, summary, game, parent):
         name = f"attempt-{attempt['n']}/fixer-invocation.json"
         if attempt['fixerInvocation'] != name:
             raise ValueError('unexpected invocation proof path')
-        source = path.parent / name
-        if source.resolve() != source.absolute():
-            raise ValueError('linked invocation proof')
+        try:
+            source = record.unlinked_below(path.parent, name)
+        except record.RecordError:
+            raise ValueError('linked invocation proof') from None
         raw = record.read_bytes_capped(source, 2*1024*1024, 'invocation proof')
         if hashlib.sha256(raw).hexdigest() != attempt.get('fixerInvocationSha256'):
             raise ValueError('invocation proof digest differs')
