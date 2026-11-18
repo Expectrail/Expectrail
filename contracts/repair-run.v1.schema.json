@@ -19,16 +19,34 @@
     "finishedAt"
   ],
   "properties": {
-    "format": {"const": "expectrail.repair-run/v1"},
+    "format": {
+      "const": "expectrail.repair-run/v1"
+    },
     "parent": {
       "description": "The completed intake or rejected verify job. Its decision remains unchanged.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["job", "decision", "headTree", "failing"],
+      "required": [
+        "job",
+        "decision",
+        "headTree",
+        "failing"
+      ],
       "properties": {
-        "job": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
-        "decision": {"enum": ["reject", "needs-review"]},
-        "headTree": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "job": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "decision": {
+          "enum": [
+            "reject",
+            "needs-review"
+          ]
+        },
+        "headTree": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
         "failing": {
           "description": "The public checks that failed on the parent: spec id and route.",
           "type": "array",
@@ -37,10 +55,19 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["spec", "route"],
+            "required": [
+              "spec",
+              "route"
+            ],
             "properties": {
-              "spec": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"},
-              "route": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}
+              "spec": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+              },
+              "route": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+              }
             }
           }
         }
@@ -50,20 +77,69 @@
       "description": "Who wrote candidates, or not-run when intake blocked repair. sandboxed is false for offline patches, when no fixer ran, or for llm-patch where trusted host code builds requests and no agent process runs.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["source", "sandboxed"],
+      "required": [
+        "source",
+        "sandboxed"
+      ],
       "properties": {
-        "source": {"enum": ["fixture", "recorded", "muse", "claude", "codex", "aider", "llm-patch", "not-run"]},
-        "sandboxed": {"type": "boolean"}
-      }
+        "source": {
+          "enum": [
+            "fixture",
+            "recorded",
+            "muse",
+            "claude",
+            "codex",
+            "aider",
+            "llm-patch",
+            "not-run"
+          ]
+        },
+        "sandboxed": {
+          "type": "boolean"
+        },
+        "providerOnly": {
+          "const": true,
+          "description": "Trusted host sends bounded text-only llm-patch requests; no agent process executes."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "providerOnly"
+            ]
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "const": "llm-patch"
+              },
+              "sandboxed": {
+                "const": false
+              }
+            }
+          }
+        }
+      ]
     },
     "budget": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["attempts", "usdCap"],
+      "required": [
+        "attempts",
+        "usdCap"
+      ],
       "properties": {
-        "attempts": {"type": "integer", "minimum": 1, "maximum": 10},
+        "attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
         "usdCap": {
-          "type": ["number", "null"],
+          "type": [
+            "number",
+            "null"
+          ],
           "minimum": 0,
           "description": "The Muse invocation-reserve cap in US dollars, not a measured token bill; null for offline patches or no fixer."
         }
@@ -75,31 +151,106 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["n", "patch", "patchSha256", "job", "decision", "reasons"],
+        "required": [
+          "n",
+          "patch",
+          "patchSha256",
+          "job",
+          "decision",
+          "reasons"
+        ],
         "properties": {
-          "n": {"type": "integer", "minimum": 1, "maximum": 10},
+          "n": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
           "patch": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "pattern": "^attempt-[0-9]{1,2}/candidate\\.patch$",
             "description": "The candidate, relative to the repair folder; null when the fixer produced none."
           },
-          "patchSha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+          "patchSha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9a-f]{64}$"
+          },
           "job": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "pattern": "^[0-9a-f]{32}$",
             "description": "The fresh verify job that judged this candidate; null when there was no candidate to judge."
           },
-          "decision": {"enum": ["accept", "reject", "needs-review", null]},
-          "reasons": {"type": "array", "maxItems": 32, "items": {"type": "string", "maxLength": 600}},
-          "gateDecision": {"enum": ["accept", "reject", "needs-review", null]},
-          "advisoryDiscovery": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
-          "budgetStop": {"type": "string", "minLength": 1, "maxLength": 128},
-          "fixerInvocation": {"type": "string", "pattern": "^attempt-[0-9]{1,2}/fixer-invocation\\.json$"}
+          "decision": {
+            "enum": [
+              "accept",
+              "reject",
+              "needs-review",
+              null
+            ]
+          },
+          "reasons": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "type": "string",
+              "maxLength": 600
+            }
+          },
+          "gateDecision": {
+            "enum": [
+              "accept",
+              "reject",
+              "needs-review",
+              null
+            ]
+          },
+          "advisoryDiscovery": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "budgetStop": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "fixerInvocation": {
+            "type": "string",
+            "pattern": "^attempt-[0-9]{1,2}/fixer-invocation\\.json$"
+          },
+          "fixerInvocationSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
         },
         "allOf": [
           {
-            "if": {"required": ["advisoryDiscovery"]},
-            "then": {"required": ["gateDecision"], "properties": {"decision": {"const": "needs-review"}}}
+            "if": {
+              "required": [
+                "advisoryDiscovery"
+              ]
+            },
+            "then": {
+              "required": [
+                "gateDecision"
+              ],
+              "properties": {
+                "decision": {
+                  "const": "needs-review"
+                }
+              }
+            }
           }
         ]
       }
@@ -107,24 +258,62 @@
     "stop": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["reason", "detail"],
+      "required": [
+        "reason",
+        "detail"
+      ],
       "properties": {
-        "reason": {"enum": ["accepted", "needs-review", "attempts-exhausted", "fixer-failed", "spend-cap", "cancelled"]},
-        "detail": {"type": "string", "maxLength": 600}
+        "reason": {
+          "enum": [
+            "accepted",
+            "needs-review",
+            "attempts-exhausted",
+            "fixer-failed",
+            "spend-cap",
+            "cancelled"
+          ]
+        },
+        "detail": {
+          "type": "string",
+          "maxLength": 600
+        }
       }
     },
     "result": {
       "description": "accept only when a fresh verify job accepted a candidate; anything else is needs-review. Never reject: the reject is the parent's.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["decision", "patch", "job"],
+      "required": [
+        "decision",
+        "patch",
+        "job"
+      ],
       "properties": {
-        "decision": {"enum": ["accept", "needs-review"]},
-        "patch": {"type": ["string", "null"], "pattern": "^attempt-[0-9]{1,2}/candidate\\.patch$"},
-        "job": {"type": ["string", "null"], "pattern": "^[0-9a-f]{32}$"}
+        "decision": {
+          "enum": [
+            "accept",
+            "needs-review"
+          ]
+        },
+        "patch": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^attempt-[0-9]{1,2}/candidate\\.patch$"
+        },
+        "job": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{32}$"
+        }
       }
     },
-    "machineWritten": {"const": true},
+    "machineWritten": {
+      "const": true
+    },
     "review": {
       "enum": [
         "Written by Expectrail's sandboxed fixer and accepted on the approved checks by an independent verification. A person must review it before merging; Expectrail never merges it.",
@@ -132,56 +321,176 @@
         "No repair was attempted; this report requires review."
       ]
     },
-    "startedAt": {"type": "string", "format": "date-time"},
-    "finishedAt": {"type": "string", "format": "date-time"},
+    "startedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finishedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
     "reproduction": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "checks"],
+      "required": [
+        "kind",
+        "checks"
+      ],
       "properties": {
-        "kind": {"enum": ["approved", "generated-advisory", "none"]},
+        "kind": {
+          "enum": [
+            "approved",
+            "generated-advisory",
+            "none"
+          ]
+        },
         "checks": {
           "type": "array",
           "uniqueItems": true,
-          "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._/-]*$"}
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._/-]*$"
+          }
         }
       }
     },
-    "repairAttempted": {"type": "boolean"}
+    "repairAttempted": {
+      "type": "boolean"
+    }
   },
   "allOf": [
     {
-      "if": {"required": ["repairAttempted"], "properties": {"repairAttempted": {"const": false}}},
+      "if": {
+        "required": [
+          "repairAttempted"
+        ],
+        "properties": {
+          "repairAttempted": {
+            "const": false
+          }
+        }
+      },
       "then": {
         "properties": {
-          "attempts": {"maxItems": 0},
-          "fixer": {"properties": {"source": {"const": "not-run"}, "sandboxed": {"const": false}}},
+          "attempts": {
+            "maxItems": 0
+          },
+          "fixer": {
+            "properties": {
+              "source": {
+                "const": "not-run"
+              },
+              "sandboxed": {
+                "const": false
+              }
+            }
+          },
           "result": {
-            "properties": {"decision": {"const": "needs-review"}, "patch": {"type": "null"}, "job": {"type": "null"}}
+            "properties": {
+              "decision": {
+                "const": "needs-review"
+              },
+              "patch": {
+                "type": "null"
+              },
+              "job": {
+                "type": "null"
+              }
+            }
           }
         }
       },
       "else": {
         "properties": {
-          "parent": {"properties": {"decision": {"const": "reject"}, "failing": {"minItems": 1}}},
-          "fixer": {"properties": {"source": {"not": {"const": "not-run"}}}}
+          "parent": {
+            "properties": {
+              "decision": {
+                "const": "reject"
+              },
+              "failing": {
+                "minItems": 1
+              }
+            }
+          },
+          "fixer": {
+            "properties": {
+              "source": {
+                "not": {
+                  "const": "not-run"
+                }
+              }
+            }
+          }
         }
       }
     },
     {
-      "if": {"properties": {"attempts": {"contains": {"required": ["advisoryDiscovery"]}}}},
+      "if": {
+        "properties": {
+          "attempts": {
+            "contains": {
+              "required": [
+                "advisoryDiscovery"
+              ]
+            }
+          }
+        }
+      },
       "then": {
         "properties": {
-          "result": {"properties": {"decision": {"const": "needs-review"}}},
-          "stop": {"properties": {"reason": {"const": "needs-review"}}}
+          "result": {
+            "properties": {
+              "decision": {
+                "const": "needs-review"
+              }
+            }
+          },
+          "stop": {
+            "properties": {
+              "reason": {
+                "const": "needs-review"
+              }
+            }
+          }
         }
       }
     },
-    {"if": {"required": ["repairAttempted"]}, "then": {"required": ["reproduction"]}},
     {
-      "if": {"required": ["repairAttempted"], "properties": {"repairAttempted": {"const": true}}},
+      "if": {
+        "required": [
+          "repairAttempted"
+        ]
+      },
       "then": {
-        "properties": {"reproduction": {"properties": {"kind": {"const": "approved"}, "checks": {"minItems": 1}}}}
+        "required": [
+          "reproduction"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "repairAttempted"
+        ],
+        "properties": {
+          "repairAttempted": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "reproduction": {
+            "properties": {
+              "kind": {
+                "const": "approved"
+              },
+              "checks": {
+                "minItems": 1
+              }
+            }
+          }
+        }
       }
     }
   ]

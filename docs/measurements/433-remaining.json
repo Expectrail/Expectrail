@@ -1,0 +1,130 @@
+{
+  "issue": 433,
+  "scope": "Local real Godot and literal CLI; offline fixture patches and trace-backed fixture observer, not independent vision or live fixer quality.",
+  "engineVersion": "4.7.2",
+  "sandbox": "UID mapping unavailable on this host; all local runs diagnostic/nonisolated. seeded-bugs CI requires Bubblewrap.",
+  "command": "python3 -m unittest tests.test_replay_sandbox.RepairCommandsRealEngineTest -v",
+  "localOptIn": "EXPECTRAIL_REPAIR_DIAGNOSTIC=1, explicit pinned Godot and local Xvfb",
+  "testsRun": 3,
+  "seconds": 823.827,
+  "result": "OK",
+  "cases": [
+    {
+      "attempts": [
+        "accept"
+      ],
+      "case": "auto",
+      "demonstrated": [
+        1
+      ],
+      "isolated": false,
+      "modelCalls": 0,
+      "observer": "trace fixture; not independent vision",
+      "parentDecision": "reject",
+      "patchSha256": "ceda817fc43cb1249404a110b2517adc10e22b5d39ec7c29f0ed322862e38c09",
+      "realEngine": true,
+      "result": "accept",
+      "sourceUnchanged": true,
+      "stop": "accepted"
+    },
+    {
+      "attempts": [
+        "reject",
+        "reject"
+      ],
+      "case": "exhausted",
+      "demonstrated": [
+        0,
+        0
+      ],
+      "isolated": false,
+      "modelCalls": 0,
+      "observer": "trace fixture; not independent vision",
+      "parentDecision": "reject",
+      "patchSha256": "f46778698708f2a13c9348b81a2464902c392a723fc43a932cd1842bb420a69c",
+      "realEngine": true,
+      "result": "needs-review",
+      "sourceUnchanged": true,
+      "stop": "attempts-exhausted"
+    },
+    {
+      "attempts": [
+        "accept"
+      ],
+      "case": "direct",
+      "demonstrated": [
+        1
+      ],
+      "isolated": false,
+      "modelCalls": 0,
+      "observer": "trace fixture; not independent vision",
+      "parentDecision": "reject",
+      "patchSha256": "ceda817fc43cb1249404a110b2517adc10e22b5d39ec7c29f0ed322862e38c09",
+      "realEngine": true,
+      "result": "accept",
+      "sourceUnchanged": true,
+      "stop": "accepted"
+    }
+  ],
+  "ci": {
+    "job": "seeded-bugs",
+    "collection": "python -m unittest tests.test_replay_sandbox -v",
+    "requiredEnvironment": "EXPECTRAIL_SANDBOX_TESTS=required",
+    "hostedRun": "Not run; Sean must push and inspect the job."
+  },
+  "mutantProofs": [
+    {
+      "guard": "private-child-binding",
+      "test": "tests.test_433_remaining.HeldOutChildren.test_fresh_children_keep_the_suite_and_heldout_veto_never_enters_a_retry",
+      "testsRun": 1,
+      "failures": [
+        "tests.test_433_remaining.HeldOutChildren.test_fresh_children_keep_the_suite_and_heldout_veto_never_enters_a_retry"
+      ],
+      "errors": [],
+      "expectedRed": true
+    },
+    {
+      "guard": "provider-proof",
+      "test": "tests.test_433_remaining.ProviderOnlySample.test_missing_changed_or_stopped_meter_never_starts_a_replay",
+      "testsRun": 1,
+      "failures": [
+        "tests.test_433_remaining.ProviderOnlySample.test_missing_changed_or_stopped_meter_never_starts_a_replay"
+      ],
+      "errors": [],
+      "expectedRed": true
+    },
+    {
+      "guard": "publisher-current-head",
+      "test": "tests.test_repair_draft.DraftPublisher.test_head_moved_mid_publication_never_opens_a_pr",
+      "testsRun": 1,
+      "failures": [
+        "tests.test_repair_draft.DraftPublisher.test_head_moved_mid_publication_never_opens_a_pr"
+      ],
+      "errors": [],
+      "expectedRed": true
+    },
+    {
+      "guard": "provider-writer-marker",
+      "test": "tests.test_llm_patch_bound.LlmPatchBound.test_provider_violation_in_existing_repair_loop_never_verifies_or_retries",
+      "testsRun": 1,
+      "failures": [
+        "tests.test_llm_patch_bound.LlmPatchBound.test_provider_violation_in_existing_repair_loop_never_verifies_or_retries"
+      ],
+      "errors": [],
+      "expectedRed": true
+    },
+    {
+      "guard": "counter-writer-digest",
+      "test": "tests.test_llm_patch_bound.LlmPatchBound.test_existing_repair_loop_uses_llm_patch_and_retains_completed_counter",
+      "testsRun": 1,
+      "failures": [
+        "tests.test_llm_patch_bound.LlmPatchBound.test_existing_repair_loop_uses_llm_patch_and_retains_completed_counter"
+      ],
+      "errors": [],
+      "expectedRed": true
+    }
+  ],
+  "liveCalls": 0,
+  "githubWrites": 0,
+  "remaining": "See docs/repair-remaining.md for exact Sean actions. This is Part of #433."
+}

@@ -1,0 +1,75 @@
+# PROPOSAL ONLY. Sean reviews and installs this; no workflow was changed by the builder.
+name: Expectrail repair draft
+on:
+  workflow_run:
+    workflows: [Expectrail fixture repair]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      repair_run:
+        description: Completed fixture-repair run ID
+        required: true
+        type: string
+      pull_request:
+        description: Optional PR number when the run cannot identify one unambiguously
+        type: string
+      send:
+        description: Create the draft; false prepares an audit plan only
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: expectrail-draft-${{ github.event.workflow_run.id || inputs.repair_run }}
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: >-
+      github.repository == 'Expectrail/Expectrail' && github.ref == 'refs/heads/main' &&
+      vars.EXPECTRAIL_CI_AUTOFIX == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+      - name: Install trusted main's reader dependencies
+        run: python3 -m pip install -r requirements-dev.txt
+      - name: Authenticate the repair artifact and prepare or create its draft
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          REPAIR_RUN: ${{ github.event.workflow_run.id || inputs.repair_run }}
+          PR_NUMBER: ${{ inputs.pull_request }}
+          CHECKS_APP_ID: ${{ vars.EXPECTRAIL_CHECKS_APP_ID }}
+          SEND_DRAFT: ${{ github.event_name == 'workflow_run' || inputs.send }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from tools.repair_draft import main
+          args=['--repo',os.environ['REPOSITORY'],'--run',str(int(os.environ['REPAIR_RUN'])),
+                '--app-id',str(int(os.environ['CHECKS_APP_ID'])),
+                '--game','game/platformer','--out',str(Path(os.environ['RUNNER_TEMP'])/'draft-publication')]
+          if os.environ.get('PR_NUMBER'):args+=['--pr',str(int(os.environ['PR_NUMBER']))]
+          if os.environ['SEND_DRAFT'].lower()=='true':args+=['--send']
+          raise SystemExit(main(args))
+          PY
+      - name: Keep the plan and API result, including refusals
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: repair-draft-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/draft-publication/
+          if-no-files-found: warn
+          retention-days: 14

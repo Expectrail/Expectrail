@@ -62,6 +62,91 @@ def usage() -> str:
     return "\n".join(lines)
 
 
+# Explicit no-spend profile used by Dockerfile.sample. Ordinary verify and the legacy
+# no-vision quickstart retain their existing rules and outcomes.
+SAMPLE_RECORDINGS_ENV = 'EXPECTRAIL_VLM_SAMPLE_RECORDINGS'
+
+
+def _sample_profile():
+    import os
+    value = os.environ.get(SAMPLE_RECORDINGS_ENV, '0')
+    if value not in ('0', '1'):
+        raise ValueError(SAMPLE_RECORDINGS_ENV + ' must be 0 or 1')
+    return value == '1'
+
+
+def _sample_observer():
+    from pathlib import Path
+    from expectrail.recorded import read_recording, RecordedBankObserver
+    base = (resources.ROOT / 'sample-vision' if resources.INSTALLED else
+            resources.ROOT / 'docs/run-it/vision')
+    names = ('clean', 'fall-through-bug', 'fall-through-repair')
+    return RecordedBankObserver([read_recording(Path(base) / (name + '.json')) for name in names])
+
+
+def _recorded_sample(argv):
+    """Use the existing sample runner and gate with exact saved vision, never a live client."""
+    import argparse
+    import json
+    from expectrail.orchestrator import cli, engines, sample, store
+    p = cli.Parser(prog='expectrail sample')
+    p.full_usage = usage()
+    p.add_argument('--jobs-root')
+    p.add_argument('--lease-seconds', type=float, default=store.DEFAULT_LEASE_SECONDS, help=argparse.SUPPRESS)
+    p.add_argument('--timeout', type=int, default=600)
+    p.add_argument('--json', action='store_true')
+    # Keep global options before or after sample; argparse rejects conflicting repetitions below.
+    args = p.parse_args(argv)
+    roots = [argv[i + 1] for i, arg in enumerate(argv[:-1]) if arg == '--jobs-root']
+    roots += [arg.split('=', 1)[1] for arg in argv if arg.startswith('--jobs-root=')]
+    from pathlib import Path
+    if len({Path(root) for root in roots}) > 1:
+        raise cli.UsageError('--jobs-root was given twice with different folders; give it once')
+    visual = _sample_observer()
+    if not args.json:
+        print('Expectrail sample: real Godot replays; exact saved vision answers; no live model fallback.')
+        for doc in visual.recordings:
+            print('Vision recorded ' + doc['recordedAt'] + ', run ' + doc['run'] + ': ' + doc['sample'])
+    results = sample.run(cli._store(args), timeout_seconds=args.timeout,
+                         engines={'godot': engines.GodotGate(visual=visual)},
+                         on_case=None if args.json else lambda r: print(sample.line(r), flush=True))
+    if args.json:
+        print(json.dumps(results, indent=2))
+    return 0 if all(r['asExpected'] for r in results) else 3
+
+
+def _sample_doctor(argv):
+    """Doctor for the explicit bundled-recordings profile; arbitrary projects stay unchanged."""
+    import json
+    from pathlib import Path
+    from expectrail import doctor
+    p = doctor._Parser(prog='expectrail doctor')
+    p.add_argument('--json', action='store_true')
+    p.add_argument('--isolated', action='store_true')
+    p.add_argument('--no-fetch', action='store_true')
+    p.add_argument('--project', type=Path)
+    args = p.parse_args(argv)
+    # A real project, explicit or in the current directory, is never substituted by a sample.
+    if args.project is not None or (Path.cwd() / 'project.godot').is_file() or (Path.cwd() / 'expectrail.project.json').is_file():
+        return doctor.main(argv)
+    found = doctor.checks(isolated=args.isolated, fetch=not args.no_fetch)
+    try:
+        visual = _sample_observer()
+        details = '; '.join(d['sample'] + ': recorded ' + d['recordedAt'] + ', run ' + d['run'] for d in visual.recordings)
+        record = doctor.Check('sample-recordings', 'exact saved vision for the bundled sample', 'ok', True,
+                              details + '; no live fallback; this does not establish vision for your project', None)
+    except (ValueError, OSError) as exc:
+        record = doctor.Check('sample-recordings', 'exact saved vision for the bundled sample', 'missing', True,
+                              'sample recordings unavailable: ' + str(exc), 'Reinstall the wheel with its original sample recordings.')
+    found.append(record)
+    for check in found:
+        if check.id in ('vision-key', 'vision-cap'):
+            check.required = False
+            check.found += '; not required for the explicitly selected recorded sample; required for live vision'
+    print(json.dumps(doctor.document(found), indent=2) if args.json else doctor.text(found))
+    return doctor.EXIT_MISSING if doctor.missing(found) else doctor.EXIT_OK
+
+
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if not args or args[0] in ("-h", "--help", "help"):
@@ -128,6 +213,26 @@ def main(argv: list[str] | None = None) -> int:
                   "cryptography jsonschema). Nothing was checked.", file=sys.stderr)
             return EXIT_USAGE
         return receipt.trust_check_main(args[1:])
+    if command in ('doctor', 'sample'):
+        try:
+            enabled = _sample_profile()
+            if enabled:
+                if command == 'doctor':
+                    if args[0] != command:
+                        print('expectrail: put doctor options after doctor. Nothing was checked.', file=sys.stderr)
+                        return EXIT_USAGE
+                    return _sample_doctor(args[1:])
+                return _recorded_sample(args[:at] + args[at + 1:])
+        except (ValueError, OSError) as exc:
+            print('expectrail: ' + str(exc) + '\nNothing was run.', file=sys.stderr)
+            return EXIT_USAGE
+        except Exception as exc:
+            from expectrail import doctor
+            from expectrail.orchestrator import cli
+            if not isinstance(exc, (doctor._Usage, cli.UsageError)):
+                raise
+            print('expectrail: ' + str(exc) + '\nNothing was run.', file=sys.stderr)
+            return EXIT_USAGE
     if command == "doctor":
         if args[0] != "doctor":
             print("expectrail: `doctor` takes no option before it. Nothing was checked.", file=sys.stderr)

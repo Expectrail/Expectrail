@@ -194,9 +194,11 @@ def run(sample_id: str, out: Path, *, request_id: str | None = None, root: Path 
             repair = viewer.read_repair(path)
         except (ValueError, OSError) as exc:
             raise RunItError(f"repair recording cannot be used: {exc}") from exc
-        fixer = repair["run"]["fixer"]
-        if not fixer["sandboxed"] or fixer["source"] in ("fixture", "recorded"):
-            raise RunItError("this sample needs the original live sandboxed repair recording")
+        from expectrail.repair_provenance import publishable
+        try:
+            publishable(path, repair["run"])
+        except (ValueError, OSError) as exc:
+            raise RunItError("repair provenance cannot be published: " + str(exc)) from exc
         if repair["diff"] is None:
             raise RunItError("the recorded repair has no accepted patch to replay")
     started = _now()

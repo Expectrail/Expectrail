@@ -97,6 +97,7 @@ def load(path: Path, kind: str | None = None) -> dict:
 # (kind_of, schema, validate, load) are unchanged.
 V1_FORMATS = {
     "expectrail.setup-report/v1": ("setup-report", "setup-report.v1.schema.json"),
+    "expectrail.repair-publication/v1": ("repair-publication", "repair-publication.v1.schema.json"),
     **{f"expectrail.{kind}/v1": (kind, f"{kind}.v1.schema.json")
        for kind in ("onboard-review", "onboard-answers", "onboard-timing")},
     "expectrail.template-closeout/v1": ("template-closeout", "template-closeout.v1.schema.json"),

@@ -1,6 +1,6 @@
 {
   "format": "expectrail.capabilities/v1",
-  "updated": "2026-11-16",
+  "updated": "2026-11-17",
   "statuses": {
     "implemented": "The code is in the repository and its tests pass in CI. It has run only on recorded or synthetic inputs, or has no recorded end-to-end run.",
     "integrated": "Wired into the path a user takes (a command, a workflow or the site) and exercised there by a CI job or a recorded run. No published result rests on it.",
@@ -123,8 +123,8 @@
     },
     {
       "id": "ci-gate",
-      "mode": "Earlier composite CI gate: verify a pull request\u2019s game and post one verdict comment",
-      "profile": "Godot 4.7.2 projects on GitHub Actions; historical runs of the earlier composite actions on this repository\u2019s pull requests",
+      "mode": "Earlier composite CI gate: verify a pull request’s game and post one verdict comment",
+      "profile": "Godot 4.7.2 projects on GitHub Actions; historical runs of the earlier composite actions on this repository’s pull requests",
       "observer": "The engine's record; no vision model",
       "entryPoints": [
         "expectrail.gate.verify",
@@ -207,10 +207,10 @@
         {
           "kind": "test",
           "ref": "tests/test_guides.py",
-          "shows": "The published caller matches the merged workflow; the guide names the publisher\u2019s checks and separates game-repository enforcement from Expectrail\u2019s advisory policy; both new pages are in local link/advertisement checks."
+          "shows": "The published caller matches the merged workflow; the guide names the publisher’s checks and separates game-repository enforcement from Expectrail’s advisory policy; both new pages are in local link/advertisement checks."
         }
       ],
-      "limits": "Merged in #429. No hosted acceptance run is cited for this split: App installation, protected-workflow startup, actual fork/artifact handling and branch-rule enforcement still need deployment validation. The bundled clean recording covers smoke; novel frames and combat can lack answers and need review unless a failure rejects. Require Expectrail clearance from the dedicated App in a game repository; Expectrail evidence is reporting. On Expectrail\u2019s own repository clearance is advisory, per Sean\u2019s November 14, 2026 option C; its merge guard does not wait for it. No private-project deployment, catch rate or runtime measured here. Game-originated capture and a shared host kernel remain limits; bypass permission is outside the guarantee. No promotion to isolated or protected grade."
+      "limits": "Merged in #429. No hosted acceptance run is cited for this split: App installation, protected-workflow startup, actual fork/artifact handling and branch-rule enforcement still need deployment validation. The bundled clean recording covers smoke; novel frames and combat can lack answers and need review unless a failure rejects. Require Expectrail clearance from the dedicated App in a game repository; Expectrail evidence is reporting. On Expectrail’s own repository clearance is advisory, per Sean’s November 14, 2026 option C; its merge guard does not wait for it. No private-project deployment, catch rate or runtime measured here. Game-originated capture and a shared host kernel remain limits; bypass permission is outside the guarantee. No promotion to isolated or protected grade."
     },
     {
       "id": "unity-harness",
@@ -1425,8 +1425,8 @@
     },
     {
       "id": "run-it",
-      "mode": "Run it: operator-dispatched sample workflow, plus implemented visitor UI and undeployed start service",
-      "profile": "Bundled Godot game on a hosted Linux runner; visitor service implemented and stub-tested, not deployed",
+      "mode": "Run it: deployed visitor sample workflow, UI and start service",
+      "profile": "Bundled Godot game on a hosted Linux runner; Cloudflare Worker and Durable Object visitor service; recorded November 17 live runs",
       "observer": "The engine's record, and the vision model's answers recorded once per sample (a frame not in the recording gets no answer)",
       "entryPoints": [
         "expectrail.runit",
@@ -1444,11 +1444,42 @@
         "run-it-nightly.yml"
       ],
       "docs": [
-        "docs/run-it.md"
+        "docs/run-it.md",
+        "docs/run-it-status-bound.md"
       ],
       "grade": "diagnostic",
-      "status": "implemented",
+      "status": "measured",
       "evidence": [
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/44133603903",
+          "conclusion": "success",
+          "jobs": [
+            "verify",
+            "publish"
+          ],
+          "shows": "November 17 live open smoke reserved fall-through-bug on bf31c92; verify and publish succeeded and the result rejected as expected. The old smoke progress poll timed out while this healthy run continued; see the recorded launch in docs/new-work/2026-11-17-runit-live.md."
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/44135389301",
+          "conclusion": "success",
+          "jobs": [
+            "verify",
+            "publish"
+          ],
+          "shows": "November 17 visitor used the page Run button for clean on bf31c92; verify and publish succeeded and the recorded result accepted as expected, as documented by Sean in the live launch record."
+        },
+        {
+          "kind": "run",
+          "ref": "https://github.com/Expectrail/Expectrail/actions/runs/44135877669",
+          "conclusion": "success",
+          "jobs": [
+            "verify",
+            "publish"
+          ],
+          "shows": "November 17 visitor used the page Run button for fall-through-bug on bf31c92; verify and publish succeeded. Sean recorded the page showing reject with recorded vision labelled and the receipt marked unsigned."
+        },
         {
           "kind": "run",
           "ref": "https://github.com/Expectrail/Expectrail/actions/runs/43514147344",
@@ -1507,9 +1538,17 @@
           "kind": "test",
           "ref": "tests/test_runit_links.py",
           "shows": "the home page and the README link the Run it page, and the page and its script are there"
+        },
+        {
+          "kind": "test",
+          "ref": "tests/test_runit_status_bound.py",
+          "shows": "Local service deadline, hung-body, coalescing and admission checks; smoke timeout alignment; optional pinned Miniflare/workerd runs the actual Worker and SQLite Durable Object against fake GitHub, validates every response and catches the redirect-error regression. Required mode fails on a missing runtime."
         }
       ],
-      "limits": "Visitors cannot start a run yet: the service that starts runs (apps/run-it-edge) is written and tested against a local stub but not deployed, so the page says it cannot start runs. The runs cited were dispatched by hand. Each sample's vision answers are one recording (November 13): a frame the recording does not hold gets no answer and the sample needs review until it is recorded again. Receipts are not signed (#255). Exact PNG matches depend on rendering output: a renderer difference can leave an unchanged project at needs-review. Missing vision does not override an engine failure. See recorded-vision."
+      "limits": "Live evidence is from November 17 deployed version 93567b5a and source bf31c92, recorded by Sean; GitHub verify/publish success was read back for the three cited runs. Present admissions are read by the page, not assumed open. The new bounded-status code and native-runtime lane are tested locally and have not been deployed or run in hosted CI. The lane pins Miniflare 4.20260730.0/workerd 1.20260730.1 and compatibility date 2026-07-30; it does not validate the production example's later 2026-11-01 compatibility set. Native tests use fake GitHub, no actual game/model/dispatch. Receipts remain unsigned (#255); deployed concurrent burst and broader visitor usability evidence remain missing. Each sample uses exact recorded frame/question answers from November 13, so renderer drift can leave an unchanged build needing review. A missing answer cannot override an engine failure. See recorded-vision.",
+      "switches": [
+        "EXPECTRAIL_WORKER_TESTS"
+      ]
     },
     {
       "id": "outside-projects",

@@ -37,7 +37,8 @@ names it: ``none`` (the default; every pixel check is then ``not-run``, with the
 with ``--sam-lift``), ``--sam-every`` (every Nth frame and the last; 10 by default, at most 60) and
 ``--sam-first`` set how SAM is asked, and must be how a recording was asked: an observer that asks
 otherwise than the recording stops at the first replay, and one that plans other frames than the
-recording was asked about (another ``--sam-every`` or ``--sam-first``) is refused before it asks.
+recording was asked about (another ``--sam-every`` or ``--sam-first``, or checks with other windows: #605)
+is refused before it asks.
 
 **Pixel checks across three jobs** (expectrail/jit/pixel_jobs.py), so SAM's key never meets the change's
 code: ``run --observer sam-3.1-anchor --pixel-capture DIR`` replays and keeps the frames and asks nothing;

@@ -1,3 +1,14 @@
+```sh
+python3 -m pip install .
+```
+
+Run this in a checkout with Python 3.12+ in a virtual environment; it is not on PyPI.
+For a built wheel, use `python3 -m pip install ./dist/expectrail-0.1.0-py3-none-any.whl`.
+The [pinned sample container](docs/install.md#recorded-sample-profile) selects bundled recorded
+vision explicitly: `expectrail doctor`, then `expectrail sample`, with real Godot replays and no
+model calls. An unmatched image/question needs review. Ordinary verification still requires its
+own visual evidence; the no-vision quickstart below retains its incomplete results.
+
 <p align="center">
   <a href="https://expectrail.tech">
     <picture>
@@ -272,8 +283,8 @@ Use the [capability ledger](docs/capabilities.md) to distinguish **implemented**
 [The interactive demo](https://expectrail.tech/demo/) shows saved captures; viewing it verifies
 nothing. [Demo row](docs/capabilities.md#interactive-demo).
 [Run it](https://expectrail.tech/run-it/) says whether it can start a run right now. The ledger
-currently says visitors cannot start runs because the service is not deployed; its cited sample
-runs were dispatched by hand. [Run it row](docs/capabilities.md#run-it).
+links Sean's recorded November 17 visitor runs through the deployed service. The page shows the
+current admission state; receipts remain unsigned. [Run it row](docs/capabilities.md#run-it).
 
 ## Development and license
 

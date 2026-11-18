@@ -54,11 +54,15 @@ class TheCapturePlan(unittest.TestCase):
                 self.assertEqual(stand_in.window_problems(self.plan, probe, window), [])
 
     def test_what_pixel_ask_reserves(self):
-        # Every planned frame of the probes, windows or not: what pixel-ask said on the capture of the whole
-        # probes ("the 27 replays need up to 1296 images, $3.2400"), over jit.yml's $2 cap.
+        # Since #605 only the planned frames inside the checks' windows: 25 frames, three boxes each, on nine
+        # replays, under jit.yml's $2 cap. Before, every planned frame of the probes was reserved: pixel-ask
+        # said "the 27 replays need up to 1296 images, $3.2400" on the capture of the whole probes.
         images = stand_in.reserved_images(self.plan)
-        self.assertEqual(images, 1296)
-        self.assertGreater(images * 0.0025, stand_in.CAP_USD)
+        self.assertEqual(images, 675)
+        self.assertAlmostEqual(images * 0.0025, 1.6875)
+        self.assertLess(images * 0.0025, stand_in.CAP_USD)
+        whole = sum(len(e["planned"]) * self.plan["maxBoxes"] * 9 for e in self.plan["probes"].values())
+        self.assertEqual(whole, 1296)
 
     def test_measure_counts_bullets_on_the_planned_frames_of_a_capture(self):
         tmp = Path(tempfile.mkdtemp(prefix="bullet-plan-"))
@@ -88,6 +92,35 @@ class TheCapturePlan(unittest.TestCase):
         why = stand_in.window_problems(got, "move-fire-left", {"fromFrame": 0})
         self.assertTrue(any("4 bullets on screen" in w for w in why), why)
         self.assertTrue(any("frame 22" in w and "no bullet boxes" in w for w in why), why)
+
+
+class MeasuringAWindowedCapture(unittest.TestCase):
+    def test_measure_reads_a_capture_that_kept_only_the_windows_frames(self):
+        # Since #605 a capture keeps only the planned frames inside the checks' windows; the bullets are still
+        # counted from the engine's record on every planned frame, and the kept frames are the ones checked.
+        from expectrail.jit import pixel_jobs
+
+        tmp = Path(tempfile.mkdtemp(prefix="bullet-plan-windowed-"))
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        route = {"name": "jit-move-fire-left", "ticks": 46}     # planned 0, 10, 20, 22
+        folder = tmp / "pixel-reference" / "move-fire-left-1"
+        (folder / "frames").mkdir(parents=True)
+        (folder / "route.json").write_text(json.dumps(route), encoding="utf-8")
+        (folder / "trace.json").write_text("{}", encoding="utf-8")
+        (folder / pixel_jobs.WINDOWS_FILE).write_text(json.dumps({"windows": [{"fromFrame": 10, "toFrame": 20}]}))
+        checked_with = []
+
+        def checked(folder, route, frames, fps, tps):
+            checked_with.append(list(frames))
+            return {}, [], {n: folder / "frames" / f"f{n:08d}.png" for n in frames}
+        boxes = {0: {"boxes": []}, 10: {"boxes": [{}]}, 20: {"boxes": [{}]}, 22: {"boxes": []}}
+        with mock.patch("expectrail.jit.sam_observer.checked_replay", checked), \
+                mock.patch.object(stand_in, "_frame_size", lambda path: (64, 48)), \
+                mock.patch("agents.sam_anchor.object_boxes", lambda trace, size, frames, role: boxes):
+            got = stand_in.measure(tmp)
+        self.assertEqual(checked_with, [[10, 20]])
+        entry = got["probes"]["move-fire-left"]
+        self.assertEqual((entry["planned"], entry["bullets"]["pixel-reference"]["1"]), ([0, 10, 20, 22], [0, 1, 1, 0]))
 
 
 class TheStandIn(unittest.TestCase):
@@ -252,7 +285,7 @@ class TheCaptureRecord(unittest.TestCase):
                 self.assertEqual((row["clean"], row["bug"], row["candidate"]), ([], [], []))
         self.assertEqual(pixel.kept_rows(self.doc), [])
 
-    def test_the_asking_job_would_get_less_than_it_needs(self):
+    def test_the_asking_job_now_gets_what_it_needs(self):
         from expectrail.jit import pixel_jobs
         from expectrail.jit.run import DEFAULT_PRICES
 
@@ -260,7 +293,9 @@ class TheCaptureRecord(unittest.TestCase):
         self.assertIsNone(why)
         self.assertAlmostEqual(left, stand_in.CAP_USD - self.doc["spend"]["usd"], places=4)
         plan = json.loads(stand_in.PLAN.read_text(encoding="utf-8"))
-        self.assertGreater(stand_in.reserved_images(plan) * DEFAULT_PRICES["samUsdPerImage"], left)
+        # #605: the windows' frames alone ($1.6875) fit in what the capture left ($1.7911). Before #605 the
+        # whole probes ($3.24) did not, and the committed capture's pixel-ask refused (the README's record).
+        self.assertLess(stand_in.reserved_images(plan) * DEFAULT_PRICES["samUsdPerImage"], left)
 
     def test_the_reproduction_score_gives_it_no_result(self):
         from expectrail.repro import bench, score
