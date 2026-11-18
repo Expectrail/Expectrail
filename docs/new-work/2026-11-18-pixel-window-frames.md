@@ -31,7 +31,9 @@ unchanged in shape.
   drops a check whose answers were planned for the whole route; a window with no planned frame is not run
   in the capture or in the in-process replay.
 - `python3 -m unittest tests.test_bullet_visible_stand_in`: 26 tests, OK.
-- The full suite on the branch: see the pull request for the count and result.
+- `python3 -m unittest discover -s tests -t .` on the branch (main 185f592 plus this change): 4,896 tests, OK,
+  59 skipped. A first run failed 4 tests of `tests.test_jit_sam_every`, which match the refusal's wording;
+  the wording was kept, and the second run passed.
 - Nothing was dispatched; no model and no SAM call; no game was run outside the simulated one in the tests.
 
 ## Not done
