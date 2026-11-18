@@ -20,7 +20,15 @@ for that step, never "no gap".
 A cap counts as set only from outside the step's script: the workflow's, the job's or the step's
 ``env`` naming it with a value that is not literally empty (a value such as ``${{ inputs.cap }}`` is
 known only at run time and counts; the sender stops on an empty cap anyway), or an earlier step of
-the job surely writing it to ``$GITHUB_ENV`` (``caps_to_github_env``, read as shell commands).
+the job surely writing it to ``$GITHUB_ENV`` (read as shell commands). Since #627 a cap's value is
+resolved, not collected (``cap_at_start``): the innermost ``env`` that names it decides, so an empty
+or null step value unsets a job's or workflow's; the last sure ``$GITHUB_ENV`` write of it wins, so
+a later empty write unsets an earlier one; and because this does not rely on which of ``env`` and
+``$GITHUB_ENV`` the runner applies last, the cap is set only when both, where named, set it. A write
+to ``$GITHUB_ENV`` that is not read as a sure ``echo NAME=value`` or ``cat`` here-document (any other
+mention of ``GITHUB_ENV``, a shell script or one of our modules that names it, a start that cannot be
+followed, a step with ``if:`` or ``continue-on-error``) leaves every cap "cannot tell" for the later
+steps that otherwise set it. A local composite action (``uses: ./...``) is read the same way.
 
 The script itself never sets a cap here, because whether a start runs with a cap depends on the order
 of the step's commands (an ``export`` after the start, an ``unset``, ``export -n``, ``env -u``), and
@@ -30,10 +38,17 @@ for a start under ``sudo``, ``su``, ``doas``, ``runuser``, ``exec -c`` or ``env`
 (``-i``, ``-u``), which change the environment the start sees. ``caps_set_in_script`` still reads
 which caps a script surely exports, to say so in that reason.
 
+A shell named anywhere in a command (``bash``, ``sh`` and the like, with options, also after
+``nice -n 5``, ``timeout -s KILL 10`` or ``sudo -u x``) has its ``-c`` string, its script file or its
+here-document read as a script in turn; a shell whose script it cannot find or read is "cannot tell". A string run by ``eval``, a command line
+built by ``xargs``, ``parallel``, ``find`` and the like, and a shell whose command is a variable are
+"cannot tell".
+
 Within what it reads, then, a step is listed whenever a start may run without a cap it needs. What it
-does not read: a variable name built at run time (``unset "$NAME"``), and a program other than a shell
-script or our Python that changes the environment before starting ours. Model keys are found by a
-looser text search, which over-reports in the safe direction.
+does not read: a variable name built at run time (``unset "$NAME"``), a program other than a shell
+script or our Python that changes the environment or writes ``$GITHUB_ENV``, and an action from
+outside the repository (or a JavaScript or Docker one) that writes ``$GITHUB_ENV``. Model keys are
+found by a looser text search, which over-reports in the safe direction.
 
     python3 -m tools.spend_cap_audit            # report; exit 1 on any gap or cannot-tell
     python3 -m tools.spend_cap_audit --json
@@ -128,6 +143,7 @@ class Graph:
     edges: dict[str, set[str]] = field(default_factory=dict)
     senders: dict[str, set[str]] = field(default_factory=dict)
     unreadable: set[str] = field(default_factory=set)
+    env_writers: set[str] = field(default_factory=set)   # modules that name GITHUB_ENV (#627)
 
     @classmethod
     def build(cls, root: Path) -> "Graph":
@@ -141,7 +157,10 @@ class Graph:
 
     def _scan(self, name: str, path: Path) -> None:
         try:
-            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            text = path.read_text(encoding="utf-8")
+            if "GITHUB_ENV" in text:
+                self.env_writers.add(name)
+            tree = ast.parse(text, filename=str(path))
         except (OSError, SyntaxError, UnicodeDecodeError, ValueError):
             self.unreadable.add(name)
             self.edges[name] = set()
@@ -344,29 +363,110 @@ def _changes_environment(before: list[str]) -> bool:
     return False
 
 
+# A shell named anywhere in a command: its ``-c`` string, its script file, or a here-document is
+# read as a script in turn (#627). No guess is made about whether the name is in command position
+# (``nice -n 5 bash``, ``timeout -s KILL 10 sh``): a shell name it does not follow is "cannot tell",
+# never "nothing here" (#629). This over-reads a shell named as an argument, in the safe direction.
+SHELLS = {"bash", "sh", "dash", "zsh", "ksh", "ash", "mksh"}
+# Commands that run a string, or build a command line from their input: what they start cannot be read.
+STRING_RUNNERS = {"eval"}
+LINE_BUILDERS = {"xargs", "parallel", "watch", "flock", "script", "find"}
+SHELL_OPTIONS_WITH_ARGUMENT = {"-o", "+o", "-O", "+O", "--rcfile", "--init-file"}
+
+
+def _since_separator(words: list[str], i: int) -> list[str]:
+    """The words of the simple command that ``words[i]`` is in, before it."""
+    start = max((k + 1 for k in range(i) if words[k] in {"&&", "||", ";", "|", "|&", "&"}), default=0)
+    return words[start:i]
+
+
+def _follow_text(graph: Graph, text: str, found: Starts, depth: int) -> Starts:
+    inner = step_starts(graph, text, _depth=depth + 1)
+    found.modules |= inner.modules
+    found.cannot_tell.extend(inner.cannot_tell)
+    found.texts.append(text)
+    found.texts.extend(inner.texts)
+    return inner
+
+
+def _shell_start(graph: Graph, words: list[str], i: int, line: str, body: str | None, found: Starts,
+                 depth: int) -> int:
+    """Read what ``words[i]`` (a shell) runs. Returns the index of the next word to scan."""
+    j, wants_string = i + 1, False
+    while j < len(words) and words[j][:1] in "-+" and words[j] not in {"-", "--"}:
+        if words[j] in SHELL_OPTIONS_WITH_ARGUMENT:
+            j += 2
+            continue
+        if not words[j].startswith("--") and "c" in words[j][1:]:
+            wants_string = True
+        j += 1
+    if j < len(words) and words[j] == "--":
+        j += 1
+    had = set(found.modules)
+    if depth >= 3:
+        found.cannot_tell.append(f"shells nested too deep to follow in {line[:80]!r}")
+        return len(words)
+    if wants_string:
+        if j >= len(words):
+            found.cannot_tell.append(f"no command after -c in {line[:80]!r}")
+            return j
+        text = words[j]
+        first = text.split(None, 1)[0] if text.strip() else ""
+        if not first or first.lstrip("\"'").startswith("$"):
+            found.cannot_tell.append(f"the shell's command is chosen at run time in {line[:80]!r}")
+            return j + 1
+        _follow_text(graph, text, found, depth)
+        nxt = j + 1
+    elif j < len(words):
+        word = words[j]
+        path = (graph.root / word).resolve()
+        if "$" in word or not path.is_file():
+            found.cannot_tell.append(f"cannot follow the shell script {word!r}")
+            return j + 1
+        _follow_text(graph, path.read_text(encoding="utf-8", errors="replace"), found, depth)
+        nxt = j + 1
+    else:
+        if body is None:
+            found.cannot_tell.append(f"a shell reading its commands from standard input in {line[:80]!r}")
+            return j
+        _follow_text(graph, body, found, depth)
+        nxt = j
+    if found.modules - had and _changes_environment(words[:i]):
+        found.cannot_tell.append(f"the start runs with a changed environment in {line[:80]!r}")
+    return nxt
+
+
 def _scan_words(graph: Graph, words: list[str], line: str, body: str | None, found: Starts, depth: int) -> None:
-    for i, word in enumerate(words):
+    i = 0
+    while i < len(words):
+        word = words[i]
         base = word.rsplit("/", 1)[-1]
         if PY_NAME.fullmatch(base):
             had = set(found.modules)
             _python_start(graph, words[i + 1:], line, body, found)
             if found.modules - had and _changes_environment(words[:i]):
                 found.cannot_tell.append(f"the start runs with a changed environment in {line[:80]!r}")
+            if any(w.rsplit("/", 1)[-1] in LINE_BUILDERS for w in _since_separator(words, i)):
+                found.cannot_tell.append(f"the start's arguments are built at run time in {line[:80]!r}")
+        elif base in SHELLS:  # wherever it is: a shell name is never "nothing here" (#629)
+            if any(w.rsplit("/", 1)[-1] in LINE_BUILDERS for w in _since_separator(words, i)):
+                found.cannot_tell.append(f"a shell started with arguments built at run time in {line[:80]!r}")
+            i = _shell_start(graph, words, i, line, body, found, depth)
+            continue
+        elif base in STRING_RUNNERS and i + 1 < len(words):
+            found.cannot_tell.append(f"{base} runs a string this audit does not read, in {line[:80]!r}")
         elif base in CONSOLE_SCRIPTS and (i == 0 or words[i - 1] in {"&&", "||", ";", "|", "!", "then", "do",
                                                                         "time", "exec", "if", "else"}):
             found.modules |= graph.resolve(CONSOLE_SCRIPTS[base])
-        elif word.endswith(".sh") and (i == 0 or words[i - 1] in {"bash", "sh", "source", ".", "&&", "||", ";",
+        elif word.endswith(".sh") and (i == 0 or words[i - 1] in {"source", ".", "&&", "||", ";",
                                                                      "then", "do", "if", "!"}):
             path = (graph.root / word).resolve()
             if "$" in word or not path.is_file() or depth >= 3:
                 found.cannot_tell.append(f"cannot follow the shell script {word!r}")
+                i += 1
                 continue
-            text = path.read_text(encoding="utf-8", errors="replace")
-            inner = step_starts(graph, text, _depth=depth + 1)
-            found.modules |= inner.modules
-            found.cannot_tell.extend(inner.cannot_tell)
-            found.texts.append(text)
-            found.texts.extend(inner.texts)
+            _follow_text(graph, path.read_text(encoding="utf-8", errors="replace"), found, depth)
+        i += 1
 
 
 def _python_start(graph: Graph, words: list[str], line: str, body: str | None, found: Starts) -> None:
@@ -729,12 +829,112 @@ def caps_set_in_script(script: str) -> set[str]:
 
 
 def caps_to_github_env(script: str) -> set[str]:
-    """The caps a script surely writes to ``$GITHUB_ENV``, for later steps of the job."""
-    return shell_names(script).to_github_env & set(CAP_ENV.values())
+    """The caps a script surely leaves set in ``$GITHUB_ENV``, for later steps of the job: none when
+    any write cannot be read (``github_env_writes``, which the audit uses)."""
+    writes, ok = github_env_writes(script)
+    return {cap for cap, state in writes.items() if state == SET} if ok else set()
 
 
 def caps_in_env(env) -> set[str]:
     return names_in_env(env) & set(CAP_ENV.values())
+
+
+# ---------------------------------------------------------------- a cap's value at a start (#627)
+#
+# A cap's state at a level: SET (a value that is not empty), EMPTY (named with an empty or null
+# value, which the runner passes as empty, so the sender stops), or UNSURE (an earlier step may have
+# written it to $GITHUB_ENV in a way this audit cannot read, or may not have run).
+SET, EMPTY, UNSURE = "set", "empty", "unsure"
+
+
+def cap_states_in_env(env) -> dict[str, str]:
+    """Each cap an ``env:`` map names, with SET or EMPTY. A name with an empty value is kept: at the
+    innermost level that names it, it unsets the cap for the step."""
+    if not isinstance(env, dict):
+        return {}
+    caps = set(CAP_ENV.values())
+    return {str(k): (SET if _set(v) else EMPTY) for k, v in env.items() if str(k) in caps}
+
+
+def merge_state(a: str | None, b: str | None) -> str | None:
+    """The state when either of two may hold (a step that may not run): equal, or UNSURE."""
+    return a if a == b else UNSURE
+
+
+def cap_at_start(cap: str, step: dict[str, str], carried: dict[str, str], job: dict[str, str],
+                 workflow: dict[str, str]) -> str | None:
+    """The cap's state when the step starts, or None when nothing names it.
+
+    Among the ``env:`` maps the innermost that names the cap decides: the step's over the job's, the
+    job's over the workflow's (the runner documents both). Between that and a value carried by
+    ``$GITHUB_ENV``, this does not rely on which the runner applies last: the cap counts as set only
+    when both, where named, set it."""
+    declared = step.get(cap, job.get(cap, workflow.get(cap)))
+    if carried.get(cap) == UNSURE and declared != SET:
+        return declared          # nothing sure sets it: listed as missing, not as "cannot tell"
+    named = [s for s in (carried.get(cap), declared) if s is not None]
+    if not named:
+        return None
+    if EMPTY in named:
+        return EMPTY
+    if UNSURE in named:
+        return UNSURE
+    return SET
+
+
+def github_env_writes(script: str) -> tuple[dict[str, str], bool]:
+    """What a script surely writes to ``$GITHUB_ENV`` for the caps, in order (the last write of a
+    name wins), and whether every mention of ``GITHUB_ENV`` in it was read as one of those writes.
+
+    A write is read only as ``echo NAME=value >> $GITHUB_ENV`` or ``cat >> $GITHUB_ENV`` with a
+    here-document of ``NAME=value`` lines, in a command that surely runs. Anything else that names
+    ``GITHUB_ENV`` (``printf``, ``tee -a``, ``exec >>``, a group, a pipeline, a condition, the
+    ``NAME<<EOF`` form, or a line that cannot be read) may write any name, so it returns False and
+    the caller treats every cap as UNSURE."""
+    if "GITHUB_ENV" not in script:
+        return {}, True
+    caps = set(CAP_ENV.values())
+    commands, sure = _commands(script)
+    if not sure:
+        return {}, False
+    lines, _ = _split_heredocs(script)
+    # Every mention must be accounted for, also those inside a substitution, which _commands blanks.
+    mentions = sum(line.count("GITHUB_ENV") for line in lines)
+    read = 0
+    out: dict[str, str] = {}
+    for tokens, surely_runs, body in commands:
+        if not any("GITHUB_ENV" in t.text for t in tokens):
+            continue
+        redirect = _redirect_target(tokens)
+        if not surely_runs or redirect is None or redirect[1] not in GITHUB_ENV_TARGETS:
+            return out, False
+        at = redirect[0]
+        if tokens[at].text != ">>":
+            return out, False        # ``>`` empties the file: earlier writes of this step are lost
+        heredoc = [k for k, t in enumerate(tokens) if t.op and t.text in {"<<", "<<-"}]
+        others = [k for k, t in enumerate(tokens) if t.op and k != at and k not in heredoc]
+        if others or len(heredoc) > 1 or any(k + 1 >= len(tokens) or tokens[k + 1].op for k in heredoc):
+            return out, False        # one redirection to the file, and at most one here-document
+        args = [t.text for k, t in enumerate(tokens)
+                if k not in {at, at + 1} and not any(k in {h, h + 1} for h in heredoc)]
+        pairs: list[str] = []
+        if args[:1] == ["echo"] and tokens[0].plain:
+            rest = [a for a in args[1:] if a not in {"-e", "-E"}]
+            if len(rest) != 1:
+                return out, False
+            pairs = [rest[0]]
+        elif args == ["cat"] and body is not None:
+            pairs = [ln.strip() for ln in body.splitlines() if ln.strip()]
+        else:
+            return out, False
+        for pair in pairs:
+            m = ASSIGN.fullmatch(pair)
+            if not m:
+                return out, False
+            if m.group("name") in caps:
+                out[m.group("name")] = SET if _set(m.group("value")) else EMPTY
+        read += sum(t.text.count("GITHUB_ENV") for t in tokens)
+    return out, read == mentions
 
 
 def keys_for(role: str, names: set[str]) -> set[str]:
@@ -763,6 +963,81 @@ def _step_name(step: dict, index: int) -> str:
     return str(step.get("name") or step.get("id") or f"step {index + 1}")
 
 
+Effects = tuple[dict[str, str], bool]   # (sure writes of caps to $GITHUB_ENV, every write was read)
+
+
+def _run_effects(graph: Graph, script: str, starts: Starts) -> Effects:
+    """What a ``run:`` step leaves in ``$GITHUB_ENV`` for the caps. Not read, so every cap is UNSURE
+    after it: a shell script it follows or a module it may start that names ``GITHUB_ENV``, a module
+    that cannot be read, and a start that cannot be followed."""
+    writes, ok = github_env_writes(script)
+    if any("GITHUB_ENV" in text for text in starts.texts) or starts.cannot_tell:
+        ok = False
+    reach = graph.closure(starts.modules)
+    if reach & (graph.env_writers | graph.unreadable):
+        ok = False
+    return writes, ok
+
+
+def _may_not_run(step: dict) -> bool:
+    return "if" in step or step.get("continue-on-error") not in (None, False)
+
+
+def _apply(carried: dict[str, str], writes: dict[str, str], may_not_run: bool) -> None:
+    for cap, state in writes.items():
+        carried[cap] = merge_state(carried.get(cap), state) if may_not_run else state
+
+
+def _action_effects(root: Path, graph: Graph, step: dict, depth: int = 0) -> Effects:
+    """A local composite action (``uses: ./...``) is read like run steps. An action from elsewhere
+    is not read (the module docstring says so)."""
+    import yaml
+
+    uses = step.get("uses")
+    if not isinstance(uses, str) or not uses.startswith("./"):
+        return {}, True
+    folder = (root / uses).resolve()
+    path = next((p for p in (folder / "action.yml", folder / "action.yaml") if p.is_file()), None)
+    if path is None or depth >= 3:
+        return {}, False
+    try:
+        doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError):
+        return {}, False
+    runs = doc.get("runs") if isinstance(doc, dict) else None
+    if not isinstance(runs, dict):
+        return {}, False
+    if runs.get("using") != "composite":
+        return {}, True              # a JavaScript or Docker action: not read
+    out: dict[str, str] = {}
+    for inner in runs.get("steps") or []:
+        if not isinstance(inner, dict):
+            return {}, False
+        if isinstance(inner.get("run"), str):
+            writes, ok = _run_effects(graph, inner["run"], step_starts(graph, inner["run"]))
+        else:
+            writes, ok = _action_effects(root, graph, inner, depth + 1)
+        if not ok:
+            return out, False
+        _apply(out, writes, _may_not_run(inner))
+    return out, True
+
+
+def _carry(carried: dict[str, str], unsure_from: dict[str, str], effects: Effects, step: dict,
+           name: str) -> None:
+    """Apply an earlier step's writes to what later steps of the job start with."""
+    writes, ok = effects
+    if not ok:
+        for cap in CAP_ENV.values():
+            carried[cap] = UNSURE
+            unsure_from[cap] = name
+        return
+    _apply(carried, writes, _may_not_run(step))
+    for cap in writes:
+        if carried[cap] == UNSURE:
+            unsure_from[cap] = name
+
+
 def audit(root: Path = REPO, graph: Graph | None = None) -> list[Row]:
     import yaml  # requirements-dev.txt; only needed to audit, not to import this module
 
@@ -777,32 +1052,43 @@ def audit(root: Path = REPO, graph: Graph | None = None) -> list[Row]:
         if not isinstance(doc, dict):
             continue
         wf_names = names_in_env(doc.get("env"))
+        wf_caps = cap_states_in_env(doc.get("env"))
         for job_name, job in (doc.get("jobs") or {}).items():
             if not isinstance(job, dict) or not job.get("environment"):
                 continue
             job_names = wf_names | names_in_env(job.get("env"))
+            job_caps = cap_states_in_env(job.get("env"))
             carried_keys: set[str] = set()   # loose, for keys
-            carried_caps: set[str] = set()   # strict, for caps
+            carried: dict[str, str] = {}     # strict, for caps: what earlier steps left in $GITHUB_ENV
+            unsure_from: dict[str, str] = {}  # cap -> the earlier step that made it UNSURE
             for index, step in enumerate(job.get("steps") or []):
                 if not isinstance(step, dict):
                     continue
+                name = _step_name(step, index)
                 script = step.get("run")
                 if not isinstance(script, str):
+                    effects = _action_effects(root, graph, step)
+                    _carry(carried, unsure_from, effects, step, name)
                     continue
                 step_env = names_in_env(step.get("env"))
+                step_caps = cap_states_in_env(step.get("env"))
                 keys = job_names | carried_keys | step_env | names_in_script(script)
-                caps = (job_names | carried_caps | step_env) & set(CAP_ENV.values())
+                state = {cap: cap_at_start(cap, step_caps, carried, job_caps, wf_caps) for cap in CAP_ENV.values()}
+                starts = step_starts(graph, script)
                 carried_keys |= names_to_github_env_loosely(script)
-                carried_caps |= caps_to_github_env(script)
+                _carry(carried, unsure_from, _run_effects(graph, script, starts), step, name)
                 if not keys_for("spec", keys) | keys_for("vision", keys) | keys_for("glimmer", keys):
                     continue  # no model key in this step: nothing it starts can send
-                starts = step_starts(graph, script)
                 roles, unreadable = graph.roles_reached(starts.modules)
                 needed = sorted(CAP_ENV[r] for r in roles if keys_for(r, keys))
                 text = "\n".join([script, *starts.texts])
                 named = {cap for cap in needed if cap in text}
-                missing = tuple(cap for cap in needed if cap not in caps and cap not in named)
+                missing = tuple(cap for cap in needed if state[cap] in {None, EMPTY} and cap not in named)
                 tell = list(starts.cannot_tell) + [f"cannot read the module {m}" for m in sorted(unreadable)]
+                for cap in needed:
+                    if state[cap] == UNSURE and cap not in named:
+                        tell.append(f"an earlier step ({unsure_from.get(cap, '?')!r}) may have written {cap} to "
+                                    "$GITHUB_ENV in a way this audit cannot read, or may not have run")
                 exported = caps_set_in_script(script)
                 for cap in sorted(named):
                     how = "exports" if cap in exported else "names"
