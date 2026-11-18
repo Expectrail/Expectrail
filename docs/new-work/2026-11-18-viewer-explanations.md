@@ -13,7 +13,7 @@
 - `python3 -m unittest tests.test_explanation tests.test_viewer tests.test_contracts`: 53 tests, OK.
 - Nine mutations of `check` were each caught by `tests.test_explanation`: the ASCII, unknown-id, stated-verdict, number, negation, certainty, decision-word, digest and record-decision rules.
 - I opened the viewer in Chromium (Playwright) for the example record with the example explanation, at 1280 and 390 wide. There was no horizontal scroll and no console error. Clicking a finding id in the explanation opened the inspector at that finding.
-- Full suite: see the pull request.
+- Full suite on the branch from main at 430833a: 5,116 tests, OK, 63 skipped. The first full run found the module missing from the wheel (`tests.test_package`) and the new id pattern missing a sample (`tests.test_schema_pattern`). Both are fixed in this change.
 
 ## Not done
 - No live model is asked for an explanation. That needs a budget and a recording run, both Sean's.
@@ -22,5 +22,6 @@
 ## Files
 - contracts/explanation.v1.schema.json, contracts/examples/explanation.v1.json, expectrail/contracts.py
 - expectrail/explanation.py, expectrail/viewer.py
-- tests/test_explanation.py, tests/fixtures/explanation/reject-answer.json
+- tests/test_explanation.py, tests/fixtures/explanation/reject-answer.json, tests/test_schema_pattern.py (one sample added)
+- setup.py (the module is in the wheel)
 - docs/viewer.md, docs/new-work/2026-11-18-viewer-explanations.md
