@@ -14,7 +14,8 @@
 - `python3 -m unittest tests.test_explanation tests.test_viewer tests.test_contracts`: 53 tests, OK.
 - First round: nine mutations of `check` were each caught by `tests.test_explanation`.
 - Second round, after the merge guard's review: the guard's six probes (a) to (f) and five accept-side descriptions of a failure are tests, and all are withheld. Ten mutations were each caught: the allow-list, after-only passing words, failing words, negation, spec names split into words, decision words, numbers, ASCII and the digest.
-- I opened the viewer in Chromium (Playwright) for the example record with the example explanation, at 1280 and 390 wide. There was no horizontal scroll and no console error. Clicking a finding id in the explanation opened the inspector at that finding.
+- Second round, full suite on the branch merged with main at edfd70b: 5,155 tests, 1 failure, 65 skipped. The failure is `tests.test_package.InstalledTest.test_installed_sample_checks_new_capture_without_optional_packages`. It fails on main edfd70b alone too: I ran that one test on a clean checkout of main and it failed. It came in with #589, which the guard is reverting in #633.
+- I opened the viewer in Chromium (Playwright) for the example record with the example explanation, at 1280 and 390 wide. There was no horizontal scroll and no console error. Clicking a finding id in the explanation opened the inspector at that finding. In the second round I looked again at both widths: each point now shows its verdict line from the record.
 - Full suite on the branch from main at 430833a: 5,116 tests, OK, 63 skipped. The first full run found the module missing from the wheel (`tests.test_package`) and the new id pattern missing a sample (`tests.test_schema_pattern`). Both are fixed in this change.
 
 ## Not done
