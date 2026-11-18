@@ -80,6 +80,7 @@
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },
   "fix-matrix.yml::sam-warm::Judge the clean game once for this run": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
     "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },
@@ -106,7 +107,10 @@
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },
   "jit.yml::pixel-ask::Ask SAM 3.1 about the captured frames (one image a judged frame)": {
-    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed",
+    "cannotTell": [
+      "the script exports EXPECTRAIL_SAM_USD_CAP itself, and this audit does not follow the order of a step's commands, so it cannot tell whether every start runs with it"
+    ]
   },
   "jit.yml::propose::Propose checks (one Muse Spark call)": {
     "EXPECTRAIL_SAM_USD_CAP": "unreviewed"
@@ -124,10 +128,12 @@
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },
   "mutation-bench.yml::run::Restore them into the SAM cache": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
     "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },
   "mutation-bench.yml::sam-warm::Judge the clean game once": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
     "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },
@@ -137,22 +143,30 @@
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },
   "mutation-fix.yml::sam-warm::Judge the clean game once": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
     "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },
   "outside-sam-probe.yml::probe::Ask SAM 3.1 what it sees": {
-    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed",
+    "cannotTell": [
+      "the script exports EXPECTRAIL_SAM_USD_CAP itself, and this audit does not follow the order of a step's commands, so it cannot tell whether every start runs with it"
+    ]
   },
   "outside-vision.yml::judge::Judge saved runs": {
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },
   "reported-bench.yml::reported-bench-sam::Render and judge": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
     "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },
   "run-it-record.yml::record::Record the vision answers, every replay sandboxed, spend capped": {
     "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
-    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed",
+    "cannotTell": [
+      "the script exports EXPECTRAIL_SAM_USD_CAP itself, and this audit does not follow the order of a step's commands, so it cannot tell whether every start runs with it"
+    ]
   },
   "sam-probe.yml::heldout-bench::Glimmer - restore the deployment's scaling if needed, and wake it": {
     "EXPECTRAIL_GLIMMER_USD_CAP": "unreviewed",
@@ -160,11 +174,15 @@
   },
   "sam-probe.yml::heldout-bench::Render and judge the variant (output kept on the runner)": {
     "EXPECTRAIL_GLIMMER_USD_CAP": "unreviewed",
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
     "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },
   "sam-probe.yml::sam-probe::Ask SAM 3.1 what it sees": {
-    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed",
+    "cannotTell": [
+      "the script exports EXPECTRAIL_SAM_USD_CAP itself, and this audit does not follow the order of a step's commands, so it cannot tell whether every start runs with it"
+    ]
   },
   "sam-probe.yml::sam-verify::Gate 1 accept path with SAM on": {
     "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
@@ -172,6 +190,7 @@
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },
   "sam-probe.yml::sam-verify::Review against the failing base with SAM on (reuses the verification above)": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
     "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },
@@ -187,14 +206,17 @@
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },
   "web-bench.yml::heldout-bench::Render and judge the variant": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
     "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },
   "web-bench.yml::web-judge::Judge the case": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
     "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },
   "web-bench.yml::web-probe::Probe the prompts": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
     "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },

@@ -17,15 +17,23 @@ This is a static over-approximation, and it says so: "may reach" is not "sends".
 follow a start (``python -m "$module"``, a script it cannot read or parse) it reports "cannot tell"
 for that step, never "no gap".
 
-A cap counts as set when the workflow's, the job's or the step's ``env`` names it with a value
-that is not empty, when the step's script exports it, or when an earlier step of the job writes it to
-``$GITHUB_ENV``. The script is read as shell commands, not searched as text (``caps_set_in_script``),
-and anything it cannot be sure of does not count as set: a comment, an argument, a write to
-``$GITHUB_ENV`` (which reaches only later steps), a prefix ``NAME=value cmd`` (it covers one command,
-and this audit works per step), a bare assignment without ``export``, and an ``export`` that might
-not run (inside ``if``, a loop, ``case``, a group, a subshell, a pipeline, or after ``&&``/``||``).
-So the audit can only over-report a gap, which ``--check`` shows, never pass one. Model keys are
-still found by the looser text search, which over-reports in the safe direction.
+A cap counts as set only from outside the step's script: the workflow's, the job's or the step's
+``env`` naming it with a value that is not literally empty (a value such as ``${{ inputs.cap }}`` is
+known only at run time and counts; the sender stops on an empty cap anyway), or an earlier step of
+the job surely writing it to ``$GITHUB_ENV`` (``caps_to_github_env``, read as shell commands).
+
+The script itself never sets a cap here, because whether a start runs with a cap depends on the order
+of the step's commands (an ``export`` after the start, an ``unset``, ``export -n``, ``env -u``), and
+this audit does not follow that order. So a step whose script, or a shell script it runs, names a
+cap the step needs is "cannot tell" for that cap, whether the cap also comes from ``env``. The same
+for a start under ``sudo``, ``su``, ``doas``, ``runuser``, ``exec -c`` or ``env`` with an option
+(``-i``, ``-u``), which change the environment the start sees. ``caps_set_in_script`` still reads
+which caps a script surely exports, to say so in that reason.
+
+Within what it reads, then, a step is listed whenever a start may run without a cap it needs. What it
+does not read: a variable name built at run time (``unset "$NAME"``), and a program other than a shell
+script or our Python that changes the environment before starting ours. Model keys are found by a
+looser text search, which over-reports in the safe direction.
 
     python3 -m tools.spend_cap_audit            # report; exit 1 on any gap or cannot-tell
     python3 -m tools.spend_cap_audit --json
@@ -34,8 +42,10 @@ still found by the looser text search, which over-reports in the safe direction.
 The recorded list, ``tools/spend_cap_gaps.json``, maps each step (``workflow::job::step name``) to the
 caps it may miss, each with ``unreviewed``, or with what a reader found ("not sent: why", "open:
 why"), and to the reasons it cannot be told. ``--check`` (and ``tests.test_spend_cap_audit``) fails on
-a gap that is not listed, so a new live step that may reach a sender without its cap is caught
-when it is written, and on a listed gap that is gone, so the list only shrinks.
+a step that is not listed, so a new live step that may start a sender without its cap is caught when
+it is written, and on a listed step the audit no longer lists, so the list only shrinks. It compares
+steps, not caps (``compare``): which caps a listed step may miss moves with any new import on main,
+and ``--check`` prints that drift as notes.
 
 Nothing here runs a workflow, a game or a model.
 """
@@ -220,6 +230,7 @@ PY_NAME = re.compile(r"python(?:3(?:\.\d+)?)?")
 class Starts:
     modules: set[str] = field(default_factory=set)
     cannot_tell: list[str] = field(default_factory=list)
+    texts: list[str] = field(default_factory=list)   # the shell scripts followed, as read
 
 
 def _inline_imports(graph: Graph, code: str) -> set[str] | None:
@@ -317,11 +328,30 @@ def step_starts(graph: Graph, script: str, *, _depth: int = 0) -> Starts:
     return found
 
 
+# Commands that start what follows them with a changed environment.
+ENV_CHANGERS = {"sudo", "su", "doas", "runuser", "pkexec"}
+
+
+def _changes_environment(before: list[str]) -> bool:
+    for j, word in enumerate(before):
+        base = word.rsplit("/", 1)[-1]
+        if base in ENV_CHANGERS:
+            return True
+        if base == "env" and any(w.startswith("-") for w in before[j + 1:]):
+            return True
+        if base == "exec" and any(w.startswith("-") for w in before[j + 1:]):
+            return True
+    return False
+
+
 def _scan_words(graph: Graph, words: list[str], line: str, body: str | None, found: Starts, depth: int) -> None:
     for i, word in enumerate(words):
         base = word.rsplit("/", 1)[-1]
         if PY_NAME.fullmatch(base):
+            had = set(found.modules)
             _python_start(graph, words[i + 1:], line, body, found)
+            if found.modules - had and _changes_environment(words[:i]):
+                found.cannot_tell.append(f"the start runs with a changed environment in {line[:80]!r}")
         elif base in CONSOLE_SCRIPTS and (i == 0 or words[i - 1] in {"&&", "||", ";", "|", "!", "then", "do",
                                                                         "time", "exec", "if", "else"}):
             found.modules |= graph.resolve(CONSOLE_SCRIPTS[base])
@@ -331,9 +361,12 @@ def _scan_words(graph: Graph, words: list[str], line: str, body: str | None, fou
             if "$" in word or not path.is_file() or depth >= 3:
                 found.cannot_tell.append(f"cannot follow the shell script {word!r}")
                 continue
-            inner = step_starts(graph, path.read_text(encoding="utf-8", errors="replace"), _depth=depth + 1)
+            text = path.read_text(encoding="utf-8", errors="replace")
+            inner = step_starts(graph, text, _depth=depth + 1)
             found.modules |= inner.modules
             found.cannot_tell.extend(inner.cannot_tell)
+            found.texts.append(text)
+            found.texts.extend(inner.texts)
 
 
 def _python_start(graph: Graph, words: list[str], line: str, body: str | None, found: Starts) -> None:
@@ -758,15 +791,23 @@ def audit(root: Path = REPO, graph: Graph | None = None) -> list[Row]:
                     continue
                 step_env = names_in_env(step.get("env"))
                 keys = job_names | carried_keys | step_env | names_in_script(script)
-                caps = (job_names | carried_caps | step_env | caps_set_in_script(script)) & set(CAP_ENV.values())
+                caps = (job_names | carried_caps | step_env) & set(CAP_ENV.values())
                 carried_keys |= names_to_github_env_loosely(script)
                 carried_caps |= caps_to_github_env(script)
                 if not keys_for("spec", keys) | keys_for("vision", keys) | keys_for("glimmer", keys):
                     continue  # no model key in this step: nothing it starts can send
                 starts = step_starts(graph, script)
                 roles, unreadable = graph.roles_reached(starts.modules)
-                missing = tuple(sorted(CAP_ENV[r] for r in roles if keys_for(r, keys) and CAP_ENV[r] not in caps))
+                needed = sorted(CAP_ENV[r] for r in roles if keys_for(r, keys))
+                text = "\n".join([script, *starts.texts])
+                named = {cap for cap in needed if cap in text}
+                missing = tuple(cap for cap in needed if cap not in caps and cap not in named)
                 tell = list(starts.cannot_tell) + [f"cannot read the module {m}" for m in sorted(unreadable)]
+                exported = caps_set_in_script(script)
+                for cap in sorted(named):
+                    how = "exports" if cap in exported else "names"
+                    tell.append(f"the script {how} {cap} itself, and this audit does not follow the order of "
+                                "a step's commands, so it cannot tell whether every start runs with it")
                 if missing or tell:
                     rows.append(Row(wf.name, str(job_name), _step_name(step, index), missing, tuple(tell)))
     return rows
@@ -798,22 +839,38 @@ def read_recorded(path: Path = GAPS_FILE) -> dict:
 
 
 def compare(rows: list[Row], recorded: dict) -> list[str]:
-    """Every difference between the audit and the recorded list, in words. Empty when they agree."""
-    problems: list[str] = []
-    found = {row.key(): row for row in rows}
-    for key in sorted(set(found) | set(recorded)):
-        row, entry = found.get(key), recorded.get(key, {})
-        missing = set(row.missing) if row else set()
-        listed = {k for k in entry if k != "cannotTell"}
-        for cap in sorted(missing - listed):
-            problems.append(f"new gap: {key} may reach a sender with no {cap}. Set the cap in that step "
-                            f"(from the workflow's own budget input), or list it in {GAPS_FILE.name} with why")
-        for cap in sorted(listed - missing):
-            problems.append(f"fixed: {key} no longer misses {cap}. Remove it from {GAPS_FILE.name}")
-        tell, listed_tell = list(row.cannot_tell) if row else [], list(entry.get("cannotTell", []))
-        if tell != listed_tell:
-            problems.append(f"cannot tell changed for {key}: found {tell}, listed {listed_tell}")
+    """Every step listed by the audit but not recorded, or recorded but no longer listed. Empty when
+    they agree.
+
+    The comparison is by step, not by cap: the import closure changes whenever main adds an import,
+    so which caps a listed step may miss moves with unrelated changes (one merge, #602, added Muse to
+    ten listed steps). A step that is listed stays under review as a whole; ``drift`` says what moved.
+    """
+    found = {row.key() for row in rows}
+    problems = [f"new step: {key} may start a sender without its cap, or cannot be told. Set the cap "
+                f"in that step's env (from the workflow's own budget input), or list it in {GAPS_FILE.name} "
+                "with why" for key in sorted(found - set(recorded))]
+    problems += [f"fixed: {key} is no longer listed by the audit. Remove it from {GAPS_FILE.name}"
+                 for key in sorted(set(recorded) - found)]
     return problems
+
+
+def drift(rows: list[Row], recorded: dict) -> list[str]:
+    """For steps in both: the caps and reasons that differ from the recorded list. Not a failure."""
+    notes: list[str] = []
+    for row in rows:
+        entry = recorded.get(row.key())
+        if entry is None:
+            continue
+        listed = {k for k in entry if k != "cannotTell"}
+        for cap in sorted(set(row.missing) - listed):
+            notes.append(f"note: {row.key()} may now also miss {cap}")
+        for cap in sorted(listed - set(row.missing)):
+            notes.append(f"note: {row.key()} no longer misses {cap}")
+        if list(row.cannot_tell) != list(entry.get("cannotTell", [])):
+            notes.append(f"note: {row.key()} cannot tell: found {list(row.cannot_tell)}, listed "
+                         f"{list(entry.get('cannotTell', []))}")
+    return notes
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -831,6 +888,8 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         for problem in problems:
             print(problem)
+        for note in drift(rows, read_recorded(args.root / "tools" / GAPS_FILE.name)):
+            print(note)
         print(f"{len(rows)} step(s) listed; {'they match the recorded list' if not problems else f'{len(problems)} difference(s)'}.")
         return 1 if problems else 0
     if args.json:

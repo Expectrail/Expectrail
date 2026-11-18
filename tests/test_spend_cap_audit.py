@@ -16,7 +16,7 @@ import unittest
 from pathlib import Path
 
 from tools import spend_cap_audit as audit_mod
-from tools.spend_cap_audit import Graph, audit, compare, read_recorded
+from tools.spend_cap_audit import Graph, audit, compare, drift, read_recorded
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -61,6 +61,14 @@ def job(steps: list[dict], *, env: dict | None = None, environment="spend") -> d
 
 KEY = {"MODEL_API_KEY": "${{ secrets.MODEL_API_KEY }}"}
 SPEC_CAP = {"EXPECTRAIL_SPEC_USD_CAP": "${{ inputs.budget }}"}
+
+
+def not_passed(row, cap: str) -> bool:
+    """The audit did not pass ``cap`` for this step: a gap, or the step cannot be told."""
+    return row is not None and (cap in row.missing or bool(row.cannot_tell))
+
+
+SPEC = "EXPECTRAIL_SPEC_USD_CAP"
 
 
 class Synthetic(unittest.TestCase):
@@ -170,9 +178,7 @@ class Synthetic(unittest.TestCase):
         self.assertEqual(self.rows([dict(step, env=KEY)], job_env=SPEC_CAP), {})
         self.assertEqual(self.rows([dict(step, env=KEY)], wf_env=SPEC_CAP), {})
 
-    def test_a_cap_exported_in_the_script_or_written_to_github_env_earlier_is_set(self):
-        exported = {"name": "s", "env": KEY, "run": 'export EXPECTRAIL_SPEC_USD_CAP="$CAP"\npython -m expectrail.lazy_entry'}
-        self.assertEqual(self.rows([exported]), {})
+    def test_a_cap_written_to_github_env_earlier_is_set(self):
         earlier = {"name": "e", "run": 'echo "EXPECTRAIL_SPEC_USD_CAP=$CAP" >> "$GITHUB_ENV"'}
         later = {"name": "s", "env": KEY, "run": "python -m expectrail.lazy_entry"}
         self.assertEqual(self.rows([earlier, later]), {})
@@ -181,7 +187,56 @@ class Synthetic(unittest.TestCase):
         self.assertIn("s", self.rows([later, earlier]))
         same = {"name": "s", "env": KEY,
                 "run": 'echo "EXPECTRAIL_SPEC_USD_CAP=$CAP" >> "$GITHUB_ENV"\npython -m expectrail.lazy_entry'}
-        self.assertEqual(self.rows([same])["s"].missing, ("EXPECTRAIL_SPEC_USD_CAP",))
+        self.assertTrue(not_passed(self.rows([same]).get("s"), SPEC))
+
+    def test_a_script_that_names_a_needed_cap_cannot_be_told_for_it(self):
+        # The script's own export is never counted: the order of its commands is not followed.
+        exported = {"name": "s", "env": KEY, "run": 'export EXPECTRAIL_SPEC_USD_CAP="$CAP"\npython -m expectrail.lazy_entry'}
+        row = self.rows([exported])["s"]
+        self.assertEqual(row.missing, ())
+        self.assertEqual(len(row.cannot_tell), 1)
+        self.assertIn("exports EXPECTRAIL_SPEC_USD_CAP itself", row.cannot_tell[0])
+        # Even with the cap in the step's env: the script may remove it.
+        unset = {"name": "s", "env": {**KEY, **SPEC_CAP}, "run": "unset EXPECTRAIL_SPEC_USD_CAP\npython -m expectrail.lazy_entry"}
+        self.assertIn("names EXPECTRAIL_SPEC_USD_CAP itself", self.rows([unset])["s"].cannot_tell[0])
+        # A cap the step does not need is not a reason.
+        other = {"name": "s", "env": KEY, "run": "export EXPECTRAIL_TRIAGE_USD_CAP=1\npython -m expectrail.lazy_entry"}
+        self.assertEqual(self.rows([other])["s"].cannot_tell, ())
+
+    def test_a_shell_script_that_names_a_needed_cap_cannot_be_told_for_it(self):
+        extra = {"scripts/unsets.sh": "unset EXPECTRAIL_SPEC_USD_CAP\npython -m expectrail.lazy_entry\n"}
+        got = self.rows([{"name": "s", "env": {**KEY, **SPEC_CAP}, "run": "bash scripts/unsets.sh"}], extra=extra)
+        self.assertTrue(not_passed(got.get("s"), SPEC))
+
+    # The merge guard's probes on ae89b5c: a start that may run without its cap is never passed.
+    def test_each_ordering_probe_is_not_passed(self):
+        C = SPEC
+        start = "python -m expectrail.lazy_entry"
+        for run, env in ((f"{start}\nexport {C}=5", KEY),
+                         (f"{start}; export {C}=5", KEY),
+                         (f"export {C}=5\nunset {C}\n{start}", KEY),
+                         (f"export {C}=5\nexport -n {C}\n{start}", KEY),
+                         (f"export {C}=5\nenv -u {C} {start}", KEY),
+                         # With the cap from env:, a start that drops or may drop the environment.
+                         (f"unset {C}\n{start}", {**KEY, **SPEC_CAP}),
+                         (f"env -u {C} {start}", {**KEY, **SPEC_CAP}),
+                         (f"env -i PATH=/usr/bin {start}", {**KEY, **SPEC_CAP}),
+                         (f"sudo {start}", {**KEY, **SPEC_CAP}),
+                         (f"exec -c {start}", {**KEY, **SPEC_CAP})):
+            with self.subTest(run=run):
+                self.assertTrue(not_passed(self.rows([{"name": "s", "env": env, "run": run}]).get("s"), C))
+        # The probe "exit 0, then export" starts nothing, so nothing in it can send: not listed.
+        self.assertEqual(self.rows([{"name": "s", "env": KEY, "run": f"exit 0\nexport {C}=5"}]), {})
+
+    def test_a_changed_environment_is_named_in_the_reason(self):
+        got = self.rows([{"name": "s", "env": {**KEY, **SPEC_CAP}, "run": "sudo -E python -m expectrail.lazy_entry"}])
+        self.assertIn("changed environment", got["s"].cannot_tell[0])
+        # pip under sudo starts nothing of ours.
+        self.assertEqual(self.rows([{"name": "s", "env": KEY, "run": "sudo python -m pip install x"}]), {})
+
+    def test_a_plain_env_prefix_is_not_a_changed_environment(self):
+        run = "env FOO=1 python -m expectrail.lazy_entry"
+        self.assertEqual(self.rows([{"name": "s", "env": {**KEY, **SPEC_CAP}, "run": run}]), {})
 
     def test_an_empty_cap_is_not_a_cap(self):
         for value in ("", "''"):
@@ -190,7 +245,7 @@ class Synthetic(unittest.TestCase):
                                   "run": "python -m expectrail.lazy_entry"}])
                 self.assertEqual(got["s"].missing, ("EXPECTRAIL_SPEC_USD_CAP",))
         got = self.rows([{"name": "s", "env": KEY, "run": "export EXPECTRAIL_SPEC_USD_CAP=\npython -m expectrail.lazy_entry"}])
-        self.assertEqual(got["s"].missing, ("EXPECTRAIL_SPEC_USD_CAP",))
+        self.assertTrue(not_passed(got.get("s"), SPEC))
 
     # The merge guard's probes on #623, as whole workflows.
     def test_each_probe_is_a_gap(self):
@@ -200,7 +255,7 @@ class Synthetic(unittest.TestCase):
                     "python - <<'PY'\n# EXPECTRAIL_SPEC_USD_CAP=5\nimport expectrail.lazy_entry\nPY"):
             with self.subTest(run=run):
                 got = self.rows([{"name": "s", "env": KEY, "run": run}])
-                self.assertEqual(got["s"].missing, ("EXPECTRAIL_SPEC_USD_CAP",))
+                self.assertTrue(not_passed(got.get("s"), SPEC))
 
     def test_an_unquoted_github_env_write_counts_from_the_next_step(self):
         earlier = {"name": "e", "run": "echo EXPECTRAIL_SPEC_USD_CAP=5 >> $GITHUB_ENV"}
@@ -234,16 +289,27 @@ class Synthetic(unittest.TestCase):
 
     # ------------------------------------------------------------ the recorded list
 
-    def test_compare_names_a_new_gap_a_fixed_gap_and_a_changed_cannot_tell(self):
+    def test_compare_names_a_new_step_and_a_fixed_step(self):
         root = self.repo({"j": job([{"name": "s", "env": KEY, "run": "python -m expectrail.lazy_entry"},
                                     {"name": "t", "env": KEY, "run": 'python -m "$m"'}])})
         rows = audit(root)
         self.assertEqual(compare(rows, {"live.yml::j::s": {"EXPECTRAIL_SPEC_USD_CAP": "unreviewed"},
                                         "live.yml::j::t": {"cannotTell": [rows[1].cannot_tell[0]]}}), [])
-        problems = compare(rows, {"live.yml::j::s": {"EXPECTRAIL_MUSE_USD_CAP": "unreviewed"}})
-        self.assertTrue(any(p.startswith("new gap: live.yml::j::s") and "EXPECTRAIL_SPEC_USD_CAP" in p for p in problems))
-        self.assertTrue(any(p.startswith("fixed: live.yml::j::s") and "EXPECTRAIL_MUSE_USD_CAP" in p for p in problems))
-        self.assertTrue(any(p.startswith("cannot tell changed for live.yml::j::t") for p in problems))
+        problems = compare(rows, {"live.yml::j::s": {"EXPECTRAIL_SPEC_USD_CAP": "unreviewed"},
+                                  "live.yml::j::gone": {"EXPECTRAIL_SPEC_USD_CAP": "unreviewed"}})
+        self.assertEqual([p.split(":")[0] for p in problems], ["new step", "fixed"])
+        self.assertIn("live.yml::j::t", problems[0])
+        self.assertIn("live.yml::j::gone", problems[1])
+
+    def test_a_listed_step_whose_caps_or_reasons_move_is_a_note_not_a_failure(self):
+        root = self.repo({"j": job([{"name": "s", "env": KEY, "run": "python -m expectrail.lazy_entry"}])})
+        rows = audit(root)
+        recorded = {"live.yml::j::s": {"EXPECTRAIL_MUSE_USD_CAP": "unreviewed", "cannotTell": ["old"]}}
+        self.assertEqual(compare(rows, recorded), [])
+        notes = drift(rows, recorded)
+        self.assertTrue(any("may now also miss EXPECTRAIL_SPEC_USD_CAP" in n for n in notes))
+        self.assertTrue(any("no longer misses EXPECTRAIL_MUSE_USD_CAP" in n for n in notes))
+        self.assertTrue(any("cannot tell: found [], listed ['old']" in n for n in notes))
 
     def test_the_recorded_list_is_read_strictly(self):
         bad = [[], {"a::b": {}}, {"w::j::s": {"EXPECTRAIL_NOPE_USD_CAP": "unreviewed"}},
