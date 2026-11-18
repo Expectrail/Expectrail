@@ -366,6 +366,25 @@ class Synthetic(unittest.TestCase):
                           "run": "sudo bash -c 'python -m expectrail.lazy_entry'"}])
         self.assertIn("changed environment", " ".join(got["s"].cannot_tell))
 
+    # The merge guard's probes on 3aba1bc (#629): a shell name is never "nothing here".
+    def test_a_shell_after_a_command_with_options_is_still_read(self):
+        extra = {"scripts/x.sh": "python -m expectrail.lazy_entry\n"}
+        for run in ("bash scripts/x.sh",
+                    "nice -n 5 bash scripts/x.sh",
+                    "timeout -s KILL 10 bash scripts/x.sh",
+                    "echo a | xargs -n1 bash scripts/x.sh",
+                    "ionice -c 3 sh scripts/x.sh",
+                    "sudo -u x bash scripts/x.sh",
+                    "nice -n 5 bash -c 'python -m expectrail.lazy_entry'"):
+            with self.subTest(run=run):
+                got = self.rows([{"name": "s", "env": KEY, "run": run}], extra=extra)
+                self.assertTrue(not_passed(got.get("s"), SPEC), got)
+        # With the cap, xargs and sudo -u are still not passed.
+        for run in ("echo a | xargs -n1 bash scripts/x.sh", "sudo -u x bash scripts/x.sh"):
+            with self.subTest(run=run):
+                got = self.rows([{"name": "s", "env": {**KEY, **SPEC_CAP}, "run": run}], extra=extra)
+                self.assertTrue(got.get("s") is not None and got["s"].cannot_tell, got)
+
     def test_a_command_string_the_audit_cannot_read_cannot_be_told(self):
         for run in ("eval 'python -m expectrail.quiet'",
                     'eval "$CMD"',

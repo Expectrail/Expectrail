@@ -38,8 +38,9 @@ for a start under ``sudo``, ``su``, ``doas``, ``runuser``, ``exec -c`` or ``env`
 (``-i``, ``-u``), which change the environment the start sees. ``caps_set_in_script`` still reads
 which caps a script surely exports, to say so in that reason.
 
-A shell started by name (``bash``, ``sh`` and the like, with options) has its ``-c`` string, its
-script file or its here-document read as a script in turn. A string run by ``eval``, a command line
+A shell named anywhere in a command (``bash``, ``sh`` and the like, with options, also after
+``nice -n 5``, ``timeout -s KILL 10`` or ``sudo -u x``) has its ``-c`` string, its script file or its
+here-document read as a script in turn; a shell whose script it cannot find or read is "cannot tell". A string run by ``eval``, a command line
 built by ``xargs``, ``parallel``, ``find`` and the like, and a shell whose command is a variable are
 "cannot tell".
 
@@ -362,12 +363,11 @@ def _changes_environment(before: list[str]) -> bool:
     return False
 
 
-# A shell started by name: its ``-c`` string, its script file, or a here-document is read as a
-# script in turn (#627). Words after which the next word is a command: shell separators that
-# shlex leaves as words, keywords, and commands that start their arguments as a command.
+# A shell named anywhere in a command: its ``-c`` string, its script file, or a here-document is
+# read as a script in turn (#627). No guess is made about whether the name is in command position
+# (``nice -n 5 bash``, ``timeout -s KILL 10 sh``): a shell name it does not follow is "cannot tell",
+# never "nothing here" (#629). This over-reads a shell named as an argument, in the safe direction.
 SHELLS = {"bash", "sh", "dash", "zsh", "ksh", "ash", "mksh"}
-COMMAND_LEADERS = {"&&", "||", ";", "|", "!", "then", "do", "else", "if", "while", "until", "time", "exec",
-                   "command", "builtin", "nohup", "nice", "env", "sudo", "doas", "stdbuf", "setsid"}
 # Commands that run a string, or build a command line from their input: what they start cannot be read.
 STRING_RUNNERS = {"eval"}
 LINE_BUILDERS = {"xargs", "parallel", "watch", "flock", "script", "find"}
@@ -378,16 +378,6 @@ def _since_separator(words: list[str], i: int) -> list[str]:
     """The words of the simple command that ``words[i]`` is in, before it."""
     start = max((k + 1 for k in range(i) if words[k] in {"&&", "||", ";", "|", "|&", "&"}), default=0)
     return words[start:i]
-
-
-def _in_command_position(words: list[str], i: int) -> bool:
-    if i == 0:
-        return True
-    before = words[i - 1]
-    if before.rsplit("/", 1)[-1] in COMMAND_LEADERS or ASSIGN.fullmatch(before):
-        return True
-    # timeout DURATION cmd, and an option of a leader (env -i cmd, sudo -E cmd) is over-read as a leader
-    return i >= 2 and (words[i - 2].rsplit("/", 1)[-1] in COMMAND_LEADERS | {"timeout"})
 
 
 def _follow_text(graph: Graph, text: str, found: Starts, depth: int) -> Starts:
@@ -458,12 +448,12 @@ def _scan_words(graph: Graph, words: list[str], line: str, body: str | None, fou
                 found.cannot_tell.append(f"the start runs with a changed environment in {line[:80]!r}")
             if any(w.rsplit("/", 1)[-1] in LINE_BUILDERS for w in _since_separator(words, i)):
                 found.cannot_tell.append(f"the start's arguments are built at run time in {line[:80]!r}")
-        elif base in SHELLS and _in_command_position(words, i):
+        elif base in SHELLS:  # wherever it is: a shell name is never "nothing here" (#629)
             if any(w.rsplit("/", 1)[-1] in LINE_BUILDERS for w in _since_separator(words, i)):
                 found.cannot_tell.append(f"a shell started with arguments built at run time in {line[:80]!r}")
             i = _shell_start(graph, words, i, line, body, found, depth)
             continue
-        elif base in STRING_RUNNERS and _in_command_position(words, i) and i + 1 < len(words):
+        elif base in STRING_RUNNERS and i + 1 < len(words):
             found.cannot_tell.append(f"{base} runs a string this audit does not read, in {line[:80]!r}")
         elif base in CONSOLE_SCRIPTS and (i == 0 or words[i - 1] in {"&&", "||", ";", "|", "!", "then", "do",
                                                                         "time", "exec", "if", "else"}):

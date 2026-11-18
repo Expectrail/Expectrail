@@ -19,9 +19,13 @@ by one more special case:
   `if:` or `continue-on-error` leave every cap "cannot tell" for later steps that otherwise set it. A
   local composite action (`uses: ./...`) is read the same way. Where nothing sure sets the cap, it stays
   listed as missing.
-- **A shell started by name is read** (`_shell_start`). `bash -c '...'`, `sh -ec "..."`, `bash -e
-  script.sh`, `bash <<EOF` and nested shells are read as scripts in turn, and a changed environment
-  (`sudo bash -c`) is still named. `eval`, a command line built by `xargs`, `parallel`, `find` and the
+- **A shell named anywhere in a command is read** (`_shell_start`). `bash -c '...'`, `sh -ec "..."`,
+  `bash -e script.sh`, `bash <<EOF` and nested shells are read as scripts in turn, also after a
+  command with options (`nice -n 5 bash`, `timeout -s KILL 10 sh`, `sudo -u x bash`, `xargs -n1 bash`),
+  and a changed environment (`sudo bash -c`) is still named. No guess is made about command position:
+  the merge guard showed on 3aba1bc that such a guess, looking back two words, dropped five cases main
+  listed. A shell whose script cannot be found or read is "cannot tell"; a shell named as an argument
+  (`echo bash`) is over-read, in the safe direction. `eval`, a command line built by `xargs`, `parallel`, `find` and the
   like, and a shell whose command is a variable (`bash -c "$SCRIPT"`) are "cannot tell".
 
 The tests in `tests/test_spend_cap_audit.py` hold each of the guard's probes and the wider cases
@@ -37,6 +41,9 @@ pull request (`docs/new-work/README.md`, `AGENTS.md`).
 ## What was run
 - `python3 -m unittest tests.test_spend_cap_audit`: before the fix, the new tests failed (25 failures,
   7 errors on main 32c416d, which contains 3e45126); after it, 62 tests, OK.
+- After the merge guard's review of 3aba1bc: its seven probes, as
+  `test_a_shell_after_a_command_with_options_is_still_read`, failed on 3aba1bc (8 failures) and pass
+  with the command-position guess removed: 63 tests, OK.
 - Six mutations of the audit (empty values ignored, unread writes trusted, `-c` strings not followed,
   `if:` ignored, `eval` allowed, a may-not-run write not merged): each made the suite fail.
 - `python3 -m tools.spend_cap_audit --check` on the branch: "48 step(s) listed; they match the recorded
