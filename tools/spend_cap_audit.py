@@ -18,8 +18,14 @@ follow a start (``python -m "$module"``, a script it cannot read or parse) it re
 for that step, never "no gap".
 
 A cap counts as set when the workflow's, the job's or the step's ``env`` names it with a value
-that is not empty, when the step's script exports or prefixes it, or when an earlier step of the job
-writes it to ``$GITHUB_ENV``.
+that is not empty, when the step's script exports it, or when an earlier step of the job writes it to
+``$GITHUB_ENV``. The script is read as shell commands, not searched as text (``caps_set_in_script``),
+and anything it cannot be sure of does not count as set: a comment, an argument, a write to
+``$GITHUB_ENV`` (which reaches only later steps), a prefix ``NAME=value cmd`` (it covers one command,
+and this audit works per step), a bare assignment without ``export``, and an ``export`` that might
+not run (inside ``if``, a loop, ``case``, a group, a subshell, a pipeline, or after ``&&``/``||``).
+So the audit can only over-report a gap, which ``--check`` shows, never pass one. Model keys are
+still found by the looser text search, which over-reports in the safe direction.
 
     python3 -m tools.spend_cap_audit            # report; exit 1 on any gap or cannot-tell
     python3 -m tools.spend_cap_audit --json
@@ -79,6 +85,7 @@ HOLD_NAMES = {"hold", "require_cap"}
 CONSOLE_SCRIPTS = {"expectrail": "expectrail.cli"}
 
 HEREDOC = re.compile(r"<<-?\s*(['\"]?)(?P<tag>[A-Za-z_][A-Za-z0-9_]*)\1")
+# Loose text search, for model KEYS only: finding more keys than are set only audits more steps.
 EXPORT = re.compile(r"(?:^|[\s;&|(])(?:export\s+)?(?P<name>[A-Z][A-Z0-9_]*)=(?P<value>\S*)")
 GITHUB_ENV_WRITE = re.compile(r"(?P<name>[A-Z][A-Z0-9_]*)=[^\n]*>>\s*\"?\$\{?GITHUB_ENV")
 
@@ -409,7 +416,8 @@ def names_in_env(env) -> set[str]:
 
 
 def names_in_script(script: str) -> set[str]:
-    """The variables a script exports or sets before a command, to something that is not empty."""
+    """Loose: every ``NAME=value`` with a value anywhere in the script. Used for model keys only,
+    where finding too many is the safe direction; never for caps (``caps_set_in_script``)."""
     out = set()
     for m in EXPORT.finditer(script):
         if _set(m.group("value")):
@@ -417,16 +425,283 @@ def names_in_script(script: str) -> set[str]:
     return out
 
 
-def names_to_github_env(script: str) -> set[str]:
+def names_to_github_env_loosely(script: str) -> set[str]:
+    """Loose: for model keys only, as ``names_in_script``."""
     return {m.group("name") for m in GITHUB_ENV_WRITE.finditer(script)}
+
+
+# ---------------------------------------------------------------- caps, read as shell commands
+
+ASSIGN = re.compile(r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)=(?P<value>.*)", re.S)
+OPENERS = {"if", "case", "for", "while", "until", "select", "{", "function"}
+CLOSERS = {"fi", "esac", "done", "}"}
+LEADERS = {"then", "do", "else", "elif", "!", "time"}  # the next word is in command position
+NL = "<end of line>"  # not a word shlex can make: it has spaces
+SEPARATORS = {";", NL, ";;", ";&", ";;&"}
+CONDITIONAL = {"&&", "||", "|", "|&", "&"}
+GITHUB_ENV_TARGETS = {"$GITHUB_ENV", "${GITHUB_ENV}"}
+
+
+@dataclass
+class ShellNames:
+    """What a step's script sets for the rest of the step, and what it writes to ``$GITHUB_ENV``
+    for later steps. ``sure`` is False when the script could not be read as commands: then
+    nothing it sets counts."""
+    exported: set[str] = field(default_factory=set)
+    to_github_env: set[str] = field(default_factory=set)
+    sure: bool = True
+
+
+OPERATORS = sorted([";;&", ";;", ";&", "&&", "||", "|&", ">>", "<<<", "<<-", "<<", ">&", "<&", "&>>", "&>",
+                    ">|", ">", "<", "(", ")", ";", "&", "|"], key=len, reverse=True)
+REDIRECTS_OUT = {">", ">>", ">|", "&>", "&>>"}
+
+
+@dataclass(frozen=True)
+class Token:
+    text: str          # the word with its quoting removed, or the operator
+    op: bool = False   # an unquoted shell operator
+    plain: bool = True  # no quoting or escape in it, so it can be a keyword
+
+
+def _closing(line: str, i: int, open_: str, close: str) -> int:
+    """Index just past the ``close`` that balances the ``open_`` at ``i``, skipping quoted text; -1."""
+    depth, j, n = 0, i, len(line)
+    while j < n:
+        c = line[j]
+        if c == "\\":
+            j += 2
+            continue
+        if c in "'\"":
+            k = line.find(c, j + 1)
+            if k < 0:
+                return -1
+            j = k + 1
+            continue
+        if line.startswith(open_, j):
+            depth += 1
+            j += len(open_)
+            continue
+        if line.startswith(close, j):
+            depth -= 1
+            j += len(close)
+            if depth == 0:
+                return j
+            continue
+        j += 1
+    return -1
+
+
+def _lex(line: str) -> list[Token] | None:
+    """One logical line as shell words and operators, quoting kept apart from operators, so a quoted
+    ``';'`` is a word. None when the line cannot be read (an unclosed quote or bracket)."""
+    out: list[Token] = []
+    buf: list[str] = []
+    inword, plain, i, n = False, True, 0, len(line)
+
+    def flush():
+        nonlocal inword, plain
+        if inword:
+            out.append(Token("".join(buf), False, plain))
+        buf.clear()
+        inword, plain = False, True
+
+    while i < n:
+        c = line[i]
+        if c in " \t\r":
+            flush()
+            i += 1
+        elif c == "#" and not inword:
+            break
+        elif c == "\\":
+            if i + 1 < n:
+                buf.append(line[i + 1])
+            inword, plain, i = True, False, i + 2
+        elif c == "'":
+            j = line.find("'", i + 1)
+            if j < 0:
+                return None
+            buf.append(line[i + 1:j])
+            inword, plain, i = True, False, j + 1
+        elif c == '"':
+            j, part = i + 1, []
+            while j < n and line[j] != '"':
+                if line[j] == "\\" and j + 1 < n and line[j + 1] in '$`"\\':
+                    part.append(line[j + 1])
+                    j += 2
+                else:
+                    part.append(line[j])
+                    j += 1
+            if j >= n:
+                return None
+            buf.append("".join(part))
+            inword, plain, i = True, False, j + 1
+        elif line.startswith("$((", i) or line.startswith("${", i):
+            j = _closing(line, i + 1, "((", "))") if line.startswith("$((", i) else line.find("}", i) + 1
+            if j <= 0:
+                return None
+            buf.append(line[i:j])
+            inword, i = True, j
+        elif c == "(" and inword and "".join(buf).endswith("="):   # an array: name=( ... )
+            j = _closing(line, i, "(", ")")
+            if j < 0:
+                return None
+            buf.append(line[i:j])
+            i = j
+        else:
+            op = next((o for o in OPERATORS if line.startswith(o, i)), None)
+            if op:
+                flush()
+                out.append(Token(op, True, False))
+                i += len(op)
+            else:
+                buf.append(c)
+                inword, i = True, i + 1
+    flush()
+    return out
+
+
+Command = tuple[list[Token], bool, "str | None"]
+
+
+def _commands(script: str) -> tuple[list[Command], bool]:
+    """Simple commands of the script, each with whether it surely runs in the step's own shell
+    (top level, not conditional, not in a pipeline, a subshell or the background) and the
+    here-document body it reads. Returns (commands, sure); ``sure`` is False when a line cannot be
+    read or the nesting does not balance, and then nothing the script sets counts."""
+    lines, bodies = _split_heredocs(script)
+    out: list[Command] = []
+    depth = 0
+    for index, line in _join_continuations(lines):
+        tokens = _lex(_blank_substitutions(line))
+        if tokens is None:
+            return out, False
+        tokens.append(Token(NL, True, False))
+        current: list[Token] = []
+        before = NL          # the operator before the current command
+        in_test = False
+
+        def end(after: str) -> None:
+            if current:
+                surely = depth == 0 and before in SEPARATORS and after not in CONDITIONAL
+                out.append((list(current), surely, bodies.get(index)))
+            current.clear()
+
+        for tok in tokens:
+            if in_test:
+                current.append(tok)
+                in_test = not (tok.plain and tok.text == "]]")
+                continue
+            if tok.op and (tok.text in SEPARATORS or tok.text in CONDITIONAL or tok.text in "()"):
+                end(tok.text)
+                if tok.text in "()":
+                    depth += 1 if tok.text == "(" else -1
+                    if depth < 0:
+                        return out, False
+                    before = NL if depth == 0 else "("
+                    if depth == 0 and tok.text == ")":
+                        before = ")"   # what follows a subshell is still part of its list
+                else:
+                    before = NL if (tok.text in SEPARATORS and depth == 0) else tok.text
+                continue
+            if not current and tok.plain:
+                if tok.text == "[[":
+                    in_test = True
+                    current.append(tok)
+                    continue
+                if tok.text in OPENERS:
+                    depth += 1
+                    continue
+                if tok.text in CLOSERS:
+                    depth -= 1
+                    if depth < 0:
+                        return out, False
+                    continue
+                if tok.text in LEADERS:
+                    continue
+            current.append(tok)
+    return out, depth == 0
+
+
+def _redirect_target(tokens: list[Token]) -> tuple[int, str] | None:
+    for i, tok in enumerate(tokens):
+        if tok.op and tok.text in REDIRECTS_OUT and i + 1 < len(tokens) and not tokens[i + 1].op:
+            return i, tokens[i + 1].text
+    return None
+
+
+def shell_names(script: str) -> ShellNames:
+    commands, sure = _commands(script)
+    found = ShellNames(sure=sure)
+    if not sure:
+        return found
+    assigned: set[str] = set()   # shell variables surely set (not exported) earlier
+    for tokens, surely_runs, body in commands:
+        if not surely_runs:
+            continue
+        redirect = _redirect_target(tokens)
+        words = [t.text for t in tokens if not t.op]
+        if redirect is not None:
+            at, target = redirect
+            if target in GITHUB_ENV_TARGETS:
+                # Reaches later steps only: ``echo NAME=value >> $GITHUB_ENV``, or a here-document.
+                args = [t.text for t in tokens[:at] if not t.op]
+                if args[:1] == ["echo"]:
+                    rest = [a for a in args[1:] if not a.startswith("-")]
+                    if len(rest) == 1 and (m := ASSIGN.fullmatch(rest[0])) and _set(m.group("value")):
+                        found.to_github_env.add(m.group("name"))
+                elif args == ["cat"] and body is not None:
+                    for line in body.splitlines():
+                        if (m := ASSIGN.fullmatch(line.strip())) and _set(m.group("value")):
+                            found.to_github_env.add(m.group("name"))
+            continue                 # a command that writes a file sets nothing in this shell
+        if any(t.op for t in tokens):
+            continue                 # other redirections or a here-document: not a plain export
+        assigns = 0
+        while assigns < len(words) and ASSIGN.fullmatch(words[assigns]):
+            assigns += 1
+        if assigns == len(words):    # bare assignments: shell variables, not passed to a child
+            for w in words:
+                m = ASSIGN.fullmatch(w)
+                (assigned.add if _set(m.group("value")) else assigned.discard)(m.group("name"))
+            continue
+        if assigns:
+            continue                 # a prefix covers its one command only
+        if not tokens[0].plain:
+            continue                 # a quoted command word is not the builtin by sight
+        cmd, args = words[0], words[1:]
+        if cmd == "export":
+            if any(a.startswith("-") and a != "--" for a in args):
+                continue             # export -n, -f, -p: not a plain export
+        elif cmd in {"declare", "typeset"}:
+            flags = "".join(a[1:] for a in args if a.startswith("-"))
+            if "x" not in flags or any(a.startswith("+") for a in args):
+                continue
+        else:
+            continue
+        for a in args:
+            if a.startswith("-"):
+                continue
+            m = ASSIGN.fullmatch(a)
+            if m:
+                (found.exported.add if _set(m.group("value")) else found.exported.discard)(m.group("name"))
+            elif a in assigned:
+                found.exported.add(a)
+    return found
+
+
+def caps_set_in_script(script: str) -> set[str]:
+    """The caps a script surely exports for the rest of its step."""
+    return shell_names(script).exported & set(CAP_ENV.values())
+
+
+def caps_to_github_env(script: str) -> set[str]:
+    """The caps a script surely writes to ``$GITHUB_ENV``, for later steps of the job."""
+    return shell_names(script).to_github_env & set(CAP_ENV.values())
 
 
 def caps_in_env(env) -> set[str]:
     return names_in_env(env) & set(CAP_ENV.values())
-
-
-def caps_in_script(script: str) -> set[str]:
-    return names_in_script(script) & set(CAP_ENV.values())
 
 
 def keys_for(role: str, names: set[str]) -> set[str]:
@@ -473,20 +748,24 @@ def audit(root: Path = REPO, graph: Graph | None = None) -> list[Row]:
             if not isinstance(job, dict) or not job.get("environment"):
                 continue
             job_names = wf_names | names_in_env(job.get("env"))
-            carried: set[str] = set()
+            carried_keys: set[str] = set()   # loose, for keys
+            carried_caps: set[str] = set()   # strict, for caps
             for index, step in enumerate(job.get("steps") or []):
                 if not isinstance(step, dict):
                     continue
                 script = step.get("run")
                 if not isinstance(script, str):
                     continue
-                have = job_names | carried | names_in_env(step.get("env")) | names_in_script(script)
-                carried |= names_to_github_env(script)
-                if not keys_for("spec", have) | keys_for("vision", have) | keys_for("glimmer", have):
+                step_env = names_in_env(step.get("env"))
+                keys = job_names | carried_keys | step_env | names_in_script(script)
+                caps = (job_names | carried_caps | step_env | caps_set_in_script(script)) & set(CAP_ENV.values())
+                carried_keys |= names_to_github_env_loosely(script)
+                carried_caps |= caps_to_github_env(script)
+                if not keys_for("spec", keys) | keys_for("vision", keys) | keys_for("glimmer", keys):
                     continue  # no model key in this step: nothing it starts can send
                 starts = step_starts(graph, script)
                 roles, unreadable = graph.roles_reached(starts.modules)
-                missing = tuple(sorted(CAP_ENV[r] for r in roles if keys_for(r, have) and CAP_ENV[r] not in have))
+                missing = tuple(sorted(CAP_ENV[r] for r in roles if keys_for(r, keys) and CAP_ENV[r] not in caps))
                 tell = list(starts.cannot_tell) + [f"cannot read the module {m}" for m in sorted(unreadable)]
                 if missing or tell:
                     rows.append(Row(wf.name, str(job_name), _step_name(step, index), missing, tuple(tell)))

@@ -18,6 +18,20 @@ whose cap is not set at the workflow, job or step level, by `export`, or through
 earlier step, is listed. A start it cannot follow (`python -m "$module"`, a script it cannot read) is
 "cannot tell", never "no gap".
 
+How a script sets a cap is decided from its parsed commands, not from text (after the merge guard's
+review): a small shell lexer keeps quoting apart from operators, and a cap counts only when a plain
+`export NAME=value` (or `declare -x`, or `export NAME` after `NAME=value`) surely runs in the step's own
+shell: at top level, not inside `if`, a loop, `case`, a `{ }` group, a subshell or a function, not after
+`&&` or `||`, not in a pipeline or the background, and not with a redirection. A comment, an argument,
+a here-document body, a prefix `NAME=value cmd` (it covers one command and the audit works per step), a
+bare assignment without `export` (it does not reach a child process; `set -a` is not followed), and a
+write to `$GITHUB_ENV` do not count in the step. A write to `$GITHUB_ENV` counts from the next step
+only when it is `echo NAME=value >> $GITHUB_ENV` (quoted or not) or `cat >> $GITHUB_ENV` with a
+here-document, and surely runs. A line the lexer cannot read, or nesting that does not balance, makes
+the whole script set nothing. So the audit can only over-report a gap, which `--check` shows; it cannot
+pass one. Model keys are still found by the old text search, where over-reporting is the safe
+direction (it audits more steps).
+
 It is an over-approximation and says so: "may reach" is not "sends". The repository's imports are
 densely linked, so most entries will be steps that never send that role. The recorded list,
 `tools/spend_cap_gaps.json`, gives each entry `unreviewed` or what a reader found (`not sent: why` or
@@ -36,13 +50,17 @@ workflow's owner; vision's caps in workflows are #327's.
 
 ## What was run
 - `python3 -m tools.spend_cap_audit --check`: 48 steps listed; they match the recorded list.
-- `python3 -m unittest tests.test_spend_cap_audit`: 35 tests, OK. The synthetic repositories cover each
+- `python3 -m unittest tests.test_spend_cap_audit`: 48 tests, OK (34 before the review's changes). The synthetic repositories cover each
   way of reaching a sender, each way of setting a cap, the cases that cannot be told, and the key filter.
   Four tests hold the audit's tables to `expectrail.spend.CAP_ENV`, `agents.sam_observations.KEY_ENV`,
   `agents.glimmer_client.KEY_ENVS` and `expectrail.providers.PROVIDER_DEFAULTS`.
 - Five mutations of the audit, each caught by the tests: no string edges to child processes; a
   `$GITHUB_ENV` write counted in its own step; an empty cap counted as set; a module chosen at run time
   passed silently; the key filter removed.
+- The review's probes (a comment, an argument, an unquoted same-step `$GITHUB_ENV` write, a comment
+  in a here-document) and the rest of the class are tests in `CapsReadAsCommands` and
+  `Synthetic.test_each_probe_is_a_gap`. With the old text search put back (and the new names aliased
+  to it), 25 of those subtests fail and 4 error, so they catch it.
 - Full suite: see the pull request.
 - Nothing was dispatched and nothing was spent.
 

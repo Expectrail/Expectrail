@@ -192,6 +192,21 @@ class Synthetic(unittest.TestCase):
         got = self.rows([{"name": "s", "env": KEY, "run": "export EXPECTRAIL_SPEC_USD_CAP=\npython -m expectrail.lazy_entry"}])
         self.assertEqual(got["s"].missing, ("EXPECTRAIL_SPEC_USD_CAP",))
 
+    # The merge guard's probes on #623, as whole workflows.
+    def test_each_probe_is_a_gap(self):
+        for run in ("# EXPECTRAIL_SPEC_USD_CAP=5 later\npython -m expectrail.lazy_entry",
+                    "python -m expectrail.lazy_entry --note EXPECTRAIL_SPEC_USD_CAP=1",
+                    'echo EXPECTRAIL_SPEC_USD_CAP=5 >> "$GITHUB_ENV"\npython -m expectrail.lazy_entry',
+                    "python - <<'PY'\n# EXPECTRAIL_SPEC_USD_CAP=5\nimport expectrail.lazy_entry\nPY"):
+            with self.subTest(run=run):
+                got = self.rows([{"name": "s", "env": KEY, "run": run}])
+                self.assertEqual(got["s"].missing, ("EXPECTRAIL_SPEC_USD_CAP",))
+
+    def test_an_unquoted_github_env_write_counts_from_the_next_step(self):
+        earlier = {"name": "e", "run": "echo EXPECTRAIL_SPEC_USD_CAP=5 >> $GITHUB_ENV"}
+        later = {"name": "s", "env": KEY, "run": "python -m expectrail.lazy_entry"}
+        self.assertEqual(self.rows([earlier, later]), {})
+
     # ------------------------------------------------------------ only steps that can send
 
     def test_a_step_with_no_model_key_is_not_listed(self):
@@ -286,6 +301,103 @@ class HeldToTheCode(unittest.TestCase):
                 self.assertIn(role, graph.senders.get(module, set()))
         self.assertFalse([m for m in graph.senders if m.startswith("tests.")])
         self.assertNotIn("tools.playtester.producer", graph.senders)
+
+
+class CapsReadAsCommands(unittest.TestCase):
+    """The merge guard's review of #623: a cap counts as set only from a parsed command that surely
+    exports it in the step's own shell, never from text that merely looks like ``NAME=value``."""
+
+    CAP = "EXPECTRAIL_SPEC_USD_CAP"
+
+    def caps(self, script: str) -> set[str]:
+        return audit_mod.caps_set_in_script(textwrap.dedent(script))
+
+    def carried(self, script: str) -> set[str]:
+        return audit_mod.caps_to_github_env(textwrap.dedent(script))
+
+    # The guard's three probes, and the comment inside a here-document.
+    def test_a_comment_is_not_a_cap(self):
+        self.assertEqual(self.caps("# EXPECTRAIL_SPEC_USD_CAP=5 later\npython -m x"), set())
+        self.assertEqual(self.caps("python -m x  # EXPECTRAIL_SPEC_USD_CAP=5"), set())
+
+    def test_an_argument_is_not_a_cap(self):
+        self.assertEqual(self.caps("python -m x --note EXPECTRAIL_SPEC_USD_CAP=1"), set())
+        self.assertEqual(self.caps("echo export EXPECTRAIL_SPEC_USD_CAP=1"), set())
+
+    def test_a_github_env_write_is_not_a_cap_in_its_own_step(self):
+        for line in ('echo EXPECTRAIL_SPEC_USD_CAP=5 >> "$GITHUB_ENV"',
+                     'echo EXPECTRAIL_SPEC_USD_CAP=5 >>$GITHUB_ENV',
+                     'echo "EXPECTRAIL_SPEC_USD_CAP=$CAP" >> "${GITHUB_ENV}"',
+                     'cat >> "$GITHUB_ENV" <<EOF\nEXPECTRAIL_SPEC_USD_CAP=5\nEOF'):
+            with self.subTest(line=line):
+                self.assertEqual(self.caps(line + "\npython -m x"), set())
+                self.assertEqual(self.carried(line), {self.CAP})
+
+    def test_a_here_document_body_is_not_a_cap(self):
+        self.assertEqual(self.caps("python - <<'PY'\n# EXPECTRAIL_SPEC_USD_CAP=5\nEXPECTRAIL_SPEC_USD_CAP=5\nPY"), set())
+        self.assertEqual(self.caps("cat > notes.txt <<EOF\nexport EXPECTRAIL_SPEC_USD_CAP=5\nEOF"), set())
+
+    # The rest of the class: whatever does not surely export does not count.
+    def test_a_quoted_operator_does_not_start_a_command(self):
+        self.assertEqual(self.caps("echo ';' export EXPECTRAIL_SPEC_USD_CAP=1"), set())
+        self.assertEqual(self.caps('echo "&&" export EXPECTRAIL_SPEC_USD_CAP=1'), set())
+        self.assertEqual(self.caps(r"echo \; export EXPECTRAIL_SPEC_USD_CAP=1"), set())
+
+    def test_a_prefix_or_a_bare_assignment_is_not_a_cap(self):
+        self.assertEqual(self.caps("EXPECTRAIL_SPEC_USD_CAP=1 true\npython -m x"), set())
+        self.assertEqual(self.caps("EXPECTRAIL_SPEC_USD_CAP=1 python -m x"), set())
+        self.assertEqual(self.caps("EXPECTRAIL_SPEC_USD_CAP=1\npython -m x"), set())
+
+    def test_an_export_that_might_not_run_is_not_a_cap(self):
+        for script in ('[[ -n "$X" ]] && export EXPECTRAIL_SPEC_USD_CAP=1',
+                       'false || export EXPECTRAIL_SPEC_USD_CAP=1',
+                       'export EXPECTRAIL_SPEC_USD_CAP=1 | cat',
+                       'export EXPECTRAIL_SPEC_USD_CAP=1 &',
+                       '( export EXPECTRAIL_SPEC_USD_CAP=1 )',
+                       '(export EXPECTRAIL_SPEC_USD_CAP=1); python -m x',
+                       'if [[ -n "$X" ]]; then\n  export EXPECTRAIL_SPEC_USD_CAP=1\nfi',
+                       'for x in a; do export EXPECTRAIL_SPEC_USD_CAP=1; done',
+                       'f() {\n  export EXPECTRAIL_SPEC_USD_CAP=1\n}',
+                       'export EXPECTRAIL_SPEC_USD_CAP=1 > /dev/null',
+                       '"export" EXPECTRAIL_SPEC_USD_CAP=1',
+                       'export -n EXPECTRAIL_SPEC_USD_CAP=1',
+                       'declare EXPECTRAIL_SPEC_USD_CAP=1',
+                       'declare +x EXPECTRAIL_SPEC_USD_CAP=1'):
+            with self.subTest(script=script):
+                self.assertEqual(self.caps(script), set())
+
+    def test_an_unreadable_or_unbalanced_script_sets_nothing(self):
+        self.assertEqual(self.caps("export EXPECTRAIL_SPEC_USD_CAP=1\necho 'unterminated"), set())
+        self.assertEqual(self.caps("export EXPECTRAIL_SPEC_USD_CAP=1\nfi"), set())
+        self.assertEqual(self.caps("export EXPECTRAIL_SPEC_USD_CAP=1\nif true; then"), set())
+
+    def test_an_empty_export_unsets(self):
+        self.assertEqual(self.caps("export EXPECTRAIL_SPEC_USD_CAP=\npython -m x"), set())
+        self.assertEqual(self.caps('export EXPECTRAIL_SPEC_USD_CAP=""\npython -m x'), set())
+        self.assertEqual(self.caps("export EXPECTRAIL_SPEC_USD_CAP=1\nexport EXPECTRAIL_SPEC_USD_CAP="), set())
+
+    def test_a_plain_export_counts(self):
+        for script in ('export EXPECTRAIL_SPEC_USD_CAP="$CAP"',
+                       "export EXPECTRAIL_SPEC_USD_CAP=1 OTHER=2",
+                       "declare -x EXPECTRAIL_SPEC_USD_CAP=1",
+                       "EXPECTRAIL_SPEC_USD_CAP=1\nexport EXPECTRAIL_SPEC_USD_CAP",
+                       "set -e; export EXPECTRAIL_SPEC_USD_CAP=1",
+                       # The forms the real workflows use around their exports still count.
+                       '[[ "$CAP" =~ ^[0-9]+(\\.[0-9]{1,2})?$ ]] || { echo "::error::bad"; exit 1; }\n'
+                       'args=(--a "$X" --b)\nexport EXPECTRAIL_SPEC_USD_CAP="$CAP"',
+                       'if [[ ! -d x ]]; then\n  exit 0\nfi\nleft=$(python -m y)\nexport EXPECTRAIL_SPEC_USD_CAP="$left"',
+                       'python - "$CAP" <<\'PY\'\nimport sys\nPY\nexport EXPECTRAIL_SPEC_USD_CAP="$CAP"'):
+            with self.subTest(script=script):
+                self.assertEqual(self.caps(script), {self.CAP})
+
+    def test_a_github_env_write_that_might_not_run_is_not_carried(self):
+        self.assertEqual(self.carried('[[ -n "$X" ]] && echo "EXPECTRAIL_SPEC_USD_CAP=1" >> "$GITHUB_ENV"'), set())
+        self.assertEqual(self.carried('echo "EXPECTRAIL_SPEC_USD_CAP=1" >> "$OTHER"'), set())
+        self.assertEqual(self.carried('echo "EXPECTRAIL_SPEC_USD_CAP=" >> "$GITHUB_ENV"'), set())
+
+    def test_model_keys_are_still_found_loosely(self):
+        # Keys over-report on purpose: finding a key that is not there only audits one more step.
+        self.assertIn("MODEL_API_KEY", audit_mod.names_in_script("FOO=1 MODEL_API_KEY=x python -m y"))
 
 
 class ThisRepository(unittest.TestCase):
