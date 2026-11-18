@@ -5,13 +5,15 @@
 - `expectrail/explanation.py` holds three parts:
   - `prompt` asks a model the question.
   - `from_answer` is the writer. Expectrail fills in the decision and `recordSha256`; the model never does.
-  - `read` and `check` are the reader. `check` fails closed: a different decision or record, an id that is not in the record, a stated verdict that is not the record's, non-ASCII text, a number not in the cited evidence (or written as a word), a verdict word with no stated verdict, a decision word that does not match the decision, a negated verdict, or a word of certainty all withhold the explanation.
+  - `read` and `check` are the reader. `check` fails closed. Each of these withholds the explanation: a different decision or record; an id that is not in the record; a stated verdict that is not the record's; non-ASCII text; a number not in the cited evidence, or written as a word; any word that is not neutral, not the name of the cited evidence, and not in the verifier's own wording of that evidence (an allow-list, after the merge guard's first review showed that a list of words to refuse can always be got around); a passing word unless every stated verdict after the change is pass; a failing word without a stated failure after the change; a decision word that is not the decision; a negation; a word of certainty.
+  - Under each point, the viewer writes the cited verdicts itself from the record.
 - `expectrail/viewer.py` adds an Explanation section when there is one. It shows who wrote it, says it decides nothing, and turns each finding id into a button to that finding. A withheld explanation shows the reasons and none of its text. `write_job` reads `<job>/explanation.json`, so `expectrail report` shows it. The offline `evidence.html` carries the same section. State, decision, reasons and exit code are unchanged.
 - `docs/viewer.md` explains it.
 
 ## What was run
 - `python3 -m unittest tests.test_explanation tests.test_viewer tests.test_contracts`: 53 tests, OK.
-- Nine mutations of `check` were each caught by `tests.test_explanation`: the ASCII, unknown-id, stated-verdict, number, negation, certainty, decision-word, digest and record-decision rules.
+- First round: nine mutations of `check` were each caught by `tests.test_explanation`.
+- Second round, after the merge guard's review: the guard's six probes (a) to (f) and five accept-side descriptions of a failure are tests, and all are withheld. Ten mutations were each caught: the allow-list, after-only passing words, failing words, negation, spec names split into words, decision words, numbers, ASCII and the digest.
 - I opened the viewer in Chromium (Playwright) for the example record with the example explanation, at 1280 and 390 wide. There was no horizontal scroll and no console error. Clicking a finding id in the explanation opened the inspector at that finding.
 - Full suite on the branch from main at 430833a: 5,116 tests, OK, 63 skipped. The first full run found the module missing from the wheel (`tests.test_package`) and the new id pattern missing a sample (`tests.test_schema_pattern`). Both are fixed in this change.
 

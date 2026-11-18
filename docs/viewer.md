@@ -88,8 +88,19 @@ It is shown only when `python3 -m expectrail.explanation check FINDINGS FILE` pa
 - its decision is the verifier's and the record's, and it was written for this record (`recordSha256`);
 - every id it cites is in the record (a finding's id, or `check:<spec>@<route>`), and every verdict it states is the record's;
 - the text is printable ASCII, and every number in a point appears in the evidence that point cites;
-- a failing or passing word needs that verdict stated in the same point, and a decision word must match the decision;
-- no verdict word is negated, and nothing claims certainty beyond these checks ("proves", "all", "always").
+- **every word is one Expectrail can match**: a short fixed list of neutral words ("the", "before",
+  "after", "frame", "route", ...), the names of the evidence the point cites, and the verifier's own
+  wording of that evidence (a finding's comparison and reason). A spec's name counts as a name; it
+  is never split into words to make a claim. The check allows words rather than refusing them,
+  because a list of words to refuse can never be finished;
+- a failing word ("fails", "regression") needs a stated failing verdict after the change, and a
+  passing word ("passes", "fixed") needs every verdict it states after the change to be a pass. A
+  decision word ("accepted", "rejected") must be the decision. Negations and words of certainty
+  ("not", "no longer", "proves", "all", "always") are never allowed.
+
+Under each point the page writes the verdicts it relies on itself, copied from the record ("From the
+record: … pass before the change, fail after the change"). The model's words are shown beside the
+record's, never in place of them.
 
 Anything else is **withheld**. The page then shows why, and none of the explanation's text. The
 banner, the decision, the reasons and the exit code never change because of an explanation.

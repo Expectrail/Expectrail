@@ -4,7 +4,7 @@
 
 The Build line this serves: "Any model-written explanation links to evidence ids and can never
 contradict the structured decision." So an explanation decides nothing, and the viewer shows one only
-after ``check`` finds nothing wrong with it. ``check`` fails closed: what it cannot match to the
+after ``check`` matches every word of it to the record. ``check`` fails closed: what it cannot match to the
 record is a reason to withhold the explanation, never a reason to show it.
 
 - Expectrail, not the author, fills ``decision`` and ``recordSha256`` (``from_answer``). A model is
@@ -12,15 +12,21 @@ record is a reason to withhold the explanation, never a reason to show it.
 - ``decision`` must be the verifier's, and the record's; ``recordSha256`` must be this record's.
 - Every point cites evidence ids that are in the record: a finding's id, or ``check:<spec>@<route>``.
 - ``says`` states the verdicts a point relies on, per cited id. Each must equal the record's.
-- The text is printable ASCII (a look-alike letter cannot slip a word past the word lists below).
-- Every number in a point must appear in the evidence it cites. Numbers are written as digits: a
-  number word ("two", "half") is withheld, since it cannot be compared.
-- A failing word ("fails", "broken", "regression") needs a stated ``fail`` in the same point, and a
-  passing word ("passes", "fixed", "works") a stated ``pass``. A decision word ("accepted",
-  "safe to merge", "rejected") must match the decision. A point with a verdict word and a negation
-  ("not", "no longer", "doesn't") is withheld: what a negated verdict says cannot be told from words.
-  Words of certainty beyond the evidence ("proves", "guaranteed", "all", "every", "always") are
-  withheld: an accept is these checks on these routes, nothing more.
+- The text is printable ASCII (a look-alike letter cannot pass for a word on the lists below).
+- Every word comes from a fixed list Expectrail can match: neutral words (``NEUTRAL``: "the",
+  "before", "after", "frame", "route", ...), the names of the evidence the point cites, and the
+  verifier's own wording of that evidence (a finding's comparison and reason). Any other word
+  withholds the point: a list of words to refuse can never be finished, so the check allows rather
+  than refuses. A spec's name is allowed as a name, never split into a claim.
+- Every number must appear in the evidence the point cites, written as digits.
+- A failing word ("fails", "regression") needs a stated ``after: fail`` in the same point; a passing
+  word ("passes", "fixed") needs every stated ``after`` to be ``pass``. A ``before`` verdict never
+  licenses a word: the verdict sentences the viewer writes from ``says`` cover before and after.
+- A decision word ("accepted", "rejected") must be the decision. Negations ("not", "no longer",
+  "doesn't") and words of certainty ("proves", "all", "always") are never allowed.
+
+What the page says about each cited verdict, it writes itself from ``says`` (which must equal the
+record); the author's text is shown beside it, never instead of it.
 
 No model is called here. ``prompt`` is the question for one; ``from_answer`` turns its answer into a
 v1 document. Asking a live model is a later slice with its own budget.
@@ -42,21 +48,30 @@ FILE_NAME = "explanation.json"
 MAX_BYTES = 64 * 1024
 VERDICTS = ("pass", "fail", "needs-review", "replay-error", "not-applicable")
 
-FAIL_WORDS = frozenset("""fail fails failed failing failure failures broken break breaks broke breaking
-regression regressions regressed regresses bug bugs buggy wrong worse incorrect incorrectly""".split())
-PASS_WORDS = frozenset("""pass passes passed passing work works worked working fix fixes fixed fixing
-repair repairs repaired correct correctly succeed succeeds succeeded success successful ok okay fine
-good better resolved resolves""".split())
-ACCEPT_WORDS = frozenset("accept accepts accepted acceptable approve approves approved safe merge merged "
-                         "mergeable ship shippable".split())
-REJECT_WORDS = frozenset("reject rejects rejected block blocks blocked".split())
+# Every word of a point must come from one of these places, or the point is withheld (``_point``).
+# A list of words to refuse cannot be finished (English always has another way to say "fine"), so the
+# check works the other way round: only words it can match to the evidence are allowed.
+NEUTRAL = frozenset("""a an the this that these those it its is are was were be been has have had of in on
+at to from by for with as and or than then also same each both other only before after change check
+checks route routes frame frames tick ticks player object px pixel pixels tolerance limit bound
+measured measurement measurements value values recorded observer observers engine vision record
+evidence finding findings earliest first last later earlier until during between window start starts
+end ends when where which sample run replay replays result results reading readings difference""".split())
+# Verdict words: allowed only where the point states the matching verdict after the change.
+FAIL_WORDS = frozenset("fail fails failed failing failure regression regressed".split())
+PASS_WORDS = frozenset("pass passes passed passing fixed".split())
+# Decision words: allowed only when they are the verifier's decision.
+DECISION_WORDS = {"accept": frozenset("accept accepted".split()), "reject": frozenset("reject rejected".split())}
+# Never allowed, even when the verifier's own wording of a finding has them: what a negated or
+# over-certain sentence says cannot be matched to a verdict. Named so the page can say why.
 NEGATIONS = frozenset("not no never nor neither without cannot cant longer none nothing".split())
 CERTAINTY = frozenset("""prove proves proved proven proof guarantee guarantees guaranteed certain certainly
 definitely always all every everything entire entirely whole completely totally fully""".split())
 NUMBER_WORDS = frozenset("""zero one two three four five six seven eight nine ten eleven twelve thirteen
 fourteen fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety
 hundred hundreds thousand thousands million half twice double triple dozen""".split())
-TOKEN = re.compile(r"[0-9]+(?:\.[0-9]+)?|[a-z]+(?:'[a-z]+)?")
+TOKEN = re.compile(r"check:[a-z0-9-]+@[a-z0-9-]+|[0-9a-f]{12}(?![0-9a-z])|[0-9]+(?:\.[0-9]+)?"
+                   r"|[a-z0-9]+(?:['-][a-z0-9]+)*")
 NUMBER = re.compile(r"-?[0-9]+(?:\.[0-9]+)?")
 
 
@@ -71,15 +86,26 @@ def evidence(record: dict) -> dict[str, dict]:
     is what a point citing it may take its numbers from."""
     out: dict[str, dict] = {}
     for c in record.get("checks") or []:
-        out[f"check:{c['spec']}@{c['route']}"] = {
+        cid = f"check:{c['spec']}@{c['route']}"
+        out[cid] = {
             "before": c.get("before"), "after": c.get("after"),
-            "text": " ".join(str(c.get(k) or "") for k in ("spec", "route", "comparison"))}
+            "text": " ".join(str(c.get(k) or "") for k in ("spec", "route", "comparison")),
+            "names": {cid, c["spec"], c["route"]}, "words": _words(str(c.get("comparison") or ""))}
     for f in record.get("findings") or []:
         out[f["id"]] = {
             "before": f.get("before"), "after": f.get("after"),
             "text": " ".join(str(f.get(k) if f.get(k) is not None else "")
-                             for k in ("spec", "route", "comparison", "reason", "frame"))}
+                             for k in ("spec", "route", "comparison", "reason", "frame")),
+            "names": {f["id"], f["spec"], f["route"]},
+            "words": _words(f"{f.get('comparison') or ''} {f.get('reason') or ''}")}
     return out
+
+
+def _words(text: str) -> set[str]:
+    """The verifier's own words for a piece of evidence (its comparison and reason), which a point
+    citing it may reuse. A spec's name is not split into words: "player-stays-above-ground" names the
+    check; "the player stays above ground" would be a claim."""
+    return {t for t in TOKEN.findall(text.lower()) if not t[0].isdigit()} - NEGATIONS - CERTAINTY
 
 
 def _numbers(text: str) -> set[str]:
@@ -135,36 +161,44 @@ def _point(point: dict, known: dict[str, dict], decision: str) -> list[str]:
                 problems.append(f"it says {cid} was {verdict} {side} the change; the record says "
                                 f"{actual or 'not run'}")
             stated.add(verdict)
-    allowed = set()
+    stated_after = [sides["after"] for cid, sides in point["says"].items()
+                    if cid in point["cites"] and "after" in sides]
+    numbers, words_ok, names = set(), set(NEUTRAL), set()
     for cid in point["cites"]:
-        allowed |= _numbers(known[cid]["text"])
-    tokens = TOKEN.findall(text.lower())
-    words = set()
-    for t in tokens:
-        if t[0].isdigit():
-            if _number(t) not in allowed:
+        numbers |= _numbers(known[cid]["text"])
+        words_ok |= known[cid]["words"]
+        names |= known[cid]["names"]
+    words, unknown_words = set(), []
+    for t in TOKEN.findall(text.lower()):
+        if t in names:
+            continue
+        if t[0].isdigit() and NUMBER.fullmatch(t):
+            if _number(t) not in numbers:
                 problems.append(f"the number {t} is not in the evidence it cites")
-        else:
-            words.add(t)
-            if t.endswith("n't"):
-                words.add("not")
+            continue
+        words.add(t)
     if words & NUMBER_WORDS:
         problems.append(f"it writes a number in words ({', '.join(sorted(words & NUMBER_WORDS))}); "
                         "numbers are compared as digits")
-    verdict_words = words & (FAIL_WORDS | PASS_WORDS | ACCEPT_WORDS | REJECT_WORDS)
-    if verdict_words and words & NEGATIONS:
-        problems.append("it negates a verdict word, and what that says cannot be told from its words")
-    if words & FAIL_WORDS and "fail" not in stated:
-        problems.append(f"it says {', '.join(sorted(words & FAIL_WORDS))} without stating a failing verdict")
-    if words & PASS_WORDS and "pass" not in stated:
-        problems.append(f"it says {', '.join(sorted(words & PASS_WORDS))} without stating a passing verdict")
-    if words & ACCEPT_WORDS and decision != "accept":
-        problems.append(f"it says {', '.join(sorted(words & ACCEPT_WORDS))}, but the decision is {decision}")
-    if words & REJECT_WORDS and decision != "reject":
-        problems.append(f"it says {', '.join(sorted(words & REJECT_WORDS))}, but the decision is {decision}")
+    if words & NEGATIONS or any(w.endswith("n't") for w in words):
+        problems.append("it negates something, and what a negated sentence says cannot be matched to a verdict")
     if words & CERTAINTY:
         problems.append(f"it says {', '.join(sorted(words & CERTAINTY))}, which claims more than these "
                         "checks on these routes")
+    fail_words, pass_words = words & FAIL_WORDS, words & PASS_WORDS
+    if fail_words and "fail" not in stated_after:
+        problems.append(f"it says {', '.join(sorted(fail_words))} without stating a failing verdict after the change")
+    if pass_words and (not stated_after or any(v != "pass" for v in stated_after)):
+        problems.append(f"it says {', '.join(sorted(pass_words))}, but not every verdict it states after the "
+                        "change is pass")
+    decision_words = set().union(*DECISION_WORDS.values()) & words
+    if decision_words - DECISION_WORDS.get(decision, frozenset()):
+        problems.append(f"it says {', '.join(sorted(decision_words))}, but the decision is {decision}")
+    named = NUMBER_WORDS | NEGATIONS | CERTAINTY | FAIL_WORDS | PASS_WORDS | decision_words
+    unknown_words = sorted(w for w in words - words_ok - named if not w.endswith("n't"))
+    if unknown_words:
+        problems.append(f"it uses words Expectrail cannot match to the evidence ({', '.join(unknown_words[:8])}"
+                        + (", ..." if len(unknown_words) > 8 else "") + ")")
     return problems
 
 
@@ -175,7 +209,10 @@ def shown(doc, record: dict | None, decision: str | None) -> dict:
     out = {"model": str(author.get("model") or "unknown")[:80], "recorded": author.get("recorded") is True}
     if problems:
         return dict(out, shown=False, withheld=problems[:10])
-    return dict(out, shown=True, points=[{"text": p["text"], "cites": list(p["cites"])} for p in doc["points"]])
+    return dict(out, shown=True, points=[
+        {"text": p["text"], "cites": list(p["cites"]),
+         "verdicts": [[cid, sides.get("before"), sides.get("after")] for cid, sides in p["says"].items()]}
+        for p in doc["points"]])
 
 
 # --- the writer -----------------------------------------------------------------------------------
@@ -188,8 +225,11 @@ def prompt(record: dict) -> str:
         "Answer with JSON only: {\"points\": [{\"text\": ..., \"cites\": [ids], \"says\": {id: {\"before\": v, "
         "\"after\": v}}}]}, 1 to 8 points, each text at most 400 printable ASCII characters.",
         "Every point cites the evidence ids it is about. In says, state the verdicts the point relies on, "
-        "exactly as listed below. Write numbers as digits, and only numbers that appear in the cited "
-        "evidence. Do not negate verdict words, and do not say all, every, always or proves.",
+        "exactly as listed below. Use only these words: the ids and names of the evidence the point cites, "
+        "the words of that evidence's own description below, the verdict words pass, passes, passed, fixed, "
+        "fail, fails, failed, regression (only where the point states that verdict after the change), and: "
+        + " ".join(sorted(NEUTRAL)) + ". Any other word withholds the point. Write numbers as digits, and "
+        "only numbers that appear in the cited evidence. Do not negate anything.",
         "",
         "Evidence:",
     ]

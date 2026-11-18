@@ -72,9 +72,23 @@ class ContractTest(unittest.TestCase):
             self.assertIn(f"- {cid}:", text)
 
 
+def accept_record() -> dict:
+    accept = record()
+    accept.update(decision="accept", findings=[])
+    for c in accept["checks"]:
+        c.update(after="pass", comparison="PRESERVED", findingId=None)
+    return accept
+
+
+COMBAT = "check:player-stays-above-ground@combat"
+
+
 class CheckTest(unittest.TestCase):
     def withheld(self, doc, decision="reject", rec_=None) -> list[str]:
         return xpl.check(doc, record() if rec_ is None else rec_, decision)
+
+    def said(self, doc, decision="reject", rec_=None) -> str:
+        return " ".join(self.withheld(doc, decision, rec_))
 
     def test_the_example_is_shown(self):
         self.assertEqual(self.withheld(example()), [])
@@ -98,49 +112,88 @@ class CheckTest(unittest.TestCase):
         self.assertTrue(self.withheld(doc))
 
     def test_a_stated_verdict_must_be_the_records(self):
-        self.assertTrue(self.withheld(one_point("It passes after.", says={FINDING: {"after": "pass"}})))
-        self.assertTrue(self.withheld(one_point("It fails before.", says={FINDING: {"before": "fail"}})))
+        self.assertTrue(self.withheld(one_point("It passes after the change.", says={FINDING: {"after": "pass"}})))
+        self.assertTrue(self.withheld(one_point("It fails before the change.", says={FINDING: {"before": "fail"}})))
         # A verdict for an id the point does not cite.
         self.assertTrue(self.withheld(one_point("It fails.", says={"d53dfb482f64": {"after": "fail"}})))
 
     def test_a_number_not_in_the_cited_evidence_is_withheld(self):
-        self.assertEqual(self.withheld(one_point("It fails from frame 5 by 22.25px.")), [])
-        self.assertEqual(self.withheld(one_point("It fails from frame 05 by 22.250px.")), [])
-        for text in ("It fails from frame 6.", "It fails by 23px.", "It fails on 3 routes.", "It fails 100% of the time."):
+        self.assertEqual(self.withheld(one_point("It fails from frame 5, 22.25px past the boundary.")), [])
+        self.assertEqual(self.withheld(one_point("It fails from frame 05, 22.250px past the boundary.")), [])
+        for text in ("It fails from frame 6.", "It fails at 23px.", "It fails on 3 routes.", "It fails 100% of the time."):
             with self.subTest(text=text):
-                self.assertIn("is not in the evidence", " ".join(self.withheld(one_point(text))))
-        # Numbers in words cannot be compared, so they are withheld too.
+                self.assertIn("is not in the evidence", self.said(one_point(text)))
         for text in ("It fails on two routes.", "It fails by half a tile.", "It fails twice."):
             with self.subTest(text=text):
-                self.assertIn("number in words", " ".join(self.withheld(one_point(text))))
+                self.assertIn("number in words", self.said(one_point(text)))
 
-    def test_a_verdict_word_needs_a_stated_verdict(self):
-        self.assertTrue(self.withheld(one_point("It is broken.", says={})))
-        self.assertTrue(self.withheld(one_point("The change fixed the fall.", says={FINDING: {"after": "fail"}})))
-        self.assertEqual(self.withheld(one_point("It passed before and fails after.",
-                                                 says={FINDING: {"before": "pass", "after": "fail"}})), [])
+    def test_the_merge_guards_cases_are_withheld(self):
+        # #632, first review: each of these was shown on a rejected change.
+        both = {FINDING: {"before": "pass", "after": "fail"}}
+        after = {FINDING: {"after": "fail"}}
+        for text, says in (
+                ("This change works and the combat route is fixed.", both),                              # (a)
+                ("The change is harmless: the player stays on the ground on the combat route.", after),  # (b)
+                ("Nothing to worry about here; ready to land.", after),                                 # (c)
+                ("The player isnt falling and the check doesnt fail.", after),                          # (d)
+                ("The combat route is unbroken after the change.", after),                              # (e)
+                ("LGTM, the player behaves as intended after the change.", after)):                     # (f)
+            with self.subTest(text=text):
+                self.assertTrue(self.withheld(one_point(text, says=says)))
+        # (a) itself: a before pass never licenses a passing word.
+        self.assertIn("not every verdict it states after the change is pass",
+                      self.said(one_point("The combat route is fixed.", says=both)))
 
-    def test_a_decision_word_must_match_the_decision(self):
-        for text in ("This change is safe to merge.", "Accepted.", "It can be approved."):
+    def test_on_an_accept_a_description_of_a_failure_is_withheld(self):
+        accept = accept_record()
+        doc = example()
+        doc.update(decision="accept", recordSha256=contracts.digest_v1(accept))
+        says = {COMBAT: {"before": "pass", "after": "pass"}}
+        for text in ("The player falls through the floor.", "The player sinks into the ground.",
+                     "The check fails on the combat route.", "The player stays above ground; it is rejected.",
+                     "The game is broken after the change."):
+            with self.subTest(text=text):
+                doc["points"] = [{"text": text, "cites": [COMBAT], "says": says}]
+                self.assertTrue(xpl.check(doc, accept, "accept"))
+
+    def test_only_words_matched_to_the_evidence_are_allowed(self):
+        self.assertIn("cannot match to the evidence (broken)", self.said(one_point("It is broken.", says={})))
+        # The verifier's own words for a finding may be reused, but only by a point citing it.
+        self.assertEqual(self.withheld(one_point("The player is past the boundary after the change.")), [])
+        cid = "check:player-stays-above-ground@combat"
+        self.assertTrue(self.withheld(one_point("The player is past the boundary.", cites=[cid], says={})))
+        # A spec's name is a name, not words to build a claim from.
+        self.assertEqual(self.withheld(one_point("After the change player-stays-above-ground fails on combat.")), [])
+        self.assertTrue(self.withheld(one_point("After the change the player stays above ground.")))
+
+    def test_a_verdict_word_needs_the_verdict_after_the_change(self):
+        self.assertIn("without stating a failing verdict", self.said(one_point("It fails.", says={})))
+        self.assertEqual(self.withheld(one_point("It fails after the change.")), [])
+        self.assertTrue(self.withheld(one_point("It passed before the change.",
+                                                 says={FINDING: {"before": "pass", "after": "fail"}})))
+
+    def test_a_decision_word_must_be_the_decision(self):
+        for text in ("Accepted.", "It is accepted after the change."):
             with self.subTest(text=text):
                 self.assertTrue(self.withheld(one_point(text)))
         self.assertEqual(self.withheld(one_point("Rejected: it fails from frame 5.")), [])
-
-    def test_a_negated_verdict_is_withheld(self):
-        for text in ("It no longer fails.", "It does not fail.", "It doesn't fail.", "It never fails.",
-                     "Nothing is broken.", "It fails, not passes."):
+        for text in ("This change is safe to merge.", "It can be approved.", "Ship it."):
             with self.subTest(text=text):
-                self.assertIn("negates", " ".join(self.withheld(one_point(text))))
+                self.assertIn("cannot match", self.said(one_point(text)))
+
+    def test_a_negation_is_withheld(self):
+        for text in ("It no longer fails.", "It does not fail.", "It doesn't fail.", "It never fails.",
+                     "It fails, not passes."):
+            with self.subTest(text=text):
+                self.assertIn("negates", self.said(one_point(text)))
 
     def test_words_of_certainty_are_withheld(self):
-        for text in ("This proves the bug.", "It always fails.", "All routes fail.", "Every check fails.",
-                     "The game is entirely broken."):
+        for text in ("This proves it fails.", "It always fails.", "All routes fail.", "Every check fails."):
             with self.subTest(text=text):
-                self.assertIn("claims more", " ".join(self.withheld(one_point(text))))
+                self.assertIn("claims more", self.said(one_point(text)))
 
     def test_text_that_is_not_plain_ascii_is_withheld(self):
-        # A Cyrillic a in "pаsses" would get past a word list; it never gets past this.
-        for text in ("It pаsses.", "It fails​.", "It fails\nfrom frame 5."):
+        for text in ("It f\u0430ils.", "It fails\u200b.", "It fails\nfrom frame 5."):
             with self.subTest(text=repr(text)):
                 self.assertIn("printable ASCII", self.withheld(one_point(text))[0])
 
@@ -152,20 +205,16 @@ class CheckTest(unittest.TestCase):
         self.assertTrue(self.withheld("a string"))
 
     def test_an_accept_can_be_explained(self):
-        accept = record()
-        accept.update(decision="accept", findings=[])
-        for c in accept["checks"]:
-            c.update(after="pass", comparison="UNCHANGED", findingId=None)
+        accept = accept_record()
         doc = example()
         doc.update(decision="accept", recordSha256=contracts.digest_v1(accept))
-        cid = "check:player-stays-above-ground@combat"
-        doc["points"] = [{"text": "The player stays above the ground on the combat route after the change: "
-                                  "this check passes, before and after.",
-                          "cites": [cid], "says": {cid: {"before": "pass", "after": "pass"}}}]
+        doc["points"] = [{"text": "After the change the player-stays-above-ground check passes on the combat route; "
+                                  "the result is preserved.",
+                          "cites": [COMBAT], "says": {COMBAT: {"before": "pass", "after": "pass"}}}]
         self.assertEqual(xpl.check(doc, accept, "accept"), [])
-        doc["points"][0]["text"] += " The game works."   # "works" is still a passing word with a pass stated
+        doc["points"][0]["text"] += " Accepted."
         self.assertEqual(xpl.check(doc, accept, "accept"), [])
-        doc["points"][0]["text"] += " Nothing else can break."
+        doc["points"][0]["text"] += " The game works."
         self.assertTrue(xpl.check(doc, accept, "accept"))
 
 
@@ -219,6 +268,8 @@ class ViewerTest(unittest.TestCase):
         self.assertIn("It decides nothing", page)
         self.assertIn(f'data-finding="{FINDING}"><code>{FINDING}</code></button>', page)
         self.assertIn("replayed from a recording", page)
+        # The verdicts under each point are written from the record, not taken from the author's text.
+        self.assertIn(f"From the record: <code>{FINDING}</code>: pass before the change, fail after the change.", page)
         # The offline copy carries the same explanation.
         single = embedded((self.tmp / "viewer" / viewer.EXPORT_NAME).read_text(encoding="utf-8"))
         self.assertEqual(single["explanation"], payload["explanation"])

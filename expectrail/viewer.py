@@ -1290,7 +1290,7 @@ def _explanation_section(said: dict, findings: list[dict]) -> str:
     who = f"{said.get('model') or 'unknown'}, " + ("replayed from a recording" if said.get("recorded") else "asked live")
     parts = ['<section id="explanation"><h2>Explanation</h2>',
              f'<p class="muted">Written by a model ({esc(who)}). It decides nothing: the decision at the top '
-             "of this page is the verifier's. Each point names the evidence it is about.</p>"]
+             "of this page is the verifier's. Each point names the evidence it is about, and the verdicts under it are copied from the record.</p>"]
     if not said.get("shown"):
         parts.append("<p><strong>Withheld.</strong> An explanation was supplied, but it is not shown because "
                      "Expectrail could not match it to this run's evidence:</p><ul>"
@@ -1306,7 +1306,13 @@ def _explanation_section(said: dict, findings: list[dict]) -> str:
                             f"<code>{esc(cid)}</code></button>")
             else:
                 refs.append(f"<code>{esc(cid)}</code>")
-        parts.append(f"<li>{esc(point.get('text'))} <span class=\"muted\">Evidence: {' '.join(refs)}</span></li>")
+        said = []
+        for cid, before, after in point.get("verdicts") or []:
+            sides = [f"{WORD.get(v, v)} {when} the change" for v, when in ((before, "before"), (after, "after")) if v]
+            said.append(f"<code>{esc(cid)}</code>: {esc(', '.join(sides))}")
+        record_line = (f'<br><span class="muted">From the record: {"; ".join(said)}.</span>' if said else "")
+        parts.append(f"<li>{esc(point.get('text'))} <span class=\"muted\">Evidence: {' '.join(refs)}</span>"
+                     f"{record_line}</li>")
     return "".join(parts) + "</ol></section>"
 
 
