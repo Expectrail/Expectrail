@@ -75,3 +75,9 @@ the windows above do not lower the reservation. One check on one probe fits the 
 
 It does not show that SAM sees the difference, or that the keep rule keeps any of these checks. That needs
 the asking step with SAM's key, a budget of at least $3.24, and then the judging step (`run --pixel-replays`).
+
+**Since #605 (November 18).** The capture, the asking job, the in-process replay and the judging job ask only
+about the planned frames inside the checks' windows. The three checks then reserve 675 images, $1.69 at list
+price, under the $1.79 the asking job gets at the $2 cap (`tests/test_jit_pixel_windows.py`, offline). The
+capture above was made before that change and holds every planned frame; it has not been remade with the
+windows, and the asking step has not been run.
