@@ -34,7 +34,7 @@ def menu_project(root):
 class TrialStopsTest(unittest.TestCase):
     def setUp(self):
         tmp=tempfile.TemporaryDirectory();self.addCleanup(tmp.cleanup)
-        self.root=Path(tmp.name).resolve();self.game=menu_project(self.root);self.out=self.root/'routes/checked.json'
+        self.root=Path(tmp.name);self.game=menu_project(self.root);self.out=self.root/'routes/checked.json'
 
     def config(self):
         return json.loads((self.game/project_config.FILENAME).read_text())

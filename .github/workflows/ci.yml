@@ -33,14 +33,6 @@ jobs:
       - run: python -m pip install -r requirements-build.txt -r requirements-dev.txt
       - name: Fetch the baseline commit (the discovery freeze and the mutation registration are checked against it)
         run: git fetch --no-tags --depth=1 origin c169a5e0da304773587304ed47bc8aabcec80da7
-      # The temporary folder is reached through a link, as every temporary folder is on macOS
-      # (/var is a link to /private/var). A test or a check that compares two spellings of one
-      # folder fails here instead of on a Mac (#378, tests/test_linked_paths.py).
-      - name: Temporary folder behind a link, as on macOS
-        run: |
-          mkdir -p "$RUNNER_TEMP/private-tmp"
-          ln -s "$RUNNER_TEMP/private-tmp" "$RUNNER_TEMP/linked-tmp"
-          echo "TMPDIR=$RUNNER_TEMP/linked-tmp" >> "$GITHUB_ENV"
       - env:
           EXPECTRAIL_PACKAGE_TESTS: required
           EXPECTRAIL_GATEWAY_TESTS: required

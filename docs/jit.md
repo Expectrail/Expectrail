@@ -757,6 +757,17 @@ replays need up to 1,296 images, $3.24. The asking job plans every 10th frame of
 whatever the checks' windows, so a window does not lower the reservation; at the $2 cap one bullet check on
 one probe can be asked about, not three. Whether SAM sees a bullet drawn behind the scenery is untested.
 
+**Only the windows' frames are asked about (#605, November 18).** Since then the observer is asked only
+about its planned frames inside the union of the windows of the checks on a probe (`pixel.planned`; a check
+without a window keeps the whole plan). The in-process replay (`run.py` `_pixel_plans`), the capture (which
+writes the windows beside each kept replay as `windows.json`, untrusted like `objects.json`), the asking job
+(`pixel_jobs.ask`, which reads them back and refuses malformed ones) and the judging job plan the same frames,
+and `pixel.observe` refuses an answer about other frames. The judging job refuses recorded answers planned
+for other windows (`RecordedSamClient.plan_of`), so their checks are dropped, never passed. A check whose
+window holds no planned frame is `not-run` and asks for nothing. The three bullet checks now reserve 675
+images, $1.69, under what the asking job gets at the $2 cap ($1.79). Shown offline only
+(`tests/test_jit_pixel_windows.py`); no capture of the bench probes was remade, and SAM was not asked.
+
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 
 The replays run the change's code, and asking SAM needs its key; jit.yml keeps the two in separate jobs
@@ -855,7 +866,8 @@ under `boxes`), so the menu offers both to `sam-3.1-anchor`.
   asked about the player is refused. The capture job writes `"player": false` into `objects.json`.
 - **Reserved:** `pixel.MAX_BOXES` images a frame for each named role, and one for the player only when
   it is asked about, on every run, before anything is asked, in the in-process replay, in `pixel.cost`
-  and in `pixel-ask`.
+  and in `pixel-ask`. The frames are the planned frames inside the checks' windows (#605): the capture
+  writes the windows into the stored replay (`windows.json`) and the asking job reads them back.
 - **Shown offline only.** The tests use a scripted SAM client and synthetic replays
   (`tests/test_jit_pixel_named.py`, `tests/test_jit_pixel_player.py`). No SAM answer about an enemy or a bullet has been recorded, and no
   live run has asked one.

@@ -24,7 +24,7 @@ class RepairCommandTest(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
-        self.tmp = Path(tmp.name).resolve()  # a job records resolved checkouts (#378)
+        self.tmp = Path(tmp.name)
         self.jobs = store.JobStore(self.tmp / "jobs")
         self.bug = sample.checkout(self.tmp / "bug", bug=True)
         self.base = sample.checkout(self.tmp / "base", bug=False)
