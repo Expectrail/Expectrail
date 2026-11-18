@@ -521,7 +521,7 @@ class CountingRules271(unittest.TestCase):
         from tests.test_ci_gate import FakeReplay, make_repo, BASE, HEAD
         from expectrail.gate.verify import run_gate
         root=self.case.dir
-        gate=run_gate(repo=make_repo(root/'head'),base=make_repo(root/'base'),game='game/platformer',
+        gate=run_gate(rule='engine-only',repo=make_repo(root/'head'),base=make_repo(root/'base'),game='game/platformer',
                       routes=['routes/*.json'],specs='specs',out=root/'gate',work=root/'work',replay=FakeReplay(),intent='fix',
                       pr={'number':7,'headSha':HEAD,'baseSha':BASE})
         self.certificate['baseSha256']=gate['game']['baseTree'];self.certificate['buildSha256']=gate['game']['headTree']
