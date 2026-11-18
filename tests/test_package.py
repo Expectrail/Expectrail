@@ -73,6 +73,80 @@ def module_lists() -> dict[str, set[str]]:
     raise AssertionError("setup.py has no BUNDLED_MODULES")
 
 
+def setup_helpers() -> dict:
+    """setup.py's module-level functions and constants, without calling setup()."""
+    module = ast.parse((REPO / "setup.py").read_text(encoding="utf-8"))
+    keep = [node for node in module.body if isinstance(node, (ast.FunctionDef, ast.Assign))]
+    namespace: dict = {}
+    exec(compile(ast.Module(body=keep, type_ignores=[]), "setup.py", "exec"), namespace)
+    return namespace
+
+
+class ReadmeOrderTest(unittest.TestCase):
+    def test_a_reader_meets_the_name_before_the_install_command(self):
+        # #614, point 3. tools.quickstart_timer still requires the first `sh` block to be the install.
+        text = (REPO / "README.md").read_text(encoding="utf-8")
+        first_block = text.index("```")
+        self.assertLess(text.index('alt="Expectrail"'), first_block)
+        self.assertLess(text.index("\n# Expectrail\n"), first_block)
+        self.assertTrue(text[first_block:].startswith("```sh\npython3 -m pip install .\n```"))
+
+
+class QualifyStringImportsTest(unittest.TestCase):
+    """#614: the builder qualifies module names given as strings, and refuses what it cannot read."""
+
+    def setUp(self):
+        self.qualify = setup_helpers()["qualify_imports"]
+
+    def test_literal_module_names_in_import_calls_are_qualified(self):
+        cases = {
+            'import importlib\nm = importlib.import_module("agents.sam_observations")\n':
+                'import importlib\nm = importlib.import_module("expectrail._bundle.agents.sam_observations")\n',
+            "from importlib import import_module\nm = import_module('harness.run')\n":
+                "from importlib import import_module\nm = import_module('expectrail._bundle.harness.run')\n",
+            'm = __import__("harness")\n': 'm = __import__("expectrail._bundle.harness")\n',
+            'import importlib.util\ns = importlib.util.find_spec("agents.fixer")\n':
+                'import importlib.util\ns = importlib.util.find_spec("expectrail._bundle.agents.fixer")\n',
+            'import runpy\nrunpy.run_module("agents.loop")\n':
+                'import runpy\nrunpy.run_module("expectrail._bundle.agents.loop")\n',
+            'import importlib\nm = importlib.import_module(name="agents.x")\n':
+                'import importlib\nm = importlib.import_module(name="expectrail._bundle.agents.x")\n',
+        }
+        for source, expected in cases.items():
+            with self.subTest(source=source):
+                self.assertEqual(self.qualify(source), expected)
+
+    def test_other_strings_are_left_byte_for_byte(self):
+        source = ('import importlib\n'
+                  'a = importlib.import_module(".sam_observations", __package__)\n'
+                  'b = importlib.import_module("json")\n'
+                  "c = __import__('shutil')\n"
+                  'd = "agents/observations.py"\n'
+                  'e = f"agents.sam_observations is not installed: {a}"\n'
+                  'f = "harness and agents"\n'
+                  'g = "agentsx.y"\n')
+        self.assertEqual(self.qualify(source), source)
+
+    def test_what_it_cannot_read_stops_the_build(self):
+        for source in ('import importlib\nm = importlib.import_module(name)\n',
+                       'import importlib\nm = importlib.import_module(f"agents.{x}")\n',
+                       'import importlib\nm = importlib.import_module("agents." + x)\n',
+                       'import importlib\nm = importlib.import_module()\n',
+                       'import sys\ncmd = [sys.executable, "-m", "agents.loop"]\n',
+                       'NAME = "harness.run"\n'):
+            with self.subTest(source=source), self.assertRaises(ValueError) as caught:
+                self.qualify(source)
+            self.assertIn("line 2" if source.count("\n") == 2 else "line 1", str(caught.exception))
+
+    def test_the_repositorys_observations_module_imports_its_provider_relatively(self):
+        # The source itself needs no rewrite; the builder's rewrite is the fallback.
+        text = (REPO / "agents/observations.py").read_text(encoding="utf-8")
+        self.assertNotIn('import_module("agents.', text)
+        staged = self.qualify(text)
+        self.assertEqual(staged.count('importlib.import_module(".sam_observations", __package__)'), 2)
+        self.assertNotIn('import_module("expectrail._bundle.', staged)
+
+
 # Parts of the `expectrail` package that are not in the wheel, each with why. A new subpackage or
 # module must be put in the wheel or added here: the test below fails until one is chosen.
 NOT_PACKAGED = {
@@ -283,6 +357,21 @@ class ContentsTest(Case):
             self.assertEqual(self.wheel.read(BUNDLE + 'sample-vision/' + sample + '.json'),
                              (REPO / 'docs/run-it/vision' / (sample + '.json')).read_bytes())
 
+    def test_no_string_in_the_wheel_names_a_top_level_harness_or_agents_module(self):
+        # #614: `importlib.import_module("agents.x")` and `-m agents.x` are not import statements, so the
+        # statement rewrite misses them; in the installed copy they would load a foreign `agents`, or nothing.
+        found = []
+        helpers = setup_helpers()
+        for name in (n for n in self.names if n.endswith('.py')):
+            text = self.wheel.read(name).decode()
+            # Nothing left for the builder to qualify, and nothing it cannot read.
+            self.assertEqual(helpers['qualify_imports'](text), text, name)
+            for node in ast.walk(ast.parse(text)):
+                if isinstance(node, ast.Constant) and isinstance(node.value, str) \
+                        and helpers['names_private_module'](node.value):
+                    found.append(f"{name}:{node.lineno}: {node.value!r}")
+        self.assertEqual(found, [])
+
     def test_the_bundled_game_is_the_repositorys_game_file_for_file(self):
         out = BUILT["tmp"] / "game-check"
         shutil.rmtree(out, ignore_errors=True)
@@ -379,6 +468,33 @@ class InstalledTest(Case):
             'print("private imports coexist; sys.path unchanged")\n'))
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertEqual(done.stdout.strip(), 'private imports coexist; sys.path unchanged')
+
+    def test_the_vision_provider_loads_from_the_bundle_with_a_foreign_agents_package_on_the_path(self):
+        # #614's case: the string import in `_load_sam_provider` and `from_trace(provider="sam")`.
+        foreign = self.elsewhere / 'foreign-package'
+        (foreign / 'agents').mkdir(parents=True)
+        (foreign / 'agents' / '__init__.py').write_text('IDENTITY = "foreign"\n')
+        (foreign / 'agents' / 'sam_observations.py').write_text(
+            'IDENTITY = "foreign"\ndef from_replay(*a, **k):\n    raise AssertionError("foreign provider")\n')
+        done = self.run_installed(code=(
+            'import sys\n'
+            f'sys.path.insert(0, {str(foreign)!r})\n'
+            'import agents, agents.sam_observations as theirs\n'
+            'from expectrail._bundle.agents import observations as o\n'
+            'fn = o._load_sam_provider()\n'
+            'mod = sys.modules[fn.__module__]\n'
+            'assert fn.__module__ == "expectrail._bundle.agents.sam_observations", fn.__module__\n'
+            'assert theirs.IDENTITY == agents.IDENTITY == "foreign"\n'
+            'assert sys.modules["agents.sam_observations"] is theirs\n'
+            'print(mod.__file__)\n'))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(done.stdout.strip(), str(self.site / 'expectrail/_bundle/agents/sam_observations.py'))
+        # And with no foreign package at all: the provider still loads (before the fix: "No module named 'agents'").
+        done = self.run_installed(code=(
+            'from expectrail._bundle.agents import observations as o\n'
+            'print(o._load_sam_provider().__module__)\n'))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(done.stdout.strip(), 'expectrail._bundle.agents.sam_observations')
 
     def test_app_runs_from_installed_copy_without_external_packages(self):
         done = self.run_installed("app", "--help")
