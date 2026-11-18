@@ -1,0 +1,57 @@
+{
+  "format": "expectrail.receipt/v1",
+  "issuerKeyId": "ci-ephemeral",
+  "repository": "Expectrail/Expectrail",
+  "baseSha256": "79396ef8980b554cb66116d8c775a13c499189f5681b6d3a2efd2df8990afc55",
+  "headSha256": "468d019ea81224aeca7ee270b11959d8a187f6f0b6a3febff1c34dc1d66c8d85",
+  "buildSha256": "696d3a2911d4b812223555e8da870c23381bdbe3b382c0e4f603518d7fbab55c",
+  "policySha256": "92da1fcf4991dd772591ed059d190d3b3951b2268e2836bce3115897bfc26f90",
+  "routeSetSha256": "a4b9128d9c14858d2d76b7199e516abac47c9126fa503a28933d15518a6d4eba",
+  "versions": {
+    "verifier": "0.1.0@2222222222222222222222222222222222222222",
+    "adapter": "godot/4.7.2.stable.test-stand-in",
+    "observer": "recorded-ci/v1:sam-3.1"
+  },
+  "evidence": {
+    "grade": "full",
+    "capabilities": [
+      "engine-record",
+      "frames",
+      "recorded-vision",
+      "replay-sandbox"
+    ],
+    "artifacts": {
+      "capture.zip": "33f0be4364b651df2df05fd13280ba626cb8b7193fa2e0d649a511e954e157d9",
+      "report/findings.json": "202f1ce9ea8714b5f868ee2d0cb731c027963de286cce893b0b660070d0f8920",
+      "report/observations/head/smoke/player-stays-above-ground.visual.json": "d4b8e1743be45e25bca0566eab0e695fe8638994cdc09909d3e6240b0ce75359",
+      "report/review/index.html": "ca5207273e490087dafc09b739b49e24592c377f9093ac4388b05f9bb6fff8c7",
+      "report/verdicts/base/smoke/player-stays-above-ground.json": "d49eda458c445f2f3fc167ea13162e143c66a71405b1990a5ac101e717a6cd6d",
+      "report/verdicts/head/smoke/player-stays-above-ground.json": "fd89aaa2feeb541ce2a736df7138e64beea124ac881cb063901a2a99521a5c7b",
+      "report/verdicts/head/smoke/player-stays-above-ground.visual.json": "bb2217d0d268b1387791f15535eb14dad866f54c48e87b0de52d4ba76ab3038b",
+      "report/viewer/evidence.html": "0ee1fd6d8b41f007270e2909054994cb3d27ae48924099b70d4c26c0ba8a7323",
+      "report/viewer/index.html": "2bd31a3787afe474adc780f03108b29706d4320ec311e87571ea64be67ea487e",
+      "report/viewer/views.json": "d1837a9db64ea8c9c646d780a995e9bec61a39abec9c4187f89e4c5887ff3dfe"
+    }
+  },
+  "coverage": {
+    "required": [
+      "ab249eb9e49bc2dde2b4092e9366bca07f66f263452c2de9783c9004d0c430d1"
+    ],
+    "exercised": [
+      "ab249eb9e49bc2dde2b4092e9366bca07f66f263452c2de9783c9004d0c430d1"
+    ],
+    "results": {
+      "ab249eb9e49bc2dde2b4092e9366bca07f66f263452c2de9783c9004d0c430d1": "pass"
+    }
+  },
+  "decision": "accept",
+  "findings": [],
+  "cost": {
+    "usd": 0.0
+  },
+  "issuedAt": "2026-11-17T20:25:01.277234+00:00",
+  "expiresAt": "2026-11-18T20:25:01.277234+00:00",
+  "algorithm": "ed25519",
+  "publicKey": "DTIbFRIJL4a0q7veu9MLw+oQ8nDt1HbGhqWqNJNi/Hg=",
+  "signature": "Bqo3TCDiXGgzi7B2av9F2zQlKSfPqA2x1DcyOfq25/bYtmZCKFpz/eI+N6+RhdkaOrZTKRuy6nH93cb3BWBOCw=="
+}

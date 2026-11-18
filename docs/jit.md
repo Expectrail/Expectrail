@@ -729,6 +729,45 @@ enemy is wholly on screen or wholly off it on the other frames; the trace's boxe
 that. The other two bench records (`coin-stays`, `no-shooting-in-air`) were not made again; they have no
 `edges`.
 
+**The keep rule, through `jit run` (November 17, later).** The three windowed `faces-motion` checks of the
+facing measurement are now a saved proposal,
+[`bench/jit/stand-in/enemy-walks-backwards-faces-motion/`](../bench/jit/stand-in/enemy-walks-backwards-faces-motion/README.md),
+written by `python3 -m tools.faces_motion_stand_in`. It is a hand-written stand-in, not a model's proposal
+(`model: hand-written-stand-in`), made under the pixel setting for the sensor with the candidate withheld;
+each window starts after the last frame the bench's evidence lists the enemy partly on screen. `jit run
+--proposal` replayed it on the real engine here (Godot 4.7.2, no model, not in CI, 13 minutes) against
+`enemy-walks-backwards` and the no-fix candidate: all three checks were kept, passing the clean game 3 of 3
+and failing the bug build 3 of 3, and failing the bug build with the no-fix candidate 3 of 3. The record is
+committed beside the proposal. The reproduction score gives a record made from a stand-in no result
+(`score.STAND_INS`, which also names the rehearsal fixture), so this never counts as a reproduction. What it
+leaves is the model's half: whether a propose step, given the same evidence, writes such a check.
+
+**The bullet, for SAM (November 17, evening).** `bullet-behind-scenery`, the other screen-only defect, can
+only be asked about through SAM: the sensor's bank holds no bullet template. Three `visible` bullet checks
+are a saved stand-in proposal for `sam-3.1-anchor`,
+[`bench/jit/stand-in/bullet-behind-scenery-visible/`](../bench/jit/stand-in/bullet-behind-scenery-visible/README.md),
+written by `python3 -m tools.bullet_visible_stand_in` (no model; `STAND_INS` gives a record of it no result).
+Its windows leave out frames with more than `pixel.MAX_BOXES` bullets on screen, which SAM is not asked
+about: `move-fire-left` has four on frame 80 on every replay, so a window holding it could never be kept.
+`jit run --proposal --pixel-capture` captured the three probes on the real engine here (Godot 4.7.2, no
+model, no SAM, not in CI, 10.5 minutes, 27 replays). On every replay the engine logged the same bullets on
+all three builds; the bug build does not draw them where it puts them. `pixel-ask` with the asking job's
+budget at jit.yml's default cap ($2 less the capture's $0.2089) refused before asking anything: the 27
+replays need up to 1,296 images, $3.24. The asking job plans every 10th frame of each probe's route
+whatever the checks' windows, so a window does not lower the reservation; at the $2 cap one bullet check on
+one probe can be asked about, not three. Whether SAM sees a bullet drawn behind the scenery is untested.
+
+**Only the windows' frames are asked about (#605, November 18).** Since then the observer is asked only
+about its planned frames inside the union of the windows of the checks on a probe (`pixel.planned`; a check
+without a window keeps the whole plan). The in-process replay (`run.py` `_pixel_plans`), the capture (which
+writes the windows beside each kept replay as `windows.json`, untrusted like `objects.json`), the asking job
+(`pixel_jobs.ask`, which reads them back and refuses malformed ones) and the judging job plan the same frames,
+and `pixel.observe` refuses an answer about other frames. The judging job refuses recorded answers planned
+for other windows (`RecordedSamClient.plan_of`), so their checks are dropped, never passed. A check whose
+window holds no planned frame is `not-run` and asks for nothing. The three bullet checks now reserve 675
+images, $1.69, under what the asking job gets at the $2 cap ($1.79). Shown offline only
+(`tests/test_jit_pixel_windows.py`); no capture of the bench probes was remade, and SAM was not asked.
+
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 
 The replays run the change's code, and asking SAM needs its key; jit.yml keeps the two in separate jobs
@@ -827,7 +866,8 @@ under `boxes`), so the menu offers both to `sam-3.1-anchor`.
   asked about the player is refused. The capture job writes `"player": false` into `objects.json`.
 - **Reserved:** `pixel.MAX_BOXES` images a frame for each named role, and one for the player only when
   it is asked about, on every run, before anything is asked, in the in-process replay, in `pixel.cost`
-  and in `pixel-ask`.
+  and in `pixel-ask`. The frames are the planned frames inside the checks' windows (#605): the capture
+  writes the windows into the stored replay (`windows.json`) and the asking job reads them back.
 - **Shown offline only.** The tests use a scripted SAM client and synthetic replays
   (`tests/test_jit_pixel_named.py`, `tests/test_jit_pixel_player.py`). No SAM answer about an enemy or a bullet has been recorded, and no
   live run has asked one.

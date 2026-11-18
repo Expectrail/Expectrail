@@ -257,7 +257,7 @@ test("a run GitHub never lists is failed after five minutes, and frees the next 
   assert.equal((await s.run("clean", { ip: "10.3.0.1" })).status, 202);
 });
 
-test("a run still going after thirty minutes is failed, even when GitHub cannot be read", async () => {
+test("the thirty-minute tracking limit needs a confirmed observation; unreadable status keeps the reservation", async () => {
   const s = setup();
   const a = await s.run("clean");
   s.gh.set(a.doc.requestId, "in_progress");
@@ -265,6 +265,11 @@ test("a run still going after thirty minutes is failed, even when GitHub cannot 
   s.clock.t += STATUS_TTL_MS + 1;
   assert.equal((await s.status(a.doc.requestId)).doc.state, "queued", "GitHub unreadable: the last state is kept");
   s.clock.t += GIVE_UP_MS;
+  assert.equal((await s.status(a.doc.requestId)).doc.state, "queued", "age cannot turn an unreadable status into failure");
+  assert.equal(await s.store.get("active"), a.doc.requestId);
+  assert.equal((await s.store.get("breaker"))?.failedInARow || 0, 0);
+  s.gh.failReads = false;
+  s.clock.t += STATUS_TTL_MS + 1;
   assert.equal((await s.status(a.doc.requestId)).doc.state, "failed");
 });
 

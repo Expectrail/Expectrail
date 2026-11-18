@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Expectrail/Expectrail/contracts/inspection.v1.schema.json",
+  "title": "Inspection: the bound objects of a Godot project at one tick of a replay",
+  "description": "Written by expectrail.inspection.document (`expectrail inspect --project GAME --at-tick N --json`) and read by expectrail.inspection.problems. It is what the engine reported for each object the project config binds, at one physics tick of a headless replay of one route: the node path, the box in captured-frame pixels, the box in world units and the engine's visible flag. It is setup information, not a verdict and not pixel evidence: a box is the bounds of the object's drawing (or, labelled, its collision shape), not its opaque pixels, and visible is the engine's flag, not a claim that anything was seen on screen. A bound role with no object at that tick is listed under absent, never given a box.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "project", "route", "tick", "lastTick", "physicsTicksPerSecond", "viewport", "objects", "absent"],
+  "properties": {
+    "format": {"const": "expectrail.inspection/v1"},
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entryScene", "configSha256", "gameTree"],
+      "properties": {
+        "entryScene": {"type": ["string", "null"], "maxLength": 200, "description": "The config's entryScene, or null when it names none and the project's main scene ran."},
+        "configSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the expectrail.project.json bytes whose bindings were replayed."},
+        "gameTree": {"type": "string", "minLength": 1, "maxLength": 128, "description": "The replay's digest of the game folder it copied (replay.json game.tree)."}
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "sha256", "from"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "maxLength": 200},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "from": {"enum": ["config", "argument"], "description": "config: the first route the project config lists; argument: the --route given."}
+      }
+    },
+    "tick": {"type": "integer", "minimum": 0, "description": "The physics tick inspected, counted from 0."},
+    "lastTick": {"type": "integer", "minimum": 0, "description": "The last tick the replay recorded. tick is never past it."},
+    "physicsTicksPerSecond": {"type": "integer", "minimum": 1, "maximum": 1000},
+    "viewport": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "items": {"type": "integer", "minimum": 1, "maximum": 16384},
+      "description": "The captured frame's size in pixels, as the replay recorded it."
+    },
+    "objects": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "node", "generation", "box", "worldBox", "visible", "onScreen", "boundsSource"],
+        "properties": {
+          "role": {"type": "string", "minLength": 1, "maxLength": 64},
+          "node": {"type": "string", "minLength": 1, "maxLength": 1000, "description": "The node's path from the current scene."},
+          "generation": {"type": "integer", "minimum": 1, "description": "1 for the first node seen at this path; 2 and on for a later node at the same path (a respawn)."},
+          "box": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "number"}, "description": "Left, top, right, bottom in captured-frame pixels, through the camera of the following tick, as the trace records it."},
+          "worldBox": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "number"}, "description": "Left, top, right, bottom in world units."},
+          "visible": {"type": "boolean", "description": "The engine's visible flag for the whole instance. Not a claim about pixels, alpha or occlusion."},
+          "onScreen": {"type": "boolean", "description": "True exactly when box overlaps the viewport. A reader recomputes it."},
+          "boundsSource": {"enum": ["drawing", "collision"]}
+        }
+      }
+    },
+    "absent": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "selector"],
+        "properties": {
+          "role": {"type": "string", "minLength": 1, "maxLength": 64},
+          "selector": {"type": "string", "minLength": 1, "maxLength": 300, "description": "node:PATH or group:NAME, as the config binds the role."}
+        }
+      },
+      "description": "Bound roles with no object at this tick: not spawned yet, removed, or a group with no members. Never given a box."
+    }
+  }
+}

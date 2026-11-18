@@ -90,7 +90,8 @@ The wheel holds what a verification runs, and nothing that could not work from a
   modules they import; five harness modules (`run`, `sandbox`, `tree`, `adapters` and the package's own); the
   reader of the engine's position log, the frame observer and its model clients; the contract schemas; the bundled Godot game, the smoke
   route, one approved spec and one seeded bug, which are what `sample` runs.
-- **Not in it:** the fixer, the fix loop and the dotenv key loader; the benches and the
+- **Not in it:** the demo fix loop and the dotenv key loader; the repair command does ship its
+  fixer and sandbox. Also excluded: the benches and the
   check generator (`expectrail.discovery`, `jit`, `repro`); every other seeded bug; anything
   held out. `tests/test_package.py` lists each part of `expectrail` that is left out, with why.
 - **No dependencies.** A verification imports the standard library only. `jsonschema` is an extra
@@ -98,10 +99,10 @@ The wheel holds what a verification runs, and nothing that could not work from a
   `trust-check` needs `cryptography` and `jsonschema`, the `trust` extra
   (`pip install 'expectrail[trust]'`); a verification does not need them.
 
-One top-level name is installed: `expectrail`. The harness is imported as `harness` and the log
-reader as `agents.observations`, so the wheel carries them inside the package, under
-`expectrail/_bundle`, laid out as the repository is, and `expectrail/__init__.py` puts that folder
-first on the module path. `expectrail.resources.ROOT` is the one name for "where Expectrail's own
+One top-level name is installed: `expectrail`. The wheel builder qualifies harness and agent
+imports under `expectrail._bundle` and removes the old installed-copy path bootstrap from its
+staged code. It does not modify repository implementations. Importing the installed copy changes
+neither `sys.path` nor another package’s top-level `harness` or `agents`. `expectrail.resources.ROOT` is the one name for "where Expectrail's own
 files are" in a clone and in an installed copy.
 
 ## A release
@@ -121,15 +122,67 @@ It has not run yet: no tag has been pushed and it has not been dispatched.
 
 ## Limits
 
-- **`import harness` and `import agents` belong to Expectrail inside a process that has imported
-  `expectrail`.** Another package that installs a top-level `harness` or `agents` (there is at least
-  one widely used `agents`) is shadowed in that process. The `expectrail` command is its own
-  process, so this matters only to a program that imports both. The real fix is to move the
-  harness into the `expectrail` package; that touches nearly every file and is not done.
+- Repository `python3 -m harness...` entry points remain unchanged. In the wheel, use the private
+  qualified modules; the package no longer installs top-level `harness` or `agents` aliases.
 - Linux only as packaged. The macOS engine script is in the wheel and was not run from an installed copy.
 - Not shown: Python below 3.12; an install from PyPI. The engine download itself from an installed
   copy with no cached file was run once by hand (`expectrail doctor` with an empty home, November 12,
   2026, 5.6 s); CI does not do it: it hands the installed copy the download it already holds, and
   the copy's own script unpacks and checks it.
-- `doctor` was not run in a clean container, on macOS, or on a machine with another OpenGL device.
-- No runner image yet. The release workflow has not run (see below).
+- The local sample-container measurement is recorded below. No macOS or other OpenGL device
+  measurement is added here. The release workflow has not been dispatched by this change.
+
+## Recorded sample profile
+
+The wheel also carries the three original public Run it vision recordings, byte for byte.
+`EXPECTRAIL_VLM_SAMPLE_RECORDINGS=1` explicitly selects them **only for doctor and the bundled
+sample**. This is the default profile in `Dockerfile.sample`, not a change to ordinary verify.
+Without the profile, the existing no-key quickstart still needs review on clean/repaired builds.
+
+```sh
+EXPECTRAIL_VLM_SAMPLE_RECORDINGS=1 expectrail doctor
+EXPECTRAIL_VLM_SAMPLE_RECORDINGS=1 expectrail sample
+```
+
+Doctor validates the saved-answer bank and reports the live key/cap as optional for this sample.
+An explicit project, or a project in the current directory, always uses the normal project doctor.
+The sample uses the existing sample runner and verification gate with `RecordedBankObserver`:
+real clean, broken and repaired Godot replays, both engine and recorded visual checks. It names
+recording dates/runs. No model key or fallback is used. Missing exact PNG/question answers still
+produce needs-review; a recording for another image never supplies a pass.
+
+Build and run the container from a context containing only its Dockerfile, wheel and public pinned engine archive:
+
+```sh
+python3 -m pip wheel . --no-deps --no-build-isolation --no-index -w dist
+EXPECTRAIL_TOOLS=/tmp/expectrail-wheel-engine GODOT_KEEP_DOWNLOAD=1 bash harness/get_godot.sh
+mkdir -p /tmp/expectrail-wheel-context/dist /tmp/expectrail-wheel-context/engine-cache
+cp /tmp/expectrail-wheel-engine/godot_cache/*.zip /tmp/expectrail-wheel-context/engine-cache/
+cp Dockerfile.sample /tmp/expectrail-wheel-context/
+cp dist/expectrail-*.whl /tmp/expectrail-wheel-context/dist/
+docker build --platform linux/amd64 -f /tmp/expectrail-wheel-context/Dockerfile.sample \
+  -t expectrail-wheel-local /tmp/expectrail-wheel-context
+docker run --rm --network none expectrail-wheel-local expectrail doctor
+docker run --rm --network none expectrail-wheel-local expectrail sample --json
+```
+
+The base image is pinned by digest. The build installs the wheel into a new Python environment
+with no runtime Python dependencies, unpacks the pinned Godot through the installed script, and
+checks the archive SHA-512 again inside the build with networking disabled. The host fetches the
+public archive using the same pinned script; TLS verification is never disabled. The final image has no checkout. Runs use a non-root user. Bubblewrap
+is checked and reported; the sample's diagnostic execution class does not claim isolation.
+See [the proposed CI job](proposals/249-wheel-sample.yml.txt); Sean applies it, with no workflow
+changed or dispatched here. The versioned release, registry publishing and credentials remain
+Sean's steps. This patch claims part of #249, not closure of the release process.
+
+### Recorded local container run, November 17, 2026
+
+On main `ff2c7a7aedd1d32a2f0dfdd89ce95fabc416b9f2` plus this patch, the wheel was
+installed with pip into the pinned Ubuntu container. Doctor exited **0** (Python 3.12.3,
+Godot 4.7.2, Xvfb, llvmpipe LLVM 20.1.2). The real sample exited **0**:
+**accept / reject / accept**, all jobs completed as expected, all with `rule: both` and
+`sam-recorded` vision, no diagnostics. Both commands ran with `--network none`, as UID 10001.
+Live key/cap, Chromium and the unavailable nested sandbox were reported as optional for this
+explicit sample profile, not as installed or usable. No isolated execution is claimed.
+The handover retains the build transcript, doctor output, complete sample JSON and image/wheel
+identities. The CI proposal has not run, no image was published, and no release was tagged.

@@ -415,6 +415,29 @@ def _depth(value, level: int = 1) -> int:
     return level
 
 
+def unlinked_below(base, relative: str) -> Path:
+    """``base / relative``, refusing a link anywhere from ``base`` down (#378).
+
+    A record's own folder may be reached through a link (on macOS every temporary folder is:
+    ``/var`` is a link to ``/private/var``), so links above ``base`` are allowed. Below it, every
+    component of ``relative`` must be a real folder or file and stay inside ``base``: no ``..``,
+    no absolute path, no link. As a fallback the resolved path must still equal the resolved
+    ``base`` joined with ``relative``, so anything the walk misses is still refused.
+    """
+    base = Path(base)
+    rel = Path(relative)
+    if rel.is_absolute() or not rel.parts or any(part in ("", ".", "..") for part in rel.parts):
+        raise RecordError(f"{relative!r} is not a plain path inside its record")
+    current = base
+    for part in rel.parts:
+        current = current / part
+        if current.is_symlink():
+            raise RecordError(f"{relative!r} is reached through a link inside its record")
+    if current.resolve() != base.resolve().joinpath(*rel.parts):
+        raise RecordError(f"{relative!r} does not stay inside its record")
+    return current
+
+
 def read_bytes_capped(path: Path, cap: int = MAX_RECORD_BYTES, label: str = "findings.json") -> bytes:
     """A regular file's bytes, refusing a symlink, a non-file or anything over ``cap``."""
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
@@ -462,6 +485,8 @@ def read_record(path: Path) -> dict:
 
 def check_record(doc) -> None:
     validate(doc, schema())
+    if (doc.get('pullRequest') or {}).get('fixLinks') and intent_of(doc) != 'fix':
+        raise RecordError('a closing-keyword link requires fix intent')
     check_consistency(doc)
 
 
@@ -841,7 +866,7 @@ def check_repair(doc: dict) -> None:
         raise RecordError("the count of demonstrations does not match the repair rows")
 
 
-def repair_words(doc: dict) -> str:
+def _repair_words(doc: dict) -> str:
     """One line on what the change was declared as and whether its repair was shown, for the page and the comment."""
     intent = intent_of(doc)
     if intent == "none":
@@ -856,6 +881,13 @@ def repair_words(doc: dict) -> str:
                 f"{REPAIR_RUNS} times of {REPAIR_RUNS} and passes after it {REPAIR_RUNS} times of {REPAIR_RUNS}"
                 + (f" (and {more} more)" if more else ""))
     return "a fix, and no check demonstrated the repair"
+
+
+def repair_words(doc: dict) -> str:
+    """Shared, escaped by every report/comment reader; provenance never chooses a check."""
+    links = (doc.get('pullRequest') or {}).get('fixLinks', [])
+    source = '; '.join(f"closing-keyword line {link['line']}: {link['text']}" for link in links)
+    return (source + '; ' if source else '') + _repair_words(doc)
 
 
 def check_generated(gen: dict) -> None:

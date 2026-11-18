@@ -11,11 +11,12 @@ jobs run the game and hold no secret). This module gives pixel checks the same s
    ``reps`` times each, whether or not the check will be kept (the candidate's frames are needed by the
    time the answers say so). Each replay is kept in ``DIR/<build>/<probe>-<n>/`` with the route it
    replayed (``route.json``): its replay.json, its trace.json and only the frames the observer will ask
-   about (``store_replay``), so the folder the later jobs download is a few megabytes a replay, not the
+   about (``store_replay``): its plan inside the windows of the checks on that probe, which are kept as
+   well (``windows.json``, #605), so the folder the later jobs download is a few megabytes a replay, not the
    whole movie. Nothing is asked and nothing is judged: the pixel rows are
    ``not-run`` with the reason ``CAPTURED``. The trace checks run as always.
 2. **Ask** (``python -m expectrail.jit.cli pixel-ask --replays DIR --out answers.json``; holds the key,
-   runs no game). ``ask`` plans every stored replay's frames from its route, reserves all of their images
+   runs no game). ``ask`` plans every stored replay's frames from its route and its windows, reserves all of their images
    against the budget before the first request, and asks SAM through the same observer the judging run
    uses (expectrail/jit/sam_observer.py), so the frames are checked against the replay's digests and the
    questions are the ones the judge will ask. It writes an agents/sam_anchor.py answer file with one run
@@ -56,6 +57,7 @@ BUILDS = ("pixel-reference", "pixel-base", "pixel-candidate")   # the replay fol
 REPLAY = re.compile(r"[a-z0-9][a-z0-9-]{0,80}-[1-9][0-9]?")
 ROUTE_FILE = "route.json"
 OBJECTS_FILE = "objects.json"   # what the observer is asked about on this replay, when it is more or less than the player
+WINDOWS_FILE = "windows.json"   # the windows of the checks on this replay's probe, when every one has a window (#605)
 KEPT = ("replay.json", "trace.json")   # besides the route and the frames asked about: what the later jobs read
 FRAME = "f{:08d}.png"                  # Movie Maker's frame names (harness/run.py)
 FRAME_NAME = re.compile(r"f[0-9]{8}\.png")
@@ -79,14 +81,17 @@ def _checked_tree(root: Path) -> None:
             raise StoreError(f"{p.relative_to(root).as_posix()[:80]} is not a regular file")
 
 
-def store_replay(run_dir: Path, store: Path, route: dict, frames, objects=(), player: bool = True) -> Path:
+def store_replay(run_dir: Path, store: Path, route: dict, frames, objects=(), player: bool = True,
+                 windows=None) -> Path:
     """Keep one replay folder (``.../<build>/<probe>-<n>``) in the capture folder, with its route: only
     what the later jobs read (``KEPT``) and, of the frames, only ``frames``, the ones the observer will ask
     about (``observer.frames(route)``). A frame the replay did not capture is not kept, and the observer
     treats it as it would on the full replay. Everything else (the game's working copy, the log, the
     sound, every frame not asked about) stays behind: on a bench probe that is most of the folder
     (docs/new-work/2026-11-15-trim-pixel-capture.md has the measurement). ``objects`` and ``player`` say
-    what the observer is asked about (``asked_of``), when that is not the player alone."""
+    what the observer is asked about (``asked_of``), when that is not the player alone. ``windows`` are the
+    windows of the checks on the probe (pixel.py ``probe_windows``), written beside the replay so the asking
+    job plans the frames the capture kept (``windows_of``); None, the whole route, writes nothing."""
     run_dir = Path(run_dir)
     build, name = run_dir.parent.name, run_dir.name
     if build not in BUILDS or not REPLAY.fullmatch(name):
@@ -117,7 +122,39 @@ def store_replay(run_dir: Path, store: Path, route: dict, frames, objects=(), pl
     if objects or not player:
         doc = {"objects": objects} if player else {"objects": objects, "player": False}
         (dest / OBJECTS_FILE).write_text(json.dumps(doc) + "\n", encoding="utf-8")
+    if windows is not None:
+        windows = _checked_windows(windows, f"{build}/{name}")
+        (dest / WINDOWS_FILE).write_text(json.dumps({"windows": windows}) + "\n", encoding="utf-8")
     return dest
+
+
+def _checked_windows(windows, where: str) -> list[dict]:
+    if not isinstance(windows, list) or not 1 <= len(windows) <= pixel.MAX_PIXEL_CHECKS:
+        raise StoreError(f"{where}: the windows are not a list of 1 to {pixel.MAX_PIXEL_CHECKS}")
+    try:
+        out = [pixel.checked_window(w, f"{where}: window {i + 1}") for i, w in enumerate(windows)]
+    except pixel.PixelError as exc:
+        raise StoreError(str(exc)) from exc
+    if any(out[i] in out[:i] for i in range(len(out))):
+        raise StoreError(f"{where}: a window is given twice")
+    return out
+
+
+def windows_of(folder: Path) -> list[dict] | None:
+    """The windows the capture said the checks on this replay's probe judge (pixel.py ``probe_windows``), or
+    None (the whole route) without the file. The file is untrusted: ``{"windows": [...]}``, 1 to
+    pixel.MAX_PIXEL_CHECKS windows of whole frames from 0, each once, and nothing else."""
+    path = Path(folder) / WINDOWS_FILE
+    where = f"{folder.parent.name}/{folder.name}"
+    if not path.exists():
+        return None
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise StoreError(f"{where}: no readable {WINDOWS_FILE} ({type(exc).__name__})") from exc
+    if not isinstance(doc, dict) or set(doc) != {"windows"}:
+        raise StoreError(f"{where}: {WINDOWS_FILE} is not {{windows}}")
+    return _checked_windows(doc["windows"], where)
 
 
 def _checked_objects(objects, where: str) -> list[str]:
@@ -159,7 +196,7 @@ def objects_of(folder: Path) -> list[str]:
 def _checked_replay(folder: Path) -> None:
     """Refuse a replay folder holding anything but what store_replay keeps."""
     for p in folder.iterdir():
-        if p.name in (*KEPT, ROUTE_FILE, OBJECTS_FILE) and p.is_file():
+        if p.name in (*KEPT, ROUTE_FILE, OBJECTS_FILE, WINDOWS_FILE) and p.is_file():
             continue
         if p.name == "frames" and p.is_dir():
             for f in p.iterdir():
@@ -247,22 +284,27 @@ def ask(store: Path, observer, budget_usd: float, usd_per_image: float) -> dict:
     planned = {}
     for name, folder in found:
         route = _route_of(folder)
-        frames = list(observer.frames(route))
-        if len(frames) > observer.max_frames:
-            raise AskRefused(f"{name}: the observer planned {len(frames)} frames, more than its {observer.max_frames}")
+        whole = list(observer.frames(route))
+        if len(whole) > observer.max_frames:
+            raise AskRefused(f"{name}: the observer planned {len(whole)} frames, more than its {observer.max_frames}")
         player, objects = asked_of(folder)
-        planned[name] = (folder, route, frames, objects, player)
+        windows = windows_of(folder)
+        # Only the planned frames inside the checks' windows (#605), the ones the capture kept.
+        frames = pixel.in_windows(whole, windows)
+        if not frames:
+            raise AskRefused(f"{name}: the windows hold no frame the observer would be asked about")
+        planned[name] = (folder, route, frames, objects, player, windows)
     # One image a planned frame for the player when it is asked about, and up to MAX_BOXES a planned frame
     # for each named role.
-    images = sum(len(f) * pixel.images_per_frame(p, o) for _, _, f, o, p in planned.values())
+    images = sum(len(f) * pixel.images_per_frame(p, o) for _, _, f, o, p, _ in planned.values())
     if images * usd_per_image > budget_usd + 1e-9:
         raise AskRefused(f"the {len(found)} replays need up to {images} images, ${images * usd_per_image:.4f}, "
                          f"over the budget of ${budget_usd:.2f}; nothing was asked")
     setting = observer.setting()
     runs, sent, stopped = [], 0, None
-    for name, (folder, route, _, objects, player) in planned.items():
+    for name, (folder, route, _, objects, player, windows) in planned.items():
         try:
-            got, run, n = pixel.observe(observer, folder, route, objects, player)
+            got, run, n = pixel.observe(observer, folder, route, objects, player, windows)
         except pixel.PixelError as exc:
             extra = getattr(exc, "images", 0)
             sent += extra if isinstance(extra, int) and not isinstance(extra, bool) and extra > 0 else 0

@@ -6,11 +6,13 @@ This is Sean's launch checklist. It uses the existing static page at
 the three original samples use their recorded vision answers. The fourth card is
 not ready until its repair recording exists. Do not run the recording workflow to deploy.
 
-**Status:** the code and smoke checks have been tested offline. This account setup,
-DNS change, deployment and live visitor check have **not been run**. Dashboard
-labels below follow the linked public documentation, checked November 15, 2026;
-they have not been checked inside Sean's accounts. If a screen differs, stop at
-that step rather than grant broader access.
+**Recorded launch:** Sean deployed the service and recorded the initial live
+visitor runs on November 17; see [the launch evidence](new-work/2026-11-17-runit-live.md).
+The page reads the present admission switch. The bounded-status/native-runtime
+change described in [status deadlines](run-it-status-bound.md) is tested locally
+and has **not been deployed**. This remains the operator checklist. Dashboard
+labels follow public documentation checked November 15; if a screen differs,
+review that step rather than grant broader access.
 
 ## What is needed, and who supplies it
 
@@ -190,9 +192,14 @@ A 403/401 dispatch refusal usually means token permission, approval or expiry;
 fix the token in Secrets. Explicit refusals refund the reservation and impose a
 one-minute dispatch cooldown. A lost reply or upstream server error instead keeps
 the reservation: the request ID may already be running. Follow its status rather
-than starting another run. Lost runs fail after five minutes; the service gives
-up tracking an active run after thirty minutes. Neither timeout asserts that a
-GitHub process was cancelled. A queued smoke timeout is a FAIL, not a fresh start.
+than starting another run. A successful empty run-list read after five minutes,
+or a successful observation of an active run after thirty, ends tracking as failed.
+An unreadable or expired refresh keeps the last state and reservation; age alone
+does not infer failure or free another start. Neither tracking limit asserts that
+a GitHub process was cancelled. The status answer waits at most 250 ms for
+freshness; one refresh shares a two-second upstream deadline, including bodies.
+The smoke allows five seconds per poll within its overall wait. A queued smoke
+timeout is a FAIL, with no fresh start.
 
 ## Cost boundaries and work still left
 
@@ -240,4 +247,5 @@ It depends on the smoke's own `User-Agent` (#576): without it the deployed
 service's Cloudflare check refuses the smoke at `health`.
 Also still needed: a deployed concurrent burst, a first visitor's usability test,
 and signed receipts (#255). The current page honestly labels receipts unsigned.
-The live launch has not been demonstrated until section E's evidence exists.
+Section E's initial live evidence is recorded in [the November 17 launch log](new-work/2026-11-17-runit-live.md).
+Deployment of this status/runtime patch and its hosted CI proposal remain Sean's steps.
