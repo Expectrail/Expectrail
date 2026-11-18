@@ -1,0 +1,20 @@
+test_action_catalog_ingestion_refuses_pointer_in_plain_words (tests.test_pointer_routes.PointerReadersTest.test_action_catalog_ingestion_refuses_pointer_in_plain_words) ... ok
+test_action_pair_reader_preserves_legacy_pairs (tests.test_pointer_routes.PointerReadersTest.test_action_pair_reader_preserves_legacy_pairs) ... ok
+test_action_trigger_does_not_treat_pointer_click_as_shoot (tests.test_pointer_routes.PointerReadersTest.test_action_trigger_does_not_treat_pointer_click_as_shoot) ... ok
+test_closed_event_shapes_refuse_ambiguous_or_invalid_inputs (tests.test_pointer_routes.PointerReadersTest.test_closed_event_shapes_refuse_ambiguous_or_invalid_inputs) ... ok
+test_contract_accepts_pointer_and_legacy_actions_together (tests.test_pointer_routes.PointerReadersTest.test_contract_accepts_pointer_and_legacy_actions_together) ... ok
+test_description_names_pointer_positions_and_button_edges (tests.test_pointer_routes.PointerReadersTest.test_description_names_pointer_positions_and_button_edges) ... ok
+test_invalid_pointer_is_refused_before_engine_lookup (tests.test_pointer_routes.PointerReadersTest.test_invalid_pointer_is_refused_before_engine_lookup) ... ok
+test_normalized_episode_keeps_every_pointer_event (tests.test_pointer_routes.PointerReadersTest.test_normalized_episode_keeps_every_pointer_event) ... ok
+test_playtest_heuristics_ignore_pointer_as_action_hold (tests.test_pointer_routes.PointerReadersTest.test_playtest_heuristics_ignore_pointer_as_action_hold) ... ok
+test_pointer_tick_outside_route_is_refused (tests.test_pointer_routes.PointerReadersTest.test_pointer_tick_outside_route_is_refused) ... ok
+test_review_page_names_pointer_inputs (tests.test_pointer_routes.PointerReadersTest.test_review_page_names_pointer_inputs) ... ok
+test_test_module_loads_without_numpy_or_pillow (tests.test_pointer_routes.PointerReadersTest.test_test_module_loads_without_numpy_or_pillow) ... ok
+test_unity_refuses_pointer_explicitly (tests.test_pointer_routes.PointerReadersTest.test_unity_refuses_pointer_explicitly) ... ok
+setUpClass (tests.test_pointer_routes.RealDrawnPointerTest) ... skipped 'Godot 4.7.2-stable is not installed at its configured/cache path or on PATH; see expectrail doctor; PATH has a different version: 4.6.3.stable.official.7d41c59c4, 4.6.3.stable.official.7d41c59c4'
+setUpClass (tests.test_pointer_routes.RealPointerTest) ... skipped 'Godot 4.7.2-stable is not installed at its configured/cache path or on PATH; see expectrail doctor; PATH has a different version: 4.6.3.stable.official.7d41c59c4, 4.6.3.stable.official.7d41c59c4'
+
+----------------------------------------------------------------------
+Ran 13 tests in 1.101s
+
+OK (skipped=2)

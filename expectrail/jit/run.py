@@ -275,6 +275,8 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
     if report_route is not None:
         from expectrail.contracts import validate
         validate(report_route, 'route')
+        if any('pointer' in e for e in report_route['events']):
+            raise NothingGenerated('REPORT_ROUTE_INVALID: pointer input is not supported by the trusted action catalog')
         if report_route['ticks'] > 1800 or any(e['action'] not in profile['actions'] for e in report_route['events']):
             raise NothingGenerated('REPORT_ROUTE_INVALID: ticks or actions outside the trusted catalog')
         if any(e['tick'] >= report_route['ticks'] for e in report_route['events']):

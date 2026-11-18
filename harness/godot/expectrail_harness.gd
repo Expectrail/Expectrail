@@ -46,7 +46,9 @@ extends Node
 const TRACE_FORMAT := "expectrail.trace/v0"
 const ROUTE_FORMATS := ["expectrail.route/v0"]
 
-var _events: Dictionary = {}   # tick -> Array of {action, pressed}
+var _events: Dictionary = {}   # tick -> action or pointer events, in route array order
+var _pointer_position := Vector2.ZERO
+var _pointer_mask: int = 0
 var _ticks: int = 0
 var _tick: int = 0
 var _trace: Array = []
@@ -149,7 +151,19 @@ func _ready() -> void:
 		var tick := int(event["tick"])
 		if not _events.has(tick):
 			_events[tick] = []
-		_events[tick].append({"action": String(event["action"]), "pressed": bool(event["pressed"])})
+		if event.has("pointer"):
+			if not _valid_pointer(event):
+				_stop("expectrail: invalid pointer event at tick %s" % tick)
+				return
+			# Headless windows otherwise start at 64x64. Only pointer routes opt in;
+			# action-only routes retain byte-identical geometry and traces.
+			if DisplayServer.get_name() == "headless":
+				get_window().size = Vector2i(
+					int(ProjectSettings.get_setting("display/window/size/viewport_width", get_window().size.x)),
+					int(ProjectSettings.get_setting("display/window/size/viewport_height", get_window().size.y)))
+			_events[tick].append({"pointer": event["pointer"]})
+		else:
+			_events[tick].append({"action": String(event["action"]), "pressed": bool(event["pressed"])})
 	# A second node records positions after every game node has moved in the same tick.
 	_recorder = Node.new()
 	_recorder.name = "ExpectrailRecorder"
@@ -164,7 +178,56 @@ func _physics_process(_delta: float) -> void:
 	if _ticks == 0:
 		return
 	for event in _events.get(_tick, []):
-		_send(event["action"], event["pressed"])
+		if event.has("pointer"):
+			_send_pointer(event["pointer"])
+			if _stopped:
+				return
+		else:
+			_send(event["action"], event["pressed"])
+
+
+func _valid_pointer(event: Dictionary) -> bool:
+	if event.size() != 2 or not event.has("tick") or typeof(event["pointer"]) != TYPE_DICTIONARY:
+		return false
+	var point = event["pointer"]
+	var position = point.get("position")
+	if typeof(position) != TYPE_ARRAY or position.size() != 2:
+		return false
+	for value in position:
+		if not (typeof(value) in [TYPE_INT, TYPE_FLOAT]) or not is_finite(float(value)) or value < 0 or value > 1000000:
+			return false
+	if point.size() == 1:
+		return true
+	return point.size() == 3 and point.get("button") in ["left", "right", "middle"] and typeof(point.get("pressed")) == TYPE_BOOL
+
+
+func _send_pointer(point: Dictionary) -> void:
+	var position := Vector2(float(point["position"][0]), float(point["position"][1]))
+	if not get_viewport().get_visible_rect().has_point(position):
+		_stop("expectrail: pointer at tick %s is outside the game viewport: %s in %s" % [_tick, position, get_viewport().get_visible_rect()])
+		return
+	# Input.parse_input_event expects window pixels. The route always names game
+	# viewport pixels, so account for stretch/HiDPI without using desktop coordinates.
+	var transform := get_viewport().get_final_transform()
+	var event: InputEventMouse
+	if point.has("button"):
+		var button := InputEventMouseButton.new()
+		button.button_index = {"left": MOUSE_BUTTON_LEFT, "right": MOUSE_BUTTON_RIGHT, "middle": MOUSE_BUTTON_MIDDLE}[point["button"]]
+		button.pressed = point["pressed"]
+		var bit := 1 << (button.button_index - 1)
+		_pointer_mask = (_pointer_mask | bit) if button.pressed else (_pointer_mask & ~bit)
+		event = button
+	else:
+		var motion := InputEventMouseMotion.new()
+		motion.relative = transform.basis_xform(position - _pointer_position)
+		event = motion
+	event.position = transform * position
+	event.global_position = event.position
+	event.button_mask = _pointer_mask
+	_pointer_position = position
+	if DisplayServer.get_name() != "headless":
+		get_viewport().warp_mouse(position)
+	_dispatch_input(event)
 
 
 var _unknown_actions: Dictionary = {}
@@ -178,9 +241,13 @@ func _send(action: String, pressed: bool) -> void:
 	if not InputMap.has_action(action):
 		_unknown_actions[action] = true
 		return
-	Input.parse_input_event(_event_for(StringName(action), pressed))
+	_dispatch_input(_event_for(StringName(action), pressed))
+
+
+func _dispatch_input(event: InputEvent) -> void:
 	# The engine holds events until the next drawn frame. Sent now, so the press is seen on the tick
 	# the route names and not up to a frame later.
+	Input.parse_input_event(event)
 	Input.flush_buffered_events()
 
 
@@ -384,7 +451,7 @@ func _finish() -> void:
 		for tick in _events:
 			if tick >= _ticks:
 				for event in _events[tick]:
-					if not InputMap.has_action(event["action"]):
+					if event.has("action") and not InputMap.has_action(event["action"]):
 						_unknown_actions[event["action"]] = true
 		var missing := _unknown_actions.keys()
 		missing.sort()
