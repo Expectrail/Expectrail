@@ -1,0 +1,211 @@
+{
+  "byo-gateway-probe.yml::byo-gateway-probe::Run the loop with the fixer behind the key gateway": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed",
+    "EXPECTRAIL_TRIAGE_USD_CAP": "unreviewed"
+  },
+  "byo-live.yml::byo-live::Run the loop live, on Claude, verified by a real Godot replay": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed",
+    "EXPECTRAIL_TRIAGE_USD_CAP": "unreviewed"
+  },
+  "byo-smoke.yml::byo-smoke::One live call per configured provider": {
+    "EXPECTRAIL_SPEC_USD_CAP": "not sent: agents.byo_smoke calls chat_completion with role LLM, and expectrail.providers holds spec only for role SPEC (builder one, 2026-11-18)"
+  },
+  "case-spend.yml::run::Run the case and count spend": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "ci.yml::agents-bench-compare-live::Live Muse screenshot judge vs Expectrail": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "ci.yml::agents-live-muse::Live Muse gate + trust canary film": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "ci.yml::agents-oct29-film::Oct29 Muse+bwrap+Godot+poison+trust film": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "discovery-blind.yml::blind::Discover (output kept private) and publish counts only": {
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "discovery.yml::discovery-planner::Discover": {
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "feedback-live.yml::feedback-live::Transcribe, sort, draft": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed",
+    "EXPECTRAIL_TRIAGE_USD_CAP": "unreviewed"
+  },
+  "fix-matrix.yml::demo-run::One live overnight run": {
+    "EXPECTRAIL_GLIMMER_USD_CAP": "unreviewed",
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed",
+    "EXPECTRAIL_TRIAGE_USD_CAP": "unreviewed"
+  },
+  "fix-matrix.yml::gateway-probe::Muse Code through the key gateway": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "fix-matrix.yml::judge-run::Glimmer - restore the deployment's scaling if needed, and wake it": {
+    "EXPECTRAIL_GLIMMER_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "fix-matrix.yml::judge-run::Judge the candidate": {
+    "EXPECTRAIL_GLIMMER_USD_CAP": "unreviewed",
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed",
+    "cannotTell": [
+      "the module is chosen at run time in 'python -m \"$module\" \"${args[@]}\" > judge.log 2>&1'"
+    ]
+  },
+  "fix-matrix.yml::judge-run::Outside judges - each key set, each model there and answering (one short text request each)": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "fix-matrix.yml::run::Run the case": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "fix-matrix.yml::sam-warm::Judge the clean game once for this run": {
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "glimmer-probe.yml::glimmer::Check the Glimmer deployment, and restore its scaling after a suspension": {
+    "EXPECTRAIL_GLIMMER_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "glimmer-probe.yml::glimmer::Probe - ask Glimmer what it sees": {
+    "EXPECTRAIL_GLIMMER_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "glimmer-probe.yml::glimmer::Verify - Gate 1 path with Glimmer in the vision checks": {
+    "EXPECTRAIL_GLIMMER_USD_CAP": "unreviewed",
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "glimmer-probe.yml::glimmer::Wake the Glimmer deployment (its own step, so its notice does not crowd out results)": {
+    "EXPECTRAIL_GLIMMER_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "jit-blind.yml::entry::Both arms on every candidate of this entry (output kept private)": {
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "jit.yml::pixel-ask::Ask SAM 3.1 about the captured frames (one image a judged frame)": {
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "jit.yml::propose::Propose checks (one Muse Spark call)": {
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed"
+  },
+  "jit.yml::revise::Revise the rejected checks (at most one Muse Spark call)": {
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed"
+  },
+  "mutation-bench.yml::run::Export scan before upload (no keys, no signing key; the private set is never mounted here)": {
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "mutation-bench.yml::run::Judge one case (public checks only)": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "mutation-bench.yml::run::Restore them into the SAM cache": {
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "mutation-bench.yml::sam-warm::Judge the clean game once": {
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "mutation-fix.yml::run::Run the case (public checks only)": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "mutation-fix.yml::sam-warm::Judge the clean game once": {
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "outside-sam-probe.yml::probe::Ask SAM 3.1 what it sees": {
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "outside-vision.yml::judge::Judge saved runs": {
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "reported-bench.yml::reported-bench-sam::Render and judge": {
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "run-it-record.yml::record::Record the vision answers, every replay sandboxed, spend capped": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "sam-probe.yml::heldout-bench::Glimmer - restore the deployment's scaling if needed, and wake it": {
+    "EXPECTRAIL_GLIMMER_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "sam-probe.yml::heldout-bench::Render and judge the variant (output kept on the runner)": {
+    "EXPECTRAIL_GLIMMER_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "sam-probe.yml::sam-probe::Ask SAM 3.1 what it sees": {
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "sam-probe.yml::sam-verify::Gate 1 accept path with SAM on": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "sam-probe.yml::sam-verify::Review against the failing base with SAM on (reuses the verification above)": {
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "sam-probe.yml::sam-video::Send every frame both ways": {
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "spark-open.yml::spark-open::Draft, judge and sort with Muse Spark Open": {
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "spark-open.yml::spark-open::The model ids the key can see": {
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "web-bench.yml::heldout-bench::Render and judge the variant": {
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "web-bench.yml::web-judge::Judge the case": {
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "web-bench.yml::web-probe::Probe the prompts": {
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "web-fix.yml::plan::Check the private sessions on the clean page (SAM too on a live run)": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  },
+  "web-fix.yml::run::Run the case": {
+    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SAM_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+  }
+}
