@@ -17,7 +17,12 @@ followed) is unchanged.
 - `python3 -m unittest tests.test_merge_guard` with the change: 109 tests, OK.
 - The same tests with main's `tools/merge_guard.py`: the new quoted-scalar test fails 5 ways (the
   cron line single- and double-quoted, `''`, a backslash escape, and the added-lines count).
-- The full suite on this branch merged with main: the result is in the pull request.
+- The full suite on this branch (main f167f4e plus this commit), with an ordinary `TMPDIR`: 4878
+  tests, `OK (skipped=59)`.
+- The same with `TMPDIR` behind a link, as CI's `test` job runs it: 1 error, in
+  `tests.test_433_remaining`. That is main's own failure (run 44226903588), fixed by #616 and not
+  touched here. With #616 merged in, `tests.test_433_remaining`, `tests.test_merge_guard` and
+  `tests.test_linked_proof` pass under the linked `TMPDIR`.
 
 ## Not done
 `run-it-nightly.yml` and #574 write the day field as `0-6` to avoid this; they are left as they are.
