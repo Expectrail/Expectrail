@@ -26,6 +26,175 @@
   ],
   "additionalProperties": false,
   "properties": {
+    "countingChecks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runSha256",
+        "receiptSha256",
+        "rows"
+      ],
+      "properties": {
+        "runSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "receiptSha256": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rows": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "specId",
+              "requirementSource",
+              "predicate",
+              "probeIds",
+              "routeSha256",
+              "reference",
+              "base",
+              "candidate",
+              "killed",
+              "rules",
+              "counting",
+              "outcome",
+              "reasons",
+              "model",
+              "modelVersion",
+              "generatorVersion"
+            ],
+            "properties": {
+              "specId": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "requirementSource": {
+                "const": "bug-report"
+              },
+              "predicate": {
+                "type": "object"
+              },
+              "probeIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "routeSha256": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "reference": {
+                "type": "array",
+                "maxItems": 100,
+                "items": {
+                  "enum": [
+                    "pass",
+                    "fail",
+                    "not_exercised",
+                    "insufficient_observation",
+                    "execution_error"
+                  ]
+                }
+              },
+              "base": {
+                "type": "array",
+                "maxItems": 100,
+                "items": {
+                  "enum": [
+                    "pass",
+                    "fail",
+                    "not_exercised",
+                    "insufficient_observation",
+                    "execution_error"
+                  ]
+                }
+              },
+              "candidate": {
+                "type": "array",
+                "maxItems": 100,
+                "items": {
+                  "enum": [
+                    "pass",
+                    "fail",
+                    "not_exercised",
+                    "insufficient_observation",
+                    "execution_error"
+                  ]
+                }
+              },
+              "killed": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "rules": {
+                "type": "array",
+                "minItems": 6,
+                "maxItems": 6,
+                "items": {
+                  "type": "boolean"
+                }
+              },
+              "counting": {
+                "type": "boolean"
+              },
+              "outcome": {
+                "enum": [
+                  "pass",
+                  "fail",
+                  "unknown"
+                ]
+              },
+              "reasons": {
+                "type": "array",
+                "maxItems": 6,
+                "items": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "model": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 100
+              },
+              "modelVersion": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 100
+              },
+              "generatorVersion": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 100
+              }
+            }
+          }
+        }
+      }
+    },
     "format": {
       "const": "expectrail.findings/v0"
     },
