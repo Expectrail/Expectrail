@@ -262,6 +262,125 @@ class Synthetic(unittest.TestCase):
         later = {"name": "s", "env": KEY, "run": "python -m expectrail.lazy_entry"}
         self.assertEqual(self.rows([earlier, later]), {})
 
+    # The merge guard's probes after #623 (#627), on the synthetic repository.
+
+    def test_an_empty_step_value_overrides_a_cap_from_an_outer_level(self):
+        start = "python -m expectrail.lazy_entry"
+        five = {SPEC: "5"}
+        for step_value in ("", "''", None):
+            for level in ("job", "workflow"):
+                with self.subTest(step_value=step_value, level=level):
+                    step = {"name": "s", "env": {**KEY, SPEC: step_value}, "run": start}
+                    kw = {"job_env": five} if level == "job" else {"wf_env": five}
+                    got = self.rows([step], **kw)
+                    self.assertTrue(not_passed(got.get("s"), SPEC))
+        # An empty job value under a set workflow value, and a set step value over an empty job value.
+        got = self.rows([{"name": "s", "env": KEY, "run": start}], job_env={SPEC: ""}, wf_env=five)
+        self.assertTrue(not_passed(got.get("s"), SPEC))
+        self.assertEqual(self.rows([{"name": "s", "env": {**KEY, SPEC: "5"}, "run": start}], job_env={SPEC: ""}), {})
+
+    def test_an_empty_value_carried_from_an_earlier_step_overrides(self):
+        start = {"name": "s", "env": KEY, "run": "python -m expectrail.lazy_entry"}
+        set_ = {"name": "a", "run": f'echo "{SPEC}=5" >> "$GITHUB_ENV"'}
+        empty = {"name": "b", "run": f'echo "{SPEC}=" >> "$GITHUB_ENV"'}
+        self.assertTrue(not_passed(self.rows([set_, empty, start]).get("s"), SPEC))
+        # Over a cap from the job's env, too.
+        self.assertTrue(not_passed(self.rows([empty, start], job_env={SPEC: "5"}).get("s"), SPEC))
+        # A later sure write sets it again.
+        self.assertEqual(self.rows([empty, set_, start]), {})
+
+    def test_a_github_env_write_the_audit_cannot_read_makes_the_cap_cannot_tell(self):
+        start = {"name": "s", "env": {**KEY, **SPEC_CAP}, "run": "python -m expectrail.lazy_entry"}
+        for run in (f'printf "{SPEC}=\\n" >> "$GITHUB_ENV"',
+                    f'echo "{SPEC}=" | tee -a "$GITHUB_ENV"',
+                    f'{{ echo "{SPEC}="; }} >> "$GITHUB_ENV"',
+                    f'if true; then echo "{SPEC}=" >> "$GITHUB_ENV"; fi',
+                    f'false || echo "{SPEC}=" >> "$GITHUB_ENV"',
+                    f'exec >> "$GITHUB_ENV"\necho "{SPEC}="',
+                    f'echo "{SPEC}<<EOF" >> "$GITHUB_ENV"\necho >> "$GITHUB_ENV"\necho EOF >> "$GITHUB_ENV"',
+                    f'echo "{SPEC}=\'unterminated >> "$GITHUB_ENV"'):
+            with self.subTest(run=run):
+                row = self.rows([{"name": "w", "run": run}, start]).get("s")
+                self.assertTrue(not_passed(row, SPEC))
+        # The reason names the earlier step.
+        row = self.rows([{"name": "w", "run": f'echo "{SPEC}=" | tee -a "$GITHUB_ENV"'}, start])["s"]
+        self.assertTrue(any("'w'" in why and SPEC in why for why in row.cannot_tell), row.cannot_tell)
+
+    def test_a_here_document_write_in_either_order_is_read(self):
+        start = {"name": "s", "env": KEY, "run": "python -m expectrail.lazy_entry"}
+        for run in (f"cat >> \"$GITHUB_ENV\" <<EOF\n{SPEC}=5\nEOF", f"cat <<EOF >> \"$GITHUB_ENV\"\n{SPEC}=5\nEOF"):
+            with self.subTest(run=run):
+                self.assertEqual(self.rows([{"name": "e", "run": run}, start]), {})
+        # A truncating write is not read as sure.
+        got = self.rows([{"name": "e", "run": f'echo "{SPEC}=5" > "$GITHUB_ENV"'}, start])
+        self.assertTrue(not_passed(got.get("s"), SPEC))
+
+    def test_a_local_action_or_one_of_our_modules_that_writes_github_env_is_read(self):
+        import yaml
+
+        start = {"name": "s", "env": {**KEY, **SPEC_CAP}, "run": "python -m expectrail.lazy_entry"}
+        action = {"name": "a", "runs": {"using": "composite", "steps": [
+            {"shell": "bash", "run": f'echo "{SPEC}=" >> "$GITHUB_ENV"'}]}}
+        extra = {".github/actions/empties/action.yml": yaml.safe_dump(action)}
+        got = self.rows([{"name": "a", "uses": "./.github/actions/empties"}, start], extra=extra)
+        self.assertTrue(not_passed(got.get("s"), SPEC))
+        # A local action that writes other names leaves the cap set.
+        quiet = {"name": "a", "runs": {"using": "composite", "steps": [
+            {"shell": "bash", "run": 'echo "GODOT=/opt/godot" >> "$GITHUB_ENV"'}]}}
+        extra = {".github/actions/quiet/action.yml": yaml.safe_dump(quiet)}
+        self.assertEqual(self.rows([{"name": "a", "uses": "./.github/actions/quiet"}, start], extra=extra), {})
+        # A missing local action cannot be read.
+        got = self.rows([{"name": "a", "uses": "./.github/actions/missing"}, start])
+        self.assertTrue(not_passed(got.get("s"), SPEC))
+        # One of our modules that names GITHUB_ENV, started by an earlier step.
+        extra = {"expectrail/writes_env.py": "import os\nopen(os.environ['GITHUB_ENV'], 'a').write('X=1')\n"}
+        got = self.rows([{"name": "w", "run": "python -m expectrail.writes_env"}, start], extra=extra)
+        self.assertTrue(not_passed(got.get("s"), SPEC))
+
+    def test_a_carried_cap_from_a_step_that_may_not_run_does_not_count(self):
+        start = {"name": "s", "env": KEY, "run": "python -m expectrail.lazy_entry"}
+        for extra in ({"if": "github.event_name == 'push'"}, {"continue-on-error": True}):
+            with self.subTest(extra=extra):
+                earlier = {"name": "e", "run": f'echo "{SPEC}=5" >> "$GITHUB_ENV"', **extra}
+                self.assertTrue(not_passed(self.rows([earlier, start]).get("s"), SPEC))
+
+    def test_a_start_inside_a_shell_command_string_is_seen(self):
+        for run in ("bash -c 'python -m expectrail.lazy_entry'",
+                    'sh -c "python -m expectrail.lazy_entry"',
+                    "bash -ec 'cd . && python -m expectrail.lazy_entry'",
+                    "bash -e -c 'python -m expectrail.lazy_entry'",
+                    "bash -e scripts/run.sh",
+                    "/bin/bash -c 'bash -c \"python -m expectrail.lazy_entry\"'"):
+            with self.subTest(run=run):
+                got = self.rows([{"name": "s", "env": KEY, "run": run}])
+                self.assertEqual(got["s"].missing, (SPEC,))
+        # With its cap, it is not listed.
+        self.assertEqual(self.rows([{"name": "s", "env": {**KEY, **SPEC_CAP},
+                                     "run": "bash -c 'python -m expectrail.lazy_entry'"}]), {})
+        # A cap named inside the string is named by the script.
+        got = self.rows([{"name": "s", "env": KEY,
+                          "run": f"bash -c 'export {SPEC}=5; python -m expectrail.lazy_entry'"}])
+        self.assertTrue(not_passed(got.get("s"), SPEC))
+        # Under a changed environment.
+        got = self.rows([{"name": "s", "env": {**KEY, **SPEC_CAP},
+                          "run": "sudo bash -c 'python -m expectrail.lazy_entry'"}])
+        self.assertIn("changed environment", " ".join(got["s"].cannot_tell))
+
+    def test_a_command_string_the_audit_cannot_read_cannot_be_told(self):
+        for run in ("eval 'python -m expectrail.quiet'",
+                    'eval "$CMD"',
+                    "echo expectrail.lazy_entry | xargs python -m",
+                    "echo x | xargs -I{} python -m expectrail.quiet {}",
+                    "bash -c \"$SCRIPT\"",
+                    "bash -c",
+                    "bash \"$SCRIPT_PATH\"",
+                    "bash scripts/missing.sh"):
+            with self.subTest(run=run):
+                got = self.rows([{"name": "s", "env": {**KEY, **SPEC_CAP}, "run": run}])
+                self.assertTrue(got.get("s") is not None and got["s"].cannot_tell, got)
+        # A shell that only runs a command with no Python is not listed.
+        self.assertEqual(self.rows([{"name": "s", "env": KEY, "run": "bash -c 'echo hi'"}]), {})
+
     # ------------------------------------------------------------ only steps that can send
 
     def test_a_step_with_no_model_key_is_not_listed(self):
