@@ -349,6 +349,32 @@ class WorkflowTest(unittest.TestCase):
             self.assertEqual(mg.aliases("x:\n  " + value + "\n"), value.count("*"), value)
         self.assertEqual(mg.aliases("x: |\n  ls *.py *args\n  echo $((2 * 3))\ny: 2 * 3\n"), 0)  # a script, and arithmetic
 
+    def test_a_star_inside_a_quoted_scalar_is_not_an_alias(self):
+        # #610: "- cron: '17 9 * * *'" was counted as an alias and #574 was labelled needs-sean.
+        for value in ("- cron: '17 9 * * *'", '- cron: "17 9 * * *"', "x: 'it''s *a'",
+                      'x: "a \\" *b"', "x: ['*', '&a']", "'*k': 1"):
+            with self.subTest(value=value):
+                text = "on:\n  schedule:\n    " + value + "\n"
+                self.assertEqual(mg.aliases(text), 0)
+                self.assertEqual(mg.unread_added(None, text), {"escape": 0, "alias": 0, "anchor": 0})
+        old = "on:\n  schedule:\n    - cron: '0 9 * * 1'\n"
+        new = old.replace("'0 9 * * 1'", "'17 9 * * *'")
+        self.assertEqual(mg.unread_added(old, new)["alias"], 0)
+        self.assertEqual(yaml.safe_load(new)[True]["schedule"][0]["cron"], "17 9 * * *")  # YAML 1.1 reads "on" as true
+
+    def test_aliases_beside_quoted_text_still_count(self):
+        for value, count in (("permissions: *p", 1), ("- *step", 1), ("<<: *defaults", 1),
+                             ("needs: [*a, *b]", 2), ('"key": *a', 1), ("'key': *a", 1),
+                             ("x: ['*', *b]", 1), ("x: ['it''s', *b]", 1), ('x: ["\\"", *b]', 1)):
+            with self.subTest(value=value):
+                self.assertEqual(mg.aliases("x:\n  " + value + "\n"), count)
+        # A quote that does not close on its line is not trusted to hide anything.
+        self.assertEqual(mg.aliases("x: 'goes on\n  over *a'\ny: *b\n"), 2)
+        # A quote inside a plain scalar opens nothing.
+        self.assertEqual(mg.aliases("x: don't *a\n"), 1)
+        # Anchors are read the same way.
+        self.assertEqual(mg.unread_added(None, "a: &x 1\nb: 'a && b'\n")["anchor"], 1)
+
     def test_an_edit_elsewhere_in_a_workflow_that_has_aliases_passes(self):
         path = ROOT / ".github" / "workflows" / "discovery.yml"
         text = path.read_text(encoding="utf-8")

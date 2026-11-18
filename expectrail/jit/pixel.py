@@ -437,7 +437,7 @@ def named_observations(check: dict, run: dict) -> tuple[dict, list[dict]]:
             # (template_observer.py, ``not-found``): an observation that it is not drawn, not a gap.
             absent = b.get("absent") is True and b.get("box") is None and not b.get("error")
             if (b.get("error") or b.get("box") is None) and not absent:
-                gaps.append({"frame": n, "why": f"the observer gave no answer for {role} {ident}"})
+                gaps.append({"frame": n, "why": _no_answer(role, ident, b)})
                 continue
             if need_engine_box and b.get("promptBox") is None:
                 gaps.append({"frame": n, "why": f"the engine's box of {role} {ident} was not recorded"})
@@ -453,6 +453,16 @@ def named_observations(check: dict, run: dict) -> tuple[dict, list[dict]]:
 
 
 MOTIONS = ("right", "left")
+
+
+def _no_answer(role: str, ident, box: dict) -> str:
+    """Why a box is a gap. A box the no-model sensor did not look at because the engine puts it partly off
+    screen says so (template_observer.py, ``out-of-frame``), so a reader can tell a window that reaches an
+    edge from an observer that failed; the proposer is told those frames beforehand (repro/evidence.py
+    ``edge_frames``)."""
+    if box.get("status") == "out-of-frame":
+        return f"{role} {ident} is partly off screen, and the observer judges only an object it sees whole"
+    return f"the observer gave no answer for {role} {ident}"
 
 
 def _facing_observations(check: dict, run: dict, rows: list, lo: int, hi) -> tuple[dict, list[dict]]:
@@ -478,7 +488,7 @@ def _facing_observations(check: dict, run: dict, rows: list, lo: int, hi) -> tup
         for b in f.get("boxes") or []:
             ident = b.get("id")
             if b.get("error") or (b.get("box") is None and b.get("absent") is not True):
-                gaps.append({"frame": n, "why": f"the observer gave no answer for {role} {ident}"})
+                gaps.append({"frame": n, "why": _no_answer(role, ident, b)})
                 continue
             if b.get("status") != "matched" or not b.get("holdsPoint") or b.get("motion") not in MOTIONS:
                 continue
@@ -625,6 +635,61 @@ def frames_to_ask(check: dict, frames_probed) -> list[int]:
     return [n for n in frames_probed if n >= lo and (hi is None or n <= hi)]
 
 
+# --- the frames a probe's checks need (#605) -----------------------------------------------------
+#
+# The observer's plan (sam_observer.py ``plan_frames``) is every ``every``-th frame of the probe's route. A
+# check judges only the planned frames in its window (``observations``), so the observer is asked only
+# about the planned frames inside the union of the windows of the checks on that probe: ``in_windows``.
+# The in-process replay, the capture, the asking job and the judging job all plan this way, so they
+# reserve, store, ask and judge the same frames. A check without a window judges the whole route, and then
+# the whole plan is asked about (``probe_windows`` gives None).
+
+NO_PLANNED_FRAME = "its window holds no frame the observer would be asked about, so it can judge nothing"
+MAX_WINDOW_FRAME = 1_000_000
+
+
+def checked_window(window, where: str = "a window") -> dict:
+    """A window as the observer plans with it: ``{"fromFrame": n}`` or ``{"fromFrame": n, "toFrame": m}``,
+    whole numbers from 0, or a PixelError. Read from untrusted files too (pixel_jobs.py ``windows_of``)."""
+    def frame(value) -> bool:
+        return isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= MAX_WINDOW_FRAME
+
+    if not isinstance(window, dict) or not {"fromFrame"} <= set(window) <= {"fromFrame", "toFrame"} \
+            or not all(frame(v) for v in window.values()):
+        raise PixelError(f"{where} is not {{fromFrame}} or {{fromFrame, toFrame}} in whole frames from 0")
+    return {k: window[k] for k in ("fromFrame", "toFrame") if k in window}
+
+
+def probe_windows(checks) -> list[dict] | None:
+    """The windows the observer is asked about on a probe whose checks are ``checks``: each distinct window
+    once, in a fixed order, or None when a check has no window (it judges the whole route)."""
+    out = []
+    for check in checks:
+        if not check.get("window"):
+            return None
+        window = checked_window(check["window"], f"the window of {str(check.get('id'))[:60]}")
+        if window not in out:
+            out.append(window)
+    return sorted(out, key=lambda w: (w["fromFrame"], w.get("toFrame", MAX_WINDOW_FRAME + 1)))
+
+
+def in_windows(frames, windows) -> list[int]:
+    """The frames of ``frames`` inside at least one of ``windows`` (None: all of them), in their order."""
+    frames = [int(n) for n in frames]
+    if windows is None:
+        return frames
+    keep = set()
+    for i, window in enumerate(windows):
+        keep.update(frames_to_ask({"window": checked_window(window, f"window {i + 1}")}, frames))
+    return [n for n in frames if n in keep]
+
+
+def planned(observer, route: dict, windows=None) -> list[int]:
+    """The frames ``observer`` asks about on a replay of ``route`` for checks with ``windows``: its plan
+    (``observer.frames``) inside the windows."""
+    return in_windows(observer.frames(route), windows)
+
+
 # At most this many objects of one role are asked about in a frame, one image each; a frame with more of
 # them on screen is not asked about, and is a gap (sam_observer.py). It bounds what a frame can cost.
 MAX_BOXES = 3
@@ -719,12 +784,15 @@ OUTCOMES = ("catch", "no-catch", "needs-review", "not-evaluated")
 NOT_ASKED_PLAYER = "the player is not asked about: no check on this probe names it"
 
 
-def observe(observer, run_dir, route: dict, objects=(), player: bool = True) -> tuple[dict, dict, int]:
+def observe(observer, run_dir, route: dict, objects=(), player: bool = True,
+            windows=None) -> tuple[dict, dict, int]:
     """(setting, run, images) from one observer call, checked as untrusted data: a malformed answer is a
     PixelError, never a pass. ``objects`` are the roles the game has many of (``named``) that the observer
     is also asked about; its run must then carry ``objects[role]`` for each, one row a frame. With
     ``player`` False (``asks_player``: no check on the probe names the player) the observer is not asked
-    about the player, and an answer that says it asked about the player anyway is refused."""
+    about the player, and an answer that says it asked about the player anyway is refused. With
+    ``windows`` (``probe_windows``) the observer is asked only about its planned frames inside them
+    (``planned``), and an answer that says it probed other frames is refused."""
     objects = tuple(objects)
     if not player and not objects:
         raise PixelError("the observer would be asked about nothing: neither the player nor a named object")
@@ -733,6 +801,18 @@ def observe(observer, run_dir, route: dict, objects=(), player: bool = True) -> 
         kwargs["objects"] = objects
     if not player:
         kwargs["player"] = False
+    expected = None
+    if windows is not None:
+        windows = [checked_window(w) for w in windows]
+        try:
+            expected = planned(observer, route, windows)
+        except PixelError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - an observer that cannot plan is not asked
+            raise PixelError(f"the observer could not say which frames it would ask about ({type(exc).__name__})") from exc
+        if not expected:
+            raise PixelError("the windows hold no frame the observer would be asked about")
+        kwargs["windows"] = windows
     try:
         answer = observer(Path(run_dir), route, **kwargs)
     except PixelError:
@@ -750,6 +830,10 @@ def observe(observer, run_dir, route: dict, objects=(), player: bool = True) -> 
     for f in run["frames"]:
         if not isinstance(f, dict) or not isinstance(f.get("frame"), int) or isinstance(f.get("frame"), bool):
             raise PixelError("the observer's answer has a frame without a frame number")
+    if expected is not None and (run.get("framesProbed") != expected
+                                 or [f["frame"] for f in run["frames"]] != expected):
+        raise PixelError(f"the observer was asked about {len(expected)} frames in the checks' windows, and its "
+                         f"answer is about others")
     if not player and any(f.get("asked") for f in run["frames"]):
         raise PixelError("the observer was not asked about the player, and its answer says it asked")
     asked = run.get("objects", {})
@@ -769,6 +853,8 @@ def observe(observer, run_dir, route: dict, objects=(), player: bool = True) -> 
             if not isinstance(boxes, list) or not all(isinstance(b, dict) for b in boxes) or len(boxes) > MAX_BOXES:
                 raise PixelError(f"the observer's answer about {role} at frame {f['frame']} is not a list of "
                                  f"at most {MAX_BOXES} boxes")
+        if expected is not None and [f["frame"] for f in rows] != expected:
+            raise PixelError(f"the observer's answer about {role} is about frames outside the checks' windows")
     return setting, run, images
 
 

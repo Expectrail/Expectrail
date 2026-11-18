@@ -70,7 +70,7 @@ permissions:
 
 jobs:
   sam-probe:
-    environment: main-only
+    environment: spend
     if: ${{ inputs.mode == 'probe' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -206,7 +206,7 @@ jobs:
 
   # Public runs only (the smoke route): a video of a held-out route would be the route itself.
   sam-video:
-    environment: main-only
+    environment: spend
     if: ${{ inputs.mode == 'video-compare' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -312,7 +312,7 @@ jobs:
   # uploaded only after the export scan (with the private set) finds nothing. The private routes
   # appear in the record as counts only; their frames, names and verdict file never leave.
   sam-verify:
-    environment: main-only
+    environment: spend
     if: ${{ inputs.mode == 'verify' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -478,7 +478,7 @@ jobs:
           echo "variants: $variants"
 
   heldout-bench:
-    environment: main-only
+    environment: spend
     needs: heldout-list
     runs-on: ubuntu-24.04
     # Glimmer on one shared replica answers about one frame a second across the parallel jobs.

@@ -1,0 +1,507 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/template-closeout.v1.schema.json",
+  "title": "Frozen no-model sensor closeout evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "baseCommit",
+    "planSha256",
+    "bank",
+    "sensorFiles",
+    "runs",
+    "pixelOnlyProof",
+    "summary",
+    "scope"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.template-closeout/v1"
+    },
+    "baseCommit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "planSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "bank": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rawSha256",
+        "canonicalSha256",
+        "algorithm",
+        "threshold",
+        "templates",
+        "calibrationStatus"
+      ],
+      "properties": {
+        "rawSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "canonicalSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "algorithm": {
+          "type": "string"
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "templates": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "calibrationStatus": {
+          "type": "string"
+        }
+      }
+    },
+    "sensorFiles": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      }
+    },
+    "runs": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "$ref": "#/$defs/run"
+      }
+    },
+    "pixelOnlyProof": {
+      "$ref": "#/$defs/proof"
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runs",
+        "pooledClean",
+        "doneWhen"
+      ],
+      "properties": {
+        "runs": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/summaryRow"
+          }
+        },
+        "pooledClean": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "raw",
+            "newPixels"
+          ],
+          "properties": {
+            "raw": {
+              "$ref": "#/$defs/pooled"
+            },
+            "newPixels": {
+              "$ref": "#/$defs/pooled"
+            }
+          }
+        },
+        "doneWhen": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cleanAgreementPublished",
+            "cleanFalseAlarmsPublished",
+            "invisiblePlayerPixelsOnly",
+            "allMet"
+          ],
+          "properties": {
+            "cleanAgreementPublished": {
+              "type": "boolean"
+            },
+            "cleanFalseAlarmsPublished": {
+              "type": "boolean"
+            },
+            "invisiblePlayerPixelsOnly": {
+              "type": "boolean"
+            },
+            "allMet": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "optIn",
+        "modelCalls",
+        "defaultVerdictChanged",
+        "calibrationOrThresholdsChangedAfterFreeze",
+        "newPixelRule"
+      ],
+      "properties": {
+        "optIn": {
+          "const": true
+        },
+        "modelCalls": {
+          "const": 0
+        },
+        "defaultVerdictChanged": {
+          "const": false
+        },
+        "calibrationOrThresholdsChangedAfterFreeze": {
+          "const": false
+        },
+        "newPixelRule": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frame",
+        "pngSha256",
+        "status",
+        "newPixel",
+        "crossed",
+        "newCrossed",
+        "regionUnknown"
+      ],
+      "properties": {
+        "frame": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pngSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "status": {
+          "enum": [
+            "matched",
+            "not-found",
+            "displaced",
+            "unavailable",
+            "out-of-frame"
+          ]
+        },
+        "newPixel": {
+          "type": "boolean"
+        },
+        "crossed": {
+          "type": "boolean"
+        },
+        "newCrossed": {
+          "type": "boolean"
+        },
+        "regionUnknown": {
+          "type": "boolean"
+        }
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "route",
+        "frames",
+        "sources",
+        "newPixelSelectionSha256"
+      ],
+      "properties": {
+        "name": {
+          "enum": [
+            "clean-a",
+            "clean-b",
+            "invisible-player",
+            "sinking",
+            "fall-through"
+          ]
+        },
+        "route": {
+          "type": "string"
+        },
+        "frames": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/frame"
+          }
+        },
+        "sources": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "newPixelSelectionSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identicalPredictions",
+        "identicalEngineCueRows",
+        "entireTraceRowsIdentical",
+        "cleanCueSha256",
+        "hiddenCueSha256",
+        "frames",
+        "rule"
+      ],
+      "properties": {
+        "identicalPredictions": {
+          "type": "boolean"
+        },
+        "identicalEngineCueRows": {
+          "type": "boolean"
+        },
+        "entireTraceRowsIdentical": {
+          "type": "boolean"
+        },
+        "cleanCueSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "hiddenCueSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "frames": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rule": {
+          "type": "string"
+        }
+      }
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frames",
+        "measured",
+        "counts",
+        "presenceAlarmFrames",
+        "crossedFrames",
+        "alarmFrames",
+        "agreementRate",
+        "alarmRate",
+        "falseAlarmRate",
+        "regionUnavailable"
+      ],
+      "properties": {
+        "frames": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "measured": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "matched",
+            "not-found",
+            "displaced",
+            "unavailable",
+            "out-of-frame"
+          ],
+          "properties": {
+            "matched": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "not-found": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "displaced": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unavailable": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "out-of-frame": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "presenceAlarmFrames": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "crossedFrames": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "alarmFrames": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "agreementRate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "alarmRate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "falseAlarmRate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "regionUnavailable": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "summaryRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "clean",
+        "raw",
+        "newPixels",
+        "pairedRaw",
+        "pairedNewPixels"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "clean": {
+          "type": "boolean"
+        },
+        "raw": {
+          "$ref": "#/$defs/metric"
+        },
+        "newPixels": {
+          "$ref": "#/$defs/metric"
+        },
+        "pairedRaw": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "pairedNewPixels": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "pooled": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frames",
+        "measured",
+        "matched",
+        "alarms",
+        "agreementRate",
+        "falseAlarmRate",
+        "unavailable",
+        "outOfFrame"
+      ],
+      "properties": {
+        "frames": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "measured": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "alarms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "agreementRate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "falseAlarmRate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "unavailable": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "outOfFrame": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

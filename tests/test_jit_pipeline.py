@@ -319,7 +319,7 @@ class ProposeCommandTest(unittest.TestCase):
         text = (Path(__file__).resolve().parents[1] / ".github/workflows/jit.yml").read_text(encoding="utf-8")
         job = text[text.index("  propose:"):text.index("  replay:")]
         self.assertIn('--budget-usd "$BUDGET"', job)
-        self.assertIn("environment: main-only", job)
+        self.assertIn("environment: spend", job)  # main-only plus Sean's approval (#265)
 
 
 class SparkTimeoutTest(unittest.TestCase):

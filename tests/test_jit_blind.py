@@ -212,8 +212,10 @@ class Workflow(unittest.TestCase):
         text = (REPO / ".github/workflows/jit-blind.yml").read_text()
         doc = yaml.safe_load(text)
         self.assertEqual(set(doc.get("on", doc.get(True))), {"workflow_dispatch"})
-        for name in ("verify", "entry"):
-            self.assertEqual(doc["jobs"][name]["environment"], "main-only")
+        # verify holds only the held-out token; entry also holds a model key, so it waits in spend
+        # (main-only plus Sean's approval, #265).
+        self.assertEqual(doc["jobs"]["verify"]["environment"], "main-only")
+        self.assertEqual(doc["jobs"]["entry"]["environment"], "spend")
         self.assertNotIn("secrets", yaml.safe_dump(doc["jobs"]["score"]))
         uploads = [s["with"]["path"] for j in doc["jobs"].values() for s in j["steps"] if "upload-artifact" in str(s.get("uses"))]
         self.assertEqual(uploads, ["public/${{ matrix.id }}/public-rows.json", "runs/blind-score/"])

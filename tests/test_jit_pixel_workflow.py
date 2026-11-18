@@ -68,7 +68,7 @@ class TheJobs(unittest.TestCase):
     def test_the_key_is_held_only_by_jobs_that_run_no_game_in_main_only(self):
         for name, job in self.jobs.items():
             if "secrets." in dumped(job):
-                self.assertEqual(job.get("environment"), "main-only", name)
+                self.assertEqual(job.get("environment"), "spend", name)  # main-only plus Sean's approval (#265)
                 self.assertFalse(engine(job), name)
                 self.assertNotIn("jit.cli run", dumped(job), name)
         holders = sorted(n for n, j in self.jobs.items() if "secrets." in dumped(j))

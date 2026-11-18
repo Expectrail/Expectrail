@@ -9,10 +9,19 @@ namespace Expectrail.Harness
     // The route and the per-game map, as JsonUtility reads them (public fields, no dictionaries).
 
     [Serializable, Preserve]
+    public class RoutePointer
+    {
+        public float[] position;
+        public string button;
+        public bool pressed;
+    }
+
+    [Serializable, Preserve]
     public class RouteEvent
     {
         public int tick;
         public string action;
+        public RoutePointer pointer;
         public bool pressed;
     }
 

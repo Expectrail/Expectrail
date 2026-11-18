@@ -1,0 +1,75 @@
+# The nightly check of the deployed Run it service (#265, "the nightly platform test exercises the
+# same path"). It plays a visitor over HTTP against https://api.expectrail.tech: health, origin
+# refusal and the admission switch. While Run it is closed it starts nothing. Once Sean sets the
+# repository variable RUN_IT_EXPECT_OPEN to true, it starts one recorded sample a day (the three
+# rotate by day of the year), follows it to published, and reads the published status.json,
+# findings.json, evidence viewer and latest.json the way the page does (tools/runit_published.py).
+#
+# No secret, no environment, no model: the samples replay recorded vision answers, and the run is
+# started by the service, which counts it against its daily quota like any visitor's (one of 40).
+# It checks out main's code and reads only the service and the run-it-results branch. Its output is
+# kept as an artifact for 30 days. See docs/run-it-deploy.md.
+name: Run it nightly
+
+on:
+  schedule:
+    # Every day of the week, written 0-6: a quoted cron that ends in * reads as a YAML alias to the merge guard.
+    - cron: '17 9 * * 0-6'
+  workflow_dispatch:
+    inputs:
+      sample:
+        description: When open, the sample to run (empty rotates by day)
+        type: choice
+        default: ""
+        options: ["", clean, fall-through-bug, fall-through-repair]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: run-it-nightly
+  cancel-in-progress: false
+
+jobs:
+  deployed:
+    if: ${{ github.repository == 'Expectrail/Expectrail' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The check uses the standard library only, so nothing is installed.
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - name: Check the deployed service, and follow one run when it is open
+        env:
+          EXPECT_OPEN: ${{ vars.RUN_IT_EXPECT_OPEN }}
+          SAMPLE: ${{ inputs.sample }}
+        run: |
+          set -o pipefail
+          case "${EXPECT_OPEN:-false}" in
+            true|false) ;;
+            *) echo "::error::RUN_IT_EXPECT_OPEN must be true or false"; exit 1 ;;
+          esac
+          samples=(clean fall-through-bug fall-through-repair)
+          if [ -z "$SAMPLE" ]; then
+            SAMPLE="${samples[$(( 10#$(date -u +%j) % 3 ))]}"
+          fi
+          [[ " ${samples[*]} " == *" $SAMPLE "* ]] || { echo "::error::unknown sample"; exit 1; }
+          mkdir -p out
+          echo "expect open: ${EXPECT_OPEN:-false}; sample if open: $SAMPLE" | tee out/run-it-nightly.txt
+          python3 -m tools.runit_api_smoke https://api.expectrail.tech \
+            --expect-open "${EXPECT_OPEN:-false}" --sample "$SAMPLE" --follow --wait 900 --poll 15 \
+            | tee -a out/run-it-nightly.txt
+      - name: Keep the output
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: run-it-nightly
+          path: out/run-it-nightly.txt
+          retention-days: 30
+          if-no-files-found: warn

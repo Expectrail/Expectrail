@@ -22,6 +22,7 @@ camera (``view``) is kept as the recorder wrote it; a sample without one has Non
 """
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import math
@@ -139,12 +140,21 @@ def normalize(trace: dict, route: dict, *, episode_id: str, trace_bytes: bytes |
                         "enemies": collection("enemies", enemies_cap),
                         "projectiles": collection("projectiles", projectiles_cap),
                         "coins": coins, "view": view})
+        if "uiIntegers" in r:
+            values = r["uiIntegers"]
+            if values is not None and (not isinstance(values, list) or len(values) > 32
+                    or any(type(v) is not int or abs(v) > 10**9 for v in values)):
+                raise EpisodeError(f"tick {tick}: malformed uiIntegers")
+            samples[-1]["uiIntegers"] = None if values is None else list(values)
+
     ticks = [s["tick"] for s in samples]
     if ticks != sorted(ticks) or len(set(ticks)) != len(ticks):
         raise EpisodeError("ticks are not strictly increasing")
     gaps = [[a + 1, b - 1] for a, b in zip(ticks, ticks[1:]) if b != a + 1]
     events = derive_events(samples, projectiles_cap, enemies_cap)
-    inputs = [{"tick": int(e["tick"]), "action": str(e["action"]), "pressed": bool(e["pressed"])}
+    # Preserve pointer input as pointer input, never invent an action name for it.
+    inputs = [copy.deepcopy(e) if "pointer" in e else
+              {"tick": int(e["tick"]), "action": str(e["action"]), "pressed": bool(e["pressed"])}
               for e in route.get("events") or []]
     return {
         "format": "expectrail.episode/v1",

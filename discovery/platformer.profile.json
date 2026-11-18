@@ -12,6 +12,9 @@
   "jump",
   "shoot"
  ],
+ "menuActions": [
+  "toggle_pause"
+ ],
  "selectors": {
   "player": "Player",
   "sprite": "Sprite2D",

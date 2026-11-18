@@ -319,6 +319,8 @@ def inputs(doc: dict) -> dict:
         from expectrail.orchestrator.playtest import proposal_inputs
         meaning['propose'] = doc['propose']
         meaning['proposalInputs'] = proposal_inputs(doc)
+    if "heldOut" in doc:
+        meaning["heldOut"] = doc["heldOut"]
     if "autoFix" in doc:
         meaning["autoFix"] = doc["autoFix"]
     return {"requestDigest": digest(meaning), **resolved}

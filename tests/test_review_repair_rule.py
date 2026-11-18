@@ -190,7 +190,7 @@ class ReviewTest(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.tmp = Path(tmp.name)
-        env = mock.patch.dict(os.environ, {"EXPECTRAIL_HELDOUT_DIR": "", "EXPECTRAIL_OBS_PROVIDER": ""})
+        env = mock.patch.dict(os.environ, {"EXPECTRAIL_HELDOUT_DIR": "", "EXPECTRAIL_OBS_PROVIDER": "trace"})
         env.start()
         self.addCleanup(env.stop)
 

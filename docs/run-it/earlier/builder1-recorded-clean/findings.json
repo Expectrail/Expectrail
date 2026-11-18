@@ -1,0 +1,91 @@
+{
+  "format": "expectrail.findings/v0",
+  "decision": "accept",
+  "reasons": [
+    "all 1 checks pass"
+  ],
+  "adapter": "godot",
+  "pullRequest": null,
+  "game": {
+    "path": "game/platformer",
+    "headTree": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280",
+    "baseTree": null
+  },
+  "checksFrom": "head",
+  "checksChanged": {
+    "specs": 0,
+    "routes": 0
+  },
+  "specs": [
+    {
+      "id": "player-stays-above-ground",
+      "sha256": "4829b493e18b84208fcf9790004d822b775d12c3cb3505b4063b3ba2a6585d55",
+      "instruction": "The player never falls through the ground."
+    }
+  ],
+  "drafts": 0,
+  "checkProblems": 0,
+  "observers": {
+    "rule": "both",
+    "visual": {
+      "name": "sam-recorded",
+      "provider": "meta-model-api (recorded 2026-11-13, run 43508479160)",
+      "model": "sam-3.1"
+    }
+  },
+  "routes": [
+    {
+      "name": "smoke",
+      "sha256": "0db750ef7ab79124ccd80c63c03f117d84c579281f7ca487f0877f829660f02d"
+    }
+  ],
+  "counts": {
+    "checks": 1,
+    "passed": 1,
+    "failed": 0,
+    "needsReview": 0
+  },
+  "checks": [
+    {
+      "spec": "player-stays-above-ground",
+      "route": "smoke",
+      "before": null,
+      "after": "pass",
+      "comparison": "INCONCLUSIVE",
+      "findingId": null,
+      "observed": {
+        "before": null,
+        "after": {
+          "engine": "pass",
+          "visual": "pass",
+          "visualAnswerSha256": "854d0f05add35e482964628426c39ff20b0b30021c2baefe447a060cee235d87"
+        }
+      }
+    }
+  ],
+  "findings": [],
+  "heldOut": {
+    "status": "not-used",
+    "routes": 0,
+    "checks": 0,
+    "passed": 0,
+    "failed": 0,
+    "needsReview": 0
+  },
+  "isolation": {
+    "replays": 1,
+    "sandboxed": 1,
+    "required": true,
+    "sandbox": {
+      "tool": "bubblewrap",
+      "version": "0.9.0"
+    },
+    "reasons": []
+  },
+  "reviewPage": "review/index.html",
+  "expectrail": {
+    "version": "0.1.0",
+    "commit": null
+  },
+  "createdAt": "2026-11-13T21:50:34Z"
+}

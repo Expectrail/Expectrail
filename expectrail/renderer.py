@@ -99,8 +99,13 @@ def project_report(root, probe=None):
     return {'recording': name, **report}
 
 
-def drift_problems(root, environment):
-    """All public sample/outside recording files, never any held-out material."""
+def drift_report(root, environment):
+    """Readiness status and problems for public recordings, without judging a replay.
+
+    Distinguish incompatible/unknown environments from corrupt or missing evidence.
+    A local test may skip the former, but the latter fails on every machine.
+    Required capture checks fail for every non-match.
+    """
     from expectrail import recorded
     root = Path(root)
     paths = sorted((root / 'docs/run-it/vision').glob('*.json'))
@@ -126,8 +131,8 @@ def drift_problems(root, environment):
                 except (OSError, ValueError):
                     paths.append(path)
     if not paths:
-        return ['No checked-in vision recordings found; renderer drift was not checked.']
-    problems = []
+        return {'status': 'empty', 'problems': ['No checked-in vision recordings found; renderer drift was not checked.']}
+    problems, statuses = [], []
     for path in paths:
         name = path.relative_to(root).as_posix()
         try:
@@ -136,7 +141,16 @@ def drift_problems(root, environment):
             report = recording_report(recorded.read_recording(path), environment)
         except (OSError, ValueError):
             problems.append(f'{name}: recording unreadable; this machine: {describe(environment)}')
+            statuses.append('unreadable')
             continue
+        statuses.append(report['status'])
         if report['warning']:
             problems.append(f'{name}: {report["message"]} {report["fix"]}')
-    return problems
+    # Broken evidence must not be hidden by a local renderer skip in a mixed bank.
+    status = next((s for s in ('unreadable', 'unavailable', 'unknown', 'mismatch') if s in statuses), 'match')
+    return {'status': status, 'problems': problems}
+
+
+def drift_problems(root, environment):
+    """Compatibility reader: preserve every diagnostic, including legacy provenance."""
+    return drift_report(root, environment)['problems']

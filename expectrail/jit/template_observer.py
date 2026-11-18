@@ -146,7 +146,7 @@ class TemplateSensorObserver:
     def frames(self, route: dict) -> list[int]:
         return plan_frames(route, self.step, self.every, self.first, self.max_frames)
 
-    def most_images(self, route: dict, objects=(), player: bool = True) -> int:
+    def most_images(self, route: dict, objects=(), player: bool = True, windows=None) -> int:
         """Nothing is sent anywhere, so a replay takes no images and the budget reserves nothing for it."""
         self._roles(objects, player)
         return 0
@@ -165,12 +165,15 @@ class TemplateSensorObserver:
             raise pixel.PixelError(f"{NAME} would be asked about nothing: neither the {ROLE} nor a named object")
         return objects
 
-    def __call__(self, run_dir, route: dict, objects=(), player: bool = True) -> dict:
+    def __call__(self, run_dir, route: dict, objects=(), player: bool = True, windows=None) -> dict:
         from agents import template_observations as sensor
 
         objects = self._roles(objects, player)
         run_dir = Path(run_dir)
-        planned = self.frames(route)
+        # Only the planned frames inside the checks' windows are looked at (#605; pixel.py ``planned``).
+        planned = pixel.planned(self, route, windows)
+        if not planned:
+            raise pixel.PixelError("the checks' windows hold no frame this observer would be asked about")
         replay, hashes, on_disk = checked_replay(run_dir, route, planned, self.fps, self.ticks_per_second)
         try:
             trace = json.loads((run_dir / "trace.json").read_text(encoding="utf-8"))

@@ -8,6 +8,10 @@ fixed exactly and "fixed" with a comment only, each with a proposal written by a
 for the model. The **Generated checks** workflow replays them to prove the plumbing. A rehearsal is
 never a result.
 
+[`stand-in/`](stand-in/enemy-walks-backwards-faces-motion/README.md) holds hand-written proposals that
+`jit run --proposal` replays on the real engine to test the keep rule (#286). No model wrote them, and the
+reproduction score gives a record made from one no result.
+
 [`public/`](public/README.md) is the public reproduction bench (issue #285): 24 defects with bug
 reports, and what each one changes in the engine's record on the probes generated checks may use.
 It holds no reproduction rate yet: the workflow mode and the scorer for a live run on it are built

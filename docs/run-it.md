@@ -1,12 +1,12 @@
 # Run it
 
 "Run it" has an operator-dispatched sample workflow and an implemented visitor UI/start service (#265).
-The visitor service is **not deployed**: visitors cannot start runs from expectrail.tech yet. This page describes slice 1 (the workflow, the samples, the recorded vision
+Sean recorded visitor runs through the **deployed service on November 17**; the page checks its present admission switch. See [the live evidence](new-work/2026-11-17-runit-live.md). This page describes slice 1 (the workflow, the samples, the recorded vision
 answers and the same run offline), slice 2 (the page, `docs/run-it/`, and a local stub of the edge
 function) and slice 3 (the edge function, `apps/run-it-edge/`, and a scripted burst).
 
 Deployment: [Sean’s click-by-click launch guide](run-it-deploy.md), including the closed/open smoke checks.
-The visitor service has not yet been deployed.
+Status deadlines and the pinned native-runtime lane: [bounded status reads](run-it-status-bound.md).
 
 ## What a visitor chooses
 
@@ -21,7 +21,7 @@ The intended visitor UI offers one sample id from [`run-it/samples.json`](run-it
 
 ### Replay a recorded fix
 
-Until a live repair is published, the fourth card says “fix not recorded yet”. For this sample, put the original sandboxed repair record at `docs/run-it/repair/repair-run.json`, its winning patch at the attempt path named by the record, relative to the record’s folder, and the saved vision answers at `docs/run-it/vision/recorded-fix.json`. The vision recording must name this sample. After checking those files, Sean sets `repairRecorded` to `true` in the sample manifest and its contract example. Keep the fixer source and the review label from the original run. The schema example is a fixture and cannot supply a site fix.
+Until a live repair is published, the fourth card says “fix not recorded yet”. For this sample, put the original sandboxed repair record at `docs/run-it/repair/repair-run.json`, its winning patch at the attempt path named by the record, relative to the record’s folder, and the saved vision answers at `docs/run-it/vision/recorded-fix.json`. The vision recording must name this sample. After checking those files, Sean sets `repairRecorded` to `true` in the sample manifest and its contract example. Keep the fixer source and the review label from the original run. The schema example is a fixture and cannot supply a site fix. A provider-only `llm-patch` record may instead retain `sandboxed: false` and name `providerOnly: true`, with every invocation counter and its digest bound in the attempt. The reader requires completed token-priced reservations, provider usage within limits and total invocation holds within the aggregate cap. It never relabels this as a sandboxed agent. Fixture/recorded sources, missing or changed counters and stopped/violating counters cannot populate the live card. The sample still runs a fresh gate over the patch; provenance never supplies the verdict. See [remaining repair steps](repair-remaining.md).
 
 `python3 -m expectrail.runit run --sample recorded-fix --out out` checks the seeded bug’s tree and the recorded patch digest. It applies the patch to a temporary copy and verifies it against the bug under the fix-demonstration rule, using recorded answers. Missing answers can leave the fresh job at needs-review. A failing check can reject. The recorded verdict never substitutes for the fresh one.
 
@@ -231,7 +231,9 @@ time.
   other endpoint. `run-it.yml` now names each run `Run it <request id>`, which is how the function
   finds the run it dispatched.
 - **One run at a time:** a start while the last run is queued, running or publishing is refused as
-  busy. A run GitHub has not listed after 5 minutes, or still going after 30, is failed.
+  busy. A successful read that finds no run after 5 minutes, or confirms it still active after 30,
+  ends tracking as failed. An unreadable status keeps its last state and reservation, even past
+  those ages; it cannot manufacture a failure or free another dispatch.
 - **Quotas:** 3 runs per visitor per day (`PER_VISITOR`), counted by a SHA-256 of `VISITOR_SALT` and
   the address (`CF-Connecting-IP`), never the address itself; 40 a day in all (`DAILY_CAP`). Both
   reset at midnight UTC and the refusal says so. An explicit GitHub refusal is not counted and imposes a one-minute dispatch cooldown.
@@ -244,7 +246,11 @@ time.
 - **Closed by default:** it starts runs only with `RUN_IT_OPEN` set to `true` and every setting
   valid; a missing token or salt says "not set up yet".
 - **Status reads are cached** for 10 seconds per run, so visitors polling cannot use up the token's
-  rate limit.
+  rate limit. Concurrent polls share one refresh with a two-second total upstream budget, including
+  JSON bodies. The answer waits at most 250 ms for freshness and then gives the last known state.
+  Network reads stay outside the admission lock; the Durable Object keeps the refresh alive with
+  `waitUntil`. The HTTP smoke allows five seconds per status request within its overall wait.
+  See [the native-runtime tests and limits](run-it-status-bound.md).
 - It never sends a verdict.
 
 ### The scripted burst
@@ -307,8 +313,10 @@ so a stolen token cannot spend without Sean.
 Follow [the deployment guide](run-it-deploy.md). It separates account, token, secret and DNS actions
 from automatic deployment, keeps admissions closed for the first smoke check, and names the remaining
 live evidence. The three original vision recordings already exist; do not spend on recording them
-again to deploy. No workflow change is needed for the first launch. The nightly deployed check,
-deployed burst and first visitor test remain to be done; receipts remain unsigned (#255).
+again to deploy. No workflow change is needed for the first launch. The nightly deployed check is
+`run-it-nightly.yml`; this change did not run it. Initial live visitor runs are recorded in
+[the November 17 work log](new-work/2026-11-17-runit-live.md). A deployed concurrent burst,
+broader visitor usability testing and signed receipts remain; receipts are unsigned (#255).
 
 ### Deployed HTTP smoke
 
@@ -320,3 +328,12 @@ no run. After the launch decision, `--expect-open true` also starts one recorded
 sample and checks progress. Follow the [deployment guide](run-it-deploy.md) for
 the complete closed/open sequence. This HTTP check does not replace the browser
 visitor test.
+
+With `--follow`, an open check waits for the run to be published and then reads
+what a visitor is shown, from the same address the page reads
+(`tools/runit_published.py`): the published `status.json` must name this request
+and sample, have completed, decide what the sample is expected to decide, and have
+answered every vision question from the recording; `findings.json` must agree; the
+evidence viewer must be the viewer's page; `latest.json` must name this run or a
+later one. Anything it cannot read is a FAIL. The scheduled workflow
+`run-it-nightly.yml` runs this every day (see the deployment guide).

@@ -7,6 +7,7 @@ import copy
 import io
 import json
 from pathlib import Path
+from unittest import mock
 
 import jsonschema
 
@@ -214,12 +215,17 @@ class TheGate(GateCase):
         self.assertNotIn("intent", plain)
         self.assertNotIn("repair", plain)
 
+    @mock.patch.dict("os.environ", {"GITHUB_EVENT_PATH": ""})
     def test_the_command_takes_the_intent_and_exits_as_needs_review(self):
+        # Test the explicit local intent; CI-event tightening/refusal has its own fixtures.
         head, base = make_repo(self.tmp / "head"), make_repo(self.tmp / "base")
         args = ["--repo", str(head), "--game", "game/platformer", "--routes", "routes/*.json", "--specs", "specs",
                 "--base", str(base), "--pr", "7", "--head-sha", HEAD, "--base-sha", BASE]
         real = gv.run_gate
-        gv.run_gate = lambda **kw: real(replay=self.replay, **kw)      # the command itself, on the fake replay
+        def engine_control(**kw):
+            kw.update(rule=rec.ENGINE_ONLY, visual=None)  # explicit trace-only intent fixture
+            return real(replay=self.replay, **kw)
+        gv.run_gate = engine_control
         self.addCleanup(setattr, gv, "run_gate", real)
         codes = {}
         for intent in ("fix", "none", "nonsense"):

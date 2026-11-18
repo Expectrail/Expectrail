@@ -184,25 +184,99 @@
     "inputs": {
       "type": "array",
       "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "tick",
-          "action",
-          "pressed"
-        ],
-        "properties": {
-          "tick": {
-            "type": "integer",
-            "minimum": 0
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tick",
+              "action",
+              "pressed"
+            ],
+            "properties": {
+              "tick": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "action": {
+                "type": "string"
+              },
+              "pressed": {
+                "type": "boolean"
+              }
+            }
           },
-          "action": {
-            "type": "string"
-          },
-          "pressed": {
-            "type": "boolean"
+          {
+            "type": "object",
+            "required": [
+              "tick",
+              "pointer"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "tick": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "pointer": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "position"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "position": {
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "items": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1000000
+                        },
+                        "description": "[x,y] in the root game viewport, top-left origin, +x right, +y down. The harness refuses points outside the viewport. Not window/desktop pixels or world coordinates."
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "position",
+                      "button",
+                      "pressed"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "position": {
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "items": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1000000
+                        },
+                        "description": "[x,y] in the root game viewport, top-left origin, +x right, +y down. The harness refuses points outside the viewport. Not window/desktop pixels or world coordinates."
+                      },
+                      "button": {
+                        "enum": [
+                          "left",
+                          "right",
+                          "middle"
+                        ]
+                      },
+                      "pressed": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
           }
-        }
+        ]
       }
     },
     "samples": {
@@ -362,6 +436,19 @@
                 "minItems": 6
               }
             ]
+          },
+          "uiIntegers": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "maxItems": 32,
+            "items": {
+              "type": "integer",
+              "minimum": -1000000000,
+              "maximum": 1000000000
+            },
+            "description": "Optional bounded engine Label state from the raw trace; absent means unknown. Never inferred from coins or another field."
           }
         }
       }

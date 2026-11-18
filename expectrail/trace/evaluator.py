@@ -15,9 +15,10 @@ Every evaluation returns one of five results, with counts:
 - **execution_error**: the evaluation itself failed.
 
 ``relation`` compares one signal between two episodes, a probe and its transformed twin (more air
-presses, faster taps, the mirrored direction). It is the one addition to the specification's eight
-operators: it takes its bound from the game's own behaviour on the twin probe, so it needs no number
-from a person or a healthy reference build.
+presses, faster taps, the mirrored direction). It takes its bound from the game's own behaviour
+on the twin probe, so it needs no number
+from a person or a healthy reference build. ``signal_compare`` compares two signals in one observed
+window, for example a reported UI counter against the collected coins. Undefined readings cannot pass.
 """
 from __future__ import annotations
 
@@ -246,7 +247,7 @@ def _event_response(e: _Eval, ep: dict, op: dict) -> None:
     refractory = _ticks(op["refractorySeconds"], tps, bound="min")
     trig = op["trigger"]
     presses = sorted(i["tick"] for i in ep["inputs"]
-                     if i["action"] == trig["action"] and i["pressed"] == trig["pressed"] and lo <= i["tick"] <= hi)
+                     if i.get("action") == trig["action"] and i["pressed"] == trig["pressed"] and lo <= i["tick"] <= hi)
     responses = sorted(ev["tick"] for ev in ep["events"] if ev["type"] == op["response"])
     used: set[int] = set()
     unmatched = truncated = 0
@@ -360,7 +361,30 @@ def _relation(e: _Eval, left: dict, right: dict, op: dict) -> None:
                f"{op['comparator']} left within {op['toleranceAbs']}")
 
 
+def _signal_compare(e: _Eval, ep: dict, op: dict) -> None:
+    """Compare two measurements of the same observed window, without a guessed numeric bound."""
+    samples, e.complete = _window(e.spec, ep)
+    if not samples:
+        return
+    lo, hi = samples[0]["tick"], samples[-1]["tick"]
+    window = {**ep, "samples": samples,
+              "events": [v for v in ep["events"] if lo <= v["tick"] <= hi]}
+    left = signals.SIGNALS[op["leftSignal"]](window)
+    right = signals.SIGNALS[op["rightSignal"]](window)
+    e.metrics.update(left=left, right=right, toleranceAbs=op["toleranceAbs"])
+    if left is None or right is None:
+        e.applicable = "unknown"
+        e.diagnostics.append("signal_compare needs both signal readings in the observed window")
+        return
+    e.triggered = e.evaluated = 1
+    if not COMPARATORS[op["comparator"]](right, left, op["toleranceAbs"]):
+        e.counterexample = True
+        e.note(ep, lo, hi, f"{op['rightSignal']} is {right}; expected {op['comparator']} "
+               f"{op['leftSignal']} ({left}) within {op['toleranceAbs']}")
+
+
 OPERATORS = {
+    "signal_compare": _signal_compare,
     "min_event_interval": _min_event_interval,
     "max_episode_rise": _max_episode_rise,
     "direction_agreement": _direction_agreement,

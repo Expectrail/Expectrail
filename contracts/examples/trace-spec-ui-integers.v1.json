@@ -1,0 +1,29 @@
+{
+  "format": "expectrail.trace-spec/v1",
+  "id": "test-spec",
+  "origin": "AUTO_TRACE",
+  "statement": "The reported collected-coin counter agrees with the coins removed during this route.",
+  "expectationRef": {
+    "claimId": "test.claim",
+    "authority": "inferred_code"
+  },
+  "scope": {
+    "class": "player"
+  },
+  "window": {
+    "kind": "episode"
+  },
+  "operation": {
+    "type": "signal_compare",
+    "leftSignal": "coins_collected",
+    "rightSignal": "ui_integer_at_end",
+    "comparator": "eq",
+    "toleranceAbs": 0
+  },
+  "evidenceRequirement": {
+    "minimumTriggers": 1,
+    "minimumEvaluations": 1,
+    "completeWindow": true
+  },
+  "guards": []
+}

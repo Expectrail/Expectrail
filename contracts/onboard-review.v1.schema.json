@@ -1,0 +1,262 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/onboard-review.v1.schema.json",
+  "title": "Onboard Review",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "project",
+    "configPath",
+    "configFileSha256",
+    "config",
+    "route",
+    "inputs",
+    "objects",
+    "specs",
+    "timing"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.onboard-review/v1"
+    },
+    "project": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "configPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "configFileSha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "config": {
+      "type": "object"
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "document",
+        "existed"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "document": {
+          "type": "object"
+        },
+        "existed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "objects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "role",
+          "reviewable"
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "reviewable": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "specs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "id",
+          "specSha256",
+          "fileSha256",
+          "objects",
+          "approved"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "specSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "fileSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "objects": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "approved": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "startedAt",
+        "readyAt",
+        "machineSeconds",
+        "humanSeconds",
+        "approvedAt",
+        "person",
+        "state",
+        "stages"
+      ],
+      "properties": {
+        "format": {
+          "const": "expectrail.onboard-timing/v1"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "readyAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "machineSeconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "humanSeconds": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "approvedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "person": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "enum": [
+            "review-ready",
+            "approved",
+            "declined"
+          ]
+        },
+        "stages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "status",
+              "seconds",
+              "reason"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "status": {
+                "enum": [
+                  "completed",
+                  "skipped",
+                  "failed"
+                ]
+              },
+              "seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

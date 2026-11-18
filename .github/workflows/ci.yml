@@ -33,6 +33,14 @@ jobs:
       - run: python -m pip install -r requirements-build.txt -r requirements-dev.txt
       - name: Fetch the baseline commit (the discovery freeze and the mutation registration are checked against it)
         run: git fetch --no-tags --depth=1 origin c169a5e0da304773587304ed47bc8aabcec80da7
+      # The temporary folder is reached through a link, as every temporary folder is on macOS
+      # (/var is a link to /private/var). A test or a check that compares two spellings of one
+      # folder fails here instead of on a Mac (#378, tests/test_linked_paths.py).
+      - name: Temporary folder behind a link, as on macOS
+        run: |
+          mkdir -p "$RUNNER_TEMP/private-tmp"
+          ln -s "$RUNNER_TEMP/private-tmp" "$RUNNER_TEMP/linked-tmp"
+          echo "TMPDIR=$RUNNER_TEMP/linked-tmp" >> "$GITHUB_ENV"
       - env:
           EXPECTRAIL_PACKAGE_TESTS: required
           EXPECTRAIL_GATEWAY_TESTS: required
@@ -434,6 +442,9 @@ jobs:
           retention-days: 30
 
   agents-gate1:
+    env:
+      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace  
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -580,6 +591,9 @@ jobs:
   # set (it used to, on same-repository branches: OBAAF-GHA-001). The verifier uses the labeled
   # interim fixture, as it always has on forks; agents-harness-private checks the private routes.
   agents-harness-verify:
+    env:
+      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -714,6 +728,8 @@ jobs:
     timeout-minutes: 30
     env:
       HELDOUT_TOKEN_SET: ${{ secrets.HELDOUT_TOKEN != '' }}
+            # Engine-only diagnostic for the private routes. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace
     steps:
       - name: Skip without the held-out token (forks)
         if: env.HELDOUT_TOKEN_SET != 'true'
@@ -777,6 +793,9 @@ jobs:
         run: python -m agents.export_scan bench docs README.md apps --private heldout-set
 
   agents-daily-offline:
+    env:
+      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || github.event_name == 'push' }}
@@ -804,6 +823,9 @@ jobs:
   # Shows bug reports becoming unapproved draft specs, check-weakening requests refused, and the
   # morning report's "Feedback in" / "Refused or blocked" sections. No Meta spend.
   feedback-offline:
+    env:
+      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -1005,6 +1027,9 @@ jobs:
 
   # Gate 2 bench compare: Expectrail arm + Muse screenshot judge (fixture log offline).
   agents-bench-compare:
+    env:
+      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -1035,7 +1060,7 @@ jobs:
 
   # Live Muse screenshot judge vs Expectrail (Gate 2). Manual — spends Meta credit.
   agents-bench-compare-live:
-    environment: main-only
+    environment: spend
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -1087,7 +1112,7 @@ jobs:
   # Oct 29 Fix+Trust film: Muse in bubblewrap + poison + Godot replay + held-out + Ed25519.
   # Manual only — each run spends Meta credit. Set META_API_KEY (+ HELDOUT_TOKEN for private set).
   agents-oct29-film:
-    environment: main-only
+    environment: spend
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -1202,7 +1227,7 @@ jobs:
   # Playbook item 1 (lighter film): live Muse Code → verifier accept. Manual only.
   # Prefer agents-oct29-film for the Fix+Trust camera run.
   agents-live-muse:
-    environment: main-only
+    environment: spend
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     # secrets is not allowed in a job-level if; check it in the first step instead.

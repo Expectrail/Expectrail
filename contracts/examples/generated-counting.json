@@ -1,0 +1,503 @@
+{
+  "format": "expectrail.generated-counting/v1",
+  "sourceRun": {
+    "format": "expectrail.jit-run/v1",
+    "runId": "generated",
+    "advisory": true,
+    "provenance": {
+      "generatorVersion": "0.1.0",
+      "modelVersion": "muse-spark-1.3"
+    },
+    "status": "complete",
+    "reason": null,
+    "inputs": {
+      "patchSha256": "cd11e09f47aebbc823f2c6e4968876698b9c8d5332e81392f4baec03473f532f",
+      "reportSha256": "5836002ada9ec0d526521e4447e45ddecb3ab47f639f382f0f90473050f0f7a3",
+      "basePatchSha256": [
+        "cd11e09f47aebbc823f2c6e4968876698b9c8d5332e81392f4baec03473f532f"
+      ],
+      "profileSha256": "7ad60a7ddc662fab9bcade5b743a34278a3b1a3f14af59a23f6e38a902fe65ec",
+      "model": "muse-spark-1.3",
+      "promptSha256": "6f28aa4d582842e859a1d4654922df8fa18d72d71ceb194aefcdf3014be3de36"
+    },
+    "settings": {
+      "reps": 3,
+      "variantLimit": 8,
+      "budgetUsd": 2.0,
+      "offer": "baseline",
+      "candidate": "withheld"
+    },
+    "diffMap": {
+      "files": [],
+      "claims": [],
+      "probeIds": [
+        "wait-long",
+        "hold-right",
+        "hold-left",
+        "reverse",
+        "jump-w0-x1",
+        "jump-w0-x2",
+        "jump-w0-x8",
+        "jump-w40-x1",
+        "jump-w40-x2",
+        "jump-w40-x8",
+        "jump-w80-x1",
+        "jump-w80-x2",
+        "jump-w80-x8",
+        "jump-w120-x1",
+        "jump-w120-x2",
+        "jump-w120-x8",
+        "shoot-right-every48",
+        "shoot-right-every12",
+        "shoot-left-every48",
+        "shoot-left-every12",
+        "move-fire-right",
+        "move-fire-left",
+        "jump-l40-x1",
+        "jump-l40-x2",
+        "jump-l40-x8"
+      ],
+      "allProbes": true
+    },
+    "proposed": [
+      {
+        "spec": {
+          "format": "expectrail.trace-spec/v1",
+          "id": "jit-no-extra-air-jumps",
+          "origin": "AUTO_DIFF",
+          "statement": "Eight presses in the air give no more air jumps than two.",
+          "expectationRef": {
+            "claimId": "player.jump",
+            "authority": "model_prior"
+          },
+          "scope": {
+            "class": "player"
+          },
+          "window": {
+            "kind": "episode"
+          },
+          "operation": {
+            "type": "relation",
+            "signal": "air_jumps",
+            "comparator": "lte",
+            "toleranceAbs": 0,
+            "left": "jump-w0-x2",
+            "right": "jump-w0-x8"
+          },
+          "evidenceRequirement": {
+            "minimumTriggers": 1,
+            "minimumEvaluations": 1,
+            "completeWindow": true
+          },
+          "guards": []
+        },
+        "applies": {
+          "kind": "pair",
+          "left": "jump-w0-x2",
+          "right": "jump-w0-x8"
+        },
+        "probeIds": [
+          "jump-w0-x2",
+          "jump-w0-x8"
+        ]
+      },
+      {
+        "spec": {
+          "format": "expectrail.trace-spec/v1",
+          "id": "jit-always-passes",
+          "origin": "AUTO_DIFF",
+          "statement": "The player rises less than 100000 px.",
+          "expectationRef": {
+            "claimId": "player.jump",
+            "authority": "model_prior"
+          },
+          "scope": {
+            "class": "player"
+          },
+          "window": {
+            "kind": "episode"
+          },
+          "operation": {
+            "type": "max_episode_rise",
+            "maxPx": 100000
+          },
+          "evidenceRequirement": {
+            "minimumTriggers": 1,
+            "minimumEvaluations": 1,
+            "completeWindow": true
+          },
+          "guards": []
+        },
+        "applies": {
+          "kind": "probes",
+          "ids": [
+            "jump-w0-x8"
+          ]
+        },
+        "probeIds": [
+          "jump-w0-x8"
+        ]
+      },
+      {
+        "spec": {
+          "format": "expectrail.trace-spec/v1",
+          "id": "jit-miscalibrated",
+          "origin": "AUTO_DIFF",
+          "statement": "The player never rises more than 1 px.",
+          "expectationRef": {
+            "claimId": "player.jump",
+            "authority": "model_prior"
+          },
+          "scope": {
+            "class": "player"
+          },
+          "window": {
+            "kind": "episode"
+          },
+          "operation": {
+            "type": "max_episode_rise",
+            "maxPx": 1
+          },
+          "evidenceRequirement": {
+            "minimumTriggers": 1,
+            "minimumEvaluations": 1,
+            "completeWindow": true
+          },
+          "guards": []
+        },
+        "applies": {
+          "kind": "probes",
+          "ids": [
+            "jump-w0-x8"
+          ]
+        },
+        "probeIds": [
+          "jump-w0-x8"
+        ]
+      }
+    ],
+    "probes": [
+      {
+        "id": "jump-w0-x2",
+        "source": "library",
+        "routeSha256": "b6cca17fb249a7685d9b7a1d01ed02e04251c0b1c343f96c145c5f6001bfe128"
+      },
+      {
+        "id": "jump-w0-x8",
+        "source": "library",
+        "routeSha256": "209cf72abe2851ee92b765d6cbb4fcda1bc032bebd259b7aa5de64e5e3500293"
+      }
+    ],
+    "variants": [
+      {
+        "id": "base",
+        "kind": "base",
+        "file": "",
+        "line": 0,
+        "patchSha256": "cd11e09f47aebbc823f2c6e4968876698b9c8d5332e81392f4baec03473f532f"
+      },
+      {
+        "id": "v-variant-airjump-moved",
+        "kind": "operator",
+        "file": "",
+        "line": 0,
+        "patchSha256": "cd11e09f47aebbc823f2c6e4968876698b9c8d5332e81392f4baec03473f532f"
+      }
+    ],
+    "validity": [
+      {
+        "specId": "jit-no-extra-air-jumps",
+        "valid": true,
+        "reference": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "killed": [
+          "base",
+          "v-variant-airjump-moved"
+        ],
+        "reasons": [],
+        "candidate": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "outcome": "no-catch",
+        "base": [
+          "fail",
+          "fail",
+          "fail"
+        ],
+        "variantResults": {
+          "base": [
+            "fail",
+            "fail",
+            "fail"
+          ],
+          "v-variant-airjump-moved": [
+            "fail",
+            "fail",
+            "fail"
+          ]
+        },
+        "exercised": {
+          "reference": [
+            true,
+            true,
+            true
+          ],
+          "base": [
+            true,
+            true,
+            true
+          ],
+          "candidate": [
+            true,
+            true,
+            true
+          ],
+          "v-variant-airjump-moved": [
+            true,
+            true,
+            true
+          ]
+        }
+      },
+      {
+        "specId": "jit-always-passes",
+        "valid": false,
+        "reference": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "killed": [],
+        "reasons": [
+          "killed no near-miss variant"
+        ],
+        "candidate": [],
+        "outcome": "not-evaluated",
+        "base": [
+          "pass"
+        ],
+        "variantResults": {
+          "base": [
+            "pass"
+          ],
+          "v-variant-airjump-moved": [
+            "pass"
+          ]
+        },
+        "exercised": {
+          "reference": [
+            true,
+            true,
+            true
+          ],
+          "base": [
+            true
+          ],
+          "candidate": [],
+          "v-variant-airjump-moved": [
+            true
+          ]
+        }
+      },
+      {
+        "specId": "jit-miscalibrated",
+        "valid": false,
+        "reference": [
+          "fail"
+        ],
+        "killed": [],
+        "reasons": [
+          "did not pass on the reference: fail"
+        ],
+        "candidate": [],
+        "outcome": "not-evaluated",
+        "base": [],
+        "variantResults": {},
+        "exercised": {
+          "reference": [
+            true
+          ],
+          "base": [],
+          "candidate": [],
+          "v-variant-airjump-moved": []
+        }
+      }
+    ],
+    "catches": [],
+    "counts": {
+      "proposed": 3,
+      "valid": 1,
+      "strong": 0,
+      "weak": 0
+    },
+    "spend": {
+      "usd": 0.009,
+      "capUsd": 2.0,
+      "sparkUsd": 0.009,
+      "replayUsd": 0.0,
+      "samUsd": 0.0,
+      "samImages": 0,
+      "replays": 26,
+      "promptTokens": 1000,
+      "completionTokens": 2000,
+      "prices": {
+        "sparkUsdPerMTokIn": 1.0,
+        "sparkUsdPerMTokOut": 4.0,
+        "runnerUsdPerMinute": 0.008,
+        "samUsdPerImage": 0.0025,
+        "source": "assumed"
+      }
+    },
+    "diagnostics": []
+  },
+  "bugReport": "Infinite jump while in the air.",
+  "sourceReceipt": null,
+  "assessment": {
+    "runSha256": "830f909860f297e00e6f4d708a74d7e99955c79e2a62b1af4d8a2e582070ccfa",
+    "receiptSha256": null,
+    "rows": [
+      {
+        "specId": "jit-no-extra-air-jumps",
+        "requirementSource": "bug-report",
+        "predicate": {
+          "type": "relation",
+          "signal": "air_jumps",
+          "comparator": "lte",
+          "toleranceAbs": 0,
+          "left": "jump-w0-x2",
+          "right": "jump-w0-x8"
+        },
+        "probeIds": [
+          "jump-w0-x2",
+          "jump-w0-x8"
+        ],
+        "routeSha256": [
+          "b6cca17fb249a7685d9b7a1d01ed02e04251c0b1c343f96c145c5f6001bfe128",
+          "209cf72abe2851ee92b765d6cbb4fcda1bc032bebd259b7aa5de64e5e3500293"
+        ],
+        "reference": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "base": [
+          "fail",
+          "fail",
+          "fail"
+        ],
+        "candidate": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "killed": [
+          "base",
+          "v-variant-airjump-moved"
+        ],
+        "rules": [
+          true,
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "counting": false,
+        "outcome": "pass",
+        "reasons": [
+          "rule-5: trusted producer/replayer and input binding not authenticated"
+        ],
+        "model": "muse-spark-1.3",
+        "modelVersion": "muse-spark-1.3",
+        "generatorVersion": "0.1.0"
+      },
+      {
+        "specId": "jit-always-passes",
+        "requirementSource": "bug-report",
+        "predicate": {
+          "type": "max_episode_rise",
+          "maxPx": 100000
+        },
+        "probeIds": [
+          "jump-w0-x8"
+        ],
+        "routeSha256": [
+          "209cf72abe2851ee92b765d6cbb4fcda1bc032bebd259b7aa5de64e5e3500293"
+        ],
+        "reference": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "base": [
+          "pass"
+        ],
+        "candidate": [],
+        "killed": [],
+        "rules": [
+          false,
+          false,
+          true,
+          false,
+          false,
+          true
+        ],
+        "counting": false,
+        "outcome": "unknown",
+        "reasons": [
+          "rule-1: base-only reproduction/clean 3-of-3 missing",
+          "rule-2: no independent near miss killed",
+          "rule-4: coverage or stability missing",
+          "rule-5: trusted producer/replayer and input binding not authenticated"
+        ],
+        "model": "muse-spark-1.3",
+        "modelVersion": "muse-spark-1.3",
+        "generatorVersion": "0.1.0"
+      },
+      {
+        "specId": "jit-miscalibrated",
+        "requirementSource": "bug-report",
+        "predicate": {
+          "type": "max_episode_rise",
+          "maxPx": 1
+        },
+        "probeIds": [
+          "jump-w0-x8"
+        ],
+        "routeSha256": [
+          "209cf72abe2851ee92b765d6cbb4fcda1bc032bebd259b7aa5de64e5e3500293"
+        ],
+        "reference": [
+          "fail"
+        ],
+        "base": [],
+        "candidate": [],
+        "killed": [],
+        "rules": [
+          false,
+          false,
+          true,
+          false,
+          false,
+          true
+        ],
+        "counting": false,
+        "outcome": "unknown",
+        "reasons": [
+          "rule-1: base-only reproduction/clean 3-of-3 missing",
+          "rule-2: no independent near miss killed",
+          "rule-4: coverage or stability missing",
+          "rule-5: trusted producer/replayer and input binding not authenticated"
+        ],
+        "model": "muse-spark-1.3",
+        "modelVersion": "muse-spark-1.3",
+        "generatorVersion": "0.1.0"
+      }
+    ]
+  }
+}

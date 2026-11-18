@@ -221,7 +221,8 @@ def _load_sam_provider() -> Callable[..., dict]:
     ``spec`` (prompts, window, sampling); the trace itself is unused there.
     """
     try:
-        mod = importlib.import_module("agents.sam_observations")
+        # Relative, so an installed copy loads its own bundled module, never a foreign `agents` (#614).
+        mod = importlib.import_module(".sam_observations", __package__)
     except ImportError as exc:
         raise SystemExit(
             f"{PROVIDER_ENV}=sam but agents.sam_observations is not installed "
@@ -300,7 +301,7 @@ def from_trace(
     if drill:
         raise SystemExit(f"sam observations unavailable: {drill}")
     sam = _load_sam_provider()
-    sam_error = getattr(importlib.import_module("agents.sam_observations"), "SamError", None)
+    sam_error = getattr(importlib.import_module(".sam_observations", __package__), "SamError", None)
     catch = sam_error if isinstance(sam_error, type) and issubclass(sam_error, Exception) else ()
 
     kwargs = {
