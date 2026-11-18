@@ -310,6 +310,17 @@ catalog, and a probe the model writes is compiled with the catalog alone (`offer
 under this setting with a profile that names no menu action generates nothing. Records say `menu` as the
 source of such a probe. Every other setting's prompt and probe list are unchanged. Not yet run live.
 
+**What the proposer is shown on a menu probe** (November 18, 2026, issue #285). The harness records the
+counter only when asked, and until this change the measure step and the evidence asked on no replay: on
+Godot 4.7.2 the measure step read `ui_integer_at_end` as no reading on every menu probe, clean and bug
+build alike, so the prompt showed nothing about the counter where it is drawn. Now the measure step's and
+the evidence's replays of a menu probe, and of no other probe, ask for it (`offer.replay_options`, the
+harness's `ui_integers`). On the real engine, `hold-right-then-toggle-pause` measures 5 on the clean game,
+10 on `coin-counts-twice` and 0 on `coin-counter-stuck` (`tests/test_jit_menu_reading.py`), and its
+evidence on `coin-counts-twice` now shows `uiIntegers` differing from tick 310 and the signal reading 5
+against 10. These are readings, not a reproduction rate; no model was asked. Every other probe's replays
+are as before.
+
 **What each defect changes on the screen** (November 12, 2026; [`expectrail/repro/screen.py`](../expectrail/repro/screen.py),
 `expectrail.repro-screen/v1`). Every library probe was replayed with its frames captured, on the
 clean game twice and on each defect build once (650 replays on the real engine, in a cloud

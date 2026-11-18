@@ -129,7 +129,7 @@ def capture_probe(profile: dict, probe: dict, patches: list[str], work: Path, ru
     """Replay one probe with frames. ({"frames": [sha256 per frame], "fields": {name: [value per tick]},
     "dir": the folder that holds frames/, "renderer": str | None}, replays made again)."""
     from expectrail.discovery.route_compiler import compile_route
-    from expectrail.jit.offer import route_actions
+    from expectrail.jit.offer import replay_options, route_actions
 
     route = compile_route(probe["program"], name=probe["id"], description=probe["description"],
                           actions=route_actions(profile, probe))
@@ -142,7 +142,7 @@ def capture_probe(profile: dict, probe: dict, patches: list[str], work: Path, ru
         if run_dir.exists():
             shutil.rmtree(run_dir)
         try:
-            runner(route_path, run_dir, patches=[Path(x) for x in patches])
+            runner(route_path, run_dir, patches=[Path(x) for x in patches], **replay_options(probe))
             break
         except (Exception, SystemExit) as exc:  # noqa: BLE001 - the harness exits when the engine fails
             if attempt == ATTEMPTS:
