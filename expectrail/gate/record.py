@@ -360,8 +360,13 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
         reasons.append(f"{held['failed']} held-out checks fail after the change")
     if reasons:
         return "reject", reasons
-    if not counts["checks"] and not counting:
+    if not counts["checks"]:
+        # Sean, November 18 (#600): counting generated checks may demonstrate a repair, but they never
+        # clear a change alone. An accept needs at least one approved check to have run.
         first = [_not_demonstrated(counts, repair, base_judged, undecided_after_failure)] if unverified else []
+        if counting:
+            return "needs-review", first + [
+                f"no approved checks ran; {len(counting)} counting generated check(s) cannot clear a change alone"]
         return "needs-review", first + ["no checks ran"]
     if required_routes_missing:
         reasons.append(f"not-exercised: {required_routes_missing} required route(s) were not selected or run")

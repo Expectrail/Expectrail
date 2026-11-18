@@ -923,6 +923,11 @@ text can opt itself into counting. The shared `record.decide(..., generated=proo
 evidence to an existing gate result and calls that same decision rule. It replays nothing and
 implements no second gate, fixer or retry rule. The protected gate verifier and agent verifier files are unchanged.
 
+Counting generated checks never clear a change alone (Sean's decision, November 18, #600): when no
+approved check ran, the decision stays `needs-review` for intent `none` and for intent `fix`
+("no approved checks ran; … cannot clear a change alone"). With at least one approved check run, a
+counting check may demonstrate a fix's repair (rule 1).
+
 | Rule | Mechanical evidence | Executable test in `tests.test_jit_rules.CountingRules271` |
 | --- | --- | --- |
 | 1. Base alone | Candidate withheld; exact three clean passes and three base failures; complete run. Original prompt and all inputs are digest-bound | `test_rule_1_base_alone_and_three_of_three_clean_and_bug` |

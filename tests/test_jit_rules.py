@@ -478,8 +478,9 @@ class CountingRules271(unittest.TestCase):
         got,_=self.proof(doc);self.assertFalse(self.row(got)['rules'][5]);self.assertFalse(self.row(got)['counting'])
 
     def test_counting_alone_cannot_clear_fix_without_rule_1(self):
+        # With one approved check run, a counting check may demonstrate the repair (rule 1 met).
         from expectrail.jit import counting
-        counts={'checks':0,'passed':0,'failed':0,'needsReview':0}
+        counts={'checks':1,'passed':1,'failed':0,'needsReview':0}
         held={'status':'not-used','routes':0,'checks':0,'passed':0,'failed':0,'needsReview':0}
         for candidate,want in [('withheld','accept'),('shown','needs-review')]:
             doc=copy.deepcopy(self.doc);doc['settings']['candidate']=candidate
@@ -487,6 +488,20 @@ class CountingRules271(unittest.TestCase):
             decision,reasons=rec.decide(counts,held,intent='fix',generated=proof)
             self.assertEqual(decision,want)
             self.assertIn('repair', ' '.join(reasons))
+
+    def test_counting_checks_never_clear_a_change_when_no_approved_check_ran(self):
+        # Sean, November 18 (#600): no to both. Zero approved checks stays needs-review for intent
+        # none and for intent fix, however many counting generated checks pass.
+        from expectrail.jit import counting
+        counts={'checks':0,'passed':0,'failed':0,'needsReview':0}
+        held={'status':'not-used','routes':0,'checks':0,'passed':0,'failed':0,'needsReview':0}
+        envelope,context=self.proof();proof=counting.read(envelope,trust=context)
+        for intent in ('none','fix'):
+            with self.subTest(intent=intent):
+                decision,reasons=rec.decide(counts,held,intent=intent,generated=proof)
+                self.assertEqual(decision,'needs-review')
+                self.assertIn('no approved checks ran',' '.join(reasons))
+                self.assertIn('cannot clear a change alone',' '.join(reasons))
 
     def test_authenticated_counting_catch_rejects_and_public_failure_still_vetoes(self):
         from expectrail.jit import counting
