@@ -7,5 +7,4 @@ PREFIX = "expectrail"
 
 def format_ids(name: str, version: str = "v0") -> tuple[str, ...]:
     """The format IDs a document of this kind may carry: only the current one."""
-    return ((f"{PREFIX}.{name}/v0", f"{PREFIX}.{name}/v1") if name == "observations" and version == "v0"
-            else (f"{PREFIX}.{name}/{version}",))
+    return (f"{PREFIX}.{name}/{version}",)
