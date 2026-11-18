@@ -40,15 +40,17 @@ class CounterGame(JitGame):
     """JitGame, plus coins and a counter label. The player picks up one coin every 30 ticks it moves; once a
     route has pressed toggle_pause, the last rows carry the pause menu's one integer label: the coins picked up,
     or 0 on a build with ``counter-stuck``. A route that never opens the menu has no label at all. Like the
-    harness, the labels are recorded only when a check evaluated on the replay reads them."""
+    harness, the labels are recorded only when asked: by a check evaluated on the replay that reads them, or by
+    name (``ui_integers``, what the measure step and the evidence ask on a menu probe)."""
 
-    def __call__(self, route_path, run_dir, patches=(), trace_specs=()):
+    def __call__(self, route_path, run_dir, patches=(), trace_specs=(), ui_integers=False):
         out = super().__call__(route_path, run_dir, patches=[p for p in patches if Path(p).stem != "counter-stuck"])
         stuck = any(Path(p).stem == "counter-stuck" for p in patches)
         route = json.loads(Path(route_path).read_text())
         paused = [e["tick"] for e in route["events"] if e["action"] == "toggle_pause" and e["pressed"]]
         trace_path = Path(run_dir) / "trace.json"
         trace = json.loads(trace_path.read_text())
+        asked = ui_integers or needs_ui_integers(trace_specs)
         coins, last_x = [[i, 600.0 + 20 * i] for i in range(40)], None
         for row in trace["rows"]:
             x = row["player"][0]
@@ -56,9 +58,9 @@ class CounterGame(JitGame):
                 coins.pop()
             last_x = x
             row["coins"] = [list(c) for c in coins]
-            if needs_ui_integers(trace_specs):
+            if asked:
                 row["uiIntegers"] = []
-            if paused and row["tick"] > paused[0] + 30 and needs_ui_integers(trace_specs):
+            if paused and row["tick"] > paused[0] + 30 and asked:
                 row["uiIntegers"] = [0 if stuck else 40 - len(coins)]
         trace_path.write_text(json.dumps(trace))
         return out

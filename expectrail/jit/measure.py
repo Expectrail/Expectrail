@@ -29,7 +29,7 @@ import shutil
 from pathlib import Path
 
 from expectrail.discovery.route_compiler import compile_route
-from expectrail.jit.offer import route_actions
+from expectrail.jit.offer import replay_options, route_actions
 from expectrail.trace.normalize import from_run_dir
 from expectrail.trace.signals import SIGNALS, summary
 
@@ -74,7 +74,7 @@ def measure(profile: dict, base_patches: list[Path], out: Path, *, probes: list[
             run_dir = work / name / p["id"]
             if run_dir.exists():
                 shutil.rmtree(run_dir)
-            runner(route_path, run_dir, patches=patches)
+            runner(route_path, run_dir, patches=patches, **replay_options(p))
             row[name] = _clean(summary(from_run_dir(run_dir, route, episode_id=f"measure-{name}-{p['id']}")))
         table[p["id"]] = row
     doc = {"format": FORMAT, "basePatchSha256": base_digests(base_patches), "runsPerBuild": 1, "probes": table}

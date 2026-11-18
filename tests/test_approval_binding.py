@@ -171,7 +171,7 @@ class GateTest(unittest.TestCase):
 
     def gate(self, head: Path) -> dict:
         with contextlib.redirect_stdout(io.StringIO()):
-            return gv.run_gate(repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
+            return gv.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
                                out=self.tmp / "out", work=self.tmp / "work", base=None, heldout=None,
                                pr={"number": 7, "headSha": "1" * 40, "baseSha": None}, replay=FakeReplay())
 

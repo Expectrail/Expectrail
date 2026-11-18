@@ -30,6 +30,17 @@ def _sha(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
+# Historical trace fixtures: explicitly select the diagnostic benchmark control.
+def setUpModule():
+    global _trace_control
+    _trace_control = mock.patch.dict("os.environ", {"EXPECTRAIL_OBS_PROVIDER": "trace"})
+    _trace_control.start()
+
+
+def tearDownModule():
+    _trace_control.stop()
+
+
 class FakeRunner:
     """harness.run.run's contract. ``script(route, n)`` gives the n-th replay of a route (from 1): a
     label (the frames and trace are a function of it, so equal labels make identical replays) or

@@ -34,7 +34,8 @@ baseline stays what it was:
   and is refused unless the game's ``project.godot`` declares it. Only the menu probes press it: the
   proposer's own probes are compiled with the action catalog as before (``route_actions``), and the
   prompt's action list is the catalog. The measure step measures the menu probes and makes their
-  evidence like any other probe's. A profile with no ``menuActions`` cannot be run under this setting.
+  evidence like any other probe's, except that those replays ask the harness for the UI integers
+  (``replay_options``), so the proposer is shown the counter on them. A profile with no ``menuActions`` cannot be run under this setting.
 - ``signals-reach-evidence-pixel`` (#286): everything the evidence setting offers, and **pixel checks**
   (expectrail/jit/pixel.py): the proposer may also write checks about what is drawn, in the closed
   shape ``expectrail.pixel-check/v1``, over the objects the project binds and only with the predicates a
@@ -193,6 +194,16 @@ def route_actions(profile: dict, probe: dict) -> list[str]:
         names = list(profile["actions"])
         return names + [a for a in profile.get("menuActions") or [] if a not in names]
     return list(profile["actions"])
+
+
+def replay_options(probe: dict) -> dict:
+    """What the measure step's and the evidence's replays of ``probe`` ask the harness for beyond the route.
+
+    A menu probe asks for the UI integers (``harness.run``'s ``ui_integers``): it is there so a check can read
+    what the menu draws, and without the reading the proposer is shown nothing about the counter on it. No
+    other probe asks; a check's own replays ask when the check reads the counter (``needs_ui_integers``).
+    Like ``route_actions``, for probes this module made."""
+    return {"ui_integers": True} if probe.get("family") == MENU_FAMILY else {}
 
 
 def attach_evidence(probes: list[dict], path, base: list, offer: str) -> list[str]:

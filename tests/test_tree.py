@@ -273,7 +273,7 @@ class GateTest(unittest.TestCase):
 
     def gate(self, repo: Path, **kwargs) -> dict:
         with contextlib.redirect_stdout(io.StringIO()):
-            return gv.run_gate(repo=repo, game="game/platformer", routes=["routes/*.json"], specs="specs",
+            return gv.run_gate(rule=kwargs.pop("rule", "engine-only"), repo=repo, game="game/platformer", routes=["routes/*.json"], specs="specs",
                                out=kwargs.pop("out", self.tmp / "out"), work=kwargs.pop("work", self.tmp / "work"),
                                replay=self.replay, **kwargs)
 
