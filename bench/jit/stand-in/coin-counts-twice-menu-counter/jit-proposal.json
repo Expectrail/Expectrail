@@ -1,0 +1,139 @@
+{
+ "format": "expectrail.jit-proposal/v0",
+ "patchSha256": null,
+ "model": "hand-written-stand-in",
+ "offer": "signals-reach-evidence-menu",
+ "error": null,
+ "probes": [],
+ "candidates": [
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-menu-counter-hold-right-then-toggle-pause",
+    "origin": "AUTO_DIFF",
+    "statement": "After this walk the pause menu's coin counter shows the number of coins the player picked up.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "signal_compare",
+     "leftSignal": "coins_collected",
+     "rightSignal": "ui_integer_at_end",
+     "comparator": "eq",
+     "toleranceAbs": 0
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "hold-right-then-toggle-pause"
+    ]
+   },
+   "source": "jit"
+  },
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-menu-counter-hold-left-then-toggle-pause",
+    "origin": "AUTO_DIFF",
+    "statement": "After this walk the pause menu's coin counter shows the number of coins the player picked up.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "signal_compare",
+     "leftSignal": "coins_collected",
+     "rightSignal": "ui_integer_at_end",
+     "comparator": "eq",
+     "toleranceAbs": 0
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "hold-left-then-toggle-pause"
+    ]
+   },
+   "source": "jit"
+  },
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-menu-counter-reverse-then-toggle-pause",
+    "origin": "AUTO_DIFF",
+    "statement": "After this walk the pause menu's coin counter shows the number of coins the player picked up.",
+    "expectationRef": {
+     "claimId": "player.jump",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "signal_compare",
+     "leftSignal": "coins_collected",
+     "rightSignal": "ui_integer_at_end",
+     "comparator": "eq",
+     "toleranceAbs": 0
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "reverse-then-toggle-pause"
+    ]
+   },
+   "source": "jit"
+  }
+ ],
+ "diagnostics": [
+  "hand-written stand-in: no model was called (tools/menu_counter_stand_in.py)"
+ ],
+ "usage": {
+  "model": "hand-written-stand-in"
+ },
+ "promptSha256": null,
+ "candidate": "withheld",
+ "reportSha256": "2ff52a0d58b16a223f83d4d623b3f9ed2c3e0f2a0e5863942c0a8749125c2e1a"
+}
