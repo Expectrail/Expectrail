@@ -56,7 +56,22 @@ class AppScreensTest(unittest.TestCase):
                 else:
                     expect(viewer).to_be_hidden()
 
+            progress = page.locator('#progress')
+            page.locator('#manual').uncheck()
             verify.click()
+            checked('Could not be carried out', 'check the folders')
+            expect(progress).to_have_text('Verification did not start.')
+            expect(page.get_by_role('alert')).to_contain_text('no expectrail.project.json')
+            self.assertEqual(fixture.server.app.history()['jobs'], [])
+            page.locator('#manual').check()
+
+            page.route('**/api/jobs/*', lambda route: route.abort(), times=1)
+            verify.click()
+            retry = page.get_by_role('button', name='Retry status')
+            expect(retry).to_be_enabled()
+            expect(cancel).to_be_enabled()
+            expect(progress).to_have_text('Current run status is unavailable.')
+            retry.click()
             checked('Waiting to start', 'Keep this page open', active=True)
             cancel.click()
             checked('Verification cancelled', 'ready to try again', evidence=True)
@@ -114,5 +129,17 @@ class AppScreensTest(unittest.TestCase):
             page.get_by_role('link', name='Open run').first.click()
             expect(comparison.locator('dd')).to_have_text([str(fixture.before), str(fixture.after)])
             expect(page.locator('#after')).to_have_value('')
+            # The server receives the submission, but the page never receives its reply.
+            def drop_reply(route):
+                response = route.fetch()
+                self.assertTrue(response.ok)
+                route.abort()
+
+            page.locator('#after').fill(str(fixture.after))
+            page.route('**/api/jobs', drop_reply, times=1)
+            verify.click()
+            expect(progress).to_have_text('Could not confirm whether verification started.')
+            expect(next_step).to_contain_text('Past runs')
+            expect(cancel).to_be_disabled()
             self.assertEqual(errors, [])
             browser.close()
