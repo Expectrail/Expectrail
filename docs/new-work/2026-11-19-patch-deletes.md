@@ -30,7 +30,7 @@ that still held the deleted file (#378).
 ## What was run
 - Reproduced first, on Linux (GNU patch 2.7.6), main b3c74d2: the three tests #378 names pass with
   default `patch` and all three error under `POSIXLY_CORRECT=1`.
-- `python3 -m unittest tests.test_patching`: 24 tests, OK. They include the three controls with the
+- `python3 -m unittest tests.test_patching`: 23 tests, OK. They include the three controls with the
   machine's own `patch` (delete, empty by edit, both in one patch), a game copy inside another Git
   checkout, GNU `patch` in POSIX mode on deletions only (the raw program leaves `BUG` empty; `apply`
   removes it), and the three repair tests from #378 run with deletions applied that way: all pass.
