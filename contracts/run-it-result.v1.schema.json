@@ -152,6 +152,120 @@
             "null"
           ],
           "maxLength": 300
+        },
+        "rendering": {
+          "description": "Optional (results before November 19 lack it). The rendering environments this run's frames were drawn in, read from each capture's replay.json, beside the ones the recording names (null when it names none). match: every frame was drawn in an environment the recording names; mismatch: some frame was not; unknown: the recording does not name every environment; unavailable: some frame's environment was not reported, or nothing was asked. Provenance only: a recorded answer is still used only for the exact image and question, and this never changes the decision.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "thisRun",
+            "recording",
+            "status"
+          ],
+          "properties": {
+            "thisRun": {
+              "type": "array",
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "version",
+                  "renderer",
+                  "device"
+                ],
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[ -~]{1,160}$"
+                  },
+                  "version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[ -~]{1,160}$"
+                  },
+                  "renderer": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[ -~]{1,160}$"
+                  },
+                  "device": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[ -~]{1,160}$"
+                  }
+                }
+              }
+            },
+            "recording": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "maxItems": 8,
+              "items": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "version",
+                  "renderer",
+                  "device"
+                ],
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[ -~]{1,160}$"
+                  },
+                  "version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[ -~]{1,160}$"
+                  },
+                  "renderer": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[ -~]{1,160}$"
+                  },
+                  "device": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[ -~]{1,160}$"
+                  }
+                }
+              }
+            },
+            "status": {
+              "enum": [
+                "match",
+                "mismatch",
+                "unknown",
+                "unavailable"
+              ]
+            }
+          }
         }
       }
     },
