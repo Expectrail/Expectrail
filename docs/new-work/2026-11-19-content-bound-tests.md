@@ -30,7 +30,7 @@ approval from before binding. No product code changes except one line in the kno
   both observers in #602. Re-run without this, every no-intent row turned needs-review ("no visual
   observer was asked") under a record that still said engine-only. The test's stand-in gate now takes
   `rule`, and a test checks the rule each call is given.
-- `bench/jit/known/gate.json` and `gate.md`: re-recorded on the real engine, since the spec bytes changed.
+- `bench/jit/known/gate.json`: re-recorded on the real engine, since the spec bytes changed (`gate.md` came out the same).
 
 ## What was run
 - Before the fixes, on this branch merged with main at 9218e13, the eight modules named in #644:
@@ -38,8 +38,12 @@ approval from before binding. No product code changes except one line in the kno
   suite).
 - `python3 -m expectrail.gate.known_bench run --jobs 2` (Godot 4.7.2-stable, this cloud container, no
   model). First run, before the rule fix: 13 min 24 s, every no-intent row needs-review, as above.
-  Second run, with the rule named: see the pull request for its result.
-- The full suite: in the pull request's description.
+  Second run, with the rule named: 12 min 18 s. Every row (both intents, all eight cases) is identical
+  to the stored record, and `gate.md` renders byte for byte the same; only `specsSha256` changed.
+- The full suite on this branch merged with main at 8c2f9a2: 5,288 tests, OK, 41 skipped. The first full
+  run found one more user of the stand-in gate (`tests.test_linked_bug_intent.BenchDriver`), fixed by
+  letting the stand-in take `rule` with no default value required; that test still checks the rule.
+  The film rehearsal named in #644 passed in both full runs.
 
 ## Not done
 - No committed approval was changed: the four committed checks are as Sean's commit left them.
@@ -52,5 +56,5 @@ approval from before binding. No product code changes except one line in the kno
   `tests/test_two_observers.py`, `tests/test_orchestrator.py`, `tests/test_gate_known_bench.py`
 - `tests/fixtures/clipped-player/kinematic-findings-before.json`
 - `expectrail/gate/known_bench.py`
-- `bench/jit/known/gate.json`, `bench/jit/known/gate.md`
+- `bench/jit/known/gate.json`
 - `docs/new-work/2026-11-19-content-bound-tests.md`
