@@ -7,8 +7,12 @@
 # job is then skipped. Unity Personal can only be activated online, so the builder uses GameCI's v4
 # flow (the licence file plus the account's email and password) and no other activation route.
 #
-# Because every run waits for that approval, this workflow runs only when dispatched, or on a pull
-# request that touches the Unity game, the Unity harness, a Unity route or this file.
+# While Unity is deferred (Sean, November 19, 2026), the build runs only on main: after a merge that
+# touches the Unity game, the Unity harness, a Unity route or this file, or when dispatched from main.
+# On a pull request the workflow still starts but every job is skipped, so a Godot change that touches
+# the shared harness never waits on the `unity` environment. The environment is restricted to main, so
+# code that is not on main never reaches the licence. A red run on main is a red main: the merge guard
+# reverts the merge that caused it (AGENTS.md). Put the pull_request build back when Unity work resumes.
 #
 # Builds, one Editor at a time, in this order:
 #   1. the clean game, with GameCI's own build method and no harness (this proves the build works);
@@ -22,6 +26,13 @@ name: Unity
 
 on:
   pull_request:
+    paths:
+      - 'game/unity-platformer/**'
+      - 'harness/unity/**'
+      - 'harness/routes/unity-*.json'
+      - '.github/workflows/unity.yml'
+  push:
+    branches: [main]
     paths:
       - 'game/unity-platformer/**'
       - 'harness/unity/**'
@@ -41,6 +52,8 @@ permissions:
 
 jobs:
   build:
+    # Skipped on pull requests while Unity is deferred; see the note at the top.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     environment: unity
