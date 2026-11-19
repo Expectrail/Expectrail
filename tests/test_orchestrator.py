@@ -40,6 +40,7 @@ from expectrail.orchestrator import cli, engines, runner
 from expectrail.orchestrator import request as req
 from expectrail.orchestrator import sample as smp
 from expectrail.orchestrator import store as st
+from tests import approved_copies
 from tests.orchestrator_worker import ENGINES as STAND_INS
 from tests.test_ci_gate import FIXTURES, FakeReplay, make_repo
 
@@ -559,7 +560,8 @@ class GodotEngineTest(Case):
         # (first review of #321: a copy made by another reader followed links the gate refuses).
         second = json.loads((self.head / "specs" / "player-stays-above-ground.json").read_text(encoding="utf-8"))
         second["id"] = "second-check"
-        text = json.dumps(second)
+        # A new id is an edit: the copy is approved again in a temporary folder, or it is a draft (#644).
+        text = json.dumps(approved_copies.reapproved(second))
         forms = {
             "a file": lambda repo, spec: spec.write_text(text, encoding="utf-8"),
             "a link to a file inside the checkout": lambda repo, spec: (
