@@ -50,7 +50,7 @@ BUNDLED_MODULES = {
         "timing",
         "viewer",
     },
-    "expectrail._bundle.harness": {"__init__", "adapters", "run", "sandbox", "tree"},
+    "expectrail._bundle.harness": {"__init__", "adapters", "patching", "run", "sandbox", "tree"},
     "expectrail._bundle.agents": {
         "__init__",
         "byo_fixer",
