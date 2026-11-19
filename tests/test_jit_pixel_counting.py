@@ -208,6 +208,14 @@ class CommittedStandIns(unittest.TestCase):
             self.assertEqual(row["rules"], [False, False, True, False, False, False], row["specId"])
             self.assertFalse(row["counting"])
 
+    def test_bullet_judged_by_the_sensor_meets_rules_1_3_4(self):
+        sensor = STAND_IN / "bullet-behind-scenery-sensor" / "jit-run.json"
+        rows = assess.pixel_counting(load(sensor), BULLET_REPORT)
+        self.assertEqual(len(rows), 2)
+        for row in rows:
+            self.assertEqual(row["rules"], [True, False, True, True, False, False], row["specId"])
+            self.assertFalse(row["counting"])
+
     def test_the_published_page_is_what_the_records_give(self):
         from expectrail.jit import counting
         import tempfile
@@ -215,7 +223,8 @@ class CommittedStandIns(unittest.TestCase):
             out = Path(tmp) / "page.md"
             summary = counting.pixel_bench(STAND_IN, out)
             self.assertEqual(out.read_text(), (REPO / "docs/measurements/271-pixel-counting.md").read_text())
-        self.assertEqual(summary, {"records": 2, "checks": 6, "counting": 0, "advisory": 6})
+        # Three records since November 19: the sensor's bullet stand-in joined the two (bench/jit/stand-in/).
+        self.assertEqual(summary, {"records": 3, "checks": 8, "counting": 0, "advisory": 8})
 
     def test_the_audit_refuses_held_out_roots(self):
         from expectrail.jit import counting
