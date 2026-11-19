@@ -1,43 +1,91 @@
-"""Real engine/CLI fixture driver. Trace-backed vision is NOT independent vision.
+"""Real engine/CLI fixture driver with a pixel sensor specific to the bundled blue robot.
 
 Only tests import this. No production environment setting selects this observer.
 It uses the existing gate and fixer fixture, never a second decision rule.
 """
-import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
+import tempfile
+import threading
+import zlib
 
-from agents.observations import from_trace_synthetic
+from agents.sam_observations import png_size, sha256_bytes
+from harness.unity import png_pixels
 
 
-class TraceSegments:
-    model = 'trace-fixture-not-a-model'
-    provider = 'offline-fixture-not-vision'
+class RobotPixels:
+    """Locate the robot's opaque blue paint in the captured frame, in frame pixels."""
+
+    model = 'bundled-robot-palette-v1'
+    provider = 'offline-repair-fixture'
+    base = 'local-fixture'
+    blue = bytes((59, 93, 201))
+
+    def __init__(self, engine=None):
+        self.engine = engine
+        self.by_digest = {}
+        self.lock = threading.Lock()
+
+    def _locate(self, width, channels, pixels):
+        # A lookahead finds overlapping matches, so a misaligned run of the same bytes cannot hide an aligned
+        # pixel; only matches on a pixel boundary count.
+        found = re.finditer(b'(?=' + re.escape(self.blue) + b')', pixels)
+        return [divmod(match.start() // channels, width) for match in found if match.start() % channels == 0]
+
+    def _capture(self, folder):
+        # Decode a replay once. The project supplied to the decoder is an empty
+        # temporary directory. Only the trusted fixture script and PNGs are inputs.
+        script = Path(__file__).with_name('repair_decode_frames.gd').resolve()
+        with tempfile.TemporaryDirectory() as tmp:
+            subprocess.run([self.engine, '--headless', '--path', tmp, '--script', str(script),
+                            '--', str(folder), tmp], check=True, capture_output=True, timeout=120)
+            points = {}
+            for png in folder.glob('*.png'):
+                width, height = png_size(png)
+                rgb = zlib.decompress((Path(tmp) / (png.name + '.rgb')).read_bytes())
+                if len(rgb) != width * height * 3:
+                    raise ValueError(f'incomplete decoded frame: {png.name}')
+                points[sha256_bytes(png)] = self._locate(width, 3, rgb)
+            return points
+
+    def _points(self, png):
+        if self.engine is None:  # Small unit fixtures can be read without Godot.
+            width, _, channels, pixels = png_pixels.read(png)
+            return self._locate(width, channels, pixels)
+        digest = sha256_bytes(png)
+        with self.lock:
+            if digest not in self.by_digest:
+                self.by_digest.update(self._capture(png.parent))
+            return self.by_digest[digest]
+
+    @staticmethod
+    def _detection(points):
+        if not points:
+            return None
+        ys, xs = zip(*points)
+        return {'box': [min(xs), min(ys), max(xs) + 1, max(ys) + 1], 'score': 1.0}
+
+    def segment(self, png, prompt):
+        target = self._detection(self._points(png)) if prompt == 'blue robot' else None
+        return [target] if target else []
 
     def segment_in(self, png, boxes):
-        png = Path(png)
-        trace = json.loads((png.parent.parent / 'trace.json').read_text())
-        frames = from_trace_synthetic(trace)['frames']
-        objects = frames[int(png.stem[1:])]['objects']['player']
-        return objects[:1] if objects else []
-
-
-class TraceVision:
-    def describe(self):
-        return {'name': 'trace-fixture', 'provider': TraceSegments.provider, 'model': TraceSegments.model}
-
-    def segmenter(self): return TraceSegments()
-
-    def look(self, spec, run, *, keep=True):
-        return from_trace_synthetic(run['trace'], replay_sha256=run['replaySha256'])
+        points = self._points(png)
+        target = self._detection(points)
+        return [target if any(x1 <= x < x2 and y1 <= y < y2 for y, x in points) else None
+                for x1, y1, x2, y2 in boxes]
 
 
 def bootstrap():
+    from agents.sam_observations import Cache
+    from expectrail.observers import FramesObserver
     from expectrail.orchestrator import engines
-    engines.ENGINES = {'godot': engines.GodotGate(visual=TraceVision())}
+    visual = FramesObserver(client=RobotPixels(os.environ['EXPECTRAIL_GODOT']), cache=Cache(None), name='repair-pixels', every=1)
+    engines.ENGINES = {'godot': engines.GodotGate(visual=visual)}
     def forbidden(*args, **kwargs): raise AssertionError('fixture attempted a model or network transport')
     from expectrail import providers
     from agents import sam_observations
@@ -99,7 +147,7 @@ def exercise(folder, case, *, isolated):
     for attempt in doc['attempts']:
         child = record.read_record(jobs/'jobs'/attempt['job']/'output/findings.json')
         assert child['observers']['rule'] == 'both'
-        assert child['observers']['visual']['provider'] == TraceSegments.provider
+        assert child['observers']['visual']['provider'] == RobotPixels.provider
         assert child['isolation']['required'] == isolated
         if isolated: assert child['isolation']['sandboxed'] == child['isolation']['replays'] > 0
         findings.append(child)
@@ -111,7 +159,7 @@ def exercise(folder, case, *, isolated):
         assert doc['result']['job'] != parent['id']
     assert source.read_bytes() == original
     proof = {'case':case, 'realEngine':True, 'isolated':isolated,
-        'observer':'trace fixture; not independent vision', 'modelCalls':0,
+        'observer':'bundled blue robot pixels', 'modelCalls':0,
         'parentDecision':parent['decision'], 'result':doc['result']['decision'],
         'stop':doc['stop']['reason'], 'attempts':[a['decision'] for a in doc['attempts']],
         'demonstrated':[f['repair']['demonstrated'] for f in findings],

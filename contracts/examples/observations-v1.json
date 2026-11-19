@@ -1,0 +1,79 @@
+{
+  "format": "expectrail.observations/v1",
+  "replay": {
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "model": {
+    "name": "example-pixel-sensor"
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "objects": {
+        "player": [
+          {
+            "box": [
+              10,
+              10,
+              20,
+              20
+            ],
+            "score": 0.9,
+            "frame": 0,
+            "tick": 1,
+            "source": {
+              "kind": "image",
+              "sha256": "6506eac641360df85fbfe5f53674d1d36f8fefeff94c4f0e5e07e3a90f0f50db"
+            },
+            "coordinateSpace": "screen-pixels",
+            "sensor": {
+              "name": "example-pixel-sensor",
+              "version": "1"
+            },
+            "entityId": "player:unique"
+          }
+        ]
+      },
+      "tick": 1,
+      "source": {
+        "kind": "image",
+        "sha256": "6506eac641360df85fbfe5f53674d1d36f8fefeff94c4f0e5e07e3a90f0f50db"
+      },
+      "coordinateSpace": "screen-pixels",
+      "observer": {
+        "name": "example-pixel-sensor",
+        "version": "1"
+      }
+    }
+  ],
+  "timeline": {
+    "format": "expectrail.observation-timeline/v1",
+    "traceSha256": "6723a439b205d8551e47e8641ff26e50f7140b1d3125ec9b8e6756ec9d74c6cf",
+    "physicsTicksPerSecond": 120,
+    "captureFps": 60,
+    "frames": [
+      {
+        "frame": 0,
+        "tick": 1,
+        "tickInterval": [
+          0,
+          1
+        ],
+        "phase": "post-physics-pre-draw",
+        "viewport": [
+          128,
+          96
+        ],
+        "transform": [
+          1,
+          0,
+          0,
+          1,
+          0,
+          0
+        ],
+        "sourceSha256": "6506eac641360df85fbfe5f53674d1d36f8fefeff94c4f0e5e07e3a90f0f50db"
+      }
+    ]
+  }
+}

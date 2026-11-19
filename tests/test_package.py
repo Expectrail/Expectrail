@@ -3,8 +3,8 @@ checkout with the standard library alone.
 
 The wheel is built once for the module, from a copy of the working tree, with the setuptools that is
 installed (no download). Where setuptools is missing the tests skip; CI's `package` job sets
-EXPECTRAIL_PACKAGE_TESTS=required, so a skip there is a failure. The real engine is not started
-here: the `package` job runs the real sample from the installed copy.
+EXPECTRAIL_PACKAGE_TESTS=required, so a skip there is a failure. An installed sample runs with a
+replay stand-in everywhere; a second runs with real Godot and the replay sandbox where available.
 """
 from __future__ import annotations
 
@@ -383,9 +383,11 @@ class ContentsTest(Case):
 
 
 class InstalledTest(Case):
-    """The wheel unpacked into a new virtual environment that has no other package, used from a
-    folder outside the checkout with the environment cleared. (Unpacking is what an install does
-    with a pure wheel, less the `expectrail` script; the `package` job installs with pip.)"""
+    """The wheel pip-installed into an empty virtual environment, used outside the checkout.
+
+    Host pip installs offline into the target environment, including the console script,
+    without installing pip or any optional dependency in that environment.
+    """
 
     @classmethod
     def setUpClass(cls):
@@ -397,8 +399,9 @@ class InstalledTest(Case):
         cls.python = cls.venv / "bin" / "python"
         site = subprocess.run([str(cls.python), "-c", "import sysconfig; print(sysconfig.get_paths()['purelib'])"],
                               check=True, capture_output=True, text=True).stdout.strip()
-        with zipfile.ZipFile(BUILT["wheel"]) as wheel:
-            wheel.extractall(site)
+        subprocess.run([sys.executable, "-m", "pip", "--python", str(cls.python), "install",
+                        "--no-index", "--no-deps", "--disable-pip-version-check", str(BUILT["wheel"])],
+                       check=True, capture_output=True, text=True)
         cls.site = Path(site)
         cls.elsewhere = BUILT["tmp"] / "elsewhere"
         cls.elsewhere.mkdir()
@@ -407,6 +410,78 @@ class InstalledTest(Case):
         command = [str(self.python), "-c", code] if code else [str(self.python), "-m", "expectrail.cli", *args]
         return subprocess.run(command, cwd=self.elsewhere, capture_output=True, text=True, timeout=120,
                               env={"PATH": "/usr/bin:/bin", "HOME": str(self.elsewhere / "home")})
+
+    def test_installed_sample_checks_new_capture_without_optional_packages(self):
+        """Real installed entry point and judge; only the replay/isolation are stand-ins."""
+        from tests.tool_requirements import executable
+        executable('patch')
+        fixture = self.elsewhere / 'installed_sample.py'
+        shutil.copyfile(REPO / 'tests/fixtures/installed_sample.py', fixture)
+        jobs = self.elsewhere / 'sample-stand-in-jobs'
+        done = subprocess.run([str(self.python), str(fixture), str(self.venv / 'bin/expectrail'),
+                               '--jobs-root', str(jobs), 'sample', '--json'],
+                              cwd=self.elsewhere, capture_output=True, text=True, timeout=120,
+                              env={'PATH': '/usr/bin:/bin', 'HOME': str(self.elsewhere / 'home')})
+        self.assertEqual(done.returncode, 3, done.stdout + done.stderr)
+        self.check_sample(done.stdout, jobs)
+
+    def check_sample(self, output, jobs):
+        document = json.loads(output)
+        self.assertEqual([r['status']['decision'] for r in document],
+                         ['needs-review', 'reject', 'needs-review'], output)
+        saved = jobs.parent / (jobs.name + '.json')
+        saved.write_text(output)
+        checked = subprocess.run([str(self.python), str(REPO / 'tools/check_no_vision.py'),
+                                  str(saved), str(jobs), '--sample'], cwd=self.elsewhere,
+                                 capture_output=True, text=True, timeout=30,
+                                 env={'PATH': '/usr/bin:/bin', 'HOME': str(self.elsewhere / 'home')})
+        self.assertEqual(checked.returncode, 0, checked.stdout + checked.stderr)
+        self.assertEqual(len(checked.stdout.strip().splitlines()), 3, checked.stdout)
+
+    def test_installed_sample_with_real_sandbox_and_godot(self):
+        """No stand-ins: the exact package-job command and its evidence checker."""
+        from harness import sandbox
+        from tests.tool_requirements import executable, godot_binary, require_tool
+        engine = godot_binary()
+        executable('patch')
+        require_tool('xvfb-run')
+        tool, why = sandbox.probe(display=True)
+        if tool is None:
+            if os.environ.get('EXPECTRAIL_SANDBOX') == 'require':
+                self.fail(why)
+            self.skipTest(why)
+        jobs = self.elsewhere / 'sample-real-jobs'
+        env = {k: v for k, v in os.environ.items() if k in
+               ('PATH', 'DISPLAY', 'XAUTHORITY', 'LANG', 'LC_ALL', 'TMPDIR')}
+        env.update(HOME=str(self.elsewhere / 'home'), EXPECTRAIL_GODOT=str(engine),
+                   EXPECTRAIL_SANDBOX='require', MODEL_API_KEY='', EXPECTRAIL_SAM_USD_CAP='')
+        done = subprocess.run([str(self.venv / 'bin/expectrail'), '--jobs-root', str(jobs), 'sample', '--json'],
+                              cwd=self.elsewhere, env=env, capture_output=True, text=True, timeout=900)
+        self.assertEqual(done.returncode, 3, done.stdout + done.stderr)
+        self.check_sample(done.stdout, jobs)
+
+    def test_installed_timeline_validates_provenance_without_jsonschema(self):
+        from tests.test_observation_timeline import SPEC, trace_at
+        from agents.observations import from_trace_synthetic
+        trace = trace_at()
+        doc = from_trace_synthetic(trace, 'a' * 64)
+        code = f'''import copy, importlib.util, json
+from expectrail.observation_timeline import validate
+from expectrail.evaluator import evaluate
+spec, doc = json.loads({json.dumps([SPEC, doc])!r})
+assert importlib.util.find_spec('jsonschema') is None
+assert validate(spec, doc) is None
+assert evaluate(spec, doc)['result'] == 'pass'
+for field in ('tick', 'source', 'coordinateSpace', 'sensor', 'entityId', 'box', 'score'):
+    broken = copy.deepcopy(doc)
+    broken['frames'][0]['objects']['player'][0].pop(field)
+    reason = validate(spec, broken)
+    assert reason and reason.startswith('observation-timeline: invalid observations'), (field, reason)
+    assert evaluate(spec, broken)['result'] == 'needs-review', field
+print('valid capture passes; seven missing provenance/geometry fields need review; no jsonschema')
+'''
+        done = self.run_installed(code=code)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
     def test_installed_repair_command_uses_the_packaged_fixer(self):
         done = self.run_installed("repair", "--help")

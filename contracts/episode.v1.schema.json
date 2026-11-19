@@ -91,8 +91,30 @@
               "minimum": 1
             }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "protocol",
+            "ticks"
+          ],
+          "properties": {
+            "protocol": {
+              "const": "capture-ticks/v1"
+            },
+            "ticks": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
         }
-      ]
+      ],
+      "description": "Draw n depicts ticks[n]. Intermediate ticks in the capture interval have no image. Historical tick-step metadata does not establish a draw."
     },
     "capabilities": {
       "type": "object",
@@ -178,6 +200,11 @@
             "items": false,
             "minItems": 2
           }
+        },
+        "captureProblem": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The supplied capture data could not be verified. It cannot support a verdict."
         }
       }
     },

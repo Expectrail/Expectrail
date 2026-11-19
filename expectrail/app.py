@@ -95,10 +95,47 @@ def configured(body):
     return value
 
 
+def setup_preview(root):
+    """Explain the missing configuration from authored scenes, without starting a job."""
+    from expectrail import onboard, onboarding
+
+    info = onboarding.inspect(root)
+    pending = root / onboard.PENDING
+    title = 'Setup preview'
+    if pending.exists() or pending.is_symlink():
+        # Only describe a saved proposal if it still belongs to these scenes and route.
+        expected = onboarding.proposal(root, info)
+        saved = rec.strict_loads(project_job.regular(root, onboard.PENDING, LIMIT).decode('utf-8'))
+        if saved != {key: value for key, value in expected.items() if key != 'route'}:
+            raise ValueError(f'{onboard.PENDING} differs from the current setup. Review the draft before using it.')
+        route = expected['config']['routes'][0]
+        if project_job.regular(root, route, LIMIT) != onboarding.encode(expected['route']):
+            raise ValueError(f'The route saved with {onboard.PENDING} has changed. Review the draft route.')
+        title = 'Saved draft preview'
+
+    lines = [f'{title} for {root.name}', f'Starting scene: {info["entryScene"]}',
+             'Player candidates: ' + (', '.join(info['players']) or 'none found')]
+    if len(info['players']) == 1:
+        lines.append('Player images: ' + (', '.join(info['textures']) or 'none found for this player'))
+    else:
+        lines.append('Identify the player in the starting scene before selecting its image.')
+    lines.extend(info['unresolvedBindings'])
+    if not info['unresolvedBindings']:
+        lines.append('To save this setup, run expectrail init on this folder and review its draft.')
+    return '\n'.join(lines)
+
+
 def inspect_project(body):
     if configured(body):
-        from expectrail import renderer
+        from expectrail import project_config, renderer
         root = Path(field(body, 'folder')).expanduser()
+        descriptor = root / 'project.godot'
+        if not os.path.lexists(root / project_config.FILENAME) and not descriptor.is_symlink() and descriptor.is_file():
+            try:
+                detail = setup_preview(root.resolve())
+            except (ValueError, OSError) as exc:
+                detail = f'Could not read the setup preview: {exc}'
+            raise req.RequestError(f'Project config: no {project_config.FILENAME}.\n{detail}')
         result = project_job.inspect(root)
         result['rendering'] = renderer.project_report(root)
         return result
