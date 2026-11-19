@@ -23,8 +23,11 @@ The two checks are attached to the PR head. **Expectrail evidence** links to the
 or to the run if publication was interrupted. **Expectrail clearance** passes only on accept.
 Reject and needs-review fail it. A new head needs its own clearance. When the pull request has
 moved on before its capture's judge runs, that clearance is concluded failed with "Superseded
-capture or pull request", never left in progress. An interrupted capture or judge leaves
-clearance failed or incomplete.
+capture or pull request", never left in progress. If the trusted job's start step crashes after
+creating the checks, its finish step concludes them (clearance failed, evidence neutral: "The
+trusted job stopped before it judged this capture"); if posting the comment fails, the checks are
+concluded before the error is reported. If the finish step never runs (the runner is lost, say),
+clearance stays in progress, which never counts as cleared.
 
 Install a dedicated GitHub App on this repository with Checks read/write. In the protected
 `main-only` environment, set the variable `EXPECTRAIL_CHECKS_APP_ID` and secret

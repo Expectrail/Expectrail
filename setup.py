@@ -26,6 +26,7 @@ BUNDLED_MODULES = {
         "diagnostics",
         "doctor",
         "evaluator",
+        "explanation",
         "fixer_budget",
         "godot_project",
         "inspection",

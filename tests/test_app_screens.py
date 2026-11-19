@@ -104,9 +104,15 @@ class AppScreensTest(unittest.TestCase):
                     if marker:
                         (candidate / marker).unlink()
 
+            comparison = page.locator('#result-folders')
+            expect(comparison.locator('dd')).to_have_text([str(fixture.before), str(fixture.after)])
             page.locator('#after').fill('')
             verify.click()
             checked('Could not be carried out', 'check the folders')
             expect(page.get_by_role('alert')).to_be_visible()
+            expect(comparison).to_be_hidden()
+            page.get_by_role('link', name='Open run').first.click()
+            expect(comparison.locator('dd')).to_have_text([str(fixture.before), str(fixture.after)])
+            expect(page.locator('#after')).to_have_value('')
             self.assertEqual(errors, [])
             browser.close()
