@@ -53,14 +53,15 @@ def checkout(target: Path, *, bug: bool, root: Path = ROOT) -> Path:
     shutil.copy(root / ROUTE, target / ROUTE)
     shutil.copytree(root / SPECS, target / SPECS)
     if bug:
+        from harness import patching
         try:
-            done = subprocess.run(["patch", "-p1", "--forward", "--batch", "-d", str(target / GAME), "-i", str(root / BUG)],
-                                  capture_output=True, text=True)
+            patching.apply(target / GAME, root / BUG)
         except FileNotFoundError as exc:
             raise SampleError("the patch program is not installed; the sample needs it to put its seeded bug "
                               "into a copy of the game") from exc
-        if done.returncode != 0:
-            raise SampleError(f"the seeded bug did not apply: {done.stdout.strip() or done.stderr.strip()}")
+        except subprocess.CalledProcessError as exc:
+            said = exc.stderr if isinstance(exc, patching.PatchNotApplied) else (exc.stdout or exc.stderr or "")
+            raise SampleError(f"the seeded bug did not apply: {said.strip()}") from exc
     return target
 
 
