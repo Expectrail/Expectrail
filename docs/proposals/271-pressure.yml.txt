@@ -38,6 +38,11 @@ on:
         type: string
         default: '1024'
         required: true
+      sensor_every:
+        description: 'Correct only: the source run''s sam_every (1..60). Its frozen visual-sensor checks are judged on that frame plan; any other stops before a replay'
+        type: string
+        default: '10'
+        required: true
 permissions:
   contents: read
   actions: read
@@ -55,6 +60,7 @@ jobs:
       REPLAY_CAP: ${{ inputs.replay_cap }}
       SOURCE_RUN: ${{ inputs.source_run }}
       SOURCE_ARTIFACT: ${{ inputs.source_artifact }}
+      SENSOR_EVERY: ${{ inputs.sensor_every }}
       EXPECTRAIL_GODOT: ${{ vars.EXPECTRAIL_GODOT_BINARY }}
       LEDGER_DIR: ${{ vars.EXPECTRAIL_LEDGER_DIR }}
       EXPECTRAIL_SPEC_USD_CAP: '0'
@@ -79,6 +85,7 @@ jobs:
               if not os.environ[name].isdigit():raise SystemExit(name+' must be a numeric ID')
           cap=int(os.environ['REPLAY_CAP'])
           if not 0<cap<=1024:raise SystemExit('replay cap outside 1..1024')
+          if not os.environ['SENSOR_EVERY'].isdigit() or not 1<=int(os.environ['SENSOR_EVERY'])<=60:raise SystemExit('sensor_every outside 1..60')
           ledger=Path(os.environ['LEDGER_DIR'])
           if not ledger.is_absolute() or ledger.resolve().is_relative_to(Path.cwd()) or not ledger.is_dir():
               raise SystemExit('provision persistent ledger directory outside checkout')
@@ -91,6 +98,17 @@ jobs:
           if tool is None:raise SystemExit(why)
           PY
           python3 -m expectrail.jit.pressure "$KIND"
+      - name: Calibrate the sensor bank on this checkout's clean game; before any frozen evidence, no secret
+        # The same command as jit.yml's sensor-bank job: four clean routes, no patch, no candidate. Pressure
+        # replays a counting visual-sensor check only if this bank's setting equals the one in the signed
+        # source run (pixel-setting-mismatch otherwise), so a bank made here cannot loosen a check.
+        if: inputs.kind == 'correct'
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+        run: |
+          mkdir -p runs
+          python3 -m expectrail.jit.cli sensor-bank --out runs/sensor-bank/bank.json --work runs/sensor-calibration > runs/sensor-bank-summary.json
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
           run-id: ${{ inputs.source_run }}
@@ -98,11 +116,15 @@ jobs:
           github-token: ${{ github.token }}
           path: frozen
           merge-multiple: true
-      - name: Authenticate every frozen source before exposing a provider key
-        run: python3 -m expectrail.jit.pressure "$KIND" --preflight --bundles frozen/bundles --contexts frozen/contexts --trust-store policy/jit-trust-store.json --out runs/counting-pressure --max-replays "$REPLAY_CAP"
+      - name: Authenticate every frozen source before exposing a provider key (correct, with the bank and frame plan)
+        if: inputs.kind == 'correct'
+        run: python3 -m expectrail.jit.pressure correct --preflight --bundles frozen/bundles --contexts frozen/contexts --trust-store policy/jit-trust-store.json --out runs/counting-pressure --max-replays "$REPLAY_CAP" --sensor-bank runs/sensor-bank/bank.json --sensor-every "$SENSOR_EVERY"
+      - name: Authenticate every frozen source before exposing a provider key (adversary; trace checks only)
+        if: inputs.kind == 'adversary'
+        run: python3 -m expectrail.jit.pressure adversary --preflight --bundles frozen/bundles --contexts frozen/contexts --trust-store policy/jit-trust-store.json --out runs/counting-pressure --max-replays "$REPLAY_CAP"
       - name: Correct fixes; no provider secret loaded
         if: inputs.kind == 'correct'
-        run: python3 -m expectrail.jit.pressure correct --execute --bundles frozen/bundles --contexts frozen/contexts --trust-store policy/jit-trust-store.json --out runs/counting-pressure --max-replays "$REPLAY_CAP"
+        run: python3 -m expectrail.jit.pressure correct --execute --bundles frozen/bundles --contexts frozen/contexts --trust-store policy/jit-trust-store.json --out runs/counting-pressure --max-replays "$REPLAY_CAP" --sensor-bank runs/sensor-bank/bank.json --sensor-every "$SENSOR_EVERY"
       - name: One adversary; the existing llm-patch hard bound remains required
         if: inputs.kind == 'adversary'
         env:
@@ -119,7 +141,10 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: counting-pressure-${{ github.run_id }}-${{ github.run_attempt }}
-          path: runs/counting-pressure/
+          path: |
+            runs/counting-pressure/
+            runs/sensor-bank/
+            runs/sensor-bank-summary.json
           if-no-files-found: warn
           retention-days: 7
 # Sean checks each boundary before installing:
@@ -131,6 +156,10 @@ jobs:
 # - The persistent ledger is never reset, copied from a candidate, or uploaded. All jobs
 #   spending against it must share it; existing locked month admission remains mandatory.
 # - The model tariff must still be active/unexpired; a refusal is never a fallback.
+# - Correct pressure calibrates its own sensor bank (no model, $0; about 7 minutes on the engine) and
+#   replays counting visual-sensor checks only when that bank's setting and frame plan match the signed
+#   source run. The runner needs Xvfb, software OpenGL, pillow 12.3.0 and numpy 2.5.3, as jit.yml's
+#   sensor-bank job installs. A counting SAM check and the adversary still stop on pixel checks.
 # - No fresh generator/vision call occurs here. Provisioning/fresh evidence costs are separate.
 # - The replay cap bounds starts, not wall time. The job timeout bounds this job's lifetime.
 # - Raw artifacts stay off main; later publish a small digest-bound summary, not bulk evidence.

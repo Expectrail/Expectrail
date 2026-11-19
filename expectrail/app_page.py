@@ -89,12 +89,20 @@ async function api(path, body) {
   if(!response.ok) throw new Error(data.detail || 'The request could not be carried out.');
   return data;
 }
-function problem(error) {
+function problem(error, submissionAttempted=false) {
   el('result-folders').hidden=true;
   el('error').textContent=error.message; el('error').hidden=false;
   el('result-text').textContent='Could not be carried out — no result is available here.';
-  el('next-step').textContent = job ? 'Use Retry status to reconnect, or Cancel to stop the job.'
-    : 'Read the message above, check the folders, and try again. Check Past runs if a job may have started.';
+  if(job) {
+    el('progress').textContent='Current run status is unavailable.';
+    el('next-step').textContent='Use Retry status to reconnect, or Cancel to stop the job.';
+  } else if(submissionAttempted) {
+    el('progress').textContent='Could not confirm whether verification started.';
+    el('next-step').textContent='Check Past runs for this comparison, then check the folders before trying again.';
+  } else {
+    el('progress').textContent='Verification did not start.';
+    el('next-step').textContent='Read the message above, check the folders, and try again.';
+  }
   el('details').textContent='';
   el('viewer-note').hidden=true;
   el('isolation').hidden=true;
@@ -167,6 +175,7 @@ el('verify').onclick=async()=>{
   el('error').hidden=true;el('repair-record').hidden=true;el('report').hidden=true;el('viewer').hidden=true;el('judged-by').textContent='';el('details').textContent='';el('next-step').textContent='';el('isolation').hidden=true;el('phases').replaceChildren();
   el('result-folders').hidden=true;
   el('result-text').textContent='No verdict yet.';el('progress').textContent='Checking the rendering environment before starting…';controls(true);
+  let submissionAttempted=false;
   try{const body=values();
     if(el('auto-fix').checked){
       body.autoFix=true;body.repairAgent=el('fix-agent').value;body.attempts=el('attempts').valueAsNumber;body.usdCap=el('usd-cap').valueAsNumber;
@@ -184,8 +193,9 @@ el('verify').onclick=async()=>{
     }
     rendererAcknowledged=null;el('verify').textContent='Verify';
     el('progress').textContent='Creating the job and recording its inputs…';
+    submissionAttempted=true;
     const data=await api('/api/jobs',body);job=data.id;controls(true);show(data);if(job)await poll();else await pastRuns();}
-  catch(error){problem(error);}
+  catch(error){problem(error,submissionAttempted);}
 };
 el('cancel').onclick=async()=>{
   const current=job;if(!current)return;el('cancel').disabled=true;

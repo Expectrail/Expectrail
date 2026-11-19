@@ -211,7 +211,8 @@ The stress tests, in the order we intend to run them:
 3. **Correct-fix pressure.** Every correct fix we have, three runs each. A strong catch on a correct
    fix is a bug in the filter and is looked at before anything else.
 4. **Overfitting adversary.** A separate fixer instance gets the generated checks for one bug (only in
-   this test) and is asked for a wrong fix that passes them. Not built yet.
+   this test) and is asked for a wrong fix that passes them. Built as a prepared dispatch, not run live
+   ("Prepared pressure dispatches", below).
 5. **Prompt injection and outage.** Offline, in `tests/test_jit_rules.py` (rules 5 and 3). Done, on the
    simulated game.
 6. **A second domain.** One pass on the web checkout page (`apps/checkout`). Not built yet: the diff
@@ -1074,8 +1075,9 @@ vocabulary (`pass`, `fail`, `needs-review`). The envelope and the gate record's 
 the same closed row shapes (up to 8 trace and 4 pixel rows), and a pixel check may not share a trace
 check's id. Like a trace row, a pixel row is recomputed from the source run on every read, so a changed
 row or run is refused. Under `both`, a counting pixel row is its own visual evidence (above), and it
-still never clears a change alone. The pressure dispatches replay trace checks only: when a pixel check
-counts they stop (`pixel-checks-not-replayed`) rather than replay fewer checks than count. Example:
+still never clears a change alone. Correct-fix pressure replays a counting pixel check judged by
+`visual-sensor` (added November 19, below); otherwise a counting pixel check stops a pressure dispatch
+(`pixel-checks-not-replayed`) rather than replay fewer checks than count. Example:
 [`generated-counting-pixel.json`](../contracts/examples/generated-counting-pixel.json), made by
 `counting.make` from the enemy stand-in with no trust, so nothing counts. Tests:
 `tests/test_jit_pixel_envelope.py`. On the two committed pixel
@@ -1133,6 +1135,43 @@ Offline rehearsals passed on the simulated game: two correct air-jump candidates
 fixer callback. These prove the runner, oracle calibration, caps and blocking rules, not a real
 adversary success rate. No live pressure campaign has run. The result contract
 `expectrail.jit-pressure/v1` and reader recompute status/success from outcomes and the oracle.
+
+### Pixel checks under correct-fix pressure (added November 19)
+
+A counting pixel check may reject a change (Sean, November 18), so a correct fix it fails is a defect in
+the rules, as for a trace check. `pressure correct --sensor-bank BANK [--sensor-every N] [--sensor-first N]`
+replays each counting pixel check judged by `visual-sensor` on every correct fix: its probe three times
+with frames, the sensor asked about its planned frames inside the checks' windows (`pixel.observe`, the
+same plan as the judging run), and `pixel.judge` decides each run. No model and no request: $0.
+
+- **The bank is pinned.** Its setting (algorithm and digest) must equal the setting in the signed source
+  run, or the dispatch stops before any replay (`pixel-setting-mismatch`). An answer under another setting
+  is not judged.
+- **The frame plan is pinned.** Since the same day, `jit run` records on each pixel row the frames the
+  observer was to be asked about inside the check's window (`framesPlanned`, contracts/jit-run.v1). Pressure
+  stops before any replay unless its observer, with `--sensor-every` and `--sensor-first`, would plan exactly
+  those frames for the check (`pixel-plan-mismatch`), so a correct fix can never pass on fewer frames than
+  the check was kept on. A row with no recorded plan (every record before November 19, the committed
+  stand-ins included) stops it too (`pixel-plan-unrecorded`), and so does a row that planned no frame
+  (`pixel-plan-empty`), which an observer planning nothing would otherwise match.
+- **Undecided is not a pass.** A gap, `needs-review`, or an observer that fails is
+  `insufficient_observation`, so the campaign is `blocked`, never `complete`. A `fail` on any run is
+  `failed`, as for trace checks.
+- **What still stops.** A counting pixel check for SAM (it would need live SAM calls), a correct dispatch
+  with no bank, and the adversary, which is given the trace checks only.
+- **The record.** Pixel rows carry `kind: "pixel"`, and `pixelObserver` names the observer, its setting
+  and its frame plan (`every`, `first`), checked against `framesPlanned` above. The reader refuses pixel
+  rows without `pixelObserver`, and `pixelObserver` on the adversary. Example:
+  [`jit-pressure-pixel.json`](../contracts/examples/jit-pressure-pixel.json).
+
+Tested in `tests/test_jit_pixel_pressure.py` with a stand-in game and observer. The real-engine rehearsal
+is in [271-pixel-pressure.md](measurements/271-pixel-pressure.md). The workflow proposal
+([271-pressure.yml.txt](proposals/271-pressure.yml.txt)) calibrates its own bank on the checked-out clean
+game before any frozen evidence is downloaded (the command of `jit.yml`'s `sensor-bank` job, $0), and passes
+it with a new `sensor_every` input (the source run's `sam_every`) to the correct preflight and the correct
+step. A bank or plan that differs from the signed source run stops before any replay, so the bank made
+there cannot loosen a check. `tests/test_jit_pressure_proposal.py` parses every pressure command in the
+proposal with pressure's own parser (`pressure.parse_args`), so the two cannot drift apart unnoticed.
 
 ### Still needed for #271 Done when
 

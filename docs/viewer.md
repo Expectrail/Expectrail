@@ -93,8 +93,9 @@ It is shown only when `python3 -m expectrail.explanation check FINDINGS FILE` pa
   wording of that evidence (a finding's comparison and reason). A spec's name counts as a name; it
   is never split into words to make a claim. The check allows words rather than refusing them,
   because a list of words to refuse can never be finished;
-- a failing word ("fails", "regression") needs a stated failing verdict after the change, and a
-  passing word ("passes", "fixed") needs every verdict it states after the change to be a pass. A
+- a point can say "fails" or "regression" only if every cited id failed after the change. It can say
+  "passes" or "fixed" only if every cited id passed. The point must state at least one matching
+  after verdict. A
   decision word ("accepted", "rejected") must be the decision. Negations and words of certainty
   ("not", "no longer", "proves", "all", "always") are never allowed;
 - "same" or "unchanged" needs every cited verdict to be equal before and after the change, and
@@ -105,7 +106,7 @@ This is a word-level check. It withholds every case found so far that contradict
 sentence made only of allowed words could still mislead in a way the check does not see; that is why
 the record's own verdicts are printed under every point.
 
-Under each point the page writes the verdicts it relies on itself, copied from the record ("From the
+Under each point the page prints the recorded verdicts for every cited id ("From the
 record: … pass before the change, fail after the change"). The model's words are shown beside the
 record's, never in place of them.
 
