@@ -122,6 +122,12 @@ def files(text: str) -> dict[str, str]:
     return found
 
 
+def command(work: Path, patch: Path) -> list[str]:
+    """The ``patch`` command ``apply`` runs, before its own check of the tree. ``tools.patch_controls``
+    runs it alone on a scratch copy to record what the machine's program leaves (#659)."""
+    return ["patch", "-p1", "--forward", "--batch", "-d", str(work), "-i", str(patch)]
+
+
 def apply(work: Path, patch: Path) -> None:
     """Apply ``patch`` to the folder ``work`` and leave exactly the tree it names, or raise."""
     patch = Path(patch).resolve()
@@ -129,7 +135,7 @@ def apply(work: Path, patch: Path) -> None:
     if not text.strip():
         return  # an empty patch changes nothing, as `patch` itself treats it (an offline fixer's no-op)
     expected = files(text)
-    cmd = ["patch", "-p1", "--forward", "--batch", "-d", str(work), "-i", str(patch)]
+    cmd = command(work, patch)
     subprocess.run(cmd, check=True, capture_output=True, text=True)
     for rel, kind in expected.items():
         target = Path(work) / rel
