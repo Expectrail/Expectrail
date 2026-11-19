@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 import copy
+import io
 import json
 import unittest
 import tempfile
+from contextlib import redirect_stderr
 from pathlib import Path
+from unittest.mock import patch
 
 from expectrail import capabilities as cap
 
@@ -333,6 +336,28 @@ class AdvertTest(unittest.TestCase):
 class CommandLineTest(unittest.TestCase):
     def test_check_passes_on_the_committed_ledger(self):
         self.assertEqual(cap.main(["check"]), 0)
+
+    def test_check_prints_pasteable_fixes_for_missing_commands_and_pages(self):
+        text = {"docs/run-it.md": "python3 -m tools.runit_diagnostic [notes](docs/local-notes.md)",
+                "README.md": "python3 -m unknown_command"}
+        output = io.StringIO()
+        with patch.object(cap, "read_adverts", return_value=text), redirect_stderr(output):
+            self.assertEqual(cap.main(["check"]), 1)
+        message = output.getvalue()
+        self.assertIn('docs/run-it.md: names the command tools.runit_diagnostic', message)
+        prefix = "If it is not a mode, merge into notModes."
+        snippets = {}
+        for line in message.splitlines():
+            if line.strip().startswith(prefix):
+                kind, raw = line.strip().removeprefix(prefix).split(": ", 1)
+                snippets.setdefault(kind, {}).update(json.loads(raw))
+        self.assertEqual(snippets, {
+            "commands": {"unknown_command": "<reason>", "tools.runit_diagnostic": "<reason>"},
+            "docs": {"docs/local-notes.md": "<reason>"},
+        })
+        self.assertIn('row "run-it" entryPoints: "tools.runit_diagnostic"', message)
+        self.assertIn('row "run-it" docs: "docs/local-notes.md"', message)
+        self.assertIn('append "unknown_command" to entryPoints on the row that owns it', message)
 
 
 class ReleaseAuditTest(unittest.TestCase):
