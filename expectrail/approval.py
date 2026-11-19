@@ -18,6 +18,9 @@ Every reader of ``approval`` asks ``state`` (or ``approved``):
   after it was approved, or the approval was copied from another spec), or the digest cannot be
   computed. Not approved: the spec is counted with the drafts and never judges a change.
 - ``none``: no approval. A draft.
+
+An approval that names no person (``by`` missing, blank or not text), or that carries any other digest
+field (``specSha1``, ``specSha512``…), is ``mismatch`` too: never approved, and never read as legacy.
 """
 from __future__ import annotations
 
@@ -60,6 +63,11 @@ def state(doc) -> str:
         return NONE
     if not isinstance(approval, dict):
         return MISMATCH
+    by = approval.get("by")
+    if not isinstance(by, str) or not by.strip():
+        return MISMATCH  # an approval is a person's act: no name, no approval
+    if any(isinstance(key, str) and "sha" in key.lower() and key != DIGEST_FIELD for key in approval):
+        return MISMATCH  # another digest is not a missing one: never downgrade it to legacy
     if DIGEST_FIELD not in approval:
         return LEGACY
     claimed = approval[DIGEST_FIELD]
