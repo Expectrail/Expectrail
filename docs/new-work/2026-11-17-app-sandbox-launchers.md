@@ -29,23 +29,21 @@ Both full runs had EXPECTRAIL_* unset. The former worker-cleanup timing failure 
 - The missing-Bubblewrap regression first failed for the missing sandbox label
   and because the app ignored the isolated choice. The final focused app
   and project run passed 43 tests, including the Chromium screen and GIO
-  launcher cases. The four new or updated cases also passed on the original
-  app-states parent. The GIO path test caught an executable path containing a
-  percent sign and passed after using a fixed executable with a quoted path
-  argument. Both the before-fix and final logs are in the handover.
+  launcher cases (reported from the builder's local run; in CI the launcher cases
+  run and the Chromium screens test skips). The GIO path test caught an executable
+  path containing a percent sign and passed after using a fixed executable with a
+  quoted path argument (tests/test_app_launcher.py, run in CI).
 - A real [Crate Run parity run](../demo/local-app.md#sandbox-parity-follow-up)
   hid only Bubblewrap discovery. Both ordinary workers refused the isolated
   run with needs review and returned reject for the diagnostic run. The
   browser showed the same reason and replay counts as the CLI's evidence.
   Godot 4.7.2 and Chromium ran locally. No vision settings were supplied.
-- The literal install line installed the verified wheel in an empty Linux
-  home and replaced the earlier same-version wheel in a second home. The
-  generated desktop entry passed desktop-file-validate. GIO
-  launched it and Chromium loaded the app via the browser opener hook.
-  The macOS command file ran under a POSIX shell on Linux. All three affected
+- Reported, not recorded here: the builder's local install run (November 17), from an empty
+  Linux home and again over an earlier same-version wheel, with desktop-file-validate and
+  Chromium. Its output is not in this pull request; not run in CI. Shown in CI: GIO launching
+  the `.desktop` entry, and the `.command` file under a POSIX shell (tests/test_app_launcher.py). All three affected
   test modules loaded with numpy and PIL blocked.
-- The public export scan used a projection that excludes restricted paths
-  by metadata. Final patch application and export results are in the handover.
+- The export scan on this pull request's tree: 0 errors (architect, November 18).
 
 ## Not done
 

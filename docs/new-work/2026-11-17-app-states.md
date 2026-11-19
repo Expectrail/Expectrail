@@ -48,10 +48,9 @@ bug (reject, exit 1) and fix (needs-review, exit 2).
 The fix passed the engine check. This offline run had no vision answer.
 Both new test modules loaded with numpy and PIL imports blocked.
 
-The literal install command ran from an empty temporary home with the wheel
-in Downloads, dependency fetching disabled, and a controlled browser opener.
-The opener received the loopback URL and Chromium loaded the installed app.
-Wheel SHA-256: `688cc3f1c2d64ec263007fbeb8750e724321b3f28db1ed9489483ea1ff6fc46e`.
+Reported, not recorded here: the builder's local run of the literal install command (November 17)
+from an empty temporary home, with the wheel in Downloads, dependency fetching disabled and a
+controlled browser opener. Its output is not in this pull request, and it was not run in CI.
 
 The public projection passed `python -m agents.export_scan bench docs README.md apps --paths error`.
 Prohibited paths were excluded by metadata before opening.
