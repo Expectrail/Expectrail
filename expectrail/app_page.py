@@ -10,7 +10,7 @@ label{display:block;font-weight:600;margin:16px 0 6px}input,select{width:100%;fo
 input[type=checkbox]{width:auto}
 button{font:inherit;font-weight:600;background:#175c47;color:white;border:2px solid #175c47;border-radius:6px;padding:10px 18px;margin:16px 12px 0 0;cursor:pointer}
 button.secondary{background:white;color:#175c47}button:disabled{opacity:.55;cursor:default}a{color:#175c47}a:focus,button:focus,input:focus{outline:3px solid #b35c12;outline-offset:3px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.note{color:#475a53}#result-text{font-size:1.2rem;font-weight:600}#details,#inspection,#rendering{white-space:pre-wrap;overflow-wrap:anywhere}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.note{color:#475a53}#result-text{font-size:1.2rem;font-weight:600}#details,#inspection,#rendering,#error{white-space:pre-wrap;overflow-wrap:anywhere}
 #result-folders dt{font-weight:600}#result-folders dd{margin:0 0 .5em;overflow-wrap:anywhere}
 [hidden]{display:none!important}summary{cursor:pointer}#error{color:#8e251c;font-weight:600}li{margin:5px 0;overflow-wrap:anywhere}
 @media(max-width:600px){main{padding:16px 12px 36px}section{padding:16px}.grid{grid-template-columns:1fr;gap:0}h1{font-size:1.65rem}button{width:100%;margin-right:0}}
@@ -160,15 +160,23 @@ async function poll() {
   catch(error){if(job===current)problem(error);}
 }
 el('inspect').onclick=async()=>{
-  el('error').hidden=true; controls(true);
+  el('error').hidden=true; el('inspection').textContent=''; controls(true);
   try {const body=values(), lines=[];
-    for(const side of ['before','after']){const data=await api('/api/inspect',{...body,side,folder:body[side]});
-      lines.push(side==='before'?'Before (checks used for this run)':'After',
-        data.godot?'Godot project found.':'No Godot project found.',
-        `${data.routes} usable routes; ${data.checks} approved checks; ${data.drafts} draft checks.`,
-        ...(data.routeNames||[]).map(name=>'Route: '+name), ...(data.checkNames||[]).map(name=>'Check: '+name),data.help,rendering(data),...data.problems,'');}
+    let blocked=false;
+    for(const side of ['before','after']){
+      lines.push(side==='before'?'Before (checks used for this run)':'After');
+      try {
+        const data=await api('/api/inspect',{...body,side,folder:body[side]});
+        lines.push(data.godot?'Godot project found.':'No Godot project found.',
+          `${data.routes} usable routes; ${data.checks} approved checks; ${data.drafts} draft checks.`,
+          ...(data.routeNames||[]).map(name=>'Route: '+name), ...(data.checkNames||[]).map(name=>'Check: '+name),
+          data.help,rendering(data),...data.problems);
+      } catch(error) {lines.push(error.message);blocked=true;}
+      lines.push('');
+    }
     el('inspection').textContent=lines.join('\n');
-  }catch(error){problem(error);} finally{controls(false);}
+    if(blocked)problem(new Error('Review the folder details above before verifying.'));
+  } finally{controls(false);}
 };
 el('verify').onclick=async()=>{
   if(job){controls(true);el('verify').textContent='Verify';await poll();return;}
