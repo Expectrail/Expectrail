@@ -35,7 +35,7 @@ image file. It keeps the source image and each frame region apart. Before this, 
   `tests.test_runtime_scan`: OK.
 - I looked at the review page in Chromium at 1280 and 390 pixels wide. The region line sits under the
   strip's preview. Neither width scrolls sideways.
-- The full suite result is in the pull request.
+- Full suite on this branch from main at c7ce110: 5,425 tests, OK, 70 skipped.
 
 ## Not done
 - Pinned Breakout itself was not run. Only this repository may be fetched from the session that built
