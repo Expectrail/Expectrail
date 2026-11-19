@@ -58,6 +58,11 @@ class AppScreensTest(unittest.TestCase):
 
             progress = page.locator('#progress')
             page.locator('#manual').uncheck()
+            page.get_by_role('button', name='Check folders').click()
+            inspection = page.locator('#inspection')
+            expect(inspection).to_contain_text('Before')
+            expect(inspection).to_contain_text('After')
+            self.assertEqual(inspection.inner_text().count('no expectrail.project.json'), 2)
             verify.click()
             checked('Could not be carried out', 'check the folders')
             expect(progress).to_have_text('Verification did not start.')
