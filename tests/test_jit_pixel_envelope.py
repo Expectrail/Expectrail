@@ -165,14 +165,24 @@ class VisualEvidencePolicy(unittest.TestCase):
         envelope, trust = trusted(doc or passing())
         return counting.read(envelope, trust=trust)
 
-    def test_a_counting_pixel_check_demonstrates_a_repair(self):
-        decision, reasons = rec.decide(COUNTS, HELD, intent="fix", generated=self.proof())
-        self.assertEqual(decision, "accept", reasons)
+    def test_a_counting_pixel_check_does_not_demonstrate_a_repair(self):
+        # Sean, November 18 (#638): a counting pixel row may reject, but it never shows a fix works. The
+        # merge guard's probe: pixel rows failing 3/3 on the base and passing 3/3 on the candidate, under
+        # both observers and engine-only, with an approved check passing and no approved repair.
+        for observers in (BOTH, None):
+            with self.subTest(observers=observers):
+                decision, reasons = rec.decide(COUNTS, HELD, intent="fix", generated=self.proof(), observers=observers)
+                self.assertEqual(decision, "needs-review", reasons)
+                self.assertIn("a pixel check does not demonstrate a repair", " ".join(reasons))
 
     def test_under_both_a_counting_pixel_check_is_its_own_visual_evidence(self):
-        decision, reasons = rec.decide(COUNTS, HELD, intent="fix", generated=self.proof(), observers=BOTH)
-        self.assertEqual(decision, "accept", reasons)
-        self.assertNotIn("required visual evidence", " ".join(reasons))
+        # With the repair shown by an approved check, the pixel rows are the visual evidence under both.
+        for intent, repair in (("fix", {"demonstrated": 1}), ("change", None), ("none", None)):
+            with self.subTest(intent=intent):
+                decision, reasons = rec.decide(COUNTS, HELD, intent=intent, repair=repair,
+                                               generated=self.proof(), observers=BOTH)
+                self.assertEqual(decision, "accept", reasons)
+                self.assertNotIn("required visual evidence", " ".join(reasons))
 
     def test_under_both_a_counting_trace_check_still_lacks_visual_evidence(self):
         doc = passing()
@@ -219,12 +229,13 @@ class VisualEvidencePolicy(unittest.TestCase):
         decision, _ = rec.decide(dict(COUNTS, passed=0, failed=1), HELD, intent="fix", generated=self.proof())
         self.assertEqual(decision, "reject")
 
-    def test_the_words_name_a_pixel_check_that_demonstrated_the_repair(self):
+    def test_the_words_never_say_a_pixel_check_demonstrated_the_repair(self):
         proof = self.proof()
-        doc = {"countingChecks": proof.block, "pullRequest": None, "intent": "fix"}
+        doc = {"countingChecks": proof.block, "pullRequest": None, "intent": "fix",
+               "repair": {"runs": 3, "rows": [], "demonstrated": 0}}
         words = rec.repair_words(doc)
-        self.assertIn("generated pixel check", words)
-        self.assertIn(proof.block["rows"][0]["specId"], words)
+        self.assertNotIn("demonstrated by", words)
+        self.assertIn("no check demonstrated the repair", words)
 
 
 class PressureStopsOnPixelChecks(unittest.TestCase):
