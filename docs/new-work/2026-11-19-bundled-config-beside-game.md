@@ -15,6 +15,10 @@ Every replay of the bundled game now reads this config. #658's parity run (Godot
 - four public routes gave the same traces, apart from the role boxes, bindings and window size a config adds;
 - three Run it samples gave the same decisions, with every recorded vision answer still matched by exact frame bytes.
 
+## What the config changes
+
+The hosted `seeded-bugs` job on the first head showed one change. `sinking_v2` moves only the player's drawing. With the player's texture bound, the trace carries the drawn box, so the engine record now catches it (`fail`), where before only the visual observer could. Sean accepted this on November 19: the engine doing better is fine. What matters is that the bundled game shows the setup a real user would have. The calibration step in `.github/workflows/ci.yml` now expects `sinking_v2: fail`. #658's parity run had covered only the clean routes and the Run it samples, not the seeded bugs.
+
 ## What was run
 
 - `tests.test_project_config` and `tests.test_bundled_config`: OK. The Godot cases skip here, since there is no engine.
@@ -34,4 +38,5 @@ Every replay of the bundled game now reads this config. #658's parity run (Godot
 - `tests/test_init_inspect.py`
 - `tests/test_onboard.py`
 - `docs/project-config.md`
+- `.github/workflows/ci.yml` (the sinking calibration expectation)
 - `docs/new-work/2026-11-19-bundled-config-beside-game.md`

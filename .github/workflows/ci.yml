@@ -391,8 +391,10 @@ jobs:
                          json.loads((root / name / "trace.json").read_text()), level)))["result"]
                      for name in ("clean", "sinking_v1", "sinking_v2")}
           print(results)
-          # sinking v2 moves only the drawing, so the position log cannot see it; the SAM hybrid does.
-          assert results == {"clean": "pass", "sinking_v1": "fail", "sinking_v2": "pass"}, results
+          # sinking v2 moves only the drawing. Since the bundled game's config binds the player's texture
+          # (game/platformer/expectrail.project.json, #259), the trace carries the drawn box, so the engine
+          # record catches it too; without a bound texture only the visual observer would.
+          assert results == {"clean": "pass", "sinking_v1": "fail", "sinking_v2": "fail"}, results
           PY
       - name: Keep the summary
         if: always()
