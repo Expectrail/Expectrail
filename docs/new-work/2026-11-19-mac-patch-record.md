@@ -33,7 +33,7 @@ main shows that the three repair tests from #378 no longer fail after #662, but 
   read and copied to #659 then. Nothing here was run on a Mac.
 
 ## Files
-- `tools/patch_controls.py` (new)
+- `tools/patch_controls.py` (new; added with `git add -f`, as most files under `tools/` are)
 - `tests/test_patch_controls.py` (new)
 - `harness/patching.py`
 - `.github/workflows/macos.yml`
