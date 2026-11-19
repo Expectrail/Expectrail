@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 import sys
@@ -57,37 +58,84 @@ def property_value(body, key):
     return match[1].strip() if match else None
 
 
-def sprite_textures(kind, body, external, frames):
-    """Return all referenced frame images, or a reason that a single image cannot be bound."""
+SUB = re.compile(r'SubResource\("([^"]+)"\)')
+RECT = re.compile(r"Rect2\(\s*([^,()]+),\s*([^,()]+),\s*([^,()]+),\s*([^,()]+)\)")
+
+
+def image_size(path):
+    """``[width, height]`` from a PNG file's header, or None for any other or unreadable file."""
+    try:
+        with open(path, "rb") as stream:
+            head = stream.read(24)
+    except OSError:
+        return None
+    if len(head) < 24 or head[:8] != b"\x89PNG\r\n\x1a\n" or head[12:16] != b"IHDR":
+        return None
+    width, height = int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")
+    return [width, height] if width and height else None
+
+
+def atlas_frame(body, external):
+    """``(image path, [x, y, w, h])`` of a scene-local AtlasTexture, or ``(None, reason)``."""
+    ref = EXT.fullmatch(property_value(body, "atlas") or "")
+    if not ref or ref[1] not in external:
+        return None, ("an AtlasTexture's atlas is not an external image file in this scene; "
+                      "save the atlas image as a file and reference it")
+    rect = RECT.fullmatch(property_value(body, "region") or "")
+    try:
+        region = [float(v) for v in rect.groups()] if rect else None
+    except ValueError:
+        region = None
+    if not region or not all(math.isfinite(v) for v in region) or region[2] <= 0 or region[3] <= 0:
+        return None, f"an AtlasTexture of {external[ref[1]]} has no readable region; set its region in the editor"
+    return external[ref[1]], [int(v) if v == int(v) else v for v in region]
+
+
+def sprite_textures(kind, body, external, frames, atlases=None):
+    """Return all referenced frame images, a reason that a single image cannot be bound, and
+    the AtlasTexture regions drawn of each image (an image drawn whole has no entry)."""
+    atlases = atlases or {}
     if kind == "Sprite2D":
         values = [property_value(body, "texture")]
     else:
         ref = re.fullmatch(r'SubResource\("([^"]+)"\)', property_value(body, "sprite_frames") or "")
         if not ref or ref[1] not in frames:
-            return [], "the SpriteFrames resource is external, missing or assigned at runtime"
+            return [], "the SpriteFrames resource is external, missing or assigned at runtime", {}
         # Godot arrays span lines and a frame list ends before the enclosing animation list.
         data = next((record.partition("=")[2] for record in route._records(frames[ref[1]])
                      if record.partition("=")[0].strip() == "animations"), "")
         try:
-            animations = json.loads(EXT.sub(lambda m: json.dumps(m[0]), data).replace('&"', '"'))
+            quoted = SUB.sub(lambda m: json.dumps(m[0]), EXT.sub(lambda m: json.dumps(m[0]), data))
+            animations = json.loads(quoted.replace('&"', '"'))
             values = [f["texture"] for a in animations for f in a["frames"]]
         except (ValueError, KeyError, TypeError):
-            return [], "the saved frame collection cannot be read as external texture references"
-    paths = set()
+            return [], "the saved frame collection cannot be read as external texture references", {}
+    paths, regions, reasons = set(), {}, []
     incomplete = not values
     for value in values:
-        ref = EXT.fullmatch(value) if isinstance(value, str) else None
-        if ref and ref[1] in external:
-            paths.add(external[ref[1]])
+        ext = EXT.fullmatch(value) if isinstance(value, str) else None
+        sub = SUB.fullmatch(value) if isinstance(value, str) else None
+        if ext and ext[1] in external:
+            paths.add(external[ext[1]])
+        elif sub and sub[1] in atlases:
+            image, region = atlas_frame(atlases[sub[1]], external)
+            if image is None:
+                reasons.append(region)
+                continue
+            paths.add(image)
+            if region not in regions.setdefault(image, []):
+                regions[image].append(region)
         else:
             incomplete = True
-    if incomplete:
+    if reasons:
+        reason = reasons[0]
+    elif incomplete:
         reason = "a texture is missing or has no direct external file reference"
     elif len(paths) > 1:
         reason = "multiple frame textures are drawn; the binding takes one representative image"
     else:
         reason = None
-    return sorted(paths), reason
+    return sorted(paths), reason, regions
 
 
 def scene_nodes(root, entry):
@@ -126,6 +174,7 @@ def scene_nodes(root, entry):
         textures = {a["id"]: a["path"] for tag, _, a, _ in sections
                     if tag == "ext_resource" and a.get("type") == "Texture2D"}
         frames = {a["id"]: body for tag, _, a, body in sections if tag == "sub_resource" and a.get("type") == "SpriteFrames"}
+        atlases = {a["id"]: body for tag, _, a, body in sections if tag == "sub_resource" and a.get("type") == "AtlasTexture"}
         for tag, header, attrs, body in sections:
             if tag != "node":
                 continue
@@ -147,12 +196,23 @@ def scene_nodes(root, entry):
                 node["name"] = attrs["name"]
             if node.get("type") in ("Sprite2D", "AnimatedSprite2D"):
                 if "type" in attrs or re.search(r"^(texture|sprite_frames)\s*=", body, re.M):
-                    node["images"], node["reason"] = sprite_textures(node["type"], body, textures, frames)
+                    node["images"], node["reason"], node["regions"] = sprite_textures(
+                        node["type"], body, textures, frames, atlases)
     visit(entry, "", ())
     return nodes, sorted(files)
 
 
-def inspect(root):
+def size_text(size):
+    return f"{size[0]} × {size[1]}"
+
+
+def region_text(regions):
+    return ", ".join(f"{size_text(r[2:])} at ({r[0]}, {r[1]})" for r in regions)
+
+
+def inspect(root, player=None):
+    """The saved-scene report. ``player`` is the node path the developer selected, if any:
+    image suggestions then come only from the sprites that belong to that body (#666)."""
     from expectrail.godot_project import configured_scene, declared_settings, require_gdscript
     from harness.tree import TreeProblem
 
@@ -178,9 +238,19 @@ def inspect(root):
         raise ValueError("Set application/run/main_scene in project.godot to the game's starting scene.")
     nodes, scenes = scene_nodes(root, entry)
     bodies = [p for p, n in nodes.items() if n.get("type") in ("CharacterBody2D", "RigidBody2D", "Area2D")]
-    named = [p for p in bodies if nodes[p]["name"].casefold() == "player"]
-    players = named or bodies
-    textures, problems = set(), []
+    asked = player
+    if asked is not None:
+        chosen = "" if asked == "." else asked
+        if chosen not in bodies:
+            what = (f"{asked!r} is not in the starting scene" if chosen not in nodes
+                    else f"{asked!r} is a {nodes[chosen].get('type', 'node')}, not a physics body")
+            raise ValueError(f"--player: {what}. Choose one of the physics bodies: "
+                             + (", ".join(p or "." for p in bodies) or "none found") + ".")
+        players = [chosen]
+    else:
+        named = [p for p in bodies if nodes[p]["name"].casefold() == "player"]
+        players = named or bodies
+    textures, problems, suggestions = set(), [], []
     if len(players) == 1:
         player = players[0]
         for path, node in nodes.items():
@@ -196,10 +266,25 @@ def inspect(root):
             reason = node["reason"]
             for image in node["images"]:
                 try:
-                    resource(root, image)
-                    textures.add(image)
+                    found = resource(root, image)
                 except ValueError as exc:
                     problems.append(f"{path}.{prop}: {exc}")
+                    continue
+                textures.add(image)
+                size, regions = image_size(found), node["regions"].get(image)
+                suggestions.append({"sprite": path or ".", "property": prop, "image": image,
+                                    "imageSize": size, "regions": regions})
+                if not regions:
+                    continue
+                outside = [r for r in regions if size and (r[0] < 0 or r[1] < 0 or r[0] + r[2] > size[0]
+                                                           or r[1] + r[3] > size[1])]
+                source = f"{image} ({size_text(size)})" if size else f"{image} (size not read)"
+                if outside:
+                    problems.append(f"{path}.{prop}: an AtlasTexture region {region_text(outside)} lies outside "
+                                    f"{source}; correct the region in the editor.")
+                else:
+                    problems.append(f"{path}.{prop}: draws regions {region_text(regions)} of {source} through an "
+                                    "AtlasTexture. A binding names a whole image, so confirm this image by hand.")
             if reason:
                 problems.append(f"{path}.{prop}: {reason}.")
         if not textures and not problems:
@@ -210,7 +295,7 @@ def inspect(root):
             problems.append("Supply one image from the game as a res:// path in bindings.player.texture.")
     else:
         problems.append("Supply the player node path and its res:// image in bindings.player; "
-                        "the starting scene has no unique player.")
+                        "the starting scene has no unique player. Or choose one with --player NODE.")
 
     def paths(kind):
         return [p or "." for p, n in nodes.items() if n.get("type") == kind]
@@ -219,15 +304,24 @@ def inspect(root):
             "platformBodies": paths("StaticBody2D") + paths("AnimatableBody2D"),
             "otherCharacters": [p for p in paths("CharacterBody2D") if p not in [s or "." for s in players]],
             "actions": actions, "builtInActions": fallback, "physicsTicksPerSecond": rate,
-            "viewport": declared_settings(root)[0]}
+            "viewport": declared_settings(root)[0],
+            **({"imageSuggestions": suggestions} if len(players) == 1 else {}),
+            **({"selectedPlayer": players[0] or "."} if asked is not None else {})}
 
 
 def describe(report):
     def listed(key):
         return ", ".join(report[key]) or "none found"
     print(f"Starting scene: {report['entryScene']}")
-    print("Player candidates:", listed("players"))
+    if "selectedPlayer" in report:
+        print("Selected player:", report["selectedPlayer"])
+    else:
+        print("Player candidates:", listed("players"))
     print("Player texture candidates:", listed("textures"))
+    for s in report.get("imageSuggestions", []):
+        size = size_text(s["imageSize"]) if s["imageSize"] else "size not read"
+        drawn = f", regions {region_text(s['regions'])}" if s["regions"] else ", drawn whole"
+        print(f"  {s['image']} ({size}){drawn}, from {s['sprite']}.{s['property']}")
     for problem in report["unresolvedBindings"]:
         print(problem)
     print("Input actions" + (" (built-in fallback)" if report["builtInActions"] else "") + ":", listed("actions"))
@@ -304,10 +398,17 @@ def proposal(root, info):
     if len(info["players"]) == 1:
         config["bindings"]["player"] = {"node": info["players"][0]}
     if info["unresolvedBindings"]:
-        return {"config": config, "route": draft, "unresolvedBindings": info["unresolvedBindings"],
+        docs = {"config": config, "route": draft, "unresolvedBindings": info["unresolvedBindings"],
                 "textureCandidates": info["textures"], "playerCandidates": info["players"], "draft": True}
+        for key in ("selectedPlayer", "imageSuggestions"):
+            if key in info:
+                docs[key] = info[key]
+        return docs
     config["bindings"]["player"]["texture"] = info["textures"][0]
     docs = {"config": project_config.validate(config, root), "route": draft}
+    for key in ("selectedPlayer", "imageSuggestions"):
+        if key in info:
+            docs[key] = info[key]
     if info.get("textureFrom") == "runtime":
         docs["textureFrom"] = "runtime"
     return docs
@@ -354,6 +455,8 @@ def main(command, argv):
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("game", type=Path, nargs="?")
     group.add_argument("--project", type=Path)
+    parser.add_argument("--player", metavar="NODE",
+                        help="the player's node path in the starting scene; images are suggested from its sprites only")
     if command == "inspect":
         parser.add_argument("--json", action="store_true")
         parser.add_argument("--at-tick", type=int, metavar="N",
@@ -375,13 +478,16 @@ def main(command, argv):
         if command == "inspect" and args.at_tick is not None and args.runtime:
             raise ValueError("--runtime lists the nodes of the running game; --at-tick reports the bound objects. "
                              "Use one of them")
+        if command == "inspect" and args.at_tick is not None and args.player is not None:
+            raise ValueError("--at-tick reports the config's bindings; --player selects a node for the saved-scene "
+                             "listing. Use one of them")
         if command == "inspect" and args.at_tick is not None:
             from expectrail import inspection
 
             doc = inspection.document(root, args.at_tick, args.route)
             print(json.dumps(doc, indent=2) if args.json else "\n".join(inspection.describe(doc)))
             return 0
-        info = inspect(root)
+        info = inspect(root, args.player)
         if args.runtime:
             info = with_runtime(root, info)
         if command == "inspect":

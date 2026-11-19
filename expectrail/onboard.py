@@ -54,6 +54,19 @@ def preview(root, uri):
             f'<figcaption>{uri_text}</figcaption></figure>')
 
 
+def drawn(doc, uri):
+    """How the selected player's sprites draw ``uri``: whole, or as regions of it (#666)."""
+    lines = []
+    for s in doc.get("imageSuggestions") or []:
+        if s.get("image") != uri:
+            continue
+        size = onboarding.size_text(s["imageSize"]) if s.get("imageSize") else "size not read"
+        how = (f"draws regions {onboarding.region_text(s['regions'])} of this {size} image"
+               if s.get("regions") else f"draws this {size} image whole")
+        lines.append(f"<p><code>{escape(s['sprite'])}</code> {escape(how)}.</p>")
+    return "".join(lines)
+
+
 def download(root, config, label):
     project_config.validate(config, root)
     data = base64.b64encode(onboarding.encode(config)).decode("ascii")
@@ -102,8 +115,11 @@ def words(values):
 def render(root, source=None):
     source, doc, config = saved_draft(root, source)
     route_name, actions = inputs(root, config)
-    info = onboarding.inspect(root)
     pending = source == PENDING
+    selected = doc.get("selectedPlayer") if pending else None
+    if selected is not None and not isinstance(selected, str):
+        raise ValueError("selectedPlayer in the binding review file must be a node path. Run init again.")
+    info = onboarding.inspect(root, selected)
     if pending and doc != {k: v for k, v in onboarding.proposal(root, info).items() if k != "route"}:
         raise ValueError("The binding review file differs from the current project. Review the changes and rerun init.")
     parts = ['<!doctype html><html lang="en"><head><meta charset="utf-8">',
@@ -126,8 +142,9 @@ def render(root, source=None):
         if "texture" in binding:
             parts.append("<p>Representative image in the draft:</p>" + preview(root, binding["texture"]))
         parts.append("</article>")
-    parts.append(f'<p>Player nodes found by inspect: {words(info["players"])}. '
-                 'The images are project art. This page contains no replay measurement.</p>')
+    found = (f'Player node selected for init: {words(info["players"])}.' if selected is not None
+             else f'Player nodes found by inspect: {words(info["players"])}.')
+    parts.append(f'<p>{found} The images are project art. This page contains no replay measurement.</p>')
     if pending:
         parts.extend(f"<p>{escape(reason)}</p>" for reason in doc["unresolvedBindings"])
     parts.extend(["<h2>Save a draft config</h2>",
@@ -140,7 +157,7 @@ def render(root, source=None):
             choice = deepcopy(config)
             choice["bindings"]["player"]["texture"] = uri
             link = download(root, choice, f"Use {uri.removeprefix('res://')} and save")
-            parts.append("<article>" + preview(root, uri) + link + "</article>")
+            parts.append("<article>" + preview(root, uri) + drawn(doc, uri) + link + "</article>")
         parts.append("</div>")
     elif pending:
         parts.append("<p>No complete choice is available. Identify the player and its image in the game, "
