@@ -331,6 +331,7 @@ class ContentsTest(Case):
         for schema in (REPO / "contracts").glob("*.json"):
             self.assertIn(f"{BUNDLE}contracts/{schema.name}", self.names)
         for name in ("harness/get_godot.sh", "harness/godot/expectrail_harness.gd", "harness/godot/expectrail_recorder.gd",
+                     "harness/godot/expectrail_scan.gd",
                      "harness/routes/smoke.json", "agents/specs/player-stays-above-ground.json",
                      "bugs/physics-fall-through/v1.patch"):
             self.assertIn(BUNDLE + name, self.names)

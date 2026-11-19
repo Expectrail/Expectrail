@@ -46,6 +46,7 @@ BUNDLED_MODULES = {
         "repair_provenance",
         "resources",
         "route",
+        "runtime_scan",
         "spend",
         "timing",
         "viewer",
