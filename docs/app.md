@@ -24,7 +24,8 @@ The app serves its own page without downloading scripts, styles or fonts.
    and shows the starting scene, possible player nodes, images and any binding that still
    needs a choice. Check folders shows a separate result for Before and After. An existing
    pending draft is checked against the project and its saved route before preview. For a
-   menu game, the preview reads the saved inputs without starting the game. Replay the route
+   menu game, the preview reads the saved inputs without starting the game. If the draft
+   selects a player, the preview names it and shows its image candidates. Replay the route
    to see whether those inputs reach gameplay.
    Previewing leaves both folders untouched. Verification still requires a configuration.
    **Older projects without a config** retains the explicit path inputs for existing checkouts.

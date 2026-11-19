@@ -105,6 +105,28 @@ then save its `config` object alone as `expectrail.project.json`. For an
 animated player, choose the representative image from the listed frame textures.
 Use `--force` to replace an existing output config. Earlier routes are preserved.
 
+### Choose the player: `--player NODE`
+
+When the starting scene has several bodies and none is named `Player` (Breakout has `Paddle` and
+`Ball`), name the one you mean:
+
+```sh
+expectrail inspect "$game" --player Paddle
+expectrail init "$game" --player Paddle
+```
+
+Images are then suggested only from the sprites whose nearest physics body is that node. Each
+suggestion (`imageSuggestions` in `--json`, the dry run and the review file) names the sprite, the
+image file, the image's own size (read from a PNG header; other formats say "size not read") and,
+when the sprite draws only part of the image through an `AtlasTexture`, each region as
+`[x, y, width, height]`. Inspect follows a `SpriteFrames` and its `AtlasTexture`s saved inside the
+scene to the image file. A region is offered as a candidate but never bound automatically: a
+binding names a whole image, and the image's size is not the size drawn on screen, so a person
+confirms it in the review page, which shows both. A `SpriteFrames` or `AtlasTexture` saved as its
+own `.tres`, an atlas that is not an image file, a missing region, a region outside its image, or a
+missing file is left unresolved, with what to supply. The review file keeps `selectedPlayer`, and the
+review page reads the scene again for that node.
+
 Review whether the route starts the game, moves the intended player and exercises
 the behaviour you care about. The route command can test repeatability with three
 replays. A person still chooses and approves the checks. Init measures no gameplay.

@@ -125,6 +125,9 @@ def saved_route_guidance(root, saved, info):
     proposed_route = expected.pop('route')
     if raw != onboarding.encode(proposed_route) or names != expected['config']['routes']:
         raise ValueError(f'The route saved with {onboard.PENDING} has changed. Review the draft route.')
+    # Earlier init drafts predate both the player selector and atlas suggestions.
+    if 'selectedPlayer' not in saved and 'imageSuggestions' not in saved:
+        expected.pop('imageSuggestions', None)
     if saved != expected:
         raise ValueError(f'{onboard.PENDING} differs from the current setup. Review the draft before using it.')
     if {event.get('action') for event in proposed_route['events']} == {'pause'}:
@@ -136,18 +139,22 @@ def setup_preview(root):
     """Explain the missing configuration from authored scenes, without starting a job."""
     from expectrail import onboard, onboarding
 
-    info = onboarding.inspect(root)
     pending = root / onboard.PENDING
-    title = 'Setup preview'
-    route_guidance = None
-    if pending.exists() or pending.is_symlink():
-        # Only describe a saved proposal if it still belongs to these scenes and route.
+    has_draft = pending.exists() or pending.is_symlink()
+    saved = {}
+    if has_draft:
         saved = rec.strict_loads(project_job.regular(root, onboard.PENDING, LIMIT).decode('utf-8'))
-        route_guidance = saved_route_guidance(root, saved, info)
-        title = 'Saved draft preview'
-
-    lines = [f'{title} for {root.name}', f'Starting scene: {info["entryScene"]}',
-             'Player candidates: ' + (', '.join(info['players']) or 'none found')]
+        if not isinstance(saved, dict):
+            raise ValueError(f'{onboard.PENDING} must contain a saved setup.')
+    selected = saved.get('selectedPlayer')
+    if 'selectedPlayer' in saved and not isinstance(selected, str):
+        raise ValueError(f'selectedPlayer in {onboard.PENDING} must be a node path.')
+    info = onboarding.inspect(root, selected)
+    route_guidance = saved_route_guidance(root, saved, info) if has_draft else None
+    title = 'Saved draft preview' if has_draft else 'Setup preview'
+    players = (f'Selected player: {selected}' if selected else
+               'Player candidates: ' + (', '.join(info['players']) or 'none found'))
+    lines = [f'{title} for {root.name}', f'Starting scene: {info["entryScene"]}', players]
     if len(info['players']) == 1:
         lines.append('Player images: ' + (', '.join(info['textures']) or 'none found for this player'))
     else:

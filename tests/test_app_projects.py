@@ -159,6 +159,39 @@ class ConfiguredAppTest(unittest.TestCase):
                     probe.assert_not_called()
         self.assertEqual(self.server.app.history()['jobs'], [])
 
+    def test_saved_menu_preview_respects_explicit_player_and_older_drafts(self):
+        from expectrail import input_discovery, onboard, onboarding
+
+        game = self.root / 'Menu game'
+        shutil.copytree(ROOT / 'tests/projects/pointer-menu', game)
+        body = {'before': str(game), 'after': str(game), 'folder': str(game)}
+        draft = {'format': 'expectrail.route/v0', 'name': 'test', 'ticks': 2,
+                 'events': [{'tick': 1, 'pointer': {'position': [1, 1]}}]}
+        with mock.patch.object(input_discovery, 'probe', side_effect=ValueError('engine probe attempted')) as probe:
+            for selected in ('Player', None):
+                with self.subTest(selected=selected):
+                    info = onboarding.inspect(game, selected)
+                    docs = onboarding.proposal(game, info, planned_route=draft)
+                    if selected is None:
+                        del docs['imageSuggestions']  # Draft written before atlas suggestions.
+                    onboarding.publish(game, docs, force=True)
+                    code, error, _ = self.http('POST', '/api/inspect', body)
+                    self.assertEqual(code, 400)
+                    self.assertIn('Saved draft preview', error['detail'])
+                    if selected:
+                        self.assertIn('Selected player: Player', error['detail'])
+                    probe.assert_not_called()
+
+            pending = game / onboard.PENDING
+            saved = json.loads(pending.read_bytes())
+            saved['selectedPlayer'] = ['Player']
+            pending.write_bytes(onboarding.encode(saved))
+            code, error, _ = self.http('POST', '/api/inspect', body)
+            self.assertEqual(code, 400)
+            self.assertIn('selectedPlayer', error['detail'])
+            self.assertNotIn('Saved draft preview', error['detail'])
+            probe.assert_not_called()
+
     def test_missing_or_invalid_config_is_named_and_no_job_is_started(self):
         body=self.pair();path=Path(body['before'])/'expectrail.project.json';path.unlink()
         for value in (None,'{broken'):

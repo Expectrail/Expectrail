@@ -8,8 +8,10 @@ A developer who opens a Godot project with an unfinished setup can now review it
 
 - On main `f8c0879`, the new local-app HTTP test hit the engine probe on all five menu-route cases. With the change, `python -m unittest tests.test_app_projects.ConfiguredAppTest` passed all six tests. The new test covers pointer and action-only drafts, an out-of-viewport position, an unknown action and an event beyond the end.
 - In Chromium, two copies of public Breakout at `0ac7aed444ea593a023d9b666c211d7ab8acd51e` had pending drafts. Before contained the older six-event pause route. After contained the [303-event pointer route](../outside-trials/breakout-pointer/init-generated/route.json). With a counting stub in place of the game probe, Check folders showed both saved drafts and named Paddle and Ball. Before said “The saved route only uses pause. Choose inputs that start and exercise gameplay.” After asked for a replay. Verify displayed “Verification did not start.” The app created zero jobs, the game probe received zero calls and every source file had the same digest after the rehearsal.
-- `python3 -m unittest discover -s tests -t .` ran 5,407 tests in 505.980 seconds with 76 skipped and no failures or errors. The opt-in Godot and Bubblewrap repair tests were not run here.
-- `python -m agents.export_scan bench docs README.md apps --paths error` scanned 1,234 files with zero errors and zero warnings.
+- After merging main `c24fe36`, the app's HTTP tests initially refused both a pending draft with an explicit player and an older single-player draft written before atlas suggestions. After the compatibility change, all seven configured app tests passed. An invalid player selection is refused.
+- In a second Chromium rehearsal on the same Breakout pin, the After draft explicitly selected Paddle. Check folders displayed Paddle's 94 × 18 source image, its two 47 × 18 regions, and the need for manual confirmation. The probe and job counts stayed at zero and the project file digests matched.
+- `python3 -m unittest discover -s tests -t .` ran 5,418 tests in 498.440 seconds with 76 skipped and no failures or errors. The opt-in Godot and Bubblewrap repair tests were not run here.
+- `python -m agents.export_scan bench docs README.md apps --paths error` scanned 1,235 files with zero errors and zero warnings.
 
 ## Not done
 
