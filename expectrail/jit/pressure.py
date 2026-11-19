@@ -103,6 +103,9 @@ def pixel_checks(run, rows, observer, digests):
         if not isinstance(src.get('framesPlanned'),list):
             raise Stop(f"pixel-plan-unrecorded: the source run does not say which frames {row['specId'][:80]} "
                        "was judged on, so its plan cannot be matched")
+        if not src['framesPlanned']:
+            # A check planned on no frame judged nothing; an observer that also plans nothing would match it.
+            raise Stop(f"pixel-plan-empty: the source run planned no frame for {row['specId'][:80]}")
         out.append({'check':src['check'],'setting':row['setting'],'frames':list(src['framesPlanned'])})
     return out
 

@@ -10,7 +10,8 @@
 - The frame plan is pinned too (after the merge guard's review): `jit run` writes `framesPlanned` on each
   pixel row (`pixel.record_row`, `run._pixel_stage`; contract `jit-run.v1`, optional field), and pressure
   stops before any replay unless its observer plans exactly those frames for the check
-  (`pixel-plan-mismatch`), or when a row records no plan (`pixel-plan-unrecorded`).
+  (`pixel-plan-mismatch`), or when a row records no plan (`pixel-plan-unrecorded`) or an empty one (`pixel-plan-empty`, from the
+  guard's second review).
 - Trace replays now replay only the probes trace checks name (before, every route in the bundle, which
   was the same set).
 - Contract `jit-pressure.v1`: optional row `kind: "pixel"` and optional `pixelObserver` (name, setting,

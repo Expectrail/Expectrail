@@ -164,6 +164,17 @@ class FrozenPixelChecks(unittest.TestCase):
         with self.assertRaisesRegex(pressure.Stop, "pixel-plan-unrecorded"):
             pressure.frozen(folder, trust, FakeSensor(setting_of(envelope)))
 
+    def test_a_signed_empty_plan_is_not_matched_by_an_observer_that_plans_nothing(self):
+        # The merge guard's note on d23e4c8: both sides empty would otherwise match.
+        doc = passing()
+        for row in doc["pixelChecks"]:
+            row["framesPlanned"] = []
+        envelope, trust, folder = frozen_bundle(self.root / "empty", doc)
+        nothing = FakeSensor(setting_of(envelope))
+        nothing.frames = lambda route: []
+        with self.assertRaisesRegex(pressure.Stop, "pixel-plan-empty"):
+            pressure.frozen(folder, trust, nothing)
+
     def test_a_route_file_that_is_not_the_signed_route_stops(self):
         path = self.folder / "jit-routes" / "jit-reverse.json"
         route = json.loads(path.read_text())

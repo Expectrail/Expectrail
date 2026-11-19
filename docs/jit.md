@@ -1152,7 +1152,8 @@ same plan as the judging run), and `pixel.judge` decides each run. No model and 
   stops before any replay unless its observer, with `--sensor-every` and `--sensor-first`, would plan exactly
   those frames for the check (`pixel-plan-mismatch`), so a correct fix can never pass on fewer frames than
   the check was kept on. A row with no recorded plan (every record before November 19, the committed
-  stand-ins included) stops it too (`pixel-plan-unrecorded`).
+  stand-ins included) stops it too (`pixel-plan-unrecorded`), and so does a row that planned no frame
+  (`pixel-plan-empty`), which an observer planning nothing would otherwise match.
 - **Undecided is not a pass.** A gap, `needs-review`, or an observer that fails is
   `insufficient_observation`, so the campaign is `blocked`, never `complete`. A `fail` on any run is
   `failed`, as for trace checks.
