@@ -19,6 +19,9 @@ record is a reason to withhold the explanation, never a reason to show it.
   withholds the point: a list of words to refuse can never be finished, so the check allows rather
   than refuses. A spec's name is allowed as a name, never split into a claim.
 - Every number must appear in the evidence the point cites, written as digits.
+- A comparison word ("same", "unchanged") needs every cited verdict to be equal before and after the
+  change; "difference" or "changed" needs one that differs. Scope words ("only", "also", "other",
+  "than") are never allowed: they have no verdict to match.
 - A failing word ("fails", "regression") needs a stated ``after: fail`` in the same point; a passing
   word ("passes", "fixed") needs every stated ``after`` to be ``pass``. A ``before`` verdict never
   licenses a word: the verdict sentences the viewer writes from ``says`` cover before and after.
@@ -51,12 +54,25 @@ VERDICTS = ("pass", "fail", "needs-review", "replay-error", "not-applicable")
 # Every word of a point must come from one of these places, or the point is withheld (``_point``).
 # A list of words to refuse cannot be finished (English always has another way to say "fine"), so the
 # check works the other way round: only words it can match to the evidence are allowed.
-NEUTRAL = frozenset("""a an the this that these those it its is are was were be been has have had of in on
-at to from by for with as and or than then also same each both other only before after change check
-checks route routes frame frames tick ticks player object px pixel pixels tolerance limit bound
-measured measurement measurements value values recorded observer observers engine vision record
-evidence finding findings earliest first last later earlier until during between window start starts
-end ends when where which sample run replay replays result results reading readings difference""".split())
+# Words that cannot carry a claim of their own: articles, pronouns, copulas, prepositions, "before",
+# "after", and the nouns that name evidence. A word that compares (same, other, than, earlier), scopes
+# (only, also, both) or counts never goes here: with it, a sentence made of allowed words alone could
+# say "nothing changed" or "it is just the observer" (#632, second review). tests.test_explanation
+# pins this list and checks it against those kinds of word.
+FUNCTION_WORDS = frozenset("""a an the this that these those it its is are was were be been has have had
+of in on at to from by for with as and or which during between before after""".split())
+EVIDENCE_NOUNS = frozenset("""change check checks route routes frame frames tick ticks player object px pixel
+pixels tolerance limit bound measured measurement measurements value values recorded observer observers
+engine vision record evidence finding findings sample run replay replays result results reading readings
+window""".split())
+NEUTRAL = FUNCTION_WORDS | EVIDENCE_NOUNS
+# Comparison words, allowed only where the cited evidence holds them: "same" where every cited id has
+# a before and an after verdict and they are equal; "difference" where some cited id's differ.
+SAME_WORDS = frozenset("same unchanged identical alike".split())
+DIFFERENT_WORDS = frozenset("difference differences different differs differ changed".split())
+# Never allowed: a word that limits or widens what the evidence covers has no verdict to match.
+SCOPE = frozenset("""only just merely solely simply purely except also too even both either other others
+another else than more most less least few many much some any several mostly mainly""".split())
 # Verdict words: allowed only where the point states the matching verdict after the change.
 FAIL_WORDS = frozenset("fail fails failed failing failure regression regressed".split())
 PASS_WORDS = frozenset("pass passes passed passing fixed".split())
@@ -105,7 +121,8 @@ def _words(text: str) -> set[str]:
     """The verifier's own words for a piece of evidence (its comparison and reason), which a point
     citing it may reuse. A spec's name is not split into words: "player-stays-above-ground" names the
     check; "the player stays above ground" would be a claim."""
-    return {t for t in TOKEN.findall(text.lower()) if not t[0].isdigit()} - NEGATIONS - CERTAINTY
+    return ({t for t in TOKEN.findall(text.lower()) if not t[0].isdigit()}
+            - NEGATIONS - CERTAINTY - SCOPE - SAME_WORDS - DIFFERENT_WORDS)
 
 
 def _numbers(text: str) -> set[str]:
@@ -191,10 +208,22 @@ def _point(point: dict, known: dict[str, dict], decision: str) -> list[str]:
     if pass_words and (not stated_after or any(v != "pass" for v in stated_after)):
         problems.append(f"it says {', '.join(sorted(pass_words))}, but not every verdict it states after the "
                         "change is pass")
+    if words & SCOPE:
+        problems.append(f"it says {', '.join(sorted(words & SCOPE))}, which limits or widens what the "
+                        "evidence covers, and that cannot be matched to a verdict")
+    sides = [(known[cid]["before"], known[cid]["after"]) for cid in point["cites"]]
+    same_words, different_words = words & SAME_WORDS, words & DIFFERENT_WORDS
+    if same_words and not (sides and all(b is not None and b == a for b, a in sides)):
+        problems.append(f"it says {', '.join(sorted(same_words))}, but not every verdict it cites is the "
+                        "same before and after the change")
+    if different_words and not any(b is not None and a is not None and b != a for b, a in sides):
+        problems.append(f"it says {', '.join(sorted(different_words))}, but no verdict it cites differs "
+                        "before and after the change")
     decision_words = set().union(*DECISION_WORDS.values()) & words
     if decision_words - DECISION_WORDS.get(decision, frozenset()):
         problems.append(f"it says {', '.join(sorted(decision_words))}, but the decision is {decision}")
-    named = NUMBER_WORDS | NEGATIONS | CERTAINTY | FAIL_WORDS | PASS_WORDS | decision_words
+    named = (NUMBER_WORDS | NEGATIONS | CERTAINTY | SCOPE | SAME_WORDS | DIFFERENT_WORDS | FAIL_WORDS
+             | PASS_WORDS | decision_words)
     unknown_words = sorted(w for w in words - words_ok - named if not w.endswith("n't"))
     if unknown_words:
         problems.append(f"it uses words Expectrail cannot match to the evidence ({', '.join(unknown_words[:8])}"
@@ -228,7 +257,9 @@ def prompt(record: dict) -> str:
         "exactly as listed below. Use only these words: the ids and names of the evidence the point cites, "
         "the words of that evidence's own description below, the verdict words pass, passes, passed, fixed, "
         "fail, fails, failed, regression (only where the point states that verdict after the change), and: "
-        + " ".join(sorted(NEUTRAL)) + ". Any other word withholds the point. Write numbers as digits, and "
+        + " ".join(sorted(NEUTRAL)) + ". Say same or unchanged only where every cited verdict is the same "
+        "before and after the change, and difference or changed only where one differs. Any other word "
+        "withholds the point. Write numbers as digits, and "
         "only numbers that appear in the cited evidence. Do not negate anything.",
         "",
         "Evidence:",

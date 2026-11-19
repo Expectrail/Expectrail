@@ -6,7 +6,7 @@
   "kind": "model",
   "model": "stand-in",
   "recorded": true,
-  "promptSha256": "fc77b45b656cd48e67c98e942df4d1c566e910465e304a92ddd0e1e00f57ce81"
+  "promptSha256": "8ddb757e6d74245f306e85bfe0c26fb6a7cf2490e8ebbde6a679374ba9f75827"
  },
  "points": [
   {
@@ -22,7 +22,7 @@
    }
   },
   {
-   "text": "The smoke route fails the same check from frame 5.",
+   "text": "The smoke route fails player-stays-above-ground from frame 5.",
    "cites": [
     "d53dfb482f64",
     "check:player-stays-above-ground@smoke"

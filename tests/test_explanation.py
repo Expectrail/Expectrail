@@ -1,5 +1,5 @@
 """A written explanation in the evidence viewer (#264, expectrail/explanation.py): it is shown only
-when it cites this run's evidence and cannot contradict the verifier's decision, and it is withheld,
+when it cites this run's evidence and every word matches the record, and it is withheld,
 with the reason on the page, whenever that cannot be told. No model is called: the answers are
 stand-ins checked in under tests/fixtures/explanation/."""
 from __future__ import annotations
@@ -143,6 +143,63 @@ class CheckTest(unittest.TestCase):
         # (a) itself: a before pass never licenses a passing word.
         self.assertIn("not every verdict it states after the change is pass",
                       self.said(one_point("The combat route is fixed.", says=both)))
+
+    def test_the_merge_guards_second_round_cases_are_withheld(self):
+        # #632, second review: each of these used only words then in NEUTRAL and was shown.
+        both = {FINDING: {"before": "pass", "after": "fail"}}
+        for text, says in (
+                ("The check result is the same before and after the change.", both),                    # (g)
+                ("The player is the same before and after the change.", both),                          # (h)
+                ("The change has the same result as before.", {}),                                      # (i)
+                ("The evidence is the same as before the change.", {}),                                 # (j)
+                ("The measured value is the same before and after; the difference is only the observer.",
+                 {}),                                                                                   # (k)
+                ("This finding is only the observer, the engine is the same.", {})):                     # (l)
+            with self.subTest(text=text):
+                self.assertTrue(self.withheld(one_point(text, says=says)))
+        self.assertIn("not every verdict it cites is the same",
+                      self.said(one_point("The change has the same result as before.", says={})))
+        self.assertIn("limits or widens", self.said(one_point("This finding is only the observer.", says={})))
+
+    def test_on_an_accept_a_fixed_check_is_not_the_same(self):
+        # The accept-side mirror: the check failed before and passes after.
+        fixed = accept_record()
+        for c in fixed["checks"]:
+            c.update(before="fail")
+        doc = example()
+        doc.update(decision="accept", recordSha256=contracts.digest_v1(fixed))
+        doc["points"] = [{"text": "The check result is the same before and after the change.",
+                          "cites": [COMBAT], "says": {COMBAT: {"before": "fail", "after": "pass"}}}]
+        self.assertIn("not every verdict it cites is the same", " ".join(xpl.check(doc, fixed, "accept")))
+        # Where it did change, saying so is allowed; where it did not, saying it changed is not.
+        doc["points"][0]["text"] = "The check result changed after the change."
+        self.assertEqual(xpl.check(doc, fixed, "accept"), [])
+        steady = accept_record()
+        doc.update(recordSha256=contracts.digest_v1(steady))
+        doc["points"] = [{"text": "The check result changed after the change.", "cites": [COMBAT],
+                          "says": {COMBAT: {"before": "pass", "after": "pass"}}}]
+        self.assertIn("no verdict it cites differs", " ".join(xpl.check(doc, steady, "accept")))
+        doc["points"][0]["text"] = "The check result is the same before and after the change."
+        self.assertEqual(xpl.check(doc, steady, "accept"), [])
+
+    def test_neutral_holds_only_words_that_cannot_carry_a_claim(self):
+        # Pinned: adding a word to NEUTRAL means changing this list, which a reviewer sees.
+        self.assertEqual(xpl.NEUTRAL, xpl.FUNCTION_WORDS | xpl.EVIDENCE_NOUNS)
+        self.assertEqual(xpl.NEUTRAL, frozenset("""a an the this that these those it its is are was were be
+            been has have had of in on at to from by for with as and or which during between before after
+            change check checks route routes frame frames tick ticks player object px pixel pixels tolerance
+            limit bound measured measurement measurements value values recorded observer observers engine
+            vision record evidence finding findings sample run replay replays result results reading
+            readings window""".split()))
+        claims = frozenset("""same unchanged identical alike similar equal equals equivalent difference
+            different differs differ changed other others another else than more most less least only just
+            merely solely simply purely except also too even both either each all every some any few many
+            much several first last earliest latest earlier later until since then still yet again already
+            start starts end ends when where while once whenever fine ok okay good bad safe harmless
+            expected intended normal correct wrong broken works working""".split())
+        self.assertEqual(xpl.NEUTRAL & claims, frozenset())
+        # And the verifier's own words cannot bring a comparison or scope word in by the back door.
+        self.assertEqual(xpl._words("only the same as other runs"), {"the", "as", "runs"})
 
     def test_on_an_accept_a_description_of_a_failure_is_withheld(self):
         accept = accept_record()
