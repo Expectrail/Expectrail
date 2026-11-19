@@ -20,7 +20,7 @@ change nothing published said which environment drew the frames.
   `tools/runit_published` reports it in its pass line. Results published before this change still read.
 
 ## What was run
-- `python3 -m unittest tests.test_runit_rendering`: 25 tests, OK. They cover the client, a stand-in
+- `python3 -m unittest tests.test_runit_rendering`: 23 tests, OK. They cover the client, a stand-in
   Run it through the real orchestrator and gate (match, a drifted runner, a recording with no
   environment, the same bytes from another environment still answered exactly), the schema, the
   smoke's comparison, the nightly's note, and the page's own `renderingLine` under Node against the

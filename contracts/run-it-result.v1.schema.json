@@ -181,28 +181,36 @@
                       "string",
                       "null"
                     ],
-                    "pattern": "^[ -~]{1,160}$"
+                    "minLength": 1,
+                    "maxLength": 160,
+                    "pattern": "^[\\x20-\\x7e]+$"
                   },
                   "version": {
                     "type": [
                       "string",
                       "null"
                     ],
-                    "pattern": "^[ -~]{1,160}$"
+                    "minLength": 1,
+                    "maxLength": 160,
+                    "pattern": "^[\\x20-\\x7e]+$"
                   },
                   "renderer": {
                     "type": [
                       "string",
                       "null"
                     ],
-                    "pattern": "^[ -~]{1,160}$"
+                    "minLength": 1,
+                    "maxLength": 160,
+                    "pattern": "^[\\x20-\\x7e]+$"
                   },
                   "device": {
                     "type": [
                       "string",
                       "null"
                     ],
-                    "pattern": "^[ -~]{1,160}$"
+                    "minLength": 1,
+                    "maxLength": 160,
+                    "pattern": "^[\\x20-\\x7e]+$"
                   }
                 }
               }
@@ -231,28 +239,36 @@
                       "string",
                       "null"
                     ],
-                    "pattern": "^[ -~]{1,160}$"
+                    "minLength": 1,
+                    "maxLength": 160,
+                    "pattern": "^[\\x20-\\x7e]+$"
                   },
                   "version": {
                     "type": [
                       "string",
                       "null"
                     ],
-                    "pattern": "^[ -~]{1,160}$"
+                    "minLength": 1,
+                    "maxLength": 160,
+                    "pattern": "^[\\x20-\\x7e]+$"
                   },
                   "renderer": {
                     "type": [
                       "string",
                       "null"
                     ],
-                    "pattern": "^[ -~]{1,160}$"
+                    "minLength": 1,
+                    "maxLength": 160,
+                    "pattern": "^[\\x20-\\x7e]+$"
                   },
                   "device": {
                     "type": [
                       "string",
                       "null"
                     ],
-                    "pattern": "^[ -~]{1,160}$"
+                    "minLength": 1,
+                    "maxLength": 160,
+                    "pattern": "^[\\x20-\\x7e]+$"
                   }
                 }
               }
