@@ -161,6 +161,42 @@ class CheckTest(unittest.TestCase):
                       self.said(one_point("The change has the same result as before.", says={})))
         self.assertIn("limits or widens", self.said(one_point("This finding is only the observer.", says={})))
 
+    def test_verdict_words_must_agree_with_every_citation(self):
+        findings = record()
+        smoke = "check:player-stays-above-ground@smoke"
+        smoke_check = next(c for c in findings["checks"] if c["route"] == "smoke")
+        smoke_check.update(before="pass", after="pass", comparison="PRESERVED", findingId=None)
+        findings["findings"] = [f for f in findings["findings"] if f["id"] == FINDING]
+
+        def problems(text, cites, says):
+            doc = one_point(text, cites=cites, says=says)
+            doc["recordSha256"] = contracts.digest_v1(findings)
+            return xpl.check(doc, findings, "reject")
+
+        passing = {smoke: {"after": "pass"}}
+        failing = {FINDING: {"after": "fail"}}
+        for text, says in (
+                (f"{FINDING} passes.", {smoke: {"before": "pass", "after": "pass"}}),
+                ("The combat route passes the check.", passing),
+                ("The change passes the check on the combat route.", passing),
+                ("The combat route fails.", {**passing, **failing}),
+                ("The player is fixed on the combat route.", passing),
+                ("The smoke route fails the check.", failing),
+                (f"{smoke} is a regression.", failing)):
+            with self.subTest(text=text):
+                self.assertTrue(problems(text, [FINDING, smoke], says))
+        self.assertEqual(problems("The smoke route passes.", [smoke], passing), [])
+        self.assertEqual(problems("The combat route fails.", [FINDING], failing), [])
+
+    def test_a_route_named_passes_cannot_license_a_verdict_word(self):
+        findings = record()
+        check = findings["checks"][0]
+        check["route"] = "passes"
+        cid = f"check:{check['spec']}@passes"
+        doc = one_point("The check passes.", cites=[cid], says={cid: {"after": "fail"}})
+        doc["recordSha256"] = contracts.digest_v1(findings)
+        self.assertTrue(xpl.check(doc, findings, "reject"))
+
     def test_on_an_accept_a_fixed_check_is_not_the_same(self):
         # The accept-side mirror: the check failed before and passes after.
         fixed = accept_record()
@@ -327,6 +363,9 @@ class ViewerTest(unittest.TestCase):
         self.assertIn("replayed from a recording", page)
         # The verdicts under each point are written from the record, not taken from the author's text.
         self.assertIn(f"From the record: <code>{FINDING}</code>: pass before the change, fail after the change.", page)
+        # The second point states only one after verdict, but cites two pieces of evidence.
+        for cid in example()["points"][1]["cites"]:
+            self.assertIn(f"<code>{cid}</code>: pass before the change, fail after the change", page)
         # The offline copy carries the same explanation.
         single = embedded((self.tmp / "viewer" / viewer.EXPORT_NAME).read_text(encoding="utf-8"))
         self.assertEqual(single["explanation"], payload["explanation"])
