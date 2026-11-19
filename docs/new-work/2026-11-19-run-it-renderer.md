@@ -31,7 +31,9 @@ change nothing published said which environment drew the frames.
   Chromium at 1280 and 390 px wide: the Rendering line shows after Vision, no horizontal scroll, and
   with a `mismatch` block injected the verdict stayed "Accepted" for a run whose every question was
   answered.
-- Full suite on the branch merged with main: see the pull request.
+- Full suite on the branch merged with main at 8c2f9a2: 5,221 tests, OK, 66 skipped.
+  The first run had one failure, `tests.test_schema_pattern`: the new field pattern had no sample. The
+  fields now use the recording schema's existing rule (`^[\x20-\x7e]+$`, 1 to 160 characters).
 
 ## Not done
 - The four checked-in recordings under `docs/run-it/vision/` still name no environment, so live runs
