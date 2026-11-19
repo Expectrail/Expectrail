@@ -87,7 +87,8 @@ rate and those bindings to every replay; a head file that differs is not an acce
 From a shell with Expectrail installed, set `game` to the folder containing
 `project.godot`. Inspect reads the starting scene and its nested text scenes.
 It lists candidate player nodes, textures, input actions, cameras and ground
-layers. It works without launching Godot. Add `--json` for the paths and settings.
+layers. It works without launching Godot. Add `--json` for the paths and settings, and `--runtime`
+for what the running game builds in code (below).
 
 ```sh
 game=./my-game
@@ -107,6 +108,38 @@ Use `--force` to replace an existing output config. Earlier routes are preserved
 Review whether the route starts the game, moves the intended player and exercises
 the behaviour you care about. The route command can test repeatability with three
 replays. A person still chooses and approves the checks. Init measures no gameplay.
+
+## Add what the game builds in code: `--runtime`
+
+Saved scenes do not show what a script builds. A floor made in `_ready`, an image set in code or a
+node added to a group at runtime is missing from the plain listing. `--runtime` also starts the game
+headless on a copy, in the replay sandbox when the machine has one. The game runs 30 physics ticks
+with no input. Then the listing adds the nodes the engine has at that moment: physics bodies and
+areas, sprites with their image files, polygons, tile layers with their tile count and whether they
+collide, cameras, and each node's groups and script class.
+
+```sh
+expectrail inspect "$game" --runtime
+expectrail init "$game" --dry-run --runtime
+```
+
+On Crate Run (`tests/projects/crate-run`), the plain listing finds no ground layer. `--runtime` lists
+`Floor`, a solid tile layer with 72 tiles that `main.gd` builds. It also says the crate is a filled
+`Polygon2D` that draws no image file, so `bindings.player.texture` still needs a person's choice.
+
+Init takes the player's image from the running game only when three things hold:
+
+- the saved scenes named no image;
+- there is one player candidate;
+- exactly one image file is drawn under it, with none made in code.
+
+The dry run then says `"textureFrom": "runtime"`. In every other case the review draft lists the
+reason, and nothing is guessed. A saved-scene finding is never replaced.
+
+What the scan lists is the game's own report of itself, because the game's code ran in the same
+process. It is setup information, never evidence for a verdict. With `--json`, `inspect` adds it under
+`runtime`. The record that `expectrail.runtime_scan.scan` writes is `expectrail.runtime-scan/v1`
+(`contracts/runtime-scan.v1.schema.json`). A scan that cannot be read is refused, never shown in part.
 
 ## See the bound objects at one tick
 

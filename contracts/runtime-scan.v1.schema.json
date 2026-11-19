@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Expectrail/Expectrail/contracts/runtime-scan.v1.schema.json",
+  "title": "Runtime scan: the nodes of a Godot game's current scene, as the running engine has them",
+  "description": "Written by expectrail.runtime_scan.scan (`expectrail init --runtime`, `expectrail inspect --runtime --json`) and read by expectrail.runtime_scan.problems and merge. The game is started headless on a copy, in the replay sandbox when the machine has one, and runs `ticks` physics ticks with no input; then the scanner lists the nodes a project config can bind or a ground check can stand on. It is the game's own report of itself (the game's code ran in the same process) and is setup information for the game's owner, never evidence for a verdict.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "project", "ticks", "engine", "isolation", "truncated", "nodes", "note"],
+  "properties": {
+    "format": {"const": "expectrail.runtime-scan/v1"},
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entryScene", "scene", "gameTree", "configSha256"],
+      "properties": {
+        "entryScene": {"type": ["string", "null"], "maxLength": 200, "description": "The config's entryScene, or null when the game has no config (or it names none) and the project's main scene ran."},
+        "scene": {"type": ["string", "null"], "maxLength": 200, "description": "The current scene's file when the scan was taken, as the game reported it; null when the scene has no file."},
+        "gameTree": {"type": "string", "minLength": 1, "maxLength": 128, "description": "The digest of the game folder the scan's copy was made from (harness.tree)."},
+        "configSha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the expectrail.project.json bytes beside the game, or null when it has none."}
+      }
+    },
+    "ticks": {"type": "integer", "minimum": 1, "maximum": 600, "description": "Physics ticks the game ran, with no input, before the scan."},
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "godot"},
+        "version": {"type": "string", "minLength": 1, "maxLength": 64}
+      }
+    },
+    "isolation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sandbox", "reason"],
+      "properties": {
+        "sandbox": {"type": "boolean", "description": "True when the game ran inside the replay sandbox (harness.sandbox)."},
+        "reason": {"type": ["string", "null"], "maxLength": 300, "description": "Why it did not, when it did not."}
+      }
+    },
+    "truncated": {"type": "boolean", "description": "True when the scene had more listed nodes than the scanner writes (2,000); the list is then incomplete."},
+    "nodes": {
+      "type": "array",
+      "maxItems": 2000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "kind", "type", "className", "groups"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1, "maxLength": 1000, "description": "The node's path from the current scene; \".\" is the scene's root."},
+          "kind": {"enum": ["body", "platform", "area", "sprite", "animatedSprite", "polygon", "tileLayer", "camera"], "description": "body: CharacterBody2D or RigidBody2D; platform: StaticBody2D or AnimatableBody2D; area: Area2D; the others by their Godot class."},
+          "type": {"type": "string", "minLength": 1, "maxLength": 64, "description": "The node's Godot class."},
+          "className": {"type": ["string", "null"], "maxLength": 64, "description": "The class_name of the node's script, or null."},
+          "groups": {"type": "array", "maxItems": 32, "items": {"type": "string", "minLength": 1, "maxLength": 64}, "description": "The node's groups, without Godot's own (names starting with _)."},
+          "visible": {"type": "boolean", "description": "The engine's visible-in-tree flag. Not a claim about pixels."},
+          "images": {"type": "array", "maxItems": 64, "items": {"type": "string", "pattern": "^res://.+$", "maxLength": 200}, "description": "Sprites and polygons: the res:// image files it draws."},
+          "unsavedImages": {"type": "integer", "minimum": 0, "description": "Sprites and polygons: how many images it draws that were made in code and have no file."},
+          "cells": {"type": "integer", "minimum": 0, "description": "Tile layers: cells that hold a tile."},
+          "collides": {"type": "boolean", "description": "Tile layers: whether its tile set has a physics layer."},
+          "enabled": {"type": "boolean", "description": "Cameras: the enabled flag."}
+        }
+      }
+    },
+    "note": {"type": "string", "minLength": 1, "maxLength": 300}
+  }
+}
