@@ -28,9 +28,13 @@ main shows that the three repair tests from #378 no longer fail after #662, but 
 - `python3 -m unittest tests.test_patch_controls tests.test_macos_suite tests.test_patching`: 46 tests, OK.
 - The full suite on main 3e27378 plus this change, without the engine: 5,358 tests, OK, 67 skipped.
 
+- The `macOS suite` run on this pull request (run 44610045522, head d7fef65), read from its log:
+  `/usr/bin/patch`, `patch 2.0-12u11-Apple`. Raw, the `delete` and `both` controls leave `BUG` as a file
+  of 0 bytes; through `apply` it is absent. `keep.txt` stays a file of 0 bytes and `new.txt` has 6 bytes.
+  Every control matched the patch. None of that run's 14 suite failures is a patch or repair test.
+
 ## Not done
-- The native record itself comes from the macOS job on this pull request and on main after merge; it is
-  read and copied to #659 then. Nothing here was run on a Mac.
+- The record from main's macOS run after merge is not read yet.
 
 ## Files
 - `tools/patch_controls.py` (new; added with `git add -f`, as most files under `tools/` are)
