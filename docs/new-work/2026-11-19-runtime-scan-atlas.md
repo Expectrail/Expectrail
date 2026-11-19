@@ -26,8 +26,8 @@ image, and `init --runtime` could have bound it as the player's image. An embedd
   above, and no image is guessed. With the scanner's atlas branch disabled, that test fails.
 - `python3 -m unittest tests.test_runtime_scan`: 28 tests, OK, also with jsonschema blocked (CI's
   `capture-smoke` job has none).
-- The full suite on the same change merged with main at 5731d67: 5,499 tests, OK, 42 skipped. The
-  run on this branch, from main at 0642668, is in the pull request.
+- The full suite on the same change merged with main at 5731d67: 5,499 tests, OK, 42 skipped. On this
+  branch, from main at 0642668: 5,499 tests, OK, 42 skipped.
 
 ## Not done
 - Resolving an atlas region for review (source image and frame region): #666.
