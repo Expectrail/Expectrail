@@ -49,6 +49,7 @@ import traceback
 from pathlib import Path
 
 from expectrail.contracts import digest_v1, load_strict, validate_v1
+from expectrail import __version__
 from expectrail.discovery.route_compiler import ProgramError, compile_route
 from expectrail.discovery.templates import applies_to
 from expectrail.jit import assess
@@ -228,6 +229,9 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
         "format": FORMAT,
         "runId": run_id or out.name,
         "advisory": True,
+        "provenance": {"generatorVersion": __version__,
+                       "modelVersion": getattr(intent, 'model_version', state['model']),
+                       "assessmentDiffClaims": state.get('assessmentDiffClaims', [])},
         "status": status,
         "reason": reason,
         "inputs": dict(inputs, model=state["model"], promptSha256=state["promptSha256"]),
@@ -266,12 +270,17 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
               offer: str = offer_mod.BASELINE, candidate_to_model: str = "shown", report_route=None) -> None:
     from expectrail.jit.diff_map import withheld_map
 
-    probes = offer_mod.library(profile["actions"], offer, report)
+    probes = offer_mod.library(profile["actions"], offer, report, profile=profile, game=game)
     for p in probes:
-        p["source"] = "reach" if p.get("family") == "reach" else "library"
+        p["source"] = p["family"] if p.get("family") in ("reach", "menu") else "library"
+    # The actions each probe this run made may press (a menu probe also presses the profile's menu action).
+    # A probe the model proposes is compiled with the catalog alone, whatever it says it is.
+    made_here = {p["id"]: offer_mod.route_actions(profile, p) for p in probes if p.get("source") != "report"}
     if report_route is not None:
         from expectrail.contracts import validate
         validate(report_route, 'route')
+        if any('pointer' in e for e in report_route['events']):
+            raise NothingGenerated('REPORT_ROUTE_INVALID: pointer input is not supported by the trusted action catalog')
         if report_route['ticks'] > 1800 or any(e['action'] not in profile['actions'] for e in report_route['events']):
             raise NothingGenerated('REPORT_ROUTE_INVALID: ticks or actions outside the trusted catalog')
         if any(e['tick'] >= report_route['ticks'] for e in report_route['events']):
@@ -286,11 +295,14 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
     # What the intent is given about the candidate: all of it, or (withheld) nothing. The candidate's own
     # bytes are still replayed and judged below.
     shown_text = "" if withheld else cand_bytes.decode("utf-8", errors="replace")
+    candidate_map = diff_map(cand_bytes.decode('utf-8', errors='replace'), profile, probes)
+    # Assessor-only relevance evidence. Under withheld this map is never passed
+    # to the proposer; its prompt still uses withheld_map and contains no fix.
+    state['assessmentDiffClaims'] = candidate_map['claims']
     if withheld:
-        diff_map(cand_bytes.decode("utf-8", errors="replace"), profile, probes)  # still refuses a non-patch
         dmap = withheld_map(probes)
     else:
-        dmap = diff_map(shown_text, profile, probes)
+        dmap = candidate_map
     state["diffMap"] = {k: v for k, v in dmap.items() if not k.startswith("_")}
 
     # Intent: one model call, reserved against the budget before it is made.
@@ -350,12 +362,13 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
     routes: dict[str, tuple[dict, Path]] = {}
     route_dir = out / "jit-routes"
     route_dir.mkdir(exist_ok=True)
-    for p in probes + answer.get("probes", []):
+    for i, p in enumerate(probes + answer.get("probes", [])):
         if p["id"] in routes:
             continue
+        names = made_here[p["id"]] if i < len(probes) and p.get("source") != "report" else profile["actions"]
         try:
             route = p['route'] if p.get('source') == 'report' else compile_route(
-                p["program"], name=p["id"], description=p["description"], actions=profile["actions"])
+                p["program"], name=p["id"], description=p["description"], actions=names)
         except ProgramError as exc:
             diagnostics.append(f"probe {p['id']} refused by the route compiler: {exc}")
             continue
@@ -402,6 +415,9 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
         spend.check_after(f"replay {name}/{pid}#{n}")
         return ep
 
+    exercised = {}
+    variant_names = {}
+
     def runs_of(name: str, patches: list[Path], todo: list[tuple[dict, list[str]]], count: int,
                 stop_early=None) -> dict[str, list[str]]:
         """{specId: [outcome per run]} for each check, replaying only the probes the checks need."""
@@ -413,6 +429,14 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
                                trace_specs=[e["spec"] for e, ids in active if pid in ids]) for pid in pids}
             for e, ids in active:
                 results[e["spec"]["id"]].append(_evaluate(e, ids, eps))
+                spec = e['spec']
+                verdicts = ([evaluate(spec, eps[ids[0]], eps[ids[1]])] if e['applies']['kind'] == 'pair'
+                            else [evaluate(spec, eps[pid]) for pid in ids])
+                req = spec['evidenceRequirement']
+                complete = all(v['coverageComplete'] and v['applicable'] == 'yes'
+                               and v['triggeredCount'] >= req['minimumTriggers']
+                               and v['evaluatedCount'] >= req['minimumEvaluations'] for v in verdicts)
+                exercised.setdefault((name, spec['id']), []).append(complete)
             if stop_early:
                 active = [(e, ids) for e, ids in active if not stop_early(results[e["spec"]["id"]])]
             if not active:
@@ -454,6 +478,7 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
         if not on_ref:
             continue
         vname = "base" if v["kind"] == "base" else f"variant-{k}"
+        variant_names[v['id']] = vname
         res = runs_of(vname, patches, on_ref, reps, stop_early=lambda rs: rs[-1] != "fail")
         same: list[str] = []
         for e, ids in on_ref:
@@ -489,6 +514,11 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
             caught.append((e, ids))
     for v in state["validity"]:
         v.setdefault("outcome", "not-evaluated")
+        sid = v['specId']
+        v['base'] = variant_results[sid].get('base', [])
+        v['variantResults'] = variant_results[sid]
+        v['exercised'] = {name: exercised.get((name, sid), []) for name in ('reference', 'base', 'candidate')}
+        v['exercised'].update({vid: exercised.get((name, sid), []) for vid, name in variant_names.items()})
 
     if pixel_checks:
         _pixel_stage(pixel_checks, routes, base_patches, candidate, out, replay, spend, reps, state, diagnostics)

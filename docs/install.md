@@ -136,7 +136,11 @@ The wheel holds what a verification runs, and nothing that could not work from a
 
 One top-level name is installed: `expectrail`. The wheel builder qualifies harness and agent
 imports under `expectrail._bundle` and removes the old installed-copy path bootstrap from its
-staged code. It does not modify repository implementations. Importing the installed copy changes
+staged code. That covers import statements and a module name given as a literal string to
+`importlib.import_module`, `__import__`, `importlib.util.find_spec` or `runpy.run_module`; a
+relative name is left as it is. The build stops instead of guessing when such a call's module name
+is not a literal, or when another string is exactly a harness or agents module name (as in
+`-m agents.loop`). `tests/test_package.py` checks that no packaged module keeps one. It does not modify repository implementations. Importing the installed copy changes
 neither `sys.path` nor another package’s top-level `harness` or `agents`. `expectrail.resources.ROOT` is the one name for "where Expectrail's own
 files are" in a clone and in an installed copy.
 

@@ -149,3 +149,31 @@ def render(doc: dict) -> str:
 
 def load_cases(path: Path = CASES) -> list[dict]:
     return json.loads(Path(path).read_text(encoding="utf-8"))["cases"]
+
+
+def private_name(path):
+    """Refuse private-set names before an offline public audit opens a path."""
+    return any(part.lower().startswith('fresh') or any(word in part.lower() for word in
+               ('blind','heldout','held-out','held_out')) for part in Path(path).parts)
+
+
+def public_cases():
+    """Read only the public registry as contract data, not measurement modules.
+
+    Dispatch/audit tools share this bounded reader. The generator's offer and
+    its baseline inputs are untouched; no reproduction measurement is imported.
+    """
+    from expectrail.contracts import validate
+    from expectrail.gate import record
+    doc=record.read_json(REPO/'bench/jit/public/defects.json',cap=256*1024,label='public defect registry')
+    validate(doc,'repro-bench.v1')
+    ids=set()
+    for defect in doc['defects']:
+        if defect['id'] in ids:raise ValueError('duplicate public defect')
+        ids.add(defect['id'])
+        for key in ('patch','report'):
+            rel=Path(defect[key]);path=REPO/rel
+            if (rel.is_absolute() or '..' in rel.parts or private_name(rel)
+                    or path.resolve()!=REPO.resolve()/rel or not path.is_file() or path.is_symlink()):
+                raise ValueError('public registry path refused')
+    return doc

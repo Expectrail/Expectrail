@@ -16,6 +16,7 @@ import sys
 import tempfile
 import unittest
 import urllib.error
+import urllib.parse
 from pathlib import Path
 from unittest import mock
 
@@ -139,7 +140,7 @@ class GateCase(unittest.TestCase):
              pr: dict | None = None, **kw) -> dict:
         pr = pr if pr is not None else {"number": 7, "headSha": HEAD, "baseSha": BASE if base else None}
         with contextlib.redirect_stdout(io.StringIO()) as log:
-            doc = gv.run_gate(repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
+            doc = gv.run_gate(rule=kw.pop("rule", "engine-only"), repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
                               out=self.tmp / out_name, work=self.tmp / (out_name + "-work"), base=base,
                               heldout=heldout, pr=pr, replay=self.replay, **kw)
         self.log = log.getvalue()
@@ -408,7 +409,7 @@ class VerifyTest(GateCase):
                 head = make_repo(self.tmp / f"head-{n}")
                 breaker(head)
                 with contextlib.redirect_stdout(io.StringIO()):
-                    doc = gv.run_gate(repo=head, game="game/platformer", routes=["routes/*.json", "routes/*/*.json"],
+                    doc = gv.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/*.json", "routes/*/*.json"],
                                       specs="specs", out=self.tmp / f"out-{n}", work=self.tmp / f"work-{n}", base=None,
                                       heldout=None, pr={"number": 7, "headSha": HEAD, "baseSha": None}, replay=self.replay)
                 self.assertEqual((doc["decision"], doc["checkProblems"]), ("needs-review", 1))
@@ -531,7 +532,7 @@ class VerifyTest(GateCase):
             raise SystemExit("stop: the arguments are what this test reads")
 
         with mock.patch("harness.run.run", side_effect=run), contextlib.redirect_stdout(io.StringIO()):
-            gv.run_gate(repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
+            gv.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
                         out=self.tmp / "harness-out", work=self.tmp / "harness-work", base=base,
                         pr={"number": 7, "headSha": HEAD, "baseSha": BASE})
         self.assertGreaterEqual(len(seen), 2)  # the head arm and the base arm
@@ -594,7 +595,7 @@ class VerifyTest(GateCase):
             raise SystemExit("stop: the arguments are what this test reads")
 
         with mock.patch("harness.run.run", side_effect=run), contextlib.redirect_stdout(io.StringIO()):
-            gv.run_gate(repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
+            gv.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
                         out=self.tmp / "bind-out", work=self.tmp / "bind-work", base=base,
                         pr={"number": 7, "headSha": HEAD, "baseSha": BASE})
         self.assertGreaterEqual(len(seen), 2)
@@ -773,7 +774,7 @@ class IsolationTest(GateCase):
         with mock.patch.object(box, "probe", return_value=(None, "bubblewrap (bwrap) is not installed")), \
                 mock.patch("harness.run.run", side_effect=AssertionError("the game was replayed")):
             with self.assertRaisesRegex(gv.ConfigError, "required and this machine cannot provide it: bubblewrap"):
-                gv.run_gate(repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
+                gv.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
                             out=self.tmp / "o", work=self.tmp / "w", require_sandbox=True)
             with contextlib.redirect_stdout(io.StringIO()) as log:
                 code = gv.main(["--repo", str(head), "--game", "game/platformer", "--routes", "routes/*.json", "--specs",
@@ -800,7 +801,7 @@ class IsolationTest(GateCase):
             with self.subTest(required=required), mock.patch.object(box, "probe", return_value=(object(), None)), \
                     mock.patch("harness.run.run", side_effect=run), contextlib.redirect_stdout(io.StringIO()):
                 asked.clear()
-                gv.run_gate(repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
+                gv.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
                             out=self.tmp / f"o{required}", work=self.tmp / f"w{required}", require_sandbox=required)
                 self.assertEqual(asked, [expected])
 
@@ -1782,6 +1783,87 @@ class HeadChecksTest(unittest.TestCase):
                 self.pr["labels"] = [{"name": "intent:fix"}] if change == "intent" else []
                 self.c.finish(self.api, self.api, ctx(), self.run, self.state, "accept", "accept", ctx().run_url)
                 self.assertEqual(self.writes[-1][2]["conclusion"], "failure")
+
+    def stale_event(self, tmp, action="completed"):
+        repo = ctx().repo
+        run = dict(self.run, path=self.c.CALLER, event="pull_request", head_sha=HEAD, head_branch="fix",
+                   repository={"full_name": repo},
+                   head_repository={"full_name": ctx().head_repo, "owner": {"login": ctx().head_owner}})
+        event = Path(tmp) / "event.json"
+        event.write_text(json.dumps({"action": action, "workflow_run": run, "repository": {"full_name": repo}}))
+        return {"GITHUB_EVENT_PATH": str(event), "GITHUB_RUN_ID": "555", "RUNNER_TEMP": tmp,
+                "GITHUB_OUTPUT": str(Path(tmp) / "out"), "GH_TOKEN": "stand-in", "CHECKS_TOKEN": "stand-in",
+                "CHECKS_APP": "publisher"}
+
+    def test_a_superseded_head_concludes_its_open_clearance_as_failure(self):
+        # The November 18 hosted trial (#254): after a new head was pushed, the old head's clearance
+        # stayed in_progress for ever. It must conclude, and never as success.
+        key = "expectrail/123/2"
+        checks = {self.c.CLEARANCE: [{"id": 41, "external_id": key, "status": "in_progress", "app": {"slug": "publisher"}},
+                                     {"id": 42, "external_id": key, "status": "in_progress", "app": {"slug": "someone"}},
+                                     {"id": 43, "external_id": "expectrail/9/1", "status": "in_progress",
+                                      "app": {"slug": "publisher"}},
+                                     {"id": 44, "external_id": key, "status": "completed", "app": {"slug": "publisher"}}],
+                  self.c.EVIDENCE: [{"id": 51, "external_id": key, "status": "in_progress", "app": {"slug": "publisher"}}]}
+
+        def api(method, path, body=None):
+            if method != "GET":
+                self.writes.append((method, path, body))
+                return {}
+            if "/pulls?" in path:
+                return [self.pr]
+            if "check-runs?" in path:
+                name = urllib.parse.parse_qs(urllib.parse.urlsplit(path).query)["check_name"][0]
+                return {"check_runs": checks[name]}
+            if "/runs?" in path:
+                return {"workflow_runs": self.runs}
+            self.fail(path)
+
+        for change in ("head", "closed", "attempt"):
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as tmp, \
+                    mock.patch.dict(os.environ, self.stale_event(tmp)), \
+                    mock.patch("expectrail.gate.comment.http_api", return_value=api):
+                self.writes.clear()
+                self.pr["head"]["sha"] = BASE if change == "head" else HEAD
+                saved = self.pr
+                if change == "closed":
+                    self.pr = {"head": {"sha": "0" * 40}}
+                self.runs = [dict(self.run, run_attempt=3 if change == "attempt" else 2)]
+                self.c.main("start")
+                self.pr = saved
+                patched = {w[1].rsplit("/", 1)[1]: w[2] for w in self.writes}
+                self.assertEqual(set(patched), {"41", "51"})
+                self.assertTrue(all(w[0] == "PATCH" for w in self.writes))
+                self.assertEqual(patched["41"]["status"], "completed")
+                self.assertEqual(patched["41"]["conclusion"], "failure")
+                self.assertEqual(patched["51"]["conclusion"], "neutral")
+                self.assertIn("Superseded capture or pull request", patched["41"]["output"]["summary"])
+                self.assertIn("is not cleared", patched["41"]["output"]["summary"])
+                self.assertFalse((Path(tmp) / "gate-state.json").exists())
+
+    def test_a_superseded_head_on_the_in_progress_event_creates_and_closes_nothing(self):
+        def api(method, path, body=None):
+            if method != "GET":
+                self.writes.append((method, path, body))
+            if "/pulls?" in path:
+                return []
+            self.fail(path)
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp, "in_progress")), \
+                mock.patch("expectrail.gate.comment.http_api", return_value=api):
+            self.c.main("start")
+        self.assertEqual(self.writes, [])
+
+    def test_closing_a_stale_clearance_never_passes_it(self):
+        checks = [{"id": 7, "external_id": "expectrail/123/2", "status": "queued", "app": {"slug": "publisher"}}]
+        def api(method, path, body=None):
+            if method != "GET":
+                self.writes.append((method, path, body))
+                return {}
+            return {"check_runs": checks}
+        self.c.close_stale(api, ctx(), self.run, "publisher")
+        self.assertEqual([w[2]["conclusion"] for w in self.writes], ["failure", "neutral"])
+        from tools import gate_trials
+        self.assertIn(gate_trials.STALE_REASON, self.c.STALE)  # the hosted-trial reader looks for it
 
     def test_caller_and_reusable_workflow_must_match_the_base_and_test_merge(self):
         called = {"path": ctx().repo + "/" + self.c.CAPTURE + "@refs/pull/7/merge", "sha": self.pr["merge_commit_sha"]}

@@ -118,6 +118,25 @@ def start(api, ctx, run, details, publisher):
     return ids
 
 
+SUPERSEDED = "Superseded capture or pull request"
+STALE = (SUPERSEDED + ": this commit is no longer the head of the open pull request, or a newer capture "
+         "ran. This commit is not cleared; the current head needs its own clearance.")
+
+
+def close_stale(publisher_api, ctx, run, publisher):
+    """Conclude this attempt's checks that were started but never finished, because the pull request
+    moved on before the capture completed. Clearance ends failed, evidence neutral: nothing was judged."""
+    key = f"expectrail/{ctx.run_id}/{run['run_attempt']}"
+    for name, conclusion in ((CLEARANCE, "failure"), (EVIDENCE, "neutral")):
+        query = urllib.parse.urlencode({"check_name": name, "filter": "all", "per_page": 100})
+        found = publisher_api("GET", f"/repos/{ctx.repo}/commits/{ctx.head_sha}/check-runs?{query}")
+        for check in found["check_runs"]:
+            if check["external_id"] == key and check["app"]["slug"] == publisher and check["status"] != "completed":
+                publisher_api("PATCH", f"/repos/{ctx.repo}/check-runs/{int(check['id'])}",
+                              dict(status="completed", conclusion=conclusion,
+                                   output={"title": name, "summary": STALE}))
+
+
 def current(api, ctx, run, state):
     pr = comment.find_pull_request(api, ctx)
     return (pr and intent.pull_request_metadata(pr) == state["pr"] and intent.of_pull_request(pr).intent == state["intent"]
@@ -126,7 +145,7 @@ def current(api, ctx, run, state):
 
 def finish(api, publisher, ctx, run, state, decision, summary, details):
     if not current(api, ctx, run, state):
-        decision, summary = "needs-review", "Superseded capture or pull request"
+        decision, summary = "needs-review", SUPERSEDED
     cleared = decision == "accept" and run["conclusion"] == "success"
     for name, conclusion in ((EVIDENCE, "success"), (CLEARANCE, "success" if cleared else "failure")):
         publisher("PATCH", f"/repos/{ctx.repo}/check-runs/{int(state['ids'][name])}",
@@ -166,6 +185,10 @@ def main(mode):
     if mode == "start":
         pr = comment.find_pull_request(api, ctx)
         if not pr or not latest(api, ctx, run):
+            if event["action"] == "completed":
+                # The trusted job never judges a superseded capture, but it must not leave the
+                # clearance it started on the in_progress event dangling (#254's hosted trial).
+                close_stale(comment.http_api(os.environ["CHECKS_TOKEN"]), ctx, run, os.environ["CHECKS_APP"])
             return
         ids = start(comment.http_api(os.environ["CHECKS_TOKEN"]), ctx, run, report_ctx.run_url, os.environ["CHECKS_APP"])
         if event["action"] != "completed":

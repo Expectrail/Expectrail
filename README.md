@@ -1,14 +1,3 @@
-```sh
-python3 -m pip install .
-```
-
-Run this in a checkout with Python 3.12+ in a virtual environment; it is not on PyPI.
-For a built wheel, use `python3 -m pip install ./dist/expectrail-0.1.0-py3-none-any.whl`.
-The [pinned sample container](docs/install.md#recorded-sample-profile) selects bundled recorded
-vision explicitly: `expectrail doctor`, then `expectrail sample`, with real Godot replays and no
-model calls. An unmatched image/question needs review. Ordinary verification still requires its
-own visual evidence; the no-vision quickstart below retains its incomplete results.
-
 <p align="center">
   <a href="https://expectrail.tech">
     <picture>
@@ -37,6 +26,17 @@ own visual evidence; the no-vision quickstart below retains its incomplete resul
 </p>
 
 # Expectrail
+
+```sh
+python3 -m pip install .
+```
+
+Run this in a checkout with Python 3.12+ in a virtual environment; it is not on PyPI.
+For a built wheel, use `python3 -m pip install ./dist/expectrail-0.1.0-py3-none-any.whl`.
+The [pinned sample container](docs/install.md#recorded-sample-profile) selects bundled recorded
+vision explicitly: `expectrail doctor`, then `expectrail sample`, with real Godot replays and no
+model calls. An unmatched image/question needs review. Ordinary verification still requires its
+own visual evidence; the no-vision quickstart below retains its incomplete results.
 
 **Coding agents write changes at machine speed. Expectrail checks their behavior on approved checks and routes; opt-in repair proposes patches for a person to review.**
 

@@ -23,6 +23,19 @@ REPO = Path(__file__).resolve().parent.parent
 EXAMPLE = REPO / "contracts" / "examples" / "verify-timing.json"
 
 
+
+# These historical fixtures exercise the explicit engine-only benchmark control.
+# Default two-observer verdicts are covered by test_default_vision and test_two_observers.
+def setUpModule():
+    global _trace_control
+    _trace_control = mock.patch.dict("os.environ", {"EXPECTRAIL_OBS_PROVIDER": "trace"})
+    _trace_control.start()
+
+
+def tearDownModule():
+    _trace_control.stop()
+
+
 class Clock:
     """A clock the test moves by hand."""
 

@@ -73,8 +73,11 @@ paste the third printed push command. Record the two run timestamps. There are t
 - If the old trusted job already accepted before the push, the run did **not** exercise stale
   judgment. Its success stays on the old SHA. The new SHA needs its own capture; repeat the trial.
 - If the completed-event judge starts after the push, `comment.find_pull_request` finds no open
-  PR at the old head and `ci_checks.main('start')` returns. There may be no old failure check or
-  stale reason text. That skip is safe, but missing output alone is not recorded stale proof.
+  PR at the old head. `ci_checks.main('start')` judges nothing, and concludes the clearance the
+  in_progress event started as `failure`, `Superseded capture or pull request` (`close_stale`).
+  Before that change the old clearance stayed `in_progress` (the November 18 trial on #254). If
+  the in_progress event's judge also ran after the push, no old check exists at all; that skip is
+  safe, but missing output alone is not recorded stale proof.
 - If the push happens after identity binding and before finish, `ci_checks.current` fails and
   `finish` writes `Expectrail clearance=failure`, `Superseded capture or pull request` on the
   old head. The new head has a distinct check/capture identity. This is the repeatable target.

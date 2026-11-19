@@ -85,11 +85,29 @@ PRIVATE = 'expectrail._bundle'
 SAMPLE_RECORDINGS = ('clean', 'fall-through-bug', 'fall-through-repair')
 
 
+PRIVATE_TOPS = ('harness', 'agents')
+# Calls whose first argument (or `name=`) is a module name given as a string (#614).
+IMPORT_CALLS = ('import_module', '__import__', 'find_spec', 'run_module')
+
+
+def names_private_module(value):
+    """True for a string that is exactly a dotted harness/agents module name, such as "agents.loop"."""
+    import re
+    return re.fullmatch(r'(?:harness|agents)(?:\.[A-Za-z_][A-Za-z0-9_]*)+', value) is not None
+
+
 def qualify_imports(source):
     """Qualify Python import statements, preserving their original local bindings.
 
     Use AST byte positions, not text replacement: data paths, prompts and documentation
     must remain byte-identical. No sys.path insertion or top-level module aliases.
+
+    Module names given as strings are qualified too (#614): a literal first argument (or `name=`)
+    of importlib.import_module, __import__, importlib.util.find_spec or runpy.run_module that names
+    harness or agents. Relative names (".x") are left alone. What cannot be read stops the build
+    with ValueError: such a call whose module name is not a literal string, and any other string
+    that is exactly a dotted harness/agents module name (for example `"-m", "agents.loop"`), since
+    the builder cannot tell whether it is used as one.
     """
     import ast
     lines = source.encode('utf-8').splitlines(keepends=True)
@@ -97,7 +115,35 @@ def qualify_imports(source):
     for line in lines:
         starts.append(starts[-1] + len(line))
     edits = []
-    for node in ast.walk(ast.parse(source)):
+    tree = ast.parse(source)
+    handled = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        called = func.id if isinstance(func, ast.Name) else func.attr if isinstance(func, ast.Attribute) else None
+        if called not in IMPORT_CALLS:
+            continue
+        target = node.args[0] if node.args else next((k.value for k in node.keywords if k.arg == 'name'), None)
+        if not (isinstance(target, ast.Constant) and isinstance(target.value, str)):
+            raise ValueError(f'line {node.lineno}: cannot tell which module {called}() imports; '
+                             'give it a literal or relative module name')
+        handled.add(id(target))
+        if target.value.split('.')[0] in PRIVATE_TOPS:
+            start = starts[target.lineno - 1] + target.col_offset
+            end = starts[target.end_lineno - 1] + target.end_col_offset
+            literal = source.encode('utf-8')[start:end]
+            # Only a plain one-quote literal whose text is the module name itself is rewritten.
+            if not (literal[:1] in (b'"', b"'") and literal[1:-1] == target.value.encode() and literal[-1:] == literal[:1]):
+                raise ValueError(f'line {node.lineno}: cannot rewrite the module name {literal!r}; '
+                                 'write it as a plain quoted string')
+            edits.append((start, end, literal[:1] + (PRIVATE + '.').encode() + literal[1:]))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in handled \
+                and names_private_module(node.value):
+            raise ValueError(f'line {node.lineno}: {node.value!r} names a harness/agents module as a string, '
+                             'which the wheel cannot qualify; import it, or use a relative name')
+    for node in ast.walk(tree):
         replacement = None
         if isinstance(node, ast.ImportFrom) and node.level == 0 and node.module and node.module.split('.')[0] in ('harness', 'agents'):
             node.module = PRIVATE + '.' + node.module

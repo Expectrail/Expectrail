@@ -48,5 +48,13 @@
       "observationsSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
     }
   },
-  "_comment": "Example: freeze-player keeps the player from falling (regression pass) but fails the trace-native gameplay motion check (delta-x), so it is rejected. The check id player-motion-on-smoke is an opaque label — not a SAM reaches assertion. The retired reaches basename stays deny-listed forever."
+  "_comment": "Example: freeze-player keeps the player from falling (regression pass) but fails the trace-native gameplay motion check (delta-x), so it is rejected. The check id player-motion-on-smoke is an opaque label \u2014 not a SAM reaches assertion. The retired reaches basename stays deny-listed forever.",
+  "observers": {
+    "rule": "engine-only",
+    "engine": {
+      "name": "expectrail.engine-record",
+      "version": "0.1.0"
+    },
+    "visual": null
+  }
 }

@@ -13,6 +13,90 @@
     "reasons"
   ],
   "properties": {
+    "observers": {
+      "type": "object",
+      "required": [
+        "rule",
+        "visual"
+      ],
+      "additionalProperties": false,
+      "description": "Observer policy for the legacy benchmark verifier. Engine-only is a diagnostic counterfactual, not product clearance. Version is the observation adapter release; model names remain provider identifiers.",
+      "properties": {
+        "rule": {
+          "enum": [
+            "both",
+            "engine-only"
+          ]
+        },
+        "engine": {
+          "description": "Engine observation adapter and its Expectrail release version. Optional on historical records.",
+          "type": "object",
+          "required": [
+            "name",
+            "version"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            }
+          }
+        },
+        "visionEvery": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Explicit opt-in visual stride for public checks, from each window's first frame plus its last. Absent means 1 (every frame). The engine and captured window must remain complete. A defect shorter than this many frames may be missed; three consecutive negative samples span up to 2*visionEvery+1 real frames, not proof about intervening pixels. Explicit spec coverage obligations are not relaxed. The paired anchor block keeps its own every."
+        },
+        "visual": {
+          "description": "the visual observer that was asked; null when none was (under both, nothing is then accepted)",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "name",
+                "provider",
+                "model"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40,
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "provider": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "model": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "version": {
+                  "description": "Observation adapter version, not a claim about the provider weights revision; absent in historical records.",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
     "format": {
       "enum": ["expectrail.verification/v0"]
     },

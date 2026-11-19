@@ -442,6 +442,9 @@ jobs:
           retention-days: 30
 
   agents-gate1:
+    env:
+      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace  
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -588,6 +591,9 @@ jobs:
   # set (it used to, on same-repository branches: OBAAF-GHA-001). The verifier uses the labeled
   # interim fixture, as it always has on forks; agents-harness-private checks the private routes.
   agents-harness-verify:
+    env:
+      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -722,6 +728,8 @@ jobs:
     timeout-minutes: 30
     env:
       HELDOUT_TOKEN_SET: ${{ secrets.HELDOUT_TOKEN != '' }}
+            # Engine-only diagnostic for the private routes. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace
     steps:
       - name: Skip without the held-out token (forks)
         if: env.HELDOUT_TOKEN_SET != 'true'
@@ -785,6 +793,9 @@ jobs:
         run: python -m agents.export_scan bench docs README.md apps --private heldout-set
 
   agents-daily-offline:
+    env:
+      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || github.event_name == 'push' }}
@@ -812,6 +823,9 @@ jobs:
   # Shows bug reports becoming unapproved draft specs, check-weakening requests refused, and the
   # morning report's "Feedback in" / "Refused or blocked" sections. No Meta spend.
   feedback-offline:
+    env:
+      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -1013,6 +1027,9 @@ jobs:
 
   # Gate 2 bench compare: Expectrail arm + Muse screenshot judge (fixture log offline).
   agents-bench-compare:
+    env:
+      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
