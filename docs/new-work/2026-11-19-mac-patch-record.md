@@ -26,7 +26,7 @@ main shows that the three repair tests from #378 no longer fail after #662, but 
   Under GNU patch in POSIX mode (the test's emulation), the raw deletion leaves `BUG` with 0 bytes and
   `apply` removes it; POSIX mode also refuses the creation in `both`, and the report says it stopped.
 - `python3 -m unittest tests.test_patch_controls tests.test_macos_suite tests.test_patching`: 46 tests, OK.
-- The full suite: see the pull request.
+- The full suite on main 3e27378 plus this change, without the engine: 5,358 tests, OK, 67 skipped.
 
 ## Not done
 - The native record itself comes from the macOS job on this pull request and on main after merge; it is
