@@ -159,8 +159,9 @@ def _short(env) -> str:
 def _environment_difference(environments, current):
     if current and environments and all(env is None for env in environments):
         # A recording from before provenance: say so, and name only what this replay reported.
-        return ("the recording does not name the rendering environment it was made in; this replay used "
-                f"{_short(current)}"[:240] + "; no exact image answer (not-recorded)")
+        # The kind leads, so a reader that shortens the reason still keeps "not-recorded".
+        return ("no exact image answer (not-recorded): the recording does not name the rendering environment "
+                "it was made in; this replay used " + _short(current))[:300]
     if not current or not environments or any(env is None for env in environments):
         return None
     differences = [[key for key in ("device", "renderer", "version", "name")

@@ -35,6 +35,14 @@ change nothing published said which environment drew the frames.
   The first run had one failure, `tests.test_schema_pattern`: the new field pattern had no sample. The
   fields now use the recording schema's existing rule (`^[\x20-\x7e]+$`, 1 to 160 characters).
 
+- Release gate on #654's first head failed one case:
+  `gate_interference.ImportCacheTest.test_control_the_same_poison_in_the_verifiers_own_cache_changes_what_is_drawn`.
+  It looks for "not-recorded" in the job's reasons, and the job cuts a long reason short, so the new
+  sentence lost its trailing "(not-recorded)". The sentence now leads with "no exact image answer
+  (not-recorded):". That case failed locally before the fix and passed after. Locally,
+  `python3 -m tools.release_gate` then gave: held 20, open 10, failed 0, not run 5. A full-suite run
+  after the fix gave 5,310 tests, OK, 41 skipped; more ran because Godot was now on this machine.
+
 ## Not done
 - The four checked-in recordings under `docs/run-it/vision/` still name no environment, so live runs
   will show `unknown`. Naming them needs a new recording run, which is model spend and Sean's.

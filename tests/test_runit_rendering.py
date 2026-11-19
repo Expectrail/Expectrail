@@ -63,6 +63,8 @@ class ClientTest(unittest.TestCase):
         self.assertEqual(caught.exception.kind, "not-recorded")
         self.assertIn("the recording does not name the rendering environment it was made in", said)
         self.assertIn("llvmpipe (LLVM 19.1.7", said)
+        # The kind comes first: readers that cut a long reason short still see it (release gate).
+        self.assertIn("not-recorded", said[:60])
         self.assertNotIn("recorded under", said)   # it never guesses the recording's environment
         self.assertEqual(client.last_missing_reason, said)
         self.assertLessEqual(len(said), 300)
@@ -72,7 +74,7 @@ class ClientTest(unittest.TestCase):
         with self.assertRaises(SamError) as caught:
             client.segment_at(self.capture("replayed.png", dict(NEW, device="x" * 160, renderer="y" * 160)), POINT)
         self.assertLessEqual(len(str(caught.exception)), 300)
-        self.assertTrue(str(caught.exception).endswith("no exact image answer (not-recorded)"))
+        self.assertTrue(str(caught.exception).startswith("no exact image answer (not-recorded): "))
 
     def test_without_this_replays_environment_the_reason_stays_the_plain_one(self):
         client = recorded.RecordedClient(self.legacy)
