@@ -1657,6 +1657,25 @@ class SplitGateTest(unittest.TestCase):
         self.assertEqual(doc["observers"]["rule"], "both")
         self.assertEqual(doc["isolation"]["sandboxed"], 6)
 
+    def test_a_game_with_a_project_config_is_judged_with_the_heads_real_config(self):
+        # The trusted job hands the gate a logical head folder that is not on disk. The head's project
+        # config must still be read, from the head checkout: before this was fixed, every game that
+        # carried a config was "config differs" and could never be accepted by the two-job gate.
+        for side in (self.base, self.head):
+            _config(side / "game/platformer", fps=60, node="Player")
+        self.capture()
+        doc = self.judge()
+        self.assertFalse(any("project config differs" in r for r in doc["reasons"]), doc["reasons"])
+        self.assertEqual(doc["decision"], "accept", doc["reasons"])
+
+    def test_a_head_that_changes_the_project_config_is_not_an_accept_in_the_trusted_job(self):
+        _config(self.base / "game/platformer", fps=60, node="Player")
+        _config(self.head / "game/platformer", fps=60, node="Still")
+        self.capture()
+        doc = self.judge()
+        self.assertEqual(doc["decision"], "needs-review", doc["reasons"])
+        self.assertTrue(any("project config differs" in r for r in doc["reasons"]), doc["reasons"])
+
     def test_regression_rejects(self):
         (self.base / "game/platformer/BUG").unlink()
         (self.head / "game/platformer/BUG").touch()
