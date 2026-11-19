@@ -64,17 +64,32 @@ PROBES = (
 )
 
 
-def checks() -> list[dict]:
+# The no-model sensor's windows (November 19). The sensor does not judge a bullet in its fade, the last 0.3 s of
+# its 1.3 s life (agents/template_radial.py; a gap), and every planned frame of the SAM windows from frame 90 of
+# shoot-left-every12, 70 of move-fire-right and 90 of move-fire-left has one on screen on the clean game. So each
+# window here ends at the last planned frame before the first such frame on the clean game's replay, read from its
+# trace alone; move-fire-left keeps one planned frame clear of a fading bullet (130) and is left out.
+SENSOR_PROBES = (
+    ("shoot-left-every12", {"fromFrame": 50, "toFrame": 80}, "standing and firing left every 12 ticks"),
+    ("move-fire-right", {"fromFrame": 10, "toFrame": 60}, "walking right and firing"),
+)
+
+
+def probes_for(observer: str = OBSERVER):
+    return SENSOR_PROBES if observer == "visual-sensor" else PROBES
+
+
+def checks(observer: str = OBSERVER) -> list[dict]:
     return [{
         "id": f"jit-px-bullet-visible-{probe}",
         "statement": f"While {said}, {_span(window)}, every bullet on screen is drawn where the engine puts it, in every "
                      "frame, in front of the scenery.",
         "object": "bullet",
-        "observer": OBSERVER,
+        "observer": observer,
         "probe": probe,
         "window": dict(window),
         "predicate": {"type": "visible", "minFraction": 1.0},
-    } for probe, window, said in PROBES]
+    } for probe, window, said in probes_for(observer)]
 
 
 def _span(window: dict) -> str:
@@ -190,17 +205,17 @@ def reserved_images(plan: dict) -> int:
                for probe in sorted(windows))
 
 
-def stand_in():
-    """An intent callable that proposes ``checks()`` and nothing else, and calls no model."""
+def stand_in(observer: str = OBSERVER):
+    """An intent callable that proposes ``checks(observer)`` and nothing else, and calls no model."""
     def propose(report, patch_text, dmap, profile, probes):
         from expectrail.jit import pixel
 
         parsed = []
-        for entry in checks():
+        for entry in checks(observer):
             # Through the parser a model's answer goes through (intent.spark_intent), so the saved form is
             # what `run --proposal` re-checks. A refusal is written as the proposal's error, as `propose` writes one.
             check, why = pixel.parse_candidate(entry, pixel.bindings_for(), {p["id"] for p in probes},
-                                               pixel.proposed(OBSERVER))
+                                               pixel.proposed(observer))
             if check is None:
                 raise intent.IntentUnavailable(f"PROPOSAL_INVALID: {entry['id']}: {why}")
             parsed.append(check)
@@ -208,13 +223,13 @@ def stand_in():
                 "promptSha256": None,
                 "diagnostics": ["hand-written stand-in: no model was called (tools/bullet_visible_stand_in.py)"]}
     propose.model, propose.system, propose.offer = MODEL, "", OFFER
-    propose.candidate, propose.observer = intent.WITHHELD, OBSERVER
+    propose.candidate, propose.observer = intent.WITHHELD, observer
     return propose
 
 
-def write(out: Path) -> dict:
-    """Write the stand-in proposal to ``out/jit-proposal.json`` the way `propose` writes one, and return it.
-    Refuses a probe on which SAM's plan would ask about a frame the bench's evidence lists a bullet partly
+def write(out: Path, observer: str = OBSERVER) -> dict:
+    """Write the stand-in proposal for ``observer`` to ``out/jit-proposal.json`` the way `propose` writes one, and
+    return it. The no-model sensor plans the same frames as SAM. Refuses a probe on which the plan would ask about a frame the bench's evidence lists a bullet partly
     on screen."""
     from expectrail.contracts import load_strict
     from expectrail.jit.cli import PROFILE
@@ -225,17 +240,17 @@ def write(out: Path) -> dict:
     probes = offer_mod.library(profile["actions"], OFFER, report)
     plans = planned([p for p in probes if p["id"] in {probe for probe, _, _ in PROBES}], profile)
     plan = json.loads(PLAN.read_text(encoding="utf-8"))
-    for probe, window, _ in PROBES:
+    for probe, window, _ in probes_for(observer):
         clash = sorted(set(in_window(plans[probe], window)) & bullet_edges(evidence, probe))
         if clash:
-            raise ValueError(f"SAM would be asked about frames {clash} of {probe}, where a bullet is partly on screen")
-    for probe, window, _ in PROBES:
+            raise ValueError(f"the observer would be asked about frames {clash} of {probe}, where a bullet is partly on screen")
+    for probe, window, _ in probes_for(observer):
         if plan["probes"].get(probe, {}).get("planned") != plans[probe]:
             raise ValueError(f"the capture plan for {probe} was measured on other planned frames")
         problems = window_problems(plan, probe, window)
         if problems:
             raise ValueError("; ".join(problems))
-    return intent.propose_to_file(stand_in(), report, "", profile, probes, out)
+    return intent.propose_to_file(stand_in(observer), report, "", profile, probes, out)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -243,12 +258,14 @@ def main(argv: list[str] | None = None) -> int:
     what = ap.add_mutually_exclusive_group(required=True)
     what.add_argument("--out", type=Path, help="write DIR/jit-proposal.json")
     what.add_argument("--measure", type=Path, metavar="CAPTURE", help="write the capture plan from a capture folder")
+    ap.add_argument("--observer", default=OBSERVER, choices=("sam-3.1-anchor", "visual-sensor"),
+                    help="the observer the checks name (default SAM; the no-model sensor since November 19)")
     args = ap.parse_args(argv)
     if args.measure:
         PLAN.write_text(json.dumps(measure(args.measure), indent=1) + "\n", encoding="utf-8")
         print(json.dumps({"plan": str(PLAN.relative_to(ROOT))}))
         return 0
-    doc = write(args.out)
+    doc = write(args.out, args.observer)
     print(json.dumps({"pixelChecks": [c["id"] for c in doc["pixelChecks"]], "error": doc["error"]}))
     return 0 if doc["error"] is None else 1
 

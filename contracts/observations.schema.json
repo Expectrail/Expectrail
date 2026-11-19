@@ -507,6 +507,10 @@
                             "met",
                             "unmet"
                           ]
+                        },
+                        "witness": {
+                          "description": "How this object is witnessed. Absent: by its templates (template_foreground.py). \"radial\": by the radial witness in radialWitnesses.<role> (agents/template_radial.py), for a round sprite that rotates; then templates counts its clean ring profiles.",
+                          "const": "radial"
                         }
                       }
                     }

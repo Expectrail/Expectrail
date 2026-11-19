@@ -136,12 +136,13 @@ OBSERVERS = {
         # moved it and whose facing validation is met (agents/template_foreground.py ``_validate_facing``). A run
         # whose bank does not back it says nothing about facing, and the check is a gap (``named_observations``).
         "facing": ("enemy",),
-        # The "engine-boxes" roles it can be pointed at when its bank holds that role's templates and their
-        # calibration is met (template_observer.py; a bank without them refuses the role, so its checks are
-        # not run). The enemy only: calibrated on the bundled game, the bullet's clean crops gave no template
-        # with enough opaque detail (docs/new-work/2026-11-16-sensor-enemy.md). Every template is kept mirrored
-        # too, so ``visible`` matches an enemy drawn facing either way; ``faces-motion`` is what tells the two apart.
-        "boxes": ("enemy",),
+        # The "engine-boxes" roles it can be pointed at when its bank witnesses that role and the witness's
+        # calibration is met (template_observer.py; a bank without one refuses the role, so its checks are
+        # not run). The enemy by its templates, every one kept mirrored too, so ``visible`` matches an enemy
+        # drawn facing either way (``faces-motion`` tells the two apart). The bullet by its rings
+        # (agents/template_radial.py): it turns as it flies, so no template matched it pixel for pixel; the ring
+        # means of a round sprite do not change when it turns (docs/new-work/2026-11-19-sensor-bullet.md).
+        "boxes": ("enemy", "bullet"),
         "cannot": ("ground", "text"),
         "why": {
             "ground": "the template sensor matches sprites against clean templates; it does not segment the ground",

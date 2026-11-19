@@ -648,8 +648,9 @@ replay at that threshold are recorded in the bank under `calibration.objects.ene
 when its bank has no enemy template, when that calibration is not `met`, or when the bank is not an
 approved-art bank, so those checks are not run. A box partly on screen is a gap; one wholly off screen is
 counted in `outside` and not judged; more than `pixel.MAX_BOXES` on screen is a frame not asked about.
-The bullet is not offered: calibrated the same way, its 16 x 16 clean crops gave no template with enough
-opaque detail.
+The bullet was not offered then: calibrated the same way, its clean crops gave no template with enough
+opaque detail. Since November 19 the sensor witnesses it by its rings instead (see "The bullet, for the
+no-model sensor" below).
 
 Measured here (Godot 4.7.2, no model, not in CI), from the four calibration routes `sensor-bank` replays:
 408 player templates (as before) and 148 enemy templates, a 34.8 MB bank; the enemy matched 251 of 251
@@ -798,6 +799,46 @@ in the profile's hash (`menuActions`, #622) and the replay time, so the capture'
 `pixel-budget` gave the asking job $1.8013, and `pixel-ask` on that capture no longer refused: it reserved
 675 images, $1.6875, and began asking. With the recorded rehearsal answers (`--sam-answers`, asked under
 another setting) it stopped at the first replay and sent nothing, as it must. SAM itself has not been asked.
+
+### The bullet, for the no-model sensor (added November 19)
+
+Until today `bullet-behind-scenery` could only be judged through SAM, which is paid for each image. Looked at
+on the real engine (Godot 4.7.2 here, no model), the reasons templates never matched the bullet were not its
+size:
+
+- **It turns.** It is a RigidBody2D and spins as it flies and bounces, so its 16 x 16 art is drawn rotated
+  and its pixels change from frame to frame. Clean templates matched it on about a third to two thirds of
+  clean frames.
+- **Its colours are not its art's.** An additive glow is drawn over it, so no rendered pixel is in the
+  art's palette.
+- **It is drawn behind its logged box.** The game has `physics_interpolation` on, and the bullet moves about
+  14 frame pixels a tick: each frame draws it 1 to 1.7 ticks behind the box logged on the frame's tick,
+  under the frame's own camera.
+- **It fades out.** Its timer (1 s) calls `destroy`, which fades the sprite over 0.3 s.
+
+[`agents/template_radial.py`](../agents/template_radial.py) witnesses it by what does not change when it
+turns: the mean colour of each one-pixel ring around its centre. The rings are measured on the trusted clean
+calibration replays only, where the approved art itself locates the sprite on the path the engine logged. A
+frame's bullet is `matched` when some position on its path (from two ticks back to the frame's tick, through
+the frame's camera) has rings within 12 (mean absolute RGB) of a frozen profile, and `not-found` when none
+does. A bullet in its fade, one whose path is not wholly on screen, or one not the calibrated size is a gap.
+The bank carries it as `radialWitnesses.bullet` with `calibration.objects.bullet` (`witness: radial`;
+contract `template-bank`, example `template-bank-foreground-radial.json`), and the reader recomputes its
+status. `pixel.OBSERVERS["visual-sensor"]["boxes"]` is now `("enemy", "bullet")`, so the proposer is offered
+bullet checks for the sensor.
+
+Measured with `sensor-bank` on the four calibration routes (8 minutes): the same 556 templates as before, and
+for the bullet one ring profile (every clean located bullet was within 1 of it), 70 of 70 validation
+positives matched and 0 of 70 negatives (`met`). The bank's digest is `58f45c41...`.
+
+Then, with that bank, a hand-written stand-in of two `visible` bullet checks for the sensor
+([`bench/jit/stand-in/bullet-behind-scenery-sensor/`](../bench/jit/stand-in/bullet-behind-scenery-sensor/README.md),
+written by `python3 -m tools.bullet_visible_stand_in --observer visual-sensor`; no model, so the score gives it
+no result) was replayed by `jit run --proposal --observer visual-sensor --withhold-candidate` against the
+no-fix patch (7.8 minutes, 18 replays). **Both checks were kept**: clean pass 3 of 3, bug fail 3 of 3, bug plus
+no-fix fail 3 of 3, with $0 reserved for the observer. The windows end before the first planned frame with a
+fading bullet on the clean game; with the SAM stand-in's longer windows the checks were `needs-review` on
+every build. This is a rehearsal of the keep rule with a check no model wrote, not a reproduction rate.
 
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 
