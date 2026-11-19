@@ -27,6 +27,7 @@ from expectrail import approval
 from expectrail.gate import comment as gc
 from expectrail.gate import record as rec
 from expectrail.gate import verify as gv
+from tests import approved_copies
 from tests.coverage_replays import complete_trace
 
 REPO = Path(__file__).resolve().parent.parent
@@ -76,7 +77,10 @@ class FakeReplay:
 
 
 def make_repo(root: Path, *, bug: bool = False, crash: bool = False, spec_edit: dict | None = None,
-              draft: bool = False, routes=("smoke", "combat")) -> Path:
+              draft: bool = False, routes=("smoke", "combat"), legacy: bool = False) -> Path:
+    """A checkout with the live check. ``spec_edit`` edits the check, and the edited copy is approved
+    again inside ``root`` (#644): an edit voids a content-bound approval. ``legacy`` gives the check an
+    approval from before content binding (#420) instead of the committed one."""
     (root / "game" / "platformer").mkdir(parents=True)
     (root / "game" / "platformer" / "project.godot").write_text("[application]\n", encoding="utf-8")
     if bug:
@@ -87,6 +91,9 @@ def make_repo(root: Path, *, bug: bool = False, crash: bool = False, spec_edit: 
     spec = json.loads(SPEC.read_text(encoding="utf-8"))
     if spec_edit:
         spec.update(spec_edit)
+        spec = approved_copies.reapproved(spec)
+    if legacy:
+        spec = approved_copies.legacy(spec)
     (root / "specs" / "player-stays-above-ground.json").write_text(json.dumps(spec), encoding="utf-8")
     if draft:
         d = dict(spec, id="player-draft-check")
@@ -368,8 +375,8 @@ class VerifyTest(GateCase):
             "a spec that is a link": lambda r: (r / "specs" / "link.json").symlink_to("player-stays-above-ground.json"),
             "a spec's id used by two files": lambda r: [shutil.copy(r / "specs" / "player-stays-above-ground.json", r / "specs" / "again.json"),
                                                       shutil.copy(SPEC, r / "specs" / "other.json"),
-                                                      (r / "specs" / "other.json").write_text(json.dumps(dict(
-                                                          json.loads(SPEC.read_text(encoding="utf-8")), id="another-approved-check")))],
+                                                      (r / "specs" / "other.json").write_text(json.dumps(approved_copies.reapproved(dict(
+                                                          json.loads(SPEC.read_text(encoding="utf-8")), id="another-approved-check"))))],
         }
         for n, (label, breaker) in enumerate(breakers.items()):
             for with_base in (False, True):
