@@ -30,7 +30,7 @@ with the game's `project.godot`, so a wrong value stayed in the config and nobod
 - Five mutations were each caught: no check on the game, no check on the copy, no viewport
   comparison, duplicates allowed, section ignored.
 - The related modules (`test_project_config`, `test_onboard`, `test_onboard_review`,
-  `test_second_project`, `test_app_projects`, `test_trial_stops`, `test_project_audit`): 99 tests,
+  `test_second_project`, `test_app_projects`, `test_trial_stops`, `test_project_audit`) with the new module: 99 tests,
   OK, 3 skipped.
 - The full suite on the branch from main at 8c2f9a2: 5,218 tests, OK, 66 skipped.
 - Not run against the pinned outside games (they are fetched, not vendored). The Breakout trial's
