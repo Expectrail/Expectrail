@@ -10,8 +10,10 @@ extends Node
 ## and areas, sprites, polygons, tile layers and cameras. For each: its path from the current scene,
 ## its class, its script's class name, its groups (Godot's own groups, whose names start with "_",
 ## are left out), the engine's visible flag, and per kind:
-##   sprite, animatedSprite, polygon: the res:// paths of the images it draws, and how many images
-##            it draws that were made in code and have no file;
+##   sprite, animatedSprite, polygon: the res:// image files it draws whole (a texture loaded from a
+##            .png, .webp, .svg, .jpg, .jpeg, .bmp or .tga file), the image files it draws regions of
+##            through an AtlasTexture, and how many textures it draws that are neither (made in code,
+##            embedded in a scene, or another kind of resource), so have no image file to bind;
 ##   tileLayer: how many cells hold a tile, and whether its tile set has a physics layer;
 ##   camera:  whether it is enabled.
 ## What it writes is the game's own report of itself, read as untrusted data by expectrail.runtime_scan.
@@ -124,18 +126,30 @@ func _describe(scene: Node, node: Node, kind: String) -> Dictionary:
 		elif node.texture != null:
 			textures.append(node.texture)
 		var files: Array = []
+		var atlases: Array = []
 		var unsaved := 0
 		for texture in textures:
 			if texture == null:
 				continue
-			var source := str(texture.resource_path)
-			if source.begins_with("res://") and not source.contains("::"):
+			if texture is AtlasTexture:
+				var atlas: Texture2D = texture.atlas
+				var whole := _image_file(atlas)
+				if whole != "":
+					if not atlases.has(whole):
+						atlases.append(whole)
+				else:
+					unsaved += 1
+				continue
+			var source := _image_file(texture)
+			if source != "":
 				if not files.has(source):
 					files.append(source)
 			else:
 				unsaved += 1
 		files.sort()
+		atlases.sort()
 		entry["images"] = files
+		entry["atlasImages"] = atlases
 		entry["unsavedImages"] = unsaved
 	elif kind == "tileLayer":
 		var tiles: TileSet = node.tile_set
@@ -144,3 +158,17 @@ func _describe(scene: Node, node: Node, kind: String) -> Dictionary:
 	elif kind == "camera":
 		entry["enabled"] = node.enabled
 	return entry
+
+
+## The res:// image file a texture was loaded from, or "" when it has none: made in code, embedded in
+## a scene (a path with "::"), or a resource file that is not an image (a .tres or .res).
+func _image_file(texture) -> String:
+	if texture == null:
+		return ""
+	var source := str(texture.resource_path)
+	if not source.begins_with("res://") or source.contains("::"):
+		return ""
+	var extension := source.get_extension().to_lower()
+	if extension in ["png", "webp", "svg", "jpg", "jpeg", "bmp", "tga"]:
+		return source
+	return ""
