@@ -1,0 +1,83 @@
+{
+  "format": "expectrail.trace/v0",
+  "ticks": 2,
+  "physicsTicksPerSecond": 120,
+  "unknownActions": [],
+  "rows": [
+    {
+      "tick": 0,
+      "frame": 0,
+      "player": [
+        15,
+        6.75
+      ],
+      "body": [
+        10,
+        10,
+        20,
+        20
+      ],
+      "view": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "onFloor": true,
+      "playerVisible": true
+    },
+    {
+      "tick": 1,
+      "frame": 0,
+      "player": [
+        15,
+        6.75
+      ],
+      "body": [
+        10,
+        10,
+        20,
+        20
+      ],
+      "view": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "onFloor": true,
+      "playerVisible": true
+    }
+  ],
+  "captureTimeline": {
+    "fps": 60,
+    "frames": [
+      {
+        "frame": 0,
+        "tick": 1,
+        "tickInterval": [
+          0,
+          1
+        ],
+        "phase": "post-physics-pre-draw",
+        "viewport": [
+          128,
+          96
+        ],
+        "transform": [
+          1,
+          0,
+          0,
+          1,
+          0,
+          0
+        ]
+      }
+    ]
+  },
+  "_comment": "Synthetic two-tick capture example, not a recorded game run."
+}

@@ -167,14 +167,16 @@ def harness_replay(route: Path, game: Path, out: Path, frames: bool, sandbox: st
             "framesDir": (out / engine.frame_pattern).parent if frames else None, "isolation": replay.get("isolation"),
             # The digest of the copy this replay ran (harness.tree.copy), for the gate to hold
             # against the tree its record names.
-            "tree": replay["game"]["tree"]}
+            "tree": replay["game"]["tree"], "timelineRequired": bool(frames),
+            "timeline": replay.get("timeline"), "timelineProblem": replay.get("timelineProblem")}
 
 
 def observations(trace: dict, replay_sha256: str) -> dict:
     """The engine's position log as observations; never SAM, whatever the environment says."""
     from agents.observations import from_trace_synthetic
 
-    return from_trace_synthetic(trace, replay_sha256=replay_sha256)
+    return from_trace_synthetic(trace, replay_sha256=replay_sha256,
+                                fps=(trace.get("captureTimeline") or {}).get("fps", CAPTURE_FPS))
 
 
 def capture_rate(engine, game: Path | None) -> int | None:
@@ -552,7 +554,7 @@ class NoAnswer(Exception):
     pass and never a failure: the check needs review.
 
     A visual observer is any object with ``describe() -> {"name", "provider", "model"}`` and
-    ``look(spec, run, keep=True) -> observations`` (expectrail.observations/v0), each raising this
+    ``look(spec, run, keep=True) -> observations`` (v1 for new captures, v0 for legacy), each raising this
     when it cannot answer. ``expectrail.observers.FramesObserver`` is the one that asks a vision
     model; the gate itself imports no model code."""
 
@@ -593,7 +595,11 @@ def window_frames(spec: dict, ticks: int | None, trace: dict | None,
     lo, hi = window.get("fromFrame", 0), window.get("toFrame")
     if not whole(lo) or (hi is not None and not whole(hi)):
         return None
-    total = ticks // max(tps // capture_fps, 1)
+    from expectrail.observation_timeline import frame_count, TimelineError
+    try:
+        total = frame_count(trace, capture_fps, ticks)
+    except (TimelineError, KeyError, TypeError):
+        return None
     return list(range(max(lo, 0), total if hi is None else min(hi + 1, total)))
 
 
@@ -643,8 +649,9 @@ def visual_gap(spec: dict, seen: dict, run: dict, ticks: int | None,
 
     A pass counts only when the replay captured every frame of the check's window and the observer's
     answer holds every one of them. The one exception is an assertion that passes on the frame that
-    shows it (``reaches``): there the answer need not hold every frame, but the replay must still
-    have captured the whole window. (That the answer is about this replay at all is checked before
+    shows it (``reaches``) in legacy v0 evidence: there the answer need not hold every frame, but
+    the replay must still have captured the whole window. New v1 evidence first passes the timeline
+    completeness check, including every required event frame. (That the answer is about this replay at all is checked before
     any verdict is read from it: ``judge_run``.) Explicit ``vision_every`` sampling relaxes only
     the visual sample schedule allowed by sampling_plan, without relaxing explicit coverage
     obligations; all captured frames and engine ticks are still required. An observer cannot opt itself into this policy."""
@@ -696,7 +703,16 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
     with the count in the reason (``engine_gap``, ``visual_gap``); a visual answer that names
     another replay is no answer. Without ``ticks`` the gate cannot tell, and nothing passes; the same
     holds without ``capture_fps``, the frames the engine's harness captures per second of game time."""
+    from expectrail.observation_timeline import build as capture_timeline, TimelineError
+    trusted_timeline = None
     problem = input_map_problem(run["trace"])
+    if not problem and (run.get("timelineRequired") or "captureTimeline" in run["trace"]):
+        try:
+            trusted_timeline = capture_timeline(run["trace"], run.get("framesDir"), ticks=ticks)
+            if run.get("timeline") is not None and run["timeline"] != trusted_timeline:
+                raise TimelineError("observation-timeline: replay manifest and captured evidence differ")
+        except (TimelineError, OSError, ValueError, TypeError, KeyError) as exc:
+            problem = str(exc) if isinstance(exc, TimelineError) else "observation-timeline: capture record could not be read"
     if problem:
         result = {"result": "needs-review", "reason": problem, "verdict": None, "frame": None,
                   "framesDir": run.get("framesDir")}
@@ -706,7 +722,7 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
     try:
         verdict = evaluate(spec, run["engineObservations"], route=route, trace=run.get("trace"),
                            expected_frames=window_frames(spec, ticks, run.get("trace"), capture_fps),
-                           capture_fps=capture_fps)
+                           capture_fps=capture_fps, trusted_timeline=trusted_timeline, source_kind="trace")
     except Exception as exc:  # noqa: BLE001 - a crash is recorded, never read as a pass
         verdict = None
         engine, engine_reason = "needs-review", f"the evaluator stopped ({type(exc).__name__})"
@@ -749,7 +765,7 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
             if expected is not None and not complete and not spec.get("coverage"):
                 expected = sample(expected, every)
             seen_verdict = evaluate(spec, seen, route=route, trace=run.get("trace"), expected_frames=expected,
-                                    capture_fps=capture_fps)
+                                    capture_fps=capture_fps, trusted_timeline=trusted_timeline, source_kind="image")
             said = seen_verdict["result"] if seen_verdict["result"] in rec.VISUAL_VERDICTS else "needs-review"
             if vision_every > 1 and said != "pass" and not complete:
                 # A sampled non-pass is provisional. Do not trust analysis metadata claiming
@@ -760,6 +776,8 @@ def judge_run(spec: dict, run: dict, *, rule: str = rec.ENGINE_ONLY, visual=None
                         else "sampled non-pass needs refinement; the gate cannot tell the full window")
                 said = "needs-review"
                 seen_verdict = dict(seen_verdict, result=said, reason="not-exercised: " + part, firstFrame=None)
+            elif said == "needs-review" and seen_verdict["reason"].startswith(("observation-timeline:", "ambiguous identity:")):
+                part = seen_verdict["reason"]
             elif said != "fail":
                 part = visual_gap(spec, seen, run, ticks, capture_fps, vision_every=vision_every)
                 if part:
