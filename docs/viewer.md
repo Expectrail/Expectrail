@@ -76,6 +76,47 @@ visual panels say that those measurements were not supplied; no timeline was rec
 guessed from a pass/fail label. New gate runs include the visual timelines when their saved
 observations and verdicts can be verified.
 
+## A written explanation
+
+A job folder may hold `explanation.json` (`expectrail.explanation/v1`,
+[schema](../contracts/explanation.v1.schema.json)). `expectrail report` then adds an
+**Explanation** section below the findings. Each point names the evidence it is about, and a
+finding's id is a button that opens that finding. The page says who wrote it (the model, and
+whether its answer was replayed from a recording) and that it decides nothing.
+
+It is shown only when `python3 -m expectrail.explanation check FINDINGS FILE` passes:
+- its decision is the verifier's and the record's, and it was written for this record (`recordSha256`);
+- every id it cites is in the record (a finding's id, or `check:<spec>@<route>`), and every verdict it states is the record's;
+- the text is printable ASCII, and every number in a point appears in the evidence that point cites;
+- **every word is one Expectrail can match**: a short fixed list of words that cannot carry a claim
+  (articles, prepositions, "is", "before", "after", and nouns such as "frame" and "route"), the names of the evidence the point cites, and the verifier's own
+  wording of that evidence (a finding's comparison and reason). A spec's name counts as a name; it
+  is never split into words to make a claim. The check allows words rather than refusing them,
+  because a list of words to refuse can never be finished;
+- a failing word ("fails", "regression") needs a stated failing verdict after the change, and a
+  passing word ("passes", "fixed") needs every verdict it states after the change to be a pass. A
+  decision word ("accepted", "rejected") must be the decision. Negations and words of certainty
+  ("not", "no longer", "proves", "all", "always") are never allowed;
+- "same" or "unchanged" needs every cited verdict to be equal before and after the change, and
+  "difference" or "changed" needs one that differs. Words that limit or widen what the evidence
+  covers ("only", "also", "other", "than") are never allowed.
+
+This is a word-level check. It withholds every case found so far that contradicts the record, but a
+sentence made only of allowed words could still mislead in a way the check does not see; that is why
+the record's own verdicts are printed under every point.
+
+Under each point the page writes the verdicts it relies on itself, copied from the record ("From the
+record: … pass before the change, fail after the change"). The model's words are shown beside the
+record's, never in place of them.
+
+Anything else is **withheld**. The page then shows why, and none of the explanation's text. The
+banner, the decision, the reasons and the exit code never change because of an explanation.
+
+`python3 -m expectrail.explanation prompt FINDINGS` prints the question for a model.
+`from-answer FINDINGS ANSWER --model NAME [--recorded] --out FILE` turns the answer into the file.
+Expectrail fills in the decision and the record's digest, never the model. No model is called by
+any of these commands. Asking one live, with a budget, is not built yet.
+
 ## Keys
 
 `←` `→` step a captured frame (`Shift` for five), `Home` `End`, `d` the first measured difference, `f` the finding’s frame, `o`
@@ -86,4 +127,4 @@ overlays on or off, `n` `p` the next or previous finding. Clicking a timeline ju
 The two-minute trial still needs a person who has not seen the run. Ask them to find the failed
 relation and its reproduction command in the failing sample, then record the elapsed time on
 [#264](https://github.com/Expectrail/Expectrail/issues/264).
-No model-written explanation is included.
+No model is asked for an explanation yet: the commands above format and check one, and the tests use a stand-in answer.

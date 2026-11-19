@@ -139,6 +139,7 @@ def contract_patterns() -> dict[str, str]:
 
 # pattern: (a value that matches it, whether that value plus "\n" must be refused)
 SAMPLES = {
+    "^([0-9a-f]{12}|check:[a-z0-9][a-z0-9-]{0,63}@[a-z0-9][a-z0-9-]{0,63})$": ("check:player-stays-above-ground@smoke", True),
     r"^attempt-[0-9]{1,2}/fixer-invocation\.json$": ("attempt-1/fixer-invocation.json", True),
     "^[a-z0-9][a-z0-9-]{3,63}$": ("air-jump-report", True),
     r"^[\x20-\x7e]+$": ("Mesa - llvmpipe (LLVM 20.1.2, 256 bits)", True),
