@@ -50,10 +50,20 @@ moment.
   checks each kind's fields and repeated values by hand. The 27 tests pass with jsonschema blocked.
   Full suite after the fix, merged with main at 73ac17f: 5,463 tests, OK, 41 skipped.
 
+- After the integrator's note on #664 (Breakout's paddle draws AtlasTexture regions of one PNG,
+  #666): the scan now lists whole image files (`images`, by file extension) apart from images drawn
+  as AtlasTexture regions (`atlasImages`). A texture embedded in a scene, made in code or saved as a
+  `.tres` is counted in `unsavedImages`. `init` never takes an atlas region as the player's image.
+  A new Godot test draws four sprites under Crate Run's player: a code-made AtlasTexture, a saved
+  `.tres` AtlasTexture, an ImageTexture made in code and the whole `crate.svg`. The test checks that
+  each is classified as above and that no image is guessed. With the atlas branch of the scanner
+  disabled, that test fails. `tests.test_runtime_scan`: 28 tests, OK, with jsonschema blocked as well.
+
 ## Not done
 - The Done-when run: `init --dry-run`, then a verification, on the second test project and on the
   bundled game. Crate Run's crate is a filled polygon, so its player image stays a person's choice.
 - A game that needs input to leave a menu is scanned at its menu; `--runtime` presses nothing.
+- Resolving an atlas region for review (source image and frame region): #666.
 - `calibrate` stays with #330.
 
 ## Files

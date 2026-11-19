@@ -53,8 +53,9 @@
           "className": {"type": ["string", "null"], "maxLength": 64, "description": "The class_name of the node's script, or null."},
           "groups": {"type": "array", "maxItems": 32, "items": {"type": "string", "minLength": 1, "maxLength": 64}, "description": "The node's groups, without Godot's own (names starting with _)."},
           "visible": {"type": "boolean", "description": "The engine's visible-in-tree flag. Not a claim about pixels."},
-          "images": {"type": "array", "maxItems": 64, "items": {"type": "string", "pattern": "^res://.+$", "maxLength": 200}, "description": "Sprites and polygons: the res:// image files it draws."},
-          "unsavedImages": {"type": "integer", "minimum": 0, "description": "Sprites and polygons: how many images it draws that were made in code and have no file."},
+          "images": {"type": "array", "maxItems": 64, "items": {"type": "string", "pattern": "^res://.+$", "maxLength": 200}, "description": "Sprites and polygons: the res:// image files (.png, .webp, .svg, .jpg, .jpeg, .bmp, .tga) it draws whole."},
+          "atlasImages": {"type": "array", "maxItems": 64, "items": {"type": "string", "pattern": "^res://.+$", "maxLength": 200}, "description": "Sprites and polygons: the res:// image files it draws regions of through an AtlasTexture. A region is not the whole image, so it is never taken as a binding."},
+          "unsavedImages": {"type": "integer", "minimum": 0, "description": "Sprites and polygons: how many textures it draws that have no image file to bind: made in code, embedded in a scene, or a resource file that is not an image."},
           "cells": {"type": "integer", "minimum": 0, "description": "Tile layers: cells that hold a tile."},
           "collides": {"type": "boolean", "description": "Tile layers: whether its tile set has a physics layer."},
           "enabled": {"type": "boolean", "description": "Cameras: the enabled flag."}
