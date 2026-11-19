@@ -31,3 +31,23 @@ trial is separate.
 Run `python3 -m unittest -v tests.test_app_engine.AppEngineTest.test_outside_crate_run_in_the_browser`
 with pinned Godot, Xvfb, Chromium and Playwright installed. This uses two
 temporary copies and starts the ordinary app worker.
+
+## Sandbox parity follow-up
+
+The run above reached the ordinary replay launcher. Bubblewrap was installed,
+but its UID-map setup failed on the read-only filesystem. The default diagnostic
+mode retained the replay and recorded the reason it ran outside the sandbox.
+
+A separate rerun hid only `bwrap` discovery and used the ordinary app and CLI
+workers with pinned Godot 4.7.2. Both compared the same Crate Run folders. In
+Chromium the app showed the same refusal detail or sandbox wording as the
+CLI's saved evidence.
+
+| Execution choice | App job | CLI job | Result |
+| --- | --- | --- | --- |
+| Require the replay sandbox | `5d5dea9c34385143086b67495096a186` | `102b21c15d64808b6992f954e65b5980` | Needs review, CLI exit 2. No replay ran. |
+| Diagnostic | `eace90e203b616e7122b38641f561a0c` | `2ad11267f08b8eb7cbcde6567a10e376` | Reject, CLI exit 1. Each job recorded two replays and zero sandboxed. |
+
+The browser showed “0 of 2. Outside it the game ran as the job's user, with
+the network: bubblewrap (bwrap) is not installed”. The two routes through
+verification matched their input digests and diagnostics in both modes.

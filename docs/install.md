@@ -4,35 +4,40 @@ Expectrail is a Python package with one command, `expectrail`. This page says ho
 what the package holds, and what is not built yet. It is not on PyPI: publishing needs an account
 and a token, which only a person sets up (#249).
 
-## Open the local app on a prepared Linux computer
+## Install and open the local app
 
-Ask the person who set up your computer for the Expectrail wheel that includes
-`app --open-browser`. The file is called `expectrail-0.1.0-py3-none-any.whl`.
-They need to have set up Python 3.12 or later with `venv`, a
-default browser, and the Godot replay prerequisites listed below. The project
-folders, routes and approved checks should also be ready.
-
-1. Download the wheel to **Downloads**. Keep its original filename.
-2. Open **Terminal**. Paste this single line, then press Enter. Expectrail
-   installs in your own account and opens your default browser.
+Download `expectrail-0.1.0-py3-none-any.whl` to **Downloads**. Ask your
+maintainer for the wheel with the Expectrail launcher. On a prepared Linux or
+macOS computer, open **Terminal**, paste this single line, and press Enter:
 
 ```sh
-python3 -m venv "$HOME/.local/share/expectrail/app-env" && "$HOME/.local/share/expectrail/app-env/bin/python" -m pip install --no-deps "$HOME/Downloads/expectrail-0.1.0-py3-none-any.whl" && "$HOME/.local/share/expectrail/app-env/bin/expectrail" app --open-browser
+python3 -m venv "$HOME/.local/share/expectrail/app-env" && "$HOME/.local/share/expectrail/app-env/bin/python" -m pip install --no-deps --force-reinstall "$HOME/Downloads/expectrail-0.1.0-py3-none-any.whl" && "$HOME/.local/share/expectrail/app-env/bin/expectrail" app --install-launcher && "$HOME/.local/share/expectrail/app-env/bin/expectrail" app --open-browser
 ```
 
-Leave the Terminal window open while you use the app. In the browser, enter
-the **Before** and **After** folder paths, click **Check folders**, then
-**Verify**. Stay on that page to see the result and open its evidence. If your
-browser does not open, the Terminal window shows the local address.
+The first launch keeps Terminal open while you work. In the browser, enter the
+**Before** and **After** folder paths, click **Check folders**, then **Verify**.
+Use **Require the replay sandbox** to stop verification if isolation is
+unavailable. The result shows how the replays ran.
 
-This flow uses Terminal once to install and open the app. On later visits,
-paste `"$HOME/.local/share/expectrail/app-env/bin/expectrail" app --open-browser`
-into Terminal to reopen it. The project comparison, progress, cancellation and
-evidence are in the browser.
-A maintainer still prepares the system tools, configures live vision if wanted,
-and handles Git and route setup outside the app. Without vision, a failed
-engine check can reject and a passing engine check needs review. A published
-desktop installer and a first-user trial remain open.
+On later visits:
+
+- **Linux:** Open **Expectrail** from the applications menu. To open the launcher
+  from your file manager, go to `~/.local/share/applications` (or the
+  `applications` folder in your configured XDG data directory) and double-click
+  `expectrail.desktop`. Some desktops ask you to trust the local launcher first.
+  This opens the browser without a Terminal window. Closing the browser leaves
+  the local server running until you log out.
+- **macOS:** In Finder, open **Applications** in your home folder and
+  double-click **Expectrail.command**. macOS opens a Terminal window for the
+  app and then opens the browser. You can leave Terminal alone while you work.
+  Closing that window stops the local app.
+
+Python 3.12 or later with `venv`, a default browser, and the system Godot replay
+tools must be ready first. Initial install or update uses Terminal on both
+systems. Your maintainer may also need Terminal for system tools, preparing
+project checks and routes, and configuring live vision. macOS lacks Bubblewrap,
+so requiring the replay sandbox there stops the job. The macOS launcher file
+was checked with a POSIX shell on Linux. Finder and macOS replays were not run.
 
 ## From a checkout
 

@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import shlex
 import stat
 import sys
 import threading
@@ -68,6 +69,13 @@ def field(body, name, default=None):
     return value.strip()
 
 
+def execution_class(body):
+    selected = body.get('executionClass', 'diagnostic')
+    if not isinstance(selected, str) or selected not in req.EXECUTION_CLASSES:
+        raise ValueError('Choose diagnostic or isolated execution. Nothing was run.')
+    return selected
+
+
 def build(body, *, inspect=False):
     head = Path(field(body, 'folder' if inspect else 'after')).expanduser()
     configured(body)
@@ -75,7 +83,7 @@ def build(body, *, inspect=False):
                      base=None if inspect else Path(field(body, 'before')).expanduser(),
                      game=field(body, 'game', '.'),
                      routes=field(body, 'routes', 'routes/*.json').replace(',', ' ').split(),
-                     specs=field(body, 'specs', 'specs'))
+                     specs=field(body, 'specs', 'specs'), execution_class=execution_class(body))
 
 
 def configured(body):
@@ -135,7 +143,8 @@ class App:
 
     def create(self, body):
         if configured(body):
-            doc = project_job.prepare(self.store, Path(field(body, 'after')), Path(field(body, 'before')))
+            doc = project_job.prepare(self.store, Path(field(body, 'after')), Path(field(body, 'before')),
+                                      execution_class=execution_class(body))
         else:
             doc = build(body)
         settings, _ = auto_fix.configure(body.get('autoFix', False), body.get('attempts'), body.get('usdCap'), agent=body.get('repairAgent'))
@@ -195,12 +204,14 @@ class App:
             summary += ' ' + viewer.auto_fix_words(doc)
             if 'review' in repair:
                 summary += ' ' + repair['review']
+        findings = self.findings(job_id, doc)
         return {key: doc[key] for key in ('id', 'phase', 'decision', 'history', 'reasons', 'diagnostics', 'createdAt')} | {
             'state': state, 'screen': screen, 'summary': summary, 'sessionOwned': job_id in self.owned, 'report': report,
             'repairRunning': repair.get('state') == 'running',
             'repairUrl': f'/repairs/{job_id}/repair-run.json' if 'record' in repair and job_id in self.owned else None,
             'before': (request['base'] or {}).get('checkout'), 'after': request['head']['checkout'],
-            'judgedBy': judged_by(doc, self.findings(job_id, doc)),
+            'judgedBy': judged_by(doc, findings),
+            'isolation': rec.isolation_words(findings.get('isolation')) if findings is not None else None,
             'viewer': f'/viewers/{job_id}/index.html' if job_id in self.owned and phase in FINAL else None}
 
     def history(self):
@@ -477,14 +488,60 @@ def create_server(store=None, *, start=runner.spawn):
     return server
 
 
+def install_launcher():
+    """Create the current Python environment's launcher in the user's account."""
+    python = str(Path(sys.executable).absolute())
+    if any(ord(char) < 32 for char in python):
+        raise ValueError('The Python path contains a control character.')
+    args = ['-I', '-m', 'expectrail.cli', 'app', '--open-browser']
+    if sys.platform.startswith('linux'):
+        data_home = Path(os.environ.get('XDG_DATA_HOME', ''))
+        if not data_home.is_absolute():
+            data_home = Path.home() / '.local/share'
+        path = data_home / 'applications' / 'expectrail.desktop'
+        # Apply Exec quoting first, then the desktop file string escaping.
+        special = ('\\', '"', '$', chr(96))
+        quoted = ''.join(('\\' if char in special else '') + char for char in python)
+        quoted = quoted.replace('%', '%%').replace('\\', '\\\\')
+        command = ' '.join(['/usr/bin/env', f'"{quoted}"', *args])
+        body = ('[Desktop Entry]\nType=Application\nName=Expectrail\n'
+                f'Exec={command}\nTerminal=false\n')
+    elif sys.platform == 'darwin':
+        path = Path.home() / 'Applications' / 'Expectrail.command'
+        body = '#!/bin/sh\nexec ' + shlex.join([python, *args]) + '\n'
+    else:
+        raise ValueError('Expectrail launchers are available for Linux and macOS.')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # Replace the generated entry atomically without following an old file link.
+    with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=path.parent, delete=False) as stream:
+        temporary = Path(stream.name)
+        try:
+            stream.write(body)
+            stream.close()
+            temporary.chmod(0o700)
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
+    return path
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='expectrail app', description='Open Expectrail locally on 127.0.0.1.')
     parser.add_argument('--jobs-root', type=Path, help='Job storage outside both game folders.')
-    parser.add_argument('--open-browser', action='store_true', help='Open the local page in your default browser.')
+    launch = parser.add_mutually_exclusive_group()
+    launch.add_argument('--install-launcher', action='store_true', help='Create a launcher for this installed copy.')
+    launch.add_argument('--open-browser', action='store_true', help='Open the local page in your default browser.')
     try:
         args = parser.parse_args(argv)
     except SystemExit as exc:
         return 0 if exc.code == 0 else 5  # 2 belongs to a verifier's needs-review decision
+    if args.install_launcher:
+        try:
+            print(f'Expectrail launcher created at {install_launcher()}')
+        except (OSError, ValueError) as exc:
+            print(f'Expectrail could not create a launcher: {exc}', file=sys.stderr)
+            return 5
+        return 0
     try:
         server = create_server(JobStore(args.jobs_root) if args.jobs_root else None)
     except OSError as exc:

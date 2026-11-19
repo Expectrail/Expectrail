@@ -76,9 +76,17 @@ class AppScreensTest(unittest.TestCase):
             fixture.starter = None
             with mock.patch.object(fixture.engine, 'preflight', return_value=[
                     diagnostic('TOOL_MISSING', stage='preparing', detail='Install the missing engine.')]):
-                verify.click()
+                require = page.get_by_label('Require the replay sandbox')
+                require.check()
+                with page.expect_response(lambda response: response.url.endswith('/api/jobs') and
+                                          response.request.method == 'POST') as submitted:
+                    verify.click()
+                isolated_job = submitted.value.json()['id']
                 checked('Verification could not be carried out', 'Follow the instructions', evidence=True)
                 expect(page.locator('#details')).to_contain_text('Install the missing engine.')
+                self.assertEqual(fixture.store.request(isolated_job)['executionClass'], 'isolated')
+                expect(page.locator('#isolation')).to_be_hidden()
+                require.uncheck()
             self.assertEqual(fixture.server.app.history()['jobs'][0]['decision'], 'needs-review')
 
             candidate = fixture.after / fixture.body['game']
@@ -92,6 +100,7 @@ class AppScreensTest(unittest.TestCase):
                         (candidate / marker).touch()
                     verify.click()
                     checked(title, guidance, evidence=True)
+                    expect(page.locator('#isolation')).to_contain_text('Replays in the sandbox:')
                     if marker:
                         (candidate / marker).unlink()
 
