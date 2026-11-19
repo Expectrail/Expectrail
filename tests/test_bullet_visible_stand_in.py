@@ -25,6 +25,8 @@ PX = stand_in.OFFER
 SAM = stand_in.OBSERVER
 
 
+SENSOR_COPY = stand_in.ROOT / "bench" / "jit" / "stand-in" / "bullet-behind-scenery-sensor" / intent.PROPOSAL_NAME
+
 class TheCapturePlan(unittest.TestCase):
     """The plan measured from the capture of the whole probes (November 17, Godot 4.7.2, no model)."""
 
@@ -184,13 +186,34 @@ class TheStandIn(unittest.TestCase):
             with self.subTest(**kw), self.assertRaisesRegex(intent.IntentUnavailable, why):
                 self.replay(**kw)
 
-    def test_the_sensor_cannot_be_asked_about_the_bullet(self):
-        # Why the checks name SAM: the sensor's bank holds no bullet template.
+    def test_the_sensor_can_be_asked_about_the_bullet_since_november_19(self):
+        # The checks name SAM because SAM was the only observer of the bullet when they were written; the
+        # no-model sensor witnesses it by its rings since November 19 (agents/template_radial.py).
         entry = dict(stand_in.checks()[0], observer="visual-sensor")
         check, why = pixel.parse_candidate(entry, pixel.bindings_for(), {p["id"] for p in self.probes},
                                            pixel.proposed("visual-sensor"))
-        self.assertIsNone(check)
-        self.assertIn("bullet", why)
+        self.assertIsNone(why)
+        self.assertEqual(check["object"], "bullet")
+
+    def test_the_sensors_committed_copy_is_what_the_tool_writes(self):
+        stand_in.write(self.tmp, "visual-sensor")
+        self.assertEqual((self.tmp / intent.PROPOSAL_NAME).read_bytes(), SENSOR_COPY.read_bytes())
+
+    def test_the_sensors_copy_records_its_observer_and_windows_clear_of_fading_and_crowded_bullets(self):
+        doc = json.loads(SENSOR_COPY.read_text(encoding="utf-8"))
+        self.assertEqual(doc["observer"], "visual-sensor")
+        self.assertEqual(doc["model"], "hand-written-stand-in")
+        got = self.replay(SENSOR_COPY, observer="visual-sensor")
+        self.assertEqual([(c["probe"], c["window"], c["observer"]) for c in got["pixelChecks"]],
+                         [("shoot-left-every12", {"fromFrame": 50, "toFrame": 50}, "visual-sensor"),
+                          ("move-fire-right", {"fromFrame": 10, "toFrame": 30}, "visual-sensor")])
+        # Each sensor window lies inside the SAM window of its probe, so the capture plan's checks hold for it.
+        sam = {probe: window for probe, window, _ in stand_in.PROBES}
+        for probe, window, _ in stand_in.SENSOR_PROBES:
+            self.assertGreaterEqual(window["fromFrame"], sam[probe]["fromFrame"])
+            self.assertLessEqual(window["toFrame"], sam[probe].get("toFrame", window["toFrame"]))
+        with self.assertRaisesRegex(intent.IntentUnavailable, "PROPOSAL_MISMATCH: .*observer"):
+            self.replay(SENSOR_COPY)
 
     def test_no_planned_frame_is_one_a_bullet_is_partly_on_screen(self):
         evidence = json.loads(stand_in.EVIDENCE.read_text(encoding="utf-8"))
@@ -239,7 +262,7 @@ class TheStandIn(unittest.TestCase):
 
     def test_a_check_the_parser_refuses_stops_the_tool(self):
         broken = [dict(stand_in.checks()[0], object="ground")]
-        with mock.patch.object(stand_in, "checks", lambda: broken):
+        with mock.patch.object(stand_in, "checks", lambda observer=stand_in.OBSERVER: broken):
             doc = stand_in.write(self.tmp)
         self.assertIsNotNone(doc["error"])
         self.assertEqual(doc["pixelChecks"], [])

@@ -595,6 +595,10 @@
                     "met",
                     "unmet"
                   ]
+                },
+                "witness": {
+                  "description": "How this object is witnessed. Absent: by its templates (template_foreground.py). \"radial\": by the radial witness in radialWitnesses.<role> (agents/template_radial.py), for a round sprite that rotates; then templates counts its clean ring profiles.",
+                  "const": "radial"
                 }
               }
             }
@@ -804,6 +808,113 @@
               },
               "minItems": 2,
               "maxItems": 2
+            }
+          }
+        }
+      }
+    },
+    "radialWitnesses": {
+      "description": "Round objects that rotate as they move (the bundled game's bullet, a RigidBody2D), witnessed without templates (#286; agents/template_radial.py). Each holds the mean colour of each one-pixel ring around the sprite's centre, measured on trusted clean replays only where the approved art locates the sprite on the path the engine logged; a frame is matched when some position on that path has rings within maxDistance of one of these. Ring means do not change when the sprite turns. Every role here has a calibration.objects record with witness radial.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bullet": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "algorithm",
+            "art",
+            "sidePx",
+            "rings",
+            "pathTicks",
+            "fadesAfterTicks",
+            "clearPx",
+            "locateFloor",
+            "maxDistance",
+            "profiles",
+            "profilesSha256"
+          ],
+          "properties": {
+            "algorithm": {
+              "const": "expectrail.radial-witness/v1"
+            },
+            "art": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              }
+            },
+            "sidePx": {
+              "type": "integer",
+              "minimum": 8,
+              "maximum": 256
+            },
+            "rings": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 128
+            },
+            "pathTicks": {
+              "description": "The frame draws the object somewhere between its logged box this many ticks earlier and its logged box on the frame's tick (physics interpolation).",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8
+            },
+            "fadesAfterTicks": {
+              "description": "From this age, in ticks since the object was first logged, the game fades it out; such a box is not judged (a gap). Null: it does not fade.",
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "clearPx": {
+              "description": "How far, in frame pixels, the box of another object of the same role must stay from the area searched along the object's path for the object to be judged (the box of any other logged object must not touch that area). Nearer, it is a gap. Calibration keeps and validates by the same rule. 0 on the bundled game, measured on its calibration replays.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 256
+            },
+            "locateFloor": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "maxDistance": {
+              "type": "number",
+              "maximum": 255,
+              "minimum": 0.1
+            },
+            "profiles": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 512,
+              "items": {
+                "type": "array",
+                "minItems": 6,
+                "maxItems": 384,
+                "items": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 255
+                }
+              }
+            },
+            "profilesSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
             }
           }
         }
