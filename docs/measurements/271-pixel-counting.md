@@ -3,7 +3,7 @@
 Offline, from the committed records under `bench/jit/stand-in/`; no replay, observer or model.
 These checks were written by hand, not by a model, and no trusted certificate is supplied, so rule 5
 never holds and nothing counts. The page shows which rules each check meets from its own runs.
-Pixel rows are not an input to the gate decision yet; this is not a rate.
+Pixel rows reach the gate decision only as authenticated evidence (rule 5); this is not a rate.
 
 Made by `python3 -m expectrail.jit.counting pixel-bench --records bench/jit/stand-in --out <page>`.
 
