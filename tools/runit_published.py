@@ -121,6 +121,16 @@ def status_problems(status, request_id: str, sample: dict, root: Path = ROOT) ->
     return problems
 
 
+def rendering_note(vision: dict) -> str:
+    """The rendering environment beside the recording's, when the result names it (#265, #515). It is
+    reported, never judged: a run whose every question was answered from the recording already passed."""
+    rendering = vision.get("rendering")
+    if not isinstance(rendering, dict):
+        return "; rendering environment not in this result"
+    from expectrail import recorded
+    return f"; rendering {rendering.get('status')}: {recorded.rendering_sentence(rendering)}"
+
+
 def follow(request_id: str, sample_id: str, *, results: str = RESULTS, wait: float = 360, poll: float = 15,
            get=fetch, clock=time.monotonic, sleep=time.sleep, emit=print, root: Path = ROOT) -> int:
     """Read the published run. Return 0 only if every published file shows the expected result."""
@@ -151,7 +161,8 @@ def follow(request_id: str, sample_id: str, *, results: str = RESULTS, wait: flo
         if not check(not problems, stage, "; ".join(problems) if problems else
                      f"{status['decision']}, as {sample_id} is expected to decide; "
                      f"{status['vision']['answered']} of {status['vision']['asked']} vision answers from the recording "
-                     f"of {status['vision']['recordedAt']}; receipt {status['receipt']['why']}"):
+                     f"of {status['vision']['recordedAt']}; receipt {status['receipt']['why']}"
+                     + rendering_note(status["vision"])):
             return 1
 
         stage = "findings"
