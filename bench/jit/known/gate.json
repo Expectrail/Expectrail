@@ -10,7 +10,7 @@
  "specs": [
   "agents/specs/player-stays-above-ground.json"
  ],
- "specsSha256": "6c228b5cd1db6370f085746d337e04948686b7afe0d3597a4c2e201ff16f9fea",
+ "specsSha256": "a0f222c204cfce4ebe8bb136884d8809c375b610d4b6ac16eeb32c2e88f43af0",
  "rows": [
   {
    "case": "known-air-jump-comment-only",
