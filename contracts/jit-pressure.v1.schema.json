@@ -100,6 +100,9 @@
                 "execution_error"
               ]
             }
+          },
+          "kind": {
+            "const": "pixel"
           }
         }
       }
@@ -162,6 +165,58 @@
                 ],
                 "minimum": 0
               }
+            }
+          }
+        }
+      ]
+    },
+    "pixelObserver": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "setting",
+            "every",
+            "first"
+          ],
+          "properties": {
+            "name": {
+              "const": "visual-sensor"
+            },
+            "setting": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "model",
+                "bankSha256"
+              ],
+              "properties": {
+                "model": {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                "bankSha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              }
+            },
+            "every": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60
+            },
+            "first": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
             }
           }
         }

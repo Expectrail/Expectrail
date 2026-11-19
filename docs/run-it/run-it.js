@@ -109,6 +109,40 @@
     return v.title;
   }
 
+  // The rendering environment the frames were drawn in, beside the recording's (#265, #515). It is
+  // provenance only: it never changes the verdict. The words are expectrail.recorded.rendering_sentence's,
+  // and tools/runit_smoke.py holds the two to the same text. Anything malformed shows no line.
+  var ENV_KEYS = ["name", "version", "renderer", "device"];
+  function envOk(e, nullable) {
+    if (e === null) return nullable;
+    if (!isObj(e) || Object.keys(e).length !== 4) return false;
+    return ENV_KEYS.every(function (k) {
+      return e[k] === null || (typeof e[k] === "string" && /^[ -~]{1,160}$/.test(e[k]));
+    });
+  }
+  function shortEnv(e) {
+    return (e.device || "unknown device") + ", " + (e.renderer || "unknown renderer") + ", " +
+      (e.name || "engine") + " " + (e.version || "unknown version");
+  }
+  function renderingLine(r) {
+    if (!isObj(r) || !Array.isArray(r.thisRun) || r.thisRun.length > 8 ||
+        !r.thisRun.every(function (e) { return envOk(e, false); })) return null;
+    if (r.recording !== null && !(Array.isArray(r.recording) && r.recording.length <= 8 &&
+        r.recording.every(function (e) { return envOk(e, true); }))) return null;
+    var thisRun = r.thisRun.map(shortEnv).join(" and ");
+    if (r.status === "match") return "Drawn with " + thisRun + ": the same as the recording.";
+    if (r.status === "mismatch") {
+      if (r.recording === null || r.recording.indexOf(null) !== -1) return null;
+      return "Drawn with " + thisRun + ". The recording was made with " + r.recording.map(shortEnv).join(" and ") +
+        ". A frame that draws differently gets no recorded answer.";
+    }
+    if (r.status === "unknown" && thisRun) return "Drawn with " + thisRun + ". The recording does not name the " +
+      "environment it was made in, so the two cannot be compared. A frame that draws differently gets no recorded answer.";
+    if (r.status === "unknown") return "Neither this run nor the recording names its rendering environment, so the two cannot be compared.";
+    if (r.status === "unavailable") return "This run's rendering environment was not reported, so it cannot be compared with the recording's.";
+    return null;
+  }
+
   // status.json, read defensively: anything off means "cannot tell", never a verdict.
   function usable(status, requestId, sampleId) {
     if (!isObj(status) || status.format !== "expectrail.run-it-result/v1") return false;
@@ -492,6 +526,8 @@
       vision = "No vision answers are recorded for this sample yet, so the vision observer gave no answer.";
     }
     fact(facts, "Vision", vision);
+    var rendering = renderingLine(v.rendering);
+    if (rendering) fact(facts, "Rendering", rendering);
     var expected = status.sample.expected;
     fact(facts, "This sample", "A working install decides " + expected + ". This run " +
       (status.asExpected ? "ended as this sample is expected to end today." : "did not end as this sample is expected to end today."));

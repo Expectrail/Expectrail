@@ -85,6 +85,43 @@ class ConfiguredAppTest(unittest.TestCase):
         saved=self.store.request(job['id']);self.assertEqual(len(request.read_checks(saved).specs),1)
         self.assertIn('config differs',' '.join(result['reasons']))
 
+    def test_check_folders_previews_current_and_saved_setups_without_starting_a_job(self):
+        from expectrail import onboarding
+
+        game = self.root / 'My game'
+        shutil.copytree(ROOT / 'tests/projects/crate-run/project', game)
+        (game / 'expectrail.project.json').unlink()
+        body = {'before': str(game), 'after': str(game), 'folder': str(game)}
+        for saved in (False, True):
+            with self.subTest(saved=saved):
+                if saved:
+                    onboarding.publish(game, onboarding.proposal(game, onboarding.inspect(game)), False)
+                digest = request.tree_digest(game)
+                code, error, _ = self.http('POST', '/api/inspect', body)
+                self.assertEqual(code, 400)
+                detail = error['detail']
+                self.assertIn('res://main.tscn', detail)
+                self.assertIn('Player', detail)
+                self.assertIn('no saved sprite texture', detail)
+                self.assertIn('Saved draft' if saved else 'Setup preview', detail)
+                self.assertEqual(self.http('POST', '/api/jobs', body)[0], 400)
+                self.assertEqual(request.tree_digest(game), digest)
+        self.assertEqual(self.server.app.history()['jobs'], [])
+
+        pending = game / 'expectrail.project.draft.json'
+        route = game / json.loads(pending.read_text())['config']['routes'][0]
+        route.write_text('{}')
+        code, error, _ = self.http('POST', '/api/inspect', body)
+        self.assertEqual(code, 400)
+        self.assertIn('route', error['detail'])
+        self.assertNotIn('Saved draft preview', error['detail'])
+
+        pending.write_text('{}')
+        code, error, _ = self.http('POST', '/api/inspect', body)
+        self.assertEqual(code, 400)
+        self.assertIn(pending.name, error['detail'])
+        self.assertNotIn('Saved draft preview', error['detail'])
+
     def test_missing_or_invalid_config_is_named_and_no_job_is_started(self):
         body=self.pair();path=Path(body['before'])/'expectrail.project.json';path.unlink()
         for value in (None,'{broken'):

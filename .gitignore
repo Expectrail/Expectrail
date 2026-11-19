@@ -18,6 +18,7 @@
 !/tools/make_receipt_samples.py
 !/tools/runit_api_smoke.py
 !/tools/runit_published.py
+!/tools/bundled_config_parity.py
 !/tools/release_gate.py
 !/tools/dossier.py
 !/tools/capture_spike/

@@ -25,7 +25,6 @@ import argparse
 import hashlib
 import json
 import shutil
-import subprocess
 import sys
 import tempfile
 from concurrent.futures import ProcessPoolExecutor
@@ -75,8 +74,8 @@ def load_cases(path: Path = CASES) -> list[dict]:
 
 # --- one case --------------------------------------------------------------------------------------------
 def _patch(game: Path, patch: Path) -> None:
-    subprocess.run(["patch", "-p1", "--forward", "--batch", "--silent", "-d", str(game), "-i", str(Path(patch).resolve())],
-                   check=True, capture_output=True)
+    from harness import patching
+    patching.apply(game, Path(patch))
 
 
 def build_tree(dest: Path, patches: list[Path], root: Path = REPO) -> Path:
@@ -106,14 +105,17 @@ def run_case(case: dict, work: Path, *, root: Path = REPO, run_gate=None) -> dic
     """One bench row: the gate on this case with each intent."""
     if run_gate is None:
         from expectrail.gate.verify import run_gate
+    from expectrail.gate import record as rec
     work = Path(work)
     base = build_tree(work / "base", [root / case["base"]], root)
     head = build_tree(work / "head", [root / case["base"], root / case["candidate"]], root)
     row = {"case": case["case"], "bug": case["bug"], "label": case["label"], "tunedOn": bool(case.get("tunedOn")),
            "baseSha256": _sha(root / case["base"]), "candidateSha256": _sha(root / case["candidate"])}
     for intent in INTENTS:
+        # The record says which rule judged ("engine-only", a const in its schema), so the rule is named
+        # here rather than taken from the gate's default, which became both observers in #602 (#644).
         findings = run_gate(repo=head, game=GAME, routes=ROUTES, specs=SPECS, out=work / f"gate-{intent}",
-                            work=work / f"gate-work-{intent}", base=base, intent=intent)
+                            work=work / f"gate-work-{intent}", base=base, intent=intent, rule=rec.ENGINE_ONLY)
         row[intent] = summarize(findings)
     return row
 

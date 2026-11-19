@@ -160,7 +160,20 @@ def check_bank(bank):
             raise sensor.SensorError('foreground RGB pixels disagree with the recorded luminance pixels')
         if features(rgb, mask, config) is None:
             raise sensor.SensorError('foreground template has insufficient opaque detail')
+    witnesses = bank.get('radialWitnesses') or {}
+    for role in witnesses:
+        if role not in (bank['calibration'].get('objects') or {}):
+            raise sensor.SensorError(f'the radial witness of {role} has no calibration record')
     for role, counted in (bank['calibration'].get('objects') or {}).items():
+        if counted.get('witness') == 'radial' or role in witnesses:
+            # Witnessed by its ring profiles (agents/template_radial.py), not by templates.
+            from agents import template_radial
+            if role not in witnesses:
+                raise sensor.SensorError(f'calibrated object {role} names a radial witness the bank does not hold')
+            if any(item['object'] == role for item in bank['templates']):
+                raise sensor.SensorError(f'{role} is witnessed by its rings and also has templates')
+            template_radial.check_witness(role, witnesses[role], counted)
+            continue
         # A named object's record is recomputed from what it counts; it cannot claim templates it lacks,
         # matches it did not count, or a status its counts do not give.
         if role not in sources:

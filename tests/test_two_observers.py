@@ -525,9 +525,8 @@ class CoverageTest(Case):
 class EngineOnlyTest(Case):
     def test_the_old_rule_still_judges_as_it_did_and_the_record_names_it(self):
         doc = self.gate(repo(self.tmp / "head"), rule=rec.ENGINE_ONLY, visual=None)
-        # The spec's approval predates content binding (#420), and the record names it after the rest.
-        self.assertEqual((doc["decision"], doc["reasons"]),
-                         ("accept", ["all 1 checks pass", "spec player-stays-above-ground: approved before content binding"]))
+        # The committed spec's approval is bound to its content (#642), so the record names no approval.
+        self.assertEqual((doc["decision"], doc["reasons"]), ("accept", ["all 1 checks pass"]))
         # No block: the record is what it was before the rule existed, so the comment job's reader
         # on main, which may be older than the writer, still reads it. Without the block it reads
         # as engine-only.
@@ -537,6 +536,11 @@ class EngineOnlyTest(Case):
         self.assertEqual(self.game.asked, [])
         self.assertFalse((self.out / "observations").exists())
         rec.read_record(self.out / "findings.json")
+        # A spec approved before content binding (#420) still judges, and the record names it after the rest.
+        old = self.gate(repo(self.tmp / "legacy", legacy=True), rule=rec.ENGINE_ONLY, visual=None)
+        self.assertEqual((old["decision"], old["reasons"]),
+                         ("accept", ["all 1 checks pass", "spec player-stays-above-ground: approved before content binding"]))
+        self.assertNotIn("observers", old)
 
     def test_a_visual_observer_under_the_old_rule_is_refused_not_ignored(self):
         with self.assertRaisesRegex(gv.ConfigError, "engine-only"):

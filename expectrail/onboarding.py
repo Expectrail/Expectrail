@@ -153,7 +153,7 @@ def scene_nodes(root, entry):
 
 
 def inspect(root):
-    from expectrail.godot_project import configured_scene, require_gdscript
+    from expectrail.godot_project import configured_scene, declared_settings, require_gdscript
     from harness.tree import TreeProblem
 
     root = Path(root).resolve()
@@ -219,8 +219,7 @@ def inspect(root):
             "platformBodies": paths("StaticBody2D") + paths("AnimatableBody2D"),
             "otherCharacters": [p for p in paths("CharacterBody2D") if p not in [s or "." for s in players]],
             "actions": actions, "builtInActions": fallback, "physicsTicksPerSecond": rate,
-            "viewport": [int(settings.get(f"display/window/size/viewport_{axis}", default))
-                         for axis, default in (("width", 1152), ("height", 648))]}
+            "viewport": declared_settings(root)[0]}
 
 
 def describe(report):

@@ -22,14 +22,12 @@ record is a reason to withhold the explanation, never a reason to show it.
 - A comparison word ("same", "unchanged") needs every cited verdict to be equal before and after the
   change; "difference" or "changed" needs one that differs. Scope words ("only", "also", "other",
   "than") are never allowed: they have no verdict to match.
-- A failing word ("fails", "regression") needs a stated ``after: fail`` in the same point; a passing
-  word ("passes", "fixed") needs every stated ``after`` to be ``pass``. A ``before`` verdict never
-  licenses a word: the verdict sentences the viewer writes from ``says`` cover before and after.
+- Every cited id must have a recorded after verdict of fail for "fails" or "regression", or pass
+  for "passes" or "fixed". The point must state at least one supporting after verdict.
 - A decision word ("accepted", "rejected") must be the decision. Negations ("not", "no longer",
   "doesn't") and words of certainty ("proves", "all", "always") are never allowed.
 
-What the page says about each cited verdict, it writes itself from ``says`` (which must equal the
-record); the author's text is shown beside it, never instead of it.
+The page prints each cited verdict directly from the findings record beside the author's text.
 
 No model is called here. ``prompt`` is the question for one; ``from_answer`` turns its answer into a
 v1 document. Asking a live model is a later slice with its own budget.
@@ -73,7 +71,7 @@ DIFFERENT_WORDS = frozenset("difference differences different differs differ cha
 # Never allowed: a word that limits or widens what the evidence covers has no verdict to match.
 SCOPE = frozenset("""only just merely solely simply purely except also too even both either other others
 another else than more most less least few many much some any several mostly mainly""".split())
-# Verdict words: allowed only where the point states the matching verdict after the change.
+# Verdict words require a stated after verdict shared by all cited evidence.
 FAIL_WORDS = frozenset("fail fails failed failing failure regression regressed".split())
 PASS_WORDS = frozenset("pass passes passed passing fixed".split())
 # Decision words: allowed only when they are the verifier's decision.
@@ -167,7 +165,6 @@ def _point(point: dict, known: dict[str, dict], decision: str) -> list[str]:
     if unknown:
         return [f"it cites {', '.join(unknown)}, which is not in this run's evidence"]
     problems = []
-    stated = set()
     for cid, sides in point["says"].items():
         if cid not in point["cites"]:
             problems.append(f"it states a verdict for {cid} without citing it")
@@ -177,7 +174,6 @@ def _point(point: dict, known: dict[str, dict], decision: str) -> list[str]:
             if verdict != actual:
                 problems.append(f"it says {cid} was {verdict} {side} the change; the record says "
                                 f"{actual or 'not run'}")
-            stated.add(verdict)
     stated_after = [sides["after"] for cid, sides in point["says"].items()
                     if cid in point["cites"] and "after" in sides]
     numbers, words_ok, names = set(), set(NEUTRAL), set()
@@ -187,7 +183,7 @@ def _point(point: dict, known: dict[str, dict], decision: str) -> list[str]:
         names |= known[cid]["names"]
     words, unknown_words = set(), []
     for t in TOKEN.findall(text.lower()):
-        if t in names:
+        if t in names and t not in FAIL_WORDS and t not in PASS_WORDS:
             continue
         if t[0].isdigit() and NUMBER.fullmatch(t):
             if _number(t) not in numbers:
@@ -202,16 +198,21 @@ def _point(point: dict, known: dict[str, dict], decision: str) -> list[str]:
     if words & CERTAINTY:
         problems.append(f"it says {', '.join(sorted(words & CERTAINTY))}, which claims more than these "
                         "checks on these routes")
+    sides = [(known[cid]["before"], known[cid]["after"]) for cid in point["cites"]]
+    cited_after = {after for _, after in sides}
     fail_words, pass_words = words & FAIL_WORDS, words & PASS_WORDS
     if fail_words and "fail" not in stated_after:
         problems.append(f"it says {', '.join(sorted(fail_words))} without stating a failing verdict after the change")
+    elif fail_words and cited_after != {"fail"}:
+        problems.append("a failing word requires every cited id to have failed after the change")
     if pass_words and (not stated_after or any(v != "pass" for v in stated_after)):
         problems.append(f"it says {', '.join(sorted(pass_words))}, but not every verdict it states after the "
                         "change is pass")
+    elif pass_words and cited_after != {"pass"}:
+        problems.append("a passing word requires every cited id to have passed after the change")
     if words & SCOPE:
         problems.append(f"it says {', '.join(sorted(words & SCOPE))}, which limits or widens what the "
                         "evidence covers, and that cannot be matched to a verdict")
-    sides = [(known[cid]["before"], known[cid]["after"]) for cid in point["cites"]]
     same_words, different_words = words & SAME_WORDS, words & DIFFERENT_WORDS
     if same_words and not (sides and all(b is not None and b == a for b, a in sides)):
         problems.append(f"it says {', '.join(sorted(same_words))}, but not every verdict it cites is the "
@@ -238,9 +239,10 @@ def shown(doc, record: dict | None, decision: str | None) -> dict:
     out = {"model": str(author.get("model") or "unknown")[:80], "recorded": author.get("recorded") is True}
     if problems:
         return dict(out, shown=False, withheld=problems[:10])
+    known = evidence(record)
     return dict(out, shown=True, points=[
         {"text": p["text"], "cites": list(p["cites"]),
-         "verdicts": [[cid, sides.get("before"), sides.get("after")] for cid, sides in p["says"].items()]}
+         "verdicts": [[cid, known[cid]["before"], known[cid]["after"]] for cid in p["cites"]]}
         for p in doc["points"]])
 
 
@@ -256,7 +258,8 @@ def prompt(record: dict) -> str:
         "Every point cites the evidence ids it is about. In says, state the verdicts the point relies on, "
         "exactly as listed below. Use only these words: the ids and names of the evidence the point cites, "
         "the words of that evidence's own description below, the verdict words pass, passes, passed, fixed, "
-        "fail, fails, failed, regression (only where the point states that verdict after the change), and: "
+        "fail, fails, failed, regression (only when every cited id has that verdict after the change and "
+        "you state it for at least one id), and: "
         + " ".join(sorted(NEUTRAL)) + ". Say same or unchanged only where every cited verdict is the same "
         "before and after the change, and difference or changed only where one differs. Any other word "
         "withholds the point. Write numbers as digits, and "

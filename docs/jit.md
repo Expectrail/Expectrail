@@ -211,7 +211,8 @@ The stress tests, in the order we intend to run them:
 3. **Correct-fix pressure.** Every correct fix we have, three runs each. A strong catch on a correct
    fix is a bug in the filter and is looked at before anything else.
 4. **Overfitting adversary.** A separate fixer instance gets the generated checks for one bug (only in
-   this test) and is asked for a wrong fix that passes them. Not built yet.
+   this test) and is asked for a wrong fix that passes them. Built as a prepared dispatch, not run live
+   ("Prepared pressure dispatches", below).
 5. **Prompt injection and outage.** Offline, in `tests/test_jit_rules.py` (rules 5 and 3). Done, on the
    simulated game.
 6. **A second domain.** One pass on the web checkout page (`apps/checkout`). Not built yet: the diff
@@ -648,8 +649,9 @@ replay at that threshold are recorded in the bank under `calibration.objects.ene
 when its bank has no enemy template, when that calibration is not `met`, or when the bank is not an
 approved-art bank, so those checks are not run. A box partly on screen is a gap; one wholly off screen is
 counted in `outside` and not judged; more than `pixel.MAX_BOXES` on screen is a frame not asked about.
-The bullet is not offered: calibrated the same way, its 16 x 16 clean crops gave no template with enough
-opaque detail.
+The bullet was not offered then: calibrated the same way, its clean crops gave no template with enough
+opaque detail. Since November 19 the sensor witnesses it by its rings instead (see "The bullet, for the
+no-model sensor" below).
 
 Measured here (Godot 4.7.2, no model, not in CI), from the four calibration routes `sensor-bank` replays:
 408 player templates (as before) and 148 enemy templates, a 34.8 MB bank; the enemy matched 251 of 251
@@ -798,6 +800,67 @@ in the profile's hash (`menuActions`, #622) and the replay time, so the capture'
 `pixel-budget` gave the asking job $1.8013, and `pixel-ask` on that capture no longer refused: it reserved
 675 images, $1.6875, and began asking. With the recorded rehearsal answers (`--sam-answers`, asked under
 another setting) it stopped at the first replay and sent nothing, as it must. SAM itself has not been asked.
+
+### The bullet, for the no-model sensor (added November 19)
+
+Until today `bullet-behind-scenery` could only be judged through SAM, which is paid for each image. Looked at
+on the real engine (Godot 4.7.2 here, no model), the reasons templates never matched the bullet were not its
+size:
+
+- **It turns.** It is a RigidBody2D and spins as it flies and bounces, so its 16 x 16 art is drawn rotated
+  and its pixels change from frame to frame. Clean templates matched it on about a third to two thirds of
+  clean frames.
+- **Its colours are not its art's.** An additive glow is drawn over it, so no rendered pixel is in the
+  art's palette.
+- **It is drawn behind its logged box.** The game has `physics_interpolation` on, and the bullet moves about
+  14 frame pixels a tick: each frame draws it 1 to 1.7 ticks behind the box logged on the frame's tick,
+  under the frame's own camera.
+- **It fades out.** Its timer (1 s) calls `destroy`, which fades the sprite over 0.3 s.
+
+[`agents/template_radial.py`](../agents/template_radial.py) witnesses it by what does not change when it
+turns: the mean colour of each one-pixel ring around its centre. The rings are measured on the trusted clean
+calibration replays only, where the approved art itself locates the sprite on the path the engine logged. A
+frame's bullet is `matched` when some position on its path (from two ticks back to the frame's tick, through
+the frame's camera) has rings within 12 (mean absolute RGB) of a frozen profile, and `not-found` when none
+does. A bullet in its fade, one whose path is not wholly on screen, one not the calibrated size, or one whose
+searched path another logged box touches (`crowded`, below) is a gap.
+The bank carries it as `radialWitnesses.bullet` with `calibration.objects.bullet` (`witness: radial`;
+contract `template-bank`, example `template-bank-foreground-radial.json`), and the reader recomputes its
+status. `pixel.OBSERVERS["visual-sensor"]["boxes"]` is now `("enemy", "bullet")`, so the proposer is offered
+bullet checks for the sensor.
+
+Measured with `sensor-bank` on the four calibration routes (8 minutes): the same 556 templates as before, and
+for the bullet one ring profile (every clean located bullet was within 1 of it), 70 of 70 validation
+positives matched and 0 of 70 negatives (`met`). The bank's digest is `58f45c41...`.
+
+Then, with that bank, a hand-written stand-in of two `visible` bullet checks for the sensor
+([`bench/jit/stand-in/bullet-behind-scenery-sensor/`](../bench/jit/stand-in/bullet-behind-scenery-sensor/README.md),
+written by `python3 -m tools.bullet_visible_stand_in --observer visual-sensor`; no model, so the score gives it
+no result) was replayed by `jit run --proposal --observer visual-sensor --withhold-candidate` against the
+no-fix patch (7.8 minutes, 18 replays). **Both checks were kept**: clean pass 3 of 3, bug fail 3 of 3, bug plus
+no-fix fail 3 of 3, with $0 reserved for the observer. The windows end before the first planned frame with a
+fading bullet on the clean game; with the SAM stand-in's longer windows the checks were `needs-review` on
+every build. This is a rehearsal of the keep rule with a check no model wrote, not a reproduction rate.
+
+**A bullet beside another one is a gap (November 19, later the same day).** The first stand-in run noted two
+clean bullets beside fading ones that the witness did not find. On the whole clean probes (`shoot-left-every12`,
+`move-fire-left`, `move-fire-right`, 3 replays each, every frame) the witness gave `not-found` for 111 clean
+boxes, and every one overlapped another bullet's searched area: bullets that came to rest on one another, drawn
+over each other. Ring distance, measured on the calibration replays, by what touched the area searched along a
+bullet's path: nothing, at most 3.0 (498 boxes); another bullet, up to 14.3, beyond the limit of 12 (22); only the
+player or an enemy, up to 11.2 (120). Calibration had kept only bullets whose box touched no other box, but the
+witness then judged every bullet, so its validation did not describe what it judged. Now one rule,
+`template_radial.crowded`, decides both: a bullet is judged only when no other logged box touches its searched
+area, and no other bullet comes within the witness's `clearPx` of it (0 on the bundled game: with no box
+touching, the rings stayed within 3.0 at every gap, so the bullet's faint glow does not need a margin). A record
+that cannot say where the other roles are is a gap too.
+
+The cost is reach. On those clean probes, of the boxes judged before, 1,290 of 2,010 are now gaps, and 720 are
+`matched`; none is `not-found`. With the stand-in's earlier windows both bullet checks were `needs-review` on
+every build, so the windows were cut by the same rule the fading cut used (the last planned frame before the
+first planned frame with a crowded or fading bullet on the clean replay, read from the trace alone):
+`shoot-left-every12` frames 50 to 50 and `move-fire-right` frames 10 to 30. The recalibrated bank (68 of 68
+validation positives, 0 of 68 negatives, `met`) and the stand-in's new run are on the stand-in's page.
 
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 
@@ -1074,8 +1137,9 @@ vocabulary (`pass`, `fail`, `needs-review`). The envelope and the gate record's 
 the same closed row shapes (up to 8 trace and 4 pixel rows), and a pixel check may not share a trace
 check's id. Like a trace row, a pixel row is recomputed from the source run on every read, so a changed
 row or run is refused. Under `both`, a counting pixel row is its own visual evidence (above), and it
-still never clears a change alone. The pressure dispatches replay trace checks only: when a pixel check
-counts they stop (`pixel-checks-not-replayed`) rather than replay fewer checks than count. Example:
+still never clears a change alone. Correct-fix pressure replays a counting pixel check judged by
+`visual-sensor` (added November 19, below); otherwise a counting pixel check stops a pressure dispatch
+(`pixel-checks-not-replayed`) rather than replay fewer checks than count. Example:
 [`generated-counting-pixel.json`](../contracts/examples/generated-counting-pixel.json), made by
 `counting.make` from the enemy stand-in with no trust, so nothing counts. Tests:
 `tests/test_jit_pixel_envelope.py`. On the two committed pixel
@@ -1133,6 +1197,43 @@ Offline rehearsals passed on the simulated game: two correct air-jump candidates
 fixer callback. These prove the runner, oracle calibration, caps and blocking rules, not a real
 adversary success rate. No live pressure campaign has run. The result contract
 `expectrail.jit-pressure/v1` and reader recompute status/success from outcomes and the oracle.
+
+### Pixel checks under correct-fix pressure (added November 19)
+
+A counting pixel check may reject a change (Sean, November 18), so a correct fix it fails is a defect in
+the rules, as for a trace check. `pressure correct --sensor-bank BANK [--sensor-every N] [--sensor-first N]`
+replays each counting pixel check judged by `visual-sensor` on every correct fix: its probe three times
+with frames, the sensor asked about its planned frames inside the checks' windows (`pixel.observe`, the
+same plan as the judging run), and `pixel.judge` decides each run. No model and no request: $0.
+
+- **The bank is pinned.** Its setting (algorithm and digest) must equal the setting in the signed source
+  run, or the dispatch stops before any replay (`pixel-setting-mismatch`). An answer under another setting
+  is not judged.
+- **The frame plan is pinned.** Since the same day, `jit run` records on each pixel row the frames the
+  observer was to be asked about inside the check's window (`framesPlanned`, contracts/jit-run.v1). Pressure
+  stops before any replay unless its observer, with `--sensor-every` and `--sensor-first`, would plan exactly
+  those frames for the check (`pixel-plan-mismatch`), so a correct fix can never pass on fewer frames than
+  the check was kept on. A row with no recorded plan (every record before November 19, the committed
+  stand-ins included) stops it too (`pixel-plan-unrecorded`), and so does a row that planned no frame
+  (`pixel-plan-empty`), which an observer planning nothing would otherwise match.
+- **Undecided is not a pass.** A gap, `needs-review`, or an observer that fails is
+  `insufficient_observation`, so the campaign is `blocked`, never `complete`. A `fail` on any run is
+  `failed`, as for trace checks.
+- **What still stops.** A counting pixel check for SAM (it would need live SAM calls), a correct dispatch
+  with no bank, and the adversary, which is given the trace checks only.
+- **The record.** Pixel rows carry `kind: "pixel"`, and `pixelObserver` names the observer, its setting
+  and its frame plan (`every`, `first`), checked against `framesPlanned` above. The reader refuses pixel
+  rows without `pixelObserver`, and `pixelObserver` on the adversary. Example:
+  [`jit-pressure-pixel.json`](../contracts/examples/jit-pressure-pixel.json).
+
+Tested in `tests/test_jit_pixel_pressure.py` with a stand-in game and observer. The real-engine rehearsal
+is in [271-pixel-pressure.md](measurements/271-pixel-pressure.md). The workflow proposal
+([271-pressure.yml.txt](proposals/271-pressure.yml.txt)) calibrates its own bank on the checked-out clean
+game before any frozen evidence is downloaded (the command of `jit.yml`'s `sensor-bank` job, $0), and passes
+it with a new `sensor_every` input (the source run's `sam_every`) to the correct preflight and the correct
+step. A bank or plan that differs from the signed source run stops before any replay, so the bank made
+there cannot loosen a check. `tests/test_jit_pressure_proposal.py` parses every pressure command in the
+proposal with pressure's own parser (`pressure.parse_args`), so the two cannot drift apart unnoticed.
 
 ### Still needed for #271 Done when
 
