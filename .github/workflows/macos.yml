@@ -16,6 +16,8 @@ on:
     paths:
       - .github/workflows/macos.yml
       - tools/macos_suite_summary.py
+      - tools/patch_controls.py
+      - harness/patching.py
   push:
     branches: [main]
   workflow_dispatch:
@@ -52,3 +54,6 @@ jobs:
       - name: Counts and failing tests in the summary
         if: always()
         run: python -m tools.macos_suite_summary suite.log "$GITHUB_STEP_SUMMARY"
+      - name: The patch controls with this runner's own patch (#659)
+        if: always()
+        run: python -m tools.patch_controls "$GITHUB_STEP_SUMMARY"
