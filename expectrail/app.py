@@ -128,6 +128,16 @@ def inspect_project(body):
             'help': ' '.join(help_text) or 'Project, routes and approved checks found.'}
 
 
+def job_screen(phase, decision, output):
+    """(state, screen) for a job record: which of the app's screens a person sees."""
+    state = decision if phase == 'completed' else phase if phase in FINAL else 'running'
+    if phase == 'queued':
+        return state, 'queued'
+    if state == 'needs-review' and not output:
+        return state, 'could-not-be-carried-out'
+    return state, state
+
+
 class App:
     def __init__(self, store, start):
         self.store, self.start = store, start
@@ -183,13 +193,7 @@ class App:
             self.own(job_id)
         doc = self.store.status(job_id)  # validates the record; unfinished/empty is never success
         phase = doc['phase']
-        state = doc['decision'] if phase == 'completed' else phase if phase in FINAL else 'running'
-        if phase == 'queued':
-            screen = 'queued'
-        elif state == 'needs-review' and not doc['output']:
-            screen = 'could-not-be-carried-out'
-        else:
-            screen = state
+        state, screen = job_screen(phase, doc['decision'], doc['output'])
         report = None
         if job_id in self.owned and phase == 'completed' and doc['output']:
             try:
