@@ -32,8 +32,7 @@ import statistics
 import sys
 from pathlib import Path
 
-from agents.observations import _to_frame
-from expectrail.observation_timeline import placement, tick_for, view_for
+from agents.observations import _frame_tick, _to_frame, _view_at
 from agents.sam_observations import MetaSamClient, SamError, frame_files, png_size, sample, vision_backend
 
 # A failed frame is written down and the run goes on only when the reply could not be read: that is
@@ -74,22 +73,21 @@ def anchors(trace: dict, frame_size: tuple[int, int], frames: list[int], lift: f
 
     {frame: {"world": [x, y], "point": [px, py], "scale": [sx, sy]}} for a frame that can be asked
     about, or {"why": reason} when it cannot: no row for that frame, no player in it, no camera, or
-    the player is outside the picture. Timing and camera come from the capture timeline (legacy traces use the old phase).
+    the player is outside the picture. Timing and camera are the verifier's (_frame_tick, _view_at).
     With ``box`` a size (width, height in game pixels) the entry gains ``promptBox``, a box of that
     size centred on the point; with ``box`` BODY the box is the logged body box widened by ``pad``
     and the point is its middle, and a tick with no body box logged is not asked about.
     """
     rows = list(trace.get("rows") or [])
+    step = max(int(trace.get("physicsTicksPerSecond") or 120) // fps, 1)
     width, height = frame_size
     out: dict[int, dict] = {}
     for n in frames:
-        tick = tick_for(trace, n, fps)
-        if "captureTimeline" in trace:
-            width, height = placement(trace, n, fps)["viewport"]
+        tick = _frame_tick(n, step)
         if tick >= len(rows):
             out[n] = {"why": "the position log ends before this frame"}
             continue
-        player, view = rows[tick].get("player"), view_for(trace, n, fps)
+        player, view = rows[tick].get("player"), _view_at(rows, tick)
         if player is None:
             out[n] = {"why": "the engine logged no player"}
             continue
@@ -154,19 +152,18 @@ def object_boxes(trace: dict, frame_size: tuple[int, int], frames: list[int], ro
                          f"{', '.join(['player', *sorted(OBJECT_BOXES)])}")
     rows = list(trace.get("rows") or [])
     logged = (trace.get("capabilities") or {}).get("objectBoxes") is True
+    step = max(int(trace.get("physicsTicksPerSecond") or 120) // fps, 1)
     width, height = frame_size
     out: dict[int, dict] = {}
     for n in frames:
         if not logged:
             out[n] = {"why": f"the engine's record does not log a box for {role!r} (no objectBoxes in its header)"}
             continue
-        tick = tick_for(trace, n, fps)
-        if "captureTimeline" in trace:
-            width, height = placement(trace, n, fps)["viewport"]
+        tick = _frame_tick(n, step)
         if tick >= len(rows):
             out[n] = {"why": "the position log ends before this frame"}
             continue
-        view = view_for(trace, n, fps)
+        view = _view_at(rows, tick)
         if not view:
             out[n] = {"why": "the engine logged no camera"}
             continue

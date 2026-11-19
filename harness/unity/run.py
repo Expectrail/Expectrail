@@ -375,12 +375,6 @@ def run(route: Path, out: Path, patches: list[Path] | None = None, *, game: Path
         "integrity": run_doc.get("integrity") or {"exceptions": 0, "errors": 0, "messages": []},
     }
     from expectrail.contracts import ContractError, validate
-    if "captureTimeline" in trace:
-        from expectrail.observation_timeline import build, TimelineError
-        try:
-            replay["timeline"] = build(trace, frames, ticks=route_doc["ticks"])
-        except (TimelineError, OSError) as exc:
-            replay["timelineProblem"] = str(exc) if isinstance(exc, TimelineError) else "capture images could not be read"
 
     try:
         validate(replay, "replay")

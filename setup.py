@@ -32,7 +32,6 @@ BUNDLED_MODULES = {
         "inspection",
         "legacy",
         "observers",
-        "observation_timeline",
         "onboard",
         "onboard_page",
         "onboard_review",

@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from expectrail import resources
 from expectrail.legacy import format_ids
@@ -93,29 +95,6 @@ def load(path: Path, kind: str | None = None) -> dict:
 
 
 # --- v1 records (docs/discovery.md) --------------------------------------------------------------
-# An exact format registry: each v1 format ID maps to its kind and schema file. The v0 helpers above
-# (kind_of, schema, validate, load) are unchanged.
-V1_FORMATS = {
-    "expectrail.repair-publication/v1": ("repair-publication", "repair-publication.v1.schema.json"),
-    **{f"expectrail.{kind}/v1": (kind, f"{kind}.v1.schema.json")
-       for kind in ("onboard-review", "onboard-answers", "onboard-timing")},
-    "expectrail.template-closeout/v1": ("template-closeout", "template-closeout.v1.schema.json"),
-    "expectrail.observer-calibration/v1": ("observer-calibration", "observer-calibration.v1.schema.json"),
-    "expectrail.playtest-reproduction/v1": ("playtest-reproduction", "playtest-reproduction.v1.schema.json"),
-    "expectrail.episode/v1": ("episode", "episode.v1.schema.json"),
-    "expectrail.trace-spec/v1": ("trace-spec", "trace-spec.v1.schema.json"),
-    "expectrail.trace-verdict/v1": ("trace-verdict", "trace-verdict.v1.schema.json"),
-    "expectrail.mechanics-profile/v1": ("mechanics-profile", "mechanics-profile.v1.schema.json"),
-    "expectrail.discovery-run/v1": ("discovery-run", "discovery-run.v1.schema.json"),
-    "expectrail.jit-run/v1": ("jit-run", "jit-run.v1.schema.json"),
-    "expectrail.pixel-check/v1": ("pixel-check", "pixel-check.v1.schema.json"),
-    "expectrail.project/v1": ("project", "project.v1.schema.json"),
-    "expectrail.fixer-invocation/v1": ("fixer-invocation", "fixer-invocation.v1.schema.json"),
-    "expectrail.repair-run/v1": ("repair-run", "repair-run.v1.schema.json"),
-    "expectrail.explanation/v1": ("explanation", "explanation.v1.schema.json"),
-}
-
-
 def _no_duplicate_keys(pairs):
     out = {}
     for key, value in pairs:
@@ -132,6 +111,50 @@ def _no_constants(name):
 def strict_loads(text: str):
     """JSON with duplicate keys, NaN and Infinity refused."""
     return json.loads(text, object_pairs_hook=_no_duplicate_keys, parse_constant=_no_constants)
+
+
+_V1_SUFFIX = ".v1.schema.json"
+_V1_FORMAT = re.compile(r"expectrail\.([a-z0-9]+(?:-[a-z0-9]+)*)/v1")
+
+
+def _schema_v1_format(doc: dict) -> str:
+    properties = doc.get("properties", {})
+    field = properties.get("format") if isinstance(properties, dict) else None
+    if isinstance(field, dict) and "const" in field:
+        format_id = field["const"]
+    else:
+        format_id = doc.get("$id")
+        if isinstance(format_id, str) and not _V1_FORMAT.fullmatch(format_id):
+            # Schema URLs name the schema resource, rather than the record ID.
+            name = urlsplit(format_id).path.rsplit("/", 1)[-1]
+            if name.endswith(_V1_SUFFIX):
+                format_id = f"expectrail.{name.removesuffix(_V1_SUFFIX)}/v1"
+    if not isinstance(format_id, str) or not _V1_FORMAT.fullmatch(format_id):
+        raise ContractError("no readable v1 format in properties.format.const or $id")
+    return format_id
+
+
+def _v1_formats(folder: Path) -> dict[str, tuple[str, str]]:
+    """Map each declared v1 format to its kind and schema filename."""
+    formats = {}
+    for path in sorted(folder.glob(f"*{_V1_SUFFIX}")):
+        try:
+            doc = strict_loads(path.read_text(encoding="utf-8"))
+            if not isinstance(doc, dict):
+                raise ContractError("expected a schema object")
+            format_id = _schema_v1_format(doc)
+        except (OSError, ValueError) as exc:
+            raise ContractError(f"{path}: {exc}") from exc
+        if format_id in formats:
+            raise ContractError(f"{format_id} is claimed by both {formats[format_id][1]} and {path.name}")
+        kind = format_id.removeprefix("expectrail.").removesuffix("/v1")
+        formats[format_id] = (kind, path.name)
+    if not formats:
+        raise ContractError(f"{folder}: no *{_V1_SUFFIX} files found")
+    return formats
+
+
+V1_FORMATS = _v1_formats(SCHEMAS)
 
 
 def canonical_v1(doc) -> bytes:
