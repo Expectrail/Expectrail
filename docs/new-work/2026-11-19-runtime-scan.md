@@ -58,6 +58,7 @@ moment.
   `.tres` AtlasTexture, an ImageTexture made in code and the whole `crate.svg`. The test checks that
   each is classified as above and that no image is guessed. With the atlas branch of the scanner
   disabled, that test fails. `tests.test_runtime_scan`: 28 tests, OK, with jsonschema blocked as well.
+  Full suite merged with main at 5731d67: 5,499 tests, OK, 42 skipped.
 
 ## Not done
 - The Done-when run: `init --dry-run`, then a verification, on the second test project and on the
