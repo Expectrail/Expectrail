@@ -54,14 +54,14 @@ A provider value, when present, is a `ref:` or `env:` name. An inline secret is 
 Unknown fields are refused. A path that leaves the project (`..`, an absolute path, a backslash)
 is refused, and a `res://` path must be a file that is there.
 
-No file means the game has no config. The bundled game has none yet, and keeps the behaviour it
-had: the harness finds `Player`, `Coin`, `Enemy` and `Bullet` by class or node name, the capture
-rate stays 60, and its input actions and tick rate are still read from `project.godot`.
+No file means the game has no config, and the harness finds `Player`, `Coin`, `Enemy` and `Bullet` by
+class or node name, the capture rate stays 60, and input actions and the tick rate are read from
+`project.godot`.
 
-Its proposed config is [`harness/godot/platformer.project.json`](../harness/godot/platformer.project.json):
-what `expectrail init` proposes for the game, without the `draft` flag and the draft route. It is
-kept outside `game/platformer`, which only a person edits, until Sean decides whether it goes beside
-`project.godot`. `python3 -m tools.bundled_config_parity` checks it on this machine: every field
+The bundled game's config sits beside its `project.godot`, as it would for any game:
+[`game/platformer/expectrail.project.json`](../game/platformer/expectrail.project.json) (Sean,
+November 19, 2026). It is what `expectrail init` proposes for the game, without the `draft` flag and
+the draft route. `python3 -m tools.bundled_config_parity` checks it on this machine: every field
 must be what init reads from the game, each public route must replay to the same trace with and
 without it (a config may only add the role boxes, the bindings and the measured window size), and
 the Run it samples must reach the same decision with the same number of recorded vision answers,
