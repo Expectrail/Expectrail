@@ -33,10 +33,10 @@ def body(path, **over):
     return {"path": path, "kind": "body", "type": "CharacterBody2D", "className": "", "groups": [], "visible": True, **over}
 
 
-def sprite(path, images=(), unsaved=0, kind="sprite", **over):
+def sprite(path, images=(), unsaved=0, kind="sprite", atlas=(), **over):
     return {"path": path, "kind": kind, "type": {"sprite": "Sprite2D", "polygon": "Polygon2D",
                                                    "animatedSprite": "AnimatedSprite2D"}[kind],
-            "className": "", "groups": [], "visible": True, "images": list(images), "unsavedImages": unsaved, **over}
+            "className": "", "groups": [], "visible": True, "images": list(images), "atlasImages": list(atlas), "unsavedImages": unsaved, **over}
 
 
 def layer(path, cells=10, collides=True):
@@ -127,6 +127,9 @@ class RawReaderTest(unittest.TestCase):
             "unknown node field": raw([{**body("A"), "texture": "res://a.png"}]),
             "missing field": raw([{k: v for k, v in layer("A").items() if k != "cells"}]),
             "image outside res": raw([sprite("A", ["user://a.png"])]),
+            "atlas outside res": raw([sprite("A", atlas=["/tmp/a.png"])]),
+            "bare res root": raw([sprite("A", ["res://"])]),
+            "no atlas field": raw([{k: v for k, v in sprite("A").items() if k != "atlasImages"}]),
             "absolute path": raw([body("/root/A")]),
             "parent path": raw([body("../A")]),
             "control character": raw([body("A\nB")]),
@@ -176,6 +179,11 @@ class MergeTest(unittest.TestCase):
         cases = {
             "a filled polygon": ([body("Player"), sprite("Player/Body", kind="polygon")], "draws no image file"),
             "an image made in code": ([body("Player"), sprite("Player/S", unsaved=1)], "made in code"),
+            "atlas regions of one file": ([body("Player"), sprite("Player/S", kind="animatedSprite",
+                                                                  atlas=["res://paddle.png"])],
+                                          "regions of res://paddle.png through an AtlasTexture"),
+            "a whole image and an atlas": ([body("Player"), sprite("Player/A", ["res://a.png"]),
+                                            sprite("Player/B", atlas=["res://a.png"])], "AtlasTexture"),
             "two images": ([body("Player"), sprite("Player/A", ["res://a.png"]), sprite("Player/B", ["res://b.png"])],
                            "several images"),
             "a file and a code image": ([body("Player"), sprite("Player/A", ["res://a.png"]), sprite("Player/B", unsaved=2)],
@@ -339,6 +347,34 @@ class RealEngineTest(unittest.TestCase):
         self.assertEqual(len(runtime["classes"]["Coin"]), 21)
         self.assertEqual(info["textures"], ["res://player/robot.webp"])
         self.assertNotIn("textureFrom", info)
+
+    def test_atlas_regions_a_tres_texture_and_a_code_image_are_never_bindable_images(self):
+        # #666: Breakout's paddle draws AtlasTexture regions of one PNG. A region is not the image.
+        game = self.copy(CRATE)
+        (game / "atlas.tres").write_text('[gd_resource type="AtlasTexture" load_steps=2 format=3]\n\n'
+                                         '[ext_resource type="Texture2D" path="res://crate.svg" id="1"]\n\n'
+                                         '[resource]\natlas = ExtResource("1")\nregion = Rect2(0, 0, 16, 16)\n')
+        script = game / "main.gd"
+        script.write_text(script.read_text().replace("\tadd_child(ground)\n", (
+            "\tadd_child(ground)\n"
+            "\tvar player := get_node(\"Player\")\n"
+            "\tvar region := AtlasTexture.new()\n"
+            "\tregion.atlas = load(\"res://crate.svg\")\n"
+            "\tregion.region = Rect2(0, 0, 16, 16)\n"
+            "\tfor pair in [[\"Region\", region], [\"Saved\", load(\"res://atlas.tres\")],\n"
+            "\t\t\t[\"Code\", ImageTexture.create_from_image(image)], [\"Whole\", load(\"res://crate.svg\")]]:\n"
+            "\t\tvar s := Sprite2D.new()\n"
+            "\t\ts.name = pair[0]\n"
+            "\t\ts.texture = pair[1]\n"
+            "\t\tplayer.add_child(s)\n"), 1))
+        nodes = {n["path"]: n for n in rs.scan(game)["nodes"]}
+        self.assertEqual((nodes["Player/Region"]["images"], nodes["Player/Region"]["atlasImages"]), ([], ["res://crate.svg"]))
+        self.assertEqual((nodes["Player/Saved"]["images"], nodes["Player/Saved"]["atlasImages"]), ([], ["res://crate.svg"]))
+        self.assertEqual((nodes["Player/Code"]["images"], nodes["Player/Code"]["unsavedImages"]), ([], 1))
+        self.assertEqual(nodes["Player/Whole"]["images"], ["res://crate.svg"])
+        info = onboarding.with_runtime(game, onboarding.inspect(game))
+        self.assertEqual(info["textures"], [], "a whole image beside an atlas region is still not guessed")
+        self.assertTrue(any("through an AtlasTexture" in p for p in info["unresolvedBindings"]))
 
     def test_a_game_that_quits_before_the_scan_says_so(self):
         game = self.copy(CRATE)

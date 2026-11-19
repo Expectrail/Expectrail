@@ -131,7 +131,9 @@ Init takes the player's image from the running game only when three things hold:
 
 - the saved scenes named no image;
 - there is one player candidate;
-- exactly one image file is drawn under it, with none made in code.
+- exactly one whole image file is drawn under it, and nothing else: no texture made in code or
+  embedded in a scene, and no AtlasTexture region. A region names part of an image, and a binding
+  names a whole image, so it stays a person's choice (#666 covers resolving regions for review).
 
 The dry run then says `"textureFrom": "runtime"`. In every other case the review draft lists the
 reason, and nothing is guessed. A saved-scene finding is never replaced.

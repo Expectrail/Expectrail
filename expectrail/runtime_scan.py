@@ -65,8 +65,9 @@ def _flag(value, where: str) -> bool:
 
 
 _COMMON = {"path", "kind", "type", "className", "groups"}
-_EXTRA = {"sprite": {"visible", "images", "unsavedImages"}, "animatedSprite": {"visible", "images", "unsavedImages"},
-          "polygon": {"visible", "images", "unsavedImages"}, "tileLayer": {"visible", "cells", "collides"},
+_DRAWN_FIELDS = {"visible", "images", "atlasImages", "unsavedImages"}
+_EXTRA = {"sprite": _DRAWN_FIELDS, "animatedSprite": _DRAWN_FIELDS,
+          "polygon": _DRAWN_FIELDS, "tileLayer": {"visible", "cells", "collides"},
           "camera": {"visible", "enabled"}, "body": {"visible"}, "platform": {"visible"}, "area": {"visible"}}
 
 
@@ -96,12 +97,13 @@ def _node(raw, index: int) -> dict:
     if "visible" in raw:
         out["visible"] = _flag(raw["visible"], f"visible flag at {where}")
     if kind in DRAWN:
-        images = raw["images"]
-        if not isinstance(images, list) or len(images) > 64:
-            raise RuntimeScanError(f"the running game's scan has unreadable images at {where}; cannot tell")
-        out["images"] = sorted({_text(i, f"image at {where}", 200) for i in images})
-        if any(not i.startswith("res://") for i in out["images"]):
-            raise RuntimeScanError(f"the running game's scan names an image outside res:// at {where}; cannot tell")
+        for field in ("images", "atlasImages"):
+            images = raw[field]
+            if not isinstance(images, list) or len(images) > 64:
+                raise RuntimeScanError(f"the running game's scan has unreadable {field} at {where}; cannot tell")
+            out[field] = sorted({_text(i, f"image at {where}", 200) for i in images})
+            if any(not i.startswith("res://") or len(i) == 6 for i in out[field]):
+                raise RuntimeScanError(f"the running game's scan names an image outside res:// at {where}; cannot tell")
         out["unsavedImages"] = _count(raw["unsavedImages"], f"unsaved image count at {where}", 100000)
     elif kind == "tileLayer":
         out["cells"] = _count(raw["cells"], f"cell count at {where}", 10 ** 8)
@@ -282,7 +284,7 @@ def problems(doc) -> list[str]:
         if present != wanted:
             out.append(f"{node['path']}: a {node['kind']} carries exactly "
                        + (", ".join(sorted(wanted)) or "no kind-specific field"))
-        for field in ("groups", "images"):
+        for field in ("groups", "images", "atlasImages"):
             if field in node and len(set(node[field])) != len(node[field]):
                 out.append(f"{node['path']}: {field} lists a value twice")
     return out
@@ -341,10 +343,13 @@ def merge(info: dict, doc: dict, static_paths) -> dict:
             if n["kind"] not in DRAWN or _owner(p, bodies) != player:
                 continue
             images.update(n["images"])
+            if n["atlasImages"]:
+                drawn_without.append(f"{spell(p)}: {n['type']} draws regions of " + ", ".join(n["atlasImages"])
+                                     + " through an AtlasTexture; a binding names a whole image, so choose it by hand")
             if n["unsavedImages"]:
-                drawn_without.append(f"{spell(p)}: {n['type']} draws {n['unsavedImages']} image(s) made in code, "
-                                     "with no file to bind")
-            elif not n["images"]:
+                drawn_without.append(f"{spell(p)}: {n['type']} draws {n['unsavedImages']} texture(s) with no image "
+                                     "file to bind (made in code, embedded in a scene, or not an image file)")
+            elif not n["images"] and not n["atlasImages"]:
                 drawn_without.append(f"{spell(p)}: {n['type']} draws no image file"
                                      + (" (a filled polygon)" if n["kind"] == "polygon" else ""))
         runtime["playerImages"] = sorted(images)
