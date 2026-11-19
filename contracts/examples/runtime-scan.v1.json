@@ -1,0 +1,59 @@
+{
+  "format": "expectrail.runtime-scan/v1",
+  "project": {
+    "entryScene": null,
+    "scene": "res://main.tscn",
+    "gameTree": "e6783fb42573cc8b7ec4289191bb32f8c728b4a6274f2006cde9dc7302f88719",
+    "configSha256": null
+  },
+  "ticks": 30,
+  "engine": {
+    "name": "godot",
+    "version": "4.7.2.stable.official.ed1daf0bf"
+  },
+  "isolation": {
+    "sandbox": false,
+    "reason": "bubblewrap (bwrap) is not installed"
+  },
+  "truncated": false,
+  "nodes": [
+    {
+      "path": "Player",
+      "kind": "body",
+      "type": "CharacterBody2D",
+      "className": null,
+      "groups": [],
+      "visible": true
+    },
+    {
+      "path": "Player/Body",
+      "kind": "polygon",
+      "type": "Polygon2D",
+      "className": null,
+      "groups": [],
+      "visible": true,
+      "images": [],
+      "unsavedImages": 0
+    },
+    {
+      "path": "Player/Camera2D",
+      "kind": "camera",
+      "type": "Camera2D",
+      "className": null,
+      "groups": [],
+      "visible": true,
+      "enabled": true
+    },
+    {
+      "path": "Floor",
+      "kind": "tileLayer",
+      "type": "TileMapLayer",
+      "className": null,
+      "groups": [],
+      "visible": true,
+      "cells": 72,
+      "collides": true
+    }
+  ],
+  "note": "Listed by the running game after a few ticks with no input. It is the game's own report, for setting up a config, not evidence for a verdict."
+}
