@@ -31,7 +31,7 @@ No workflow file changed. `docs/ci-gate.md` says what now happens.
   comment still concludes the checks, clearance failed.
 - Seven mutations were each caught: the ids not recorded, no `completed` guard, no publisher
   filter, the 403/404 refusal not skipped, no status filter, the comment error not caught.
-- Full suite: FULLSUITE
+- Full suite on the branch merged with main at 7242225: 5,140 tests, OK, 63 skipped.
 - Not run on GitHub: no hosted trial from this session.
 
 ## Not done
