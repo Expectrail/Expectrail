@@ -160,6 +160,12 @@ jobs:
         env:
           EXPECTRAIL_ENGINE_TESTS: required
         run: python -m unittest tests.test_auto_route_engine -v
+      # `init --runtime` and `inspect --runtime` start the game headless and list what it builds in
+      # code (#260): crate-run's floor made by main.gd, the bundled game's player image and classes.
+      - name: The runtime scan lists what a game builds in code
+        env:
+          EXPECTRAIL_ENGINE_TESTS: required
+        run: python -m unittest tests.test_runtime_scan -v
       - name: A candidate's game code cannot read the verifier's environment
         env:
           EXPECTRAIL_CANARY: canary-${{ github.run_id }}
@@ -728,6 +734,8 @@ jobs:
     timeout-minutes: 30
     env:
       HELDOUT_TOKEN_SET: ${{ secrets.HELDOUT_TOKEN != '' }}
+            # Engine-only diagnostic for the private routes. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace
     steps:
       - name: Skip without the held-out token (forks)
         if: env.HELDOUT_TOKEN_SET != 'true'

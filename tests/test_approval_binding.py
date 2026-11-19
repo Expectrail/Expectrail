@@ -19,6 +19,7 @@ from expectrail import approval
 from expectrail.gate import comment as gc
 from expectrail.gate import verify as gv
 from expectrail.spec_writer import SpecDraftError, approve
+from tests import approved_copies
 from tests.test_ci_gate import FakeReplay, ctx, head_example, make_repo
 from tools import merge_guard as mg
 
@@ -32,6 +33,12 @@ def body() -> dict:
     doc = json.loads(SPEC.read_text(encoding="utf-8"))
     doc.pop("approval", None)
     return doc
+
+
+def legacy_spec() -> dict:
+    """The live spec with an approval from before content binding, built here (#644): since #642 the
+    committed check is bound, so it no longer serves as the legacy example."""
+    return approved_copies.legacy(body())
 
 
 def approved(doc: dict | None = None, by: str = "sean", at: str = "2026-11-14T00:00:00Z") -> dict:
@@ -86,8 +93,18 @@ class DigestTest(unittest.TestCase):
         other["approval"] = copy.deepcopy(first["approval"])
         self.assertEqual(approval.state(other), approval.MISMATCH)
 
+    def test_the_committed_checks_are_bound_to_their_content(self):
+        # #642: every committed check was approved again through the writer, so none is legacy now.
+        found = sorted((REPO / "specs").glob("*.json")) + sorted((REPO / "agents" / "specs").glob("*.json"))
+        self.assertTrue(found)
+        for path in found:
+            with self.subTest(spec=str(path.relative_to(REPO))):
+                doc = json.loads(path.read_text(encoding="utf-8"))
+                if "approval" in doc:
+                    self.assertEqual(approval.state(doc), approval.BOUND)
+
     def test_an_approval_without_a_digest_still_counts_and_is_named(self):
-        doc = json.loads(SPEC.read_text(encoding="utf-8"))
+        doc = legacy_spec()
         self.assertNotIn("specSha256", doc["approval"])
         self.assertEqual(approval.state(doc), approval.LEGACY)
         self.assertTrue(approval.approved(doc))
@@ -110,6 +127,39 @@ class DigestTest(unittest.TestCase):
         nan = copy.deepcopy(doc)
         nan["assertion"]["boundary"]["tolerancePx"] = float("nan")
         self.assertEqual(approval.state(nan), approval.MISMATCH)
+
+    def test_an_approval_that_names_no_person_is_no_approval(self):
+        # #420: a matching digest with a blank reviewer used to count.
+        doc = approved()
+        for label, value in {"blank": "", "spaces": "   ", "missing": None, "a number": 7}.items():
+            with self.subTest(label):
+                bad = copy.deepcopy(doc)
+                if value is None:
+                    bad["approval"].pop("by")
+                else:
+                    bad["approval"]["by"] = value
+                self.assertEqual(approval.state(bad), approval.MISMATCH)
+                self.assertFalse(approval.approved(bad))
+        legacy = legacy_spec()
+        legacy["approval"]["by"] = ""
+        self.assertEqual(approval.state(legacy), approval.MISMATCH)
+
+    def test_another_digest_field_is_never_read_as_legacy(self):
+        # #420: renaming specSha256 to specSha1 made an approval count as legacy.
+        doc = approved()
+        for name in ("specSha1", "specSha512", "SPECSHA256", "spec_sha256"):
+            with self.subTest(name):
+                bad = copy.deepcopy(doc)
+                bad["approval"][name] = bad["approval"].pop("specSha256")
+                self.assertEqual(approval.state(bad), approval.MISMATCH)
+                self.assertFalse(approval.approved(bad))
+        both = copy.deepcopy(doc)
+        both["approval"]["specSha1"] = "0" * 40
+        self.assertEqual(approval.state(both), approval.MISMATCH)
+
+    def test_the_writer_refuses_a_blank_name(self):
+        with self.assertRaisesRegex(SpecDraftError, "name is required"):
+            approved(by="  ")
 
     def test_no_approval_is_a_draft(self):
         for doc in (body(), dict(body(), approval=None), dict(body(), approval={}), "not a spec"):
@@ -152,7 +202,8 @@ class WriterAndSchemaTest(unittest.TestCase):
         schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
         doc = approved()
         jsonschema.validate(doc, schema)
-        jsonschema.validate(json.loads(SPEC.read_text(encoding="utf-8")), schema)  # an approval from before
+        jsonschema.validate(json.loads(SPEC.read_text(encoding="utf-8")), schema)  # the committed check
+        jsonschema.validate(legacy_spec(), schema)  # an approval from before
         for bad in ("XYZ", doc["approval"]["specSha256"].upper(), 12):
             with self.subTest(bad=bad):
                 wrong = copy.deepcopy(doc)
@@ -179,7 +230,7 @@ class GateTest(unittest.TestCase):
         (repo / "specs" / name).write_text(json.dumps(doc, indent=2), encoding="utf-8")
 
     def test_the_reader_counts_an_edited_approved_spec_with_the_drafts_and_says_why(self):
-        repo = make_repo(self.tmp / "repo")
+        repo = make_repo(self.tmp / "repo", legacy=True)
         bound = approved(dict(body(), id="bound-check"))
         edited = approved(dict(body(), id="edited-check"))
         edited["assertion"]["boundary"]["tolerancePx"] = 400
@@ -216,7 +267,7 @@ class GateTest(unittest.TestCase):
         self.assertFalse([r for r in doc["reasons"] if approval.is_note(r)])
 
     def test_an_approval_from_before_binding_still_judges_and_the_comment_names_it_on_accept(self):
-        doc = self.gate(make_repo(self.tmp / "repo"))
+        doc = self.gate(make_repo(self.tmp / "repo", legacy=True))
         self.assertEqual(doc["decision"], "accept", doc["reasons"])
         self.assertIn("spec player-stays-above-ground: approved before content binding", doc["reasons"])
         self.assertIn("approved before content binding", gc.render(doc, ctx()))
@@ -232,7 +283,7 @@ class SparkOpenTest(unittest.TestCase):
             bound = approved(dict(body(), id="bound-check"))
             edited = copy.deepcopy(approved(dict(body(), id="edited-check")))
             edited["window"]["toFrame"] = 3
-            legacy = json.loads(SPEC.read_text(encoding="utf-8"))
+            legacy = legacy_spec()
             for doc in (bound, edited, legacy, dict(body(), id="draft-check")):
                 (folder / f"{doc['id']}.json").write_text(json.dumps(doc), encoding="utf-8")
             ids = [s["id"] for s in spark_open.approved_specs(folder)]
@@ -245,7 +296,7 @@ class MergeGuardTest(unittest.TestCase):
         return mg.check_approved_specs([mg.Change(path, dump(old), dump(new))])
 
     def test_an_edited_spec_under_an_approval_from_before_binding_needs_sean(self):
-        old = json.loads(SPEC.read_text(encoding="utf-8"))
+        old = legacy_spec()
         new = copy.deepcopy(old)
         new["assertion"]["boundary"]["tolerancePx"] = 99
         for path in ("agents/specs/x.json", "somewhere/else/check.json"):
@@ -271,7 +322,7 @@ class MergeGuardTest(unittest.TestCase):
         self.assertEqual(self.change({"format": "other", "approval": {"by": "a"}}, {"format": "other", "approval": {"by": "a"}, "x": 1}), [])
 
     def test_a_new_approval_bound_to_the_new_content_is_left_to_the_approvals_rule(self):
-        old = json.loads(SPEC.read_text(encoding="utf-8"))
+        old = legacy_spec()
         edited = body()
         edited["window"]["toFrame"] = 50
         new = approved(edited)
@@ -281,7 +332,7 @@ class MergeGuardTest(unittest.TestCase):
         self.assertIn("approval", [r.rule for r in reasons])
 
     def test_the_guard_runs_the_rule(self):
-        old = json.loads(SPEC.read_text(encoding="utf-8"))
+        old = legacy_spec()
         new = copy.deepcopy(old)
         new["instruction"] = "edited"
         reasons = mg.check([mg.Change("agents/specs/x.json", json.dumps(old), json.dumps(new))])

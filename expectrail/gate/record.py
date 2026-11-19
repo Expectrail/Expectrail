@@ -17,6 +17,8 @@ import json
 import os
 import re
 import stat
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 
 FORMAT = "expectrail.findings/v0"
@@ -220,7 +222,9 @@ def repair_block(rows: list[dict]) -> dict:
 
 def unverified_fix(doc: dict) -> bool:
     """A change declared as a fix for which no check demonstrated the repair."""
-    return intent_of(doc) == "fix" and not (doc.get("repair") or {}).get("demonstrated")
+    generated = any(counting_row(row) and demonstrates_repair(row)
+                    for row in (doc.get('countingChecks') or {}).get('rows', []))
+    return intent_of(doc) == "fix" and not ((doc.get("repair") or {}).get("demonstrated") or generated)
 
 
 # A check that failed on the base and has no pass or fail after the change (issue #560): the bug was
@@ -271,10 +275,51 @@ def _not_demonstrated(counts: dict, repair: dict | None, base_judged: bool, unde
             "the reported bug and nothing shows it is fixed")
 
 
+_COUNTING_CONTEXT = ContextVar('expectrail_counting_evidence', default=None)
+
+
+@contextmanager
+def counting_context(proof):
+    """Trusted publisher's scope; the PR artifact cannot install this witness."""
+    if not isinstance(proof, VerifiedGenerated):
+        raise RecordError('counting-trust-required')
+    token = _COUNTING_CONTEXT.set(proof)
+    try:
+        yield
+    finally:
+        _COUNTING_CONTEXT.reset(token)
+
+
+class VerifiedGenerated:
+    """In-process evidence supplied by the trusted assessor, never decoded from a PR artifact.
+
+    Persisted counting rows require this separately authenticated witness on read.
+    The ordinary gate's legacy advisory block is deliberately not such a witness.
+    """
+    def __init__(self, block, *, base=None, head=None):
+        validate(block, schema()['properties']['countingChecks'])
+        self._json = json.dumps(block, sort_keys=True, allow_nan=False)
+        self.base, self.head = base, head
+
+    @property
+    def block(self):
+        return json.loads(self._json)
+
+
+def counting_row(row):
+    """The shared final mechanical guard. No producer's counting label is authority."""
+    triple = lambda values, outcome: len(values) == REPAIR_RUNS and all(v == outcome for v in values)
+    return (len(row.get('rules', [])) == 6 and all(r is True for r in row['rules'])
+            and triple(row.get('base', []), 'fail')
+            and triple(row.get('reference', []), 'pass') and bool(row.get('killed'))
+            and (triple(row.get('candidate', []), 'pass') or triple(row.get('candidate', []), 'fail')))
+
+
 def decide(counts: dict, held: dict, isolation: dict | None = None, check_problems: int = 0, *,
            intent: str = "none", repair: dict | None = None, base_judged: bool = True,
            anchor: dict | None = None, required_routes_missing: int = 0,
-           observers: dict | None = None, undecided_after_failure: int = 0) -> tuple[str, list[str]]:
+           observers: dict | None = None, undecided_after_failure: int = 0,
+           generated: VerifiedGenerated | None = None) -> tuple[str, list[str]]:
     """accept, reject or needs-review, and why.
 
     Accept only when at least one check ran and every public and held-out check passed. Any failure
@@ -300,8 +345,18 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
     """
     if intent not in INTENTS:
         raise ValueError(f"unknown intent {intent!r}")
-    unverified = intent == "fix" and not (repair or {}).get("demonstrated")
+    if generated is not None and not isinstance(generated, VerifiedGenerated):
+        raise RecordError('counting-trust-required: raw generated data cannot enter decide')
+    counting = [r for r in generated.block['rows'] if counting_row(r)] if generated is not None else []
+    # Sean, November 18 (#638): a counting pixel row may reject a change, but it never demonstrates a
+    # repair. Only an approved check's repair block or a counting trace row can show that a fix works.
+    generated_repaired = sum(demonstrates_repair(r) for r in counting)
+    pixel_repaired = sum(r.get('kind') == 'pixel' and r['candidate'] == ['pass'] * REPAIR_RUNS for r in counting)
+    generated_failed = sum(r['candidate'] == ['fail'] * REPAIR_RUNS for r in counting)
+    unverified = intent == "fix" and not ((repair or {}).get("demonstrated") or generated_repaired)
     reasons = []
+    if generated_failed:
+        reasons.append(f'{generated_failed} counting generated check(s) fail after the change (all six rules met)')
     if counts["failed"]:
         reasons.append(f"{counts['failed']} of {counts['checks']} public checks fail after the change")
     if held["failed"]:
@@ -309,7 +364,12 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
     if reasons:
         return "reject", reasons
     if not counts["checks"]:
+        # Sean, November 18 (#600): counting generated checks may demonstrate a repair, but they never
+        # clear a change alone. An accept needs at least one approved check to have run.
         first = [_not_demonstrated(counts, repair, base_judged, undecided_after_failure)] if unverified else []
+        if counting:
+            return "needs-review", first + [
+                f"no approved checks ran; {len(counting)} counting generated check(s) cannot clear a change alone"]
         return "needs-review", first + ["no checks ran"]
     if required_routes_missing:
         reasons.append(f"not-exercised: {required_routes_missing} required route(s) were not selected or run")
@@ -318,6 +378,13 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
         reasons.append(f"not-exercised: {held['routes']} held-out route(s) ran and judged no check")
     if observers and observers["rule"] == BOTH and observers["visual"] is None and not counts["needsReview"]:
         reasons.append("not-exercised: the required visual observer is disabled")
+    if observers and observers['rule'] == BOTH and any(r.get('kind') != 'pixel' for r in counting):
+        # A counting trace row is the engine's record alone: a configured visual observer did not judge
+        # its predicate, so it cannot help clear under both. Failures above still veto. A counting pixel
+        # row (#286) is its own per-check visual evidence: its runs are a trusted observer's verdicts over
+        # frames where the engine's record also places the object (expectrail/jit/pixel.py), all six rules
+        # recomputed from them. It still never clears a change alone (above).
+        reasons.append('not-exercised: counting generated checks lack the required visual evidence')
     # Legacy callers supply only checks/failed/needsReview; persisted records always include passed.
     if "passed" in counts and counts["passed"] + counts["failed"] + counts["needsReview"] != counts["checks"]:
         reasons.append("not-exercised: some required checks have no result")
@@ -338,11 +405,14 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
         reasons.append(stands)
     if unverified:
         reasons.insert(0, _not_demonstrated(counts, repair, base_judged, undecided_after_failure))
+        if pixel_repaired:
+            reasons.insert(1, f"{pixel_repaired} counting generated pixel check(s) pass after the change, "
+                              "but a pixel check does not demonstrate a repair")
     if reasons:
         return "needs-review", reasons
-    total = counts["checks"] + held["checks"]
+    total = counts["checks"] + held["checks"] + len(counting)
     if intent == "fix":
-        shown = repair["demonstrated"]
+        shown = (repair or {}).get('demonstrated', 0) + generated_repaired
         return "accept", [f"all {total} checks pass, and {shown} of them failed before the change "
                           f"{REPAIR_RUNS} times of {REPAIR_RUNS}: the repair is demonstrated"]
     return "accept", [f"all {total} checks pass"]
@@ -476,18 +546,19 @@ def read_json(path: Path, cap: int = MAX_RECORD_BYTES, label: str = "findings.js
     return strict_loads(text)
 
 
-def read_record(path: Path) -> dict:
+def read_record(path: Path, *, generated: VerifiedGenerated | None = None) -> dict:
     """Load, validate and check a findings record. Raises RecordError with a short reason."""
     doc = read_json(path)
-    check_record(doc)
+    check_record(doc, generated=generated)
     return doc
 
 
-def check_record(doc) -> None:
+def check_record(doc, *, generated: VerifiedGenerated | None = None) -> None:
+    generated = generated if generated is not None else _COUNTING_CONTEXT.get()
     validate(doc, schema())
     if (doc.get('pullRequest') or {}).get('fixLinks') and intent_of(doc) != 'fix':
         raise RecordError('a closing-keyword link requires fix intent')
-    check_consistency(doc)
+    check_consistency(doc, generated=generated)
 
 
 # --- a small JSON Schema validator ----------------------------------------------------------------
@@ -688,7 +759,7 @@ def validate(doc, rule: dict) -> None:
 
 # --- consistency ----------------------------------------------------------------------------------
 
-def check_consistency(doc: dict) -> None:
+def check_consistency(doc: dict, *, generated: VerifiedGenerated | None = None) -> None:
     """Everything in a record that can be derived from the rest must agree with it."""
     spec_ids = [s["id"] for s in doc["specs"]]
     route_names = [r["name"] for r in doc["routes"]]
@@ -763,11 +834,19 @@ def check_consistency(doc: dict) -> None:
             raise RecordError(f"the checks rest on at least {needed} replays and the record counts {isolation['replays']}")
     check_observers(doc)
     check_repair(doc)
+    if doc.get('countingChecks') is not None:
+        if not isinstance(generated, VerifiedGenerated) or generated.block != doc['countingChecks']:
+            raise RecordError('counting-trust-required: authenticate the source run separately')
+        if any(counting_row(row) for row in generated.block['rows']) and (
+                generated.base != doc['game']['baseTree'] or generated.head != doc['game']['headTree']):
+            raise RecordError('counting-evidence-mismatch: generated evidence is for other game builds')
+    elif generated is not None:
+        raise RecordError('counting evidence must also be carried in the record')
     decision, _reasons = decide(counts, held, isolation, doc.get("checkProblems", 0),
                                 intent=intent_of(doc), repair=doc.get("repair"), anchor=doc.get("anchor"),
                                 undecided_after_failure=undecided_after_failure(doc["checks"]),
                                 required_routes_missing=missing_required_routes(doc["specs"], doc["routes"]),
-                                observers=doc.get("observers"))
+                                observers=doc.get("observers"), generated=generated)
     if doc["decision"] != decision:
         raise RecordError(f"the decision should be {decision} from these counts")
     pr = doc["pullRequest"]
@@ -866,8 +945,21 @@ def check_repair(doc: dict) -> None:
         raise RecordError("the count of demonstrations does not match the repair rows")
 
 
+def demonstrates_repair(row: dict) -> bool:
+    """Whether a counting generated row shows a fix works: its candidate passes every run, and it is not a
+    pixel row. A pixel row may reject a change but never demonstrates a repair (Sean, November 18, #638)."""
+    return row.get('kind') != 'pixel' and row['candidate'] == ['pass'] * REPAIR_RUNS
+
+
 def _repair_words(doc: dict) -> str:
     """One line on what the change was declared as and whether its repair was shown, for the page and the comment."""
+    rows = (doc.get('countingChecks') or {}).get('rows', [])
+    if rows:
+        counted = [r for r in rows if counting_row(r)]
+        repaired = [r for r in counted if demonstrates_repair(r)]
+        if intent_of(doc) == 'fix' and repaired:
+            return (f"a fix demonstrated by generated check {repaired[0]['specId']}; "
+                    "base alone fails 3/3, clean and candidate pass 3/3; all six counting rules met")
     intent = intent_of(doc)
     if intent == "none":
         return "nothing declared: judged as a change that should break no check"
@@ -887,7 +979,13 @@ def repair_words(doc: dict) -> str:
     """Shared, escaped by every report/comment reader; provenance never chooses a check."""
     links = (doc.get('pullRequest') or {}).get('fixLinks', [])
     source = '; '.join(f"closing-keyword line {link['line']}: {link['text']}" for link in links)
-    return (source + '; ' if source else '') + _repair_words(doc)
+    words = (source + '; ' if source else '') + _repair_words(doc)
+    rows = (doc.get('countingChecks') or {}).get('rows', [])
+    if not rows:
+        return words
+    n = sum(bool(counting_row(row)) for row in rows)
+    return (f'{n} counting generated check(s), {len(rows)-n} advisory; ' + words
+            + '; a generated check alone verifies a fix only with base-only failure 3/3 and clean success 3/3')
 
 
 def check_generated(gen: dict) -> None:

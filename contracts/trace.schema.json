@@ -100,6 +100,78 @@
       },
       "description": "Opt-in input discovery only. Engine-reported root-viewport control boxes and pressed-signal connections after the final probe tick. No input was sent. Absent on ordinary replays, preserving old trace bytes. Truncated data cannot select a control."
     },
+    "captureTimeline": {
+      "description": "Optional legacy-compatible capture records, in output PNG order. Recorded at the draw phase, not inferred from an integer tick/frame ratio. Intervals are inclusive; a draw with no new physics step repeats the last tick.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fps",
+        "frames"
+      ],
+      "properties": {
+        "fps": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "frames": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "frame",
+              "tick",
+              "tickInterval",
+              "phase",
+              "viewport",
+              "transform"
+            ],
+            "properties": {
+              "frame": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tick": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tickInterval": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "phase": {
+                "enum": [
+                  "post-physics-pre-draw",
+                  "post-draw"
+                ]
+              },
+              "viewport": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "transform": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 6,
+                "maxItems": 6
+              }
+            }
+          }
+        }
+      }
+    },
     "format": {"const": "expectrail.trace/v0"},
     "ticks": {"type": "integer", "minimum": 0},
     "physicsTicksPerSecond": {"type": "integer", "minimum": 1},

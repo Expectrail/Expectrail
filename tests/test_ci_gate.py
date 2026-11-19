@@ -16,6 +16,7 @@ import sys
 import tempfile
 import unittest
 import urllib.error
+import urllib.parse
 from pathlib import Path
 from unittest import mock
 
@@ -26,6 +27,7 @@ from expectrail import approval
 from expectrail.gate import comment as gc
 from expectrail.gate import record as rec
 from expectrail.gate import verify as gv
+from tests import approved_copies
 from tests.coverage_replays import complete_trace
 
 REPO = Path(__file__).resolve().parent.parent
@@ -75,7 +77,10 @@ class FakeReplay:
 
 
 def make_repo(root: Path, *, bug: bool = False, crash: bool = False, spec_edit: dict | None = None,
-              draft: bool = False, routes=("smoke", "combat")) -> Path:
+              draft: bool = False, routes=("smoke", "combat"), legacy: bool = False) -> Path:
+    """A checkout with the live check. ``spec_edit`` edits the check, and the edited copy is approved
+    again inside ``root`` (#644): an edit voids a content-bound approval. ``legacy`` gives the check an
+    approval from before content binding (#420) instead of the committed one."""
     (root / "game" / "platformer").mkdir(parents=True)
     (root / "game" / "platformer" / "project.godot").write_text("[application]\n", encoding="utf-8")
     if bug:
@@ -86,6 +91,9 @@ def make_repo(root: Path, *, bug: bool = False, crash: bool = False, spec_edit: 
     spec = json.loads(SPEC.read_text(encoding="utf-8"))
     if spec_edit:
         spec.update(spec_edit)
+        spec = approved_copies.reapproved(spec)
+    if legacy:
+        spec = approved_copies.legacy(spec)
     (root / "specs" / "player-stays-above-ground.json").write_text(json.dumps(spec), encoding="utf-8")
     if draft:
         d = dict(spec, id="player-draft-check")
@@ -367,8 +375,8 @@ class VerifyTest(GateCase):
             "a spec that is a link": lambda r: (r / "specs" / "link.json").symlink_to("player-stays-above-ground.json"),
             "a spec's id used by two files": lambda r: [shutil.copy(r / "specs" / "player-stays-above-ground.json", r / "specs" / "again.json"),
                                                       shutil.copy(SPEC, r / "specs" / "other.json"),
-                                                      (r / "specs" / "other.json").write_text(json.dumps(dict(
-                                                          json.loads(SPEC.read_text(encoding="utf-8")), id="another-approved-check")))],
+                                                      (r / "specs" / "other.json").write_text(json.dumps(approved_copies.reapproved(dict(
+                                                          json.loads(SPEC.read_text(encoding="utf-8")), id="another-approved-check"))))],
         }
         for n, (label, breaker) in enumerate(breakers.items()):
             for with_base in (False, True):
@@ -1782,6 +1790,192 @@ class HeadChecksTest(unittest.TestCase):
                 self.pr["labels"] = [{"name": "intent:fix"}] if change == "intent" else []
                 self.c.finish(self.api, self.api, ctx(), self.run, self.state, "accept", "accept", ctx().run_url)
                 self.assertEqual(self.writes[-1][2]["conclusion"], "failure")
+
+    def stale_event(self, tmp, action="completed"):
+        repo = ctx().repo
+        run = dict(self.run, path=self.c.CALLER, event="pull_request", head_sha=HEAD, head_branch="fix",
+                   repository={"full_name": repo},
+                   head_repository={"full_name": ctx().head_repo, "owner": {"login": ctx().head_owner}})
+        event = Path(tmp) / "event.json"
+        event.write_text(json.dumps({"action": action, "workflow_run": run, "repository": {"full_name": repo}}))
+        return {"GITHUB_EVENT_PATH": str(event), "GITHUB_RUN_ID": "555", "RUNNER_TEMP": tmp,
+                "GITHUB_OUTPUT": str(Path(tmp) / "out"), "GH_TOKEN": "stand-in", "CHECKS_TOKEN": "stand-in",
+                "CHECKS_APP": "publisher"}
+
+    def test_a_superseded_head_concludes_its_open_clearance_as_failure(self):
+        # The November 18 hosted trial (#254): after a new head was pushed, the old head's clearance
+        # stayed in_progress for ever. It must conclude, and never as success.
+        key = "expectrail/123/2"
+        checks = {self.c.CLEARANCE: [{"id": 41, "external_id": key, "status": "in_progress", "app": {"slug": "publisher"}},
+                                     {"id": 42, "external_id": key, "status": "in_progress", "app": {"slug": "someone"}},
+                                     {"id": 43, "external_id": "expectrail/9/1", "status": "in_progress",
+                                      "app": {"slug": "publisher"}},
+                                     {"id": 44, "external_id": key, "status": "completed", "app": {"slug": "publisher"}}],
+                  self.c.EVIDENCE: [{"id": 51, "external_id": key, "status": "in_progress", "app": {"slug": "publisher"}}]}
+
+        def api(method, path, body=None):
+            if method != "GET":
+                self.writes.append((method, path, body))
+                return {}
+            if "/pulls?" in path:
+                return [self.pr]
+            if "check-runs?" in path:
+                name = urllib.parse.parse_qs(urllib.parse.urlsplit(path).query)["check_name"][0]
+                return {"check_runs": checks[name]}
+            if "/runs?" in path:
+                return {"workflow_runs": self.runs}
+            self.fail(path)
+
+        for change in ("head", "closed", "attempt"):
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as tmp, \
+                    mock.patch.dict(os.environ, self.stale_event(tmp)), \
+                    mock.patch("expectrail.gate.comment.http_api", return_value=api):
+                self.writes.clear()
+                self.pr["head"]["sha"] = BASE if change == "head" else HEAD
+                saved = self.pr
+                if change == "closed":
+                    self.pr = {"head": {"sha": "0" * 40}}
+                self.runs = [dict(self.run, run_attempt=3 if change == "attempt" else 2)]
+                self.c.main("start")
+                self.pr = saved
+                patched = {w[1].rsplit("/", 1)[1]: w[2] for w in self.writes}
+                self.assertEqual(set(patched), {"41", "51"})
+                self.assertTrue(all(w[0] == "PATCH" for w in self.writes))
+                self.assertEqual(patched["41"]["status"], "completed")
+                self.assertEqual(patched["41"]["conclusion"], "failure")
+                self.assertEqual(patched["51"]["conclusion"], "neutral")
+                self.assertIn("Superseded capture or pull request", patched["41"]["output"]["summary"])
+                self.assertIn("is not cleared", patched["41"]["output"]["summary"])
+                self.assertFalse((Path(tmp) / "gate-state.json").exists())
+
+    def test_a_superseded_head_on_the_in_progress_event_creates_and_closes_nothing(self):
+        def api(method, path, body=None):
+            if method != "GET":
+                self.writes.append((method, path, body))
+            if "/pulls?" in path:
+                return []
+            self.fail(path)
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp, "in_progress")), \
+                mock.patch("expectrail.gate.comment.http_api", return_value=api):
+            self.c.main("start")
+        self.assertEqual(self.writes, [])
+
+    def unfinished_api(self, checks, refuse=()):
+        def api(method, path, body=None):
+            if method == "PATCH":
+                cid = path.rsplit("/", 1)[1]
+                if cid in refuse:
+                    raise urllib.error.HTTPError(path, 403, "not this app's check", {}, None)
+                self.writes.append((method, path, body))
+                return {}
+            if method != "GET":
+                self.writes.append((method, path, body))
+                return {"id": len(self.writes)}
+            if "/check-runs/" in path:
+                cid = int(path.rsplit("/", 1)[1])
+                return next(c for cs in checks.values() for c in cs if c["id"] == cid)
+            if "check-runs?" in path:
+                name = urllib.parse.parse_qs(urllib.parse.urlsplit(path).query)["check_name"][0]
+                return {"check_runs": checks[name]}
+            self.fail(path)
+        return api
+
+    def test_a_start_that_crashed_after_creating_the_checks_is_concluded_by_finish(self):
+        # #254: start created the checks, then crashed before writing its state. finish runs (always())
+        # and must conclude this attempt's checks, never as success.
+        key = "expectrail/123/2"
+        checks = {self.c.CLEARANCE: [{"id": 41, "external_id": key, "status": "in_progress", "app": {"slug": "publisher"}},
+                                     {"id": 43, "external_id": "expectrail/9/1", "status": "in_progress",
+                                      "app": {"slug": "publisher"}}],
+                  self.c.EVIDENCE: [{"id": 51, "external_id": key, "status": "in_progress", "app": {"slug": "publisher"}}]}
+        for recorded in (True, False):
+            with self.subTest(recorded_ids=recorded), tempfile.TemporaryDirectory() as tmp, \
+                    mock.patch.dict(os.environ, self.stale_event(tmp)), \
+                    mock.patch("expectrail.gate.comment.http_api", return_value=self.unfinished_api(checks)):
+                self.writes.clear()
+                if recorded:
+                    (Path(tmp) / self.c.STARTED).write_text(json.dumps(
+                        {"key": key, "ids": {self.c.CLEARANCE: 41, self.c.EVIDENCE: 51}}))
+                self.c.main("finish")
+                patched = {w[1].rsplit("/", 1)[1]: w[2] for w in self.writes}
+                self.assertEqual(set(patched), {"41", "51"})
+                self.assertEqual(patched["41"]["conclusion"], "failure")
+                self.assertEqual(patched["51"]["conclusion"], "neutral")
+                self.assertIn("is not cleared", patched["41"]["output"]["summary"])
+                self.assertNotIn("success", [p["conclusion"] for p in patched.values()])
+
+    def test_start_records_the_ids_it_created_before_anything_can_fail(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp)), \
+                mock.patch("expectrail.gate.comment.http_api", return_value=self.api), \
+                mock.patch("expectrail.gate.intent.of_pull_request", side_effect=RuntimeError("crash")):
+            with self.assertRaises(RuntimeError):
+                self.c.main("start")
+            started = json.loads((Path(tmp) / self.c.STARTED).read_text())
+            self.assertEqual(started["key"], "expectrail/123/2")
+            self.assertEqual(set(started["ids"]), {self.c.CLEARANCE, self.c.EVIDENCE})
+            self.assertFalse((Path(tmp) / "gate-state.json").exists())
+
+    def test_finish_on_the_in_progress_event_leaves_the_clearance_open(self):
+        # The normal path: the in_progress event starts the checks, the completed event judges them.
+        key = "expectrail/123/2"
+        checks = {self.c.CLEARANCE: [{"id": 41, "external_id": key, "status": "in_progress", "app": {"slug": "publisher"}}],
+                  self.c.EVIDENCE: []}
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp, "in_progress")), \
+                mock.patch("expectrail.gate.comment.http_api", return_value=self.unfinished_api(checks)):
+            (Path(tmp) / self.c.STARTED).write_text(json.dumps({"key": key, "ids": {self.c.CLEARANCE: 41}}))
+            self.c.main("finish")
+        self.assertEqual(self.writes, [])
+
+    def test_the_fallback_skips_completed_and_other_apps_checks(self):
+        key = "expectrail/123/2"
+        checks = {self.c.CLEARANCE: [{"id": 41, "external_id": key, "status": "completed", "app": {"slug": "publisher"}},
+                                     {"id": 42, "external_id": key, "status": "in_progress", "app": {"slug": "someone"}},
+                                     {"id": 45, "external_id": key, "status": "queued", "app": {"slug": "publisher"}}],
+                  self.c.EVIDENCE: [{"id": 52, "external_id": key, "status": "in_progress", "app": {"slug": "x"}}]}
+        # finish has no CHECKS_APP: GitHub refuses a PATCH to another app's check, and that is skipped.
+        env = {k: v for k, v in self.stale_event(tempfile.mkdtemp()).items() if k != "CHECKS_APP"}
+        with mock.patch.dict(os.environ, env), mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("CHECKS_APP", None)
+            with mock.patch("expectrail.gate.comment.http_api",
+                            return_value=self.unfinished_api(checks, refuse={"42", "52"})):
+                self.c.main("finish")
+        patched = {w[1].rsplit("/", 1)[1]: w[2] for w in self.writes}
+        self.assertEqual(set(patched), {"45"})
+        self.assertEqual(patched["45"]["conclusion"], "failure")
+        # With the publisher's name, another app's check is never even tried.
+        self.writes.clear()
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp)), \
+                mock.patch("expectrail.gate.comment.http_api", return_value=self.unfinished_api(checks)):
+            self.c.main("finish")
+        self.assertEqual({w[1].rsplit("/", 1)[1] for w in self.writes}, {"45"})
+
+    def test_finish_concludes_the_checks_even_when_the_comment_fails(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp)), \
+                mock.patch("expectrail.gate.comment.http_api", return_value=self.api), \
+                mock.patch("expectrail.gate.comment.run", side_effect=OSError("comment API down")):
+            state = dict(self.state, ids={self.c.EVIDENCE: 1, self.c.CLEARANCE: 2})
+            (Path(tmp) / "gate-state.json").write_text(json.dumps(state))
+            os.environ["REPORT_READY"] = "true"
+            try:
+                with self.assertRaises(OSError):
+                    self.c.main("finish")
+            finally:
+                os.environ.pop("REPORT_READY", None)
+        patches = [w for w in self.writes if w[0] == "PATCH"]
+        self.assertEqual([w[2]["conclusion"] for w in patches], ["success", "failure"])
+        self.assertIn("comment", patches[-1][2]["output"]["summary"])
+
+    def test_closing_a_stale_clearance_never_passes_it(self):
+        checks = [{"id": 7, "external_id": "expectrail/123/2", "status": "queued", "app": {"slug": "publisher"}}]
+        def api(method, path, body=None):
+            if method != "GET":
+                self.writes.append((method, path, body))
+                return {}
+            return {"check_runs": checks}
+        self.c.close_stale(api, ctx(), self.run, "publisher")
+        self.assertEqual([w[2]["conclusion"] for w in self.writes], ["failure", "neutral"])
+        from tools import gate_trials
+        self.assertIn(gate_trials.STALE_REASON, self.c.STALE)  # the hosted-trial reader looks for it
 
     def test_caller_and_reusable_workflow_must_match_the_base_and_test_merge(self):
         called = {"path": ctx().repo + "/" + self.c.CAPTURE + "@refs/pull/7/merge", "sha": self.pr["merge_commit_sha"]}

@@ -162,7 +162,7 @@ def scene_nodes(root, entry):
 
 
 def inspect(root):
-    from expectrail.godot_project import configured_scene, require_gdscript
+    from expectrail.godot_project import configured_scene, declared_settings, require_gdscript
     from harness.tree import TreeProblem
 
     root = Path(root).resolve()
@@ -229,8 +229,7 @@ def inspect(root):
             "platformBodies": paths("StaticBody2D") + paths("AnimatableBody2D"),
             "otherCharacters": [p for p in paths("CharacterBody2D") if p not in [s or "." for s in players]],
             "actions": actions, "builtInActions": fallback, "physicsTicksPerSecond": rate,
-            "viewport": [int(settings.get(f"display/window/size/viewport_{axis}", default))
-                         for axis, default in (("width", 1152), ("height", 648))]}
+            "viewport": declared_settings(root)[0]}
 
 
 def describe(report):
@@ -255,13 +254,57 @@ def describe(report):
     print("Viewport:", *report["viewport"], "pixels. Physics ticks per second:", report["physicsTicksPerSecond"])
     if report["otherCharacters"]:
         print("Other character bodies (possible moving surfaces):", listed("otherCharacters"))
+    runtime = report.get("runtime")
+    if runtime is not None:
+        describe_runtime(report, runtime)
     if not report["unresolvedBindings"]:
         print("The player and input map can be bound for a movement replay.")
-    if report["groundLayers"] or report["platformBodies"] or report["otherCharacters"]:
+    if report["groundLayers"] or report["platformBodies"] or report["otherCharacters"] or (runtime or {}).get("groundLayers"):
         print("Ground candidates found. Replay to check which surfaces actually support the player.")
+    elif runtime is not None:
+        print("No ground layer or platform body found, saved or at runtime. A ground check needs other evidence.")
     else:
         print("No authored ground layer or platform body found. A ground check needs other evidence.")
-    print("This reads saved scenes. Runtime visibility, input coverage and replay stability need a replay.")
+    if runtime is None:
+        print("This reads saved scenes. Runtime visibility, input coverage and replay stability need a replay.")
+    else:
+        print("Input coverage and replay stability need a replay.")
+
+
+def describe_runtime(report, runtime):
+    def listed(values):
+        return ", ".join(values) or "none found"
+    how = "in the replay sandbox" if runtime["sandboxed"] else "without the sandbox"
+    print(f"Running game, after {runtime['ticks']} ticks with no input ({how}):")
+    print("  Player candidates:", listed(runtime["players"]))
+    if "playerImages" in runtime:
+        print("  Images drawn under the player:", listed(runtime["playerImages"]))
+        for line in runtime["playerDrawnWithout"]:
+            print("  " + line)
+    if "playerProblem" in runtime:
+        print("  " + runtime["playerProblem"])
+    if report.get("textureFrom") == "runtime":
+        print("  The player's image comes from the running game; the saved scenes do not name it.")
+    print("  Solid tile layers with tiles:", listed(runtime["groundLayers"]))
+    if runtime["emptyOrNonSolidLayers"]:
+        print("  Tile layers with no tiles or no collision:", listed(runtime["emptyOrNonSolidLayers"]))
+    print("  Found only at runtime:", listed(runtime["onlyAtRuntime"]))
+    for group, paths in runtime["groups"].items():
+        print(f"  Group {group}:", listed(paths))
+    for name, paths in runtime["classes"].items():
+        print(f"  Class {name}:", listed(paths))
+    if runtime["truncated"]:
+        print("  The scene has more nodes than the scan lists; this list is incomplete.")
+    print("  " + runtime["note"])
+
+
+def with_runtime(root, info):
+    """``info`` with a runtime scan of the game merged in (expectrail.runtime_scan)."""
+    from expectrail import runtime_scan
+
+    doc = runtime_scan.scan(root)
+    nodes, _ = scene_nodes(Path(root).resolve(), info["entryScene"])
+    return runtime_scan.merge(info, doc, nodes)
 
 
 def proposal(root, info, *, planned_route=None):
@@ -284,7 +327,10 @@ def proposal(root, info, *, planned_route=None):
         return {"config": config, "route": draft, "unresolvedBindings": info["unresolvedBindings"],
                 "textureCandidates": info["textures"], "playerCandidates": info["players"], "draft": True}
     config["bindings"]["player"]["texture"] = info["textures"][0]
-    return {"config": project_config.validate(config, root), "route": draft}
+    docs = {"config": project_config.validate(config, root), "route": draft}
+    if info.get("textureFrom") == "runtime":
+        docs["textureFrom"] = "runtime"
+    return docs
 
 
 def encode(doc):
@@ -333,15 +379,22 @@ def main(command, argv):
         parser.add_argument("--at-tick", type=int, metavar="N",
                             help="replay the config's bindings headless and report each bound object at tick N")
         parser.add_argument("--route", type=Path, help="with --at-tick: the route to replay (default: the config's first)")
+        parser.add_argument("--runtime", action="store_true",
+                            help="also start the game headless for a few ticks and list the nodes it has then")
     else:
         parser.add_argument("--adapter", choices=["godot"], default="godot")
         parser.add_argument("--dry-run", action="store_true", help="print both drafts without writing")
         parser.add_argument("--force", action="store_true", help="replace an existing project config")
+        parser.add_argument("--runtime", action="store_true",
+                            help="also start the game headless for a few ticks and use what it builds in code")
     try:
         args = parser.parse_args(argv)
         root = (args.game or args.project).resolve()
         if command == "inspect" and args.route is not None and args.at_tick is None:
             raise ValueError("--route is used with --at-tick N; add --at-tick, or drop --route for the saved-scene listing")
+        if command == "inspect" and args.at_tick is not None and args.runtime:
+            raise ValueError("--runtime lists the nodes of the running game; --at-tick reports the bound objects. "
+                             "Use one of them")
         if command == "inspect" and args.at_tick is not None:
             from expectrail import inspection
 
@@ -349,6 +402,8 @@ def main(command, argv):
             print(json.dumps(doc, indent=2) if args.json else "\n".join(inspection.describe(doc)))
             return 0
         info = inspect(root)
+        if args.runtime:
+            info = with_runtime(root, info)
         if command == "inspect":
             if args.json:
                 print(json.dumps(info, indent=2))

@@ -289,7 +289,11 @@ class CalibrateBank(unittest.TestCase):
                 raise error
             return sensor.load_bank(json.loads(EXAMPLE_BANK.read_text())) if bank is None else bank
 
-        with mock.patch.object(foreground, "calibrate_routes", side_effect=calibrated) as cal:
+        # The bullet's ring witness reads the replays' frames, which the stand-in runner does not write; what it
+        # is given is checked here, and the witness itself in tests/test_jit_sensor_bullet.py.
+        self.radial = mock.Mock(side_effect=lambda bank, *a, **k: bank)
+        with mock.patch.object(foreground, "calibrate_routes", side_effect=calibrated) as cal, \
+                mock.patch.object(template_observer, "add_radial", self.radial):
             out = template_observer.calibrate_bank(self.dir / "out" / "bank.json", self.dir / "work",
                                                    run_replay=self.runner, **kw)
         return out, cal
@@ -319,6 +323,11 @@ class CalibrateBank(unittest.TestCase):
         self.assertEqual(summary["bankSha256"], digest(written))
         self.assertEqual(summary["templates"], 1)
         self.assertEqual(summary["validation"], "cal-validation")
+        # The ring witness is calibrated from the same clean replays and validated on the same separate one.
+        args, kwargs = self.radial.call_args
+        self.assertEqual([p.name for p in args[1]], ["cal-walk", "cal-air", "cal-fire"])
+        self.assertEqual(args[2].name, "cal-validation")
+        self.assertEqual(kwargs["game"], template_observer.CLEAN_GAME.resolve())
 
     @needs_pixels
     def test_the_bank_can_judge(self):

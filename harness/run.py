@@ -23,6 +23,7 @@ import tempfile
 from pathlib import Path
 
 from expectrail import timing
+from harness import patching
 from harness import sandbox as box
 from harness import tree
 
@@ -186,10 +187,7 @@ def tree_digest(root: Path, within: Path | None = None) -> str:
 def apply_patches(work: Path, patches: list[Path]) -> None:
     """Apply unified diffs in order to a game copy (seed first, then candidate, …)."""
     for patch in patches:
-        subprocess.run(
-            ["patch", "-p1", "--forward", "--batch", "-d", str(work), "-i", str(patch.resolve())],
-            check=True, capture_output=True, text=True,
-        )
+        patching.apply(work, patch)  # the tree the patch names, on every platform's patch (#659)
 
 
 def prepare(game: Path, work: Path, patch: Path | None = None, patches: list[Path] | None = None,
@@ -295,10 +293,11 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
             raise SystemExit(str(exc)) from exc
     else:
         config = project
-    from expectrail.godot_project import configured_scene, require_gdscript
+    from expectrail.godot_project import configured_scene, require_declared_settings, require_gdscript
     try:
         require_gdscript(game, config, within=within)
         selected_scene = configured_scene(game, config)
+        require_declared_settings(game, config)
     except tree.TreeProblem as exc:
         raise SystemExit(f"the game cannot be replayed as it stands: {exc}") from exc
     except (ValueError, OSError) as exc:
@@ -351,6 +350,7 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
         try:
             require_gdscript(work, config)
             configured_scene(work, config)
+            require_declared_settings(work, config, changed=bool(ordered))
         except tree.TreeProblem as exc:
             raise SystemExit(f"the game cannot be replayed as it stands: {exc}") from exc
         except (ValueError, OSError) as exc:
@@ -401,6 +401,8 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
             f"--seed={route_doc.get('seed', 1)}"]
     if input_probe:
         cmd += ["--input-probe=1"]
+    if capture_frames:
+        cmd += [f"--capture-fps={fps}"]
     if config is not None:
         cmd += harness_arguments(config)
     # Like optional configured role recording, the request travels through the harness's
@@ -491,6 +493,12 @@ def _replay_record(route: Path, out: Path, game_tree: str, fps: int, ordered: li
         "trace": {"path": "trace.json", "sha256": sha256_file(out / "trace.json")},
         "isolation": isolation,
     }
+    if "captureTimeline" in trace:
+        from expectrail.observation_timeline import build, TimelineError
+        try:
+            replay["timeline"] = build(trace, frames, ticks=route_doc["ticks"])
+        except (TimelineError, OSError) as exc:
+            replay["timelineProblem"] = str(exc) if isinstance(exc, TimelineError) else "capture images could not be read"
     (out / "replay.json").write_text(json.dumps(replay, indent=2) + "\n", encoding="utf-8")
     return replay
 

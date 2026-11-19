@@ -10,7 +10,8 @@ label{display:block;font-weight:600;margin:16px 0 6px}input,select{width:100%;fo
 input[type=checkbox]{width:auto}
 button{font:inherit;font-weight:600;background:#175c47;color:white;border:2px solid #175c47;border-radius:6px;padding:10px 18px;margin:16px 12px 0 0;cursor:pointer}
 button.secondary{background:white;color:#175c47}button:disabled{opacity:.55;cursor:default}a{color:#175c47}a:focus,button:focus,input:focus{outline:3px solid #b35c12;outline-offset:3px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.note{color:#475a53}#result-text{font-size:1.2rem;font-weight:600}#details,#inspection,#rendering{white-space:pre-wrap;overflow-wrap:anywhere}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.note{color:#475a53}#result-text{font-size:1.2rem;font-weight:600}#details,#inspection,#rendering,#error{white-space:pre-wrap;overflow-wrap:anywhere}
+#result-folders dt{font-weight:600}#result-folders dd{margin:0 0 .5em;overflow-wrap:anywhere}
 [hidden]{display:none!important}summary{cursor:pointer}#error{color:#8e251c;font-weight:600}li{margin:5px 0;overflow-wrap:anywhere}
 @media(max-width:600px){main{padding:16px 12px 36px}section{padding:16px}.grid{grid-template-columns:1fr;gap:0}h1{font-size:1.65rem}button{width:100%;margin-right:0}}
 </style></head><body><main>
@@ -33,6 +34,9 @@ The kinematic-character example uses the same config path as your project.</p>
 <button id="inspect" class="secondary" type="button">Check folders</button><p id="inspection" role="status"></p></section>
 <section aria-labelledby="run-heading"><h2 id="run-heading">2. Verify</h2>
 <p>Uses the same verifier as the Expectrail command. Only run games you trust.</p>
+<label><input id="isolated" type="checkbox"> Require the replay sandbox</label>
+<p class="note">When selected, verification stops if the sandbox is unavailable.
+Otherwise the verifier can run outside the sandbox and explains this in the result.</p>
 <label><input id="auto-fix" type="checkbox"> Try to fix the game if verification rejects it</label>
 <div id="repair-settings" class="grid" hidden>
 <div><label for="fix-agent">Fixer</label><select id="fix-agent"><option value="llm-patch">llm-patch (bounded provider requests)</option><option value="muse-code">Muse (live bound unavailable; stops for review)</option></select></div>
@@ -44,7 +48,9 @@ The kinematic-character example uses the same config path as your project.</p>
 <p id="progress" role="status">No verification has started.</p><ol id="phases" aria-label="Recorded phases"></ol>
 <p id="error" role="alert" hidden></p></section>
 <section aria-labelledby="result-heading"><h2 id="result-heading">3. Result</h2>
-<p id="result-text">No result yet.</p><p id="judged-by"></p><p id="details"></p>
+<p id="result-text" role="status">No result yet.</p>
+<dl id="result-folders" hidden><dt>Before folder</dt><dd id="result-before"></dd><dt>After folder</dt><dd id="result-after"></dd></dl>
+<p id="next-step"></p><p id="judged-by"></p><p id="isolation" hidden></p><p id="details"></p>
 <a id="repair-record" target="_blank" rel="noopener noreferrer" hidden>Open repair record</a>
 <a id="report" target="_blank" rel="noopener noreferrer" hidden>Open this job's existing report</a>
 <div id="evidence-viewer"><h3>Evidence viewer</h3><a id="viewer" target="_blank" rel="noopener noreferrer" hidden>Open this job's evidence viewer</a><p id="viewer-note" class="note">Available when a job from this app session finishes.</p></div>
@@ -59,7 +65,7 @@ const token = '__TOKEN__';
 try { sessionStorage.setItem('expectrail-token', token); } catch (_) {}
 history.replaceState(null, '', '/');
 const el = id => document.getElementById(id);
-const values = () => ({projectConfig:!el('manual').checked,...Object.fromEntries((el('manual').checked?['before','after','game','routes','specs']:['before','after']).map(id => [id,el(id).value]))});
+const values = () => ({executionClass:el('isolated').checked?'isolated':'diagnostic',projectConfig:!el('manual').checked,...Object.fromEntries((el('manual').checked?['before','after','game','routes','specs']:['before','after']).map(id => [id,el(id).value]))});
 el('auto-fix').onchange=()=>{el('repair-settings').hidden=!el('auto-fix').checked;};
 let job = null, busy = false, rendererAcknowledged = null;
 for(const input of document.querySelectorAll('input,select')) input.addEventListener('input',()=>{
@@ -73,7 +79,7 @@ const phaseNames = {queued:'Waiting to start',preparing:'Checking inputs and too
 function controls(active) {
   busy=active;
   el('verify').disabled=active; el('inspect').disabled=active; el('cancel').disabled=!active || !job;
-  for (const id of ['manual','before','after','game','routes','specs','auto-fix','attempts','usd-cap','fix-agent']) el(id).disabled=active;
+  for (const id of ['manual','before','after','game','routes','specs','auto-fix','attempts','usd-cap','fix-agent','isolated']) el(id).disabled=active;
 }
 
 async function api(path, body) {
@@ -83,20 +89,59 @@ async function api(path, body) {
   if(!response.ok) throw new Error(data.detail || 'The request could not be carried out.');
   return data;
 }
-function problem(error) {
+function problem(error, submissionAttempted=false) {
+  el('result-folders').hidden=true;
   el('error').textContent=error.message; el('error').hidden=false;
   el('result-text').textContent='Could not be carried out — no result is available here.';
-  el('details').textContent='If a job already started, it may still be running. Keep the app open and use Retry status or Cancel.';
+  if(job) {
+    el('progress').textContent='Current run status is unavailable.';
+    el('next-step').textContent='Use Retry status to reconnect, or Cancel to stop the job.';
+  } else if(submissionAttempted) {
+    el('progress').textContent='Could not confirm whether verification started.';
+    el('next-step').textContent='Check Past runs for this comparison, then check the folders before trying again.';
+  } else {
+    el('progress').textContent='Verification did not start.';
+    el('next-step').textContent='Read the message above, check the folders, and try again.';
+  }
+  el('details').textContent='';
+  el('viewer-note').hidden=true;
+  el('isolation').hidden=true;
   el('repair-record').hidden=true; el('report').hidden=true; el('viewer').hidden=true; el('judged-by').textContent='';
   // Losing the connection does not cancel a worker. Keep its controls so it can be recovered.
   controls(Boolean(job)); el('verify').textContent=job?'Retry status':'Verify'; el('verify').disabled=false;
 }
+const screens = {
+  queued: ['Waiting to start', 'Keep this page open. Use Cancel if you no longer want to verify this change.'],
+  running: ['Verification is running', 'Follow the progress above, or use Cancel to stop this run.'],
+  cancelled: ['Verification cancelled', 'Choose Verify whenever you are ready to try again.'],
+  failed: ['Verification stopped unexpectedly', 'Read the details below, then try Verify again. If it stops again, share the details with your project maintainer.'],
+  'could-not-be-carried-out': ['Verification could not be carried out', 'Follow the instructions below, then choose Verify again.'],
+  accept: ['Accept', 'Open the evidence to see which routes and checks passed.'],
+  reject: ['Reject', 'Open the evidence to see what failed. Try Verify again after fixing the change.'],
+  'needs-review': ['Needs review', 'Open the evidence and read what was left unchecked before deciding what to do with the change.']
+};
 function show(data) {
+  el('result-before').textContent=data.before || 'No before folder recorded';
+  el('result-after').textContent=data.after;
+  el('result-folders').hidden=false;
   el('error').hidden=true;
   el('progress').textContent=phaseNames[data.phase] || 'Status unavailable';
   el('phases').replaceChildren(...data.history.map(entry=>{const li=document.createElement('li');li.textContent=phaseNames[entry.phase] || entry.phase;return li;}));
-  el('result-text').textContent=data.summary || 'Could not be carried out — no result is available here.';
+  const [title, next] = screens[data.screen];
+  el('result-text').textContent = ['accept','reject','needs-review'].includes(data.screen) ? data.summary : title;
+  if (data.screen === 'could-not-be-carried-out') {
+    el('result-text').textContent += ' — needs review.';
+  } else if (['cancelled','failed'].includes(data.screen)) {
+    el('result-text').textContent += ' — no verdict was reached.';
+  }
+  const active = data.state === 'running';
+  el('next-step').textContent = active && !data.sessionOwned
+    ? 'Refresh past runs to check for an update. This run belongs to another app session.'
+    : active || !['accept','reject','needs-review'].includes(data.screen) || data.viewer || data.report
+      ? next : 'Read the saved result and details below. Start a new verification to get evidence you can open here.';
   el('judged-by').textContent=data.judgedBy;
+  el('isolation').hidden=!data.isolation;
+  el('isolation').textContent=data.isolation?'Replays in the sandbox: '+data.isolation:'';
   el('details').textContent=[...data.reasons,...data.diagnostics.flatMap(d=>[d.detail,d.fix])].filter((s,i,a)=>s&&a.indexOf(s)===i).join('\n');
   el('repair-record').hidden=!data.repairUrl;
   if(data.repairUrl) el('repair-record').href=data.repairUrl;
@@ -115,20 +160,30 @@ async function poll() {
   catch(error){if(job===current)problem(error);}
 }
 el('inspect').onclick=async()=>{
-  el('error').hidden=true; controls(true);
+  el('error').hidden=true; el('inspection').textContent=''; controls(true);
   try {const body=values(), lines=[];
-    for(const side of ['before','after']){const data=await api('/api/inspect',{...body,side,folder:body[side]});
-      lines.push(side==='before'?'Before (checks used for this run)':'After',
-        data.godot?'Godot project found.':'No Godot project found.',
-        `${data.routes} usable routes; ${data.checks} approved checks; ${data.drafts} draft checks.`,
-        ...(data.routeNames||[]).map(name=>'Route: '+name), ...(data.checkNames||[]).map(name=>'Check: '+name),data.help,rendering(data),...data.problems,'');}
+    let blocked=false;
+    for(const side of ['before','after']){
+      lines.push(side==='before'?'Before (checks used for this run)':'After');
+      try {
+        const data=await api('/api/inspect',{...body,side,folder:body[side]});
+        lines.push(data.godot?'Godot project found.':'No Godot project found.',
+          `${data.routes} usable routes; ${data.checks} approved checks; ${data.drafts} draft checks.`,
+          ...(data.routeNames||[]).map(name=>'Route: '+name), ...(data.checkNames||[]).map(name=>'Check: '+name),
+          data.help,rendering(data),...data.problems);
+      } catch(error) {lines.push(error.message);blocked=true;}
+      lines.push('');
+    }
     el('inspection').textContent=lines.join('\n');
-  }catch(error){problem(error);} finally{controls(false);}
+    if(blocked)problem(new Error('Review the folder details above before verifying.'));
+  } finally{controls(false);}
 };
 el('verify').onclick=async()=>{
   if(job){controls(true);el('verify').textContent='Verify';await poll();return;}
-  el('error').hidden=true;el('repair-record').hidden=true;el('report').hidden=true;el('viewer').hidden=true;el('judged-by').textContent='';el('details').textContent='';el('phases').replaceChildren();
+  el('error').hidden=true;el('repair-record').hidden=true;el('report').hidden=true;el('viewer').hidden=true;el('judged-by').textContent='';el('details').textContent='';el('next-step').textContent='';el('isolation').hidden=true;el('phases').replaceChildren();
+  el('result-folders').hidden=true;
   el('result-text').textContent='No verdict yet.';el('progress').textContent='Checking the rendering environment before starting…';controls(true);
+  let submissionAttempted=false;
   try{const body=values();
     if(el('auto-fix').checked){
       body.autoFix=true;body.repairAgent=el('fix-agent').value;body.attempts=el('attempts').valueAsNumber;body.usdCap=el('usd-cap').valueAsNumber;
@@ -146,8 +201,9 @@ el('verify').onclick=async()=>{
     }
     rendererAcknowledged=null;el('verify').textContent='Verify';
     el('progress').textContent='Creating the job and recording its inputs…';
+    submissionAttempted=true;
     const data=await api('/api/jobs',body);job=data.id;controls(true);show(data);if(job)await poll();else await pastRuns();}
-  catch(error){problem(error);}
+  catch(error){problem(error,submissionAttempted);}
 };
 el('cancel').onclick=async()=>{
   const current=job;if(!current)return;el('cancel').disabled=true;

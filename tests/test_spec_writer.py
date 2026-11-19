@@ -105,12 +105,14 @@ class ApproveTest(unittest.TestCase):
             with self.subTest(spec=path.name):
                 doc = json.loads(path.read_text())
                 self.assertEqual(validate(doc), "test-spec")
-                # An approved spec carries who approved it and when; the rest must still lint
-                # clean as a draft would.
-                approval = doc.pop("approval", None)
-                if approval is not None:
-                    self.assertEqual(sorted(approval), ["at", "by"])
-                    self.assertTrue(approval["by"].strip())
+                # An approved spec carries who approved it, when, and the digest of what was
+                # approved (#420, #642), and that digest matches its content; the rest must still
+                # lint clean as a draft would.
+                if "approval" in doc:
+                    self.assertEqual(sorted(doc["approval"]), ["at", "by", "specSha256"])
+                    self.assertTrue(doc["approval"]["by"].strip())
+                    self.assertEqual(approval.state(doc), approval.BOUND)
+                doc.pop("approval", None)
                 self.assertEqual(lint(doc), [])
 
 

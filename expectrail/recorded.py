@@ -150,7 +150,18 @@ def _capture_environment(path, *_identity):
         return None
 
 
+def _short(env) -> str:
+    """One environment in a few plain words: device, renderer, engine and version."""
+    return (f"{env.get('device') or 'unknown device'}, {env.get('renderer') or 'unknown renderer'}, "
+            f"{env.get('name') or 'engine'} {env.get('version') or 'unknown version'}")
+
+
 def _environment_difference(environments, current):
+    if current and environments and all(env is None for env in environments):
+        # A recording from before provenance: say so, and name only what this replay reported.
+        # The kind leads, so a reader that shortens the reason still keeps "not-recorded".
+        return ("no exact image answer (not-recorded): the recording does not name the rendering environment "
+                "it was made in; this replay used " + _short(current))[:300]
     if not current or not environments or any(env is None for env in environments):
         return None
     differences = [[key for key in ("device", "renderer", "version", "name")
@@ -179,6 +190,24 @@ def _environment_difference(environments, current):
         return prefix + value
     return (f"recorded under {label(environments[0])}; this replay used {label(current)}; "
             "no exact image answer (not-recorded)")
+
+
+def rendering_sentence(rendering: dict) -> str:
+    """The Run it page's "Rendering" line, word for word (docs/run-it/run-it.js builds the same)."""
+    this_run = " and ".join(_short(e) for e in rendering.get("thisRun") or [])
+    status = rendering.get("status")
+    if status == "match":
+        return f"Drawn with {this_run}: the same as the recording."
+    if status == "mismatch":
+        made = " and ".join(_short(e) for e in rendering.get("recording") or [])
+        return (f"Drawn with {this_run}. The recording was made with {made}. "
+                "A frame that draws differently gets no recorded answer.")
+    if status == "unknown" and this_run:
+        return (f"Drawn with {this_run}. The recording does not name the environment it was made in, so the two "
+                "cannot be compared. A frame that draws differently gets no recorded answer.")
+    if status == "unknown":
+        return "Neither this run nor the recording names its rendering environment, so the two cannot be compared."
+    return "This run's rendering environment was not reported, so it cannot be compared with the recording's."
 
 
 class MissingRecordedAnswer(SamError):
@@ -236,6 +265,8 @@ class RecordedClient:
         self._answers = {(a["kind"], a["frameSha256"], a["prompt"]): a["detections"] for a in recording["answers"]}
         self._environments = list(recording.get("renderingEnvironments") or [None])
         self._frame_hashes = {a["frameSha256"] for a in recording["answers"]}
+        self._rendered: set[str] = set()   # this replay's capture environments, as sorted JSON
+        self._unnamed_captures = 0         # questions about a capture whose environment is unknown
         self.last_missing_reason = None
         self.calls = 0          # questions asked of the recording
         self.answered = 0       # of them, answered
@@ -244,7 +275,12 @@ class RecordedClient:
 
     def _answer(self, kind: str, png: Path, prompt: str) -> list:
         sha = sha256_bytes(Path(png))
+        current = capture_environment(png)
         with self._lock:
+            if current is None:
+                self._unnamed_captures += 1
+            else:
+                self._rendered.add(json.dumps(current, sort_keys=True))
             self.calls += 1
             found = self._answers.get((kind, sha, prompt))
             if found is None:
@@ -255,12 +291,42 @@ class RecordedClient:
             # Never the answer about another picture or another question.
             reason = None
             if sha not in self._frame_hashes:
-                reason = _environment_difference(self._environments, capture_environment(png))
+                reason = _environment_difference(self._environments, current)
             reason = reason or "the recording does not hold this frame and question (not-recorded)"
             with self._lock:
                 self.last_missing_reason = reason
             raise MissingRecordedAnswer(reason)
         return [None if d is None else {"box": list(d["box"]), "score": d["score"]} for d in found]
+
+    def rendering(self) -> dict:
+        """This replay's capture environments beside the recording's. Provenance only: it never
+        answers a question and never changes a verdict.
+
+        ``match``: every frame asked about was drawn in an environment the recording names.
+        ``mismatch``: some frame was drawn in an environment the recording does not name.
+        ``unknown``: the recording does not name every environment it was made in.
+        ``unavailable``: some frame's environment was not reported, or nothing was asked."""
+        with self._lock:
+            seen = [json.loads(e) for e in sorted(self._rendered)]
+            unnamed = self._unnamed_captures
+        stored = self.recording.get("renderingEnvironments")
+        recording = None if stored is None else [None if e is None else {k: e.get(k) for k in _ENV_KEYS}
+                                                 for e in stored]
+
+        def complete(env):
+            return isinstance(env, dict) and all(env.get(k) for k in _ENV_KEYS)
+
+        if not recording or not all(complete(e) for e in recording):
+            status = "unknown"
+            if recording is not None and all(e is None for e in recording):
+                recording = None
+        elif not seen or unnamed or not all(complete(e) for e in seen):
+            status = "unavailable"
+        elif all(any(all(e[k] == s[k] for k in _ENV_KEYS) for e in recording) for s in seen):
+            status = "match"
+        else:
+            status = "mismatch"
+        return {"thisRun": seen[:8], "recording": recording if recording is None else recording[:8], "status": status}
 
     def segment(self, png: Path, prompt: str) -> list[dict]:
         return self._answer(SEGMENT, png, prompt)
