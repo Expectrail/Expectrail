@@ -1,0 +1,22 @@
+{
+  "step": 11,
+  "label": "verify-help",
+  "startedUtc": "2026-11-16T06:49:01.399091+00:00",
+  "command": [
+    "python3",
+    "-m",
+    "expectrail.cli",
+    "verify",
+    "--help"
+  ],
+  "cwd": "/workspace/work/pointer-routes",
+  "seconds": 0.11464726899430389,
+  "exitCode": 0,
+  "status": "finished",
+  "log": "trial-logs/11-verify-help.log",
+  "environment": {
+    "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+    "TMPDIR": null,
+    "EXPECTRAIL_TOOLS": null
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "format": "expectrail.verdict/v0",
+  "spec": {
+    "id": "breakout-paddle-bounds",
+    "sha256": "12868d8b23b58210db9ad021ab99e1ac3dcc784a76e9b3ec0a18cf7bbb5f8839"
+  },
+  "observations": {
+    "sha256": "8b5d86143b4a5664729d4e7e2d47e65b9d1ae83ef7ac035b839b3dba89cc17ab"
+  },
+  "result": "pass",
+  "reason": "no violation in 51 frames",
+  "firstFrame": null,
+  "evidence": [],
+  "framesJudged": 51,
+  "evaluator": {
+    "name": "expectrail.evaluator",
+    "version": "0.1.0"
+  },
+  "coverage": {
+    "status": "exercised",
+    "semanticResult": "pass",
+    "framesObserved": 51,
+    "framesExpected": 51,
+    "framesRequired": 40,
+    "completeWindow": true
+  }
+}

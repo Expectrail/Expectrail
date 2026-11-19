@@ -1,0 +1,30 @@
+{
+  "config": {
+    "format": "expectrail.project/v1",
+    "adapter": "godot",
+    "draft": true,
+    "entryScene": "res://game.tscn",
+    "viewport": [
+      360,
+      640
+    ],
+    "physicsTicksPerSecond": 60,
+    "captureFps": 60,
+    "bindings": {},
+    "inputActions": [
+      "pause"
+    ],
+    "routes": [
+      "routes/draft-first-0a650cac4349dcfb.json"
+    ]
+  },
+  "unresolvedBindings": [
+    "Supply the player node path and its res:// image in bindings.player; the starting scene has no unique player."
+  ],
+  "textureCandidates": [],
+  "playerCandidates": [
+    "Paddle",
+    "Ball"
+  ],
+  "draft": true
+}

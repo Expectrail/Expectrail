@@ -145,6 +145,15 @@ def scene_nodes(root, entry):
                 node.setdefault("name", attrs["name"])
             else:
                 node["name"] = attrs["name"]
+            script = EXT.fullmatch(property_value(body, "script") or "")
+            if script and script[1] in external:
+                node["script"] = external[script[1]]
+            label = property_value(body, "text")
+            if label and label.startswith('"'):
+                try:
+                    node["text"] = json.loads(label)
+                except ValueError:
+                    pass
             if node.get("type") in ("Sprite2D", "AnimatedSprite2D"):
                 if "type" in attrs or re.search(r"^(texture|sprite_frames)\s*=", body, re.M):
                     node["images"], node["reason"] = sprite_textures(node["type"], body, textures, frames)
@@ -214,7 +223,8 @@ def inspect(root):
 
     def paths(kind):
         return [p or "." for p, n in nodes.items() if n.get("type") == kind]
-    return {"entryScene": entry, "scenes": scenes, "players": [p or "." for p in players],
+    from expectrail.input_discovery import hints
+    return {"inputHints": hints(root, nodes, players, actions, fallback), "entryScene": entry, "scenes": scenes, "players": [p or "." for p in players],
             "textures": sorted(textures), "unresolvedBindings": problems, "cameras": paths("Camera2D"), "groundLayers": paths("TileMapLayer"),
             "platformBodies": paths("StaticBody2D") + paths("AnimatableBody2D"),
             "otherCharacters": [p for p in paths("CharacterBody2D") if p not in [s or "." for s in players]],
@@ -231,6 +241,13 @@ def describe(report):
     for problem in report["unresolvedBindings"]:
         print(problem)
     print("Input actions" + (" (built-in fallback)" if report["builtInActions"] else "") + ":", listed("actions"))
+    h = report.get("inputHints", {})
+    for pointer in h.get("pointer", []):
+        print(f"No authored movement actions; {pointer['node']} reads pointer position in {pointer['script']}. "
+              "Pointer steering is a candidate; replay must demonstrate movement.")
+    if h.get("startControls") or h.get("menus"):
+        print("Possible start/menu controls:", ", ".join(dict.fromkeys(h.get("startControls", []) + h.get("menus", []))))
+        print("init and route --auto use a disposable engine probe to measure their positions and pressed connections.")
     print("Cameras:", listed("cameras"))
     print("Ground layers:", listed("groundLayers"))
     print("Static or animated platform bodies:", listed("platformBodies"))
@@ -290,11 +307,14 @@ def with_runtime(root, info):
     return runtime_scan.merge(info, doc, nodes)
 
 
-def proposal(root, info):
+def proposal(root, info, *, planned_route=None):
     if any(len(action) > 64 for action in info["actions"]):
         raise ValueError("Shorten input action names to 64 characters for the project config.")
-    draft = route.make_route(info["actions"], info["physicsTicksPerSecond"])
-    draft.update(name="draft-first-route", description="Draft from the input map. Review the actions and replay before use.")
+    from expectrail.input_discovery import plan, needed
+    draft = plan(root, info) if planned_route is None else dict(planned_route)
+    draft["name"] = "draft-first-route"
+    if not needed(info):
+        draft["description"] = "Draft from the input map. Review the actions and replay before use."
     filename = "routes/draft-first-" + hashlib.sha256(encode(draft)).hexdigest()[:16] + ".json"
     config = {"format": project_config.FORMAT, "adapter": "godot", "draft": True,
               "entryScene": info["entryScene"], "viewport": info["viewport"],

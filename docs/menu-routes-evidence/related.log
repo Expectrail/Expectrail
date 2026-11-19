@@ -1,0 +1,7 @@
+.......Replaying input map: run 1 of 3.
+........................s............................harness: warning: cache warming failed (Command '['godot', '--import']' returned non-zero exit status 1.); falling back to direct import
+...............................
+----------------------------------------------------------------------
+Ran 90 tests in 9.534s
+
+OK (skipped=1)

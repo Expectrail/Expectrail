@@ -6,6 +6,100 @@
   "type": "object",
   "required": ["format", "ticks", "physicsTicksPerSecond", "rows"],
   "properties": {
+    "inputProbe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tick",
+        "viewport",
+        "paused",
+        "buttons",
+        "truncated"
+      ],
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "viewport": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "paused": {
+          "type": "boolean"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "buttons": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "text",
+              "box",
+              "visible",
+              "enabled",
+              "connections"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "box": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {
+                  "type": "number"
+                }
+              },
+              "visible": {
+                "type": "boolean"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "connections": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "signal",
+                    "target",
+                    "method"
+                  ],
+                  "properties": {
+                    "signal": {
+                      "const": "pressed"
+                    },
+                    "target": {
+                      "type": "string"
+                    },
+                    "method": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "description": "Opt-in input discovery only. Engine-reported root-viewport control boxes and pressed-signal connections after the final probe tick. No input was sent. Absent on ordinary replays, preserving old trace bytes. Truncated data cannot select a control."
+    },
     "captureTimeline": {
       "description": "Optional legacy-compatible capture records, in output PNG order. Recorded at the draw phase, not inferred from an integer tick/frame ratio. Intervals are inclusive; a draw with no new physics step repeats the last tick.",
       "type": "object",
