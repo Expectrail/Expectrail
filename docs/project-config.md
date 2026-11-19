@@ -38,6 +38,21 @@ No file means the game has no config. The bundled game has none yet, and keeps t
 had: the harness finds `Player`, `Coin`, `Enemy` and `Bullet` by class or node name, the capture
 rate stays 60, and its input actions and tick rate are still read from `project.godot`.
 
+Its proposed config is [`harness/godot/platformer.project.json`](../harness/godot/platformer.project.json):
+what `expectrail init` proposes for the game, without the `draft` flag and the draft route. It is
+kept outside `game/platformer`, which only a person edits, until Sean decides whether it goes beside
+`project.godot`. `python3 -m tools.bundled_config_parity` checks it on this machine: every field
+must be what init reads from the game, each public route must replay to the same trace with and
+without it (a config may only add the role boxes, the bindings and the measured window size), and
+the Run it samples must reach the same decision with the same number of recorded vision answers,
+which are looked up by each frame's exact bytes. Exit 0 means every case was the same, 1 that
+something differs, 5 that it could not be run. The coins, enemies and bullets are not bound: they
+have a class but no group, and a binding names a node or a group.
+
+The replay does not compare a config's `viewport` or `physicsTicksPerSecond` with `project.godot`.
+A wrong value is kept in the config, and no one is told. The parity check catches this for the
+bundled config. A general check is [#657](https://github.com/Expectrail/Expectrail/issues/657).
+
 A file that is present and not valid stops the run. The message names the field to fix. The route
 reader, the gate and the harness all do this. None of them pretends the file was absent.
 
