@@ -48,6 +48,7 @@ moment.
   'jsonschema'`. An installed Expectrail has no dependencies, so the reader no longer uses
   jsonschema. It reads the schema with the gate's own reader (`expectrail.gate.record.errors`), and it
   checks each kind's fields and repeated values by hand. The 27 tests pass with jsonschema blocked.
+  Full suite after the fix, merged with main at 73ac17f: 5,463 tests, OK, 41 skipped.
 
 ## Not done
 - The Done-when run: `init --dry-run`, then a verification, on the second test project and on the
