@@ -23,6 +23,7 @@ import tempfile
 from pathlib import Path
 
 from expectrail import timing
+from harness import patching
 from harness import sandbox as box
 from harness import tree
 
@@ -186,10 +187,7 @@ def tree_digest(root: Path, within: Path | None = None) -> str:
 def apply_patches(work: Path, patches: list[Path]) -> None:
     """Apply unified diffs in order to a game copy (seed first, then candidate, …)."""
     for patch in patches:
-        subprocess.run(
-            ["patch", "-p1", "--forward", "--batch", "-d", str(work), "-i", str(patch.resolve())],
-            check=True, capture_output=True, text=True,
-        )
+        patching.apply(work, patch)  # the tree the patch names, on every platform's patch (#659)
 
 
 def prepare(game: Path, work: Path, patch: Path | None = None, patches: list[Path] | None = None,
