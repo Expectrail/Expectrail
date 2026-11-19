@@ -142,6 +142,36 @@ def build(trace, frames_dir=None, *, ticks=None):
             "captureFps": capture["fps"], "frames": out}
 
 
+def episode_ticks(trace, replay, frames_dir=None, *, ticks=None):
+    """Frame n depicts the recorded tick at index n, never the other ticks in its interval."""
+    if replay is not None and replay.get("timelineProblem"):
+        raise TimelineError(str(replay["timelineProblem"]))
+    trusted = build(trace, frames_dir, ticks=ticks)
+    if replay is not None:
+        saved = replay.get("timeline")
+        _require(isinstance(saved, dict), "missing replay timeline")
+        capture = replay.get("capture") or {}
+        count = len(trusted["frames"])
+        _require(capture.get("frames") == count and capture.get("fps") == trusted["captureFps"]
+                 and capture.get("physicsTicksPerSecond") == trusted["physicsTicksPerSecond"],
+                 "replay capture count or clock differs from trace")
+        _require(all(saved.get(k) == trusted[k] for k in
+                     ("format", "traceSha256", "captureFps", "physicsTicksPerSecond")),
+                 "replay timeline names another trace or clock")
+        recorded, hashes = saved.get("frames"), replay.get("frameSha256")
+        _require(isinstance(recorded, list) and len(recorded) == count
+                 and isinstance(hashes, list) and len(hashes) == count, "missing replay frames")
+        for n, at in enumerate(trusted["frames"]):
+            row = recorded[n]
+            _require(isinstance(row, dict) and all(row.get(k) == at[k] for k in PLACEMENT),
+                     f"replay placement differs from harness at frame {n}")
+            sha = hashes[n]
+            _require(isinstance(sha, str) and re.fullmatch(r"[0-9a-f]{64}", sha)
+                     and row.get("sourceSha256") == sha and (frames_dir is None or at["sourceSha256"] == sha),
+                     f"image digest differs at frame {n}")
+    return [f["tick"] for f in trusted["frames"]]
+
+
 def emit(document, trace, frames_dir=None, *, version="1"):
     """Producer-side provenance. Old traces/documents remain v0, never fabricated v1."""
     if "captureTimeline" not in (trace or {}):

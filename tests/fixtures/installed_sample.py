@@ -15,9 +15,9 @@ from unittest import mock
 import zlib
 
 from expectrail import resources
+from expectrail._bundle.harness import sandbox, tree
 from expectrail.contracts import digest
 from expectrail.orchestrator import engines, sample
-from harness import sandbox, tree
 
 
 def png():
