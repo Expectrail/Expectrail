@@ -20,6 +20,17 @@
 - `docs/jit.md`: new section "Pixel checks under correct-fix pressure"; the test plan's adversary line no
   longer says "Not built yet" (it was built on November 16 as a prepared dispatch).
 - `docs/measurements/271-pixel-pressure.md` and `.json`: a real-engine rehearsal.
+- The workflow proposal `docs/proposals/271-pressure.yml.txt` (a text file for Sean, not an installed
+  workflow; third commit): a bank step for correct pressure, before the frozen evidence is downloaded,
+  with the command of `jit.yml`'s `sensor-bank` job; a `sensor_every` input; `--sensor-bank` and
+  `--sensor-every` on the correct preflight and the correct step; the preflight split by kind so the
+  adversary is never given a bank; the bank uploaded with the records. No secret, environment, trigger or
+  permission was added or changed.
+- `pressure.parse_args`: the refusals that need no file, git or game, out of `main`; it now also refuses a
+  `--sensor-every` outside 1 to 60. `tests/test_jit_pressure_proposal.py` (9 tests) parses every pressure
+  command in the proposal with it, and checks the bank step's order, inputs and that only the adversary's
+  execute step holds a secret. Changing one flag or variable name in the proposal fails 3 or 4 of them
+  (tried and reverted).
 
 ## What was run
 - `python3 -m unittest tests.test_jit_pixel_pressure tests.test_jit_pixel_envelope tests.test_jit_rules`:
@@ -34,12 +45,12 @@
 
 ## Not done
 - Recorded SAM answers are not replayed; a counting SAM pixel check still stops the dispatch.
-- The workflow proposal `docs/proposals/271-pressure.yml.txt` has no bank job; unchanged.
 - No live campaign; nothing dispatched.
 
 ## Files
 - `expectrail/jit/pressure.py`, `expectrail/jit/pixel.py`, `expectrail/jit/run.py`
 - `contracts/jit-run.v1.schema.json`, `contracts/examples/jit-run-pixel.json`, `contracts/jit-pressure.v1.schema.json`, `contracts/examples/jit-pressure-pixel.json`
-- `tests/test_jit_pixel_pressure.py`, `tests/test_jit_template_observer.py`
+- `tests/test_jit_pixel_pressure.py`, `tests/test_jit_template_observer.py`, `tests/test_jit_pressure_proposal.py`
+- `docs/proposals/271-pressure.yml.txt`
 - `docs/jit.md`, `docs/measurements/271-pixel-pressure.md`, `docs/measurements/271-pixel-pressure.json`
 - `docs/new-work/2026-11-19-pixel-pressure.md`

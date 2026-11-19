@@ -346,24 +346,34 @@ def read(path):
     return check(record.read_json(Path(path),cap=2*1024*1024,label='JIT pressure record'))
 
 
-def main(argv=None):
-    parser=argparse.ArgumentParser(description=__doc__)
+def parse_args(argv=None):
+    """(parser, args) for ``argv``, or SystemExit: every refusal that needs no file, no git and no game.
+
+    The workflow proposal's commands are checked against this (``tests/test_jit_pressure_proposal.py``)."""
+    parser=argparse.ArgumentParser(prog='python3 -m expectrail.jit.pressure',description=__doc__)
     parser.add_argument('kind',choices=['correct','adversary'])
     mode=parser.add_mutually_exclusive_group();mode.add_argument('--execute',action='store_true');mode.add_argument('--preflight',action='store_true')
     parser.add_argument('--bundles',type=Path);parser.add_argument('--contexts',type=Path);parser.add_argument('--trust-store',type=Path)
     parser.add_argument('--out',type=Path);parser.add_argument('--max-replays',type=int,default=1024)
     parser.add_argument('--sensor-bank',type=Path,help='correct pressure: the template bank the frozen visual-sensor checks were judged with')
-    parser.add_argument('--sensor-every',type=int,default=10);parser.add_argument('--sensor-first',type=int)
+    parser.add_argument('--sensor-every',type=int,default=10,help="the judging run's sam_every (1 to 60)")
+    parser.add_argument('--sensor-first',type=int)
     args=parser.parse_args(argv)
     if args.sensor_bank is not None and args.kind!='correct':parser.error('only correct pressure replays pixel checks')
+    if not 1<=args.sensor_every<=60:parser.error('--sensor-every is a whole number from 1 to 60, as sam_every is')
+    if (args.execute or args.preflight) and (not all((args.bundles,args.contexts,args.trust_store,args.out)) or not 0<args.max_replays<=1024):
+        parser.error('execution requires frozen bundles, trusted contexts/store, output and 1..1024 replay cap')
+    return parser,args
+
+
+def main(argv=None):
+    parser,args=parse_args(argv)
     if not args.execute and not args.preflight:
         print(f'PLAN ONLY: {args.kind}; no call, no replay. Public registry: 24 exact undos + 4 known correct patches; adversary: air-jump, one llm-patch invocation.')
         print('API ceiling: $6.00 adversary, $0.00 correct pressure; vision $0, generation $0 (frozen authenticated checks required).')
         print('Pixel checks: correct pressure replays visual-sensor checks with frames given --sensor-bank (no model, $0); SAM checks and the adversary stop.')
         print('Provider/model: openai/gpt-6.1-sol, output 4096; cap held by existing fixer admission/month ledger. No live run performed.')
         return 0
-    if not all((args.bundles,args.contexts,args.trust_store,args.out)) or not 0<args.max_replays<=1024:
-        parser.error('execution requires frozen bundles, trusted contexts/store, output and 1..1024 replay cap')
     if subprocess.check_output(['git','rev-parse','HEAD'],cwd=REPO)!=subprocess.check_output(['git','rev-parse','origin/main'],cwd=REPO):
         parser.error('main-only: HEAD must be the freshly fetched origin/main')
     if subprocess.run(['git','diff','--quiet','HEAD','--','expectrail','agents','contracts','bench'],cwd=REPO).returncode:

@@ -1166,8 +1166,12 @@ same plan as the judging run), and `pixel.judge` decides each run. No model and 
 
 Tested in `tests/test_jit_pixel_pressure.py` with a stand-in game and observer. The real-engine rehearsal
 is in [271-pixel-pressure.md](measurements/271-pixel-pressure.md). The workflow proposal
-([271-pressure.yml.txt](proposals/271-pressure.yml.txt)) is unchanged: it has no bank job, so as written
-it would stop on a counting pixel check.
+([271-pressure.yml.txt](proposals/271-pressure.yml.txt)) calibrates its own bank on the checked-out clean
+game before any frozen evidence is downloaded (the command of `jit.yml`'s `sensor-bank` job, $0), and passes
+it with a new `sensor_every` input (the source run's `sam_every`) to the correct preflight and the correct
+step. A bank or plan that differs from the signed source run stops before any replay, so the bank made
+there cannot loosen a check. `tests/test_jit_pressure_proposal.py` parses every pressure command in the
+proposal with pressure's own parser (`pressure.parse_args`), so the two cannot drift apart unnoticed.
 
 ### Still needed for #271 Done when
 
