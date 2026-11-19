@@ -3,7 +3,7 @@
 ``docs/capabilities.json`` (``expectrail.capabilities/v1``) holds one row per mode a user could
 believe exists. This module reads it, checks it, and renders ``docs/capabilities.md`` from it.
 
-    python3 -m expectrail.capabilities check     # exit 1 and one line per problem
+    python3 -m expectrail.capabilities check     # exit 1 with problems and ledger edit hints
     python3 -m expectrail.capabilities render    # rewrite docs/capabilities.md
     python3 -m expectrail.capabilities recheck   # ask GitHub again how every cited run and its jobs ended,
                                                  # and count again what a row ties to a run's notices
@@ -364,8 +364,31 @@ def _switch_listed(switch: str, listed: set[str]) -> bool:
     return any(w.endswith("*") and switch.startswith(w[:-1]) for w in listed)
 
 
-def advert_problems(doc: dict, texts: dict[str, str], root: Path = ROOT) -> list[str]:
-    """Modes the README or the site names that no row lists, one line each."""
+def _advert_fix(source: str, kind: str, item: str, rows: list[dict]) -> str:
+    field = "entryPoints" if kind == "commands" else "docs"
+    candidates = []
+    for row in rows:
+        docs = row.get("docs", [])
+        related = source in docs
+        if kind == "commands":
+            related |= any(item.startswith(module + ".") for module in row["entryPoints"])
+        else:
+            related |= any(ev["ref"].split("#", 1)[0] == item for ev in row["evidence"])
+        if related:
+            candidates.append(row["id"])
+    value = json.dumps(item)
+    entry = json.dumps({item: "<reason>"})
+    hint = (f"If it is not a mode, merge into notModes.{kind}: {entry}\n"
+            f"  In docs/capabilities.json, replace <reason> with the reason. If it describes a mode, "
+            f"append {value} to {field} on the row that owns it")
+    if candidates:
+        choices = ", ".join(f'row {json.dumps(rid)} {field}: {value}' for rid in sorted(candidates))
+        hint += f" (possible matches: {choices})"
+    return hint + "."
+
+
+def advert_problems(doc: dict, texts: dict[str, str], root: Path = ROOT, *, fixes: bool = False) -> list[str]:
+    """Find unlisted claims, with edit hints when requested by the CLI."""
     rows = doc["rows"]
     listed = {
         "commands": {m for r in rows for m in r["entryPoints"]} | set(doc["notModes"]["commands"]),
@@ -383,7 +406,10 @@ def advert_problems(doc: dict, texts: dict[str, str], root: Path = ROOT) -> list
             for item in sorted(found[kind]):
                 ok = _switch_listed(item, listed[kind]) if kind == "switches" else item in listed[kind]
                 if not ok:
-                    out.append(f"{name}: names the {_ONE[kind]} {item}, which no ledger row lists")
+                    message = f"{name}: names the {_ONE[kind]} {item}, which no ledger row lists"
+                    if fixes and kind in ("commands", "docs"):
+                        message += "\n  " + _advert_fix(name, kind, item, rows)
+                    out.append(message)
         seen = _visible(name, text)
         for watched in doc["nameWatch"]:
             if watched not in names and re.search(rf"(?<![A-Za-z0-9]){re.escape(watched)}(?![A-Za-z0-9])", seen):
@@ -399,9 +425,9 @@ def read_adverts(root: Path = ROOT) -> dict[str, str]:
     return {name: (root / name).read_text(encoding="utf-8") for name in ADVERTS}
 
 
-def problems(doc: dict, root: Path = ROOT, texts: dict[str, str] | None = None) -> list[str]:
+def problems(doc: dict, root: Path = ROOT, texts: dict[str, str] | None = None, *, fixes: bool = False) -> list[str]:
     """Every problem: the rows, then what the README and the site advertise."""
-    return row_problems(doc, root) + advert_problems(doc, read_adverts(root) if texts is None else texts, root)
+    return row_problems(doc, root) + advert_problems(doc, read_adverts(root) if texts is None else texts, root, fixes=fixes)
 
 
 def _link(ref: str) -> str:
@@ -574,7 +600,7 @@ def main(argv: list[str] | None = None) -> int:
         PAGE.write_text(render(doc), encoding="utf-8")
         print(f"wrote {PAGE.relative_to(ROOT)}")
         return 0
-    found = problems(doc)
+    found = problems(doc, fixes=True)
     if PAGE.read_text(encoding="utf-8") != render(doc):
         found.append("docs/capabilities.md is not what docs/capabilities.json renders to; run render")
     for line in found:

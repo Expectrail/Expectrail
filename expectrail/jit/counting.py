@@ -180,16 +180,62 @@ def public_bench(records, out):
             'legacyKeptAdvisory':legacy_valid,'droppedProposals':total-legacy_valid}
 
 
+def pixel_bench(records, out):
+    """The six rules on the pixel rows of committed public records (#271, #286); no replay or model.
+
+    ``records`` holds one folder per record, named after its public defect (``<defect>-<what>``), each with
+    a ``jit-run.json``. Folders whose record has no pixel checks are skipped. Untrusted: rule 5 never
+    holds here, so nothing counts; the page says which rules each check meets and why it is advisory."""
+    from expectrail.jit import bench
+    if bench.private_name(records):
+        raise ValueError('public-only: held-out/fresh record roots refused')
+    root = Path(__file__).resolve().parents[2]
+    defects = sorted(bench.public_cases()['defects'], key=lambda d: -len(d['id']))
+    table, total, counted, seen = [], 0, 0, 0
+    for folder in sorted(p for p in Path(records).iterdir() if p.is_dir()):
+        run = record.read_json(folder / 'jit-run.json', cap=8 * 1024 * 1024, label='public JIT record')
+        if not run.get('pixelChecks'):
+            continue
+        defect = next((d for d in defects if folder.name == d['id'] or folder.name.startswith(d['id'] + '-')), None)
+        if defect is None:
+            raise ValueError(f'{folder.name}: not named after a public defect')
+        report = (root / defect['report']).read_text()
+        if hashlib.sha256(report.encode()).hexdigest() != run['inputs']['reportSha256']:
+            raise ValueError(f'counting-evidence-mismatch: {folder.name}: bug report digest differs')
+        seen += 1
+        for row in assess.pixel_counting(run, report):
+            total += 1
+            counted += row['counting']
+            met = ', '.join(str(i + 1) for i, ok in enumerate(row['rules']) if ok) or 'none'
+            why = '; '.join(r.split(': ', 1)[1] for r in row['reasons']) or '-'
+            table.append(f"| {folder.name} | `{row['specId']}` | {row['predicate']['type']} on {row['predicate']['object']} "
+                         f"| {met} | {'yes' if row['counting'] else 'no'} | {why} |")
+    lines = ['# The six rules on the public pixel checks (#271, #286)', '',
+             'Offline, from the committed records under `bench/jit/stand-in/`; no replay, observer or model.',
+             'These checks were written by hand, not by a model, and no trusted certificate is supplied, so rule 5',
+             'never holds and nothing counts. The page shows which rules each check meets from its own runs.',
+             'Pixel rows are not an input to the gate decision yet; this is not a rate.', '',
+             'Made by `python3 -m expectrail.jit.counting pixel-bench --records bench/jit/stand-in --out <page>`.', '',
+             '| Record | Check | Predicate | Rules met | Counting | Why advisory |',
+             '| --- | --- | --- | --- | --- | --- |'] + table
+    lines += ['', f'Total: {seen} records with pixel checks; {total} pixel checks; {counted} counting; '
+              f'{total - counted} advisory.', '']
+    Path(out).write_text('\n'.join(lines))
+    return {'records': seen, 'checks': total, 'counting': counted, 'advisory': total - counted}
+
+
 def main(argv=None):
     import argparse
     parser=argparse.ArgumentParser(description=__doc__)
     sub=parser.add_subparsers(dest='command',required=True)
     audit=sub.add_parser('public-bench');audit.add_argument('--records',type=Path,required=True);audit.add_argument('--out',type=Path,required=True)
+    pixel=sub.add_parser('pixel-bench');pixel.add_argument('--records',type=Path,required=True);pixel.add_argument('--out',type=Path,required=True)
     judge_cmd=sub.add_parser('judge');judge_cmd.add_argument('--gate',type=Path,required=True)
     judge_cmd.add_argument('--evidence',type=Path,required=True);judge_cmd.add_argument('--context',type=Path,required=True)
     judge_cmd.add_argument('--trust-store',type=Path,required=True);judge_cmd.add_argument('--out',type=Path,required=True)
     args=parser.parse_args(argv)
     if args.command=='public-bench':print(json.dumps(public_bench(args.records,args.out)));return 0
+    if args.command=='pixel-bench':print(json.dumps(pixel_bench(args.records,args.out)));return 0
     trust=Trust.load(args.context,args.trust_store)
     doc,proof=judge(record.read_record(args.gate),args.evidence,trust=trust)
     args.out.write_text(json.dumps(doc,indent=2)+'\n')

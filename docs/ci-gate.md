@@ -21,8 +21,10 @@ No private routes are used in this workflow.
 
 The two checks are attached to the PR head. **Expectrail evidence** links to the trusted report
 or to the run if publication was interrupted. **Expectrail clearance** passes only on accept.
-Reject and needs-review fail it. A new head needs its own clearance. An interrupted capture or
-judge leaves clearance failed or incomplete.
+Reject and needs-review fail it. A new head needs its own clearance. When the pull request has
+moved on before its capture's judge runs, that clearance is concluded failed with "Superseded
+capture or pull request", never left in progress. An interrupted capture or judge leaves
+clearance failed or incomplete.
 
 Install a dedicated GitHub App on this repository with Checks read/write. In the protected
 `main-only` environment, set the variable `EXPECTRAIL_CHECKS_APP_ID` and secret

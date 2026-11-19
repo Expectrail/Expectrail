@@ -108,6 +108,95 @@ def relevant(operation, report, diff_claims=()):
                 or DIFF_BEHAVIOURS.get(signal) in set(diff_claims))
 
 
+# Pixel checks (#286): a closed object role and a closed predicate type, both from the check's schema,
+# never its statement. Relevance needs the report to name the object AND the drawn behaviour.
+PIXEL_OBJECTS = {
+    'player': ('robot', 'player', 'character'),
+    'enemy': ('enemy', 'enemies'),
+    'bullet': ('bullet', 'bullets'),
+    'coin': ('coin', 'coins'),
+    'coins-counter': ('counter', 'count'),
+}
+PIXEL_PREDICATES = {
+    'visible': ('see', 'visible', 'invisible', 'disappear', 'disappears', 'behind', 'hidden', 'missing'),
+    'faces-motion': ('face', 'faces', 'facing', 'backwards'),
+    'inside-region': ('screen',),
+    'never-crosses': ('through', 'cross', 'crosses'),
+}
+
+
+def pixel_relevant(check, report):
+    """Lexical binding for a pixel check: the report names its object and its predicate's behaviour.
+
+    False negatives: synonyms outside these small vocabularies, ``reaches`` and the ground (unbound),
+    and every diff-map claim (a pixel row is not bound to the diff map yet) stay advisory.
+    """
+    import re
+    words = set(re.findall(r'[a-z]+', report.lower()))
+    obj = PIXEL_OBJECTS.get(check.get('object'), ())
+    pred = PIXEL_PREDICATES.get((check.get('predicate') or {}).get('type'), ())
+    return bool(words.intersection(obj)) and bool(words.intersection(pred))
+
+
+def pixel_counting(run, report, *, trusted=False):
+    """The six rules of #271 recomputed for each row of ``pixelChecks``, from the rows' runs.
+
+    Reported only: ``counting.make`` does not call this, so no pixel row reaches ``decide``.
+    Rule 2: no near miss is replayed for a pixel check, so the base build is the only discriminator, and
+    it counts only when the candidate passes 3 of 3 (as for trace checks). Rule 4: a pixel run is
+    ``pass`` or ``fail`` only when every planned frame in its window was judged with no gap
+    (expectrail/jit/pixel.py), so every run on all three builds must be one of those, under one observer
+    setting, with a stable candidate. ``trusted`` is the caller's, as in ``counting``.
+    """
+    from expectrail.contracts import validate_v1
+    from expectrail.gate.record import counting_row
+    rows_in = run.get('pixelChecks') or []
+    ids = []
+    for row in rows_in:
+        validate_v1(row['check'], 'pixel-check')
+        ids.append(row['check']['id'])
+    if len(ids) != len(set(ids)):
+        raise ValueError('counting-evidence-mismatch: duplicate pixel check identifiers')
+    probes = {p['id']: p['routeSha256'] for p in run.get('probes', [])}
+    provenance = run.get('provenance') or {}
+    inputs = run.get('inputs') or {}
+    reps = run.get('settings', {}).get('reps')
+    triple = lambda rs, value: len(rs) == REPS and all(r == value for r in rs)
+    judged = lambda rs: len(rs) == REPS and all(r in ('pass', 'fail') for r in rs)
+    out = []
+    for row in rows_in:
+        check = row['check']
+        clean, bug, candidate = list(row['clean']), list(row['bug']), list(row['candidate'])
+        rule1 = (run.get('status') == 'complete' and run.get('settings', {}).get('candidate') == 'withheld'
+                 and reps == REPS and triple(bug, 'fail') and triple(clean, 'pass'))
+        kills = ['base'] if triple(bug, 'fail') and triple(candidate, 'pass') else []
+        stable = triple(candidate, 'pass') or triple(candidate, 'fail')
+        rule4 = (row.get('setting') is not None and judged(clean) and judged(bug) and stable)
+        rule6 = (bool(provenance.get('generatorVersion')) and bool(provenance.get('modelVersion'))
+                 and bool(inputs.get('model')) and bool(inputs.get('promptSha256'))
+                 and check['probe'] in probes and row.get('setting') is not None)
+        rules = [bool(rule1), bool(kills), pixel_relevant(check, report), bool(rule4), trusted is True, bool(rule6)]
+        descriptions = ['base-only reproduction/clean 3-of-3 missing',
+                        'no independent near miss killed (the candidate does not pass 3 of 3)',
+                        'drawn object and predicate not both named in the report',
+                        'a run not judged, no single observer setting, or an unstable candidate',
+                        'trusted producer/replayer and input binding not authenticated',
+                        'provenance incomplete']
+        result = {'kind': 'pixel', 'specId': check['id'], 'requirementSource': 'bug-report',
+                  'predicate': {'object': check['object'], **check['predicate']},
+                  'observer': check['observer'], 'setting': row.get('setting'),
+                  'probeIds': [check['probe']], 'routeSha256': [probes[check['probe']]] if check['probe'] in probes else [],
+                  'reference': clean, 'base': bug, 'candidate': candidate, 'killed': kills, 'rules': rules,
+                  'counting': False,
+                  'outcome': 'pass' if triple(candidate, 'pass') else 'fail' if triple(candidate, 'fail') else 'unknown',
+                  'reasons': [f'rule-{i+1}: {why}' for i, (met, why) in enumerate(zip(rules, descriptions)) if not met],
+                  'model': inputs.get('model'), 'modelVersion': provenance.get('modelVersion'),
+                  'generatorVersion': provenance.get('generatorVersion')}
+        result['counting'] = bool(counting_row(result))
+        out.append(result)
+    return out
+
+
 def counting(run, report, *, trusted=False):
     """Recompute all six rules, then use the gate's single counting guard.
 
