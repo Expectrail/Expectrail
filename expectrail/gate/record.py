@@ -222,7 +222,7 @@ def repair_block(rows: list[dict]) -> dict:
 
 def unverified_fix(doc: dict) -> bool:
     """A change declared as a fix for which no check demonstrated the repair."""
-    generated = any(counting_row(row) and row['candidate'] == ['pass'] * REPAIR_RUNS
+    generated = any(counting_row(row) and demonstrates_repair(row)
                     for row in (doc.get('countingChecks') or {}).get('rows', []))
     return intent_of(doc) == "fix" and not ((doc.get("repair") or {}).get("demonstrated") or generated)
 
@@ -348,7 +348,10 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
     if generated is not None and not isinstance(generated, VerifiedGenerated):
         raise RecordError('counting-trust-required: raw generated data cannot enter decide')
     counting = [r for r in generated.block['rows'] if counting_row(r)] if generated is not None else []
-    generated_repaired = sum(r['candidate'] == ['pass'] * REPAIR_RUNS for r in counting)
+    # Sean, November 18 (#638): a counting pixel row may reject a change, but it never demonstrates a
+    # repair. Only an approved check's repair block or a counting trace row can show that a fix works.
+    generated_repaired = sum(demonstrates_repair(r) for r in counting)
+    pixel_repaired = sum(r.get('kind') == 'pixel' and r['candidate'] == ['pass'] * REPAIR_RUNS for r in counting)
     generated_failed = sum(r['candidate'] == ['fail'] * REPAIR_RUNS for r in counting)
     unverified = intent == "fix" and not ((repair or {}).get("demonstrated") or generated_repaired)
     reasons = []
@@ -375,10 +378,12 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
         reasons.append(f"not-exercised: {held['routes']} held-out route(s) ran and judged no check")
     if observers and observers["rule"] == BOTH and observers["visual"] is None and not counts["needsReview"]:
         reasons.append("not-exercised: the required visual observer is disabled")
-    if counting and observers and observers['rule'] == BOTH:
-        # These counting records contain trace evidence, not dual-observer
-        # results. Presence of a configured observer does not mean it judged
-        # this new predicate. Failures above still veto; passes cannot clear.
+    if observers and observers['rule'] == BOTH and any(r.get('kind') != 'pixel' for r in counting):
+        # A counting trace row is the engine's record alone: a configured visual observer did not judge
+        # its predicate, so it cannot help clear under both. Failures above still veto. A counting pixel
+        # row (#286) is its own per-check visual evidence: its runs are a trusted observer's verdicts over
+        # frames where the engine's record also places the object (expectrail/jit/pixel.py), all six rules
+        # recomputed from them. It still never clears a change alone (above).
         reasons.append('not-exercised: counting generated checks lack the required visual evidence')
     # Legacy callers supply only checks/failed/needsReview; persisted records always include passed.
     if "passed" in counts and counts["passed"] + counts["failed"] + counts["needsReview"] != counts["checks"]:
@@ -400,6 +405,9 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
         reasons.append(stands)
     if unverified:
         reasons.insert(0, _not_demonstrated(counts, repair, base_judged, undecided_after_failure))
+        if pixel_repaired:
+            reasons.insert(1, f"{pixel_repaired} counting generated pixel check(s) pass after the change, "
+                              "but a pixel check does not demonstrate a repair")
     if reasons:
         return "needs-review", reasons
     total = counts["checks"] + held["checks"] + len(counting)
@@ -937,12 +945,18 @@ def check_repair(doc: dict) -> None:
         raise RecordError("the count of demonstrations does not match the repair rows")
 
 
+def demonstrates_repair(row: dict) -> bool:
+    """Whether a counting generated row shows a fix works: its candidate passes every run, and it is not a
+    pixel row. A pixel row may reject a change but never demonstrates a repair (Sean, November 18, #638)."""
+    return row.get('kind') != 'pixel' and row['candidate'] == ['pass'] * REPAIR_RUNS
+
+
 def _repair_words(doc: dict) -> str:
     """One line on what the change was declared as and whether its repair was shown, for the page and the comment."""
     rows = (doc.get('countingChecks') or {}).get('rows', [])
     if rows:
         counted = [r for r in rows if counting_row(r)]
-        repaired = [r for r in counted if r['candidate'] == ['pass'] * REPAIR_RUNS]
+        repaired = [r for r in counted if demonstrates_repair(r)]
         if intent_of(doc) == 'fix' and repaired:
             return (f"a fix demonstrated by generated check {repaired[0]['specId']}; "
                     "base alone fails 3/3, clean and candidate pass 3/3; all six counting rules met")

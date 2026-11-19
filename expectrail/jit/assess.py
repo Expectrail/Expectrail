@@ -141,7 +141,8 @@ def pixel_relevant(check, report):
 def pixel_counting(run, report, *, trusted=False):
     """The six rules of #271 recomputed for each row of ``pixelChecks``, from the rows' runs.
 
-    Reported only: ``counting.make`` does not call this, so no pixel row reaches ``decide``.
+    ``counting.make`` carries these rows in the generated-counting/v1 envelope beside the trace rows, so an
+    authenticated pixel row that meets all six reaches ``decide`` as its own per-check visual evidence.
     Rule 2: no near miss is replayed for a pixel check, so the base build is the only discriminator, and
     it counts only when the candidate passes 3 of 3 (as for trace checks). Rule 4: a pixel run is
     ``pass`` or ``fail`` only when every planned frame in its window was judged with no gap

@@ -2,8 +2,9 @@
 
 Pixel checks are in a run record's ``pixelChecks``, not in ``proposed``/``validity``, so until now the
 six-rule assessor never looked at them and every screen-only check was advisory without a reason.
-``assess.pixel_counting`` recomputes the six rules from a pixel row's own runs. It is not an input to
-``decide``: these rows are reported, never counted by the gate (tested below).
+``assess.pixel_counting`` recomputes the six rules from a pixel row's own runs. ``counting.make`` carries
+these rows in the envelope, and the gate reads them only as authenticated evidence (tested below and in
+tests/test_jit_pixel_envelope.py).
 
 The records are the committed hand-written stand-ins (bench/jit/stand-in/) and copies of them changed
 one field at a time. No replay, no observer, no model."""
@@ -222,13 +223,20 @@ class CommittedStandIns(unittest.TestCase):
             counting.pixel_bench(Path("bench/fresh-4"), Path("/dev/null"))
 
 
-class NotADecisionInput(unittest.TestCase):
-    def test_the_counting_envelope_still_carries_trace_rows_only(self):
-        # pixel_counting is reported; counting.make (the only producer of the gate's evidence) does not
-        # call it, so a pixel row can never reach decide through this change.
-        text = (REPO / "expectrail/jit/counting.py").read_text()
-        make = text[text.index("def make("):text.index("def read(")]
-        self.assertNotIn("pixel", make)
+class ADecisionInputOnlyThroughTheEnvelope(unittest.TestCase):
+    def test_the_counting_envelope_carries_the_pixel_rows(self):
+        # Until #271's envelope slice, counting.make carried trace rows only. It now carries one row per
+        # pixel check, and the gate takes them only as authenticated in-process evidence
+        # (tests/test_jit_pixel_envelope.py); raw rows from a file never enter decide.
+        from expectrail.gate import record
+        from expectrail.jit import counting
+        envelope = counting.make(passing(), ENEMY_REPORT)
+        rows = [r for r in envelope["assessment"]["rows"] if r.get("kind") == "pixel"]
+        self.assertEqual(rows, assess.pixel_counting(passing(), ENEMY_REPORT))
+        with self.assertRaises(record.RecordError):
+            record.decide({"checks": 1, "passed": 1, "failed": 0, "needsReview": 0},
+                          {"status": "not-used", "checks": 0, "failed": 0, "needsReview": 0},
+                          generated=envelope["assessment"])
 
 
 if __name__ == "__main__":

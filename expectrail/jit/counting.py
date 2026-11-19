@@ -74,10 +74,17 @@ def make(run, report, certificate=None, *, trust=None):
         _validate_receipt(certificate)
     if not isinstance(report,str) or hashlib.sha256(report.encode()).hexdigest()!=run['inputs']['reportSha256']:
         raise ValueError('counting-evidence-mismatch: bug report digest differs')
+    # Trace rows, then one row per pixel check (#286), each recomputed from the source run. The two
+    # share one name space: the receipt's coverage and the gate's words name a row by its specId.
+    is_trusted=authenticated(run,certificate,trust)
+    rows=assess.counting(run,report,trusted=is_trusted)+assess.pixel_counting(run,report,trusted=is_trusted)
+    names=[row['specId'] for row in rows]
+    if len(names)!=len(set(names)):
+        raise ValueError('counting-evidence-mismatch: duplicate check identifiers across trace and pixel checks')
     result={'format':FORMAT,'sourceRun':copy.deepcopy(run),'bugReport':report,
             'sourceReceipt':copy.deepcopy(certificate),'assessment':{
                 'runSha256':digest_v1(run),'receiptSha256':digest_v1(certificate) if certificate is not None else None,
-                'rows':assess.counting(run,report,trusted=authenticated(run,certificate,trust))}}
+                'rows':rows}}
     validate(result,'generated-counting.v1')
     return result
 
@@ -214,7 +221,7 @@ def pixel_bench(records, out):
              'Offline, from the committed records under `bench/jit/stand-in/`; no replay, observer or model.',
              'These checks were written by hand, not by a model, and no trusted certificate is supplied, so rule 5',
              'never holds and nothing counts. The page shows which rules each check meets from its own runs.',
-             'Pixel rows are not an input to the gate decision yet; this is not a rate.', '',
+             'Pixel rows reach the gate decision only as authenticated evidence (rule 5); this is not a rate.', '',
              'Made by `python3 -m expectrail.jit.counting pixel-bench --records bench/jit/stand-in --out <page>`.', '',
              '| Record | Check | Predicate | Rules met | Counting | Why advisory |',
              '| --- | --- | --- | --- | --- | --- |'] + table
