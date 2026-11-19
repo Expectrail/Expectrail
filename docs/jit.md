@@ -1053,6 +1053,31 @@ python3 -m expectrail.jit.counting public-bench \
   --out /tmp/public-counting.md
 ```
 
+### The six rules on pixel checks (#286): reported, not counted
+
+Pixel checks are in a record's `pixelChecks`, which `counting` never read, so a screen-only check was
+advisory with no reason given. `assess.pixel_counting` recomputes the six rules for each pixel row from
+its own runs, never its `status` or `outcome`:
+
+| Rule | For a pixel row |
+| --- | --- |
+| 1 | Complete record, candidate withheld, 3 reps; the bug build fails 3 of 3 and the clean game passes 3 of 3 |
+| 2 | No near miss is replayed for a pixel check, so the base build is the only discriminator, and only when the candidate passes 3 of 3 |
+| 3 | `pixel_relevant`: the report names the check's bound object **and** its predicate's behaviour (`PIXEL_OBJECTS`, `PIXEL_PREDICATES`). The statement is never read. False negatives: synonyms outside the lists, `reaches`, the ground, and every diff-map claim |
+| 4 | Every run on all three builds is `pass` or `fail` (a gap in the window makes `needs-review`), one observer setting, a stable candidate |
+| 5 | Only the caller's `trusted`, as for trace checks |
+| 6 | Generator and model versions, model and prompt digest, the probe in the record, the observer setting |
+
+`counting.make` does not call it, so no pixel row reaches `decide` (tested). Wiring pixel rows into the
+counting envelope and the gate's visual-evidence policy is the next step. On the two committed pixel
+stand-ins ([page](measurements/271-pixel-counting.md)): 6 pixel checks, 0 counting. The three
+`faces-motion` checks on `enemy-walks-backwards` meet rules 1, 3 and 4; they miss 2 (the candidate is the
+no-fix patch), 5 and 6. The three bullet checks were captured, not judged, and meet rule 3 alone.
+
+```sh
+python3 -m expectrail.jit.counting pixel-bench --records bench/jit/stand-in --out /tmp/pixel-counting.md
+```
+
 ### Prepared pressure dispatches: not run live
 
 `python3 -m expectrail.jit.pressure correct` and `... adversary` print plans only. The
