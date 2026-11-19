@@ -40,7 +40,9 @@ moment.
 - Four mutations of the reader and of `merge` were each caught by the tests: an image taken despite
   an image made in code, the wrong owner body, the duplicate-path check removed, and runtime-only
   nodes not listed.
-- The full suite on the branch merged with main at 048a871: see the pull request.
+- The full suite on the branch merged with main at 73ac17f, with Godot installed:
+  5,461 tests, OK, 41 skipped. An earlier run, at 048a871, had one failure: the schema-pattern test
+  wanted a sample for the new image pattern. The pattern is now `^res://.+$` and has its sample.
 - The sandboxed path was not run here, because this machine has no bubblewrap.
 
 ## Not done
