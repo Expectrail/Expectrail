@@ -111,6 +111,39 @@ class DigestTest(unittest.TestCase):
         nan["assertion"]["boundary"]["tolerancePx"] = float("nan")
         self.assertEqual(approval.state(nan), approval.MISMATCH)
 
+    def test_an_approval_that_names_no_person_is_no_approval(self):
+        # #420: a matching digest with a blank reviewer used to count.
+        doc = approved()
+        for label, value in {"blank": "", "spaces": "   ", "missing": None, "a number": 7}.items():
+            with self.subTest(label):
+                bad = copy.deepcopy(doc)
+                if value is None:
+                    bad["approval"].pop("by")
+                else:
+                    bad["approval"]["by"] = value
+                self.assertEqual(approval.state(bad), approval.MISMATCH)
+                self.assertFalse(approval.approved(bad))
+        legacy = json.loads(SPEC.read_text(encoding="utf-8"))
+        legacy["approval"]["by"] = ""
+        self.assertEqual(approval.state(legacy), approval.MISMATCH)
+
+    def test_another_digest_field_is_never_read_as_legacy(self):
+        # #420: renaming specSha256 to specSha1 made an approval count as legacy.
+        doc = approved()
+        for name in ("specSha1", "specSha512", "SPECSHA256", "spec_sha256"):
+            with self.subTest(name):
+                bad = copy.deepcopy(doc)
+                bad["approval"][name] = bad["approval"].pop("specSha256")
+                self.assertEqual(approval.state(bad), approval.MISMATCH)
+                self.assertFalse(approval.approved(bad))
+        both = copy.deepcopy(doc)
+        both["approval"]["specSha1"] = "0" * 40
+        self.assertEqual(approval.state(both), approval.MISMATCH)
+
+    def test_the_writer_refuses_a_blank_name(self):
+        with self.assertRaisesRegex(SpecDraftError, "name is required"):
+            approved(by="  ")
+
     def test_no_approval_is_a_draft(self):
         for doc in (body(), dict(body(), approval=None), dict(body(), approval={}), "not a spec"):
             self.assertEqual(approval.state(doc), approval.NONE)
