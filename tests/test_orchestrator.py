@@ -1601,10 +1601,15 @@ class CancelOrderTest(Case):
         wait_for(lambda: worker.poll() is not None and gone(child), what="the worker and its child stopping")
 
     def test_a_worker_that_arrives_after_the_cancel_does_nothing(self):
+        # The clock is held at the moment just before the job was queued. With the 0.6 s test lease, a slow runner that
+        # reached cancel after the lease ran out saw a job no worker took in time and failed it, which is a
+        # different (and correct) path; this test is about cancel first, worker second (#649).
+        queued = st.now()
         job = self.job("instant")
-        self.store.cancel(job)
-        with contextlib.redirect_stderr(io.StringIO()):
-            status = runner.work(self.store, job, engines=STAND_INS)
+        with unittest.mock.patch.object(st, "now", return_value=queued):
+            self.store.cancel(job)
+            with contextlib.redirect_stderr(io.StringIO()):
+                status = runner.work(self.store, job, engines=STAND_INS)
         self.assertEqual((status["phase"], status["worker"], status["output"]), ("cancelled", None, None))
         self.assertFalse(self.store.paths(job).staging.exists())
 
