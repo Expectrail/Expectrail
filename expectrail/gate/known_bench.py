@@ -25,7 +25,6 @@ import argparse
 import hashlib
 import json
 import shutil
-import subprocess
 import sys
 import tempfile
 from concurrent.futures import ProcessPoolExecutor
@@ -75,8 +74,8 @@ def load_cases(path: Path = CASES) -> list[dict]:
 
 # --- one case --------------------------------------------------------------------------------------------
 def _patch(game: Path, patch: Path) -> None:
-    subprocess.run(["patch", "-p1", "--forward", "--batch", "--silent", "-d", str(game), "-i", str(Path(patch).resolve())],
-                   check=True, capture_output=True)
+    from harness import patching
+    patching.apply(game, Path(patch))
 
 
 def build_tree(dest: Path, patches: list[Path], root: Path = REPO) -> Path:
