@@ -17,6 +17,26 @@ The file names:
   node path or a group, plus the texture that object is drawn with (`res://`, a file in the
   project). Two roles may not name the same node or the same group.
 
+### The viewport and the tick rate must be the game's own
+
+The replay runs with what `project.godot` declares, so the config cannot change either value.
+Before a configured Godot replay starts, and again on the copy with the change under test applied,
+`expectrail.godot_project.require_declared_settings` compares:
+
+- `viewport` with `display/window/size/viewport_width` and `viewport_height`: the game's logical
+  viewport, in the game's own pixels. Godot's default, 1152 by 648, counts when they are unset.
+- `physicsTicksPerSecond` with `physics/common/physics_ticks_per_second` (default 60).
+
+If either differs, nothing runs, and the message names the field and both values. A value that is
+present but is not a whole number in range, or a key set twice, is refused too; it is never replaced
+by the default. Feature overrides such as `viewport_width.mobile` are not the setting the replay
+uses and are not compared. `expectrail inspect` reads the same values with the same function.
+
+A trace's own `viewport` is something else: the size of the window that was measured, in captured
+pixels. Headless it is usually the logical viewport. With frames captured it can be larger, when
+the game sets `display/window/size/window_width_override` and `window_height_override` (the bundled
+game draws 800 by 480 into a 1600 by 960 window).
+
 It does not name sizes. Configured Godot replays record every bound role's measured world and
 screen boxes, engine visibility and stable instance identity in each row's `roleObjects`.
 Drawing bounds take precedence over an explicitly labelled collision fallback. Groups are
