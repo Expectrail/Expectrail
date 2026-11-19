@@ -1,0 +1,57 @@
+{
+  "format": "expectrail.jit-pressure/v1",
+  "kind": "correct",
+  "status": "complete",
+  "reason": null,
+  "replays": 9,
+  "maxReplays": 64,
+  "fixerInvocations": 0,
+  "apiCapUsd": 0,
+  "rows": [
+    {
+      "case": "enemy-walks-backwards/public-undo",
+      "specId": "jit-px-enemy-faces-motion-hold-right",
+      "outcomes": [
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "kind": "pixel"
+    },
+    {
+      "case": "enemy-walks-backwards/public-undo",
+      "specId": "jit-px-enemy-faces-motion-reverse",
+      "outcomes": [
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "kind": "pixel"
+    },
+    {
+      "case": "enemy-walks-backwards/public-undo",
+      "specId": "jit-px-enemy-faces-motion-move-fire-right",
+      "outcomes": [
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "kind": "pixel"
+    }
+  ],
+  "adversarySuccesses": 0,
+  "expectedCases": 1,
+  "oracle": null,
+  "sourceDigests": {
+    "enemy-walks-backwards": "33b91b25708ea8731ff2bfed73d41a5b9c157b9b07148e19ae5683f8b95c727f"
+  },
+  "pixelObserver": {
+    "name": "visual-sensor",
+    "setting": {
+      "model": "expectrail.template-foreground/v3",
+      "bankSha256": "b033bf03e7c5e7c71d1c596462c03d1735d048cb993865ec0afbaf1c2e96cc60"
+    },
+    "every": 10,
+    "first": null
+  }
+}
