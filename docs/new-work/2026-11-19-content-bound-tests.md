@@ -41,9 +41,11 @@ approval from before binding. No product code changes except one line in the kno
   Second run, with the rule named: 12 min 18 s. Every row (both intents, all eight cases) is identical
   to the stored record, and `gate.md` renders byte for byte the same; only `specsSha256` changed.
 - The full suite on this branch merged with main at 8c2f9a2: 5,288 tests, OK, 41 skipped. The first full
-  run found one more user of the stand-in gate (`tests.test_linked_bug_intent.BenchDriver`), fixed by
-  letting the stand-in take `rule` with no default value required; that test still checks the rule.
-  The film rehearsal named in #644 passed in both full runs.
+  run (5,288 tests, 1 error) found one more user of the stand-in gate
+  (`tests.test_linked_bug_intent.BenchDriver`, which checks and removes `rule` before calling it), fixed
+  by giving the stand-in's `rule` the default `None`; the known bench's own test still checks the rule.
+  No other test failed in either full run, so the film rehearsal #644 names passed too (I did not
+  identify which test it is).
 
 ## Not done
 - No committed approval was changed: the four committed checks are as Sean's commit left them.
