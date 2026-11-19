@@ -995,7 +995,7 @@ does not promise that a provider will never change an aliased model's internals.
 A counting check that fails on the candidate rejects. One that passes can demonstrate a fix
 only with rule 1's base-only failure and clean success, three of three. It cannot override an
 approved or held-out failure, missing required coverage, a missing observer or required isolation.
-These records currently carry trace evidence only. Under the existing `both` observer policy a generated pass cannot clear the change without per-check visual evidence; it yields needs-review even when an observer is configured. A validated failure can still veto. Wiring dual-observer generated evidence belongs to the observation work, not this patch. The report names counting/advisory checks and says this base-only condition explicitly. Tests:
+Under the `both` observer policy a counting generated pass needs per-check visual evidence. A trace row is the engine's record alone, so with a counting trace row the result is needs-review even when an observer is configured. A counting pixel row (below) is its own visual evidence: its runs are a trusted observer's verdicts over frames where the engine's record also places the object, so it can demonstrate a repair under `both`. A validated failure can still veto. The report names counting/advisory checks and says this base-only condition explicitly. Tests:
 `test_counting_alone_cannot_clear_fix_without_rule_1`,
 `test_a_counting_label_and_all_true_flags_cannot_replace_actual_base_failure`, and
 `test_authenticated_counting_catch_rejects_and_public_failure_still_vetoes`.
@@ -1053,7 +1053,7 @@ python3 -m expectrail.jit.counting public-bench \
   --out /tmp/public-counting.md
 ```
 
-### The six rules on pixel checks (#286): reported, not counted
+### The six rules on pixel checks (#286)
 
 Pixel checks are in a record's `pixelChecks`, which `counting` never read, so a screen-only check was
 advisory with no reason given. `assess.pixel_counting` recomputes the six rules for each pixel row from
@@ -1068,8 +1068,17 @@ its own runs, never its `status` or `outcome`:
 | 5 | Only the caller's `trusted`, as for trace checks |
 | 6 | Generator and model versions, model and prompt digest, the probe in the record, the observer setting |
 
-`counting.make` does not call it, so no pixel row reaches `decide` (tested). Wiring pixel rows into the
-counting envelope and the gate's visual-evidence policy is the next step. On the two committed pixel
+`counting.make` carries these rows in the `generated-counting/v1` envelope after the trace rows (added
+November 19): each has `kind: "pixel"`, its `observer` and `setting`, and its runs in the pixel
+vocabulary (`pass`, `fail`, `needs-review`). The envelope and the gate record's `countingChecks` take
+the same closed row shapes (up to 8 trace and 4 pixel rows), and a pixel check may not share a trace
+check's id. Like a trace row, a pixel row is recomputed from the source run on every read, so a changed
+row or run is refused. Under `both`, a counting pixel row is its own visual evidence (above), and it
+still never clears a change alone. The pressure dispatches replay trace checks only: when a pixel check
+counts they stop (`pixel-checks-not-replayed`) rather than replay fewer checks than count. Example:
+[`generated-counting-pixel.json`](../contracts/examples/generated-counting-pixel.json), made by
+`counting.make` from the enemy stand-in with no trust, so nothing counts. Tests:
+`tests/test_jit_pixel_envelope.py`. On the two committed pixel
 stand-ins ([page](measurements/271-pixel-counting.md)): 6 pixel checks, 0 counting. The three
 `faces-motion` checks on `enemy-walks-backwards` meet rules 1, 3 and 4; they miss 2 (the candidate is the
 no-fix patch), 5 and 6. The three bullet checks were captured, not judged, and meet rule 3 alone.

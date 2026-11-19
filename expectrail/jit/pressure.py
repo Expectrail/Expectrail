@@ -49,6 +49,11 @@ def frozen(folder, trust):
     proof=counting.read(envelope,trust=trust)
     counted={r['specId'] for r in proof.block['rows'] if record.counting_row(r)}
     if not counted:raise Stop('no-counting-checks: no fixer or model may start')
+    if any(r.get('kind')=='pixel' for r in proof.block['rows'] if r['specId'] in counted):
+        # The pressure replays judge trace predicates from the engine's record; a pixel check needs the
+        # observer's answers on the candidate's frames, which this dispatch does not capture. Never
+        # replay fewer frozen checks than count: stop instead (#271, #286).
+        raise Stop('pixel-checks-not-replayed: a counting pixel check needs observed frames this dispatch does not capture')
     run=envelope['sourceRun'];entries=[p for p in run['proposed'] if p['spec']['id'] in counted]
     digests={p['id']:p['routeSha256'] for p in run['probes']};routes={}
     for pid in sorted({pid for p in entries for pid in p['probeIds']}):

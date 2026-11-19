@@ -375,10 +375,12 @@ def decide(counts: dict, held: dict, isolation: dict | None = None, check_proble
         reasons.append(f"not-exercised: {held['routes']} held-out route(s) ran and judged no check")
     if observers and observers["rule"] == BOTH and observers["visual"] is None and not counts["needsReview"]:
         reasons.append("not-exercised: the required visual observer is disabled")
-    if counting and observers and observers['rule'] == BOTH:
-        # These counting records contain trace evidence, not dual-observer
-        # results. Presence of a configured observer does not mean it judged
-        # this new predicate. Failures above still veto; passes cannot clear.
+    if observers and observers['rule'] == BOTH and any(r.get('kind') != 'pixel' for r in counting):
+        # A counting trace row is the engine's record alone: a configured visual observer did not judge
+        # its predicate, so it cannot help clear under both. Failures above still veto. A counting pixel
+        # row (#286) is its own per-check visual evidence: its runs are a trusted observer's verdicts over
+        # frames where the engine's record also places the object (expectrail/jit/pixel.py), all six rules
+        # recomputed from them. It still never clears a change alone (above).
         reasons.append('not-exercised: counting generated checks lack the required visual evidence')
     # Legacy callers supply only checks/failed/needsReview; persisted records always include passed.
     if "passed" in counts and counts["passed"] + counts["failed"] + counts["needsReview"] != counts["checks"]:
@@ -944,7 +946,8 @@ def _repair_words(doc: dict) -> str:
         counted = [r for r in rows if counting_row(r)]
         repaired = [r for r in counted if r['candidate'] == ['pass'] * REPAIR_RUNS]
         if intent_of(doc) == 'fix' and repaired:
-            return (f"a fix demonstrated by generated check {repaired[0]['specId']}; "
+            what = 'generated pixel check' if repaired[0].get('kind') == 'pixel' else 'generated check'
+            return (f"a fix demonstrated by {what} {repaired[0]['specId']}; "
                     "base alone fails 3/3, clean and candidate pass 3/3; all six counting rules met")
     intent = intent_of(doc)
     if intent == "none":
