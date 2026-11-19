@@ -49,6 +49,7 @@ const ROUTE_FORMATS := ["expectrail.route/v0"]
 var _events: Dictionary = {}   # tick -> action or pointer events, in route array order
 var _pointer_position := Vector2.ZERO
 var _pointer_mask: int = 0
+var _input_probe := false
 var _ticks: int = 0
 var _tick: int = 0
 var _trace: Array = []
@@ -119,6 +120,11 @@ func _ready() -> void:
 	# below inherits this. A game that never pauses is not affected.
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	seed(int(args.get("seed", "1")))
+	_input_probe = args.has("input-probe")
+	if _input_probe and DisplayServer.get_name() == "headless":
+		get_window().size = Vector2i(
+			int(ProjectSettings.get_setting("display/window/size/viewport_width", get_window().size.x)),
+			int(ProjectSettings.get_setting("display/window/size/viewport_height", get_window().size.y)))
 	_trace_path = args.get("trace", "")
 	_record_ui_integers = args.get("ui-integers", "false") == "true"
 	_capture_fps = int(args.get("capture-fps", "0"))
@@ -129,7 +135,7 @@ func _ready() -> void:
 	_sprite_name = args.get("sprite", "Sprite2D")
 	_enemy_class = StringName(args.get("enemies", "Enemy"))
 	_projectile_class = StringName(args.get("projectiles", "Bullet"))
-	if args.has("bindings"):
+	if args.has("bindings") and not _input_probe:
 		var parsed = JSON.parse_string(args["bindings"])
 		if typeof(parsed) != TYPE_DICTIONARY:
 			push_error("expectrail: --bindings must be a JSON object of role bindings")
@@ -394,7 +400,7 @@ func record() -> void:
 			return
 		_player = _roles.player
 		_sprite = null  # a configured player may despawn and be replaced
-	elif _player == null:
+	elif _player == null and not _input_probe:
 		_player = _find_player()
 		if _stopped:
 			return
@@ -447,6 +453,44 @@ func record() -> void:
 		_finish()
 
 
+func _inspect_inputs() -> Dictionary:
+	var controls: Array = []
+	var pending: Array = [get_tree().current_scene]
+	var visited := 0
+	var truncated := false
+	while not pending.is_empty():
+		var node = pending.pop_front()
+		if node == null:
+			continue
+		visited += 1
+		if visited > 10000 or controls.size() >= 128:
+			truncated = true
+			break
+		pending.append_array(node.get_children())
+		if not node is BaseButton:
+			continue
+		if node.get_viewport() != get_viewport():
+			truncated = true  # subviewport targeting is not supported; never guess its coordinates
+			continue
+		var transform: Transform2D = node.get_global_transform_with_canvas()
+		var area := Rect2(transform * Vector2.ZERO, Vector2.ZERO)
+		for corner in [Vector2(node.size.x, 0), node.size, Vector2(0, node.size.y)]:
+			area = area.expand(transform * corner)
+		var connections: Array = []
+		for connection in node.get_signal_connection_list("pressed"):
+			var call: Callable = connection["callable"]
+			var target = call.get_object()
+			connections.append({"signal": "pressed", "target": str(get_tree().current_scene.get_path_to(target)) if target is Node else "<not a node>", "method": str(call.get_method())})
+		controls.append({"path": str(get_tree().current_scene.get_path_to(node)),
+			"text": str(node.text) if node is Button else "", "visible": node.is_visible_in_tree(),
+			"enabled": not node.disabled and node.can_process(),
+			"box": [snappedf(area.position.x, 0.001), snappedf(area.position.y, 0.001), snappedf(area.end.x, 0.001), snappedf(area.end.y, 0.001)],
+			"connections": connections})
+	var size := get_viewport().get_visible_rect().size
+	return {"tick": _tick - 1, "viewport": [size.x, size.y], "paused": get_tree().paused,
+		"buttons": controls, "truncated": truncated}
+
+
 func _capture_placement() -> void:
 	# Movie Maker writes this draw. Record its actual physics interval and camera;
 	# 50 ticks at 60 fps includes draws with no new physics tick. Never divide rates.
@@ -495,6 +539,8 @@ func _finish() -> void:
 				"objectBoxes": true,
 				# Where a row's ground may come from: tiles, and the platforms counted (see _platform_bodies).
 				"groundSources": {"tiles": not _layers.is_empty(), "bodies": _platforms.size()}}}
+		if _input_probe:
+			out["inputProbe"] = _inspect_inputs()
 		var surfaces := _level_surfaces()
 		if not surfaces.is_empty():
 			out["levelSurfaces"] = surfaces

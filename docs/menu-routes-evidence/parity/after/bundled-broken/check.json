@@ -1,0 +1,132 @@
+{
+  "result": "fail",
+  "verdict": {
+    "format": "expectrail.verdict/v0",
+    "spec": {
+      "id": "player-stays-above-ground",
+      "sha256": "4829b493e18b84208fcf9790004d822b775d12c3cb3505b4063b3ba2a6585d55"
+    },
+    "observations": {
+      "sha256": "ca33194ef8b37ec36bbfbec71775ffcc359c60b2a67bd36e1de932f48d12742a"
+    },
+    "result": "fail",
+    "reason": "player is 22.25px past the boundary (above 780, tolerance 20) (first at frame 5, 21 frames)",
+    "firstFrame": 5,
+    "evidence": [
+      {
+        "frame": 5,
+        "detail": "player is 22.25px past the boundary (above 780, tolerance 20)",
+        "boxes": {
+          "player": [
+            758.0,
+            693.25,
+            843.0,
+            802.25
+          ],
+          "ground": [
+            -3199.5,
+            780.0,
+            4800.5,
+            1580.0
+          ]
+        }
+      },
+      {
+        "frame": 6,
+        "detail": "player is 30.126px past the boundary (above 780, tolerance 20)",
+        "boxes": {
+          "player": [
+            758.5,
+            701.126,
+            843.5,
+            810.126
+          ],
+          "ground": [
+            -3199.0,
+            780.0,
+            4801.0,
+            1580.0
+          ]
+        }
+      },
+      {
+        "frame": 7,
+        "detail": "player is 39.166px past the boundary (above 780, tolerance 20)",
+        "boxes": {
+          "player": [
+            759.0,
+            710.166,
+            844.0,
+            819.166
+          ],
+          "ground": [
+            -3198.5,
+            780.0,
+            4801.5,
+            1580.0
+          ]
+        }
+      },
+      {
+        "frame": 8,
+        "detail": "player is 49.376px past the boundary (above 780, tolerance 20)",
+        "boxes": {
+          "player": [
+            759.5,
+            720.376,
+            844.5,
+            829.376
+          ],
+          "ground": [
+            -3198.0,
+            780.0,
+            4802.0,
+            1580.0
+          ]
+        }
+      },
+      {
+        "frame": 9,
+        "detail": "player is 60.75px past the boundary (above 780, tolerance 20)",
+        "boxes": {
+          "player": [
+            760.0,
+            731.75,
+            845.0,
+            840.75
+          ],
+          "ground": [
+            -3197.5,
+            780.0,
+            4802.5,
+            1580.0
+          ]
+        }
+      }
+    ],
+    "framesJudged": 26,
+    "evaluator": {
+      "name": "expectrail.evaluator",
+      "version": "0.1.0"
+    },
+    "coverage": {
+      "status": "exercised",
+      "semanticResult": "fail",
+      "framesObserved": 120,
+      "framesExpected": 120,
+      "framesRequired": 2,
+      "completeWindow": true
+    }
+  },
+  "reason": "player is 22.25px past the boundary (above 780, tolerance 20) (first at frame 5, 21 frames)",
+  "frame": 5,
+  "framesDir": "/workspace/work/handover-259-menu-routes/evidence/after/bundled-broken/frames",
+  "visualWhy": null,
+  "observed": {
+    "engine": "fail",
+    "visual": "not-asked",
+    "visualAnswerSha256": null
+  },
+  "visualObservations": null,
+  "visualVerdict": null
+}

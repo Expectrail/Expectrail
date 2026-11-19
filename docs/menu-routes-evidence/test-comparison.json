@@ -1,0 +1,31 @@
+{
+  "before": {
+    "tests": 4300,
+    "seconds": 450.78,
+    "failingNames": [],
+    "skips": 53,
+    "ok": true,
+    "log": "logs/before.log"
+  },
+  "after": {
+    "tests": 4313,
+    "seconds": 467.39,
+    "failingNames": [
+      "test_no_reproduction_and_desync_construct_no_transport (tests.test_ingest_repair.IngestRepair.test_no_reproduction_and_desync_construct_no_transport) (desync=False)"
+    ],
+    "skips": 54,
+    "ok": false,
+    "log": "logs/after.log"
+  },
+  "after-final": {
+    "tests": 4313,
+    "seconds": 408.599,
+    "failingNames": [],
+    "skips": 54,
+    "ok": true,
+    "log": "logs/after-final.log"
+  },
+  "sameFinalFailingNames": true,
+  "baselineReusedFromPriorHandover": true,
+  "baselineTree": "ca054841c4739c9d4fcd389b82075fabd6ee9882"
+}

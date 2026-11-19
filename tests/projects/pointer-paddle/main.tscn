@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+[ext_resource type="Script" path="res://player.gd" id="player"]
+[ext_resource type="Texture2D" path="res://paddle.svg" id="art"]
+[node name="Game" type="Node2D"]
+[node name="Player" type="CharacterBody2D" parent="."]
+position = Vector2(160, 140)
+script = ExtResource("player")
+[node name="Sprite2D" type="Sprite2D" parent="Player"]
+texture = ExtResource("art")

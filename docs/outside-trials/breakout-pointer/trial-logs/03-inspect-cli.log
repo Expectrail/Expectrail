@@ -1,0 +1,49 @@
+{
+  "inputHints": {
+    "pointer": [
+      {
+        "node": "Paddle",
+        "script": "res://scripts/paddle.gd"
+      }
+    ],
+    "startControls": [
+      "UI/GameMenu/CenterContainer/VBoxContainer/Start"
+    ],
+    "menus": [
+      "UI/GameMenu/CenterContainer/VBoxContainer/Start",
+      "UI/GameMenu/CenterContainer/VBoxContainer/MusicToggle",
+      "UI/GameMenu/CenterContainer/VBoxContainer/SFXToggle",
+      "UI/GameMenu/CenterContainer/VBoxContainer/B_Credits"
+    ]
+  },
+  "entryScene": "res://game.tscn",
+  "scenes": [
+    "res://game.tscn",
+    "res://scenes/ball.tscn",
+    "res://scenes/paddle.tscn",
+    "res://scenes/walls.tscn"
+  ],
+  "players": [
+    "Paddle",
+    "Ball"
+  ],
+  "textures": [],
+  "unresolvedBindings": [
+    "Supply the player node path and its res:// image in bindings.player; the starting scene has no unique player."
+  ],
+  "cameras": [],
+  "groundLayers": [],
+  "platformBodies": [
+    "Walls"
+  ],
+  "otherCharacters": [],
+  "actions": [
+    "pause"
+  ],
+  "builtInActions": false,
+  "physicsTicksPerSecond": 60,
+  "viewport": [
+    360,
+    640
+  ]
+}

@@ -507,3 +507,13 @@ legal-edge frames of the clean run. [The clipped-player follow-up](dodge-clipped
 that visible-size comparison with unchanged thresholds: both physical-body stand-ins now give
 accept/reject/accept and replay their recordings. These remain plumbing controls, not vision evidence.
 The approved check and anchored RULES are unchanged. No live run or workflow was dispatched.
+
+## Breakout pointer/menu follow-up (2026-11-16)
+
+At the same independent author's pinned commit, config-only onboarding now starts
+the round and moves the paddle. Three rendered traces are byte-identical; the
+harmless trace matches them. Both raw draft engine checks pass on pinned/harmless;
+the broken paddle fails its bounds check at checked frame 20. All three CLI jobs
+remain needs-review (drafts, zero approved checks run, no vision). This is not a
+verified outside-project accept. The root-path registry stop remains. See the
+[full trial, commands, stops and evidence](outside-trials/breakout-pointer/report.md).

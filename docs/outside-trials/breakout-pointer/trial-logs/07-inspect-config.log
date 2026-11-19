@@ -1,0 +1,14 @@
+Starting scene: res://game.tscn
+Player candidates: Paddle, Ball
+Player texture candidates: none found
+Supply the player node path and its res:// image in bindings.player; the starting scene has no unique player.
+Input actions: pause
+No authored movement actions; Paddle reads pointer position in res://scripts/paddle.gd. Pointer steering is a candidate; replay must demonstrate movement.
+Possible start/menu controls: UI/GameMenu/CenterContainer/VBoxContainer/Start, UI/GameMenu/CenterContainer/VBoxContainer/MusicToggle, UI/GameMenu/CenterContainer/VBoxContainer/SFXToggle, UI/GameMenu/CenterContainer/VBoxContainer/B_Credits
+init and route --auto use a disposable engine probe to measure their positions and pressed connections.
+Cameras: none found
+Ground layers: none found
+Static or animated platform bodies: Walls
+Viewport: 360 640 pixels. Physics ticks per second: 60
+Ground candidates found. Replay to check which surfaces actually support the player.
+This reads saved scenes. Runtime visibility, input coverage and replay stability need a replay.

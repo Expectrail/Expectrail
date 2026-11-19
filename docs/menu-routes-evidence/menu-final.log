@@ -1,0 +1,21 @@
+test_ambiguous_unconnected_disabled_and_truncated_menu_refuse (tests.test_menu_routes.PlanTest.test_ambiguous_unconnected_disabled_and_truncated_menu_refuse) ... ok
+test_hidden_menu_is_not_clicked_when_game_is_already_running (tests.test_menu_routes.PlanTest.test_hidden_menu_is_not_clicked_when_game_is_already_running) ... ok
+test_init_cli_refuses_ambiguity_without_writing_a_draft (tests.test_menu_routes.PlanTest.test_init_cli_refuses_ambiguity_without_writing_a_draft) ... ok
+test_init_uses_measured_button_and_sweeps_without_pause (tests.test_menu_routes.PlanTest.test_init_uses_measured_button_and_sweeps_without_pause) ... ok
+test_inspect_reports_pointer_script_and_menu_without_running_game (tests.test_menu_routes.PlanTest.test_inspect_reports_pointer_script_and_menu_without_running_game) ... ok
+test_legacy_action_plan_is_byte_equivalent_without_engine_probe (tests.test_menu_routes.PlanTest.test_legacy_action_plan_is_byte_equivalent_without_engine_probe) ... ok
+test_module_loads_without_numpy_or_pillow (tests.test_menu_routes.PlanTest.test_module_loads_without_numpy_or_pillow) ... ok
+test_normal_replays_do_not_request_probe (tests.test_menu_routes.PlanTest.test_normal_replays_do_not_request_probe) ... ok
+test_pause_only_is_refused_and_names_actions_and_found_controls (tests.test_menu_routes.PlanTest.test_pause_only_is_refused_and_names_actions_and_found_controls) ... ok
+test_pending_pointer_review_does_not_run_the_game (tests.test_menu_routes.PlanTest.test_pending_pointer_review_does_not_run_the_game) ... ok
+test_pointer_mentions_in_comments_or_strings_are_not_evidence (tests.test_menu_routes.PlanTest.test_pointer_mentions_in_comments_or_strings_are_not_evidence) ... ok
+test_probe_failure_log_is_retained (tests.test_menu_routes.PlanTest.test_probe_failure_log_is_retained) ... ok
+test_unmoved_pointer_replay_is_not_published (tests.test_menu_routes.PlanTest.test_unmoved_pointer_replay_is_not_published) ... ok
+test_init_cli_writes_a_starting_pointer_draft (tests.test_menu_routes.RealMenuTest.test_init_cli_writes_a_starting_pointer_draft) ... ok
+test_pointer_only_project_generates_a_replayable_sweep (tests.test_menu_routes.RealMenuTest.test_pointer_only_project_generates_a_replayable_sweep) ... ok
+test_probe_measures_menu_then_auto_route_moves_three_identical_times (tests.test_menu_routes.RealMenuTest.test_probe_measures_menu_then_auto_route_moves_three_identical_times) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 28.126s
+
+OK
