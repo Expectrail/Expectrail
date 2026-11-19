@@ -295,10 +295,11 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
             raise SystemExit(str(exc)) from exc
     else:
         config = project
-    from expectrail.godot_project import configured_scene, require_gdscript
+    from expectrail.godot_project import configured_scene, require_declared_settings, require_gdscript
     try:
         require_gdscript(game, config, within=within)
         selected_scene = configured_scene(game, config)
+        require_declared_settings(game, config)
     except tree.TreeProblem as exc:
         raise SystemExit(f"the game cannot be replayed as it stands: {exc}") from exc
     except (ValueError, OSError) as exc:
@@ -351,6 +352,7 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
         try:
             require_gdscript(work, config)
             configured_scene(work, config)
+            require_declared_settings(work, config, changed=bool(ordered))
         except tree.TreeProblem as exc:
             raise SystemExit(f"the game cannot be replayed as it stands: {exc}") from exc
         except (ValueError, OSError) as exc:
