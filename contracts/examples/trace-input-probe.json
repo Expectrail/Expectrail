@@ -1,0 +1,67 @@
+{
+  "format": "expectrail.trace/v0",
+  "ticks": 10,
+  "physicsTicksPerSecond": 60,
+  "rows": [
+    {
+      "tick": 0
+    },
+    {
+      "tick": 1
+    },
+    {
+      "tick": 2
+    },
+    {
+      "tick": 3
+    },
+    {
+      "tick": 4
+    },
+    {
+      "tick": 5
+    },
+    {
+      "tick": 6
+    },
+    {
+      "tick": 7
+    },
+    {
+      "tick": 8
+    },
+    {
+      "tick": 9
+    }
+  ],
+  "inputProbe": {
+    "tick": 9,
+    "viewport": [
+      320,
+      180
+    ],
+    "paused": true,
+    "truncated": false,
+    "buttons": [
+      {
+        "path": "Menu/Start",
+        "text": "Start",
+        "box": [
+          40,
+          10,
+          120,
+          50
+        ],
+        "visible": true,
+        "enabled": true,
+        "connections": [
+          {
+            "signal": "pressed",
+            "target": "Player",
+            "method": "start_play"
+          }
+        ]
+      }
+    ]
+  }
+}

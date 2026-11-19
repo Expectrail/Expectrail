@@ -104,7 +104,26 @@ def render(root, source=None):
     route_name, actions = inputs(root, config)
     info = onboarding.inspect(root)
     pending = source == PENDING
-    if pending and doc != {k: v for k, v in onboarding.proposal(root, info).items() if k != "route"}:
+    planned = None
+    if pending:
+        candidate = json.loads(local_file(root, route_name).read_bytes())
+        if any("pointer" in e for e in candidate.get("events", [])):
+            # Reviewing a saved engine-measured route must never execute the game.
+            # Its content-addressed file is already checked by inputs(); validate
+            # its closed contract and input/viewport bounds before showing it.
+            from expectrail.contracts import canonical_v1, validate
+            canonical_v1(candidate)
+            validate(candidate, "route")
+            for event in candidate["events"]:
+                if event["tick"] >= candidate["ticks"]:
+                    raise ValueError("The saved route has an event beyond its end.")
+                if "action" in event and event["action"] not in config["inputActions"]:
+                    raise ValueError("The saved route names an input outside the project map.")
+                if "pointer" in event and any(not 0 <= n < size for n, size in
+                                              zip(event["pointer"]["position"], config["viewport"])):
+                    raise ValueError("The saved route has a pointer outside the project viewport.")
+            planned = candidate
+    if pending and doc != {k: v for k, v in onboarding.proposal(root, info, planned_route=planned).items() if k != "route"}:
         raise ValueError("The binding review file differs from the current project. Review the changes and rerun init.")
     parts = ['<!doctype html><html lang="en"><head><meta charset="utf-8">',
              '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data:; '

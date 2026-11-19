@@ -1,0 +1,39 @@
+{
+  "format": "expectrail.test-spec/v0",
+  "id": "breakout-ball-starts",
+  "instruction": "Draft: after Start is clicked and released at tick 14, the downward-launched ball should be below y=300 during frames 40..50. Require the paddle-left-lane checkpoint to confirm the round was exercised. Review the source-derived timing assumption and generated route before approval.",
+  "objects": {
+    "ball": {
+      "prompt": "white ball"
+    }
+  },
+  "assertion": {
+    "type": "never-crosses",
+    "object": "ball",
+    "boundary": {
+      "axis": "y",
+      "value": 300,
+      "side": "below",
+      "tolerancePx": 0
+    }
+  },
+  "window": {
+    "fromFrame": 40,
+    "toFrame": 50
+  },
+  "coverage": {
+    "minFrames": 11,
+    "reached": [
+      {
+        "type": "position-region",
+        "fromTick": 12,
+        "box": [
+          0,
+          590,
+          80,
+          640
+        ]
+      }
+    ]
+  }
+}

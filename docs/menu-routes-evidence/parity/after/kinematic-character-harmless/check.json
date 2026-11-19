@@ -1,0 +1,41 @@
+{
+  "result": "needs-review",
+  "verdict": {
+    "format": "expectrail.verdict/v0",
+    "spec": {
+      "id": "player-stays-above-ground",
+      "sha256": "4829b493e18b84208fcf9790004d822b775d12c3cb3505b4063b3ba2a6585d55"
+    },
+    "observations": {
+      "sha256": "66a2726d231b064312cb2d725da00a3b2dc78dcc34687f3f14612987bdb796e7"
+    },
+    "result": "pass",
+    "reason": "no violation in 120 frames",
+    "firstFrame": null,
+    "evidence": [],
+    "framesJudged": 120,
+    "evaluator": {
+      "name": "expectrail.evaluator",
+      "version": "0.1.0"
+    },
+    "coverage": {
+      "status": "exercised",
+      "semanticResult": "pass",
+      "framesObserved": 120,
+      "framesExpected": 120,
+      "framesRequired": 2,
+      "completeWindow": true
+    }
+  },
+  "reason": "the engine's record passes; no visual observer was asked, so this is not a pass",
+  "frame": null,
+  "framesDir": "/workspace/work/handover-259-menu-routes/evidence/after/kinematic-character-harmless/frames",
+  "visualWhy": null,
+  "observed": {
+    "engine": "pass",
+    "visual": "not-asked",
+    "visualAnswerSha256": null
+  },
+  "visualObservations": null,
+  "visualVerdict": null
+}

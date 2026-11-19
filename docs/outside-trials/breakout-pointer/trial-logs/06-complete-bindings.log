@@ -1,0 +1,3 @@
+Completed the draft config, selecting Paddle as player and Ball as ball, with their own art. draft remains true. No approval added.
+Generated route: routes/draft-first-0a650cac4349dcfb.json
+Draft pointer sweep from script hints and engine viewport; replay must demonstrate movement. Start: UI/GameMenu/CenterContainer/VBoxContainer/Start, pressed → GameManager:_on_start_pressed, viewport [180.0, 290.0].

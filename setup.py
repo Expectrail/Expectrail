@@ -29,6 +29,7 @@ BUNDLED_MODULES = {
         "explanation",
         "fixer_budget",
         "godot_project",
+        "input_discovery",
         "inspection",
         "legacy",
         "observers",
