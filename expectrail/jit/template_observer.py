@@ -286,6 +286,9 @@ class TemplateSensorObserver:
         witness = self.witnesses[role]
         try:
             where = radial.paths(trace, [n for n in planned if n in on_disk], role, self.fps, witness["pathTicks"])
+            # Every other object the engine logged in each frame (the player and the other roles): one within the
+            # witness's clearance of a path means that box is not judged (agents/template_radial.py ``crowded``).
+            others = radial._others(trace, [n for n in planned if n in on_disk], self.fps, role)
         except sensor.SensorError as exc:
             raise pixel.PixelError(f"the engine's boxes of {role} cannot be read: {exc}") from exc
         rows = []
@@ -297,6 +300,10 @@ class TemplateSensorObserver:
             if logged is None:
                 rows.append({"frame": n, "asked": False,
                              "note": f"the engine's record gives no boxes of {role} for this frame"})
+                continue
+            if logged and others[n] is None:
+                rows.append({"frame": n, "asked": False,
+                             "note": f"the engine's record cannot say what else is beside each {role} in this frame"})
                 continue
             try:
                 image = sensor._image(on_disk[n], mode="RGB")
@@ -317,7 +324,8 @@ class TemplateSensorObserver:
             boxes = []
             for ident, before, now, age in shown:
                 try:
-                    row = radial.look(witness, rgb, before, now, age)
+                    row = radial.look(witness, rgb, before, now, age,
+                                      others=radial._neighbours(logged, ident, others[n]))
                 except (sensor.SensorError, ValueError, KeyError, TypeError) as exc:
                     raise pixel.PixelError(f"the radial witness could not look at {role} {ident} in frame {n}: "
                                            f"{' '.join(str(exc).split())[:160]}") from exc
@@ -410,7 +418,13 @@ BANK_OBJECTS = ("enemy",)
 #   for an 800 x 480 viewport), the same size as its logged collision box (a circle of radius 8).
 # - "fadesAfterTicks": its Timer (the default 1 s, 120 ticks at the game's 120 a second) calls destroy, which
 #   fades the sprite out over 0.3 s (game/platformer/player/bullet.tscn); from then on a box is a gap.
-RADIAL_OBJECTS = {"bullet": {"art": "player/bullet.webp", "side": 32, "fadesAfterTicks": 120}}
+# - "clearPx": how far another bullet's box must stay from the area searched along a bullet's path for the bullet to
+#   be judged; any other logged box (the player, an enemy) must not touch that area at all. 0: measured on the
+#   calibration replays on November 19, a clean bullet whose searched area touched no other logged box had rings
+#   within 2.5 of a profile (the limit is 12) at every gap, down to 0 to 3 pixels; one overlapping another bullet
+#   reached 14.3. Its Glow (additive, alpha 0.25) reaches about 27 frame pixels beyond its box, but is too faint
+#   there to move the rings (docs/new-work/2026-11-19-sensor-bullet.md).
+RADIAL_OBJECTS = {"bullet": {"art": "player/bullet.webp", "side": 32, "fadesAfterTicks": 120, "clearPx": 0}}
 BANK_CATALOGUE = Path(__file__).resolve().parents[2] / "contracts" / "examples" / "template-foreground-catalogue.json"
 CLEAN_GAME = Path(__file__).resolve().parents[2] / "game" / "platformer"
 
@@ -485,7 +499,8 @@ def add_radial(bank: dict, clean_runs, validation_run, *, game, clean_tree, obje
             rgba = np.asarray(image.convert("RGBA"))
         witness, counts = radial.calibrate(clean_runs, validation_run, role=role, art_rgba=rgba,
                                            art={"path": source["path"], "sha256": source["sha256"]},
-                                           side=recipe["side"], fades=recipe["fadesAfterTicks"], clean_tree=clean_tree)
+                                           side=recipe["side"], fades=recipe["fadesAfterTicks"],
+                                           clear=recipe["clearPx"], clean_tree=clean_tree)
         if not witness["profiles"]:
             # No clean frame located the sprite: there is nothing to witness it with. The role is left out, so
             # the observer refuses it ("its bank holds no template of it").

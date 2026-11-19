@@ -828,6 +828,7 @@
             "rings",
             "pathTicks",
             "fadesAfterTicks",
+            "clearPx",
             "locateFloor",
             "maxDistance",
             "profiles",
@@ -879,6 +880,12 @@
                 "null"
               ],
               "minimum": 1
+            },
+            "clearPx": {
+              "description": "How far, in frame pixels, the box of another object of the same role must stay from the area searched along the object's path for the object to be judged (the box of any other logged object must not touch that area). Nearer, it is a gap. Calibration keeps and validates by the same rule. 0 on the bundled game, measured on its calibration replays.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 256
             },
             "locateFloor": {
               "type": "number",

@@ -17,13 +17,13 @@
   {
    "format": "expectrail.pixel-check/v1",
    "id": "jit-px-bullet-visible-shoot-left-every12",
-   "statement": "While standing and firing left every 12 ticks, from frame 50 to frame 80, every bullet on screen is drawn where the engine puts it, in every frame, in front of the scenery.",
+   "statement": "While standing and firing left every 12 ticks, from frame 50 to frame 50, every bullet on screen is drawn where the engine puts it, in every frame, in front of the scenery.",
    "object": "bullet",
    "observer": "visual-sensor",
    "probe": "shoot-left-every12",
    "window": {
     "fromFrame": 50,
-    "toFrame": 80
+    "toFrame": 50
    },
    "predicate": {
     "type": "visible",
@@ -35,13 +35,13 @@
   {
    "format": "expectrail.pixel-check/v1",
    "id": "jit-px-bullet-visible-move-fire-right",
-   "statement": "While walking right and firing, from frame 10 to frame 60, every bullet on screen is drawn where the engine puts it, in every frame, in front of the scenery.",
+   "statement": "While walking right and firing, from frame 10 to frame 30, every bullet on screen is drawn where the engine puts it, in every frame, in front of the scenery.",
    "object": "bullet",
    "observer": "visual-sensor",
    "probe": "move-fire-right",
    "window": {
     "fromFrame": 10,
-    "toFrame": 60
+    "toFrame": 30
    },
    "predicate": {
     "type": "visible",

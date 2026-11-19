@@ -65,13 +65,15 @@ PROBES = (
 
 
 # The no-model sensor's windows (November 19). The sensor does not judge a bullet in its fade, the last 0.3 s of
-# its 1.3 s life (agents/template_radial.py; a gap), and every planned frame of the SAM windows from frame 90 of
-# shoot-left-every12, 70 of move-fire-right and 90 of move-fire-left has one on screen on the clean game. So each
-# window here ends at the last planned frame before the first such frame on the clean game's replay, read from its
-# trace alone; move-fire-left keeps one planned frame clear of a fading bullet (130) and is left out.
+# its 1.3 s life, nor one whose searched path another logged box touches (agents/template_radial.py ``crowded``;
+# a gap either way: on the real engine, a clean bullet overlapping another one was not found). Both are read from
+# the trace alone. So each window here starts where the SAM window starts and ends at the last planned frame before
+# the first planned frame with such a bullet on screen on the clean game's replay: frame 60 of shoot-left-every12
+# (two bullets crowded) and frame 40 of move-fire-right (one crowded). move-fire-left has one at frame 90, where its
+# SAM window starts, and is left out.
 SENSOR_PROBES = (
-    ("shoot-left-every12", {"fromFrame": 50, "toFrame": 80}, "standing and firing left every 12 ticks"),
-    ("move-fire-right", {"fromFrame": 10, "toFrame": 60}, "walking right and firing"),
+    ("shoot-left-every12", {"fromFrame": 50, "toFrame": 50}, "standing and firing left every 12 ticks"),
+    ("move-fire-right", {"fromFrame": 10, "toFrame": 30}, "walking right and firing"),
 )
 
 

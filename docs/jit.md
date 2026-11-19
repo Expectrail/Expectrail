@@ -821,7 +821,8 @@ turns: the mean colour of each one-pixel ring around its centre. The rings are m
 calibration replays only, where the approved art itself locates the sprite on the path the engine logged. A
 frame's bullet is `matched` when some position on its path (from two ticks back to the frame's tick, through
 the frame's camera) has rings within 12 (mean absolute RGB) of a frozen profile, and `not-found` when none
-does. A bullet in its fade, one whose path is not wholly on screen, or one not the calibrated size is a gap.
+does. A bullet in its fade, one whose path is not wholly on screen, one not the calibrated size, or one whose
+searched path another logged box touches (`crowded`, below) is a gap.
 The bank carries it as `radialWitnesses.bullet` with `calibration.objects.bullet` (`witness: radial`;
 contract `template-bank`, example `template-bank-foreground-radial.json`), and the reader recomputes its
 status. `pixel.OBSERVERS["visual-sensor"]["boxes"]` is now `("enemy", "bullet")`, so the proposer is offered
@@ -839,6 +840,26 @@ no-fix patch (7.8 minutes, 18 replays). **Both checks were kept**: clean pass 3 
 no-fix fail 3 of 3, with $0 reserved for the observer. The windows end before the first planned frame with a
 fading bullet on the clean game; with the SAM stand-in's longer windows the checks were `needs-review` on
 every build. This is a rehearsal of the keep rule with a check no model wrote, not a reproduction rate.
+
+**A bullet beside another one is a gap (November 19, later the same day).** The first stand-in run noted two
+clean bullets beside fading ones that the witness did not find. On the whole clean probes (`shoot-left-every12`,
+`move-fire-left`, `move-fire-right`, 3 replays each, every frame) the witness gave `not-found` for 111 clean
+boxes, and every one overlapped another bullet's searched area: bullets that came to rest on one another, drawn
+over each other. Ring distance, measured on the calibration replays, by what touched the area searched along a
+bullet's path: nothing, at most 3.0 (498 boxes); another bullet, up to 14.3, beyond the limit of 12 (22); only the
+player or an enemy, up to 11.2 (120). Calibration had kept only bullets whose box touched no other box, but the
+witness then judged every bullet, so its validation did not describe what it judged. Now one rule,
+`template_radial.crowded`, decides both: a bullet is judged only when no other logged box touches its searched
+area, and no other bullet comes within the witness's `clearPx` of it (0 on the bundled game: with no box
+touching, the rings stayed within 3.0 at every gap, so the bullet's faint glow does not need a margin). A record
+that cannot say where the other roles are is a gap too.
+
+The cost is reach. On those clean probes, of the boxes judged before, 1,290 of 2,010 are now gaps, and 720 are
+`matched`; none is `not-found`. With the stand-in's earlier windows both bullet checks were `needs-review` on
+every build, so the windows were cut by the same rule the fading cut used (the last planned frame before the
+first planned frame with a crowded or fading bullet on the clean replay, read from the trace alone):
+`shoot-left-every12` frames 50 to 50 and `move-fire-right` frames 10 to 30. The recalibrated bank (68 of 68
+validation positives, 0 of 68 negatives, `met`) and the stand-in's new run are on the stand-in's page.
 
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 

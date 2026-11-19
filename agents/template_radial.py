@@ -19,8 +19,10 @@ logged (``paths``). A frame's box is ``matched`` when some position on that path
 ``maxDistance`` (mean absolute RGB difference) of one of the frozen profiles, and ``not-found`` when none does.
 The search never leaves the logged path, so a match is always where the engine puts the object.
 
-What it says nothing about: which way the bullet faces, its exact pixels, a bullet partly on screen or touching
-another object's box (a gap), and a bullet in its last ``fadesAfterTicks`` (a gap). Validation on a separate
+What it says nothing about: which way the bullet faces, its exact pixels, a bullet partly on screen (a gap), a
+bullet whose searched path another logged object's box touches, or another bullet's comes within ``clearPx`` of
+(a gap: a sprite drawn over it changes its rings; measured on the bundled game, a clean bullet overlapping another
+one was the only clean bullet not found), and a bullet in its last ``fadesAfterTicks`` (a gap). Validation on a separate
 clean replay decides ``met``, with the player's rule (template_foreground.py ``_object_calibration``).
 """
 from __future__ import annotations
@@ -227,16 +229,30 @@ def search(rgb, before, now, side, rings, profiles):
     return best
 
 
-def _clear(box, everything):
-    """Whether ``box`` touches no other logged box (``everything`` holds it once)."""
+def crowded(before, now, others, clear):
+    """Whether another logged object is near enough to change this one's rings. ``others`` is (same, rest): the
+    boxes of the other objects of this role, which draw around them what the witness's own profiles hold (on the
+    bundled game a faint glow), and the boxes of every other logged object.
+    It is crowded when a box of ``same`` widened by ``clear`` pixels on each side, or a box of ``rest``, touches the
+    area searched along its path (its two ends and ``PAD`` beyond). A crowded object is not judged: the witness is
+    calibrated and validated on objects drawn alone."""
     from agents.template_foreground import _touches
-    return sum(_touches(box, other) for other in everything) == 1
+    same, rest = others
+    area = [min(before[0], now[0]) - PAD, min(before[1], now[1]) - PAD,
+            max(before[2], now[2]) + PAD, max(before[3], now[3]) + PAD]
+    return (any(_touches(area, [o[0] - clear, o[1] - clear, o[2] + clear, o[3] + clear]) for o in same)
+            or any(_touches(area, o) for o in rest))
 
 
-def _eligible(logged, others, width, height, side, fades):
-    """The (id, before, now) of a frame worth judging in calibration: wholly on screen along the path, the
-    logged size, clear of every other logged box, and not fading."""
-    everything = [now for _, _, now, _ in logged] + others
+def _neighbours(logged, ident, others):
+    """(same, rest) for ``crowded``: the boxes of the other logged objects of this role, and ``others``."""
+    return [box for i, _, box, _ in logged if i != ident], list(others)
+
+
+def _eligible(logged, others, width, height, side, fades, clear):
+    """The (id, before, now) of a frame worth judging: wholly on screen along the path, the logged size, not
+    fading, and no other logged box within ``clear`` pixels of its path (``crowded``). The same rule as ``look``,
+    so the validation counts describe exactly the boxes the witness judges."""
     out = []
     for ident, before, now, age in logged:
         if not (_on(before, width, height) and _on(now, width, height)):
@@ -245,7 +261,7 @@ def _eligible(logged, others, width, height, side, fades):
             continue
         if fades is not None and age >= fades:
             continue
-        if _clear(now, everything):
+        if not crowded(before, now, _neighbours(logged, ident, others), clear):
             out.append((ident, before, now))
     return out
 
@@ -257,29 +273,37 @@ def _frames(root):
 
 
 def _others(trace, frames, fps, role):
-    """{frame: boxes of every other logged object}: the player and every other role, for the clear rule."""
+    """{frame: boxes of every other logged object}: the player and every other role, for the clearance rule
+    (``crowded``). {frame: None} when the record cannot say where another role's objects are in that frame: then
+    nothing in the frame can be shown clear of them, so no box of ``role`` there is judged."""
     player = sensor.player_predictions(trace, frames, fps)
     other = {r: sensor.object_predictions(trace, frames, r, fps) for r in sensor.OBJECT_BOXES if r != role}
     out = {}
     for n in frames:
+        if any(other[r][n] is None for r in other):
+            out[n] = None
+            continue
         boxes = [player[n]['player']] if sensor.finite_box(player[n]['player']) else []
         for r in other:
-            boxes += [b for _, b in (other[r][n] or [])]
+            boxes += [b for _, b in other[r][n]]
         out[n] = boxes
     return out
 
 
-def calibrate(clean_runs, validation_run, *, role, art_rgba, art, side, fades, clean_tree):
+def calibrate(clean_runs, validation_run, *, role, art_rgba, art, side, fades, clear, clean_tree):
     """(witness, counts): ring profiles from the clean runs, validated on the separate clean validation run.
 
     ``art_rgba`` is the approved art's RGBA array, read by the caller from the pinned clean game, and ``art``
-    its provenance ({path, sha256}). Every replay must be of the pinned clean tree with no patch. ``counts`` is
+    its provenance ({path, sha256}). ``clear`` is how far, in frame pixels, another object's box must stay from
+    the path (``crowded``). Every replay must be of the pinned clean tree with no patch. ``counts`` is
     the calibration record (template_foreground.py ``_object_calibration``) with ``witness: radial``."""
     from agents.template_foreground import _object_calibration
     from pathlib import Path
 
     np = numpy()
     Image, _, _ = sensor.imaging()
+    if type(clear) is not int or clear < 0:
+        raise sensor.SensorError('the clearance around a radial witness is a whole number of pixels')
     rings = rings_for(side)
     footprint, reference = art_reference(np.asarray(art_rgba), side)
     kept = []
@@ -300,12 +324,12 @@ def calibrate(clean_runs, validation_run, *, role, art_rgba, art, side, fades, c
         where = paths(trace, list(files), role, fps)
         others = _others(trace, list(files), fps, role)
         for n, path in files.items():
-            if not where.get(n):
+            if not where.get(n) or others[n] is None:
                 continue
             with Image.open(path) as image:
                 rgb = np.asarray(image.convert('RGB'))
             height, width = rgb.shape[:2]
-            for _, before, now in _eligible(where[n], others[n], width, height, side, fades):
+            for _, before, now in _eligible(where[n], others[n], width, height, side, fades, clear):
                 score, x, y = locate(rgb, before, now, side, footprint, reference)
                 if x is None or score < LOCATE_FLOOR or path_iou([x, y, x + side, y + side], before, now) < 0.5:
                     continue
@@ -317,7 +341,7 @@ def calibrate(clean_runs, validation_run, *, role, art_rgba, art, side, fades, c
                     raise sensor.SensorError(f'the radial witness of {role} exceeds {MAX_PROFILES} profiles')
     profiles = [[round(float(v), 3) for v in ring] for ring in kept]
     witness = dict(algorithm=ALGORITHM, art=dict(art), sidePx=side, rings=rings, pathTicks=PATH_TICKS,
-                   fadesAfterTicks=fades, locateFloor=LOCATE_FLOOR, maxDistance=MAX_DISTANCE,
+                   fadesAfterTicks=fades, clearPx=clear, locateFloor=LOCATE_FLOOR, maxDistance=MAX_DISTANCE,
                    profiles=profiles, profilesSha256=profiles_digest(profiles))
     root = Path(validation_run)
     record, trace, files = clean(root)
@@ -329,13 +353,13 @@ def calibrate(clean_runs, validation_run, *, role, art_rgba, art, side, fades, c
         where = paths(trace, list(files), role, fps)
         others = _others(trace, list(files), fps, role)
         for n, path in files.items():
-            if not where.get(n):
+            if not where.get(n) or others[n] is None:
                 continue
             with Image.open(path) as image:
                 rgb = np.asarray(image.convert('RGB'))
             height, width = rgb.shape[:2]
             everything = [now for _, _, now, _ in where[n]] + others[n]
-            for _, before, now in _eligible(where[n], others[n], width, height, side, fades):
+            for _, before, now in _eligible(where[n], others[n], width, height, side, fades, clear):
                 found, _, _ = search(rgb, before, now, side, rings, profiles)
                 positives.append(1 if found <= MAX_DISTANCE else 0)
                 # One displaced beside it, clear of every logged object: nothing there should match.
@@ -371,6 +395,8 @@ def check_witness(role, witness, counted):
         raise sensor.SensorError(f'the radial witness of {role} reads other rings than its size gives')
     if any(len(p) != 3 * witness['rings'] for p in witness['profiles']):
         raise sensor.SensorError(f'a ring profile of {role} has the wrong length')
+    if type(witness['clearPx']) is not int or witness['clearPx'] < 0:
+        raise sensor.SensorError(f'the radial witness of {role} has no whole clearance in pixels')
     if (witness['pathTicks'], witness['locateFloor'], witness['maxDistance']) != (PATH_TICKS, LOCATE_FLOOR, MAX_DISTANCE):
         raise sensor.SensorError(f'the radial witness of {role} was calibrated with other settings than this reader')
     if counted.get('witness') != 'radial':
@@ -386,10 +412,11 @@ def check_witness(role, witness, counted):
         raise sensor.SensorError(f'calibrated object {role} records a status its counts do not give')
 
 
-def look(witness, rgb, before, now, age):
+def look(witness, rgb, before, now, age, *, others):
     """The witness's row for one logged object in one frame, in the shape template_observations.py ``look``
     gives: ``matched`` (``rawBox`` the matching position on the path), ``not-found``, ``out-of-frame`` (the path
-    is not wholly on screen) or ``unavailable`` (fading, or not the calibrated size)."""
+    is not wholly on screen) or ``unavailable`` (fading, not the calibrated size, or another logged object in
+    ``others`` within the witness's ``clearPx`` of its path: ``crowded``)."""
     side, rings, limit = witness['sidePx'], witness['rings'], witness['maxDistance']
     row = dict(status='unavailable', reason='', predictedBox=now, searchBox=None, rawBox=None, score=None,
                templateFrame=None, scale=None)
@@ -401,6 +428,9 @@ def look(witness, rgb, before, now, age):
     fades = witness['fadesAfterTicks']
     if fades is not None and age >= fades:
         return dict(row, reason=f'it is {age} ticks old: the game fades it out from {fades}')
+    if crowded(before, now, others, witness['clearPx']):
+        return dict(row, reason=f"another object's box is within {witness['clearPx']} pixels of its path: the witness "
+                                'was calibrated on bullets drawn alone')
     found, x, y = search(rgb, before, now, side, rings, witness['profiles'])
     row['searchBox'] = list(_region(before, now, side, width, height))
     if x is None:

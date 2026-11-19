@@ -208,13 +208,15 @@ class CommittedStandIns(unittest.TestCase):
             self.assertEqual(row["rules"], [False, False, True, False, False, False], row["specId"])
             self.assertFalse(row["counting"])
 
-    def test_bullet_judged_by_the_sensor_meets_rules_1_3_4(self):
+    def test_bullet_judged_by_the_sensor_meets_rules_1_3_4_where_the_clean_game_was_decided(self):
+        # Since the crowded rule, move-fire-right's clean runs are needs-review (not exercised), so only rule 3.
         sensor = STAND_IN / "bullet-behind-scenery-sensor" / "jit-run.json"
         rows = assess.pixel_counting(load(sensor), BULLET_REPORT)
-        self.assertEqual(len(rows), 2)
-        for row in rows:
-            self.assertEqual(row["rules"], [True, False, True, True, False, False], row["specId"])
-            self.assertFalse(row["counting"])
+        self.assertEqual([r["specId"] for r in rows],
+                         ["jit-px-bullet-visible-shoot-left-every12", "jit-px-bullet-visible-move-fire-right"])
+        self.assertEqual([r["rules"] for r in rows], [[True, False, True, True, False, False],
+                                                      [False, False, True, False, False, False]])
+        self.assertFalse(any(r["counting"] for r in rows))
 
     def test_the_published_page_is_what_the_records_give(self):
         from expectrail.jit import counting

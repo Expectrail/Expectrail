@@ -199,14 +199,14 @@ class TheStandIn(unittest.TestCase):
         stand_in.write(self.tmp, "visual-sensor")
         self.assertEqual((self.tmp / intent.PROPOSAL_NAME).read_bytes(), SENSOR_COPY.read_bytes())
 
-    def test_the_sensors_copy_records_its_observer_and_windows_clear_of_fading_bullets(self):
+    def test_the_sensors_copy_records_its_observer_and_windows_clear_of_fading_and_crowded_bullets(self):
         doc = json.loads(SENSOR_COPY.read_text(encoding="utf-8"))
         self.assertEqual(doc["observer"], "visual-sensor")
         self.assertEqual(doc["model"], "hand-written-stand-in")
         got = self.replay(SENSOR_COPY, observer="visual-sensor")
         self.assertEqual([(c["probe"], c["window"], c["observer"]) for c in got["pixelChecks"]],
-                         [("shoot-left-every12", {"fromFrame": 50, "toFrame": 80}, "visual-sensor"),
-                          ("move-fire-right", {"fromFrame": 10, "toFrame": 60}, "visual-sensor")])
+                         [("shoot-left-every12", {"fromFrame": 50, "toFrame": 50}, "visual-sensor"),
+                          ("move-fire-right", {"fromFrame": 10, "toFrame": 30}, "visual-sensor")])
         # Each sensor window lies inside the SAM window of its probe, so the capture plan's checks hold for it.
         sam = {probe: window for probe, window, _ in stand_in.PROBES}
         for probe, window, _ in stand_in.SENSOR_PROBES:

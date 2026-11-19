@@ -97,13 +97,13 @@
   "weak": 0
  },
  "spend": {
-  "usd": 0.1857,
+  "usd": 0.1662,
   "capUsd": 2.0,
   "sparkUsd": 0.1246,
-  "replayUsd": 0.0611,
+  "replayUsd": 0.0416,
   "samUsd": 0.0,
   "samImages": 0,
-  "replays": 18,
+  "replays": 15,
   "promptTokens": 4647,
   "completionTokens": 30000,
   "prices": {
@@ -122,13 +122,13 @@
    "check": {
     "format": "expectrail.pixel-check/v1",
     "id": "jit-px-bullet-visible-shoot-left-every12",
-    "statement": "While standing and firing left every 12 ticks, from frame 50 to frame 80, every bullet on screen is drawn where the engine puts it, in every frame, in front of the scenery.",
+    "statement": "While standing and firing left every 12 ticks, from frame 50 to frame 50, every bullet on screen is drawn where the engine puts it, in every frame, in front of the scenery.",
     "object": "bullet",
     "observer": "visual-sensor",
     "probe": "shoot-left-every12",
     "window": {
      "fromFrame": 50,
-     "toFrame": 80
+     "toFrame": 50
     },
     "predicate": {
      "type": "visible",
@@ -142,7 +142,7 @@
    "reservedUsd": 0.0,
    "setting": {
     "model": "expectrail.template-foreground/v3",
-    "bankSha256": "58f45c4190bd374bbf6bc4449a6fa35dbcb21cb529b74898a161db3fdeec797c"
+    "bankSha256": "ee1af0c9c2d8463a8b69ff8d2d831f351ace642e93c006fb0c93d8715e16f1e9"
    },
    "clean": [
     "pass",
@@ -165,13 +165,13 @@
    "check": {
     "format": "expectrail.pixel-check/v1",
     "id": "jit-px-bullet-visible-move-fire-right",
-    "statement": "While walking right and firing, from frame 10 to frame 60, every bullet on screen is drawn where the engine puts it, in every frame, in front of the scenery.",
+    "statement": "While walking right and firing, from frame 10 to frame 30, every bullet on screen is drawn where the engine puts it, in every frame, in front of the scenery.",
     "object": "bullet",
     "observer": "visual-sensor",
     "probe": "move-fire-right",
     "window": {
      "fromFrame": 10,
-     "toFrame": 60
+     "toFrame": 30
     },
     "predicate": {
      "type": "visible",
@@ -180,29 +180,25 @@
     "authority": "model_prior",
     "origin": "AUTO_DIFF"
    },
-   "status": "kept",
-   "reason": "passes 3 of 3 clean, fails 3 of 3 bug",
+   "status": "dropped",
+   "reason": "needs-review: a run could not be decided (bullet 4: not-exercised: 1 judged frames; needs 2; observed 1 of 21 window frames; bullet found in 1 of 1 frames)",
    "reservedUsd": 0.0,
    "setting": {
     "model": "expectrail.template-foreground/v3",
-    "bankSha256": "58f45c4190bd374bbf6bc4449a6fa35dbcb21cb529b74898a161db3fdeec797c"
+    "bankSha256": "ee1af0c9c2d8463a8b69ff8d2d831f351ace642e93c006fb0c93d8715e16f1e9"
    },
    "clean": [
-    "pass",
-    "pass",
-    "pass"
+    "needs-review",
+    "needs-review",
+    "needs-review"
    ],
    "bug": [
     "fail",
     "fail",
     "fail"
    ],
-   "candidate": [
-    "fail",
-    "fail",
-    "fail"
-   ],
-   "outcome": "catch"
+   "candidate": [],
+   "outcome": "not-evaluated"
   }
  ]
 }

@@ -38,7 +38,8 @@ LAG = 1.3                       # ticks the frame draws it behind the box logged
 CONFIG = dict(searchMarginPx=8, sampleSide=12, scales=[1])
 PROBE = "fire"
 FADES = 18
-RECIPE = {"bullet": {"art": "bullet.png", "side": SIDE, "fadesAfterTicks": FADES}}
+CLEAR = 6                       # frame pixels another logged box must stay from a bullet's path
+RECIPE = {"bullet": {"art": "bullet.png", "side": SIDE, "fadesAfterTicks": FADES, "clearPx": CLEAR}}
 
 
 def make_game(game: Path) -> None:
@@ -67,10 +68,12 @@ def texture(seed):
 
 
 def scene(root: Path, game: Path, *, frames: int = 8, seed=17, patched=False, name=PROBE, start=60.0, row=50.0,
-          covered=lambda n: False, logged_from=0, boxes=True):
+          covered=lambda n: False, logged_from=0, boxes=True, neighbour=None, enemies=True):
     """``frames`` frames, two ticks each (120 a second, 60 fps). One bullet (id 3), logged from tick
     ``logged_from`` at x = start + SPEED * tick, turned 37 degrees more each frame and drawn LAG ticks behind the
-    box logged on the frame's tick; ``covered(n)`` paints scenery over it (the bug)."""
+    box logged on the frame's tick; ``covered(n)`` paints scenery over it (the bug). ``neighbour`` (dx, dy): a
+    second bullet (id 4) logged and drawn that far from the first, moving with it. ``enemies``: whether the
+    record logs the enemies' boxes (none are on screen)."""
     from agents import template_observations as sensor
     from harness.run import tree_digest
 
@@ -89,6 +92,8 @@ def scene(root: Path, game: Path, *, frames: int = 8, seed=17, patched=False, na
         turned = bullet.rotate(37 * n, resample=Image.Resampling.NEAREST)
         at = (round(x), round(row))
         image.paste(turned, at, turned)
+        if neighbour is not None:
+            image.paste(turned, (at[0] + neighbour[0], at[1] + neighbour[1]), turned)
         if covered(n):
             image.paste((150, 90, 40), (at[0] - 2, at[1] - 2, at[0] + SIDE + 2, at[1] + SIDE + 2))
         path = root / "frames" / f"f{n:08d}.png"
@@ -99,6 +104,11 @@ def scene(root: Path, game: Path, *, frames: int = 8, seed=17, patched=False, na
             if boxes:
                 bx = start + SPEED * t
                 entry["projectileBoxes"] = [[3, bx, row, bx + SIDE, row + SIDE]] if t >= logged_from else []
+                if neighbour is not None and t >= logged_from:
+                    dx, dy = neighbour
+                    entry["projectileBoxes"].append([4, bx + dx, row + dy, bx + dx + SIDE, row + dy + SIDE])
+                if enemies:
+                    entry["enemyBoxes"] = []
             rows.append(entry)
     trace = {"format": "expectrail.trace/v0", "ticks": 2 * frames, "physicsTicksPerSecond": 120, "rows": rows}
     if boxes:
@@ -111,6 +121,11 @@ def scene(root: Path, game: Path, *, frames: int = 8, seed=17, patched=False, na
            "trace": {"path": "trace.json", "sha256": sensor.sha(root / "trace.json")}, "frameSha256": hashes}
     (root / "replay.json").write_text(json.dumps(doc))
     return root
+
+
+def radial_pad() -> int:
+    from agents import template_radial as radial
+    return radial.PAD
 
 
 def check(**kw) -> dict:
@@ -238,7 +253,8 @@ class Calibration(Base):
         witness = self.bank["radialWitnesses"]["bullet"]
         record = self.bank["calibration"]["objects"]["bullet"]
         self.assertEqual(witness["algorithm"], "expectrail.radial-witness/v1")
-        self.assertEqual((witness["sidePx"], witness["rings"], witness["fadesAfterTicks"]), (SIDE, 6, FADES))
+        self.assertEqual((witness["sidePx"], witness["rings"], witness["fadesAfterTicks"], witness["clearPx"]),
+                         (SIDE, 6, FADES, CLEAR))
         self.assertEqual(witness["art"]["path"], "bullet.png")
         self.assertEqual(record["witness"], "radial")
         self.assertEqual(record["templates"], len(witness["profiles"]))
@@ -256,10 +272,41 @@ class Calibration(Base):
         where = radial.paths(trace, list(range(8)), "bullet")
         # Frame 8 would be tick 17 (age 17) and frame 9 tick 19 (age 19): from FADES on, not eligible.
         aged = [(3, [50, 60, 66, 76], [56, 60, 72, 76], FADES)]
-        self.assertEqual(radial._eligible(aged, [list(BODY)], *SIZE, SIDE, FADES), [])
-        self.assertEqual(len(radial._eligible(where[2], [list(BODY)], *SIZE, SIDE, FADES)), 1)
+        self.assertEqual(radial._eligible(aged, [list(BODY)], *SIZE, SIDE, FADES, CLEAR), [])
+        self.assertEqual(len(radial._eligible(where[2], [list(BODY)], *SIZE, SIDE, FADES, CLEAR)), 1)
         edge = [(3, [-4, 60, 12, 76], [2, 60, 18, 76], 1)]
-        self.assertEqual(radial._eligible(edge, [list(BODY)], *SIZE, SIDE, FADES), [])
+        self.assertEqual(radial._eligible(edge, [list(BODY)], *SIZE, SIDE, FADES, CLEAR), [])
+
+    def test_a_bullet_with_another_box_within_the_clearance_never_becomes_a_profile_or_positive(self):
+        """The rule ``look`` judges by (``crowded``) is the rule calibration keeps by, so the validation counts
+        describe exactly the boxes the witness is asked about. Found on the real engine on November 19: every
+        clean bullet the witness did not find overlapped another bullet."""
+        from agents import template_radial as radial
+
+        alone = (3, [50, 60, 66, 76], [56, 60, 72, 76], 2)
+        # Another bullet's box CLEAR - 1 pixels beyond the searched area, then CLEAR + 1.
+        near = [56 + SIDE + radial.PAD + CLEAR - 1, 60, 56 + 2 * SIDE + radial.PAD + CLEAR - 1, 76]
+        far = [near[0] + 2, 60, near[2] + 2, 76]
+        self.assertEqual(radial._eligible([alone, (4, near, near, 2)], [], *SIZE, SIDE, FADES, CLEAR),
+                         [])
+        self.assertEqual([e[0] for e in radial._eligible([alone, (4, far, far, 2)], [], *SIZE, SIDE, FADES, CLEAR)],
+                         [3, 4])
+        # Any other logged box (the player's here) must not touch the searched area; the clearance is for the
+        # role's own kind, which draws around itself what the profiles hold.
+        touching = [56 + SIDE + radial.PAD - 1, 60, 56 + 2 * SIDE + radial.PAD - 1, 76]
+        beside = [touching[0] + 1, 60, touching[2] + 1, 76]
+        self.assertEqual(radial._eligible([alone], [touching], *SIZE, SIDE, FADES, CLEAR), [])
+        self.assertEqual(len(radial._eligible([alone], [beside], *SIZE, SIDE, FADES, CLEAR)), 1)
+        self.assertEqual(radial._eligible([alone, (4, beside, beside, 2)], [], *SIZE, SIDE, FADES, CLEAR), [])
+
+    def test_a_clearance_that_is_not_a_whole_number_of_pixels_is_refused(self):
+        from agents import template_observations as sensor
+        from expectrail.jit.template_observer import add_radial
+
+        for bad in (-1, 2.5, None):
+            with self.subTest(clear=bad), self.assertRaisesRegex(sensor.SensorError, "whole number of pixels"):
+                add_radial(self.bank, self.train, self.validation, game=self.game, clean_tree=self.tree,
+                           objects={"bullet": dict(RECIPE["bullet"], clearPx=bad)})
 
     def test_calibration_takes_the_pinned_clean_replay_only_and_a_separate_validation(self):
         from agents import template_observations as sensor
@@ -298,6 +345,7 @@ class Reader(Base):
         forgeries = {
             "does not match its digest": witness(lambda w: w["profiles"][0].__setitem__(0, 1.0 + w["profiles"][0][0])),
             "other settings than this reader": witness(lambda w: w.update(maxDistance=40.0)),
+            "clearPx": witness(lambda w: w.update(clearPx=-1)),
             "other rings than its size gives": witness(lambda w: w.update(sidePx=w["sidePx"] + 4)),
             "does not count its ring profiles": record(lambda r: r.update(templates=r["templates"] + 1)),
             "more matches than it counted": record(lambda r: r.update(positiveMatches=r["positives"] + 1)),
@@ -359,6 +407,25 @@ class WhatTheSensorSays(Base):
         self.assertIn("out-of-frame", statuses)
         self.assertEqual(pixel.judge(check(), run)["result"], "needs-review")
 
+    def test_a_bullet_beside_another_is_a_gap_never_absent(self):
+        """On the real engine a clean bullet beside another one was not found: the other's glow lights its rings.
+        Such a bullet is not judged, so a check over it is needs-review, never fail."""
+        setting, run, images = self.ask(neighbour=(SIDE + 2, 0))
+        statuses = [[b["status"] for b in r["boxes"]] for r in run["objects"]["bullet"]]
+        self.assertEqual(statuses, [["unavailable", "unavailable"]] * 8)
+        self.assertIn("within 6 pixels of its path", run["objects"]["bullet"][0]["boxes"][0]["error"])
+        self.assertEqual(pixel.judge(check(), run)["result"], "needs-review")
+        # Far enough apart, each is judged on its own and both are matched.
+        setting, run, images = self.ask(neighbour=(SIDE + 2 * radial_pad() + CLEAR + int(SPEED) * 2 + 8, 0))
+        statuses = [[b["status"] for b in r["boxes"]] for r in run["objects"]["bullet"]]
+        self.assertEqual(statuses, [["matched", "matched"]] * 8)
+        self.assertEqual(pixel.judge(check(), run)["result"], "pass")
+
+    def test_a_record_that_cannot_say_what_is_beside_a_bullet_is_a_gap(self):
+        setting, run, images = self.ask(enemies=False)
+        self.assertTrue(all(not r["asked"] and "beside" in r["note"] for r in run["objects"]["bullet"]))
+        self.assertEqual(pixel.judge(check(), run)["result"], "needs-review")
+
     def test_a_trace_without_object_boxes_is_a_gap(self):
         setting, run, images = self.ask(boxes=False)
         self.assertTrue(all(not r["asked"] for r in run["objects"]["bullet"]))
@@ -393,7 +460,10 @@ class CommittedRun(unittest.TestCase):
     RECORD = (Path(__file__).resolve().parents[1] / "bench" / "jit" / "stand-in" / "bullet-behind-scenery-sensor"
               / "jit-run.json")
 
-    def test_both_bullet_checks_were_kept_by_the_sensor_with_nothing_reserved(self):
+    def test_the_sensor_kept_one_bullet_check_and_left_the_other_undecided_with_nothing_reserved(self):
+        """Remade after the crowded rule (agents/template_radial.py ``crowded``): the windows end before the first
+        crowded or fading bullet on the clean replay. ``move-fire-right``'s second bullet is then on one judged
+        frame only, so the clean game is needs-review there, never fail."""
         from expectrail.contracts import validate_v1
 
         doc = json.loads(self.RECORD.read_text(encoding="utf-8"))
@@ -401,14 +471,22 @@ class CommittedRun(unittest.TestCase):
         self.assertEqual(doc["inputs"]["model"], "hand-written-stand-in")
         self.assertEqual(doc["settings"]["candidate"], "withheld")
         rows = doc["pixelChecks"]
-        self.assertEqual([r["check"]["probe"] for r in rows], ["shoot-left-every12", "move-fire-right"])
+        self.assertEqual([(r["check"]["probe"], r["check"]["window"]) for r in rows],
+                         [("shoot-left-every12", {"fromFrame": 50, "toFrame": 50}),
+                          ("move-fire-right", {"fromFrame": 10, "toFrame": 30})])
         for r in rows:
             self.assertEqual((r["check"]["object"], r["check"]["observer"]), ("bullet", "visual-sensor"))
-            self.assertEqual((r["status"], r["clean"], r["bug"]), ("kept", ["pass"] * 3, ["fail"] * 3))
             self.assertEqual(r["reservedUsd"], 0.0)
             self.assertEqual(r["setting"]["model"], "expectrail.template-foreground/v3")
             self.assertEqual(r["setting"]["bankSha256"],
-                             "58f45c4190bd374bbf6bc4449a6fa35dbcb21cb529b74898a161db3fdeec797c")
+                             "ee1af0c9c2d8463a8b69ff8d2d831f351ace642e93c006fb0c93d8715e16f1e9")
+        kept, undecided = rows
+        self.assertEqual((kept["status"], kept["clean"], kept["bug"], kept["candidate"], kept["outcome"]),
+                         ("kept", ["pass"] * 3, ["fail"] * 3, ["fail"] * 3, "catch"))
+        self.assertEqual((undecided["status"], undecided["clean"], undecided["bug"]),
+                         ("dropped", ["needs-review"] * 3, ["fail"] * 3))
+        self.assertIn("not-exercised", undecided["reason"])
+        self.assertNotIn("fail", undecided["clean"])
 
     def test_the_reproduction_score_gives_it_no_result(self):
         from expectrail.jit import intent

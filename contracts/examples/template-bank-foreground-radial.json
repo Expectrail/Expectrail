@@ -1973,6 +1973,7 @@
       "rings": 6,
       "pathTicks": 2,
       "fadesAfterTicks": 18,
+      "clearPx": 6,
       "locateFloor": 0.85,
       "maxDistance": 12.0,
       "profiles": [
