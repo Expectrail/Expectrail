@@ -63,7 +63,7 @@ def static(players=("Player",), textures=(), problems=None):
 class RecordTest(unittest.TestCase):
     def test_the_example_is_a_registered_v1_record_and_reads_cleanly(self):
         self.assertIn(rs.FORMAT, contracts.V1_FORMATS)
-        doc = contracts.load_strict(EXAMPLE, "runtime-scan")
+        doc = contracts.strict_loads(EXAMPLE.read_text())
         self.assertEqual(rs.problems(doc), [])
         self.assertIn("Floor", [n["path"] for n in doc["nodes"]])
 
@@ -75,6 +75,20 @@ class RecordTest(unittest.TestCase):
         doc = json.loads(EXAMPLE.read_text())
         next(n for n in doc["nodes"] if n["kind"] == "tileLayer").pop("collides")
         self.assertTrue(rs.problems(doc))
+
+    def test_a_value_listed_twice_in_groups_or_images_is_a_problem(self):
+        doc = json.loads(EXAMPLE.read_text())
+        doc["nodes"][0]["groups"] = ["a", "a"]
+        self.assertIn("Player: groups lists a value twice", rs.problems(doc))
+
+    def test_the_reader_needs_no_jsonschema(self):
+        # An installed Expectrail has no dependencies; CI's capture-smoke job has no jsonschema.
+        import sys
+        with mock.patch.dict(sys.modules, {"jsonschema": None}):
+            doc = json.loads(EXAMPLE.read_text())
+            self.assertEqual(rs.problems(doc), [])
+            doc["nodes"][0]["kind"] = "light"
+            self.assertTrue(rs.problems(doc))
 
     def test_a_path_listed_twice_is_a_problem(self):
         doc = json.loads(EXAMPLE.read_text())

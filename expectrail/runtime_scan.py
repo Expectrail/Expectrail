@@ -155,7 +155,6 @@ def _scrub(text: str, *folders: Path) -> str:
 def scan(root: Path, *, ticks: int = TICKS, godot: Path | None = None, sandbox: str | None = None) -> dict:
     """Start the game at ``root`` headless on a copy, let it run ``ticks`` physics ticks with no input,
     and return the ``expectrail.runtime-scan/v1`` record. Raises RuntimeScanError."""
-    from expectrail.contracts import validate_v1
     from expectrail.godot_project import configured_scene, require_declared_settings, require_gdscript
     from harness import run as harness, sandbox as box, tree
 
@@ -249,33 +248,43 @@ def scan(root: Path, *, ticks: int = TICKS, godot: Path | None = None, sandbox: 
            "engine": {"name": "godot", "version": (version or harness.GODOT_VERSION).removeprefix("v")[:64]},
            "isolation": {"sandbox": tool is not None, "reason": isolation.get("reason")},
            "truncated": raw["truncated"], "nodes": raw["nodes"], "note": NOTE}
-    try:
-        validate_v1(doc, "runtime-scan")
-    except ValueError as exc:
-        raise RuntimeScanError(f"the scan record does not match its contract: {exc}") from exc
+    found = problems(doc)
+    if found:
+        raise RuntimeScanError("the scan record does not match its contract: " + "; ".join(found[:3]))
     return doc
 
 
 def problems(doc) -> list[str]:
-    """What is wrong with a runtime-scan record; empty when it can be read."""
-    from expectrail.contracts import ContractError, validate_v1
+    """What is wrong with a runtime-scan record; empty when it can be read. It uses the gate's own
+    schema reader, so a machine without jsonschema (an installed Expectrail) reads it the same way."""
+    from expectrail.contracts import ContractError, canonical_v1
+    from expectrail.gate import record as rec
 
     try:
-        validate_v1(doc, "runtime-scan")
-    except (ContractError, ValueError) as exc:
-        return [str(exc)]
+        schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return [f"runtime-scan: the schema could not be read ({type(exc).__name__})"]
+    try:
+        canonical_v1(doc)
+    except ContractError as exc:
+        return [f"runtime-scan: {exc}"]
+    found = [f"runtime-scan: {e}" for e in rec.errors(doc, schema)]
+    if found:
+        return found
     out = []
     paths = [n["path"] for n in doc["nodes"]]
     if len(set(paths)) != len(paths):
         out.append("a node path is listed twice")
     for node in doc["nodes"]:
-        drawn = node["kind"] in DRAWN
-        if drawn != ("images" in node) or drawn != ("unsavedImages" in node):
-            out.append(f"{node['path']}: images belong to sprites and polygons only")
-        if (node["kind"] == "tileLayer") != ("cells" in node and "collides" in node):
-            out.append(f"{node['path']}: cells and collides belong to tile layers only")
-        if (node["kind"] == "camera") != ("enabled" in node):
-            out.append(f"{node['path']}: enabled belongs to cameras only")
+        # Exactly the fields of its kind, no more and no fewer (the schema alone cannot say this).
+        wanted = _EXTRA[node["kind"]] - {"visible"}
+        present = set(node) - _COMMON - {"visible"}
+        if present != wanted:
+            out.append(f"{node['path']}: a {node['kind']} carries exactly "
+                       + (", ".join(sorted(wanted)) or "no kind-specific field"))
+        for field in ("groups", "images"):
+            if field in node and len(set(node[field])) != len(node[field]):
+                out.append(f"{node['path']}: {field} lists a value twice")
     return out
 
 

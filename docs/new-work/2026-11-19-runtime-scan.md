@@ -30,7 +30,7 @@ moment.
   cannot skip there. The module and the script are in the wheel.
 
 ## What was run
-- `python3 -m unittest tests.test_runtime_scan`: 25 tests, OK. Four of them start Godot 4.7.2
+- `python3 -m unittest tests.test_runtime_scan`: 27 tests, OK. Four of them start Godot 4.7.2
   headless, with the sandbox off because this machine has no bubblewrap:
   - Crate Run lists `Floor`, a solid tile layer with 72 cells, found only at runtime.
   - Crate Run with its config runs the configured scene.
@@ -44,6 +44,10 @@ moment.
   5,461 tests, OK, 41 skipped. An earlier run, at 048a871, had one failure: the schema-pattern test
   wanted a sample for the new image pattern. The pattern is now `^res://.+$` and has its sample.
 - The sandboxed path was not run here, because this machine has no bubblewrap.
+- CI's `capture-smoke` job on c02eb12 failed in the new step: `ModuleNotFoundError: No module named
+  'jsonschema'`. An installed Expectrail has no dependencies, so the reader no longer uses
+  jsonschema. It reads the schema with the gate's own reader (`expectrail.gate.record.errors`), and it
+  checks each kind's fields and repeated values by hand. The 27 tests pass with jsonschema blocked.
 
 ## Not done
 - The Done-when run: `init --dry-run`, then a verification, on the second test project and on the

@@ -51,20 +51,14 @@
           "kind": {"enum": ["body", "platform", "area", "sprite", "animatedSprite", "polygon", "tileLayer", "camera"], "description": "body: CharacterBody2D or RigidBody2D; platform: StaticBody2D or AnimatableBody2D; area: Area2D; the others by their Godot class."},
           "type": {"type": "string", "minLength": 1, "maxLength": 64, "description": "The node's Godot class."},
           "className": {"type": ["string", "null"], "maxLength": 64, "description": "The class_name of the node's script, or null."},
-          "groups": {"type": "array", "maxItems": 32, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 64}, "description": "The node's groups, without Godot's own (names starting with _)."},
+          "groups": {"type": "array", "maxItems": 32, "items": {"type": "string", "minLength": 1, "maxLength": 64}, "description": "The node's groups, without Godot's own (names starting with _)."},
           "visible": {"type": "boolean", "description": "The engine's visible-in-tree flag. Not a claim about pixels."},
-          "images": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"type": "string", "pattern": "^res://.+$", "maxLength": 200}, "description": "Sprites and polygons: the res:// image files it draws."},
+          "images": {"type": "array", "maxItems": 64, "items": {"type": "string", "pattern": "^res://.+$", "maxLength": 200}, "description": "Sprites and polygons: the res:// image files it draws."},
           "unsavedImages": {"type": "integer", "minimum": 0, "description": "Sprites and polygons: how many images it draws that were made in code and have no file."},
           "cells": {"type": "integer", "minimum": 0, "description": "Tile layers: cells that hold a tile."},
           "collides": {"type": "boolean", "description": "Tile layers: whether its tile set has a physics layer."},
           "enabled": {"type": "boolean", "description": "Cameras: the enabled flag."}
-        },
-        "allOf": [
-          {"if": {"properties": {"kind": {"enum": ["sprite", "animatedSprite", "polygon"]}}}, "then": {"required": ["images", "unsavedImages"], "not": {"anyOf": [{"required": ["cells"]}, {"required": ["collides"]}, {"required": ["enabled"]}]}}},
-          {"if": {"properties": {"kind": {"const": "tileLayer"}}}, "then": {"required": ["cells", "collides"], "not": {"anyOf": [{"required": ["images"]}, {"required": ["unsavedImages"]}, {"required": ["enabled"]}]}}},
-          {"if": {"properties": {"kind": {"const": "camera"}}}, "then": {"required": ["enabled"], "not": {"anyOf": [{"required": ["images"]}, {"required": ["unsavedImages"]}, {"required": ["cells"]}, {"required": ["collides"]}]}}},
-          {"if": {"properties": {"kind": {"enum": ["body", "platform", "area"]}}}, "then": {"not": {"anyOf": [{"required": ["images"]}, {"required": ["unsavedImages"]}, {"required": ["cells"]}, {"required": ["collides"]}, {"required": ["enabled"]}]}}}
-        ]
+        }
       }
     },
     "note": {"type": "string", "minLength": 1, "maxLength": 300}
