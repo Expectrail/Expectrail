@@ -71,6 +71,7 @@ def frozen(folder, trust, observer=None):
         route=record.read_json(path,cap=1024*1024);validate(route,'route')
         if digest_v1(route)!=digests[pid]:raise Stop('route-digest-mismatch')
         routes[pid]=route
+    for p in pixels:same_plan(p,routes[p['check']['probe']],observer)
     return envelope,entries,routes,pixels
 
 
@@ -99,8 +100,25 @@ def pixel_checks(run, rows, observer, digests):
         pid=src['check']['probe']
         if row['probeIds']!=[pid] or row['routeSha256']!=[digests.get(pid)]:
             raise Stop('route-digest-mismatch: the pixel check names another route than the source run')
-        out.append({'check':src['check'],'setting':row['setting']})
+        if not isinstance(src.get('framesPlanned'),list):
+            raise Stop(f"pixel-plan-unrecorded: the source run does not say which frames {row['specId'][:80]} "
+                       "was judged on, so its plan cannot be matched")
+        out.append({'check':src['check'],'setting':row['setting'],'frames':list(src['framesPlanned'])})
     return out
+
+
+def same_plan(entry,route,observer):
+    """Stop unless ``observer`` would be asked about exactly the frames the judging run planned for this
+    check (its plan cut to the check's window, ``framesPlanned`` in the signed source run): a sparser or
+    other plan would let a correct fix pass on less evidence than the check was kept on."""
+    from expectrail.jit import pixel
+    try:
+        now=pixel.frames_to_ask(entry['check'],[int(n) for n in observer.frames(route)])
+    except Exception as exc:  # noqa: BLE001 - an observer that cannot plan is not replayed
+        raise Stop(f'pixel-plan-mismatch: the observer cannot plan {entry["check"]["probe"][:60]} ({type(exc).__name__})') from exc
+    if now!=entry['frames']:
+        raise Stop(f"pixel-plan-mismatch: {entry['check']['id'][:80]} was judged on {len(entry['frames'])} planned "
+                   f"frames, and this dispatch's observer would plan {len(now)} others")
 
 
 PIXEL_OUTCOMES={'pass':'pass','fail':'fail'}
@@ -288,8 +306,9 @@ def execute(kind,bundles,contexts,store,out,*,replay_cap,runner=None,fixer=None,
 
 
 def pixel_plan(observer):
-    """The frame plan the pixel checks are replayed with. The source run does not record it, so it is an
-    input of the dispatch (``--sensor-every``, ``--sensor-first``) and is written beside the result."""
+    """The frame plan the pixel checks are replayed with (``--sensor-every``, ``--sensor-first``), written
+    beside the result. It is checked, not trusted: ``same_plan`` stops unless it plans each check's
+    ``framesPlanned`` from the signed source run."""
     return {'every':observer.every,'first':observer.first}
 
 

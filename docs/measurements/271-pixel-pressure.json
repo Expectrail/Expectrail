@@ -43,7 +43,7 @@
   "expectedCases": 1,
   "oracle": null,
   "sourceDigests": {
-    "enemy-walks-backwards": "33b91b25708ea8731ff2bfed73d41a5b9c157b9b07148e19ae5683f8b95c727f"
+    "enemy-walks-backwards": "f387c312be75c39d03d20a5e3e917162f3000358b87db041b6c82587ec31b9c0"
   },
   "pixelObserver": {
     "name": "visual-sensor",

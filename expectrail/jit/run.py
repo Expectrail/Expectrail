@@ -571,8 +571,10 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
     if state["pixel"].get("capture") is not None:
         _pixel_capture(by_probe, routes, base_patches, candidate, out, replay, reps, state["pixel"]["capture"],
                        frame_runner, observer, plans)
-        for check in [c for g in by_probe.values() for c in g]:
-            rows[check["id"]] = pixel.record_row(check, "not-run", pixel_jobs.CAPTURED)
+        for pid, group in by_probe.items():
+            for check in group:
+                rows[check["id"]] = pixel.record_row(check, "not-run", pixel_jobs.CAPTURED,
+                                                     frames=pixel.frames_to_ask(check, plans[pid][1]))
         state["pixelChecks"] = [rows[c["id"]] for c in checks]
         return
 
@@ -640,7 +642,8 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
             bug = runs_on("pixel-base", list(base_patches))
         except pixel.PixelError as exc:
             for check in group:
-                rows[check["id"]] = pixel.record_row(check, "dropped", f"observer: {exc}", usd / len(group))
+                rows[check["id"]] = pixel.record_row(check, "dropped", f"observer: {exc}", usd / len(group),
+                                                     frames=pixel.frames_to_ask(check, planned))
             continue
         except OutOfBudget as exc:
             # The trace checks' results stand; the pixel checks left are not run, and nothing more is asked.
@@ -654,7 +657,8 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
             setting = clean[0][0] if len(settings) == 1 else None
             if not verdict["kept"]:
                 rows[check["id"]] = pixel.record_row(check, "dropped", verdict["reason"], usd / len(group), setting,
-                                                     verdict["runs"]["clean"], verdict["runs"]["bug"])
+                                                     verdict["runs"]["clean"], verdict["runs"]["bug"],
+                                                     frames=pixel.frames_to_ask(check, planned))
                 continue
             if cand_pairs is None:
                 try:
@@ -664,7 +668,7 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
             if isinstance(cand_pairs, pixel.PixelError):
                 rows[check["id"]] = pixel.record_row(check, "kept", verdict["reason"], usd / len(group), setting,
                                                      verdict["runs"]["clean"], verdict["runs"]["bug"],
-                                                     outcome="needs-review")
+                                                     outcome="needs-review", frames=pixel.frames_to_ask(check, planned))
                 diagnostics.append(f"{check['id']}: the candidate was not judged: observer: {cand_pairs}"[:200])
                 continue
             if {json.dumps(s, sort_keys=True) for s, _ in cand_pairs} != settings:
@@ -675,7 +679,8 @@ def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate
             outcome = ("catch" if len(results) == reps and all(r == "fail" for r in results)
                        else "needs-review" if any(r == "needs-review" for r in results) else "no-catch")
             rows[check["id"]] = pixel.record_row(check, "kept", verdict["reason"], usd / len(group), setting,
-                                                 verdict["runs"]["clean"], verdict["runs"]["bug"], cand, outcome)
+                                                 verdict["runs"]["clean"], verdict["runs"]["bug"], cand, outcome,
+                                                 frames=pixel.frames_to_ask(check, planned))
     state["pixelChecks"] = [rows[c["id"]] for c in checks]
 
 

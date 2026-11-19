@@ -1147,15 +1147,20 @@ same plan as the judging run), and `pixel.judge` decides each run. No model and 
 - **The bank is pinned.** Its setting (algorithm and digest) must equal the setting in the signed source
   run, or the dispatch stops before any replay (`pixel-setting-mismatch`). An answer under another setting
   is not judged.
+- **The frame plan is pinned.** Since the same day, `jit run` records on each pixel row the frames the
+  observer was to be asked about inside the check's window (`framesPlanned`, contracts/jit-run.v1). Pressure
+  stops before any replay unless its observer, with `--sensor-every` and `--sensor-first`, would plan exactly
+  those frames for the check (`pixel-plan-mismatch`), so a correct fix can never pass on fewer frames than
+  the check was kept on. A row with no recorded plan (every record before November 19, the committed
+  stand-ins included) stops it too (`pixel-plan-unrecorded`).
 - **Undecided is not a pass.** A gap, `needs-review`, or an observer that fails is
   `insufficient_observation`, so the campaign is `blocked`, never `complete`. A `fail` on any run is
   `failed`, as for trace checks.
 - **What still stops.** A counting pixel check for SAM (it would need live SAM calls), a correct dispatch
   with no bank, and the adversary, which is given the trace checks only.
 - **The record.** Pixel rows carry `kind: "pixel"`, and `pixelObserver` names the observer, its setting
-  and its frame plan (`every`, `first`). The source run does not record the plan, so it is an input of the
-  dispatch: a plan other than the judging run's is not detected. The reader refuses pixel rows without
-  `pixelObserver`, and `pixelObserver` on the adversary. Example:
+  and its frame plan (`every`, `first`), checked against `framesPlanned` above. The reader refuses pixel
+  rows without `pixelObserver`, and `pixelObserver` on the adversary. Example:
   [`jit-pressure-pixel.json`](../contracts/examples/jit-pressure-pixel.json).
 
 Tested in `tests/test_jit_pixel_pressure.py` with a stand-in game and observer. The real-engine rehearsal

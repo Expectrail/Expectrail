@@ -161,7 +161,9 @@
           "clean": {"$ref": "#/$defs/pixelRuns"},
           "bug": {"$ref": "#/$defs/pixelRuns"},
           "candidate": {"$ref": "#/$defs/pixelRuns"},
-          "outcome": {"enum": ["catch", "no-catch", "needs-review", "not-evaluated"]}
+          "outcome": {"enum": ["catch", "no-catch", "needs-review", "not-evaluated"]},
+          "framesPlanned": {"type": "array", "maxItems": 5000, "items": {"type": "integer", "minimum": 0},
+                            "description": "The frames the observer was to be asked about inside this check's window, in order: its plan for the probe (every Nth and the last, inside the windows of the checks on that probe) cut to this check's window. Written when the probe's frames were planned; absent on a row written before November 19 or a check that was not run. The correct-fix pressure replays a check only under this plan."}
         }
       }
     }

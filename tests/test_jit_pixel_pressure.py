@@ -68,20 +68,38 @@ def fake_judge(results):
     return judge
 
 
-def frozen_bundle(root: Path, doc=None):
-    """A frozen, authenticated bundle for the public enemy defect, its trust store and context."""
-    from tests.test_receipt import _store
-    envelope, trust = trusted(doc or passing())
+def probe_routes(doc):
+    """The library routes of the probes ``doc``'s pixel checks name, by probe id."""
+    profile = json.loads((REPO / "discovery/platformer.profile.json").read_text())
+    wanted = {p["check"]["probe"] for p in doc["pixelChecks"]}
+    return {probe["id"]: compile_route(probe["program"], name=probe["id"], description=probe["description"],
+                                       actions=profile["actions"])
+            for probe in library(profile["actions"]) if probe["id"] in wanted}
+
+
+def with_plan(doc, observer):
+    """``doc`` with each pixel row's ``framesPlanned`` as ``observer`` plans it, as run.py's writer records it.
+    The committed stand-ins predate the field, so a fixture made from them has to add it."""
+    doc = copy.deepcopy(doc)
+    routes = probe_routes(doc)
+    for row in doc["pixelChecks"]:
+        row["framesPlanned"] = pixel.frames_to_ask(row["check"], observer.frames(routes[row["check"]["probe"]]))
+    return doc
+
+
+def frozen_bundle(root: Path, doc=None, plan=True):
+    """A frozen, authenticated bundle for the public enemy defect, its trust store and context. Its pixel
+    rows record the plan of a ``FakeSensor`` unless ``plan`` is False or ``doc`` is given."""
+    if doc is None:
+        doc = passing()
+        if plan:
+            doc = with_plan(doc, FakeSensor(doc["pixelChecks"][0]["setting"]))
+    envelope, trust = trusted(doc)
     folder = root / "bundles" / DEFECT
     (folder / "jit-routes").mkdir(parents=True)
     (folder / "generated-counting.json").write_text(json.dumps(envelope))
-    profile = json.loads((REPO / "discovery/platformer.profile.json").read_text())
-    wanted = {p["check"]["probe"] for p in envelope["sourceRun"]["pixelChecks"]}
-    for probe in library(profile["actions"]):
-        if probe["id"] in wanted:
-            route = compile_route(probe["program"], name=probe["id"], description=probe["description"],
-                                  actions=profile["actions"])
-            (folder / "jit-routes" / f"jit-{probe['id']}.json").write_text(json.dumps(route))
+    for pid, route in probe_routes(doc).items():
+        (folder / "jit-routes" / f"jit-{pid}.json").write_text(json.dumps(route))
     return envelope, trust, folder
 
 
@@ -119,6 +137,32 @@ class FrozenPixelChecks(unittest.TestCase):
         sensor.name = "sam-3.1-anchor"
         with self.assertRaisesRegex(pressure.Stop, "pixel-checks-not-replayed: .* judged by visual-sensor"):
             pressure.frozen(self.folder, self.trust, sensor)
+
+    def test_a_sparser_plan_stops_before_any_replay(self):
+        # The merge guard's probe on #647: a sensor asked about 2 frames of the route, against the 30 the
+        # judging run planned, reached `complete` with each check judged on one frame.
+        class Sparse(FakeSensor):
+            every, first = 60, 1
+
+            def frames(self, route):
+                return [0, 290]
+        with self.assertRaisesRegex(pressure.Stop, "pixel-plan-mismatch"):
+            pressure.frozen(self.folder, self.trust, Sparse(setting_of(self.envelope)))
+
+    def test_a_denser_or_shifted_plan_stops_too(self):
+        for frames in (list(range(0, 300, 5)), list(range(1, 300, 10))):
+            other = FakeSensor(setting_of(self.envelope))
+            other.frames = lambda route, frames=frames: frames
+            with self.subTest(first=frames[:2]), self.assertRaisesRegex(pressure.Stop, "pixel-plan-mismatch"):
+                pressure.frozen(self.folder, self.trust, other)
+
+    def test_a_check_with_no_recorded_plan_stops(self):
+        # The committed stand-ins were written before run.py recorded the plan.
+        root = self.root / "unplanned"
+        envelope, trust, folder = frozen_bundle(root, plan=False)
+        self.assertNotIn("framesPlanned", envelope["sourceRun"]["pixelChecks"][0])
+        with self.assertRaisesRegex(pressure.Stop, "pixel-plan-unrecorded"):
+            pressure.frozen(folder, trust, FakeSensor(setting_of(envelope)))
 
     def test_a_route_file_that_is_not_the_signed_route_stops(self):
         path = self.folder / "jit-routes" / "jit-reverse.json"
@@ -223,6 +267,18 @@ class CorrectPressureReplaysPixelChecks(unittest.TestCase):
         result, _ = self.run_pressure(lambda check, build: "pass", Broken(setting_of(self.envelope)))
         self.assertEqual(result["status"], "blocked")
         self.assertTrue(all(r["outcomes"] == ["insufficient_observation"] * 3 for r in result["rows"]))
+
+    def test_a_sparser_plan_never_reaches_complete(self):
+        class Sparse(FakeSensor):
+            every, first = 60, 1
+
+            def frames(self, route):
+                return [0, 290]
+        result, sensor = self.run_pressure(lambda check, build: "pass", Sparse(setting_of(self.envelope)))
+        self.assertEqual(result["status"], "blocked")
+        self.assertIn("pixel-plan-mismatch", result["reason"])
+        self.assertEqual(self.replays, [])
+        self.assertEqual(sensor.calls, [])
 
     def test_the_replay_cap_still_holds(self):
         with mock.patch.object(pressure.bench, "public_cases", return_value=self.manifest), \
