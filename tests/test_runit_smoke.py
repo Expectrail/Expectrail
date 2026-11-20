@@ -101,6 +101,37 @@ class Compare(unittest.TestCase):
         self.assertEqual(problems(page=dict(PAGE, viewerShown=False), evidence=False), [])
 
 
+class CleanupOwnership(unittest.TestCase):
+    """What a smoke run may remove. In the default mode the runner's root is the repository itself,
+    and a clean run must never remove it (the merge guard's finding on #685)."""
+
+    def setUp(self):
+        from tools import runit_stub
+
+        self.repo = runit_stub.ROOT
+        self.results = Path("/tmp/expectrail-smoke-results-x")
+        self.stub_root = Path("/tmp/expectrail-stub-root-x")
+
+    def remove(self, root, *, owns_root, finished=True, problems=()):
+        return runit_smoke.folders_to_remove(self.results, root, owns_root=owns_root,
+                                             finished=finished, problems=list(problems))
+
+    def test_a_default_mode_run_removes_the_results_and_never_the_repository(self):
+        self.assertEqual(self.remove(self.repo, owns_root=False), [self.results])
+
+    def test_a_stand_in_run_also_removes_the_root_it_was_given(self):
+        self.assertEqual(self.remove(self.stub_root, owns_root=True),
+                         [self.results, self.stub_root])
+
+    def test_a_run_with_problems_keeps_everything(self):
+        for root, owns in ((self.repo, False), (self.stub_root, True)):
+            with self.subTest(owns_root=owns):
+                self.assertEqual(self.remove(root, owns_root=owns, problems=["a problem"]), [])
+
+    def test_a_run_that_left_by_an_exception_keeps_everything(self):
+        self.assertEqual(self.remove(self.stub_root, owns_root=True, finished=False), [])
+
+
 class InChromium(unittest.TestCase):
     """The whole visitor path against the stub, with stand-in replays and stand-in recordings."""
 
@@ -112,6 +143,10 @@ class InChromium(unittest.TestCase):
         lines = []
         with contextlib.redirect_stderr(io.StringIO()):
             doc = runit_smoke.smoke(stand_in=True, log=lines.append, **kw)
+        # A clean run removes its own folders; a run with problems keeps them for a person to look at.
+        # A test that fails the smoke on purpose removes them, so a suite run leaves nothing behind.
+        for folder in (doc.get("kept") or {}).values():
+            self.addCleanup(shutil.rmtree, folder, True)
         return doc, lines
 
     def test_every_offered_sample_and_every_state_holds(self):
