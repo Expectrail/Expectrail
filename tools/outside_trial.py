@@ -12,9 +12,9 @@ stranger would run it. Nothing is approved here and no model is called.
 A project may list `changes`: small patches of ours against its folder (`tests/outside/<name>/changes/`),
 each with the verdict it should get. For each, the project unchanged is the base and the patched copy
 is the head, and `expectrail verify --base` judges the change, as it would judge a pull request. The
-row says the expected verdict beside the one given; a mismatch is a finding, not a failure of the trial.
+row says the expected verdict beside the one given; a declared mismatch fails the trial.
 
-This is a trial, not a test: it does not fail when a verdict is needs-review or reject. It fails
+Needs-review and reject are valid results. Declared expectations are regression checks. The trial fails
 when a project cannot be fetched at its commit, or when the command ends with a code that is no
 verdict (3 failed, 4 cancelled, 5 could not be carried out, 6 not finished). What it writes
 (`outside-trial.json`, `outside-trial.md`) is the record docs/outside-projects.md quotes.
@@ -53,6 +53,11 @@ def load_list(path: Path = LIST) -> list[dict]:
     doc = json.loads(path.read_text(encoding="utf-8"))
     if doc.get("format") != FORMAT or not isinstance(doc.get("projects"), list) or not doc["projects"]:
         raise TrialError(f"{path.name}: not a {FORMAT} list with projects")
+    from expectrail.contracts import validate, ContractError
+    try:
+        validate(doc, "outside-projects")
+    except ContractError as exc:
+        raise TrialError(str(exc)) from exc
     seen = set()
     for p in doc["projects"]:
         missing = [k for k in ("name", "repository", "commit", "path", "licence", "kind", "routes") if not isinstance(p.get(k), str)]
@@ -66,12 +71,28 @@ def load_list(path: Path = LIST) -> list[dict]:
         if not p["repository"].startswith("https://github.com/") or not p["repository"].endswith(".git"):
             raise TrialError(f"{p['name']}: the repository must be an https://github.com/ address ending in .git")
         for key in ("path", "routes"):
-            if not _PATH.match(p[key]) or ".." in p[key].split("/"):
+            if not _plain_path(p[key], root=key == "path"):
                 raise TrialError(f"{p['name']}: {key} must be a plain path inside its repository")
         if not p["routes"].startswith("tests/outside/"):
             raise TrialError(f"{p['name']}: routes are ours and live under tests/outside/")
         if "spec" in p:
             project_spec(p)
+        if 'config' in p:
+            if not p['config'].startswith('tests/outside/'):
+                raise TrialError('config must name our file under tests/outside/')
+            contained(REPO, p['config'])
+        drafts = draft_specs(p)
+        if drafts:
+            if 'config' not in p or 'spec' in p:
+                raise TrialError('draftSpecs requires a config and cannot also select an approved spec')
+            ids = {strict_json(path)['id'] for path in drafts}
+            if len(ids) != len(drafts):
+                raise TrialError('draft ids must be distinct')
+            for expected in [p] + p.get('changes', []):
+                if set(expected.get('engineExpect', {})) != ids or 'expect' not in expected:
+                    raise TrialError('every draft copy needs a verdict and an engine expectation for every draft')
+        elif 'engineExpect' in p or any('engineExpect' in c for c in p.get('changes', [])):
+            raise TrialError('engineExpect requires draftSpecs')
         changes = p.get("changes", [])
         if not isinstance(changes, list):
             raise TrialError(f"{p['name']}: changes must be a list")
@@ -89,6 +110,123 @@ def load_list(path: Path = LIST) -> list[dict]:
                     or not c["patch"].endswith(".patch")):
                 raise TrialError(f"{p['name']}/{c['name']}: the patch is ours and lives under {folder}")
     return doc["projects"]
+
+
+def strict_json(path: Path) -> dict:
+    from expectrail.contracts import strict_loads
+    return strict_loads(path.read_text(encoding="utf-8"))
+
+
+def _plain_path(value: str, *, root=False) -> bool:
+    return isinstance(value, str) and ((root and value == '.') or bool(
+        _PATH.fullmatch(value) and '..' not in value.split('/')))
+
+
+def contained(root: Path, relative: str, *, directory=False) -> Path:
+    """Resolve only a plain path beneath the selected root, never a symlink.
+
+    Refusing even internal symlinks keeps copy/patch/replay interpretation identical.
+    Root checkout metadata and import caches are excluded from the copy separately.
+    """
+    if not _plain_path(relative, root=directory):
+        raise TrialError('path must stay inside its checkout')
+    root = root.resolve()
+    path = root / relative
+    if not path.resolve().is_relative_to(root):
+        raise TrialError('path points outside its checkout')
+    cursor = root
+    for part in Path(relative).parts:
+        cursor = cursor / part
+        if cursor.is_symlink():
+            raise TrialError('symbolic links are not allowed in trial inputs')
+    if directory:
+        if not path.is_dir():
+            raise TrialError('no project.godot: project folder is missing')
+        for current, dirs, files in os.walk(path, followlinks=False):
+            dirs[:] = [d for d in dirs if d not in ('.git', '.godot')]
+            for name in dirs + files:
+                if (Path(current) / name).is_symlink():
+                    raise TrialError('symbolic links are not allowed in a trial project')
+    elif not path.is_file():
+        raise TrialError('trial input file is missing: ' + relative)
+    return path
+
+
+def draft_specs(project: dict) -> list[Path]:
+    paths = []
+    for value in project.get('draftSpecs', []):
+        if not isinstance(value, str) or not value.startswith('tests/outside/') or not value.endswith('.json'):
+            raise TrialError('draftSpecs must name our JSON checks under tests/outside/')
+        path = contained(REPO, value)
+        from expectrail.contracts import validate
+        doc = strict_json(path)
+        validate(doc, 'test-spec')
+        if 'approval' in doc:
+            raise TrialError('draftSpecs contains an approval; review the registry before changing this trial')
+        paths.append(path)
+    if len({p.name for p in paths}) != len(paths):
+        raise TrialError('draft check filenames must be distinct')
+    return paths
+
+
+def expectation_errors(row: dict) -> list[str]:
+    errors = []
+    if row.get('expect') and row.get('verdict') != row['expect']:
+        errors.append(f"expected {row['expect']}, got {row.get('verdict') or 'no verdict'}")
+    if row.get('expect') and 'decision' in row and row['decision'] != row.get('verdict'):
+        errors.append('CLI exit verdict and saved decision disagree or the decision is missing')
+    if row.get('draftDiagnosticError'):
+        errors.append('draft engine replay failed: ' + row['draftDiagnosticError'])
+    for name, expected in row.get('expectedEngine', {}).items():
+        found = [f for f in row.get('draftFindings', []) if f['spec'] == name]
+        if not found or any(f['result'] != expected for f in found):
+            errors.append(f"draft {name}: expected {expected}, got {', '.join(f['result'] for f in found) or 'no finding'}")
+    return errors
+
+
+def draft_diagnostics(project: dict, checkout: Path, into: Path, timeout: int,
+                      execution_class: str) -> tuple[list[dict], list[str]]:
+    """Separate unapproved engine diagnostics. Never call a gate or vision provider.
+
+    In CI the exact same isolated replay requirement applies. A missing diagnostic
+    fails its declared expectation; it is never filled in from an expected value.
+    """
+    from expectrail.contracts import validate
+    from expectrail.evaluator import evaluate
+    from expectrail.gate.verify import observations, window_frames
+    from expectrail.route import describe
+    findings, summaries = [], []
+    specs = [strict_json(path) for path in draft_specs(project)]
+    sandbox = 'require' if execution_class == 'isolated' else 'auto'
+    for route_file in sorted((checkout / 'routes').glob('*.json')):
+        route = strict_json(route_file); validate(route, 'route')
+        dest = into / route_file.stem
+        cmd = [sys.executable, '-m', 'harness.run', '--game', str(checkout / 'project'),
+               '--route', str(route_file), '--out', str(dest), '--sandbox', sandbox]
+        try:
+            proc = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, timeout=timeout)
+        except subprocess.TimeoutExpired as exc:
+            raise TrialError(f'draft replay timed out after {timeout} seconds') from exc
+        if proc.returncode:
+            raise TrialError(f'draft replay exited {proc.returncode}; inspect its retained godot.log')
+        trace = strict_json(dest / 'trace.json'); validate(trace, 'trace')
+        if len(trace.get('rows', [])) != route['ticks'] or [r.get('tick') for r in trace['rows']] != list(range(route['ticks'])):
+            raise TrialError('draft replay has missing or duplicate ticks')
+        sha = hashlib.sha256((dest / 'trace.json').read_bytes()).hexdigest()
+        obs = observations(trace, hashlib.sha256((dest / 'replay.json').read_bytes()).hexdigest())
+        summaries += [route['name'] + ': ' + s for s in describe(route, trace['physicsTicksPerSecond'], trace)]
+        for spec in specs:
+            verdict = evaluate(spec, obs, route=route['name'], trace=trace,
+                               expected_frames=window_frames(spec, route['ticks'], trace, 60), capture_fps=60)
+            frame = verdict['firstFrame']
+            around_rows = [] if frame is None else [r for r in trace['rows'] if abs(r.get('frame', -100) - frame) <= 1]
+            findings.append({'spec': spec['id'], 'route': route['name'],
+                             **{k: verdict[k] for k in ('result', 'reason', 'firstFrame', 'framesJudged', 'coverage')},
+                             'traceSha256': sha, 'around': around_rows})
+        # Captures are diagnostics, not a source archive. Keep trace/replay/log.
+        for folder in ('work', 'frames', 'sandbox'):
+            shutil.rmtree(dest / folder, ignore_errors=True)
+    return findings, summaries
 
 
 def project_spec(project: dict) -> Path:
@@ -121,7 +259,7 @@ def fetch(project: dict, into: Path) -> Path:
         git("config", "core.sparseCheckout", "true", cwd=clone)
     sparse = clone / ".git" / "info" / "sparse-checkout"
     wanted = set(sparse.read_text(encoding="utf-8").split()) if sparse.exists() else set()
-    sparse.write_text("\n".join(sorted(wanted | {project["path"] + "/"})) + "\n", encoding="utf-8")
+    sparse.write_text("\n".join(sorted(wanted | {"/*" if project["path"] == "." else project["path"] + "/"})) + "\n", encoding="utf-8")
     git("fetch", "-q", "--depth=1", "--no-tags", "origin", project["commit"], cwd=clone)
     git("checkout", "-q", "--detach", "FETCH_HEAD", cwd=clone)
     if git("rev-parse", "HEAD", cwd=clone) != project["commit"]:
@@ -132,22 +270,45 @@ def fetch(project: dict, into: Path) -> Path:
 def lay_out(project: dict, source: Path, work: Path, change: dict | None = None) -> Path:
     """A checkout for one project: its folder as `project/`, our routes and its selected spec.
     With ``change``, the checkout is named after it and its patch is applied to `project/`."""
-    folder = source / project["path"]
+    folder = contained(source, project["path"], directory=True)
     if not (folder / "project.godot").is_file():
         raise TrialError(f"{project['name']}: no project.godot at {project['path']} in the source")
     checkout = work / (project["name"] if change is None else f"{project['name']}+{change['name']}")
     if checkout.exists():
         shutil.rmtree(checkout)
-    shutil.copytree(folder, checkout / "project", symlinks=True)
-    shutil.copytree(REPO / project["routes"], checkout / "routes")
+    shutil.copytree(folder, checkout / "project", ignore=shutil.ignore_patterns(".git", ".godot"))
+    shutil.copytree(contained(REPO, project["routes"], directory=True), checkout / "routes")
     (checkout / "specs").mkdir()
-    shutil.copy(project_spec(project), checkout / "specs")
+    drafts = draft_specs(project)
+    if drafts:
+        for spec in drafts:
+            shutil.copy(spec, checkout / 'specs')
+    else:
+        shutil.copy(project_spec(project), checkout / "specs")
+    if 'config' in project:
+        if any((checkout / 'project' / name).exists() or (checkout / 'project' / name).is_symlink()
+               for name in ('routes', 'checks', 'expectrail.project.json')):
+            raise TrialError('config overlay would overwrite a source config, routes or checks; use a distinct layout')
+        from expectrail import project_config
+        config = strict_json(contained(REPO, project['config']))
+        if config.get('draft') is not True:
+            raise TrialError('trial config overlay must remain a draft')
+        if config.get('routes') != ['routes/' + path.name for path in sorted((checkout / 'routes').glob('*.json'))]:
+            raise TrialError('config routes must equal the trial routes')
+        if sorted(config.get('approvedContracts', [])) != sorted('checks/' + p.name for p in drafts):
+            raise TrialError('config check paths must equal draftSpecs (none are approved here)')
+        shutil.copytree(checkout / 'routes', checkout / 'project/routes')
+        shutil.copytree(checkout / 'specs', checkout / 'project/checks')
+        (checkout / 'project/expectrail.project.json').write_text(json.dumps(config, indent=2) + '\n')
+        project_config.validate(config, checkout / 'project')
+        if config['captureFps'] != 60:
+            raise TrialError('draft engine diagnostics currently require captureFps 60')
     if change is not None:
         # git apply refuses a patch that reaches outside the folder it runs in. It must not find a
         # repository above that folder: inside one (CI lays checkouts out inside this repository)
         # it reads paths from the repository's top and silently skips every file outside the folder
         # it runs in, exits 0 and changes nothing. That happened on the first run (PR #385).
-        patch = str(REPO / change["patch"])
+        patch = str(contained(REPO, change["patch"]))
         env = {**os.environ, "GIT_CEILING_DIRECTORIES": str(checkout.resolve())}
         for args, why in ((["apply", "--whitespace=nowarn", patch], "the patch does not apply"),
                           # Proof that it took: the change can be taken back out of the copy.
@@ -156,6 +317,7 @@ def lay_out(project: dict, source: Path, work: Path, change: dict | None = None)
                                   timeout=60, env=env)
             if done.returncode:
                 raise TrialError(f"{project['name']}/{change['name']}: {why}: {done.stderr.strip()[-300:]}")
+    contained(checkout, "project", directory=True)  # patched copies obey the same no-link boundary
     return checkout
 
 
@@ -164,9 +326,12 @@ def verify(project: dict, checkout: Path, out: Path, command: list[str], timeout
     jobs = out / "jobs" / (project["name"] if change is None else f"{project['name']}+{change['name']}")
     started = time.monotonic()
     try:
-        done = subprocess.run([*command, "--jobs-root", str(jobs), "verify", "--head", str(checkout), "--game", "project",
-                               "--routes", "routes/*.json", "--specs", "specs", "--execution-class", execution_class,
-                               "--json", *(["--base", str(base)] if base is not None else [])],
+        selection = (["--project", str(checkout / "project")] if 'config' in project else
+                     ["--head", str(checkout), "--game", "project", "--routes", "routes/*.json", "--specs", "specs"])
+        base_path = base / 'project' if base is not None and 'config' in project else base
+        done = subprocess.run([*command, "--jobs-root", str(jobs), "verify", *selection,
+                               "--execution-class", execution_class,
+                               "--json", *(["--base", str(base_path)] if base_path is not None else [])],
                               capture_output=True, text=True, timeout=timeout)
         code, stdout, stderr = done.returncode, done.stdout, done.stderr
     except subprocess.TimeoutExpired as late:
@@ -177,7 +342,7 @@ def verify(project: dict, checkout: Path, out: Path, command: list[str], timeout
            "exit": code, "verdict": VERDICTS.get(code), "seconds": seconds, "decision": None, "reasons": [],
            "checks": None, "routes": [], "failures": [], "isolation": None, "around": [],
            "change": None if change is None else change["name"], "what": None if change is None else change["what"],
-           "expect": None if change is None else change["expect"]}
+           "expect": project.get("expect") if change is None else change["expect"]}
     try:
         status = json.loads(stdout)
         row["decision"] = status.get("decision")
@@ -206,6 +371,18 @@ def verify(project: dict, checkout: Path, out: Path, command: list[str], timeout
         if unseen and len(row["around"]) < 3:
             row["around"].append(around(jobs, {"spec": unseen["spec"], "route": unseen["route"],
                                                 "frame": int(unseen["frame"])}, after=6))
+    expected = project if change is None else change
+    if project.get('draftSpecs'):
+        row['expectedEngine'] = expected['engineExpect']
+        try:
+            row['draftFindings'], row['routeSummaries'] = draft_diagnostics(
+                project, checkout, jobs / 'draft-diagnostics', timeout, execution_class)
+        except (TrialError, OSError, ValueError) as exc:
+            row['draftFindings'] = []
+            row['draftDiagnosticError'] = str(exc)
+    row['expectationErrors'] = expectation_errors(row)
+    row['verifySeconds'] = seconds
+    row['seconds'] = round(time.monotonic() - started, 1)
     return row
 
 
@@ -266,6 +443,8 @@ def around(jobs: Path, finding: dict, before: int = 3, after: int = 3) -> dict:
 
 
 def markdown(rows: list[dict]) -> str:
+    from expectrail.contracts import validate
+    validate({"format": "expectrail.outside-trial/v0", "projects": rows}, "outside-trial")
     lines = ["| Project | Change | Exit | Verdict | Expected | Seconds | Checks | Reasons |",
              "| --- | --- | --- | --- | --- | --- | --- | --- |"]
     for r in rows:
@@ -276,6 +455,12 @@ def markdown(rows: list[dict]) -> str:
         lines.append(f"| {r['name']} (`{r['commit'][:7]}`, {r['licence']}) | {change.replace('|', '/')} | {r['exit']} | "
                      f"{r['verdict'] or 'no verdict'} | {expected} | {r['seconds']} | {checks} | {reasons.replace('|', '/')} |")
     for r in rows:
+        if r.get('draftFindings'):
+            lines += ['', f"Draft engine diagnostics for {r['name']} / {r.get('change') or 'pinned'} (unapproved; do not change the gate verdict):", '']
+            for f in r['draftFindings']:
+                lines.append(f"- {f['spec']} on {f['route']}: {f['result']}; {f['reason']}; first checked failure {f['firstFrame']}.")
+        lines += ['- ' + s for s in r.get('routeSummaries', [])]
+        lines += ['- EXPECTATION FAILED: ' + s for s in r.get('expectationErrors', [])]
         for a in r.get("around", []):
             lines += ["", f"What the engine logged for {r['name']} around frame {a['frame']} of `{a['route']}` "
                           f"({a.get('ticksPerFrame', '?')} ticks a frame; at tick 0: {json.dumps(a.get('first'))}):", "", "```"]
@@ -330,11 +515,13 @@ def main(argv: list[str] | None = None) -> int:
     except TrialError as err:
         print(f"outside trial: {err}", file=sys.stderr)
         return 5
+    from expectrail.contracts import validate
+    validate({"format": "expectrail.outside-trial/v0", "projects": rows}, "outside-trial")
     (args.out / "outside-trial.json").write_text(json.dumps({"format": "expectrail.outside-trial/v0", "projects": rows}, indent=2) + "\n", encoding="utf-8")
     table = markdown(rows)
     (args.out / "outside-trial.md").write_text(table, encoding="utf-8")
     print(table)
-    return 0 if all(r["verdict"] for r in rows) else 3
+    return 0 if all(r["verdict"] and not expectation_errors(r) for r in rows) else 3
 
 
 if __name__ == "__main__":

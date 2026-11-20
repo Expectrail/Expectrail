@@ -181,7 +181,7 @@
   },
   "reason": "player [459.666, 395.25, 513.666, 463.25] leaves region [-27.0, -54.75, 507.0, 733.25] (first at frame 97, 153 frames); 58 frames not exercised (player hidden)",
   "frame": 97,
-  "framesDir": "/workspace/work/handover-259-pointer-routes/evidence/after/dodge-the-creeps-broken/frames",
+  "framesDir": "$WORK/handover-259-pointer-routes/evidence/after/dodge-the-creeps-broken/frames",
   "visualWhy": null,
   "observed": {
     "engine": "fail",

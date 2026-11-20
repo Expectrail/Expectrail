@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "expectrail.outside-trial/v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "projects"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.outside-trial/v0"
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "verdict",
+          "checks",
+          "reasons",
+          "commit",
+          "licence",
+          "exit",
+          "seconds"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "accept",
+              "reject",
+              "needs-review",
+              null
+            ]
+          },
+          "expect": {
+            "enum": [
+              "accept",
+              "reject",
+              "needs-review",
+              null
+            ]
+          },
+          "expectedEngine": {
+            "type": "object",
+            "minProperties": 1,
+            "propertyNames": {
+              "pattern": "^[a-z0-9][a-z0-9-]*$"
+            },
+            "additionalProperties": {
+              "enum": [
+                "pass",
+                "fail",
+                "needs-review",
+                "not-applicable"
+              ]
+            }
+          },
+          "draftFindings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "spec",
+                "route",
+                "result",
+                "reason",
+                "firstFrame",
+                "framesJudged",
+                "coverage",
+                "traceSha256"
+              ],
+              "properties": {
+                "spec": {
+                  "type": "string"
+                },
+                "route": {
+                  "type": "string"
+                },
+                "result": {
+                  "enum": [
+                    "pass",
+                    "fail",
+                    "needs-review",
+                    "not-applicable"
+                  ]
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "firstFrame": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "framesJudged": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "coverage": {
+                  "type": "object"
+                },
+                "traceSha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "around": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          },
+          "draftDiagnosticError": {
+            "type": "string"
+          },
+          "routeSummaries": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expectationErrors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "checks": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "commit": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$"
+          },
+          "licence": {
+            "type": "string"
+          },
+          "exit": {
+            "type": "integer"
+          },
+          "seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "verifySeconds": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

@@ -29,7 +29,7 @@
   },
   "reason": "the engine's record passes; no visual observer was asked, so this is not a pass",
   "frame": null,
-  "framesDir": "/workspace/work/handover-259-menu-routes/evidence/after/kinematic-character-pinned/frames",
+  "framesDir": "$WORK/handover-259-menu-routes/evidence/after/kinematic-character-pinned/frames",
   "visualWhy": null,
   "observed": {
     "engine": "pass",

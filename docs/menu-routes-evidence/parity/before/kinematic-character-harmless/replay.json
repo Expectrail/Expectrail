@@ -6,7 +6,7 @@
   },
   "game": {
     "tree": "ba5fb112d7603f608f0054c767e45f23469efcfe2861a0d85d2f7f7e3e2e9747",
-    "patch": "/workspace/work/pointer-routes/tests/outside/kinematic-character/changes/harmless.patch",
+    "patch": "$REPO/tests/outside/kinematic-character/changes/harmless.patch",
     "patchSha256": "b29fa884c9e76031dfebf03d896cd6e1593c9a7a00e12b05f45b92b09499b437"
   },
   "engine": {

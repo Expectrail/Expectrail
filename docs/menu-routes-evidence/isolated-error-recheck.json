@@ -8,7 +8,7 @@
     "-v",
     "tests.test_ingest_repair.IngestRepair.test_no_reproduction_and_desync_construct_no_transport"
   ],
-  "cwd": "/workspace/work/pointer-routes",
+  "cwd": "$REPO",
   "seconds": 0.867195189006452,
   "exitCode": 0,
   "status": "finished",

@@ -8,23 +8,23 @@
     "expectrail.cli",
     "verify",
     "--project",
-    "/workspace/work/breakout-pointer-source",
+    "$WORK/breakout-pointer-source",
     "--base",
-    "/workspace/work/breakout-pointer-source",
+    "$WORK/breakout-pointer-source",
     "--execution-class",
     "diagnostic",
     "--jobs-root",
-    "/dev/shm/expectrail-menu-trial-verify/jobs/pinned",
+    "$SCRATCH/expectrail-menu-trial-verify/jobs/pinned",
     "--json"
   ],
-  "cwd": "/workspace/work/pointer-routes",
+  "cwd": "$REPO",
   "seconds": 13.442455516997143,
   "exitCode": 2,
   "status": "finished",
   "log": "trial-logs/12-verify-pinned.log",
   "environment": {
-    "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
-    "TMPDIR": "/dev/shm/expectrail-menu-trial-verify/tmp",
-    "EXPECTRAIL_TOOLS": "/dev/shm/expectrail-menu-trial-verify/tools"
+    "EXPECTRAIL_GODOT": "$WORK/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+    "TMPDIR": "$SCRATCH/expectrail-menu-trial-verify/tmp",
+    "EXPECTRAIL_TOOLS": "$SCRATCH/expectrail-menu-trial-verify/tools"
   }
 }

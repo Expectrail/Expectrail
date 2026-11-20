@@ -120,7 +120,7 @@
   },
   "reason": "player is 71.749px past the boundary (above 304.5, tolerance 20) (first at frame 44, 10 frames)",
   "frame": 44,
-  "framesDir": "/workspace/work/handover-259-pointer-routes/evidence/after/kinematic-character-broken/frames",
+  "framesDir": "$WORK/handover-259-pointer-routes/evidence/after/kinematic-character-broken/frames",
   "visualWhy": null,
   "observed": {
     "engine": "fail",

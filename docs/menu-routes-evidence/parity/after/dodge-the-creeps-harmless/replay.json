@@ -6,7 +6,7 @@
   },
   "game": {
     "tree": "7c5d39e413e77c6c9d54bddb7dca7076e314ec5bab3ec5a9cceaaaada4a2921b",
-    "patch": "/workspace/work/pointer-routes/tests/outside/dodge-the-creeps/changes/harmless.patch",
+    "patch": "$REPO/tests/outside/dodge-the-creeps/changes/harmless.patch",
     "patchSha256": "5a6bb8e5b8463c432b5538169a9e95977680109985a0fbc8453008d694ab961e"
   },
   "engine": {

@@ -18,13 +18,13 @@ test_same_tick_move_and_button_edges_keep_array_order (tests.test_pointer_routes
 ERROR: test_action_pair_reader_preserves_legacy_pairs (tests.test_pointer_routes.PointerReadersTest.test_action_pair_reader_preserves_legacy_pairs)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 78, in test_action_pair_reader_preserves_legacy_pairs
+  File "$REPO/tests/test_pointer_routes.py", line 78, in test_action_pair_reader_preserves_legacy_pairs
     self.assertEqual(used_together(doc),{frozenset(('move_right','shoot'))})
                      ^^^^^^^^^^^^^^^^^^
-  File "/workspace/work/pointer-routes/expectrail/repro/reach.py", line 71, in used_together
+  File "$REPO/expectrail/repro/reach.py", line 71, in used_together
     for ev in sorted(route["events"], key=lambda e: (e["tick"], e["pressed"])):   # releases before presses on a tick
               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/workspace/work/pointer-routes/expectrail/repro/reach.py", line 71, in <lambda>
+  File "$REPO/expectrail/repro/reach.py", line 71, in <lambda>
     for ev in sorted(route["events"], key=lambda e: (e["tick"], e["pressed"])):   # releases before presses on a tick
                                                                 ~^^^^^^^^^^^
 KeyError: 'pressed'
@@ -33,13 +33,13 @@ KeyError: 'pressed'
 ERROR: test_action_trigger_does_not_treat_pointer_click_as_shoot (tests.test_pointer_routes.PointerReadersTest.test_action_trigger_does_not_treat_pointer_click_as_shoot)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 71, in test_action_trigger_does_not_treat_pointer_click_as_shoot
+  File "$REPO/tests/test_pointer_routes.py", line 71, in test_action_trigger_does_not_treat_pointer_click_as_shoot
     ep=episode(rows(30),inputs=pointer_route()['events'])
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/workspace/work/pointer-routes/tests/test_trace_evaluator.py", line 18, in episode
+  File "$REPO/tests/test_trace_evaluator.py", line 18, in episode
     return normalize(trace, {"name": "t", "events": list(inputs)}, episode_id=eid)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/workspace/work/pointer-routes/expectrail/trace/normalize.py", line 147, in normalize
+  File "$REPO/expectrail/trace/normalize.py", line 147, in normalize
     inputs = [{"tick": int(e["tick"]), "action": str(e["action"]), "pressed": bool(e["pressed"])}
                                                      ~^^^^^^^^^^
 KeyError: 'action'
@@ -48,10 +48,10 @@ KeyError: 'action'
 ERROR: test_contract_accepts_pointer_and_legacy_actions_together (tests.test_pointer_routes.PointerReadersTest.test_contract_accepts_pointer_and_legacy_actions_together)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 39, in test_contract_accepts_pointer_and_legacy_actions_together
+  File "$REPO/tests/test_pointer_routes.py", line 39, in test_contract_accepts_pointer_and_legacy_actions_together
     self.assertEqual(contracts.validate(doc,'route'),'route')
                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/workspace/work/pointer-routes/expectrail/contracts.py", line 63, in validate
+  File "$REPO/expectrail/contracts.py", line 63, in validate
     raise ContractError(f"{kind}: {where}: {first.message}")
 expectrail.contracts.ContractError: route: events/0: 'action' is a required property
 
@@ -59,10 +59,10 @@ expectrail.contracts.ContractError: route: events/0: 'action' is a required prop
 ERROR: test_description_names_pointer_positions_and_button_edges (tests.test_pointer_routes.PointerReadersTest.test_description_names_pointer_positions_and_button_edges)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 53, in test_description_names_pointer_positions_and_button_edges
+  File "$REPO/tests/test_pointer_routes.py", line 53, in test_description_names_pointer_positions_and_button_edges
     lines='\n'.join(route.describe(pointer_route(),60,{'rows':[{'player':[0,0]},{'player':[20,0]}]}))
                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/workspace/work/pointer-routes/expectrail/route.py", line 183, in describe
+  File "$REPO/expectrail/route.py", line 183, in describe
     if event["pressed"]:
        ~~~~~^^^^^^^^^^^
 KeyError: 'pressed'
@@ -71,10 +71,10 @@ KeyError: 'pressed'
 ERROR: test_normalized_episode_keeps_every_pointer_event (tests.test_pointer_routes.PointerReadersTest.test_normalized_episode_keeps_every_pointer_event)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 60, in test_normalized_episode_keeps_every_pointer_event
+  File "$REPO/tests/test_pointer_routes.py", line 60, in test_normalized_episode_keeps_every_pointer_event
     episode=normalize(trace,doc,episode_id='pointer')
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/workspace/work/pointer-routes/expectrail/trace/normalize.py", line 147, in normalize
+  File "$REPO/expectrail/trace/normalize.py", line 147, in normalize
     inputs = [{"tick": int(e["tick"]), "action": str(e["action"]), "pressed": bool(e["pressed"])}
                                                      ~^^^^^^^^^^
 KeyError: 'action'
@@ -83,10 +83,10 @@ KeyError: 'action'
 ERROR: test_playtest_heuristics_ignore_pointer_as_action_hold (tests.test_pointer_routes.PointerReadersTest.test_playtest_heuristics_ignore_pointer_as_action_hold)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 95, in test_playtest_heuristics_ignore_pointer_as_action_hold
+  File "$REPO/tests/test_pointer_routes.py", line 95, in test_playtest_heuristics_ignore_pointer_as_action_hold
     self.assertEqual(anomalies(doc,trace),[])
                      ^^^^^^^^^^^^^^^^^^^^
-  File "/workspace/work/pointer-routes/tools/playtester/producer.py", line 98, in anomalies
+  File "$REPO/tools/playtester/producer.py", line 98, in anomalies
     if event["pressed"]:
        ~~~~~^^^^^^^^^^^
 KeyError: 'pressed'
@@ -95,13 +95,13 @@ KeyError: 'pressed'
 ERROR: test_review_page_names_pointer_inputs (tests.test_pointer_routes.PointerReadersTest.test_review_page_names_pointer_inputs)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 84, in test_review_page_names_pointer_inputs
+  File "$REPO/tests/test_pointer_routes.py", line 84, in test_review_page_names_pointer_inputs
     filename,inputs=onboard.inputs(root,{'routes':[name]})
                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/workspace/work/pointer-routes/expectrail/onboard.py", line 91, in inputs
+  File "$REPO/expectrail/onboard.py", line 91, in inputs
     actions = list(dict.fromkeys(event["action"] for event in json.loads(raw)["events"]))
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/workspace/work/pointer-routes/expectrail/onboard.py", line 91, in <genexpr>
+  File "$REPO/expectrail/onboard.py", line 91, in <genexpr>
     actions = list(dict.fromkeys(event["action"] for event in json.loads(raw)["events"]))
                                  ~~~~~^^^^^^^^^^
 KeyError: 'action'
@@ -110,12 +110,12 @@ KeyError: 'action'
 ERROR: test_click_starts_menu_and_pointer_steers_three_identical_replays (tests.test_pointer_routes.RealPointerTest.test_click_starts_menu_and_pointer_steers_three_identical_replays)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 141, in test_click_starts_menu_and_pointer_steers_three_identical_replays
+  File "$REPO/tests/test_pointer_routes.py", line 141, in test_click_starts_menu_and_pointer_steers_three_identical_replays
     values=[self.replay(Path(tmp),pointer_route(),f'run-{i}') for i in range(3)]
             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 132, in replay
+  File "$REPO/tests/test_pointer_routes.py", line 132, in replay
     contracts.validate(doc,'route')
-  File "/workspace/work/pointer-routes/expectrail/contracts.py", line 63, in validate
+  File "$REPO/expectrail/contracts.py", line 63, in validate
     raise ContractError(f"{kind}: {where}: {first.message}")
 expectrail.contracts.ContractError: route: events/0: 'action' is a required property
 
@@ -123,12 +123,12 @@ expectrail.contracts.ContractError: route: events/0: 'action' is a required prop
 ERROR: test_outside_viewport_refuses_instead_of_clamping_or_clicking_elsewhere (tests.test_pointer_routes.RealPointerTest.test_outside_viewport_refuses_instead_of_clamping_or_clicking_elsewhere)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 162, in test_outside_viewport_refuses_instead_of_clamping_or_clicking_elsewhere
+  File "$REPO/tests/test_pointer_routes.py", line 162, in test_outside_viewport_refuses_instead_of_clamping_or_clicking_elsewhere
     with self.assertRaises(SystemExit):self.replay(Path(tmp),doc,'outside')
                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 132, in replay
+  File "$REPO/tests/test_pointer_routes.py", line 132, in replay
     contracts.validate(doc,'route')
-  File "/workspace/work/pointer-routes/expectrail/contracts.py", line 63, in validate
+  File "$REPO/expectrail/contracts.py", line 63, in validate
     raise ContractError(f"{kind}: {where}: {first.message}")
 expectrail.contracts.ContractError: route: events/0: 'action' is a required property
 
@@ -136,12 +136,12 @@ expectrail.contracts.ContractError: route: events/0: 'action' is a required prop
 ERROR: test_same_tick_move_and_button_edges_keep_array_order (tests.test_pointer_routes.RealPointerTest.test_same_tick_move_and_button_edges_keep_array_order)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 156, in test_same_tick_move_and_button_edges_keep_array_order
+  File "$REPO/tests/test_pointer_routes.py", line 156, in test_same_tick_move_and_button_edges_keep_array_order
     with tempfile.TemporaryDirectory() as tmp:_,trace=self.replay(Path(tmp),doc,'same-tick')
                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 132, in replay
+  File "$REPO/tests/test_pointer_routes.py", line 132, in replay
     contracts.validate(doc,'route')
-  File "/workspace/work/pointer-routes/expectrail/contracts.py", line 63, in validate
+  File "$REPO/expectrail/contracts.py", line 63, in validate
     raise ContractError(f"{kind}: {where}: {first.message}")
 expectrail.contracts.ContractError: route: events/0: 'action' is a required property
 
@@ -149,67 +149,67 @@ expectrail.contracts.ContractError: route: events/0: 'action' is a required prop
 FAIL: test_invalid_pointer_is_refused_before_engine_lookup (tests.test_pointer_routes.PointerReadersTest.test_invalid_pointer_is_refused_before_engine_lookup)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/workspace/work/pointer-routes/harness/run.py", line 283, in run
+  File "$REPO/harness/run.py", line 283, in run
     require_gdscript(game, config, within=within)
-  File "/workspace/work/pointer-routes/expectrail/godot_project.py", line 48, in require_gdscript
+  File "$REPO/expectrail/godot_project.py", line 48, in require_gdscript
     for item in _records((root/'project.godot').read_text(encoding='utf-8-sig')):
                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1027, in read_text
+  File "$PYTHON/lib/python3.12/pathlib.py", line 1027, in read_text
     with self.open(mode='r', encoding=encoding, errors=errors) as f:
          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+  File "$PYTHON/lib/python3.12/pathlib.py", line 1013, in open
     return io.open(self, mode, buffering, encoding, errors, newline)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/pointer-routes/tests/projects/crate-run/project.godot'
+FileNotFoundError: [Errno 2] No such file or directory: '$REPO/tests/projects/crate-run/project.godot'
 
 The above exception was the direct cause of the following exception:
 
-SystemExit: [Errno 2] No such file or directory: '/workspace/work/pointer-routes/tests/projects/crate-run/project.godot'
+SystemExit: [Errno 2] No such file or directory: '$REPO/tests/projects/crate-run/project.godot'
 
 During handling of the above exception, another exception occurred:
 
 Traceback (most recent call last):
-  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 102, in test_invalid_pointer_is_refused_before_engine_lookup
+  File "$REPO/tests/test_pointer_routes.py", line 102, in test_invalid_pointer_is_refused_before_engine_lookup
     with self.assertRaisesRegex(SystemExit,'invalid pointer route'):
          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: "invalid pointer route" does not match "[Errno 2] No such file or directory: '/workspace/work/pointer-routes/tests/projects/crate-run/project.godot'"
+AssertionError: "invalid pointer route" does not match "[Errno 2] No such file or directory: '$REPO/tests/projects/crate-run/project.godot'"
 
 ======================================================================
 FAIL: test_pointer_tick_outside_route_is_refused (tests.test_pointer_routes.PointerReadersTest.test_pointer_tick_outside_route_is_refused)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/workspace/work/pointer-routes/harness/run.py", line 283, in run
+  File "$REPO/harness/run.py", line 283, in run
     require_gdscript(game, config, within=within)
-  File "/workspace/work/pointer-routes/expectrail/godot_project.py", line 48, in require_gdscript
+  File "$REPO/expectrail/godot_project.py", line 48, in require_gdscript
     for item in _records((root/'project.godot').read_text(encoding='utf-8-sig')):
                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1027, in read_text
+  File "$PYTHON/lib/python3.12/pathlib.py", line 1027, in read_text
     with self.open(mode='r', encoding=encoding, errors=errors) as f:
          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+  File "$PYTHON/lib/python3.12/pathlib.py", line 1013, in open
     return io.open(self, mode, buffering, encoding, errors, newline)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/pointer-routes/tests/projects/crate-run/project.godot'
+FileNotFoundError: [Errno 2] No such file or directory: '$REPO/tests/projects/crate-run/project.godot'
 
 The above exception was the direct cause of the following exception:
 
-SystemExit: [Errno 2] No such file or directory: '/workspace/work/pointer-routes/tests/projects/crate-run/project.godot'
+SystemExit: [Errno 2] No such file or directory: '$REPO/tests/projects/crate-run/project.godot'
 
 During handling of the above exception, another exception occurred:
 
 Traceback (most recent call last):
-  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 110, in test_pointer_tick_outside_route_is_refused
+  File "$REPO/tests/test_pointer_routes.py", line 110, in test_pointer_tick_outside_route_is_refused
     with self.assertRaisesRegex(SystemExit,'outside.*ticks'):
          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: "outside.*ticks" does not match "[Errno 2] No such file or directory: '/workspace/work/pointer-routes/tests/projects/crate-run/project.godot'"
+AssertionError: "outside.*ticks" does not match "[Errno 2] No such file or directory: '$REPO/tests/projects/crate-run/project.godot'"
 
 ======================================================================
 FAIL: test_unity_refuses_pointer_explicitly (tests.test_pointer_routes.PointerReadersTest.test_unity_refuses_pointer_explicitly)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/workspace/work/pointer-routes/harness/unity/run.py", line 242, in check_route
+  File "$REPO/harness/unity/run.py", line 242, in check_route
     validate(route_doc, "route")
-  File "/workspace/work/pointer-routes/expectrail/contracts.py", line 63, in validate
+  File "$REPO/expectrail/contracts.py", line 63, in validate
     raise ContractError(f"{kind}: {where}: {first.message}")
 expectrail.contracts.ContractError: route: events/0: 'action' is a required property
 
@@ -220,7 +220,7 @@ SystemExit: invalid route: route: events/0: 'action' is a required property
 During handling of the above exception, another exception occurred:
 
 Traceback (most recent call last):
-  File "/workspace/work/pointer-routes/tests/test_pointer_routes.py", line 89, in test_unity_refuses_pointer_explicitly
+  File "$REPO/tests/test_pointer_routes.py", line 89, in test_unity_refuses_pointer_explicitly
     with self.assertRaisesRegex(SystemExit,'Unity.*pointer'):
          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: "Unity.*pointer" does not match "invalid route: route: events/0: 'action' is a required property"

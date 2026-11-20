@@ -1,0 +1,51 @@
+{
+  "format": "expectrail.outside-trial/v0",
+  "projects": [
+    {
+      "name": "example",
+      "verdict": "needs-review",
+      "expect": "needs-review",
+      "expectedEngine": {
+        "paddle": "fail"
+      },
+      "draftFindings": [
+        {
+          "spec": "paddle",
+          "route": "sweep",
+          "result": "fail",
+          "reason": "paddle leaves the play area",
+          "firstFrame": 20,
+          "framesJudged": 51,
+          "coverage": {
+            "status": "exercised"
+          },
+          "traceSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "around": [
+            {
+              "tick": 20,
+              "player": [
+                8,
+                616
+              ]
+            }
+          ]
+        }
+      ],
+      "routeSummaries": [
+        "pointer left click at viewport [180, 290]: left down tick 13; left up tick 14."
+      ],
+      "expectationErrors": [],
+      "checks": {
+        "checks": 0,
+        "passed": 0
+      },
+      "reasons": [
+        "unapproved drafts; vision did not run"
+      ],
+      "commit": "1111111111111111111111111111111111111111",
+      "licence": "MIT",
+      "exit": 2,
+      "seconds": 1.0
+    }
+  ]
+}

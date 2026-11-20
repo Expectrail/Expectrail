@@ -1,0 +1,444 @@
+{
+  "format": "expectrail.outside-trial/v0",
+  "projects": [
+    {
+      "name": "breakout",
+      "repository": "https://github.com/mike0697/Breakout.git",
+      "commit": "0ac7aed444ea593a023d9b666c211d7ab8acd51e",
+      "path": ".",
+      "licence": "MIT",
+      "kind": "independent-author pointer paddle and ball game; starts from a measured menu click; draft checks only, no approval or vision",
+      "exit": 2,
+      "verdict": "needs-review",
+      "seconds": 58.3,
+      "decision": "needs-review",
+      "reasons": [
+        "TOOL_MISSING: 33 MB free in the engine's folder ($REPO/tools). Fix: free at least 1024 MB in each folder named above, or name other folders with EXPECTRAIL_TOOLS and TMPDIR"
+      ],
+      "checks": null,
+      "routes": [],
+      "failures": [],
+      "isolation": null,
+      "around": [],
+      "change": null,
+      "what": null,
+      "expect": "needs-review",
+      "diagnostics": [
+        "{'code': 'TOOL_MISSING', 'stage': 'preparing', 'detail': \"33 MB free in the engine's folder ($REPO/tools). Fix: free at least 1024 MB in each folder named above, or name other folders with EXPECTRAIL_TOOLS and TMPDIR\", 'fix': 'install it (./harness/get_godot.sh, xvfb) and ru"
+      ],
+      "expectedEngine": {
+        "breakout-paddle-bounds": "pass",
+        "breakout-ball-starts": "pass"
+      },
+      "draftFindings": [
+        {
+          "spec": "breakout-paddle-bounds",
+          "route": "auto-input-map",
+          "result": "pass",
+          "reason": "no violation in 51 frames",
+          "firstFrame": null,
+          "framesJudged": 51,
+          "coverage": {
+            "status": "exercised",
+            "semanticResult": "pass",
+            "framesObserved": 51,
+            "framesExpected": 51,
+            "framesRequired": 51,
+            "completeWindow": true
+          },
+          "traceSha256": "dc0c5b024d72ac267efc023d449ec63d70fed24a3ec4c6c73992041d2bf97126",
+          "around": []
+        },
+        {
+          "spec": "breakout-ball-starts",
+          "route": "auto-input-map",
+          "result": "pass",
+          "reason": "no violation in 11 frames",
+          "firstFrame": null,
+          "framesJudged": 11,
+          "coverage": {
+            "status": "exercised",
+            "semanticResult": "pass",
+            "framesObserved": 11,
+            "framesExpected": 11,
+            "framesRequired": 11,
+            "completeWindow": true
+          },
+          "traceSha256": "dc0c5b024d72ac267efc023d449ec63d70fed24a3ec4c6c73992041d2bf97126",
+          "around": []
+        }
+      ],
+      "routeSummaries": [
+        "auto-input-map: Route: 407 physics ticks (6.78333 seconds at 60 ticks/second), seed 1.",
+        "auto-input-map:   pointer left click at viewport [180.0, 290.0]: move tick 12; left down tick 13; left up tick 14.",
+        "auto-input-map:   pointer sweep in viewport [177.6, 293.7] to [36.0, 512.0], ticks 17\u201376 (60 recorded moves).",
+        "auto-input-map:   pointer sweep in viewport [40.8, 512.0] to [324.0, 512.0], ticks 92\u2013151 (60 recorded moves).",
+        "auto-input-map:   pointer sweep in viewport [319.2, 512.0] to [36.0, 512.0], ticks 167\u2013226 (60 recorded moves).",
+        "auto-input-map:   pointer sweep in viewport [40.8, 512.0] to [324.0, 512.0], ticks 242\u2013301 (60 recorded moves).",
+        "auto-input-map:   pointer sweep in viewport [321.6, 512.0] to [180.0, 512.0], ticks 317\u2013376 (60 recorded moves).",
+        "auto-input-map: The bound player (Player) moved during the replay. Movement alone does not prove the actions caused it."
+      ],
+      "expectationErrors": [],
+      "verifySeconds": 13.6
+    },
+    {
+      "name": "breakout",
+      "repository": "https://github.com/mike0697/Breakout.git",
+      "commit": "0ac7aed444ea593a023d9b666c211d7ab8acd51e",
+      "path": ".",
+      "licence": "MIT",
+      "kind": "independent-author pointer paddle and ball game; starts from a measured menu click; draft checks only, no approval or vision",
+      "exit": 2,
+      "verdict": "needs-review",
+      "seconds": 59.8,
+      "decision": "needs-review",
+      "reasons": [
+        "TOOL_MISSING: 33 MB free in the engine's folder ($REPO/tools). Fix: free at least 1024 MB in each folder named above, or name other folders with EXPECTRAIL_TOOLS and TMPDIR"
+      ],
+      "checks": null,
+      "routes": [],
+      "failures": [],
+      "isolation": null,
+      "around": [],
+      "change": "harmless",
+      "what": "a comment only; both draft diagnostics pass; drafts cannot clear a change",
+      "expect": "needs-review",
+      "diagnostics": [
+        "{'code': 'TOOL_MISSING', 'stage': 'preparing', 'detail': \"33 MB free in the engine's folder ($REPO/tools). Fix: free at least 1024 MB in each folder named above, or name other folders with EXPECTRAIL_TOOLS and TMPDIR\", 'fix': 'install it (./harness/get_godot.sh, xvfb) and ru"
+      ],
+      "expectedEngine": {
+        "breakout-paddle-bounds": "pass",
+        "breakout-ball-starts": "pass"
+      },
+      "draftFindings": [
+        {
+          "spec": "breakout-paddle-bounds",
+          "route": "auto-input-map",
+          "result": "pass",
+          "reason": "no violation in 51 frames",
+          "firstFrame": null,
+          "framesJudged": 51,
+          "coverage": {
+            "status": "exercised",
+            "semanticResult": "pass",
+            "framesObserved": 51,
+            "framesExpected": 51,
+            "framesRequired": 51,
+            "completeWindow": true
+          },
+          "traceSha256": "dc0c5b024d72ac267efc023d449ec63d70fed24a3ec4c6c73992041d2bf97126",
+          "around": []
+        },
+        {
+          "spec": "breakout-ball-starts",
+          "route": "auto-input-map",
+          "result": "pass",
+          "reason": "no violation in 11 frames",
+          "firstFrame": null,
+          "framesJudged": 11,
+          "coverage": {
+            "status": "exercised",
+            "semanticResult": "pass",
+            "framesObserved": 11,
+            "framesExpected": 11,
+            "framesRequired": 11,
+            "completeWindow": true
+          },
+          "traceSha256": "dc0c5b024d72ac267efc023d449ec63d70fed24a3ec4c6c73992041d2bf97126",
+          "around": []
+        }
+      ],
+      "routeSummaries": [
+        "auto-input-map: Route: 407 physics ticks (6.78333 seconds at 60 ticks/second), seed 1.",
+        "auto-input-map:   pointer left click at viewport [180.0, 290.0]: move tick 12; left down tick 13; left up tick 14.",
+        "auto-input-map:   pointer sweep in viewport [177.6, 293.7] to [36.0, 512.0], ticks 17\u201376 (60 recorded moves).",
+        "auto-input-map:   pointer sweep in viewport [40.8, 512.0] to [324.0, 512.0], ticks 92\u2013151 (60 recorded moves).",
+        "auto-input-map:   pointer sweep in viewport [319.2, 512.0] to [36.0, 512.0], ticks 167\u2013226 (60 recorded moves).",
+        "auto-input-map:   pointer sweep in viewport [40.8, 512.0] to [324.0, 512.0], ticks 242\u2013301 (60 recorded moves).",
+        "auto-input-map:   pointer sweep in viewport [321.6, 512.0] to [180.0, 512.0], ticks 317\u2013376 (60 recorded moves).",
+        "auto-input-map: The bound player (Player) moved during the replay. Movement alone does not prove the actions caused it."
+      ],
+      "expectationErrors": [],
+      "verifySeconds": 13.5
+    },
+    {
+      "name": "breakout",
+      "repository": "https://github.com/mike0697/Breakout.git",
+      "commit": "0ac7aed444ea593a023d9b666c211d7ab8acd51e",
+      "path": ".",
+      "licence": "MIT",
+      "kind": "independent-author pointer paddle and ball game; starts from a measured menu click; draft checks only, no approval or vision",
+      "exit": 2,
+      "verdict": "needs-review",
+      "seconds": 50.7,
+      "decision": "needs-review",
+      "reasons": [
+        "TOOL_MISSING: 33 MB free in the engine's folder ($REPO/tools). Fix: free at least 1024 MB in each folder named above, or name other folders with EXPECTRAIL_TOOLS and TMPDIR"
+      ],
+      "checks": null,
+      "routes": [],
+      "failures": [],
+      "isolation": null,
+      "around": [],
+      "change": "broken",
+      "what": "paddle is forced to x=8; raw paddle draft fails, ball movement checkpoint is not reached; unapproved drafts do not reject at the gate",
+      "expect": "needs-review",
+      "diagnostics": [
+        "{'code': 'TOOL_MISSING', 'stage': 'preparing', 'detail': \"33 MB free in the engine's folder ($REPO/tools). Fix: free at least 1024 MB in each folder named above, or name other folders with EXPECTRAIL_TOOLS and TMPDIR\", 'fix': 'install it (./harness/get_godot.sh, xvfb) and ru"
+      ],
+      "expectedEngine": {
+        "breakout-paddle-bounds": "fail",
+        "breakout-ball-starts": "needs-review"
+      },
+      "draftFindings": [
+        {
+          "spec": "breakout-paddle-bounds",
+          "route": "auto-input-map",
+          "result": "fail",
+          "reason": "player [-15.5, 607.0, 31.5, 625.0] leaves region [0, 0, 360.0, 640.0] (first at frame 20, 51 frames)",
+          "firstFrame": 20,
+          "framesJudged": 51,
+          "coverage": {
+            "status": "not-reached",
+            "semanticResult": "fail",
+            "framesObserved": 51,
+            "framesExpected": 51,
+            "framesRequired": 51,
+            "completeWindow": true
+          },
+          "traceSha256": "54f9dc3184c33dc1718f3a57494e8cbdfcbe6d65809f0c1b072285b69dd431c4",
+          "around": [
+            {
+              "tick": 19,
+              "frame": 19,
+              "player": [
+                8.0,
+                616.0
+              ],
+              "playerVisible": true,
+              "onFloor": false,
+              "body": [
+                -16.0,
+                606.0,
+                32.0,
+                625.0
+              ],
+              "enemies": [],
+              "projectiles": [],
+              "enemyBoxes": [],
+              "projectileBoxes": [],
+              "view": [
+                1.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0
+              ],
+              "roleObjects": [
+                {
+                  "id": "Ball",
+                  "role": "ball",
+                  "worldBox": [
+                    222.582,
+                    234.575,
+                    230.582,
+                    242.575
+                  ],
+                  "box": [
+                    222.582,
+                    234.575,
+                    230.582,
+                    242.575
+                  ],
+                  "visible": true,
+                  "boundsSource": "drawing"
+                },
+                {
+                  "id": "Paddle",
+                  "role": "player",
+                  "worldBox": [
+                    -15.5,
+                    607.0,
+                    31.5,
+                    625.0
+                  ],
+                  "box": [
+                    -15.5,
+                    607.0,
+                    31.5,
+                    625.0
+                  ],
+                  "visible": true,
+                  "boundsSource": "drawing"
+                }
+              ]
+            },
+            {
+              "tick": 20,
+              "frame": 20,
+              "player": [
+                8.0,
+                616.0
+              ],
+              "playerVisible": true,
+              "onFloor": false,
+              "body": [
+                -16.0,
+                606.0,
+                32.0,
+                625.0
+              ],
+              "enemies": [],
+              "projectiles": [],
+              "enemyBoxes": [],
+              "projectileBoxes": [],
+              "view": [
+                1.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0
+              ],
+              "roleObjects": [
+                {
+                  "id": "Ball",
+                  "role": "ball",
+                  "worldBox": [
+                    224.345,
+                    241.004,
+                    232.345,
+                    249.004
+                  ],
+                  "box": [
+                    224.345,
+                    241.004,
+                    232.345,
+                    249.004
+                  ],
+                  "visible": true,
+                  "boundsSource": "drawing"
+                },
+                {
+                  "id": "Paddle",
+                  "role": "player",
+                  "worldBox": [
+                    -15.5,
+                    607.0,
+                    31.5,
+                    625.0
+                  ],
+                  "box": [
+                    -15.5,
+                    607.0,
+                    31.5,
+                    625.0
+                  ],
+                  "visible": true,
+                  "boundsSource": "drawing"
+                }
+              ]
+            },
+            {
+              "tick": 21,
+              "frame": 21,
+              "player": [
+                8.0,
+                616.0
+              ],
+              "playerVisible": true,
+              "onFloor": false,
+              "body": [
+                -16.0,
+                606.0,
+                32.0,
+                625.0
+              ],
+              "enemies": [],
+              "projectiles": [],
+              "enemyBoxes": [],
+              "projectileBoxes": [],
+              "view": [
+                1.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0
+              ],
+              "roleObjects": [
+                {
+                  "id": "Ball",
+                  "role": "ball",
+                  "worldBox": [
+                    226.109,
+                    247.433,
+                    234.109,
+                    255.433
+                  ],
+                  "box": [
+                    226.109,
+                    247.433,
+                    234.109,
+                    255.433
+                  ],
+                  "visible": true,
+                  "boundsSource": "drawing"
+                },
+                {
+                  "id": "Paddle",
+                  "role": "player",
+                  "worldBox": [
+                    -15.5,
+                    607.0,
+                    31.5,
+                    625.0
+                  ],
+                  "box": [
+                    -15.5,
+                    607.0,
+                    31.5,
+                    625.0
+                  ],
+                  "visible": true,
+                  "boundsSource": "drawing"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "spec": "breakout-ball-starts",
+          "route": "auto-input-map",
+          "result": "needs-review",
+          "reason": "not-exercised: 11 judged frames; needs 11; observed 11 of 11 window frames; checkpoint not-reached; no violation in 11 frames",
+          "firstFrame": null,
+          "framesJudged": 11,
+          "coverage": {
+            "status": "not-reached",
+            "semanticResult": "not_exercised",
+            "framesObserved": 11,
+            "framesExpected": 11,
+            "framesRequired": 11,
+            "completeWindow": true
+          },
+          "traceSha256": "54f9dc3184c33dc1718f3a57494e8cbdfcbe6d65809f0c1b072285b69dd431c4",
+          "around": []
+        }
+      ],
+      "routeSummaries": [
+        "auto-input-map: Route: 407 physics ticks (6.78333 seconds at 60 ticks/second), seed 1.",
+        "auto-input-map:   pointer left click at viewport [180.0, 290.0]: move tick 12; left down tick 13; left up tick 14.",
+        "auto-input-map:   pointer sweep in viewport [177.6, 293.7] to [36.0, 512.0], ticks 17\u201376 (60 recorded moves).",
+        "auto-input-map:   pointer sweep in viewport [40.8, 512.0] to [324.0, 512.0], ticks 92\u2013151 (60 recorded moves).",
+        "auto-input-map:   pointer sweep in viewport [319.2, 512.0] to [36.0, 512.0], ticks 167\u2013226 (60 recorded moves).",
+        "auto-input-map:   pointer sweep in viewport [40.8, 512.0] to [324.0, 512.0], ticks 242\u2013301 (60 recorded moves).",
+        "auto-input-map:   pointer sweep in viewport [321.6, 512.0] to [180.0, 512.0], ticks 317\u2013376 (60 recorded moves).",
+        "auto-input-map: The bound player (Player) moved during the replay. Movement alone does not prove the actions caused it."
+      ],
+      "expectationErrors": [],
+      "verifySeconds": 13.5
+    }
+  ]
+}

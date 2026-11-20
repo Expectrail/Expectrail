@@ -1,0 +1,18 @@
+{
+  "label": "final-guard",
+  "startedUtc": "2026-11-16T07:40:04.053410+00:00",
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v",
+    "tests.test_outside_root",
+    "tests.test_outside_trial"
+  ],
+  "cwd": "$REPO",
+  "seconds": 1.626233073999174,
+  "exitCode": 0,
+  "status": "finished",
+  "godotOverride": null,
+  "log": "logs/final-guard.log"
+}

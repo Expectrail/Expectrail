@@ -37,8 +37,19 @@ class ListTest(unittest.TestCase):
                 patches = sorted(REPO / c["patch"] for c in p.get("changes", []))
                 for patch in patches:
                     self.assertLess(patch.stat().st_size, 2048, patch.name)
-                self.assertEqual(sorted(f for f in (REPO / "tests" / "outside" / p["name"]).rglob("*") if f.is_file()),
-                                 sorted(routes + patches))
+                owned = routes + patches
+                roots = {REPO / "tests" / "outside" / p["name"]}
+                if "config" in p:
+                    owned += [REPO / p["config"]] + [REPO / name for name in p["draftSpecs"]]
+                    roots.add((REPO / p["config"]).parent)
+                if p["name"] == "breakout":
+                    # Historical authored trial inputs, not game sources. Keep an exact
+                    # allowlist: an added asset/script still fails this assertion.
+                    owned += [REPO / "tests/outside/breakout" / name for name in (
+                        "README.md", "expectrail.project.json", "routes/keyboard-start.json",
+                        "checks/breakout-ball-starts.json", "checks/breakout-paddle-bounds.json")]
+                self.assertEqual(sorted({f for root in roots for f in root.rglob("*") if f.is_file()}),
+                                 sorted(set(owned)))
 
     def test_a_list_that_does_not_pin_what_runs_is_refused(self):
         good = json.loads(trial.LIST.read_text(encoding="utf-8"))

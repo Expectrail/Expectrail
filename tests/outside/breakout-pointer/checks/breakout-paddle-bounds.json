@@ -1,7 +1,7 @@
 {
   "format": "expectrail.test-spec/v0",
   "id": "breakout-paddle-bounds",
-  "instruction": "Draft: after the engine-measured Start click (release tick 14), the paddle drawing must stay in the 360 by 640 play area while the pointer sweep drives it. Require reaching the left lane, so an unstarted menu is not useful containment evidence. Sean must review the route, window, checkpoint and art-derived box before approval.",
+  "instruction": "Draft: after Start, the whole paddle drawing stays inside the project viewport during frames 20..70 and the bound paddle reaches both route-derived positions at ticks 20 and 70, within half its collision width. Frozen play cannot pass. Review the viewport, walls, drawing, click and movement obligations before approval.",
   "objects": {
     "player": {
       "prompt": "horizontal player paddle"
@@ -14,8 +14,8 @@
       "box": [
         0,
         0,
-        360,
-        640
+        360.0,
+        640.0
       ]
     }
   },
@@ -24,17 +24,23 @@
     "toFrame": 70
   },
   "coverage": {
-    "minFrames": 40,
+    "minFrames": 51,
     "reached": [
       {
-        "type": "position-region",
-        "fromTick": 12,
-        "box": [
-          0,
-          590,
-          80,
-          640
-        ]
+        "type": "position-at-tick",
+        "tick": 20,
+        "object": "player",
+        "x": 170.4,
+        "y": 616.0,
+        "tolerancePx": 24.0
+      },
+      {
+        "type": "position-at-tick",
+        "tick": 70,
+        "object": "player",
+        "x": 50.4,
+        "y": 616.0,
+        "tolerancePx": 24.0
       }
     ]
   }

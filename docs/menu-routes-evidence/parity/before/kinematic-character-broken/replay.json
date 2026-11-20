@@ -6,7 +6,7 @@
   },
   "game": {
     "tree": "ba5fb112d7603f608f0054c767e45f23469efcfe2861a0d85d2f7f7e3e2e9747",
-    "patch": "/workspace/work/pointer-routes/tests/outside/kinematic-character/changes/broken.patch",
+    "patch": "$REPO/tests/outside/kinematic-character/changes/broken.patch",
     "patchSha256": "6437f8b3ee060135e9f0259a0b7e8dbe1ff43289d5310e4f79375829fbac5dbf"
   },
   "engine": {

@@ -1,0 +1,33 @@
+{
+  "format": "expectrail.outside-projects/v0",
+  "projects": [
+    {
+      "name": "example",
+      "repository": "https://github.com/example/game.git",
+      "commit": "1111111111111111111111111111111111111111",
+      "path": ".",
+      "licence": "MIT",
+      "kind": "root project, draft diagnostics only",
+      "routes": "tests/outside/example/routes",
+      "config": "tests/outside/example/expectrail.project.json",
+      "draftSpecs": [
+        "tests/outside/example/checks/paddle.json"
+      ],
+      "expect": "needs-review",
+      "engineExpect": {
+        "paddle": "pass"
+      },
+      "changes": [
+        {
+          "name": "broken",
+          "patch": "tests/outside/example/changes/broken.patch",
+          "expect": "needs-review",
+          "engineExpect": {
+            "paddle": "fail"
+          },
+          "what": "paddle leaves the play area; draft does not reject at gate"
+        }
+      ]
+    }
+  ]
+}

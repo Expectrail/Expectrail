@@ -1,6 +1,6 @@
 from pathlib import Path
 import json,shutil
-r=Path('/workspace/work/pointer-routes');game=Path('/workspace/work/breakout-pointer-source');h=Path(__file__).parent
+r=Path('$REPO');game=Path('$WORK/breakout-pointer-source');h=Path(__file__).parent
 pending=json.loads((game/'expectrail.project.draft.json').read_text());c=pending['config']
 c['bindings']={'player':{'node':'Paddle','texture':'res://break assets/paddle/sp_paddle_long_strip2.png'},'ball':{'node':'Ball','texture':'res://break assets/Misc/sp_ball.png'}}
 (game/'expectrail.project.json').write_text(json.dumps(c,indent=2)+'\n')

@@ -35,3 +35,5 @@ pass on the new runner. No existing tests or assertions were changed.
 routes, episode evaluator, onboarding and harness. [Before](full-before.txt), [after](full-after.txt) and
 [comparison](test-comparison.json) record the full-suite result. The initial
 disk-exhausted attempt is in the handover only and is not used as the baseline.
+
+Published path spellings were redacted in the registry follow-up; [evidence handling](../outside-trials/breakout-ci/evidence-notes.md) explains the placeholders and original handover records.

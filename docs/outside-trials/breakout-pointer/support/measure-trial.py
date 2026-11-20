@@ -2,7 +2,7 @@ from pathlib import Path
 import json,hashlib
 from expectrail.gate.verify import observations,window_frames
 from expectrail.evaluator import evaluate
-h=Path(__file__).parent;r=Path('/workspace/work/pointer-routes')
+h=Path(__file__).parent;r=Path('$REPO')
 route=json.loads((r/'tests/outside/breakout-pointer/routes/pointer-auto.json').read_text())
 rows=[]
 for case in ('pinned-1','pinned-2','pinned-3','harmless','broken'):

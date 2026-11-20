@@ -7,15 +7,15 @@
     "-m",
     "expectrail.cli",
     "inspect",
-    "/workspace/work/breakout-pointer-source"
+    "$WORK/breakout-pointer-source"
   ],
-  "cwd": "/workspace/work/pointer-routes",
+  "cwd": "$REPO",
   "seconds": 0.15015269199648174,
   "exitCode": 0,
   "status": "finished",
   "log": "trial-logs/07-inspect-config.log",
   "environment": {
-    "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+    "EXPECTRAIL_GODOT": "$WORK/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
     "TMPDIR": null,
     "EXPECTRAIL_TOOLS": null
   }

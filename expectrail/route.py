@@ -176,15 +176,65 @@ def tick_ranges(ticks: list[int]) -> str:
     return ", ".join(str(a) if a == b else f"{a}-{b}" for a, b in runs)
 
 
+def pointer_summary(events: list[dict]) -> list[str]:
+    """Summarize existing events without editing them or disguising held buttons.
+
+    Only adjacent stationary down/up edges are a click. Contiguous moves in the
+    same direction form a sweep; a pause, action, button edge or turn ends it.
+    """
+    lines, i = [], 0
+    while i < len(events):
+        e = events[i]
+        if 'pointer' not in e:
+            i += 1
+            continue
+        p, start = e['pointer'], i
+        down = i + 1 if 'button' not in p and i + 1 < len(events) else i
+        if down + 1 < len(events):
+            a, b = events[down], events[down + 1]
+            pa, pb = a.get('pointer', {}), b.get('pointer', {})
+            if (pa.get('pressed') is True and pb.get('pressed') is False
+                    and pa.get('button') == pb.get('button')
+                    and p['position'] == pa.get('position') == pb.get('position')
+                    and b['tick'] == a['tick'] + 1 and a['tick'] - e['tick'] <= 1):
+                moved = f"move tick {e['tick']}; " if down != i else ''
+                lines.append(f"pointer {pa['button']} click at viewport {p['position']}: {moved}"
+                             f"{pa['button']} down tick {a['tick']}; {pb['button']} up tick {b['tick']}.")
+                i = down + 2
+                continue
+        if 'button' in p:
+            lines.append(f"pointer {p['button']} {'down' if p['pressed'] else 'up'} at viewport {p['position']}, tick {e['tick']}.")
+            i += 1
+            continue
+        direction = None
+        while i + 1 < len(events):
+            a, b = events[i], events[i + 1]
+            q = b.get('pointer', {})
+            if not q or 'button' in q or b['tick'] != a['tick'] + 1:
+                break
+            delta = [v-u for u,v in zip(a['pointer']['position'], q['position'])]
+            sign = tuple(0 if abs(v) < 0.00001 else (1 if v > 0 else -1) for v in delta)
+            if direction is not None and sign != direction:
+                break
+            direction = sign
+            i += 1
+        last = events[i]
+        if i == start:
+            lines.append(f"pointer move to viewport {p['position']}, tick {e['tick']}.")
+        else:
+            lines.append(f"pointer {'hold' if direction == (0, 0) else 'sweep'} in viewport "
+                         f"{p['position']} to {last['pointer']['position']}, ticks {e['tick']}–{last['tick']} "
+                         f"({i-start+1} recorded moves).")
+        i += 1
+    return lines
+
+
 def describe(route: dict, rate: int, trace: dict) -> list[str]:
     lines = [f"Route: {route['ticks']} physics ticks ({route['ticks'] / rate:g} seconds at {rate} ticks/second), seed 1."]
+    lines += ["  " + line for line in pointer_summary(route["events"])]
     held, durations = {}, {}
     for event in route["events"]:
         if "pointer" in event:
-            point = event["pointer"]
-            button = (f"{point['button']} {'down' if point['pressed'] else 'up'}"
-                      if "button" in point else "move")
-            lines.append(f"  pointer {button} at viewport {point['position']}, tick {event['tick']}.")
             continue
         if event["pressed"]:
             held[event["action"]] = event["tick"]

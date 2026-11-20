@@ -1,7 +1,7 @@
 {
   "format": "expectrail.test-spec/v0",
   "id": "breakout-ball-starts",
-  "instruction": "Draft: after Start is clicked and released at tick 14, the downward-launched ball should be below y=300 during frames 40..50. Require the paddle-left-lane checkpoint to confirm the round was exercised. Review the source-derived timing assumption and generated route before approval.",
+  "instruction": "Draft: after Start, the whole ball drawing is below its initial centre plus its collision radius during frames 40..50, and the paddle reaches the two route-derived positions at ticks 20 and 70. This demonstrates this seeded launch, not the correctness of every bounce. Review before approval.",
   "objects": {
     "ball": {
       "prompt": "white ball"
@@ -12,7 +12,7 @@
     "object": "ball",
     "boundary": {
       "axis": "y",
-      "value": 300,
+      "value": 204.0,
       "side": "below",
       "tolerancePx": 0
     }
@@ -25,14 +25,20 @@
     "minFrames": 11,
     "reached": [
       {
-        "type": "position-region",
-        "fromTick": 12,
-        "box": [
-          0,
-          590,
-          80,
-          640
-        ]
+        "type": "position-at-tick",
+        "tick": 20,
+        "object": "player",
+        "x": 170.4,
+        "y": 616.0,
+        "tolerancePx": 24.0
+      },
+      {
+        "type": "position-at-tick",
+        "tick": 70,
+        "object": "player",
+        "x": 50.4,
+        "y": 616.0,
+        "tolerancePx": 24.0
       }
     ]
   }
