@@ -175,6 +175,40 @@ def close_unfinished(publisher_api, ctx, run, started, publisher=None):
                     raise
 
 
+KEY = re.compile(r"expectrail/([0-9]+)/([0-9]+)")
+
+
+def close_superseded(publisher_api, ctx, run, publisher):
+    """Conclude this publisher's open checks on this head from earlier captures (a lower run id, or the
+    same run's earlier attempt). Call it only for the latest capture of the head.
+
+    An earlier capture can never clear: ``finish`` refuses any capture that is not the latest, so this
+    concludes only what would otherwise stay ``in_progress`` for ever when its trusted job's runner was
+    lost (#254). Clearance ends failed, evidence neutral. A check whose key cannot be read, another
+    app's check, and a completed check are left alone. Returns the ids GitHub refused to update."""
+    mine = (int(ctx.run_id), int(run["run_attempt"]))
+    newer = key_of(ctx, run)
+    summary = (f"{SUPERSEDED}: a newer capture of this commit ran ({newer}), and the trusted job for this "
+               "earlier one never concluded its checks. This commit is not cleared by it.")
+    refused = []
+    for name, conclusion in ((CLEARANCE, "failure"), (EVIDENCE, "neutral")):
+        query = urllib.parse.urlencode({"check_name": name, "filter": "all", "per_page": 100})
+        found = publisher_api("GET", f"/repos/{ctx.repo}/commits/{ctx.head_sha}/check-runs?{query}")
+        for check in found["check_runs"]:
+            match = KEY.fullmatch(check.get("external_id") or "")
+            if (not match or check.get("status") == "completed"
+                    or (check.get("app") or {}).get("slug") != publisher
+                    or (int(match[1]), int(match[2])) >= mine):
+                continue
+            try:
+                publisher_api("PATCH", f"/repos/{ctx.repo}/check-runs/{int(check['id'])}",
+                              dict(status="completed", conclusion=conclusion,
+                                   output={"title": name, "summary": summary}))
+            except urllib.error.URLError:
+                refused.append(check["id"])
+    return refused
+
+
 def current(api, ctx, run, state):
     pr = comment.find_pull_request(api, ctx)
     return (pr and intent.pull_request_metadata(pr) == state["pr"] and intent.of_pull_request(pr).intent == state["intent"]
@@ -231,6 +265,16 @@ def main(mode):
         ids = start(comment.http_api(os.environ["CHECKS_TOKEN"]), ctx, run, report_ctx.run_url, os.environ["CHECKS_APP"])
         # Before anything else can fail: finish concludes these if no judging state follows.
         (temp / STARTED).write_text(json.dumps({"key": key_of(ctx, run), "ids": ids}))
+        # Housekeeping only: a lost runner's earlier attempts. It never decides anything about this one.
+        try:
+            refused = close_superseded(comment.http_api(os.environ["CHECKS_TOKEN"]), ctx, run,
+                                       os.environ["CHECKS_APP"])
+            if refused:
+                print(f"::warning::Could not conclude superseded checks {refused}; they stay in progress "
+                      "and are not cleared.")
+        except (OSError, LookupError, TypeError, ValueError) as exc:
+            print(f"::warning::Could not look for superseded checks ({type(exc).__name__}); "
+                  "any stay in progress and are not cleared.")
         if event["action"] != "completed":
             return
         state = {"pr": intent.pull_request_metadata(pr), "intent": intent.of_pull_request(pr).intent, "ids": ids}

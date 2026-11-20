@@ -1896,6 +1896,10 @@ class HeadChecksTest(unittest.TestCase):
             if "check-runs?" in path:
                 name = urllib.parse.parse_qs(urllib.parse.urlsplit(path).query)["check_name"][0]
                 return {"check_runs": checks[name]}
+            if "/pulls?" in path:
+                return [self.pr]
+            if "/runs?" in path:
+                return {"workflow_runs": self.runs}
             self.fail(path)
         return api
 
@@ -1967,6 +1971,110 @@ class HeadChecksTest(unittest.TestCase):
                 mock.patch("expectrail.gate.comment.http_api", return_value=self.unfinished_api(checks)):
             self.c.main("finish")
         self.assertEqual({w[1].rsplit("/", 1)[1] for w in self.writes}, {"45"})
+
+    def lost_runner_checks(self):
+        # This attempt is expectrail/123/2. A lost runner left earlier captures of the same head open.
+        pub = {"slug": "publisher"}
+        return {self.c.CLEARANCE: [
+                    {"id": 61, "external_id": "expectrail/123/1", "status": "in_progress", "app": pub},  # earlier attempt
+                    {"id": 62, "external_id": "expectrail/9/4", "status": "queued", "app": pub},  # earlier run
+                    {"id": 63, "external_id": "expectrail/9/1", "status": "in_progress", "app": {"slug": "someone"}},
+                    {"id": 64, "external_id": "expectrail/9/2", "status": "completed", "app": pub},
+                    {"id": 65, "external_id": "expectrail/123/2", "status": "in_progress", "app": pub},  # this one
+                    {"id": 66, "external_id": "expectrail/123/3", "status": "in_progress", "app": pub},  # not earlier
+                    {"id": 67, "external_id": "expectrail/200/1", "status": "in_progress", "app": pub},  # not earlier
+                    {"id": 68, "external_id": "expectrail/x/1", "status": "in_progress", "app": pub},  # cannot tell
+                    {"id": 69, "external_id": "expectrail/9/1/extra", "status": "in_progress", "app": pub},
+                    {"id": 70, "external_id": None, "status": "in_progress", "app": pub},
+                    {"id": 71, "external_id": "other/9/1", "status": "in_progress", "app": pub}],
+                self.c.EVIDENCE: [
+                    {"id": 81, "external_id": "expectrail/123/1", "status": "in_progress", "app": pub},
+                    {"id": 82, "external_id": "expectrail/123/1", "status": "completed", "app": pub}]}
+
+    def test_a_re_run_concludes_the_open_checks_of_earlier_captures_of_the_same_head(self):
+        # #254: a lost runner never runs finish, so its clearance stays in_progress. The remedy the check
+        # names is a re-run; the re-run's start concludes the earlier, superseded attempts' open checks.
+        checks = self.lost_runner_checks()
+        api = self.unfinished_api(checks)
+        self.c.close_superseded(api, ctx(), self.run, "publisher")
+        patched = {w[1].rsplit("/", 1)[1]: w[2] for w in self.writes}
+        self.assertEqual(set(patched), {"61", "62", "81"})
+        self.assertTrue(all(w[0] == "PATCH" for w in self.writes))
+        for cid in ("61", "62"):
+            self.assertEqual(patched[cid]["status"], "completed")
+            self.assertEqual(patched[cid]["conclusion"], "failure")
+            self.assertIn("Superseded capture or pull request", patched[cid]["output"]["summary"])
+            self.assertIn("is not cleared", patched[cid]["output"]["summary"])
+            self.assertIn("expectrail/123/2", patched[cid]["output"]["summary"])
+        self.assertEqual(patched["81"]["conclusion"], "neutral")
+        self.assertNotIn("success", [p["conclusion"] for p in patched.values()])
+        self.assertTrue(all(f"/commits/{HEAD}/check-runs?" in path for path in self.queries(checks)))
+
+    def queries(self, checks):
+        seen = []
+        api = self.unfinished_api(checks)
+
+        def spy(method, path, body=None):
+            if method == "GET":
+                seen.append(path)
+            return api(method, path, body)
+        self.c.close_superseded(spy, ctx(), self.run, "publisher")
+        return seen
+
+    def test_start_on_the_in_progress_event_concludes_earlier_open_attempts(self):
+        checks = self.lost_runner_checks()
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp, "in_progress")), \
+                mock.patch("expectrail.gate.comment.http_api", return_value=self.unfinished_api(checks)):
+            self.c.main("start")
+            self.assertTrue((Path(tmp) / self.c.STARTED).is_file())
+        patched = {w[1].rsplit("/", 1)[1]: w[2] for w in self.writes if w[0] == "PATCH"}
+        self.assertEqual(set(patched), {"61", "62", "81"})
+        # This attempt's own checks already existed and were reused, not recreated or concluded.
+        self.assertEqual([w for w in self.writes if w[0] == "POST" and w[2]["name"] == self.c.CLEARANCE], [])
+
+    def test_a_failed_clean_up_never_stops_the_judging(self):
+        checks = self.lost_runner_checks()
+        for refused in ({"61"}, {"61", "62", "81"}):
+            with self.subTest(refused=sorted(refused)), tempfile.TemporaryDirectory() as tmp, \
+                    mock.patch.dict(os.environ, self.stale_event(tmp, "in_progress")), \
+                    mock.patch("expectrail.gate.comment.http_api",
+                               return_value=self.unfinished_api(checks, refuse=refused)), \
+                    mock.patch("sys.stdout", new_callable=io.StringIO) as out:
+                self.writes.clear()
+                self.c.main("start")
+                self.assertTrue((Path(tmp) / self.c.STARTED).is_file())
+                self.assertIn("::warning::", out.getvalue())
+                patched = {w[1].rsplit("/", 1)[1] for w in self.writes if w[0] == "PATCH"}
+                self.assertEqual(patched, {"62", "81"} - refused)
+
+    def test_a_listing_that_fails_after_start_only_warns(self):
+        checks = self.lost_runner_checks()
+        inner = self.unfinished_api(checks)
+        calls = {"n": 0}
+
+        def api(method, path, body=None):
+            if method == "GET" and "check-runs?" in path:
+                calls["n"] += 1
+                if calls["n"] > 2:  # start's own two lookups succeed; the clean-up's listing fails
+                    raise urllib.error.URLError("API down")
+            return inner(method, path, body)
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp, "in_progress")), \
+                mock.patch("expectrail.gate.comment.http_api", return_value=api), \
+                mock.patch("sys.stdout", new_callable=io.StringIO) as out:
+            self.c.main("start")
+            self.assertTrue((Path(tmp) / self.c.STARTED).is_file())
+        self.assertIn("::warning::Could not look for superseded checks (URLError)", out.getvalue())
+        self.assertEqual([w for w in self.writes if w[0] == "PATCH"], [])
+
+    def test_a_superseded_capture_does_not_clean_up_other_attempts(self):
+        # Only the latest capture may judge others superseded; an earlier one closes its own checks only.
+        checks = self.lost_runner_checks()
+        self.runs = [dict(self.run, run_attempt=3)]
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp)), \
+                mock.patch("expectrail.gate.comment.http_api", return_value=self.unfinished_api(checks)):
+            self.c.main("start")
+        patched = {w[1].rsplit("/", 1)[1] for w in self.writes if w[0] == "PATCH"}
+        self.assertEqual(patched, {"65"})
 
     def test_finish_concludes_the_checks_even_when_the_comment_fails(self):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp)), \
