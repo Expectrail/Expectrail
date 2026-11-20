@@ -122,7 +122,7 @@ class DraftTrialTest(unittest.TestCase):
     def test_drafts_are_unapproved_and_all_three_expected_results_are_explicit(self):
         for p in trial.draft_specs(self.project):self.assertNotIn('approval',json.loads(p.read_text()))
         for p in [self.project]+self.project['changes']:
-            self.assertEqual(p['expect'],'needs-review');self.assertEqual(set(p['engineExpect']),{'breakout-paddle-bounds','breakout-ball-starts'})
+            self.assertEqual(p['expect'],'unapproved-drafts');self.assertEqual(set(p['engineExpect']),{'breakout-paddle-bounds','breakout-ball-starts'})
     def test_diagnostic_replays_require_isolation_in_ci_and_do_not_use_a_model(self):
         checkout=self.root/'checkout';(checkout/'routes').mkdir(parents=True);(checkout/'project').mkdir()
         shutil.copy(ROOT/self.project['routes']/'pointer-auto.json',checkout/'routes')
@@ -164,8 +164,9 @@ class TrialEnforcementTest(unittest.TestCase):
                 code=trial.main(['--source',tmp,'--out',str(Path(tmp)/'out')])
             self.assertEqual(code,3)
             self.assertTrue((Path(tmp)/'out/outside-trial.json').is_file())
-    def test_configured_verification_uses_the_project_path_and_preserves_draft_result(self):
+    def test_historical_verdict_expectation_still_requires_the_configured_result(self):
         p=copy.deepcopy(next(p for p in trial.load_list() if p['name']=='breakout'))
+        p['expect'] = 'needs-review'
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);calls=[]
             def command(cmd,**kw):
@@ -177,6 +178,92 @@ class TrialEnforcementTest(unittest.TestCase):
             self.assertEqual(cmd[cmd.index('--project')+1],str(root/'head/project'))
             self.assertEqual(cmd[cmd.index('--base')+1],str(root/'base/project'))
             self.assertEqual(row['verdict'],'needs-review');self.assertEqual(row['expectationErrors'],[])
+    def draft_source(self, project, root):
+        source = root / 'source'
+        source.mkdir()
+        (source / 'project.godot').write_text('config_version=5\n')
+        config = json.loads((ROOT / project['config']).read_text())
+        for resource in [config['entryScene'], *(b['texture'] for b in config['bindings'].values())]:
+            file = source / resource.removeprefix('res://')
+            file.parent.mkdir(parents=True, exist_ok=True)
+            file.touch()
+        return source
+
+    def test_real_configured_cli_refusal_preserves_the_draft_diagnostics(self):
+        import contextlib
+        import io
+        from expectrail.contracts import validate
+
+        project = copy.deepcopy(next(p for p in trial.load_list() if p['name'] == 'breakout'))
+        project['changes'] = []
+        example = json.loads((ROOT / 'contracts/examples/outside-trial.json').read_text())
+        finding = example['projects'][0]['draftFindings'][0]
+        diagnostics = [dict(finding, spec=name, result=result) for name, result in project['engineExpect'].items()]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = self.draft_source(project, root)
+            with mock.patch.object(trial, 'load_list', return_value=[project]), mock.patch.object(
+                    trial, 'draft_diagnostics', return_value=(diagnostics, [])), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(trial.main(['--source', str(source), '--out', str(root / 'out')]), 0)
+            record = json.loads((root / 'out/outside-trial.json').read_text())
+            validate(record, 'outside-trial')
+            row = record['projects'][0]
+            self.assertEqual((row['exit'], row['verdict'], row['decision'], row['verifyJobs']), (5, None, None, 0))
+            self.assertEqual(row['setupRefusal'], 'unapproved-drafts')
+            self.assertEqual(row['draftFindings'], diagnostics)
+            self.assertEqual(row['expectationErrors'], [])
+            self.assertIn('no verdict', trial.markdown([row]))
+            self.assertIn('unapproved-drafts (as expected)', trial.markdown([row]))
+            for changed in [{'exit': 3}, {'decision': 'accept'}, {'verdict': 'needs-review'},
+                            {'checks': {'checks': 1}}, {'verifyJobs': 1}, {'draftFindings': diagnostics[:1]},
+                            {'draftDiagnosticError': 'sandbox unavailable'}, {'setupRefusal': None}]:
+                with self.subTest(changed=changed):
+                    self.assertTrue(trial.expectation_errors(dict(row, **changed)))
+
+    def test_other_exit_five_and_unexpected_jobs_do_not_match_a_draft_refusal(self):
+        project = next(p for p in trial.load_list() if p['name'] == 'breakout')
+        reason = ('expectrail: Nothing here can be verified yet. 2 checks named in "approvedContracts" '
+                  'are drafts nobody has approved. A person approves a check before it judges. '
+                  'The config is also a draft from expectrail init: review its bindings, then remove "draft".')
+        diagnostics = [{'spec': name, 'result': result} for name, result in project['engineExpect'].items()]
+        cases = [('unrelated', '', 'tool unavailable', False),
+                 ('wrong-count', '', reason.replace('2 checks', '9 checks'), False),
+                 ('other-readiness', '', 'expectrail: Nothing here can be verified yet. No usable route.', False),
+                 ('unexpected-stdout', '{"decision":"accept"}', reason, False),
+                 ('incomplete-job', '', reason, True)]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            checkout = trial.lay_out(project, self.draft_source(project, root), root / 'checkouts')
+            for name, stdout, stderr, has_job in cases:
+                out = root / name
+                if has_job:
+                    (out / 'jobs/breakout/jobs/1234abcd').mkdir(parents=True)
+                done = subprocess.CompletedProcess([], 5, stdout, stderr)
+                with self.subTest(name=name), mock.patch.object(trial.subprocess, 'run', return_value=done), mock.patch.object(
+                        trial, 'draft_diagnostics', return_value=(diagnostics, [])):
+                    row = trial.verify(project, checkout, out, ['expectrail'], 60, 'isolated')
+                    self.assertTrue(row['expectationErrors'], row)
+                    self.assertEqual(row['verifyJobs'], int(has_job))
+                    self.assertEqual(row.get('setupRefusal'), 'unapproved-drafts' if has_job else None)
+
+    def test_refusal_requires_usable_routes_and_the_expected_draft_count_on_before(self):
+        from expectrail import project_job
+        project = next(p for p in trial.load_list() if p['name'] == 'breakout')
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            before = trial.lay_out(project, self.draft_source(project, root), root / 'checkouts')
+            config_root = before / 'project'
+            def message():
+                return 'expectrail: Nothing here can be verified yet. ' + ' '.join(project_job.unready(config_root))
+
+            self.assertTrue(trial.reports_draft_refusal(config_root, message(), 2))
+            self.assertFalse(trial.reports_draft_refusal(config_root, message(), 1))
+            config_file = config_root / 'expectrail.project.json'
+            config = json.loads(config_file.read_text())
+            config['routes'] = []
+            config_file.write_text(json.dumps(config))
+            self.assertFalse(trial.reports_draft_refusal(config_root, message(), 2))
+
     def test_source_config_and_metadata_are_not_silently_overwritten(self):
         p=copy.deepcopy(next(p for p in trial.load_list() if p['name']=='breakout'))
         with tempfile.TemporaryDirectory() as tmp:
