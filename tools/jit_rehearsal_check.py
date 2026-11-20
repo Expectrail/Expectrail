@@ -10,6 +10,13 @@ comment-only case keeps no valid check and no catch. Sean accepted that reach co
 So the rehearsal now proves the plumbing and that the control fires on a real run. It no longer covers
 "a strong catch is produced": that is lost reach, disclosed here and in the work log, not a repair. A
 rehearsal whose checks survive the control would bring it back (tracked as its own issue).
+
+That coverage is back with a third case (#691), gun-cooldown-long-comment-only: the public bench defect whose
+gun cooldown is five times too long, "fixed" with one comment line in player/gun.gd. Its stand-ins are the six
+checks the hosted baseline record proposed for that defect (run 43465090517), copied unchanged: "the gun fires
+at least twice (or three times) on these shooting routes". The do-nothing control (a gun that never makes a
+projectile) fails each of them, so they state an obligation, and they fail 3 of 3 on the bug build and on the
+comment-only fix: a strong catch. The case asserts exactly that, and fails closed on anything less.
 """
 from __future__ import annotations
 
@@ -18,8 +25,43 @@ import sys
 
 from expectrail.jit.assess import DO_NOTHING_PASSED
 
-CASES = ("air-jump-undo", "air-jump-comment-only")
+AIR_JUMP_CASES = ("air-jump-undo", "air-jump-comment-only")
+STRONG_CATCH_CASES = ("gun-cooldown-long-comment-only",)
+CASES = AIR_JUMP_CASES + STRONG_CATCH_CASES
 FROZEN_PLAYER_CHECK = "jit-no-extra-air-jumps"
+THREE_FAILS = ["fail", "fail", "fail"]
+
+
+def _strong_catch(run: dict) -> list[str]:
+    """A strong catch by a check that states an obligation: valid, failed 3 of 3 by the do-nothing control,
+    and failing 3 of 3 on the base build and on the candidate. Anything less is no strong catch."""
+    problems: list[str] = []
+    rows = {r.get("specId"): r for r in run.get("validity") or [] if isinstance(r, dict)}
+    for spec, row in rows.items():
+        if row.get("valid") is True and (row.get("doNothing") or {}).get("outcome") == "passes":
+            problems.append(f"{spec} is counted valid but passes the do-nothing control: the control's rule moved")
+    good, weak_control = [], []
+    for c in run.get("catches") or []:
+        if not isinstance(c, dict):
+            continue
+        row = rows.get(c.get("specId"))
+        if (c.get("strength") != "strong" or list(c.get("candidate") or []) != THREE_FAILS
+                or list(c.get("base") or []) != THREE_FAILS or row is None or row.get("valid") is not True):
+            continue
+        control = row.get("doNothing") or {}
+        if control.get("outcome") == "fails" and list(control.get("runs") or []) == THREE_FAILS:
+            good.append(c["specId"])
+        else:
+            weak_control.append(c["specId"])
+    if not good:
+        if weak_control:
+            problems.append("no strong catch by a check the do-nothing control fails 3 of 3: "
+                            f"{', '.join(weak_control)} caught, but the control did not fail them, so they do not "
+                            "show an obligation the frozen actor misses")
+        else:
+            problems.append("no strong catch: no valid check failed 3 of 3 on both the bug build and the "
+                            "comment-only fix")
+    return problems
 
 
 def check(case: str, run: dict) -> list[str]:
@@ -29,6 +71,8 @@ def check(case: str, run: dict) -> list[str]:
     problems: list[str] = []
     if run.get("status") != "complete":
         problems.append(f"the run did not complete: {run.get('status')!r}, {run.get('reason')!r}")
+    if case in STRONG_CATCH_CASES:
+        return problems + _strong_catch(run)
     rows = {r.get("specId"): r for r in run.get("validity") or []}
     frozen = rows.get(FROZEN_PLAYER_CHECK)
     dropped = (frozen is not None and frozen.get("valid") is False
@@ -63,7 +107,11 @@ def main(argv: list[str] | None = None) -> int:
     problems = check(case, run)
     for p in problems:
         print(f"rehearsal {case}: {p}", file=sys.stderr)
-    if not problems:
+    if not problems and case in STRONG_CATCH_CASES:
+        strong = sum(1 for c in run.get("catches") or [] if c.get("strength") == "strong")
+        print(f"rehearsal {case}: reached what it rehearses (valid {run['counts'].get('valid')}, strong catches "
+              f"{strong}, each failed by the do-nothing control)")
+    elif not problems:
         print(f"rehearsal {case}: reached what it rehearses (valid {run['counts'].get('valid')}, "
               f"catches {len(run.get('catches') or [])}, {FROZEN_PLAYER_CHECK} dropped by the do-nothing control)")
     return 1 if problems else 0
