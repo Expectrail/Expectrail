@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/evidence-manifest.v1.schema.json",
+  "title": "Evidence stored at an immutable results-branch commit",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "repository",
+    "branch",
+    "commit",
+    "sourceCommit",
+    "folder",
+    "archive",
+    "fetch",
+    "files"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.evidence-manifest/v1"
+    },
+    "repository": {
+      "const": "https://github.com/Expectrail/Expectrail"
+    },
+    "branch": {
+      "const": "evidence-results"
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "sourceCommit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "folder": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "^docs/[A-Za-z0-9_. /-]+$"
+    },
+    "archive": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "^[A-Za-z0-9_. /-]+$"
+    },
+    "fetch": {
+      "type": "string",
+      "maxLength": 160,
+      "pattern": "^git fetch --no-tags https://github.com/Expectrail/Expectrail\\.git [0-9a-f]{40}$"
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "size",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "pattern": "^[A-Za-z0-9_. /-]+$"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

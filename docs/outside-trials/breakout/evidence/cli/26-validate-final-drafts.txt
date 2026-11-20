@@ -1,4 +1,0 @@
-Config draft: True
-keyboard-start.json valid
-breakout-ball-starts.json valid
-breakout-paddle-bounds.json valid

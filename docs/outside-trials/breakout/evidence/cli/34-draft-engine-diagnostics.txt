@@ -1,9 +1,0 @@
-pinned needs-review gate checks 0 positions 1
-  breakout-ball-starts fail ball is 104px past the boundary (below 300, tolerance 0) (first at frame 40, 11 frames)
-  breakout-paddle-bounds needs-review not-exercised: 49 judged frames; needs 30; observed 49 of 120 window frames; checkpoint not-reached; no violation in 49 frames
-harmless needs-review gate checks 0 positions 1
-  breakout-ball-starts fail ball is 104px past the boundary (below 300, tolerance 0) (first at frame 40, 11 frames)
-  breakout-paddle-bounds needs-review not-exercised: 49 judged frames; needs 30; observed 49 of 120 window frames; checkpoint not-reached; no violation in 49 frames
-broken needs-review gate checks 0 positions 1
-  breakout-ball-starts fail ball is 104px past the boundary (below 300, tolerance 0) (first at frame 40, 11 frames)
-  breakout-paddle-bounds needs-review not-exercised: 49 judged frames; needs 30; observed 49 of 120 window frames; checkpoint not-reached; no violation in 49 frames

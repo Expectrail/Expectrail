@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/evidence-exemptions.v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "files"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.evidence-exemptions/v1"
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "path",
+          "reader",
+          "reason",
+          "review",
+          "maxBytes"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "pattern": "^docs/[A-Za-z0-9_. /-]+$"
+          },
+          "reader": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "pattern": "^(tests|tools)/[A-Za-z0-9_./-]+\\.py$"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "review": {
+            "type": "string",
+            "pattern": "^https://github.com/Expectrail/Expectrail/pull/[1-9][0-9]*$"
+          },
+          "maxBytes": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    }
+  }
+}
