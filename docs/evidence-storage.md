@@ -48,8 +48,21 @@ is capped at 4 MiB before parsing. Generated evidence indexes count toward the l
 `tests.test_evidence_storage.RepositoryEvidenceTest.test_pr_docs_evidence_stays_within_reviewed_budget`
 runs in the existing `test` job through unittest discovery. In CI it compares
 with the immutable PR base SHA in the event, fetching that exact public commit
-from `origin` if the checkout is shallow. It refuses an unavailable or ambiguous
-base instead of skipping. No workflow edit, secret or permission is needed.
+from `origin` if the checkout is shallow. No workflow edit, secret or permission is needed.
+
+When the event gives no comparison base, what happens depends on the event:
+
+- **`pull_request`, `push` and any other or unnamed event:** an unavailable,
+  all-zero or malformed base is a failure, never a skip. The test fails and
+  `budget` exits nonzero.
+- **`schedule` and `workflow_dispatch` (scheduled and hand-dispatched CI runs):**
+  the limit is not enforced. These runs have no pull request to charge, so the
+  repository test is skipped and `python3 tools/evidence_storage.py budget`
+  prints "Evidence limit not applicable: this scheduled or manual run has no
+  pull request base." and exits 0. If such an event does carry a base, the limit
+  is checked against it as usual. CI's `test` job also runs on every pull
+  request (`on: pull_request` in `.github/workflows/ci.yml`), and that run is
+  where a pull request's evidence is charged.
 Locally, it uses `origin/main`'s merge base, or the first parent if no such ref is
 available. Review the reported base; for an explicit comparison use:
 
