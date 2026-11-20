@@ -6,12 +6,15 @@ import base64
 import hashlib
 from http.cookies import SimpleCookie, CookieError
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from itertools import islice
 import json
 import os
 from pathlib import Path
 import secrets
 import shlex
+import shutil
 import stat
+import subprocess
 import sys
 import threading
 import tempfile
@@ -21,6 +24,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 from expectrail import app_page, auto_fix, project_job, viewer
 from expectrail.gate import record as rec
 from expectrail.orchestrator import request as req, runner
+from expectrail.orchestrator import commits
 from expectrail.orchestrator.store import JobStore, StoreError, UnknownJob, FINAL
 
 LIMIT = 64 * 1024
@@ -109,6 +113,119 @@ def project_folder(body, name):
     if path.is_dir():
         return path
     raise InvalidProjectPath(f'Choose an existing project folder or its project.godot file. Could not use {path}.')
+
+
+def choose_folder():
+    # Keep the GUI event loop out of the HTTP worker, including on macOS.
+    script = '''
+import json
+import tkinter as tk
+from tkinter import filedialog
+
+root = tk.Tk()
+root.withdraw()
+try:
+    folder = filedialog.askdirectory(parent=root, title="Choose a Godot project", mustexist=True)
+    print(json.dumps(folder or None))
+finally:
+    root.destroy()
+'''
+    try:
+        result = subprocess.run([sys.executable, '-I', '-c', script], capture_output=True,
+                                text=True, timeout=300, check=True)
+    except subprocess.TimeoutExpired as exc:
+        raise ValueError('The folder chooser timed out. Open it again or enter a path.') from exc
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise ValueError('The folder chooser needs a desktop session and Python Tk. Enter a path instead.') from exc
+    return json.loads(result.stdout)
+
+
+def godot_folder(folder):
+    marker = folder / 'project.godot'
+    return not marker.is_symlink() and marker.is_file()
+
+
+def picker_path(body, side):
+    if not Path(field(body, side)).expanduser().is_absolute():
+        raise InvalidProjectPath('Choose a project folder or enter its full path.')
+    folder = project_folder(body, side).resolve()
+    if not godot_folder(folder):
+        raise InvalidProjectPath('This folder has no project.godot file of its own. Choose the folder containing it.')
+    return folder
+
+
+def checkout_layout(folder):
+    try:
+        working, gitdir, common = commits.layout(folder)
+        if working is None or not folder.is_relative_to(working):
+            return None
+        marker = working / '.git'
+        if gitdir == common == marker:
+            return working, common
+        # A project's gitdir pointer alone cannot authorize a different checkout.
+        if gitdir.parent == common / 'worktrees':
+            back = os.fsdecode(commits.regular(gitdir / 'gitdir', 8192)).rstrip('\n')
+            if Path(back) == marker:
+                return working, common
+    except (OSError, ValueError, RuntimeError):
+        return None
+    return None
+
+
+def before_suggestion(after, layout):
+    stem = after.name.removesuffix('-after')
+    if stem and not stem.endswith('-before'):
+        sibling = after.with_name(stem + '-before')
+        if not sibling.is_symlink() and godot_folder(sibling):
+            return {'folder': str(sibling), 'source': 'sibling'}
+    if layout is None:
+        return None
+    working, common = layout
+    relative = after.relative_to(working)
+    registrations = common / 'worktrees'
+    roots = [common.parent] if common.name == '.git' else []
+    if not registrations.is_symlink() and registrations.is_dir():
+        for registration in sorted(islice(registrations.iterdir(), 32)):
+            if registration.is_symlink() or not registration.is_dir():
+                continue
+            try:
+                marker = Path(os.fsdecode(commits.regular(registration / 'gitdir', 8192)).rstrip('\n'))
+                if not marker.is_absolute() or marker.name != '.git' or marker.resolve() != marker:
+                    continue
+                _, gitdir, _ = commits.layout(marker.parent)
+                if gitdir == registration:
+                    roots.append(marker.parent)
+            except (OSError, ValueError, RuntimeError):
+                continue
+    for root in roots:
+        candidate = root / relative
+        try:
+            if (root != working and candidate.resolve() == candidate
+                    and checkout_layout(candidate) == (root, common) and godot_folder(candidate)):
+                return {'folder': str(candidate), 'source': 'worktree'}
+        except (OSError, RuntimeError):
+            continue
+    return None
+
+
+def checked_field(body, side):
+    try:
+        folder = picker_path(body, side)
+    except (ValueError, OSError, RuntimeError) as exc:
+        return {'folder': None, 'problem': str(exc)}, None
+    config = None
+    problem = None
+    try:
+        config = project_job.read_config(folder)
+        if config['adapter'] != 'godot':
+            problem = 'Choose a project with a Godot setup in expectrail.project.json.'
+        elif config.get('draft'):
+            problem = 'The project setup is a draft. Review its bindings before verifying.'
+        elif side == 'before':
+            problem = ' '.join(project_job.unready(folder)) or None
+    except (ValueError, OSError) as exc:
+        problem = str(exc)
+    return {'folder': str(folder), 'problem': problem}, config
 
 
 def saved_route_guidance(root, saved, info):
@@ -231,6 +348,104 @@ class App:
         self.closing = False
         self.setup_lock = threading.Lock()
         self.setup_reviews = {}
+        self.chooser_lock = threading.Lock()
+        self.previous_lock = threading.Lock()
+        self.previous_copy = None
+
+    def recent_projects(self):
+        try:
+            raw = commits.regular(self.store.root / 'recent-projects.json', LIMIT)
+            folders = json.loads(raw)
+        except (OSError, ValueError):
+            return []
+        if not isinstance(folders, list):
+            return []
+        return [folder for folder in folders[:6]
+                if isinstance(folder, str) and '\0' not in folder and Path(folder).is_absolute()]
+
+    def remember_project(self, folder):
+        with self.lock:
+            folders = [recent for recent in self.recent_projects() if recent != str(folder)]
+            self.store.root.mkdir(parents=True, exist_ok=True)
+            # Publish the short list whole, even if another app instance reads it now.
+            with tempfile.NamedTemporaryFile(mode='w', dir=self.store.root, delete=False) as output:
+                path = Path(output.name)
+                try:
+                    json.dump([str(folder), *folders[:5]], output)
+                    output.close()
+                    path.replace(self.store.root / 'recent-projects.json')
+                finally:
+                    path.unlink(missing_ok=True)
+
+    def choose_project(self, body):
+        if body:
+            raise ValueError('Choose the folder in the desktop dialog.')
+        if not self.chooser_lock.acquire(blocking=False):
+            raise ValueError('A folder chooser is already open.')
+        try:
+            chosen = choose_folder()
+            if chosen is None:
+                return {'folder': None}
+            folder = picker_path({'folder': chosen}, 'folder')
+            self.remember_project(folder)
+            return {'folder': str(folder)}
+        finally:
+            self.chooser_lock.release()
+
+    def check_projects(self, body):
+        if not body or set(body) - {'before', 'after'}:
+            raise ValueError('Supply the Before or After project path.')
+        result = {'beforeSuggestion': None, 'hasGitCheckout': False}
+        fields = {side: checked_field(body, side) for side in ('before', 'after') if side in body}
+        for side, (checked, _) in fields.items():
+            result[side] = checked
+        if result.get('after', {}).get('folder'):
+            after = Path(result['after']['folder'])
+            if 'before' not in fields:
+                layout = checkout_layout(after)
+                result['beforeSuggestion'] = before_suggestion(after, layout)
+                result['hasGitCheckout'] = layout is not None and shutil.which('git') is not None
+            else:
+                _, config = fields['before']
+                if config and not result['after']['problem']:
+                    scene = config['entryScene'].removeprefix('res://')
+                    scene_path = after / scene
+                    if not scene_path.resolve().is_relative_to(after) or not scene_path.is_file():
+                        result['after']['problem'] = (f'The versions have different layouts. After is missing {scene} '
+                                                      'at the location used by Before.')
+        return result
+
+    def previous_project(self, body):
+        if set(body) != {'after'}:
+            raise ValueError('Choose the After project before using its previous commit.')
+        after = picker_path(body, 'after')
+        layout = checkout_layout(after)
+        if layout is None:
+            raise ValueError('After is not a Git checkout. Choose a Before folder.')
+        working, _ = layout
+        with self.previous_lock, tempfile.TemporaryDirectory(prefix='expectrail-git-') as git:
+            if self.closing:
+                raise ValueError('The app is stopping.')
+            objects = commits.Objects(working, Path(git) / 'objects-view', timeout=10)
+            try:
+                try:
+                    commit = objects.resolve('HEAD^')
+                except commits.CommitError as exc:
+                    raise ValueError('There is no readable previous local commit. Choose a Before folder.') from exc
+                saved = tempfile.TemporaryDirectory(prefix='expectrail-before-')
+                try:
+                    root = Path(saved.name) / 'project'
+                    objects.extract(commit, root)
+                    folder = picker_path({'before': str(root / after.relative_to(working))}, 'before')
+                except Exception:
+                    saved.cleanup()
+                    raise
+            finally:
+                objects.close()
+            if self.previous_copy is not None:
+                self.previous_copy.cleanup()
+            self.previous_copy = saved
+            return {'folder': str(folder), 'source': 'previous-commit', 'commit': commit}
 
     def inspect(self, body):
         side = body.get('side')
@@ -296,9 +511,13 @@ class App:
                 raise UnknownJob('No job from this app session has that address.')
 
     def create(self, body):
+        after = None
         if configured(body):
-            doc = project_job.prepare(self.store, project_folder(body, 'after'), project_folder(body, 'before'),
-                                      execution_class=execution_class(body), require_ready=True)
+            after = project_folder(body, 'after')
+            # A second tab may replace the temporary Before copy while a job is being prepared.
+            with self.previous_lock:
+                doc = project_job.prepare(self.store, after, project_folder(body, 'before'),
+                                          execution_class=execution_class(body), require_ready=True)
         else:
             doc = build(body)
         settings, _ = auto_fix.configure(body.get('autoFix', False), body.get('attempts'), body.get('usdCap'), agent=body.get('repairAgent'))
@@ -330,6 +549,11 @@ class App:
             waiter = threading.Thread(target=runner.wait, args=(self.store, job_id, proc), daemon=True)
             waiter.start()
             self.waiters.append(waiter)
+        if after is not None:
+            try:
+                self.remember_project(after.resolve())
+            except OSError:
+                pass  # A recent-path write cannot change the result of a started job.
         return self.status(job_id)
 
     def status(self, job_id, *, past=False):
@@ -461,6 +685,9 @@ class App:
                     self.store.cancel(job_id)
         for waiter in self.waiters:
             waiter.join(6)
+        with self.previous_lock:
+            if self.previous_copy is not None:
+                self.previous_copy.cleanup()
 
 
 class Server(ThreadingHTTPServer):
@@ -568,6 +795,19 @@ class Handler(BaseHTTPRequestHandler):
                     return self.problem(405, 'Use GET to open the app.')
                 page = app_page.PAGE.replace('__NONCE__', self.server.nonce).replace('__TOKEN__', self.server.token)
                 return self.reply(200, page.encode(), 'text/html; charset=utf-8', cookie=True)
+            if path.startswith('/api/projects/'):
+                if query:
+                    raise ValueError('Project selection does not take URL parameters.')
+                if path == '/api/projects/recent':
+                    if self.command != 'GET':
+                        return self.problem(405, 'Use GET to read recent projects.')
+                    return self.reply(200, {'folders': app.recent_projects()})
+                actions = {'/api/projects/choose': app.choose_project, '/api/projects/check': app.check_projects,
+                           '/api/projects/previous': app.previous_project}
+                if path in actions:
+                    if self.command != 'POST':
+                        return self.problem(405, 'This action requires POST.')
+                    return self.reply(200, actions[path](self.body()))
             if path in ('/api/inspect', '/api/setup/save', '/api/jobs') or path.startswith('/api/jobs/') and path.endswith('/cancel'):
                 if self.command != 'POST':
                     return self.problem(405, 'This action requires POST.')
