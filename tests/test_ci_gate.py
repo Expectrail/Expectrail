@@ -1779,6 +1779,8 @@ class HeadChecksTest(unittest.TestCase):
             return {"id": len(self.writes)}
         if "/pulls?" in path:
             return [self.pr]
+        if "/pulls/7/commits?" in path:
+            return [{"sha": HEAD}]
         if "check-runs?" in path:
             return {"check_runs": []}
         if "/runs?" in path:
@@ -1898,6 +1900,8 @@ class HeadChecksTest(unittest.TestCase):
                 return {"check_runs": checks[name]}
             if "/pulls?" in path:
                 return [self.pr]
+            if "/pulls/7/commits?" in path:
+                return [{"sha": HEAD}]
             if "/runs?" in path:
                 return {"workflow_runs": self.runs}
             self.fail(path)
@@ -2091,6 +2095,158 @@ class HeadChecksTest(unittest.TestCase):
         patches = [w for w in self.writes if w[0] == "PATCH"]
         self.assertEqual([w[2]["conclusion"] for w in patches], ["success", "failure"])
         self.assertIn("comment", patches[-1][2]["output"]["summary"])
+
+    # #254: a lost runner on an earlier head of the pull request left its checks in_progress. The
+    # latest capture of the current head concludes them; it never touches another open PR's head.
+    OLD1, OLD2, STACK, MID = "a" * 40, "b" * 40, "c" * 40, "d" * 40
+
+    def earlier_heads_api(self, *, open_pulls=None, commits=None, refuse=(), seen=None):
+        pub, other = {"slug": "publisher"}, {"slug": "someone"}
+        runs = {
+            self.OLD1: {self.c.CLEARANCE: [
+                            {"id": 91, "external_id": "expectrail/50/1", "status": "in_progress", "app": pub},
+                            {"id": 92, "external_id": "expectrail/50/1", "status": "completed", "app": pub},
+                            {"id": 93, "external_id": "expectrail/51/1", "status": "in_progress", "app": other},
+                            {"id": 94, "external_id": "not-ours", "status": "in_progress", "app": pub},
+                            {"id": 95, "external_id": None, "status": "queued", "app": pub}],
+                        self.c.EVIDENCE: [
+                            {"id": 96, "external_id": "expectrail/50/1", "status": "in_progress", "app": pub}]},
+            self.OLD2: {self.c.CLEARANCE: [
+                            {"id": 97, "external_id": "expectrail/60/2", "status": "queued", "app": pub}],
+                        self.c.EVIDENCE: []},
+            # The head of a stacked open pull request: its capture may be judging right now.
+            self.STACK: {self.c.CLEARANCE: [
+                            {"id": 98, "external_id": "expectrail/70/1", "status": "in_progress", "app": pub}],
+                         self.c.EVIDENCE: []},
+            self.MID: {self.c.CLEARANCE: [], self.c.EVIDENCE: []},
+            # This capture's own head and checks.
+            HEAD: {self.c.CLEARANCE: [
+                       {"id": 99, "external_id": "expectrail/123/2", "status": "in_progress", "app": pub}],
+                   self.c.EVIDENCE: []}}
+        stacked = {"number": 8, "head": {"sha": self.STACK}}
+        pulls = [self.pr, stacked] if open_pulls is None else open_pulls
+        listed = [self.OLD1, self.STACK, self.MID, self.OLD2, HEAD] if commits is None else commits
+
+        def api(method, path, body=None):
+            if seen is not None and method == "GET":
+                seen.append(path)
+            if method == "PATCH":
+                cid = path.rsplit("/", 1)[1]
+                if cid in refuse:
+                    raise urllib.error.HTTPError(path, 403, "refused", {}, None)
+                self.writes.append((method, path, body))
+                return {}
+            if method != "GET":
+                self.writes.append((method, path, body))
+                return {"id": len(self.writes)}
+            if "/pulls/7/commits?" in path:
+                return [{"sha": s} for s in listed]
+            if "/pulls?" in path:
+                return pulls(path) if callable(pulls) else pulls
+            if "check-runs?" in path:
+                sha = path.split("/commits/")[1].split("/")[0]
+                name = urllib.parse.parse_qs(urllib.parse.urlsplit(path).query)["check_name"][0]
+                return {"check_runs": runs[sha][name]}
+            if "/runs?" in path:
+                return {"workflow_runs": self.runs}
+            self.fail(path)
+        return api
+
+    def test_earlier_heads_of_the_pull_request_are_concluded_never_as_success(self):
+        api = self.earlier_heads_api()
+        refused = self.c.close_earlier_heads(api, api, ctx(), self.pr, "publisher")
+        self.assertEqual(refused, [])
+        patched = {w[1].rsplit("/", 1)[1]: w[2] for w in self.writes}
+        self.assertEqual(set(patched), {"91", "96", "97"})
+        self.assertTrue(all(w[0] == "PATCH" for w in self.writes))
+        for cid in ("91", "97"):
+            self.assertEqual(patched[cid]["status"], "completed")
+            self.assertEqual(patched[cid]["conclusion"], "failure")
+            self.assertIn("Superseded capture or pull request", patched[cid]["output"]["summary"])
+            self.assertIn("is not cleared", patched[cid]["output"]["summary"])
+            self.assertIn(HEAD[:12], patched[cid]["output"]["summary"])
+        self.assertEqual(patched["96"]["conclusion"], "neutral")
+
+    def test_a_commit_that_heads_another_open_pull_request_is_never_swept(self):
+        seen = []
+        api = self.earlier_heads_api(seen=seen)
+        self.c.close_earlier_heads(api, api, ctx(), self.pr, "publisher")
+        self.assertNotIn("98", {w[1].rsplit("/", 1)[1] for w in self.writes})
+        self.assertFalse(any(f"/commits/{self.STACK}/" in p or f"/commits/{HEAD}/" in p for p in seen))
+
+    def test_an_unreadable_list_of_open_pull_requests_sweeps_nothing(self):
+        bad = {"not a list": {"message": "rate limited"},
+               "no head": [self.pr, {"number": 8}],
+               "short head": [self.pr, {"number": 8, "head": {"sha": "abc"}}],
+               "too many": lambda path: [{"number": 9, "head": {"sha": "e" * 40}}] * 100}
+        for case, pulls in bad.items():
+            with self.subTest(case=case):
+                self.writes.clear()
+                api = self.earlier_heads_api(open_pulls=pulls)
+                with self.assertRaisesRegex(ValueError, "cannot tell"):
+                    self.c.close_earlier_heads(api, api, ctx(), self.pr, "publisher")
+                self.assertEqual(self.writes, [])
+
+    def test_unreadable_commits_sweep_nothing(self):
+        api = self.earlier_heads_api()
+
+        def broken(method, path, body=None):
+            if "/pulls/7/commits?" in path:
+                return {"message": "Not Found"}
+            return api(method, path, body)
+        with self.assertRaisesRegex(ValueError, "cannot tell"):
+            self.c.close_earlier_heads(broken, broken, ctx(), self.pr, "publisher")
+        self.assertEqual(self.writes, [])
+
+    def test_only_the_newest_earlier_commits_are_read(self):
+        seen = []
+        api = self.earlier_heads_api(seen=seen)
+        self.c.close_earlier_heads(api, api, ctx(), self.pr, "publisher", limit=2)
+        read = {p.split("/commits/")[1].split("/")[0] for p in seen if "check-runs?" in p}
+        self.assertEqual(read, {self.OLD2, self.MID})
+        self.assertEqual({w[1].rsplit("/", 1)[1] for w in self.writes}, {"97"})
+
+    def test_a_refused_update_is_returned_and_the_rest_still_concluded(self):
+        api = self.earlier_heads_api(refuse={"91"})
+        refused = self.c.close_earlier_heads(api, api, ctx(), self.pr, "publisher")
+        self.assertEqual(refused, [91])
+        self.assertEqual({w[1].rsplit("/", 1)[1] for w in self.writes}, {"96", "97"})
+
+    def test_start_sweeps_earlier_heads_and_a_failed_sweep_only_warns(self):
+        for case in ("works", "cannot tell", "api down"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as tmp, \
+                    mock.patch.dict(os.environ, self.stale_event(tmp, "in_progress")), \
+                    mock.patch("sys.stdout", new_callable=io.StringIO) as out:
+                self.writes.clear()
+                api = self.earlier_heads_api(open_pulls=None if case == "works" else {"message": "x"})
+
+                def wrapped(method, path, body=None):
+                    if case == "api down" and "/pulls/7/commits?" in path:
+                        raise urllib.error.URLError("API down")
+                    if case != "works" and "/pulls?" in path and "state=open&per_page=100&page=" in path:
+                        return {"message": "x"}
+                    if "/pulls?" in path:
+                        return [self.pr, {"number": 8, "head": {"sha": self.STACK}}]
+                    return api(method, path, body)
+                with mock.patch("expectrail.gate.comment.http_api", return_value=wrapped):
+                    self.c.main("start")
+                self.assertTrue((Path(tmp) / self.c.STARTED).is_file())
+                patched = {w[1].rsplit("/", 1)[1] for w in self.writes if w[0] == "PATCH"}
+                if case == "works":
+                    self.assertEqual(patched, {"91", "96", "97"})
+                    self.assertNotIn("::warning::", out.getvalue())
+                else:
+                    self.assertEqual(patched, set())
+                    self.assertIn("::warning::Could not sweep earlier heads", out.getvalue())
+
+    def test_a_superseded_capture_sweeps_no_earlier_heads(self):
+        # Only the latest capture of the current head may judge others superseded.
+        api = self.earlier_heads_api()
+        self.runs = [dict(self.run, run_attempt=3)]
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp, "in_progress")), \
+                mock.patch("expectrail.gate.comment.http_api", return_value=api):
+            self.c.main("start")
+        self.assertEqual([w for w in self.writes if w[0] == "PATCH"], [])
 
     def test_closing_a_stale_clearance_never_passes_it(self):
         checks = [{"id": 7, "external_id": "expectrail/123/2", "status": "queued", "app": {"slug": "publisher"}}]

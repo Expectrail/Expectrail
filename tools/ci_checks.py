@@ -209,6 +209,71 @@ def close_superseded(publisher_api, ctx, run, publisher):
     return refused
 
 
+EARLIER_HEADS = 20  # the newest commits of the pull request looked at, besides its head
+OPEN_PULL_PAGES = 10  # up to 1,000 open pull requests; more and the sweep cannot tell, so it skips
+
+
+def open_heads(api, ctx):
+    """The head commits of every open pull request in the repository. Raises ValueError when the list
+    cannot be read in full: a commit that heads another open pull request must never be swept."""
+    heads = set()
+    for page in range(1, OPEN_PULL_PAGES + 1):
+        items = api("GET", f"/repos/{ctx.repo}/pulls?state=open&per_page=100&page={page}")
+        if not isinstance(items, list):
+            raise ValueError("cannot tell: the open pull requests could not be read")
+        for item in items:
+            sha = (item.get("head") or {}).get("sha") if isinstance(item, dict) else None
+            if not isinstance(sha, str) or not re.fullmatch("[0-9a-f]{40}", sha):
+                raise ValueError("cannot tell: an open pull request has no readable head")
+            heads.add(sha)
+        if len(items) < 100:
+            return heads
+    raise ValueError("cannot tell: more open pull requests than the sweep reads")
+
+
+def close_earlier_heads(api, publisher_api, ctx, pr, publisher, limit=EARLIER_HEADS):
+    """Conclude this publisher's open checks on the pull request's earlier commits, which a lost runner
+    left ``in_progress`` after the head moved on (#254). Call it only for the latest capture of the
+    current head.
+
+    An earlier head can never clear: ``finish`` judges only the current head of the open pull request.
+    A commit that is the head of any open pull request (this one's, or a stacked branch's) is never
+    touched, and if the open pull requests cannot be read in full nothing is swept (ValueError). A head
+    that was force-pushed away is no longer among the pull request's commits and is not reached.
+    Clearance ends failed, evidence neutral. Returns the ids GitHub refused to update."""
+    commits = []
+    for page in range(1, 4):  # GitHub lists at most 250 commits of a pull request
+        items = api("GET", f"/repos/{ctx.repo}/pulls/{int(pr['number'])}/commits?per_page=100&page={page}")
+        if not isinstance(items, list):
+            raise ValueError("cannot tell: the pull request's commits could not be read")
+        commits += [c.get("sha") for c in items if isinstance(c, dict)]
+        if len(items) < 100:
+            break
+    # Read after the commits, so a head pushed meanwhile is among the excluded ones.
+    excluded = open_heads(api, ctx) | {ctx.head_sha}
+    earlier = [s for s in commits if isinstance(s, str) and re.fullmatch("[0-9a-f]{40}", s) and s not in excluded]
+    earlier = list(dict.fromkeys(reversed(earlier)))[:limit]  # newest first
+    summary = (f"{SUPERSEDED}: the pull request's head moved on to {ctx.head_sha[:12]}, and the trusted job "
+               "for this commit never concluded its checks. This commit is not cleared.")
+    refused = []
+    for sha in earlier:
+        for name, conclusion in ((CLEARANCE, "failure"), (EVIDENCE, "neutral")):
+            query = urllib.parse.urlencode({"check_name": name, "filter": "all", "per_page": 100})
+            found = publisher_api("GET", f"/repos/{ctx.repo}/commits/{sha}/check-runs?{query}")
+            for check in found["check_runs"]:
+                if (not KEY.fullmatch(check.get("external_id") or "") or check.get("status") == "completed"
+                        or check.get("name", name) != name
+                        or (check.get("app") or {}).get("slug") != publisher):
+                    continue
+                try:
+                    publisher_api("PATCH", f"/repos/{ctx.repo}/check-runs/{int(check['id'])}",
+                                  dict(status="completed", conclusion=conclusion,
+                                       output={"title": name, "summary": summary}))
+                except urllib.error.URLError:
+                    refused.append(check["id"])
+    return refused
+
+
 def current(api, ctx, run, state):
     pr = comment.find_pull_request(api, ctx)
     return (pr and intent.pull_request_metadata(pr) == state["pr"] and intent.of_pull_request(pr).intent == state["intent"]
@@ -275,6 +340,16 @@ def main(mode):
         except (OSError, LookupError, TypeError, ValueError) as exc:
             print(f"::warning::Could not look for superseded checks ({type(exc).__name__}); "
                   "any stay in progress and are not cleared.")
+        # The same for the pull request's earlier heads. A failure only warns; it fails closed.
+        try:
+            refused = close_earlier_heads(api, comment.http_api(os.environ["CHECKS_TOKEN"]), ctx, pr,
+                                          os.environ["CHECKS_APP"])
+            if refused:
+                print(f"::warning::Could not conclude checks on earlier heads {refused}; they stay in "
+                      "progress and are not cleared.")
+        except (OSError, LookupError, TypeError, ValueError) as exc:
+            print(f"::warning::Could not sweep earlier heads ({type(exc).__name__}: {str(exc)[:120]}); "
+                  "any open checks there stay in progress and are not cleared.")
         if event["action"] != "completed":
             return
         state = {"pr": intent.pull_request_metadata(pr), "intent": intent.of_pull_request(pr).intent, "ids": ids}
