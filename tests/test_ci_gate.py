@@ -2099,10 +2099,28 @@ class HeadChecksTest(unittest.TestCase):
     # #254: a lost runner on an earlier head of the pull request left its checks in_progress. The
     # latest capture of the current head concludes them; it never touches another open PR's head.
     OLD1, OLD2, STACK, MID = "a" * 40, "b" * 40, "c" * 40, "d" * 40
+    FORCED, FORK = "5" * 40, "6" * 40
 
-    def earlier_heads_api(self, *, open_pulls=None, commits=None, refuse=(), seen=None):
+    def caller_runs(self, *extra, branch="fix/floor"):
+        """The caller workflow's earlier pull_request runs on this branch, newest first."""
+        def one(sha, repo="owner/game", branch=branch, event="pull_request"):
+            return {"id": 1, "head_sha": sha, "head_branch": branch, "event": event,
+                    "head_repository": {"full_name": repo}}
+        return {"total_count": 4, "workflow_runs": [
+            one(HEAD), one(self.FORCED), one(self.FORK, repo="someone/game"), one(self.STACK), *extra]}
+
+    def earlier_heads_api(self, *, open_pulls=None, commits=None, refuse=(), seen=None, listing=None):
         pub, other = {"slug": "publisher"}, {"slug": "someone"}
         runs = {
+            # A head that was force-pushed away: no longer among the pull request's commits.
+            self.FORCED: {self.c.CLEARANCE: [
+                              {"id": 81, "external_id": "expectrail/40/1", "status": "in_progress", "app": pub}],
+                          self.c.EVIDENCE: [
+                              {"id": 82, "external_id": "expectrail/40/1", "status": "in_progress", "app": pub}]},
+            # The same branch name in a fork: another pull request's commit, never this one's.
+            self.FORK: {self.c.CLEARANCE: [
+                            {"id": 83, "external_id": "expectrail/41/1", "status": "in_progress", "app": pub}],
+                        self.c.EVIDENCE: []},
             self.OLD1: {self.c.CLEARANCE: [
                             {"id": 91, "external_id": "expectrail/50/1", "status": "in_progress", "app": pub},
                             {"id": 92, "external_id": "expectrail/50/1", "status": "completed", "app": pub},
@@ -2147,6 +2165,8 @@ class HeadChecksTest(unittest.TestCase):
                 sha = path.split("/commits/")[1].split("/")[0]
                 name = urllib.parse.parse_qs(urllib.parse.urlsplit(path).query)["check_name"][0]
                 return {"check_runs": runs[sha][name]}
+            if "/runs?" in path and "branch=" in path and listing is not None:
+                return listing(path) if callable(listing) else listing
             if "/runs?" in path:
                 return {"workflow_runs": self.runs}
             self.fail(path)
@@ -2211,6 +2231,81 @@ class HeadChecksTest(unittest.TestCase):
         refused = self.c.close_earlier_heads(api, api, ctx(), self.pr, "publisher")
         self.assertEqual(refused, [91])
         self.assertEqual({w[1].rsplit("/", 1)[1] for w in self.writes}, {"96", "97"})
+
+    def test_a_force_pushed_head_is_reached_through_the_callers_earlier_runs(self):
+        seen = []
+        api = self.earlier_heads_api(seen=seen, listing=self.caller_runs())
+        refused = self.c.close_earlier_heads(api, api, ctx(), self.pr, "publisher", run=self.run)
+        self.assertEqual(refused, [])
+        patched = {w[1].rsplit("/", 1)[1]: w[2] for w in self.writes}
+        # 81/82: the force-pushed head. 91/96/97: the pull request's own earlier commits, as before.
+        self.assertEqual(set(patched), {"81", "82", "91", "96", "97"})
+        self.assertEqual(patched["81"]["conclusion"], "failure")
+        self.assertEqual(patched["82"]["conclusion"], "neutral")
+        self.assertIn("is not cleared", patched["81"]["output"]["summary"])
+        # Never another repository's commit with the same branch name, another open pull request's
+        # head, or this capture's own head.
+        self.assertFalse(any(f"/commits/{sha}/" in p for p in seen for sha in (self.FORK, self.STACK, HEAD)))
+        listed = [p for p in seen if "/runs?" in p]
+        self.assertEqual(len(listed), 1)
+        query = urllib.parse.parse_qs(urllib.parse.urlsplit(listed[0]).query)
+        self.assertTrue(listed[0].startswith("/repos/owner/game/actions/workflows/99/runs?"))
+        self.assertEqual(query["event"], ["pull_request"])
+        self.assertEqual(query["branch"], ["fix/floor"])
+
+    def test_runs_of_another_event_or_branch_or_with_a_malformed_head_are_ignored(self):
+        def one(sha, **over):
+            r = {"head_sha": sha, "head_branch": "fix/floor", "event": "pull_request",
+                 "head_repository": {"full_name": "owner/game"}}
+            r.update(over)
+            return r
+        listing = {"workflow_runs": [one(self.FORCED, event="push"), one(self.FORCED, head_branch="other"),
+                                     one(self.FORCED, head_repository=None), one("XYZ"), "junk"]}
+        api = self.earlier_heads_api(listing=listing)
+        self.c.close_earlier_heads(api, api, ctx(), self.pr, "publisher", run=self.run)
+        self.assertEqual({w[1].rsplit("/", 1)[1] for w in self.writes}, {"91", "96", "97"})
+
+    def test_an_unreadable_runs_list_falls_back_to_the_pull_requests_commits_and_warns(self):
+        def down(path):
+            raise urllib.error.URLError("API down")
+        for case, listing in (("not a dict", ["x"]), ("no list", {"message": "Not Found"}), ("down", down)):
+            with self.subTest(case=case), mock.patch("sys.stdout", new_callable=io.StringIO) as out:
+                self.writes.clear()
+                api = self.earlier_heads_api(listing=listing)
+                refused = self.c.close_earlier_heads(api, api, ctx(), self.pr, "publisher", run=self.run)
+                self.assertEqual(refused, [])
+                self.assertEqual({w[1].rsplit("/", 1)[1] for w in self.writes}, {"91", "96", "97"})
+                self.assertIn("::warning::Could not read the earlier captures", out.getvalue())
+
+    def test_an_unreadable_list_of_open_pull_requests_still_sweeps_nothing_with_run_heads(self):
+        api = self.earlier_heads_api(open_pulls={"message": "rate limited"}, listing=self.caller_runs())
+        with self.assertRaisesRegex(ValueError, "cannot tell"):
+            self.c.close_earlier_heads(api, api, ctx(), self.pr, "publisher", run=self.run)
+        self.assertEqual(self.writes, [])
+
+    def test_the_limit_counts_force_pushed_heads_first(self):
+        seen = []
+        api = self.earlier_heads_api(seen=seen, listing=self.caller_runs())
+        self.c.close_earlier_heads(api, api, ctx(), self.pr, "publisher", limit=2, run=self.run)
+        read = {p.split("/commits/")[1].split("/")[0] for p in seen if "check-runs?" in p}
+        self.assertEqual(read, {self.FORCED, self.OLD2})
+
+    def test_start_reaches_a_force_pushed_head(self):
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.dict(os.environ, self.stale_event(tmp, "in_progress")), \
+                mock.patch("sys.stdout", new_callable=io.StringIO) as out:
+            # The stand-in event's branch is "fix".
+            api = self.earlier_heads_api(listing=self.caller_runs(branch="fix"))
+
+            def wrapped(method, path, body=None):
+                if "/pulls?" in path:
+                    return [self.pr, {"number": 8, "head": {"sha": self.STACK}}]
+                return api(method, path, body)
+            with mock.patch("expectrail.gate.comment.http_api", return_value=wrapped):
+                self.c.main("start")
+        patched = {w[1].rsplit("/", 1)[1] for w in self.writes if w[0] == "PATCH"}
+        self.assertEqual(patched, {"81", "82", "91", "96", "97"})
+        self.assertNotIn("::warning::", out.getvalue())
 
     def test_start_sweeps_earlier_heads_and_a_failed_sweep_only_warns(self):
         for case in ("works", "cannot tell", "api down"):
