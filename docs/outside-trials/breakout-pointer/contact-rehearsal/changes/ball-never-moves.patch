@@ -1,0 +1,10 @@
+--- a/scripts/ball.gd
++++ b/scripts/ball.gd
+@@ -8,6 +8,7 @@
+ var IsGameOver: bool = false
+ var global_pos_paddle_y_fix: float = 0.0
+ func _ready():
++	set_physics_process(false)
+ 	direction = Vector2.DOWN.rotated(randf_range(-PI/4, PI/4))
+ 	global_pos_paddle_y_fix = $"../Paddle".global_position.y
+ 	#incrementa la velocità del 10% in base al livello

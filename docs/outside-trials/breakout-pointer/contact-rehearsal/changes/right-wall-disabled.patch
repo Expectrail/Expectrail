@@ -1,0 +1,10 @@
+--- a/scenes/walls.tscn
++++ b/scenes/walls.tscn
+@@ -14,6 +14,7 @@
+ 
+ [node name="CollisionShape2D2" type="CollisionShape2D" parent="."]
+ position = Vector2(392, 326)
++disabled = true
+ shape = SubResource("RectangleShape2D_oelu8")
+ 
+ [node name="CollisionShape2D3" type="CollisionShape2D" parent="."]

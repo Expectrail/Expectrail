@@ -1,0 +1,49 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "pointer-contact",
+  "seed": 1,
+  "description": "Press Start and hold the pointer at x=310 for the first return.",
+  "ticks": 100,
+  "events": [
+    {
+      "tick": 12,
+      "pointer": {
+        "position": [
+          180.0,
+          290.0
+        ]
+      }
+    },
+    {
+      "tick": 13,
+      "pointer": {
+        "position": [
+          180.0,
+          290.0
+        ],
+        "button": "left",
+        "pressed": true
+      }
+    },
+    {
+      "tick": 14,
+      "pointer": {
+        "position": [
+          180.0,
+          290.0
+        ],
+        "button": "left",
+        "pressed": false
+      }
+    },
+    {
+      "tick": 17,
+      "pointer": {
+        "position": [
+          310,
+          512
+        ]
+      }
+    }
+  ]
+}

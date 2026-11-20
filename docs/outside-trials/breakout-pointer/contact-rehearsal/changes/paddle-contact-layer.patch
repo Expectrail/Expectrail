@@ -1,0 +1,10 @@
+--- a/scenes/paddle.tscn
++++ b/scenes/paddle.tscn
+@@ -29,6 +29,7 @@
+ size = Vector2(48, 19)
+ 
+ [node name="Paddle" type="CharacterBody2D" groups=["paddle"]]
++collision_layer = 8
+ script = ExtResource("1_tbytw")
+ 
+ [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
