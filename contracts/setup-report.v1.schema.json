@@ -1,0 +1,594 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "source",
+    "runs",
+    "calibration",
+    "stability"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.setup-report/v1"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gameTreeSha256",
+        "configSha256",
+        "routeSha256",
+        "routeTicks",
+        "physicsTicksPerSecond",
+        "captureFps",
+        "viewport",
+        "entryScene",
+        "bindingRoles"
+      ],
+      "properties": {
+        "gameTreeSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "configSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "routeSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "routeTicks": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7202
+        },
+        "physicsTicksPerSecond": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "captureFps": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "viewport": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "entryScene": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "bindingRoles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "minItems": 1,
+          "maxItems": 64
+        }
+      }
+    },
+    "runs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "replaySha256",
+          "traceSha256",
+          "engineVersion"
+        ],
+        "properties": {
+          "replaySha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "traceSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "engineVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        }
+      },
+      "minItems": 1,
+      "maxItems": 3
+    },
+    "calibration": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "rows",
+            "playerVisible",
+            "playerSeveral",
+            "groundRows",
+            "playerWidth",
+            "playerHeight",
+            "onFloorBottomMinusGround",
+            "airborneBottomMinusGround",
+            "coinsVisiblePerFrame",
+            "coinWidth",
+            "coinHeight",
+            "onFloorOffGround",
+            "frameMeasurements",
+            "unjudgeableRows",
+            "unjudgeable"
+          ],
+          "properties": {
+            "rows": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "playerVisible": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "playerSeveral": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "groundRows": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "playerWidth": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "n",
+                    "min",
+                    "median",
+                    "max"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "min": {
+                      "type": "number"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "max": {
+                      "type": "number"
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "playerHeight": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "n",
+                    "min",
+                    "median",
+                    "max"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "min": {
+                      "type": "number"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "max": {
+                      "type": "number"
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "onFloorBottomMinusGround": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "n",
+                    "min",
+                    "median",
+                    "max"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "min": {
+                      "type": "number"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "max": {
+                      "type": "number"
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "airborneBottomMinusGround": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "n",
+                    "min",
+                    "median",
+                    "max"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "min": {
+                      "type": "number"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "max": {
+                      "type": "number"
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "coinsVisiblePerFrame": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "n",
+                    "min",
+                    "median",
+                    "max"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "min": {
+                      "type": "number"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "max": {
+                      "type": "number"
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "coinWidth": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "n",
+                    "min",
+                    "median",
+                    "max"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "min": {
+                      "type": "number"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "max": {
+                      "type": "number"
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "coinHeight": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "n",
+                    "min",
+                    "median",
+                    "max"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "min": {
+                      "type": "number"
+                    },
+                    "median": {
+                      "type": "number"
+                    },
+                    "max": {
+                      "type": "number"
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "onFloorOffGround": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "rows",
+                "spans",
+                "onGround"
+              ],
+              "properties": {
+                "rows": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "spans": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                },
+                "onGround": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "n",
+                        "min",
+                        "median",
+                        "max"
+                      ],
+                      "properties": {
+                        "n": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "min": {
+                          "type": "number"
+                        },
+                        "median": {
+                          "type": "number"
+                        },
+                        "max": {
+                          "type": "number"
+                        }
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            },
+            "frameMeasurements": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "frame",
+                  "tick",
+                  "playerBoxes",
+                  "coinBoxes",
+                  "ground",
+                  "onFloor"
+                ],
+                "properties": {
+                  "frame": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "tick": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "playerBoxes": {
+                    "type": "array",
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 4,
+                      "maxItems": 4
+                    },
+                    "maxItems": 64
+                  },
+                  "coinBoxes": {
+                    "type": "array",
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 4,
+                      "maxItems": 4
+                    },
+                    "maxItems": 1024
+                  },
+                  "ground": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "onFloor": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              },
+              "maxItems": 7200
+            },
+            "unjudgeableRows": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unjudgeable": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "frame",
+                  "tick",
+                  "reasons"
+                ],
+                "properties": {
+                  "frame": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "tick": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "reasons": {
+                    "type": "array",
+                    "items": {
+                      "enum": [
+                        "player-unavailable",
+                        "several-players",
+                        "ground-unavailable",
+                        "floor-state-unavailable"
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 3
+                  }
+                }
+              },
+              "maxItems": 7200
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "stability": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "identical",
+            "changedTicks",
+            "changedHeaders"
+          ],
+          "properties": {
+            "identical": {
+              "type": "boolean"
+            },
+            "changedTicks": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "maxItems": 7200
+            },
+            "changedHeaders": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "maxItems": 100
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expectrail.tech/contracts/setup-report.v1.schema.json",
+  "title": "expectrail.setup-report/v1",
+  "description": "Read-only engine setup inspection or clean-route calibration; not vision evidence, a verdict, approval or tolerance tuning. The reader recomputes statistics and validates mode/run counts."
+}
