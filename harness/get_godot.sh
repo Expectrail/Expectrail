@@ -9,22 +9,35 @@
 # The download is retried: one HTTP 500 from GitHub failed a required check on November 11, 2026.
 set -euo pipefail
 VERSION="4.7.2-stable"
-ZIP="Godot_v${VERSION}_linux.x86_64.zip"
+ENGINE="Godot_v${VERSION}_linux.x86_64"
+ZIP="$ENGINE.zip"
 SHA512="9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65"
 URL="https://github.com/godotengine/godot/releases/download/${VERSION}/${ZIP}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TOOLS="${EXPECTRAIL_TOOLS:-$ROOT/tools}"
 DIR="$TOOLS/godot"
 CACHE="$TOOLS/godot_cache"
-BIN="$DIR/Godot_v${VERSION}_linux.x86_64"
+BIN="$DIR/$ENGINE"
 ATTEMPTS="${GODOT_DOWNLOAD_ATTEMPTS:-5}"
 PAUSE="${GODOT_DOWNLOAD_PAUSE_SECONDS:-5}"
 
 note() { [ -n "${GITHUB_OUTPUT:-}" ] && echo "$1" >> "$GITHUB_OUTPUT"; return 0; }
 matches() { [ -f "$1" ] && echo "$SHA512  $1" | sha512sum -c - >/dev/null 2>&1; }
+exit_if_present() {
+  if [ -x "$BIN" ]; then note "source=present"; echo "$BIN"; exit 0; fi
+}
 
-if [ -x "$BIN" ]; then note "source=present"; echo "$BIN"; exit 0; fi
-mkdir -p "$DIR" "$CACHE"
+exit_if_present
+mkdir -p "$DIR"
+# flock belongs to the open file description shared by Python and this shell. The shell holds it
+# until exit, even after Python exits. Lock the directory itself so there is no stale lock file.
+exec 9<"$DIR"
+python3 -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX)'
+exit_if_present
+
+mkdir -p "$CACHE"
+stage=$(mktemp -d "$DIR/.install.XXXXXXXX")
+trap 'rm -rf -- "$stage"; rm -f -- "$CACHE/$ZIP.part"' EXIT
 
 source=cache
 if ! matches "$CACHE/$ZIP"; then
@@ -47,8 +60,10 @@ if ! matches "$CACHE/$ZIP"; then
   done
 fi
 
-unzip -oq "$CACHE/$ZIP" -d "$DIR"
-chmod +x "$BIN"
+# unzip may set the executable bit before it closes its writer. Publish only after it finishes.
+unzip -oq "$CACHE/$ZIP" -d "$stage"
+chmod +x "$stage/$ENGINE"
+mv -f "$stage/$ENGINE" "$BIN"
 # CI keeps the download for its cache (GODOT_KEEP_DOWNLOAD=1); elsewhere it is removed, as before.
 if [ "$source" = download ] && [ "${GODOT_KEEP_DOWNLOAD:-}" != 1 ]; then rm -f "$CACHE/$ZIP"; fi
 note "source=$source"

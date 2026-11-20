@@ -8,6 +8,7 @@ import hashlib
 import io
 import os
 import re
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -64,11 +65,31 @@ class GetGodot(unittest.TestCase):
         self.output = self.root / "output"
         self.cache = self.root / "tools" / "godot_cache"
 
+    def script_env(self, keep="1"):
+        return dict(os.environ, PATH=f"{self.bin}:{os.environ['PATH']}", STATE=str(self.state),
+                    GITHUB_OUTPUT=str(self.output), GODOT_DOWNLOAD_PAUSE_SECONDS="0", GODOT_DOWNLOAD_ATTEMPTS="3",
+                    GODOT_KEEP_DOWNLOAD=keep, EXPECTRAIL_TOOLS=str(self.root / "tools"))
+
     def run_script(self, keep="1"):
-        env = dict(os.environ, PATH=f"{self.bin}:{os.environ['PATH']}", STATE=str(self.state),
-                   GITHUB_OUTPUT=str(self.output), GODOT_DOWNLOAD_PAUSE_SECONDS="0", GODOT_DOWNLOAD_ATTEMPTS="3",
-                   GODOT_KEEP_DOWNLOAD=keep, EXPECTRAIL_TOOLS=str(self.root / "tools"))
-        return subprocess.run(["bash", str(self.root / "harness" / "get_godot.sh")], env=env, capture_output=True, text=True)
+        return subprocess.run(["bash", str(self.root / "harness" / "get_godot.sh")], env=self.script_env(keep),
+                              stdin=subprocess.DEVNULL, capture_output=True, text=True)
+
+    def pause_extraction(self):
+        # Hold an executable open for writing until the caller releases stdin. This models the
+        # window in which the real unzip has created the executable and is still filling it.
+        stub = self.bin / "unzip"
+        stub.write_text(f'''#!/bin/bash
+set -eu
+(
+    while [[ "$1" != -d ]]; do shift; done
+    exec 3>"$2/{self.binary_name}"
+    chmod +x "$2/{self.binary_name}"
+    echo extracting >&2
+    read -r -t 15 || exit 19
+)
+exec "{shutil.which('unzip')}" "$@"
+''', encoding="utf-8")
+        stub.chmod(0o755)
 
     def curls(self):
         path = self.state / "calls"
@@ -139,6 +160,41 @@ class GetGodot(unittest.TestCase):
         self.assertEqual(done.returncode, 0)
         self.assertEqual(self.curls(), before)
         self.assertEqual(self.source(), "source=present")
+
+    def test_concurrent_consumers_can_execute_the_returned_path_immediately(self):
+        self.pause_extraction()
+        script = self.root / "harness" / "get_godot.sh"
+        binary = self.root / "tools" / "godot" / self.binary_name
+        consumer = ['bash', '-c', 'echo starting >&2; bin=$(bash "$1") && echo "$bin" && exec "$bin" --version',
+                    'consumer', str(script)]
+        options = dict(env=self.script_env(keep=""), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                       stderr=subprocess.PIPE, text=True)
+        with subprocess.Popen(consumer, **options) as first:
+            self.assertEqual(first.stderr.readline(), "starting\n")
+            self.assertEqual(first.stderr.readline(), "extracting\n")
+            with subprocess.Popen(consumer, **options) as second:
+                self.assertEqual(second.stderr.readline(), "starting\n")
+                exposed_while_writing = binary.exists()
+                for process in (first, second):
+                    stdout, stderr = process.communicate(input="finish\n", timeout=20)
+                    self.assertEqual(process.returncode, 0, stderr)
+                    self.assertEqual(stdout.splitlines(), [str(binary), "stand-in engine"])
+        self.assertFalse(exposed_while_writing, "unzip exposed a writable executable at the install path")
+        self.assertEqual(self.curls(), 1)
+        self.assertCountEqual(self.output.read_text().splitlines(), ["source=download", "source=present"])
+        self.assertEqual(list(self.cache.iterdir()), [])
+
+    def test_interrupted_extraction_can_be_retried(self):
+        self.pause_extraction()
+        done = self.run_script()
+        self.assertEqual(done.returncode, 19, done.stderr)
+        self.assertEqual(done.stdout, "")
+        self.assertFalse((self.root / "tools" / "godot" / self.binary_name).exists())
+        (self.bin / "unzip").unlink()
+        done = self.run_script()
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(self.source(), "source=cache")
+        self.assertEqual(subprocess.check_output([done.stdout.strip(), "--version"], text=True), "stand-in engine\n")
 
 
 class EveryWorkflowUsesTheActions(unittest.TestCase):
