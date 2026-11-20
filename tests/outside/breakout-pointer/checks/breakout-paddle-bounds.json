@@ -1,7 +1,7 @@
 {
   "format": "expectrail.test-spec/v0",
   "id": "breakout-paddle-bounds",
-  "instruction": "Draft: after Start, the whole paddle drawing stays inside the project viewport during frames 20..70 and the bound paddle reaches both route-derived positions at ticks 20 and 70, within half its collision width. Frozen play cannot pass. Review the viewport, walls, drawing, click and movement obligations before approval.",
+  "instruction": "Draft: during frames 20..70 after Start, the entire paddle drawing stays between the viewport sides and within the vertical band occupied by its collision shape at the starting height. The paddle must also reach the route positions at ticks 20 and 70 within half its collision width. Review the rail and movement obligations before approval.",
   "objects": {
     "player": {
       "prompt": "horizontal player paddle"
@@ -13,9 +13,9 @@
     "region": {
       "box": [
         0,
-        0,
+        606.0,
         360.0,
-        640.0
+        625.0
       ]
     }
   },
