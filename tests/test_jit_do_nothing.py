@@ -307,6 +307,7 @@ class PublicMeasurement(unittest.TestCase):
         from tools import do_nothing_public as tool
 
         with tempfile.TemporaryDirectory() as tmp:
-            for name in ("fresh-3", "Expectrail-heldout"):
+            # Made-up names of the refused shapes; neither is a real set.
+            for name in ("fresh-example", "example-heldout", "blind-example"):
                 with self.subTest(name), self.assertRaises(ValueError):
                     tool.measure(Path(tmp) / f"w-{name}", records=Path(tmp) / name)
