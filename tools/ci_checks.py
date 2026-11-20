@@ -231,16 +231,49 @@ def open_heads(api, ctx):
     raise ValueError("cannot tell: more open pull requests than the sweep reads")
 
 
-def close_earlier_heads(api, publisher_api, ctx, pr, publisher, limit=EARLIER_HEADS):
-    """Conclude this publisher's open checks on the pull request's earlier commits, which a lost runner
+def run_heads(api, ctx, run):
+    """The head commits of the caller workflow's newest 100 ``pull_request`` runs from this pull
+    request's head repository and branch, newest first. A head that was force-pushed away is among
+    them, though it is no longer among the pull request's commits. Raises ValueError when the list
+    cannot be read; a run of another event, branch or repository, or with a malformed head, is skipped."""
+    query = urllib.parse.urlencode({"event": "pull_request", "branch": ctx.head_branch, "per_page": 100})
+    listing = api("GET", f"/repos/{ctx.repo}/actions/workflows/{int(run['workflow_id'])}/runs?{query}")
+    items = listing.get("workflow_runs") if isinstance(listing, dict) else None
+    if not isinstance(items, list):
+        raise ValueError("cannot tell: the earlier captures could not be read")
+    heads = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        repo = (item.get("head_repository") or {}).get("full_name")
+        sha = item.get("head_sha")
+        if (item.get("event") == "pull_request" and item.get("head_branch") == ctx.head_branch
+                and repo == ctx.head_repo and isinstance(sha, str) and re.fullmatch("[0-9a-f]{40}", sha)):
+            heads.append(sha)
+    return heads
+
+
+def close_earlier_heads(api, publisher_api, ctx, pr, publisher, limit=EARLIER_HEADS, run=None):
+    """Conclude this publisher's open checks on the pull request's earlier heads, which a lost runner
     left ``in_progress`` after the head moved on (#254). Call it only for the latest capture of the
     current head.
 
+    The earlier heads are those of the caller workflow's earlier runs on this branch (``run_heads``:
+    this reaches a head that was force-pushed away), then the pull request's own commits. If the runs
+    cannot be read, the pull request's commits alone are used and a warning is printed.
+
     An earlier head can never clear: ``finish`` judges only the current head of the open pull request.
     A commit that is the head of any open pull request (this one's, or a stacked branch's) is never
-    touched, and if the open pull requests cannot be read in full nothing is swept (ValueError). A head
-    that was force-pushed away is no longer among the pull request's commits and is not reached.
-    Clearance ends failed, evidence neutral. Returns the ids GitHub refused to update."""
+    touched, and if the open pull requests or the pull request's commits cannot be read in full nothing
+    is swept (ValueError). Clearance ends failed, evidence neutral. Returns the ids GitHub refused to
+    update."""
+    captured = []
+    if run is not None:
+        try:
+            captured = run_heads(api, ctx, run)
+        except (OSError, LookupError, TypeError, ValueError) as exc:
+            print(f"::warning::Could not read the earlier captures ({type(exc).__name__}); only the pull "
+                  "request's own commits are swept, and a force-pushed head stays as it is.")
     commits = []
     for page in range(1, 4):  # GitHub lists at most 250 commits of a pull request
         items = api("GET", f"/repos/{ctx.repo}/pulls/{int(pr['number'])}/commits?per_page=100&page={page}")
@@ -251,8 +284,9 @@ def close_earlier_heads(api, publisher_api, ctx, pr, publisher, limit=EARLIER_HE
             break
     # Read after the commits, so a head pushed meanwhile is among the excluded ones.
     excluded = open_heads(api, ctx) | {ctx.head_sha}
-    earlier = [s for s in commits if isinstance(s, str) and re.fullmatch("[0-9a-f]{40}", s) and s not in excluded]
-    earlier = list(dict.fromkeys(reversed(earlier)))[:limit]  # newest first
+    newest_first = captured + list(reversed(commits))
+    earlier = [s for s in newest_first if isinstance(s, str) and re.fullmatch("[0-9a-f]{40}", s) and s not in excluded]
+    earlier = list(dict.fromkeys(earlier))[:limit]
     summary = (f"{SUPERSEDED}: the pull request's head moved on to {ctx.head_sha[:12]}, and the trusted job "
                "for this commit never concluded its checks. This commit is not cleared.")
     refused = []
@@ -343,7 +377,7 @@ def main(mode):
         # The same for the pull request's earlier heads. A failure only warns; it fails closed.
         try:
             refused = close_earlier_heads(api, comment.http_api(os.environ["CHECKS_TOKEN"]), ctx, pr,
-                                          os.environ["CHECKS_APP"])
+                                          os.environ["CHECKS_APP"], run=run)
             if refused:
                 print(f"::warning::Could not conclude checks on earlier heads {refused}; they stay in "
                       "progress and are not cleared.")

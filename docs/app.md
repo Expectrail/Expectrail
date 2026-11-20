@@ -61,6 +61,24 @@ The app serves its own page without downloading scripts, styles or fonts.
    When the job has an existing report, the page links to it. Missing tools are reported by
    the verifier, with its suggested fix.
 
+### Local project selection API
+
+All four endpoints require the app token. The desktop dialog takes its selection from the person at
+the computer. `POST /api/projects/choose` takes an empty JSON object and returns a folder path,
+or `null` on Cancel. A graphical desktop and Python Tk are required for the dialog.
+`GET /api/projects/recent` lists up to six folders from previous choices and configured jobs,
+newest first. These paths stay in the local app's job store.
+
+`POST /api/projects/check` takes an absolute `before` or `after` path, or both. Each supplied field
+gets its own folder and problem. With After alone the app can suggest a sibling named
+`<game>-before` or the same project inside another registered Git worktree. With both folders
+it checks whether After contains Before's starting scene at the expected location.
+
+For a local Git checkout, `POST /api/projects/previous` takes only `after` and returns the
+corresponding folder in a temporary copy of the first parent of HEAD, plus the full commit ID.
+It reads local Git objects. Repositories containing symlinks or submodules cannot supply this
+copy. Opening another previous copy or closing the app releases the temporary folder.
+
 ### Local player preview API
 
 The page sends an authenticated `POST /api/inspect` with `projectConfig: true` and
