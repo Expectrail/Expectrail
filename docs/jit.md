@@ -1185,8 +1185,24 @@ are not exercised on a frozen player), and on the public defects **14 catch `slo
 on any of the other 23** (one run each). Reach is narrow, as expected: mirroring the player's inputs only
 reaches a defect that depends on the direction the player is sent.
 
-Advisory: the generator does not offer these checks yet (next slice), and nothing here changes what may
-count or clear a change.
+**The generator offers them when asked** (`jit run --metamorphic`, `run.generate(..., metamorphic=True)`;
+slice 2). `metamorphic.offer` picks at most 4 pairs (16 checks): the probes the proposed checks use first,
+then library order, one pair of each twin (`hold-left` is `hold-right` mirrored). Each check is judged by
+the same rule as a proposed check, on replays of its own named `metamorphic-*`: pass the clean game every
+run, not pass every run of the do-nothing control, fail every run of a near miss (the base build is one;
+a near miss that gives the candidate's trace on both probes is no kill). A valid check that fails every
+candidate run is a catch. The rows are the record's `metamorphic`, after everything else is judged:
+running out of budget or a replay error there leaves the proposed checks' results as they are, and each
+unfinished row says why. No model is needed for them.
+
+On the real engine (Godot 4.7.2), with a hand-written stand-in for the model and the candidate withheld
+([measurement](measurements/675-metamorphic-generate.md)): on `slow-left`, the 4 sideways-travel checks are
+valid and **catch a comment-only candidate 4 of 4, and pass the revert 4 of 4**; the stand-in's own trace
+check kills no near miss. 94 replays, $0.17 at the assumed runner price.
+
+Advisory: `metamorphic` rows are never in `proposed`, `validity`, `catches`, `counts`, the gate summary or
+the counting audit, and nothing here changes what may count or clear a change. `jit.yml` does not pass
+`--metamorphic` yet.
 
 ### The six rules on pixel checks (#286)
 
