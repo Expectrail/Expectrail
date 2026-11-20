@@ -1,0 +1,72 @@
+[
+  {
+    "project": "bundled",
+    "exit": 2,
+    "phase": "completed",
+    "decision": "needs-review",
+    "reasons": [
+      "1 problem with the spec and route files, so the checks that ran are not all of the project's checks",
+      "1 of 1 public checks could not be decided",
+      "the engine's record passes 1 check that no visual observer was asked about, so this is not an accept: an accept needs the visual observer's evidence",
+      "the project config is a draft (`draft: true`, written by `expectrail init`); review its bindings and remove `draft` before an accept can rest on it.",
+      "spec player-stays-above-ground: approved before content binding",
+      "vision did not run; see the PROVIDER_FAILED diagnostics for the missing settings"
+    ],
+    "diagnostics": [
+      {
+        "code": "PROVIDER_FAILED",
+        "stage": "observing",
+        "detail": "MODEL_API_KEY is missing. No vision request is sent. Engine checks still run: a failure rejects; otherwise the result is needs-review.",
+        "fix": "set MODEL_API_KEY in the verifier's environment to its vision model key; never put it in a file"
+      },
+      {
+        "code": "PROVIDER_FAILED",
+        "stage": "observing",
+        "detail": "EXPECTRAIL_SAM_USD_CAP is missing or invalid. No vision request is sent. Engine checks still run: a failure rejects; otherwise the result is needs-review.",
+        "fix": "set EXPECTRAIL_SAM_USD_CAP to the most this run may spend in US dollars (a finite amount, 0 or more)"
+      }
+    ],
+    "engineResults": [
+      "pass"
+    ],
+    "approvedSpecSha256": "697e386214c8771819de1f1fb19a36c73209da84dd483b362406cc754416c417",
+    "routeSource": "harness/routes/smoke.json",
+    "proposedConfigUsed": true,
+    "existingSpecBytesUnchanged": true
+  },
+  {
+    "project": "config-lane",
+    "exit": 2,
+    "phase": "completed",
+    "decision": "needs-review",
+    "reasons": [
+      "1 problem with the spec and route files, so the checks that ran are not all of the project's checks",
+      "1 of 1 public checks could not be decided",
+      "the engine's record passes 1 check that no visual observer was asked about, so this is not an accept: an accept needs the visual observer's evidence",
+      "the project config is a draft (`draft: true`, written by `expectrail init`); review its bindings and remove `draft` before an accept can rest on it.",
+      "spec player-stays-above-ground: approved before content binding",
+      "vision did not run; see the PROVIDER_FAILED diagnostics for the missing settings"
+    ],
+    "diagnostics": [
+      {
+        "code": "PROVIDER_FAILED",
+        "stage": "observing",
+        "detail": "MODEL_API_KEY is missing. No vision request is sent. Engine checks still run: a failure rejects; otherwise the result is needs-review.",
+        "fix": "set MODEL_API_KEY in the verifier's environment to its vision model key; never put it in a file"
+      },
+      {
+        "code": "PROVIDER_FAILED",
+        "stage": "observing",
+        "detail": "EXPECTRAIL_SAM_USD_CAP is missing or invalid. No vision request is sent. Engine checks still run: a failure rejects; otherwise the result is needs-review.",
+        "fix": "set EXPECTRAIL_SAM_USD_CAP to the most this run may spend in US dollars (a finite amount, 0 or more)"
+      }
+    ],
+    "engineResults": [
+      "pass"
+    ],
+    "approvedSpecSha256": "697e386214c8771819de1f1fb19a36c73209da84dd483b362406cc754416c417",
+    "routeSource": "tests/projects/config-lane/walk.json",
+    "proposedConfigUsed": true,
+    "existingSpecBytesUnchanged": true
+  }
+]
