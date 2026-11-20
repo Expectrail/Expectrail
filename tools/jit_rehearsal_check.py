@@ -17,6 +17,13 @@ checks the hosted baseline record proposed for that defect (run 43465090517), co
 at least twice (or three times) on these shooting routes". The do-nothing control (a gun that never makes a
 projectile) fails each of them, so they state an obligation, and they fail 3 of 3 on the bug build and on the
 comment-only fix: a strong catch. The case asserts exactly that, and fails closed on anything less.
+
+With ``--metamorphic`` (#675, piece 3; every rehearsal passes it) the record must also carry the mirror-inputs
+metamorphic checks: the setting on, at least one row, and none of them among the counted checks or the catches,
+because those rows are advisory. Nothing is asked of what the rows say: on these stand-ins the mirror relation
+has nothing direction-dependent to catch.
+
+    python3 -m tools.jit_rehearsal_check --metamorphic CASE runs/jit/CASE/jit-run.json
 """
 from __future__ import annotations
 
@@ -64,11 +71,29 @@ def _strong_catch(run: dict) -> list[str]:
     return problems
 
 
-def check(case: str, run: dict) -> list[str]:
+def _metamorphic(run: dict) -> list[str]:
+    """The record offered the metamorphic checks and kept their rows apart from what counts."""
+    if (run.get("settings") or {}).get("metamorphic") is not True:
+        return ["the record was not made with the metamorphic checks (settings.metamorphic is not true)"]
+    rows = run.get("metamorphic")
+    if not isinstance(rows, list) or not rows:
+        return ["no metamorphic row: the mirror checks were offered but none was made"]
+    ids = {(r.get("spec") or {}).get("id") for r in rows if isinstance(r, dict)}
+    counted = sorted(i for i in ids if i in {v.get("specId") for v in run.get("validity") or [] if isinstance(v, dict)})
+    caught = sorted(i for i in ids if i in {c.get("specId") for c in run.get("catches") or [] if isinstance(c, dict)})
+    problems = []
+    if counted:
+        problems.append(f"metamorphic checks among the counted checks: {', '.join(counted)}; they are advisory")
+    if caught:
+        problems.append(f"metamorphic checks among the catches: {', '.join(caught)}; they are advisory")
+    return problems
+
+
+def check(case: str, run: dict, metamorphic: bool = False) -> list[str]:
     """The problems with one rehearsal run; empty when it reached what it rehearses."""
     if case not in CASES:
         return [f"unknown rehearsal case {case!r}: expected one of {', '.join(CASES)}"]
-    problems: list[str] = []
+    problems: list[str] = _metamorphic(run) if metamorphic else []
     if run.get("status") != "complete":
         problems.append(f"the run did not complete: {run.get('status')!r}, {run.get('reason')!r}")
     if case in STRONG_CATCH_CASES:
@@ -97,14 +122,17 @@ def check(case: str, run: dict) -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    argv = sys.argv[1:] if argv is None else argv
-    if len(argv) != 2:
-        print("usage: python3 -m tools.jit_rehearsal_check CASE JIT_RUN_JSON", file=sys.stderr)
+    argv = list(sys.argv[1:] if argv is None else argv)
+    metamorphic = bool(argv) and argv[0] == "--metamorphic"
+    if metamorphic:
+        argv = argv[1:]
+    if len(argv) != 2 or any(a.startswith("--") for a in argv):
+        print("usage: python3 -m tools.jit_rehearsal_check [--metamorphic] CASE JIT_RUN_JSON", file=sys.stderr)
         return 2
     case, path = argv
     with open(path, encoding="utf-8") as f:
         run = json.load(f)
-    problems = check(case, run)
+    problems = check(case, run, metamorphic=metamorphic)
     for p in problems:
         print(f"rehearsal {case}: {p}", file=sys.stderr)
     if not problems and case in STRONG_CATCH_CASES:
