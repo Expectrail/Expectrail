@@ -305,7 +305,8 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
     if fps is None:
         fps = int(config["captureFps"]) if config is not None else 60
     route_doc = json.loads(route.read_text(encoding="utf-8"))
-    if any(isinstance(e, dict) and "pointer" in e for e in route_doc.get("events", [])):
+    has_pointer = any(isinstance(e, dict) and "pointer" in e for e in route_doc.get("events", []))
+    if has_pointer:
         # Keep legacy action routes unchanged. The new pointer variant is strict before a
         # game starts: NaN, ambiguous event shapes and events past the end are refusals.
         from expectrail.contracts import ContractError, canonical_v1, strict_loads, validate
@@ -325,6 +326,12 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
         tool, isolation = box.choose(sandbox, display=capture_frames)
     except box.SandboxError as exc:
         raise SystemExit(str(exc)) from exc
+    private_display = tool is None and capture_frames and has_pointer and sys.platform.startswith("linux")
+    if private_display:
+        from expectrail import doctor
+        display = doctor.display()
+        if display.status != "ok":
+            raise SystemExit(f"rendered pointer replay needs a private display: {display.found}. {display.fix}")
     try:
         game_tree = tree_digest(game, within)
     except tree.TreeProblem as exc:
@@ -389,7 +396,14 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
     else:
         engine, project, movie = str(godot), str(work), str((frames / "f.png").resolve())
         route_arg, trace_arg = str(route.resolve()), str((out / "trace.json").resolve())
-        shown = godot_cmd(godot, bool(os.environ.get("DISPLAY")))
+        if private_display:
+            # xvfb-run supplies DISPLAY and XAUTHORITY. Wayland can also find a compositor
+            # through its default socket in XDG_RUNTIME_DIR without WAYLAND_DISPLAY.
+            for key in ("DISPLAY", "XAUTHORITY", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR"):
+                env.pop(key, None)
+            shown = godot_cmd(godot, False) + ["--display-driver", "x11"]
+        else:
+            shown = godot_cmd(godot, bool(env.get("DISPLAY")))
     if capture_frames:
         cmd = shown + ["--path", project, "--audio-driver", "Dummy", "--rendering-driver", "opengl3",
                        "--write-movie", movie, "--fixed-fps", str(fps)]
