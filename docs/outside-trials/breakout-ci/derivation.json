@@ -85,5 +85,13 @@
   ],
   "ballCollisionRadius": 4.0,
   "ballBoundaryY": 204.0,
+  "ballMovementCheckpoint": {
+    "type": "role-displacement",
+    "role": "ball",
+    "axis": "y",
+    "fromTick": 40,
+    "toTick": 50,
+    "minIncreasePx": 8.0
+  },
   "windowRationale": "Paddle 20..70 lies after click release 14 and within the first sweep; ball 40..50 tests the seeded initial downward launch. Windows are authored policy, not inferred engine facts."
 }

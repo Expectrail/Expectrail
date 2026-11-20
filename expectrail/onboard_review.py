@@ -282,6 +282,11 @@ def check_words(spec):
             window += f" The player must touch the floor at or after tick {checkpoint.get('fromTick',0)}."
         elif checkpoint['type']=='coin-count-change':
             window += f" The recorded coin count must change at or after tick {checkpoint.get('fromTick',0)}."
+        elif checkpoint['type'] == 'role-displacement':
+            direction = 'right' if checkpoint['axis'] == 'x' else 'down'
+            window += (f" From tick {checkpoint['fromTick']} to tick {checkpoint['toTick']}, the centre of the "
+                       f"same bound {checkpoint['role']} drawing must move at least {checkpoint['minIncreasePx']:g} "
+                       f"world pixels {direction}. Every tick needs the same identifiable, visible drawing, with equal-size boxes at the endpoints.")
         elif checkpoint['type']=='position-at-tick':
             window += (f" At exactly tick {checkpoint['tick']}, {checkpoint['object']} must be within "
                        f"{checkpoint['tolerancePx']:g} pixels of world position ({checkpoint['x']:g}, {checkpoint['y']:g}).")

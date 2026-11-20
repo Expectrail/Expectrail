@@ -7,6 +7,7 @@ This module is standard library only so both the installed gate and trace interp
 from __future__ import annotations
 
 import math
+from fractions import Fraction
 
 
 def all_of(runs: list[str], outcome: str, reps: int = 3) -> bool:
@@ -28,12 +29,102 @@ def evidence_result(*, counterexample: bool, applicable: str, triggered: int, ev
     return "pass"
 
 
-def checkpoint(condition: dict, trace: dict | None) -> bool | None:
+def _finite_number(value) -> bool:
+    return type(value) is int or (type(value) is float and math.isfinite(value))
+
+
+def _role_drawing(row: dict, role: str):
+    objects = row.get('roleObjects')
+    if not isinstance(objects, list) or not all(isinstance(o, dict) and isinstance(o.get('role'), str) for o in objects):
+        return None
+    matches = [obj for obj in objects if obj.get('role') == role]
+    if len(matches) != 1:
+        return None
+    obj = matches[0]
+    identity = obj.get('id')
+    if not isinstance(identity, str) or not identity.strip():
+        return None
+    if obj.get('boundsSource') != 'drawing' or obj.get('visible') is not True:
+        return None
+    box = obj.get('worldBox')
+    if not isinstance(box, list) or len(box) != 4 or not all(_finite_number(v) for v in box):
+        return None
+    x0, y0, x1, y1 = box
+    if x0 >= x1 or y0 >= y1:
+        return None
+    return identity, box
+
+
+def _pixels(value: int | float) -> int | Fraction:
+    # The recorder writes decimal pixel coordinates. Compare rectangle extents and
+    # inclusive thresholds in those units without float overflow or round-off.
+    return Fraction(str(value)) if type(value) is float else value
+
+
+def _role_displacement(condition: dict, trace: dict | None) -> int | Fraction | None:
+    role, axis = condition.get('role'), condition.get('axis')
+    start, end = condition.get('fromTick'), condition.get('toTick')
+    minimum = condition.get('minIncreasePx')
+    if type(start) is not int or type(end) is not int or not 0 <= start < end:
+        return None
+    if axis not in ('x', 'y') or not _finite_number(minimum) or minimum <= 0:
+        return None
+    if not isinstance(trace, dict) or not isinstance(role, str) or not role:
+        return None
+    bindings = trace.get('bindings')
+    capabilities = trace.get('capabilities')
+    if not isinstance(capabilities, dict) or capabilities.get('roleBoxes') is not True:
+        return None
+    binding = bindings.get(role) if isinstance(bindings, dict) else None
+    if not isinstance(binding, dict) or ('node' in binding) == ('group' in binding):
+        return None
+    selector = binding.get('node', binding.get('group'))
+    if not isinstance(selector, str) or not selector:
+        return None
+    rows = trace.get('rows')
+    if not isinstance(rows, list) or not all(isinstance(r, dict) and type(r.get('tick')) is int for r in rows):
+        return None
+    interval = [r for r in rows if start <= r['tick'] <= end]
+    if len(interval) != end - start + 1:
+        return None
+    samples = []
+    for tick, row in enumerate(interval, start):
+        sample = _role_drawing(row, role)
+        if row['tick'] != tick or sample is None or (samples and sample[0] != samples[0][0]):
+            return None
+        samples.append(sample)
+    before, after = samples[0][1], samples[-1][1]
+    # Both edges of each axis must translate together: a changing rectangle
+    # could move its midpoint without the object moving at all.
+    left, top, right, bottom = (_pixels(b) - _pixels(a) for a, b in zip(before, after))
+    if left != right or top != bottom:
+        return None
+    return left if axis == 'x' else top
+
+
+def checkpoint(condition: dict, trace: dict | None, *, notes: list[str] | None = None) -> bool | None:
     """True: reached, False: observed but not reached, None: required data was unavailable.
 
     These are route checkpoints from the engine, independent of who judges the visual assertion.
     No missing position, floor flag or coin list is invented. An explicit empty coin list is zero.
     """
+    if condition['type'] == 'role-displacement':
+        delta = _role_displacement(condition, trace)
+        if delta is None:
+            if notes is not None:
+                notes.append(f"check the visible {condition.get('role')} drawing at each tick from "
+                             f"{condition.get('fromTick')} to {condition.get('toTick')} for one comparable instance")
+            return None
+        minimum = condition['minIncreasePx']
+        reached = delta >= _pixels(minimum)
+        if not reached and notes is not None:
+            direction = 'down' if condition['axis'] == 'y' else 'right'
+            start, end = condition['fromTick'], condition['toTick']
+            # Preserve the comparison when a rounded display value could equal the threshold.
+            amount = str(delta) if delta.denominator == 1 else f"less than {minimum}"
+            notes.append(f"{condition['role']} moved {amount} world pixels {direction} between ticks "
+                         f"{start} and {end} (requires {minimum})")
+        return reached
     if condition['type'] == 'position-at-tick':
         rows = [r for r in (trace or {}).get('rows', []) if r.get('tick') == condition['tick']]
         if len(rows) != 1:
@@ -105,7 +196,8 @@ def assess(spec: dict, observations: dict, judged: int, *, counterexample: bool,
     applicable = 'yes'
     if 'routes' in obligation:
         applicable = 'unknown' if route is None else ('yes' if route in obligation['routes'] else 'no')
-    checkpoints = [checkpoint(c, trace) for c in obligation.get('reached', [])] if applicable == 'yes' else []
+    notes = []
+    checkpoints = [checkpoint(c, trace, notes=notes) for c in obligation.get('reached', [])] if applicable == 'yes' else []
     triggered = 0 if False in checkpoints else judged
     if None in checkpoints:
         applicable = 'unknown'
@@ -125,5 +217,7 @@ def assess(spec: dict, observations: dict, judged: int, *, counterexample: bool,
         detail += '; checkpoint data unavailable'
     elif applicable == 'unknown':
         detail += '; route applicability unknown'
+    if notes:
+        detail += '. ' + '. '.join(notes)
     return {'status': status, 'semanticResult': semantic, 'framesObserved': len(have & want),
             'framesExpected': len(want), 'framesRequired': minimum, 'completeWindow': complete}, detail

@@ -1,7 +1,7 @@
 {
   "format": "expectrail.test-spec/v0",
   "id": "breakout-ball-starts",
-  "instruction": "Draft: after Start, the whole ball drawing is below its initial centre plus its collision radius during frames 40..50, and the paddle reaches the two route-derived positions at ticks 20 and 70. This demonstrates this seeded launch, not the correctness of every bounce. Review before approval.",
+  "instruction": "Draft: after Start, the whole ball drawing stays below its initial centre plus its collision radius during frames 40..50. Between ticks 40 and 50 the same Ball drawing must move down at least one collision diameter in world space. The paddle must also reach the two route positions at ticks 20 and 70. Review these launch obligations before approval.",
   "objects": {
     "ball": {
       "prompt": "white ball"
@@ -39,6 +39,14 @@
         "x": 50.4,
         "y": 616.0,
         "tolerancePx": 24.0
+      },
+      {
+        "type": "role-displacement",
+        "role": "ball",
+        "axis": "y",
+        "fromTick": 40,
+        "toTick": 50,
+        "minIncreasePx": 8.0
       }
     ]
   }

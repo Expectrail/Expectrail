@@ -41,12 +41,32 @@ spec['instruction'] = (
     'The paddle must also reach the route positions at ticks 20 and 70 within half its collision width. '
     'Review the rail and movement obligations before approval.'
 )
-b=specs['breakout-ball-starts'];b['assertion']['boundary']['value']=ball_position[1]+radius;b['coverage']['reached']=copy.deepcopy(checkpoints)
-b['instruction']='Draft: after Start, the whole ball drawing is below its initial centre plus its collision radius during frames 40..50, and the paddle reaches the two route-derived positions at ticks 20 and 70. This demonstrates this seeded launch, not the correctness of every bounce. Review before approval.'
+ball_spec = specs['breakout-ball-starts']
+ball_spec['assertion']['boundary']['value'] = ball_position[1] + radius
+window = ball_spec['window']
+config = json.loads((a.inputs / 'expectrail.project.json').read_bytes())
+if config['captureFps'] != config['physicsTicksPerSecond']:
+    raise ValueError('The Ball draft expects one recorded frame per physics tick.')
+start, end = window['fromFrame'], window['toFrame']
+assert release < start < end < route['ticks']
+# This public route captures every physics tick. One collider diameter is a
+# minimum movement witness, independent of the random launch direction.
+ball_movement = {
+    'type': 'role-displacement', 'role': 'ball', 'axis': 'y',
+    'fromTick': start, 'toTick': end,
+    'minIncreasePx': 2 * radius,
+}
+ball_spec['coverage']['reached'] = [*copy.deepcopy(checkpoints), ball_movement]
+ball_spec['instruction'] = (
+    'Draft: after Start, the whole ball drawing stays below its initial centre plus its collision radius '
+    f'during frames {start}..{end}. Between ticks {start} and {end} the same Ball drawing must move down at least one '
+    'collision diameter in world space. The paddle must also reach the two route positions at ticks '
+    '20 and 70. Review these launch obligations before approval.'
+)
 a.output.mkdir(parents=True,exist_ok=True)
 for name,spec in specs.items():
  assert 'approval' not in spec
  (a.output/(name+'.json')).write_text(json.dumps(spec,indent=2)+'\n')
 inputs=['project.godot','game.tscn','scenes/paddle.tscn','scenes/walls.tscn','scenes/ball.tscn','scripts/paddle.gd','scripts/ball.gd']
-doc={'pin':'0ac7aed444ea593a023d9b666c211d7ab8acd51e','sources':{name:{'sha256':hashlib.sha256((a.source/name).read_bytes()).hexdigest(),'url':'https://github.com/mike0697/Breakout/blob/0ac7aed444ea593a023d9b666c211d7ab8acd51e/'+name} for name in inputs},'viewport':[w,h],'wallInnerX':[left,right],'paddleCollisionSize':collision_size,'paddleDrawingSize':art[2:],'paddleInitialPosition':paddle_position,'paddleColliderOffset':collider_offset,'paddleRail':rail,'movementCheckpoints':checkpoints,'startReleaseTick':release,'ballInitialPosition':ball_position,'ballCollisionRadius':radius,'ballBoundaryY':ball_position[1]+radius,'windowRationale':'Paddle 20..70 lies after click release 14 and within the first sweep; ball 40..50 tests the seeded initial downward launch. Windows are authored policy, not inferred engine facts.'}
+doc={'pin':'0ac7aed444ea593a023d9b666c211d7ab8acd51e','sources':{name:{'sha256':hashlib.sha256((a.source/name).read_bytes()).hexdigest(),'url':'https://github.com/mike0697/Breakout/blob/0ac7aed444ea593a023d9b666c211d7ab8acd51e/'+name} for name in inputs},'viewport':[w,h],'wallInnerX':[left,right],'paddleCollisionSize':collision_size,'paddleDrawingSize':art[2:],'paddleInitialPosition':paddle_position,'paddleColliderOffset':collider_offset,'paddleRail':rail,'movementCheckpoints':checkpoints,'startReleaseTick':release,'ballInitialPosition':ball_position,'ballCollisionRadius':radius,'ballBoundaryY':ball_position[1]+radius,'ballMovementCheckpoint':ball_movement,'windowRationale':'Paddle 20..70 lies after click release 14 and within the first sweep; ball 40..50 tests the seeded initial downward launch. Windows are authored policy, not inferred engine facts.'}
 (a.output/'derivation.json').write_text(json.dumps(doc,indent=2)+'\n');print(json.dumps(doc,indent=2))

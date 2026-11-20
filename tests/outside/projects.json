@@ -92,7 +92,17 @@
             "breakout-paddle-bounds": "fail",
             "breakout-ball-starts": "needs-review"
           },
-          "what": "paddle is forced to x=8; raw paddle draft fails, ball movement checkpoint is not reached; unapproved drafts do not reject at the gate"
+          "what": "paddle is forced to x=8; the paddle draft fails and the Ball draft misses its paddle checkpoints; verification is refused for unapproved drafts"
+        },
+        {
+          "name": "stationary-ball",
+          "patch": "tests/outside/breakout/changes/stationary-ball.patch",
+          "expect": "unapproved-drafts",
+          "engineExpect": {
+            "breakout-paddle-bounds": "pass",
+            "breakout-ball-starts": "needs-review"
+          },
+          "what": "the launched ball stops below the boundary while the paddle keeps moving; the Ball draft misses its own movement checkpoint"
         }
       ]
     }

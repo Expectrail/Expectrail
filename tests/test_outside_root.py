@@ -134,7 +134,12 @@ class DraftTrialTest(unittest.TestCase):
         with mock.patch.object(trial.subprocess,'run',side_effect=replay):
             findings,summaries=trial.draft_diagnostics(self.project,checkout,self.root/'evidence',10,'isolated')
         self.assertEqual(calls[0][calls[0].index('--sandbox')+1],'require')
-        self.assertEqual([f['result'] for f in findings],['pass','pass']);self.assertLess(len(summaries),10)
+        # This mock trace moves the paddle but holds the ball below the launch boundary.
+        by_spec = {finding['spec']: finding for finding in findings}
+        self.assertEqual(by_spec['breakout-paddle-bounds']['result'], 'pass')
+        ball = by_spec['breakout-ball-starts']
+        self.assertEqual((ball['result'], ball['coverage']['status']), ('needs-review', 'not-reached'))
+        self.assertLess(len(summaries), 10)
     def test_missing_ticks_and_refused_capture_never_invent_a_passing_diagnostic(self):
         checkout=self.root/'checkout';(checkout/'routes').mkdir(parents=True);(checkout/'project').mkdir()
         shutil.copy(ROOT/self.project['routes']/'pointer-auto.json',checkout/'routes')

@@ -2,7 +2,7 @@
 
 The registered game is [mike0697/Breakout](https://github.com/mike0697/Breakout/tree/0ac7aed444ea593a023d9b666c211d7ab8acd51e), MIT, pinned to `0ac7aed444ea593a023d9b666c211d7ab8acd51e`. The source is fetched, not vendored. This keeps the choice and route from the [same-pin retrial](../breakout-pointer/report.md).
 
-The original run below used the whole viewport for the paddle draft. The current draft checks the paddle’s vertical rail. [Revised bounds and public controls](public-control-feasibility.md)
+The original run below used the whole viewport for the paddle and inferred useful play from the paddle’s movement. The current drafts check the paddle’s vertical rail and require the Ball drawing itself to move after Start. The public registry now includes a control that stops the Ball while the Paddle still moves. [Paddle measurements](public-control-feasibility.md) · [Ball movement and stationary control](../../new-work/2026-11-20-bound-ball-movement.md)
 
 ## What ran locally
 
@@ -20,7 +20,7 @@ Godot 4.7.2 and Xvfb were used; no key, live model or approval. The local sandbo
 | Harmless comment | needs-review | pass: 51 frames | pass: 11 frames | 59.8 |
 | Broken, paddle x=8 | needs-review | fail: first checked frame 20, 51 failing frames | needs-review: paddle movement prerequisite not reached | 50.7 |
 
-There are zero approved checks run in each gate job. The raw findings are **not** gate accepts/rejects. The registry requires these three needs-review decisions and every listed raw finding. A missing diagnostic, replay failure or changed expectation fails the trial command. An approved spec accidentally listed as a draft is refused, never relabelled unapproved.
+There are zero approved checks run in each gate job. The raw findings are **not** gate accepts/rejects. The registry at the time required these three needs-review decisions and every listed raw finding. A missing diagnostic, replay failure or changed expectation fails the trial command. An approved spec accidentally listed as a draft is refused, never relabelled unapproved.
 
 ## Why the paddle draft changed
 
@@ -36,7 +36,7 @@ The [derivation script](derive-drafts.py) reads the public pinned scene/project 
 python3 docs/outside-trials/breakout-ci/derive-drafts.py breakout-source tests/outside/breakout-pointer derived-checks
 ```
 
-## CI proof still required
+## CI status at the time of the original run
 
 **Not run on this pull request yet.** Sean pushes the local patch. Changes to `tests/outside/**` and `tools/outside_trial.py` trigger **Outside projects trial**, job **`outside-trial`**, in `.github/workflows/outside-trial.yml`. Its existing command is:
 
