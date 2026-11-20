@@ -26,7 +26,7 @@ Advisory: nothing here changes what the generator offers, what may count or what
   none failed. 28 pass 3 of 3 as pinned; all 28 are "not exercised" on the do-nothing control, so all 28 are
   kept. `drag-left` is caught by the 14 sideways-travel checks and by none of the equal-signal checks.
   405 seconds on 2 CPUs.
-- The full suite: see the pull request.
+- Full suite on main 0822f1a merged with this change, with the engine present: 5,815 tests, OK, 44 skipped.
 - The outside run on kinematic-character: not run here, because this session clones only Expectrail. The
   first recorded counts come from the `metamorphic-outside` job on the pull request.
 
