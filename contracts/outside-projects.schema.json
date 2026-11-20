@@ -61,7 +61,8 @@
             "enum": [
               "accept",
               "reject",
-              "needs-review"
+              "needs-review",
+              "unapproved-drafts"
             ]
           },
           "engineExpect": {
@@ -109,7 +110,8 @@
                   "enum": [
                     "accept",
                     "reject",
-                    "needs-review"
+                    "needs-review",
+                    "unapproved-drafts"
                   ]
                 },
                 "what": {

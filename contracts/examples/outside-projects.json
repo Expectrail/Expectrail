@@ -13,7 +13,7 @@
       "draftSpecs": [
         "tests/outside/example/checks/paddle.json"
       ],
-      "expect": "needs-review",
+      "expect": "unapproved-drafts",
       "engineExpect": {
         "paddle": "pass"
       },
@@ -21,7 +21,7 @@
         {
           "name": "broken",
           "patch": "tests/outside/example/changes/broken.patch",
-          "expect": "needs-review",
+          "expect": "unapproved-drafts",
           "engineExpect": {
             "paddle": "fail"
           },

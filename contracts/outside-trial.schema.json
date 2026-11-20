@@ -42,6 +42,7 @@
               "accept",
               "reject",
               "needs-review",
+              "unapproved-drafts",
               null
             ]
           },
@@ -164,6 +165,15 @@
           "verifySeconds": {
             "type": "number",
             "minimum": 0
+          },
+          "setupRefusal": {
+            "const": "unapproved-drafts",
+            "description": "The CLI reported that all configured checks are unapproved drafts before verification."
+          },
+          "verifyJobs": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Entries present in the verification job store for this case, including incomplete jobs. Independent draft diagnostics are outside the store."
           }
         }
       }
