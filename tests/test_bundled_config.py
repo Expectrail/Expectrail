@@ -1,7 +1,7 @@
 """The bundled game's proposed project config, and the parity check that holds it to today's results (#259).
 
-The config is kept at harness/godot/platformer.project.json (game/platformer is not edited by
-agents). It must be what `expectrail init` proposes for the game, and a copy of the game carrying
+The config sits beside project.godot at game/platformer/expectrail.project.json (Sean, November 19,
+2026). It must be what `expectrail init` proposes for the game, and a copy of the game carrying
 it must replay and decide exactly as a copy without it.
 """
 import copy
@@ -40,9 +40,10 @@ class ConfigTest(unittest.TestCase):
     def setUp(self):
         self.config = parity.load_config()
 
-    def test_the_config_is_valid_for_the_bundled_game_and_the_game_still_has_none(self):
+    def test_the_config_is_valid_for_the_bundled_game_and_sits_beside_it(self):
         self.assertEqual(project_config.load(parity.CONFIG, ROOT / "game/platformer"), self.config)
-        self.assertIsNone(project_config.read_game(ROOT / "game/platformer"))
+        self.assertEqual(project_config.read_game(ROOT / "game/platformer"), self.config)
+        self.assertFalse((ROOT / "harness/godot/platformer.project.json").exists())
         self.assertNotIn("draft", self.config)
         self.assertEqual(self.config["bindings"], {"player": {"node": "Level/Player",
                                                               "texture": "res://player/robot.webp"}})
