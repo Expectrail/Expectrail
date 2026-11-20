@@ -122,7 +122,19 @@ jobs:
         # (a strong catch before #675; since the do-nothing control, no valid check: tools/jit_rehearsal_check.py).
         # Stand-ins the study cannot draw from: the profile was written alongside this bug, so these show
         # the plumbing, not a detection rate.
-        case: [air-jump-undo, air-jump-comment-only]
+        # gun-cooldown-long-comment-only (#691): the public bench defect "fixed" with a comment only. Its
+        # stand-ins are the checks the hosted baseline proposed for it (run 43465090517), unchanged; the
+        # do-nothing control fails them, and the case asserts a strong catch. Plumbing, not a detection rate.
+        include:
+          - case: air-jump-undo
+            report: bench/jit/rehearsal/air-jump.report.txt
+            base: bugs/reported/air-jump.patch
+          - case: air-jump-comment-only
+            report: bench/jit/rehearsal/air-jump.report.txt
+            base: bugs/reported/air-jump.patch
+          - case: gun-cooldown-long-comment-only
+            report: bench/jit/public/gun-cooldown-long/report.txt
+            base: bench/jit/public/gun-cooldown-long/defect.patch
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -140,11 +152,13 @@ jobs:
       - name: Replay the stand-in proposal
         env:
           CASE: ${{ matrix.case }}
+          REPORT: ${{ matrix.report }}
+          BASE: ${{ matrix.base }}
         run: |
           export PATH="$PWD/tools/godot:$PATH"
           start=$(date +%s)
-          python -m expectrail.jit.cli run --report-file bench/jit/rehearsal/air-jump.report.txt \
-            --candidate "bench/jit/rehearsal/$CASE.patch" --base bugs/reported/air-jump.patch \
+          python -m expectrail.jit.cli run --report-file "$REPORT" \
+            --candidate "bench/jit/rehearsal/$CASE.patch" --base "$BASE" \
             --proposal "bench/jit/rehearsal/$CASE/jit-proposal.json" --out "runs/jit/$CASE" \
             --run-id "rehearsal-${GITHUB_RUN_ID}-$CASE"
           echo "::notice title=Generated checks rehearsal ${CASE}::$(python -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['status'], d['counts'], 'spend', d['spend']['usd'])" "runs/jit/$CASE/jit-run.json"); $(( $(date +%s) - start )) s"
@@ -152,10 +166,11 @@ jobs:
       - name: Check the rehearsal reached what it rehearses
         env:
           CASE: ${{ matrix.case }}
-        # Since the do-nothing control (#675) the stand-in's only catching check passes a frozen player and
-        # is dropped, so the comment-only case keeps no valid check and no catch. The rehearsal proves the
-        # plumbing and that the control fires on a real run; it no longer covers a strong catch (lost reach,
-        # accepted by Sean on November 20; see tools/jit_rehearsal_check.py).
+        # Since the do-nothing control (#675) the air-jump stand-in's only catching check passes a frozen
+        # player and is dropped, so that comment-only case keeps no valid check and no catch (lost reach,
+        # accepted by Sean on November 20). gun-cooldown-long-comment-only brings the strong catch back: it
+        # must be caught 3 of 3 on the bug and the candidate by a check the control fails (#691; see
+        # tools/jit_rehearsal_check.py).
         run: python -m tools.jit_rehearsal_check "$CASE" "runs/jit/$CASE/jit-run.json"
       - name: Keep the record
         if: always()
