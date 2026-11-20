@@ -1,0 +1,17 @@
+{
+  "label": "menu-final",
+  "startedUtc": "2026-11-16T06:41:20.913046+00:00",
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v",
+    "tests.test_menu_routes"
+  ],
+  "cwd": "/workspace/work/pointer-routes",
+  "seconds": 28.393333969004743,
+  "exitCode": 0,
+  "status": "finished",
+  "godotOverride": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+  "log": "logs/menu-final.log"
+}

@@ -85,6 +85,113 @@ class ConfiguredAppTest(unittest.TestCase):
         saved=self.store.request(job['id']);self.assertEqual(len(request.read_checks(saved).specs),1)
         self.assertIn('config differs',' '.join(result['reasons']))
 
+    def test_check_folders_previews_current_and_saved_setups_without_starting_a_job(self):
+        from expectrail import onboarding
+
+        game = self.root / 'My game'
+        shutil.copytree(ROOT / 'tests/projects/crate-run/project', game)
+        (game / 'expectrail.project.json').unlink()
+        body = {'before': str(game), 'after': str(game), 'folder': str(game)}
+        for saved in (False, True):
+            with self.subTest(saved=saved):
+                if saved:
+                    onboarding.publish(game, onboarding.proposal(game, onboarding.inspect(game)), False)
+                digest = request.tree_digest(game)
+                code, error, _ = self.http('POST', '/api/inspect', body)
+                self.assertEqual(code, 400)
+                detail = error['detail']
+                self.assertIn('res://main.tscn', detail)
+                self.assertIn('Player', detail)
+                self.assertIn('no saved sprite texture', detail)
+                self.assertIn('Saved draft' if saved else 'Setup preview', detail)
+                self.assertEqual(self.http('POST', '/api/jobs', body)[0], 400)
+                self.assertEqual(request.tree_digest(game), digest)
+        self.assertEqual(self.server.app.history()['jobs'], [])
+
+        pending = game / 'expectrail.project.draft.json'
+        route = game / json.loads(pending.read_text())['config']['routes'][0]
+        route.write_text('{}')
+        code, error, _ = self.http('POST', '/api/inspect', body)
+        self.assertEqual(code, 400)
+        self.assertIn('route', error['detail'])
+        self.assertNotIn('Saved draft preview', error['detail'])
+
+        pending.write_text('{}')
+        code, error, _ = self.http('POST', '/api/inspect', body)
+        self.assertEqual(code, 400)
+        self.assertIn(pending.name, error['detail'])
+        self.assertNotIn('Saved draft preview', error['detail'])
+
+    def test_saved_menu_routes_are_reviewed_without_probing_the_game(self):
+        from expectrail import input_discovery, onboarding
+
+        game = self.root / 'Menu game'
+        shutil.copytree(ROOT / 'tests/projects/pointer-menu', game)
+        with (game / 'project.godot').open('a') as settings:
+            settings.write('\n[input]\npause={"deadzone":0.5,"events":[]}\n')
+        body = {'before': str(game), 'after': str(game), 'folder': str(game)}
+        info = onboarding.inspect(game)
+        self.assertTrue(input_discovery.needed(info))
+        cases = [
+            ({'tick': 1, 'pointer': {'position': [120, 40]}}, True),
+            ({'tick': 1, 'action': info['actions'][0], 'pressed': True}, True),
+            ({'tick': 1, 'pointer': {'position': info['viewport']}}, False),
+            ({'tick': 1, 'action': 'unknown', 'pressed': True}, False),
+            ({'tick': 2, 'pointer': {'position': [1, 1]}}, False),
+        ]
+        with mock.patch.object(input_discovery, 'probe', side_effect=ValueError('engine probe attempted')) as probe:
+            for event, valid in cases:
+                with self.subTest(event=event):
+                    draft = {'format': 'expectrail.route/v0', 'name': 'test', 'ticks': 2, 'events': [event]}
+                    docs = onboarding.proposal(game, info, planned_route=draft)
+                    onboarding.publish(game, docs, force=True)
+                    digest = request.tree_digest(game)
+                    code, error, _ = self.http('POST', '/api/inspect', body)
+                    self.assertEqual(code, 400)  # A pending draft cannot start verification.
+                    if valid:
+                        self.assertIn('Saved draft preview', error['detail'])
+                        if 'action' in event:
+                            self.assertIn('only uses pause', error['detail'])
+                    else:
+                        self.assertIn('route', error['detail'])
+                        self.assertNotIn('Saved draft preview', error['detail'])
+                    self.assertEqual(request.tree_digest(game), digest)
+                    probe.assert_not_called()
+        self.assertEqual(self.server.app.history()['jobs'], [])
+
+    def test_saved_menu_preview_respects_explicit_player_and_older_drafts(self):
+        from expectrail import input_discovery, onboard, onboarding
+
+        game = self.root / 'Menu game'
+        shutil.copytree(ROOT / 'tests/projects/pointer-menu', game)
+        body = {'before': str(game), 'after': str(game), 'folder': str(game)}
+        draft = {'format': 'expectrail.route/v0', 'name': 'test', 'ticks': 2,
+                 'events': [{'tick': 1, 'pointer': {'position': [1, 1]}}]}
+        with mock.patch.object(input_discovery, 'probe', side_effect=ValueError('engine probe attempted')) as probe:
+            for selected in ('Player', None):
+                with self.subTest(selected=selected):
+                    info = onboarding.inspect(game, selected)
+                    docs = onboarding.proposal(game, info, planned_route=draft)
+                    if selected is None:
+                        del docs['imageSuggestions']  # Draft written before atlas suggestions.
+                    onboarding.publish(game, docs, force=True)
+                    code, error, _ = self.http('POST', '/api/inspect', body)
+                    self.assertEqual(code, 400)
+                    self.assertIn('Saved draft preview', error['detail'])
+                    if selected:
+                        self.assertIn('Selected player: Player', error['detail'])
+                    probe.assert_not_called()
+
+            pending = game / onboard.PENDING
+            saved = json.loads(pending.read_bytes())
+            saved['selectedPlayer'] = ['Player']
+            pending.write_bytes(onboarding.encode(saved))
+            code, error, _ = self.http('POST', '/api/inspect', body)
+            self.assertEqual(code, 400)
+            self.assertIn('selectedPlayer', error['detail'])
+            self.assertNotIn('Saved draft preview', error['detail'])
+            probe.assert_not_called()
+
     def test_missing_or_invalid_config_is_named_and_no_job_is_started(self):
         body=self.pair();path=Path(body['before'])/'expectrail.project.json';path.unlink()
         for value in (None,'{broken'):

@@ -23,6 +23,18 @@ def verdict(decision: str, *, check: str = "pass") -> dict:
             "checks": [{"kind": "regression", "spec": "player-always-visible", "route": "smoke", "result": check}]}
 
 
+
+# Historical trace fixtures: explicitly select the diagnostic benchmark control.
+def setUpModule():
+    global _trace_control
+    _trace_control = mock.patch.dict("os.environ", {"EXPECTRAIL_OBS_PROVIDER": "trace"})
+    _trace_control.start()
+
+
+def tearDownModule():
+    _trace_control.stop()
+
+
 class Judge:
     """A verify stand-in: answers from a script, writes an observer error when the judge is 'down'."""
 

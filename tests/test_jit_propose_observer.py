@@ -51,16 +51,17 @@ class TheMenuIsForOneObserver(unittest.TestCase):
             with self.subTest(observer=bad), self.assertRaises(ValueError):
                 pixel.proposed(bad)
 
-    def test_the_sensor_menu_offers_the_player_and_the_enemy(self):
+    def test_the_sensor_menu_offers_the_player_the_enemy_and_the_bullet(self):
         # The enemy since November 16 (#286): the sensor is pointed at each of its logged boxes.
         m = pixel.menu(B, pixel.proposed(SENSOR))
         self.assertEqual(list(m["observers"]), [SENSOR])
-        self.assertEqual(m["observers"][SENSOR]["objects"], ["enemy", "player"])
+        # The bullet since November 19, witnessed by its rings (agents/template_radial.py).
+        self.assertEqual(m["observers"][SENSOR]["objects"], ["bullet", "enemy", "player"])
         # faces-motion since November 16 (#286): which way the enemy is drawn facing, against its motion.
         self.assertEqual(m["observers"][SENSOR]["predicates"],
                          ["visible", "inside-region", "never-crosses", "faces-motion"])
         self.assertIn("faces-motion is about enemy only", m["observers"][SENSOR]["note"])
-        self.assertEqual(sorted(m["notJudgeable"]), ["bullet", "coin", "coins-counter", "ground"])
+        self.assertEqual(sorted(m["notJudgeable"]), ["coin", "coins-counter", "ground"])
         self.assertNotIn(SAM, json.dumps(m))
 
     def test_a_check_for_the_other_observer_is_refused_with_the_reason(self):

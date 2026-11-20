@@ -14,12 +14,13 @@ public routes; these commands do not locate private inputs.
    writes a separate review draft and says which setting to complete. This does
    not make a check or config approved. Physics rates below 60 or not divisible by
    60 now get the highest capture rate at most 60 that divides their tick rate.
-3. Run `expectrail inspect --project PATH --at-tick 1 --godot ENGINE --out INSPECTION`.
-   This explicitly runs the pinned local engine headless and prints JSON: each
-   bound object's full node path, measured world and screen box, engine visibility
-   flag, viewport intersection, and whether geometry came from drawing or collision.
-   It records two extra ticks so the selected tick has the next camera transform.
-   The output directory must be new and outside the project.
+3. Run `expectrail inspect --project PATH --at-tick 1`. This runs the pinned local
+   engine headless and prints each bound object's full node path, measured world and
+   screen box, engine visibility flag and viewport intersection. `--json` prints the
+   `expectrail.inspection/v1` record. That command is #604's, on main
+   (`expectrail.inspection`); this page documents `calibrate`, which is new here.
+   `inspect --at-tick` writes no evidence folder: it bounds the tick by the route it
+   replays, not by a fixed limit.
 4. Run `expectrail calibrate --project PATH --route PUBLIC_ROUTE --godot ENGINE
    --out MEASUREMENT`. Relative route paths start inside PATH. This runs the same
    route three times, with seed and inputs preserved, without capturing images.
@@ -41,8 +42,12 @@ public routes; these commands do not locate private inputs.
    a full verdict also needs its visual evidence.
 
 `--at-tick` is an idle replay tick, not a tick on a supplied movement route. The
-calibration route supplies that movement. Both modes run project scripts in the
+calibration route supplies that movement. Both commands run project scripts in the
 normal harness copy: they do not edit the source project or run an editor.
+
+`expectrail.setup-report/v1` is `calibrate`'s record and has no `mode` field:
+`inspect --at-tick` has exactly one implementation, `expectrail.inspection` (#604),
+and never writes a setup report.
 
 ## Recorded check on main 21fde1b4be9362d209852e3d44221d059d110643
 

@@ -14,8 +14,7 @@ through the command that reads them.
 Everything is the gate's own code (``verify.main``: its argument parsing, its reading of the intent
 and of the block, its decision, its exit code), with one difference: ``run_gate`` is called with the
 rule ``both`` and a ``RecordedObserver`` over the samples' recordings (``tests.release_gate.worker``),
-as the orchestrator's registered engine judges. The command as published defaults to the engine's
-record alone until the two-job form exists (#254); a release-gate row is never held on that path.
+as the orchestrator's registered engine judges. The command uses both observers; this fixture supplies recorded answers instead of a live client.
 Clearance here is what it is for the orchestrator's command: exit 0, which only an accept gives.
 """
 from __future__ import annotations
@@ -31,8 +30,9 @@ _RUN_GATE = verify.run_gate
 
 
 def run_gate(**kwargs):
-    if "rule" in kwargs or "visual" in kwargs:
-        raise AssertionError("the release gate sets the observers itself")
+    if kwargs.pop("rule") != rec.BOTH:
+        raise AssertionError("the product command must require both observers")
+    kwargs.pop("visual")
     return _RUN_GATE(**kwargs, rule=rec.BOTH, visual=recorded.RecordedObserver(recording()))
 
 

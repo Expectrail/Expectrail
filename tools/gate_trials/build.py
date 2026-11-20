@@ -69,7 +69,8 @@ def expectation(kind):
     if kind == 'new-head':
         return ('Old capture must not clear the new SHA. Explicit refusal: Expectrail clearance=failure, '
                 '"Superseded capture or pull request" (if judgment started), or the current-merge identity '
-                'refusal. If start sees no matching current PR, it skips without reason text. '
+                'refusal. If start sees no matching current PR, it judges nothing and concludes any clearance '
+                'it already started as that failure; with none started there is no reason text. '
                 'The reader reports FAIL/incomplete for absence alone; see the timing instructions.')
     return ('For actual substituted downloaded bytes: Expectrail evidence=success; Expectrail '
             'clearance=failure; reason contains EVIDENCE_MISMATCH. A PR cannot replace an already '

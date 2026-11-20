@@ -46,7 +46,10 @@ extends Node
 const TRACE_FORMAT := "expectrail.trace/v0"
 const ROUTE_FORMATS := ["expectrail.route/v0"]
 
-var _events: Dictionary = {}   # tick -> Array of {action, pressed}
+var _events: Dictionary = {}   # tick -> action or pointer events, in route array order
+var _pointer_position := Vector2.ZERO
+var _pointer_mask: int = 0
+var _input_probe := false
 var _ticks: int = 0
 var _tick: int = 0
 var _trace: Array = []
@@ -76,6 +79,10 @@ var _projectile_class: StringName = &"Bullet"
 var _projectiles: Array = []     # [id, node] of every projectile seen entering the tree
 var _next_id := 0
 var _stopped := false
+var _capture_fps := 0
+var _capture_frames: Array = []
+var _capture_tick := -1
+var _finished_document: Dictionary = {}
 
 # How far above the player's origin a surface may sit and still count as the ground under it:
 # a robot sunk into the ground by less than this is measured against the surface it sank into.
@@ -113,14 +120,22 @@ func _ready() -> void:
 	# below inherits this. A game that never pauses is not affected.
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	seed(int(args.get("seed", "1")))
+	_input_probe = args.has("input-probe")
+	if _input_probe and DisplayServer.get_name() == "headless":
+		get_window().size = Vector2i(
+			int(ProjectSettings.get_setting("display/window/size/viewport_width", get_window().size.x)),
+			int(ProjectSettings.get_setting("display/window/size/viewport_height", get_window().size.y)))
 	_trace_path = args.get("trace", "")
 	_record_ui_integers = args.get("ui-integers", "false") == "true"
+	_capture_fps = int(args.get("capture-fps", "0"))
+	if _capture_fps > 0:
+		RenderingServer.frame_pre_draw.connect(_capture_placement)
 	_player_name = args.get("player", "Player")
 	_coin_class = StringName(args.get("coins", "Coin"))
 	_sprite_name = args.get("sprite", "Sprite2D")
 	_enemy_class = StringName(args.get("enemies", "Enemy"))
 	_projectile_class = StringName(args.get("projectiles", "Bullet"))
-	if args.has("bindings"):
+	if args.has("bindings") and not _input_probe:
 		var parsed = JSON.parse_string(args["bindings"])
 		if typeof(parsed) != TYPE_DICTIONARY:
 			push_error("expectrail: --bindings must be a JSON object of role bindings")
@@ -149,7 +164,19 @@ func _ready() -> void:
 		var tick := int(event["tick"])
 		if not _events.has(tick):
 			_events[tick] = []
-		_events[tick].append({"action": String(event["action"]), "pressed": bool(event["pressed"])})
+		if event.has("pointer"):
+			if not _valid_pointer(event):
+				_stop("expectrail: invalid pointer event at tick %s" % tick)
+				return
+			# Headless windows otherwise start at 64x64. Only pointer routes opt in;
+			# action-only routes retain byte-identical geometry and traces.
+			if DisplayServer.get_name() == "headless":
+				get_window().size = Vector2i(
+					int(ProjectSettings.get_setting("display/window/size/viewport_width", get_window().size.x)),
+					int(ProjectSettings.get_setting("display/window/size/viewport_height", get_window().size.y)))
+			_events[tick].append({"pointer": event["pointer"]})
+		else:
+			_events[tick].append({"action": String(event["action"]), "pressed": bool(event["pressed"])})
 	# A second node records positions after every game node has moved in the same tick.
 	_recorder = Node.new()
 	_recorder.name = "ExpectrailRecorder"
@@ -164,7 +191,56 @@ func _physics_process(_delta: float) -> void:
 	if _ticks == 0:
 		return
 	for event in _events.get(_tick, []):
-		_send(event["action"], event["pressed"])
+		if event.has("pointer"):
+			_send_pointer(event["pointer"])
+			if _stopped:
+				return
+		else:
+			_send(event["action"], event["pressed"])
+
+
+func _valid_pointer(event: Dictionary) -> bool:
+	if event.size() != 2 or not event.has("tick") or typeof(event["pointer"]) != TYPE_DICTIONARY:
+		return false
+	var point = event["pointer"]
+	var position = point.get("position")
+	if typeof(position) != TYPE_ARRAY or position.size() != 2:
+		return false
+	for value in position:
+		if not (typeof(value) in [TYPE_INT, TYPE_FLOAT]) or not is_finite(float(value)) or value < 0 or value > 1000000:
+			return false
+	if point.size() == 1:
+		return true
+	return point.size() == 3 and point.get("button") in ["left", "right", "middle"] and typeof(point.get("pressed")) == TYPE_BOOL
+
+
+func _send_pointer(point: Dictionary) -> void:
+	var position := Vector2(float(point["position"][0]), float(point["position"][1]))
+	if not get_viewport().get_visible_rect().has_point(position):
+		_stop("expectrail: pointer at tick %s is outside the game viewport: %s in %s" % [_tick, position, get_viewport().get_visible_rect()])
+		return
+	# Input.parse_input_event expects window pixels. The route always names game
+	# viewport pixels, so account for stretch/HiDPI without using desktop coordinates.
+	var transform := get_viewport().get_final_transform()
+	var event: InputEventMouse
+	if point.has("button"):
+		var button := InputEventMouseButton.new()
+		button.button_index = {"left": MOUSE_BUTTON_LEFT, "right": MOUSE_BUTTON_RIGHT, "middle": MOUSE_BUTTON_MIDDLE}[point["button"]]
+		button.pressed = point["pressed"]
+		var bit := 1 << (button.button_index - 1)
+		_pointer_mask = (_pointer_mask | bit) if button.pressed else (_pointer_mask & ~bit)
+		event = button
+	else:
+		var motion := InputEventMouseMotion.new()
+		motion.relative = transform.basis_xform(position - _pointer_position)
+		event = motion
+	event.position = transform * position
+	event.global_position = event.position
+	event.button_mask = _pointer_mask
+	_pointer_position = position
+	if DisplayServer.get_name() != "headless":
+		get_viewport().warp_mouse(position)
+	_dispatch_input(event)
 
 
 var _unknown_actions: Dictionary = {}
@@ -178,9 +254,13 @@ func _send(action: String, pressed: bool) -> void:
 	if not InputMap.has_action(action):
 		_unknown_actions[action] = true
 		return
-	Input.parse_input_event(_event_for(StringName(action), pressed))
+	_dispatch_input(_event_for(StringName(action), pressed))
+
+
+func _dispatch_input(event: InputEvent) -> void:
 	# The engine holds events until the next drawn frame. Sent now, so the press is seen on the tick
 	# the route names and not up to a frame later.
+	Input.parse_input_event(event)
 	Input.flush_buffered_events()
 
 
@@ -320,7 +400,7 @@ func record() -> void:
 			return
 		_player = _roles.player
 		_sprite = null  # a configured player may despawn and be replaced
-	elif _player == null:
+	elif _player == null and not _input_probe:
 		_player = _find_player()
 		if _stopped:
 			return
@@ -373,6 +453,66 @@ func record() -> void:
 		_finish()
 
 
+func _inspect_inputs() -> Dictionary:
+	var controls: Array = []
+	var pending: Array = [get_tree().current_scene]
+	var visited := 0
+	var truncated := false
+	while not pending.is_empty():
+		var node = pending.pop_front()
+		if node == null:
+			continue
+		visited += 1
+		if visited > 10000 or controls.size() >= 128:
+			truncated = true
+			break
+		pending.append_array(node.get_children())
+		if not node is BaseButton:
+			continue
+		if node.get_viewport() != get_viewport():
+			truncated = true  # subviewport targeting is not supported; never guess its coordinates
+			continue
+		var transform: Transform2D = node.get_global_transform_with_canvas()
+		var area := Rect2(transform * Vector2.ZERO, Vector2.ZERO)
+		for corner in [Vector2(node.size.x, 0), node.size, Vector2(0, node.size.y)]:
+			area = area.expand(transform * corner)
+		var connections: Array = []
+		for connection in node.get_signal_connection_list("pressed"):
+			var call: Callable = connection["callable"]
+			var target = call.get_object()
+			connections.append({"signal": "pressed", "target": str(get_tree().current_scene.get_path_to(target)) if target is Node else "<not a node>", "method": str(call.get_method())})
+		controls.append({"path": str(get_tree().current_scene.get_path_to(node)),
+			"text": str(node.text) if node is Button else "", "visible": node.is_visible_in_tree(),
+			"enabled": not node.disabled and node.can_process(),
+			"box": [snappedf(area.position.x, 0.001), snappedf(area.position.y, 0.001), snappedf(area.end.x, 0.001), snappedf(area.end.y, 0.001)],
+			"connections": connections})
+	var size := get_viewport().get_visible_rect().size
+	return {"tick": _tick - 1, "viewport": [size.x, size.y], "paused": get_tree().paused,
+		"buttons": controls, "truncated": truncated}
+
+
+func _capture_placement() -> void:
+	# Movie Maker writes this draw. Record its actual physics interval and camera;
+	# 50 ticks at 60 fps includes draws with no new physics tick. Never divide rates.
+	var last_tick := _tick - 1
+	var view := get_viewport().get_final_transform() * get_viewport().get_canvas_transform()
+	var size := get_window().size
+	_capture_frames.append({"frame": _capture_frames.size(), "tick": last_tick,
+		"tickInterval": [mini(_capture_tick + 1, last_tick), last_tick],
+		"phase": "post-physics-pre-draw", "viewport": [size.x, size.y],
+		"transform": [snappedf(view.x.x, 0.0001), snappedf(view.x.y, 0.0001),
+			snappedf(view.y.x, 0.0001), snappedf(view.y.y, 0.0001),
+			snappedf(view.origin.x, 0.001), snappedf(view.origin.y, 0.001)]})
+	_capture_tick = last_tick
+	# _finish runs on the last physics tick, before its last draw. Include that
+	# draw before exit, without adding a game tick or changing when the game quits.
+	if not _finished_document.is_empty():
+		_finished_document["captureTimeline"] = {"fps": _capture_fps, "frames": _capture_frames}
+		var file := FileAccess.open(_trace_path, FileAccess.WRITE)
+		file.store_string(JSON.stringify(_finished_document, "", false))
+		file.close()
+
+
 func _finish() -> void:
 	if _roles != null:
 		var missing_roles: String = _roles.missing()
@@ -384,7 +524,7 @@ func _finish() -> void:
 		for tick in _events:
 			if tick >= _ticks:
 				for event in _events[tick]:
-					if not InputMap.has_action(event["action"]):
+					if event.has("action") and not InputMap.has_action(event["action"]):
 						_unknown_actions[event["action"]] = true
 		var missing := _unknown_actions.keys()
 		missing.sort()
@@ -399,6 +539,8 @@ func _finish() -> void:
 				"objectBoxes": true,
 				# Where a row's ground may come from: tiles, and the platforms counted (see _platform_bodies).
 				"groundSources": {"tiles": not _layers.is_empty(), "bodies": _platforms.size()}}}
+		if _input_probe:
+			out["inputProbe"] = _inspect_inputs()
 		var surfaces := _level_surfaces()
 		if not surfaces.is_empty():
 			out["levelSurfaces"] = surfaces
@@ -410,6 +552,9 @@ func _finish() -> void:
 			out["capabilities"]["roleBoxes"] = true
 			var size := get_window().size  # Captured pixels, not the logical stretch viewport.
 			out["viewport"] = [size.x, size.y]
+		if _capture_fps > 0:
+			out["captureTimeline"] = {"fps": _capture_fps, "frames": _capture_frames}
+			_finished_document = out
 		file.store_string(JSON.stringify(out, "", false))
 		file.close()
 	get_tree().quit(0)

@@ -68,7 +68,7 @@ def used_together(route: dict) -> set[frozenset[str]]:
     down: dict[str, int] = {}          # action -> tick it was pressed, while it is held
     last_press: dict[str, int] = {}
     pairs: set[frozenset[str]] = set()
-    for ev in sorted(route["events"], key=lambda e: (e["tick"], e["pressed"])):   # releases before presses on a tick
+    for ev in sorted((e for e in route["events"] if "action" in e), key=lambda e: (e["tick"], e["pressed"])):   # releases before presses on a tick
         action, tick = ev["action"], ev["tick"]
         if not ev["pressed"]:
             down.pop(action, None)

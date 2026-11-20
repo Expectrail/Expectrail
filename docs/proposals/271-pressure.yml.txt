@@ -1,0 +1,165 @@
+# PROPOSAL ONLY. Sean reviews and installs this; it is not an active workflow.
+# Prerequisites: trusted frozen evidence/contexts; trusted policy public-key store;
+# a provisioned isolated runner; persistent model-month ledger outside checkout.
+name: Generated counting check pressure
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Authorize this ONE pressure dispatch; adversary holds at most USD 6'
+        type: boolean
+        default: false
+        required: true
+      kind:
+        type: choice
+        options: [correct, adversary]
+        default: correct
+        required: true
+      source_run:
+        description: 'Same-repository trusted main generation run ID (fresh signed evidence)'
+        type: string
+        required: true
+      source_artifact:
+        description: 'Artifact ID containing bundles/ and contexts/; public data only'
+        type: string
+        required: true
+      fixer_invocation:
+        description: 'USD per invocation; recommend 6; values above 6 refused'
+        type: string
+        default: '6'
+        required: true
+      fixer_total:
+        description: 'USD across this dispatch; recommend 6; values above 6 refused'
+        type: string
+        default: '6'
+        required: true
+      replay_cap:
+        description: '1..1024; recommend 1024 correct, 64 adversary'
+        type: string
+        default: '1024'
+        required: true
+      sensor_every:
+        description: 'Correct only: the source run''s sam_every (1..60). Its frozen visual-sensor checks are judged on that frame plan; any other stops before a replay'
+        type: string
+        default: '10'
+        required: true
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: expectrail-counting-pressure
+  cancel-in-progress: false
+jobs:
+  pressure:
+    if: github.repository == 'Expectrail/Expectrail' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.confirm
+    runs-on: [self-hosted, linux, x64, expectrail-live]
+    environment: live-repair
+    timeout-minutes: 120
+    env:
+      KIND: ${{ inputs.kind }}
+      REPLAY_CAP: ${{ inputs.replay_cap }}
+      SOURCE_RUN: ${{ inputs.source_run }}
+      SOURCE_ARTIFACT: ${{ inputs.source_artifact }}
+      SENSOR_EVERY: ${{ inputs.sensor_every }}
+      EXPECTRAIL_GODOT: ${{ vars.EXPECTRAIL_GODOT_BINARY }}
+      LEDGER_DIR: ${{ vars.EXPECTRAIL_LEDGER_DIR }}
+      EXPECTRAIL_SPEC_USD_CAP: '0'
+      EXPECTRAIL_TRIAGE_USD_CAP: '0'
+      EXPECTRAIL_GLIMMER_USD_CAP: '0'
+      EXPECTRAIL_SAM_USD_CAP: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate inputs and runner without provider secrets
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os, stat, subprocess
+          from pathlib import Path
+          from harness.sandbox import probe
+          from harness.run import GODOT_VERSION
+          for name in ('SOURCE_RUN','SOURCE_ARTIFACT'):
+              if not os.environ[name].isdigit():raise SystemExit(name+' must be a numeric ID')
+          cap=int(os.environ['REPLAY_CAP'])
+          if not 0<cap<=1024:raise SystemExit('replay cap outside 1..1024')
+          if not os.environ['SENSOR_EVERY'].isdigit() or not 1<=int(os.environ['SENSOR_EVERY'])<=60:raise SystemExit('sensor_every outside 1..60')
+          ledger=Path(os.environ['LEDGER_DIR'])
+          if not ledger.is_absolute() or ledger.resolve().is_relative_to(Path.cwd()) or not ledger.is_dir():
+              raise SystemExit('provision persistent ledger directory outside checkout')
+          if stat.S_IMODE(ledger.stat().st_mode)!=0o700:raise SystemExit('ledger directory must be mode 0700')
+          if not Path('policy/jit-trust-store.json').is_file():raise SystemExit('Sean must install trusted issuer policy first')
+          engine=Path(os.environ['EXPECTRAIL_GODOT'])
+          version=subprocess.check_output([str(engine),'--version'],text=True).strip()
+          if not version.startswith(GODOT_VERSION.replace('-','.')+'.'):raise SystemExit('wrong pinned Godot version')
+          tool,why=probe(True)
+          if tool is None:raise SystemExit(why)
+          PY
+          python3 -m expectrail.jit.pressure "$KIND"
+      - name: Calibrate the sensor bank on this checkout's clean game; before any frozen evidence, no secret
+        # The same command as jit.yml's sensor-bank job: four clean routes, no patch, no candidate. Pressure
+        # replays a counting visual-sensor check only if this bank's setting equals the one in the signed
+        # source run (pixel-setting-mismatch otherwise), so a bank made here cannot loosen a check.
+        if: inputs.kind == 'correct'
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+        run: |
+          mkdir -p runs
+          python3 -m expectrail.jit.cli sensor-bank --out runs/sensor-bank/bank.json --work runs/sensor-calibration > runs/sensor-bank-summary.json
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          run-id: ${{ inputs.source_run }}
+          artifact-ids: ${{ inputs.source_artifact }}
+          github-token: ${{ github.token }}
+          path: frozen
+          merge-multiple: true
+      - name: Authenticate every frozen source before exposing a provider key (correct, with the bank and frame plan)
+        if: inputs.kind == 'correct'
+        run: python3 -m expectrail.jit.pressure correct --preflight --bundles frozen/bundles --contexts frozen/contexts --trust-store policy/jit-trust-store.json --out runs/counting-pressure --max-replays "$REPLAY_CAP" --sensor-bank runs/sensor-bank/bank.json --sensor-every "$SENSOR_EVERY"
+      - name: Authenticate every frozen source before exposing a provider key (adversary; trace checks only)
+        if: inputs.kind == 'adversary'
+        run: python3 -m expectrail.jit.pressure adversary --preflight --bundles frozen/bundles --contexts frozen/contexts --trust-store policy/jit-trust-store.json --out runs/counting-pressure --max-replays "$REPLAY_CAP"
+      - name: Correct fixes; no provider secret loaded
+        if: inputs.kind == 'correct'
+        run: python3 -m expectrail.jit.pressure correct --execute --bundles frozen/bundles --contexts frozen/contexts --trust-store policy/jit-trust-store.json --out runs/counting-pressure --max-replays "$REPLAY_CAP" --sensor-bank runs/sensor-bank/bank.json --sensor-every "$SENSOR_EVERY"
+      - name: One adversary; the existing llm-patch hard bound remains required
+        if: inputs.kind == 'adversary'
+        env:
+          EXPECTRAIL_FIXER_PROVIDER: openai
+          EXPECTRAIL_FIXER_MODEL: gpt-6.1-sol
+          EXPECTRAIL_FIXER_API_BASE: https://api.openai.com/v1
+          EXPECTRAIL_FIXER_API_KEY: ${{ secrets.EXPECTRAIL_OPENAI_FIXER_KEY }}
+          EXPECTRAIL_FIXER_INVOCATION_USD_CAP: ${{ inputs.fixer_invocation }}
+          EXPECTRAIL_MUSE_USD_CAP: ${{ inputs.fixer_total }}
+          EXPECTRAIL_MODEL_MONTH_LEDGER: ${{ vars.EXPECTRAIL_LEDGER_DIR }}/model-month.json
+        run: python3 -m expectrail.jit.pressure adversary --execute --bundles frozen/bundles --contexts frozen/contexts --trust-store policy/jit-trust-store.json --out runs/counting-pressure --max-replays "$REPLAY_CAP"
+      - name: Preserve records, candidate patch, invocation reservations and public replay evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: counting-pressure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            runs/counting-pressure/
+            runs/sensor-bank/
+            runs/sensor-bank-summary.json
+          if-no-files-found: warn
+          retention-days: 7
+# Sean checks each boundary before installing:
+# - workflow_dispatch is the only trigger; upstream main + confirm are required.
+# - No fork/PR trigger reaches the sole provider-secret step. Correct pressure has no key.
+# - Public trusted issuer policy is checked out from main, never loaded from the artifact.
+# - Frozen contexts must be produced independently by that trusted main job; source receipts
+#   bind the actual report, build, prompt and replay record. No candidate producer is trusted.
+# - The persistent ledger is never reset, copied from a candidate, or uploaded. All jobs
+#   spending against it must share it; existing locked month admission remains mandatory.
+# - The model tariff must still be active/unexpired; a refusal is never a fallback.
+# - Correct pressure calibrates its own sensor bank (no model, $0; about 7 minutes on the engine) and
+#   replays counting visual-sensor checks only when that bank's setting and frame plan match the signed
+#   source run. The runner needs Xvfb, software OpenGL, pillow 12.3.0 and numpy 2.5.3, as jit.yml's
+#   sensor-bank job installs. A counting SAM check and the adversary still stop on pixel checks.
+# - No fresh generator/vision call occurs here. Provisioning/fresh evidence costs are separate.
+# - The replay cap bounds starts, not wall time. The job timeout bounds this job's lifetime.
+# - Raw artifacts stay off main; later publish a small digest-bound summary, not bulk evidence.

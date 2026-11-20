@@ -4,7 +4,9 @@
   "phase": "completed",
   "decision": "reject",
   "repair": {
-    "state": "finished", "decision": "accept", "stopReason": "accepted",
+    "state": "finished",
+    "decision": "accept",
+    "stopReason": "accepted",
     "record": "repair-sample01/repair-run.json",
     "review": "Written by Expectrail's sandboxed fixer and accepted on the approved checks by an independent verification. A person must review it before merging; Expectrail never merges it."
   },
@@ -58,7 +60,12 @@
     "visual": {
       "name": "sam",
       "provider": "meta-model-api",
-      "model": "sam-3.1"
+      "model": "sam-3.1",
+      "version": "0.1.0"
+    },
+    "engine": {
+      "name": "expectrail.engine-record",
+      "version": "0.1.0"
     }
   }
 }

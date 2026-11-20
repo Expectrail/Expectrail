@@ -29,6 +29,7 @@ import shutil
 from pathlib import Path
 
 from expectrail.discovery.route_compiler import compile_route
+from expectrail.jit.offer import replay_options, route_actions
 from expectrail.trace.normalize import from_run_dir
 from expectrail.trace.signals import SIGNALS, summary
 
@@ -63,7 +64,8 @@ def measure(profile: dict, base_patches: list[Path], out: Path, *, probes: list[
     builds = [("clean", [])] + ([("bugBuild", [Path(p) for p in base_patches])] if base_patches else [])
     table: dict[str, dict] = {}
     for p in probes:
-        route = compile_route(p["program"], name=p["id"], description=p["description"], actions=profile["actions"])
+        route = compile_route(p["program"], name=p["id"], description=p["description"],
+                              actions=route_actions(profile, p))
         route_path = work / "routes" / f"{p['id']}.json"
         route_path.parent.mkdir(parents=True, exist_ok=True)
         route_path.write_text(json.dumps(route, indent=1) + "\n", encoding="utf-8")
@@ -72,7 +74,7 @@ def measure(profile: dict, base_patches: list[Path], out: Path, *, probes: list[
             run_dir = work / name / p["id"]
             if run_dir.exists():
                 shutil.rmtree(run_dir)
-            runner(route_path, run_dir, patches=patches)
+            runner(route_path, run_dir, patches=patches, **replay_options(p))
             row[name] = _clean(summary(from_run_dir(run_dir, route, episode_id=f"measure-{name}-{p['id']}")))
         table[p["id"]] = row
     doc = {"format": FORMAT, "basePatchSha256": base_digests(base_patches), "runsPerBuild": 1, "probes": table}

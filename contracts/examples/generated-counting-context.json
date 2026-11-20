@@ -1,0 +1,18 @@
+{
+  "format": "expectrail.generated-counting-context/v1",
+  "repository": "Expectrail/Expectrail",
+  "base": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "build": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "policy": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "inputs": {
+    "patchSha256": "cd11e09f47aebbc823f2c6e4968876698b9c8d5332e81392f4baec03473f532f",
+    "reportSha256": "5836002ada9ec0d526521e4447e45ddecb3ab47f639f382f0f90473050f0f7a3",
+    "basePatchSha256": [
+      "cd11e09f47aebbc823f2c6e4968876698b9c8d5332e81392f4baec03473f532f"
+    ],
+    "profileSha256": "7ad60a7ddc662fab9bcade5b743a34278a3b1a3f14af59a23f6e38a902fe65ec",
+    "model": "muse-spark-1.3",
+    "promptSha256": "6f28aa4d582842e859a1d4654922df8fa18d72d71ceb194aefcdf3014be3de36"
+  }
+}

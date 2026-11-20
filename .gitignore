@@ -18,6 +18,7 @@
 !/tools/make_receipt_samples.py
 !/tools/runit_api_smoke.py
 !/tools/runit_published.py
+!/tools/bundled_config_parity.py
 !/tools/release_gate.py
 !/tools/dossier.py
 !/tools/capture_spike/
@@ -45,3 +46,6 @@ _bmad/render/
 !/tools/playtest_fall_through.py
 !/tools/faces_motion_stand_in.py
 !/tools/bullet_visible_stand_in.py
+!/tools/macos_suite_summary.py
+!/tools/spend_cap_audit.py
+!/tools/spend_cap_gaps.json

@@ -42,11 +42,15 @@ class UnityWorkflowTest(unittest.TestCase):
                 if (uses is None or str(s.get("uses", "")).startswith(uses))
                 and (name is None or s.get("name") == name)]
 
-    def test_it_runs_when_dispatched_or_on_pull_requests_that_touch_unity(self):
-        self.assertEqual(set(self.doc[True]), {"pull_request", "workflow_dispatch"})
-        self.assertEqual(self.doc[True]["pull_request"]["paths"],
-                         ["game/unity-platformer/**", "harness/unity/**", "harness/routes/unity-*.json",
-                          ".github/workflows/unity.yml"])
+    def test_it_builds_only_on_main_or_when_dispatched_while_unity_is_deferred(self):
+        # Sean, November 19, 2026: pull requests that touch Unity paths start the workflow but skip the build,
+        # so no Godot change waits on the `unity` environment; main builds after the merge.
+        paths = ["game/unity-platformer/**", "harness/unity/**", "harness/routes/unity-*.json",
+                 ".github/workflows/unity.yml"]
+        self.assertEqual(set(self.doc[True]), {"pull_request", "push", "workflow_dispatch"})
+        self.assertEqual(self.doc[True]["pull_request"]["paths"], paths)
+        self.assertEqual(self.doc[True]["push"], {"branches": ["main"], "paths": paths})
+        self.assertEqual(self.build["if"], "github.event_name != 'pull_request'")
 
     def test_permissions_are_read_only(self):
         self.assertEqual(self.doc["permissions"], {"contents": "read"})

@@ -10,7 +10,7 @@
   "basePatchSha256": [
    "52c90da34798edd5624fbd52980b8f5a2ef1a8253b78623c4ef93296122f5cf5"
   ],
-  "profileSha256": "7ad60a7ddc662fab9bcade5b743a34278a3b1a3f14af59a23f6e38a902fe65ec",
+  "profileSha256": "e5fbddb4b9b1ad1028294bcb4e1c67fb7553179e9a7b508f99e279349c603bcb",
   "model": "hand-written-stand-in",
   "promptSha256": null
  },
@@ -97,10 +97,10 @@
   "weak": 0
  },
  "spend": {
-  "usd": 0.2089,
+  "usd": 0.1987,
   "capUsd": 2.0,
   "sparkUsd": 0.1246,
-  "replayUsd": 0.0843,
+  "replayUsd": 0.0741,
   "samUsd": 0.0,
   "samImages": 0,
   "replays": 27,

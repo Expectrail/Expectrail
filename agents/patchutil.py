@@ -4,8 +4,9 @@ from __future__ import annotations
 import fnmatch
 import hashlib
 import re
-import subprocess
 from pathlib import Path
+
+from harness import patching
 
 DIFF_PATH = re.compile(r"^(?:---|\+\+\+) [ab]/(.+)$", re.MULTILINE)
 
@@ -15,10 +16,8 @@ def sha256_file(path: Path) -> str:
 
 
 def apply_patch(work: Path, patch: Path) -> None:
-    subprocess.run(
-        ["patch", "-p1", "--forward", "--batch", "-d", str(work), "-i", str(patch.resolve())],
-        check=True, capture_output=True, text=True,
-    )
+    """Apply one unified diff to ``work`` and leave the tree it names (``harness.patching``, #659)."""
+    patching.apply(work, patch)
 
 
 def apply_patches(work: Path, patches: list[Path]) -> None:

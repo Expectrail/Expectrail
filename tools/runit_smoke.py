@@ -146,6 +146,15 @@ def compare(status: dict, page: dict, *, label: str, earlier: bool, evidence: bo
             problems.append(f"{label}: the vision line does not say {counts!r}: {line!r}")
     elif line.startswith("Vision answers recorded"):
         problems.append(f"{label}: the vision line claims a recording that status.json does not have: {line!r}")
+    rendering = vision.get("rendering")
+    if isinstance(rendering, dict):
+        from expectrail import recorded
+        said = recorded.rendering_sentence(rendering)
+        if facts.get("Rendering") != said:
+            problems.append(f"{label}: the rendering line is {facts.get('Rendering')!r}, status.json says {said!r}")
+    elif facts.get("Rendering") is not None:
+        problems.append(f"{label}: the page shows a rendering line that status.json does not have: "
+                        f"{facts.get('Rendering')!r}")
     receipt = (status.get("receipt") or {}).get("why") or "not signed"
     if facts.get("Receipt") != receipt:
         problems.append(f"{label}: the receipt line is {facts.get('Receipt')!r}, status.json says {receipt!r}")

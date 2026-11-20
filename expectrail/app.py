@@ -9,11 +9,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
 from pathlib import Path
+import re
 import secrets
+import shlex
 import stat
 import sys
 import threading
 import tempfile
+import webbrowser
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from expectrail import app_page, auto_fix, project_job, viewer
@@ -67,6 +70,13 @@ def field(body, name, default=None):
     return value.strip()
 
 
+def execution_class(body):
+    selected = body.get('executionClass', 'diagnostic')
+    if not isinstance(selected, str) or selected not in req.EXECUTION_CLASSES:
+        raise ValueError('Choose diagnostic or isolated execution. Nothing was run.')
+    return selected
+
+
 def build(body, *, inspect=False):
     head = Path(field(body, 'folder' if inspect else 'after')).expanduser()
     configured(body)
@@ -74,7 +84,7 @@ def build(body, *, inspect=False):
                      base=None if inspect else Path(field(body, 'before')).expanduser(),
                      game=field(body, 'game', '.'),
                      routes=field(body, 'routes', 'routes/*.json').replace(',', ' ').split(),
-                     specs=field(body, 'specs', 'specs'))
+                     specs=field(body, 'specs', 'specs'), execution_class=execution_class(body))
 
 
 def configured(body):
@@ -86,10 +96,107 @@ def configured(body):
     return value
 
 
+def saved_route_guidance(root, saved, info):
+    """Read init's content-addressed first route without running input discovery."""
+    from expectrail import input_discovery, onboard, onboarding, route
+    from expectrail.contracts import validate
+    from expectrail.gate.verify import ROUTE_CAP
+
+    config = saved.get('config') if isinstance(saved, dict) else None
+    names = config.get('routes') if isinstance(config, dict) else None
+    if (not isinstance(names, list) or len(names) != 1 or not isinstance(names[0], str)
+            or not re.fullmatch(r'routes/draft-first-[0-9a-f]{16}\.json', names[0])):
+        raise ValueError(f'{onboard.PENDING} needs the saved first route from init.')
+    raw = project_job.regular(root, names[0], ROUTE_CAP)
+    if input_discovery.needed(info):
+        draft = rec.strict_loads(raw.decode('utf-8'))
+        validate(draft, 'route')
+        for event in draft['events']:
+            if event['tick'] >= draft['ticks']:
+                raise ValueError('The saved route has an event beyond its end.')
+            if 'action' in event and event['action'] not in info['actions']:
+                raise ValueError('The saved route uses an action outside the current input map.')
+            if 'pointer' in event and any(n >= size for n, size in
+                                          zip(event['pointer']['position'], info['viewport'])):
+                raise ValueError('The saved route has a pointer outside the current viewport.')
+    else:
+        draft = route.make_route(info['actions'], info['physicsTicksPerSecond'])
+    expected = onboarding.proposal(root, info, planned_route=draft)
+    proposed_route = expected.pop('route')
+    if raw != onboarding.encode(proposed_route) or names != expected['config']['routes']:
+        raise ValueError(f'The route saved with {onboard.PENDING} has changed. Review the draft route.')
+    # Earlier init drafts predate both the player selector and atlas suggestions.
+    if 'selectedPlayer' not in saved and 'imageSuggestions' not in saved:
+        expected.pop('imageSuggestions', None)
+    if saved != expected:
+        raise ValueError(f'{onboard.PENDING} differs from the current setup. Review the draft before using it.')
+    if {event.get('action') for event in proposed_route['events']} == {'pause'}:
+        return 'The saved route only uses pause. Choose inputs that start and exercise gameplay.'
+    return 'Replay the saved route to check that it reaches gameplay.'
+
+
+class MissingConfig(req.RequestError):
+    def __init__(self, detail, preview):
+        super().__init__(detail)
+        self.preview = preview
+
+
+def setup_preview(root, player=None):
+    """Explain the missing configuration from authored scenes, without starting a job."""
+    from expectrail import onboard, onboarding
+
+    pending = root / onboard.PENDING
+    has_draft = pending.exists() or pending.is_symlink()
+    saved = {}
+    if has_draft:
+        saved = rec.strict_loads(project_job.regular(root, onboard.PENDING, LIMIT).decode('utf-8'))
+        if not isinstance(saved, dict):
+            raise ValueError(f'{onboard.PENDING} must contain a saved setup.')
+    selected = saved.get('selectedPlayer')
+    if 'selectedPlayer' in saved and not isinstance(selected, str):
+        raise ValueError(f'selectedPlayer in {onboard.PENDING} must be a node path.')
+    if has_draft and player is not None:
+        raise ValueError('A draft already exists. Check folders again to review the saved setup.')
+    if player is not None:
+        selected = player
+    info = onboarding.inspect(root, selected)
+    route_guidance = saved_route_guidance(root, saved, info) if has_draft else None
+    title = 'Saved draft preview' if has_draft else 'Setup preview'
+    players = (f'Selected player: {selected}' if selected else
+               'Player candidates: ' + (', '.join(info['players']) or 'none found'))
+    lines = [f'{title} for {root.name}', f'Starting scene: {info["entryScene"]}', players]
+    if len(info['players']) == 1:
+        lines.append('Player images: ' + (', '.join(info['textures']) or 'none found for this player'))
+    else:
+        lines.append('Identify the player in the starting scene before selecting its image.')
+    if route_guidance:
+        lines.append(route_guidance)
+    lines.extend(info['unresolvedBindings'])
+    if not info['unresolvedBindings']:
+        lines.append('To save this setup, run expectrail init on this folder and review its draft.')
+    preview = None
+    if not has_draft and (player is not None or len(info['players']) > 1):
+        preview = {key: info[key] for key in ('entryScene', 'players', 'unresolvedBindings')}
+        preview.update(selectedPlayer=selected, imageSuggestions=info.get('imageSuggestions', []))
+    return '\n'.join(lines), preview
+
+
 def inspect_project(body):
     if configured(body):
-        from expectrail import renderer
+        from expectrail import project_config, renderer
         root = Path(field(body, 'folder')).expanduser()
+        descriptor = root / 'project.godot'
+        if not os.path.lexists(root / project_config.FILENAME) and not descriptor.is_symlink() and descriptor.is_file():
+            try:
+                player = body.get('player')
+                if 'player' in body and not isinstance(player, str):
+                    raise ValueError('Choose a player node from the starting scene.')
+                detail, preview = setup_preview(root.resolve(), player)
+            except (ValueError, OSError) as exc:
+                detail, preview = f'Could not read the setup preview: {exc}', None
+            raise MissingConfig(f'Project config: no {project_config.FILENAME}.\n{detail}', preview)
+        if 'player' in body:
+            raise ValueError('The folder no longer has an available player preview. Check folders again.')
         result = project_job.inspect(root)
         result['rendering'] = renderer.project_report(root)
         return result
@@ -119,6 +226,16 @@ def inspect_project(body):
             'help': ' '.join(help_text) or 'Project, routes and approved checks found.'}
 
 
+def job_screen(phase, decision, output):
+    """(state, screen) for a job record: which of the app's screens a person sees."""
+    state = decision if phase == 'completed' else phase if phase in FINAL else 'running'
+    if phase == 'queued':
+        return state, 'queued'
+    if state == 'needs-review' and not output:
+        return state, 'could-not-be-carried-out'
+    return state, state
+
+
 class App:
     def __init__(self, store, start):
         self.store, self.start = store, start
@@ -134,7 +251,8 @@ class App:
 
     def create(self, body):
         if configured(body):
-            doc = project_job.prepare(self.store, Path(field(body, 'after')), Path(field(body, 'before')))
+            doc = project_job.prepare(self.store, Path(field(body, 'after')), Path(field(body, 'before')),
+                                      execution_class=execution_class(body))
         else:
             doc = build(body)
         settings, _ = auto_fix.configure(body.get('autoFix', False), body.get('attempts'), body.get('usdCap'), agent=body.get('repairAgent'))
@@ -173,7 +291,7 @@ class App:
             self.own(job_id)
         doc = self.store.status(job_id)  # validates the record; unfinished/empty is never success
         phase = doc['phase']
-        state = doc['decision'] if phase == 'completed' else phase if phase in FINAL else 'running'
+        state, screen = job_screen(phase, doc['decision'], doc['output'])
         report = None
         if job_id in self.owned and phase == 'completed' and doc['output']:
             try:
@@ -188,12 +306,14 @@ class App:
             summary += ' ' + viewer.auto_fix_words(doc)
             if 'review' in repair:
                 summary += ' ' + repair['review']
+        findings = self.findings(job_id, doc)
         return {key: doc[key] for key in ('id', 'phase', 'decision', 'history', 'reasons', 'diagnostics', 'createdAt')} | {
-            'state': state, 'summary': summary, 'sessionOwned': job_id in self.owned, 'report': report,
+            'state': state, 'screen': screen, 'summary': summary, 'sessionOwned': job_id in self.owned, 'report': report,
             'repairRunning': repair.get('state') == 'running',
             'repairUrl': f'/repairs/{job_id}/repair-run.json' if 'record' in repair and job_id in self.owned else None,
             'before': (request['base'] or {}).get('checkout'), 'after': request['head']['checkout'],
-            'judgedBy': judged_by(doc, self.findings(job_id, doc)),
+            'judgedBy': judged_by(doc, findings),
+            'isolation': rec.isolation_words(findings.get('isolation')) if findings is not None else None,
             'viewer': f'/viewers/{job_id}/index.html' if job_id in self.owned and phase in FINAL else None}
 
     def history(self):
@@ -340,8 +460,8 @@ class Handler(BaseHTTPRequestHandler):
         if self.command != 'HEAD':
             self.wfile.write(data)
 
-    def problem(self, code, detail):
-        self.reply(code, {'state': 'could-not-be-carried-out', 'detail': detail})
+    def problem(self, code, detail, **fields):
+        self.reply(code, {'state': 'could-not-be-carried-out', 'detail': detail, **fields})
 
     def authorized(self, path, query):
         hosts = [f'127.0.0.1:{self.server.server_port}', f'localhost:{self.server.server_port}']
@@ -445,6 +565,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(200, data, 'text/html; charset=utf-8' if parts == ['index.html'] else 'image/png',
                                   report=True)
             raise UnknownJob('No such page.')
+        except MissingConfig as exc:
+            self.problem(400, str(exc), **({'setupPreview': exc.preview} if exc.preview else {}))
         except UnknownJob as exc:
             self.problem(404, str(exc))
         except (ValueError, OSError, StoreError) as exc:
@@ -470,19 +592,77 @@ def create_server(store=None, *, start=runner.spawn):
     return server
 
 
+def install_launcher():
+    """Create the current Python environment's launcher in the user's account."""
+    python = str(Path(sys.executable).absolute())
+    if any(ord(char) < 32 for char in python):
+        raise ValueError('The Python path contains a control character.')
+    args = ['-I', '-m', 'expectrail.cli', 'app', '--open-browser']
+    if sys.platform.startswith('linux'):
+        data_home = Path(os.environ.get('XDG_DATA_HOME', ''))
+        if not data_home.is_absolute():
+            data_home = Path.home() / '.local/share'
+        path = data_home / 'applications' / 'expectrail.desktop'
+        # Apply Exec quoting first, then the desktop file string escaping.
+        special = ('\\', '"', '$', chr(96))
+        quoted = ''.join(('\\' if char in special else '') + char for char in python)
+        quoted = quoted.replace('%', '%%').replace('\\', '\\\\')
+        command = ' '.join(['/usr/bin/env', f'"{quoted}"', *args])
+        body = ('[Desktop Entry]\nType=Application\nName=Expectrail\n'
+                f'Exec={command}\nTerminal=false\n')
+    elif sys.platform == 'darwin':
+        path = Path.home() / 'Applications' / 'Expectrail.command'
+        body = '#!/bin/sh\nexec ' + shlex.join([python, *args]) + '\n'
+    else:
+        raise ValueError('Expectrail launchers are available for Linux and macOS.')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # Replace the generated entry atomically without following an old file link.
+    with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=path.parent, delete=False) as stream:
+        temporary = Path(stream.name)
+        try:
+            stream.write(body)
+            stream.close()
+            temporary.chmod(0o700)
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
+    return path
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='expectrail app', description='Open Expectrail locally on 127.0.0.1.')
     parser.add_argument('--jobs-root', type=Path, help='Job storage outside both game folders.')
+    launch = parser.add_mutually_exclusive_group()
+    launch.add_argument('--install-launcher', action='store_true', help='Create a launcher for this installed copy.')
+    launch.add_argument('--open-browser', action='store_true', help='Open the local page in your default browser.')
     try:
         args = parser.parse_args(argv)
     except SystemExit as exc:
         return 0 if exc.code == 0 else 5  # 2 belongs to a verifier's needs-review decision
+    if args.install_launcher:
+        try:
+            print(f'Expectrail launcher created at {install_launcher()}')
+        except (OSError, ValueError) as exc:
+            print(f'Expectrail could not create a launcher: {exc}', file=sys.stderr)
+            return 5
+        return 0
     try:
         server = create_server(JobStore(args.jobs_root) if args.jobs_root else None)
     except OSError as exc:
         print(f'Expectrail could not start: {exc}. No verification was run.', file=sys.stderr)
         return 5
-    print(f'Open http://127.0.0.1:{server.server_port}/?token={server.token}', flush=True)
+    url = f'http://127.0.0.1:{server.server_port}/?token={server.token}'
+    print(f'Open {url}', flush=True)
+    if args.open_browser:
+        def open_page():
+            try:
+                if webbrowser.open(url):
+                    return
+            except (OSError, webbrowser.Error):
+                pass
+            print('Your browser did not open. Copy the local address above into your browser.', flush=True)
+
+        threading.Thread(target=open_page, daemon=True).start()
     print('Keep this process running. Press Ctrl+C to stop the app and cancel unfinished jobs.', flush=True)
     try:
         server.serve_forever()
