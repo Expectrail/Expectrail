@@ -102,7 +102,7 @@ class SaveSetupTest(unittest.TestCase):
             page.get_by_label('Before player').select_option('Paddle')
             before = page.locator('#inspection-before')
             save = before.get_by_role('button', name='Save draft setup')
-            for text in ('Before folder: ' + str(self.game), 'Selected player: Paddle', onboard.PENDING,
+            for text in ('Before folder: ' + str(self.game.resolve()), 'Selected player: Paddle', onboard.PENDING,
                          'routes/', 'without starting the game', '47 × 18', 'human approval'):
                 expect(before).to_contain_text(text)
             page.once('dialog', lambda dialog: dialog.dismiss())

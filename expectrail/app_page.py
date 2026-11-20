@@ -20,14 +20,14 @@ button.secondary{background:white;color:#175c47}button:disabled{opacity:.55;curs
 <section aria-labelledby="project-heading"><h2 id="project-heading">1. Your project and versions</h2>
 <p>Choose a copy from before the change and a copy from after it. Both must have the same folder layout.
 For your own checks, the routes and approvals come from <strong>Before</strong>. Checking folders and verifying leave your source files unchanged.</p>
-<div class="grid"><div><label for="before">Before: full folder path</label><input id="before" placeholder="/Users/you/MyGame-before" autocomplete="off" spellcheck="false"></div>
-<div><label for="after">After: full folder path</label><input id="after" placeholder="/Users/you/MyGame-after" autocomplete="off" spellcheck="false"></div></div>
+<div class="grid"><div><label for="before">Before: full folder path or project.godot file path</label><input id="before" placeholder="/Users/you/MyGame-before" autocomplete="off" spellcheck="false"></div>
+<div><label for="after">After: full folder path or project.godot file path</label><input id="after" placeholder="/Users/you/MyGame-after/project.godot" autocomplete="off" spellcheck="false"></div></div>
 <p>Each folder needs <code>project.godot</code>. If <code>expectrail.project.json</code> is missing, check the folder to review and save a draft setup.
 The config names the routes and checks. A draft config cannot give an accept.
 The kinematic-character example uses the same config path as your project.</p>
 <details id="paths"><summary>Older projects without a config</summary>
 <label><input type="checkbox" id="manual"> Enter paths manually</label>
-<p>For an existing checkout with routes and checks. Paths are relative to each version's folder.</p>
+<p>For an existing checkout with routes and checks, enter folder paths for Before and After. The paths below are relative to each folder.</p>
 <label for="game">Game folder</label><input id="game" value="." spellcheck="false">
 <label for="routes">Route files (patterns separated by spaces or commas)</label><input id="routes" value="routes/*.json" spellcheck="false">
 <label for="specs">Checks folder</label><input id="specs" value="specs" spellcheck="false"></details>
