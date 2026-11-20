@@ -331,11 +331,11 @@ def _measured_series(spec, observations, verdict, source, end_frame=None) -> dic
 def check_series(spec: dict, run: dict, verdict: dict | None) -> dict:
     """Keep the public check's context until write_gate can read its saved visual evidence.
 
-    _spec and _end_frame are internal only; build_views does not export them."""
+    The spec, window end and capture folder are internal inputs to the viewer."""
     count = ((verdict or {}).get("coverage") or {}).get("framesExpected")
     end = (spec.get("window", {}).get("fromFrame", 0) + count - 1) if count else None
     return {**_measured_series(spec, run.get("engineObservations"), verdict, "the engine's record", end),
-            "_spec": spec, "_end_frame": end}
+            "_spec": spec, "_end_frame": end, "_frames_dir": run.get("framesDir")}
 
 
 def visual_series(out: Path, spec: dict | None, check: dict, side: str, spec_sha: str,
@@ -413,6 +413,26 @@ def _copy_frames(frames_dir, around: int | None, folder: Path, label: str) -> li
     return got
 
 
+def _repair_frame(frames_dir, frame: int, folder: Path, label: str) -> list[dict]:
+    """Keep only the captured image at this measured frame; missing evidence stays missing."""
+    if frames_dir is None:
+        return []
+    src = Path(frames_dir) / f"f{frame:08d}.png"
+    if src.parent.is_symlink() or src.is_symlink() or not src.is_file():
+        return []
+    try:
+        data = rec.read_bytes_capped(src, MAX_EXPORT_FRAME_BYTES, "captured frame")
+    except rec.RecordError:
+        return []
+    if not data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return []
+    name = f"frames/{label}-{frame:08d}.png"
+    target = folder / name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(data)
+    return [{"frame": frame, "path": name, "sha256": hashlib.sha256(data).hexdigest()}]
+
+
 def build_views(record: dict, frames: dict[str, dict], timelines: dict[tuple[str, str], dict],
                 folder: Path) -> list[dict]:
     """One view per check: its result on both sides, its timeline on both sides, and for the first
@@ -422,8 +442,9 @@ def build_views(record: dict, frames: dict[str, dict], timelines: dict[tuple[str
     findings = {f["id"]: f for f in record["findings"]}
     order = sorted(record["findings"], key=lambda f: (f["frame"] is None, f["frame"] or 0, f["id"]))
     framed = {f["id"] for f in order[:MAX_FRAMED_FINDINGS]}
+    repair_slots = MAX_FRAMED_FINDINGS - len(framed)
     views = []
-    for check in record["checks"][:MAX_VIEWS]:
+    for index, check in enumerate(record["checks"][:MAX_VIEWS]):
         fid = check["findingId"]
         finding = findings.get(fid) if fid else None
         first = finding["frame"] if finding else None
@@ -444,6 +465,14 @@ def build_views(record: dict, frames: dict[str, dict], timelines: dict[tuple[str
             view["visualSeries"][side] = visual.get("series")
             if visual.get("note"):
                 view["visualNotes"].append(f"{side} the change: {visual['note']}")
+        if repair_slots and check["comparison"] == "REPAIRED":
+            difference, _ = _first_difference(view)
+            if difference is not None:
+                for side in ("before", "after"):
+                    frames_dir = (tl.get(side) or {}).get("_frames_dir")
+                    view["frames"][side] = _repair_frame(frames_dir, difference, folder, f"{side}-repair-{index}")
+                if any(view["frames"].values()):
+                    repair_slots -= 1
         views.append(view)
     return views
 
@@ -573,7 +602,9 @@ def export(folder: Path, payload: dict) -> Path:
     folder = Path(folder)
     out = copy.deepcopy(payload)
     embedded, left_out, budget = 0, {"over the size cap": 0, "missing or changed on disk": 0}, MAX_EXPORT_FRAME_BYTES
-    for view in out.get("views") or []:
+    # Embed findings first so a repaired check cannot spend their share of the byte limit.
+    views = out.get("views") or []
+    for view in sorted(views, key=lambda v: isinstance(v, dict) and v.get("comparison") == "REPAIRED"):
         frames = view.get("frames") if isinstance(view, dict) else None
         if not isinstance(frames, dict):
             continue
@@ -990,7 +1021,7 @@ function draw(){
     pair.appendChild(stage(v, "before", state.frame));
     pair.appendChild(stage(v, "after", state.frame));
     root.appendChild(pair);
-    if (framed.indexOf(state.frame) < 0) root.appendChild(el("p", {"class": "muted"}, "Frames are kept for frames " + framed[0] + " to " + framed[framed.length - 1] + " around the first failure; this frame has measurements only."));
+    if (framed.indexOf(state.frame) < 0) root.appendChild(el("p", {"class": "muted"}, "Frames are kept for frames " + framed[0] + " to " + framed[framed.length - 1] + " in this evidence; this frame has measurements only."));
   } else {
     root.appendChild(el("p", {"class": "muted"}, "No frames were kept for this check."));
   }
