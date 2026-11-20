@@ -11,6 +11,8 @@ import copy
 from dataclasses import dataclass
 import hashlib
 import json
+import shutil
+import subprocess
 from pathlib import Path
 
 from expectrail.contracts import digest_v1, validate, validate_v1
@@ -154,25 +156,206 @@ def receipt_document(template, gate, envelope, proof):
     return doc
 
 
-def public_bench(records, out):
+class HarmlessControl:
+    """Advisory paired replays of the public mutation bench's comment-only operator."""
+
+    def __init__(self, work, root):
+        from expectrail.discovery.route_compiler import compile_route
+        from expectrail.jit.probes import jit_library
+        from harness.run import tree_digest
+
+        self.work = Path(work)
+        self.game = root / 'game/platformer'
+        if self.work.resolve().is_relative_to(self.game.resolve()):
+            raise ValueError('harmless work must be outside the clean game')
+        self.work.mkdir(parents=True, exist_ok=False)
+        self.tree = tree_digest(self.game)
+        self.patch = root / 'agents/fixtures/operators/comment-only.patch'
+        self.patch_sha = hashlib.sha256(self.patch.read_bytes()).hexdigest()
+        # Exactly the single comment that the mutation registration labels good on clean.
+        if self.patch_sha != '48a16859864aa88fdbfd94bb0a508b9764bacf19fb6ef53def4d6f9b22b16b65':
+            raise ValueError('the registered comment-only operator has changed')
+        actions = json.loads((root / 'discovery/platformer.profile.json').read_text())['actions']
+        self.routes = {}
+        for probe in jit_library(actions):
+            route = compile_route(probe['program'], name=probe['id'],
+                                  description=probe['description'], actions=actions)
+            self.routes[digest_v1(route)] = route
+        self.episodes = {}
+        self.evidence = {}
+        self.rows = []
+
+    def probe(self, sha, route, ui_integers):
+        from tempfile import TemporaryDirectory
+        from harness.run import run
+        from expectrail.trace.normalize import from_run_dir
+
+        key = sha + ('-ui' if ui_integers else '')
+        if key in self.episodes:
+            return self.episodes[key]
+        folder = self.work / key
+        folder.mkdir()
+        path = folder / 'route.json'
+        path.write_text(json.dumps(route, indent=1) + '\n')
+        arms, evidence = {}, {}
+        engines = set()
+        for arm, patches in [('clean', []), ('changed', [self.patch])]:
+            episodes, runs = [], []
+            for rep in range(assess.REPS):
+                try:
+                    with TemporaryDirectory(dir=folder) as tmp:
+                        out = Path(tmp) / 'replay'
+                        rec = run(path, out, game=self.game, patches=patches, capture_frames=False,
+                                  ui_integers=ui_integers)
+                        if (rec['route']['sha256'] != hashlib.sha256(path.read_bytes()).hexdigest()
+                                or rec['game']['tree'] != self.tree
+                                or rec['game']['patchSha256'] != (self.patch_sha if patches else None)):
+                            raise ValueError('replay route, tree or patch differs from control')
+                        episode = from_run_dir(out, route, episode_id=f'{arm}-{key}-{rep}')
+                        saved = folder / f'{arm}-{rep + 1}'
+                        saved.mkdir()
+                        for filename in ('replay.json', 'trace.json'):
+                            shutil.copyfile(out / filename, saved / filename)
+                        runs.append({'trace': rec['trace']['sha256'], 'replay': digest_v1(rec),
+                                     'engine': rec['engine'], 'isolation': rec['isolation']})
+                        engines.add(digest_v1(rec['engine']))
+                        episodes.append(episode)
+                except (OSError, ValueError, RuntimeError, SystemExit, subprocess.SubprocessError) as exc:
+                    runs.append({'error': str(exc)[:300]})
+                    break
+            # Changing traces within an arm or an interrupted run cannot establish stability.
+            stable = len(episodes) == assess.REPS and len({r['trace'] for r in runs}) == 1
+            arms[arm] = episodes if stable else []
+            evidence[arm] = runs
+        if len(engines) != 1:
+            arms = {'clean': [], 'changed': []}
+        (folder / 'evidence.json').write_text(json.dumps(evidence, indent=2) + '\n')
+        self.evidence[key] = evidence
+        self.episodes[key] = arms
+        return arms
+
+    def measure(self, defect, run, selected, folder):
+        from harness.run import needs_ui_integers
+        from expectrail.jit import bench
+        from expectrail.trace.evaluator import evaluate
+
+        probes = {p['id']: p['routeSha256'] for p in run['probes']}
+        start = len(self.rows)
+        for entry in run['proposed']:
+            spec = entry['spec']
+            ids = entry['probeIds']
+            ui = needs_ui_integers([spec])
+            shas = [probes.get(pid) for pid in ids]
+            row = {'defect': defect, 'check': spec['id'], 'specSha256': digest_v1(spec),
+                   'sourceRun': digest_v1(run), 'probes': ids, 'routeSha256': shas, 'uiIntegers': ui,
+                   'clean': [], 'changed': [], 'outcome': 'not-run', 'reason': ''}
+            self.rows.append(row)
+            if not selected:
+                row['reason'] = 'outside selected defects'
+                continue
+            applies = entry['applies']
+            if applies.get('kind') not in ('all', 'tag', 'probes', 'pair'):
+                row['reason'] = 'unknown probe selection'
+                continue
+            if applies['kind'] == 'pair' and ids != [applies.get('left'), applies.get('right')]:
+                row['reason'] = 'pair identities differ from recorded probe IDs'
+                continue
+            routes = []
+            for pid, sha in zip(ids, shas):
+                route = self.routes.get(sha)
+                # A published custom probe can be supplied alongside its source record.
+                if route is None and Path(pid).name == pid and not bench.private_name(pid):
+                    path = folder / 'jit-routes' / ('jit-' + pid.removeprefix('jit-') + '.json')
+                    if path.resolve() == path.absolute() and path.is_file():
+                        try:
+                            route = record.read_json(path, cap=1024*1024, label='public probe route')
+                            validate(route, 'route')
+                            if digest_v1(route) != sha:
+                                route = None
+                        except (OSError, ValueError):
+                            route = None
+                if route is None:
+                    row['reason'] = 'missing exact route ' + pid
+                    break
+                routes.append(route)
+            if row['reason']:
+                continue
+            pairs = [self.probe(sha, route, ui) for sha, route in zip(shas, routes)]
+            if not pairs or any(not pair[arm] for pair in pairs for arm in ('clean', 'changed')):
+                row.update(outcome='indeterminate', reason='incomplete or unstable replay evidence')
+                continue
+            for arm in ('clean', 'changed'):
+                for rep in range(assess.REPS):
+                    episodes = [pair[arm][rep] for pair in pairs]
+                    verdicts = ([evaluate(spec, *episodes)] if entry['applies']['kind'] == 'pair'
+                                else [evaluate(spec, ep) for ep in episodes])
+                    row[arm].append(assess.harmless_repetition(spec, verdicts))
+            row['outcome'] = assess.harmless_outcome(row['clean'], row['changed'])
+        for pixel in run.get('pixelChecks', []):
+            row = {'defect': defect, 'check': pixel['check']['id'], 'specSha256': digest_v1(pixel['check']),
+                   'sourceRun': digest_v1(run), 'clean': [], 'changed': [], 'outcome': 'not-run',
+                   'reason': 'pixel observation unavailable in trace-only control'}
+            self.rows.append(row)
+
+        (self.work / f'checks-{defect}.json').write_text(json.dumps(self.rows[start:], indent=2) + '\n')
+
+    def report(self, lines):
+        totals = {name: sum(row['outcome'] == name for row in self.rows)
+                  for name in ('pass', 'false-rejection', 'indeterminate', 'not-run')}
+        report = {'tree': self.tree, 'patchSha256': self.patch_sha, 'probes': self.evidence,
+                  'rows': self.rows, 'totals': totals}
+        (self.work / 'control.json').write_text(json.dumps(report, indent=2) + '\n')
+        environments = sorted({(r['engine']['version'], r['isolation']['mode'],
+                                (r['isolation'].get('sandbox') or {}).get('tool') or 'none')
+                               for pair in self.evidence.values() for arm in pair.values()
+                               for r in arm if 'engine' in r})
+        environment = ', '.join(f'{version}, sandbox mode {mode}, tool {tool}'
+                                for version, mode, tool in environments) or 'no completed replays'
+        lines += ['## Harmless control on the clean platformer', '',
+                  'The registered comment-only operator adds one comment in `player/player.gd`. '
+                  'Each available trace check uses three fresh clean replays and three with the patch. '
+                  'The results measure this source edit only. All rows are advisory.', '',
+                  f'Recorded headless engine and isolation: {environment}.', '',
+                  f'Clean source tree `{self.tree}`. Patch SHA-256 `{self.patch_sha}`.', '',
+                  '| Public defect | Check | Clean repetitions | Changed repetitions | Outcome |',
+                  '| --- | --- | --- | --- | --- |']
+        for row in self.rows:
+            arms = [', '.join(row[a]) or '—' for a in ('clean', 'changed')]
+            reason = (' (' + row['reason'] + ')') if row['reason'] else ''
+            lines.append(f"| {row['defect']} | `{row['check']}` | {arms[0]} | {arms[1]} | {row['outcome']}{reason} |")
+        lines += ['', ', '.join(f'{n} {name}' for name, n in totals.items()) + '.', '']
+        return totals
+
+
+def public_bench(records, out, *, harmless_work=None, harmless_defects=()):
     """Offline classification of committed public records; no replay or model."""
     from expectrail.jit import bench
-    if bench.private_name(records):
+    if bench.private_name(records) or bench.private_name(Path(records).resolve()):
         raise ValueError('public-only: held-out/fresh record roots refused')
     manifest=bench.public_cases()
     rows=[]
     legacy_valid = 0
     root=Path(__file__).resolve().parents[2]
+    selected = set(harmless_defects)
+    if selected - {d['id'] for d in manifest['defects']} or (selected and not harmless_work):
+        raise ValueError('harmless defect selection requires public defect IDs and --harmless-work')
+    control = HarmlessControl(harmless_work, root) if harmless_work else None
     for defect in manifest['defects']:
         path=Path(records)/('repro-'+defect['id'])/'jit-run.json'
+        if path.resolve() != path.absolute():
+            raise ValueError('public record path cannot be a link')
         run=record.read_json(path,cap=8*1024*1024,label='public JIT record')
         report=(root/defect['report']).read_text()
         result=make(run,report)
+        if control:
+            control.measure(defect['id'], run, not selected or defect['id'] in selected, path.parent)
         legacy_valid += sum(bool(row['valid']) for row in run['validity'])
         counted=sum(r['counting'] for r in result['assessment']['rows'])
         rows.append((defect['id'],len(result['assessment']['rows']),counted,digest_v1(run)))
-    lines=['# Offline counting audit of the public reproduction bench (#271)','',
-           'Existing recorded model outputs only; no model call or replay. No trusted source certificate/context is supplied.',
+    history_note = ('The counting assessment uses existing records. The separate harmless control replays '
+                    'the clean game and its comment-only edit. No trusted source certificate/context is supplied.'
+                    if control else 'Existing recorded model outputs only; no model call or replay. No trusted source certificate/context is supplied.')
+    lines=['# Offline counting audit of the public reproduction bench (#271)','', history_note,
            'Every legacy record is advisory: candidate shown, no authenticated trusted producer/replayer, and no per-arm coverage provenance.',
            'This is not the rate of a new candidate-withheld, trusted generation run.','',
            '| Public defect | Checks assessed | Counting | Advisory | Canonical run SHA-256 |',
@@ -181,9 +364,13 @@ def public_bench(records, out):
     total=sum(r[1] for r in rows);counted=sum(r[2] for r in rows)
     lines += ['',f'Total: {len(rows)} public defects; {total} checks assessed; {counted} counting; {total-counted} advisory.','']
     lines += [f'Of these, {legacy_valid} are recorded as valid by the legacy keep rule; '
-              f'{total-legacy_valid} are dropped proposals retained only as advisory diagnostics. No outcomes were replayed.','']
+              f'{total-legacy_valid} are dropped proposals retained only as advisory diagnostics. '
+              + ('The counting classification used the frozen outcomes.' if control else 'No outcomes were replayed.'),'']
+    control_totals = {}
+    if control:
+        control_totals['harmlessControl'] = control.report(lines)
     Path(out).write_text('\n'.join(lines))
-    return {'defects':len(rows),'checks':total,'counting':counted,'advisory':total-counted,
+    return {**control_totals, 'defects':len(rows),'checks':total,'counting':counted,'advisory':total-counted,
             'legacyKeptAdvisory':legacy_valid,'droppedProposals':total-legacy_valid}
 
 
@@ -236,12 +423,14 @@ def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     sub=parser.add_subparsers(dest='command',required=True)
     audit=sub.add_parser('public-bench');audit.add_argument('--records',type=Path,required=True);audit.add_argument('--out',type=Path,required=True)
+    audit.add_argument('--harmless-work', type=Path, help='new folder for paired, advisory clean/comment-only replays')
+    audit.add_argument('--harmless-defect', action='append', default=[], help='measure only this public defect (repeatable)')
     pixel=sub.add_parser('pixel-bench');pixel.add_argument('--records',type=Path,required=True);pixel.add_argument('--out',type=Path,required=True)
     judge_cmd=sub.add_parser('judge');judge_cmd.add_argument('--gate',type=Path,required=True)
     judge_cmd.add_argument('--evidence',type=Path,required=True);judge_cmd.add_argument('--context',type=Path,required=True)
     judge_cmd.add_argument('--trust-store',type=Path,required=True);judge_cmd.add_argument('--out',type=Path,required=True)
     args=parser.parse_args(argv)
-    if args.command=='public-bench':print(json.dumps(public_bench(args.records,args.out)));return 0
+    if args.command=='public-bench':print(json.dumps(public_bench(args.records,args.out, harmless_work=args.harmless_work, harmless_defects=args.harmless_defect)));return 0
     if args.command=='pixel-bench':print(json.dumps(pixel_bench(args.records,args.out)));return 0
     trust=Trust.load(args.context,args.trust_store)
     doc,proof=judge(record.read_record(args.gate),args.evidence,trust=trust)

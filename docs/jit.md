@@ -1116,6 +1116,14 @@ python3 -m expectrail.jit.counting public-bench \
   --out /tmp/public-counting.md
 ```
 
+### Harmless control for each public trace check (#675)
+
+Add `--harmless-work NEW_DIRECTORY` to the public counting audit to replay the clean bundled game and a copy with the mutation bench's registered comment-only operator. Individual checks share captured repetitions when they require the same route and recording settings. The assessor requires complete observations and three consistent results on each arm. A false rejection requires three clean passes and three failures on the edit. An unavailable route is reported as unrun, and an unstable replay or inconclusive check remains indeterminate.
+
+On the frozen public bench, **135 of 137 checks passed on the harmless edit, 0 falsely rejected it, 2 were indeterminate and 0 were unrun**. All 216 headless replays completed across 36 exact routes on the clean and comment-only copies. The two indeterminate enemy-facing checks had zero triggers and zero evaluations on both arms. All 36 route traces were byte-identical across the edit. This measures a source-only comment on this game, without a visual observer.
+
+The [measurement and reproduction commands](measurements/675-harmless-control.md) identify every frozen check and the original public artifacts for custom routes. Use `--harmless-defect ID` to restrict engine work to selected defects while keeping every check in the report. These advisory results have no effect on counting, strong catches or gate decisions (#600).
+
 ### The six rules on pixel checks (#286)
 
 Pixel checks are in a record's `pixelChecks`, which `counting` never read, so a screen-only check was
