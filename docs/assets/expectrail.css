@@ -1,0 +1,109 @@
+/* Shared foundation for the local verification app and the signed-out hub.
+   Component names and their native element equivalents are in expectrail-css.md. */
+:root {
+  --er-font: system-ui, sans-serif;
+  --er-heading: 2rem;
+  --er-subheading: 1.25rem;
+  --er-result: 1.2rem;
+  --er-text: #182c29;
+  --er-muted: #475a53;
+  --er-canvas: #f4f6f1;
+  --er-panel: white;
+  --er-border: #ccd5cb;
+  --er-control: #687d74;
+  --er-action: #175c47;
+  --er-error: #8e251c;
+  --er-focus: #b35c12;
+  --er-inset: 24px;
+  --er-gap: 20px;
+  --er-space: 16px;
+  font-family: var(--er-font);
+  line-height: 1.55;
+  color: var(--er-text);
+  background: var(--er-canvas);
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+main {
+  max-width: 900px;
+  margin: auto;
+  padding: 32px var(--er-inset) 64px;
+}
+h1 { font-size: var(--er-heading); line-height: 1.2; }
+h2 { font-size: var(--er-subheading); }
+
+section, .panel {
+  background: var(--er-panel);
+  padding: var(--er-inset);
+  margin: var(--er-gap) 0;
+  border: 1px solid var(--er-border);
+  border-radius: 12px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--er-gap);
+}
+.note { color: var(--er-muted); }
+
+label { display: block; font-weight: 600; margin: var(--er-space) 0 6px; }
+input, select {
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  border: 1px solid var(--er-control);
+  border-radius: 5px;
+  padding: 10px;
+}
+input[type=checkbox] { width: auto; }
+
+button, .button {
+  display: inline-block;
+  font: inherit;
+  font-weight: 600;
+  background: var(--er-action);
+  color: white;
+  border: 2px solid var(--er-action);
+  border-radius: 6px;
+  padding: 10px 18px;
+  margin: var(--er-space) 12px 0 0;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+}
+button.secondary, .button.secondary {
+  background: var(--er-panel);
+  color: var(--er-action);
+}
+button:disabled { opacity: .55; cursor: default; }
+a { color: var(--er-action); }
+:where(a, button, input, select, summary):focus {
+  outline: 3px solid var(--er-focus);
+  outline-offset: 3px;
+}
+summary { cursor: pointer; }
+[hidden] { display: none !important; }
+
+#result-text, .result { font-size: var(--er-result); font-weight: 600; }
+#details, #inspection, #rendering, #error, .details {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#result-folders dt, .folders dt { font-weight: 600; }
+#result-folders dd, .folders dd { margin: 0 0 .5em; overflow-wrap: anywhere; }
+#error, .error { color: var(--er-error); font-weight: 600; }
+li { margin: 5px 0; overflow-wrap: anywhere; }
+
+/* Always include the verdict in text, including when colours are unavailable. */
+.verdict { font-weight: 600; }
+.verdict[data-verdict="accept"] { color: var(--er-action); }
+.verdict[data-verdict="reject"] { color: var(--er-error); }
+.verdict[data-verdict="needs-review"] { color: #79500c; }
+
+@media (max-width: 600px) {
+  :root { --er-heading: 1.65rem; --er-inset: 16px; }
+  main { padding: var(--er-space) 12px 36px; }
+  .grid { grid-template-columns: 1fr; gap: 0; }
+  button, .button { width: 100%; margin-right: 0; }
+}
