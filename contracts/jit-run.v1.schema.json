@@ -38,6 +38,8 @@
         "budgetUsd": {"type": "number", "minimum": 0},
         "offer": {"enum": ["baseline", "signals-reach", "signals-reach-evidence", "signals-reach-evidence-menu", "signals-reach-evidence-pixel"],
                   "description": "What the generator was offered (expectrail/jit/offer.py). Absent in records written before the setting existed, which were made under baseline."},
+        "metamorphic": {"const": true,
+                        "description": "Present when the run also offered mirror-inputs metamorphic checks (#675, expectrail/jit/metamorphic.py); the rows are the record's metamorphic. Absent: none were offered."},
         "candidate": {"enum": ["shown", "withheld"],
                       "description": "Whether the model that proposed the checks was given the candidate patch (shown) or nothing of it, neither its text nor a diff map made from it (withheld; issue #285, step 6). Only checks proposed with the candidate withheld are derived from the report and the base build alone (expectrail/jit/run.py, from_base_alone). Absent in records written before the setting existed, which were made with the candidate shown."}
       }
@@ -152,6 +154,37 @@
       }
     },
     "diagnostics": {"type": "array", "maxItems": 50, "items": {"type": "string"}},
+    "metamorphic": {
+      "description": "Metamorphic checks (#675, piece 3), written only when settings.metamorphic is true: one row per mirror-inputs check the generator offered (expectrail/jit/metamorphic.py, offer), judged by the same rule as a proposed check (pass every clean run, not pass every run of the do-nothing control, fail every run of a near miss). Advisory: these rows are not in proposed, validity, catches, counts, the gate summary or the counting audit, and nothing reads them to accept or reject a change.",
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["spec", "probeIds", "routeSha256", "valid", "reference", "doNothing", "base", "variantResults",
+                     "killed", "sameAsCandidate", "reasons", "candidate", "outcome", "exercised"],
+        "properties": {
+          "spec": {"type": "object", "required": ["format", "id", "origin", "expectationRef", "operation"],
+                   "description": "An expectrail.trace-spec/v1 document whose operation is metamorphic; a reader validates it against that schema.",
+                   "properties": {"format": {"const": "expectrail.trace-spec/v1"}, "origin": {"const": "AUTO_RELATION"},
+                                  "operation": {"type": "object", "required": ["type"], "properties": {"type": {"const": "metamorphic"}}}}},
+          "probeIds": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/id"}},
+          "routeSha256": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/sha256"}},
+          "valid": {"type": "boolean"},
+          "reference": {"$ref": "#/$defs/runs"},
+          "doNothing": {"$ref": "#/$defs/doNothingRow"},
+          "base": {"$ref": "#/$defs/runs"},
+          "variantResults": {"type": "object", "additionalProperties": {"$ref": "#/$defs/runs"}},
+          "killed": {"type": "array", "items": {"type": "string", "maxLength": 300}},
+          "sameAsCandidate": {"type": "array", "items": {"type": "string", "maxLength": 300},
+                              "description": "Near misses that gave the candidate's trace.json bytes on both probes, so they were not counted as kills."},
+          "reasons": {"type": "array", "maxItems": 8, "items": {"type": "string", "maxLength": 300}},
+          "candidate": {"$ref": "#/$defs/runs"},
+          "outcome": {"enum": ["catch", "no-catch", "flaky", "not-evaluated"]},
+          "exercised": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "boolean"}}}
+        }
+      }
+    },
     "pixelChecks": {
       "description": "Pixel checks (#286), written only under the signals-reach-evidence-pixel setting: one row per pixel check the proposal carried (expectrail/jit/pixel.py). A check is kept only when it passes on every clean run and fails on every run of the bug build, under one observer setting; a kept check that fails on every candidate run is a catch. A reader decides keeping from clean and bug (expectrail.jit.pixel.kept_rows), never from status. These rows are not in catches, counts or the gate summary.",
       "type": "array",
