@@ -27,12 +27,14 @@ Advisory: nothing here changes what the generator offers, what may count or what
   kept. `drag-left` is caught by the 14 sideways-travel checks and by none of the equal-signal checks.
   405 seconds on 2 CPUs.
 - Full suite on main 0822f1a merged with this change, with the engine present: 5,815 tests, OK, 44 skipped.
-- The outside run on kinematic-character: not run here, because this session clones only Expectrail. The
-  first recorded counts come from the `metamorphic-outside` job on the pull request.
+- The outside run on kinematic-character, in the `metamorphic-outside` job of run 44788077524 (pull request
+  #719, head b22aaa8, conclusion success). Of 44 checks, 22 pass 3 of 3 as pinned, and none passes the
+  do-nothing control, so 22 are kept. The 11 sideways-travel checks catch `drag-left`. None catches
+  `broken`, and none fails `harmless` or `invisible`. 220 replays, all in the sandbox, none failed. Published
+  in `docs/measurements/675-metamorphic-outside.md` and `docs/outside-projects.md`.
 
 ## Not done
 
-- Publishing the kinematic-character counts in `docs/outside-projects.md` once the job has run.
 - Turning on `--metamorphic` in `jit.yml`.
 - Re-running the public counting audit (the last item of #675's `Done when`).
 
@@ -43,4 +45,6 @@ Advisory: nothing here changes what the generator offers, what may count or what
 - `tools/metamorphic_public.py`
 - `.github/workflows/outside-trial.yml`
 - `.gitignore`
+- `docs/measurements/675-metamorphic-outside.md` (new)
+- `docs/outside-projects.md`
 - `docs/new-work/2026-11-20-metamorphic-outside.md` (new)

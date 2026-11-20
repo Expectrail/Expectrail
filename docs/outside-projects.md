@@ -4,6 +4,26 @@ Godot projects the team did not write, verified with the command a stranger woul
 holds only what a recorded run shows, with its link. A project a builder wrote for a test
 (`tests/projects/`) is not an outside project and is never counted here.
 
+## Mirror metamorphic checks on kinematic-character (November 20, 2026)
+
+The mirror-inputs metamorphic checks (#675) were measured on kinematic-character with no model. Each check compares a route with its mirror, in which left and right are swapped. The project's own input map gave the actions. Each route was replayed 3 times as pinned and 3 times with the player frozen. It was replayed once on each declared change, and once on a fault seeded at run time: while `move_left` is held, the player is pushed back 1 px a tick (`drag-left`). All 220 replays ran in the required sandbox, and none failed. [CI job](https://github.com/Expectrail/Expectrail/actions/runs/44788077524/job/136468151181), full table in [measurements/675-metamorphic-outside.md](measurements/675-metamorphic-outside.md).
+
+| | Checks |
+| --- | --- |
+| Made, from 11 route pairs | 44 |
+| Pass 3 of 3 as pinned | 22 (11 sideways-travel, 11 airborne time); the 22 rise and air-jump checks are not exercised |
+| Pass with the player frozen | 0 (all 22 not exercised), so 22 are kept |
+| Fail on `drag-left` (seeded, direction-dependent) | 11, every sideways-travel check |
+| Fail on `broken` (falls through the floor) | 0 |
+| Fail on `harmless` (tint) or `invisible` (hidden sprite): false rejects | 0 |
+
+What this shows and does not show:
+
+- A check that needs no person to state the right answer for this game catches a direction-dependent fault in it, with no false reject on the two changes that leave motion alone.
+- It does not catch `broken`: falling through the floor happens the same way on both sides, so the mirror relation still holds. Other checks have to catch that.
+- No height check is exercised here, even on the routes that jump. That is recorded as found. No bound was changed for this game.
+- Advisory: these checks count for nothing and cannot clear a change.
+
 ## Four repairs on kinematic-character (November 20, 2026)
 
 The local app compared four proposed repairs of a disabled collision mask in the public Godot kinematic-character game. Each comparison used the same broken Before folder, walk route, approved ground check and saved vision answers. All eight replays ran under required isolation. [Hosted comparison](https://github.com/Expectrail/Expectrail/actions/runs/44755124153/job/136352713821)
