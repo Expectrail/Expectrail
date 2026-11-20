@@ -54,7 +54,7 @@ probe library ──► route compiler ──► headless replays ──► epis
 | Records | [`contracts/*.v1.schema.json`](../contracts), [`expectrail/contracts.py`](../expectrail/contracts.py) | Five closed schemas: episode, trace-spec, trace-verdict, mechanics-profile, discovery-run. Strict JSON: duplicate keys, NaN and Infinity are refused. |
 | Recorder | [`harness/godot/expectrail_harness.gd`](../harness/godot/expectrail_harness.gd) | Writes the enemies and bullets on every tick (an empty list means none) and declares what it collects, so an empty tick can prove absence. |
 | Episodes | [`expectrail/trace/normalize.py`](../expectrail/trace/normalize.py) | One replay's trace as an episode: contiguous ticks, declared capabilities, derived events (take-off, landing, a bullet's first appearance, a disappearance the recorder can vouch for). Never fills a gap. |
-| Interpreter | [`expectrail/trace/evaluator.py`](../expectrail/trace/evaluator.py), [`signals.py`](../expectrail/trace/signals.py) | The only thing that gives a contract meaning. Eight operators from the specification plus `relation`. Five outcomes with counts. |
+| Interpreter | [`expectrail/trace/evaluator.py`](../expectrail/trace/evaluator.py), [`signals.py`](../expectrail/trace/signals.py) | The only thing that gives a contract meaning. Eight operators from the specification plus `relation` and `metamorphic`. Five outcomes with counts. |
 | Probes | [`expectrail/discovery/probes.py`](../expectrail/discovery/probes.py), [`route_compiler.py`](../expectrail/discovery/route_compiler.py) | 22 generic probes from the action catalog, compiled to exact routes. Programs, never code: tap, hold, wait, sequence, parallel, repeat, with caps on ticks, events, nesting and repeats. |
 | Profile and templates | [`discovery/platformer.profile.json`](../discovery/platformer.profile.json), [`templates.py`](../expectrail/discovery/templates.py) | Four claims read from the game's code, each `inferred_code` and unapproved, and twelve templates that turn them into contracts with no model involved. |
 | Planner | [`expectrail/discovery/planner.py`](../expectrail/discovery/planner.py) | One Muse Spark call per job. It sees the profile, the probes already run and each build's measurements, under a number, never its name. Its probes must compile and its contracts must validate; anything else is dropped and recorded. Its contracts carry `model_prior` authority. |
@@ -78,6 +78,26 @@ between two probes that differ in one thing: eight jump presses against two, sho
 ticks against every 48, walking left against walking right. The bound comes from the game's own
 behaviour on the twin probe, so it needs no number from a person and no healthy build. That matters
 for a bug that is already in the game.
+
+### Metamorphic: mirror the inputs (#675)
+
+`metamorphic` states a relation that holds on any game whose rules do not depend on the direction, so
+no person writes the answer per game. The twin probe is the left probe with each paired action swapped
+(`mirror_x`, pairs such as `move_left`/`move_right`); the evaluator first checks that the twin's inputs
+are exactly that mirror, and says "cannot tell" otherwise. The player's sideways travel must negate;
+its highest rise, airborne time and air jumps must stay equal.
+
+A level is not symmetric, so the relation is judged only over the **clear window**: from the first
+mirrored input to the tick before either twin touches something the mirror did not also move. The trace
+records no geometry, so a contact is read from motion that no input explains (the bounds are fixed in
+`MIRROR`, never in a spec): sideways speed changing sharply (a wall or another body), a fall departing
+from gravity (a ceiling), standing on ground that moves, landing at another height, leaving the ground
+with no input (a ledge), or an enemy within 48 px. A window in which the player does not move 8 px
+sideways, or in which an equal signal is 0 on both twins, is not exercised: never a pass. The limit: a
+contact within two ticks of an input change, or a wall the player starts against, is not seen; on a
+clean game that is a failure on the reference, and a check that fails there is not used.
+[`expectrail/jit/metamorphic.py`](../expectrail/jit/metamorphic.py) derives the twin and the checks from
+any probe.
 
 ### What makes a failure a finding
 
