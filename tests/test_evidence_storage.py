@@ -103,6 +103,19 @@ class EvidenceStorageTest(unittest.TestCase):
         self.write("docs/trial/raw/EVIDENCE.md", "wrong index")
         self.assertIn("index differs", storage.link_errors(self.root, self.manifest)[0])
 
+    def test_links_are_checked_when_the_repository_is_reached_through_a_symlink(self):
+        # The CI runners use a private temporary folder and every temporary folder on macOS is a
+        # symlink. `safe_path` resolves the root, so comparing a link against the resolved index used
+        # to match nothing and the anchor check passed by finding no pages at all.
+        self.prepare()
+        self.write("docs/stale.md", "[old](trial/raw/a.txt)\n[bad](trial/raw/EVIDENCE.md#gone)\n")
+        link = Path(self.temp.name) / "through-a-symlink"
+        link.symlink_to(self.root, target_is_directory=True)
+        errors = storage.link_errors(link, link / "docs/trial/raw" / storage.MANIFEST)
+        self.assertEqual(len(errors), 2, errors)
+        self.assertIn("stale link", errors[0])
+        self.assertIn("missing evidence anchor", errors[1])
+
     def test_parent_appends_and_refuses_reusing_a_run_id(self):
         first = self.prepare()
         storage.git(self.root, "fetch", "-q", str(self.bundle), "evidence-results")

@@ -63,3 +63,29 @@ This is Part of #566; it does not close the remaining migrations.
 - `docs/outside-trials/breakout/report.md`, `issues.md` and `commands.md`:
   evidence links/header retargeted; findings and recorded commands unchanged.
 - This work log. The handover includes the full file list and separate bundle.
+
+## The anchor check now fires when the repository path has a symlink (November 20)
+
+CI's `test` job failed on this branch at 52f6b6e: `test_stale_docs_link_or_bad_index_anchor_fails`
+found 1 error where 2 were expected. It passes on a developer machine, which is why it was not seen
+before.
+
+The cause is in `tools/evidence_storage.link_errors`, not in the test. `safe_path` resolves the root,
+because resolving is how it refuses a symlink. The pages below are then walked from `root` as given,
+and `link_target` normalises a link without resolving it. So `target == index` compared an unresolved
+path with a resolved one, and matched nothing whenever the repository path contained a symlink: the
+CI runners' private temporary folder, and every temporary folder on macOS.
+
+The consequence was worse than a failing test. **The missing-anchor check silently passed by finding
+nothing**, so a stale anchor in a public doc would not have been reported on those machines. The
+stale-link check was unaffected, because both of its sides were unresolved.
+
+`link_errors` now compares links against the unresolved index path and keeps the resolved one for
+reading the file. A new test reaches the repository through a symlink and expects both errors; it
+fails on this branch's previous code and passes with the fix.
+
+### What was run
+
+- `tests.test_evidence_storage`: OK.
+- The new test against the previous tool code: FAILED, as it should. With the fix: OK.
+- The full suite in 3 parts, and the export scan.

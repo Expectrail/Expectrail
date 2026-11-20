@@ -187,6 +187,13 @@ def rewrite_links(root, doc):
 def link_errors(root, manifest_path):
     doc = read_manifest(manifest_path)
     index = safe_path(root, doc["folder"] + "/" + INDEX)
+    # `safe_path` resolves the root (that is how it refuses a symlink), but the pages below are walked
+    # from `root` as given and `link_target` normalises without resolving. Comparing a link against the
+    # resolved index silently matched nothing whenever the repository path contained a symlink: every
+    # temporary folder on macOS, and the private temporary folder on the CI runners. The anchor check
+    # then passed by finding nothing. Compare links against the unresolved path, and keep the resolved
+    # one for reading the file.
+    index_link = Path(os.path.normpath(Path(root) / doc["folder"] / INDEX))
     errors = []
     if not index.is_file() or index.read_text(encoding="utf-8") != index_text(doc):
         errors.append(f"{doc['folder']}/{INDEX}: index differs from manifest")
@@ -204,7 +211,7 @@ def link_errors(root, manifest_path):
             target = link_target(page, url, root)
             if target in moved:
                 errors.append(f"{page.relative_to(root)}: stale link {url}")
-            if target == index and urlsplit(url).fragment not in anchors | {""}:
+            if target == index_link and urlsplit(url).fragment not in anchors | {""}:
                 errors.append(f"{page.relative_to(root)}: missing evidence anchor {url}")
     return errors
 
