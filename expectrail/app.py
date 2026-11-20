@@ -141,7 +141,7 @@ class MissingConfig(req.RequestError):
         self.preview = preview
 
 
-def setup_preview(root, player=None):
+def setup_preview(root, player=None, remember=None):
     """Explain the missing configuration from authored scenes, without starting a job."""
     from expectrail import onboard, onboarding
 
@@ -172,16 +172,18 @@ def setup_preview(root, player=None):
     if route_guidance:
         lines.append(route_guidance)
     lines.extend(info['unresolvedBindings'])
-    if not info['unresolvedBindings']:
-        lines.append('To save this setup, run expectrail init on this folder and review its draft.')
+    if not has_draft and not info['unresolvedBindings']:
+        lines.append('Select the player to review a draft setup, or run expectrail init on this folder.')
     preview = None
-    if not has_draft and (player is not None or len(info['players']) > 1):
+    if not has_draft and info['players']:
         preview = {key: info[key] for key in ('entryScene', 'players', 'unresolvedBindings')}
         preview.update(selectedPlayer=selected, imageSuggestions=info.get('imageSuggestions', []))
+        if selected is not None and remember:
+            preview['saveReview'] = remember(root, info)
     return '\n'.join(lines), preview
 
 
-def inspect_project(body):
+def inspect_project(body, *, remember=None):
     if configured(body):
         from expectrail import project_config, renderer
         root = Path(field(body, 'folder')).expanduser()
@@ -191,7 +193,7 @@ def inspect_project(body):
                 player = body.get('player')
                 if 'player' in body and not isinstance(player, str):
                     raise ValueError('Choose a player node from the starting scene.')
-                detail, preview = setup_preview(root.resolve(), player)
+                detail, preview = setup_preview(root.resolve(), player, remember)
             except (ValueError, OSError) as exc:
                 detail, preview = f'Could not read the setup preview: {exc}', None
             raise MissingConfig(f'Project config: no {project_config.FILENAME}.\n{detail}', preview)
@@ -243,6 +245,66 @@ class App:
         self.lock = threading.RLock()
         self.waiters = []
         self.closing = False
+        self.setup_lock = threading.Lock()
+        self.setup_reviews = {}
+
+    def inspect(self, body):
+        side = body.get('side')
+        if side not in ('before', 'after'):
+            return inspect_project(body)
+
+        def remember(root, info):
+            from expectrail import input_discovery, onboard
+            from harness import tree
+            if input_discovery.needed(info) and execution_class(body) == 'isolated':
+                return {'blocked': 'This setup needs a headless game probe. Setup cannot require the replay '
+                                   'sandbox. Supply a reviewed route and config for isolated verification.'}
+            review = secrets.token_urlsafe(24)
+            self.setup_reviews[side] = (review, root, info, tree.digest(root, skip=tree.GODOT_SKIP))
+            return {'id': review, 'folder': str(root), 'runsProject': input_discovery.needed(info),
+                    'setupFile': onboard.PENDING if info['unresolvedBindings'] else onboard.ACTIVE}
+
+        with self.setup_lock:
+            self.setup_reviews.pop(side, None)
+            return inspect_project(body, remember=remember)
+
+    def save_setup(self, body):
+        from expectrail import input_discovery, onboard, onboarding
+        from harness import tree
+
+        if set(body) != {'side', 'folder', 'player', 'review'}:
+            raise ValueError('Choose a player, review the proposed save and confirm it.')
+        side, root = field(body, 'side'), Path(field(body, 'folder')).expanduser().resolve()
+        with self.setup_lock:
+            record = self.setup_reviews.get(side)
+            if record is None:
+                raise ValueError('Check folders and choose a player to review first.')
+            review, reviewed_root, info, digest = record
+            if (field(body, 'review'), root, field(body, 'player')) != (review, reviewed_root, info['selectedPlayer']):
+                raise ValueError('This selection has no current review. Check folders and choose the player again.')
+            del self.setup_reviews[side]
+
+            def check_destination():
+                if any(os.path.lexists(root / name) for name in (onboard.ACTIVE, onboard.PENDING)):
+                    raise ValueError('A setup file already exists. Check folders to review it.')
+                if tree.digest(root, skip=tree.GODOT_SKIP) != digest:
+                    raise ValueError('The project changed. Check folders and review the player again.')
+
+            check_destination()
+            if onboarding.inspect(root, info['selectedPlayer']) != info:
+                raise ValueError('The selected player changed. Check folders again.')
+            if input_discovery.needed(info):
+                # Execute only the reviewed bytes, even if the source changes during the probe.
+                with tempfile.TemporaryDirectory(prefix='expectrail-setup-') as tmp:
+                    snapshot = Path(tmp) / 'game'
+                    if tree.copy(root, snapshot, skip=tree.GODOT_SKIP) != digest:
+                        raise ValueError('The project changed before the probe. Check folders again.')
+                    docs = onboarding.proposal(snapshot, info)
+            else:
+                docs = onboarding.proposal(root, info)
+            check_destination()
+            name = onboarding.publish(root, docs, force=False)
+            return {'setupFile': name, 'route': docs['config']['routes'][0]}
 
     def own(self, job_id):
         with self.lock:
@@ -522,12 +584,14 @@ class Handler(BaseHTTPRequestHandler):
                     return self.problem(405, 'Use GET to open the app.')
                 page = app_page.PAGE.replace('__NONCE__', self.server.nonce).replace('__TOKEN__', self.server.token)
                 return self.reply(200, page.encode(), 'text/html; charset=utf-8', cookie=True)
-            if path in ('/api/inspect', '/api/jobs') or path.startswith('/api/jobs/') and path.endswith('/cancel'):
+            if path in ('/api/inspect', '/api/setup/save', '/api/jobs') or path.startswith('/api/jobs/') and path.endswith('/cancel'):
                 if self.command != 'POST':
                     return self.problem(405, 'This action requires POST.')
                 body = self.body()
                 if path == '/api/inspect':
-                    return self.reply(200, inspect_project(body))
+                    return self.reply(200, app.inspect(body))
+                if path == '/api/setup/save':
+                    return self.reply(201, app.save_setup(body))
                 if path == '/api/jobs':
                     return self.reply(201, app.create(body))
                 job_id = path.removeprefix('/api/jobs/').removesuffix('/cancel')
