@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 import time
 
-from expectrail import app, app_kinematic, observation_timeline, viewer
+from expectrail import anchored, app, app_kinematic, observation_timeline, viewer
 from expectrail.gate import record
 from expectrail.orchestrator import runner
 from expectrail.orchestrator.store import FINAL, JobStore
@@ -80,6 +80,45 @@ def compare(local_app, before, after, out):
     return row
 
 
+def print_summary(rows, calibration):
+    print('## Kinematic-character repair comparison through the configured app backend\n')
+    print('Before has collision mask 0. The candidates select mask 2 or restore the original mask.')
+    frames = calibration['frames']
+    print(f"Saved calibration: enabled={calibration['enabled']}, {frames['found']} found in "
+          f"{frames['asked']} asked of {frames['listed']} listed frames.")
+    for name, row in rows.items():
+        print(f'\n### {name}\n')
+        print(f"{name}: {row['screen']}, decision={row['decision']}, intent={row['intent']}, checks={len(row['checks'])}, "
+              f"sandboxed replays={(row['isolation'] or {}).get('sandboxed', 0)}")
+        for check in row['checks']:
+            for side, seen in check.get('observed', {}).items():
+                print(f"- {check['spec']} / {check['route']} {side}: engine {seen['engine']}, vision {seen['visual']}")
+        for finding in row['findings']:
+            print(f"- {finding['spec']} / {finding['route']}: {finding['comparison']}, "
+                  f"finding frame {finding['frame']}. {finding['reason']}")
+        for m in row['measurements']:
+            point = m['first']
+            if point is not None:
+                print(f"- {m['spec']} / {m['route']}: first finding frame {point['firstFindingFrame']}, "
+                      f"first measured difference {point['firstMeasuredDifference']}, first over limit {point['firstOverLimit']}. "
+                      f"At frame {point['frame']}:")
+                for side in ('before', 'after'):
+                    reading = point[side]['reading'] or {}
+                    tick = point[side]['tick']
+                    value = reading.get('value')
+                    measured = f"{value:.6g}" if value is not None else "not recorded"
+                    print(f"  - {side}: physics tick {tick if tick is not None else 'not recorded'}, "
+                          f"{point[side]['quantity'] or 'reading'} = {measured}")
+        if row['anchor']:
+            print(f"- Paired anchor status: {row['anchor']['status']}.")
+        for route in (row['anchor'] or {}).get('routes', []):
+            print(f"- Separate paired anchor on {route['route']}: {route['result']}, in {route['in']}, out {route['out']}, "
+                  f"moved {route['moved']}, no base {route['noBase']}, no answer {route['noAnswer']}, "
+                  f"not asked {route['notAsked']}.")
+        for diagnostic in row['diagnostics']:
+            print(f"- {diagnostic['stage']}: {diagnostic['code']}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', type=Path, help='existing clean clone at the registered upstream commit')
@@ -97,6 +136,8 @@ def main():
         root = Path(tmp)
         before, wrong, restored = (root / name for name in ('before', 'mask-2', 'restored'))
         app_kinematic.prepare(source / project['path'], restored)
+        calibration = anchored.check_calibration(record.read_json(restored / 'vision/calibration.json'))
+        calibration = {key: calibration[key] for key in ('enabled', 'frames', 'rates')}
         shutil.copytree(restored, before)
         changes = app_kinematic.ROUTE.parent.parent / 'changes'
         apply_patch(before, changes / 'broken.patch')
@@ -113,32 +154,10 @@ def main():
             local_app.close()
         if original != {f.name: tree.digest(f) for f in folders}:
             raise ValueError('Verification changed an input folder.')
-    result = {'upstream': project['commit'], 'sourceTrees': original, 'candidates': rows}
+    result = {'upstream': project['commit'], 'sourceTrees': original,
+              'recordedCalibration': calibration, 'candidates': rows}
     (args.out / 'repair-pair.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
-    print('## Kinematic-character repair comparison through the configured app backend\n')
-    print('Before has collision mask 0. The candidates select mask 2 or restore the original mask.')
-    for name, row in rows.items():
-        print(f'\n### {name}\n')
-        print(f"{name}: {row['screen']}, decision={row['decision']}, intent={row['intent']}, checks={len(row['checks'])}, "
-              f"sandboxed replays={(row['isolation'] or {}).get('sandboxed', 0)}")
-        for check in row['checks']:
-            for side, seen in check.get('observed', {}).items():
-                print(f"- {check['spec']} / {check['route']} {side}: engine {seen['engine']}, vision {seen['visual']}")
-        for m in row['measurements']:
-            point = m['first']
-            if point is not None:
-                print(f"- {m['spec']} / {m['route']}: first finding frame {point['firstFindingFrame']}, "
-                      f"first measured difference {point['firstMeasuredDifference']}, first over limit {point['firstOverLimit']}. "
-                      f"At frame {point['frame']}:")
-                for side in ('before', 'after'):
-                    reading = point[side]['reading'] or {}
-                    print(f"  - {side}: physics tick {point[side]['tick']}, {point[side]['quantity']} = {reading.get('value')}")
-        for route in (row['anchor'] or {}).get('routes', []):
-            print(f"- Separate paired anchor on {route['route']}: in {route['in']}, out {route['out']}, "
-                  f"moved {route['moved']}, no base {route['noBase']}, no answer {route['noAnswer']}, "
-                  f"not asked {route['notAsked']}.")
-        for diagnostic in row['diagnostics']:
-            print(f"- {diagnostic['stage']}: {diagnostic['code']}")
+    print_summary(rows, calibration)
     return 0 if all(row['phase'] == 'completed' and row['checks'] and
                     row['isolation']['replays'] > 0 for row in rows.values()) else 3
 
