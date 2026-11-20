@@ -23,7 +23,8 @@ h2 { line-height: 1.25; }
 .evidence { padding: 0; overflow: hidden; }
 .panel-heading, .panel-foot { padding: 18px var(--er-inset); }
 .panel-heading h2 { margin: 0; }
-figure { margin: 0; background: #172e28; color: white; }
+figure { position: relative; margin: 0; background: #172e28; color: white; }
+.recording-date { position: absolute; top: .75em; left: .75em; padding: .2em .65em; background: #172e28; color: white; }
 figure img { display: block; width: 100%; height: auto; }
 figcaption { display: flex; justify-content: space-between; gap: .5em; padding: .5em var(--er-inset); font-size: .82rem; }
 .runs { list-style: none; padding: 0; margin: 0; }

@@ -3,6 +3,8 @@
     python3 -m agents.check_pages docs              # CI: every .html page under docs/
     python3 -m agents.check_pages docs --offline    # a machine without internet (see below)
 
+The command also requires the signed-out hub and follows its four screen links with scripts off.
+
 For each page, served over HTTP from the folder (as GitHub Pages serves it), it reports:
 - a script error: an uncaught exception, including a syntax error that stops a whole script;
 - a file the page asks for that the folder does not have (a frame, a video, a stylesheet);
@@ -102,7 +104,7 @@ def check_hub(browser, base: str) -> list[dict]:
     return findings
 
 
-def check(root: Path, *, offline: bool = False, browser=None) -> list[dict]:
+def check(root: Path, *, offline: bool = False, browser=None, require_hub: bool = False) -> list[dict]:
     """Findings: {page, what, detail}. Starts its own browser unless one is passed in."""
     from playwright.sync_api import sync_playwright
 
@@ -115,8 +117,11 @@ def check(root: Path, *, offline: bool = False, browser=None) -> list[dict]:
             manager = sync_playwright().start()
             browser = manager.chromium.launch()
         domain = root / "CNAME"
-        if domain.is_file() and domain.read_text().strip() == "expectrail.tech":
-            findings.extend(check_hub(browser, base))
+        if require_hub or (domain.is_file() and domain.read_text().strip() == "expectrail.tech"):
+            if (root / "hub/index.html").is_file():
+                findings.extend(check_hub(browser, base))
+            else:
+                findings.append({"page": "hub/index.html", "what": "missing hub", "detail": "hub/index.html"})
         for path in pages(root):
             rel = path.relative_to(root).as_posix()
             url = urljoin(base, rel)
@@ -167,7 +172,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("root", type=Path, help="the site's folder, e.g. docs")
     p.add_argument("--offline", action="store_true", help="block the CDN and stub Tailwind (no internet here)")
     args = p.parse_args(argv)
-    found = check(args.root, offline=args.offline)
+    found = check(args.root, offline=args.offline, require_hub=True)
     for f in found:
         print(f"::error title=Page check::{f['page']}: {f['what']}: {f['detail']}")
     n = len(pages(args.root))
