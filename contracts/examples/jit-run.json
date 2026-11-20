@@ -228,6 +228,12 @@
     "fail",
     "fail"
    ],
+   "doNothing": {
+    "control": null,
+    "runs": [],
+    "outcome": "not-run",
+    "reason": "no do-nothing control was given to this run"
+   },
    "outcome": "catch",
    "base": [
     "fail",
@@ -277,6 +283,12 @@
     "killed no near-miss variant"
    ],
    "candidate": [],
+   "doNothing": {
+    "control": null,
+    "runs": [],
+    "outcome": "not-run",
+    "reason": "no do-nothing control was given to this run"
+   },
    "outcome": "not-evaluated",
    "base": [
     "pass"
@@ -312,6 +324,12 @@
     "did not pass on the reference: fail"
    ],
    "candidate": [],
+   "doNothing": {
+    "control": null,
+    "runs": [],
+    "outcome": "not-run",
+    "reason": "did not pass on the reference, so the control was not run"
+   },
    "outcome": "not-evaluated",
    "base": [],
    "variantResults": {},
@@ -325,6 +343,7 @@
    }
   }
  ],
+ "doNothing": [],
  "catches": [
   {
    "specId": "jit-no-extra-air-jumps",

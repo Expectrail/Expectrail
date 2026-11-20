@@ -102,10 +102,14 @@ class Gate:
 
             tool, why = box.probe(True)
             if tool is None:
-                found.append(st.diagnostic("TOOL_MISSING", stage="preparing",
+                from expectrail import doctor
+
+                diagnostic = st.diagnostic("TOOL_MISSING", stage="preparing",
                                            detail=f"the isolated execution class needs the replay sandbox and this "
-                                                  f"machine cannot provide it ({why}); nothing was run unsandboxed "
-                                                  f"in its place"))
+                                                  f"machine cannot provide it ({why}); nothing was run "
+                                                  f"unsandboxed in its place")
+                diagnostic["fix"] = doctor.sandbox_fix(why)
+                found.append(diagnostic)
         if self._replay is None and not found:
             found += self._tools()
         return found

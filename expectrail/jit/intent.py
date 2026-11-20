@@ -764,6 +764,9 @@ def feedback(entries: list[dict], record: dict) -> tuple[list[dict], list[dict]]
             kept.append(e)
         elif any(r != "pass" for r in clean) or len(clean) < 3:
             rejected.append({"entry": e, "why": "did-not-pass-on-clean", "clean": clean})
+        elif (row.get("doNothing") or {}).get("outcome") == "passes":
+            # The clean game with the check's actor doing nothing (#675): not built from the candidate.
+            rejected.append({"entry": e, "why": "passed-with-the-actor-doing-nothing", "clean": clean})
         else:
             killed_base = bool(base_ids & set(row.get("killed") or []))
             rejected.append({"entry": e, "why": "did-not-fail-on-bug-build" if base_ids and not killed_base

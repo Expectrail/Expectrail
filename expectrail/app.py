@@ -9,7 +9,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
 from pathlib import Path
-import re
 import secrets
 import shlex
 import stat
@@ -98,41 +97,10 @@ def configured(body):
 
 def saved_route_guidance(root, saved, info):
     """Read init's content-addressed first route without running input discovery."""
-    from expectrail import input_discovery, onboard, onboarding, route
-    from expectrail.contracts import validate
-    from expectrail.gate.verify import ROUTE_CAP
+    from expectrail import onboard
 
-    config = saved.get('config') if isinstance(saved, dict) else None
-    names = config.get('routes') if isinstance(config, dict) else None
-    if (not isinstance(names, list) or len(names) != 1 or not isinstance(names[0], str)
-            or not re.fullmatch(r'routes/draft-first-[0-9a-f]{16}\.json', names[0])):
-        raise ValueError(f'{onboard.PENDING} needs the saved first route from init.')
-    raw = project_job.regular(root, names[0], ROUTE_CAP)
-    if input_discovery.needed(info):
-        draft = rec.strict_loads(raw.decode('utf-8'))
-        validate(draft, 'route')
-        for event in draft['events']:
-            if event['tick'] >= draft['ticks']:
-                raise ValueError('The saved route has an event beyond its end.')
-            if 'action' in event and event['action'] not in info['actions']:
-                raise ValueError('The saved route uses an action outside the current input map.')
-            if 'pointer' in event and any(n >= size for n, size in
-                                          zip(event['pointer']['position'], info['viewport'])):
-                raise ValueError('The saved route has a pointer outside the current viewport.')
-    else:
-        draft = route.make_route(info['actions'], info['physicsTicksPerSecond'])
-    expected = onboarding.proposal(root, info, planned_route=draft)
-    proposed_route = expected.pop('route')
-    if raw != onboarding.encode(proposed_route) or names != expected['config']['routes']:
-        raise ValueError(f'The route saved with {onboard.PENDING} has changed. Review the draft route.')
-    # Earlier init drafts predate both the player selector and atlas suggestions.
-    if 'selectedPlayer' not in saved and 'imageSuggestions' not in saved:
-        expected.pop('imageSuggestions', None)
-    if saved != expected:
-        raise ValueError(f'{onboard.PENDING} differs from the current setup. Review the draft before using it.')
-    if {event.get('action') for event in proposed_route['events']} == {'pause'}:
-        return 'The saved route only uses pause. Choose inputs that start and exercise gameplay.'
-    return 'Replay the saved route to check that it reaches gameplay.'
+    _, actions = onboard.check_pending(root, saved, info)
+    return onboard.route_guidance(actions)
 
 
 class MissingConfig(req.RequestError):

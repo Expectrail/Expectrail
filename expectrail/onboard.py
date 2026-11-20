@@ -10,7 +10,8 @@ from copy import deepcopy
 from html import escape
 from pathlib import Path
 
-from expectrail import onboarding, project_config, route
+from expectrail import input_discovery, onboarding, project_config, route
+from expectrail.gate.record import strict_loads
 
 ACTIVE = project_config.FILENAME
 PENDING = "expectrail.project.draft.json"
@@ -89,7 +90,7 @@ def saved_draft(root, source):
             raise ValueError("Both draft files exist; select one with --source." if found else
                              "No init draft found. Run expectrail init on this game first.")
         source = found[0]
-    doc = json.loads(local_file(root, source).read_bytes())
+    doc = strict_loads(local_file(root, source).read_text(encoding="utf-8"))
     if not isinstance(doc, dict) or doc.get("draft") is not True:
         raise ValueError(f"{source} must be an init draft.")
     config = doc if source == ACTIVE else doc.get("config")
@@ -100,20 +101,80 @@ def saved_draft(root, source):
     return source, doc, config
 
 
-def inputs(root, config):
-    routes = config.get("routes")
+def saved_route(root, config):
+    from expectrail import project_job
+    from expectrail.gate.verify import ROUTE_CAP
+
+    routes = config.get("routes") if isinstance(config, dict) else None
     if not isinstance(routes, list) or not routes or not isinstance(routes[0], str):
         raise ValueError("The draft needs the first route written by expectrail init.")
     name = routes[0]
     if not re.fullmatch(r"routes/draft-first-[0-9a-f]{16}\.json", name):
         raise ValueError("Expected the content-addressed first route from expectrail init.")
-    raw = local_file(root, name).read_bytes()
+    raw = project_job.regular(root, name, ROUTE_CAP)
     if hashlib.sha256(raw).hexdigest()[:16] != Path(name).stem.removeprefix("draft-first-"):
         raise ValueError("The saved first route has changed. Review the inputs and run init again.")
-    actions = list(dict.fromkeys(event["action"] if "action" in event else
-                                "pointer " + event["pointer"].get("button", "move")
-                                for event in json.loads(raw)["events"]))
-    return name, actions
+    return name, raw
+
+
+def input_names(candidate):
+    return list(dict.fromkeys(event["action"] if "action" in event else
+                              "pointer " + event["pointer"].get("button", "move")
+                              for event in candidate["events"]))
+
+
+def inputs(root, config):
+    name, raw = saved_route(root, config)
+    return name, input_names(strict_loads(raw.decode("utf-8")))
+
+
+def check_pending(root, doc, info):
+    """Check the pending setup and return the saved first route and its inputs."""
+    from expectrail.contracts import validate
+
+    config = doc.get("config")
+    names = config.get("routes") if isinstance(config, dict) else None
+    if not isinstance(names, list) or len(names) != 1:
+        raise ValueError(f"{PENDING} needs the saved first route from init.")
+    name, raw = saved_route(root, config)
+
+    # Rebuild deterministic input-map drafts. Menu drafts depend on a live
+    # measurement, so review the saved events against today's project instead.
+    if input_discovery.needed(info):
+        candidate = strict_loads(raw.decode("utf-8"))
+        validate(candidate, "route")
+        for event in candidate["events"]:
+            if event["tick"] >= candidate["ticks"]:
+                raise ValueError("The saved route has an event beyond its end.")
+            if "action" in event and event["action"] not in info["actions"]:
+                raise ValueError("The saved route names an input outside the current project map.")
+            if "pointer" in event and any(n >= size for n, size in
+                                          zip(event["pointer"]["position"], info["viewport"])):
+                raise ValueError("The saved route has a pointer outside the current project viewport.")
+        planned = candidate
+    else:
+        planned = route.make_route(info["actions"], info["physicsTicksPerSecond"])
+    expected = onboarding.proposal(root, info, planned_route=planned)
+    expected_route = expected.pop("route")
+    if raw != onboarding.encode(expected_route) or names != expected["config"]["routes"]:
+        raise ValueError(f"The route saved with {PENDING} differs from the current project. Review the draft route.")
+    if "selectedPlayer" not in doc and "imageSuggestions" not in doc:
+        # Earlier init drafts predate both the player selector and atlas suggestions.
+        expected.pop("imageSuggestions", None)
+        old_reason = ("Supply the player node path and its res:// image in bindings.player; "
+                      "the starting scene has no unique player.")
+        if (doc.get("unresolvedBindings") == [old_reason] and
+                expected.get("unresolvedBindings") == [old_reason + " Or choose one with --player NODE."]):
+            expected["unresolvedBindings"] = [old_reason]
+    if doc != expected:
+        raise ValueError(f"{PENDING} differs from the current project. Review the changes and rerun init.")
+    return name, input_names(expected_route)
+
+
+def route_guidance(actions):
+    if actions == ["pause"]:
+        return "The saved route only uses pause. Choose inputs that start and exercise gameplay."
+    return "Replay the saved route to check that it reaches gameplay."
 
 
 def words(values):
@@ -122,33 +183,12 @@ def words(values):
 
 def render(root, source=None):
     source, doc, config = saved_draft(root, source)
-    route_name, actions = inputs(root, config)
     pending = source == PENDING
     selected = doc.get("selectedPlayer") if pending else None
     if selected is not None and not isinstance(selected, str):
         raise ValueError("selectedPlayer in the binding review file must be a node path. Run init again.")
     info = onboarding.inspect(root, selected)
-    planned = None
-    if pending:
-        candidate = json.loads(local_file(root, route_name).read_bytes())
-        if any("pointer" in e for e in candidate.get("events", [])):
-            # Reviewing a saved engine-measured route must never execute the game.
-            # Its content-addressed file is already checked by inputs(); validate
-            # its closed contract and input/viewport bounds before showing it.
-            from expectrail.contracts import canonical_v1, validate
-            canonical_v1(candidate)
-            validate(candidate, "route")
-            for event in candidate["events"]:
-                if event["tick"] >= candidate["ticks"]:
-                    raise ValueError("The saved route has an event beyond its end.")
-                if "action" in event and event["action"] not in config["inputActions"]:
-                    raise ValueError("The saved route names an input outside the project map.")
-                if "pointer" in event and any(not 0 <= n < size for n, size in
-                                              zip(event["pointer"]["position"], config["viewport"])):
-                    raise ValueError("The saved route has a pointer outside the project viewport.")
-            planned = candidate
-    if pending and doc != {k: v for k, v in onboarding.proposal(root, info, planned_route=planned).items() if k != "route"}:
-        raise ValueError("The binding review file differs from the current project. Review the changes and rerun init.")
+    route_name, actions = check_pending(root, doc, info) if pending else inputs(root, config)
     parts = ['<!doctype html><html lang="en"><head><meta charset="utf-8">',
              '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data:; '
              'style-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'">',
@@ -160,8 +200,7 @@ def render(root, source=None):
              '<h2>Starting scene and first route</h2>',
              f'<p>Scene: <code>{escape(info["entryScene"])}</code><br>Route: <code>{escape(route_name)}</code></p>',
              f'<p>Inputs listed in the draft: {words(config["inputActions"])}.</p>',
-             f'<p>The route presses {words(actions)}. Check that these inputs start play and exercise '
-             'the behaviour you want to verify.</p><h2>Bindings</h2>']
+             f'<p>The route presses {words(actions)}. {route_guidance(actions)}</p><h2>Bindings</h2>']
     for role, binding in config["bindings"].items():
         selector = "node" if "node" in binding else "group"
         parts.append(f'<article><h3>{escape(role)}</h3><p>Use the {selector} '
