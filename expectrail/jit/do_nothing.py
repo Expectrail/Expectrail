@@ -20,6 +20,13 @@ Where a step finds nothing, or more than one, there is no control for that class
 why ("cannot tell"); nothing is guessed. The game copy is only read, and each control is a unified
 diff applied to the clean game, so a replay of it is ``patches=[control]``.
 
+A frozen actor's floor state is not observed. The engine works out ``is_on_floor`` in the physics step the
+control stops, so Godot 4.7.2 reports a frozen player off the floor on every tick, and "airborne" time
+becomes the route's length. ``judge`` reads a frozen player's check twice, once as recorded and once with
+the player on the floor throughout (no take-off or landing), and gives ``pass`` or ``fail`` only when the
+two agree. Otherwise the run cannot be told (``insufficient_observation``, reason ``FLOOR_UNKNOWN``), and
+the check is not dropped.
+
 Advisory: a check that passes the control is dropped by the generator (assess.validity), like a check
 that kills no near miss. Nothing here changes what may count or clear a change.
 """
@@ -32,6 +39,12 @@ from pathlib import Path
 CLASSES = ("player", "enemy", "projectile")
 CALLBACKS = ("_process", "_physics_process", "_input", "_unhandled_input", "_unhandled_key_input")
 DEFAULT_RETURN = {None: "return", "void": "return", "bool": "return false", "int": "return 0", "float": "return 0.0"}
+
+FLOOR_UNKNOWN = ("cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not "
+                 "work out while its physics step is stopped")
+# What the engine works out in an actor's own physics step, per class: the sample field and the events
+# derived from it. Only the player's floor state is recorded today (expectrail/trace/normalize.py).
+ENGINE_STATE = {"player": ("onFloor", ("takeoff", "landing"))}
 
 _NODE = re.compile(r'^\[node\s+name="([^"]+)"([^\]]*)\]\s*$')
 _EXT = re.compile(r'^\[ext_resource\b[^\]]*\bpath="(res://[^"]+)"[^\]]*\bid="([^"]+)"[^\]]*\]\s*$')
@@ -188,3 +201,34 @@ def controls(game: Path, profile: dict, classes) -> list[dict]:
             out.append({"class": cls, "id": f"do-nothing:{cls}", "mode": None, "files": [], "patchText": None,
                         "reason": " ".join(str(exc).split())[:300]})
     return out
+
+
+def grounded(eps: dict, cls: str = "player") -> dict:
+    """Copies of ``eps`` with the frozen actor on the floor on every tick it reported a floor state, and no
+    take-off or landing. A tick with no floor state recorded stays unrecorded. ``eps`` is not changed."""
+    field, events = ENGINE_STATE[cls]
+    out = {}
+    for pid, ep in eps.items():
+        if ep is None:
+            out[pid] = None
+            continue
+        copy = dict(ep)
+        copy["samples"] = [dict(s, **{field: True}) if s.get(field) is not None else dict(s)
+                           for s in ep.get("samples") or []]
+        copy["events"] = [e for e in ep.get("events") or [] if e.get("type") not in events]
+        out[pid] = copy
+    return out
+
+
+def judge(entry: dict, probe_ids: list[str], eps: dict, evaluate, mode: str | None) -> tuple[str, str | None]:
+    """(outcome, reason) for one run of one check on its do-nothing control. ``evaluate(entry, ids, eps)`` is
+    the generator's own judgement. A frozen actor whose engine state is not observed (``ENGINE_STATE``) is
+    judged with that state as recorded and as on the floor; the outcome stands only if both agree."""
+    recorded = evaluate(entry, probe_ids, eps)
+    cls = entry["spec"]["scope"]["class"]
+    if mode != "frozen" or cls not in ENGINE_STATE:
+        return recorded, None
+    other = evaluate(entry, probe_ids, grounded(eps, cls))
+    if recorded == other:
+        return recorded, None
+    return "insufficient_observation", FLOOR_UNKNOWN

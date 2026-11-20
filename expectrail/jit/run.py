@@ -438,8 +438,10 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
     variant_names = {}
 
     def runs_of(name: str, patches: list[Path], todo: list[tuple[dict, list[str]]], count: int,
-                stop_early=None) -> dict[str, list[str]]:
-        """{specId: [outcome per run]} for each check, replaying only the probes the checks need."""
+                stop_early=None, judge=None) -> dict[str, list[str]]:
+        """{specId: [outcome per run]} for each check, replaying only the probes the checks need.
+        ``judge(entry, ids, eps)`` replaces the plain judgement (the do-nothing control's, #675)."""
+        judge = judge or _evaluate
         results: dict[str, list[str]] = {e["spec"]["id"]: [] for e, _ in todo}
         active = list(todo)
         for n in range(1, count + 1):
@@ -447,7 +449,7 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
             eps = {pid: replay(name, patches, pid, n,
                                trace_specs=[e["spec"] for e, ids in active if pid in ids]) for pid in pids}
             for e, ids in active:
-                results[e["spec"]["id"]].append(_evaluate(e, ids, eps))
+                results[e["spec"]["id"]].append(judge(e, ids, eps))
                 spec = e['spec']
                 verdicts = ([evaluate(spec, eps[ids[0]], eps[ids[1]])] if e['applies']['kind'] == 'pair'
                             else [evaluate(spec, eps[pid]) for pid in ids])
@@ -781,7 +783,10 @@ def _do_nothing_stage(on_ref, controls_fn, out: Path, runs_of, reps: int, state:
 
     ``controls_fn(classes)`` gives the controls (expectrail/jit/do_nothing.py, ``controls``); ``None`` means
     this run was given none, and every row says so (``not-run``). A run of a control stops early once its
-    runs can no longer all pass or all fail."""
+    runs can no longer all pass or all fail. A frozen actor's floor state is not observed, so a run whose
+    verdict depends on it cannot be told (do_nothing.judge)."""
+    from expectrail.jit import do_nothing as do_nothing_mod
+
     rows: dict[str, dict] = {}
     if not on_ref:
         return rows
@@ -810,13 +815,22 @@ def _do_nothing_stage(on_ref, controls_fn, out: Path, runs_of, reps: int, state:
             continue
         path = cdir / f"jit-do-nothing-{cls}.patch"
         path.write_text(text, encoding="utf-8")
+        why: dict[str, str] = {}
+
+        def judge(e, ids, eps, mode=c.get("mode")):
+            outcome, reason = do_nothing_mod.judge(e, ids, eps, _evaluate, mode)
+            if reason:
+                why[e["spec"]["id"]] = reason
+            return outcome
+
         res = runs_of(f"do-nothing-{cls}", [path], todo, reps,
-                      stop_early=lambda rs: rs[-1] not in ("pass", "fail") or rs[-1] != rs[0])
+                      stop_early=lambda rs: rs[-1] not in ("pass", "fail") or rs[-1] != rs[0], judge=judge)
         for e, _ids in todo:
             runs = res[e["spec"]["id"]]
             outcome = assess.do_nothing(runs, reps)
             rows[e["spec"]["id"]] = {"control": c["id"], "runs": runs, "outcome": outcome,
-                                     "reason": assess.DO_NOTHING_PASSED if outcome == "passes" else None}
+                                     "reason": assess.DO_NOTHING_PASSED if outcome == "passes"
+                                     else why.get(e["spec"]["id"])}
     return rows
 
 

@@ -50,6 +50,36 @@ class FrozenJitGame(JitGame):
         return out
 
 
+# A double jump stays airborne longer than a single jump. A player who truly does nothing is never airborne
+# and fails it. On Godot 4.7.2 a frozen player is reported off the floor on every tick (its physics step,
+# where the engine works out the floor, never runs), so the longer route alone made it "pass" (#675).
+AIRBORNE_LONGER = {"id": "double-airborne-longer", "statement": "A double jump stays airborne longer than a single jump.",
+                   "claimId": "player.jump", "class": "player",
+                   "operation": {"type": "relation", "signal": "airborne_ticks", "comparator": "gt", "toleranceAbs": 5,
+                                 "left": "jump-w0-x1", "right": "jump-w0-x2"}}
+# An upper bound on airborne time: it holds for a frozen player whatever its floor state.
+AIRBORNE_BOUNDED = {"id": "double-airborne-bounded",
+                    "statement": "A double jump stays airborne at most a little longer than a single jump.",
+                    "claimId": "player.jump", "class": "player",
+                    "operation": {"type": "relation", "signal": "airborne_ticks", "comparator": "lte",
+                                  "toleranceAbs": 100, "left": "jump-w0-x1", "right": "jump-w0-x2"}}
+
+
+class EngineFrozenJitGame(FrozenJitGame):
+    """FrozenJitGame as Godot 4.7.2 reports a frozen player: where it starts, but off the floor on every tick,
+    because ``is_on_floor`` is only worked out by the physics step the control stops."""
+
+    def __call__(self, route_path, run_dir, patches=()):
+        out = super().__call__(route_path, run_dir, patches=patches)
+        if any(Path(p).stem.startswith("jit-do-nothing-player") for p in patches):
+            path = Path(run_dir) / "trace.json"
+            trace = json.loads(path.read_text())
+            for row in trace["rows"]:
+                row["onFloor"] = False
+            path.write_text(json.dumps(trace))
+        return out
+
+
 def _copy_game(dest: Path) -> Path:
     shutil.copytree(GAME, dest, ignore=shutil.ignore_patterns(".godot"))
     return dest
@@ -253,6 +283,65 @@ class Pipeline(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FloorState(unittest.TestCase):
+    """A frozen actor's floor state is not observed: the engine works it out in the physics step the control
+    stops. A check whose verdict on the control depends on it cannot be told, so it is not dropped (#675)."""
+
+    _run = Pipeline._run
+
+    def _controls(self, classes):
+        return do_nothing.controls(GAME, PROF, classes)
+
+    def test_an_airborne_check_is_not_dropped_on_the_engines_floor_state(self):
+        doc, _, _ = self._run([AIRBORNE_LONGER, GOOD_CHECK], game=EngineFrozenJitGame(), do_nothing=self._controls)
+        rows = {v["specId"]: v for v in doc["validity"]}
+        longer = rows["jit-double-airborne-longer"]
+        self.assertEqual(longer["reference"], ["pass"] * 3)
+        self.assertEqual(longer["doNothing"]["runs"], ["insufficient_observation"])
+        self.assertEqual(longer["doNothing"]["outcome"], "indeterminate")
+        self.assertEqual(longer["doNothing"]["reason"], do_nothing.FLOOR_UNKNOWN)
+        self.assertNotIn(assess.DO_NOTHING_PASSED, longer["reasons"])
+        # A check that reads no floor state is judged as before.
+        self.assertEqual(rows["jit-no-extra-air-jumps"]["doNothing"]["outcome"], "passes")
+
+    def test_a_check_that_passes_whatever_the_floor_state_is_still_dropped(self):
+        for game in (EngineFrozenJitGame(), FrozenJitGame()):
+            doc, _, _ = self._run([AIRBORNE_BOUNDED], game=game, do_nothing=self._controls)
+            row = doc["validity"][0]
+            self.assertEqual(row["doNothing"]["outcome"], "passes", type(game).__name__)
+            self.assertIn(assess.DO_NOTHING_PASSED, row["reasons"])
+
+    def test_a_grounded_frozen_player_fails_the_airborne_check(self):
+        doc, _, _ = self._run([AIRBORNE_LONGER], game=FrozenJitGame(), do_nothing=self._controls)
+        # Both readings fail (onFloor True as recorded, and True as assumed): the check states an obligation.
+        self.assertEqual(doc["validity"][0]["doNothing"]["outcome"], "fails")
+
+    def test_judge_reads_the_floor_both_ways_only_for_a_frozen_player(self):
+        calls = []
+
+        def evaluate(entry, ids, eps):
+            calls.append([s["onFloor"] for s in eps["a"]["samples"]])
+            return "pass" if eps["a"]["samples"][0]["onFloor"] is False else "fail"
+
+        ep = {"samples": [{"tick": 0, "onFloor": False}, {"tick": 1, "onFloor": False}],
+              "events": [{"type": "takeoff", "tick": 1}, {"type": "spawn", "tick": 0}]}
+        entry = {"spec": {"scope": {"class": "player"}}}
+        self.assertEqual(do_nothing.judge(entry, ["a"], {"a": ep}, evaluate, mode="frozen"),
+                         ("insufficient_observation", do_nothing.FLOOR_UNKNOWN))
+        self.assertEqual(calls, [[False, False], [True, True]])
+        self.assertEqual(ep["samples"][0]["onFloor"], False, "the recorded episode is not changed")
+        grounded = do_nothing.grounded({"a": ep})["a"]
+        self.assertEqual([e["type"] for e in grounded["events"]], ["spawn"])
+        calls.clear()
+        self.assertEqual(do_nothing.judge(entry, ["a"], {"a": ep}, evaluate, mode="never-made"), ("pass", None))
+        self.assertEqual(calls, [[False, False]])
+        enemy = {"spec": {"scope": {"class": "enemy"}}}
+        self.assertEqual(do_nothing.judge(enemy, ["a"], {"a": ep}, evaluate, mode="frozen"), ("pass", None))
+        # Unrecorded floor state stays unrecorded: nothing is assumed where nothing was reported.
+        none_ep = {"samples": [{"tick": 0, "onFloor": None}], "events": []}
+        self.assertEqual(do_nothing.grounded({"a": none_ep})["a"]["samples"][0]["onFloor"], None)
 
 
 class Revision(unittest.TestCase):

@@ -1147,13 +1147,26 @@ list with each control's patch digest. A run on the real harness makes the contr
 with an injected runner (a test double, a recorded replay such as `ingest.py`) gets none and every row
 says "no do-nothing control was given to this run". The six counting rules are unchanged.
 
+A frozen actor's floor state is not observed: the engine works out `is_on_floor` in the physics step the
+control stops, and Godot 4.7.2 reports a frozen player off the floor on every tick. `do_nothing.judge`
+therefore reads a frozen player's check twice, as recorded and with the player on the floor throughout, and
+a run is `pass` or `fail` only when both agree; otherwise it is `insufficient_observation` ("cannot tell"),
+and the check is not dropped.
+
 [Measured on the public bench's recorded checks](measurements/675-do-nothing-control.md) (Godot 4.7.2,
-132 headless replays, no model): of the 135 checks recorded as passing the clean reference, **60 pass the
-control, 40 fail it, 24 are indeterminate and 11 were not run** (model-proposed probes whose routes are not
-committed). Of the 91 kept by the old rule, **45 pass it**, and five public defects (`air-jump`,
+132 headless replays, no model): of the 135 checks recorded as passing the clean reference, **56 pass the
+control, 35 fail it, 33 are indeterminate and 11 were not run** (model-proposed probes whose routes are not
+committed). Of the 91 kept by the old rule, **41 pass it**, and five public defects (`air-jump`,
 `enemy-fast-left`, `enemy-ledge`, `slides-after-stop`, `slow-left`) would keep none of their recorded
 catches. The counting audit stays 0 of 137: the control can only remove checks. The reference runs are the
 recorded ones; a fresh `repro` run under the new rule has not been made.
+
+Since the control, the PR rehearsal in `jit.yml` (air-jump, exact undo and comment-only "fix") no longer
+shows a strong catch: the stand-in's only catching check passes a frozen player and is dropped, so the
+comment-only case keeps no valid check. [`tools/jit_rehearsal_check.py`](../tools/jit_rehearsal_check.py)
+asserts that, and that the control dropped that check on the real engine. The rehearsal proves the plumbing
+and the control; it does not cover "a strong catch is produced" until a rehearsal whose checks survive the
+control is added.
 
 ### The six rules on pixel checks (#286)
 

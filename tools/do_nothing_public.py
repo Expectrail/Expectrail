@@ -128,7 +128,11 @@ def measure(work: Path, records: Path = RECORDS, game: Path = REPO / "game/platf
                 row["reason"] = "replay failed or its three traces differed"
                 continue
             for rep in range(assess.REPS):
-                row["runs"].append(_evaluate(entry, entry["probeIds"], {pid: eps[rep] for pid, eps in eps_by_probe.items()}))
+                outcome, why = do_nothing.judge(entry, entry["probeIds"],
+                                                {pid: eps[rep] for pid, eps in eps_by_probe.items()},
+                                                _evaluate, controls[cls]["mode"])
+                row["runs"].append(outcome)
+                row["reason"] = why or row["reason"]
             row["outcome"] = assess.do_nothing(row["runs"])
     doc = {"controls": [{k: c[k] for k in ("class", "mode", "files", "reason")} |
                         {"patchSha256": hashlib.sha256(c["patchText"].encode()).hexdigest() if c["patchText"] else None}
@@ -169,7 +173,8 @@ def markdown(doc: dict, engine: str) -> str:
     lines += ["", "## Counts", "",
               f"- Checks in the records: {s['checks']}. Recorded as passing the clean reference 3 of 3: {s['onReference']}.",
               f"- Of those {s['onReference']}: **{o['passes']} pass the control** (would now be dropped), "
-              f"{o['fails']} fail it, {o['indeterminate']} are indeterminate (not exercised or mixed), "
+              f"{o['fails']} fail it, {o['indeterminate']} are indeterminate (not exercised, mixed, or depending on "
+              f"the frozen player's floor state), "
               f"{o['not-run']} not run.",
               f"- Kept by the old rule (recorded valid): {s['keptByOldRule']}; of these, "
               f"**{s['keptByOldRuleNowDropped']} pass the control** and would now be dropped.", "",

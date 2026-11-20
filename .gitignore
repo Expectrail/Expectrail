@@ -51,3 +51,4 @@ _bmad/render/
 !/tools/spend_cap_audit.py
 !/tools/spend_cap_gaps.json
 !/tools/do_nothing_public.py
+!/tools/jit_rehearsal_check.py

@@ -15,30 +15,74 @@ Engine: 4.7.2.stable.official.ed1daf0bf. Records: `bench/jit/recordings/public-4
 ## Counts
 
 - Checks in the records: 137. Recorded as passing the clean reference 3 of 3: 135.
-- Of those 135: **60 pass the control** (would now be dropped), 40 fail it, 24 are indeterminate (not exercised or mixed), 11 not run.
-- Kept by the old rule (recorded valid): 91; of these, **45 pass the control** and would now be dropped.
+- Of those 135: **56 pass the control** (would now be dropped), 35 fail it, 33 are indeterminate (not exercised, mixed, or depending on the frozen player's floor state), 11 not run.
+- Kept by the old rule (recorded valid): 91; of these, **41 pass the control** and would now be dropped.
 
 | Class | Passes (dropped) | Fails | Indeterminate | Not run |
 | --- | --- | --- | --- | --- |
-| player | 33 | 14 | 17 | 3 |
+| player | 29 | 9 | 26 | 3 |
 | enemy | 22 | 18 | 0 | 6 |
 | projectile | 5 | 8 | 7 | 2 |
 
-- Of the records' 91 recorded catches (all labelled strong), **45 pass the control**. Five public defects
+- Of the records' 91 recorded catches (all labelled strong), **41 pass the control**. Five public defects
   have every recorded catch pass it: `air-jump`, `enemy-fast-left`, `enemy-ledge`, `slides-after-stop`,
   `slow-left`. Under the new rule a fresh run would keep none of those checks.
 - Not run (11): every one uses a model-proposed probe whose route is not in the probe library and is not
   committed beside the record. They were not replayed here.
-- Indeterminate (24): mostly checks that need an event to judge (a jump's rise, a shot interval, facing
-  while moving). With the actor doing nothing there is no such event, so the check is not exercised and
-  this control cannot drop it. The near-miss rule still applies to them.
+- Indeterminate (33): checks that need an event to judge (a jump's rise, a shot interval, facing while
+  moving), which a frozen actor never gives, and 9 `airborne_ticks` checks whose verdict depends on the
+  frozen player's floor state (next section). This control cannot drop them; the near-miss rule still applies.
 
 What passes the control, by predicate: `air_jumps` relations (8 of 8: "eight presses give no more air
 jumps than two" holds for a player that never jumps), `player_dx_px` relations (9 of 9), enemy
 `max_entity_drop` (6 of 6: a frozen enemy never falls off a ledge), enemy `direction_agreement` (4 of 4),
-`entity_present` (1), `facing_flips` (2), 11 of 24 `min_enemy_extent_px`, 7 of 17 `airborne_ticks`,
-7 of 14 `max_rise_px`, and 5 of 7 `projectile_count` relations (the other 2 not run) ("faster taps give no more shots" holds
-when no shot is ever made).
+`entity_present` (1), `facing_flips` (2 of 2), 11 of 24 `min_enemy_extent_px`, 7 of 14 `max_rise_px`,
+3 of 17 `airborne_ticks` (upper bounds, which hold for a player that is never airborne), and 5 of 7
+`projectile_count` relations (the other 2 not run) ("faster taps give no more shots" holds when no shot
+is ever made).
+
+## The frozen player's floor state is not observed
+
+The first measurement (60 pass, 40 fail, 24 indeterminate) judged the frozen player's floor state as the
+engine recorded it. On Godot 4.7.2 a frozen player is reported off the floor on every tick: the engine works
+out `is_on_floor` in the physics step that the control stops. So its "airborne" time was the length of the
+route, and an `airborne_ticks` relation between two routes of different length passed or failed on that
+length alone. For example, `double-jump-once` `jit-c2` ("repeated jumps from further right stay airborne
+longer") read 240 airborne ticks on `jump-w0-x8` and 360 on `jump-w120-x8` for a player that never left
+the ground, and passed.
+
+Now `do_nothing.judge` reads a frozen player's check twice: as recorded, and with the player on the floor on
+every tick (no take-off, no landing). The run is `pass` or `fail` only when both readings agree; otherwise it
+is `insufficient_observation`, with the reason "cannot tell: the verdict depends on the frozen actor's floor
+state". Nine checks moved, all `airborne_ticks`: 4 from passes and 5 from fails to indeterminate. No other
+outcome changed. Of the 91 kept by the old rule, 41 now pass the control, not 45.
+
+## Hand check of a sample (requested on #686)
+
+Thirteen checks that passed the control in the first measurement, spread across predicates and classes,
+replayed with the control on Godot 4.7.2 and read by hand. Values are each probe's signal on the frozen
+build (left, right).
+
+| Public defect | Check | Statement (short) | Frozen values | Reading |
+| --- | --- | --- | --- | --- |
+| air-jump | `jit-c1` | 8 presses give the same air jumps as 2 | air jumps 0, 0 | trivial: an equality holds when nothing happens |
+| air-jump | `jit-c6` | extra presses rise no higher than a double jump | rise 0, 0 px | trivial |
+| slow-left | `jit-c4` | walking left while shooting covers the same ground as walking | dx 0, 0 px | trivial |
+| slides-after-stop | `jit-c1` | single and double jump after walking cover the same ground | dx 0, 0 px | trivial |
+| jump-needs-rest | `jit-c1` | jump after walking rises as high as from standing | rise 0, 0 px | trivial |
+| body-flip | `jit-sym-flips-hold` | holding left flips facing no more than holding right | flips 0, 0 | trivial |
+| enemy-ledge | `jit-e1` | enemies do not fall far after settling | no drop | trivial: a frozen enemy cannot fall |
+| enemy-ledge | `jit-e2` | enemy patrol range bounded | extent 0, 0 px | trivial |
+| gun-cooldown | `jit-cooldown-count-right-eq` | tapping faster fires no more bullets | bullets 0, 0 | trivial |
+| floaty-fall | `jit-check-w0-single-double` | double jump airborne at most 25 ticks longer than single | 100, 120 recorded; 0, 0 on the floor | trivial upper bound; passes both readings, still dropped |
+| double-jump-once | `jit-c2` | further right stays airborne longer (gt 5) | 240, 360 recorded; 0, 0 on the floor | **mishandled**: passed only on the floor-state artifact; now indeterminate |
+| double-jump-once | `jit-c3` | far right stays airborne longer than mid right (gt 5) | 320, 360 recorded; 0, 0 on the floor | **mishandled**; now indeterminate |
+| platforms-not-solid | `jit-c3-landing-sooner-w80` | landing on the platform is airborne for less time (lt 5) | 200, 160 recorded; 0, 0 on the floor | **mishandled**; now indeterminate |
+
+Ten of the thirteen are trivially passing, as the control claims: equalities and upper bounds between two
+routes hold when the actor does nothing. Three passed only because of the floor-state artifact; the hand
+check found it, and the fix above covers every check that reads the floor state, not only these three
+(`double-jump-once` `jit-c4` moved too). The sample was chosen by hand to cover each predicate, not at random.
 
 ## Per check
 
@@ -75,14 +119,14 @@ when no shot is ever made).
 | bullet-through-enemy | `jit-c4-extent-shoot12` | enemy | relation `min_enemy_extent_px` | yes | fail, fail, fail | fails |
 | platforms-not-solid | `jit-c1-landing-sooner-base` | player | relation `airborne_ticks` | yes | fail, fail, fail | fails |
 | platforms-not-solid | `jit-c2-landing-sooner-w40` | player | relation `airborne_ticks` | yes | fail, fail, fail | fails |
-| platforms-not-solid | `jit-c3-landing-sooner-w80` | player | relation `airborne_ticks` | yes | pass, pass, pass | passes |
+| platforms-not-solid | `jit-c3-landing-sooner-w80` | player | relation `airborne_ticks` | yes | insufficient_observation, insufficient_observation, insufficient_observation | indeterminate (cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not work out while its physics step is stopped) |
 | platforms-not-solid | `jit-r-jit-c4-repl-38` | player | relation `airborne_ticks` | yes | - | not-run (route not in the probe library (a model-proposed probe): jit-r-jit-left38-dbl) |
 | platforms-not-solid | `jit-r-jit-c5-repl-42` | player | relation `airborne_ticks` | yes | - | not-run (route not in the probe library (a model-proposed probe): jit-r-jit-left42-dbl) |
 | floaty-fall | `jit-check-w0-single-double` | player | relation `airborne_ticks` | yes | pass, pass, pass | passes |
 | floaty-fall | `jit-check-w40-single-double` | player | relation `airborne_ticks` | yes | pass, pass, pass | passes |
 | floaty-fall | `jit-check-w80-single-double` | player | relation `airborne_ticks` | yes | pass, pass, pass | passes |
-| floaty-fall | `jit-check-w0-double-multi` | player | relation `airborne_ticks` | yes | fail, fail, fail | fails |
-| floaty-fall | `jit-check-w40-double-multi` | player | relation `airborne_ticks` | yes | fail, fail, fail | fails |
+| floaty-fall | `jit-check-w0-double-multi` | player | relation `airborne_ticks` | yes | insufficient_observation, insufficient_observation, insufficient_observation | indeterminate (cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not work out while its physics step is stopped) |
+| floaty-fall | `jit-check-w40-double-multi` | player | relation `airborne_ticks` | yes | insufficient_observation, insufficient_observation, insufficient_observation | indeterminate (cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not work out while its physics step is stopped) |
 | jump-always-full | `jit-tap-low-w0` | player | max_episode_rise | yes | not_exercised, not_exercised, not_exercised | indeterminate |
 | jump-always-full | `jit-tap-low-w80` | player | max_episode_rise | yes | not_exercised, not_exercised, not_exercised | indeterminate |
 | jump-always-full | `jit-tap-low-l40` | player | max_episode_rise | yes | not_exercised, not_exercised, not_exercised | indeterminate |
@@ -103,17 +147,17 @@ when no shot is ever made).
 | no-shooting-in-air | `jit-c4` | projectile | relation `projectile_count` | yes | - | not-run (route not in the probe library (a model-proposed probe): jit-ground-shoot-1, jit-air-shoot-1) |
 | no-shooting-in-air | `jit-c5` | projectile | relation `projectile_count` | no | - | not-run (route not in the probe library (a model-proposed probe): jit-air-shoot-1, jit-air-shoot-2) |
 | jump-needs-rest | `jit-c1` | player | relation `max_rise_px` | yes | pass, pass, pass | passes |
-| jump-needs-rest | `jit-c2` | player | relation `airborne_ticks` | yes | fail, fail, fail | fails |
+| jump-needs-rest | `jit-c2` | player | relation `airborne_ticks` | yes | insufficient_observation, insufficient_observation, insufficient_observation | indeterminate (cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not work out while its physics step is stopped) |
 | jump-needs-rest | `jit-c3` | player | relation `max_rise_px` | yes | pass, pass, pass | passes |
-| jump-needs-rest | `jit-c4` | player | relation `airborne_ticks` | yes | fail, fail, fail | fails |
+| jump-needs-rest | `jit-c4` | player | relation `airborne_ticks` | yes | insufficient_observation, insufficient_observation, insufficient_observation | indeterminate (cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not work out while its physics step is stopped) |
 | jump-needs-rest | `jit-c5` | player | relation `max_rise_px` | yes | pass, pass, pass | passes |
 | jump-needs-rest | `jit-c6` | player | relation `air_jumps` | yes | pass, pass, pass | passes |
 | jump-needs-rest | `jit-c7` | player | relation `max_rise_px` | yes | pass, pass, pass | passes |
-| jump-needs-rest | `jit-c8` | player | relation `airborne_ticks` | yes | fail, fail, fail | fails |
+| jump-needs-rest | `jit-c8` | player | relation `airborne_ticks` | yes | insufficient_observation, insufficient_observation, insufficient_observation | indeterminate (cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not work out while its physics step is stopped) |
 | double-jump-once | `jit-c1` | player | relation `airborne_ticks` | yes | fail, fail, fail | fails |
-| double-jump-once | `jit-c2` | player | relation `airborne_ticks` | yes | pass, pass, pass | passes |
-| double-jump-once | `jit-c3` | player | relation `airborne_ticks` | yes | pass, pass, pass | passes |
-| double-jump-once | `jit-c4` | player | relation `airborne_ticks` | yes | pass, pass, pass | passes |
+| double-jump-once | `jit-c2` | player | relation `airborne_ticks` | yes | insufficient_observation, insufficient_observation, insufficient_observation | indeterminate (cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not work out while its physics step is stopped) |
+| double-jump-once | `jit-c3` | player | relation `airborne_ticks` | yes | insufficient_observation, insufficient_observation, insufficient_observation | indeterminate (cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not work out while its physics step is stopped) |
+| double-jump-once | `jit-c4` | player | relation `airborne_ticks` | yes | insufficient_observation, insufficient_observation, insufficient_observation | indeterminate (cannot tell: the verdict depends on the frozen actor's floor state, which the engine does not work out while its physics step is stopped) |
 | coin-stays | `jit-r-jump-double-higher-w40` | player | relation `max_rise_px` | no | fail, fail, fail | fails |
 | coin-stays | `jit-r-jump-eight-capped-w40` | player | max_episode_rise | no | not_exercised, not_exercised, not_exercised | indeterminate |
 | coin-stays | `jit-r-cooldown-limits-left` | projectile | min_event_interval | no | not_exercised, not_exercised, not_exercised | indeterminate |
@@ -181,14 +225,3 @@ when no shot is ever made).
 | bullet-behind-scenery | `jit-r-jit-d6` | player | relation `max_rise_px` | no | fail, fail, fail | fails |
 | bullet-behind-scenery | `jit-r-jit-d7` | projectile | event_response | no | fail, fail, fail | fails |
 | bullet-behind-scenery | `jit-r-jit-d8` | player | max_episode_rise | no | not_exercised, not_exercised, not_exercised | indeterminate |
-
-## How it was made
-
-```
-./harness/get_godot.sh
-python3 tools/do_nothing_public.py --work NEW_FOLDER --out docs/measurements/675-do-nothing-control.md
-```
-
-44 (class, route) groups, 132 headless replays, all completed, each group's three traces identical, one
-engine (above). The patch digests in the replays' records match the table. The counts lines from
-"Of the records' 91" down were added by hand from `rows.json` and the records' `catches`.

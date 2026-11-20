@@ -119,8 +119,9 @@ jobs:
       fail-fast: false
       matrix:
         # The public air-jump bug, fixed exactly (expected: no catch) and "fixed" with a comment only
-        # (expected: a strong catch). Stand-ins the study cannot draw from: the profile was written
-        # alongside this bug, so these show the plumbing, not a detection rate.
+        # (a strong catch before #675; since the do-nothing control, no valid check: tools/jit_rehearsal_check.py).
+        # Stand-ins the study cannot draw from: the profile was written alongside this bug, so these show
+        # the plumbing, not a detection rate.
         case: [air-jump-undo, air-jump-comment-only]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -151,18 +152,11 @@ jobs:
       - name: Check the rehearsal reached what it rehearses
         env:
           CASE: ${{ matrix.case }}
-        run: |
-          python - "$CASE" <<'EOF'
-          import json, sys
-          case = sys.argv[1]
-          d = json.load(open(f"runs/jit/{case}/jit-run.json"))
-          assert d["status"] == "complete", d["reason"]
-          assert d["counts"]["valid"] >= 1, "no generated check was valid"
-          if case == "air-jump-undo":
-              assert not d["catches"], "the exact undo was caught"
-          else:
-              assert any(c["strength"] == "strong" for c in d["catches"]), "the comment-only fix was not caught"
-          EOF
+        # Since the do-nothing control (#675) the stand-in's only catching check passes a frozen player and
+        # is dropped, so the comment-only case keeps no valid check and no catch. The rehearsal proves the
+        # plumbing and that the control fires on a real run; it no longer covers a strong catch (lost reach,
+        # accepted by Sean on November 20; see tools/jit_rehearsal_check.py).
+        run: python -m tools.jit_rehearsal_check "$CASE" "runs/jit/$CASE/jit-run.json"
       - name: Keep the record
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
