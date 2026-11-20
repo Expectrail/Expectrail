@@ -254,7 +254,7 @@ class PublicTool(unittest.TestCase):
         import tempfile
         from expectrail.jit import bench
 
-        fake = {"defects": [{"id": "x", "family": "f", "patch": "bench/jit/fresh-9/x/defect.patch"}]}
+        fake = {"defects": [{"id": "x", "family": "f", "patch": "bench/jit/heldout-x/defect.patch"}]}
         profile = json.loads((REPO / "discovery/platformer.profile.json").read_text())
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(bench, "public_cases", return_value=fake):
             with self.assertRaisesRegex(ValueError, "public-only"):
