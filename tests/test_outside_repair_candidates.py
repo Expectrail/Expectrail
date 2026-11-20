@@ -15,13 +15,21 @@ def completed(decision, engine, visual):
 class RepairControlsTest(unittest.TestCase):
     def setUp(self):
         self.rows = {'mask-2': completed('reject', 'fail', 'not-asked'),
-                     'hidden-sprite': completed('needs-review', 'needs-review', 'no-answer'),
+                     'hidden-sprite': completed('reject', 'needs-review', 'fail'),
                      'stuck-fade': completed('reject', 'pass', 'fail'),
                      'restored': completed('accept', 'pass', 'pass')}
 
     def test_matching_controls_pass_without_pinning_the_mask_visual_or_frame(self):
         self.rows['mask-2']['checks'][0]['observed']['after']['visual'] = 'fail'
         self.assertEqual(repair_pair.unmet_controls(self.rows), [])
+
+    def test_mask_requires_a_runtime_failure_on_the_ground_check(self):
+        for changed in ({'route': 'other'}, {'spec': 'other'},
+                        {'observed': {'after': {'engine': 'pass', 'visual': 'fail'}}}):
+            with self.subTest(changed=changed):
+                rows = copy.deepcopy(self.rows)
+                rows['mask-2']['checks'][0].update(changed)
+                self.assertTrue(any('mask-2' in m for m in repair_pair.unmet_controls(rows)))
 
     def test_unexpected_verdict_on_each_candidate_reports_its_name_and_keeps_the_output(self):
         for name in self.rows:
@@ -41,11 +49,17 @@ class RepairControlsTest(unittest.TestCase):
                     rows[name]['checks'][0].update(changed)
                     self.assertIn(name, ' '.join(repair_pair.unmet_controls(rows)))
 
-    def test_inconclusive_visibility_cannot_substitute_for_a_rejected_fade(self):
+    def test_missing_engine_measurement_cannot_substitute_for_a_passing_fade_measurement(self):
         self.rows['stuck-fade'] = copy.deepcopy(self.rows['hidden-sprite'])
         misses = repair_pair.unmet_controls(self.rows)
         self.assertTrue(any('stuck-fade' in message for message in misses))
         self.assertFalse(any('hidden-sprite' in message for message in misses))
+
+    def test_hidden_sprite_requires_the_visual_failure(self):
+        self.rows['hidden-sprite'] = completed('needs-review', 'needs-review', 'no-answer')
+        misses = repair_pair.unmet_controls(self.rows)
+        self.assertTrue(any('hidden-sprite: expected completed/reject' in m for m in misses))
+        self.assertTrue(any('vision fail' in m and 'vision no-answer' in m for m in misses))
 
     def test_incomplete_or_unisolated_replay_or_missing_candidate_is_reported(self):
         for changed in ({'phase': 'failed'}, {'checks': []}, {'isolation': None},

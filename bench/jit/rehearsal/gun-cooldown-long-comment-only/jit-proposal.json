@@ -1,0 +1,244 @@
+{
+ "format": "expectrail.jit-proposal/v0",
+ "patchSha256": "d07a564e23b3e0f5d7cd7b0f47cd46e0ce82e0ce3e420e716840876c0550f6c8",
+ "model": "rehearsal-fixture",
+ "error": null,
+ "probes": [],
+ "candidates": [
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c1",
+    "origin": "AUTO_DIFF",
+    "statement": "The gun fires at least twice when shoot is tapped every 0.4 s for 1.2 s while facing right.",
+    "expectationRef": {
+     "claimId": "weapon.cooldown",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "projectile"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "min_event_count",
+     "event": "projectile_spawn",
+     "min": 2
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "shoot-right-every48"
+    ]
+   },
+   "source": "jit"
+  },
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c2",
+    "origin": "AUTO_DIFF",
+    "statement": "The gun fires at least twice when shoot is tapped every 0.1 s for 1.2 s while facing right.",
+    "expectationRef": {
+     "claimId": "weapon.cooldown",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "projectile"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "min_event_count",
+     "event": "projectile_spawn",
+     "min": 2
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "shoot-right-every12"
+    ]
+   },
+   "source": "jit"
+  },
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c3",
+    "origin": "AUTO_DIFF",
+    "statement": "The gun fires at least twice when shoot is tapped every 0.4 s for 1.2 s while facing left.",
+    "expectationRef": {
+     "claimId": "weapon.cooldown",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "projectile"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "min_event_count",
+     "event": "projectile_spawn",
+     "min": 2
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "shoot-left-every48"
+    ]
+   },
+   "source": "jit"
+  },
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c4",
+    "origin": "AUTO_DIFF",
+    "statement": "The gun fires at least twice when shoot is tapped every 0.1 s for 1.2 s while facing left.",
+    "expectationRef": {
+     "claimId": "weapon.cooldown",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "projectile"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "min_event_count",
+     "event": "projectile_spawn",
+     "min": 2
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "shoot-left-every12"
+    ]
+   },
+   "source": "jit"
+  },
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c5",
+    "origin": "AUTO_DIFF",
+    "statement": "The gun fires at least three times when walking right while tapping shoot and then shooting twice standing still.",
+    "expectationRef": {
+     "claimId": "weapon.cooldown",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "projectile"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "min_event_count",
+     "event": "projectile_spawn",
+     "min": 3
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "move-fire-right"
+    ]
+   },
+   "source": "jit"
+  },
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-c6",
+    "origin": "AUTO_DIFF",
+    "statement": "The gun fires at least three times when walking left while tapping shoot and then shooting twice standing still.",
+    "expectationRef": {
+     "claimId": "weapon.cooldown",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "projectile"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "min_event_count",
+     "event": "projectile_spawn",
+     "min": 3
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "probes",
+    "ids": [
+     "move-fire-left"
+    ]
+   },
+   "source": "jit"
+  }
+ ],
+ "diagnostics": [],
+ "usage": {
+  "model": "rehearsal-fixture",
+  "promptTokens": 0,
+  "completionTokens": 0
+ },
+ "promptSha256": null
+}

@@ -121,12 +121,12 @@ def print_summary(rows, calibration):
 
 def unmet_controls(rows):
     """Explain any missed rehearsal control without editing the actual job results."""
-    expected = {'mask-2': ('reject', None),
-                'hidden-sprite': ('needs-review', ('needs-review', 'no-answer')),
-                'stuck-fade': ('reject', ('pass', 'fail')),
-                'restored': ('accept', ('pass', 'pass'))}
+    expected = {'mask-2': ('reject', 'fail', None),
+                'hidden-sprite': ('reject', 'needs-review', 'fail'),
+                'stuck-fade': ('reject', 'pass', 'fail'),
+                'restored': ('accept', 'pass', 'pass')}
     misses = []
-    for name, (decision, observers) in expected.items():
+    for name, (decision, engine, visual) in expected.items():
         row = rows.get(name)
         if not row:
             misses.append(f"{name}: no completed job result.")
@@ -139,14 +139,14 @@ def unmet_controls(rows):
             misses.append(f"{name}: missing evidence that every replay ran under required isolation.")
         if not row['checks']:
             misses.append(f"{name}: no check results.")
-        elif observers is not None:
-            target = next((c for c in row['checks'] if c['route'] == 'walk' and
-                           c['spec'] == 'player-stays-above-ground'), {})
-            seen = (target.get('observed') or {}).get('after') or {}
-            actual = (seen.get('engine'), seen.get('visual'))
-            if actual != observers:
-                misses.append(f"{name}: walk/player-stays-above-ground After expected engine {observers[0]}, "
-                              f"vision {observers[1]}. Observed engine {actual[0] or 'missing'}, vision {actual[1] or 'missing'}.")
+            continue
+        target = next((c for c in row['checks'] if c['route'] == 'walk' and
+                       c['spec'] == 'player-stays-above-ground'), {})
+        seen = (target.get('observed') or {}).get('after') or {}
+        if seen.get('engine') != engine or (visual is not None and seen.get('visual') != visual):
+            wanted = f"engine {engine}" + (f", vision {visual}" if visual is not None else "")
+            misses.append(f"{name}: walk/player-stays-above-ground After expected {wanted}. "
+                          f"Observed engine {seen.get('engine') or 'missing'}, vision {seen.get('visual') or 'missing'}.")
     return misses
 
 
