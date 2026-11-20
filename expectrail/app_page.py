@@ -19,10 +19,10 @@ button.secondary{background:white;color:#175c47}button:disabled{opacity:.55;curs
 <p>Compare two folders on this computer. This first version supports Godot projects with existing routes and approved checks.</p>
 <section aria-labelledby="project-heading"><h2 id="project-heading">1. Your project and versions</h2>
 <p>Choose a copy from before the change and a copy from after it. Both must have the same folder layout.
-For your own checks, the routes and approvals come from <strong>Before</strong>. Expectrail does not change these folders.</p>
+For your own checks, the routes and approvals come from <strong>Before</strong>. Checking folders and verifying leave your source files unchanged.</p>
 <div class="grid"><div><label for="before">Before: full folder path</label><input id="before" placeholder="/Users/you/MyGame-before" autocomplete="off" spellcheck="false"></div>
 <div><label for="after">After: full folder path</label><input id="after" placeholder="/Users/you/MyGame-after" autocomplete="off" spellcheck="false"></div></div>
-<p>Each folder contains <code>project.godot</code> and <code>expectrail.project.json</code>.
+<p>Each folder needs <code>project.godot</code>. If <code>expectrail.project.json</code> is missing, check the folder to review and save a draft setup.
 The config names the routes and checks. A draft config cannot give an accept.
 The kinematic-character example uses the same config path as your project.</p>
 <details id="paths"><summary>Older projects without a config</summary>
@@ -169,8 +169,42 @@ function textElement(tag, text) {
   node.textContent=text;
   return node;
 }
-function playerPicker(panel, side, folder, preview) {
-  panel.append(textElement('p', 'Setup preview for '+folder+'\nProject config: no expectrail.project.json.\nStarting scene: '+preview.entryScene));
+function setupSave(result, select, side, folder, report) {
+  const review=report.saveReview;
+  if(!review) return;
+  if(review.blocked){result.append(textElement('p',review.blocked));return;}
+  const player=report.selectedPlayer;
+  const remaining=report.unresolvedBindings.length
+    ? 'Resolve the listed bindings and save a reviewed project config. Replay the route and choose checks for human approval.'
+    : 'Review the player binding, replay the route and choose checks for human approval.';
+  const summary=[
+    sideNames[side]+' folder: '+review.folder, 'Selected player: '+player,
+    review.runsProject ? 'This starts a disposable copy of the game headless to measure its controls. Continue only if you trust its project scripts.'
+                       : 'The input map supplies the route without starting the game.',
+    'On success, save '+review.setupFile+' and a content-addressed draft-first route in routes/.', remaining
+  ].join('\n');
+  const action=textElement('button','Save draft setup…');
+  action.type='button';
+  const status=textElement('p','');
+  result.append(textElement('p',summary),action,status);
+  action.onclick=async()=>{
+    if(busy || !result.isConnected) return;
+    if(!window.confirm(summary+'\n\nSave this draft setup?')){
+      status.textContent='Save cancelled. No setup files were written.';return;
+    }
+    controls(true);select.disabled=true;action.disabled=true;
+    status.textContent=review.runsProject?'Measuring controls and preparing the draft…':'Saving the draft…';
+    try {
+      const saved=await api('/api/setup/save',{side,folder,player,review:review.id});
+      status.textContent='Saved '+saved.setupFile+' and '+saved.route+' in '+review.folder+'. '+remaining;
+    } catch(error) {
+      status.textContent=error.message+' Check folders again before retrying.';
+    } finally {controls(false);}
+  };
+}
+function playerPicker(panel, side, folder, preview, detail) {
+  const overview=textElement('p',folder+'\n'+detail);
+  panel.append(overview);
   const label=textElement('label',sideNames[side]+' player');
   const select=document.createElement('select');
   label.htmlFor=select.id=side+'-player';
@@ -186,11 +220,12 @@ function playerPicker(panel, side, folder, preview) {
   panel.append(label,select,evidence);
   select.onchange=async()=>{
     // A new choice, folder edit or recheck detaches the previous response's destination.
-    const result=textElement('p','Reading the selected player…');
+    const result=textElement('div','Reading the selected player…');
     evidence.replaceChildren(result);
     const player=select.value;
+    overview.textContent=folder+'\nStarting scene: '+preview.entryScene;
     try {
-      await api('/api/inspect',{projectConfig:true,folder,player});
+      await api('/api/inspect',{projectConfig:true,side,folder,player,executionClass:values().executionClass});
       result.textContent='The project setup changed. Check folders again.';
     } catch(error) {
       const report=error.setupPreview;
@@ -204,15 +239,15 @@ function playerPicker(panel, side, folder, preview) {
         return `${item.sprite}.${item.property}: ${item.image} (${size}), ${drawing}.`;
       });
       lines.push(...report.unresolvedBindings);
-      lines.push('To verify this folder, supply a reviewed expectrail.project.json with the player node and its representative image. This preview is read-only.');
       result.textContent=lines.join('\n');
+      setupSave(result,select,side,folder,report);
     }
   };
 }
 for(const side of Object.keys(sideNames)) {
   el(side).addEventListener('input',()=>el('inspection-'+side).replaceChildren());
 }
-for(const id of ['manual','game','routes','specs']) {
+for(const id of ['manual','game','routes','specs','isolated']) {
   el(id).addEventListener('input',()=>{
     for(const side of Object.keys(sideNames)) el('inspection-'+side).replaceChildren();
   });
@@ -241,7 +276,7 @@ el('inspect').onclick=async()=>{
         if(!panel.isConnected) continue;
         blocked.push(panel);
         panel.append(heading);
-        if(error.setupPreview) playerPicker(panel,side,request.folder,error.setupPreview);
+        if(error.setupPreview) playerPicker(panel,side,request.folder,error.setupPreview,error.message);
         else panel.append(textElement('p',error.message));
       }
     }

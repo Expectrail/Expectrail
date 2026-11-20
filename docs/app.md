@@ -12,7 +12,7 @@ The address is on `127.0.0.1`, with a free port and a new token each time. Do no
 The app serves its own page without downloading scripts, styles or fonts.
 
 1. Paste the full paths to **Before** and **After**, two Godot project folders. Each has
-   `project.godot` and its own [project config](project-config.md), `expectrail.project.json`.
+   `project.godot`. To verify, each also needs its own [project config](project-config.md), `expectrail.project.json`.
    Git references are not supported in this screen.
 2. The config's `routes` and `approvedContracts` lists choose the policy. The base config
    chooses what judges both copies. A config produced by `expectrail init` is a draft and
@@ -22,7 +22,7 @@ The app serves its own page without downloading scripts, styles or fonts.
    it runs neither your selected game nor a model. Missing engine, display or drawing support
    now shows its reason and fix for live vision as well as recorded vision. When a config is missing, the app reads the saved Godot scenes
    and shows the starting scene, possible player nodes, images and any binding that still
-   needs a choice. If the starting scene has several possible players, choose a node in
+   needs a choice. Choose a proposed node in
    **Before player** or **After player**. Each selection shows the image path, source sprite,
    available dimensions and atlas regions or whole-image reference for that node. You can
    switch players independently on either side. Editing a folder clears its preview.
@@ -31,7 +31,23 @@ The app serves its own page without downloading scripts, styles or fonts.
    menu game, the preview reads the saved inputs without starting the game. If the draft
    selects a player, the preview names it and shows its image candidates. Replay the route
    to see whether those inputs reach gameplay.
-   Previewing leaves both folders untouched. Verification still requires a configuration.
+   Previewing leaves both folders untouched.
+   **Save draft setup…** shows a confirmation for the selected side, folder and player. If
+   route discovery needs a live control measurement, confirming starts a disposable copy
+   of the game headless, including its project scripts. Only confirm for a trusted project.
+   With **Require the replay sandbox** selected, setup refuses this probe. Cancelling the
+   confirmation leaves the project untouched. An input-map-only setup can save directly
+   from the authored files without starting the game.
+
+   Saving uses the same draft and first route as `expectrail init --player NODE`. When
+   the binding needs a decision, the app writes `expectrail.project.draft.json` beside
+   `project.godot` and a content-addressed route under `routes/`. Complete the listed
+   bindings and save the reviewed config object as `expectrail.project.json`. When the
+   binding is complete, the config is saved at that filename with `draft: true`. In both
+   cases review the route in gameplay and choose checks for human approval. A changed
+   folder, an existing setup file or an unsupported route stops the save. The app gives
+   the reason and the **Check folders** action lets you start a new review.
+
    **Older projects without a config** retains the explicit path inputs for existing checkouts.
 4. Select **Verify**. The app and `expectrail verify --project AFTER --base BEFORE` prepare
    the same kind of request and use the same worker. The job snapshots both games and the
@@ -48,12 +64,12 @@ The app serves its own page without downloading scripts, styles or fonts.
 The page sends an authenticated `POST /api/inspect` with `projectConfig: true` and
 `folder` for each side. A missing `expectrail.project.json` still returns HTTP 400 with
 `state: "could-not-be-carried-out"` and the existing human-readable `detail`. For an
-ambiguous player with no saved draft, the same response includes a `setupPreview` object.
+project with player candidates and no saved draft, the same response includes a `setupPreview` object.
 Its `players` array supplies the options, `selectedPlayer` is null and `imageSuggestions`
 is empty. The page sends the chosen node to the same endpoint, for example:
 
 ```json
-{"projectConfig":true,"folder":"/path/to/breakout","player":"Paddle"}
+{"projectConfig":true,"side":"before","folder":"/path/to/breakout","player":"Paddle"}
 ```
 
 The HTTP 400 response still blocks verification. Its `setupPreview` describes the selected
@@ -74,7 +90,16 @@ node. For example, the Paddle report contains this suggestion in `imageSuggestio
 has `regions: null`, and an unread image size is null. `unresolvedBindings` lists inspection
 problems or choices that need human review. Invalid selections return a detail without
 `setupPreview`. A saved draft retains its recorded selection and route checks. Selecting a
-player only reads the folder's authored files. Verification still needs a project config.
+player reads the folder. A selected-player request with `side` set to `before` or `after`
+also supplies a `saveReview`. Its `folder`, `setupFile` and `runsProject` describe the
+proposed save. A blocked review gives a reason without a save ID.
+
+After the developer confirms, the browser posts `side`, `folder`, `player` and the
+single-use `review` ID to the authenticated `/api/setup/save` endpoint. The server checks
+the review against that side's current selection and the project bytes, then builds and
+publishes the draft without overwriting a setup. A successful HTTP 201 response names
+the actual `setupFile` and `route`. Each new side inspection invalidates its previous
+review. Saving creates no verification job or approval.
 
 ### Try kinematic-character with saved vision answers
 
