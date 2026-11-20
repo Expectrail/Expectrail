@@ -1,4 +1,4 @@
-"""Compare three repairs of the same public kinematic-character fault through the local app backend."""
+"""Compare four repairs of the same public kinematic-character fault through the local app backend."""
 import argparse
 import json
 import os
@@ -79,8 +79,9 @@ def compare(local_app, before, after, out):
 
 def print_summary(rows, calibration):
     print('## Kinematic-character repair comparison through the configured app backend\n')
-    print('Before has collision mask 0. The candidates select mask 2, restore collision with the sprite hidden, '
-          'or restore the original scene.')
+    print('Before has collision mask 0. Mask 2 selects another collision layer. The configured visibility '
+          'control sets the sprite invisible. The stuck fade leaves the sprite visible in the scene tree '
+          'with alpha zero. The restored candidate uses the original scene.')
     frames = calibration['frames']
     print(f"Saved calibration: enabled={calibration['enabled']}, {frames['found']} found in "
           f"{frames['asked']} asked of {frames['listed']} listed frames.")
@@ -120,7 +121,9 @@ def print_summary(rows, calibration):
 
 def unmet_controls(rows):
     """Explain any missed rehearsal control without editing the actual job results."""
-    expected = {'mask-2': ('reject', None), 'hidden-sprite': ('reject', ('pass', 'fail')),
+    expected = {'mask-2': ('reject', None),
+                'hidden-sprite': ('needs-review', ('needs-review', 'no-answer')),
+                'stuck-fade': ('reject', ('pass', 'fail')),
                 'restored': ('accept', ('pass', 'pass'))}
     misses = []
     for name, (decision, observers) in expected.items():
@@ -162,7 +165,8 @@ def main():
     args.out.mkdir(parents=True, exist_ok=False)
     with tempfile.TemporaryDirectory(prefix='expectrail-repair-pair-') as tmp:
         root = Path(tmp)
-        before, wrong, hidden, restored = (root / name for name in ('before', 'mask-2', 'hidden-sprite', 'restored'))
+        before, wrong, hidden, fade, restored = (root / name for name in
+                                                 ('before', 'mask-2', 'hidden-sprite', 'stuck-fade', 'restored'))
         app_kinematic.prepare(source / project['path'], restored)
         calibration = anchored.check_calibration(record.read_json(restored / 'vision/calibration.json'))
         calibration = {key: calibration[key] for key in ('enabled', 'frames', 'rates')}
@@ -170,10 +174,13 @@ def main():
         changes = app_kinematic.ROUTE.parent.parent / 'changes'
         apply_patch(before, changes / 'broken.patch')
         shutil.copytree(before, wrong)
-        apply_patch(wrong, Path(__file__).resolve().parent / 'repair-pair' / 'wrong-mask-repair.patch')
+        repair_patches = Path(__file__).resolve().parent / 'repair-pair'
+        apply_patch(wrong, repair_patches / 'wrong-mask-repair.patch')
         shutil.copytree(restored, hidden)
         apply_patch(hidden, changes / 'invisible.patch')
-        candidates = (wrong, hidden, restored)
+        shutil.copytree(restored, fade)
+        apply_patch(fade, repair_patches / 'stuck-fade.patch')
+        candidates = (wrong, hidden, fade, restored)
         folders = (before, *candidates)
         original = {f.name: tree.digest(f) for f in folders}
         if len(set(original.values())) != len(folders):

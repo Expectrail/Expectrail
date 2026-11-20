@@ -54,7 +54,7 @@ jobs:
       - name: Verify each outside project, every replay in the sandbox
         id: projects
         run: python -m tools.outside_trial --fetch --execution-class isolated --out runs/outside
-      - name: Compare three proposed kinematic-character repairs through the local app backend
+      - name: Compare four proposed kinematic-character repairs through the local app backend
         if: ${{ !cancelled() && (steps.projects.outcome == 'success' || steps.projects.outcome == 'failure') }}
         shell: bash
         run: |
