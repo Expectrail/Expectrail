@@ -107,16 +107,16 @@
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },
   "jit.yml::pixel-ask::Ask SAM 3.1 about the captured frames (one image a judged frame)": {
-    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed",
+    "EXPECTRAIL_SPEC_USD_CAP": "not sent: jit.cli pixel-ask asks SAM only (pixel_jobs.ask through MetaSamClient) and calls no proposer; expectrail.spec_writer is only imported, through expectrail.jit.intent. tests.test_jit_spend_roles runs it with --sam-live and the network stubbed: every image to SAM, no spec request (builder two, 2026-11-20)",
     "cannotTell": [
       "the script exports EXPECTRAIL_SAM_USD_CAP itself, and this audit does not follow the order of a step's commands, so it cannot tell whether every start runs with it"
     ]
   },
   "jit.yml::propose::Propose checks (one Muse Spark call)": {
-    "EXPECTRAIL_SAM_USD_CAP": "unreviewed"
+    "EXPECTRAIL_SAM_USD_CAP": "not sent: jit.cli propose sends one spec request (intent.spark_intent through spec_writer.http_transport) and builds no SAM client; agents.sam_observations is only imported, through expectrail.jit.sam_observer. tests.test_jit_spend_roles runs it under every offer and both pixel observers with the network stubbed: one spec request, no SAM try (builder two, 2026-11-20)"
   },
   "jit.yml::revise::Revise the rejected checks (at most one Muse Spark call)": {
-    "EXPECTRAIL_SAM_USD_CAP": "unreviewed"
+    "EXPECTRAIL_SAM_USD_CAP": "not sent: jit.cli revise sends at most one spec request (intent.spark_intent through spec_writer.http_transport) and builds no SAM client; agents.sam_observations is only imported, through expectrail.jit.sam_observer. tests.test_jit_spend_roles runs it under the pixel setting with the network stubbed: one spec request, no SAM try (builder two, 2026-11-20)"
   },
   "mutation-bench.yml::run::Export scan before upload (no keys, no signing key; the private set is never mounted here)": {
     "EXPECTRAIL_SAM_USD_CAP": "unreviewed",

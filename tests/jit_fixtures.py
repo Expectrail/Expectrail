@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import json
+import shutil
 import tempfile
+import weakref
 from pathlib import Path
 
 from expectrail.jit.intent import spark_intent
@@ -71,10 +73,18 @@ def model(answer=ANSWER, **kw):
 
 
 class Case:
-    """A temporary folder with the base bug, candidate fixes and near-miss patches as stub files."""
+    """A temporary folder with the base bug, candidate fixes and near-miss patches as stub files.
+
+    The folder is removed when this object is collected, and at interpreter exit otherwise, so a run
+    of the suite leaves nothing behind. Before this, 25 test modules each left one folder per test in
+    the system temporary directory: a full suite run on one machine had left 12,890 of them, which
+    filled the disk. Callers that register their own cleanup still work; removing a folder twice is
+    not an error here.
+    """
 
     def __init__(self):
         self.dir = Path(tempfile.mkdtemp(prefix="jit-test-"))
+        self._cleanup = weakref.finalize(self, shutil.rmtree, self.dir, True)
 
     def patch(self, name: str, text: str = STUB) -> Path:
         p = self.dir / f"{name}.patch"

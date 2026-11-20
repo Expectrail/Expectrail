@@ -2,6 +2,7 @@
 generator is not offered those signals until the reproduction baseline is recorded (issue #285)."""
 import copy
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -337,7 +338,9 @@ class TheGeneratorIsNotOfferedThemBeforeTheBaseline(unittest.TestCase):
             validate_v1(cand["spec"], "trace-spec")   # the language has it; the generator may not use it yet
             doc = {"format": intent.PROPOSAL_FORMAT, "patchSha256": intent._sha(patch), "model": "m", "error": None,
                    "probes": [], "candidates": [cand], "diagnostics": [], "usage": {}, "promptSha256": None}
-            path = Path(tempfile.mkdtemp(prefix="jit-held-")) / intent.PROPOSAL_NAME
+            folder = Path(tempfile.mkdtemp(prefix="jit-held-"))
+            self.addCleanup(shutil.rmtree, folder, True)
+            path = folder / intent.PROPOSAL_NAME
             path.write_text(json.dumps(doc), encoding="utf-8")
             propose = intent.from_proposal(path)
             if refused:
