@@ -47,6 +47,14 @@ def preview(root, uri):
             mime = "image/jpeg"
         elif header[:4] == b"RIFF" and header[8:] == b"WEBP":
             mime = "image/webp"
+        if mime is None and path.stat().st_size <= 16 * 1024:
+            from expectrail.onboard_review import svg_size
+
+            raw = header + stream.read(16 * 1024)
+            if svg_size(raw) is not None:
+                data = base64.b64encode(raw).decode("ascii")
+                return (f'<figure><img alt="{escape(path.name)}" src="data:image/svg+xml;base64,{data}">'
+                        f'<figcaption>{uri_text}</figcaption></figure>')
         if not mime or path.stat().st_size > 4 * 1024 * 1024:
             return f"<p>{uri_text} (preview unavailable)</p>"
         data = base64.b64encode(header + stream.read(4 * 1024 * 1024)).decode("ascii")
@@ -189,7 +197,9 @@ def render(root, source=None):
 def main(argv):
     parser = route.Parser(prog="expectrail onboard", description=__doc__)
     parser.add_argument("--project", type=Path, help="game folder (an existing init draft or a readable project)")
-    parser.add_argument("--approve", type=Path, help="a person applies a saved answers file; never run by an agent on real specs")
+    answer_mode = parser.add_mutually_exclusive_group()
+    answer_mode.add_argument("--check-answers", type=Path, help="validate an answers file without applying it")
+    answer_mode.add_argument("--approve", type=Path, help="a person applies a saved answers file; never run by an agent on real specs")
     parser.add_argument("--evidence", type=Path, help="existing clean capture folder (trace.json, replay.json, frames/)")
     parser.add_argument("--broken", action="append", default=[], metavar="NAME=FOLDER", help="existing broken-copy capture, repeatable")
     parser.add_argument("--recording", type=Path, help="recorded observer answers; no live model is called")
@@ -199,6 +209,15 @@ def main(argv):
     try:
         args = parser.parse_args(argv)
         from expectrail import onboard_page, onboard_review
+        if args.check_answers:
+            if any((args.project, args.source, args.evidence, args.broken, args.recording, args.godot, args.out)):
+                raise ValueError("Use --check-answers with the answers file alone.")
+            try:
+                result = onboard_review.check_answers(args.check_answers)
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                raise ValueError(f"{exc}. Check the answers file path or save a fresh file from the review page.") from exc
+            print(json.dumps(result, indent=2))
+            return 0
         if args.approve:
             if args.project or args.source or args.evidence or args.broken or args.recording or args.godot:
                 raise ValueError("Use --approve with the answers file alone.")
@@ -213,6 +232,8 @@ def main(argv):
             raise ValueError("Use a new .html file for the review page.")
         if out.exists() or out.is_symlink():
             raise ValueError("The review page already exists; choose a new --out file.")
+        if not out.parent.is_dir():
+            raise ValueError(f"Create the --out directory {out.parent} or choose a file in an existing directory.")
         if args.source is None and (root / ACTIVE).exists() and (root / PENDING).exists():
             raise ValueError("Both draft files exist; select one with --source.")
         if args.source == PENDING or (not (root / ACTIVE).exists() and (root / PENDING).exists()):
