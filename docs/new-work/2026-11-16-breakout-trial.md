@@ -59,16 +59,3 @@ with usable pointer control before reviewing the drafts for approval.
   result and core-audit data, screenshot, raw result evidence, report and issue text.
 - `docs/outside-projects.md`: honest unsuccessful-trial table.
 - This work log. The separate Part A dependency is unchanged.
-
-## Correction to the kinematic-character table (November 20)
-
-The visual observer column said `agrees` for the broken-collision row. The recorded findings say the
-after-change visual verdict on the ground check is `not-asked`: the engine alone rejected that change,
-and the `agrees` referred to a separate paired anchor comparison on two frames. The table now says so,
-because the old wording read as two observers confirming one real defect, which is not what happened.
-The last row's recorded explanation is also marked as the one the run wrote; re-judged on main the
-evaluator reports the player absent in 83 of 120 observed frames instead.
-
-Source: the offline reproduction of run 43652198623 on main
-(https://github.com/Expectrail/Expectrail/issues/244#issuecomment-7009221442), which re-judged all four
-captures from the public artifact with 841 of 860 questions answered from the recording and no model call.
