@@ -5,6 +5,9 @@
 Snapshots, all replayed headless and trace-only:
 
 - **reference**: the clean game (``patches=[]``). A generated check must pass here on every run.
+- **do-nothing**: the clean game with the actor a check is about doing nothing
+  (expectrail/jit/do_nothing.py, ``[control]``, #675). A check that passes here on every run states no
+  obligation and is dropped before the near misses.
 - **variants**: near misses of the candidate (expectrail/jit/dodgy.py), ``[*base, candidate, variant]``.
   A valid check must fail on every run of at least one.
 - **candidate**: ``[*base, candidate]``. A valid check that fails here on every run is a catch.
@@ -173,7 +176,7 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
              variant_limit: int = 8, approved_claims: frozenset[str] = frozenset(),
              run_id: str | None = None, clock=time.monotonic, offer: str = offer_mod.BASELINE,
              candidate_to_model: str = "shown", observer=None, frame_runner=None,
-             pixel_capture: Path | None = None, report_route: dict | None = None) -> dict:
+             pixel_capture: Path | None = None, report_route: dict | None = None, do_nothing=None) -> dict:
     """One change: propose, replay, judge. ``candidate_to_model`` is ``shown`` (the default) or
     ``withheld``: under ``withheld`` the intent is given no byte of the candidate patch and no diff map made
     from it (issue #285, step 6), and the record says so in ``settings.candidate``. The candidate is
@@ -186,7 +189,12 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
 
     ``pixel_capture`` (a folder) is the first of the three jobs of expectrail/jit/pixel_jobs.py: every pixel
     check's probe is replayed with frames on all three builds and the folders are kept there for the
-    observer, which is not asked here; the pixel rows are then ``not-run``."""
+    observer, which is not asked here; the pixel rows are then ``not-run``.
+
+    ``do_nothing`` gives the do-nothing controls (#675): a callable ``(classes) -> [control]`` as
+    expectrail/jit/do_nothing.py ``controls`` returns them, or ``False`` for none. Left ``None``, a run on
+    the real harness (no ``runner``) makes them from ``game`` and the profile; a run with a ``runner``
+    (a test double or a recorded replay) gets none, and each check's row says so."""
     from expectrail.jit.intent import check_candidate
 
     offer_mod.replayable(offer)
@@ -195,9 +203,18 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
     out.mkdir(parents=True, exist_ok=True)
     if frame_runner is None and runner is None:
         frame_runner = _default_runner(game, frames=True)
+    real_harness = runner is None
     runner = runner or _default_runner(game)
     spend = Spend(budget_usd, prices or {})
     profile = load_strict(Path(profile_path), "mechanics-profile")
+    if do_nothing is None and real_harness:
+        from expectrail.jit import do_nothing as do_nothing_mod
+        from harness.run import REPO
+
+        game_dir = Path(game) if game else REPO / "game" / "platformer"
+        controls_fn = lambda classes: do_nothing_mod.controls(game_dir, profile, classes)  # noqa: E731
+    else:
+        controls_fn = do_nothing or None
     cand_bytes = Path(candidate).read_bytes()
     report = report if isinstance(report, str) else ""
     diagnostics: list[str] = []
@@ -215,7 +232,7 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
     try:
         _pipeline(profile, report, cand_bytes, Path(candidate), list(base_patches), out, runner, intent,
                   variants_fn, game, spend, reps, variant_limit, approved_claims, state, diagnostics, clock, offer,
-                  candidate_to_model, report_route)
+                  candidate_to_model, report_route, controls_fn)
     except (PatchError, NothingGenerated) as exc:
         status, reason = "nothing-generated", " ".join(str(exc).split())[:300]
     except Exception as exc:  # noqa: BLE001 - rule 3: anything unexpected is "nothing generated", never a pass
@@ -242,6 +259,7 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
         "probes": state["probes"],
         "variants": state["variants"],
         "validity": state["validity"],
+        "doNothing": state.get("doNothing", []),
         "catches": state["catches"],
         "counts": {"proposed": len(state["proposed"]), "valid": sum(1 for v in state["validity"] if v["valid"]),
                    "strong": sum(1 for c in state["catches"] if c["strength"] == "strong"),
@@ -255,7 +273,7 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
         validate_v1(doc, "jit-run")
     except Exception as exc:  # noqa: BLE001 - rule 3 holds even for a record we could not write as built
         doc.update(status="nothing-generated", reason=f"RECORD_INVALID: {' '.join(str(exc).split())[:240]}",
-                   diffMap=None, proposed=[], probes=[], variants=[], validity=[], catches=[],
+                   diffMap=None, proposed=[], probes=[], variants=[], validity=[], doNothing=[], catches=[],
                    counts={"proposed": 0, "valid": 0, "strong": 0, "weak": 0})
         if "pixelChecks" in doc:
             doc["pixelChecks"] = []
@@ -267,7 +285,8 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
 
 def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner, intent, variants_fn, game,
               spend: Spend, reps, variant_limit, approved_claims, state, diagnostics, clock,
-              offer: str = offer_mod.BASELINE, candidate_to_model: str = "shown", report_route=None) -> None:
+              offer: str = offer_mod.BASELINE, candidate_to_model: str = "shown", report_route=None,
+              controls_fn=None) -> None:
     from expectrail.jit.diff_map import withheld_map
 
     probes = offer_mod.library(profile["actions"], offer, report, profile=profile, game=game)
@@ -419,8 +438,10 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
     variant_names = {}
 
     def runs_of(name: str, patches: list[Path], todo: list[tuple[dict, list[str]]], count: int,
-                stop_early=None) -> dict[str, list[str]]:
-        """{specId: [outcome per run]} for each check, replaying only the probes the checks need."""
+                stop_early=None, judge=None) -> dict[str, list[str]]:
+        """{specId: [outcome per run]} for each check, replaying only the probes the checks need.
+        ``judge(entry, ids, eps)`` replaces the plain judgement (the do-nothing control's, #675)."""
+        judge = judge or _evaluate
         results: dict[str, list[str]] = {e["spec"]["id"]: [] for e, _ in todo}
         active = list(todo)
         for n in range(1, count + 1):
@@ -428,7 +449,7 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
             eps = {pid: replay(name, patches, pid, n,
                                trace_specs=[e["spec"] for e, ids in active if pid in ids]) for pid in pids}
             for e, ids in active:
-                results[e["spec"]["id"]].append(_evaluate(e, ids, eps))
+                results[e["spec"]["id"]].append(judge(e, ids, eps))
                 spec = e['spec']
                 verdicts = ([evaluate(spec, eps[ids[0]], eps[ids[1]])] if e['applies']['kind'] == 'pair'
                             else [evaluate(spec, eps[pid]) for pid in ids])
@@ -446,6 +467,11 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
     # 1. Reference: a check that does not pass on the first run is dropped before any more replays.
     ref = runs_of("reference", [], plan, reps, stop_early=lambda rs: rs[-1] != "pass")
     on_ref = [(e, ids) for e, ids in plan if assess.all_of(ref[e["spec"]["id"]], "pass", reps)]
+
+    # 1b. The do-nothing control (#675): the clean game with the actor each check is about doing nothing.
+    #     A check that passes every run of it states no obligation and is dropped before the near misses.
+    dn = _do_nothing_stage(on_ref, controls_fn, out, runs_of, reps, state)
+    on_ref = [(e, ids) for e, ids in on_ref if dn[e["spec"]["id"]]["outcome"] != "passes"]
 
     # 2. Near-miss variants: one run each, then confirm kills to reps runs. The base build (the game the
     #    bug report describes, without the candidate) is the first near miss of any fix; its runs also
@@ -497,9 +523,12 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
     valid_plan = []
     for e, ids in plan:
         sid = e["spec"]["id"]
-        verdict = assess.validity(ref[sid], variant_results[sid], reps)
+        dn_row = dn.get(sid) or {"control": None, "runs": [], "outcome": "not-run",
+                                 "reason": "did not pass on the reference, so the control was not run"}
+        verdict = assess.validity(ref[sid], variant_results[sid], reps, dn_row["runs"])
         state["validity"].append({"specId": sid, "valid": verdict["valid"], "reference": ref[sid],
-                                  "killed": verdict["killed"], "reasons": verdict["reasons"], "candidate": []})
+                                  "killed": verdict["killed"], "reasons": verdict["reasons"], "candidate": [],
+                                  "doNothing": dn_row})
         if verdict["valid"]:
             valid_plan.append((e, ids))
     cand = runs_of("candidate", [*base_patches, candidate], valid_plan, reps) if valid_plan else {}
@@ -743,6 +772,66 @@ def _pixel_capture(by_probe: dict, routes: dict, base_patches: list, candidate: 
                 replay(name, patches, pid, n, with_runner=frame_runner)
                 pixel_jobs.store_replay(out / "jit-replays" / name / f"{pid}-{n}", store, route, planned, objects,
                                         player, windows)
+
+
+NO_CONTROL_GIVEN = "no do-nothing control was given to this run"
+
+
+def _do_nothing_stage(on_ref, controls_fn, out: Path, runs_of, reps: int, state: dict) -> dict:
+    """{specId: {control, runs, outcome, reason}} for each check in ``on_ref``, and ``state["doNothing"]``:
+    one row per class the checks are about, with the control's patch digest or why there is none.
+
+    ``controls_fn(classes)`` gives the controls (expectrail/jit/do_nothing.py, ``controls``); ``None`` means
+    this run was given none, and every row says so (``not-run``). A run of a control stops early once its
+    runs can no longer all pass or all fail. A frozen actor's floor state is not observed, so a run whose
+    verdict depends on it cannot be told (do_nothing.judge)."""
+    from expectrail.jit import do_nothing as do_nothing_mod
+
+    rows: dict[str, dict] = {}
+    if not on_ref:
+        return rows
+    by_class: dict[str, list] = {}
+    for e, ids in on_ref:
+        by_class.setdefault(e["spec"]["scope"]["class"], []).append((e, ids))
+    if controls_fn is None:
+        for e, _ids in on_ref:
+            rows[e["spec"]["id"]] = {"control": None, "runs": [], "outcome": "not-run", "reason": NO_CONTROL_GIVEN}
+        return rows
+    made = {c["class"]: c for c in controls_fn(sorted(by_class))}
+    cdir = out / "jit-controls"
+    cdir.mkdir(exist_ok=True)
+    for cls, todo in sorted(by_class.items()):
+        c = made.get(cls) or {"id": f"do-nothing:{cls}", "mode": None, "files": [], "patchText": None,
+                              "reason": f"no control was made for {cls}"}
+        text = c.get("patchText")
+        entry = {"class": cls, "id": c["id"], "mode": c.get("mode"), "files": list(c.get("files") or []),
+                 "patchSha256": _sha_bytes(text.encode("utf-8")) if text else None,
+                 "reason": None if text else (c.get("reason") or "no patch")}
+        state.setdefault("doNothing", []).append(entry)
+        if not text:
+            for e, _ids in todo:
+                rows[e["spec"]["id"]] = {"control": c["id"], "runs": [], "outcome": "not-run",
+                                         "reason": entry["reason"]}
+            continue
+        path = cdir / f"jit-do-nothing-{cls}.patch"
+        path.write_text(text, encoding="utf-8")
+        why: dict[str, str] = {}
+
+        def judge(e, ids, eps, mode=c.get("mode")):
+            outcome, reason = do_nothing_mod.judge(e, ids, eps, _evaluate, mode)
+            if reason:
+                why[e["spec"]["id"]] = reason
+            return outcome
+
+        res = runs_of(f"do-nothing-{cls}", [path], todo, reps,
+                      stop_early=lambda rs: rs[-1] not in ("pass", "fail") or rs[-1] != rs[0], judge=judge)
+        for e, _ids in todo:
+            runs = res[e["spec"]["id"]]
+            outcome = assess.do_nothing(runs, reps)
+            rows[e["spec"]["id"]] = {"control": c["id"], "runs": runs, "outcome": outcome,
+                                     "reason": assess.DO_NOTHING_PASSED if outcome == "passes"
+                                     else why.get(e["spec"]["id"])}
+    return rows
 
 
 def _variants(game, base_patches, candidate, limit):

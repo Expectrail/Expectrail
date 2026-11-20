@@ -100,8 +100,20 @@
         "killed": {"type": "array", "items": {"type": "string", "maxLength": 300}},
         "reasons": {"type": "array", "items": {"type": "string", "maxLength": 300}},
         "candidate": {"$ref": "#/$defs/runs"},
-        "outcome": {"enum": ["catch", "no-catch", "flaky", "not-evaluated"]}
+        "outcome": {"enum": ["catch", "no-catch", "flaky", "not-evaluated"]},
+        "doNothing": {"$ref": "#/$defs/doNothingRow"}
       }}},
+    "doNothing": {"type": "array", "maxItems": 3,
+      "description": "One row per class the checks that passed on the reference are about (#675, expectrail/jit/do_nothing.py): the do-nothing control made for it, by its patch digest, or why there is none.",
+      "items": {"type": "object", "additionalProperties": false,
+        "required": ["class", "id", "mode", "files", "patchSha256", "reason"],
+        "properties": {
+          "class": {"enum": ["player", "enemy", "projectile"]},
+          "id": {"type": "string", "maxLength": 100},
+          "mode": {"enum": ["frozen", "never-made", null]},
+          "files": {"type": "array", "maxItems": 20, "items": {"type": "string", "maxLength": 300}},
+          "patchSha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+          "reason": {"type": ["string", "null"], "maxLength": 300}}}},
     "catches": {"type": "array", "items": {
       "type": "object", "additionalProperties": false,
       "required": ["specId", "statement", "claimId", "strength", "probeIds", "candidate", "base", "killed"],
@@ -173,6 +185,14 @@
     "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._/-]*$"},
     "runs": {"type": "array", "items": {"enum": ["pass", "fail", "not_exercised", "insufficient_observation",
                                                   "execution_error"]}},
-    "pixelRuns": {"type": "array", "maxItems": 20, "items": {"enum": ["pass", "fail", "needs-review"]}}
+    "pixelRuns": {"type": "array", "maxItems": 20, "items": {"enum": ["pass", "fail", "needs-review"]}},
+    "doNothingRow": {"type": "object", "additionalProperties": false,
+      "description": "One check's runs on the do-nothing control (#675). 'passes' (every run passed) drops the check: it states no obligation. The other outcomes are recorded only.",
+      "required": ["control", "runs", "outcome", "reason"],
+      "properties": {
+        "control": {"type": ["string", "null"], "maxLength": 100},
+        "runs": {"$ref": "#/$defs/runs"},
+        "outcome": {"enum": ["passes", "fails", "indeterminate", "not-run"]},
+        "reason": {"type": ["string", "null"], "maxLength": 300}}}
   }
 }
