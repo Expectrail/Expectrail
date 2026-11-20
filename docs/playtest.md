@@ -1,5 +1,7 @@
 # Bring a playtest report to Expectrail
 
+Current #531 kit: [current model, full-context reservation and $10 cap envelope](live-repair/RUN-SHEET.md). The historical GPT-4o fixer profile below is deprecated and now refused; its offline regression fixtures do not enable it live.
+
 A report says what a player saw and supplies the inputs needed to try it again.
 It is not a check or an approval. Expectrail replays from the game's start; it
 does not restore a saved state or trust the report's claim that a bug happened.

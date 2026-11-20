@@ -24,7 +24,8 @@ class SetupTest(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.game = Path(tmp.name) / "game"
-        shutil.copytree(ROOT / "game/platformer", self.game)
+        # A game that has not been onboarded: the bundled game's own config is left out (#259).
+        shutil.copytree(ROOT / "game/platformer", self.game, ignore=shutil.ignore_patterns("expectrail.project.json"))
 
     def test_inspect_and_dry_run_are_read_only_and_match_the_written_drafts(self):
         original = {p.relative_to(self.game): p.read_bytes() for p in self.game.rglob("*") if p.is_file()}

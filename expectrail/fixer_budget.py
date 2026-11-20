@@ -40,6 +40,8 @@ def read(path):
         if len(rows) != doc['admittedRequests'] or sum(r['reservedNanoUsd'] for r in rows) != reserved:
             raise ValueError('token reservations disagree')
         for r in rows:
+            if tariff.get('contextTokenCeiling') is not None and (r['inputTokenBound'] != tariff['contextTokenCeiling'] or not 0 < r.get('byteTokenBound',0) <= r['inputTokenBound']):
+                raise ValueError('context reservation disagrees with reviewed ceiling')
             if r['reservedNanoUsd'] != r['inputTokenBound']*tariff['inputNanoUsdPerToken'] + r['outputTokenCap']*tariff['outputNanoUsdPerToken']:
                 raise ValueError('request maximum disagrees with tariff')
         for field, wire in [('inputTokensObserved','inputTokens'),('outputTokensObserved','outputTokens')]:
@@ -124,7 +126,7 @@ def _start_controlled(path, doc, config):
         capability = spend.read_provider_capability(resources.ROOT / 'contracts/examples/provider-capabilities' / (config.provider+'.json'))
         price = next(p for p in capability.get('tokenPrices',[]) if p['model']==config.model)
         # A byte bound is supported only for this byte-BPE text model/protocol.
-        if (config.provider,config.protocol,config.model) != ('openai','openai','gpt-4o'):
+        if (config.provider,config.protocol) != ('openai','openai') or config.model not in ('gpt-4o','gpt-6.1-sol'):
             raise ValueError('unsupported input-token bound')
         if config.api_base != 'https://api.openai.com/v1':
             raise ValueError('unpriced endpoint')
@@ -135,6 +137,7 @@ def _start_controlled(path, doc, config):
     # Reserve F against the aggregate role cap and the existing month ledger once.
     # Request reservations below spend this hold; they never hold the same dollars twice.
     spend.hold('muse',live=True,usd=doc['capNanoUsd']/fixer_meter.NANO)
+    ensure_available(config, price, path, doc)
     return TokenMeter(path,doc,config,price)
 
 
@@ -175,21 +178,29 @@ class TokenMeter(fixer_meter.Meter):
             payload=json.loads(body)  # Price the immutable bytes that the sender forwards.
             if config != self.provider_config or url != config.api_base+'/chat/completions':
                 self.fail('fixer-bound-unavailable','request endpoint/config changed')
-            if (set(payload)-{'model','messages','max_tokens','temperature','response_format'} or
-                    payload.get('model') != config.model or type(payload.get('max_tokens')) is not int or
-                    not 1 <= payload['max_tokens'] <= 4096 or not isinstance(payload.get('messages'),list) or
+            if (set(payload)-{'model','messages',self.doc['pricing'].get('outputTokenField','max_tokens'),'temperature','response_format','service_tier'} or
+                    payload.get('model') != config.model or type(payload.get(self.doc['pricing'].get('outputTokenField','max_tokens'))) is not int or
+                    not 1 <= payload[self.doc['pricing'].get('outputTokenField','max_tokens')] <= 4096 or not isinstance(payload.get('messages'),list) or
                     not payload['messages'] or any(set(m)!={'role','content'} or
                         m['role'] not in ('system','user','assistant') or not isinstance(m['content'],str)
                         for m in payload['messages'])):
                 self.fail('fixer-bound-unavailable','unsupported billable request shape')
             if len(self.doc['requests']) >= 1024:
                 self.fail('fixer-invocation-cap','request record limit reached')
+            if self.doc['pricing'].get('outputTokenField') == 'max_completion_tokens' and payload.get('service_tier') != 'default':
+                self.fail('fixer-bound-unavailable','standard service tier must be explicit')
             bound=len(body)+1024+64*len(payload['messages'])
-            tariff=self.doc['pricing']; amount=bound*tariff['inputNanoUsdPerToken']+payload['max_tokens']*tariff['outputNanoUsdPerToken']
+            byte_bound=bound
+            ceiling=self.doc['pricing'].get('contextTokenCeiling')
+            if ceiling is not None:
+                if byte_bound > ceiling:self.fail('fixer-bound-unavailable','request bytes exceed reviewed context ceiling')
+                bound=ceiling  # Reserve the full context; no guess about new model framing.
+            tariff=self.doc['pricing']; amount=bound*tariff['inputNanoUsdPerToken']+payload[self.doc['pricing'].get('outputTokenField','max_tokens')]*tariff['outputNanoUsdPerToken']
             # Stage row before the shared durable admission writes it. Roll back if denied.
             row={'bodyBytes':len(body),'bodySha256':hashlib.sha256(body).hexdigest(),
-                 'inputTokenBound':bound,'outputTokenCap':payload['max_tokens'],
+                 'inputTokenBound':bound,'outputTokenCap':payload[self.doc['pricing'].get('outputTokenField','max_tokens')],
                  'reservedNanoUsd':amount,'reportedUsage':None}
+            if ceiling is not None:row['byteTokenBound']=byte_bound
             self.doc['requests'].append(row)
             try:
                 status=self.reserve_locked(amount)
@@ -222,3 +233,33 @@ class TokenMeter(fixer_meter.Meter):
             if self.doc['status']=='running':self.doc['status']='completed'
             self.persist()
             return dict(self.doc)
+
+
+def ensure_available(config, price, path, doc):
+    """Unbilled model metadata, never an inference/fallback. Fail closed on doubt.
+
+    A withdrawal already known locally sends nothing. A remote 404/410 on this
+    GET sends no inference; a race after it is caught by the paid sender too.
+    """
+    import urllib.request
+    import urllib.error
+    from urllib.parse import quote
+    from datetime import date
+    if config.model == 'gpt-6.1-sol' and (not price.get('validUntil') or date.today() > date.fromisoformat(price['validUntil'])):
+        stop('fixer-model-unavailable','reviewed model/price record expired; no fallback',path,doc)
+    if price.get('status') != 'active':
+        stop('fixer-model-unavailable','the recorded model is not active; no fallback',path,doc)
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self,*args):return None
+    req=urllib.request.Request(config.api_base+'/models/'+quote(config.model,safe=''),
+        headers={'Authorization':'Bearer '+config.api_key},method='GET')
+    try:
+        opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect())
+        with opener.open(req,timeout=config.timeout) as response:
+            data=json.loads(response.read(65536).decode())
+        if not isinstance(data,dict) or data.get('id') != config.model:
+            raise ValueError('model metadata differs')
+    except (OSError,ValueError) as cause:
+        doc['availability']={'model':config.model,'status':'unavailable'}
+        stop('fixer-model-unavailable','model metadata unavailable; no inference or fallback',path,doc)
+    doc['availability']={'model':config.model,'status':'available'}

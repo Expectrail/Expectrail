@@ -182,6 +182,19 @@ class SmokeTest(unittest.TestCase):
                 self.assertEqual(smoke.main(["https://api.expectrail.tech"]), 1)
         self.assertIn("FAIL health", output.getvalue())
 
+    def test_requests_name_a_client_instead_of_the_default_python_agent(self):
+        # Cloudflare's browser integrity check answers Python-urllib with error 1010.
+        seen = []
+        def capture(opener, req, timeout=None):
+            seen.append(dict(req.header_items()))
+            raise OSError("offline")
+        with patch.object(smoke.urllib.request.OpenerDirector, "open", capture):
+            with self.assertRaises(OSError):
+                smoke.request("https://api.expectrail.tech/health")
+        agent = next(v for k, v in seen[0].items() if k.lower() == "user-agent")
+        self.assertTrue(agent.startswith("expectrail-runit-smoke/"))
+        self.assertNotIn("Python-urllib", agent)
+
     def test_malformed_http_prints_fail_instead_of_crashing(self):
         output = []
         def broken(*args, **kwargs):

@@ -66,6 +66,8 @@ def call_wonder(prompt: str, api_key: str, *, api_base: str | None = None) -> st
     )
     with urllib.request.urlopen(req, timeout=120) as resp:
         data = json.loads(resp.read().decode("utf-8"))
+    from expectrail.providers import raise_for_output_limit
+    raise_for_output_limit(data)
     return data["choices"][0]["message"]["content"]
 
 
@@ -149,7 +151,7 @@ def triage(
                 api_base=api_base,
             )
             source = WONDER_MODEL
-        except (urllib.error.URLError, KeyError, TimeoutError) as exc:
+        except (RuntimeError, urllib.error.URLError, KeyError, TimeoutError) as exc:
             report = prompt + f"\n\n(Wonder call failed: {exc}; using offline report.)"
             source = "offline-fallback"
             _warn_fallback(WONDER_MODEL, exc)

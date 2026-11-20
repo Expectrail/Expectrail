@@ -1,8 +1,11 @@
 # Generated checks: tests written for one change
 
-Built November 10, 2026, for issue #204. **Nothing on this page is measured yet.** The code, the
-record, the gate wiring and the offline tests are in place; every number the issue asks for is still
-to be run, and the [measurement plan](#measurement-plan) says how.
+Built November 10, 2026, for issue #204. The public reproduction baseline was measured on
+November 13: 17/24 defects, including 16/19 trace-visible defects, in
+[run 43465090517](https://github.com/Expectrail/Expectrail/actions/runs/43465090517).
+The [#285 audit](repro-audit.md) traces the figures to the original records and lists the later
+offers and candidate-withheld measurements still missing. The [measurement plan](#measurement-plan)
+covers the broader unrun cases.
 
 For each change an agent proposes, Expectrail can now generate checks aimed at that change, keep only
 the ones that are valid and deterministic, run them on the candidate, and report what they catch. It
@@ -12,9 +15,10 @@ have measured: only checks people wrote can reject a change, they caught 10 of 7
 generated single edits (0.9% weighted, [`bench/mutation/`](../bench/mutation/README.md)), and there
 is no catch yet on a real agent fix that nobody anticipated.
 
-**v1 is report-only.** A generated check never accepts or rejects a change. It is shown beside the
-decision, like advisory discovery ([discovery.md](discovery.md)), until a person promotes it to an
-approved spec by hand.
+**Raw v1 records are report-only.** The existing gate-summary remains advisory. The opt-in
+[#271 counting path](#generated-checks-that-count-271) authenticates separate provenance and
+requires all six rules before a generated check can reject or demonstrate a repair. A person alone
+can promote it to an approved regression spec. Current workflows do not enable counting by default.
 
 ## What runs
 
@@ -207,7 +211,8 @@ The stress tests, in the order we intend to run them:
 3. **Correct-fix pressure.** Every correct fix we have, three runs each. A strong catch on a correct
    fix is a bug in the filter and is looked at before anything else.
 4. **Overfitting adversary.** A separate fixer instance gets the generated checks for one bug (only in
-   this test) and is asked for a wrong fix that passes them. Not built yet.
+   this test) and is asked for a wrong fix that passes them. Built as a prepared dispatch, not run live
+   ("Prepared pressure dispatches", below).
 5. **Prompt injection and outage.** Offline, in `tests/test_jit_rules.py` (rules 5 and 3). Done, on the
    simulated game.
 6. **A second domain.** One pass on the web checkout page (`apps/checkout`). Not built yet: the diff
@@ -295,6 +300,28 @@ offer uses menu probes**. Replayed on the real engine with no model, both coin-c
 the screen from the frame the menu opens on, in the corner where the count is drawn, and nothing in
 the engine's record; the records and the table are on the bench's page. Like the two other
 screen-only defects, they wait on checks that can speak about what is drawn (#286).
+
+**The menu setting** (November 18, 2026, issue #285; `--offer signals-reach-evidence-menu`). Since the
+#285 audit a check can read the engine's one integer Label (`ui_integer_at_end`) and compare it with
+`coins_collected` on the same probe. This setting is the evidence setting plus the three menu probes,
+so a generated check can do that where the counter is drawn. The menu action comes from the reviewed
+mechanics profile's new optional `menuActions` (`["toggle_pause"]` in
+`discovery/platformer.profile.json`), never from the report, the patch or the model, and it is refused
+unless `project.godot` declares it. Only the menu probes press it: the prompt's `actions` list stays the
+catalog, and a probe the model writes is compiled with the catalog alone (`offer.route_actions`). A run
+under this setting with a profile that names no menu action generates nothing. Records say `menu` as the
+source of such a probe. Every other setting's prompt and probe list are unchanged. Not yet run live.
+
+**What the proposer is shown on a menu probe** (November 18, 2026, issue #285). The harness records the
+counter only when asked, and until this change the measure step and the evidence asked on no replay: on
+Godot 4.7.2 the measure step read `ui_integer_at_end` as no reading on every menu probe, clean and bug
+build alike, so the prompt showed nothing about the counter where it is drawn. Now the measure step's and
+the evidence's replays of a menu probe, and of no other probe, ask for it (`offer.replay_options`, the
+harness's `ui_integers`). On the real engine, `hold-right-then-toggle-pause` measures 5 on the clean game,
+10 on `coin-counts-twice` and 0 on `coin-counter-stuck` (`tests/test_jit_menu_reading.py`), and its
+evidence on `coin-counts-twice` now shows `uiIntegers` differing from tick 310 and the signal reading 5
+against 10. These are readings, not a reproduction rate; no model was asked. Every other probe's replays
+are as before.
 
 **What each defect changes on the screen** (November 12, 2026; [`expectrail/repro/screen.py`](../expectrail/repro/screen.py),
 `expectrail.repro-screen/v1`). Every library probe was replayed with its frames captured, on the
@@ -622,8 +649,9 @@ replay at that threshold are recorded in the bank under `calibration.objects.ene
 when its bank has no enemy template, when that calibration is not `met`, or when the bank is not an
 approved-art bank, so those checks are not run. A box partly on screen is a gap; one wholly off screen is
 counted in `outside` and not judged; more than `pixel.MAX_BOXES` on screen is a frame not asked about.
-The bullet is not offered: calibrated the same way, its 16 x 16 clean crops gave no template with enough
-opaque detail.
+The bullet was not offered then: calibrated the same way, its clean crops gave no template with enough
+opaque detail. Since November 19 the sensor witnesses it by its rings instead (see "The bullet, for the
+no-model sensor" below).
 
 Measured here (Godot 4.7.2, no model, not in CI), from the four calibration routes `sensor-bank` replays:
 408 player templates (as before) and 148 enemy templates, a 34.8 MB bank; the enemy matched 251 of 251
@@ -642,6 +670,197 @@ nine `not-found` on `move-fire-right` are on the clean game too (not diagnosed h
 explosion frames are the likely place), and a check over them is dropped by the keep rule, never a false
 catch. Over a whole window, a check about the enemy is `needs-review` whenever one enters at the screen's
 edge. Tested offline in `tests/test_jit_sensor_named.py`.
+
+**Which way the enemy faces (added November 16, evening).** `visible` cannot see `enemy-walks-backwards`:
+the bank keeps every template mirrored. A new predicate, `faces-motion`, can. It says the object is drawn
+facing the way the engine's record moves it, on every frame of the window where it moves one way and is
+seen where the engine puts it. It is offered for the enemy only, and only to `visual-sensor`. SAM is
+refused it at proposal time, and so is any other object.
+
+- **Motion** (`agents/template_observations.py object_motion`): from each enemy's own logged world box on
+  the tick before, the frame's tick and the tick after. `right` or `left` when both steps go that way;
+  `still`, `turning` or unknown otherwise, and those frames make no claim.
+- **Labels** (`agents/template_foreground.py calibrate_routes`): each clean enemy capture is labelled with
+  the way the engine moved the cropped enemy on that tick (`heading`), and its mirrored copy the other way.
+  A pose that looks the same mirrored, by the rule that keeps templates apart, gets no label.
+- **Facing** (`facing`): the heading whose labelled templates match better, by at least the bank's
+  margin (0.02), or none: the sensor cannot tell, which is a gap.
+- **Validation** (`calibration.objects.enemy.facing`): on every validation frame where the enemy moves
+  one way, the facing is decided as drawn and again with the enemy mirrored in place. `met` by the
+  player's rule on both. The bank's reader recomputes it, refuses labels its record does not count,
+  and refuses a label on a pose that looks the same mirrored.
+- **Judging** (`pixel._facing_observations`): the reference evaluator's `visible` over the judged frames,
+  where a frame holds the enemy only when it is drawn facing its motion. A run whose observer does not
+  list the enemy in `facing` is a gap.
+
+Measured here (Godot 4.7.2, no model, not in CI). The recalibrated bank has the same 408 player and 148
+enemy templates; all 148 enemy captures were cut while the enemy walked right (74 labelled `right`, 74
+mirrored copies `left`). Facing on the validation replay: 251 moving frames, 251 decided right as drawn
+and 251 decided the other way mirrored, 0 wrong (`met`). Then on three library probes, every 10th frame,
+the clean game twice and each defect build once:
+
+| Probe | Clean: matched while moving, facing its motion | `enemy-walks-backwards`: facing against it |
+| --- | --- | --- |
+| `hold-right` | 29 of 29 (both replays) | 29 of 29 |
+| `reverse` | 23 of 23 (both replays) | 23 of 23 |
+| `move-fire-right` | 15 of 15 (both replays) | 15 of 15 |
+
+No box was undecided. A `faces-motion` check over the whole window is `needs-review` on every probe,
+because an enemy enters at the screen's edge (partial boxes are gaps). Windowed past those frames (from
+frame 30, 130 and 30), it passed both clean replays and failed the backwards build on all three probes,
+and passed `enemy-slides-when-shot`. `visible` over the same windows did not tell the clean game from the
+backwards build on any probe. The nine clean `not-found` boxes on `move-fire-right` have motion `still`:
+enemies that were shot and stopped. That is two clean replays, not the keep rule's three, and the checks
+were written by hand, not proposed by a model. Tested offline in `tests/test_jit_sensor_facing.py`.
+
+**Frames to avoid: objects partly on screen (added November 16, night).** The sensor does not judge an
+object whose box reaches past the frame's edge (`out-of-frame`), so a window that holds such a frame is a
+gap there. The evidence record now says where they are, so the proposer can choose a window without them:
+
+- **Written** (`expectrail/repro/evidence.py edge_frames`): each row gets `edges`, from the engine's record of
+  both clean replays, read with the same boxes and camera the observer reads (`object_predictions`). Per
+  kind the engine logs boxes for (enemy, bullet): how many captured frames hold one partly on screen, and
+  those frames as `[first, last]` runs, at most 24 (more are closed up, so the runs may hold more frames,
+  never fewer). A kind is null when the record cannot say: no object boxes logged, a frame without a row,
+  box or camera, or two clean replays that disagree. Records made before this have no `edges` and still
+  read.
+- **Read** (`problems`): runs in order, apart, inside the frames, and holding the frames counted.
+- **Shown** under the pixel setting only (`offer.attach_evidence`): a shown probe's `differs` carries
+  `partlyOnScreen`, and the pixel text says to choose a window that avoids those frames. Every other
+  setting's prompt is unchanged. The pixel text also gives `faces-motion`'s shape now; until this change
+  it was in `pixelChecksOffered` and nowhere told how to write.
+- **Judged**: a gap for a box partly off screen says so ("enemy 3 is partly off screen, ...") instead of
+  "the observer gave no answer".
+
+Measured here (Godot 4.7.2, no model, not in CI): `python3 -m expectrail.repro evidence --defect
+enemy-walks-backwards --probe hold-right --probe reverse --probe move-fire-right --jobs 2` took 3 minutes.
+The enemy is partly on screen on frames 0 to 15 and 17 to 27 of `hold-right` and `move-fire-right`, and also
+87 to 96, 98 to 112 and 114 to 124 of `reverse`; the bullet on 5 frames of `move-fire-right`. The windows
+chosen by hand in the facing measurement above (from frame 30, 130 and 30) are past all of them. The
+record is `contracts/examples/repro-evidence-edges.json`. Tested offline in
+`tests/test_repro_evidence_edges.py`.
+
+**The bench's records carry them (November 17).** The public bench's evidence for its two screen-only
+defects with an enemy or a bullet in them, `bench/jit/public/evidence-enemy-walks-backwards.json` and
+`evidence-bullet-behind-scenery.json`, were made again on all 25 library probes with the same command and
+no `--probe` (Godot 4.7.2 here, no model, not in CI). Every field of every row is what the November 11
+records held; each row now also has `edges`, so a pixel-setting propose step given these records has the
+frames to avoid. `evidence-render` prints them as one line under the table. What they show for the enemy:
+on 4 probes (`jump-w0-x1`, `jump-w0-x2`, `shoot-right-every48`, `shoot-right-every12`) it is partly on
+screen on every captured frame, so no pixel check about the enemy can be decided there. On 15 probes no
+frame after frame 27 has it partly on screen (the three `jump-w80-*` and `jump-w120-*`, `hold-right`,
+`move-fire-right`, and the seven that go left, from frame 13 or 15). `edges` does not say whether the
+enemy is wholly on screen or wholly off it on the other frames; the trace's boxes do, and the sensor judges
+that. The other two bench records (`coin-stays`, `no-shooting-in-air`) were not made again; they have no
+`edges`.
+
+**The keep rule, through `jit run` (November 17, later).** The three windowed `faces-motion` checks of the
+facing measurement are now a saved proposal,
+[`bench/jit/stand-in/enemy-walks-backwards-faces-motion/`](../bench/jit/stand-in/enemy-walks-backwards-faces-motion/README.md),
+written by `python3 -m tools.faces_motion_stand_in`. It is a hand-written stand-in, not a model's proposal
+(`model: hand-written-stand-in`), made under the pixel setting for the sensor with the candidate withheld;
+each window starts after the last frame the bench's evidence lists the enemy partly on screen. `jit run
+--proposal` replayed it on the real engine here (Godot 4.7.2, no model, not in CI, 13 minutes) against
+`enemy-walks-backwards` and the no-fix candidate: all three checks were kept, passing the clean game 3 of 3
+and failing the bug build 3 of 3, and failing the bug build with the no-fix candidate 3 of 3. The record is
+committed beside the proposal. The reproduction score gives a record made from a stand-in no result
+(`score.STAND_INS`, which also names the rehearsal fixture), so this never counts as a reproduction. What it
+leaves is the model's half: whether a propose step, given the same evidence, writes such a check.
+
+**The bullet, for SAM (November 17, evening).** `bullet-behind-scenery`, the other screen-only defect, can
+only be asked about through SAM: the sensor's bank holds no bullet template. Three `visible` bullet checks
+are a saved stand-in proposal for `sam-3.1-anchor`,
+[`bench/jit/stand-in/bullet-behind-scenery-visible/`](../bench/jit/stand-in/bullet-behind-scenery-visible/README.md),
+written by `python3 -m tools.bullet_visible_stand_in` (no model; `STAND_INS` gives a record of it no result).
+Its windows leave out frames with more than `pixel.MAX_BOXES` bullets on screen, which SAM is not asked
+about: `move-fire-left` has four on frame 80 on every replay, so a window holding it could never be kept.
+`jit run --proposal --pixel-capture` captured the three probes on the real engine here (Godot 4.7.2, no
+model, no SAM, not in CI, 10.5 minutes, 27 replays). On every replay the engine logged the same bullets on
+all three builds; the bug build does not draw them where it puts them. `pixel-ask` with the asking job's
+budget at jit.yml's default cap ($2 less the capture's $0.2089) refused before asking anything: the 27
+replays need up to 1,296 images, $3.24. The asking job plans every 10th frame of each probe's route
+whatever the checks' windows, so a window does not lower the reservation; at the $2 cap one bullet check on
+one probe can be asked about, not three. Whether SAM sees a bullet drawn behind the scenery is untested.
+
+**Only the windows' frames are asked about (#605, November 18).** Since then the observer is asked only
+about its planned frames inside the union of the windows of the checks on a probe (`pixel.planned`; a check
+without a window keeps the whole plan). The in-process replay (`run.py` `_pixel_plans`), the capture (which
+writes the windows beside each kept replay as `windows.json`, untrusted like `objects.json`), the asking job
+(`pixel_jobs.ask`, which reads them back and refuses malformed ones) and the judging job plan the same frames,
+and `pixel.observe` refuses an answer about other frames. The judging job refuses recorded answers planned
+for other windows (`RecordedSamClient.plan_of`), so their checks are dropped, never passed. A check whose
+window holds no planned frame is `not-run` and asks for nothing. The three bullet checks now reserve 675
+images, $1.69, under what the asking job gets at the $2 cap ($1.79). Shown offline only
+(`tests/test_jit_pixel_windows.py`); no capture of the bench probes was remade, and SAM was not asked.
+
+**The bullet capture, remade with the windows (November 18, afternoon).** The same `jit run --proposal
+--pixel-capture` on the real engine here (Godot 4.7.2, no model, no SAM, not in CI, 9.3 minutes, 27
+replays) kept 225 frames, 49 MB (the whole-probe capture kept 86 MB). The record differs from the first only
+in the profile's hash (`menuActions`, #622) and the replay time, so the capture's spend is $0.1987.
+`pixel-budget` gave the asking job $1.8013, and `pixel-ask` on that capture no longer refused: it reserved
+675 images, $1.6875, and began asking. With the recorded rehearsal answers (`--sam-answers`, asked under
+another setting) it stopped at the first replay and sent nothing, as it must. SAM itself has not been asked.
+
+### The bullet, for the no-model sensor (added November 19)
+
+Until today `bullet-behind-scenery` could only be judged through SAM, which is paid for each image. Looked at
+on the real engine (Godot 4.7.2 here, no model), the reasons templates never matched the bullet were not its
+size:
+
+- **It turns.** It is a RigidBody2D and spins as it flies and bounces, so its 16 x 16 art is drawn rotated
+  and its pixels change from frame to frame. Clean templates matched it on about a third to two thirds of
+  clean frames.
+- **Its colours are not its art's.** An additive glow is drawn over it, so no rendered pixel is in the
+  art's palette.
+- **It is drawn behind its logged box.** The game has `physics_interpolation` on, and the bullet moves about
+  14 frame pixels a tick: each frame draws it 1 to 1.7 ticks behind the box logged on the frame's tick,
+  under the frame's own camera.
+- **It fades out.** Its timer (1 s) calls `destroy`, which fades the sprite over 0.3 s.
+
+[`agents/template_radial.py`](../agents/template_radial.py) witnesses it by what does not change when it
+turns: the mean colour of each one-pixel ring around its centre. The rings are measured on the trusted clean
+calibration replays only, where the approved art itself locates the sprite on the path the engine logged. A
+frame's bullet is `matched` when some position on its path (from two ticks back to the frame's tick, through
+the frame's camera) has rings within 12 (mean absolute RGB) of a frozen profile, and `not-found` when none
+does. A bullet in its fade, one whose path is not wholly on screen, one not the calibrated size, or one whose
+searched path another logged box touches (`crowded`, below) is a gap.
+The bank carries it as `radialWitnesses.bullet` with `calibration.objects.bullet` (`witness: radial`;
+contract `template-bank`, example `template-bank-foreground-radial.json`), and the reader recomputes its
+status. `pixel.OBSERVERS["visual-sensor"]["boxes"]` is now `("enemy", "bullet")`, so the proposer is offered
+bullet checks for the sensor.
+
+Measured with `sensor-bank` on the four calibration routes (8 minutes): the same 556 templates as before, and
+for the bullet one ring profile (every clean located bullet was within 1 of it), 70 of 70 validation
+positives matched and 0 of 70 negatives (`met`). The bank's digest is `58f45c41...`.
+
+Then, with that bank, a hand-written stand-in of two `visible` bullet checks for the sensor
+([`bench/jit/stand-in/bullet-behind-scenery-sensor/`](../bench/jit/stand-in/bullet-behind-scenery-sensor/README.md),
+written by `python3 -m tools.bullet_visible_stand_in --observer visual-sensor`; no model, so the score gives it
+no result) was replayed by `jit run --proposal --observer visual-sensor --withhold-candidate` against the
+no-fix patch (7.8 minutes, 18 replays). **Both checks were kept**: clean pass 3 of 3, bug fail 3 of 3, bug plus
+no-fix fail 3 of 3, with $0 reserved for the observer. The windows end before the first planned frame with a
+fading bullet on the clean game; with the SAM stand-in's longer windows the checks were `needs-review` on
+every build. This is a rehearsal of the keep rule with a check no model wrote, not a reproduction rate.
+
+**A bullet beside another one is a gap (November 19, later the same day).** The first stand-in run noted two
+clean bullets beside fading ones that the witness did not find. On the whole clean probes (`shoot-left-every12`,
+`move-fire-left`, `move-fire-right`, 3 replays each, every frame) the witness gave `not-found` for 111 clean
+boxes, and every one overlapped another bullet's searched area: bullets that came to rest on one another, drawn
+over each other. Ring distance, measured on the calibration replays, by what touched the area searched along a
+bullet's path: nothing, at most 3.0 (498 boxes); another bullet, up to 14.3, beyond the limit of 12 (22); only the
+player or an enemy, up to 11.2 (120). Calibration had kept only bullets whose box touched no other box, but the
+witness then judged every bullet, so its validation did not describe what it judged. Now one rule,
+`template_radial.crowded`, decides both: a bullet is judged only when no other logged box touches its searched
+area, and no other bullet comes within the witness's `clearPx` of it (0 on the bundled game: with no box
+touching, the rings stayed within 3.0 at every gap, so the bullet's faint glow does not need a margin). A record
+that cannot say where the other roles are is a gap too.
+
+The cost is reach. On those clean probes, of the boxes judged before, 1,290 of 2,010 are now gaps, and 720 are
+`matched`; none is `not-found`. With the stand-in's earlier windows both bullet checks were `needs-review` on
+every build, so the windows were cut by the same rule the fading cut used (the last planned frame before the
+first planned frame with a crowded or fading bullet on the clean replay, read from the trace alone):
+`shoot-left-every12` frames 50 to 50 and `move-fire-right` frames 10 to 30. The recalibrated bank (68 of 68
+validation positives, 0 of 68 negatives, `met`) and the stand-in's new run are on the stand-in's page.
 
 ### Three jobs, so SAM's key never meets the change's code (added November 14)
 
@@ -741,7 +960,8 @@ under `boxes`), so the menu offers both to `sam-3.1-anchor`.
   asked about the player is refused. The capture job writes `"player": false` into `objects.json`.
 - **Reserved:** `pixel.MAX_BOXES` images a frame for each named role, and one for the player only when
   it is asked about, on every run, before anything is asked, in the in-process replay, in `pixel.cost`
-  and in `pixel-ask`.
+  and in `pixel-ask`. The frames are the planned frames inside the checks' windows (#605): the capture
+  writes the windows into the stored replay (`windows.json`) and the asking job reads them back.
 - **Shown offline only.** The tests use a scripted SAM client and synthetic replays
   (`tests/test_jit_pixel_named.py`, `tests/test_jit_pixel_player.py`). No SAM answer about an enemy or a bullet has been recorded, and no
   live run has asked one.
@@ -766,3 +986,268 @@ under `boxes`), so the menu offers both to `sam-3.1-anchor`.
 
 Promoting a generated check to an approved spec (a person does it by hand), new trace-language
 operators, letting generated checks reject, Unity, and Flutter.
+
+
+## Public reproduction audit and integer UI state (#285, November 16)
+
+See [the completion table, miss breakdown and Sean's dispatch/cost plan](repro-audit.md).
+The original hosted baseline score and all its per-defect records are now committed under
+[`bench/jit/recordings/public-43465090517/`](../bench/jit/recordings/public-43465090517/).
+Recomputing that score is byte-identical; no new live rate was measured.
+
+`ui_integer_at_end` reads the sole visible integer-only Label value at the last tick of the
+observed window. The recorder collects it only when an evaluated trace spec reads that signal,
+either through `relation.signal` or either side of `signal_compare`. JIT requests it per active
+check/probe, including candidate fingerprints; discovery requests it for applicable specs and
+recaptures a prior probe if a newly proposed spec first needs UI data. The request uses the
+harness's existing value-argument path (`--ui-integers=true`), not a route field or environment
+switch. With no requesting spec, no UI scene walk runs and no `uiIntegers` key is written.
+General measurement/evidence collection does not enable it merely because an offer names the signal. The Godot recorder writes optional bounded `uiIntegers`; older traces, no label,
+multiple labels and collection overflow give no reading. This is engine UI state, not proof of
+pixels. `signal_compare` compares two signals within one route/window (right against left,
+with `eq`, `lte`, `gte`, `lt`, `gt` and nonnegative `toleranceAbs`). A reported collected-coin counter
+can compare `ui_integer_at_end` with `coins_collected`, without a guessed count. Undefined readings
+never pass. Schemas and handwritten examples cover raw trace, episode and trace spec.
+
+Both are offered only in `signals-reach-evidence` and `signals-reach-evidence-pixel`; parsers and
+saved-proposal readers enforce this. The baseline and `signals-reach` prompts and probes stay
+unchanged. `tests/test_trace_ui_integer.py` covers parsing, unknown/ambiguous/malformed data,
+window/tolerance semantics, old traces, the comparison, and a real pinned-engine public menu route:
+clean 5 twice, stuck 0, doubled 10. These are offline signal tests, not model reproduction evidence.
+Menu probes still require an explicit trusted menu action and are not offered automatically to
+generated checks. Multi-label/formatted/custom-drawn UI and the two orientation/layering misses
+remain limitations. No observer or verdict is enabled by this change.
+
+
+## Generated checks that count (#271)
+
+Implemented and tested offline; not enabled in the current CI workflow. The ordinary
+`run_gate(generated_checks=...)` path still reads its legacy advisory summary. No generated
+text can opt itself into counting. The shared `record.decide(..., generated=proof)` and
+`jit.assess.counting` enforce the six rules below; `jit.counting.judge` attaches authenticated
+evidence to an existing gate result and calls that same decision rule. It replays nothing and
+implements no second gate, fixer or retry rule. The protected gate verifier and agent verifier files are unchanged.
+
+Counting generated checks never clear a change alone (Sean's decision, November 18, #600): when no
+approved check ran, the decision stays `needs-review` for intent `none` and for intent `fix`
+("no approved checks ran; … cannot clear a change alone"). With at least one approved check run, a
+counting check may demonstrate a fix's repair (rule 1).
+
+| Rule | Mechanical evidence | Executable test in `tests.test_jit_rules.CountingRules271` |
+| --- | --- | --- |
+| 1. Base alone | Candidate withheld; exact three clean passes and three base failures; complete run. Original prompt and all inputs are digest-bound | `test_rule_1_base_alone_and_three_of_three_clean_and_bug` |
+| 2. Discrimination | A killed near miss has three failures, is not in `sameAsCandidateFor`, and has exercised evidence. The base discriminates only when candidate passes, proving different behaviour | `test_rule_2_identical_near_misses_do_not_discriminate` |
+| 3. Relevance | Audited signal-to-behaviour vocabulary in `assess.BEHAVIOURS`; whole words from the report OR trusted profile-derived diff claims must match the predicate's signal. The assessor-only map is never sent to a candidate-withheld proposer. Generated statement/claim/verdict text is not authority | `test_rule_3_unrelated_predicate_stays_advisory` |
+| 4. Exercise and stability | Every required probe/pair is applicable, complete and meets its trigger/evaluation minimums on all three clean, base and candidate replays and an independent killed near miss. Candidate outcome is the same all three times | `test_rule_4_coverage_and_candidate_stability_are_required` |
+| 5. Trusted origin | Fresh existing Receipt v1, known issuer from the caller's trust store, expected repository/base/head/build/policy and exact model-input digests; signed capabilities attest trusted proposal AND replay; canonical source-run digest matches | `test_rule_5_candidate_cannot_self_assert_trust`; `test_unknown_issuer_stale_receipt_and_changed_expectations_cannot_count` |
+| 6. Provenance | Requirement source, actual predicate, probes and route hashes, reference/base/candidate evidence, independent kills, every rejection reason, model/version and generator version in the counting record; its canonical digest goes into the final existing receipt | `test_rule_6_missing_version_or_provenance_is_advisory`; `test_gate_record_and_existing_receipt_bind_the_full_provenance` |
+
+Otherwise the check stays advisory. Relevance is deliberately narrow: unsupported operations,
+unknown signals, screen-only checks and synonyms outside both the vocabulary and mapped file reach stay advisory,
+so they can require human review even for a real repair. Matching words or coarse file reach is not proof that a
+predicate captures intent; a changed file can contain several unrelated behaviours. A base that still behaves like the wrong candidate does not alone
+supply an independent discriminator; that can also leave a real catch advisory. No new live
+false-negative rate was measured. Pixel checks currently lack independent near-miss evidence and
+remain advisory; no observation implementation changes are included here.
+
+`run.py` keeps the existing keep rule and adds per-arm outcomes/coverage and provenance to its
+record, including assessor-only diff claims. Under candidate withholding those claims never reach the proposer. It does not change the raw record's `advisory: true` or grant approval. The exact model
+identifier is recorded as its version unless the proposer supplies a more specific version; this
+does not promise that a provider will never change an aliased model's internals.
+
+A counting check that fails on the candidate rejects. One that passes can demonstrate a fix
+only with rule 1's base-only failure and clean success, three of three. It cannot override an
+approved or held-out failure, missing required coverage, a missing observer or required isolation.
+Under the `both` observer policy a counting generated pass needs per-check visual evidence. A trace row is the engine's record alone, so with a counting trace row the result is needs-review even when an observer is configured. A counting pixel row (below) is its own visual evidence: its runs are a trusted observer's verdicts over frames where the engine's record also places the object, so it is the visual evidence `both` asks for. It never demonstrates a repair on its own (Sean, November 18, #638): a change declared as a fix still needs an approved check or a counting trace row to show the repair, and a pixel failure still rejects. A validated failure can still veto. The report names counting/advisory checks and says this base-only condition explicitly. Tests:
+`test_counting_alone_cannot_clear_fix_without_rule_1`,
+`test_a_counting_label_and_all_true_flags_cannot_replace_actual_base_failure`, and
+`test_authenticated_counting_catch_rejects_and_public_failure_still_vetoes`.
+
+### Trust, contracts and publication
+
+The new closed contract is `expectrail.generated-counting/v1`, with an example in
+`contracts/examples/generated-counting.json`. It contains the source JIT record, report, source
+receipt and recomputed assessment. `generated-counting-context/v1` is the trusted caller's
+independent expected identities/inputs, with a writer/reader and example. Neither a context
+embedded by the candidate nor its embedded public key becomes trusted. Keep the issuer trust
+store in trusted policy, outside candidate artifacts. Missing/unknown/stale trust never counts.
+
+The source receipt attests generation/replay, not clearance on the candidate: demanding that
+clearance first would be circular. Its signed `jit-trusted-proposal` and `jit-trusted-replay`
+capabilities must be issued only by a trusted job that actually performed both operations, never
+by copying a candidate job's outcomes. The trusted caller must compute expected input digests
+from its own snapshotted report/builds/profile/prompt, not read them back from the candidate's
+record. Production deployment of that issuer/job remains Sean's work; no new permission or
+workflow was installed. A signature by itself does not prove honest execution by the issuer.
+
+Use `counting.make`/`write` in that trusted job, then `counting.read(..., trust=context)` to obtain
+an in-process witness. Raw JSON cannot be passed to `decide`. The witness also pins the game
+builds. Findings gain a closed `countingChecks` block and readers require the same separately
+authenticated witness. Existing publishers can use `with record.counting_context(proof):` when
+reading the final record; the scope resets even on exceptions. It is not an environment switch.
+A different build, altered assessment or absent witness is refused. Default readers stay strict.
+`counting.receipt_document` feeds the existing receipt writer with the final gate decision,
+counting coverage and canonical digests of the full provenance and findings; signing/trust rules
+are unchanged. No check is promoted or approved.
+
+An operator-facing entry point for a trusted worker is:
+
+```sh
+python3 -m expectrail.jit.counting judge --gate findings.json \
+  --evidence generated-counting.json --context trusted-context.json \
+  --trust-store trusted-issuers.json --out counted-findings.json
+```
+
+The context must be independently pinned trusted input. A counted record read without that
+witness is refused rather than silently downgraded. The normal CI publisher must authenticate
+and install the witness before using its existing reader. Wiring that trusted job/publisher is
+not enabled by this patch; the workflow and protected verifier belong to other work.
+
+### Recorded offline public counts
+
+The [offline public audit](measurements/271-public-counting.md) reads the 24 committed source
+records from public run 43465090517: **137 checks assessed, 0 counting, 137 advisory assessments** (91 recorded as kept by the legacy rule; 46 dropped proposals retained only as diagnostics). They were
+candidate-shown and predate authenticated trusted replay and per-arm coverage provenance. This
+is not a newly measured generation or reproduction rate. No record was relabelled as withheld.
+
+```sh
+python3 -m expectrail.jit.counting public-bench \
+  --records bench/jit/recordings/public-43465090517/repro \
+  --out /tmp/public-counting.md
+```
+
+### Harmless control for each public trace check (#675)
+
+Add `--harmless-work NEW_DIRECTORY` to the public counting audit to replay the clean bundled game and a copy with the mutation bench's registered comment-only operator. Individual checks share captured repetitions when they require the same route and recording settings. The assessor requires complete observations and three consistent results on each arm. A false rejection requires three clean passes and three failures on the edit. An unavailable route is reported as unrun, and an unstable replay or inconclusive check remains indeterminate.
+
+On the frozen public bench, **135 of 137 checks passed on the harmless edit, 0 falsely rejected it, 2 were indeterminate and 0 were unrun**. All 216 headless replays completed across 36 exact routes on the clean and comment-only copies. The two indeterminate enemy-facing checks had zero triggers and zero evaluations on both arms. All 36 route traces were byte-identical across the edit. This measures a source-only comment on this game, without a visual observer.
+
+The [measurement and reproduction commands](measurements/675-harmless-control.md) identify every frozen check and the original public artifacts for custom routes. Use `--harmless-defect ID` to restrict engine work to selected defects while keeping every check in the report. These advisory results have no effect on counting, strong catches or gate decisions (#600).
+
+### The six rules on pixel checks (#286)
+
+Pixel checks are in a record's `pixelChecks`, which `counting` never read, so a screen-only check was
+advisory with no reason given. `assess.pixel_counting` recomputes the six rules for each pixel row from
+its own runs, never its `status` or `outcome`:
+
+| Rule | For a pixel row |
+| --- | --- |
+| 1 | Complete record, candidate withheld, 3 reps; the bug build fails 3 of 3 and the clean game passes 3 of 3 |
+| 2 | No near miss is replayed for a pixel check, so the base build is the only discriminator, and only when the candidate passes 3 of 3 |
+| 3 | `pixel_relevant`: the report names the check's bound object **and** its predicate's behaviour (`PIXEL_OBJECTS`, `PIXEL_PREDICATES`). The statement is never read. False negatives: synonyms outside the lists, `reaches`, the ground, and every diff-map claim |
+| 4 | Every run on all three builds is `pass` or `fail` (a gap in the window makes `needs-review`), one observer setting, a stable candidate |
+| 5 | Only the caller's `trusted`, as for trace checks |
+| 6 | Generator and model versions, model and prompt digest, the probe in the record, the observer setting |
+
+`counting.make` carries these rows in the `generated-counting/v1` envelope after the trace rows (added
+November 19): each has `kind: "pixel"`, its `observer` and `setting`, and its runs in the pixel
+vocabulary (`pass`, `fail`, `needs-review`). The envelope and the gate record's `countingChecks` take
+the same closed row shapes (up to 8 trace and 4 pixel rows), and a pixel check may not share a trace
+check's id. Like a trace row, a pixel row is recomputed from the source run on every read, so a changed
+row or run is refused. Under `both`, a counting pixel row is its own visual evidence (above), and it
+still never clears a change alone. Correct-fix pressure replays a counting pixel check judged by
+`visual-sensor` (added November 19, below); otherwise a counting pixel check stops a pressure dispatch
+(`pixel-checks-not-replayed`) rather than replay fewer checks than count. Example:
+[`generated-counting-pixel.json`](../contracts/examples/generated-counting-pixel.json), made by
+`counting.make` from the enemy stand-in with no trust, so nothing counts. Tests:
+`tests/test_jit_pixel_envelope.py`. On the two committed pixel
+stand-ins ([page](measurements/271-pixel-counting.md)): 6 pixel checks, 0 counting. The three
+`faces-motion` checks on `enemy-walks-backwards` meet rules 1, 3 and 4; they miss 2 (the candidate is the
+no-fix patch), 5 and 6. The three bullet checks were captured, not judged, and meet rule 3 alone.
+
+```sh
+python3 -m expectrail.jit.counting pixel-bench --records bench/jit/stand-in --out /tmp/pixel-counting.md
+```
+
+### Prepared pressure dispatches: not run live
+
+`python3 -m expectrail.jit.pressure correct` and `... adversary` print plans only. The
+[complete manual workflow proposal](proposals/271-pressure.yml.txt) is for Sean to review and
+install himself. There is no active workflow change or dispatch here. The implementation uses
+frozen authenticated counting checks, not another generator. These old public records cannot
+supply them. Prepare fresh trusted candidate-withheld evidence first; its generation cost is
+separate and is not silently included in either dispatch. A missing counting check, source
+certificate, trusted context, route digest or calibrated oracle blocks before a fixer is built.
+
+- Correct-fix pressure: all 24 exact undos in the public reproduction registry, plus the four
+  supplied known-bench correct patches, each replayed three times with the frozen checks. A
+  single failure on a correct candidate blocks release, including flaky failures. Missing cases
+  or undecided observations block too. This covers the two public registries, not private or
+  unregistered correct fixes. Maximum 1,024 replays. It sends no model or vision request: API
+  ceiling **$0**. The existing `agents.judge_bench.undo_patch` creates the exact undos on copies.
+- Overfitting adversary: one bounded `llm-patch` invocation on public `air-jump`, deliberately
+  given the generated checks for this experiment only. It may change only the public player
+  script. It succeeds only if all generated checks pass 3/3 and an independent air-jump oracle
+  still shows more air jumps than the clean build 3/3. The oracle is calibrated on clean and bug
+  before the fixer starts and is not included in its prompt. This is an engine-signal oracle,
+  not a human semantic judgement or visual proof. Maximum 64 recommended replays (hard maximum
+  1,024), no vision/generation calls; one fixer invocation, no second fixer or retry policy.
+
+Recommended adversary caps: invocation $6, aggregate fixer $6; the existing locked model-month
+ledger is mandatory and retains reservations. The hard sender is the existing controlled
+`llm-patch` sender and admission code; Muse and other agent CLIs are still refused. Named model:
+OpenAI `gpt-6.1-sol`, 4,096 output tokens. Source:
+`contracts/examples/provider-capabilities/openai.json`, read 2026-11-16, active through
+2026-11-23. Recorded standard prices are $2/$10 per million; enforced conservative prices are
+$5.50/$16.50 per million, covering the listed multipliers. Reserving the full 1,050,000-token
+context plus output gives **$5.842584 maximum per request**. Two such requests cannot fit $6, so
+a retry is denied before forwarding. $6 is held against the invocation/role/month caps with no
+refund; it is the conservative dispatch ceiling. Expired/withdrawn/unknown models stay refused,
+with no fallback. Do not run after the price record expires without a separately reviewed update.
+
+The proposed self-hosted job times out after 120 minutes. Runner compute is not API spend;
+`run.DEFAULT_PRICES` assumes $0.008/minute, or $0.96 for that timeout on a paid runner. It is an
+assumption, not a measured bill or a hard provider price. The replay-count cap does not itself
+bound wall time. Provisioning and any fresh check generation are outside these dispatch caps.
+
+Offline rehearsals passed on the simulated game: two correct air-jump candidates each passed
+3/3 (12 probe replays); one synthetic overfitter was detected using 15 replays and one stand-in
+fixer callback. These prove the runner, oracle calibration, caps and blocking rules, not a real
+adversary success rate. No live pressure campaign has run. The result contract
+`expectrail.jit-pressure/v1` and reader recompute status/success from outcomes and the oracle.
+
+### Pixel checks under correct-fix pressure (added November 19)
+
+A counting pixel check may reject a change (Sean, November 18), so a correct fix it fails is a defect in
+the rules, as for a trace check. `pressure correct --sensor-bank BANK [--sensor-every N] [--sensor-first N]`
+replays each counting pixel check judged by `visual-sensor` on every correct fix: its probe three times
+with frames, the sensor asked about its planned frames inside the checks' windows (`pixel.observe`, the
+same plan as the judging run), and `pixel.judge` decides each run. No model and no request: $0.
+
+- **The bank is pinned.** Its setting (algorithm and digest) must equal the setting in the signed source
+  run, or the dispatch stops before any replay (`pixel-setting-mismatch`). An answer under another setting
+  is not judged.
+- **The frame plan is pinned.** Since the same day, `jit run` records on each pixel row the frames the
+  observer was to be asked about inside the check's window (`framesPlanned`, contracts/jit-run.v1). Pressure
+  stops before any replay unless its observer, with `--sensor-every` and `--sensor-first`, would plan exactly
+  those frames for the check (`pixel-plan-mismatch`), so a correct fix can never pass on fewer frames than
+  the check was kept on. A row with no recorded plan (every record before November 19, the committed
+  stand-ins included) stops it too (`pixel-plan-unrecorded`), and so does a row that planned no frame
+  (`pixel-plan-empty`), which an observer planning nothing would otherwise match.
+- **Undecided is not a pass.** A gap, `needs-review`, or an observer that fails is
+  `insufficient_observation`, so the campaign is `blocked`, never `complete`. A `fail` on any run is
+  `failed`, as for trace checks.
+- **What still stops.** A counting pixel check for SAM (it would need live SAM calls), a correct dispatch
+  with no bank, and the adversary, which is given the trace checks only.
+- **The record.** Pixel rows carry `kind: "pixel"`, and `pixelObserver` names the observer, its setting
+  and its frame plan (`every`, `first`), checked against `framesPlanned` above. The reader refuses pixel
+  rows without `pixelObserver`, and `pixelObserver` on the adversary. Example:
+  [`jit-pressure-pixel.json`](../contracts/examples/jit-pressure-pixel.json).
+
+Tested in `tests/test_jit_pixel_pressure.py` with a stand-in game and observer. The real-engine rehearsal
+is in [271-pixel-pressure.md](measurements/271-pixel-pressure.md). The workflow proposal
+([271-pressure.yml.txt](proposals/271-pressure.yml.txt)) calibrates its own bank on the checked-out clean
+game before any frozen evidence is downloaded (the command of `jit.yml`'s `sensor-bank` job, $0), and passes
+it with a new `sensor_every` input (the source run's `sam_every`) to the correct preflight and the correct
+step. A bank or plan that differs from the signed source run stops before any replay, so the bank made
+there cannot loosen a check. `tests/test_jit_pressure_proposal.py` parses every pressure command in the
+proposal with pressure's own parser (`pressure.parse_args`), so the two cannot drift apart unnoticed.
+
+### Still needed for #271 Done when
+
+Sean must install the trusted generation/replay issuer and publisher wiring; provision fresh
+candidate-withheld frozen evidence and the persistent ledger; review/install the manual proposal;
+then deliberately dispatch the two pressure campaigns from main and publish their real counts
+here. Promotion stays a person's separate act. The release blind test (#282) must score a
+counting primary arm; private/held-out material remains Sean's task and was not opened here.
+Until those live runs and the release arm have evidence this is **Part of #271**, not closure.

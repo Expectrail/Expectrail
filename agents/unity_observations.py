@@ -71,8 +71,11 @@ def ground_line(rows: list[dict], i: int) -> float | None:
     return _to_frame(view, float(player[0]), float(ground))[1]
 
 
-def ground_boxes(rows: list[dict], i: int, frame_size: tuple[int, int] = FRAME_SIZE) -> list[dict]:
-    y = ground_line(rows, i)
+def ground_boxes(rows: list[dict], i: int, frame_size: tuple[int, int] = FRAME_SIZE, view=None) -> list[dict]:
+    row = rows[i]
+    y = (_to_frame(view, float(row["player"][0]), float(row["ground"]))[1]
+         if view is not None and row.get("player") is not None and row.get("ground") is not None
+         else None if view is not None else ground_line(rows, i))
     if y is None:
         return []
     width, height = frame_size
@@ -198,9 +201,9 @@ def reference_agreement(trace: dict, config: dict | None = None) -> dict:
             "onlyLogged": only_logged, "onlyReference": only_reference}
 
 
-def _boxes(rows: list[dict], i: int, name: str, frame_size: tuple[int, int]) -> list[dict]:
+def _boxes(rows: list[dict], i: int, name: str, frame_size: tuple[int, int], view=None) -> list[dict]:
     if name == GROUND:
-        return ground_boxes(rows, i, frame_size)
+        return ground_boxes(rows, i, frame_size, view)
     if name in ROLES:
         return role_boxes(rows[i], name, frame_size)
     raise ValueError(f"the Unity trace has no object called {name!r}: it names roles {sorted(ROLES)} and {GROUND!r}")
@@ -210,20 +213,31 @@ def observations(trace: dict, spec: dict, replay_sha256: str = "0" * 64,
                  frame_size: tuple[int, int] = FRAME_SIZE) -> dict:
     rows = list(trace.get("rows") or [])
     names = list(spec.get("objects") or {})
-    frames = [{"frame": row.get("frame", i), "objects": {name: _boxes(rows, i, name, frame_size) for name in names}}
-              for i, row in enumerate(rows)]
-    return {"format": "expectrail.observations/v0", "replay": {"sha256": replay_sha256},
+    from expectrail.observation_timeline import placement
+    frames = []
+    for i, row in enumerate(rows):
+        at = placement(trace, i, trace["physicsTicksPerSecond"]) if "captureTimeline" in trace else None
+        size, view = (at["viewport"], at["transform"]) if at else (frame_size, None)
+        frames.append({"frame": row.get("frame", i), "objects": {name: _boxes(rows, i, name, size, view) for name in names}})
+    document = {"format": "expectrail.observations/v0", "replay": {"sha256": replay_sha256},
             "model": {"name": MODEL_NAME, "prompts": {n: o.get("prompt", n) for n, o in spec["objects"].items()},
                       "units": "frame pixels",
                       "boxes": "renderer bounds of the objects the harness found visible; the ground line from the level's tiles"},
             "frames": frames}
+    from expectrail.observation_timeline import emit
+    return emit(document, trace, version="unity-engine/1")
 
 
 def engine_objects(trace: dict, names: list[str], frame_size: tuple[int, int] = FRAME_SIZE) -> dict[int, dict]:
     """{frame: {name: [detection, ...]}} for objects SAM is not asked to find."""
     rows = list(trace.get("rows") or [])
-    return {row.get("frame", i): {name: _boxes(rows, i, name, frame_size) for name in names}
-            for i, row in enumerate(rows)}
+    from expectrail.observation_timeline import placement
+    out = {}
+    for i, row in enumerate(rows):
+        at = placement(trace, i, trace["physicsTicksPerSecond"]) if "captureTimeline" in trace else None
+        size, view = (at["viewport"], at["transform"]) if at else (frame_size, None)
+        out[row.get("frame", i)] = {name: _boxes(rows, i, name, size, view) for name in names}
+    return out
 
 
 def _iou(a: list[float], b: list[float]) -> float:
@@ -274,37 +288,52 @@ def _spans(ticks: list[int]) -> list[list[int]]:
     return spans
 
 
-def calibrate(trace: dict, frame_size: tuple[int, int] = FRAME_SIZE) -> dict:
-    """What the Unity checks' constants come from, measured on one trace."""
-    rows = list(trace.get("rows") or [])
-    player = [role_boxes(r, "player", frame_size) for r in rows]
-    coins = [role_boxes(r, "coin", frame_size) for r in rows]
-    standing, airborne, off_ground = [], [], []
+def calibrate(trace: dict, frame_size: tuple[int, int]=FRAME_SIZE, *, measured: list | None=None) -> dict:
+    """Measure one engine record. ``measured`` supplies already placed Godot frame boxes.
+
+    The default Unity report is unchanged. Godot's read-only setup command uses the same
+    statistics and gap rule with explicit per-frame measurements, retaining 3-decimal engine
+    precision and reporting missing player/ground/floor state separately from airborne rows.
+    """
+    rows = list(trace.get('rows') or []) if measured is None else measured
+    player = [role_boxes(r, 'player', frame_size) for r in rows] if measured is None else [[{'box': b} for b in r['playerBoxes']] for r in rows]
+    coins = [role_boxes(r, 'coin', frame_size) for r in rows] if measured is None else [[{'box': b} for b in r['coinBoxes']] for r in rows]
+    ground = [ground_line(rows, i) for i in range(len(rows))] if measured is None else [r['ground'] for r in rows]
+
+    def stats(values):
+        if measured is None:
+            return _stats(values)
+        if not values:
+            return None
+        return {'n': len(values), 'min': round(min(values), 3), 'median': round(statistics.median(values), 3), 'max': round(max(values), 3)}
+    standing, airborne, off_ground, unjudgeable = ([], [], [], [])
     for i, row in enumerate(rows):
-        y = ground_line(rows, i)
+        y = ground[i]
+        if measured is not None:
+            reasons = []
+            if not player[i]:
+                reasons.append('player-unavailable')
+            elif len(player[i]) != 1:
+                reasons.append('several-players')
+            if y is None:
+                reasons.append('ground-unavailable')
+            if type(row.get('onFloor')) is not bool:
+                reasons.append('floor-state-unavailable')
+            if reasons:
+                unjudgeable.append({'frame': row['frame'], 'tick': row['tick'], 'reasons': reasons})
+                continue
         if y is None or not player[i]:
             continue
-        gap = player[i][0]["box"][3] - y  # positive: the box's bottom is below the ground line
-        (standing if row.get("onFloor") else airborne).append(gap)
-        if row.get("onFloor") and gap < -OFF_GROUND_PX:
-            off_ground.append(row.get("tick", i))
-    boxes = [p[0]["box"] for p in player if p]
-    coin_boxes = [c["box"] for frame in coins for c in frame]
-    return {
-        "rows": len(rows),
-        "playerVisible": sum(1 for p in player if p),
-        "playerSeveral": sum(1 for p in player if len(p) > 1),
-        "playerWidth": _stats([b[2] - b[0] for b in boxes]),
-        "playerHeight": _stats([b[3] - b[1] for b in boxes]),
-        "groundRows": sum(1 for i in range(len(rows)) if ground_line(rows, i) is not None),
-        "onFloorBottomMinusGround": _stats(standing),
-        "onFloorOffGround": {"rows": len(off_ground), "spans": _spans(off_ground),
-                             "onGround": _stats([g for g in standing if g >= -OFF_GROUND_PX])},
-        "airborneBottomMinusGround": _stats(airborne),
-        "coinsVisiblePerFrame": _stats([float(len(c)) for c in coins]),
-        "coinWidth": _stats([b[2] - b[0] for b in coin_boxes]),
-        "coinHeight": _stats([b[3] - b[1] for b in coin_boxes]),
-    }
+        gap = player[i][0]['box'][3] - y
+        (standing if row.get('onFloor') else airborne).append(gap)
+        if row.get('onFloor') and gap < -OFF_GROUND_PX:
+            off_ground.append(row.get('tick', i))
+    boxes = [p[0]['box'] for p in player if p and (measured is None or len(p) == 1)]
+    coin_boxes = [c['box'] for frame in coins for c in frame]
+    result = {'rows': len(rows), 'playerVisible': sum((1 for p in player if p)), 'playerSeveral': sum((1 for p in player if len(p) > 1)), 'playerWidth': stats([b[2] - b[0] for b in boxes]), 'playerHeight': stats([b[3] - b[1] for b in boxes]), 'groundRows': sum((y is not None for y in ground)), 'onFloorBottomMinusGround': stats(standing), 'onFloorOffGround': {'rows': len(off_ground), 'spans': _spans(off_ground), 'onGround': stats([g for g in standing if g >= -OFF_GROUND_PX])}, 'airborneBottomMinusGround': stats(airborne), 'coinsVisiblePerFrame': stats([float(len(c)) for c in coins]), 'coinWidth': stats([b[2] - b[0] for b in coin_boxes]), 'coinHeight': stats([b[3] - b[1] for b in coin_boxes])}
+    if measured is not None:
+        result.update(frameMeasurements=measured, unjudgeable=unjudgeable, unjudgeableRows=len(unjudgeable))
+    return result
 
 
 def calibration_line(c: dict) -> str:

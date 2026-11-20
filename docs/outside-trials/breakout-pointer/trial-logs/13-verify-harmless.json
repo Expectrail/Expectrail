@@ -1,0 +1,30 @@
+{
+  "step": 13,
+  "label": "verify-harmless",
+  "startedUtc": "2026-11-16T06:49:15.050350+00:00",
+  "command": [
+    "python3",
+    "-m",
+    "expectrail.cli",
+    "verify",
+    "--project",
+    "$WORK/breakout-pointer-variants/harmless",
+    "--base",
+    "$WORK/breakout-pointer-source",
+    "--execution-class",
+    "diagnostic",
+    "--jobs-root",
+    "$SCRATCH/expectrail-menu-trial-verify/jobs/harmless",
+    "--json"
+  ],
+  "cwd": "$REPO",
+  "seconds": 13.993119330996706,
+  "exitCode": 2,
+  "status": "finished",
+  "log": "trial-logs/13-verify-harmless.log",
+  "environment": {
+    "EXPECTRAIL_GODOT": "$WORK/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+    "TMPDIR": "$SCRATCH/expectrail-menu-trial-verify/tmp",
+    "EXPECTRAIL_TOOLS": "$SCRATCH/expectrail-menu-trial-verify/tools"
+  }
+}

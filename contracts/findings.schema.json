@@ -26,6 +26,349 @@
   ],
   "additionalProperties": false,
   "properties": {
+    "countingChecks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runSha256",
+        "receiptSha256",
+        "rows"
+      ],
+      "properties": {
+        "runSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "receiptSha256": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rows": {
+          "type": "array",
+          "maxItems": 12,
+          "description": "Up to 8 trace rows (the run's proposed checks) and up to 4 pixel rows (its pixelChecks), in that order.",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "specId",
+                  "requirementSource",
+                  "predicate",
+                  "probeIds",
+                  "routeSha256",
+                  "reference",
+                  "base",
+                  "candidate",
+                  "killed",
+                  "rules",
+                  "counting",
+                  "outcome",
+                  "reasons",
+                  "model",
+                  "modelVersion",
+                  "generatorVersion"
+                ],
+                "properties": {
+                  "specId": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "requirementSource": {
+                    "const": "bug-report"
+                  },
+                  "predicate": {
+                    "type": "object"
+                  },
+                  "probeIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "routeSha256": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "reference": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "items": {
+                      "enum": [
+                        "pass",
+                        "fail",
+                        "not_exercised",
+                        "insufficient_observation",
+                        "execution_error"
+                      ]
+                    }
+                  },
+                  "base": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "items": {
+                      "enum": [
+                        "pass",
+                        "fail",
+                        "not_exercised",
+                        "insufficient_observation",
+                        "execution_error"
+                      ]
+                    }
+                  },
+                  "candidate": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "items": {
+                      "enum": [
+                        "pass",
+                        "fail",
+                        "not_exercised",
+                        "insufficient_observation",
+                        "execution_error"
+                      ]
+                    }
+                  },
+                  "killed": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "rules": {
+                    "type": "array",
+                    "minItems": 6,
+                    "maxItems": 6,
+                    "items": {
+                      "type": "boolean"
+                    }
+                  },
+                  "counting": {
+                    "type": "boolean"
+                  },
+                  "outcome": {
+                    "enum": [
+                      "pass",
+                      "fail",
+                      "unknown"
+                    ]
+                  },
+                  "reasons": {
+                    "type": "array",
+                    "maxItems": 6,
+                    "items": {
+                      "type": "string",
+                      "maxLength": 300
+                    }
+                  },
+                  "model": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 100
+                  },
+                  "modelVersion": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 100
+                  },
+                  "generatorVersion": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 100
+                  }
+                },
+                "description": "A trace check's row (expectrail.jit.assess.counting): rules recomputed from the source run's proposed/validity."
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "specId",
+                  "requirementSource",
+                  "predicate",
+                  "observer",
+                  "setting",
+                  "probeIds",
+                  "routeSha256",
+                  "reference",
+                  "base",
+                  "candidate",
+                  "killed",
+                  "rules",
+                  "counting",
+                  "outcome",
+                  "reasons",
+                  "model",
+                  "modelVersion",
+                  "generatorVersion"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "pixel"
+                  },
+                  "specId": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "requirementSource": {
+                    "const": "bug-report"
+                  },
+                  "predicate": {
+                    "type": "object",
+                    "required": [
+                      "object",
+                      "type"
+                    ],
+                    "properties": {
+                      "object": {
+                        "type": "string",
+                        "maxLength": 80
+                      },
+                      "type": {
+                        "type": "string",
+                        "maxLength": 80
+                      }
+                    }
+                  },
+                  "observer": {
+                    "enum": [
+                      "sam-3.1-anchor",
+                      "visual-sensor"
+                    ]
+                  },
+                  "setting": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "description": "How the observer was asked, the same on every clean and bug run; null when it was not."
+                  },
+                  "probeIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "routeSha256": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "reference": {
+                    "type": "array",
+                    "maxItems": 20,
+                    "items": {
+                      "enum": [
+                        "pass",
+                        "fail",
+                        "needs-review"
+                      ]
+                    }
+                  },
+                  "base": {
+                    "type": "array",
+                    "maxItems": 20,
+                    "items": {
+                      "enum": [
+                        "pass",
+                        "fail",
+                        "needs-review"
+                      ]
+                    }
+                  },
+                  "candidate": {
+                    "type": "array",
+                    "maxItems": 20,
+                    "items": {
+                      "enum": [
+                        "pass",
+                        "fail",
+                        "needs-review"
+                      ]
+                    }
+                  },
+                  "killed": {
+                    "type": "array",
+                    "maxItems": 1,
+                    "items": {
+                      "const": "base"
+                    }
+                  },
+                  "rules": {
+                    "type": "array",
+                    "minItems": 6,
+                    "maxItems": 6,
+                    "items": {
+                      "type": "boolean"
+                    }
+                  },
+                  "counting": {
+                    "type": "boolean"
+                  },
+                  "outcome": {
+                    "enum": [
+                      "pass",
+                      "fail",
+                      "unknown"
+                    ]
+                  },
+                  "reasons": {
+                    "type": "array",
+                    "maxItems": 6,
+                    "items": {
+                      "type": "string",
+                      "maxLength": 300
+                    }
+                  },
+                  "model": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 100
+                  },
+                  "modelVersion": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 100
+                  },
+                  "generatorVersion": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 100
+                  }
+                },
+                "description": "A pixel check's row (#286; expectrail.jit.assess.pixel_counting): rules recomputed from the source run's pixelChecks. Its runs are the named observer's verdicts, so under the both observer rule a counting pixel row is its own per-check visual evidence (expectrail.gate.record.decide)."
+              }
+            ]
+          }
+        }
+      }
+    },
     "format": {
       "const": "expectrail.findings/v0"
     },
@@ -67,6 +410,32 @@
             "baseSha": {
               "type": ["string", "null"],
               "pattern": "^[0-9a-f]{40}$"
+            },
+            "fixLinks": {
+              "description": "Closing-keyword references from the PR body. Every link imposes fix without an issue-label lookup; line is the 1-based keyword line, text the bounded matching phrase, not the whole body.",
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 10,
+              "items": {
+                "type": "object",
+                "required": [
+                  "line",
+                  "text"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "line": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 65536
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 320
+                  }
+                }
+              }
             }
           }
         }
@@ -165,6 +534,7 @@
       "description": "which observers judged the checks. both: the engine's record and a visual observer over the captured frames judge every check, and no check passes on the engine's record alone (issue #327). engine-only: the engine's record alone. Written under both only: an engine-only record has no block, as before the block existed (November 12, 2026), so an older reader still reads it, and a reader takes an absent block as engine-only.",
       "properties": {
         "rule": {"enum": ["both", "engine-only"]},
+        "engine": {"description": "Engine observation adapter and its Expectrail release version. Optional on historical records.", "type": "object", "required": ["name", "version"], "additionalProperties": false, "properties": {"name": {"type": "string", "minLength": 1, "maxLength": 80}, "version": {"type": "string", "minLength": 1, "maxLength": 80}}},
         "visionEvery": {
           "type": "integer", "minimum": 1,
           "description": "Explicit opt-in visual stride for public checks, from each window's first frame plus its last. Absent means 1 (every frame). The engine and captured window must remain complete. A defect shorter than this many frames may be missed; three consecutive negative samples span up to 2*visionEvery+1 real frames, not proof about intervening pixels. Explicit spec coverage obligations are not relaxed. The paired anchor block keeps its own every."
@@ -180,7 +550,7 @@
               "properties": {
                 "name": {"type": "string", "minLength": 1, "maxLength": 40, "pattern": "^[a-z0-9][a-z0-9-]*$"},
                 "provider": {"type": "string", "minLength": 1, "maxLength": 80},
-                "model": {"type": "string", "minLength": 1, "maxLength": 80}
+                "model": {"type": "string", "minLength": 1, "maxLength": 80}, "version": {"description": "Observation adapter version, not a claim about the provider weights revision; absent in historical records.", "type": "string", "minLength": 1, "maxLength": 80}
               }
             }
           ]
@@ -194,7 +564,7 @@
       "description": "The player's place, asked of the vision model on the base and the head (issue #327, decision B of November 12, 2026). Written under the rule both when a base was replayed. For each route, sampled frames of both replays are asked what is drawn inside the player's own collision box, and each head frame is compared with the same base frame where the engine has the player in the same place. A route that differs, or a frame asked about with no answer, makes an accept needs-review, with the differing frames kept under anchor/<route>/ as base-NNNNNN.png and head-NNNNNN.png. It never rejects and never makes anything an accept. A reader takes an absent block as not asked.",
       "properties": {
         "format": {"const": "expectrail.anchor/v0"},
-        "observer": {"description": "the visual observer whose model was asked, as in observers.visual; null when none was", "oneOf": [{"type": "null"}, {"type": "object", "required": ["name", "provider", "model"], "additionalProperties": false, "properties": {"name": {"type": "string", "minLength": 1, "maxLength": 40, "pattern": "^[a-z0-9][a-z0-9-]*$"}, "provider": {"type": "string", "minLength": 1, "maxLength": 80}, "model": {"type": "string", "minLength": 1, "maxLength": 80}}}]},
+        "observer": {"description": "the visual observer whose model was asked, as in observers.visual; null when none was", "oneOf": [{"type": "null"}, {"type": "object", "required": ["name", "provider", "model"], "additionalProperties": false, "properties": {"name": {"type": "string", "minLength": 1, "maxLength": 40, "pattern": "^[a-z0-9][a-z0-9-]*$"}, "provider": {"type": "string", "minLength": 1, "maxLength": 80}, "model": {"type": "string", "minLength": 1, "maxLength": 80}, "version": {"description": "Observation adapter version, not a claim about the provider weights revision; absent in historical records.", "type": "string", "minLength": 1, "maxLength": 80}}}]},
         "box": {"const": "body", "description": "the player's own collision box from the trace, widened by pad game pixels each way"},
         "pad": {"type": "number", "minimum": 0, "maximum": 64},
         "every": {"type": "integer", "minimum": 1, "maximum": 1000, "description": "every this-many captured frames of a route are asked about, and its last"},

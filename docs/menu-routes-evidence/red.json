@@ -1,0 +1,17 @@
+{
+  "label": "red",
+  "startedUtc": "2026-11-16T06:19:33.377234+00:00",
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v",
+    "tests.test_menu_routes"
+  ],
+  "cwd": "$REPO",
+  "seconds": 0.4655392970016692,
+  "exitCode": 1,
+  "status": "finished",
+  "godotOverride": "$WORK/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+  "log": "logs/red.log"
+}

@@ -36,6 +36,7 @@ import shlex
 import shutil
 from pathlib import Path
 
+from expectrail import explanation as xpl
 from expectrail.diagnostics import redact
 from expectrail.gate import record as rec
 
@@ -497,6 +498,8 @@ def _repair_section(repair: dict, fresh: str | None = None) -> str:
     stop = doc["stop"]
     body = ('<section aria-label="Recorded repair"><h2>Recorded repair</h2><ol>' + "".join(attempts)
             + f'</ol><p>Stopped: <strong>{esc(stop["reason"])}</strong>. {esc(stop["detail"])}</p>')
+    if doc["fixer"].get("providerOnly"):
+        body += "<p>Provider-only llm-patch: trusted host requests; no sandboxed agent process ran. Invocation reservations accompany the record.</p>"
     if doc["fixer"]["source"] == "fixture":
         body += "<p>Fixture recording for testing. No live fixer ran.</p>"
     if repair["diff"] is not None:
@@ -527,8 +530,12 @@ def write_repair(path: Path, folder: Path) -> Path:
 
 def write(folder: Path, record: dict | None, views: list[dict] | None = None, *, status: dict | None = None,
           request: dict | None = None, sample: str | None = None, repair: dict | None = None,
-          repair_record: bytes | None = None) -> Path:
-    """Write ``folder``/index.html (and views.json) for a record, a job status, or both."""
+          repair_record: bytes | None = None, explanation: dict | None = None) -> Path:
+    """Write ``folder``/index.html (and views.json) for a record, a job status, or both.
+
+    ``explanation`` is an expectrail.explanation/v1 document. It is shown only when
+    ``explanation.check`` passes against this record and this page's decision; otherwise the page
+    says it was withheld and why. It never changes the state, the decision or the reasons."""
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
     views = list(views or [])
@@ -541,6 +548,7 @@ def write(folder: Path, record: dict | None, views: list[dict] | None = None, *,
             "id", "phase", "decision", "reasons", "diagnostics", "evidenceGrade", "executionClass", "inputs",
             "history", "finishedAt", "repair")},
         "sample": sample,
+        "explanation": None if explanation is None else xpl.shown(explanation, record, decision),
     })
     command = reproduce(request, sample=sample)
     # A command cannot be clipped like prose: doing so can drop its flags or quotes.
@@ -698,8 +706,14 @@ def write_job(store, job_id: str, *, sample: str | None = None, repair: dict | N
                     repair_record = data
         except (ImportError, OSError, UnicodeError, ValueError):
             pass
+    explanation = None
+    if (paths.root / xpl.FILE_NAME).exists() or (paths.root / xpl.FILE_NAME).is_symlink():
+        try:
+            explanation = xpl.read(paths.root / xpl.FILE_NAME)
+        except xpl.ExplanationError as exc:
+            explanation = {"unreadable": str(exc)}   # shown() withholds it and says why
     return write(folder, record, views, status=status, request=request, sample=sample, repair=repair,
-                 repair_record=repair_record)
+                 repair_record=repair_record, explanation=explanation)
 
 
 # --- the page -------------------------------------------------------------------------------------
@@ -1198,22 +1212,47 @@ def _measurement_table(view, key, observer):
     return "".join(parts) + "</tbody></table></div></details>"
 
 
+def frame_figure(frame, label, *, single_file=False, boxes=None, missing="Frame unavailable", images=None):
+    """Shared offline frame/box view for evidence and onboarding; never an external image request."""
+    path = frame.get("path") or ""
+    if single_file and re.fullmatch(r"data:image/png;base64,[a-zA-Z0-9+/]+=*", path):
+        path = path.replace("/", "&#47;").replace("+", "&#43;")
+    elif single_file or not FRAME_NAME.fullmatch(path):
+        return f'<figure><p class="missing-frame">{esc(missing)}</p></figure>'
+    image = f'<img class="snapshot" srcset="{path}" alt="{esc(label)}">'
+    size = frame.get("size")
+    if images is not None and single_file and isinstance(size, (tuple, list)) and len(size) == 2:
+        # Inline SVG can reuse a raster by fragment ID. It saves repeated PNG bytes without
+        # scripts, URLs outside this document, or shrinking the useful preview.
+        image_id = images.get(path)
+        if image_id is None:
+            image_id = f"review-raster-{len(images)}"
+            images[path] = image_id
+            raster = (f'<image id="{image_id}" href="{path}" width="{size[0]}" height="{size[1]}"></image>')
+        else:
+            raster = f'<use href="#{image_id}"></use>'
+        image = (f'<svg class="snapshot" viewBox="0 0 {size[0]} {size[1]}" role="img" '
+                 f'aria-label="{esc(label)}">{raster}</svg>')
+    if boxes and isinstance(size, (tuple, list)) and len(size) == 2 and all(v > 0 for v in size):
+        svg = [f'<svg viewBox="0 0 {size[0]} {size[1]}" preserveAspectRatio="none" aria-hidden="true">']
+        for kind, box in boxes.items():
+            if not (isinstance(box, list) and len(box) == 4 and all(type(v) in (int, float) and math.isfinite(v) for v in box)):
+                continue
+            color = "#f29a38" if kind == "engine" else "#02cee0"
+            svg.append(f'<rect x="{box[0]}" y="{box[1]}" width="{max(0,box[2]-box[0])}" '
+                       f'height="{max(0,box[3]-box[1])}" fill="none" stroke="{color}" stroke-width="2" '
+                       f'vector-effect="non-scaling-stroke"><title>{esc(kind)} box</title></rect>')
+        image = '<div class="stage">' + image + ''.join(svg) + '</svg></div>'
+    return f'<figure>{image}<figcaption>{esc(label)}</figcaption></figure>'
+
+
 def _static_pair(view, tick, single_file):
     parts = ['<div class="pair">']
     for side in ("before", "after"):
         frame = next((f for f in (view.get("frames") or {}).get(side, [])
                       if f.get("frame") == tick), {})
-        path = frame.get("path") or ""
-        label = f"{side.capitalize()} the change, frame {tick}"
-        if single_file and re.fullmatch(r"data:image/png;base64,[a-zA-Z0-9+/]+=*", path):
-            # An HTML character reference preserves the base64 bytes and breaks accidental
-            # token-like words in an image, just as _json_for_script does for the data block.
-            path = path.replace("/", "&#47;").replace("+", "&#43;")
-        elif single_file or not FRAME_NAME.fullmatch(path):
-            parts.append(f'<figure><p class="missing-frame">No {side} frame {tick} in this evidence.</p></figure>')
-            continue
-        parts.append(f'<figure><img class="snapshot" srcset="{path}" alt="{label}">'
-                     f'<figcaption>{label}</figcaption></figure>')
+        parts.append(frame_figure(frame, f"{side.capitalize()} the change, frame {tick}",
+                                  single_file=single_file, missing=f"No {side} frame {tick} in this evidence."))
     return "".join(parts) + "</div>"
 
 
@@ -1244,6 +1283,37 @@ def _measurements(view, difference, paired, single_file, index):
     elif not any((view.get("frames") or {}).values()):
         parts.append("<p>No frames were kept for this check.</p>")
     return "".join(parts) + "</article>"
+
+
+def _explanation_section(said: dict, findings: list[dict]) -> str:
+    """A written explanation, below the findings it cites. The banner above is the verifier's."""
+    who = f"{said.get('model') or 'unknown'}, " + ("replayed from a recording" if said.get("recorded") else "asked live")
+    parts = ['<section id="explanation"><h2>Explanation</h2>',
+             f'<p class="muted">Written by a model ({esc(who)}). It decides nothing: the decision at the top '
+             "of this page is the verifier's. Each point names the evidence it is about, and the verdicts under it are copied from the record.</p>"]
+    if not said.get("shown"):
+        parts.append("<p><strong>Withheld.</strong> An explanation was supplied, but it is not shown because "
+                     "Expectrail could not match it to this run's evidence:</p><ul>"
+                     + "".join(f"<li>{esc(w)}</li>" for w in said.get("withheld") or []) + "</ul>")
+        return "".join(parts) + "</section>"
+    index = {f["id"]: n for n, f in enumerate(findings)}
+    parts.append("<ol>")
+    for point in said.get("points") or []:
+        refs = []
+        for cid in point.get("cites") or []:
+            if cid in index:
+                refs.append(f'<button type="button" data-view="{index[cid]}" data-finding="{esc(cid)}">'
+                            f"<code>{esc(cid)}</code></button>")
+            else:
+                refs.append(f"<code>{esc(cid)}</code>")
+        said = []
+        for cid, before, after in point.get("verdicts") or []:
+            sides = [f"{WORD.get(v, v)} {when} the change" for v, when in ((before, "before"), (after, "after")) if v]
+            said.append(f"<code>{esc(cid)}</code>: {esc(', '.join(sides))}")
+        record_line = (f'<br><span class="muted">From the record: {"; ".join(said)}.</span>' if said else "")
+        parts.append(f"<li>{esc(point.get('text'))} <span class=\"muted\">Evidence: {' '.join(refs)}</span>"
+                     f"{record_line}</li>")
+    return "".join(parts) + "</ol></section>"
 
 
 def render(payload: dict) -> str:
@@ -1307,6 +1377,8 @@ def render(payload: dict) -> str:
                          f'{esc(f["comparison"])}. Before: {esc(WORD.get(f["before"], f["before"]))}; after: '
                          f'{esc(WORD.get(f["after"], f["after"]))}. {esc(f["reason"])}</button></li>')
         parts.append("</ul>")
+    if payload.get("explanation"):
+        parts.append(_explanation_section(payload["explanation"], findings))
     parts.append("<h2>Reproduce</h2>")
     if payload["reproduce"]:
         words = ("Run this public sample with its recorded vision answers (no model call):" if payload.get("sample") else

@@ -1,0 +1,35 @@
+# PROPOSAL ONLY — #254, Sean installs/reviews in an existing disposable public test repo.
+# No file under .github/ is changed by this patch.
+# Repository placeholder deliberately prevents the snippets running as pasted.
+# Keep existing permissions, trusted checkout, App publisher and candidate/capture unchanged.
+# Install these in the test default branch BEFORE opening the trial PRs.
+# Source: main 49226b6cdadda80754ecee1c61ed33116aeb9b6c.
+#
+# A. Insert after "Start the checks and identify the base", before policy checkout.
+# Wait for this step in the COMPLETED-event judge, then push the provided next head.
+- name: Hold the bound new-head trial for Sean's second push
+  if: >-
+    github.repository == 'REPLACE-OWNER/expectrail-254-trials' &&
+    github.event.action == 'completed' &&
+    steps.start.outputs.base != '' &&
+    github.event.workflow_run.head_branch == 'expectrail-trials/49226b6cdadd/new-head'
+  run: sleep 90
+
+# B. Insert immediately after "Fetch the published capture and verify its digest",
+# before "Evaluate the saved runs from the base commit". This uses trusted kit code.
+# The upload remains immutable. Only the downloaded copy in this trusted job changes.
+- name: Substitute one downloaded trace byte for the tamper trial
+  if: >-
+    github.repository == 'REPLACE-OWNER/expectrail-254-trials' &&
+    github.event.action == 'completed' &&
+    steps.start.outputs.base != '' &&
+    github.event.workflow_run.head_branch == 'expectrail-trials/49226b6cdadd/tamper'
+  run: |
+    python3 -m tools.gate_trials.tamper --capture "$RUNNER_TEMP/capture.zip" --out "$RUNNER_TEMP/altered-capture.zip"
+    mv -- "$RUNNER_TEMP/capture.zip" "$RUNNER_TEMP/original-capture.zip"
+    mv -- "$RUNNER_TEMP/altered-capture.zip" "$RUNNER_TEMP/capture.zip"
+
+# Sean checks: existing disposable target; correct insertion points; trusted default branch;
+# App and main-only environment already configured; fixed branch guards; no PR text in shell;
+# original capture kept for comparison; EVIDENCE_MISMATCH plus failed clearance recorded.
+# Remove both snippets after capturing the corresponding hosted proofs through review.

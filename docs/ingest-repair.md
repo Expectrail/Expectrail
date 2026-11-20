@@ -1,5 +1,7 @@
 # Opt-in repair after playtest intake (#531)
 
+Current #531 kit: [current model, full-context reservation and $10 cap envelope](live-repair/RUN-SHEET.md). The historical GPT-4o fixer profile below is deprecated and now refused; its offline regression fixtures do not enable it live.
+
 Current #267 behavior: Muse/BYO CLIs stop `fixer-bound-unavailable`. For the
 controlled OpenAI GPT-4o sender choose `--repair-agent llm-patch` with an
 invocation cap, aggregate Muse cap and model-month ledger. Its pre-send token

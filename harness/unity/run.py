@@ -244,6 +244,8 @@ def check_route(route_doc: dict, m: dict) -> None:
         raise SystemExit(f"invalid route: {exc}") from exc
     known = {a["name"] for a in m["actions"]}
     for e in route_doc["events"]:
+        if "pointer" in e:
+            raise SystemExit("Unity adapter does not support pointer route events; use an action route")
         if e["action"] not in known:
             raise SystemExit(f"the route presses {e['action']!r}, which the map does not define ({', '.join(sorted(known))})")
         if not 0 <= e["tick"] < route_doc["ticks"]:
@@ -373,6 +375,12 @@ def run(route: Path, out: Path, patches: list[Path] | None = None, *, game: Path
         "integrity": run_doc.get("integrity") or {"exceptions": 0, "errors": 0, "messages": []},
     }
     from expectrail.contracts import ContractError, validate
+    if "captureTimeline" in trace:
+        from expectrail.observation_timeline import build, TimelineError
+        try:
+            replay["timeline"] = build(trace, frames, ticks=route_doc["ticks"])
+        except (TimelineError, OSError) as exc:
+            replay["timelineProblem"] = str(exc) if isinstance(exc, TimelineError) else "capture images could not be read"
 
     try:
         validate(replay, "replay")

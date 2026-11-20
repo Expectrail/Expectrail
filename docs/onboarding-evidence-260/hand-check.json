@@ -1,0 +1,410 @@
+[
+  {
+    "project": "bundled",
+    "sourceTraceSha256": "e9eab45d3ae3cc770687f0670944e66bd119a177263f15a7ffe706f7f4a92bf1",
+    "reportSha256": "8aefcbc60eb8bae263de0ee3b707e9e4841ae80ce72cc38961a6c4356349bf71",
+    "allMeasurementsAndStatisticsEqual": true,
+    "roundedWorldProjectionMaxErrorPx": 0.00100000000009004,
+    "samples": [
+      {
+        "frame": 0,
+        "tick": 1,
+        "worldBox": [
+          58.0,
+          590.75,
+          122.0,
+          654.75
+        ],
+        "nextView": [
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          310.0,
+          -260.0
+        ],
+        "screenBox": [
+          [
+            368.0,
+            330.75,
+            432.0,
+            394.75
+          ]
+        ],
+        "worldGround": 650.0,
+        "screenGround": 390.0,
+        "bottomMinusGround": 4.75,
+        "onFloor": true
+      },
+      {
+        "frame": 60,
+        "tick": 121,
+        "worldBox": [
+          314.276,
+          531.436,
+          378.276,
+          595.436
+        ],
+        "nextView": [
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          56.224,
+          -260.0
+        ],
+        "screenBox": [
+          [
+            370.5,
+            271.436,
+            434.5,
+            335.436
+          ]
+        ],
+        "worldGround": 650.0,
+        "screenGround": 390.0,
+        "bottomMinusGround": -54.564,
+        "onFloor": false
+      },
+      {
+        "frame": 119,
+        "tick": 239,
+        "worldBox": [
+          542.948,
+          558.337,
+          606.948,
+          622.337
+        ],
+        "nextView": [
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          -174.398,
+          -260.0
+        ],
+        "screenBox": [
+          [
+            368.55,
+            298.337,
+            432.55,
+            362.337
+          ]
+        ],
+        "worldGround": 650.0,
+        "screenGround": 390.0,
+        "bottomMinusGround": -27.663,
+        "onFloor": true
+      }
+    ],
+    "statistics": {
+      "rows": 120,
+      "playerVisible": 120,
+      "playerSeveral": 0,
+      "playerWidth": {
+        "n": 120,
+        "min": 64.0,
+        "median": 64.0,
+        "max": 64.0
+      },
+      "playerHeight": {
+        "n": 120,
+        "min": 64.0,
+        "median": 64.0,
+        "max": 64.0
+      },
+      "groundRows": 120,
+      "onFloorBottomMinusGround": {
+        "n": 66,
+        "min": -31.353,
+        "median": 4.747,
+        "max": 4.75
+      },
+      "onFloorOffGround": {
+        "rows": 29,
+        "spans": [
+          [
+            183,
+            183
+          ],
+          [
+            185,
+            185
+          ],
+          [
+            187,
+            187
+          ],
+          [
+            189,
+            189
+          ],
+          [
+            191,
+            191
+          ],
+          [
+            193,
+            193
+          ],
+          [
+            195,
+            195
+          ],
+          [
+            197,
+            197
+          ],
+          [
+            199,
+            199
+          ],
+          [
+            201,
+            201
+          ],
+          [
+            203,
+            203
+          ],
+          [
+            205,
+            205
+          ],
+          [
+            207,
+            207
+          ],
+          [
+            209,
+            209
+          ],
+          [
+            211,
+            211
+          ],
+          [
+            213,
+            213
+          ],
+          [
+            215,
+            215
+          ],
+          [
+            217,
+            217
+          ],
+          [
+            219,
+            219
+          ],
+          [
+            221,
+            221
+          ],
+          [
+            223,
+            223
+          ],
+          [
+            225,
+            225
+          ],
+          [
+            227,
+            227
+          ],
+          [
+            229,
+            229
+          ],
+          [
+            231,
+            231
+          ],
+          [
+            233,
+            233
+          ],
+          [
+            235,
+            235
+          ],
+          [
+            237,
+            237
+          ],
+          [
+            239,
+            239
+          ]
+        ],
+        "onGround": {
+          "n": 37,
+          "min": 4.745,
+          "median": 4.748,
+          "max": 4.75
+        }
+      },
+      "airborneBottomMinusGround": {
+        "n": 54,
+        "min": -85.605,
+        "median": -60.88,
+        "max": 1.874
+      },
+      "coinsVisiblePerFrame": {
+        "n": 120,
+        "min": 0.0,
+        "median": 0.0,
+        "max": 0.0
+      },
+      "coinWidth": null,
+      "coinHeight": null,
+      "unjudgeableRows": 0
+    }
+  },
+  {
+    "project": "config-lane",
+    "sourceTraceSha256": "6033e17d44e0f8fbbba4d0c1eeae3b3b1bf5ead9854f079a46c8c4f13a95549b",
+    "reportSha256": "56192a2c81ff16f28e66ff909e7d777d48fcaad0c80b0a1e6a3ba35e5ff65e46",
+    "allMeasurementsAndStatisticsEqual": true,
+    "roundedWorldProjectionMaxErrorPx": 2.842170943040401e-14,
+    "samples": [
+      {
+        "frame": 0,
+        "tick": 0,
+        "worldBox": [
+          70.0,
+          103.925,
+          94.0,
+          127.925
+        ],
+        "nextView": [
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          98.0,
+          4.075
+        ],
+        "screenBox": [
+          [
+            168.0,
+            108.0,
+            192.0,
+            132.0
+          ]
+        ],
+        "worldGround": 128.0,
+        "screenGround": 132.075,
+        "bottomMinusGround": -0.075,
+        "onFloor": true
+      },
+      {
+        "frame": 60,
+        "tick": 60,
+        "worldBox": [
+          189.999,
+          103.925,
+          213.999,
+          127.925
+        ],
+        "nextView": [
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          -21.999,
+          4.075
+        ],
+        "screenBox": [
+          [
+            168.0,
+            108.0,
+            192.0,
+            132.0
+          ]
+        ],
+        "worldGround": 128.0,
+        "screenGround": 132.075,
+        "bottomMinusGround": -0.075,
+        "onFloor": true
+      },
+      {
+        "frame": 119,
+        "tick": 119,
+        "worldBox": [
+          306.0,
+          103.925,
+          330.0,
+          127.925
+        ],
+        "nextView": [
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          -138.0,
+          4.075
+        ],
+        "screenBox": [
+          [
+            168.0,
+            108.0,
+            192.0,
+            132.0
+          ]
+        ],
+        "worldGround": 128.0,
+        "screenGround": 132.075,
+        "bottomMinusGround": -0.075,
+        "onFloor": true
+      }
+    ],
+    "statistics": {
+      "rows": 120,
+      "playerVisible": 120,
+      "playerSeveral": 0,
+      "playerWidth": {
+        "n": 120,
+        "min": 24.0,
+        "median": 24.0,
+        "max": 24.0
+      },
+      "playerHeight": {
+        "n": 120,
+        "min": 24.0,
+        "median": 24.0,
+        "max": 24.0
+      },
+      "groundRows": 120,
+      "onFloorBottomMinusGround": {
+        "n": 120,
+        "min": -0.075,
+        "median": -0.075,
+        "max": -0.075
+      },
+      "onFloorOffGround": {
+        "rows": 0,
+        "spans": [],
+        "onGround": {
+          "n": 120,
+          "min": -0.075,
+          "median": -0.075,
+          "max": -0.075
+        }
+      },
+      "airborneBottomMinusGround": null,
+      "coinsVisiblePerFrame": {
+        "n": 120,
+        "min": 0.0,
+        "median": 0.0,
+        "max": 0.0
+      },
+      "coinWidth": null,
+      "coinHeight": null,
+      "unjudgeableRows": 0
+    }
+  }
+]

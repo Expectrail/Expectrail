@@ -6,6 +6,172 @@
   "type": "object",
   "required": ["format", "ticks", "physicsTicksPerSecond", "rows"],
   "properties": {
+    "inputProbe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tick",
+        "viewport",
+        "paused",
+        "buttons",
+        "truncated"
+      ],
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "viewport": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "paused": {
+          "type": "boolean"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "buttons": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "text",
+              "box",
+              "visible",
+              "enabled",
+              "connections"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "box": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {
+                  "type": "number"
+                }
+              },
+              "visible": {
+                "type": "boolean"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "connections": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "signal",
+                    "target",
+                    "method"
+                  ],
+                  "properties": {
+                    "signal": {
+                      "const": "pressed"
+                    },
+                    "target": {
+                      "type": "string"
+                    },
+                    "method": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "description": "Opt-in input discovery only. Engine-reported root-viewport control boxes and pressed-signal connections after the final probe tick. No input was sent. Absent on ordinary replays, preserving old trace bytes. Truncated data cannot select a control."
+    },
+    "captureTimeline": {
+      "description": "Optional legacy-compatible capture records, in output PNG order. Recorded at the draw phase, not inferred from an integer tick/frame ratio. Intervals are inclusive; a draw with no new physics step repeats the last tick.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fps",
+        "frames"
+      ],
+      "properties": {
+        "fps": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "frames": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "frame",
+              "tick",
+              "tickInterval",
+              "phase",
+              "viewport",
+              "transform"
+            ],
+            "properties": {
+              "frame": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tick": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tickInterval": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "phase": {
+                "enum": [
+                  "post-physics-pre-draw",
+                  "post-draw"
+                ]
+              },
+              "viewport": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "transform": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 6,
+                "maxItems": 6
+              }
+            }
+          }
+        }
+      }
+    },
     "format": {"const": "expectrail.trace/v0"},
     "ticks": {"type": "integer", "minimum": 0},
     "physicsTicksPerSecond": {"type": "integer", "minimum": 1},
@@ -70,6 +236,7 @@
             "type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4
           },
           "coins": {"type": "array", "items": {"$ref": "#/$defs/point"}},
+          "uiIntegers": {"type": ["array", "null"], "maxItems": 32, "items": {"type": "integer", "minimum": -1000000000, "maximum": 1000000000}, "description": "Engine state only: integer-only text on visible Label nodes in the current scene. Empty means none; null means the bounded collection overflowed. Absent on older traces. Not proof of pixels, clipping or occlusion."},
           "enemies": {"type": "array", "items": {"$ref": "#/$defs/tracked"}},
           "projectiles": {"type": "array", "items": {"$ref": "#/$defs/tracked"}},
           "enemyBoxes": {"type": "array", "items": {"$ref": "#/$defs/trackedBox"}, "description": "Added Nov 15, 2026 by the Godot harness (#286): [id, left, top, right, bottom], the world box of the own collision of each enemy in enemies (same id) that has one to measure, measured as body is for the player. An enemy with nothing to measure is left out."},

@@ -16,18 +16,38 @@ class Page(HTMLParser):
     def __init__(self, path):
         super().__init__(convert_charrefs=True)
         self.configs, self.images, self.tags = [], [], []
+        self.rasters = {}
+        self.payload = None
+        self.in_payload = False
         self.feed(path.read_text(encoding="utf-8"))
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
         self.tags.append(tag)
+        if tag == "script" and attrs.get("id") == "review-data":
+            self.in_payload = True
         if tag == "a":
             assert attrs["download"] == project_config.FILENAME
             prefix, encoded = attrs["href"].split(",", 1)
             assert prefix == "data:application/json;base64"
             self.configs.append(json.loads(base64.b64decode(encoded, validate=True)))
         if tag == "img":
-            self.images.append(attrs["src"])
+            self.images.append(attrs.get("src", attrs.get("srcset")))
+        if tag == "image":
+            self.rasters[attrs["id"]] = attrs["href"]
+            self.images.append(attrs["href"])
+        if tag == "use":
+            self.images.append(self.rasters[attrs["href"].removeprefix("#")])
+
+    def handle_endtag(self, tag):
+        if tag == "script":
+            self.in_payload = False
+
+    def handle_data(self, data):
+        if self.in_payload:
+            self.payload = json.loads(data)
+            manifest = json.loads(Path(self.payload["reviewFile"]).read_bytes())
+            self.configs.append(manifest["config"])
 
 
 class ReviewTest(unittest.TestCase):
@@ -35,7 +55,8 @@ class ReviewTest(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.root = Path(tmp.name) / "platformer"
-        shutil.copytree(ROOT / "game/platformer", self.root)
+        # A game that has not been onboarded: the bundled game's own config is left out (#259).
+        shutil.copytree(ROOT / "game/platformer", self.root, ignore=shutil.ignore_patterns("expectrail.project.json"))
         self.assertEqual(command("init", self.root)[0], 0)
         self.out = self.root.parent / "review.html"
 
@@ -54,19 +75,21 @@ class ReviewTest(unittest.TestCase):
         self.assertEqual(page.configs, [config])
         self.assertEqual(project_config.validate(page.configs[0], self.root), config)
         self.assertNotIn("approval", json.dumps(config))
-        self.assertNotIn("script", page.tags)
+        self.assertEqual(page.tags.count("script"), 2)
+        self.assertIn("connect-src &#x27;none&#x27;", self.out.read_text())
+        self.assertTrue(all(image.startswith("data:image/") for image in page.images))
         self.assertEqual(len(page.images), 2)
         self.assertIn("coins", self.out.read_text())
         self.assertEqual(contents(self.root), before)
         self.assertEqual(self.render()[0], 5)
 
-    def test_a_missing_route_or_nondraft_config_never_offers_a_download(self):
+    def test_a_missing_route_or_invalid_config_never_offers_a_download(self):
         path = self.root / project_config.FILENAME
         config = json.loads(path.read_bytes())
         (self.root / config["routes"][0]).unlink()
         self.assertEqual(self.render()[0], 5)
         self.assertFalse(self.out.exists())
-        del config["draft"]
+        config["draft"] = False
         path.write_text(json.dumps(config))
         code, msg = self.render()
         self.assertEqual(code, 5, msg)

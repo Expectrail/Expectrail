@@ -52,7 +52,7 @@ def describe(status: dict, job_folder: Path | None = None) -> str:
     lines = []
     if status["decision"] == "needs-review" and any(
             r.startswith(rec.NOT_DEMONSTRATED + ":") for r in status["reasons"]):
-        lines.append(req.UNVERIFIED_FIX)
+        lines.append(rec.unverified_fix_headline(status))
     lines.append(f"job {status['id']}: {status['phase']}" + (f", {status['decision']}" if status["decision"] else ""))
     if status.get("intent", "none") != "none":
         lines.append(f"  Declared intent: {status['intent']}")
@@ -135,6 +135,7 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
     sub = p.add_subparsers(dest="command", required=True, metavar="COMMAND")
 
     v = sub.add_parser("verify", help="verify a change and say accept, reject or needs review")
+    v.add_argument("--with-heldout", action="store_true", help="pin the operator-configured held-out suite; its path is never accepted from the request")
     v.add_argument("--repo", type=Path, help="resolve base/head references in this local Git repository; no checkout hooks, filters or fetch")
     v.add_argument("--head", help="a checkout folder, or a commit reference with --repo")
     v.add_argument("--project", type=Path, help="the changed project folder; use its base config to select routes, checks and vision")
@@ -267,7 +268,7 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
                 raise req.RequestError("--bug requires --intent fix; nothing was run")
             try:
                 settings, patch = auto_fix.configure(args.auto_fix, args.auto_fix_attempts, args.auto_fix_usd_cap,
-                                                     fixture=args.auto_fix_fixture, recorded=args.auto_fix_recorded)
+                                                     fixture=args.auto_fix_fixture, recorded=args.auto_fix_recorded, agent=args.auto_fix_agent)
             except (OSError, ValueError) as exc:
                 raise req.RequestError(str(exc)) from exc
             options = dict(head_commit=args.head_commit, base_commit=args.base_commit,
@@ -294,9 +295,12 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
                                     **options)
             if settings:
                 if not args.json:
-                    cost = f"${settings['usdCap']:g} Muse cap" if settings["source"] == "muse" else "offline patch, no fixer spend"
+                    cost = f"${settings['usdCap']:g} {settings['source']} cap" if settings["source"] in ("muse", "llm-patch") else "offline patch, no fixer spend"
                     print(f"Auto-fix on reject: up to {settings['attempts']} attempts, {cost}.", file=sys.stderr)
                 request["autoFix"] = settings
+            if args.with_heldout:
+                from expectrail.orchestrator import private_context as heldout
+                request = heldout.bind(request)
             status, created = store.create(request)
             proc = None
             if created:

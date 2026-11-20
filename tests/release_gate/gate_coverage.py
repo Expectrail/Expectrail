@@ -72,11 +72,14 @@ class CoverageTest(GateCase):
         results = {}
         for name, extra in (("without", []), ("unreadable", ["--heldout", str(self.tmp / "not-there")])):
             out = self.tmp / f"gate-{name}"
-            done = subprocess.run([sys.executable, "-m", "expectrail.gate.verify", "--repo", str(self.clean),
+            done = subprocess.run([sys.executable, "-m", "tests.release_gate.pr_gate", "--repo", str(self.clean),
                                    "--game", GAME, "--routes", ROUTE, "--specs", SPECS, "--out", str(out), *extra],
                                   cwd=REPO, capture_output=True, text=True, timeout=300)
             results[name] = (done.returncode, json.loads((out / "findings.json").read_text(encoding="utf-8")))
         self.assertEqual((results["without"][0], results["without"][1]["decision"]), (0, "accept"))
+        for _, document in results.values():
+            self.assertEqual(document["observers"]["rule"], "both")
+            self.assertEqual(document["observers"]["visual"]["name"], "sam-recorded")
         code, document = results["unreadable"]
         self.assertNotEqual(code, 0)
         self.assertEqual((document["decision"], document["heldOut"]["status"]), ("needs-review", "unavailable"))

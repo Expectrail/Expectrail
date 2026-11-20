@@ -5,6 +5,7 @@ It reads pixels without a model, network request or API key. No default observer
 verdict rule, approval, or source game is changed. This checkout-only sensor is not
 added to the verification wheel. See [the measurement](template-sensor-measurement.md)
 for the reproduced baseline and paired public results.
+The [closeout measurement](template-sensor-closeout.md) publishes independent player agreement and false-alarm rates for the current main bank; its [Done when audit](template-sensor-closeout-audit.md) keeps historical limits explicit.
 
 ## Foreground witnesses
 
@@ -92,7 +93,10 @@ are never replaced with engine-only detections. Prompts bind names, not semantic
 For objects the game has many of, the prediction map is the engine's own logged box
 of each one (`enemyBoxes`, `projectileBoxes`; `object_predictions`), and
 `calibrate_routes(..., objects=...)` records each object's validation apart from the
-player's under `calibration.objects` (docs/jit.md, "The enemy").
+player's under `calibration.objects` (docs/jit.md, "The enemy"). The enemy's clean
+captures are also labelled with the way the engine moved it (`heading`), and its facing
+is validated as drawn and mirrored in place (`calibration.objects.enemy.facing`; docs/jit.md,
+"Which way the enemy faces").
 The sensor refuses colour/text semantics even though RGB witnesses help identify art.
 
 ## Frozen ground regions

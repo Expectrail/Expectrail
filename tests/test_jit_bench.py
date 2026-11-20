@@ -143,7 +143,9 @@ class Workflow(unittest.TestCase):
         jobs = yaml.safe_load(text)["jobs"]
         for name, job in jobs.items():
             if "secrets." in yaml.safe_dump(job):
-                self.assertEqual(job.get("environment"), "main-only", name)
+                # A model key waits in spend (main-only plus Sean's approval, #265); the held-out token alone stays in main-only.
+                expected = "spend" if "_API_KEY" in yaml.safe_dump(job) else "main-only"
+                self.assertEqual(job.get("environment"), expected, name)
         self.assertIn("bench-score", yaml.safe_dump(jobs["score"]))
         self.assertFalse((REPO / ".github/workflows/jit-bench.yml").exists())
 

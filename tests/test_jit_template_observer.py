@@ -299,6 +299,7 @@ class EndToEnd(Base):
                        case.dir / f"out-{fix}", runner=JitGame(), intent=handing([check()]),
                        variants_fn=case.variants(), observer=observer or self.observer(), frame_runner=frames,
                        offer=PX, clock=lambda: 0.0)
+        self.last_out = case.dir / f"out-{fix}"
         return doc, frames
 
     def test_a_wrong_fix_is_caught_and_nothing_is_charged_for_the_observer(self):
@@ -319,6 +320,15 @@ class EndToEnd(Base):
         doc, _ = self.generate("fix-good")
         [row] = doc["pixelChecks"]
         self.assertEqual((row["status"], row["outcome"]), ("kept", "no-catch"), row["reason"])
+
+    def test_the_row_records_the_frames_the_check_was_planned_on(self):
+        # The correct-fix pressure (expectrail/jit/pressure.py) replays a counting check only under this plan.
+        doc, _ = self.generate("fix-good")
+        [row] = doc["pixelChecks"]
+        [route_file] = (self.last_out / "jit-routes").glob(f"*{row['check']['probe']}*.json")
+        route = json.loads(route_file.read_text())
+        self.assertTrue(row["framesPlanned"])
+        self.assertEqual(row["framesPlanned"], pixel.frames_to_ask(row["check"], self.observer().frames(route)))
 
     def test_a_run_judged_by_sam_does_not_run_a_check_naming_the_sensor(self):
         class Sam:

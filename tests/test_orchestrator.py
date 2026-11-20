@@ -40,6 +40,7 @@ from expectrail.orchestrator import cli, engines, runner
 from expectrail.orchestrator import request as req
 from expectrail.orchestrator import sample as smp
 from expectrail.orchestrator import store as st
+from tests import approved_copies
 from tests.orchestrator_worker import ENGINES as STAND_INS
 from tests.test_ci_gate import FIXTURES, FakeReplay, make_repo
 
@@ -422,7 +423,7 @@ class GodotEngineTest(Case):
 
     def gate(self, head: Path, base: Path | None, name: str) -> dict:
         with contextlib.redirect_stdout(io.StringIO()):
-            return gate.run_gate(repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
+            return gate.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
                                  out=self.tmp / name, work=self.tmp / f"{name}-work", base=base, replay=FakeReplay())
 
     def test_it_decides_as_the_gate_does(self):
@@ -559,7 +560,8 @@ class GodotEngineTest(Case):
         # (first review of #321: a copy made by another reader followed links the gate refuses).
         second = json.loads((self.head / "specs" / "player-stays-above-ground.json").read_text(encoding="utf-8"))
         second["id"] = "second-check"
-        text = json.dumps(second)
+        # A new id is an edit: the copy is approved again in a temporary folder, or it is a draft (#644).
+        text = json.dumps(approved_copies.reapproved(second))
         forms = {
             "a file": lambda repo, spec: spec.write_text(text, encoding="utf-8"),
             "a link to a file inside the checkout": lambda repo, spec: (
@@ -769,9 +771,26 @@ class ProcessTest(Case):
         proc = self.spawn(job)
         self.running(job)
         os.killpg(proc.pid, signal.SIGKILL)
+        # Reap the known-dead worker before timing recognition. Real descendant cleanup
+        # scans the host process table and may take longer than recognition itself.
+        proc.wait(timeout=5)
+        child = self.child_of(job)
+        detected = []
+        real_lose = self.store.lose
         started = time.monotonic()
-        status = runner.wait(self.store, job, proc, poll_seconds=0.05)
-        self.assertLess(time.monotonic() - started, 0.5)
+
+        def lose(*args, **kwargs):
+            detected.append(time.monotonic() - started)
+            return real_lose(*args, **kwargs)   # keep the real cleanup, and check it below
+
+        no_poll = mock.Mock(wraps=time)
+        no_poll.sleep.side_effect = AssertionError("a known-dead worker must not wait for a poll or its lease")
+        with mock.patch.object(self.store, "lose", side_effect=lose), mock.patch.object(runner, "time", no_poll):
+            status = runner.wait(self.store, job, proc, poll_seconds=0.05)
+        self.assertEqual(len(detected), 1)
+        self.assertLess(detected[0], 0.5)
+        no_poll.sleep.assert_not_called()
+        self.assertTrue(gone(child), "the dead worker's child outlived real cleanup")
         self.assertEqual((status["phase"], [d["code"] for d in status["diagnostics"]]), ("failed", ["WORKER_LOST"]))
 
     def test_a_job_that_runs_out_of_time_is_needs_review_and_is_stopped(self):
@@ -1582,10 +1601,15 @@ class CancelOrderTest(Case):
         wait_for(lambda: worker.poll() is not None and gone(child), what="the worker and its child stopping")
 
     def test_a_worker_that_arrives_after_the_cancel_does_nothing(self):
+        # The clock is held at the moment just before the job was queued. With the 0.6 s test lease, a slow runner that
+        # reached cancel after the lease ran out saw a job no worker took in time and failed it, which is a
+        # different (and correct) path; this test is about cancel first, worker second (#649).
+        queued = st.now()
         job = self.job("instant")
-        self.store.cancel(job)
-        with contextlib.redirect_stderr(io.StringIO()):
-            status = runner.work(self.store, job, engines=STAND_INS)
+        with unittest.mock.patch.object(st, "now", return_value=queued):
+            self.store.cancel(job)
+            with contextlib.redirect_stderr(io.StringIO()):
+                status = runner.work(self.store, job, engines=STAND_INS)
         self.assertEqual((status["phase"], status["worker"], status["output"]), ("cancelled", None, None))
         self.assertFalse(self.store.paths(job).staging.exists())
 

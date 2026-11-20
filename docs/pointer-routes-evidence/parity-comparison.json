@@ -1,0 +1,82 @@
+[
+  {
+    "case": "bundled-pinned",
+    "traceBytesIdentical": true,
+    "traceSha256": "a2b64f71e7c3ed3e55b11c1dcebb66e8ff5587a8e570da62927f56a08574d51c",
+    "engine": "pass",
+    "decision": "needs-review",
+    "frame": null,
+    "before": "evidence/before/bundled-pinned/check.json",
+    "after": "evidence/after/bundled-pinned/check.json"
+  },
+  {
+    "case": "bundled-broken",
+    "traceBytesIdentical": true,
+    "traceSha256": "16e103dd4282d1f16259d777dfbe2908984453af4622e68fc0774b409ef27db0",
+    "engine": "fail",
+    "decision": "reject",
+    "frame": 5,
+    "before": "evidence/before/bundled-broken/check.json",
+    "after": "evidence/after/bundled-broken/check.json"
+  },
+  {
+    "case": "kinematic-character-pinned",
+    "traceBytesIdentical": true,
+    "traceSha256": "d3e80ebba2515c39bfa22251ece8135707ace842c3002daa8ef8ad50173deb05",
+    "engine": "pass",
+    "decision": "needs-review",
+    "frame": null,
+    "before": "evidence/before/kinematic-character-pinned/check.json",
+    "after": "evidence/after/kinematic-character-pinned/check.json"
+  },
+  {
+    "case": "kinematic-character-harmless",
+    "traceBytesIdentical": true,
+    "traceSha256": "d3e80ebba2515c39bfa22251ece8135707ace842c3002daa8ef8ad50173deb05",
+    "engine": "pass",
+    "decision": "needs-review",
+    "frame": null,
+    "before": "evidence/before/kinematic-character-harmless/check.json",
+    "after": "evidence/after/kinematic-character-harmless/check.json"
+  },
+  {
+    "case": "kinematic-character-broken",
+    "traceBytesIdentical": true,
+    "traceSha256": "93d462b0a3469ac5dbda8e1942e7c9e8f3fb61170c08d4636f226d8309dcef6a",
+    "engine": "fail",
+    "decision": "reject",
+    "frame": 44,
+    "before": "evidence/before/kinematic-character-broken/check.json",
+    "after": "evidence/after/kinematic-character-broken/check.json"
+  },
+  {
+    "case": "dodge-the-creeps-pinned",
+    "traceBytesIdentical": true,
+    "traceSha256": "7f7783d69988b3d6d05c6f7d18cce43a211af31a2c52e735003954588b11f9e0",
+    "engine": "pass",
+    "decision": "needs-review",
+    "frame": null,
+    "before": "evidence/before/dodge-the-creeps-pinned/check.json",
+    "after": "evidence/after/dodge-the-creeps-pinned/check.json"
+  },
+  {
+    "case": "dodge-the-creeps-harmless",
+    "traceBytesIdentical": true,
+    "traceSha256": "7f7783d69988b3d6d05c6f7d18cce43a211af31a2c52e735003954588b11f9e0",
+    "engine": "pass",
+    "decision": "needs-review",
+    "frame": null,
+    "before": "evidence/before/dodge-the-creeps-harmless/check.json",
+    "after": "evidence/after/dodge-the-creeps-harmless/check.json"
+  },
+  {
+    "case": "dodge-the-creeps-broken",
+    "traceBytesIdentical": true,
+    "traceSha256": "166a891fac61e08fcb275d59b397253252d027c0ddb3db794094b5460b4e1412",
+    "engine": "fail",
+    "decision": "reject",
+    "frame": 97,
+    "before": "evidence/before/dodge-the-creeps-broken/check.json",
+    "after": "evidence/after/dodge-the-creeps-broken/check.json"
+  }
+]

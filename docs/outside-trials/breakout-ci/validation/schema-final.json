@@ -1,0 +1,19 @@
+{
+  "label": "schema-final",
+  "startedUtc": "2026-11-16T07:35:52.785621+00:00",
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v",
+    "tests.test_outside_root",
+    "tests.test_outside_trial",
+    "tests.test_contracts"
+  ],
+  "cwd": "$REPO",
+  "seconds": 2.279658350998943,
+  "exitCode": 0,
+  "status": "finished",
+  "godotOverride": null,
+  "log": "logs/schema-final.log"
+}

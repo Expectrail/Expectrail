@@ -1,0 +1,26 @@
+{
+  "step": 8,
+  "label": "auto-route",
+  "startedUtc": "2026-11-16T06:46:06.231311+00:00",
+  "command": [
+    "python3",
+    "-m",
+    "expectrail.cli",
+    "route",
+    "--project",
+    "$WORK/breakout-pointer-source",
+    "--auto",
+    "--out",
+    "$WORK/breakout-pointer-source/routes/pointer-auto.json"
+  ],
+  "cwd": "$REPO",
+  "seconds": 52.87206643699756,
+  "exitCode": 0,
+  "status": "finished",
+  "log": "trial-logs/08-auto-route.log",
+  "environment": {
+    "EXPECTRAIL_GODOT": "$WORK/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+    "TMPDIR": "$SCRATCH/expectrail-menu-trial-route/tmp",
+    "EXPECTRAIL_TOOLS": "$SCRATCH/expectrail-menu-trial-route/tools"
+  }
+}

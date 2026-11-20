@@ -1,0 +1,20 @@
+{
+  "label": "after-final",
+  "startedUtc": "2026-11-16T07:40:05.731334+00:00",
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests",
+    "-t",
+    "."
+  ],
+  "cwd": "$REPO",
+  "seconds": 460.3400343320027,
+  "exitCode": 0,
+  "status": "finished",
+  "godotOverride": null,
+  "log": "logs/after-final.log"
+}

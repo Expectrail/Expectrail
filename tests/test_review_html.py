@@ -135,7 +135,7 @@ class ReviewPageTest(unittest.TestCase):
         from agents.loop import one_run
 
         root = self.tmp / "loop"
-        env = {"EXPECTRAIL_REVIEW": "on", "EXPECTRAIL_HELDOUT_DIR": "", "EXPECTRAIL_OBS_PROVIDER": ""}
+        env = {"EXPECTRAIL_REVIEW": "on", "EXPECTRAIL_HELDOUT_DIR": "", "EXPECTRAIL_OBS_PROVIDER": "trace"}
         with mock.patch.dict(os.environ, env):
             result = one_run(root, use_muse=False, offline_triage=True,
                              observations=REPO / "agents" / "fixtures" / "obs-fixed.json",

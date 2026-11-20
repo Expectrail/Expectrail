@@ -16,6 +16,7 @@ import sys
 import tempfile
 import unittest
 import urllib.error
+import urllib.parse
 from pathlib import Path
 from unittest import mock
 
@@ -26,6 +27,7 @@ from expectrail import approval
 from expectrail.gate import comment as gc
 from expectrail.gate import record as rec
 from expectrail.gate import verify as gv
+from tests import approved_copies
 from tests.coverage_replays import complete_trace
 
 REPO = Path(__file__).resolve().parent.parent
@@ -75,7 +77,10 @@ class FakeReplay:
 
 
 def make_repo(root: Path, *, bug: bool = False, crash: bool = False, spec_edit: dict | None = None,
-              draft: bool = False, routes=("smoke", "combat")) -> Path:
+              draft: bool = False, routes=("smoke", "combat"), legacy: bool = False) -> Path:
+    """A checkout with the live check. ``spec_edit`` edits the check, and the edited copy is approved
+    again inside ``root`` (#644): an edit voids a content-bound approval. ``legacy`` gives the check an
+    approval from before content binding (#420) instead of the committed one."""
     (root / "game" / "platformer").mkdir(parents=True)
     (root / "game" / "platformer" / "project.godot").write_text("[application]\n", encoding="utf-8")
     if bug:
@@ -86,6 +91,9 @@ def make_repo(root: Path, *, bug: bool = False, crash: bool = False, spec_edit: 
     spec = json.loads(SPEC.read_text(encoding="utf-8"))
     if spec_edit:
         spec.update(spec_edit)
+        spec = approved_copies.reapproved(spec)
+    if legacy:
+        spec = approved_copies.legacy(spec)
     (root / "specs" / "player-stays-above-ground.json").write_text(json.dumps(spec), encoding="utf-8")
     if draft:
         d = dict(spec, id="player-draft-check")
@@ -139,7 +147,7 @@ class GateCase(unittest.TestCase):
              pr: dict | None = None, **kw) -> dict:
         pr = pr if pr is not None else {"number": 7, "headSha": HEAD, "baseSha": BASE if base else None}
         with contextlib.redirect_stdout(io.StringIO()) as log:
-            doc = gv.run_gate(repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
+            doc = gv.run_gate(rule=kw.pop("rule", "engine-only"), repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
                               out=self.tmp / out_name, work=self.tmp / (out_name + "-work"), base=base,
                               heldout=heldout, pr=pr, replay=self.replay, **kw)
         self.log = log.getvalue()
@@ -367,8 +375,8 @@ class VerifyTest(GateCase):
             "a spec that is a link": lambda r: (r / "specs" / "link.json").symlink_to("player-stays-above-ground.json"),
             "a spec's id used by two files": lambda r: [shutil.copy(r / "specs" / "player-stays-above-ground.json", r / "specs" / "again.json"),
                                                       shutil.copy(SPEC, r / "specs" / "other.json"),
-                                                      (r / "specs" / "other.json").write_text(json.dumps(dict(
-                                                          json.loads(SPEC.read_text(encoding="utf-8")), id="another-approved-check")))],
+                                                      (r / "specs" / "other.json").write_text(json.dumps(approved_copies.reapproved(dict(
+                                                          json.loads(SPEC.read_text(encoding="utf-8")), id="another-approved-check"))))],
         }
         for n, (label, breaker) in enumerate(breakers.items()):
             for with_base in (False, True):
@@ -408,7 +416,7 @@ class VerifyTest(GateCase):
                 head = make_repo(self.tmp / f"head-{n}")
                 breaker(head)
                 with contextlib.redirect_stdout(io.StringIO()):
-                    doc = gv.run_gate(repo=head, game="game/platformer", routes=["routes/*.json", "routes/*/*.json"],
+                    doc = gv.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/*.json", "routes/*/*.json"],
                                       specs="specs", out=self.tmp / f"out-{n}", work=self.tmp / f"work-{n}", base=None,
                                       heldout=None, pr={"number": 7, "headSha": HEAD, "baseSha": None}, replay=self.replay)
                 self.assertEqual((doc["decision"], doc["checkProblems"]), ("needs-review", 1))
@@ -531,7 +539,7 @@ class VerifyTest(GateCase):
             raise SystemExit("stop: the arguments are what this test reads")
 
         with mock.patch("harness.run.run", side_effect=run), contextlib.redirect_stdout(io.StringIO()):
-            gv.run_gate(repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
+            gv.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
                         out=self.tmp / "harness-out", work=self.tmp / "harness-work", base=base,
                         pr={"number": 7, "headSha": HEAD, "baseSha": BASE})
         self.assertGreaterEqual(len(seen), 2)  # the head arm and the base arm
@@ -594,7 +602,7 @@ class VerifyTest(GateCase):
             raise SystemExit("stop: the arguments are what this test reads")
 
         with mock.patch("harness.run.run", side_effect=run), contextlib.redirect_stdout(io.StringIO()):
-            gv.run_gate(repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
+            gv.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
                         out=self.tmp / "bind-out", work=self.tmp / "bind-work", base=base,
                         pr={"number": 7, "headSha": HEAD, "baseSha": BASE})
         self.assertGreaterEqual(len(seen), 2)
@@ -671,7 +679,9 @@ class VerifyTest(GateCase):
         self.assertTrue(any("project.godot" in r for r in doc["reasons"]))
         self.assertEqual(doc["checks"], [])
 
+    @mock.patch.dict(os.environ, {"GITHUB_EVENT_PATH": ""})
     def test_the_command_line_exit_codes_and_a_stopped_run_still_leaves_a_record(self):
+        # This local-command fixture owns PR 3; the surrounding CI event belongs to another PR.
         head = make_repo(self.tmp / "head", bug=True)
         with contextlib.redirect_stdout(io.StringIO()):
             code = gv.main(["--repo", str(head), "--game", "../escape", "--routes", "routes/*.json", "--specs",
@@ -771,7 +781,7 @@ class IsolationTest(GateCase):
         with mock.patch.object(box, "probe", return_value=(None, "bubblewrap (bwrap) is not installed")), \
                 mock.patch("harness.run.run", side_effect=AssertionError("the game was replayed")):
             with self.assertRaisesRegex(gv.ConfigError, "required and this machine cannot provide it: bubblewrap"):
-                gv.run_gate(repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
+                gv.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
                             out=self.tmp / "o", work=self.tmp / "w", require_sandbox=True)
             with contextlib.redirect_stdout(io.StringIO()) as log:
                 code = gv.main(["--repo", str(head), "--game", "game/platformer", "--routes", "routes/*.json", "--specs",
@@ -798,7 +808,7 @@ class IsolationTest(GateCase):
             with self.subTest(required=required), mock.patch.object(box, "probe", return_value=(object(), None)), \
                     mock.patch("harness.run.run", side_effect=run), contextlib.redirect_stdout(io.StringIO()):
                 asked.clear()
-                gv.run_gate(repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
+                gv.run_gate(rule="engine-only", repo=head, game="game/platformer", routes=["routes/smoke.json"], specs="specs",
                             out=self.tmp / f"o{required}", work=self.tmp / f"w{required}", require_sandbox=required)
                 self.assertEqual(asked, [expected])
 
@@ -1289,8 +1299,280 @@ class WorkflowSafetyTest(unittest.TestCase):
         self.assertIn("steps.scan.outcome == 'success'", upload["if"])
 
 
-if __name__ == "__main__":
-    unittest.main()
+class CiReceiptTest(unittest.TestCase):
+    """Recorded CI producer/checker; replay and gh stand-ins, never a hosted attestation."""
+
+    def fixture(self, *, down=False, recorded=True):
+        from harness import run
+        case = SplitGateTest()
+        case.setUp()
+        self.addCleanup(case.doCleanups)
+        real = run._replay_record
+
+        def declared_version(*args, **kwargs):
+            args = list(args)
+            args[6] = "Godot Engine v4.7.2.stable.test-stand-in\n"
+            return real(*args, **kwargs)
+
+        with mock.patch.object(run, "_replay_record", side_effect=declared_version):
+            case.capture()
+        case.model.down = down
+        if recorded:
+            original_observer = case.model.observer
+            def recorded_standin(**kwargs):
+                visual = original_observer(**kwargs)
+                visual.segmenter().provider = "recorded: offline-unit-fixture"
+                return visual
+            case.model.observer = recorded_standin
+        doc = case.judge()
+        report = case.root / "report"
+        capture = case.root / "capture.zip"
+        shutil.copyfile(case.archive, capture)
+        state = case.root / "state.json"
+        state.write_text(json.dumps({"pr": case.pr, "intent": "fix", "ids": {"Expectrail evidence": 1,
+                                                                             "Expectrail clearance": 2}}))
+        return case, doc, report, capture, state
+
+    def make(self, *, down=False):
+        from expectrail.gate import ci_receipt
+        case, gate, report, capture, state = self.fixture(down=down)
+        path = ci_receipt.write_recorded(report, capture, state, repository="Expectrail/Expectrail")
+        from expectrail import receipt
+        return case, gate, path, receipt.read_receipt(path)
+
+    def run_check(self, path, doc, *, root=None, gh=None, **changes):
+        from expectrail.gate import ci_receipt
+        from tests.test_trust_check_attested import FakeGh, gh_result, WORKFLOW
+        args = dict(repository=doc["repository"], workflow=WORKFLOW, source_ref="refs/heads/main",
+                    expect_head=doc["headSha256"], expect_build=doc["buildSha256"],
+                    expect_policy=doc["policySha256"], evidence_root=root or path.parent.parent)
+        args.update(changes)
+        gh = gh or FakeGh([gh_result(path.read_bytes(), doc)])
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = ci_receipt.check(path, runner=gh, **args)
+        return code, out.getvalue(), gh
+
+    def test_producer_uses_the_existing_contract_signature_gate_decision_and_bound_artifacts(self):
+        from expectrail import receipt
+        from expectrail.gate import ci_receipt
+        case, gate, path, doc = self.make()
+        self.assertEqual((doc["format"], doc["decision"], doc["evidence"]["grade"]),
+                         ("expectrail.receipt/v1", gate["decision"], "full"))
+        self.assertTrue(receipt.verify_signature(doc, doc["publicKey"]))
+        self.assertEqual(doc["headSha256"], hashlib.sha256(HEAD.encode()).hexdigest())
+        self.assertEqual(doc["buildSha256"], gate["game"]["headTree"])
+        self.assertEqual(doc["cost"], {"usd": 0.0})
+        self.assertEqual(set(doc["coverage"]["required"]), set(doc["coverage"]["exercised"]))
+        self.assertEqual(set(doc["coverage"]["results"].values()), {"pass"})
+        self.assertEqual(doc["evidence"]["artifacts"]["capture.zip"],
+                         hashlib.sha256((case.root / "capture.zip").read_bytes()).hexdigest())
+        self.assertIn("report/findings.json", doc["evidence"]["artifacts"])
+        self.assertNotEqual(ci_receipt.policy_digest(BASE, "a" * 64),
+                            ci_receipt.policy_digest(HEAD, "a" * 64))
+        # A carried key alone stays untrusted; only the later pinned attestation can identify it.
+        report = receipt.check_receipt(doc, {}, expect_repo=doc["repository"], expect_head=doc["headSha256"],
+                                       expect_build=doc["buildSha256"], expect_policy=doc["policySha256"])
+        self.assertFalse(report["clearance"])
+
+    def test_zero_cost_producer_refuses_a_live_provider_stamp_even_with_the_recorded_flag(self):
+        from expectrail.gate import ci_receipt
+        case, gate, report, capture, state = self.fixture(recorded=False)
+        self.assertEqual(gate["observers"]["visual"]["provider"], "meta-model-api")
+        with self.assertRaisesRegex(ValueError, "recorded"):
+            ci_receipt.write_recorded(report, capture, state, repository="Expectrail/Expectrail")
+        self.assertFalse((report / "receipt.json").exists())
+
+    def test_producer_refuses_wrong_state_capture_binding_or_an_existing_receipt(self):
+        from expectrail.gate import ci_receipt
+        case, gate, report, capture, state = self.fixture()
+        original = state.read_text()
+        changed = json.loads(original)
+        changed["pr"]["headSha"] = "a" * 40
+        state.write_text(json.dumps(changed))
+        with self.assertRaisesRegex(ValueError, "state"):
+            ci_receipt.write_recorded(report, capture, state, repository="Expectrail/Expectrail")
+        self.assertFalse((report / "receipt.json").exists())
+        state.write_text(original)
+        import zipfile
+        altered = case.root / "altered.zip"
+        with zipfile.ZipFile(capture) as src, zipfile.ZipFile(altered, "w") as dst:
+            for info in src.infolist():
+                data = src.read(info)
+                if info.filename == "manifest.json":
+                    manifest = json.loads(data); manifest["writerRef"] = "f" * 40
+                    data = json.dumps(manifest).encode()
+                dst.writestr(info, data)
+        with self.assertRaisesRegex(ValueError, "capture"):
+            ci_receipt.write_recorded(report, altered, state, repository="Expectrail/Expectrail")
+        path = ci_receipt.write_recorded(report, capture, state, repository="Expectrail/Expectrail")
+        before = path.read_bytes()
+        with self.assertRaisesRegex(ValueError, "exists"):
+            ci_receipt.write_recorded(report, capture, state, repository="Expectrail/Expectrail")
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_needs_review_is_preserved_and_a_valid_attestation_does_not_clear_partial_evidence(self):
+        case, gate, path, doc = self.make(down=True)
+        self.assertEqual((gate["decision"], doc["decision"], doc["evidence"]["grade"]),
+                         ("needs-review", "needs-review", "partial"))
+        code, out, gh = self.run_check(path, doc)
+        self.assertEqual(code, 1, out)
+        self.assertIn("attestation: VERIFIED", out)
+        self.assertNotIn("clearance: yes", out)
+
+    def test_checker_runs_pinned_gh_attestation_reader_and_shared_trust_check(self):
+        case, gate, path, doc = self.make()
+        code, out, gh = self.run_check(path, doc)
+        self.assertEqual(code, 0, out)
+        self.assertIn("attestation: VERIFIED", out)
+        self.assertIn("clearance: yes", out)
+        self.assertIn("artifacts: MATCHED", out)
+        self.assertEqual(len(gh.calls), 1)
+        self.assertEqual(gh.calls[0][:3], ["gh", "attestation", "verify"])
+        for flag in ("--repo", "--signer-workflow", "--source-ref", "--predicate-type", "--cert-oidc-issuer",
+                     "--deny-self-hosted-runners"):
+            self.assertIn(flag, gh.calls[0])
+
+    def test_checker_names_every_missing_or_altered_artifact_and_never_prints_clearance_yes(self):
+        case, gate, path, doc = self.make()
+        (case.root / "capture.zip").write_bytes(b"altered capture")
+        (case.root / "report/findings.json").unlink()
+        code, out, gh = self.run_check(path, doc)
+        self.assertEqual(code, 1)
+        self.assertIn("capture.zip", out)
+        self.assertIn("report/findings.json", out)
+        self.assertNotIn("clearance: yes", out)
+
+    def test_checker_does_not_read_an_unsafe_manifest_path_or_follow_an_artifact_link(self):
+        from expectrail import receipt
+        from tests.test_receipt import _key
+        case, gate, path, doc = self.make()
+        private, pub = _key()
+        changed = dict(doc);changed.pop("signature");changed["publicKey"] = pub
+        changed["evidence"] = dict(doc["evidence"], artifacts={"../outside": "a" * 64,
+                                                             "linked": "b" * 64})
+        outside = case.root.parent / (case.root.name + "-outside")
+        outside.write_text("private stand-in")
+        self.addCleanup(outside.unlink)
+        (case.root / "linked").symlink_to(outside)
+        receipt.write_receipt(changed, private, path)
+        code, out, gh = self.run_check(path, receipt.read_receipt(path))
+        self.assertEqual(code, 1)
+        self.assertIn('artifact "../outside": unsafe evidence path', out)
+        self.assertIn('artifact "linked": unsafe evidence link', out)
+        self.assertNotIn("private stand-in", out)
+        self.assertNotIn("clearance: yes", out)
+
+    def test_checker_requires_independent_head_build_and_policy_and_pinned_identity(self):
+        from tests.test_trust_check_attested import FakeGh, gh_result
+        case, gate, path, doc = self.make()
+        for key in ("expect_head", "expect_build", "expect_policy"):
+            with self.subTest(key):
+                code, out, gh = self.run_check(path, doc, **{key: "f" * 64})
+                self.assertEqual(code, 1, out);self.assertNotIn("clearance: yes", out)
+        bad = FakeGh([gh_result(path.read_bytes(), doc, sourceRepositoryRef="refs/heads/other")])
+        code, out, gh = self.run_check(path, doc, gh=bad)
+        self.assertEqual(code, 1);self.assertIn("NOT VERIFIED", out)
+
+    def test_missing_gh_missing_receipt_and_changing_receipt_name_what_was_not_checked(self):
+        from expectrail.gate import ci_receipt
+        from tests.test_trust_check_attested import FakeGh
+        case, gate, path, doc = self.make()
+        def absent(cmd):raise FileNotFoundError("stand-in missing gh")
+        code, out, gh = self.run_check(path, doc, gh=absent)
+        self.assertEqual(code, 2);self.assertIn("gh is not installed", out)
+        changing = FakeGh(before=lambda: path.write_bytes(path.read_bytes()+b" "))
+        code, out, gh = self.run_check(path, doc, gh=changing)
+        self.assertEqual(code, 2);self.assertIn("changed", out)
+        path.unlink()
+        never = mock.Mock(side_effect=AssertionError("sent without a receipt"))
+        code, out, gh = self.run_check(path, doc, gh=never)
+        self.assertEqual(code, 2);self.assertIn("receipt", out);never.assert_not_called()
+
+    def test_producer_supports_the_actual_ci_report_directory_name(self):
+        from expectrail.gate import ci_receipt
+        case, gate, report, capture, state = self.fixture()
+        actual = case.root / "expectrail-report"
+        report.rename(actual)
+        done = subprocess.run([sys.executable, "-m", "expectrail.gate.ci_receipt", "write", "--report", str(actual),
+                               "--capture", str(capture), "--state", str(state), "--repo", "Expectrail/Expectrail",
+                               "--recorded-vision"], cwd=REPO, capture_output=True, text=True, timeout=60)
+        self.assertEqual(done.returncode, 0, done.stdout+done.stderr)
+        path = Path(done.stdout.strip())
+        self.assertEqual(path, actual / "receipt.json")
+        from expectrail import receipt
+        self.assertIn("report/findings.json", receipt.read_receipt(path)["evidence"]["artifacts"])
+
+    def test_an_attested_receipt_with_no_artifacts_is_never_clearance(self):
+        from expectrail import receipt
+        from tests.test_receipt import _key
+        case, gate, path, doc = self.make()
+        private, pub = _key()
+        changed = dict(doc);changed.pop("signature");changed["publicKey"] = pub
+        changed["evidence"] = dict(doc["evidence"], artifacts={})
+        receipt.write_receipt(changed, private, path)
+        code, out, gh = self.run_check(path, receipt.read_receipt(path))
+        self.assertEqual(code, 1);self.assertIn("no evidence artifacts", out)
+        self.assertNotIn("clearance: yes", out)
+
+    def test_proposal_keeps_the_trusted_boundary_and_preserves_an_earlier_evidence_mismatch(self):
+        proposal = load_yaml(REPO / "docs/proposals/255-trusted-receipt.yml.txt")
+        current = load_yaml(COMMENT_WF)
+        self.assertEqual(proposal["on"], current["on"])
+        self.assertEqual(proposal["permissions"], {})
+        job = proposal["jobs"]["judge"]
+        self.assertEqual(job["if"], current["jobs"]["judge"]["if"])
+        self.assertEqual(job["environment"], "main-only")
+        self.assertEqual(job["permissions"], {"actions":"read", "contents":"read", "pull-requests":"write",
+                                              "id-token":"write", "attestations":"write"})
+        steps = job["steps"]
+        by_id = {step["id"]:step for step in steps if "id" in step}
+        self.assertEqual(by_id["attest"]["uses"], "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6")
+        self.assertIn("--recorded-vision", by_id["receipt"]["run"])
+        self.assertEqual(by_id["receipt"]["working-directory"], "policy")
+        self.assertLess(steps.index(by_id["judge"]), steps.index(by_id["receipt"]))
+        self.assertLess(steps.index(by_id["proof"]), steps.index(by_id["report"]))
+        finish = steps[-1]
+        for stage in ("judge", "receipt", "attest", "proof", "report"):
+            self.assertIn("steps."+stage+".outcome == 'success'", finish["env"]["REPORT_READY"])
+        for step in steps:
+            self.assertNotIn("${{", step.get("run", ""))
+        failure = next(step for step in steps if step.get("name", "").startswith("Name an incomplete"))
+        body = "\n".join(failure["run"].splitlines()[1:-1])
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp);(root / "expectrail-report").mkdir()
+            problem = root / "problem.txt";problem.write_text("EVIDENCE_MISMATCH: stand-in")
+            env = dict(os.environ, RUNNER_TEMP=tmp, RECEIPT_WRITE_OUTCOME="failure",
+                       RECEIPT_ATTEST_OUTCOME="skipped", RECEIPT_PROOF_OUTCOME="skipped")
+            subprocess.run([sys.executable, "-c", body], env=env, check=True, timeout=10)
+            self.assertEqual(problem.read_text(), "EVIDENCE_MISMATCH: stand-in")
+            problem.unlink();env["RECEIPT_WRITE_OUTCOME"]="success"
+            subprocess.run([sys.executable, "-c", body], env=env, check=True, timeout=10)
+            self.assertTrue(problem.read_text().startswith("CI_ATTESTATION_MISSING:"))
+
+    def test_real_module_command_uses_only_a_stand_in_gh_and_preserves_exit_codes(self):
+        from tests.test_trust_check_attested import gh_result, WORKFLOW
+        case, gate, path, doc = self.make()
+        bindir = case.root / "bin";bindir.mkdir()
+        output = bindir / "result.json"
+        output.write_text(json.dumps([gh_result(path.read_bytes(), doc)]))
+        fake = bindir / "gh"
+        fake.write_text("#!/usr/bin/env python3\nimport pathlib,sys\n"
+                        f"sys.stdout.write(pathlib.Path({str(output)!r}).read_text())\n")
+        fake.chmod(0o755)
+        env = dict(os.environ, PATH=str(bindir)+os.pathsep+os.environ.get("PATH", ""))
+        done = subprocess.run([sys.executable, "-m", "expectrail.gate.ci_receipt", "check", str(path),
+                               "--repo", doc["repository"], "--signer-workflow", WORKFLOW,
+                               "--expect-head", doc["headSha256"], "--expect-build", doc["buildSha256"],
+                               "--expect-policy", doc["policySha256"], "--evidence-root", str(case.root)],
+                              cwd=REPO, env=env, capture_output=True, text=True, timeout=60)
+        self.assertEqual(done.returncode, 0, done.stdout+done.stderr)
+        self.assertIn("clearance: yes", done.stdout)
+        missing = subprocess.run([sys.executable, "-m", "expectrail.gate.ci_receipt", "check", str(path)],
+                                 cwd=REPO, env=env, capture_output=True, text=True, timeout=60)
+        self.assertEqual(missing.returncode, 2)
+
+
 
 
 class HeldOutFallsThrough(FakeReplay):
@@ -1374,6 +1656,25 @@ class SplitGateTest(unittest.TestCase):
         self.assertEqual(doc["decision"], "accept", doc["reasons"])
         self.assertEqual(doc["observers"]["rule"], "both")
         self.assertEqual(doc["isolation"]["sandboxed"], 6)
+
+    def test_a_game_with_a_project_config_is_judged_with_the_heads_real_config(self):
+        # The trusted job hands the gate a logical head folder that is not on disk. The head's project
+        # config must still be read, from the head checkout: before this was fixed, every game that
+        # carried a config was "config differs" and could never be accepted by the two-job gate.
+        for side in (self.base, self.head):
+            _config(side / "game/platformer", fps=60, node="Player")
+        self.capture()
+        doc = self.judge()
+        self.assertFalse(any("project config differs" in r for r in doc["reasons"]), doc["reasons"])
+        self.assertEqual(doc["decision"], "accept", doc["reasons"])
+
+    def test_a_head_that_changes_the_project_config_is_not_an_accept_in_the_trusted_job(self):
+        _config(self.base / "game/platformer", fps=60, node="Player")
+        _config(self.head / "game/platformer", fps=60, node="Still")
+        self.capture()
+        doc = self.judge()
+        self.assertEqual(doc["decision"], "needs-review", doc["reasons"])
+        self.assertTrue(any("project config differs" in r for r in doc["reasons"]), doc["reasons"])
 
     def test_regression_rejects(self):
         (self.base / "game/platformer/BUG").unlink()
@@ -1509,6 +1810,300 @@ class HeadChecksTest(unittest.TestCase):
                 self.c.finish(self.api, self.api, ctx(), self.run, self.state, "accept", "accept", ctx().run_url)
                 self.assertEqual(self.writes[-1][2]["conclusion"], "failure")
 
+    def stale_event(self, tmp, action="completed"):
+        repo = ctx().repo
+        run = dict(self.run, path=self.c.CALLER, event="pull_request", head_sha=HEAD, head_branch="fix",
+                   repository={"full_name": repo},
+                   head_repository={"full_name": ctx().head_repo, "owner": {"login": ctx().head_owner}})
+        event = Path(tmp) / "event.json"
+        event.write_text(json.dumps({"action": action, "workflow_run": run, "repository": {"full_name": repo}}))
+        return {"GITHUB_EVENT_PATH": str(event), "GITHUB_RUN_ID": "555", "RUNNER_TEMP": tmp,
+                "GITHUB_OUTPUT": str(Path(tmp) / "out"), "GH_TOKEN": "stand-in", "CHECKS_TOKEN": "stand-in",
+                "CHECKS_APP": "publisher"}
+
+    def test_a_superseded_head_concludes_its_open_clearance_as_failure(self):
+        # The November 18 hosted trial (#254): after a new head was pushed, the old head's clearance
+        # stayed in_progress for ever. It must conclude, and never as success.
+        key = "expectrail/123/2"
+        checks = {self.c.CLEARANCE: [{"id": 41, "external_id": key, "status": "in_progress", "app": {"slug": "publisher"}},
+                                     {"id": 42, "external_id": key, "status": "in_progress", "app": {"slug": "someone"}},
+                                     {"id": 43, "external_id": "expectrail/9/1", "status": "in_progress",
+                                      "app": {"slug": "publisher"}},
+                                     {"id": 44, "external_id": key, "status": "completed", "app": {"slug": "publisher"}}],
+                  self.c.EVIDENCE: [{"id": 51, "external_id": key, "status": "in_progress", "app": {"slug": "publisher"}}]}
+
+        def api(method, path, body=None):
+            if method != "GET":
+                self.writes.append((method, path, body))
+                return {}
+            if "/pulls?" in path:
+                return [self.pr]
+            if "check-runs?" in path:
+                name = urllib.parse.parse_qs(urllib.parse.urlsplit(path).query)["check_name"][0]
+                return {"check_runs": checks[name]}
+            if "/runs?" in path:
+                return {"workflow_runs": self.runs}
+            self.fail(path)
+
+        for change in ("head", "closed", "attempt"):
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as tmp, \
+                    mock.patch.dict(os.environ, self.stale_event(tmp)), \
+                    mock.patch("expectrail.gate.comment.http_api", return_value=api):
+                self.writes.clear()
+                self.pr["head"]["sha"] = BASE if change == "head" else HEAD
+                saved = self.pr
+                if change == "closed":
+                    self.pr = {"head": {"sha": "0" * 40}}
+                self.runs = [dict(self.run, run_attempt=3 if change == "attempt" else 2)]
+                self.c.main("start")
+                self.pr = saved
+                patched = {w[1].rsplit("/", 1)[1]: w[2] for w in self.writes}
+                self.assertEqual(set(patched), {"41", "51"})
+                self.assertTrue(all(w[0] == "PATCH" for w in self.writes))
+                self.assertEqual(patched["41"]["status"], "completed")
+                self.assertEqual(patched["41"]["conclusion"], "failure")
+                self.assertEqual(patched["51"]["conclusion"], "neutral")
+                self.assertIn("Superseded capture or pull request", patched["41"]["output"]["summary"])
+                self.assertIn("is not cleared", patched["41"]["output"]["summary"])
+                self.assertFalse((Path(tmp) / "gate-state.json").exists())
+
+    def test_a_superseded_head_on_the_in_progress_event_creates_and_closes_nothing(self):
+        def api(method, path, body=None):
+            if method != "GET":
+                self.writes.append((method, path, body))
+            if "/pulls?" in path:
+                return []
+            self.fail(path)
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp, "in_progress")), \
+                mock.patch("expectrail.gate.comment.http_api", return_value=api):
+            self.c.main("start")
+        self.assertEqual(self.writes, [])
+
+    def unfinished_api(self, checks, refuse=()):
+        def api(method, path, body=None):
+            if method == "PATCH":
+                cid = path.rsplit("/", 1)[1]
+                if cid in refuse:
+                    raise urllib.error.HTTPError(path, 403, "not this app's check", {}, None)
+                self.writes.append((method, path, body))
+                return {}
+            if method != "GET":
+                self.writes.append((method, path, body))
+                return {"id": len(self.writes)}
+            if "/check-runs/" in path:
+                cid = int(path.rsplit("/", 1)[1])
+                return next(c for cs in checks.values() for c in cs if c["id"] == cid)
+            if "check-runs?" in path:
+                name = urllib.parse.parse_qs(urllib.parse.urlsplit(path).query)["check_name"][0]
+                return {"check_runs": checks[name]}
+            if "/pulls?" in path:
+                return [self.pr]
+            if "/runs?" in path:
+                return {"workflow_runs": self.runs}
+            self.fail(path)
+        return api
+
+    def test_a_start_that_crashed_after_creating_the_checks_is_concluded_by_finish(self):
+        # #254: start created the checks, then crashed before writing its state. finish runs (always())
+        # and must conclude this attempt's checks, never as success.
+        key = "expectrail/123/2"
+        checks = {self.c.CLEARANCE: [{"id": 41, "external_id": key, "status": "in_progress", "app": {"slug": "publisher"}},
+                                     {"id": 43, "external_id": "expectrail/9/1", "status": "in_progress",
+                                      "app": {"slug": "publisher"}}],
+                  self.c.EVIDENCE: [{"id": 51, "external_id": key, "status": "in_progress", "app": {"slug": "publisher"}}]}
+        for recorded in (True, False):
+            with self.subTest(recorded_ids=recorded), tempfile.TemporaryDirectory() as tmp, \
+                    mock.patch.dict(os.environ, self.stale_event(tmp)), \
+                    mock.patch("expectrail.gate.comment.http_api", return_value=self.unfinished_api(checks)):
+                self.writes.clear()
+                if recorded:
+                    (Path(tmp) / self.c.STARTED).write_text(json.dumps(
+                        {"key": key, "ids": {self.c.CLEARANCE: 41, self.c.EVIDENCE: 51}}))
+                self.c.main("finish")
+                patched = {w[1].rsplit("/", 1)[1]: w[2] for w in self.writes}
+                self.assertEqual(set(patched), {"41", "51"})
+                self.assertEqual(patched["41"]["conclusion"], "failure")
+                self.assertEqual(patched["51"]["conclusion"], "neutral")
+                self.assertIn("is not cleared", patched["41"]["output"]["summary"])
+                self.assertNotIn("success", [p["conclusion"] for p in patched.values()])
+
+    def test_start_records_the_ids_it_created_before_anything_can_fail(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp)), \
+                mock.patch("expectrail.gate.comment.http_api", return_value=self.api), \
+                mock.patch("expectrail.gate.intent.of_pull_request", side_effect=RuntimeError("crash")):
+            with self.assertRaises(RuntimeError):
+                self.c.main("start")
+            started = json.loads((Path(tmp) / self.c.STARTED).read_text())
+            self.assertEqual(started["key"], "expectrail/123/2")
+            self.assertEqual(set(started["ids"]), {self.c.CLEARANCE, self.c.EVIDENCE})
+            self.assertFalse((Path(tmp) / "gate-state.json").exists())
+
+    def test_finish_on_the_in_progress_event_leaves_the_clearance_open(self):
+        # The normal path: the in_progress event starts the checks, the completed event judges them.
+        key = "expectrail/123/2"
+        checks = {self.c.CLEARANCE: [{"id": 41, "external_id": key, "status": "in_progress", "app": {"slug": "publisher"}}],
+                  self.c.EVIDENCE: []}
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp, "in_progress")), \
+                mock.patch("expectrail.gate.comment.http_api", return_value=self.unfinished_api(checks)):
+            (Path(tmp) / self.c.STARTED).write_text(json.dumps({"key": key, "ids": {self.c.CLEARANCE: 41}}))
+            self.c.main("finish")
+        self.assertEqual(self.writes, [])
+
+    def test_the_fallback_skips_completed_and_other_apps_checks(self):
+        key = "expectrail/123/2"
+        checks = {self.c.CLEARANCE: [{"id": 41, "external_id": key, "status": "completed", "app": {"slug": "publisher"}},
+                                     {"id": 42, "external_id": key, "status": "in_progress", "app": {"slug": "someone"}},
+                                     {"id": 45, "external_id": key, "status": "queued", "app": {"slug": "publisher"}}],
+                  self.c.EVIDENCE: [{"id": 52, "external_id": key, "status": "in_progress", "app": {"slug": "x"}}]}
+        # finish has no CHECKS_APP: GitHub refuses a PATCH to another app's check, and that is skipped.
+        env = {k: v for k, v in self.stale_event(tempfile.mkdtemp()).items() if k != "CHECKS_APP"}
+        with mock.patch.dict(os.environ, env), mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("CHECKS_APP", None)
+            with mock.patch("expectrail.gate.comment.http_api",
+                            return_value=self.unfinished_api(checks, refuse={"42", "52"})):
+                self.c.main("finish")
+        patched = {w[1].rsplit("/", 1)[1]: w[2] for w in self.writes}
+        self.assertEqual(set(patched), {"45"})
+        self.assertEqual(patched["45"]["conclusion"], "failure")
+        # With the publisher's name, another app's check is never even tried.
+        self.writes.clear()
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp)), \
+                mock.patch("expectrail.gate.comment.http_api", return_value=self.unfinished_api(checks)):
+            self.c.main("finish")
+        self.assertEqual({w[1].rsplit("/", 1)[1] for w in self.writes}, {"45"})
+
+    def lost_runner_checks(self):
+        # This attempt is expectrail/123/2. A lost runner left earlier captures of the same head open.
+        pub = {"slug": "publisher"}
+        return {self.c.CLEARANCE: [
+                    {"id": 61, "external_id": "expectrail/123/1", "status": "in_progress", "app": pub},  # earlier attempt
+                    {"id": 62, "external_id": "expectrail/9/4", "status": "queued", "app": pub},  # earlier run
+                    {"id": 63, "external_id": "expectrail/9/1", "status": "in_progress", "app": {"slug": "someone"}},
+                    {"id": 64, "external_id": "expectrail/9/2", "status": "completed", "app": pub},
+                    {"id": 65, "external_id": "expectrail/123/2", "status": "in_progress", "app": pub},  # this one
+                    {"id": 66, "external_id": "expectrail/123/3", "status": "in_progress", "app": pub},  # not earlier
+                    {"id": 67, "external_id": "expectrail/200/1", "status": "in_progress", "app": pub},  # not earlier
+                    {"id": 68, "external_id": "expectrail/x/1", "status": "in_progress", "app": pub},  # cannot tell
+                    {"id": 69, "external_id": "expectrail/9/1/extra", "status": "in_progress", "app": pub},
+                    {"id": 70, "external_id": None, "status": "in_progress", "app": pub},
+                    {"id": 71, "external_id": "other/9/1", "status": "in_progress", "app": pub}],
+                self.c.EVIDENCE: [
+                    {"id": 81, "external_id": "expectrail/123/1", "status": "in_progress", "app": pub},
+                    {"id": 82, "external_id": "expectrail/123/1", "status": "completed", "app": pub}]}
+
+    def test_a_re_run_concludes_the_open_checks_of_earlier_captures_of_the_same_head(self):
+        # #254: a lost runner never runs finish, so its clearance stays in_progress. The remedy the check
+        # names is a re-run; the re-run's start concludes the earlier, superseded attempts' open checks.
+        checks = self.lost_runner_checks()
+        api = self.unfinished_api(checks)
+        self.c.close_superseded(api, ctx(), self.run, "publisher")
+        patched = {w[1].rsplit("/", 1)[1]: w[2] for w in self.writes}
+        self.assertEqual(set(patched), {"61", "62", "81"})
+        self.assertTrue(all(w[0] == "PATCH" for w in self.writes))
+        for cid in ("61", "62"):
+            self.assertEqual(patched[cid]["status"], "completed")
+            self.assertEqual(patched[cid]["conclusion"], "failure")
+            self.assertIn("Superseded capture or pull request", patched[cid]["output"]["summary"])
+            self.assertIn("is not cleared", patched[cid]["output"]["summary"])
+            self.assertIn("expectrail/123/2", patched[cid]["output"]["summary"])
+        self.assertEqual(patched["81"]["conclusion"], "neutral")
+        self.assertNotIn("success", [p["conclusion"] for p in patched.values()])
+        self.assertTrue(all(f"/commits/{HEAD}/check-runs?" in path for path in self.queries(checks)))
+
+    def queries(self, checks):
+        seen = []
+        api = self.unfinished_api(checks)
+
+        def spy(method, path, body=None):
+            if method == "GET":
+                seen.append(path)
+            return api(method, path, body)
+        self.c.close_superseded(spy, ctx(), self.run, "publisher")
+        return seen
+
+    def test_start_on_the_in_progress_event_concludes_earlier_open_attempts(self):
+        checks = self.lost_runner_checks()
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp, "in_progress")), \
+                mock.patch("expectrail.gate.comment.http_api", return_value=self.unfinished_api(checks)):
+            self.c.main("start")
+            self.assertTrue((Path(tmp) / self.c.STARTED).is_file())
+        patched = {w[1].rsplit("/", 1)[1]: w[2] for w in self.writes if w[0] == "PATCH"}
+        self.assertEqual(set(patched), {"61", "62", "81"})
+        # This attempt's own checks already existed and were reused, not recreated or concluded.
+        self.assertEqual([w for w in self.writes if w[0] == "POST" and w[2]["name"] == self.c.CLEARANCE], [])
+
+    def test_a_failed_clean_up_never_stops_the_judging(self):
+        checks = self.lost_runner_checks()
+        for refused in ({"61"}, {"61", "62", "81"}):
+            with self.subTest(refused=sorted(refused)), tempfile.TemporaryDirectory() as tmp, \
+                    mock.patch.dict(os.environ, self.stale_event(tmp, "in_progress")), \
+                    mock.patch("expectrail.gate.comment.http_api",
+                               return_value=self.unfinished_api(checks, refuse=refused)), \
+                    mock.patch("sys.stdout", new_callable=io.StringIO) as out:
+                self.writes.clear()
+                self.c.main("start")
+                self.assertTrue((Path(tmp) / self.c.STARTED).is_file())
+                self.assertIn("::warning::", out.getvalue())
+                patched = {w[1].rsplit("/", 1)[1] for w in self.writes if w[0] == "PATCH"}
+                self.assertEqual(patched, {"62", "81"} - refused)
+
+    def test_a_listing_that_fails_after_start_only_warns(self):
+        checks = self.lost_runner_checks()
+        inner = self.unfinished_api(checks)
+        calls = {"n": 0}
+
+        def api(method, path, body=None):
+            if method == "GET" and "check-runs?" in path:
+                calls["n"] += 1
+                if calls["n"] > 2:  # start's own two lookups succeed; the clean-up's listing fails
+                    raise urllib.error.URLError("API down")
+            return inner(method, path, body)
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp, "in_progress")), \
+                mock.patch("expectrail.gate.comment.http_api", return_value=api), \
+                mock.patch("sys.stdout", new_callable=io.StringIO) as out:
+            self.c.main("start")
+            self.assertTrue((Path(tmp) / self.c.STARTED).is_file())
+        self.assertIn("::warning::Could not look for superseded checks (URLError)", out.getvalue())
+        self.assertEqual([w for w in self.writes if w[0] == "PATCH"], [])
+
+    def test_a_superseded_capture_does_not_clean_up_other_attempts(self):
+        # Only the latest capture may judge others superseded; an earlier one closes its own checks only.
+        checks = self.lost_runner_checks()
+        self.runs = [dict(self.run, run_attempt=3)]
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp)), \
+                mock.patch("expectrail.gate.comment.http_api", return_value=self.unfinished_api(checks)):
+            self.c.main("start")
+        patched = {w[1].rsplit("/", 1)[1] for w in self.writes if w[0] == "PATCH"}
+        self.assertEqual(patched, {"65"})
+
+    def test_finish_concludes_the_checks_even_when_the_comment_fails(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, self.stale_event(tmp)), \
+                mock.patch("expectrail.gate.comment.http_api", return_value=self.api), \
+                mock.patch("expectrail.gate.comment.run", side_effect=OSError("comment API down")):
+            state = dict(self.state, ids={self.c.EVIDENCE: 1, self.c.CLEARANCE: 2})
+            (Path(tmp) / "gate-state.json").write_text(json.dumps(state))
+            os.environ["REPORT_READY"] = "true"
+            try:
+                with self.assertRaises(OSError):
+                    self.c.main("finish")
+            finally:
+                os.environ.pop("REPORT_READY", None)
+        patches = [w for w in self.writes if w[0] == "PATCH"]
+        self.assertEqual([w[2]["conclusion"] for w in patches], ["success", "failure"])
+        self.assertIn("comment", patches[-1][2]["output"]["summary"])
+
+    def test_closing_a_stale_clearance_never_passes_it(self):
+        checks = [{"id": 7, "external_id": "expectrail/123/2", "status": "queued", "app": {"slug": "publisher"}}]
+        def api(method, path, body=None):
+            if method != "GET":
+                self.writes.append((method, path, body))
+                return {}
+            return {"check_runs": checks}
+        self.c.close_stale(api, ctx(), self.run, "publisher")
+        self.assertEqual([w[2]["conclusion"] for w in self.writes], ["failure", "neutral"])
+        from tools import gate_trials
+        self.assertIn(gate_trials.STALE_REASON, self.c.STALE)  # the hosted-trial reader looks for it
+
     def test_caller_and_reusable_workflow_must_match_the_base_and_test_merge(self):
         called = {"path": ctx().repo + "/" + self.c.CAPTURE + "@refs/pull/7/merge", "sha": self.pr["merge_commit_sha"]}
         run = dict(self.run, pull_requests=[], referenced_workflows=[called])
@@ -1582,3 +2177,5 @@ class HeadChecksTest(unittest.TestCase):
             for key in ("MAX_BYTES", "MAX_FILES"):
                 with mock.patch.object(ci_bundle, key, 0), self.assertRaisesRegex(ValueError, "limit"):
                     ci_bundle.unpack(archive, root / "data")
+if __name__ == "__main__":
+    unittest.main()

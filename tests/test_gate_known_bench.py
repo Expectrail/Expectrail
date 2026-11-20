@@ -24,10 +24,10 @@ def fake_gate(before: dict[str, list[str]], after: dict[str, str]):
     the head's. The case is read from the head tree's folder name, which run_case makes."""
     calls = []
 
-    def run_gate(*, repo, game, routes, specs, out, work, base, intent):
+    def run_gate(*, repo, game, routes, specs, out, work, base, intent, rule=None):
         case = Path(repo).parent.name
         calls.append({"case": case, "intent": intent, "repo": Path(repo), "base": Path(base), "routes": routes,
-                      "specs": specs, "game": game})
+                      "specs": specs, "game": game, "rule": rule})
         b, a = before[case], after[case]
         checks = [{"spec": "player-stays-above-ground", "route": "smoke", "before": b[0], "after": a}]
         counts = {"checks": 1, "failed": int(a == "fail"), "needsReview": 0}
@@ -61,7 +61,7 @@ class RunCase(unittest.TestCase):
         case = next(c for c in kb.load_cases() if c["case"] == "known-air-jump-undo")
         seen = {}
 
-        def gate(*, repo, game, routes, specs, out, work, base, intent):
+        def gate(*, repo, game, routes, specs, out, work, base, intent, rule):
             game_dir = Path(repo) / game
             base_dir = Path(base) / game
             seen[intent] = {
@@ -92,6 +92,9 @@ class RunCase(unittest.TestCase):
         for c in gate.calls:
             self.assertEqual(c["routes"], ["harness/routes/smoke.json", "harness/routes/combat.json"])
             self.assertEqual((c["specs"], c["game"]), ("agents/specs", "game/platformer"))
+            # The rule the record names, never the gate's default (both observers since #602) (#644).
+            self.assertEqual(c["rule"], rec.ENGINE_ONLY)
+        self.assertEqual(kb.make_record(rows, engine="Godot")["rule"], rec.ENGINE_ONLY)
 
 
 class Rule(unittest.TestCase):

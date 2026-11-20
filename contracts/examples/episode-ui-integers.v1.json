@@ -1,0 +1,84 @@
+{
+  "format": "expectrail.episode/v1",
+  "id": "ui-example",
+  "adapter": "godot-platformer/v1",
+  "source": {
+    "routeName": "ui-example",
+    "routeSha256": "c1daffb9f434453366dacf61d85745ee0bae37f86012d678bb71d6e7e3047cec",
+    "traceSha256": "0d11f72049df2059d0a2ea5e9a67c71fb41a7f6d3d8168a9306030b5b5f6dd34",
+    "replaySha256": null
+  },
+  "physicsTicksPerSecond": 120,
+  "captureFps": null,
+  "frameMapping": null,
+  "capabilities": {
+    "player": true,
+    "onFloor": false,
+    "facing": false,
+    "enemies": "unknown",
+    "projectiles": "unknown",
+    "coins": "initial-instances",
+    "view": false
+  },
+  "completeness": {
+    "contiguous": true,
+    "firstTick": 0,
+    "lastTick": 1,
+    "gaps": []
+  },
+  "inputs": [],
+  "samples": [
+    {
+      "tick": 0,
+      "player": [
+        0.0,
+        0.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          2.0,
+          0.0
+        ],
+        [
+          3.0,
+          0.0
+        ],
+        [
+          4.0,
+          0.0
+        ]
+      ],
+      "view": null,
+      "uiIntegers": []
+    },
+    {
+      "tick": 1,
+      "player": [
+        0.0,
+        0.0
+      ],
+      "onFloor": null,
+      "facing": null,
+      "enemies": null,
+      "projectiles": null,
+      "coins": [],
+      "view": null,
+      "uiIntegers": [
+        5
+      ]
+    }
+  ],
+  "events": []
+}

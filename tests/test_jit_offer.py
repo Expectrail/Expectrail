@@ -60,7 +60,8 @@ def answer_on(*signals_used) -> str:
 
 class TheSetting(unittest.TestCase):
     def test_three_settings_and_the_default_is_the_baseline(self):
-        self.assertEqual(offer.OFFERS, ("baseline", "signals-reach", "signals-reach-evidence"))
+        self.assertEqual(offer.OFFERS, ("baseline", "signals-reach", "signals-reach-evidence",
+                                        "signals-reach-evidence-menu"))
         self.assertEqual(offer.DEFAULT, "baseline")
         for bad in ("", "all", None, "Baseline", 1):
             with self.assertRaises(offer.OfferError):
@@ -170,13 +171,13 @@ class OneSettingPerChange(unittest.TestCase):
         t = Transport(reply(answer_on(*signals_used)))
         out = self.tmp / which
         doc = intent.propose_to_file(intent.spark_intent(transport=t, offer=which), REPORT, self.patch, PROF,
-                                     offer.library(PROF["actions"], which, REPORT), out)
+                                     offer.library(PROF["actions"], which, REPORT, profile=PROF), out)
         self.assertIsNone(doc["error"])
         self.assertEqual(doc["offer"], which)
         return out / intent.PROPOSAL_NAME
 
     def replay(self, path: Path, which: str) -> dict:
-        probes = offer.library(PROF["actions"], which, REPORT)
+        probes = offer.library(PROF["actions"], which, REPORT, profile=PROF)
         return intent.from_proposal(path, offer=which)(REPORT, self.patch, diff_map(self.patch, PROF, probes), PROF, probes)
 
     def test_a_proposal_is_replayed_under_its_own_setting_only(self):
@@ -411,8 +412,8 @@ class TheWorkflow(unittest.TestCase):
         self.assertEqual(plan["env"]["OFFER"], "${{ inputs.offer || 'baseline' }}")
         self.assertEqual(plan["outputs"]["offer"], "${{ steps.plan.outputs.offer }}")
         step = next(s["run"] for s in plan["steps"] if s.get("id") == "plan")
-        self.assertLess(step.index("offer must be baseline, signals-reach, signals-reach-evidence or "
-                                   "signals-reach-evidence-pixel"),
+        self.assertLess(step.index("offer must be baseline, signals-reach, signals-reach-evidence, "
+                                   "signals-reach-evidence-menu or signals-reach-evidence-pixel"),
                         step.index('if [[ "$MODE" == "bench" ]]'))
         self.assertIn("registered under the baseline offer", step)
 

@@ -1,0 +1,38 @@
+{
+  "before": {
+    "tests": 4382,
+    "seconds": 469.476,
+    "failures": 0,
+    "errors": 1,
+    "skips": 57,
+    "failingNames": [
+      "test_opt_in_approved_three_of_three_uses_existing_loop_and_gate (tests.test_ingest_repair.IngestRepair.test_opt_in_approved_three_of_three_uses_existing_loop_and_gate)"
+    ],
+    "ok": false,
+    "log": "logs/before.log"
+  },
+  "after": {
+    "tests": 4399,
+    "seconds": 521.4,
+    "failures": 0,
+    "errors": 0,
+    "skips": 57,
+    "failingNames": [],
+    "ok": true,
+    "log": "logs/after.log"
+  },
+  "after-final": {
+    "tests": 4399,
+    "seconds": 458.995,
+    "failures": 0,
+    "errors": 0,
+    "skips": 57,
+    "failingNames": [],
+    "ok": true,
+    "log": "logs/after-final.log"
+  },
+  "newFailingNames": [],
+  "notReproducedAfter": [
+    "test_opt_in_approved_three_of_three_uses_existing_loop_and_gate (tests.test_ingest_repair.IngestRepair.test_opt_in_approved_three_of_three_uses_existing_loop_and_gate)"
+  ]
+}

@@ -72,7 +72,7 @@ jobs:
           echo "ids: $ids"
 
   blind:
-    environment: main-only
+    environment: spend
     needs: list
     name: blind (${{ matrix.id }})
     runs-on: ubuntu-24.04

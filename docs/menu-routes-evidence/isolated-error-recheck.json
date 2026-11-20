@@ -1,0 +1,17 @@
+{
+  "label": "isolated-error-recheck",
+  "startedUtc": "2026-11-16T06:50:57.824111+00:00",
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v",
+    "tests.test_ingest_repair.IngestRepair.test_no_reproduction_and_desync_construct_no_transport"
+  ],
+  "cwd": "$REPO",
+  "seconds": 0.867195189006452,
+  "exitCode": 0,
+  "status": "finished",
+  "godotOverride": null,
+  "log": "logs/isolated-error-recheck.log"
+}

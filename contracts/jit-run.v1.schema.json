@@ -8,6 +8,7 @@
   "required": ["format", "runId", "advisory", "status", "reason", "inputs", "settings", "diffMap", "proposed",
                "probes", "variants", "validity", "catches", "counts", "spend", "diagnostics"],
   "properties": {
+    "provenance": {"type": "object", "additionalProperties": false, "required": ["generatorVersion", "modelVersion"], "properties": {"generatorVersion": {"type": "string", "minLength": 1, "maxLength": 100}, "modelVersion": {"type": ["string", "null"], "maxLength": 100}, "assessmentDiffClaims": {"type": "array", "maxItems": 64, "items": {"type": "string", "maxLength": 200}, "description": "Trusted assessor-only candidate diff claims; never included in a candidate-withheld model prompt."}}},
     "format": {"const": "expectrail.jit-run/v1"},
     "runId": {"type": "string", "minLength": 1, "maxLength": 200},
     "advisory": {"const": true},
@@ -35,7 +36,7 @@
         "reps": {"type": "integer", "minimum": 1},
         "variantLimit": {"type": "integer", "minimum": 0},
         "budgetUsd": {"type": "number", "minimum": 0},
-        "offer": {"enum": ["baseline", "signals-reach", "signals-reach-evidence", "signals-reach-evidence-pixel"],
+        "offer": {"enum": ["baseline", "signals-reach", "signals-reach-evidence", "signals-reach-evidence-menu", "signals-reach-evidence-pixel"],
                   "description": "What the generator was offered (expectrail/jit/offer.py). Absent in records written before the setting existed, which were made under baseline."},
         "candidate": {"enum": ["shown", "withheld"],
                       "description": "Whether the model that proposed the checks was given the candidate patch (shown) or nothing of it, neither its text nor a diff map made from it (withheld; issue #285, step 6). Only checks proposed with the candidate withheld are derived from the report and the base build alone (expectrail/jit/run.py, from_base_alone). Absent in records written before the setting existed, which were made with the candidate shown."}
@@ -77,7 +78,7 @@
       }}},
     "probes": {"type": "array", "items": {
       "type": "object", "additionalProperties": false, "required": ["id", "source", "routeSha256"],
-      "properties": {"id": {"$ref": "#/$defs/id"}, "source": {"enum": ["library", "reach", "jit", "report"]},
+      "properties": {"id": {"$ref": "#/$defs/id"}, "source": {"enum": ["library", "reach", "menu", "jit", "report"]},
                      "routeSha256": {"$ref": "#/$defs/sha256"}}}},
     "variants": {"type": "array", "items": {
       "type": "object", "additionalProperties": false, "required": ["id", "kind", "file", "line", "patchSha256"],
@@ -90,6 +91,9 @@
       "type": "object", "additionalProperties": false,
       "required": ["specId", "valid", "reference", "killed", "reasons", "candidate", "outcome"],
       "properties": {
+        "base": {"$ref": "#/$defs/runs"},
+        "variantResults": {"type": "object", "additionalProperties": {"$ref": "#/$defs/runs"}},
+        "exercised": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "boolean"}}},
         "specId": {"$ref": "#/$defs/id"},
         "valid": {"type": "boolean"},
         "reference": {"$ref": "#/$defs/runs"},
@@ -157,7 +161,9 @@
           "clean": {"$ref": "#/$defs/pixelRuns"},
           "bug": {"$ref": "#/$defs/pixelRuns"},
           "candidate": {"$ref": "#/$defs/pixelRuns"},
-          "outcome": {"enum": ["catch", "no-catch", "needs-review", "not-evaluated"]}
+          "outcome": {"enum": ["catch", "no-catch", "needs-review", "not-evaluated"]},
+          "framesPlanned": {"type": "array", "maxItems": 5000, "items": {"type": "integer", "minimum": 0},
+                            "description": "The frames the observer was to be asked about inside this check's window, in order: its plan for the probe (every Nth and the last, inside the windows of the checks on that probe) cut to this check's window. Written when the probe's frames were planned; absent on a row written before November 19 or a check that was not run. The correct-fix pressure replays a check only under this plan."}
         }
       }
     }

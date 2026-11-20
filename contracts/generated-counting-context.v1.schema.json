@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "repository",
+    "base",
+    "head",
+    "build",
+    "policy",
+    "inputs"
+  ],
+  "properties": {
+    "format": {
+      "const": "expectrail.generated-counting-context/v1"
+    },
+    "repository": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    },
+    "base": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "build": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "policy": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "patchSha256",
+        "reportSha256",
+        "basePatchSha256",
+        "profileSha256",
+        "model",
+        "promptSha256"
+      ],
+      "properties": {
+        "patchSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "reportSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "reportRouteSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "basePatchSha256": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sha256"
+          }
+        },
+        "profileSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 100
+        },
+        "promptSha256": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._/-]*$"
+    },
+    "runs": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "pass",
+          "fail",
+          "not_exercised",
+          "insufficient_observation",
+          "execution_error"
+        ]
+      }
+    },
+    "pixelRuns": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "enum": [
+          "pass",
+          "fail",
+          "needs-review"
+        ]
+      }
+    }
+  }
+}

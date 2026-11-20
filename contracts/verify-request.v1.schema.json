@@ -210,20 +210,82 @@
     },
     "autoFix": {
       "description": "Opt-in repair after a reject. A saved patch is identified by its content.",
-      "type": "object", "additionalProperties": false, "required": ["attempts", "source"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attempts",
+        "source"
+      ],
       "properties": {
-        "attempts": {"type": "integer", "minimum": 1, "maximum": 10},
-        "source": {"enum": ["muse", "fixture", "recorded"]},
-        "usdCap": {"type": "number", "minimum": 0},
-        "patchSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        "attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "source": {
+          "enum": [
+            "muse",
+            "fixture",
+            "recorded",
+            "llm-patch"
+          ]
+        },
+        "usdCap": {
+          "type": "number",
+          "minimum": 0
+        },
+        "patchSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
       },
       "oneOf": [
-        {"properties": {"source": {"const": "muse"}}, "required": ["usdCap"], "maxProperties": 3},
-        {"properties": {"source": {"enum": ["fixture", "recorded"]}}, "required": ["patchSha256"], "maxProperties": 3}
+        {
+          "properties": {
+            "source": {
+              "enum": [
+                "muse",
+                "llm-patch"
+              ]
+            }
+          },
+          "required": [
+            "usdCap"
+          ],
+          "maxProperties": 3
+        },
+        {
+          "properties": {
+            "source": {
+              "enum": [
+                "fixture",
+                "recorded"
+              ]
+            }
+          },
+          "required": [
+            "patchSha256"
+          ],
+          "maxProperties": 3
+        }
       ]
     },
-    "intent": {"enum": ["fix", "change", "none"], "default": "none", "description": "fix requires the shared gate's repeated base-fail/head-pass demonstration. change and none keep the existing rule. Omitted means none."},
-    "bug": {"type": "string", "minLength": 1, "maxLength": 8192, "pattern": "\\S", "description": "User-supplied bug report, only with intent fix. Captured text, not a path to fetch, an approved check or proof of a repair. Control characters other than tab and line endings are refused by the reader."},
+    "intent": {
+      "enum": [
+        "fix",
+        "change",
+        "none"
+      ],
+      "default": "none",
+      "description": "fix requires the shared gate's repeated base-fail/head-pass demonstration. change and none keep the existing rule. Omitted means none."
+    },
+    "bug": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8192,
+      "pattern": "\\S",
+      "description": "User-supplied bug report, only with intent fix. Captured text, not a path to fetch, an approved check or proof of a repair. Control characters other than tab and line endings are refused by the reader."
+    },
     "format": {
       "const": "expectrail.verify-request/v1"
     },
@@ -385,11 +447,42 @@
         }
       ],
       "description": "The same key with the same inputs returns the job that already exists; the same key with different inputs is an error."
+    },
+    "heldOut": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "suiteSha256",
+        "framesToVisual"
+      ],
+      "description": "Opaque digest of the operator-configured held-out suite, never a client-supplied path. Workers resolve it only through EXPECTRAIL_HELDOUT_DIR; visual consent also requires EXPECTRAIL_HELDOUT_VISION=1. No suite bytes reach the fixer.",
+      "properties": {
+        "suiteSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "framesToVisual": {
+          "type": "boolean"
+        }
+      }
     }
   },
   "anyOf": [
-    {"required": ["intent"], "properties": {"intent": {"const": "fix"}}},
-    {"propertyNames": {"pattern": "^(?!bug$)"}}
+    {
+      "required": [
+        "intent"
+      ],
+      "properties": {
+        "intent": {
+          "const": "fix"
+        }
+      }
+    },
+    {
+      "propertyNames": {
+        "pattern": "^(?!bug$)"
+      }
+    }
   ],
   "oneOf": [
     {

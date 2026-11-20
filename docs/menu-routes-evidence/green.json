@@ -1,0 +1,19 @@
+{
+  "label": "green",
+  "startedUtc": "2026-11-16T06:37:51.229246+00:00",
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v",
+    "tests.test_menu_routes",
+    "tests.test_pointer_routes",
+    "tests.test_event_input"
+  ],
+  "cwd": "$REPO",
+  "seconds": 82.74692798699834,
+  "exitCode": 0,
+  "status": "finished",
+  "godotOverride": "$WORK/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+  "log": "logs/green.log"
+}

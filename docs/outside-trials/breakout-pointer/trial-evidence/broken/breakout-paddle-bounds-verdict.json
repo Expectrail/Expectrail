@@ -1,0 +1,118 @@
+{
+  "format": "expectrail.verdict/v0",
+  "spec": {
+    "id": "breakout-paddle-bounds",
+    "sha256": "12868d8b23b58210db9ad021ab99e1ac3dcc784a76e9b3ec0a18cf7bbb5f8839"
+  },
+  "observations": {
+    "sha256": "a412b9584795c62a2ab517dbdec6c5ffeb9dc37220628cdfa171b58078382d38"
+  },
+  "result": "fail",
+  "reason": "player [-15.5, 607.0, 31.5, 625.0] leaves region [0, 0, 360, 640] (first at frame 20, 51 frames)",
+  "firstFrame": 20,
+  "evidence": [
+    {
+      "frame": 20,
+      "detail": "player [-15.5, 607.0, 31.5, 625.0] leaves region [0, 0, 360, 640]",
+      "boxes": {
+        "player": [
+          -15.5,
+          607.0,
+          31.5,
+          625.0
+        ],
+        "region": [
+          0,
+          0,
+          360,
+          640
+        ]
+      }
+    },
+    {
+      "frame": 21,
+      "detail": "player [-15.5, 607.0, 31.5, 625.0] leaves region [0, 0, 360, 640]",
+      "boxes": {
+        "player": [
+          -15.5,
+          607.0,
+          31.5,
+          625.0
+        ],
+        "region": [
+          0,
+          0,
+          360,
+          640
+        ]
+      }
+    },
+    {
+      "frame": 22,
+      "detail": "player [-15.5, 607.0, 31.5, 625.0] leaves region [0, 0, 360, 640]",
+      "boxes": {
+        "player": [
+          -15.5,
+          607.0,
+          31.5,
+          625.0
+        ],
+        "region": [
+          0,
+          0,
+          360,
+          640
+        ]
+      }
+    },
+    {
+      "frame": 23,
+      "detail": "player [-15.5, 607.0, 31.5, 625.0] leaves region [0, 0, 360, 640]",
+      "boxes": {
+        "player": [
+          -15.5,
+          607.0,
+          31.5,
+          625.0
+        ],
+        "region": [
+          0,
+          0,
+          360,
+          640
+        ]
+      }
+    },
+    {
+      "frame": 24,
+      "detail": "player [-15.5, 607.0, 31.5, 625.0] leaves region [0, 0, 360, 640]",
+      "boxes": {
+        "player": [
+          -15.5,
+          607.0,
+          31.5,
+          625.0
+        ],
+        "region": [
+          0,
+          0,
+          360,
+          640
+        ]
+      }
+    }
+  ],
+  "framesJudged": 51,
+  "evaluator": {
+    "name": "expectrail.evaluator",
+    "version": "0.1.0"
+  },
+  "coverage": {
+    "status": "exercised",
+    "semanticResult": "fail",
+    "framesObserved": 51,
+    "framesExpected": 51,
+    "framesRequired": 40,
+    "completeWindow": true
+  }
+}

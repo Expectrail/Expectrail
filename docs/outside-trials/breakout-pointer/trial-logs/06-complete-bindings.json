@@ -1,0 +1,19 @@
+{
+  "step": 6,
+  "label": "complete-bindings",
+  "startedUtc": "2026-11-16T06:46:05.748112+00:00",
+  "command": [
+    "python3",
+    "$WORK/handover-259-menu-routes/complete-config.py"
+  ],
+  "cwd": "$REPO",
+  "seconds": 0.1492226659975131,
+  "exitCode": 0,
+  "status": "finished",
+  "log": "trial-logs/06-complete-bindings.log",
+  "environment": {
+    "EXPECTRAIL_GODOT": "$WORK/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+    "TMPDIR": null,
+    "EXPECTRAIL_TOOLS": null
+  }
+}

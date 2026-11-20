@@ -1,0 +1,19 @@
+{
+  "step": 1,
+  "label": "prepare-same-pin",
+  "startedUtc": "2026-11-16T06:43:39.951396+00:00",
+  "command": [
+    "python3",
+    "$WORK/handover-259-menu-routes/prepare-trial.py"
+  ],
+  "cwd": "$REPO",
+  "seconds": 0.4002383519982686,
+  "exitCode": 0,
+  "status": "finished",
+  "log": "trial-logs/01-prepare-same-pin.log",
+  "environment": {
+    "EXPECTRAIL_GODOT": "$WORK/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+    "TMPDIR": null,
+    "EXPECTRAIL_TOOLS": null
+  }
+}

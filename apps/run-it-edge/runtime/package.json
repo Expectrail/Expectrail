@@ -1,0 +1,7 @@
+{
+  "name": "expectrail-run-it-runtime-tests",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "devDependencies": { "miniflare": "4.20260730.0" }
+}

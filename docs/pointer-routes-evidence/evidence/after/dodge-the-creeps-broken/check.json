@@ -1,0 +1,193 @@
+{
+  "result": "fail",
+  "verdict": {
+    "format": "expectrail.verdict/v0",
+    "spec": {
+      "id": "dodge-play-area",
+      "sha256": "6da2313b318366e062f60ba2b61859c1d9a8baa653e725127dc4e94aefbd8535"
+    },
+    "observations": {
+      "sha256": "aa2f1cb2d168153c995401f0d777bbc84810e256fbf0ccf40fa2c2eb77c66f45"
+    },
+    "result": "fail",
+    "reason": "player [459.666, 395.25, 513.666, 463.25] leaves region [-27.0, -54.75, 507.0, 733.25] (first at frame 97, 153 frames); 58 frames not exercised (player hidden)",
+    "firstFrame": 97,
+    "evidence": [
+      {
+        "frame": 97,
+        "detail": "player [459.666, 395.25, 513.666, 463.25] leaves region [-27.0, -54.75, 507.0, 733.25]",
+        "boxes": {
+          "player": [
+            459.666,
+            395.25,
+            513.666,
+            463.25
+          ],
+          "region": [
+            -27.0,
+            -54.75,
+            507.0,
+            733.25
+          ]
+        }
+      },
+      {
+        "frame": 98,
+        "detail": "player [466.333, 395.25, 520.333, 463.25] leaves region [-27.0, -54.75, 507.0, 733.25]",
+        "boxes": {
+          "player": [
+            466.333,
+            395.25,
+            520.333,
+            463.25
+          ],
+          "region": [
+            -27.0,
+            -54.75,
+            507.0,
+            733.25
+          ]
+        }
+      },
+      {
+        "frame": 99,
+        "detail": "player [473.0, 395.25, 527.0, 463.25] leaves region [-27.0, -54.75, 507.0, 733.25]",
+        "boxes": {
+          "player": [
+            473.0,
+            395.25,
+            527.0,
+            463.25
+          ],
+          "region": [
+            -27.0,
+            -54.75,
+            507.0,
+            733.25
+          ]
+        }
+      },
+      {
+        "frame": 100,
+        "detail": "player [479.666, 395.25, 533.666, 463.25] leaves region [-27.0, -54.75, 507.0, 733.25]",
+        "boxes": {
+          "player": [
+            479.666,
+            395.25,
+            533.666,
+            463.25
+          ],
+          "region": [
+            -27.0,
+            -54.75,
+            507.0,
+            733.25
+          ]
+        }
+      },
+      {
+        "frame": 101,
+        "detail": "player [486.333, 395.25, 540.333, 463.25] leaves region [-27.0, -54.75, 507.0, 733.25]",
+        "boxes": {
+          "player": [
+            486.333,
+            395.25,
+            540.333,
+            463.25
+          ],
+          "region": [
+            -27.0,
+            -54.75,
+            507.0,
+            733.25
+          ]
+        }
+      }
+    ],
+    "framesJudged": 242,
+    "evaluator": {
+      "name": "expectrail.evaluator",
+      "version": "0.1.0"
+    },
+    "coverage": {
+      "status": "exercised",
+      "semanticResult": "fail",
+      "framesObserved": 300,
+      "framesExpected": 300,
+      "framesRequired": 120,
+      "completeWindow": true,
+      "framesNotExercised": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        252,
+        253,
+        254,
+        255,
+        256,
+        257,
+        258,
+        259,
+        260,
+        261,
+        262,
+        263,
+        264,
+        265,
+        266,
+        267,
+        268,
+        269,
+        270,
+        271,
+        272,
+        273,
+        274,
+        275,
+        276,
+        277,
+        278,
+        279,
+        280,
+        281,
+        282,
+        283,
+        284,
+        285,
+        286,
+        287,
+        288,
+        289,
+        290,
+        291,
+        292,
+        293,
+        294,
+        295,
+        296,
+        297,
+        298,
+        299
+      ],
+      "framesVisibilityUnknown": []
+    }
+  },
+  "reason": "player [459.666, 395.25, 513.666, 463.25] leaves region [-27.0, -54.75, 507.0, 733.25] (first at frame 97, 153 frames); 58 frames not exercised (player hidden)",
+  "frame": 97,
+  "framesDir": "$WORK/handover-259-pointer-routes/evidence/after/dodge-the-creeps-broken/frames",
+  "visualWhy": null,
+  "observed": {
+    "engine": "fail",
+    "visual": "not-asked",
+    "visualAnswerSha256": null
+  },
+  "visualObservations": null,
+  "visualVerdict": null
+}

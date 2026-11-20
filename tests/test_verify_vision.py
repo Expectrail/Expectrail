@@ -14,6 +14,7 @@ from expectrail.gate import record
 from expectrail.orchestrator import engines, request, runner, store, cli
 from harness import run, sandbox
 from tests.test_two_observers import Game, repo
+from tests.test_sam import W, H
 
 
 class VerifyVisionTest(unittest.TestCase):
@@ -39,7 +40,7 @@ class VerifyVisionTest(unittest.TestCase):
                 self.assertIn('set ' + missing, json.dumps(status['diagnostics']))
                 self.assertTrue(game.replays)
                 doc = record.read_record(jobs.paths(status['id']).output / 'findings.json')
-                self.assertEqual(doc['observers'], {'rule': 'both', 'visual': None})
+                self.assertEqual(doc['observers'], {'rule': 'both', 'engine': {'name': 'expectrail.engine-record', 'version': '0.1.0'}, 'visual': None})
                 self.assertTrue(doc['checks'])
                 self.assertTrue(all(c['observed']['after']['engine'] == 'pass' for c in doc['checks']))
                 self.assertEqual({d['code'] for d in status['diagnostics']}, {'PROVIDER_FAILED'})
@@ -59,7 +60,7 @@ class VerifyVisionTest(unittest.TestCase):
                 self.assertTrue(game.replays)
                 doc = record.read_record(jobs.paths(status['id']).output / 'findings.json')
                 self.assertEqual(doc['decision'], 'reject')
-                self.assertEqual(doc['observers'], {'rule': 'both', 'visual': None})
+                self.assertEqual(doc['observers'], {'rule': 'both', 'engine': {'name': 'expectrail.engine-record', 'version': '0.1.0'}, 'visual': None})
                 self.assertTrue(any(c['observed']['after']['engine'] == 'fail' for c in doc['checks']))
                 self.assertTrue(all(c['observed']['after']['visual'] == 'not-asked' for c in doc['checks']))
                 self.assertEqual(len(status['diagnostics']), len(absent))
@@ -106,6 +107,13 @@ class VerifyVisionTest(unittest.TestCase):
                 project = Path(cmd[cmd.index('--path') + 1])
                 out = Path(trace_arg).parent
                 played = game.replay(route, project, out, True)
+                # This test stands in for current engine execution, so return the current
+                # harness contract alongside Game's unchanged rows and scripted pixels.
+                played['trace']['captureTimeline'] = {'fps': 60, 'frames': [
+                    {'frame': n, 'tick': 2*n+1, 'tickInterval': [2*n, 2*n+1],
+                     'phase': 'post-physics-pre-draw', 'viewport': [W, H],
+                     'transform': [1, 0, 0, 1, 0, 0]}
+                    for n in range(len(played['trace']['rows'])//2)]}
                 Path(trace_arg).write_text(json.dumps(played['trace']))
                 return subprocess.CompletedProcess(cmd, 0, '', '')
 

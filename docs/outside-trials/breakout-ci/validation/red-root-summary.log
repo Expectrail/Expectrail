@@ -1,0 +1,88 @@
+test_generated_pointer_route_is_summarized_without_changing_events (__main__.PointerSummaryTest.test_generated_pointer_route_is_summarized_without_changing_events) ... ERROR
+test_hold_motion_unmatched_release_and_direction_changes_are_not_hidden (__main__.PointerSummaryTest.test_hold_motion_unmatched_release_and_direction_changes_are_not_hidden) ... ERROR
+test_declared_verdict_and_each_draft_finding_are_required (__main__.RootTrialTest.test_declared_verdict_and_each_draft_finding_are_required) ... ERROR
+test_nested_folder_link_out_is_refused_before_copy (__main__.RootTrialTest.test_nested_folder_link_out_is_refused_before_copy) ... FAIL
+test_new_modules_import_without_image_packages (__main__.RootTrialTest.test_new_modules_import_without_image_packages) ... ok
+test_root_copy_omits_git_metadata_and_does_not_copy_links_out (__main__.RootTrialTest.test_root_copy_omits_git_metadata_and_does_not_copy_links_out) ... FAIL
+test_root_is_accepted_but_traversal_absolute_and_newline_paths_are_not (__main__.RootTrialTest.test_root_is_accepted_but_traversal_absolute_and_newline_paths_are_not) ... ERROR
+test_root_sparse_checkout_fetches_at_full_pin_and_keeps_nested_assets (__main__.RootTrialTest.test_root_sparse_checkout_fetches_at_full_pin_and_keeps_nested_assets) ... ERROR
+
+======================================================================
+ERROR: test_generated_pointer_route_is_summarized_without_changing_events (__main__.PointerSummaryTest.test_generated_pointer_route_is_summarized_without_changing_events)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$WORK/handover-263-breakout-in-trial/test_outside_root.py", line 73, in test_generated_pointer_route_is_summarized_without_changing_events
+    lines=route.pointer_summary(doc['events'])
+          ^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'expectrail.route' has no attribute 'pointer_summary'
+
+======================================================================
+ERROR: test_hold_motion_unmatched_release_and_direction_changes_are_not_hidden (__main__.PointerSummaryTest.test_hold_motion_unmatched_release_and_direction_changes_are_not_hidden)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$WORK/handover-263-breakout-in-trial/test_outside_root.py", line 83, in test_hold_motion_unmatched_release_and_direction_changes_are_not_hidden
+    lines=route.pointer_summary(events)
+          ^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'expectrail.route' has no attribute 'pointer_summary'
+
+======================================================================
+ERROR: test_declared_verdict_and_each_draft_finding_are_required (__main__.RootTrialTest.test_declared_verdict_and_each_draft_finding_are_required)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$WORK/handover-263-breakout-in-trial/test_outside_root.py", line 55, in test_declared_verdict_and_each_draft_finding_are_required
+    self.assertEqual(trial.expectation_errors(row),[])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'tools.outside_trial' has no attribute 'expectation_errors'
+
+======================================================================
+ERROR: test_root_is_accepted_but_traversal_absolute_and_newline_paths_are_not (__main__.RootTrialTest.test_root_is_accepted_but_traversal_absolute_and_newline_paths_are_not)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$WORK/handover-263-breakout-in-trial/test_outside_root.py", line 26, in test_root_is_accepted_but_traversal_absolute_and_newline_paths_are_not
+    if allowed:self.assertEqual(trial.load_list(file)[0]['path'],'.')
+                                ^^^^^^^^^^^^^^^^^^^^^
+  File "$REPO/tools/outside_trial.py", line 70, in load_list
+    raise TrialError(f"{p['name']}: {key} must be a plain path inside its repository")
+tools.outside_trial.TrialError: kinematic-character: path must be a plain path inside its repository
+
+======================================================================
+ERROR: test_root_sparse_checkout_fetches_at_full_pin_and_keeps_nested_assets (__main__.RootTrialTest.test_root_sparse_checkout_fetches_at_full_pin_and_keeps_nested_assets)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$WORK/handover-263-breakout-in-trial/test_outside_root.py", line 51, in test_root_sparse_checkout_fetches_at_full_pin_and_keeps_nested_assets
+    clone=trial.fetch(p,self.root/'clones');self.assertEqual((clone/'art/x.txt').read_text(),'asset')
+                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "$PYTHON/lib/python3.12/pathlib.py", line 1027, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "$PYTHON/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '$TMPDIR/tmpnokdk9bm/clones/57d97e4a106a-5957d0bb/art/x.txt'
+
+======================================================================
+FAIL: test_nested_folder_link_out_is_refused_before_copy (__main__.RootTrialTest.test_nested_folder_link_out_is_refused_before_copy)
+----------------------------------------------------------------------
+tools.outside_trial.TrialError: kinematic-character: no project.godot at game in the source
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "$WORK/handover-263-breakout-in-trial/test_outside_root.py", line 41, in test_nested_folder_link_out_is_refused_before_copy
+    with self.assertRaisesRegex(trial.TrialError,'link|outside'):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: "link|outside" does not match "kinematic-character: no project.godot at game in the source"
+
+======================================================================
+FAIL: test_root_copy_omits_git_metadata_and_does_not_copy_links_out (__main__.RootTrialTest.test_root_copy_omits_git_metadata_and_does_not_copy_links_out)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$WORK/handover-263-breakout-in-trial/test_outside_root.py", line 32, in test_root_copy_omits_git_metadata_and_does_not_copy_links_out
+    self.assertTrue((result/'project/main.gd').is_file());self.assertFalse((result/'project/.git').exists())
+                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.162s
+
+FAILED (failures=2, errors=5)

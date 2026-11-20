@@ -11,12 +11,24 @@
       "kind": "platformer with moving and one-way platforms; CharacterBody2D player; 530 by 495; 120 ticks a second",
       "routes": "tests/outside/kinematic-character/routes",
       "changes": [
-        {"name": "broken", "patch": "tests/outside/kinematic-character/changes/broken.patch", "expect": "reject",
-         "what": "the player's collision mask is emptied, so it falls through the floor"},
-        {"name": "harmless", "patch": "tests/outside/kinematic-character/changes/harmless.patch", "expect": "needs-review",
-         "what": "the player's sprite is tinted; nothing it does changes (the engine's checks pass, as on the project unchanged; CI has no vision key, so the verdict is needs-review, as #379 requires: an accept needs vision, and an outside project counts as verified only after a run with vision, Sean's call on #398)"},
-        {"name": "invisible", "patch": "tests/outside/kinematic-character/changes/invisible.patch", "expect": "needs-review",
-         "what": "the player's sprite is hidden; it moves exactly as before, so the engine's checks pass and only a visual observer can tell (#330): with vision it must not be accepted, because no player is drawn where the engine says it is"}
+        {
+          "name": "broken",
+          "patch": "tests/outside/kinematic-character/changes/broken.patch",
+          "expect": "reject",
+          "what": "the player's collision mask is emptied, so it falls through the floor"
+        },
+        {
+          "name": "harmless",
+          "patch": "tests/outside/kinematic-character/changes/harmless.patch",
+          "expect": "needs-review",
+          "what": "the player's sprite is tinted; nothing it does changes (the engine's checks pass, as on the project unchanged; CI has no vision key, so the verdict is needs-review, as #379 requires: an accept needs vision, and an outside project counts as verified only after a run with vision, Sean's call on #398)"
+        },
+        {
+          "name": "invisible",
+          "patch": "tests/outside/kinematic-character/changes/invisible.patch",
+          "expect": "needs-review",
+          "what": "the player's sprite is hidden; it moves exactly as before, so the engine's checks pass and only a visual observer can tell (#330): with vision it must not be accepted, because no player is drawn where the engine says it is"
+        }
       ]
     },
     {
@@ -29,10 +41,59 @@
       "routes": "tests/outside/dodge-the-creeps/routes",
       "spec": "tests/outside/specs/dodge-play-area.json",
       "changes": [
-        {"name": "broken", "patch": "tests/outside/dodge-the-creeps/changes/broken.patch", "expect": "reject",
-         "what": "the player can move past the edge because its position is no longer clamped to the viewport"},
-        {"name": "harmless", "patch": "tests/outside/dodge-the-creeps/changes/harmless.patch", "expect": "needs-review",
-         "what": "only a comment changes; the engine should pass the bounds check, and CI has no vision key"}
+        {
+          "name": "broken",
+          "patch": "tests/outside/dodge-the-creeps/changes/broken.patch",
+          "expect": "reject",
+          "what": "the player can move past the edge because its position is no longer clamped to the viewport"
+        },
+        {
+          "name": "harmless",
+          "patch": "tests/outside/dodge-the-creeps/changes/harmless.patch",
+          "expect": "needs-review",
+          "what": "only a comment changes; the engine should pass the bounds check, and CI has no vision key"
+        }
+      ]
+    },
+    {
+      "name": "breakout",
+      "repository": "https://github.com/mike0697/Breakout.git",
+      "commit": "0ac7aed444ea593a023d9b666c211d7ab8acd51e",
+      "path": ".",
+      "licence": "MIT",
+      "kind": "independent-author pointer paddle and ball game; starts from a measured menu click; draft checks only, no approval or vision",
+      "routes": "tests/outside/breakout-pointer/routes",
+      "config": "tests/outside/breakout-pointer/expectrail.project.json",
+      "draftSpecs": [
+        "tests/outside/breakout-pointer/checks/breakout-paddle-bounds.json",
+        "tests/outside/breakout-pointer/checks/breakout-ball-starts.json"
+      ],
+      "expect": "needs-review",
+      "engineExpect": {
+        "breakout-paddle-bounds": "pass",
+        "breakout-ball-starts": "pass"
+      },
+      "changes": [
+        {
+          "name": "harmless",
+          "patch": "tests/outside/breakout/changes/harmless.patch",
+          "expect": "needs-review",
+          "engineExpect": {
+            "breakout-paddle-bounds": "pass",
+            "breakout-ball-starts": "pass"
+          },
+          "what": "a comment only; both draft diagnostics pass; drafts cannot clear a change"
+        },
+        {
+          "name": "broken",
+          "patch": "tests/outside/breakout/changes/broken.patch",
+          "expect": "needs-review",
+          "engineExpect": {
+            "breakout-paddle-bounds": "fail",
+            "breakout-ball-starts": "needs-review"
+          },
+          "what": "paddle is forced to x=8; raw paddle draft fails, ball movement checkpoint is not reached; unapproved drafts do not reject at the gate"
+        }
       ]
     }
   ]

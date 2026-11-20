@@ -274,8 +274,14 @@ def build_http_payload(
     json_schema: dict[str, Any] | None = None,
     schema_name: str = "expectrail_response",
     strict: bool = True,
+    truncate_prompt_tokens: int | None = None,
 ) -> tuple[str, dict[str, str], dict[str, Any]]:
     """Construct (url, headers, payload_dict) for either OpenAI-compatible or Anthropic protocol."""
+    if truncate_prompt_tokens is not None:
+        if (config.provider != "baseten" or config.protocol != "openai"
+                or config.api_base != "https://inference.baseten.co/v1"
+                or type(truncate_prompt_tokens) is not int or truncate_prompt_tokens < 1):
+            raise ValueError("input truncation needs the recorded Baseten endpoint and a positive token limit")
     if config.protocol == "anthropic":
         url = f"{config.api_base}/messages"
         headers = {
@@ -315,7 +321,12 @@ def build_http_payload(
         "messages": messages,
         "max_tokens": max_tokens,
     }
-    if temperature is not None:
+    if truncate_prompt_tokens is not None:
+        payload["truncate_prompt_tokens"] = truncate_prompt_tokens
+    if config.provider == "openai" and config.model == "gpt-6.1-sol":
+        payload["max_completion_tokens"] = payload.pop("max_tokens")
+        payload["service_tier"] = "default"
+    elif temperature is not None:
         payload["temperature"] = temperature
     if json_schema is not None:
         payload["response_format"] = {
@@ -329,6 +340,75 @@ def build_http_payload(
     return url, headers, payload
 
 
+class OutputLimitReached(RuntimeError):
+    """No assistant text was produced before the output allowance ran out.
+
+    Token limits and provider-reported usage are different facts. Keep both;
+    never infer usage (or expose reasoning text) from an empty answer.
+    """
+
+    code = "output-limit-before-text"
+
+    def __init__(self, reason: str, *, limit: int | None = None,
+                 output_tokens: int | None = None, reasoning_tokens: int | None = None):
+        self.limit = limit
+        self.output_tokens = output_tokens
+        self.reasoning_tokens = reasoning_tokens
+        allowance = f"{limit} tokens (requested limit)" if limit is not None else "request limit not recorded"
+        detail = f"output limit reached before any text: {allowance}, {reason}"
+        if output_tokens is not None:
+            detail += f"; reported output tokens={output_tokens}"
+        if reasoning_tokens is not None:
+            detail += f"; reported reasoning tokens={reasoning_tokens}"
+        super().__init__(detail)
+
+
+def response_stop_reason(raw: dict[str, Any]) -> str:
+    """A stop reason from Chat Completions, Messages, or a normalized reply."""
+    choices = raw.get("choices") or []
+    if choices and choices[0].get("finish_reason"):
+        return f"finish_reason={choices[0]['finish_reason']}"
+    inner = raw.get("raw") if isinstance(raw.get("raw"), dict) else {}
+    for source in (raw, inner):
+        if source.get("stop_reason"):
+            return f"stop_reason={source['stop_reason']}"
+    return "no stop reason reported"
+
+
+def _text_content(content: Any) -> str:
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        # Thinking/reasoning and tool blocks are not an assistant's final text.
+        return "\n".join(b["text"] for b in content if isinstance(b, dict)
+                         and b.get("type") == "text" and isinstance(b.get("text"), str)).strip()
+    return ""
+
+
+def _response_text(raw: dict[str, Any]) -> str:
+    choices = raw.get("choices") or []
+    if choices:
+        return _text_content((choices[0].get("message") or {}).get("content"))
+    return _text_content(raw.get("content"))
+
+
+def raise_for_output_limit(raw: dict[str, Any], *, max_tokens: int | None = None) -> None:
+    """Shared by senders and saved-response readers; no retries or network here."""
+    reason = response_stop_reason(raw)
+    if reason not in ("finish_reason=length", "stop_reason=max_tokens") or _response_text(raw):
+        return
+    inner = raw.get("raw") if isinstance(raw.get("raw"), dict) else {}
+    usage = raw.get("usage") or inner.get("usage") or {}
+    if not isinstance(usage, dict):
+        usage = {}
+    def count(value):
+        return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+    details = usage.get("completion_tokens_details") or {}
+    reasoning = count(details.get("reasoning_tokens")) if isinstance(details, dict) else None
+    output = count(usage.get("completion_tokens", usage.get("output_tokens")))
+    raise OutputLimitReached(reason, limit=max_tokens, output_tokens=output, reasoning_tokens=reasoning)
+
+
 def extract_message_text(config: ProviderConfig, raw_response: dict[str, Any]) -> str:
     """Assistant text from a ``chat_completion`` return, or from a provider's own response JSON.
 
@@ -340,14 +420,9 @@ def extract_message_text(config: ProviderConfig, raw_response: dict[str, Any]) -
     got empty text. Anthropic's own response shape is still read directly, which is how
     ``chat_completion`` normalises it in the first place.
     """
-    choices = raw_response.get("choices")
-    if choices:
-        msg = choices[0].get("message", {})
-        return (msg.get("content") or "").strip()
-    content_blocks = raw_response.get("content")
-    if isinstance(content_blocks, list):
-        texts = [b.get("text", "") for b in content_blocks if b.get("type") == "text"]
-        return "\n".join(texts).strip()
+    raise_for_output_limit(raw_response)
+    if raw_response.get("choices") or isinstance(raw_response.get("content"), list):
+        return _response_text(raw_response)
     if config.protocol == "anthropic":
         return ""  # an Anthropic response with no content blocks at all
     raise RuntimeError(f"Empty choices in response from provider '{config.provider}': {raw_response}")
@@ -374,12 +449,16 @@ def chat_completion(
     strict: bool = True,
     transport: Callable[[str, dict[str, str], dict[str, Any]], dict[str, Any]] | None = None,
     invocation=None,
+    max_attempts: int = 3,
+    truncate_prompt_tokens: int | None = None,
 ) -> dict[str, Any]:
     """Execute a chat completion across any configured BYO-LLM provider and return raw response dict.
 
     Automatically falls back to unstructured JSON prompting if an OpenAI-compatible endpoint
     (such as an older local Ollama or vLLM model) rejects `response_format: json_schema`.
     """
+    if type(max_attempts) is not int or not 1 <= max_attempts <= 3:
+        raise ValueError("max_attempts must be an integer from 1 to 3")
     cfg = config or resolve_provider(role=role)
     url, headers, payload = build_http_payload(
         cfg,
@@ -389,6 +468,7 @@ def chat_completion(
         json_schema=json_schema,
         schema_name=schema_name,
         strict=strict,
+        truncate_prompt_tokens=truncate_prompt_tokens,
     )
 
     def _default_transport(u: str, h: dict[str, str], p: dict[str, Any]) -> dict[str, Any]:
@@ -407,7 +487,7 @@ def chat_completion(
                 def redirect_request(self, req, fp, code, msg, headers, newurl):
                     return None
             opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect()) if fixer else None
-            for attempt in range(3):
+            for attempt in range(max_attempts):
                 if role.upper() == "SPEC":
                     from expectrail.spend import hold
                     hold("spec", live=True)
@@ -422,6 +502,8 @@ def chat_completion(
                     return raw
                 except urllib.error.HTTPError as exc:
                     err_body = exc.read().decode("utf-8", errors="replace")
+                    if fixer and exc.code in (404, 410):
+                        invocation.fail('fixer-model-unavailable','provider withdrew or refused the named model; no fallback')
                     # Errors can be billable. Keep every reservation; capture usage if supplied.
                     if fixer:
                         try:
@@ -430,7 +512,7 @@ def chat_completion(
                                 invocation.observe_request(reservation, error_json)
                         except ValueError:
                             pass
-                    if exc.code in RETRY_STATUS and attempt < 2:
+                    if exc.code in RETRY_STATUS and attempt + 1 < max_attempts:
                         time.sleep(1.0 * (attempt + 1))
                         continue
                     if (exc.code == 400 and "response_format" in p and
@@ -453,6 +535,8 @@ def chat_completion(
             invocation.observe_request(reservation, raw)
     else:
         raw = caller(url, headers, payload)
+    # Account for the response above before naming truncation; never retry it.
+    raise_for_output_limit(raw, max_tokens=max_tokens)
     if cfg.protocol == "anthropic":
         text = extract_message_text(cfg, raw)
         return {

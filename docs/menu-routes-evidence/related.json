@@ -1,0 +1,22 @@
+{
+  "label": "related",
+  "startedUtc": "2026-11-16T06:38:53.265127+00:00",
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "tests.test_auto_route",
+    "tests.test_init_inspect",
+    "tests.test_onboard",
+    "tests.test_trial_stops",
+    "tests.test_contracts",
+    "tests.test_harness",
+    "tests.test_package"
+  ],
+  "cwd": "$REPO",
+  "seconds": 9.863195769001322,
+  "exitCode": 0,
+  "status": "finished",
+  "godotOverride": null,
+  "log": "logs/related.log"
+}

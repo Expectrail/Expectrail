@@ -176,10 +176,66 @@ def tick_ranges(ticks: list[int]) -> str:
     return ", ".join(str(a) if a == b else f"{a}-{b}" for a, b in runs)
 
 
+def pointer_summary(events: list[dict]) -> list[str]:
+    """Summarize existing events without editing them or disguising held buttons.
+
+    Only adjacent stationary down/up edges are a click. Contiguous moves in the
+    same direction form a sweep; a pause, action, button edge or turn ends it.
+    """
+    lines, i = [], 0
+    while i < len(events):
+        e = events[i]
+        if 'pointer' not in e:
+            i += 1
+            continue
+        p, start = e['pointer'], i
+        down = i + 1 if 'button' not in p and i + 1 < len(events) else i
+        if down + 1 < len(events):
+            a, b = events[down], events[down + 1]
+            pa, pb = a.get('pointer', {}), b.get('pointer', {})
+            if (pa.get('pressed') is True and pb.get('pressed') is False
+                    and pa.get('button') == pb.get('button')
+                    and p['position'] == pa.get('position') == pb.get('position')
+                    and b['tick'] == a['tick'] + 1 and a['tick'] - e['tick'] <= 1):
+                moved = f"move tick {e['tick']}; " if down != i else ''
+                lines.append(f"pointer {pa['button']} click at viewport {p['position']}: {moved}"
+                             f"{pa['button']} down tick {a['tick']}; {pb['button']} up tick {b['tick']}.")
+                i = down + 2
+                continue
+        if 'button' in p:
+            lines.append(f"pointer {p['button']} {'down' if p['pressed'] else 'up'} at viewport {p['position']}, tick {e['tick']}.")
+            i += 1
+            continue
+        direction = None
+        while i + 1 < len(events):
+            a, b = events[i], events[i + 1]
+            q = b.get('pointer', {})
+            if not q or 'button' in q or b['tick'] != a['tick'] + 1:
+                break
+            delta = [v-u for u,v in zip(a['pointer']['position'], q['position'])]
+            sign = tuple(0 if abs(v) < 0.00001 else (1 if v > 0 else -1) for v in delta)
+            if direction is not None and sign != direction:
+                break
+            direction = sign
+            i += 1
+        last = events[i]
+        if i == start:
+            lines.append(f"pointer move to viewport {p['position']}, tick {e['tick']}.")
+        else:
+            lines.append(f"pointer {'hold' if direction == (0, 0) else 'sweep'} in viewport "
+                         f"{p['position']} to {last['pointer']['position']}, ticks {e['tick']}–{last['tick']} "
+                         f"({i-start+1} recorded moves).")
+        i += 1
+    return lines
+
+
 def describe(route: dict, rate: int, trace: dict) -> list[str]:
     lines = [f"Route: {route['ticks']} physics ticks ({route['ticks'] / rate:g} seconds at {rate} ticks/second), seed 1."]
+    lines += ["  " + line for line in pointer_summary(route["events"])]
     held, durations = {}, {}
     for event in route["events"]:
+        if "pointer" in event:
+            continue
         if event["pressed"]:
             held[event["action"]] = event["tick"]
         else:
@@ -188,8 +244,9 @@ def describe(route: dict, rate: int, trace: dict) -> list[str]:
         lines.append(f"  {action}: {len(stretches)} press(es), {stretches[0]} ticks "
                      f"({stretches[0] / rate:g} seconds) each.")
     pause = max(1, round(rate / 4))
-    lines.append(f"Pauses: {pause} ticks ({pause / rate:g} seconds) before and between actions; "
-                 f"{2 * pause} ticks after the last release.")
+    if not any("pointer" in e for e in route["events"]):
+        lines.append(f"Pauses: {pause} ticks ({pause / rate:g} seconds) before and between actions; "
+                     f"{2 * pause} ticks after the last release.")
     positions = [row["player"] for row in trace["rows"] if "player" in row]
     moved = bool(positions) and any(p != positions[0] for p in positions[1:])
     if not route["events"]:
@@ -241,8 +298,9 @@ def auto_route(project: Path, out: Path, *, replay=None) -> int:
         raise RouteError(f"output already exists: {out}; choose a new path (nothing was overwritten)")
     project = project.resolve()
     actions, rate, fallback = input_map(project)
-    route = make_route(actions, rate)
-    if fallback:
+    from expectrail.input_discovery import project_plan
+    route = project_plan(project, actions, rate, fallback)
+    if fallback and not any("pointer" in e for e in route["events"]):
         print("No custom input actions: using built-in ui_left, ui_right, ui_up, ui_down and ui_accept.")
     if replay is None:
         from harness.run import run
@@ -274,6 +332,11 @@ def auto_route(project: Path, out: Path, *, replay=None) -> int:
         print("Three complete traces are identical (headless replays; rendered images were not compared).")
         for line in describe(route, rate, traces[0]):
             print(line)
+        if any("pointer" in e for e in route["events"]):
+            positions = [row["player"] for row in traces[0]["rows"] if "player" in row]
+            if not positions or not any(p != positions[0] for p in positions[1:]):
+                print("Pointer/menu route did not demonstrate player movement. No route was written; check the start control and player binding.")
+                return 2
         out.parent.mkdir(parents=True, exist_ok=True)
         # Publish complete bytes without clobbering a route created during the replays.
         # A hard link within this directory is atomic and fails if the destination exists.

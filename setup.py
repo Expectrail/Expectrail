@@ -13,6 +13,7 @@ BUNDLED_MODULES = {
     "expectrail": {
         "__init__",
         "anchored",
+        "calibration",
         "app",
         "app_kinematic",
         "app_page",
@@ -25,11 +26,17 @@ BUNDLED_MODULES = {
         "diagnostics",
         "doctor",
         "evaluator",
+        "explanation",
         "fixer_budget",
         "godot_project",
+        "input_discovery",
+        "inspection",
         "legacy",
         "observers",
+        "observation_timeline",
         "onboard",
+        "onboard_page",
+        "onboard_review",
         "onboarding",
         "project_config",
         "project_job",
@@ -38,13 +45,15 @@ BUNDLED_MODULES = {
         "recorded",
         "renderer",
         "repair",
+        "repair_provenance",
         "resources",
         "route",
+        "runtime_scan",
         "spend",
         "timing",
         "viewer",
     },
-    "expectrail._bundle.harness": {"__init__", "adapters", "run", "sandbox", "tree"},
+    "expectrail._bundle.harness": {"__init__", "adapters", "patching", "run", "sandbox", "tree"},
     "expectrail._bundle.agents": {
         "__init__",
         "byo_fixer",
@@ -63,6 +72,7 @@ BUNDLED_MODULES = {
         "sam_anchor",
         "sam_observations",
         "godot_roles",
+        "unity_observations",
         "glimmer_client",
         "byo_vision",
         "engine_check",
@@ -75,11 +85,140 @@ BUNDLED_MODULES = {
 }
 
 
+# Only staged wheel code is qualified. Repository entry points stay compatible.
+PRIVATE = 'expectrail._bundle'
+SAMPLE_RECORDINGS = ('clean', 'fall-through-bug', 'fall-through-repair')
+
+
+PRIVATE_TOPS = ('harness', 'agents')
+# Calls whose first argument (or `name=`) is a module name given as a string (#614).
+IMPORT_CALLS = ('import_module', '__import__', 'find_spec', 'run_module')
+
+
+def names_private_module(value):
+    """True for a string that is exactly a dotted harness/agents module name, such as "agents.loop"."""
+    import re
+    return re.fullmatch(r'(?:harness|agents)(?:\.[A-Za-z_][A-Za-z0-9_]*)+', value) is not None
+
+
+def qualify_imports(source):
+    """Qualify Python import statements, preserving their original local bindings.
+
+    Use AST byte positions, not text replacement: data paths, prompts and documentation
+    must remain byte-identical. No sys.path insertion or top-level module aliases.
+
+    Module names given as strings are qualified too (#614): a literal first argument (or `name=`)
+    of importlib.import_module, __import__, importlib.util.find_spec or runpy.run_module that names
+    harness or agents. Relative names (".x") are left alone. What cannot be read stops the build
+    with ValueError: such a call whose module name is not a literal string, and any other string
+    that is exactly a dotted harness/agents module name (for example `"-m", "agents.loop"`), since
+    the builder cannot tell whether it is used as one.
+    """
+    import ast
+    lines = source.encode('utf-8').splitlines(keepends=True)
+    starts = [0]
+    for line in lines:
+        starts.append(starts[-1] + len(line))
+    edits = []
+    tree = ast.parse(source)
+    handled = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        called = func.id if isinstance(func, ast.Name) else func.attr if isinstance(func, ast.Attribute) else None
+        if called not in IMPORT_CALLS:
+            continue
+        target = node.args[0] if node.args else next((k.value for k in node.keywords if k.arg == 'name'), None)
+        if not (isinstance(target, ast.Constant) and isinstance(target.value, str)):
+            raise ValueError(f'line {node.lineno}: cannot tell which module {called}() imports; '
+                             'give it a literal or relative module name')
+        handled.add(id(target))
+        if target.value.split('.')[0] in PRIVATE_TOPS:
+            start = starts[target.lineno - 1] + target.col_offset
+            end = starts[target.end_lineno - 1] + target.end_col_offset
+            literal = source.encode('utf-8')[start:end]
+            # Only a plain one-quote literal whose text is the module name itself is rewritten.
+            if not (literal[:1] in (b'"', b"'") and literal[1:-1] == target.value.encode() and literal[-1:] == literal[:1]):
+                raise ValueError(f'line {node.lineno}: cannot rewrite the module name {literal!r}; '
+                                 'write it as a plain quoted string')
+            edits.append((start, end, literal[:1] + (PRIVATE + '.').encode() + literal[1:]))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in handled \
+                and names_private_module(node.value):
+            raise ValueError(f'line {node.lineno}: {node.value!r} names a harness/agents module as a string, '
+                             'which the wheel cannot qualify; import it, or use a relative name')
+    for node in ast.walk(tree):
+        replacement = None
+        if isinstance(node, ast.ImportFrom) and node.level == 0 and node.module and node.module.split('.')[0] in ('harness', 'agents'):
+            node.module = PRIVATE + '.' + node.module
+            replacement = ast.unparse(node)
+        elif isinstance(node, ast.Import) and any(a.name.split('.')[0] in ('harness', 'agents') for a in node.names):
+            parts = []
+            for alias in node.names:
+                top = alias.name.split('.')[0]
+                if top in ('harness', 'agents'):
+                    if alias.asname:
+                        parts.append('import ' + PRIVATE + '.' + alias.name + ' as ' + alias.asname)
+                    else:
+                        parts.append('from ' + PRIVATE + ' import ' + top)
+                        if '.' in alias.name:
+                            parts.append('import ' + PRIVATE + '.' + alias.name)
+                else:
+                    parts.append(ast.unparse(ast.Import(names=[alias])))
+            # Semicolons preserve indentation and imports inside a one-line suite.
+            replacement = '; '.join(parts)
+        if replacement is not None:
+            edits.append((starts[node.lineno - 1] + node.col_offset,
+                          starts[node.end_lineno - 1] + node.end_col_offset, replacement.encode()))
+    raw = source.encode('utf-8')
+    for start, end, replacement in sorted(edits, reverse=True):
+        raw = raw[:start] + replacement + raw[end:]
+    ast.parse(raw.decode('utf-8'))
+    return raw.decode('utf-8')
+
+
+def without_path_bootstrap(source):
+    """Remove only the installed-copy sys.path bootstrap, refusing unexpected source drift."""
+    import ast
+    lines = source.splitlines(keepends=True)
+    candidates = [node for node in ast.parse(source).body if isinstance(node, ast.If)
+                  and any(isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute)
+                          and ast.unparse(call.func) == '_sys.path.insert' for call in ast.walk(node))]
+    if len(candidates) != 1:
+        raise ValueError('expected exactly one legacy installed-copy path bootstrap')
+    node = candidates[0]
+    return ''.join(lines[:node.lineno - 1] + ['# Private imports are qualified by the wheel builder; sys.path is unchanged.\n']
+                   + lines[node.end_lineno:])
+
+
 class BuildPy(build_py):
+    def get_source_files(self):
+        # sdist asks build_py for its inputs too. These are required wheel data,
+        # even though their public originals live outside the Python packages.
+        recordings = [f'docs/run-it/vision/{name}.json' for name in SAMPLE_RECORDINGS]
+        return super().get_source_files() + recordings
+
     def find_package_modules(self, package, package_dir):
         modules = super().find_package_modules(package, package_dir)
         keep = BUNDLED_MODULES.get(package)
         return modules if keep is None else [m for m in modules if m[1] in keep]
+
+    def run(self):
+        from pathlib import Path
+        import shutil
+        super().run()
+        package = Path(self.build_lib) / 'expectrail'
+        for path in package.rglob('*.py'):
+            source = path.read_text(encoding='utf-8')
+            if path == package / '__init__.py':
+                source = without_path_bootstrap((Path(self.get_package_dir('expectrail')) / '__init__.py').read_text(encoding='utf-8'))
+            path.write_text(qualify_imports(source), encoding='utf-8')
+        (package / '_bundle' / '__init__.py').write_text('"""Private verification modules and read-only sample assets."""\n', encoding='utf-8')
+        destination = package / '_bundle' / 'sample-vision'
+        destination.mkdir(exist_ok=True)
+        for name in SAMPLE_RECORDINGS:
+            shutil.copyfile(Path('docs/run-it/vision') / (name + '.json'), destination / (name + '.json'))
 
 
 setup(cmdclass={"build_py": BuildPy})

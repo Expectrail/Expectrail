@@ -73,6 +73,19 @@ def _request():
     )
 
 
+
+# These historical fixtures exercise the explicit engine-only benchmark control.
+# Default two-observer verdicts are covered by test_default_vision and test_two_observers.
+def setUpModule():
+    global _trace_control
+    _trace_control = mock.patch.dict("os.environ", {"EXPECTRAIL_OBS_PROVIDER": "trace"})
+    _trace_control.start()
+
+
+def tearDownModule():
+    _trace_control.stop()
+
+
 class PatchutilTest(unittest.TestCase):
     def test_paths_and_editable(self):
         fix = (REPO / "agents" / "fixtures" / "fix-collision-mask.patch").read_text()
@@ -274,7 +287,7 @@ class VerifierDecideTest(unittest.TestCase):
             self.assertIn("source=`unavailable`", report)
 
     def test_harness_clean_abort_falls_back_and_still_decides(self):
-        """Godot SIGABRT on clean-replay must not leave verification.json unwritten."""
+        """Simulated SIGABRT (stand-in): a clean replay failure still writes verification.json."""
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp)
             candidate_obs = load(REPO / "agents" / "fixtures" / "obs-freeze.json", "observations")

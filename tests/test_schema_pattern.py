@@ -146,6 +146,7 @@ SAMPLES = {
         ("git fetch --no-tags https://github.com/Expectrail/Expectrail.git " + "a" * 40, True),
     "^https://github.com/Expectrail/Expectrail/pull/[1-9][0-9]*$":
         ("https://github.com/Expectrail/Expectrail/pull/566", True),
+    "^([0-9a-f]{12}|check:[a-z0-9][a-z0-9-]{0,63}@[a-z0-9][a-z0-9-]{0,63})$": ("check:player-stays-above-ground@smoke", True),
     r"^attempt-[0-9]{1,2}/fixer-invocation\.json$": ("attempt-1/fixer-invocation.json", True),
     "^[a-z0-9][a-z0-9-]{3,63}$": ("air-jump-report", True),
     r"^[\x20-\x7e]+$": ("Mesa - llvmpipe (LLVM 20.1.2, 256 bits)", True),
@@ -154,6 +155,7 @@ SAMPLES = {
     "^(?!bug$)": ("intent", False),  # excludes one property name, not multiline values
     '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?\\+00:00$': ("2026-11-14T00:00:00+00:00", True),
     r"^repair-[a-z0-9_]{8}/repair-run\.json$": ("repair-sample01/repair-run.json", True),
+    "^res://.+$": ("res://player/robot.webp", True),
     "^[A-Z_]{1,40}$": ("TOOL_MISSING", True),
     "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$": ("Expectrail/Expectrail", True),
     "^[a-z0-9][a-z0-9-]{0,63}$": ("player-stays-above-ground", True),
@@ -195,6 +197,7 @@ SAMPLES = {
     "^[a-z][a-z0-9-]{0,31}$": ("combat", True),
     "^[a-z][a-z0-9-]*$": ("openrouter", True),
     "^[a-z][a-z0-9-]{0,39}$": ("combat-2", True),
+    "^[a-z][a-z0-9_]{0,39}$": ("toggle_pause", True),
     "^(ref:|env:)[A-Za-z0-9_./-]+$": ("env:EXPECTRAIL_VISION", True),
     "^[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)*$": ("player.position_y", True),
     "^assets/[a-z0-9-]+\\.png$": ("assets/run-it.png", True),

@@ -1,0 +1,28 @@
+{
+  "step": 15,
+  "label": "capture-pinned-1",
+  "startedUtc": "2026-11-16T06:50:12.660471+00:00",
+  "command": [
+    "python3",
+    "-m",
+    "harness.run",
+    "--game",
+    "$WORK/breakout-pointer-source",
+    "--route",
+    "$WORK/breakout-pointer-source/routes/pointer-auto.json",
+    "--out",
+    "$SCRATCH/expectrail-menu-trial-capture/runs/pinned-1",
+    "--sandbox",
+    "auto"
+  ],
+  "cwd": "$REPO",
+  "seconds": 31.84610978300043,
+  "exitCode": 0,
+  "status": "finished",
+  "log": "trial-logs/15-capture-pinned-1.log",
+  "environment": {
+    "EXPECTRAIL_GODOT": "$WORK/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+    "TMPDIR": "$SCRATCH/expectrail-menu-trial-capture/tmp",
+    "EXPECTRAIL_TOOLS": "$SCRATCH/expectrail-menu-trial-capture/tools"
+  }
+}

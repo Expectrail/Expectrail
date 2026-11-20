@@ -66,15 +66,16 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def download(api, ctx, run, archive, token):
+def download(api, ctx, run, archive, token, *, artifact_name=None, max_bytes=None):
     from tools.ci_bundle import MAX_BYTES
-    name = f"expectrail-{int(run['run_attempt'])}.zip"
+    name = artifact_name or f"expectrail-{int(run['run_attempt'])}.zip"
+    bound = MAX_BYTES if max_bytes is None else min(MAX_BYTES, max_bytes)
     listing = api("GET", f"/repos/{ctx.repo}/actions/runs/{int(ctx.run_id)}/artifacts?name={name}")
     matches = [a for a in listing["artifacts"] if a["name"] == name and not a["expired"]]
     if len(matches) != 1:
         raise ValueError("EVIDENCE_MISMATCH: expected one artifact from this attempt")
     item, = matches
-    if (not 0 < item["size_in_bytes"] <= MAX_BYTES
+    if (not 0 < item["size_in_bytes"] <= bound
             or not re.fullmatch(r"sha256:[a-f0-9]{64}", item.get("digest") or "")):
         raise ValueError("EVIDENCE_MISMATCH: invalid GitHub artifact size or digest")
     url = f"https://api.github.com/repos/{ctx.repo}/actions/artifacts/{int(item['id'])}/zip"
@@ -100,7 +101,7 @@ def download(api, ctx, run, archive, token):
 
 
 def start(api, ctx, run, details, publisher):
-    key = f"expectrail/{ctx.run_id}/{run['run_attempt']}"
+    key = key_of(ctx, run)
     ids = {}
     for name in (CLEARANCE, EVIDENCE):
         query = urllib.parse.urlencode({"check_name": name, "filter": "all", "per_page": 100})
@@ -117,15 +118,106 @@ def start(api, ctx, run, details, publisher):
     return ids
 
 
+SUPERSEDED = "Superseded capture or pull request"
+STALE = (SUPERSEDED + ": this commit is no longer the head of the open pull request, or a newer capture "
+         "ran. This commit is not cleared; the current head needs its own clearance.")
+
+
+def close_stale(publisher_api, ctx, run, publisher):
+    """Conclude this attempt's checks that were started but never finished, because the pull request
+    moved on before the capture completed. Clearance ends failed, evidence neutral: nothing was judged."""
+    key = f"expectrail/{ctx.run_id}/{run['run_attempt']}"
+    for name, conclusion in ((CLEARANCE, "failure"), (EVIDENCE, "neutral")):
+        query = urllib.parse.urlencode({"check_name": name, "filter": "all", "per_page": 100})
+        found = publisher_api("GET", f"/repos/{ctx.repo}/commits/{ctx.head_sha}/check-runs?{query}")
+        for check in found["check_runs"]:
+            if check["external_id"] == key and check["app"]["slug"] == publisher and check["status"] != "completed":
+                publisher_api("PATCH", f"/repos/{ctx.repo}/check-runs/{int(check['id'])}",
+                              dict(status="completed", conclusion=conclusion,
+                                   output={"title": name, "summary": STALE}))
+
+
+STARTED = "gate-started.json"
+UNFINISHED = ("The trusted job stopped before it judged this capture. This commit is not cleared; "
+              "re-run the Expectrail verify workflow for a clearance.")
+
+
+def key_of(ctx, run):
+    return f"expectrail/{ctx.run_id}/{run['run_attempt']}"
+
+
+def close_unfinished(publisher_api, ctx, run, started, publisher=None):
+    """Conclude this attempt's checks that are still open when the trusted job ends without a judging
+    state (its start step crashed after creating them). Clearance ends failed, evidence neutral.
+
+    The ids ``start`` recorded are used first. A check with no recorded id (start crashed between
+    creating the two) is found by its external id, as ``close_stale`` does; without the publisher's
+    name, a check another app owns is left alone, because GitHub refuses the update."""
+    key = key_of(ctx, run)
+    ids = started.get("ids", {}) if isinstance(started, dict) and started.get("key") == key else {}
+    for name, conclusion in ((CLEARANCE, "failure"), (EVIDENCE, "neutral")):
+        if isinstance(ids.get(name), int):
+            checks = [publisher_api("GET", f"/repos/{ctx.repo}/check-runs/{int(ids[name])}")]
+        else:
+            query = urllib.parse.urlencode({"check_name": name, "filter": "all", "per_page": 100})
+            checks = publisher_api("GET", f"/repos/{ctx.repo}/commits/{ctx.head_sha}/check-runs?{query}")["check_runs"]
+        for check in checks:
+            if check.get("external_id") != key or check.get("status") == "completed":
+                continue
+            if publisher and (check.get("app") or {}).get("slug") != publisher:
+                continue
+            try:
+                publisher_api("PATCH", f"/repos/{ctx.repo}/check-runs/{int(check['id'])}",
+                              dict(status="completed", conclusion=conclusion,
+                                   output={"title": name, "summary": UNFINISHED}))
+            except urllib.error.HTTPError as exc:
+                if publisher or exc.code not in (403, 404):
+                    raise
+
+
+KEY = re.compile(r"expectrail/([0-9]+)/([0-9]+)")
+
+
+def close_superseded(publisher_api, ctx, run, publisher):
+    """Conclude this publisher's open checks on this head from earlier captures (a lower run id, or the
+    same run's earlier attempt). Call it only for the latest capture of the head.
+
+    An earlier capture can never clear: ``finish`` refuses any capture that is not the latest, so this
+    concludes only what would otherwise stay ``in_progress`` for ever when its trusted job's runner was
+    lost (#254). Clearance ends failed, evidence neutral. A check whose key cannot be read, another
+    app's check, and a completed check are left alone. Returns the ids GitHub refused to update."""
+    mine = (int(ctx.run_id), int(run["run_attempt"]))
+    newer = key_of(ctx, run)
+    summary = (f"{SUPERSEDED}: a newer capture of this commit ran ({newer}), and the trusted job for this "
+               "earlier one never concluded its checks. This commit is not cleared by it.")
+    refused = []
+    for name, conclusion in ((CLEARANCE, "failure"), (EVIDENCE, "neutral")):
+        query = urllib.parse.urlencode({"check_name": name, "filter": "all", "per_page": 100})
+        found = publisher_api("GET", f"/repos/{ctx.repo}/commits/{ctx.head_sha}/check-runs?{query}")
+        for check in found["check_runs"]:
+            match = KEY.fullmatch(check.get("external_id") or "")
+            if (not match or check.get("status") == "completed"
+                    or (check.get("app") or {}).get("slug") != publisher
+                    or (int(match[1]), int(match[2])) >= mine):
+                continue
+            try:
+                publisher_api("PATCH", f"/repos/{ctx.repo}/check-runs/{int(check['id'])}",
+                              dict(status="completed", conclusion=conclusion,
+                                   output={"title": name, "summary": summary}))
+            except urllib.error.URLError:
+                refused.append(check["id"])
+    return refused
+
+
 def current(api, ctx, run, state):
     pr = comment.find_pull_request(api, ctx)
-    return (pr and identity(pr) == state["pr"] and intent.of_pull_request(pr).intent == state["intent"]
+    return (pr and intent.pull_request_metadata(pr) == state["pr"] and intent.of_pull_request(pr).intent == state["intent"]
             and latest(api, ctx, run))
 
 
 def finish(api, publisher, ctx, run, state, decision, summary, details):
     if not current(api, ctx, run, state):
-        decision, summary = "needs-review", "Superseded capture or pull request"
+        decision, summary = "needs-review", SUPERSEDED
     cleared = decision == "accept" and run["conclusion"] == "success"
     for name, conclusion in ((EVIDENCE, "success"), (CLEARANCE, "success" if cleared else "failure")):
         publisher("PATCH", f"/repos/{ctx.repo}/check-runs/{int(state['ids'][name])}",
@@ -165,11 +257,27 @@ def main(mode):
     if mode == "start":
         pr = comment.find_pull_request(api, ctx)
         if not pr or not latest(api, ctx, run):
+            if event["action"] == "completed":
+                # The trusted job never judges a superseded capture, but it must not leave the
+                # clearance it started on the in_progress event dangling (#254's hosted trial).
+                close_stale(comment.http_api(os.environ["CHECKS_TOKEN"]), ctx, run, os.environ["CHECKS_APP"])
             return
         ids = start(comment.http_api(os.environ["CHECKS_TOKEN"]), ctx, run, report_ctx.run_url, os.environ["CHECKS_APP"])
+        # Before anything else can fail: finish concludes these if no judging state follows.
+        (temp / STARTED).write_text(json.dumps({"key": key_of(ctx, run), "ids": ids}))
+        # Housekeeping only: a lost runner's earlier attempts. It never decides anything about this one.
+        try:
+            refused = close_superseded(comment.http_api(os.environ["CHECKS_TOKEN"]), ctx, run,
+                                       os.environ["CHECKS_APP"])
+            if refused:
+                print(f"::warning::Could not conclude superseded checks {refused}; they stay in progress "
+                      "and are not cleared.")
+        except (OSError, LookupError, TypeError, ValueError) as exc:
+            print(f"::warning::Could not look for superseded checks ({type(exc).__name__}); "
+                  "any stay in progress and are not cleared.")
         if event["action"] != "completed":
             return
-        state = {"pr": identity(pr), "intent": intent.of_pull_request(pr).intent, "ids": ids}
+        state = {"pr": intent.pull_request_metadata(pr), "intent": intent.of_pull_request(pr).intent, "ids": ids}
         base = None
         try:
             if run["conclusion"] != "success":
@@ -188,6 +296,11 @@ def main(mode):
                 print("base=" + base, file=outputs)
         return
     if not state_file.exists():
+        if mode == "finish" and event["action"] == "completed" and os.environ.get("CHECKS_TOKEN"):
+            started = temp / STARTED
+            close_unfinished(comment.http_api(os.environ["CHECKS_TOKEN"]), ctx, run,
+                             json.loads(started.read_bytes()) if started.is_file() else {},
+                             os.environ.get("CHECKS_APP") or None)
         return
     state = json.loads(state_file.read_bytes())
     if mode == "download":
@@ -209,15 +322,22 @@ def main(mode):
         decision = "needs-review"
         problem = temp / "problem.txt"
         summary = problem.read_text() if problem.is_file() else "Trusted judgment or report upload did not finish"
-        if current(api, ctx, run, state):
-            if os.environ.get("REPORT_READY") == "true":
-                result = comment.run(api, report_ctx, report)
-                decision = result.get("decision", decision)
-                summary = result.get("problem") or decision
-            else:
-                comment.run(api, report_ctx, None, problem_message=summary)
+        failed = None
+        try:
+            if current(api, ctx, run, state):
+                if os.environ.get("REPORT_READY") == "true":
+                    result = comment.run(api, report_ctx, report)
+                    decision = result.get("decision", decision)
+                    summary = result.get("problem") or decision
+                else:
+                    comment.run(api, report_ctx, None, problem_message=summary)
+        except Exception as exc:  # the checks are concluded first, then the error is raised
+            failed, decision = exc, "needs-review"
+            summary = f"The pull request comment could not be posted ({type(exc).__name__}). Not cleared."
         finish(api, comment.http_api(os.environ["CHECKS_TOKEN"]), ctx, run, state, decision, summary,
                os.environ.get("REPORT_URL") or report_ctx.run_url)
+        if failed is not None:
+            raise failed
 
 
 if __name__ == "__main__":

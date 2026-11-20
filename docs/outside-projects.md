@@ -353,13 +353,23 @@ in 19 of 19 (`tests/outside/recordings/kinematic-character/calibration.json`).
 
 | Change | Verdict | Engine | Visual observer |
 | --- | --- | --- | --- |
-| none (as pinned) | **accept** | 1 of 1 pass | agrees |
-| broken (collision mask emptied) | **reject** | fails: 71.7 px past the ground, from frame 44 | agrees |
-| harmless (sprite tinted) | **accept** | 1 of 1 pass | agrees |
+| none (as pinned) | **accept** | 1 of 1 pass | passes |
+| broken (collision mask emptied) | **reject** | fails: 71.7 px past the ground, from frame 44 | **not asked** on the ground check |
+| harmless (sprite tinted) | **accept** | 1 of 1 pass | passes |
 | invisible (sprite hidden) | **reject** | passes | fails: 77.5 px past the ground, from frame 0 |
 
+Read the broken row plainly too: the **engine alone** rejected that change. The visual verdict on the
+ground check after the change is `not-asked` in the recorded findings, so this row is not an example of
+two observers agreeing on a real defect. A separate paired anchor comparison did agree on the two frames
+it compared, which is a different statement about a different pair of images. The distinction is from an
+[offline reproduction of this run on main](https://github.com/Expectrail/Expectrail/issues/244#issuecomment-7009221442),
+which re-judged all four captures from the public artifact with 841 of 860 questions answered from the
+recording and no model call.
+
 Read the last row plainly: with no sprite drawn, the model answered at the player's place with
-something else (what lies behind the player), and that reaches below the ground line. The verdict is
+something else (what lies behind the player), and that reaches below the ground line. That is the
+explanation the run recorded; re-judged on main the evaluator instead reports the player absent at its
+expected place in 83 of 120 observed frames, from frame 0 (same reject, a different reason). The verdict is
 right (a hidden player is never accepted); the stated reason is indirect, not "no player drawn".
 `tests/outside/projects.json` keeps needs-review as the expectation for `harmless` and `invisible`,
 because the CI outside trial has no vision.
@@ -507,3 +517,26 @@ legal-edge frames of the clean run. [The clipped-player follow-up](dodge-clipped
 that visible-size comparison with unchanged thresholds: both physical-body stand-ins now give
 accept/reject/accept and replay their recordings. These remain plumbing controls, not vision evidence.
 The approved check and anchored RULES are unchanged. No live run or workflow was dispatched.
+
+## Breakout pointer/menu follow-up (2026-11-16)
+
+At the same independent author's pinned commit, config-only onboarding now starts
+the round and moves the paddle. Three rendered traces are byte-identical; the
+harmless trace matches them. Both raw draft engine checks pass on pinned/harmless;
+the broken paddle fails its bounds check at checked frame 20. All three CLI jobs
+remain needs-review (drafts, zero approved checks run, no vision). This is not a
+verified outside-project accept. The root-path registry stop remains. See the
+[full trial, commands, stops and evidence](outside-trials/breakout-pointer/report.md).
+
+## Breakout registry follow-up (2026-11-16; local result, CI pending)
+
+Breakout is now the third entry in `tests/outside/projects.json`, at the same MIT
+pin. Root checkout paths are accepted with containment checks; links and overlay
+collisions are refused. Pointer reports show one click and five sweeps. The
+[local trial result and draft derivation](outside-trials/breakout-ci/report.md)
+record needs-review for pinned/harmless/broken, with separate raw engine findings.
+The strengthened paddle draft cannot pass frozen play; broken first fails its
+bounds window at frame 20. No approval or vision was added. The existing
+`Outside projects trial` / `outside-trial` PR job is the required CI proof and has
+**not run on this change yet**. Its declared expected results now fail the trial
+if they differ or an engine diagnostic is missing.
