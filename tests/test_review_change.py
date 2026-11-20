@@ -96,6 +96,19 @@ def _fake_harness(_route, out, patches=None, **_kw):
         (out / "frames" / f"f{i:08d}.png").write_bytes(PNG)
 
 
+
+# These historical fixtures exercise the explicit engine-only benchmark control.
+# Default two-observer verdicts are covered by test_default_vision and test_two_observers.
+def setUpModule():
+    global _trace_control
+    _trace_control = mock.patch.dict("os.environ", {"EXPECTRAIL_OBS_PROVIDER": "trace"})
+    _trace_control.start()
+
+
+def tearDownModule():
+    _trace_control.stop()
+
+
 class _Base(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
@@ -104,7 +117,7 @@ class _Base(unittest.TestCase):
         patcher = mock.patch("agents.review_change.validate", side_effect=_validate)
         patcher.start()
         self.addCleanup(patcher.stop)
-        env = mock.patch.dict(os.environ, {"EXPECTRAIL_HELDOUT_DIR": "", "EXPECTRAIL_OBS_PROVIDER": ""})
+        env = mock.patch.dict(os.environ, {"EXPECTRAIL_HELDOUT_DIR": "", "EXPECTRAIL_OBS_PROVIDER": "trace"})
         env.start()
         self.addCleanup(env.stop)
 

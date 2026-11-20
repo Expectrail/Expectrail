@@ -18,7 +18,16 @@ The app serves its own page without downloading scripts, styles or fonts.
    chooses what judges both copies. A config produced by `expectrail init` is a draft and
    cannot give an accept until its bindings are reviewed. Only a person may approve checks.
 3. Select **Check folders**. The page lists usable route names, approved check IDs and draft
-   warnings. This reads files without running Godot. Invalid or absent configs name what to fix.
+   warnings. The setup doctor probes the installed engine and display with an empty project;
+   it runs neither your selected game nor a model. Missing engine, display or drawing support
+   now shows its reason and fix for live vision as well as recorded vision. When a config is missing, the app reads the saved Godot scenes
+   and shows the starting scene, possible player nodes, images and any binding that still
+   needs a choice. Check folders shows a separate result for Before and After. An existing
+   pending draft is checked against the project and its saved route before preview. For a
+   menu game, the preview reads the saved inputs without starting the game. If the draft
+   selects a player, the preview names it and shows its image candidates. Replay the route
+   to see whether those inputs reach gameplay.
+   Previewing leaves both folders untouched. Verification still requires a configuration.
    **Older projects without a config** retains the explicit path inputs for existing checkouts.
 4. Select **Verify**. The app and `expectrail verify --project AFTER --base BEFORE` prepare
    the same kind of request and use the same worker. The job snapshots both games and the
@@ -101,6 +110,16 @@ real-replay evidence for this slice is named in its work log; automated use is n
 ## Auto-fix checkbox
 
 Before selecting **Verify**, open the repair controls by checking **Try to fix the game if verification rejects it**.
-The box starts unchecked. The app asks for the attempt limit and dollar cap. The checkbox requests a live fixer
-and has no fixture picker. Until the Muse spend meter is available, use the [CLI fixture example](../README.md#verify-then-repair)
-to try the loop. [App and budget tests](../tests/test_auto_fix.py).
+The box starts unchecked. The app asks for the fixer, attempt limit and dollar cap before launch.
+Choose **llm-patch (bounded provider requests)** only after the person starting the app has set the
+reviewed provider/model, invocation cap, aggregate fixer cap, vision cap and durable month ledgers.
+No key is entered in the page. Unknown or unpriced models, missing caps and provider violations
+still stop for review. There is no silent model fallback. **Muse** stays refused with
+`fixer-bound-unavailable`; selecting it does not create a bound.
+
+The same explicit selection is `expectrail verify ... --auto-fix --auto-fix-agent llm-patch
+--auto-fix-usd-cap 6 --auto-fix-attempts 1`. The old CLI default remains Muse. The separate
+`expectrail repair JOB --agent llm-patch` uses the same existing loop after a reject.
+A repair's candidate may accept, reject or need review; the original rejected job stays rejected.
+Nothing merges the patch. The [operator steps and evidence](repair-remaining.md) distinguish
+fixture tests, real engine diagnostics and the live run Sean has not performed.

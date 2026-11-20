@@ -90,19 +90,20 @@ def player_predictions(trace, frames, fps=60):
     proof that a sprite was drawn. Missing rows/cameras remain unknown.
     """
     tps = trace.get('physicsTicksPerSecond')
-    if type(tps) is not int or type(fps) is not int or fps <= 0 or tps < fps or tps % fps:
+    if 'captureTimeline' not in trace and (type(tps) is not int or type(fps) is not int or fps <= 0 or tps < fps or tps % fps):
         raise SensorError('capture fps must divide the recorded physics tick rate')
     rows = trace.get('rows', [])
     by_tick = {r['tick']: r for r in rows}
     if len(by_tick) != len(rows):
         raise SensorError('duplicate trace ticks')
-    step = tps // fps
+    from expectrail.observation_timeline import tick_for, view_for
     out = {}
     for frame in frames:
-        tick = (frame + 1) * step - 1
+        tick = tick_for(trace, frame, fps)
         row = by_tick.get(tick, {})
         later = by_tick.get(tick + 1, row if tick == trace.get('ticks', len(rows)) - 1 else {})
-        out[frame] = {'player': _on_screen(row.get('body'), later.get('view'))}
+        view = view_for(trace, frame, fps) if 'captureTimeline' in trace else later.get('view')
+        out[frame] = {'player': _on_screen(row.get('body'), view)}
     return out
 
 
@@ -133,21 +134,21 @@ def object_predictions(trace, frames, role, fps=60):
     if field is None:
         raise SensorError(f'the engine logs no box for {role!r}')
     tps = trace.get('physicsTicksPerSecond')
-    if type(tps) is not int or type(fps) is not int or fps <= 0 or tps < fps or tps % fps:
+    if 'captureTimeline' not in trace and (type(tps) is not int or type(fps) is not int or fps <= 0 or tps < fps or tps % fps):
         raise SensorError('capture fps must divide the recorded physics tick rate')
     logged = (trace.get('capabilities') or {}).get('objectBoxes') is True
     rows = trace.get('rows', [])
     by_tick = {r['tick']: r for r in rows}
     if len(by_tick) != len(rows):
         raise SensorError('duplicate trace ticks')
-    step = tps // fps
+    from expectrail.observation_timeline import tick_for, view_for
     out = {}
     for frame in frames:
-        tick = (frame + 1) * step - 1
+        tick = tick_for(trace, frame, fps)
         row = by_tick.get(tick)
         later = by_tick.get(tick + 1, row if tick == trace.get('ticks', len(rows)) - 1 else None)
         entries = row.get(field) if row else None
-        view = later.get('view') if later else None
+        view = view_for(trace, frame, fps) if 'captureTimeline' in trace else (later.get('view') if later else None)
         if not logged or not isinstance(entries, list) or view is None:
             out[frame] = None
             continue
@@ -162,6 +163,79 @@ def object_predictions(trace, frames, role, fps=60):
                 break
             found.append((entry[0], box))
         out[frame] = found
+    return out
+
+
+# How far (world pixels) a logged box must move in one tick to count as moving. The bundled game's enemy
+# walks 22 px a second, 0.18 px a tick at 120 ticks a second; a resting box moves 0.
+MOTION_EPSILON_PX = 1e-3
+HEADINGS = ('right', 'left')
+
+
+def _step(a, b):
+    """'right', 'left' or 'still' for the move from box ``a`` to box ``b`` (their centres), None when unusable."""
+    if not (finite_box(a) and finite_box(b)):
+        return None
+    dx = (b[0] + b[2]) / 2 - (a[0] + a[2]) / 2
+    if abs(dx) <= MOTION_EPSILON_PX:
+        return 'still'
+    return 'right' if dx > 0 else 'left'
+
+
+def object_motion(trace, frames, role, fps=60):
+    """Which way the engine moves each ``role`` object at each frame: {frame: {id: motion}}, or {frame: None}
+    when the record cannot say (no row, malformed entries, or a trace that does not log object boxes).
+
+    A frame's tick is the one ``object_predictions`` reads. The motion is read from the object's own logged
+    world box on the tick before, that tick and the tick after: ``right`` or ``left`` when both steps go that
+    way, ``still`` when neither moves, ``turning`` when they disagree, and None for an object not logged on
+    all three ticks. Only ``right`` and ``left`` are a claim about which way the object should face; the game
+    sets an enemy's facing from its velocity after it moves (game/platformer/enemy/enemy.gd), so a frame
+    where it turns or stands makes no claim and is not judged."""
+    field = OBJECT_BOXES.get(role)
+    if field is None:
+        raise SensorError(f'the engine logs no box for {role!r}')
+    tps = trace.get('physicsTicksPerSecond')
+    if 'captureTimeline' not in trace and (type(tps) is not int or type(fps) is not int or fps <= 0 or tps < fps or tps % fps):
+        raise SensorError('capture fps must divide the recorded physics tick rate')
+    logged = (trace.get('capabilities') or {}).get('objectBoxes') is True
+    rows = trace.get('rows', [])
+    by_tick = {r['tick']: r for r in rows}
+    if len(by_tick) != len(rows):
+        raise SensorError('duplicate trace ticks')
+    from expectrail.observation_timeline import tick_for, view_for
+
+    def boxes(tick):
+        row = by_tick.get(tick)
+        entries = row.get(field) if row else None
+        if not isinstance(entries, list):
+            return None
+        out = {}
+        for entry in entries:
+            if not (isinstance(entry, list) and len(entry) == 5 and type(entry[0]) is int and finite_box(entry[1:])):
+                return None
+            out[entry[0]] = entry[1:]
+        return out
+
+    out = {}
+    for frame in frames:
+        tick = tick_for(trace, frame, fps)
+        now = boxes(tick)
+        if not logged or now is None:
+            out[frame] = None
+            continue
+        before, after = boxes(tick - 1), boxes(tick + 1)
+        motion = {}
+        for ident, box in now.items():
+            first = _step(before.get(ident), box) if before is not None and ident in before else None
+            second = _step(box, after.get(ident)) if after is not None and ident in after else None
+            if first is None or second is None:
+                motion[ident] = None
+            elif first == second:
+                motion[ident] = first
+            else:
+                motion[ident] = 'turning'
+        out[frame] = motion
     return out
 
 
@@ -543,9 +617,10 @@ def from_replay(trace, *, replay_sha256, frames_dir, bank, spec, fps=60, predict
         raise SensorError('frame checkpoints require the built-in agreement rule')
     files = frame_files(frames_dir)
     tps = trace.get('physicsTicksPerSecond')
-    if type(tps) is not int or type(fps) is not int or fps <= 0 or tps < fps or tps % fps:
+    if 'captureTimeline' not in trace and (type(tps) is not int or type(fps) is not int or fps <= 0 or tps < fps or tps % fps):
         raise SensorError('capture fps must divide the recorded physics tick rate')
-    count = trace.get('ticks', 0) // (tps // fps)
+    from expectrail.observation_timeline import frame_count
+    count = frame_count(trace, fps, trace.get('ticks', 0))
     lo, hi = spec.get('window', {}).get('fromFrame', 0), spec.get('window', {}).get('toFrame', count-1)
     indices = list(range(lo, min(hi, count-1)+1))
     boxes = predicted if predicted is not None else player_predictions(trace, indices, fps)
@@ -626,7 +701,13 @@ def summarize(doc):
                         raise SensorError('foreground score disagrees with its component evidence')
                 elif row['score'] is not None:
                     raise SensorError('foreground score has no component evidence')
-            if frame['objects'][name] != expected:
+            detections = frame['objects'][name]
+            if doc['format'] == 'expectrail.observations/v1':
+                # The schema above requires provenance. Ignore only those defined fields in
+                # this pixel-evidence equality check; boxes, scores and extra claims stay exact.
+                provenance = {'entityId', 'sensor', 'source', 'frame', 'tick', 'coordinateSpace'}
+                detections = [{k: v for k, v in d.items() if k not in provenance} for d in detections]
+            if detections != expected:
                 raise SensorError('detections disagree with the sensor evidence')
     rows = [(f['frame'], name, row) for f in doc['frames'] for name, row in f['sensor'].items()]
     counts = {state: sum(r['status'] == state for _, _, r in rows)
@@ -659,8 +740,9 @@ class TemplateObserver:
             summary = summarize(doc)
             if not summary['measured'] or summary['counts']['unavailable'] or summary['counts']['out-of-frame']:
                 raise SensorError('not all requested frames have readable pixels and an on-screen measured search box')
-            return doc
-        except (SensorError, OSError, KeyError, TypeError) as exc:
+            from expectrail.observation_timeline import emit
+            return emit(doc, run['trace'], run['framesDir'], version=self.bank['config']['algorithm'])
+        except (SensorError, OSError, KeyError, TypeError, ValueError) as exc:
             raise NoAnswer(f'template sensor could not observe: {exc}') from exc
 
 

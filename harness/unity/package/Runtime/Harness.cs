@@ -88,6 +88,7 @@ namespace Expectrail.Harness
         bool _rowThisFrame;
         readonly List<int> _steps = new List<int>();
         readonly List<string> _rows = new List<string>();
+        readonly List<string> _captureTimeline = new List<string>();
         int _firstFrameCount = -1, _lastFrameCount = -1;
         double _firstFixedTime, _lastFixedTime;
 
@@ -166,7 +167,10 @@ namespace Expectrail.Harness
             _input = new InputDriver(_map);
             foreach (var e in _route.events ?? new RouteEvent[0])
             {
-                if (e.pointer != null) throw new ArgumentException("Unity adapter does not support pointer route events; use an action route");
+                // JsonUtility gives every event a RoutePointer object, even one without a pointer
+                // key, so test its content, never null. A pointer event also names no action.
+                if (string.IsNullOrEmpty(e.action) || (e.pointer != null && e.pointer.position != null && e.pointer.position.Length > 0))
+                    throw new ArgumentException("Unity adapter does not support pointer route events; use an action route");
                 if (!_input.Knows(e.action)) throw new ArgumentException("the map has no action named " + e.action);
                 if (!_events.TryGetValue(e.tick, out var list)) _events[e.tick] = list = new List<RouteEvent>();
                 list.Add(e);
@@ -352,7 +356,19 @@ namespace Expectrail.Harness
         void Capture(int tick)
         {
             var texture = ScreenCapture.CaptureScreenshotAsTexture();
-            try { File.WriteAllBytes(Path.Combine(FramesDir, $"f{tick:D8}.png"), texture.EncodeToPNG()); }
+            try
+            {
+                File.WriteAllBytes(Path.Combine(FramesDir, $"f{tick:D8}.png"), texture.EncodeToPNG());
+                var view = _recorder.CaptureView();
+                if (view == null) throw new InvalidOperationException("capture timeline: no camera transform");
+                var frame = new JsonText().Open('{').Key("frame").Value(tick).Key("tick").Value(tick)
+                    .Key("tickInterval").Open('[').Value(tick).Value(tick).Close(']')
+                    .Key("phase").Value("post-draw")
+                    .Key("viewport").Open('[').Value(texture.width).Value(texture.height).Close(']')
+                    .Key("transform").Open('[').Value(view[0], 4).Value(view[1], 4)
+                        .Value(view[2], 4).Value(view[3], 4).Value(view[4], 3).Value(view[5], 3).Close(']').Close('}');
+                _captureTimeline.Add(frame.ToString());
+            }
             finally { UnityEngine.Object.Destroy(texture); }
         }
 
@@ -402,6 +418,9 @@ namespace Expectrail.Harness
                 .Close('}');
             if (_recorder.LevelSurfaces != null) trace.Key("levelSurfaces").Raw(_recorder.LevelSurfaces);
             if (_recorder.LevelArt != null) trace.Key("levelArt").Raw(_recorder.LevelArt);
+            if (_args.Frames) trace.Key("captureTimeline").Open('{')
+                .Key("fps").Value(_recorder.PhysicsTicksPerSecond())
+                .Key("frames").Raw("[" + string.Join(",", _captureTimeline) + "]").Close('}');
             trace.Key("rows").Raw("[" + string.Join(",", _rows) + "]").Close('}');
             File.WriteAllText(Path.Combine(_args.Out, "trace.json"), trace.ToString());
             WriteRun("ok", null);

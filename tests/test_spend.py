@@ -93,7 +93,7 @@ class RecordTest(_SpendCase):
             if name == "fireworks":
                 self.assertEqual(roles["glimmer"]["models"], [defaults["default_model"]])
             elif name != "meta":
-                self.assertEqual(roles["triage"]["models"], [defaults["default_model"]])
+                self.assertEqual(roles["triage"]["models"], [defaults["default_model"]] + (["gpt-6.1-sol"] if name == "openai" else []))
             else:
                 self.assertEqual(set(roles), {"vision", "triage", "muse"})
 

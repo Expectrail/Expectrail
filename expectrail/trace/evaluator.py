@@ -15,9 +15,10 @@ Every evaluation returns one of five results, with counts:
 - **execution_error**: the evaluation itself failed.
 
 ``relation`` compares one signal between two episodes, a probe and its transformed twin (more air
-presses, faster taps, the mirrored direction). It is the one addition to the specification's eight
-operators: it takes its bound from the game's own behaviour on the twin probe, so it needs no number
-from a person or a healthy reference build.
+presses, faster taps, the mirrored direction). It takes its bound from the game's own behaviour
+on the twin probe, so it needs no number
+from a person or a healthy reference build. ``signal_compare`` compares two signals in one observed
+window, for example a reported UI counter against the collected coins. Undefined readings cannot pass.
 """
 from __future__ import annotations
 
@@ -28,7 +29,7 @@ from expectrail.contracts import digest_v1, validate_v1
 from expectrail.coverage import evidence_result
 from expectrail.trace import signals
 
-EVALUATOR = {"name": "expectrail.trace.evaluator", "version": "1.0.0"}
+EVALUATOR = {"name": "expectrail.trace.evaluator", "version": "1.1.0"}
 RESULTS = ("pass", "fail", "not_exercised", "insufficient_observation", "execution_error")
 
 
@@ -44,12 +45,28 @@ class _Eval:
         self.complete = True
         self.counterexample = False
 
+        mapping = episodes[0].get("frameMapping") if episodes else None
+        # Trace-only episodes have no visual clock. A historical step is not a draw witness.
+        self.draw_ticks = set(mapping.get("ticks", ())) if mapping is not None else None
+        self.missing_draws = set()
+
+    def observed(self, tick: int) -> bool:
+        if self.draw_ticks is None or tick in self.draw_ticks:
+            return True
+        if tick not in self.missing_draws:
+            self.diagnostics.append(f"needs-review: no captured frame at required event tick {tick}")
+            self.missing_draws.add(tick)
+        self.complete = False
+        return False
+
     def note(self, ep: dict, a: int, b: int, detail: str) -> None:
         if len(self.evidence) < 8:
             self.evidence.append({"episodeId": ep["id"], "fromTick": int(a), "toTick": int(b), "detail": detail})
 
     def verdict(self, result: str | None = None) -> dict:
         req = self.spec["evidenceRequirement"]
+        if result is None and self.missing_draws and not self.counterexample:
+            result = "insufficient_observation"
         if result is None:
             result = evidence_result(counterexample=self.counterexample, applicable=self.applicable,
                                      triggered=self.triggered, evaluated=self.evaluated,
@@ -109,15 +126,16 @@ def _min_event_interval(e: _Eval, ep: dict, op: dict) -> None:
     min_gap = _ticks(op["seconds"], ep["physicsTicksPerSecond"], bound="min")
     e.metrics.update(minIntervalTicks=min_gap, events=len(ticks))
     e.triggered = len(ticks)
-    gaps = [(a, b) for a, b in zip(ticks, ticks[1:])]
-    e.evaluated = len(gaps)
-    if gaps:
-        shortest = min(b - a for a, b in gaps)
-        e.metrics["shortestGapTicks"] = shortest
-        for a, b in gaps:
-            if b - a < min_gap:
-                e.counterexample = True
-                e.note(ep, a, b, f"two {op['event']} events {b - a} ticks apart (min {min_gap})")
+    for a, b in zip(ticks, ticks[1:]):
+        if not e.observed(a) or not e.observed(b):
+            e.excluded += 1
+            continue
+        e.evaluated += 1
+        gap = b - a
+        e.metrics["shortestGapTicks"] = min(e.metrics.get("shortestGapTicks", gap), gap)
+        if gap < min_gap:
+            e.counterexample = True
+            e.note(ep, a, b, f"two {op['event']} events {gap} ticks apart (min {min_gap})")
     if e.triggered < 2:
         e.triggered = 0  # one event is not a pair: nothing to check
 
@@ -131,10 +149,13 @@ def _max_episode_rise(e: _Eval, ep: dict, op: dict) -> None:
         return
     lo, hi = (_samples[0]["tick"], _samples[-1]["tick"]) if _samples else (0, -1)
     spans = [sp for sp in spans if lo <= sp["start"] <= hi]
-    e.triggered = e.evaluated = len(spans)
-    worst = max((sp["maxRise"] for sp in spans), default=0.0)
+    e.triggered = len(spans)
+    observed_spans = [sp for sp in spans if e.observed(sp["start"]) and e.observed(sp["maxRiseTick"])]
+    e.evaluated = len(observed_spans)
+    e.excluded = len(spans) - e.evaluated
+    worst = max((sp["maxRise"] for sp in observed_spans), default=0.0)
     e.metrics.update(maxRisePx=round(worst, 2), boundPx=op["maxPx"])
-    for sp in spans:
+    for sp in observed_spans:
         if sp["maxRise"] > op["maxPx"]:
             e.counterexample = True
             e.note(ep, sp["start"], sp["maxRiseTick"],
@@ -187,6 +208,9 @@ def _direction_agreement(e: _Eval, ep: dict, op: dict) -> None:
             if not lo <= t0 <= hi:
                 continue
             e.triggered += 1
+            if not e.observed(t0):
+                e.excluded += 1
+                continue
             ahead = [p for p in track if p[0] <= t0 + horizon]
             facing = facing_at.get(t0, facing_at.get(t0 - 1))
             travel = ahead[-1][1] - x0
@@ -251,14 +275,24 @@ def _event_response(e: _Eval, ep: dict, op: dict) -> None:
     used: set[int] = set()
     unmatched = truncated = 0
     for t in presses:
-        if any(t - refractory <= r < t for r in responses):
+        recent = next((r for r in reversed(responses) if t - refractory <= r < t), None)
+        if recent is not None:
+            e.observed(recent)
             e.excluded += 1  # not ready: a response just happened, so none is owed
             continue
         e.triggered += 1
         match = next((r for r in responses if t <= r <= t + deadline and r not in used), None)
+        trigger_drawn = e.observed(t)
         if match is not None:
             used.add(match)
+            response_drawn = e.observed(match)
+            if not (trigger_drawn and response_drawn):
+                e.excluded += 1
+                continue
             e.evaluated += 1
+            continue
+        if not trigger_drawn:
+            e.excluded += 1
             continue
         if t + deadline > last:
             truncated += 1
@@ -279,7 +313,9 @@ def _min_event_count(e: _Eval, ep: dict, op: dict) -> None:
         e.applicable = "unknown"
         return
     lo, hi = samples[0]["tick"], samples[-1]["tick"]
-    count = sum(1 for ev in ep["events"] if ev["type"] == op["event"] and lo <= ev["tick"] <= hi)
+    ticks = [ev["tick"] for ev in ep["events"] if ev["type"] == op["event"] and lo <= ev["tick"] <= hi]
+    count = len(ticks)
+    e.excluded = sum(not e.observed(t) for t in ticks)
     e.metrics.update(count=count, min=op["min"])
     if not e.complete:
         return
@@ -360,7 +396,30 @@ def _relation(e: _Eval, left: dict, right: dict, op: dict) -> None:
                f"{op['comparator']} left within {op['toleranceAbs']}")
 
 
+def _signal_compare(e: _Eval, ep: dict, op: dict) -> None:
+    """Compare two measurements of the same observed window, without a guessed numeric bound."""
+    samples, e.complete = _window(e.spec, ep)
+    if not samples:
+        return
+    lo, hi = samples[0]["tick"], samples[-1]["tick"]
+    window = {**ep, "samples": samples,
+              "events": [v for v in ep["events"] if lo <= v["tick"] <= hi]}
+    left = signals.SIGNALS[op["leftSignal"]](window)
+    right = signals.SIGNALS[op["rightSignal"]](window)
+    e.metrics.update(left=left, right=right, toleranceAbs=op["toleranceAbs"])
+    if left is None or right is None:
+        e.applicable = "unknown"
+        e.diagnostics.append("signal_compare needs both signal readings in the observed window")
+        return
+    e.triggered = e.evaluated = 1
+    if not COMPARATORS[op["comparator"]](right, left, op["toleranceAbs"]):
+        e.counterexample = True
+        e.note(ep, lo, hi, f"{op['rightSignal']} is {right}; expected {op['comparator']} "
+               f"{op['leftSignal']} ({left}) within {op['toleranceAbs']}")
+
+
 OPERATORS = {
+    "signal_compare": _signal_compare,
     "min_event_interval": _min_event_interval,
     "max_episode_rise": _max_episode_rise,
     "direction_agreement": _direction_agreement,
@@ -379,6 +438,18 @@ def evaluate(spec: dict, episode: dict, twin: dict | None = None) -> dict:
     episodes = [episode] if op["type"] != "relation" else [episode, twin]
     e = _Eval(spec, [ep for ep in episodes if ep is not None])
     try:
+        for ep in e.episodes:
+            problem = ep["completeness"].get("captureProblem")
+            mapping = ep.get("frameMapping") or {}
+            window = spec["window"]
+            if not problem and mapping.get("protocol") == "capture-ticks/v1" and window["kind"] == "ticks":
+                lo, hi = window["fromTick"], window["toTick"]
+                if not any(lo <= tick <= hi for tick in mapping["ticks"]):
+                    problem = f"no captured frame in required window (ticks {lo} to {hi})"
+            if problem:
+                e.complete = False
+                e.diagnostics.append(f"needs-review: {problem}")
+                return e.verdict("insufficient_observation")
         if op["type"] == "relation":
             if twin is None:
                 e.diagnostics.append("a relation needs two episodes")

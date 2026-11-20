@@ -86,6 +86,15 @@
             "distancePx": {"type": "number", "minimum": 0, "maximum": 400},
             "minScore": {"type": "number", "minimum": 0, "maximum": 1}
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": {
+            "type": {"const": "faces-motion"}
+          },
+          "description": "The object is drawn facing the way the engine's record moves it, on every frame of the window where the engine moves it one way and the observer sees it where the engine puts it (expectrail/jit/pixel.py _facing_observations). Frames where it stands, turns or is not seen make no claim. Only an observer that declares the object's facing (OBSERVERS facing) may judge it; a frame whose facing it cannot tell is a gap."
         }
       ]
     },

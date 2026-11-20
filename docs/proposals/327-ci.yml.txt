@@ -1,0 +1,32 @@
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -436,2 +436,5 @@
+   agents-gate1:
++    env:
++      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
++      EXPECTRAIL_OBS_PROVIDER: trace
+     runs-on: ubuntu-24.04
+@@ -582,2 +585,5 @@
+   agents-harness-verify:
++    env:
++      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
++      EXPECTRAIL_OBS_PROVIDER: trace
+     runs-on: ubuntu-24.04
+@@ -779,2 +785,5 @@
+   agents-daily-offline:
++    env:
++      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
++      EXPECTRAIL_OBS_PROVIDER: trace
+     runs-on: ubuntu-24.04
+@@ -806,2 +815,5 @@
+   feedback-offline:
++    env:
++      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
++      EXPECTRAIL_OBS_PROVIDER: trace
+     runs-on: ubuntu-24.04
+@@ -1007,2 +1019,5 @@
+   agents-bench-compare:
++    env:
++      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
++      EXPECTRAIL_OBS_PROVIDER: trace
+     runs-on: ubuntu-24.04

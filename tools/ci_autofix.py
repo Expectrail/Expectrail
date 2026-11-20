@@ -121,6 +121,22 @@ def publish(path, out, summary, game, parent):
                   f'patch -d "./{game}" -p1 < "$ARTIFACT/{patch}"', "```"]
     else:
         lines.append("There is no accepted patch to apply.")
+    for attempt in doc['attempts']:
+        if 'fixerInvocation' not in attempt:
+            continue
+        name = f"attempt-{attempt['n']}/fixer-invocation.json"
+        if attempt['fixerInvocation'] != name:
+            raise ValueError('unexpected invocation proof path')
+        try:
+            source = record.unlinked_below(path.parent, name)
+        except record.RecordError:
+            raise ValueError('linked invocation proof') from None
+        raw = record.read_bytes_capped(source, 2*1024*1024, 'invocation proof')
+        if hashlib.sha256(raw).hexdigest() != attempt.get('fixerInvocationSha256'):
+            raise ValueError('invocation proof digest differs')
+        from expectrail.fixer_budget import read
+        read(source)
+        target = out / name; target.parent.mkdir(exist_ok=True); target.write_bytes(raw)
     (out / "repair-run.json").write_bytes(contracts.canonical_v1(doc) + b"\n")
     with summary.open("a", encoding="utf-8") as stream:
         stream.write("\n".join(lines) + "\n")

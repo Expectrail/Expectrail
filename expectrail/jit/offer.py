@@ -23,7 +23,19 @@ baseline stays what it was:
   (the clean game twice, the bug build once); the propose and revise steps put the summary that
   ``evidence.for_proposer`` makes on at most six probes of the prompt (``differs``). Like the
   measurements, it comes from the clean game and the bug build only, never the candidate (#285, step 6).
-  No visual observer is asked or read for it.
+  No visual observer is asked or read for it. Since the #285 audit, the two evidence settings also
+  offer the bounded integer Label signal and same-route signal_compare operation; baseline and
+  signals-reach keep their former vocabulary.
+- ``signals-reach-evidence-menu`` (#285, the menu reach the audit left open): everything the evidence
+  setting offers, and the **menu probes** (expectrail/repro/menu.py): each library walk, then one tap of a
+  menu action and time for the menu to be drawn, so a check can read what only a menu shows (on the
+  bundled game, the coin counter of the pause menu, through ``ui_integer_at_end``). The menu action comes
+  from the reviewed mechanics profile (``menuActions``), never from the report, the patch or the model,
+  and is refused unless the game's ``project.godot`` declares it. Only the menu probes press it: the
+  proposer's own probes are compiled with the action catalog as before (``route_actions``), and the
+  prompt's action list is the catalog. The measure step measures the menu probes and makes their
+  evidence like any other probe's, except that those replays ask the harness for the UI integers
+  (``replay_options``), so the proposer is shown the counter on them. A profile with no ``menuActions`` cannot be run under this setting.
 - ``signals-reach-evidence-pixel`` (#286): everything the evidence setting offers, and **pixel checks**
   (expectrail/jit/pixel.py): the proposer may also write checks about what is drawn, in the closed
   shape ``expectrail.pixel-check/v1``, over the objects the project binds and only with the predicates a
@@ -59,18 +71,20 @@ from __future__ import annotations
 BASELINE = "baseline"
 SIGNALS_REACH = "signals-reach"
 EVIDENCE = "signals-reach-evidence"
+MENU = "signals-reach-evidence-menu"
 PIXEL = "signals-reach-evidence-pixel"
 # ``OFFERS`` are the settings without pixel checks. Every step takes every setting: ``measure`` and
 # ``propose`` (``ALL``); ``run.generate`` and the command line's ``run`` (``REPLAYABLE``), since they judge
 # pixel checks with the observer they are given; the reproduction score (``SCORED``); a revision
 # (``REVISABLE``), which carries pixel checks to its second round unchanged; and jit.yml (``WORKFLOW``).
-OFFERS = (BASELINE, SIGNALS_REACH, EVIDENCE)
+OFFERS = (BASELINE, SIGNALS_REACH, EVIDENCE, MENU)
 ALL = (*OFFERS, PIXEL)
 REPLAYABLE = ALL
 SCORED = ALL
 REVISABLE = ALL
 WORKFLOW = ALL
 DEFAULT = BASELINE
+MENU_FAMILY = "menu"  # expectrail/repro/menu.py FAMILY, named here so no other setting imports that module
 
 
 class OfferError(ValueError):
@@ -90,7 +104,12 @@ def of_record(value) -> str:
 
 def shows_evidence(offer) -> bool:
     """Whether the proposer is given step 5's evidence (what the bug build changes, record and screen)."""
-    return check(offer) in (EVIDENCE, PIXEL)
+    return check(offer) in (EVIDENCE, MENU, PIXEL)
+
+
+def offers_menu(offer) -> bool:
+    """Whether the probe list has the menu probes (expectrail/repro/menu.py)."""
+    return check(offer) == MENU
 
 
 def offers_pixel(offer) -> bool:
@@ -114,23 +133,26 @@ def revisable(offer) -> str:
 
 def meanings(offer: str) -> dict[str, str]:
     """{signal: what it measures} for the signals the generator is told about under ``offer``."""
-    from expectrail.jit.intent import NOT_YET_OFFERED, SIGNAL_MEANINGS
+    from expectrail.jit.intent import EVIDENCE_SIGNALS, NOT_YET_OFFERED, SIGNAL_MEANINGS
 
     check(offer)
-    return dict(SIGNAL_MEANINGS) if offer == BASELINE else {**SIGNAL_MEANINGS, **NOT_YET_OFFERED}
+    result = dict(SIGNAL_MEANINGS) if offer == BASELINE else {**SIGNAL_MEANINGS, **NOT_YET_OFFERED}
+    return {**result, **EVIDENCE_SIGNALS} if shows_evidence(offer) else result
 
 
 def signals(offer: str) -> tuple[str, ...]:
     return tuple(sorted(meanings(offer)))
 
 
-def library(actions, offer: str, report: str = "") -> list[dict]:
+def library(actions, offer: str, report: str = "", *, profile: dict | None = None, game=None) -> list[dict]:
     """The probes the generator may use under ``offer``: the jit library, then (any setting but ``baseline``) the
-    reach probes for the pairs of actions it never presses together, ordered by the report.
+    reach probes for the pairs of actions it never presses together, ordered by the report, then (the menu
+    setting only) the menu probes.
 
     The report only orders the reach probes and, when there are more than the reach limit, decides
     which are left out (expectrail/repro/reach.py); on the platformer there are eight, so every report
-    gets the same set."""
+    gets the same set. The menu setting needs ``profile`` (its ``menuActions``, checked against the
+    ``project.godot`` of ``game``, by default the profile's own game); without them it is an OfferError."""
     from expectrail.jit.probes import jit_library
 
     check(offer)
@@ -139,7 +161,49 @@ def library(actions, offer: str, report: str = "") -> list[dict]:
         return probes
     from expectrail.repro.reach import reach
 
-    return probes + reach(report if isinstance(report, str) else "", actions, probes)["probes"]
+    probes = probes + reach(report if isinstance(report, str) else "", actions, probes)["probes"]
+    if offer != MENU:
+        return probes
+    return probes + _menu_probes(actions, profile, game)
+
+
+def _menu_probes(actions, profile, game) -> list[dict]:
+    from pathlib import Path
+
+    from expectrail.jit.probes import jit_library
+    from expectrail.repro.menu import MenuError, declared_actions, menu_probes
+
+    if not isinstance(profile, dict) or not profile.get("menuActions"):
+        raise OfferError(f"the offer {MENU} needs a mechanics profile that names its menuActions")
+    if list(profile["actions"]) != list(actions):
+        raise OfferError("the action catalog given is not the profile's")
+    root = Path(game) if game is not None else Path(__file__).resolve().parents[2] / profile["game"]["path"]
+    try:
+        declared = declared_actions(root / "project.godot")
+        return menu_probes(jit_library(actions), profile["menuActions"], actions, declared)
+    except MenuError as exc:
+        raise OfferError(f"the menu probes cannot be made: {' '.join(str(exc).split())[:160]}") from exc
+
+
+def route_actions(profile: dict, probe: dict) -> list[str]:
+    """The actions ``probe``'s program may press: the catalog, and for a menu probe the profile's menu actions too.
+
+    Call it only for probes this module made (``library``): a probe the model proposed is compiled with the
+    catalog alone, whatever family it states."""
+    if probe.get("family") == MENU_FAMILY:
+        names = list(profile["actions"])
+        return names + [a for a in profile.get("menuActions") or [] if a not in names]
+    return list(profile["actions"])
+
+
+def replay_options(probe: dict) -> dict:
+    """What the measure step's and the evidence's replays of ``probe`` ask the harness for beyond the route.
+
+    A menu probe asks for the UI integers (``harness.run``'s ``ui_integers``): it is there so a check can read
+    what the menu draws, and without the reading the proposer is shown nothing about the counter on it. No
+    other probe asks; a check's own replays ask when the check reads the counter (``needs_ui_integers``).
+    Like ``route_actions``, for probes this module made."""
+    return {"ui_integers": True} if probe.get("family") == MENU_FAMILY else {}
 
 
 def attach_evidence(probes: list[dict], path, base: list, offer: str) -> list[str]:
@@ -149,8 +213,10 @@ def attach_evidence(probes: list[dict], path, base: list, offer: str) -> list[st
 
     The record is read as untrusted data: ``evidence.load`` checks it against its schema and itself and
     that it was made for these base patches, and ``evidence.for_proposer`` keeps only this library's
-    probe ids, the trace's own fields and signals, and numbers. Under any other setting nothing is
-    attached, and a file given anyway is said and not read."""
+    probe ids, the trace's own fields and signals, and numbers. Under the pixel setting a probe's
+    ``differs`` also carries ``partlyOnScreen``: the captured frames of the clean game where an enemy or a
+    bullet is only partly on screen, which the no-model sensor does not judge. Under any other setting
+    nothing is attached, and a file given anyway is said and not read."""
     if not shows_evidence(offer):
         return [] if path is None else [f"evidence: not used: the offer {offer} does not offer it"]
     if path is None:
@@ -168,6 +234,9 @@ def attach_evidence(probes: list[dict], path, base: list, offer: str) -> list[st
         p.pop("differs", None)
         if p["id"] in shown:
             p["differs"] = {**header, "record": shown[p["id"]]["record"], "screen": shown[p["id"]]["screen"]}
+            if offers_pixel(offer) and "partlyOnScreen" in shown[p["id"]]:
+                # Under the pixel setting only (#286), so every other setting's prompt is as it was.
+                p["differs"]["partlyOnScreen"] = shown[p["id"]]["partlyOnScreen"]
     notes = []
     if summary["probesNotCompared"]:
         notes.append(f"evidence: {summary['probesNotCompared']} probes could not be compared")

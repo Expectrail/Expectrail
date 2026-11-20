@@ -23,6 +23,7 @@ import tempfile
 from pathlib import Path
 
 from expectrail import timing
+from harness import patching
 from harness import sandbox as box
 from harness import tree
 
@@ -186,10 +187,7 @@ def tree_digest(root: Path, within: Path | None = None) -> str:
 def apply_patches(work: Path, patches: list[Path]) -> None:
     """Apply unified diffs in order to a game copy (seed first, then candidate, …)."""
     for patch in patches:
-        subprocess.run(
-            ["patch", "-p1", "--forward", "--batch", "-d", str(work), "-i", str(patch.resolve())],
-            check=True, capture_output=True, text=True,
-        )
+        patching.apply(work, patch)  # the tree the patch names, on every platform's patch (#659)
 
 
 def prepare(game: Path, work: Path, patch: Path | None = None, patches: list[Path] | None = None,
@@ -248,10 +246,23 @@ def godot_cmd(godot: Path, display: bool) -> list[str]:
 _FROM_GAME = object()
 
 
+def needs_ui_integers(specs) -> bool:
+    """Whether an evaluated trace spec reads UI integers; an offered signal alone requests nothing."""
+    for spec in specs:
+        op = spec.get("operation", {})
+        if op.get("type") == "relation" and op.get("signal") == "ui_integer_at_end":
+            return True
+        if op.get("type") == "signal_compare" and "ui_integer_at_end" in (
+                op.get("leftSignal"), op.get("rightSignal")):
+            return True
+    return False
+
+
 def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = None, fps: int | None = 60,
         godot: Path | None = None, patches: list[Path] | None = None,
         force_import: bool = False, capture_frames: bool = True, sandbox: str | None = None,
-        within: Path | None = None, *, project: object = _FROM_GAME, input_probe: bool = False) -> dict:
+        within: Path | None = None, *, project: object = _FROM_GAME, trace_specs=(),
+        ui_integers: bool = False, input_probe: bool = False) -> dict:
     """Replay one route and write trace.json and replay.json (and the frames, unless capture_frames is
     False: discovery reads only the trace, so it runs headless and skips writing a PNG per frame).
 
@@ -266,6 +277,10 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
     ``expectrail.project.json``. The gate passes the base checkout's config (or None when the base
     has none) so a change under test cannot set the capture rate or the bindings by editing its own
     copy. ``fps`` is None when that rate should come from the config, or 60 when there is none.
+    ``trace_specs`` are the trace contracts evaluated on this replay. UI integer recording is
+    requested only if one reads ui_integer_at_end, or by name with ``ui_integers`` (the measure step and
+    the evidence ask on a menu probe alone, ``expectrail.jit.offer.replay_options``); default replays do
+    not walk the UI or add a key.
     The bindings go to the harness as values: inside the sandbox the game is a copy, and a path
     from this machine would not be there."""
     game = game or REPO / "game" / "platformer"
@@ -278,10 +293,11 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
             raise SystemExit(str(exc)) from exc
     else:
         config = project
-    from expectrail.godot_project import configured_scene, require_gdscript
+    from expectrail.godot_project import configured_scene, require_declared_settings, require_gdscript
     try:
         require_gdscript(game, config, within=within)
         selected_scene = configured_scene(game, config)
+        require_declared_settings(game, config)
     except tree.TreeProblem as exc:
         raise SystemExit(f"the game cannot be replayed as it stands: {exc}") from exc
     except (ValueError, OSError) as exc:
@@ -334,6 +350,7 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
         try:
             require_gdscript(work, config)
             configured_scene(work, config)
+            require_declared_settings(work, config, changed=bool(ordered))
         except tree.TreeProblem as exc:
             raise SystemExit(f"the game cannot be replayed as it stands: {exc}") from exc
         except (ValueError, OSError) as exc:
@@ -384,8 +401,15 @@ def run(route: Path, out: Path, patch: Path | None = None, game: Path | None = N
             f"--seed={route_doc.get('seed', 1)}"]
     if input_probe:
         cmd += ["--input-probe=1"]
+    if capture_frames:
+        cmd += [f"--capture-fps={fps}"]
     if config is not None:
         cmd += harness_arguments(config)
+    # Like optional configured role recording, the request travels through the harness's
+    # existing user arguments as a value, never a host path, route field or environment switch.
+    if ui_integers or needs_ui_integers(trace_specs):
+        cmd.append("--ui-integers=true")
+
     try:
         with timing.phase("replay"):
             if tool is not None:
@@ -469,6 +493,12 @@ def _replay_record(route: Path, out: Path, game_tree: str, fps: int, ordered: li
         "trace": {"path": "trace.json", "sha256": sha256_file(out / "trace.json")},
         "isolation": isolation,
     }
+    if "captureTimeline" in trace:
+        from expectrail.observation_timeline import build, TimelineError
+        try:
+            replay["timeline"] = build(trace, frames, ticks=route_doc["ticks"])
+        except (TimelineError, OSError) as exc:
+            replay["timelineProblem"] = str(exc) if isinstance(exc, TimelineError) else "capture images could not be read"
     (out / "replay.json").write_text(json.dumps(replay, indent=2) + "\n", encoding="utf-8")
     return replay
 

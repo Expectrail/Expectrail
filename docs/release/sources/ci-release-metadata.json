@@ -1,0 +1,51 @@
+{
+  "kind": "Public GitHub API capture; latest completed main release-gate at retrieval; read-only",
+  "retrievedAt": "2026-11-16 07:01:01 UTC",
+  "run": {
+    "id": 43817779257,
+    "head_branch": "main",
+    "head_sha": "12434136b8f240c98df4015720a585d84c02320a",
+    "event": "push",
+    "url": "https://github.com/Expectrail/Expectrail/actions/runs/43817779257"
+  },
+  "newerRunAtCapture": {
+    "id": 43819427685,
+    "head_sha": "fd9fa3c9ec3b8dbc5166cd34c63c9eae6604c86d",
+    "status": "in_progress",
+    "releaseArtifactAvailable": false
+  },
+  "jobs": [
+    {
+      "id": 133133657309,
+      "name": "release-gate",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 43817779257
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 14204285174,
+      "name": "release-gate",
+      "size_in_bytes": 10642,
+      "url": "https://api.github.com/repos/Expectrail/Expectrail/actions/artifacts/14204285174",
+      "archive_download_url": "https://api.github.com/repos/Expectrail/Expectrail/actions/artifacts/14204285174/zip",
+      "expired": false,
+      "created_at": "2026-11-16T06:51:43Z",
+      "expires_at": "2026-12-16T06:51:43Z",
+      "updated_at": "2026-11-16T06:51:43Z",
+      "digest": "sha256:501e56f2b486fc3930bea7eb9ba4ec99881a50b9a3cec1d5382c54649c95872d",
+      "workflow_run": {
+        "id": 43817779257,
+        "repository_id": 1435158179,
+        "head_repository_id": 1435158179,
+        "head_branch": "main",
+        "head_sha": "12434136b8f240c98df4015720a585d84c02320a"
+      }
+    }
+  ],
+  "filesSha256": {
+    "ci-release-gate.json": "8c0eda1c08bb50dcef6721aad2442e94c67add40fedc2037e093bfa0fa842572",
+    "ci-release-gate.md": "2ee315b0a63e643de1d6480df6db228a06df34c4852a0943877c111c9c7bd9ef"
+  }
+}

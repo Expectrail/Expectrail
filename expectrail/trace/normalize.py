@@ -28,6 +28,7 @@ import json
 import math
 from pathlib import Path
 
+from expectrail import observation_timeline
 from expectrail.contracts import canonical_v1
 
 ADAPTER = "godot-platformer/v1"
@@ -78,7 +79,7 @@ def _points(raw, key: str, tick: int) -> list:
 
 
 def normalize(trace: dict, route: dict, *, episode_id: str, trace_bytes: bytes | None = None,
-              replay: dict | None = None, replay_bytes: bytes | None = None) -> dict:
+              replay: dict | None = None, replay_bytes: bytes | None = None, frames_dir: Path | None = None) -> dict:
     """The episode for one replay. Raises EpisodeError on a malformed trace or an unsupported rate pair."""
     rows = [r for r in trace.get("rows") or [] if isinstance(r, dict)]
     if not rows:
@@ -88,10 +89,23 @@ def normalize(trace: dict, route: dict, *, episode_id: str, trace_bytes: bytes |
         raise EpisodeError("the trace does not say how many physics ticks make a second")
     fps = ((replay or {}).get("capture") or {}).get("fps")
     mapping = None
-    if isinstance(fps, int) and fps > 0:
+    completeness = {}
+    if "captureTimeline" in trace or any(k in (replay or {}) for k in ("timeline", "timelineProblem")):
+        try:
+            frame_ticks = observation_timeline.episode_ticks(trace, replay, frames_dir, ticks=route.get("ticks"))
+            fps = trace["captureTimeline"]["fps"]
+            mapping = {"protocol": "capture-ticks/v1", "ticks": frame_ticks}
+        except (observation_timeline.TimelineError, OSError) as exc:
+            completeness["captureProblem"] = str(exc)
+    elif isinstance(fps, int) and fps > 0:
         if tps % fps:
-            raise EpisodeError(f"unsupported rate pair: {tps} ticks to {fps} frames a second")
-        mapping = {"protocol": "tick-step/v1", "step": tps // fps}
+            raise EpisodeError(f"legacy capture has no explicit mapping for {tps} ticks to {fps} frames a second")
+        if (replay or {}).get("frameSha256") or replay["capture"].get("frames"):
+            completeness["captureProblem"] = "legacy capture has no explicit draw timeline"
+        elif fps == tps and all(r.get("frame") == i and r.get("tick") == i for i, r in enumerate(rows)):
+            # Historical Unity records declare one frame on each row. Preserve their metadata.
+            # It does not witness an event without the draw timeline.
+            mapping = {"protocol": "tick-step/v1", "step": 1}
     declared = trace.get("capabilities") if isinstance(trace.get("capabilities"), dict) else {}
     enemies_cap = _collection(rows, "enemies", declared.get("enemies"))
     projectiles_cap = _collection(rows, "projectiles", declared.get("projectiles"))
@@ -140,6 +154,13 @@ def normalize(trace: dict, route: dict, *, episode_id: str, trace_bytes: bytes |
                         "enemies": collection("enemies", enemies_cap),
                         "projectiles": collection("projectiles", projectiles_cap),
                         "coins": coins, "view": view})
+        if "uiIntegers" in r:
+            values = r["uiIntegers"]
+            if values is not None and (not isinstance(values, list) or len(values) > 32
+                    or any(type(v) is not int or abs(v) > 10**9 for v in values)):
+                raise EpisodeError(f"tick {tick}: malformed uiIntegers")
+            samples[-1]["uiIntegers"] = None if values is None else list(values)
+
     ticks = [s["tick"] for s in samples]
     if ticks != sorted(ticks) or len(set(ticks)) != len(ticks):
         raise EpisodeError("ticks are not strictly increasing")
@@ -163,7 +184,7 @@ def normalize(trace: dict, route: dict, *, episode_id: str, trace_bytes: bytes |
         "captureFps": fps if isinstance(fps, int) else None,
         "frameMapping": mapping,
         "capabilities": caps,
-        "completeness": {"contiguous": not gaps, "firstTick": ticks[0], "lastTick": ticks[-1], "gaps": gaps},
+        "completeness": {"contiguous": not gaps, "firstTick": ticks[0], "lastTick": ticks[-1], "gaps": gaps, **completeness},
         "inputs": inputs,
         "samples": samples,
         "events": events,
@@ -207,4 +228,5 @@ def from_run_dir(run_dir: Path, route: dict, *, episode_id: str) -> dict:
     replay_path = run_dir / "replay.json"
     replay_bytes = replay_path.read_bytes() if replay_path.is_file() else None
     return normalize(json.loads(trace_bytes), route, episode_id=episode_id, trace_bytes=trace_bytes,
-                     replay=json.loads(replay_bytes) if replay_bytes else None, replay_bytes=replay_bytes)
+                     replay=json.loads(replay_bytes) if replay_bytes else None, replay_bytes=replay_bytes,
+                     frames_dir=run_dir / "frames")

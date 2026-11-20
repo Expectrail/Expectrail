@@ -242,6 +242,12 @@ def _summary(record: dict) -> str:
                  f"before the change {rec.REPAIR_RUNS} times of {rec.REPAIR_RUNS}." if rec.intent_of(record) == "fix" else "")
         return (f"**{'The' if total == 1 else 'All'} {_n(total, 'check')} {'passes' if total == 1 else 'pass'} after this change.**{shown} Accepted means this change passed these "
                 "checks on these routes, not that the game is correct.")
+    if rec.unverified_fix(record) and rec.unverified_fix_headline(record) == rec.UNDECIDED_FIX:
+        # Issue #560: a check failed on the base, so the bug was seen; after the change it was not decided.
+        n = rec.undecided_after_failure(record["checks"])
+        return (f"**{rec.UNDECIDED_FIX}.** {_n(n, 'check')} failed before the change and could not be decided "
+                "after it (needs review, or the replay did not finish), so nothing shows the bug is fixed. "
+                "A person should look at the evidence after the change.")
     if rec.unverified_fix(record):
         # Issue #284: for a change that says it fixes a bug, "no check failed" is not "the fix is good".
         return ("**No check reproduced the reported bug, so this fix is not verified.** No check failed before "
@@ -466,8 +472,17 @@ def run(api: Api, ctx: Context, evidence: Path | None, watch: list[str] | None =
             record = None
     touched = touched_files(api, ctx, number, watch or [])
     comment, previous = find_comment(api, ctx, number)
+    if record is not None:
+        current_links = declared_intent.closing_links(pr.get('body'))
+        recorded_links = (record.get('pullRequest') or {}).get('fixLinks')
+        if recorded_links is not None and recorded_links != current_links:
+            problem, record = 'the recorded closing-keyword lines differ from the current pull request', None
     body = render(record, ctx, previous=previous, touched=touched, fork=fork) if record is not None \
         else render_unreadable(problem or "unknown", ctx, touched=touched)
+    fresh_links = declared_intent.closing_links(pr.get('body'))
+    if fresh_links and (record is None or not (record.get('pullRequest') or {}).get('fixLinks')):
+        source = '; '.join(f"closing-keyword line {link['line']}: {link['text']}" for link in fresh_links)
+        body += "\n**PR requires fix:** " + md(source, 500) + ".\n"
     if comment is not None:
         result = api("PATCH", f"/repos/{ctx.repo}/issues/comments/{int(comment['id'])}", {"body": body}) or {}
         action = "updated"

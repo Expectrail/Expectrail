@@ -1,0 +1,25 @@
+{
+  "format": "expectrail.jit-pressure/v1",
+  "kind": "correct",
+  "status": "failed",
+  "reason": null,
+  "replays": 3,
+  "maxReplays": 1024,
+  "fixerInvocations": 0,
+  "apiCapUsd": 0,
+  "rows": [
+    {
+      "case": "air-jump/public-undo",
+      "specId": "jit-example",
+      "outcomes": [
+        "pass",
+        "fail",
+        "pass"
+      ]
+    }
+  ],
+  "adversarySuccesses": 0,
+  "expectedCases": 1,
+  "oracle": null,
+  "sourceDigests": {}
+}

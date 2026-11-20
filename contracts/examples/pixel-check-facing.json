@@ -1,0 +1,11 @@
+{
+  "format": "expectrail.pixel-check/v1",
+  "id": "enemy-faces-where-it-walks",
+  "statement": "On the hold-right probe, every enemy on screen is drawn facing the way the engine moves it, in every frame where it walks one way.",
+  "object": "enemy",
+  "observer": "visual-sensor",
+  "probe": "hold-right",
+  "predicate": {"type": "faces-motion"},
+  "authority": "model_prior",
+  "origin": "AUTO_DIFF"
+}

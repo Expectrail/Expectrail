@@ -33,7 +33,7 @@ DEFAULT_TIMEOUT_SECONDS = 1800
 MAX_REQUEST_BYTES = 64 * 1024
 MAX_BUG_CHARS = 8192
 INTENTS = rec.INTENTS
-UNVERIFIED_FIX = "No check reproduced the reported bug, so this fix is not verified"
+UNVERIFIED_FIX = rec.UNVERIFIED_FIX
 
 
 class RequestError(ValueError):
@@ -319,6 +319,8 @@ def inputs(doc: dict) -> dict:
         from expectrail.orchestrator.playtest import proposal_inputs
         meaning['propose'] = doc['propose']
         meaning['proposalInputs'] = proposal_inputs(doc)
+    if "heldOut" in doc:
+        meaning["heldOut"] = doc["heldOut"]
     if "autoFix" in doc:
         meaning["autoFix"] = doc["autoFix"]
     return {"requestDigest": digest(meaning), **resolved}

@@ -13,7 +13,8 @@
   "properties": {
     "format": {
       "enum": [
-        "expectrail.observations/v0"
+        "expectrail.observations/v0",
+        "expectrail.observations/v1"
       ]
     },
     "replay": {
@@ -400,6 +401,72 @@
                             "met",
                             "unmet"
                           ]
+                        },
+                        "facing": {
+                          "description": "The object's facing (#286; agents/template_foreground.py _validate_facing), for objects whose sprite the game flips with their motion (the enemy). Its clean captures are labelled with the way the engine moved the cropped object (template heading), and on every validation frame showing it moving one way the drawn object is decided from the right- and left-labelled templates alone, and again with it mirrored in place. met by the player's rule on both: at least 95% decided right and at most 1% decided wrong, with templates both ways. The reader recomputes the status. Absent: the sensor does not tell which way this object faces.",
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "margin",
+                            "templates",
+                            "moving",
+                            "agree",
+                            "disagree",
+                            "mirroredAgree",
+                            "mirroredDisagree",
+                            "status"
+                          ],
+                          "properties": {
+                            "margin": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "templates": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "right",
+                                "left"
+                              ],
+                              "properties": {
+                                "right": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "left": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                }
+                              }
+                            },
+                            "moving": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "agree": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "disagree": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "mirroredAgree": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "mirroredDisagree": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "status": {
+                              "enum": [
+                                "met",
+                                "unmet"
+                              ]
+                            }
+                          }
                         }
                       }
                     },
@@ -441,6 +508,10 @@
                             "met",
                             "unmet"
                           ]
+                        },
+                        "witness": {
+                          "description": "How this object is witnessed. Absent: by its templates (template_foreground.py). \"radial\": by the radial witness in radialWitnesses.<role> (agents/template_radial.py), for a round sprite that rotates; then templates counts its clean ring profiles.",
+                          "const": "radial"
                         }
                       }
                     }
@@ -680,6 +751,10 @@
                   "mask": {
                     "type": "string",
                     "description": "optional path to a mask PNG or an RLE string"
+                  },
+                  "engineAgreement": {
+                    "type": "boolean",
+                    "description": "False preserves a pixel answer rejected by the engine identity filter; it cannot establish a pass."
                   }
                 }
               }
@@ -1065,6 +1140,266 @@
               }
             }
           }
+        }
+      }
+    }
+  ],
+  "anyOf": [
+    {
+      "properties": {
+        "format": {
+          "const": "expectrail.observations/v0"
+        }
+      }
+    },
+    {
+      "required": [
+        "timeline"
+      ],
+      "properties": {
+        "timeline": {
+          "title": "Per-run capture timeline, from the harness record",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "format",
+            "traceSha256",
+            "physicsTicksPerSecond",
+            "captureFps",
+            "frames"
+          ],
+          "properties": {
+            "format": {
+              "const": "expectrail.observation-timeline/v1"
+            },
+            "traceSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "physicsTicksPerSecond": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "captureFps": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "frames": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "frame",
+                  "tick",
+                  "tickInterval",
+                  "phase",
+                  "viewport",
+                  "transform",
+                  "sourceSha256"
+                ],
+                "properties": {
+                  "frame": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "tick": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "tickInterval": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  },
+                  "phase": {
+                    "enum": [
+                      "post-physics-pre-draw",
+                      "post-draw"
+                    ]
+                  },
+                  "viewport": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  },
+                  "transform": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 6,
+                    "maxItems": 6
+                  },
+                  "sourceSha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "frames": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "frame",
+              "tick",
+              "observer",
+              "source",
+              "coordinateSpace"
+            ],
+            "properties": {
+              "frame": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tick": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "source": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "sha256"
+                ],
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "image",
+                      "trace"
+                    ]
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              },
+              "coordinateSpace": {
+                "const": "screen-pixels"
+              },
+              "objects": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "frame",
+                      "tick",
+                      "sensor",
+                      "source",
+                      "coordinateSpace",
+                      "entityId"
+                    ],
+                    "properties": {
+                      "frame": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "tick": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "sensor": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "name",
+                          "version"
+                        ],
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "version": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      },
+                      "source": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "kind",
+                          "sha256"
+                        ],
+                        "properties": {
+                          "kind": {
+                            "enum": [
+                              "image",
+                              "trace"
+                            ]
+                          },
+                          "sha256": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          }
+                        }
+                      },
+                      "coordinateSpace": {
+                        "const": "screen-pixels"
+                      },
+                      "entityId": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              "observer": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "version"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "format": {
+          "const": "expectrail.observations/v1"
         }
       }
     }

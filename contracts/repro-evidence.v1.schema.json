@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://expectrail.tech/contracts/repro-evidence.v1.schema.json",
   "title": "expectrail.repro-evidence/v1",
-  "description": "The evidence for one bug build: what it changes against the clean game along each probe, in the engine's record and on the screen, from the same replays (the clean game twice, the bug build once, every frame captured). Per probe: the record fields that differ with the first tick and how many, the signals that read differently, the frames that differ with the first one and the size and place of the difference, and, where recorded answers of a visual observer were given, what it answered on the differing frames of both builds. No model is asked anything by the writer: an observer's answers are looked up, and a frame with none recorded is counted as not answered. It draws no conclusion from the observer and is never a reproduction rate. Written and read by expectrail.repro.evidence.",
+  "description": "The evidence for one bug build: what it changes against the clean game along each probe, in the engine's record and on the screen, from the same replays (the clean game twice, the bug build once, every frame captured). Per probe: the record fields that differ with the first tick and how many, the signals that read differently, the frames that differ with the first one and the size and place of the difference, and, where recorded answers of a visual observer were given, what it answered on the differing frames of both builds. Since November 16, 2026 a row also says on which frames of the clean game an enemy or a bullet is only partly on screen (edges). No model is asked anything by the writer: an observer's answers are looked up, and a frame with none recorded is counted as not answered. It draws no conclusion from the observer and is never a reproduction rate. Written and read by expectrail.repro.evidence.",
   "type": "object",
   "additionalProperties": false,
   "required": ["format", "engine", "renderer", "frame", "ticksPerSecond", "framesPerSecond", "basePatchSha256", "probes", "replaysPerBuild", "maxFramesExamined", "engineRetries", "observer", "rows", "totals"],
@@ -10,7 +10,22 @@
     "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "name": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,60}$" },
     "count": { "type": "integer", "minimum": 0 },
-    "reading": { "type": ["number", "null"], "description": "A signal's value on one replay; null is no reading." }
+    "reading": { "type": ["number", "null"], "description": "A signal's value on one replay; null is no reading." },
+    "edgeFrames": {
+      "type": ["object", "null"],
+      "description": "null: the engine's record cannot say on this probe (it logs no boxes of this kind, a frame has no row, box or camera, or the two clean replays disagree).",
+      "additionalProperties": false,
+      "required": ["frames", "spans"],
+      "properties": {
+        "frames": { "$ref": "#/$defs/count", "description": "On how many captured frames at least one object of this kind is partly on screen: its box reaches inside the frame and past an edge." },
+        "spans": {
+          "type": "array",
+          "maxItems": 24,
+          "items": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "$ref": "#/$defs/count" } },
+          "description": "Those frames as [first, last] runs of captured frame numbers counted from 0, both included, in order and not touching. More runs than 24 are closed up from the 24th on, so the spans may hold more frames than counted, never fewer."
+        }
+      }
+    }
   },
   "properties": {
     "format": { "const": "expectrail.repro-evidence/v1" },
@@ -168,6 +183,24 @@
               "frames": { "$ref": "#/$defs/count" },
               "fields": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/name" } },
               "signals": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/name" } }
+            }
+          },
+          "edges": {
+            "type": "object",
+            "description": "Absent in records made before November 16, 2026, and on an error row. Where, on the clean game, an object of each kind the engine logs boxes for is only partly on screen, read from both clean replays. The no-model sensor does not judge an object it cannot see whole (#286), so a pixel check about it over those frames is undecided.",
+            "additionalProperties": false,
+            "required": ["of", "objects"],
+            "properties": {
+              "of": { "type": "integer", "minimum": 1, "description": "Captured frames on the clean game." },
+              "objects": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["enemy", "bullet"],
+                "properties": {
+                  "enemy": { "$ref": "#/$defs/edgeFrames" },
+                  "bullet": { "$ref": "#/$defs/edgeFrames" }
+                }
+              }
             }
           },
           "error": { "type": "string", "minLength": 1, "maxLength": 280, "pattern": "^[^\\n\\r]*$", "description": "Why this probe could not be replayed or compared. Only on an error row." }

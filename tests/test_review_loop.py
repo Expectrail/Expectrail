@@ -28,7 +28,7 @@ class ReviewInTheLoopTest(unittest.TestCase):
         self.addCleanup(patcher.stop)
 
     def run_loop(self, flag: str | None) -> tuple[dict, str]:
-        env = {"EXPECTRAIL_HELDOUT_DIR": "", "EXPECTRAIL_OBS_PROVIDER": ""}
+        env = {"EXPECTRAIL_HELDOUT_DIR": "", "EXPECTRAIL_OBS_PROVIDER": "trace"}
         if flag is not None:
             env["EXPECTRAIL_REVIEW"] = flag
         with mock.patch.dict(os.environ, env):

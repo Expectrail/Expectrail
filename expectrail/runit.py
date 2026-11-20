@@ -194,9 +194,11 @@ def run(sample_id: str, out: Path, *, request_id: str | None = None, root: Path 
             repair = viewer.read_repair(path)
         except (ValueError, OSError) as exc:
             raise RunItError(f"repair recording cannot be used: {exc}") from exc
-        fixer = repair["run"]["fixer"]
-        if not fixer["sandboxed"] or fixer["source"] in ("fixture", "recorded"):
-            raise RunItError("this sample needs the original live sandboxed repair recording")
+        from expectrail.repair_provenance import publishable
+        try:
+            publishable(path, repair["run"])
+        except (ValueError, OSError) as exc:
+            raise RunItError("repair provenance cannot be published: " + str(exc)) from exc
         if repair["diff"] is None:
             raise RunItError("the recorded repair has no accepted patch to replay")
     started = _now()
@@ -252,11 +254,11 @@ def run(sample_id: str, out: Path, *, request_id: str | None = None, root: Path 
             vision = {"recorded": False, "recordedAt": None, "run": None, "model": str(recorder.model)[:80],
                       "asked": 0, "answered": 0, "notRecorded": 0, "why": "this run made the recording, live"}
         else:
-            vision = {**observer.summary(), "why": None}
+            vision = {**observer.summary(), "why": None, "rendering": observer.client.rendering()}
             if vision["notRecorded"]:
-                vision["why"] = observer.client.last_missing_reason or (
+                vision["why"] = (observer.client.last_missing_reason or (
                     "the replay drew a frame, or asked a question, that the recording does not hold; "
-                    "no answer was reused from another picture")
+                    "no answer was reused from another picture"))[:300]
     decision = status["decision"] if status["phase"] == "completed" else None
     doc = {
         "format": RESULT_FORMAT,
@@ -468,6 +470,11 @@ def _no_constant(name: str):
 
 # --- command line ----------------------------------------------------------------------------------
 
+def recorded_sentence(rendering: dict) -> str:
+    from expectrail import recorded
+    return recorded.rendering_sentence(rendering)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python3 -m expectrail.runit", description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -502,6 +509,8 @@ def main(argv: list[str] | None = None) -> int:
                   + (f" (vision answers recorded on {v['recordedAt']})" if v["recorded"] else f" ({v['why']})"))
             for d in doc["diagnostics"]:
                 print(f"    {d['code']}: {d['detail']}")
+            if v.get("rendering"):
+                print(f"rendering: {recorded_sentence(v['rendering'])}")
             print(f"receipt: {doc['receipt']['why']}")
             print(f"evidence: {args.out / doc['viewer']}")
             if args.expect and not doc["asExpected"]:

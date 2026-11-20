@@ -1,8 +1,8 @@
-"""Fail closed until a fixer invocation has a provable dollar bound.
+"""Host-owned admission for fixed-price fixtures and controlled text requests.
 
 The repository does not bind Muse Code's model, input tokenizer/context limit,
-output/reasoning billing or mode to a verified per-request maximum. No environment
-variable can turn the fixed-price stand-in into a certified live tariff.
+output/reasoning billing or mode to a verified per-request maximum. A recorded tariff and text-byte bound enable only llm-patch. No environment
+variable can turn the fixed-price stand-in into a certified live CLI tariff.
 """
 from decimal import Decimal, InvalidOperation, ROUND_FLOOR
 import json
@@ -18,7 +18,7 @@ ENV = 'EXPECTRAIL_FIXER_INVOCATION_USD_CAP'
 
 
 def read(path):
-    doc = record.read_json(Path(path), cap=65536, label='fixer invocation budget')
+    doc = record.read_json(Path(path), cap=2*1024*1024, label='fixer invocation budget')
     schema = json.loads((resources.ROOT/'contracts/fixer-invocation.v1.schema.json').read_text())
     record.validate(doc,schema)
     cap, reserved, price = doc['capNanoUsd'],doc['reservedNanoUsd'],doc['requestMaxNanoUsd']
@@ -33,6 +33,22 @@ def read(path):
         raise ValueError('invocation request reservations disagree')
     if doc['basis']=='unavailable' and (reserved or doc['admittedRequests']):
         raise ValueError('an unavailable live bound cannot forward requests')
+    if doc['basis']=='token-price':
+        if cap is None or price is not None or 'pricing' not in doc or 'requests' not in doc:
+            raise ValueError('token invocation needs pricing and request reservations')
+        rows, tariff = doc['requests'], doc['pricing']
+        if len(rows) != doc['admittedRequests'] or sum(r['reservedNanoUsd'] for r in rows) != reserved:
+            raise ValueError('token reservations disagree')
+        for r in rows:
+            if tariff.get('contextTokenCeiling') is not None and (r['inputTokenBound'] != tariff['contextTokenCeiling'] or not 0 < r.get('byteTokenBound',0) <= r['inputTokenBound']):
+                raise ValueError('context reservation disagrees with reviewed ceiling')
+            if r['reservedNanoUsd'] != r['inputTokenBound']*tariff['inputNanoUsdPerToken'] + r['outputTokenCap']*tariff['outputNanoUsdPerToken']:
+                raise ValueError('request maximum disagrees with tariff')
+        for field, wire in [('inputTokensObserved','inputTokens'),('outputTokensObserved','outputTokens')]:
+            if doc[field] != sum((r['reportedUsage'] or {}).get(wire,0) for r in rows):
+                raise ValueError('reported usage totals disagree')
+    elif 'pricing' in doc or 'requests' in doc:
+        raise ValueError('pricing belongs only to token-priced invocations')
     return doc
 
 
@@ -52,13 +68,14 @@ def _cap():
     try:
         value=Decimal(os.environ.get(ENV,'').strip())
         if not value.is_finite() or value < 0:raise InvalidOperation
-        return int((value*fixer_meter.NANO).to_integral_value(rounding=ROUND_FLOOR))
+        numerator, denominator = value.as_integer_ratio()
+        return numerator*fixer_meter.NANO//denominator
     except (InvalidOperation,ValueError,OverflowError):
         return None
 
 
-def start(path):
-    """Production admission. No live dollar tariff is presently supported."""
+def start(path, *, config=None):
+    """Refuse CLI fixers; admit only a supported controlled request policy."""
     cap=_cap()
     doc={'format':fixer_meter.FORMAT,'id':uuid.uuid4().hex,'basis':'unavailable',
          'capNanoUsd':cap,'requestMaxNanoUsd':None,'reservedNanoUsd':0,
@@ -68,6 +85,8 @@ def start(path):
         stop('fixer-invocation-cap-missing',ENV+' must be a finite nonnegative dollar amount',path,doc)
     if cap == 0:
         stop('fixer-invocation-cap', 'zero-dollar invocation permits no send',path,doc)
+    if config is not None:
+        return _start_controlled(path, doc, config)
     # Do not start a CLI, warm its launcher, construct a gateway or read a key.
     stop('fixer-bound-unavailable','no verified maximum billable charge per Muse/BYO request; live fixer disabled',path,doc)
 
@@ -99,3 +118,148 @@ def counter(path, *, expected=None):
         exc.code='fixer-meter-unavailable'
         spend.note_stop('muse',str(exc))
         raise exc from cause
+
+
+def _start_controlled(path, doc, config):
+    """Only our text-only llm-patch sender can use a recorded token tariff."""
+    try:
+        capability = spend.read_provider_capability(resources.ROOT / 'contracts/examples/provider-capabilities' / (config.provider+'.json'))
+        price = next(p for p in capability.get('tokenPrices',[]) if p['model']==config.model)
+        # A byte bound is supported only for this byte-BPE text model/protocol.
+        if (config.provider,config.protocol) != ('openai','openai') or config.model not in ('gpt-4o','gpt-6.1-sol'):
+            raise ValueError('unsupported input-token bound')
+        if config.api_base != 'https://api.openai.com/v1':
+            raise ValueError('unpriced endpoint')
+    except (OSError,ValueError,StopIteration) as exc:
+        stop('fixer-bound-unavailable','no recorded supported tariff for provider/model/endpoint',path,doc)
+    if not os.environ.get(spend.MODEL_LEDGER_ENV,'').strip():
+        stop('fixer-month-ledger-required','monthly reservation ledger is required',path,doc)
+    # Reserve F against the aggregate role cap and the existing month ledger once.
+    # Request reservations below spend this hold; they never hold the same dollars twice.
+    spend.hold('muse',live=True,usd=doc['capNanoUsd']/fixer_meter.NANO)
+    ensure_available(config, price, path, doc)
+    return TokenMeter(path,doc,config,price)
+
+
+class TokenMeter(fixer_meter.Meter):
+    """Trusted sender's meter; serializes admission, send and response observation.
+
+    One UTF-8 JSON byte per token is an upper bound for text byte-BPE merges.
+    We add 1024 tokens plus 64 per message for framing (versus the published
+    GPT-4o recipe's 3/message + 3/reply). Full JSON includes roles, escapes and
+    schema bytes. This is an upper bound, not a tokenizer estimate or discount.
+    Provider billing must honor its documented text tokenization and max_tokens.
+    """
+    def __init__(self,path,doc,config,price):
+        import threading
+        self.config={'record':str(path)}
+        self.provider_config=config
+        self.lock=threading.RLock()
+        self.doc={**doc,'basis':'token-price','status':'running','stopReason':None,
+                  'pricing':{'provider':config.provider,**{k:v for k,v in price.items() if k!='checkedOn'}},'requests':[]}
+        self.persist()
+
+    def persist(self):
+        try:
+            super().persist()
+        except OSError as cause:
+            self.doc.update(status='stopped',stopReason='fixer-meter-unavailable')
+            exc=spend.BudgetStop('fixer-meter-unavailable: durable counter write failed',role='muse')
+            exc.code='fixer-meter-unavailable';exc.invocation_record=Path(self.config['record'])
+            spend.note_stop('muse',str(exc))
+            raise exc from cause
+
+    def fail(self,code,message):
+        stop(code,message,self.config['record'],self.doc)
+
+    def reserve_request(self,config,url,payload,body):
+        import hashlib
+        with self.lock:
+            payload=json.loads(body)  # Price the immutable bytes that the sender forwards.
+            if config != self.provider_config or url != config.api_base+'/chat/completions':
+                self.fail('fixer-bound-unavailable','request endpoint/config changed')
+            if (set(payload)-{'model','messages',self.doc['pricing'].get('outputTokenField','max_tokens'),'temperature','response_format','service_tier'} or
+                    payload.get('model') != config.model or type(payload.get(self.doc['pricing'].get('outputTokenField','max_tokens'))) is not int or
+                    not 1 <= payload[self.doc['pricing'].get('outputTokenField','max_tokens')] <= 4096 or not isinstance(payload.get('messages'),list) or
+                    not payload['messages'] or any(set(m)!={'role','content'} or
+                        m['role'] not in ('system','user','assistant') or not isinstance(m['content'],str)
+                        for m in payload['messages'])):
+                self.fail('fixer-bound-unavailable','unsupported billable request shape')
+            if len(self.doc['requests']) >= 1024:
+                self.fail('fixer-invocation-cap','request record limit reached')
+            if self.doc['pricing'].get('outputTokenField') == 'max_completion_tokens' and payload.get('service_tier') != 'default':
+                self.fail('fixer-bound-unavailable','standard service tier must be explicit')
+            bound=len(body)+1024+64*len(payload['messages'])
+            byte_bound=bound
+            ceiling=self.doc['pricing'].get('contextTokenCeiling')
+            if ceiling is not None:
+                if byte_bound > ceiling:self.fail('fixer-bound-unavailable','request bytes exceed reviewed context ceiling')
+                bound=ceiling  # Reserve the full context; no guess about new model framing.
+            tariff=self.doc['pricing']; amount=bound*tariff['inputNanoUsdPerToken']+payload[self.doc['pricing'].get('outputTokenField','max_tokens')]*tariff['outputNanoUsdPerToken']
+            # Stage row before the shared durable admission writes it. Roll back if denied.
+            row={'bodyBytes':len(body),'bodySha256':hashlib.sha256(body).hexdigest(),
+                 'inputTokenBound':bound,'outputTokenCap':payload[self.doc['pricing'].get('outputTokenField','max_tokens')],
+                 'reservedNanoUsd':amount,'reportedUsage':None}
+            if ceiling is not None:row['byteTokenBound']=byte_bound
+            self.doc['requests'].append(row)
+            try:
+                status=self.reserve_locked(amount)
+            except OSError:
+                self.fail('fixer-meter-unavailable','reservation cannot be persisted')
+            if status is not None:
+                self.doc['requests'].pop()
+                self.fail(self.doc['stopReason'] or 'fixer-invocation-cap','request not forwarded')
+            return len(self.doc['requests'])-1
+
+    def observe_request(self,index,response):
+        with self.lock:
+            row=self.doc['requests'][index]
+            usage=response.get('usage',{}) if isinstance(response,dict) else {}
+            inp,out=usage.get('prompt_tokens'),usage.get('completion_tokens')
+            if type(inp) is not int or inp < 0 or type(out) is not int or out < 0:
+                self.fail('fixer-provider-violation','provider omitted valid usage; no further sends')
+            if row['reportedUsage'] is not None:
+                self.fail('fixer-provider-violation','duplicate response accounting')
+            row['reportedUsage']={'inputTokens':inp,'outputTokens':out}
+            self.doc['inputTokensObserved']+=inp;self.doc['outputTokensObserved']+=out
+            self.persist()
+            if inp > row['inputTokenBound'] or out > row['outputTokenCap']:
+                self.fail('fixer-provider-violation','reported usage exceeds reserved token bound')
+
+    def finish(self):
+        with self.lock:
+            if self.doc['status']=='running' and self.doc['reservedNanoUsd']==self.doc['capNanoUsd']:
+                self.fail('fixer-invocation-cap','invocation cap reached; candidate withheld')
+            if self.doc['status']=='running':self.doc['status']='completed'
+            self.persist()
+            return dict(self.doc)
+
+
+def ensure_available(config, price, path, doc):
+    """Unbilled model metadata, never an inference/fallback. Fail closed on doubt.
+
+    A withdrawal already known locally sends nothing. A remote 404/410 on this
+    GET sends no inference; a race after it is caught by the paid sender too.
+    """
+    import urllib.request
+    import urllib.error
+    from urllib.parse import quote
+    from datetime import date
+    if config.model == 'gpt-6.1-sol' and (not price.get('validUntil') or date.today() > date.fromisoformat(price['validUntil'])):
+        stop('fixer-model-unavailable','reviewed model/price record expired; no fallback',path,doc)
+    if price.get('status') != 'active':
+        stop('fixer-model-unavailable','the recorded model is not active; no fallback',path,doc)
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self,*args):return None
+    req=urllib.request.Request(config.api_base+'/models/'+quote(config.model,safe=''),
+        headers={'Authorization':'Bearer '+config.api_key},method='GET')
+    try:
+        opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect())
+        with opener.open(req,timeout=config.timeout) as response:
+            data=json.loads(response.read(65536).decode())
+        if not isinstance(data,dict) or data.get('id') != config.model:
+            raise ValueError('model metadata differs')
+    except (OSError,ValueError) as cause:
+        doc['availability']={'model':config.model,'status':'unavailable'}
+        stop('fixer-model-unavailable','model metadata unavailable; no inference or fallback',path,doc)
+    doc['availability']={'model':config.model,'status':'available'}

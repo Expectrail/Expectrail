@@ -99,6 +99,11 @@ footer { border-top:1px solid var(--mist); padding:22px 0 40px; font:400 0.9rem/
   .top nav { gap:14px; }
   iframe.viewer { height:75vh; }
 }
+#receipt-tools input { display:block; width:100%; max-width:42rem; box-sizing:border-box; margin:5px 0 12px; }
+#receipt-tools label { display:block; }
+#receipt-outcome[data-tone="pass"] { border-left:4px solid #268352; padding-left:12px; }
+.saved-checks { width:100%; border-collapse:collapse; font-size:.9rem; }
+.saved-checks th, .saved-checks td { padding:6px; border-bottom:1px solid #ddd; overflow-wrap:anywhere; }
 </style>
 </head>
 <body>
@@ -119,7 +124,7 @@ footer { border-top:1px solid var(--mist); padding:22px 0 40px; font:400 0.9rem/
   <p class="lede">Pick a change to Expectrail's sample game. Expectrail plays the game with that change, watches it, and says whether the change holds. Nothing to install.</p>
   <p class="muted">When you start a sample, the game and checks run again. The fix sample reuses a recorded patch. It never starts a fixer. The vision model's answers are recorded once for each sample, so a visit spends nothing: a frame that is not in the recording gets no answer, and the run then says it needs review rather than guess. A sample whose answers are not recorded yet cannot be accepted, and its result says so.</p>
 
-  <p id="service" class="service" role="status" aria-live="polite">Checking whether Run it can start a run…</p>
+  <p id="service" class="service" role="status" aria-live="polite">Checking whether Run it can start a run… Earlier recorded evidence is available below.</p>
   <p id="standin" class="standin" hidden>Local stub with stand-in replays: these runs do not play the real game. They are for looking at this page.</p>
 
   <h2 id="samples-title">The samples</h2>
@@ -127,6 +132,18 @@ footer { border-top:1px solid var(--mist); padding:22px 0 40px; font:400 0.9rem/
     <li class="sample" id="recorded-fix"><h3>A bug, Expectrail’s fix, verified</h3>
       <p>Recorded fix sample. Enable JavaScript to check recording availability.</p></li>
   </ul>
+
+  <noscript><style>#service, #samples {display:none}</style><p class="notice">JavaScript is off, so new runs and browser receipt checks are unavailable. The earlier evidence links below still work.</p></noscript>
+  <section id="earlier" class="notice" aria-label="Earlier recorded evidence">
+    <h2>Earlier recorded evidence</h2>
+    <p>These saved results are from November 13, 2026, not a new verification. They remain available when the worker or results service is unreachable. Full captured frames are not stored in this fallback.</p>
+    <ul>
+      <li>Clean game, 21:50 UTC: accepted. <a href="earlier/builder1-recorded-clean/findings.json">Saved findings</a>.</li>
+      <li>Fall-through bug, 21:54 UTC: rejected. <a href="earlier/builder1-recorded-bug/findings.json">Saved findings</a>.</li>
+      <li>Repaired game, 21:53 UTC: accepted. <a href="earlier/builder1-recorded-repair/findings.json">Saved findings</a>.</li>
+    </ul>
+    <p><a href="earlier/source.json">Published source and content digests</a>. Viewing these files starts no run.</p>
+  </section>
 
   <section id="run" hidden aria-labelledby="run-title" tabindex="-1">
     <p id="run-when" class="when"></p>
@@ -145,9 +162,29 @@ footer { border-top:1px solid var(--mist); padding:22px 0 40px; font:400 0.9rem/
         <h3>The evidence</h3>
         <div id="evidence-links" class="evidence-links"></div>
       </div>
+      <div id="saved-findings" hidden></div>
       <p id="evidence-note" class="notice" hidden></p>
       <iframe id="viewer" class="viewer" title="Evidence viewer" sandbox="allow-scripts" referrerpolicy="no-referrer" hidden></iframe>
     </div>
+  </section>
+  <section id="receipt-tools" class="notice" aria-label="Receipt check">
+    <h2>Check a receipt</h2>
+    <p id="receipt-availability" data-state="unavailable">Receipt not yet available for these saved runs. No signed receipt was checked.</p>
+    <details><summary>Check a receipt file you already have</summary>
+      <p>Use an expectrail.receipt/v1 file and issuer keys you already trust. Expectations must come from your expected build, not from the uploaded receipt. Files stay in your browser.</p>
+      <form id="receipt-form">
+        <label>Receipt JSON<input id="receipt-file" type="file" accept="application/json,.json"></label>
+        <label>Your trust store JSON<input id="receipt-store" type="file" accept="application/json,.json"></label>
+        <label>Expected repository<input id="receipt-repo" value="Expectrail/Expectrail" maxlength="200"></label>
+        <label>Expected head digest<input id="receipt-head" maxlength="64" autocomplete="off"></label>
+        <label>Expected build digest<input id="receipt-build" maxlength="64" autocomplete="off"></label>
+        <label>Expected policy digest<input id="receipt-policy" maxlength="64" autocomplete="off"></label>
+        <p>Missing issuer keys or build/policy expectations cannot give clearance.</p>
+        <button id="receipt-check" type="submit" disabled>Check selected file</button>
+      </form>
+      <div id="receipt-outcome" data-tone="review" hidden><h3 id="receipt-title"></h3><p id="receipt-means"></p><ul id="receipt-reasons"></ul></div>
+      <p><a href="../verify/">Full receipt verifier and command-line instructions</a>.</p>
+    </details>
   </section>
 </main>
 
@@ -157,6 +194,8 @@ footer { border-top:1px solid var(--mist); padding:22px 0 40px; font:400 0.9rem/
     <p><a href="https://github.com/Expectrail/Expectrail">Expectrail on GitHub</a></p>
   </div>
 </footer>
+<script src="../verify/receipt-check.js"></script>
+<script src="receipt-panel.js"></script>
 <script src="run-it.js"></script>
 </body>
 </html>

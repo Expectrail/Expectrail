@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verification for coding agents’ changes | Expectrail</title><meta name="description" content="Expectrail checks a coding agent’s change against the running software: the runtime’s record and vision must agree, plain code decides, and an opt-in repair goes to a person for review.">
+<link rel="icon" href="brand/favicon.svg" type="image/svg+xml"><meta name="theme-color" content="#0b0a1d">
+<link rel="stylesheet" href="assets/front-door.css?v=023b8687d5"><script src="assets/nav.js?v=d863df3f97" defer></script><link rel="stylesheet" href="assets/home.css?v=e3bffdfda3"><script>document.documentElement.classList.add('js')</script><script src="assets/home.js?v=c6a7261ea5" defer></script></head><body class="home">
+<a class="skip" href="#main">Skip to content</a>
+<div class="wrap"><header class="top"><a class="logo" href="./" aria-label="Expectrail, home"><img src="brand/expectrail-logo-reverse.svg" alt="Expectrail" width="150" height="35"></a>
+<button class="menu-toggle" type="button" aria-expanded="false" hidden><span class="menu-bars" aria-hidden="true"><i></i></span><span class="menu-label">Menu</span></button><nav aria-label="Sections"><a href="quickstart.html">Quickstart</a><a href="concepts.html">Concepts</a><a href="guides.html">Guides</a><a href="positioning.html">Positioning</a><a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md">Evidence ledger</a><a href="run-it/">Run it</a></nav></header></div>
+<main id="main" class="wrap">
+<section class="hero" id="why-now" aria-labelledby="hero-title">
+<div class="hero-copy">
+<a class="hero-pill" href="#outside-vision"><span aria-hidden="true"></span>First outside game verified with vision</a>
+<h1 id="hero-title" class="reveal">Your agent says it fixed the bug. <em>Expectrail watches.</em></h1>
+<p class="lead reveal">It replays Godot changes on approved checks and routes, compares the engine’s record with available live or recorded visual evidence, and lets plain code decide. Repair is opt-in, and a person reviews any patch.</p>
+<div class="actions"><a class="button primary" href="quickstart.html">Start in six steps</a><a class="button" href="concepts.html">Understand a verdict</a><a class="button" href="run-it/">Run it status</a></div>
+<p class="hero-install"><code>python3 -m pip install .</code> <span>Linux, Python 3.12+, from a checkout. Not on PyPI.</span></p>
+</div>
+<div class="switch" id="switch" data-switch aria-labelledby="switch-title">
+<p class="switch-title" id="switch-title">One recorded fix, three judges</p>
+<div class="switch-modes" role="group" aria-label="Which channel decides">
+<button type="button" data-mode="engine" aria-pressed="false">Engine only</button>
+<button type="button" data-mode="judge" aria-pressed="false">Screenshot judge</button>
+<button type="button" data-mode="both" aria-pressed="true">Both + plain code</button>
+</div>
+<figure class="switch-frame" data-show-engine="true" data-show-vision="true">
+<img src="assets/frames/fix-sunk.png" width="540" height="320" alt="Recorded game frame of a deceptive fix: the robot’s legs are drawn inside the ground.">
+<span class="mark-ground" aria-hidden="true"></span><span class="tag-ground">engine: within bounds</span>
+<span class="mark-player" aria-hidden="true"></span><span class="tag-player">vision: below the ground</span>
+</figure>
+<div class="switch-panel" aria-live="polite">
+<p class="switch-verdict" data-right="true"><span data-field="verdict">REJECT</span> <span class="switch-right" data-field="right">· correct</span></p>
+<p class="switch-why" data-field="why">The engine passes, vision sees the robot below the ground, and plain code refuses to accept.</p>
+<dl class="switch-stats">
+<div><dt>Bugs caught</dt><dd data-field="caught">8 of 8</dd></div>
+<div><dt>Bad fixes accepted</dt><dd data-field="fooled">0 of 7</dd></div>
+<div><dt>Good fixes rejected</dt><dd data-field="blocked">0 of 8</dd></div>
+</dl>
+<p class="source">Case <code>bad/fall-through-sink-player</code>: <a href="https://github.com/Expectrail/Expectrail/blob/main/bench/judge/README.md">judge bench</a> · <a href="https://github.com/Expectrail/Expectrail/blob/main/bench/detection/README.md">detection bench</a> · <a href="https://github.com/Expectrail/Expectrail/blob/main/bench/judge/glimmer/README.md">run 41230177124</a></p>
+</div>
+</div>
+</section>
+
+<section class="proof" aria-label="Headline results">
+<div class="reveal"><p class="big"><span data-count="8">8</span> of 8</p><p>held-out bugs caught</p><a href="https://github.com/Expectrail/Expectrail/actions/runs/41003751876">run 41003751876</a></div>
+<div class="reveal"><p class="big"><span data-count="0">0</span> of 7</p><p>deceptive fixes accepted</p><a href="https://github.com/Expectrail/Expectrail/actions/runs/41230177124">run 41230177124</a></div>
+<div class="reveal"><p class="big"><span data-count="8">8</span> of 8</p><p>good fixes accepted</p><a href="https://github.com/Expectrail/Expectrail/actions/runs/41230177124">run 41230177124</a></div>
+<div class="reveal"><p class="big"><span data-count="10">10</span> of 10</p><p>caught bugs fixed on the first try</p><a href="https://github.com/Expectrail/Expectrail/actions/runs/41330361829">run 41330361829</a></div>
+</section>
+
+<section class="section" id="how" aria-labelledby="how-title">
+<div class="how-intro">
+<div><p class="eyebrow reveal">How it works · what’s new</p>
+<h2 id="how-title" class="reveal">Models look. Plain code decides.</h2></div>
+<div class="how-lead reveal">
+<p>Coding agents can make unit tests pass while the software is broken: a character inside the floor, a hidden checkout button, a missing texture, a feature switched off to quiet a check.</p>
+<p>Expectrail checks configured Godot routes using two sources: what the engine recorded and usable live or exact recorded visual answers. Plain code, never a model, gives the verdict.</p>
+</div>
+</div>
+<figure class="equation reveal" data-equation aria-label="External perceptual sensor times internal runtime telemetry, into a deterministic evaluator, into evidence-driven repair">
+<div class="eq-row">
+<div class="eq-term eq-vision" data-eq-term="0">
+<p class="eq-kind">External perceptual sensor</p>
+<p class="eq-name">What was drawn</p>
+<p class="eq-sub">Historical: SAM 3.1 · Muse Glimmer 30B</p>
+<div class="eq-frame"><img src="assets/frames/fix-sunk.png" width="540" height="320" alt="The recorded frame: vision boxes the robot, drawn inside the ground." loading="lazy"><span class="mark-player" aria-hidden="true"></span></div>
+</div>
+<span class="eq-op" data-eq-op="0" aria-hidden="true">×</span>
+<div class="eq-term eq-record" data-eq-term="1">
+<p class="eq-kind">Internal runtime telemetry</p>
+<p class="eq-name">What the engine recorded</p>
+<p class="eq-sub">positions · contacts · state</p>
+<ul class="eq-rows"><li><span>feet vs ground</span><b>within bounds</b></li><li><span>touching</span><b>ground</b></li><li><span>every frame</span><b>recorded</b></li></ul>
+</div>
+<span class="eq-op" data-eq-op="1" aria-hidden="true">→</span>
+<div class="eq-term eq-judge" data-eq-term="2">
+<p class="eq-kind">Deterministic evaluator</p>
+<p class="eq-name">Plain code decides</p>
+<p class="eq-sub">no model in the verdict</p>
+<ul class="eq-verdicts"><li>accept · both agree</li><li>needs-review · evidence insufficient</li><li class="eq-hit">reject · a check fails</li></ul>
+</div>
+<span class="eq-op" data-eq-op="2" aria-hidden="true">→</span>
+<div class="eq-term eq-repair" data-eq-term="3">
+<p class="eq-kind">Evidence-driven repair</p>
+<p class="eq-name">Opt-in fix</p>
+<p class="eq-sub">sandboxed, on a copy</p>
+<ul class="eq-rows"><li>The check’s own words</li><li>The route log</li><li>The first failing frame</li></ul>
+<p class="eq-end">Fresh verification, then <a href="#repair">a person reviews</a></p>
+</div>
+</div>
+<figcaption><span>Models observe, plan and patch. Plain code decides pass or fail, and accepts only when both sources agree.</span> <button type="button" data-eq-play aria-pressed="false">Pause</button></figcaption>
+</figure>
+<h3 class="flow-title reveal">Follow one change through</h3>
+<p class="reveal">Click a step, or play a change through.</p>
+<div class="flow" data-flow>
+<div class="flow-scenarios" role="group" aria-label="Play a scenario">
+<button type="button" data-scenario="accept">A correct fix</button>
+<button type="button" data-scenario="reject">Robot drawn into the ground</button>
+<button type="button" data-scenario="review">Vision unavailable</button>
+</div>
+<ol class="flow-map" role="list">
+<li class="flow-col"><button type="button" class="flow-node" data-node="change" aria-pressed="false"><small>input</small>Agent’s change</button></li>
+<li class="flow-col"><button type="button" class="flow-node" data-node="replay" aria-pressed="false"><small>harness</small>Replay on fixed routes</button></li>
+<li class="flow-col flow-stack"><button type="button" class="flow-node flow-record" data-node="record" aria-pressed="false"><small>channel 1</small>Runtime record</button><button type="button" class="flow-node flow-vision" data-node="vision" aria-pressed="false"><small>channel 2</small>Vision on judged frames</button></li>
+<li class="flow-col"><button type="button" class="flow-node flow-judge" data-node="evaluator" aria-pressed="false"><small>no model here</small>Plain-code evaluator</button></li>
+<li class="flow-col flow-stack"><button type="button" class="flow-node flow-out" data-node="accept" aria-pressed="false"><small>verdict</small>accept</button><button type="button" class="flow-node flow-out" data-node="review" aria-pressed="false"><small>verdict</small>needs-review</button><button type="button" class="flow-node flow-out" data-node="reject" aria-pressed="false"><small>verdict</small>reject → opt-in repair</button></li>
+</ol>
+<div class="flow-detail" aria-live="polite">
+<h3 data-field="title">Plain-code evaluator</h3>
+<p data-field="text">Ordinary code judges each approved check from the engine’s record and what vision saw. No model decides. Acceptance needs both observations for every required check; missing vision needs review unless a check already fails.</p>
+<p class="source"><a data-field="link" href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#godot-verify">Godot verify path · ledger row</a></p>
+</div>
+</div>
+</section>
+
+<section class="section split" id="single-channel-failure" aria-labelledby="single-channel-title">
+<div>
+<p class="eyebrow reveal">01 / Why two sources</p>
+<h2 id="single-channel-title" class="reveal">One source of evidence is easy to fool</h2>
+<p class="reveal">Same 8 held-out bugs, 8 good fixes and 7 deceptive ones, judged three ways.</p>
+<p class="source">Runs <a href="https://github.com/Expectrail/Expectrail/actions/runs/41003749744">41003749744</a>, <a href="https://github.com/Expectrail/Expectrail/actions/runs/41003751876">41003751876</a>, <a href="https://github.com/Expectrail/Expectrail/actions/runs/41230177124">41230177124</a> · <a href="https://github.com/Expectrail/Expectrail/blob/main/bench/judge/README.md">judge bench</a>. The screenshot judge also rejected <a href="https://github.com/Expectrail/Expectrail/blob/main/bench/mutation/ai-fixes/README.md">5 of 10 good mutation fixes</a>; frontier models rejected <a href="https://github.com/Expectrail/Expectrail/blob/main/bench/judge/outside-models/README.md">1 to 5 good fixes in 24</a>.</p>
+</div>
+<div class="bars">
+<div class="bar-group reveal"><h3>Bugs caught</h3>
+<div class="bar"><span>Engine only</span><b>4 of 8</b><i style="--w:50%"></i></div>
+<div class="bar"><span>Screenshot judge</span><b>not a gate</b><i style="--w:0%"></i></div>
+<div class="bar win"><span>Expectrail</span><b>8 of 8</b><i style="--w:100%"></i></div></div>
+<div class="bar-group reveal"><h3>Deceptive fixes accepted <small>lower is better</small></h3>
+<div class="bar"><span>Engine only</span><b>3 of 7</b><i style="--w:43%"></i></div>
+<div class="bar"><span>Screenshot judge</span><b>2 of 7</b><i style="--w:29%"></i></div>
+<div class="bar win"><span>Expectrail</span><b>0 of 7</b><i style="--w:0%"></i></div></div>
+<div class="bar-group reveal"><h3>Good fixes rejected <small>lower is better</small></h3>
+<div class="bar"><span>Engine only</span><b>0 of 8</b><i style="--w:0%"></i></div>
+<div class="bar"><span>Screenshot judge</span><b>up to 2 of 8</b><i style="--w:25%"></i></div>
+<div class="bar win"><span>Expectrail</span><b>0 of 8</b><i style="--w:0%"></i></div></div>
+</div>
+</section>
+
+<section class="section" id="premise-broken" aria-labelledby="premise-title">
+<p class="eyebrow reveal">02 / Trying to break it</p>
+<h2 id="premise-title" class="reveal">We tried to break our own idea</h2>
+<div class="acts">
+<article class="card reveal"><p class="big"><span data-count="0.9" data-decimals="1">0.9</span>%</p><h3>Hand-written checks miss things</h3><p>Of 77 random edits, the checks caught 10, or 0.9% weighted by edit type. Nobody had written a check for the scenery. <a href="https://github.com/Expectrail/Expectrail/blob/main/bench/mutation/README.md">Mutation bench</a></p></article>
+<article class="card reveal"><p class="big"><span data-count="10">10</span> of 10</p><h3>Historical repair measurement</h3><p>In this historical one-game mutation run, Muse Code fixed all 10 caught bugs on the first try. A screenshot judge turned down 5 of those fixes. <a href="https://github.com/Expectrail/Expectrail/actions/runs/41330361829">Run 41330361829</a></p></article>
+<article class="card reveal"><p class="big"><span data-count="7">7</span> of 16</p><h3>Discovery probes some gaps</h3><p>Blind defects found by <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#discovery">advisory discovery</a>, plus 4 of 4 sabotage fixes flagged and no false alarms on 4 design changes. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/discovery.md">Results</a></p></article>
+</div>
+</section>
+
+<section class="section" id="repair"><h2 class="reveal">Verify, then repair</h2>
+<p class="repair-intro reveal">Follow a rejected change through repair. The original verdict always stays.</p>
+<figure aria-label="The repair loop"><div class="repair-story">
+<svg class="repair-map" viewBox="0 0 340 366" role="img" aria-labelledby="loop-title loop-desc" xmlns="http://www.w3.org/2000/svg">
+  <title id="loop-title">From a rejected change to a reviewed patch</title>
+  <desc id="loop-desc">Verification comes first. Only an opt-in reject starts repair. A sandboxed fixer proposes a patch on a copy. An independent verifier judges each candidate. An accept offers the patch to a person. Needs-review stops the loop.</desc>
+  <g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+    <path d="M38 58v36m-5-7 5 7 5-7M38 128v30m-5-7 5 7 5-7M38 204v31m-5-7 5 7 5-7M38 281v31m-5-7 5 7 5-7"/>
+    <path d="M298 253h23v-74h-23" stroke-dasharray="3 4"/><path d="m304 174-7 5 7 5"/>
+  </g>
+  <g class="loop-card">
+    <rect x="17" y="15" width="280" height="44" rx="8"/>
+    <rect x="17" y="93" width="280" height="36" rx="18" class="loop-reject"/>
+    <rect x="17" y="159" width="280" height="46" rx="8"/>
+    <rect x="17" y="236" width="280" height="46" rx="8"/>
+    <rect x="17" y="313" width="280" height="40" rx="8" class="loop-human"/>
+  </g>
+  <g class="loop-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M29 37q9-12 18 0-9 12-18 0Z"/><circle cx="38" cy="37" r="2.5"/>
+    <path d="m34 107 8 8m0-8-8 8M30 175l8-4 8 4v10l-8 5-8-5z M30 175l8 5 8-5m-8 5v10"/>
+    <path d="M30 251h16v15H30z m4 7 3 3 5-6"/>
+    <circle cx="38" cy="328" r="3"/><path d="M31 339q1-10 7-7 6-3 7 7"/>
+  </g>
+  <g class="loop-label"><text x="57" y="44">Verify the change</text>
+    <text x="57" y="117">Reject + auto-fix on</text>
+    <text x="57" y="188">Fix a separate copy</text>
+    <text x="57" y="265">Judge the candidate</text>
+    <text x="57" y="339">Review the patch</text></g>
+  <g class="loop-note"><text x="56" y="81">If a check fails</text><text x="56" y="305">Only on accept</text></g>
+</svg>
+<ol class="repair-notes" role="list">
+  <li><span>Reject</span>Opt in with <a href="https://github.com/Expectrail/Expectrail/blob/main/README.md#verify-then-repair"><code>expectrail verify --auto-fix</code></a>. The <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/app.md#auto-fix-checkbox">local app checkbox</a> is off by default.</li>
+  <li><span>Sandboxed fixer proposes a patch</span>It works on a separate copy; OS containment requires the real sandbox. Today the CLI applies a <a href="https://github.com/Expectrail/Expectrail/blob/main/tests/test_repair_command.py">fixture patch</a>.</li>
+  <li><span>Fresh independent verification</span>Each candidate gets a new job with the same checks. <a href="https://github.com/Expectrail/Expectrail/blob/main/tests/test_auto_fix.py">See both verdicts in the test.</a></li>
+  <li><span>Accept or needs-review</span>Either one stops the loop; only an accept offers a patch. <a href="viewer-samples/fixture-repair.html">Inspect the fixture attempt.</a></li>
+  <li><span>A person reviews</span>Expectrail never merges a fix. The <a href="run-it/#recorded-fix">Run it recorded-fix card</a> stays off until a real repair is recorded.</li>
+</ol></div>
+<div class="loop-controls"><button type="button" data-loop-play aria-pressed="false">Pause</button><button type="button" data-loop-prev>Previous step</button><button type="button" data-loop-next>Next step</button><span data-loop-status aria-live="polite">The loop plays when it scrolls into view.</span></div>
+<div class="loop-progress" aria-hidden="true"><i></i></div>
+<figcaption>The fixer receives public failure evidence; a separate verification job judges each candidate. <a href="https://github.com/Expectrail/Expectrail/blob/main/tests/test_repair_command.py">Repair tests</a>.</figcaption></figure>
+<p class="repair-status">No live repair through the new app/repair path is recorded; CI auto-fix runs only a fixture fixer and is off by default. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/new-work/2026-11-14-loop-story.md">Status and evidence</a>.</p>
+</section>
+
+<section class="section split" id="outside-vision" aria-labelledby="outside-title">
+<div>
+<p class="eyebrow reveal">Outside proof</p>
+<h2 id="outside-title" class="reveal">A game we didn’t write, four right verdicts</h2>
+<p class="reveal">Godot’s kinematic-character demo is the <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#outside-projects">only outside game verified with vision so far</a>. The run cost <a href="https://github.com/Expectrail/Expectrail/actions/runs/43652198623">$2.00</a> at list price. These are recorded historical results: a later unchanged replay lacks an exact answer after a two-pixel PNG difference. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#recorded-vision">Renderer limits</a>.</p>
+<p class="source">For the hidden sprite, vision measured the background and said <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/outside-projects.md#first-outside-game-verified-with-vision-november-14-2026">“past the boundary”</a>; since <a href="https://github.com/Expectrail/Expectrail/pull/481">#481</a> it says “not drawn”, not yet shown live. Dodge the Creeps has <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#outside-projects">a draft check awaiting approval</a>. Older blind tests: <a href="release/#blind">release dossier</a>.</p>
+</div>
+<table class="reveal" aria-label="Recorded verdicts for kinematic-character">
+<thead><tr><th scope="col">Change to the game</th><th scope="col">Verdict</th></tr></thead>
+<tbody>
+<tr><td>Original game at the pinned revision</td><td><a href="https://github.com/Expectrail/Expectrail/actions/runs/43652198623">accept</a></td></tr>
+<tr><td>Floor collisions disabled, player falls through</td><td><a href="https://github.com/Expectrail/Expectrail/actions/runs/43652198623">reject</a></td></tr>
+<tr><td>Player sprite tinted</td><td><a href="https://github.com/Expectrail/Expectrail/actions/runs/43652198623">accept</a></td></tr>
+<tr><td>Player sprite hidden</td><td><a href="https://github.com/Expectrail/Expectrail/actions/runs/43652198623">reject</a></td></tr>
+</tbody></table>
+</section>
+
+<section class="section" id="results"><h2 class="reveal">A stopped fall can still look wrong</h2>
+<div class="shots"><figure class="reveal"><img src="assets/frames/fix-sunk.png" width="540" height="320" alt="Recorded game frame with the player’s legs drawn inside the ground."><figcaption><span>The change under review</span> <b class="chip-reject">reject</b> <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#godot-verify">Evidence</a></figcaption></figure>
+<figure class="reveal"><img src="assets/frames/fix-correct.png" width="540" height="320" alt="Recorded game frame with the player standing on the grass edge."><figcaption><span>The reviewed repair</span> <b class="chip-accept">accept</b> <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#review-change">Review scope</a></figcaption></figure></div>
+<p class="source">From the bundled game and changes we seeded, so not a general catch rate. Vision here is <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#sam-observer">SAM 3.1</a>.</p>
+</section>
+
+<section class="section" id="cross-domain" aria-labelledby="cross-domain-title">
+<p class="eyebrow reveal">03 / Beyond games</p>
+<h2 id="cross-domain-title" class="reveal">Games first. The same bugs live in apps.</h2>
+<div class="tiles">
+<div class="reveal"><code>layering</code><p>Player drawn behind scenery</p><p class="source">A banner covering the checkout button</p></div>
+<div class="reveal"><code>missing-texture</code><p>The coin works but isn’t drawn</p><p class="source">A canvas view that drops a texture</p></div>
+<div class="reveal"><code>sinking</code><p>Resting halfway into the ground</p><p class="source">Half a button clipped on a phone</p></div>
+<div class="reveal"><code>physics-fall-through</code><p>Falling through solid ground</p><p class="source">A drawer stuck mid-transition</p></div>
+</div>
+<p class="source">Measured outside games so far: one <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#web-checkout">web checkout page</a>, desktop and phone (<a href="https://github.com/Expectrail/Expectrail/actions/runs/41109233666">run 41109233666</a>). Canvas, WebGL and native mobile not yet run. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#unity-harness">Unity harness</a>.</p>
+</section>
+
+<section class="section" id="try" aria-labelledby="try-title"><p class="eyebrow reveal">Start here</p><h2 id="try-title" class="reveal">Install, understand, inspect</h2>
+<div class="install"><pre tabindex="0"><code>python3 -m pip install .</code></pre><p>From a checkout, Python 3.12+, Linux. Not on PyPI. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#installed-command">Install scope</a></p></div>
+<div class="evidence"><div class="grid">
+<div class="card reveal"><span class="pill">01 / Try</span><h3>Quickstart</h3><p>Six steps, no credentials. The first pass can’t accept on purpose. <a href="quickstart.html">Start</a></p></div>
+<div class="card reveal"><span class="pill">02 / Understand</span><h3>Concepts</h3><p>Checks, routes, approval and where trust ends. <a href="concepts.html">Read</a></p></div>
+<div class="card reveal"><span class="pill">03 / Inspect</span><h3>Evidence ledger</h3><p>Each capability with its test, record or run, and its limits. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md">Open</a></p></div>
+</div></div>
+<p class="try-note"><a href="run-it/">Run it</a> says whether it can start a run right now; its visitor service isn’t deployed yet. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#run-it">Status</a></p>
+</section>
+
+<section class="section split" id="limits"><h2 class="reveal">What this does not establish</h2><ul>
+<li>Routes and approved windows cover only what they exercise. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#godot-verify">Check scope</a></li>
+<li>The game writes its own frames and trace, so a malicious game could fake them. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#godot-harness">Capture limits</a></li>
+<li>No ledger row has isolated or protected grade; a verdict is not release clearance. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#replay-sandbox">Sandbox</a> · <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#signing">Signing</a></li>
+<li>Without vision settings, passing engine checks need review; the current default is tested offline. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#orchestrator">Vision default</a></li>
+<li><a href="demo/">Saved demo captures</a> are for looking; viewing them verifies nothing. <a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md#interactive-demo">Demo scope</a></li>
+</ul></section>
+</main>
+
+<footer><div class="wrap"><div class="links"><a href="./">Expectrail</a><a href="quickstart.html">Quickstart</a><a href="concepts.html">Concepts</a><a href="guides.html">Guides</a><a href="positioning.html">Positioning</a><a href="https://github.com/Expectrail/Expectrail/blob/main/docs/capabilities.md">Capability ledger</a><a href="run-it/">Run it</a><a href="release/">Release dossier</a><a href="https://github.com/Expectrail/Expectrail">Source</a></div>
+<p>Read the scope of a result before relying on it. <a href="concepts.html#clearance">A verdict is not release clearance.</a></p></div></footer>
+</body></html>

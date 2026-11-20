@@ -27,6 +27,7 @@ padding:.55rem .8rem;text-decoration:none;font-weight:600}.save:focus-visible{ou
 
 
 def local_file(root, name):
+    root = Path(root).resolve()  # one spelling for both sides, as in onboarding.resource (#378)
     path = root / name
     if path.is_symlink() or not path.resolve().is_relative_to(root) or not path.is_file():
         raise ValueError(f"Expected {name} inside the game. Check the path or run expectrail init again.")
@@ -51,6 +52,19 @@ def preview(root, uri):
         data = base64.b64encode(header + stream.read(4 * 1024 * 1024)).decode("ascii")
     return (f'<figure><img alt="{escape(path.name)}" src="data:{mime};base64,{data}">'
             f'<figcaption>{uri_text}</figcaption></figure>')
+
+
+def drawn(doc, uri):
+    """How the selected player's sprites draw ``uri``: whole, or as regions of it (#666)."""
+    lines = []
+    for s in doc.get("imageSuggestions") or []:
+        if s.get("image") != uri:
+            continue
+        size = onboarding.size_text(s["imageSize"]) if s.get("imageSize") else "size not read"
+        how = (f"draws regions {onboarding.region_text(s['regions'])} of this {size} image"
+               if s.get("regions") else f"draws this {size} image whole")
+        lines.append(f"<p><code>{escape(s['sprite'])}</code> {escape(how)}.</p>")
+    return "".join(lines)
 
 
 def download(root, config, label):
@@ -101,8 +115,11 @@ def words(values):
 def render(root, source=None):
     source, doc, config = saved_draft(root, source)
     route_name, actions = inputs(root, config)
-    info = onboarding.inspect(root)
     pending = source == PENDING
+    selected = doc.get("selectedPlayer") if pending else None
+    if selected is not None and not isinstance(selected, str):
+        raise ValueError("selectedPlayer in the binding review file must be a node path. Run init again.")
+    info = onboarding.inspect(root, selected)
     planned = None
     if pending:
         candidate = json.loads(local_file(root, route_name).read_bytes())
@@ -144,8 +161,9 @@ def render(root, source=None):
         if "texture" in binding:
             parts.append("<p>Representative image in the draft:</p>" + preview(root, binding["texture"]))
         parts.append("</article>")
-    parts.append(f'<p>Player nodes found by inspect: {words(info["players"])}. '
-                 'The images are project art. This page contains no replay measurement.</p>')
+    found = (f'Player node selected for init: {words(info["players"])}.' if selected is not None
+             else f'Player nodes found by inspect: {words(info["players"])}.')
+    parts.append(f'<p>{found} The images are project art. This page contains no replay measurement.</p>')
     if pending:
         parts.extend(f"<p>{escape(reason)}</p>" for reason in doc["unresolvedBindings"])
     parts.extend(["<h2>Save a draft config</h2>",
@@ -158,7 +176,7 @@ def render(root, source=None):
             choice = deepcopy(config)
             choice["bindings"]["player"]["texture"] = uri
             link = download(root, choice, f"Use {uri.removeprefix('res://')} and save")
-            parts.append("<article>" + preview(root, uri) + link + "</article>")
+            parts.append("<article>" + preview(root, uri) + drawn(doc, uri) + link + "</article>")
         parts.append("</div>")
     elif pending:
         parts.append("<p>No complete choice is available. Identify the player and its image in the game, "
@@ -170,16 +188,59 @@ def render(root, source=None):
 
 def main(argv):
     parser = route.Parser(prog="expectrail onboard", description=__doc__)
-    parser.add_argument("--project", required=True, type=Path, help="game folder already prepared by init")
+    parser.add_argument("--project", type=Path, help="game folder (an existing init draft or a readable project)")
+    parser.add_argument("--approve", type=Path, help="a person applies a saved answers file; never run by an agent on real specs")
+    parser.add_argument("--evidence", type=Path, help="existing clean capture folder (trace.json, replay.json, frames/)")
+    parser.add_argument("--broken", action="append", default=[], metavar="NAME=FOLDER", help="existing broken-copy capture, repeatable")
+    parser.add_argument("--recording", type=Path, help="recorded observer answers; no live model is called")
+    parser.add_argument("--godot", type=Path, help="local pinned engine for an offline clean replay")
     parser.add_argument("--source", choices=(ACTIVE, PENDING), help="which init draft to review if both exist")
     parser.add_argument("--out", type=Path, help="new page (default: expectrail-review.html in the game)")
     try:
         args = parser.parse_args(argv)
+        from expectrail import onboard_page, onboard_review
+        if args.approve:
+            if args.project or args.source or args.evidence or args.broken or args.recording or args.godot:
+                raise ValueError("Use --approve with the answers file alone.")
+            result = onboard_review.approve_answers(args.approve)
+            print(f"{len(result['approved'])} checks approved by {result['person']}. No unselected check was changed.")
+            return 0
+        if args.project is None:
+            raise ValueError("--project is required unless a person supplies --approve FILE.")
         root = args.project.resolve()
         out = args.out or root / "expectrail-review.html"
         if out.suffix.lower() != ".html":
             raise ValueError("Use a new .html file for the review page.")
-        page = render(root, args.source)
+        if out.exists() or out.is_symlink():
+            raise ValueError("The review page already exists; choose a new --out file.")
+        if args.source is None and (root / ACTIVE).exists() and (root / PENDING).exists():
+            raise ValueError("Both draft files exist; select one with --source.")
+        if args.source == PENDING or (not (root / ACTIVE).exists() and (root / PENDING).exists()):
+            # Preserve the existing unresolved-binding chooser; it cannot approve any check.
+            page = render(root, args.source)
+            state = None
+        else:
+            state = Path(tempfile.mkdtemp(dir=out.parent, prefix=".expectrail-onboard-"))
+            try:
+                broken = []
+                for item in args.broken:
+                    label, separator, folder = item.partition("=")
+                    if not separator or not label or not folder:
+                        raise ValueError("Use --broken NAME=FOLDER.")
+                    broken.append((label, Path(folder)))
+                record, details = onboard_review.prepare(root, state, source=args.source, evidence=args.evidence,
+                    broken=broken, recording=args.recording, godot=args.godot)
+                manifest = state / "review.json"
+                manifest.write_bytes(onboard_review.encoded(record))
+                (state / "timing.json").write_bytes(onboard_review.encoded(record['timing']))
+                page = onboard_page.render(record, details, state, manifest, onboard_review.sha(manifest.read_bytes()))
+                if len(page.encode()) > onboard_review.MAX_PAGE_BYTES:
+                    raise ValueError("Review previews exceed 120 KiB; use smaller frame previews or fewer draft checks.")
+                if (state / "capture").exists():
+                    __import__('shutil').rmtree(state / "capture")
+            except BaseException:
+                __import__('shutil').rmtree(state, ignore_errors=True)
+                raise
         with tempfile.NamedTemporaryFile(dir=out.parent, delete=False) as tmp:
             path = Path(tmp.name)
         try:
@@ -187,8 +248,13 @@ def main(argv):
             os.link(path, out)
         finally:
             path.unlink(missing_ok=True)
-        print(f"Open {out.resolve().as_uri()} to review the bindings.")
+        print(f"Open {out.resolve().as_uri()} to review the objects and checks.")
         return 0
+    except ModuleNotFoundError as exc:
+        if exc.name != "jsonschema":
+            raise
+        print("expectrail onboard: install the contracts extra: pip install 'expectrail[contracts]'", file=sys.stderr)
+        return 5
     except (OSError, ValueError, KeyError, TypeError) as exc:
         print(f"expectrail onboard: {exc}", file=sys.stderr)
         return 5

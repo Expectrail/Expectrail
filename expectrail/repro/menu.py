@@ -22,10 +22,12 @@ Where a project's input actions are declared is #259's ``expectrail.project/v1``
 is checked against the ``[input]`` section of the game's ``project.godot``, and a name it does not
 declare is an error, never a route that presses nothing.
 
-**Not offered to generated checks.** No offer of ``expectrail/jit/offer.py`` imports this module. A
-menu probe's difference on the coin counter is on the screen only (the engine's record has no field
-for a label's text), so a check written in today's closed language could not use it; that is #286.
-What it changes is what the evidence (``expectrail.repro.evidence``) can see.
+**Offered to generated checks under one setting only.** A menu probe's difference on the coin counter
+was screen-only in the November 13 records; the #285 audit added bounded integer Label state and a
+same-route signal comparison, tested on these routes. Since November 18 the setting
+``signals-reach-evidence-menu`` (expectrail/jit/offer.py) adds these probes to the generator's library,
+with the menu actions of the reviewed mechanics profile (``menuActions``). The action is still not in the
+catalog: only these probes press it (``offer.route_actions``). No other setting imports this module.
 
 The harness keeps running while the game pauses its tree (``harness/godot/expectrail_harness.gd``,
 ``tests/test_pause_input.py``); before November 13, 2026 a route that paused never reached its end.

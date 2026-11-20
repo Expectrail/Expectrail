@@ -27,6 +27,8 @@
   var PHASES = ["queued", "running", "publishing"];
 
   var samples = [];          // from samples.json
+  var cachedLatest = {};     // committed earlier results; never described as a new run
+  var viewSerial = 0;
   var latest = {};           // sample id -> {requestId, finishedAt}
   var publishedHere = {};    // completed runs whose status.json this visitor has read
   var open = false;
@@ -55,12 +57,27 @@
   function getJson(url, timeoutMs) {
     var ctrl = typeof AbortController === "function" ? new AbortController() : null;
     var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, timeoutMs || 10000) : null;
+    // Keep the timeout until the body has been read too, not merely until headers arrive.
     return fetch(url, { cache: "no-store", credentials: "omit", signal: ctrl ? ctrl.signal : undefined })
       .then(function (r) {
-        if (timer) clearTimeout(timer);
         return r.json().then(function (doc) { return { status: r.status, doc: doc }; },
                              function () { return { status: r.status, doc: null }; });
-      }, function (e) { if (timer) clearTimeout(timer); throw e; });
+      }).then(function (res) { if (timer) clearTimeout(timer); return res; },
+              function (e) { if (timer) clearTimeout(timer); throw e; });
+  }
+
+  function baseFor(row) { return row.cached ? "earlier/" + row.requestId + "/" : RESULTS + "/" + row.requestId + "/"; }
+  function validTime(value) { return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(value); }
+  function loadCachedLatest() {
+    return getJson("earlier/latest.json").then(function (res) {
+      var doc = res.doc;
+      if (res.status !== 200 || !isObj(doc) || doc.format !== "expectrail.run-it-latest/v1" || !isObj(doc.samples)) throw new Error("no saved index");
+      Object.keys(doc.samples).forEach(function (id) {
+        var row = doc.samples[id];
+        if (sampleById(id) && isObj(row) && typeof row.requestId === "string" && ID.test(row.requestId) && validTime(row.finishedAt))
+          cachedLatest[id] = {requestId: row.requestId, finishedAt: row.finishedAt, cached: true};
+      });
+    }).catch(function () { cachedLatest = {}; }).then(renderLatest);
   }
 
   // What a verdict looks like. Only this function decides the tone, and only one path is green.
@@ -79,7 +96,7 @@
       return { tone: "review", title: "Needs review", means: "Expectrail could not decide, so nothing was accepted. The reasons are in the evidence below." };
     }
     if (status.decision === "accept") {
-      if (v.recorded === true && v.notRecorded === 0 && v.answered > 0 && v.answered === v.asked) {
+      if (v.recorded === true && v.notRecorded === 0 && Number.isSafeInteger(v.asked) && Number.isSafeInteger(v.answered) && v.answered > 0 && v.answered === v.asked) {
         return { tone: "pass", title: "Accepted", means: "Every check passed, judged by both the engine's record and the recorded vision answers. Accepted means this change passed these checks on this route, not that the game is correct." };
       }
       return { tone: "review", title: "Needs review", means: "The result says accept, but this page cannot confirm the recorded vision answers behind it, so it does not show an accept." };
@@ -92,13 +109,51 @@
     return v.title;
   }
 
+  // The rendering environment the frames were drawn in, beside the recording's (#265, #515). It is
+  // provenance only: it never changes the verdict. The words are expectrail.recorded.rendering_sentence's,
+  // and tools/runit_smoke.py holds the two to the same text. Anything malformed shows no line.
+  var ENV_KEYS = ["name", "version", "renderer", "device"];
+  function envOk(e, nullable) {
+    if (e === null) return nullable;
+    if (!isObj(e) || Object.keys(e).length !== 4) return false;
+    return ENV_KEYS.every(function (k) {
+      return e[k] === null || (typeof e[k] === "string" && /^[ -~]{1,160}$/.test(e[k]));
+    });
+  }
+  function shortEnv(e) {
+    return (e.device || "unknown device") + ", " + (e.renderer || "unknown renderer") + ", " +
+      (e.name || "engine") + " " + (e.version || "unknown version");
+  }
+  function renderingLine(r) {
+    if (!isObj(r) || !Array.isArray(r.thisRun) || r.thisRun.length > 8 ||
+        !r.thisRun.every(function (e) { return envOk(e, false); })) return null;
+    if (r.recording !== null && !(Array.isArray(r.recording) && r.recording.length <= 8 &&
+        r.recording.every(function (e) { return envOk(e, true); }))) return null;
+    var thisRun = r.thisRun.map(shortEnv).join(" and ");
+    if (r.status === "match") return "Drawn with " + thisRun + ": the same as the recording.";
+    if (r.status === "mismatch") {
+      if (r.recording === null || r.recording.indexOf(null) !== -1) return null;
+      return "Drawn with " + thisRun + ". The recording was made with " + r.recording.map(shortEnv).join(" and ") +
+        ". A frame that draws differently gets no recorded answer.";
+    }
+    if (r.status === "unknown" && thisRun) return "Drawn with " + thisRun + ". The recording does not name the " +
+      "environment it was made in, so the two cannot be compared. A frame that draws differently gets no recorded answer.";
+    if (r.status === "unknown") return "Neither this run nor the recording names its rendering environment, so the two cannot be compared.";
+    if (r.status === "unavailable") return "This run's rendering environment was not reported, so it cannot be compared with the recording's.";
+    return null;
+  }
+
   // status.json, read defensively: anything off means "cannot tell", never a verdict.
   function usable(status, requestId, sampleId) {
     if (!isObj(status) || status.format !== "expectrail.run-it-result/v1") return false;
     if (status.requestId !== requestId || !isObj(status.sample) || status.sample.id !== sampleId) return false;
     if (["completed", "failed", "cancelled"].indexOf(status.phase) === -1) return false;
     if (["accept", "reject", "needs-review", null].indexOf(status.decision) === -1) return false;
-    if (!isObj(status.vision) || !isObj(status.receipt) || !Array.isArray(status.diagnostics)) return false;
+    if (!isObj(status.vision) || !isObj(status.receipt) || status.receipt.signed !== false || typeof status.receipt.why !== "string" || !Array.isArray(status.diagnostics)) return false;
+    var vision = status.vision;
+    if (typeof vision.recorded !== "boolean" || !Number.isSafeInteger(vision.asked) || vision.asked < 0 ||
+        !Number.isSafeInteger(vision.answered) || vision.answered < 0 || vision.answered > vision.asked ||
+        !Number.isSafeInteger(vision.notRecorded) || vision.notRecorded < 0 || vision.notRecorded > vision.asked) return false;
     return true;
   }
 
@@ -116,10 +171,10 @@
       $("standin").hidden = doc.standIn !== true;
       open = doc.open === true;
       if (open) setService("Run it is open. One run at a time, for every visitor; a run takes a few minutes.", "yes");
-      else setService("Run it is not starting runs right now. The latest finished run of each sample is below.", "no");
+      else setService("Run it is not starting runs right now. Earlier recorded results remain available below.", "no");
     }).catch(function () {
       open = false;
-      setService("Run it cannot start runs right now: the service that starts them is not reachable. The latest finished run of each sample is below, when there is one.", "no");
+      setService("Run it cannot start runs right now: the service that starts them is not reachable. Earlier recorded evidence is available below; it is not a new verification.", "no");
     }).then(renderButtons);
   }
 
@@ -186,7 +241,7 @@
       show.type = "button";
       show.hidden = true;
       show.setAttribute("data-show", s.id);
-      show.addEventListener("click", function () { showLatest(s.id, "This is the most recent finished run of this sample."); });
+      show.addEventListener("click", function () { showLatest(s.id, "This is an earlier recorded result, not a new verification."); });
       actions.appendChild(show);
       li.appendChild(actions);
       list.appendChild(li);
@@ -212,13 +267,14 @@
       latest = {};
       Object.keys(doc.samples).forEach(function (id) {
         var row = doc.samples[id];
-        if (ID.test(id) && isObj(row) && typeof row.requestId === "string" && ID.test(row.requestId)) latest[id] = row;
+        if (ID.test(id) && isObj(row) && typeof row.requestId === "string" && ID.test(row.requestId) && validTime(row.finishedAt)) latest[id] = {requestId: row.requestId, finishedAt: row.finishedAt};
       });
     }).catch(function () { latest = {}; }).then(renderLatest);
   }
 
   function latestRun(sampleId) {
-    var indexed = latest[sampleId], seen = publishedHere[sampleId];
+    var indexed = latest[sampleId], saved = cachedLatest[sampleId], seen = publishedHere[sampleId];
+    if (!indexed || (saved && saved.finishedAt > indexed.finishedAt)) indexed = saved;
     // The card index is fetched independently of the visitor's published result.
     if (!indexed || (seen && seen.finishedAt > indexed.finishedAt)) return seen;
     return indexed;
@@ -235,11 +291,15 @@
         line.textContent = ""; show.hidden = true; return;
       }
       if (!row) { line.textContent = "No finished run of this sample yet."; show.hidden = true; return; }
-      line.textContent = "Latest run: " + when(row.finishedAt) + ".";
+      var label = row.cached ? "Earlier saved run" : "Latest run";
+      line.textContent = label + ": " + when(row.finishedAt) + ".";
+      show.textContent = row.cached ? "Show saved earlier run" : "Show the latest run";
       show.hidden = false;
-      getJson(RESULTS + "/" + row.requestId + "/status.json").then(function (res) {
+      getJson(baseFor(row) + "status.json").then(function (res) {
         if (res.status === 200 && usable(res.doc, row.requestId, s.id)) {
-          line.textContent = "Latest run, " + when(row.finishedAt) + ": " + decisionWord(res.doc) + ".";
+          var current = latestRun(s.id);
+          if (!current || current.requestId !== row.requestId || Boolean(current.cached) !== Boolean(row.cached)) return;
+          line.textContent = label + ", " + when(row.finishedAt) + ": " + decisionWord(res.doc) + ".";
         }
       }).catch(function () {});
     });
@@ -247,6 +307,9 @@
 
   // ---- one run --------------------------------------------------------------------------------
   function openPanel(label, title, message) {
+    viewSerial++;
+    if (typeof window !== "undefined" && window.RunItReceipt) window.RunItReceipt.reset();
+    $("saved-findings").hidden = true; clear($("saved-findings"));
     var panel = $("run");
     panel.hidden = false;
     $("run-when").textContent = label;
@@ -319,7 +382,7 @@
     if (typeof doc.detail === "string" && doc.detail) message += " (" + doc.detail + ")";
     if (doc.reason === "circuit-open" || doc.reason === "disabled") { open = false; checkService(); }
     if (latestRun(sampleId)) {
-      showLatest(sampleId, message + " Here is the most recent finished run of this sample instead.");
+      showLatest(sampleId, message + (latestRun(sampleId).cached ? " Here is a saved earlier result instead." : " Here is the most recent finished run of this sample instead."));
     } else {
       $("run-message").textContent = message + " No earlier run of this sample is published yet.";
     }
@@ -368,8 +431,8 @@
     var s = sampleById(sampleId);
     var row = latestRun(sampleId);
     if (!s || !row) return;
-    openPanel("Earlier run, from " + when(row.finishedAt), s.title, message);
-    loadResult(row.requestId, sampleId);
+    openPanel((row.cached ? "Earlier saved run, from " : "Earlier run, from ") + when(row.finishedAt), s.title, message);
+    loadResult(row.requestId, sampleId, false, row.cached);
   }
 
   function fact(list, term, text, href) {
@@ -380,28 +443,67 @@
     list.appendChild(dd);
   }
 
-  function loadResult(requestId, sampleId, justPublished) {
+  function savedFindingsUsable(doc, status) {
+    if (!isObj(doc) || doc.format !== "expectrail.findings/v0" || doc.decision !== status.decision ||
+        !Array.isArray(doc.reasons) || !Array.isArray(doc.checks) || !doc.checks.length || !isObj(doc.counts) || !isObj(doc.observers) || doc.observers.rule !== "both") return false;
+    var counts = {pass: 0, fail: 0, "needs-review": 0};
+    for (var i = 0; i < doc.checks.length; i++) {
+      var row = doc.checks[i];
+      if (!isObj(row) || typeof row.spec !== "string" || typeof row.route !== "string" || !Object.prototype.hasOwnProperty.call(counts, row.after)) return false;
+      var measured = isObj(row.observed) && isObj(row.observed.after) ? row.observed.after : {};
+      if (row.after === "pass" && (measured.engine !== "pass" || measured.visual !== "pass")) return false;
+      if (row.after === "fail" && measured.engine !== "fail" && measured.visual !== "fail") return false;
+      counts[row.after]++;
+    }
+    if (doc.counts.checks !== doc.checks.length || doc.counts.passed !== counts.pass || doc.counts.failed !== counts.fail || doc.counts.needsReview !== counts["needs-review"]) return false;
+    if (status.decision === "accept" && (counts.pass !== doc.checks.length || doc.drafts !== 0 || doc.checkProblems !== 0)) return false;
+    if (status.decision === "reject" && counts.fail === 0) return false;
+    return true;
+  }
+
+  function savedFindings(doc) {
+    var container = $("saved-findings"); clear(container); container.hidden = false;
+    container.appendChild(el("h3", "Saved findings from this earlier run"));
+    doc.reasons.forEach(function (reason) { container.appendChild(el("p", String(reason))); });
+    var table = el("table", null, "saved-checks");
+    var header = el("tr");
+    ["Check", "Route", "Head", "Base", "Engine", "Recorded vision"].forEach(function (name) { header.appendChild(el("th", name)); });
+    table.appendChild(header);
+    doc.checks.forEach(function (row) {
+      var line = el("tr"), observed = isObj(row.observed) && isObj(row.observed.after) ? row.observed.after : {};
+      [row.spec, row.route, row.after, row.before || "not compared", observed.engine || "not recorded", observed.visual || "not recorded"].forEach(function (text) { line.appendChild(el("td", String(text))); });
+      table.appendChild(line);
+    });
+    container.appendChild(table);
+  }
+
+  function loadResult(requestId, sampleId, justPublished, cached) {
     if (!ID.test(requestId) || !ID.test(sampleId)) return;
-    var base = RESULTS + "/" + requestId + "/";
+    var base = baseFor({requestId: requestId, cached: cached}), serial = viewSerial;
     getJson(base + "status.json").then(function (res) {
       if (res.status !== 200 || !usable(res.doc, requestId, sampleId)) throw new Error("unusable");
-      if (justPublished && typeof res.doc.finishedAt === "string") {
-        publishedHere[sampleId] = { requestId: requestId, finishedAt: res.doc.finishedAt };
-      }
-      showResult(res.doc, base);
+      var status = res.doc;
+      if (cached) return getJson(base + "findings.json").then(function (findings) {
+        if (findings.status !== 200 || !savedFindingsUsable(findings.doc, status)) throw new Error("unusable saved findings");
+        if (serial !== viewSerial) return;
+        showResult(status, base, findings.doc);
+      });
+      if (serial !== viewSerial) return;
+      if (justPublished && typeof status.finishedAt === "string") publishedHere[sampleId] = {requestId: requestId, finishedAt: status.finishedAt};
+      showResult(status, base);
     }).catch(function () {
+      if (serial !== viewSerial) return;
       $("result").hidden = false;
-      var box = $("verdict");
-      box.setAttribute("data-tone", "review");
+      $("verdict").setAttribute("data-tone", "review");
       $("verdict-title").textContent = "Cannot tell";
-      $("verdict-means").textContent = "The published result could not be read, so no verdict is shown.";
-      clear($("facts"));
-      clear($("evidence-links"));
-      $("diagnostics").hidden = true;
+      $("verdict-means").textContent = "The published result could not be read consistently, so no verdict is shown. The saved earlier evidence links remain available.";
+      clear($("facts")); clear($("evidence-links")); $("diagnostics").hidden = true;
     });
   }
 
-  function showResult(status, base) {
+  function showResult(status, base, saved) {
+    var serial = viewSerial;
+    if (typeof window !== "undefined" && window.RunItReceipt) window.RunItReceipt.reset();
     var verdict = verdictOf(status);
     var v = status.vision;
     $("result").hidden = false;
@@ -424,6 +526,8 @@
       vision = "No vision answers are recorded for this sample yet, so the vision observer gave no answer.";
     }
     fact(facts, "Vision", vision);
+    var rendering = renderingLine(v.rendering);
+    if (rendering) fact(facts, "Rendering", rendering);
     var expected = status.sample.expected;
     fact(facts, "This sample", "A working install decides " + expected + ". This run " +
       (status.asExpected ? "ended as this sample is expected to end today." : "did not end as this sample is expected to end today."));
@@ -453,10 +557,18 @@
     if (status.findings === "findings.json") link("findings.json", base + "findings.json");
 
     var note = $("evidence-note");
+    if (saved) {
+      savedFindings(saved);
+      note.textContent = "This is a saved earlier result, not a new verification. Full frames are not cached here; the original published viewer is linked separately.";
+      note.hidden = false;
+      link("Original published viewer", RESULTS + "/" + status.requestId + "/viewer/evidence.html");
+      return;
+    }
     fetch(base + "viewer/evidence.html", { cache: "no-store", credentials: "omit" }).then(function (r) {
       if (!r.ok) throw new Error("missing");
       return r.text();
     }).then(function (html) {
+      if (serial !== viewSerial) return;
       if (html.length > MAX_EVIDENCE_CHARS) throw new Error("too large");
       var frame = $("viewer");
       frame.srcdoc = html;
@@ -465,10 +577,11 @@
       var dl = link("Download the evidence (one file)", blobUrl);
       dl.download = "expectrail-evidence-" + status.requestId + ".html";
     }).catch(function () {
+      if (serial !== viewSerial) return;
       note.textContent = "The evidence viewer could not be loaded. The verdict above is the published status.json's.";
       note.hidden = false;
     });
   }
 
-  loadSamples().then(function () { return Promise.all([checkService(), loadLatest()]); });
+  loadSamples().then(function () { return Promise.all([loadCachedLatest(), checkService(), loadLatest()]); });
 })();

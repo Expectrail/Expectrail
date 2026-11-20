@@ -1,7 +1,15 @@
 {
  "format": "expectrail.jit-run/v1",
- "runId": "example-withheld",
+ "runId": "out-fix-wrong-withheld",
  "advisory": true,
+ "provenance": {
+  "generatorVersion": "0.1.0",
+  "modelVersion": "muse-spark-1.3",
+  "assessmentDiffClaims": [
+   "player.jump",
+   "player.facing"
+  ]
+ },
  "status": "complete",
  "reason": null,
  "inputs": {
@@ -10,7 +18,7 @@
   "basePatchSha256": [
    "cd11e09f47aebbc823f2c6e4968876698b9c8d5332e81392f4baec03473f532f"
   ],
-  "profileSha256": "7ad60a7ddc662fab9bcade5b743a34278a3b1a3f14af59a23f6e38a902fe65ec",
+  "profileSha256": "e5fbddb4b9b1ad1028294bcb4e1c67fb7553179e9a7b508f99e279349c603bcb",
   "model": "muse-spark-1.3",
   "promptSha256": "7222d51bc71cbe70237844c68498a694bb7c8da10779bbe93536917a5eb4d30b"
  },
@@ -220,7 +228,41 @@
     "fail",
     "fail"
    ],
-   "outcome": "catch"
+   "outcome": "catch",
+   "base": [
+    "fail",
+    "fail",
+    "fail"
+   ],
+   "variantResults": {
+    "base": [
+     "fail",
+     "fail",
+     "fail"
+    ]
+   },
+   "exercised": {
+    "reference": [
+     true,
+     true,
+     true
+    ],
+    "base": [
+     true,
+     true,
+     true
+    ],
+    "candidate": [
+     true,
+     true,
+     true
+    ],
+    "v-variant-airjump": [
+     true,
+     true,
+     true
+    ]
+   }
   },
   {
    "specId": "jit-always-passes",
@@ -235,7 +277,29 @@
     "killed no near-miss variant"
    ],
    "candidate": [],
-   "outcome": "not-evaluated"
+   "outcome": "not-evaluated",
+   "base": [
+    "pass"
+   ],
+   "variantResults": {
+    "base": [
+     "pass"
+    ]
+   },
+   "exercised": {
+    "reference": [
+     true,
+     true,
+     true
+    ],
+    "base": [
+     true
+    ],
+    "candidate": [],
+    "v-variant-airjump": [
+     true
+    ]
+   }
   },
   {
    "specId": "jit-miscalibrated",
@@ -248,7 +312,17 @@
     "did not pass on the reference: fail"
    ],
    "candidate": [],
-   "outcome": "not-evaluated"
+   "outcome": "not-evaluated",
+   "base": [],
+   "variantResults": {},
+   "exercised": {
+    "reference": [
+     true
+    ],
+    "base": [],
+    "candidate": [],
+    "v-variant-airjump": []
+   }
   }
  ],
  "catches": [

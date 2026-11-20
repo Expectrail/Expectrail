@@ -152,10 +152,28 @@ def extract_unified_diff(text: str) -> str:
 
 def _collect_candidate_files(worktree: Path, max_files: int = 12, max_bytes: int = 32000) -> str:
     """Gather editable text/scene/script files in the worktree for direct BYO-LLM patch generation."""
-    exts = {".gd", ".tscn", ".tres", ".py", ".js", ".ts", ".html", ".css", ".json"}
+    exts = {".godot", ".gd", ".tscn", ".tres", ".py", ".js", ".ts", ".html", ".css", ".json"}
     chunks: list[str] = []
     total = 0
-    for path in sorted(worktree.rglob("*")):
+    # Preserve the same context limits, but follow the entry scene's immediate
+    # code/scene references before ancillary UI files. This selects source only,
+    # never checks or report-supplied paths. All paths stay in the workspace.
+    priority = {'project.godot': 0}
+    settings = worktree / 'project.godot'
+    if settings.is_file() and not settings.is_symlink():
+        match = re.search(r'^run/main_scene="res://([^"\n]+)"', settings.read_text(), re.M)
+        if match:
+            name = match.group(1)
+            entry = worktree / name
+            if '..' not in Path(name).parts and entry.resolve().is_relative_to(worktree.resolve()) and entry.is_file():
+                priority[name] = 1
+                for n, name in enumerate(re.findall(r'path="res://([^"\n]+)"', entry.read_text()), start=2):
+                    if '..' not in Path(name).parts and (worktree/name).resolve().is_relative_to(worktree.resolve()):
+                        priority.setdefault(name,n)
+    def source_order(path):
+        name = path.relative_to(worktree).as_posix()
+        return priority.get(name,100),name
+    for path in sorted(worktree.rglob("*"), key=source_order):
         if not path.is_file() or path.suffix not in exts:
             continue
         rel = path.relative_to(worktree)
@@ -179,9 +197,11 @@ def run_llm_patch_fixer(
     model: str | None = None,
 ) -> dict[str, Any]:
     """Generate and apply a unified git diff directly via any BYO-LLM API without requiring a local agent CLI."""
-    from expectrail.fixer_budget import start
-    start(out_patch.parent / "fixer-invocation.json")
+    from expectrail.fixer_budget import start, _cap
+    if not _cap():
+        start(out_patch.parent / "fixer-invocation.json")
     cfg = resolve_provider(role="FIXER", model=model if model not in ("muse-code", "llm-patch") else None)
+    invocation = start(out_patch.parent / "fixer-invocation.json", config=cfg)
     repo_context = _collect_candidate_files(worktree)
     messages = [
         {
@@ -198,7 +218,10 @@ def run_llm_patch_fixer(
             "content": f"{prompt_text}\n\nRepository Files:\n{repo_context}",
         },
     ]
-    raw = chat_completion(messages, role="FIXER", config=cfg, max_tokens=4096, temperature=0.0)
+    try:
+        raw = chat_completion(messages, role="FIXER", config=cfg, max_tokens=int(os.environ.get("EXPECTRAIL_FIXER_OUTPUT_TOKENS", "4096")), temperature=0.0, invocation=invocation)
+    finally:
+        invocation.finish()
     reply_text = extract_message_text(cfg, raw)
     diff_text = extract_unified_diff(reply_text)
     if not diff_text:
@@ -249,7 +272,8 @@ def run_byo_agent(
     returns a synthetic process (exit 0 when the diff applied, 1 when it did not).
     """
     from expectrail.fixer_budget import start
-    start(out / "fixer-invocation.json")
+    if agent != "llm-patch":
+        start(out / "fixer-invocation.json")
     from agents.gateway import BYO_GATEWAY_ENV, byo_gateway
     from agents.keys import BYO_AGENT_KEY_ENVS, byo_agent_env
     from agents.sandbox import detect_sandbox, muse_kind_for, run_sandboxed

@@ -27,6 +27,8 @@ from typing import Any, Callable
 
 from expectrail.providers import (
     PROVIDER_DEFAULTS,
+    OutputLimitReached,
+    response_stop_reason,
     chat_completion,
     extract_message_text,
     resolve_provider,
@@ -45,10 +47,9 @@ PROBED = ("anthropic", "openai", "gemini", "openrouter", "baseten", "meta")
 # Short and answerable by any instruction-following model. The reply is not parsed: the probe asserts
 # that text came back, not what it says, so a model's wording can never fail CI.
 PROMPT = "Reply with the single word: ok"
-# Generous on purpose. At 16 a model that spends tokens before it speaks returns no visible text and
-# the probe calls a healthy provider broken; its first run did exactly that to Spark Open and Muse
-# Spark. The cost of 256 is still a rounding error, and an empty answer now carries the stop reason
-# so truncation is never mistaken for a provider that said nothing.
+# Default remains bounded at 256. Muse Spark Open always reasons; its separate
+# reviewed capability record supplies input/output limits and the token tariff.
+# Neither allowance guarantees an answer: a cut-off is a named failure.
 MAX_TOKENS = 256
 # The probe never holds the verifier's SAM key (MODEL_API_KEY): for meta it reads META_API_KEY only,
 # so a key the verifier owns is not spread into a job that does not need it.
@@ -70,22 +71,46 @@ def has_key(provider: str, env: dict[str, str] | None = None) -> bool:
     return any((src.get(name) or "").strip() for name in key_envs(provider))
 
 
-def stop_reason(raw: dict[str, Any]) -> str:
-    """Why the model stopped, as the provider reported it.
+# Keep the public helper name; stop-reason parsing belongs to the shared sender.
+stop_reason = response_stop_reason
 
-    An empty answer has two very different causes — the model said nothing, or it ran out of tokens
-    before it said anything — and only the stop reason tells them apart. ``chat_completion``
-    normalises an Anthropic reply into the OpenAI shape and keeps the original under ``raw``, so both
-    spellings are looked for.
+
+def smoke_policy(config=None) -> dict[str, Any]:
+    """Read the reviewed smoke allowance without a key or third-party packages.
+
+    This is a smoke-only tariff, not a fixer admission or a triage dollar hold.
+    An overridden Baseten model/endpoint must get its own reviewed record.
     """
-    choices = raw.get("choices") or []
-    if choices and choices[0].get("finish_reason"):
-        return f"finish_reason={choices[0]['finish_reason']}"
-    inner = raw.get("raw") if isinstance(raw.get("raw"), dict) else {}
-    for source in (raw, inner):
-        if source.get("stop_reason"):
-            return f"stop_reason={source['stop_reason']}"
-    return "no stop reason reported"
+    import json
+    from expectrail import resources
+    from expectrail.gate.record import read_json, validate
+
+    path = resources.ROOT / "contracts/examples/provider-capabilities/baseten.json"
+    doc = read_json(path, label="Baseten capability record")
+    schema = json.loads((resources.ROOT / "contracts/provider-capability.v1.schema.json").read_text())
+    if (doc.get("format"), doc.get("provider"), doc.get("protocol")) != (
+            "expectrail.provider-capability/v1", "baseten", "openai"):
+        raise RuntimeError("not the Baseten capability record; no request sent")
+    policy = doc.get("textSmoke")
+    validate(policy, schema["properties"]["textSmoke"])
+    from datetime import date
+    date.fromisoformat(policy["checkedOn"])
+    if policy["model"] not in {m for role in doc["roles"] for m in role["models"]}:
+        raise RuntimeError("smoke model is not listed in the capability record; no request sent")
+    if config is not None and (config.model != policy["model"] or config.api_base != policy["apiBase"]):
+        raise RuntimeError("no recorded smoke allowance for this Baseten model/endpoint; no request sent")
+    return policy
+
+
+def smoke_cost_nano_usd(policy: dict[str, Any]) -> int:
+    return policy["maxAttempts"] * (policy["maxInputTokens"] * policy["inputNanoUsdPerToken"]
+                                    + policy["maxOutputTokens"] * policy["outputNanoUsdPerToken"])
+
+
+def smoke_plan(policy: dict[str, Any]) -> str:
+    return (f"at most {policy['maxAttempts']} request, {policy['maxInputTokens']} input tokens and "
+            f"{policy['maxOutputTokens']} output tokens including reasoning; "
+            f"token charge at recorded rates <= ${smoke_cost_nano_usd(policy) / 1_000_000_000:.6f}")
 
 
 def probe(
@@ -102,9 +127,16 @@ def probe(
     except RuntimeError as exc:  # a key was present but the provider could not be configured
         return {"provider": provider, "model": None, "result": "fail", "detail": str(exc)}
     try:
+        policy = smoke_policy(cfg) if provider == "baseten" else None
         raw = chat_completion([{"role": "user", "content": PROMPT}], config=cfg,
-                              max_tokens=MAX_TOKENS, transport=transport)
+                              max_tokens=policy["maxOutputTokens"] if policy else MAX_TOKENS,
+                              truncate_prompt_tokens=policy["maxInputTokens"] if policy else None,
+                              max_attempts=1, transport=transport)
         text = extract_message_text(cfg, raw)
+    except OutputLimitReached as exc:
+        return {"provider": provider, "model": cfg.model, "result": "output-limit",
+                "detail": str(exc), "code": exc.code, "requestedOutputTokens": exc.limit,
+                "reportedOutputTokens": exc.output_tokens, "reportedReasoningTokens": exc.reasoning_tokens}
     except Exception as exc:  # noqa: BLE001 - any provider-side failure is a result, not a crash
         return {"provider": provider, "model": cfg.model, "result": "fail",
                 "detail": f"{type(exc).__name__}: {' '.join(str(exc).split())[:400]}"}
@@ -126,9 +158,10 @@ def lines(rows: list[dict[str, Any]]) -> list[str]:
             out.append(f"::notice title=BYO smoke {row['provider']} skipped::{row['detail']}")
         else:
             out.append(f"::error title=BYO smoke {row['provider']}::{where}: {row['detail']}")
-    counts = {r: sum(1 for row in rows if row["result"] == r) for r in ("ok", "fail", "skipped")}
+    counts = {r: sum(1 for row in rows if row["result"] == r) for r in ("ok", "skipped", "output-limit")}
+    counts["fail"] = sum(row["result"] not in ("ok", "skipped") for row in rows)
     out.append(f"::notice title=BYO smoke::{counts['ok']} answered, {counts['fail']} failed, "
-               f"{counts['skipped']} skipped (no key)")
+               f"{counts['skipped']} skipped (no key); {counts['output-limit']} output-limit-before-text")
     return out
 
 
@@ -137,15 +170,17 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--provider", nargs="+", choices=PROBED, help="default: every provider with a key")
     p.add_argument("--list", action="store_true", help="print what would run and make no calls")
     args = p.parse_args(argv)
-    wanted = args.provider or list(PROBED)
+    wanted = list(dict.fromkeys(args.provider or PROBED))
     if args.list:
         for name in wanted:
             print(f"{name}: {'would call' if has_key(name) else 'skipped (no key)'}")
+            if name == "baseten":
+                print(f"  {smoke_plan(smoke_policy())}")
         return 0
     rows = [probe(name) for name in wanted]
     for line in lines(rows):
         print(line)
-    return 1 if any(row["result"] == "fail" for row in rows) else 0
+    return 1 if any(row["result"] not in ("ok", "skipped") for row in rows) else 0
 
 
 if __name__ == "__main__":

@@ -1,7 +1,9 @@
 import json
+import tempfile
 import unittest
 from pathlib import Path
 
+from expectrail import contracts
 from expectrail.contracts import KINDS, ContractError, digest, kind_of, validate
 
 EXAMPLES = Path(__file__).resolve().parent.parent / "contracts" / "examples"
@@ -107,6 +109,65 @@ class ContractsTest(unittest.TestCase):
     def test_digest_ignores_key_order(self):
         self.assertEqual(digest({"a": 1, "b": [1, 2]}), digest({"b": [1, 2], "a": 1}))
         self.assertNotEqual(digest({"a": 1}), digest({"a": 2}))
+
+
+class V1RegistryTest(unittest.TestCase):
+    def test_every_v1_schema_is_registered_once(self):
+        files = {path.name for path in contracts.SCHEMAS.glob("*.v1.schema.json")}
+        registered = [filename for _, filename in contracts.V1_FORMATS.values()]
+        self.assertCountEqual(registered, files)
+        for format_id, (kind, filename) in contracts.V1_FORMATS.items():
+            with self.subTest(filename=filename):
+                self.assertEqual(contracts.v1_kind({"format": format_id}), kind)
+                self.assertEqual(contracts.schema_v1(kind), json.loads((contracts.SCHEMAS / filename).read_bytes()))
+
+    def test_pre_derivation_mappings_are_identical(self):
+        # Frozen snapshot of main 2e014e1. New schemas do not need a line here.
+        previous = {
+            f"expectrail.{kind}/v1": (kind, f"{kind}.v1.schema.json")
+            for kind in (
+                "repair-publication", "onboard-review", "onboard-answers", "onboard-timing",
+                "template-closeout", "observer-calibration", "playtest-reproduction", "episode",
+                "trace-spec", "trace-verdict", "mechanics-profile", "discovery-run", "jit-run",
+                "pixel-check", "project", "fixer-invocation", "repair-run",
+            )
+        }
+        current = {name: contracts.V1_FORMATS.get(name) for name in previous}
+        self.assertEqual(current, previous)
+
+    def test_a_new_schema_uses_its_format_const_or_id(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            (folder / "check.v1.schema.json").write_text(json.dumps(
+                {"properties": {"format": {"const": "expectrail.check/v1"}}}))
+            (folder / "api.v1.schema.json").write_text(json.dumps(
+                {"$id": "https://expectrail.tech/contracts/api.v1.schema.json"}))
+            self.assertEqual(contracts._v1_formats(folder), {
+                "expectrail.api/v1": ("api", "api.v1.schema.json"),
+                "expectrail.check/v1": ("check", "check.v1.schema.json"),
+            })
+
+    def test_two_files_claiming_one_format_name_both_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            (folder / "one.v1.schema.json").write_text(json.dumps(
+                {"properties": {"format": {"const": "expectrail.one/v1"}}}))
+            (folder / "two.v1.schema.json").write_text(json.dumps(
+                {"$id": "https://expectrail.tech/contracts/one.v1.schema.json"}))
+            with self.assertRaisesRegex(ContractError, r"expectrail\.one/v1.*one\.v1\.schema\.json.*two\.v1\.schema\.json"):
+                contracts._v1_formats(folder)
+
+    def test_unreadable_schema_or_format_names_the_file(self):
+        cases = ('{}', '[]', '{', '{"$id": 7}', '{"$id": "https://example.test/unknown"}',
+                 '{"properties": {"format": {"const": "expectrail.invalid/v0"}}}')
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            bad = folder / "bad.v1.schema.json"
+            for content in cases:
+                with self.subTest(content=content):
+                    bad.write_text(content)
+                    with self.assertRaisesRegex(ContractError, r"bad\.v1\.schema\.json"):
+                        contracts._v1_formats(folder)
 
 
 if __name__ == "__main__":

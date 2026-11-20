@@ -1,0 +1,12 @@
+{
+  "format": "expectrail.onboard-answers/v1",
+  "reviewFile": "/tmp/expectrail-onboard-example/review.json",
+  "reviewSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "person": "Example reviewer",
+  "openedAt": "2026-11-16T00:00:03Z",
+  "answeredAt": "2026-11-16T00:00:04Z",
+  "objects": {
+    "player": false
+  },
+  "checks": {}
+}

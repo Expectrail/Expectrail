@@ -54,7 +54,7 @@ pixel centre to the nearest original player pixel centre. RGBA channels are comp
 
 The renderer comparison covers the two saved 180-frame captures. Of these, 179 PNG hashes are
 identical; only frame 111 differs. The 2 changed pixels are at (220,318), red 47→46, and (215,324),
-green 74→73. Both captures report Godot 4.7.2 and OpenGL3; the device strings report LLVM 20.1.2
+green 74→73 and blue 90→89. Both captures report Godot 4.7.2 and OpenGL3; the device strings report LLVM 20.1.2
 and 19.1.7. This establishes image differences alongside renderer differences, not a controlled
 causal isolation of driver versions.
 
@@ -80,3 +80,5 @@ evidence, not a new full verification or a new engine run. The full capture scri
 in the handover. The unchanged project therefore still cannot be accepted on both renderer builds
 from this recording. A renderer-matched recording or a separately demonstrated safe spatial
 policy remains a decision for Sean; no new answer was recorded or fabricated here.
+
+The [closeout audit](recorded-renderer-closeout.md) maps these cases to tests and explains local skips versus required capture failures.

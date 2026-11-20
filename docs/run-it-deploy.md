@@ -6,11 +6,13 @@ This is Sean's launch checklist. It uses the existing static page at
 the three original samples use their recorded vision answers. The fourth card is
 not ready until its repair recording exists. Do not run the recording workflow to deploy.
 
-**Status:** the code and smoke checks have been tested offline. This account setup,
-DNS change, deployment and live visitor check have **not been run**. Dashboard
-labels below follow the linked public documentation, checked November 15, 2026;
-they have not been checked inside Sean's accounts. If a screen differs, stop at
-that step rather than grant broader access.
+**Recorded launch:** Sean deployed the service and recorded the initial live
+visitor runs on November 17; see [the launch evidence](new-work/2026-11-17-runit-live.md).
+The page reads the present admission switch. The bounded-status/native-runtime
+change described in [status deadlines](run-it-status-bound.md) is tested locally
+and has **not been deployed**. This remains the operator checklist. Dashboard
+labels follow public documentation checked November 15; if a screen differs,
+review that step rather than grant broader access.
 
 ## What is needed, and who supplies it
 
@@ -124,6 +126,11 @@ fresh quota counters. Never delete storage to reset a quota.
 
 ## D. Add the two runtime secrets in the dashboard
 
+**Before this section:** the `spend` environment must exist and the change that moves every model-key
+job into it must be merged ([spend-environment.md](spend-environment.md)). A fine-grained token cannot be
+limited to one workflow: with Actions write it can start any workflow, Run it's or a paid one. With
+`spend` in place, a paid run it starts waits for Sean's approval and spends nothing without it.
+
 50. Open GitHub **Settings → Developer settings → Personal access tokens → Fine-grained tokens** from your profile menu (not repository Settings).
 51. Select **Generate new token**.
 52. Name it `Expectrail Run it dispatch`.
@@ -185,9 +192,14 @@ A 403/401 dispatch refusal usually means token permission, approval or expiry;
 fix the token in Secrets. Explicit refusals refund the reservation and impose a
 one-minute dispatch cooldown. A lost reply or upstream server error instead keeps
 the reservation: the request ID may already be running. Follow its status rather
-than starting another run. Lost runs fail after five minutes; the service gives
-up tracking an active run after thirty minutes. Neither timeout asserts that a
-GitHub process was cancelled. A queued smoke timeout is a FAIL, not a fresh start.
+than starting another run. A successful empty run-list read after five minutes,
+or a successful observation of an active run after thirty, ends tracking as failed.
+An unreadable or expired refresh keeps the last state and reservation; age alone
+does not infer failure or free another start. Neither tracking limit asserts that
+a GitHub process was cancelled. The status answer waits at most 250 ms for
+freshness; one refresh shares a two-second upstream deadline, including bodies.
+The smoke allows five seconds per poll within its overall wait. A queued smoke
+timeout is a FAIL, with no fresh start.
 
 ## Cost boundaries and work still left
 
@@ -210,10 +222,30 @@ and [Custom Domains](https://developers.cloudflare.com/workers/configuration/rou
 are the deployment references.
 
 No workflow edit is needed for the first deployment. The #265 nightly platform
-check remains: Sean must arrange a scheduled job that runs the smoke command on
-the deployed URL, retains output, and follows the published result/evidence.
-It should use recorded samples, no secret and no new write permission; coordinate
-its one daily reservation with visitor quotas. No workflow was changed here.
+check is `.github/workflows/run-it-nightly.yml` ("Run it nightly"): once a day
+(09:17 UTC) and by hand, with `contents: read`, no secret, no environment and no
+model. It runs the deployed HTTP smoke against `https://api.expectrail.tech` with
+`--follow` and keeps its output as the `run-it-nightly` artifact for 30 days.
+
+- While the repository variable `RUN_IT_EXPECT_OPEN` is unset or `false`, it is
+  the closed check: health, origin refusal, and that admissions are closed. It
+  starts nothing.
+- When Sean opens admissions, he also sets `RUN_IT_EXPECT_OPEN` to `true`
+  (Settings, Secrets and variables, Actions, Variables). From then on it starts
+  one recorded sample a day (`clean`, `fall-through-bug` and
+  `fall-through-repair` in turn), waits for `published`, and reads the published
+  `status.json`, `findings.json`, the evidence viewer and `latest.json` from the
+  address the page uses (`tools/runit_published.py`). It fails if the decision is
+  not the sample's expected one, if any vision question went without a recorded
+  answer, or if anything cannot be read. It uses one of the day's 40 admissions
+  and the address quota of the runner it lands on; if a visitor's run is active
+  at that moment it reports the refusal as a FAIL and does not retry.
+- If the variable and the service disagree, the run fails at `RUN_IT_OPEN`: that
+  is the check telling Sean the switch is not where he thinks.
+
+It depends on the smoke's own `User-Agent` (#576): without it the deployed
+service's Cloudflare check refuses the smoke at `health`.
 Also still needed: a deployed concurrent burst, a first visitor's usability test,
 and signed receipts (#255). The current page honestly labels receipts unsigned.
-The live launch has not been demonstrated until section E's evidence exists.
+Section E's initial live evidence is recorded in [the November 17 launch log](new-work/2026-11-17-runit-live.md).
+Deployment of this status/runtime patch and its hosted CI proposal remain Sean's steps.
