@@ -11,8 +11,9 @@ required. Open the full address it prints. Keep that process running while using
 The address is on `127.0.0.1`, with a free port and a new token each time. Do not share it.
 The app serves its own page without downloading scripts, styles or fonts.
 
-1. Paste the full paths to **Before** and **After**, two Godot project folders. Each has
-   `project.godot`. To verify, each also needs its own [project config](project-config.md), `expectrail.project.json`.
+1. For **Before** and **After**, paste the full path to each Godot project folder or its
+   `project.godot` file. Either input selects the containing project, including its routes
+   and checks. To verify, each also needs its own [project config](project-config.md), `expectrail.project.json`.
    Git references are not supported in this screen.
 2. The config's `routes` and `approvedContracts` lists choose the policy. The base config
    chooses what judges both copies. A config produced by `expectrail init` is a draft and
@@ -48,7 +49,8 @@ The app serves its own page without downloading scripts, styles or fonts.
    folder, an existing setup file or an unsupported route stops the save. The app gives
    the reason and the **Check folders** action lets you start a new review.
 
-   **Older projects without a config** retains the explicit path inputs for existing checkouts.
+   **Older projects without a config** uses folder paths for Before and After, with explicit
+   game, route and check paths relative to each folder.
 4. Select **Verify**. The app and `expectrail verify --project AFTER --base BEFORE` prepare
    the same kind of request and use the same worker. The job snapshots both games and the
    selected policy bytes outside your source folders. The page shows phases; **Cancel** asks
@@ -62,8 +64,9 @@ The app serves its own page without downloading scripts, styles or fonts.
 ### Local player preview API
 
 The page sends an authenticated `POST /api/inspect` with `projectConfig: true` and
-`folder` for each side. A missing `expectrail.project.json` still returns HTTP 400 with
-`state: "could-not-be-carried-out"` and the existing human-readable `detail`. For an
+`folder` for each side. This field accepts a directory or its regular `project.godot` file.
+A missing `expectrail.project.json` still returns HTTP 400 with
+`state: "could-not-be-carried-out"` and the existing human-readable `detail`. For a
 project with player candidates and no saved draft, the same response includes a `setupPreview` object.
 Its `players` array supplies the options, `selectedPlayer` is null and `imageSuggestions`
 is empty. The page sends the chosen node to the same endpoint, for example:

@@ -95,6 +95,22 @@ def configured(body):
     return value
 
 
+class InvalidProjectPath(ValueError):
+    """The submitted path could not identify a local project folder."""
+
+
+def project_folder(body, name):
+    path = Path(field(body, name)).expanduser()
+    if path.name == 'project.godot':
+        if path.is_symlink():
+            raise InvalidProjectPath(f'{path} is a symbolic link. Choose the original project.godot or its folder.')
+        if path.is_file():
+            return path.parent
+    if path.is_dir():
+        return path
+    raise InvalidProjectPath(f'Choose an existing project folder or its project.godot file. Could not use {path}.')
+
+
 def saved_route_guidance(root, saved, info):
     """Read init's content-addressed first route without running input discovery."""
     from expectrail import onboard
@@ -154,7 +170,7 @@ def setup_preview(root, player=None, remember=None):
 def inspect_project(body, *, remember=None):
     if configured(body):
         from expectrail import project_config, renderer
-        root = Path(field(body, 'folder')).expanduser()
+        root = project_folder(body, 'folder')
         descriptor = root / 'project.godot'
         if not os.path.lexists(root / project_config.FILENAME) and not descriptor.is_symlink() and descriptor.is_file():
             try:
@@ -242,7 +258,7 @@ class App:
 
         if set(body) != {'side', 'folder', 'player', 'review'}:
             raise ValueError('Choose a player, review the proposed save and confirm it.')
-        side, root = field(body, 'side'), Path(field(body, 'folder')).expanduser().resolve()
+        side, root = field(body, 'side'), project_folder(body, 'folder').resolve()
         with self.setup_lock:
             record = self.setup_reviews.get(side)
             if record is None:
@@ -281,7 +297,7 @@ class App:
 
     def create(self, body):
         if configured(body):
-            doc = project_job.prepare(self.store, Path(field(body, 'after')), Path(field(body, 'before')),
+            doc = project_job.prepare(self.store, project_folder(body, 'after'), project_folder(body, 'before'),
                                       execution_class=execution_class(body), require_ready=True)
         else:
             doc = build(body)
@@ -597,6 +613,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(200, data, 'text/html; charset=utf-8' if parts == ['index.html'] else 'image/png',
                                   report=True)
             raise UnknownJob('No such page.')
+        except InvalidProjectPath as exc:
+            self.problem(400, str(exc), jobStarted=False)
         except project_job.ProjectNotReady as exc:
             self.problem(400, f'Before is not ready for verification. {exc}', jobStarted=False)
         except MissingConfig as exc:
