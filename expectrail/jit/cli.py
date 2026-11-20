@@ -133,6 +133,22 @@ def render(doc: dict) -> str:
             f"{c['class']}: {c['mode']} ({', '.join(c['files'])})" if c["patchSha256"]
             else f"{c['class']}: none ({(c['reason'] or '').replace('|', '/')})" for c in doc["doNothing"]))
         lines.append("")
+    if "metamorphic" in doc:
+        rows = doc["metamorphic"]
+        lines += [f"Metamorphic checks (#675), advisory and never counted: {len(rows)} offered, "
+                  f"{sum(1 for r in rows if r['valid'])} valid, {sum(1 for r in rows if r['outcome'] == 'catch')} "
+                  f"fail on the candidate.", ""]
+        if rows:
+            lines += ["| Metamorphic check | Valid | Reference | Do-nothing control | Base | Candidate | Outcome | Why not valid |",
+                      "| --- | --- | --- | --- | --- | --- | --- | --- |"]
+            for r in rows:
+                dn = r["doNothing"]
+                dn_text = dn["outcome"] + (f" ({', '.join(dn['runs'])})" if dn["runs"] else "")
+                lines.append(f"| `{r['spec']['id']}` | {'yes' if r['valid'] else 'no'} | {', '.join(r['reference']) or 'not run'} | "
+                             f"{dn_text} | "
+                             f"{', '.join(r['base']) or 'not run'} | {', '.join(r['candidate']) or 'not run'} | "
+                             f"{r['outcome']} | {'; '.join(r['reasons']).replace('|', '/')} |")
+            lines.append("")
     if doc["validity"]:
         lines += ["| Check | Valid | Reference | Do-nothing control | Outcome | Why not valid |",
                   "| --- | --- | --- | --- | --- | --- |"]
@@ -396,6 +412,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--spark-usd-per-mtok-out", type=float)
     r.add_argument("--run-id")
     r.add_argument("--proposal", type=Path, help="replay a saved proposal instead of calling the model")
+    r.add_argument("--metamorphic", action="store_true",
+                   help="also offer mirror-inputs metamorphic checks (#675), judged by the same rule; advisory rows only")
     r.add_argument("--game", type=Path, help="the reference game (default: game/platformer in this checkout)")
     r.add_argument("--withhold-candidate", action="store_true",
                     help="give the model no byte of the candidate patch (issue #285, step 6)")
@@ -669,7 +687,7 @@ def main(argv: list[str] | None = None) -> int:
         doc = generate(args.profile, report, args.candidate, args.base, args.out, intent=intent,
                        budget_usd=args.budget_usd, prices=prices, reps=args.reps, variant_limit=args.variant_limit,
                        run_id=args.run_id, game=args.game, offer=args.offer,
-                       candidate_to_model=_candidate(args), observer=observer,
+                       candidate_to_model=_candidate(args), observer=observer, metamorphic=args.metamorphic,
                        **_pixel_jobs_kwargs(args))
         (args.out / "jit-report.md").write_text(render(doc) + "\n", encoding="utf-8")
         print(json.dumps({"status": doc["status"], "reason": doc["reason"], "counts": doc["counts"],

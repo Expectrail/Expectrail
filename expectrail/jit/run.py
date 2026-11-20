@@ -176,7 +176,8 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
              variant_limit: int = 8, approved_claims: frozenset[str] = frozenset(),
              run_id: str | None = None, clock=time.monotonic, offer: str = offer_mod.BASELINE,
              candidate_to_model: str = "shown", observer=None, frame_runner=None,
-             pixel_capture: Path | None = None, report_route: dict | None = None, do_nothing=None) -> dict:
+             pixel_capture: Path | None = None, report_route: dict | None = None, do_nothing=None,
+             metamorphic: bool = False) -> dict:
     """One change: propose, replay, judge. ``candidate_to_model`` is ``shown`` (the default) or
     ``withheld``: under ``withheld`` the intent is given no byte of the candidate patch and no diff map made
     from it (issue #285, step 6), and the record says so in ``settings.candidate``. The candidate is
@@ -194,7 +195,15 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
     ``do_nothing`` gives the do-nothing controls (#675): a callable ``(classes) -> [control]`` as
     expectrail/jit/do_nothing.py ``controls`` returns them, or ``False`` for none. Left ``None``, a run on
     the real harness (no ``runner``) makes them from ``game`` and the profile; a run with a ``runner``
-    (a test double or a recorded replay) gets none, and each check's row says so."""
+    (a test double or a recorded replay) gets none, and each check's row says so.
+
+    ``metamorphic`` (#675, piece 3) also offers mirror-inputs metamorphic checks
+    (expectrail/jit/metamorphic.py, ``offer``), after the proposed checks are judged, under the same rule:
+    pass every clean run, not pass every run of the do-nothing control, fail every run of a near miss. They
+    need no model and no reference answer. Their rows are the record's ``metamorphic``: advisory, never in
+    ``catches``, ``counts``, the gate summary or the counting audit. Running out of budget or a replay error
+    in this stage leaves the proposed checks' results as they are, and the rows say why they were not
+    evaluated."""
     from expectrail.jit.intent import check_candidate
 
     offer_mod.replayable(offer)
@@ -232,7 +241,7 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
     try:
         _pipeline(profile, report, cand_bytes, Path(candidate), list(base_patches), out, runner, intent,
                   variants_fn, game, spend, reps, variant_limit, approved_claims, state, diagnostics, clock, offer,
-                  candidate_to_model, report_route, controls_fn)
+                  candidate_to_model, report_route, controls_fn, metamorphic)
     except (PatchError, NothingGenerated) as exc:
         status, reason = "nothing-generated", " ".join(str(exc).split())[:300]
     except Exception as exc:  # noqa: BLE001 - rule 3: anything unexpected is "nothing generated", never a pass
@@ -241,6 +250,8 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
     if status != "complete":
         state["catches"] = []
         for row in state["pixelChecks"]:
+            row["outcome"] = "not-evaluated"
+        for row in state.get("metamorphic", []):
             row["outcome"] = "not-evaluated"
     doc = {
         "format": FORMAT,
@@ -269,6 +280,9 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
     }
     if offer_mod.offers_pixel(offer):
         doc["pixelChecks"] = state["pixelChecks"]
+    if metamorphic:
+        doc["settings"]["metamorphic"] = True
+        doc["metamorphic"] = state.get("metamorphic", [])
     try:
         validate_v1(doc, "jit-run")
     except Exception as exc:  # noqa: BLE001 - rule 3 holds even for a record we could not write as built
@@ -277,6 +291,8 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
                    counts={"proposed": 0, "valid": 0, "strong": 0, "weak": 0})
         if "pixelChecks" in doc:
             doc["pixelChecks"] = []
+        if "metamorphic" in doc:
+            doc["metamorphic"] = []
         doc["inputs"].update(model=None, promptSha256=None)
         validate_v1(doc, "jit-run")
     (out / RECORD_NAME).write_text(json.dumps(doc, indent=1) + "\n", encoding="utf-8")
@@ -286,7 +302,7 @@ def generate(profile_path: Path, report: str, candidate: Path, base_patches: lis
 def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner, intent, variants_fn, game,
               spend: Spend, reps, variant_limit, approved_claims, state, diagnostics, clock,
               offer: str = offer_mod.BASELINE, candidate_to_model: str = "shown", report_route=None,
-              controls_fn=None) -> None:
+              controls_fn=None, metamorphic: bool = False) -> None:
     from expectrail.jit.diff_map import withheld_map
 
     probes = offer_mod.library(profile["actions"], offer, report, profile=profile, game=game)
@@ -562,6 +578,14 @@ def _pipeline(profile, report, cand_bytes, candidate, base_patches, out, runner,
             "probeIds": ids, "candidate": cand[sid], "base": base_runs, "killed": rows[sid]["killed"],
         })
 
+    # 5. Metamorphic checks (#675, piece 3), advisory: judged by the same rule, after everything above.
+    if metamorphic:
+        _metamorphic_stage(
+            probes=probes, first=[i for _, ids in plan for i in ids], profile=profile, made_here=made_here,
+            routes=routes, route_dir=route_dir, taken={e["spec"]["id"] for e in entries}, runs_of=runs_of,
+            replay=replay, prints=prints, exercised=exercised, planned=planned, base_patches=base_patches,
+            candidate=candidate, controls_fn=controls_fn, out=out, reps=reps, state=state, diagnostics=diagnostics)
+
 
 def _pixel_stage(checks: list[dict], routes: dict, base_patches: list, candidate: Path, out: Path, replay,
                  spend: Spend, reps: int, state: dict, diagnostics: list[str]) -> None:
@@ -777,7 +801,7 @@ def _pixel_capture(by_probe: dict, routes: dict, base_patches: list, candidate: 
 NO_CONTROL_GIVEN = "no do-nothing control was given to this run"
 
 
-def _do_nothing_stage(on_ref, controls_fn, out: Path, runs_of, reps: int, state: dict) -> dict:
+def _do_nothing_stage(on_ref, controls_fn, out: Path, runs_of, reps: int, state: dict, prefix: str = "") -> dict:
     """{specId: {control, runs, outcome, reason}} for each check in ``on_ref``, and ``state["doNothing"]``:
     one row per class the checks are about, with the control's patch digest or why there is none.
 
@@ -823,7 +847,7 @@ def _do_nothing_stage(on_ref, controls_fn, out: Path, runs_of, reps: int, state:
                 why[e["spec"]["id"]] = reason
             return outcome
 
-        res = runs_of(f"do-nothing-{cls}", [path], todo, reps,
+        res = runs_of(f"{prefix}do-nothing-{cls}", [path], todo, reps,
                       stop_early=lambda rs: rs[-1] not in ("pass", "fail") or rs[-1] != rs[0], judge=judge)
         for e, _ids in todo:
             runs = res[e["spec"]["id"]]
@@ -832,6 +856,118 @@ def _do_nothing_stage(on_ref, controls_fn, out: Path, runs_of, reps: int, state:
                                      "reason": assess.DO_NOTHING_PASSED if outcome == "passes"
                                      else why.get(e["spec"]["id"])}
     return rows
+
+
+def _metamorphic_stage(*, probes, first, profile, made_here, routes, route_dir, taken, runs_of, replay, prints,
+                       exercised, planned, base_patches, candidate, controls_fn, out, reps, state, diagnostics) -> None:
+    """``state["metamorphic"]``: one row per offered metamorphic check (expectrail/jit/metamorphic.py), judged
+    as a proposed check is (steps 1 to 3 of ``_pipeline``) on replays of its own (named ``metamorphic-*``).
+
+    Advisory and last: the proposed checks are already judged, so running out of budget or a replay error
+    here ends this stage only. Each row not finished then says why, and its outcome is ``not-evaluated``."""
+    from expectrail.jit import metamorphic as mm
+
+    rows: list[dict] = []
+    state["metamorphic"] = rows
+    derived, skipped = mm.offer(probes, profile["actions"], first=first)
+    # One line, so the skips cannot crowd the record's 50 diagnostics.
+    kinds: dict[str, int] = {}
+    for s in skipped:
+        kind = s["reason"].split(":")[0] if s["reason"].startswith("cannot tell") else s["reason"]
+        kinds[kind] = kinds.get(kind, 0) + 1
+    diagnostics.append((f"metamorphic: {len(derived)} pairs offered ({', '.join(d['probe'] for d in derived) or 'none'}); "
+                        f"probes skipped: " + ("; ".join(f"{n} {k}" for k, n in kinds.items()) or "none"))[:300])
+    plan: list[tuple[dict, list[str]]] = []
+    for d in derived:
+        left, twin = d["probe"], d["mirror"]
+        if twin["id"] not in routes:
+            names = made_here.get(left) or profile["actions"]
+            try:
+                route = compile_route(twin["program"], name=twin["id"], description=twin["description"],
+                                      actions=sorted(set(names) | {a for pr in mm.pairs_for(profile["actions"]) for a in pr}))
+            except ProgramError as exc:
+                diagnostics.append(f"metamorphic: {twin['id']} refused by the route compiler: {exc}"[:300])
+                continue
+            path = route_dir / f"jit-{twin['id'].removeprefix('jit-')}.json"
+            path.write_text(json.dumps(route, indent=1) + "\n", encoding="utf-8")
+            routes[twin["id"]] = (route, path)
+        if left not in routes:
+            diagnostics.append(f"metamorphic: {left} has no route, so its mirror is not judged"[:300])
+            continue
+        for e in d["entries"]:
+            if e["spec"]["id"] in taken:
+                diagnostics.append(f"metamorphic: {e['spec']['id']} has the id of a proposed check, so it is not offered")
+                continue
+            plan.append((e, [left, twin["id"]]))
+    for e, ids in plan:
+        rows.append({"spec": e["spec"], "probeIds": ids, "routeSha256": [digest_v1(routes[i][0]) for i in ids],
+                     "valid": False, "reference": [], "doNothing": {"control": None, "runs": [], "outcome": "not-run",
+                                                                    "reason": "not reached"},
+                     "base": [], "variantResults": {}, "killed": [], "sameAsCandidate": [], "reasons": [],
+                     "candidate": [], "outcome": "not-evaluated", "exercised": {}})
+    if not plan:
+        return
+    by_id = {r["spec"]["id"]: r for r in rows}
+    judged: set[str] = set()  # rows whose validity was decided as not valid: nothing more was owed them
+    try:
+        ref = runs_of("metamorphic-reference", [], plan, reps, stop_early=lambda rs: rs[-1] != "pass")
+        for sid, runs in ref.items():
+            by_id[sid]["reference"] = runs
+        on_ref = [(e, ids) for e, ids in plan if assess.all_of(ref[e["spec"]["id"]], "pass", reps)]
+        own: dict = {}
+        dn = _do_nothing_stage(on_ref, controls_fn, out, runs_of, reps, own, prefix="metamorphic-")
+        have = {c["class"] for c in state.get("doNothing", [])}
+        state.setdefault("doNothing", []).extend(c for c in own.get("doNothing", []) if c["class"] not in have)
+        for sid, row in dn.items():
+            by_id[sid]["doNothing"] = row
+        for e, _ids in plan:
+            if e["spec"]["id"] not in dn:
+                by_id[e["spec"]["id"]]["doNothing"]["reason"] = "did not pass on the reference, so the control was not run"
+        on_ref = [(e, ids) for e, ids in on_ref if dn[e["spec"]["id"]]["outcome"] != "passes"]
+        cand_print = {}
+        if on_ref and any(v["kind"] != "base" for v, _p, _s in planned):
+            for pid in sorted({i for _, ids in on_ref for i in ids}):
+                replay("metamorphic-candidate-print", [*base_patches, candidate], pid, 1,
+                       trace_specs=[e["spec"] for e, ids in on_ref if pid in ids])
+                cand_print[pid] = prints[("metamorphic-candidate-print", pid, 1)]
+        for k, (v, patches, _sha) in enumerate(planned if on_ref else []):
+            vname = "metamorphic-base" if v["kind"] == "base" else f"metamorphic-variant-{k}"
+            res = runs_of(vname, patches, on_ref, reps, stop_early=lambda rs: rs[-1] != "fail")
+            for e, ids in on_ref:
+                row = by_id[e["spec"]["id"]]
+                if v["kind"] != "base" and cand_print and all(
+                        prints.get((vname, pid, 1)) == cand_print.get(pid) for pid in ids):
+                    row["sameAsCandidate"].append(v["id"])
+                    continue
+                row["variantResults"][v["id"]] = res[e["spec"]["id"]]
+                if v["kind"] == "base":
+                    row["base"] = res[e["spec"]["id"]]
+                row.setdefault("_names", {})[v["id"]] = vname
+        valid_plan = []
+        for e, ids in plan:
+            row = by_id[e["spec"]["id"]]
+            verdict = assess.validity(row["reference"], row["variantResults"], reps, row["doNothing"]["runs"])
+            row.update(valid=verdict["valid"], killed=verdict["killed"], reasons=verdict["reasons"])
+            if verdict["valid"]:
+                valid_plan.append((e, ids))
+            else:
+                judged.add(e["spec"]["id"])
+        cand = runs_of("metamorphic-candidate", [*base_patches, candidate], valid_plan, reps) if valid_plan else {}
+        for e, _ids in valid_plan:
+            row = by_id[e["spec"]["id"]]
+            row["candidate"] = cand[e["spec"]["id"]]
+            row["outcome"] = assess.catch(True, row["candidate"], reps)
+    except NothingGenerated as exc:
+        why = " ".join(str(exc).split())[:240]
+        diagnostics.append(f"metamorphic: stopped, the proposed checks' results stand: {why}"[:300])
+        for row in rows:
+            if row["outcome"] == "not-evaluated" and row["spec"]["id"] not in judged:
+                row["reasons"] = [*row["reasons"], f"not evaluated: {why}"][-8:]
+    for row in rows:
+        names = row.pop("_names", {})
+        sid = row["spec"]["id"]
+        row["exercised"] = {arm: exercised.get((f"metamorphic-{arm}", sid), []) for arm in ("reference", "base", "candidate")}
+        row["exercised"].update({vid: exercised.get((name, sid), []) for vid, name in names.items() if vid != "base"})
 
 
 def _variants(game, base_patches, candidate, limit):

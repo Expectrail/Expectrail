@@ -1,0 +1,11 @@
+--- a/player/player.gd
++++ b/player/player.gd
+@@ -33,7 +33,7 @@
+ 	elif Input.is_action_just_released("jump" + action_suffix) and velocity.y < 0.0:
+ 		# The player let go of jump early, reduce vertical momentum.
+ 		velocity.y *= 0.6
+-	# Fall.
++	# Fall, then walk at the input speed.
+ 	velocity.y = minf(TERMINAL_VELOCITY, velocity.y + gravity * delta)
+ 
+ 	var direction := Input.get_axis("move_left" + action_suffix, "move_right" + action_suffix) * WALK_SPEED

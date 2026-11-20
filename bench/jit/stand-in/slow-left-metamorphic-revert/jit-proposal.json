@@ -1,0 +1,54 @@
+{
+ "format": "expectrail.jit-proposal/v0",
+ "patchSha256": null,
+ "candidate": "withheld",
+ "reportSha256": "33607609537dcbd60ae8f5e07449d4b696f84494a3559591159873517cf0fbd4",
+ "model": "hand-written-stand-in",
+ "error": null,
+ "probes": [],
+ "candidates": [
+  {
+   "templateId": "jit",
+   "spec": {
+    "format": "expectrail.trace-spec/v1",
+    "id": "jit-walking-moves-right",
+    "origin": "AUTO_DIFF",
+    "statement": "Walking right 40 ticks before jumping moves the player further right than not walking.",
+    "expectationRef": {
+     "claimId": "player.move",
+     "authority": "model_prior"
+    },
+    "scope": {
+     "class": "player"
+    },
+    "window": {
+     "kind": "episode"
+    },
+    "operation": {
+     "type": "relation",
+     "signal": "player_dx_px",
+     "comparator": "gt",
+     "toleranceAbs": 0,
+     "left": "jump-w0-x2",
+     "right": "jump-w40-x2"
+    },
+    "evidenceRequirement": {
+     "minimumTriggers": 1,
+     "minimumEvaluations": 1,
+     "completeWindow": true
+    },
+    "guards": []
+   },
+   "approved": false,
+   "applies": {
+    "kind": "pair",
+    "left": "jump-w0-x2",
+    "right": "jump-w40-x2"
+   },
+   "source": "jit"
+  }
+ ],
+ "diagnostics": [
+  "a hand-written stand-in for a model's proposal (#675 slice 2 rehearsal); no model was called"
+ ]
+}
