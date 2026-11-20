@@ -282,7 +282,7 @@ class App:
     def create(self, body):
         if configured(body):
             doc = project_job.prepare(self.store, Path(field(body, 'after')), Path(field(body, 'before')),
-                                      execution_class=execution_class(body))
+                                      execution_class=execution_class(body), require_ready=True)
         else:
             doc = build(body)
         settings, _ = auto_fix.configure(body.get('autoFix', False), body.get('attempts'), body.get('usdCap'), agent=body.get('repairAgent'))
@@ -597,6 +597,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(200, data, 'text/html; charset=utf-8' if parts == ['index.html'] else 'image/png',
                                   report=True)
             raise UnknownJob('No such page.')
+        except project_job.ProjectNotReady as exc:
+            self.problem(400, f'Before is not ready for verification. {exc}', jobStarted=False)
         except MissingConfig as exc:
             self.problem(400, str(exc), **({'setupPreview': exc.preview} if exc.preview else {}))
         except UnknownJob as exc:

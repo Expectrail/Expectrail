@@ -140,24 +140,28 @@ def inspect(root):
             'adapter': config['adapter'], 'version': config.get('toolchain', {}).get('version', config.get('version')),
             'routes': len(checks.routes), 'checks': len(checks.specs), 'drafts': checks.drafts,
             'routeNames': [r[0] for r in checks.routes], 'checkNames': [s['id'] for s in checks.specs],
-            'configDraft': config.get('draft', False), 'problems': checks.problems, 'help': ' '.join(help_text)}
+            'configDraft': config.get('draft', False), 'problems': checks.problems, 'help': ' '.join(help_text),
+            'readinessSteps': readiness_steps(config, checks)}
 
 
 def unready(root):
+    return inspect(root)['readinessSteps']
+
+
+def readiness_steps(config, checks):
     """What keeps this config from judging anything, as steps to take; empty when it can judge.
 
     A config that names no usable route, or no approved check, would replay and end "no checks
     ran". The steps name the config's own fields, never the gate's internal folders. Nothing is
     approved here: a draft named in approvedContracts is reported as a draft.
     """
-    info = inspect(root)
     steps = []
-    if not info['routes']:
+    if not checks.routes:
         steps.append('The project config names no usable route: list route files in "routes" in '
                      f'{project_config.FILENAME} (expectrail init drafts one; expectrail route makes one '
                      'from the input map).')
-    if not info['checks']:
-        drafts = info['drafts']
+    if not checks.specs:
+        drafts = checks.drafts
         if drafts:
             named = ('1 check named in "approvedContracts" is a draft nobody has approved' if drafts == 1
                      else f'{drafts} checks named in "approvedContracts" are drafts nobody has approved')
@@ -165,12 +169,16 @@ def unready(root):
         else:
             steps.append('The project config names no approved check: list existing approved checks in '
                          '"approvedContracts". A person approves a check before it judges.')
-    if steps and info['configDraft']:
+    if steps and config.get('draft'):
         steps.append('The config is also a draft from expectrail init: review its bindings, then remove "draft".')
     return steps
 
 
-def prepare(store, head, base=None, **options):
+class ProjectNotReady(request.RequestError):
+    """The configured project's snapshot has no usable route or approved check."""
+
+
+def prepare(store, head, base=None, *, require_ready=False, **options):
     """Snapshot a configured project, returning a normal request for the normal worker."""
     head = Path(head).expanduser().resolve()
     base = Path(base).expanduser().resolve() if base is not None else None
@@ -211,6 +219,10 @@ def prepare(store, head, base=None, **options):
         if visual is not None:
             doc['project']['visual'] = visual
         request.check(doc)
+        if require_ready:
+            steps = readiness_steps(config, request.read_checks(doc))
+            if steps:
+                raise ProjectNotReady(' '.join(steps))
         return doc
     except Exception:
         shutil.rmtree(pair)
