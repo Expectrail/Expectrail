@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 import tempfile
 import threading
@@ -388,6 +389,16 @@ def smoke(*, stand_in: bool, require_sandbox: bool = False, only: list[str] | No
         gate.release.set()
         server.shutdown()
         server.server_close()
+        # A clean run's two temporary folders are removed; a run with problems keeps them and says
+        # where, because that is when someone wants to look. Before this, every call left both behind
+        # and a machine running the suite filled up.
+        if doc.get("problems"):
+            # Named in the result so a caller (a test that fails the smoke on purpose) can remove them.
+            doc["kept"] = {"results": str(results), "stubRoot": str(root)}
+            log(f"kept for inspection: results {results}, stub root {root}")
+        else:
+            for folder in (results, root):
+                shutil.rmtree(folder, ignore_errors=True)
     return doc
 
 

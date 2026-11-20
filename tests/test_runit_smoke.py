@@ -112,6 +112,10 @@ class InChromium(unittest.TestCase):
         lines = []
         with contextlib.redirect_stderr(io.StringIO()):
             doc = runit_smoke.smoke(stand_in=True, log=lines.append, **kw)
+        # A clean run removes its own folders; a run with problems keeps them for a person to look at.
+        # A test that fails the smoke on purpose removes them, so a suite run leaves nothing behind.
+        for folder in (doc.get("kept") or {}).values():
+            self.addCleanup(shutil.rmtree, folder, True)
         return doc, lines
 
     def test_every_offered_sample_and_every_state_holds(self):
