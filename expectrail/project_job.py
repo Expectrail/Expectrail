@@ -7,6 +7,7 @@ No check is approved here, and no observer rule is replaced.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import shutil
 import tempfile
@@ -23,7 +24,37 @@ def read_config(root):
         data = regular(root, project_config.FILENAME, 65536)
         return project_config.validate(record.strict_loads(data.decode('utf-8')), root)
     except (ValueError, OSError) as exc:
-        raise request.RequestError(f'Project config: {exc}. Use expectrail init to draft a config, then review it.') from exc
+        guidance = 'Use expectrail init to draft a config, then review it.'
+        if not os.path.lexists(root / project_config.FILENAME):
+            guidance = pending_guidance(root) or guidance
+        raise request.RequestError(f'Project config: {exc}. {guidance}') from exc
+
+
+def pending_guidance(root):
+    from expectrail.onboard import PENDING
+
+    path = root / PENDING
+    if not os.path.lexists(path):
+        return None
+    invalid = f'Check that {PENDING} is a regular, readable init review draft inside the project.'
+    if path.is_symlink() or not path.is_file():
+        return invalid
+    try:
+        doc = record.strict_loads(regular(root, PENDING, 65536).decode('utf-8'))
+    except (ValueError, OSError):
+        return invalid
+    if not isinstance(doc, dict) or doc.get('draft') is not True:
+        return invalid
+    config = doc.get('config')
+    problems = doc.get('unresolvedBindings')
+    if (not isinstance(config, dict) or config.get('format') != project_config.FORMAT
+            or config.get('draft') is not True or config.get('approvedContracts')
+            or not isinstance(problems, list) or not problems or not all(isinstance(p, str) for p in problems)):
+        return invalid
+    step = 'Resolve the choices listed in unresolvedBindings.'
+    if any('bindings.player.texture' in problem for problem in problems):
+        step += ' Choose a representative game image for bindings.player.texture (a res:// path).'
+    return f'Open this folder in the local app and choose Check folders to review {PENDING}. {step}'
 
 
 def regular(root, relative, cap):
