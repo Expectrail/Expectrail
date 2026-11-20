@@ -288,6 +288,13 @@ def main(argv: list[str] | None = None, *, prog: str = "python3 -m expectrail.or
             elif args.project is not None:
                 from expectrail import project_job
 
+                # The base's config chooses what judges. One that can judge nothing is refused before
+                # a replay, with what to change (#260). Held-out checks can judge without public
+                # ones, so a held-out run goes on to the gate, which reports what it found.
+                if not args.with_heldout:
+                    steps = project_job.unready(args.base or args.project)
+                    if steps:
+                        raise req.RequestError('Nothing here can be verified yet. ' + ' '.join(steps))
                 request = project_job.prepare(store, args.project, args.base, **options)
             else:
                 request = req.build(adapter=args.adapter, head=args.head, base=args.base, game=args.game,

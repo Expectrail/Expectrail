@@ -143,6 +143,33 @@ def inspect(root):
             'configDraft': config.get('draft', False), 'problems': checks.problems, 'help': ' '.join(help_text)}
 
 
+def unready(root):
+    """What keeps this config from judging anything, as steps to take; empty when it can judge.
+
+    A config that names no usable route, or no approved check, would replay and end "no checks
+    ran". The steps name the config's own fields, never the gate's internal folders. Nothing is
+    approved here: a draft named in approvedContracts is reported as a draft.
+    """
+    info = inspect(root)
+    steps = []
+    if not info['routes']:
+        steps.append('The project config names no usable route: list route files in "routes" in '
+                     f'{project_config.FILENAME} (expectrail init drafts one; expectrail route makes one '
+                     'from the input map).')
+    if not info['checks']:
+        drafts = info['drafts']
+        if drafts:
+            named = ('1 check named in "approvedContracts" is a draft nobody has approved' if drafts == 1
+                     else f'{drafts} checks named in "approvedContracts" are drafts nobody has approved')
+            steps.append(f'{named}. A person approves a check before it judges.')
+        else:
+            steps.append('The project config names no approved check: list existing approved checks in '
+                         '"approvedContracts". A person approves a check before it judges.')
+    if steps and info['configDraft']:
+        steps.append('The config is also a draft from expectrail init: review its bindings, then remove "draft".')
+    return steps
+
+
 def prepare(store, head, base=None, **options):
     """Snapshot a configured project, returning a normal request for the normal worker."""
     head = Path(head).expanduser().resolve()
