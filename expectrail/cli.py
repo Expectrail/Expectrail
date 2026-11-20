@@ -49,6 +49,7 @@ def usage() -> str:
         ("onboard", "build an offline binding review page from an init draft"),
         ("inspect", "list the player, inputs, cameras and ground in a Godot project; --runtime adds what the running game builds; --at-tick N measures them in a replay"),
         ("init", "propose a draft project config and first input route"),
+        ("calibrate", "measure clean engine geometry and three-run replay stability"),
         ("route", "make a first route from a Godot input map and check three identical replays"),
         ("app", "open the local browser app"),
         ("trust-check", "check a receipt against a trust store: clearance or not, and what it establishes"),
@@ -179,7 +180,7 @@ def main(argv: list[str] | None = None) -> int:
         from expectrail import onboard
 
         return onboard.main(args[1:])
-    if command in ("init", "inspect") and args[0] == command:
+    if command in ("init", "inspect", "calibrate") and args[0] == command:
         from expectrail import onboarding
 
         return onboarding.main(command, args[1:])

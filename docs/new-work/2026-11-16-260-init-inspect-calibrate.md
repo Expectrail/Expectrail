@@ -1,0 +1,95 @@
+# Read-only engine setup measurements (#260)
+
+## What changed
+
+Added `calibrate` to the existing setup command path, reusing configured role
+observations and Unity's calibration statistics. `inspect --at-tick` was delivered
+by #604 on main (`expectrail.inspection`) and keeps that one implementation; this
+pull request claims `calibrate` and the setup errors.
+Added the setup-report schema, real example, writer and strict semantic reader in
+one patch. Missing measurements are explicit, three whole traces are compared,
+local engines are never downloaded, and output stays outside the source project.
+Init proposes a valid capture divisor for non-60 Hz projects. The wheel includes
+the calibration helper used by the installed command. Unity's default report,
+observation modules, verifier and game sources are unchanged.
+
+The recorded bundled and config-lane reports, independent hand arithmetic, named
+routes, and verification limits are in `docs/onboarding-calibration.md` and
+`docs/onboarding-evidence-260/`. No real approval was created or changed.
+
+## What was run
+
+Base: main `21fde1b4be9362d209852e3d44221d059d110643`, also the advertised claimed
+branch head at task start. Read AGENTS.md and #260/#259 bodies and all comments.
+Ran the required historic fetch (handover log `historic-fetch.log`).
+
+- Full suite before changes: 4,719 tests, 44 skips, passed (900.090 s).
+- New tests on unchanged main: red, 15 tests, 5 failures and 14 subtest errors.
+  Missing command/API and invalid 45 Hz proposal were demonstrated.
+- Focused setup/previous init/project audit/schema tests: 45 passed.
+- Final focused setup/init tests without numpy/PIL: 25 passed.
+- Contract/pattern checks: 15 passed. Package tests: 21 passed.
+- Real headless inspect plus three clean calibration replays per project: both
+  120/120 player-visible frames, 0/120 unjudgeable frames; three byte-identical
+  traces each. Hand arithmetic matches every measurement and statistic.
+- Real verify CLI with each proposed config and the existing unchanged public
+  check: engine pass; completed needs-review (exit 2), not acceptance.
+- Final installed wheel with no numpy, PIL or jsonschema: command passed; all
+  120 config-lane measurements and statistics equal the source-checkout report.
+- Full suite after changes: 4,738 tests, 44 skips, passed (909.851 s).
+- All 4,775 discovered tests load without numpy/PIL; zero import errors.
+- Export scan: 839 files, zero errors and warnings (rechecked at handover).
+- Default Unity byte parity also passed on a separate populated synthetic record.
+
+## Not done
+
+No spend, live model, workflow, dispatch or GitHub write. No source game edits.
+Only metadata was saved in disposable copies for verification. The old public
+spec was copied byte-for-byte, not approved. The draft config, legacy approval
+and absence of vision still prevent acceptance. Init remains static; its dry-run
+does not execute project scripts. Part of #260; see the documentation's explicit
+remaining cases. The generated first route was validated, but these recorded
+verification and hand-check runs used the named public smoke/walk routes.
+
+## Files
+
+`expectrail/onboarding.py`, `expectrail/cli.py` (setup dispatch),
+`agents/unity_observations.py` (calibrate only), `expectrail/contracts.py`,
+`contracts/setup-report.v1.schema.json`, `contracts/examples/setup-report.json`,
+`setup.py` (one calibration helper in the existing module whitelist),
+`tests/test_setup_calibration.py`, this entry, `docs/onboarding-calibration.md`,
+and the four recorded reports under `docs/onboarding-evidence-260/`.
+
+
+## Follow-up on the merge guard's third review (November 20)
+
+Both points of the guard's review of `8e39793` are fixed, with main merged in.
+
+1. **`inspect --at-tick` no longer refuses ticks that work on main.** The `0 <= N <= 7200`
+   bound before `expectrail.inspection.document` is gone. That path bounds a tick by its
+   route's own length, as it does on main. The 7200 bound stays where it belongs, on
+   `calibrate`'s route length, and a test names it.
+2. **`inspect --at-tick` has one implementation.** `mode` is gone from `runtime_setup`, from
+   `contracts/setup-report.v1.schema.json` and from `check_setup_report`; the CLI no longer
+   routes `inspect --at-tick --out/--godot` into `runtime_setup`; and `--json`, `--godot`,
+   `--out` and the required `--route` now belong to `calibrate` alone. The committed example
+   and both evidence reports lost their `mode` and `inspection` fields.
+
+Test changes, each with its reason:
+- The `mode` probe in `test_refuses_laundered_statistics_...` now probes a rule that still
+  exists (two runs where three are required), rather than a field that is gone.
+- The duplicate-key test uses `format` instead of `mode`.
+- `test_evidence_never_overwrites_or_changes_project` calls `calibrate --out`, which is where
+  `--out` lives now.
+- `test_invalid_tick_has_named_fix` no longer asserts `7200` for `inspect`; a new test asserts
+  it for a `calibrate` route longer than the bound.
+- `test_runtime_inspection_uses_bound_avatar_not_lookalike` is removed: it covered the removed
+  second implementation, and main's `tests/test_inspect_at_tick.py` covers `inspect --at-tick`
+  including the bound object's node, box and visibility, on the stand-in and the real engine.
+
+Merging main also dropped this branch's hardcoded `V1_FORMATS` block: main derives that registry
+from `contracts/*.v1.schema.json` at import (#637), so the new schema is registered without it.
+
+Run here: the full suite in 3 parts, and the export scan. Godot and Bubblewrap are not available
+in this container, so the engine-backed setup measurements were not re-run; the hosted jobs are
+the check of those.
