@@ -55,7 +55,9 @@ class SchemaTest(unittest.TestCase):
         self.assertEqual(example, crate)
         jsonschema.Draft202012Validator(_schema()).validate(example)
         self.assertEqual(validate_v1(example, "project"), "project")
-        self.assertIsNone(find(BUNDLED))
+        # The bundled game carries its config beside project.godot (Sean, November 19, 2026; #259).
+        bundled = json.loads(find(BUNDLED).read_text(encoding="utf-8"))
+        jsonschema.Draft202012Validator(_schema()).validate(bundled)
 
     def test_unknown_fields_sizes_and_ambiguous_bindings_are_refused(self):
         validator = jsonschema.Draft202012Validator(_schema())
@@ -74,10 +76,10 @@ class SchemaTest(unittest.TestCase):
 
 
 class ReaderTest(unittest.TestCase):
-    def test_the_crate_loads_and_the_bundled_game_has_no_config(self):
+    def test_the_crate_and_the_bundled_game_load_their_configs(self):
         doc = load(CRATE / FILENAME, CRATE)
         self.assertEqual(read_game(CRATE), doc)
-        self.assertIsNone(read_game(BUNDLED))
+        self.assertEqual(read_game(BUNDLED), load(BUNDLED / FILENAME, BUNDLED))
         self.assertEqual(doc["bindings"]["player"], {"node": "Player", "texture": "res://crate.svg"})
         self.assertNotIn("halfWidth", doc["bindings"]["player"])
         self.assertEqual(harness_arguments(doc), [

@@ -990,8 +990,13 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
              checks: Checks | None = None, rule: str = rec.BOTH, visual=None,
              on_phase: Callable[[str], object] | None = None, heldout_frames_to_visual: bool = False,
              intent: str = "none", adapter: str = DEFAULT_ADAPTER,
-             anchor_every: int = ANCHOR_EVERY, changed_checks: dict | None = None, vision_every: int = 1) -> dict:
+             anchor_every: int = ANCHOR_EVERY, changed_checks: dict | None = None, vision_every: int = 1,
+             head_config_game: Path | None = None) -> dict:
     """Run the gate and write the artifact in ``out``; returns the findings record.
+
+    ``head_config_game`` is where the head's project config is read for the comparison with the
+    base's, when the head game folder the gate is given is a name for saved replays and not a
+    folder on disk (the trusted job, ``tools.ci_bundle.judge``). It is only compared, never used.
 
     ``vision_every`` is an explicit opt-in for public visual checks, default 1. It changes only
     the required visual sample schedule, never the engine's evidence, calibration or paired anchor
@@ -1192,7 +1197,7 @@ def run_gate(*, repo: Path, game: str, routes: list[str], specs: str, out: Path,
     if base is not None:
         base_config = project_config(checks_root / game_rel)
         try:
-            head_config = project_config(head_game) if game_ok(head_game) else None
+            head_config = project_config(head_config_game or head_game) if game_ok(head_game) else None
         except ConfigError as exc:
             head_config = None
             head_note = str(exc)
