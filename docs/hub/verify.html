@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Verify a change · Recorded local app · Expectrail</title>
+<link rel="stylesheet" href="../assets/expectrail.css"><link rel="stylesheet" href="../assets/hub.css"></head>
+<body><header class="mast"><div class="bar"><a class="wordmark" href="./">Expectrail</a><a class="place" href="./">Project hub</a></div></header>
+<main class="verify"><p class="caption">Recorded local verification · <time datetime="2026-11-17">17 Nov 2026</time></p><h1>Verify a change to your game</h1>
+<p>Read-only view of the Crate Run browser demonstration. The installed app takes the two versions from your computer.</p>
+<section><h2>1. Your project and versions</h2>
+<p>The tester compared the original Crate Run with its broken movement variant. The recording omits the local folder paths.</p>
+<div class="grid"><div><label for="before">Before: full folder path or project.godot file path</label><input id="before" disabled></div>
+<div><label for="after">After: full folder path or project.godot file path</label><input id="after" disabled></div></div>
+<details open><summary>Older projects without a config</summary>
+<label><input type="checkbox" disabled checked> Enter paths manually</label>
+<label for="game">Game folder</label><input id="game" value="project" readonly>
+<label for="routes">Route files (patterns separated by spaces or commas)</label><input id="routes" value="routes/walk.json" readonly>
+<label for="specs">Checks folder</label><input id="specs" value="specs" readonly></details>
+<button class="secondary" disabled>Check folders</button><p>One usable route and one approved check.</p></section>
+<section><h2>2. Verify</h2><button disabled>Verify</button> <button class="secondary" disabled>Cancel</button>
+<p>Godot 4.7.2 ran both versions on the walk route. Both replays ran outside the sandbox. Vision settings were absent.</p></section>
+<section><h2>3. Result</h2><p class="result verdict" data-verdict="reject">Reject</p><p>The player’s ground check passed before the change and failed after it.</p>
+<p><a href="https://github.com/Expectrail/Expectrail/blob/ac6d9c9c251363c0cb93a562edd0bae55477a109/docs/demo/local-app.md">Read the original run record</a></p></section>
+<a class="button" href="../quickstart.html">Set up local verification</a></main></body></html>

@@ -1,0 +1,43 @@
+/* Workspace layout. Controls, verdicts, focus and colours come from expectrail.css. */
+.mast { background: #143d31; color: white; }
+.bar, main { width: min(100%, 1120px); max-width: none; margin: auto; }
+.bar { display: flex; align-items: center; gap: 16px; padding: 16px 24px; }
+.mast a { color: white; }
+.wordmark { font-weight: 750; font-size: 1.35rem; letter-spacing: -.045em; text-decoration: none; }
+.place { border-left: 1px solid #789486; padding-left: 16px; font-size: .9rem; }
+nav { margin-left: auto; display: flex; gap: 20px; }
+.skip { position: absolute; left: 1rem; top: -5rem; background: white; padding: .5rem 1rem; }
+.skip:focus { top: 1rem; }
+.workspace-head { display: flex; gap: var(--er-gap); align-items: center; justify-content: space-between; }
+.project { background: none; border: 0; padding: 0; margin: 8px 0 24px; }
+h1, h2, h3, p { margin: 0 0 .65em; }
+h1 { letter-spacing: -.045em; }
+h2 { line-height: 1.25; }
+.caption { font-size: .8rem; font-weight: 600; color: var(--er-muted); }
+.signin { width: 260px; }
+.signin p { margin: 6px 0 0; font-size: .875rem; }
+.signin button { margin-top: 0; }
+.columns { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: var(--er-gap); }
+.columns section { margin: 0 0 var(--er-gap); }
+.action-link { font-weight: 650; text-underline-offset: .18em; }
+.evidence { padding: 0; overflow: hidden; }
+.panel-heading, .panel-foot { padding: 18px var(--er-inset); }
+.panel-heading h2 { margin: 0; }
+figure { margin: 0; background: #172e28; color: white; }
+figure img { display: block; width: 100%; height: auto; }
+figcaption { display: flex; justify-content: space-between; gap: .5em; padding: .5em var(--er-inset); font-size: .82rem; }
+.runs { list-style: none; padding: 0; margin: 0; }
+.runs li { display: flex; gap: 12px; justify-content: space-between; border-top: 1px solid var(--er-border); padding: .75em 0; margin: 0; }
+.runs li:last-child { padding-bottom: 0; }
+.empty { background: transparent; border-style: dashed; }
+main.verify { max-width: 850px; }
+@media(max-width:700px) {
+  .columns { grid-template-columns: minmax(0,1fr); gap: 0; }
+  .workspace-head { display: block; }
+  .signin { width: auto; margin-bottom: 24px; }
+}
+@media(max-width:600px) {
+  .bar { padding: 12px; gap: 8px; flex-wrap: wrap; }
+  .place { padding-left: 8px; }
+  nav { gap: 10px; }
+}

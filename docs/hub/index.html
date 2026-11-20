@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project hub · Expectrail</title>
+<link rel="stylesheet" href="../assets/expectrail.css"><link rel="stylesheet" href="../assets/hub.css">
+</head>
+<body>
+<a class="skip" href="#workspace">Skip to project</a>
+<header class="mast"><div class="bar"><a class="wordmark" href="./">Expectrail</a><span class="place">Project hub</span>
+<nav aria-label="Resources"><a href="../quickstart.html">Quickstart</a><a href="../guides.html">Guides</a></nav></div></header>
+<main id="workspace">
+<div class="workspace-head">
+<section class="project" aria-labelledby="project-name">
+<p class="caption">Recorded project · <time datetime="2026-11-13">13 Nov 2026</time></p><h1 id="project-name">Godot platformer</h1>
+<p class="note">Bundled game <span aria-hidden="true">/</span> <code>game/platformer</code></p>
+<a class="action-link" href="verify.html">View the local verify screen · Crate Run</a></section>
+<aside class="signin" aria-label="Account"><button disabled aria-describedby="signin-why">Sign in with GitHub</button>
+<p class="note" id="signin-why">Sign-in will show your own projects and verifications. It isn’t available yet.</p></aside>
+</div>
+<div class="columns"><div>
+<section class="evidence" aria-labelledby="finding"><div class="panel-heading"><p class="caption">Recorded evidence · <time datetime="2026-11-13">13 Nov 2026</time></p>
+<h2 id="finding">The player fell through the ground</h2></div>
+<figure><img src="../assets/recorded-platformer-frame-5.png" width="1600" height="960" alt="Captured platformer scene after the collision change, at the first failing frame.">
+<figcaption><span>After the change</span><span>Smoke route · Frame 5</span></figcaption></figure>
+<div class="panel-foot"><p>The player was 22.25 px past the ground boundary. The check allows 20 px.</p>
+<a class="action-link" href="../viewer-samples/fall-through-bug.html">Inspect the failed check</a></div></section>
+<section aria-labelledby="runs"><p class="caption">Recorded runs · <time datetime="2026-11-13">13 Nov 2026</time></p><h2 id="runs">Recent verifications</h2>
+<ul class="runs"><li><a href="../viewer-samples/fall-through-bug.html">Fall-through bug</a><span class="verdict" data-verdict="reject">Reject</span></li>
+<li><a href="../viewer-samples/clean.html">Unchanged game</a><span class="verdict" data-verdict="accept">Accept</span></li></ul></section>
+</div><div>
+<section aria-labelledby="setup"><p class="caption">Recorded setup · <time datetime="2026-11-16">16 Nov 2026</time></p><h2 id="setup">Breakout</h2>
+<p>The paddle and ball bindings are ready for review. Both checks are still drafts.</p>
+<a class="action-link" href="../onboarding-examples/breakout.html">Open setup review</a></section>
+<section aria-labelledby="repair"><p class="caption">Fixture recording · published <time datetime="2026-11-14">14 Nov 2026</time></p>
+<h2 id="repair">Repair evidence</h2><p>See the collision-mask patch and the fresh verdict on the repaired copy. This recording used a stand-in fixer.</p>
+<a class="action-link" href="../viewer-samples/fixture-repair.html">Inspect repair evidence</a></section>
+<section class="empty" aria-labelledby="playtest"><h2 id="playtest">Playtest reports</h2><p class="note">Reports from your playtesters will appear here when intake is available.</p>
+<a href="https://github.com/Expectrail/Expectrail/issues/531">Track playtest intake</a></section>
+</div></div>
+</main></body></html>

@@ -68,6 +68,40 @@ def _exists(target: Path) -> bool:
     return target.is_file() or (target.is_dir() and any((target / n).is_file() for n in ("index.html", "README.md")))
 
 
+def check_hub(browser, base: str) -> list[dict]:
+    """Read the signed-out workspace and its four linked screens without scripts."""
+    destinations = {
+        "verify.html": "Verify a change to your game",
+        "../onboarding-examples/breakout.html": "Does this describe your game?",
+        "../viewer-samples/clean.html": "Accepted",
+        "../viewer-samples/fixture-repair.html": "Repair evidence",
+    }
+    findings = []
+    for width in (375, 1280):
+        context = browser.new_context(java_script_enabled=False, viewport={"width": width, "height": 900})
+        try:
+            page = context.new_page()
+            hub = urljoin(base, "hub/")
+            page.goto(hub)
+            sign_in = page.get_by_role("button", name="Sign in with GitHub", exact=True)
+            if sign_in.count() != 1 or not sign_in.is_visible() or not sign_in.is_disabled():
+                findings.append({"page": "hub/index.html", "what": "sign-in state", "detail": f"{width}px"})
+            if page.evaluate("document.documentElement.scrollWidth > innerWidth"):
+                findings.append({"page": "hub/index.html", "what": "horizontal overflow", "detail": f"{width}px"})
+            for href, heading in destinations.items():
+                page.goto(hub)
+                link = page.locator(f'a[href="{href}"]').first
+                if not link.is_visible():
+                    findings.append({"page": "hub/index.html", "what": "missing screen link", "detail": href})
+                    continue
+                link.click()
+                if not page.get_by_role("heading", level=1).filter(has_text=heading).first.is_visible():
+                    findings.append({"page": href, "what": "unreadable without scripts", "detail": f"{width}px"})
+        finally:
+            context.close()
+    return findings
+
+
 def check(root: Path, *, offline: bool = False, browser=None) -> list[dict]:
     """Findings: {page, what, detail}. Starts its own browser unless one is passed in."""
     from playwright.sync_api import sync_playwright
@@ -80,6 +114,9 @@ def check(root: Path, *, offline: bool = False, browser=None) -> list[dict]:
         if browser is None:
             manager = sync_playwright().start()
             browser = manager.chromium.launch()
+        domain = root / "CNAME"
+        if domain.is_file() and domain.read_text().strip() == "expectrail.tech":
+            findings.extend(check_hub(browser, base))
         for path in pages(root):
             rel = path.relative_to(root).as_posix()
             url = urljoin(base, rel)
