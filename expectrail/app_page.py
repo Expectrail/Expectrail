@@ -31,7 +31,7 @@ The kinematic-character example uses the same config path as your project.</p>
 <label for="game">Game folder</label><input id="game" value="." spellcheck="false">
 <label for="routes">Route files (patterns separated by spaces or commas)</label><input id="routes" value="routes/*.json" spellcheck="false">
 <label for="specs">Checks folder</label><input id="specs" value="specs" spellcheck="false"></details>
-<button id="inspect" class="secondary" type="button">Check folders</button><p id="inspection" role="status"></p></section>
+<button id="inspect" class="secondary" type="button">Check folders</button><div id="inspection" role="status"><div id="inspection-before"></div><div id="inspection-after"></div></div></section>
 <section aria-labelledby="run-heading"><h2 id="run-heading">2. Verify</h2>
 <p>Uses the same verifier as the Expectrail command. Only run games you trust.</p>
 <label><input id="isolated" type="checkbox"> Require the replay sandbox</label>
@@ -86,7 +86,11 @@ async function api(path, body) {
   const options = {method:body===undefined?'GET':'POST', headers:{'X-Expectrail-Token':token}};
   if(body!==undefined){options.headers['Content-Type']='application/json';options.body=JSON.stringify(body);}
   const response=await fetch(path,options), data=await response.json();
-  if(!response.ok) throw new Error(data.detail || 'The request could not be carried out.');
+  if(!response.ok) {
+    const error=new Error(data.detail || 'The request could not be carried out.');
+    error.setupPreview=data.setupPreview;
+    throw error;
+  }
   return data;
 }
 function problem(error, submissionAttempted=false) {
@@ -159,23 +163,89 @@ async function poll() {
   try {const data=await api('/api/jobs/'+current);if(job!==current)return;show(data);if(job)setTimeout(poll,500);else await pastRuns();}
   catch(error){if(job===current)problem(error);}
 }
+const sideNames = {before:'Before', after:'After'};
+function textElement(tag, text) {
+  const node=document.createElement(tag);
+  node.textContent=text;
+  return node;
+}
+function playerPicker(panel, side, folder, preview) {
+  panel.append(textElement('p', 'Setup preview for '+folder+'\nProject config: no expectrail.project.json.\nStarting scene: '+preview.entryScene));
+  const label=textElement('label',sideNames[side]+' player');
+  const select=document.createElement('select');
+  label.htmlFor=select.id=side+'-player';
+  const prompt=textElement('option','Choose a player to review its image details');
+  prompt.value=''; prompt.disabled=true; prompt.selected=true;
+  select.append(prompt);
+  for(const player of preview.players) {
+    const option=textElement('option',player);
+    option.value=player;
+    select.append(option);
+  }
+  const evidence=document.createElement('div');
+  panel.append(label,select,evidence);
+  select.onchange=async()=>{
+    // A new choice, folder edit or recheck detaches the previous response's destination.
+    const result=textElement('p','Reading the selected player…');
+    evidence.replaceChildren(result);
+    const player=select.value;
+    try {
+      await api('/api/inspect',{projectConfig:true,folder,player});
+      result.textContent='The project setup changed. Check folders again.';
+    } catch(error) {
+      const report=error.setupPreview;
+      if(!report || report.selectedPlayer!==player) {
+        result.textContent=error.message;
+        return;
+      }
+      const lines=report.imageSuggestions.map(item=>{
+        const size=item.imageSize ? item.imageSize.join(' × ') : 'size unknown';
+        const drawing=item.regions ? 'atlas regions '+item.regions.map(([x,y,w,h])=>`${w} × ${h} at (${x}, ${y})`).join(', ') : 'whole image reference';
+        return `${item.sprite}.${item.property}: ${item.image} (${size}), ${drawing}.`;
+      });
+      lines.push(...report.unresolvedBindings);
+      lines.push('To verify this folder, supply a reviewed expectrail.project.json with the player node and its representative image. This preview is read-only.');
+      result.textContent=lines.join('\n');
+    }
+  };
+}
+for(const side of Object.keys(sideNames)) {
+  el(side).addEventListener('input',()=>el('inspection-'+side).replaceChildren());
+}
+for(const id of ['manual','game','routes','specs']) {
+  el(id).addEventListener('input',()=>{
+    for(const side of Object.keys(sideNames)) el('inspection-'+side).replaceChildren();
+  });
+}
 el('inspect').onclick=async()=>{
-  el('error').hidden=true; el('inspection').textContent=''; controls(true);
-  try {const body=values(), lines=[];
-    let blocked=false;
-    for(const side of ['before','after']){
-      lines.push(side==='before'?'Before (checks used for this run)':'After');
+  el('error').hidden=true; controls(true);
+  try {const body=values();
+    const blocked=[], panels={};
+    for(const side of Object.keys(sideNames)) {
+      panels[side]=document.createElement('div');
+      el('inspection-'+side).replaceChildren(panels[side]);
+      el(side).disabled=false;
+    }
+    for(const [side,panel] of Object.entries(panels)){
+      if(!panel.isConnected) continue;
+      const request={...body,side,folder:body[side]};
+      const heading=textElement('h3',side==='before'?'Before (checks used for this run)':'After');
       try {
-        const data=await api('/api/inspect',{...body,side,folder:body[side]});
-        lines.push(data.godot?'Godot project found.':'No Godot project found.',
+        const data=await api('/api/inspect',request);
+        const lines=[data.godot?'Godot project found.':'No Godot project found.',
           `${data.routes} usable routes; ${data.checks} approved checks; ${data.drafts} draft checks.`,
           ...(data.routeNames||[]).map(name=>'Route: '+name), ...(data.checkNames||[]).map(name=>'Check: '+name),
-          data.help,rendering(data),...data.problems);
-      } catch(error) {lines.push(error.message);blocked=true;}
-      lines.push('');
+          data.help,rendering(data),...data.problems];
+        panel.append(heading,textElement('p',lines.filter(Boolean).join('\n')));
+      } catch(error) {
+        if(!panel.isConnected) continue;
+        blocked.push(panel);
+        panel.append(heading);
+        if(error.setupPreview) playerPicker(panel,side,request.folder,error.setupPreview);
+        else panel.append(textElement('p',error.message));
+      }
     }
-    el('inspection').textContent=lines.join('\n');
-    if(blocked)problem(new Error('Review the folder details above before verifying.'));
+    if(blocked.some(panel=>panel.isConnected)) problem(new Error('Review the folder details above before verifying.'));
   } finally{controls(false);}
 };
 el('verify').onclick=async()=>{

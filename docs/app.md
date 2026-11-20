@@ -22,7 +22,11 @@ The app serves its own page without downloading scripts, styles or fonts.
    it runs neither your selected game nor a model. Missing engine, display or drawing support
    now shows its reason and fix for live vision as well as recorded vision. When a config is missing, the app reads the saved Godot scenes
    and shows the starting scene, possible player nodes, images and any binding that still
-   needs a choice. Check folders shows a separate result for Before and After. An existing
+   needs a choice. If the starting scene has several possible players, choose a node in
+   **Before player** or **After player**. Each selection shows the image path, source sprite,
+   available dimensions and atlas regions or whole-image reference for that node. You can
+   switch players independently on either side. Editing a folder clears its preview.
+   Check folders shows a separate result for Before and After. An existing
    pending draft is checked against the project and its saved route before preview. For a
    menu game, the preview reads the saved inputs without starting the game. If the draft
    selects a player, the preview names it and shows its image candidates. Replay the route
@@ -38,6 +42,39 @@ The app serves its own page without downloading scripts, styles or fonts.
    **Could not be carried out** give no verdict. An unfinished job gives no verdict either.
    When the job has an existing report, the page links to it. Missing tools are reported by
    the verifier, with its suggested fix.
+
+### Local player preview API
+
+The page sends an authenticated `POST /api/inspect` with `projectConfig: true` and
+`folder` for each side. A missing `expectrail.project.json` still returns HTTP 400 with
+`state: "could-not-be-carried-out"` and the existing human-readable `detail`. For an
+ambiguous player with no saved draft, the same response includes a `setupPreview` object.
+Its `players` array supplies the options, `selectedPlayer` is null and `imageSuggestions`
+is empty. The page sends the chosen node to the same endpoint, for example:
+
+```json
+{"projectConfig":true,"folder":"/path/to/breakout","player":"Paddle"}
+```
+
+The HTTP 400 response still blocks verification. Its `setupPreview` describes the selected
+node. For example, the Paddle report contains this suggestion in `imageSuggestions`:
+
+```json
+{
+  "sprite": "Paddle/AnimatedSprite2D",
+  "property": "sprite_frames",
+  "image": "res://break assets/paddle/sp_paddle_long_strip2.png",
+  "imageSize": [94, 18],
+  "regions": [[0, 0, 47, 18], [47, 0, 47, 18]]
+}
+```
+
+`entryScene` names the starting scene, `players` now contains the chosen node and
+`selectedPlayer` names it. Each region is `[x, y, width, height]`. A whole-image reference
+has `regions: null`, and an unread image size is null. `unresolvedBindings` lists inspection
+problems or choices that need human review. Invalid selections return a detail without
+`setupPreview`. A saved draft retains its recorded selection and route checks. Selecting a
+player only reads the folder's authored files. Verification still needs a project config.
 
 ### Try kinematic-character with saved vision answers
 

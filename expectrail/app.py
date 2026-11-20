@@ -135,7 +135,13 @@ def saved_route_guidance(root, saved, info):
     return 'Replay the saved route to check that it reaches gameplay.'
 
 
-def setup_preview(root):
+class MissingConfig(req.RequestError):
+    def __init__(self, detail, preview):
+        super().__init__(detail)
+        self.preview = preview
+
+
+def setup_preview(root, player=None):
     """Explain the missing configuration from authored scenes, without starting a job."""
     from expectrail import onboard, onboarding
 
@@ -149,6 +155,10 @@ def setup_preview(root):
     selected = saved.get('selectedPlayer')
     if 'selectedPlayer' in saved and not isinstance(selected, str):
         raise ValueError(f'selectedPlayer in {onboard.PENDING} must be a node path.')
+    if has_draft and player is not None:
+        raise ValueError('A draft already exists. Check folders again to review the saved setup.')
+    if player is not None:
+        selected = player
     info = onboarding.inspect(root, selected)
     route_guidance = saved_route_guidance(root, saved, info) if has_draft else None
     title = 'Saved draft preview' if has_draft else 'Setup preview'
@@ -164,7 +174,11 @@ def setup_preview(root):
     lines.extend(info['unresolvedBindings'])
     if not info['unresolvedBindings']:
         lines.append('To save this setup, run expectrail init on this folder and review its draft.')
-    return '\n'.join(lines)
+    preview = None
+    if not has_draft and (player is not None or len(info['players']) > 1):
+        preview = {key: info[key] for key in ('entryScene', 'players', 'unresolvedBindings')}
+        preview.update(selectedPlayer=selected, imageSuggestions=info.get('imageSuggestions', []))
+    return '\n'.join(lines), preview
 
 
 def inspect_project(body):
@@ -174,10 +188,15 @@ def inspect_project(body):
         descriptor = root / 'project.godot'
         if not os.path.lexists(root / project_config.FILENAME) and not descriptor.is_symlink() and descriptor.is_file():
             try:
-                detail = setup_preview(root.resolve())
+                player = body.get('player')
+                if 'player' in body and not isinstance(player, str):
+                    raise ValueError('Choose a player node from the starting scene.')
+                detail, preview = setup_preview(root.resolve(), player)
             except (ValueError, OSError) as exc:
-                detail = f'Could not read the setup preview: {exc}'
-            raise req.RequestError(f'Project config: no {project_config.FILENAME}.\n{detail}')
+                detail, preview = f'Could not read the setup preview: {exc}', None
+            raise MissingConfig(f'Project config: no {project_config.FILENAME}.\n{detail}', preview)
+        if 'player' in body:
+            raise ValueError('The folder no longer has an available player preview. Check folders again.')
         result = project_job.inspect(root)
         result['rendering'] = renderer.project_report(root)
         return result
@@ -441,8 +460,8 @@ class Handler(BaseHTTPRequestHandler):
         if self.command != 'HEAD':
             self.wfile.write(data)
 
-    def problem(self, code, detail):
-        self.reply(code, {'state': 'could-not-be-carried-out', 'detail': detail})
+    def problem(self, code, detail, **fields):
+        self.reply(code, {'state': 'could-not-be-carried-out', 'detail': detail, **fields})
 
     def authorized(self, path, query):
         hosts = [f'127.0.0.1:{self.server.server_port}', f'localhost:{self.server.server_port}']
@@ -546,6 +565,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(200, data, 'text/html; charset=utf-8' if parts == ['index.html'] else 'image/png',
                                   report=True)
             raise UnknownJob('No such page.')
+        except MissingConfig as exc:
+            self.problem(400, str(exc), **({'setupPreview': exc.preview} if exc.preview else {}))
         except UnknownJob as exc:
             self.problem(404, str(exc))
         except (ValueError, OSError, StoreError) as exc:
