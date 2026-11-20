@@ -193,8 +193,47 @@ def summary(doc: dict) -> dict:
             "kept": len(kept),
             "catches": {b: failing[b] for b in of("defect")},
             "falseRejects": {b: failing[b] for b in of("harmless")},
+            "neverExercised": [r["check"] for r in rows if _never_exercised(r)],
+            "neverExercisedSignals": sorted({r["signal"] for r in rows if _never_exercised(r)},
+                                            key=[r["signal"] for r in rows].index),
+            "controlSilent": sum(1 for r in kept if r.get("control") == "indeterminate"),
+            "seededCatching": [b for b in of("defect") if b == SEED and failing[b]],
             "replaysCompleted": sum(len(e.get("traces", [])) for e in doc["evidence"].values()),
             "replayErrors": sum(1 for e in doc["evidence"].values() if e.get("error"))}
+
+
+def _never_exercised(row: dict) -> bool:
+    """True when every run of the check, on every build, came back not exercised."""
+    runs = [o for outcomes in row["runs"].values() for o in outcomes]
+    return bool(runs) and all(o == "not_exercised" for o in runs)
+
+
+def limits(doc: dict) -> list[str]:
+    """What the counts can and cannot say (Sean's review of #719), computed from the rows so each run says it."""
+    s = summary(doc)
+    out = ["- Mirroring the inputs asks only whether left and right behave alike. A fault that is the same in "
+           "both directions, such as falling through the floor, mirrors too, so the relation still holds and no "
+           "mirror check can see it. These checks are a narrow detector for direction-dependent faults; a "
+           "defect they miss is not evidence that they are weak, unless that defect is direction-dependent."]
+    declared = [b for b in s["catches"] if b != SEED]
+    if declared and not any(s["catches"][b] for b in declared):
+        out.append(f"- No declared defect is caught ({', '.join(f'`{b}`' for b in declared)}).")
+    if s["neverExercised"]:
+        signals = ", ".join(f"`{x}`" for x in s["neverExercisedSignals"])
+        out.append(f"- **{len(s['neverExercised'])} of {s['checks']} checks are not exercised on any build**, "
+                   f"as pinned, on the control and on every change: every check on {signals}. The generator "
+                   "made checks on signals these routes never exercise; that is a finding about the generator, "
+                   "not about the mirror relation.")
+    if s["kept"] and s["controlSilent"]:
+        out.append(f"- **{s['controlSilent']} of {s['kept']} kept checks are indeterminate on the do-nothing "
+                   "control**. Freezing the player leaves nothing for these routes to exercise, so the control "
+                   "cannot tell a real check from a trivial one here: for these checks, kept means the control "
+                   "could not judge them, not that it cleared them.")
+    for b in s["seededCatching"]:
+        out.append(f"- `{b}` was written for this measurement, by the same agent that wrote the measurement, "
+                   f"as the outside counterpart of the bundled `slow-left`. A catch of a fault written by "
+                   f"someone else would weigh more; read the {len(s['catches'][b])} catches with that in mind.")
+    return out
 
 
 def markdown(doc: dict) -> str:
@@ -220,6 +259,7 @@ def markdown(doc: dict) -> str:
         lines.append(f"- `{b['id']}` ({b['kind']}: {b['what']}): **{len(got)} kept checks {word}**"
                      f"{': ' + ', '.join(f'`{c}`' for c in got) if got else ''}.")
     lines += [f"- Not made: `{n['build']}`, {n['reason']}." for n in doc["notes"]]
+    lines += ["", "## What these counts can and cannot say", ""] + limits(doc)
     lines += ["", "## Per check", "",
               "| Check | Pair | As pinned (3) | Do-nothing (3) | Kept | " + " | ".join(f"{b['id']} (1)" for b in changes) + " |",
               "| --- | --- | --- | --- | --- | " + " | ".join("---" for _ in changes) + " |"]

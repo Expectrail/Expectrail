@@ -186,6 +186,44 @@ class Measure(unittest.TestCase):
         self.assertIn("fail it (false rejects)", text)
         self.assertIn("Sandbox: `require`", text)
 
+    def test_the_markdown_says_what_the_counts_cannot_say(self):
+        # Sean's review of #719: the never-exercised checks, the silent control and the seeded fault are
+        # stated in the measurement itself, not left for a reader to find in the table.
+        def evaluate(entry, ids, eps):
+            build = eps[ids[0]]["build"]
+            signal = entry["spec"]["operation"]["signal"]
+            if build == "do-nothing" or signal in ("max_rise_px", "air_jumps"):
+                return "not_exercised"
+            return "fail" if build == "drag-left" and signal == "player_dx_px" else "pass"
+
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        with mock.patch.object(mo.public, "replay_all", fake_replays), \
+                mock.patch("expectrail.jit.run._evaluate", evaluate):
+            doc = mo.measure(fake_game(tmp), kinematic(), tmp / "work")
+        s = mo.summary(doc)
+        half = s["checks"] // 2
+        self.assertEqual(len(s["neverExercised"]), half)
+        self.assertEqual(s["controlSilent"], s["kept"])
+        self.assertEqual(s["seededCatching"], ["drag-left"])
+        text = mo.markdown(doc)
+        self.assertIn("## What these counts can and cannot say", text)
+        self.assertIn(f"**{half} of {s['checks']} checks are not exercised on any build**", text)
+        self.assertIn("`max_rise_px`, `air_jumps`", text)
+        self.assertIn(f"**{s['kept']} of {s['kept']} kept checks are indeterminate on the do-nothing control**", text)
+        self.assertIn("the control could not judge them, not that it cleared them", text)
+        self.assertIn("direction-dependent", text)
+        self.assertIn("`drag-left` was written for this measurement", text)
+        self.assertIn("No declared defect is caught", text)
+
+    def test_the_limits_are_quiet_when_they_do_not_apply(self):
+        doc = self.measured()
+        s = mo.summary(doc)
+        self.assertEqual(s["neverExercised"], [])
+        text = mo.markdown(doc)
+        self.assertNotIn("not exercised on any build", text)
+        self.assertIn("direction-dependent", text)
+
     def test_the_work_folder_must_be_new(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)

@@ -1,6 +1,6 @@
 # Mirror-inputs metamorphic checks on kinematic-character (#675, piece 3, slice 3)
 
-Source: the `metamorphic-outside` job of [run 44788077524](https://github.com/Expectrail/Expectrail/actions/runs/44788077524/job/136468151181) (pull request #719, head `b22aaa8`, conclusion success, 17:56 to 18:00 UTC). The text below is the job's own output, copied from its log.
+Source: the `metamorphic-outside` job of [run 44788077524](https://github.com/Expectrail/Expectrail/actions/runs/44788077524/job/136468151181) (pull request #719, head `b22aaa8`, conclusion success, 17:56 to 18:00 UTC). The Counts, Per check and Probes sections are the job's own output, copied from its log. The section "What these counts can and cannot say" was added after the run, at Sean's request on #719, from the same counts; `tools/metamorphic_outside.py` now prints it on every run.
 
 Project: `https://github.com/godotengine/godot-demo-projects.git`, `2d/kinematic_character`, commit `b761b4cd5718a7118f2c95eb55f181d0a5f004f1`, MIT. Actions from its `project.godot`: `jump`, `move_left`, `move_right`. Sandbox: `require`. Engine: 4.7.2.stable.official.ed1daf0bf. No model was called. Advisory: no record or counting rule changed.
 
@@ -13,6 +13,16 @@ Project: `https://github.com/godotengine/godot-demo-projects.git`, `2d/kinematic
 - `harmless` (harmless: the player's sprite is tinted; nothing it does changes (the engine's checks pass, as on the project unchanged; CI has no vision key, so the verdict is needs-review, as #379 requires: an accept needs vision, and an outside project counts as verified only after a run with vision, Sean's call on #398)): **0 kept checks fail it (false rejects)**.
 - `invisible` (harmless: the player's sprite is hidden; it moves exactly as before, so the engine's checks pass and only a visual observer can tell (#330): with vision it must not be accepted, because no player is drawn where the engine says it is): **0 kept checks fail it (false rejects)**.
 - `drag-left` (defect: seeded here: while move_left is held, the player is pushed 1 px back to the right each tick): **11 kept checks catch it**: `mm-mirror-hold-right-player-dx-px`, `mm-mirror-jump-w120-x1-player-dx-px`, `mm-mirror-jump-w120-x2-player-dx-px`, `mm-mirror-jump-w120-x8-player-dx-px`, `mm-mirror-jump-w40-x1-player-dx-px`, `mm-mirror-jump-w40-x2-player-dx-px`, `mm-mirror-jump-w40-x8-player-dx-px`, `mm-mirror-jump-w80-x1-player-dx-px`, `mm-mirror-jump-w80-x2-player-dx-px`, `mm-mirror-jump-w80-x8-player-dx-px`, `mm-mirror-reverse-player-dx-px`.
+
+## What these counts can and cannot say
+
+- Mirroring the inputs asks only whether left and right behave alike. A fault that is the same in both directions, such as falling through the floor, mirrors too, so the relation still holds and no mirror check can see it. These checks are a narrow detector for direction-dependent faults; a defect they miss is not evidence that they are weak, unless that defect is direction-dependent.
+- No declared defect is caught (`broken`).
+- **22 of 44 checks are not exercised on any build**, as pinned, on the control and on every change: every check on `max_rise_px`, `air_jumps`. The generator made checks on signals these routes never exercise; that is a finding about the generator, not about the mirror relation (#728).
+- **22 of 22 kept checks are indeterminate on the do-nothing control**. Freezing the player leaves nothing for these routes to exercise, so the control cannot tell a real check from a trivial one here: for these checks, kept means the control could not judge them, not that it cleared them.
+- `drag-left` was written for this measurement, by the same agent that wrote the measurement, as the outside counterpart of the bundled `slow-left`. A catch of a fault written by someone else would weigh more; read the 11 catches with that in mind.
+
+**Reading the bundled game's "1 of 24" again.** `docs/measurements/675-metamorphic-mirror.md` reports a kept mirror check failing on 1 of the 24 public defects, `slow-left`. That number does not show the mirror checks are weak: they are a narrow, accurate detector for one fault class, direction-dependent faults, with no false rejects on kinematic-character. Of the 24 public defects, `slow-left` is the one whose fault is in the player's own left/right motion; the other two with a direction in their names, `enemy-fast-left` and `camera-stops-right`, act on the enemy and the camera, which none of the four mirrored signals (the player's sideways travel, rise, airborne time and air jumps) measures. This reading comes from the defects' names and the signals' definitions; it was not measured separately.
 
 ## Per check
 

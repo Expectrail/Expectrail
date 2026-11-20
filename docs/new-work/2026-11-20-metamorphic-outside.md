@@ -33,6 +33,22 @@ Advisory: nothing here changes what the generator offers, what may count or what
   `broken`, and none fails `harmless` or `invisible`. 220 replays, all in the sandbox, none failed. Published
   in `docs/measurements/675-metamorphic-outside.md` and `docs/outside-projects.md`.
 
+## After Sean's review on #719
+
+- `tools/metamorphic_outside.py` prints a section "What these counts can and cannot say", computed from the
+  rows: that a mirror check sees only direction-dependent faults, how many checks are not exercised on any
+  build and on which signals, how many kept checks the do-nothing control could not judge, and that the
+  seeded fault was written for the measurement. Two tests cover it (it appears when it applies, and the
+  never-exercised line stays out when nothing is never exercised).
+- The section is added to `docs/measurements/675-metamorphic-outside.md` from the published counts (22 of 44
+  never exercised, on `max_rise_px` and `air_jumps`; 22 of 22 kept checks indeterminate on the control;
+  `drag-left` seeded here), with a reading of the bundled game's "1 of 24"; a one-paragraph note points to it
+  from `docs/measurements/675-metamorphic-mirror.md`. The CI artifact with the rows could not be fetched from
+  this session, so the section was written by hand from the counts in the published table and checked by
+  running `limits()` on rows parsed from that table: the output matches.
+- The generator finding is issue #728.
+- `python3 -m unittest tests.test_metamorphic_outside`: 18 tests, OK.
+
 ## Not done
 
 - Turning on `--metamorphic` in `jit.yml`.
@@ -47,4 +63,5 @@ Advisory: nothing here changes what the generator offers, what may count or what
 - `.gitignore`
 - `docs/measurements/675-metamorphic-outside.md` (new)
 - `docs/outside-projects.md`
+- `docs/measurements/675-metamorphic-mirror.md`
 - `docs/new-work/2026-11-20-metamorphic-outside.md` (new)
