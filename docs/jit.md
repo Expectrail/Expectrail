@@ -1164,9 +1164,16 @@ recorded ones; a fresh `repro` run under the new rule has not been made.
 Since the control, the PR rehearsal in `jit.yml` (air-jump, exact undo and comment-only "fix") no longer
 shows a strong catch: the stand-in's only catching check passes a frozen player and is dropped, so the
 comment-only case keeps no valid check. [`tools/jit_rehearsal_check.py`](../tools/jit_rehearsal_check.py)
-asserts that, and that the control dropped that check on the real engine. The rehearsal proves the plumbing
-and the control; it does not cover "a strong catch is produced" until a rehearsal whose checks survive the
-control is added.
+asserts that, and that the control dropped that check on the real engine.
+
+A third case brings the strong catch back (#691): `gun-cooldown-long-comment-only`, the public bench defect
+whose gun cooldown is 1.5 s instead of 0.3 s, "fixed" with one comment line in `player/gun.gd`. Its stand-ins
+are the six checks the hosted baseline record proposed for that defect (run 43465090517), copied unchanged
+("the gun fires at least twice on these shooting routes"). A gun that never makes a projectile fails each of
+them 3 of 3, so they state an obligation; they pass the clean game 3 of 3 and fail the bug build and the
+comment-only fix 3 of 3. The check asserts a strong catch by a check the control fails, and fails closed on
+anything less. Like the air-jump cases, it shows the plumbing, not a detection rate: the checks were chosen
+because the measurement had already shown they fail the control.
 
 ### Metamorphic checks: mirror the inputs (#675, piece 3)
 
