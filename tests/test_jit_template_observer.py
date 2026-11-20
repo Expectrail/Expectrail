@@ -293,7 +293,9 @@ def handing(checks):
 
 class EndToEnd(Base):
     def generate(self, fix: str, observer=None):
-        case = Case()
+        # Kept on the test: the fixture removes its folder when the Case is dropped, and the
+        # assertions below read files under `self.last_out` after this helper returns.
+        case = self.case = Case()
         frames = SensorFrames()
         doc = generate(PROFILE, "The player is not drawn.", case.patch(fix), [case.patch("air-jump")],
                        case.dir / f"out-{fix}", runner=JitGame(), intent=handing([check()]),
