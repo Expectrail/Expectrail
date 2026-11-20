@@ -32,7 +32,7 @@ Advisory: nothing here changes what may count or clear a change.
 
   The CI rehearsal took 2 to 4 minutes per case before this change (run 44768784886). The job's limit is 40
   minutes.
-- Full suite: SUITE_PLACEHOLDER
+- Full suite on main 8d503f2 merged with this change, with the engine present: 5,833 tests, OK, 44 skipped.
 
 ## Not done
 
