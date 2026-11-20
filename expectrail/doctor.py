@@ -281,6 +281,20 @@ def disk() -> Check:
     return _ok("disk", what, "; ".join(shown), run=True)
 
 
+def sandbox_fix(why: str | None) -> str:
+    """Recovery advice for a failed replay sandbox probe, shared with job preparation."""
+    if not sys.platform.startswith("linux"):
+        return "use a Linux host with bubblewrap and user namespaces for isolated replays; bubblewrap is not supported on this system"
+    if why and why.startswith("xvfb-run is not installed"):
+        return (f"{APT} xvfb, then run `expectrail doctor` again; the sandbox needs its own virtual display. "
+                "Without it replays run outside the sandbox, and the isolated class and `require-sandbox` refuse to run")
+    if why and why.startswith("bubblewrap could not"):
+        return ("Open Expectrail on a Linux host where bubblewrap can start the replay sandbox with user namespaces, "
+                "then choose Verify again. To check a host from the command line, run `expectrail doctor --isolated`.")
+    return (f"{APT} bubblewrap (Linux; the kernel must allow unprivileged user namespaces). Without it replays "
+            "run outside the sandbox, and the isolated class and `require-sandbox` refuse to run")
+
+
 def sandbox(isolated: bool) -> Check:
     """bubblewrap, by the probe a replay uses. Required only when the isolated class is asked for."""
     from harness import sandbox as box
@@ -289,14 +303,7 @@ def sandbox(isolated: bool) -> Check:
     tool, why = box.probe(True)
     if tool is not None:
         return _ok("sandbox", what, f"bubblewrap {tool.version} at {tool.path} started a sandbox", required=isolated)
-    fix = (f"{APT} bubblewrap (Linux; the kernel must allow unprivileged user namespaces). Without it replays "
-           "run outside the sandbox, and the isolated class and `require-sandbox` refuse to run")
-    if not sys.platform.startswith("linux"):
-        fix = "use a Linux host with bubblewrap and user namespaces for isolated replays; bubblewrap is not supported on this system"
-    elif why and why.startswith("xvfb-run is not installed"):
-        fix = (f"{APT} xvfb, then run `expectrail doctor` again; the sandbox needs its own virtual display. "
-               "Without it replays run outside the sandbox, and the isolated class and `require-sandbox` refuse to run")
-    return _missing("sandbox", what, _clip(why or "the sandbox could not be started"), fix, required=isolated)
+    return _missing("sandbox", what, _clip(why or "the sandbox could not be started"), sandbox_fix(why), required=isolated)
 
 
 def program(name: str, why: str, *, required: bool, package: str | None = None) -> Check:

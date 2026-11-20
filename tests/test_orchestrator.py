@@ -462,6 +462,28 @@ class GodotEngineTest(Case):
         self.assertIn("nothing was run unsandboxed", status["diagnostics"][0]["detail"])
         self.assertEqual(replay.calls, [])
 
+    def test_isolated_preflight_reports_a_remedy_for_the_sandbox_probe_failure(self):
+        from harness import sandbox as box
+
+        for reason, remedies in [
+            ("bubblewrap (bwrap) is not installed", ["install bubblewrap"]),
+            ("xvfb-run is not installed, and the sandbox cannot use the host's display", ["install xvfb"]),
+            ("bubblewrap could not start a sandbox: bwrap: setting up uid map: Read-only file system",
+             ["Linux host where bubblewrap can start", "choose Verify again", "expectrail doctor --isolated"]),
+        ]:
+            with self.subTest(reason=reason), mock.patch("sys.platform", "linux"), \
+                    mock.patch.object(box, "probe", return_value=(None, reason)) as probe:
+                job = self.job(execution_class="isolated")
+                status = runner.work(self.store, job, engines={"godot": engines.GodotGate(replay=FakeReplay())})
+                diagnostic, = status["diagnostics"]
+                self.assertEqual((status["decision"], status["output"]), ("needs-review", None))
+                self.assertEqual((diagnostic["code"], diagnostic["stage"]), ("TOOL_MISSING", "preparing"))
+                self.assertIn(reason, diagnostic["detail"])
+                for remedy in remedies:
+                    self.assertIn(remedy, diagnostic["fix"])
+                self.assertNotIn("get_godot", diagnostic["fix"])
+                probe.assert_called_once_with(True)
+
     def test_the_isolated_class_runs_with_the_sandbox_required(self):
         from harness import sandbox as box
         from tests.test_ci_gate import INSIDE, Accounting
