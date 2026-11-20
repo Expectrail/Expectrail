@@ -120,10 +120,13 @@ class Limits:
 
 
 def real_runner(require_sandbox: bool = False):
-    """The run the workflow's verify job makes: ``expectrail.runit run`` (needs Godot)."""
+    """The run the workflow's verify job makes: ``expectrail.runit run`` (needs Godot).
+
+    The third value says whether the caller owns the root and may remove it. Here it is the
+    repository itself, so it is never the caller's to delete."""
     def run(sample: str, out: Path, request_id: str) -> None:
         runit.run(sample, out, request_id=request_id, require_sandbox=require_sandbox)
-    return run, ROOT
+    return run, ROOT, False
 
 
 def stand_in_runner(recorded: bool = False):
@@ -150,7 +153,8 @@ def stand_in_runner(recorded: bool = False):
     def run(sample: str, out: Path, request_id: str) -> None:
         with lock:
             runit.run(sample, out, request_id=request_id, root=root, replay=game.replay)
-    return run, root
+    # True: this root is a temporary folder made here, so the caller may remove it.
+    return run, root, True
 
 
 class Service:
@@ -348,7 +352,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.stand_in_recorded and not args.stand_in:
         parser.error("--stand-in-recorded needs --stand-in")
-    runner, root = stand_in_runner(args.stand_in_recorded) if args.stand_in else real_runner(args.require_sandbox)
+    runner, root, _owned = (stand_in_runner(args.stand_in_recorded) if args.stand_in
+                            else real_runner(args.require_sandbox))
     results = args.results or Path(tempfile.mkdtemp(prefix="expectrail-stub-results-"))
     service = Service(results, runner, root, open_=not args.closed, stand_in=args.stand_in,
                       limits=Limits(per_visitor=args.per_visitor, daily_cap=args.daily_cap, breaker=args.breaker))

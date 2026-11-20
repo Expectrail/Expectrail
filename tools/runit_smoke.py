@@ -202,6 +202,20 @@ class Gate:
         self.runner(sample, out, request_id)
 
 
+def folders_to_remove(results: Path, root: Path, *, owns_root: bool, finished: bool,
+                      problems: list) -> list[Path]:
+    """The folders a smoke run may remove: only ones it made, and only on a clean finish.
+
+    `root` comes from the runner factory. With `--stand-in` it is a temporary folder made for this run
+    and `owns_root` is true; in the default mode it is the repository itself and `owns_root` is false,
+    so it is never ours to delete. A run that found problems, or that left by an exception, keeps
+    everything: that is when someone wants to look.
+    """
+    if not finished or problems:
+        return []
+    return [results] + ([root] if owns_root else [])
+
+
 def smoke(*, stand_in: bool, require_sandbox: bool = False, only: list[str] | None = None,
           run_timeout_s: float = 20 * 60, screenshots: Path | None = None, docs: Path | None = None,
           log=print) -> dict:
@@ -210,8 +224,8 @@ def smoke(*, stand_in: bool, require_sandbox: bool = False, only: list[str] | No
     from harness.web.run import CHROMIUM_ARGS, game_env
     from tools import runit_stub
 
-    runner, root = (runit_stub.stand_in_runner(recorded=True) if stand_in
-                    else runit_stub.real_runner(require_sandbox))
+    runner, root, owns_root = (runit_stub.stand_in_runner(recorded=True) if stand_in
+                               else runit_stub.real_runner(require_sandbox))
     gate = Gate(runner)
     results = Path(tempfile.mkdtemp(prefix="expectrail-smoke-results-"))
     manifest = json.loads(((docs or ROOT / "docs") / "run-it" / "samples.json").read_text(encoding="utf-8"))
@@ -227,6 +241,7 @@ def smoke(*, stand_in: bool, require_sandbox: bool = False, only: list[str] | No
     url = f"http://127.0.0.1:{server.server_address[1]}/run-it/#local"
     doc = {"format": FORMAT, "standIn": stand_in, "requireSandbox": require_sandbox, "url": url,
            "runs": [], "notOffered": [], "checks": [], "problems": []}
+    finished = False   # set on the normal path, so an exception keeps the folders too
 
     def check(name: str, problems: list[str]) -> None:
         doc["checks"].append({"check": name, "held": not problems})
@@ -385,20 +400,19 @@ def smoke(*, stand_in: bool, require_sandbox: bool = False, only: list[str] | No
 
             check("the page logged no script errors", [f"script error: {e}" for e in errors])
             browser.close()
+        finished = True
     finally:
         gate.release.set()
         server.shutdown()
         server.server_close()
-        # A clean run's two temporary folders are removed; a run with problems keeps them and says
-        # where, because that is when someone wants to look. Before this, every call left both behind
-        # and a machine running the suite filled up.
-        if doc.get("problems"):
+        remove = folders_to_remove(results, root, owns_root=owns_root, finished=finished,
+                                   problems=doc.get("problems") or [])
+        for folder in remove:
+            shutil.rmtree(folder, ignore_errors=True)
+        if not remove:
             # Named in the result so a caller (a test that fails the smoke on purpose) can remove them.
-            doc["kept"] = {"results": str(results), "stubRoot": str(root)}
-            log(f"kept for inspection: results {results}, stub root {root}")
-        else:
-            for folder in (results, root):
-                shutil.rmtree(folder, ignore_errors=True)
+            doc["kept"] = {"results": str(results), **({"stubRoot": str(root)} if owns_root else {})}
+            log("kept for inspection: " + ", ".join(doc["kept"].values()))
     return doc
 
 
