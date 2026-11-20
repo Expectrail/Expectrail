@@ -154,7 +154,7 @@
     ]
   },
   "outside-vision.yml::judge::Judge saved runs": {
-    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
+    "EXPECTRAIL_SPEC_USD_CAP": "not sent: tools.outside_vision judge sends only through MetaSamClient and holds no other role; tests.test_vision_step_spend_roles (builder one, 2026-11-20)"
   },
   "reported-bench.yml::reported-bench-sam::Render and judge": {
     "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
@@ -162,8 +162,8 @@
     "EXPECTRAIL_SPEC_USD_CAP": "unreviewed"
   },
   "run-it-record.yml::record::Record the vision answers, every replay sandboxed, spend capped": {
-    "EXPECTRAIL_MUSE_USD_CAP": "unreviewed",
-    "EXPECTRAIL_SPEC_USD_CAP": "unreviewed",
+    "EXPECTRAIL_MUSE_USD_CAP": "not sent: expectrail.runit record sends only through the vision client agents.sam_observations.default_client builds (backend sam; the step sets no backend), for every recording target, and holds no other role; tests.test_vision_step_spend_roles (builder one, 2026-11-20)",
+    "EXPECTRAIL_SPEC_USD_CAP": "not sent: expectrail.runit record sends only through the vision client agents.sam_observations.default_client builds (backend sam; the step sets no backend), for every recording target, and holds no other role; tests.test_vision_step_spend_roles (builder one, 2026-11-20)",
     "cannotTell": [
       "the script exports EXPECTRAIL_SAM_USD_CAP itself, and this audit does not follow the order of a step's commands, so it cannot tell whether every start runs with it"
     ]
