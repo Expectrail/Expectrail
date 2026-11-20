@@ -4,6 +4,21 @@ Godot projects the team did not write, verified with the command a stranger woul
 holds only what a recorded run shows, with its link. A project a builder wrote for a test
 (`tests/projects/`) is not an outside project and is never counted here.
 
+## Four repairs on kinematic-character (November 20, 2026)
+
+The local app compared four proposed repairs of a disabled collision mask in the public Godot kinematic-character game. Each comparison used the same broken Before folder, walk route, approved ground check and saved vision answers. All eight replays ran under required isolation. [Hosted comparison](https://github.com/Expectrail/Expectrail/actions/runs/44755124153/job/136352713821)
+
+| After folder | Decision | What the engine and vision showed |
+| --- | --- | --- |
+| Wrong collision layer | Reject | At frame 44 (tick 89), the player was 66.499 px past the ground boundary in both versions. The engine failed the check. The check did not ask vision. |
+| Restored collision, hidden sprite | Reject | The engine could not measure the hidden player. Vision found it missing in 83 of 120 frames, starting at frame 0. |
+| Restored collision, sprite stuck at zero opacity | Reject | The engine passed. At frame 0 (tick 1) the player boxes matched. Vision found the player missing in 83 of 120 frames. |
+| Restored original scene | Accept | Both observers passed. The first measured difference was at frame 20 (tick 41). |
+
+To inspect the visual rejection, download the artifact, open `repair-pair/stuck-fade-evidence.html` and choose **Go to the first failing frame**. At frame 0 the only changed pixels in the two captures are the 16 × 16 pixels in the player box. In `repair-pair/restored-evidence.html`, **Go to the first measured difference** shows both versions at frame 20. [Evidence artifact](https://github.com/Expectrail/Expectrail/actions/runs/44755124153/artifacts/14638335047)
+
+The job saved these verdicts, then failed because the hidden-sprite rehearsal still expected an inconclusive visual result. This was an automated run on prepared copies. Time to a first verdict for an unaided developer using their own game remains unmeasured.
+
 ## Independent GDScript follow-up: November 16, 2026
 
 **Breakout** (`mike0697/Breakout`, MIT, pin
