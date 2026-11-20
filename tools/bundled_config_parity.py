@@ -3,9 +3,9 @@
     python3 -m tools.bundled_config_parity [--out FILE] [--traces-only]
 
 #259 asks that the bundled game get an ``expectrail.project.json`` that reproduces today's results
-exactly. ``game/platformer`` is not edited by agents, so the config is kept at
-``harness/godot/platformer.project.json``; this tool puts a copy of it beside ``project.godot`` in
-throwaway copies of the game and compares them with copies that have no config.
+exactly. Sean put it beside ``project.godot`` (``game/platformer/expectrail.project.json``) on
+November 19, 2026. This tool compares throwaway copies of the game that carry it with copies that
+have it removed.
 
 Two comparisons, both on this machine, no model called:
 
@@ -37,8 +37,8 @@ from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
-CONFIG = ROOT / "harness" / "godot" / "platformer.project.json"
 GAME = ROOT / "game" / "platformer"
+CONFIG = GAME / "expectrail.project.json"
 ROUTES = ("smoke", "combat", "coins", "traversal")
 SAMPLES = ("clean", "fall-through-bug", "fall-through-repair")
 FORMAT = "expectrail.bundled-config-parity/v1"
@@ -149,8 +149,8 @@ def compare_traces(work: Path, config: dict, routes=ROUTES) -> list[dict]:
 
     engine = _engine()
     plain_game, conf_game = work / "plain" / "platformer", work / "configured" / "platformer"
-    for game in (plain_game, conf_game):
-        shutil.copytree(GAME, game, ignore=shutil.ignore_patterns(".godot"))
+    shutil.copytree(GAME, plain_game, ignore=shutil.ignore_patterns(".godot", CONFIG.name))
+    shutil.copytree(GAME, conf_game, ignore=shutil.ignore_patterns(".godot"))
     (conf_game / "expectrail.project.json").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
     results = []
     for route in routes:
@@ -202,6 +202,20 @@ def _watch_replays(config: dict, seen: list[bool]):
         yield
 
 
+def _without_config():
+    """Every sample checkout has the config removed, for the unconfigured side."""
+    from expectrail.orchestrator import sample as smp
+
+    original = smp.checkout
+
+    def checkout(target, *, bug, root=ROOT):
+        made = original(target, bug=bug, root=root)
+        (Path(made) / smp.GAME / CONFIG.name).unlink(missing_ok=True)
+        return made
+
+    return mock.patch.object(smp, "checkout", checkout)
+
+
 def _with_config(config: dict):
     """Every sample checkout gets the config beside project.godot."""
     from expectrail.orchestrator import sample as smp
@@ -237,7 +251,7 @@ def compare_decisions(work: Path, config: dict, samples=SAMPLES) -> list[dict]:
     for sample in samples:
         plain_seen: list[bool] = []
         conf_seen: list[bool] = []
-        with _watch_replays(config, plain_seen):
+        with _without_config(), _watch_replays(config, plain_seen):
             plain = _run_sample(sample, work / "samples" / sample / "plain")
         with _with_config(config), _watch_replays(config, conf_seen):
             configured = _run_sample(sample, work / "samples" / sample / "configured")
@@ -260,7 +274,7 @@ def compare_decisions(work: Path, config: dict, samples=SAMPLES) -> list[dict]:
 
 def report(traces: list[dict], decisions: list[dict] | None, declared: list[str]) -> dict:
     cases = traces + (decisions or [])
-    return {"format": FORMAT, "config": "harness/godot/platformer.project.json", "configSha256": _sha(CONFIG),
+    return {"format": FORMAT, "config": "game/platformer/expectrail.project.json", "configSha256": _sha(CONFIG),
             "declared": declared, "traces": traces, "decisions": decisions,
             "equal": not declared and bool(cases) and all(c["equal"] for c in cases)}
 

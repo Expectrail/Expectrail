@@ -55,7 +55,8 @@ class ReviewTest(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.root = Path(tmp.name) / "platformer"
-        shutil.copytree(ROOT / "game/platformer", self.root)
+        # A game that has not been onboarded: the bundled game's own config is left out (#259).
+        shutil.copytree(ROOT / "game/platformer", self.root, ignore=shutil.ignore_patterns("expectrail.project.json"))
         self.assertEqual(command("init", self.root)[0], 0)
         self.out = self.root.parent / "review.html"
 
