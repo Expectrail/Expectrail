@@ -435,6 +435,95 @@
               "minimum": 0
             }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Mirror the inputs (#675): right is left with each paired action swapped. Judged only over the clear window (expectrail/trace/evaluator.py, MIRROR). Sideways travel negates; height, airborne time and air jumps stay equal.",
+          "required": [
+            "type",
+            "transform",
+            "pairs",
+            "signal",
+            "relation",
+            "toleranceAbs",
+            "left",
+            "right"
+          ],
+          "properties": {
+            "type": {
+              "const": "metamorphic"
+            },
+            "transform": {
+              "const": "mirror_x"
+            },
+            "pairs": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 4,
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "signal": {
+              "enum": [
+                "player_dx_px",
+                "max_rise_px",
+                "airborne_ticks",
+                "air_jumps"
+              ]
+            },
+            "relation": {
+              "enum": [
+                "negate",
+                "equal"
+              ]
+            },
+            "toleranceAbs": {
+              "type": "number",
+              "minimum": 0
+            },
+            "left": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._/-]*$"
+            },
+            "right": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._/-]*$"
+            }
+          },
+          "oneOf": [
+            {
+              "properties": {
+                "signal": {
+                  "const": "player_dx_px"
+                },
+                "relation": {
+                  "const": "negate"
+                }
+              }
+            },
+            {
+              "properties": {
+                "signal": {
+                  "enum": [
+                    "max_rise_px",
+                    "airborne_ticks",
+                    "air_jumps"
+                  ]
+                },
+                "relation": {
+                  "const": "equal"
+                }
+              }
+            }
+          ]
         }
       ]
     },

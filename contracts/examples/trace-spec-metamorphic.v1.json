@@ -1,0 +1,37 @@
+{
+  "format": "expectrail.trace-spec/v1",
+  "id": "mm-mirror-jump-w40-x2-player-dx-px",
+  "origin": "AUTO_RELATION",
+  "statement": "Mirroring the inputs of jump-w40-x2 mirrors the player's sideways travel, while it touches nothing the mirror does not also move.",
+  "expectationRef": {
+    "claimId": "metamorphic.mirror-x",
+    "authority": "inferred_behavior"
+  },
+  "scope": {
+    "class": "player"
+  },
+  "window": {
+    "kind": "episode"
+  },
+  "operation": {
+    "type": "metamorphic",
+    "transform": "mirror_x",
+    "pairs": [
+      [
+        "move_left",
+        "move_right"
+      ]
+    ],
+    "signal": "player_dx_px",
+    "relation": "negate",
+    "toleranceAbs": 2.0,
+    "left": "jump-w40-x2",
+    "right": "jump-w40-x2-mirror"
+  },
+  "evidenceRequirement": {
+    "minimumTriggers": 1,
+    "minimumEvaluations": 1,
+    "completeWindow": true
+  },
+  "guards": []
+}
