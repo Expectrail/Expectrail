@@ -1,4 +1,4 @@
-"""Compare two repairs of the same public kinematic-character fault through the local app backend."""
+"""Compare three repairs of the same public kinematic-character fault through the local app backend."""
 import argparse
 import json
 import os
@@ -64,10 +64,7 @@ def compare(local_app, before, after, out):
            'renderer': info['rendering']['message'], 'diagnostics': [{k: d[k] for k in ('stage', 'code')} for d in shown['diagnostics']],
            'isolation': None, 'checks': [], 'findings': [], 'anchor': None, 'measurements': []}
     if findings is not None:
-        isolation = findings['isolation']
-        if not isolation['required'] or isolation['sandboxed'] != isolation['replays']:
-            raise ValueError('The recorded game execution did not meet the requested isolation.')
-        row.update(isolation=isolation, checks=findings['checks'], findings=findings['findings'])
+        row.update(isolation=findings.get('isolation'), checks=findings['checks'], findings=findings['findings'])
         anchor = findings.get('anchor')
         if anchor:
             row['anchor'] = {'status': anchor['status'], 'routes': [
@@ -82,7 +79,8 @@ def compare(local_app, before, after, out):
 
 def print_summary(rows, calibration):
     print('## Kinematic-character repair comparison through the configured app backend\n')
-    print('Before has collision mask 0. The candidates select mask 2 or restore the original mask.')
+    print('Before has collision mask 0. The candidates select mask 2, restore collision with the sprite hidden, '
+          'or restore the original scene.')
     frames = calibration['frames']
     print(f"Saved calibration: enabled={calibration['enabled']}, {frames['found']} found in "
           f"{frames['asked']} asked of {frames['listed']} listed frames.")
@@ -91,8 +89,9 @@ def print_summary(rows, calibration):
         print(f"{name}: {row['screen']}, decision={row['decision']}, intent={row['intent']}, checks={len(row['checks'])}, "
               f"sandboxed replays={(row['isolation'] or {}).get('sandboxed', 0)}")
         for check in row['checks']:
-            for side, seen in check.get('observed', {}).items():
-                print(f"- {check['spec']} / {check['route']} {side}: engine {seen['engine']}, vision {seen['visual']}")
+            for side, seen in (check.get('observed') or {}).items():
+                if seen:
+                    print(f"- {check['spec']} / {check['route']} {side}: engine {seen.get('engine')}, vision {seen.get('visual')}")
         for finding in row['findings']:
             print(f"- {finding['spec']} / {finding['route']}: {finding['comparison']}, "
                   f"finding frame {finding['frame']}. {finding['reason']}")
@@ -119,6 +118,35 @@ def print_summary(rows, calibration):
             print(f"- {diagnostic['stage']}: {diagnostic['code']}")
 
 
+def unmet_controls(rows):
+    """Explain any missed rehearsal control without editing the actual job results."""
+    expected = {'mask-2': ('reject', None), 'hidden-sprite': ('reject', ('pass', 'fail')),
+                'restored': ('accept', ('pass', 'pass'))}
+    misses = []
+    for name, (decision, observers) in expected.items():
+        row = rows.get(name)
+        if not row:
+            misses.append(f"{name}: no completed job result.")
+            continue
+        if row['phase'] != 'completed' or row['decision'] != decision:
+            misses.append(f"{name}: expected completed/{decision}, got {row['phase']}/{row['decision']}.")
+        isolation = row.get('isolation') or {}
+        if not (isolation.get('required') and isolation.get('replays', 0) > 0 and
+                isolation.get('sandboxed') == isolation['replays']):
+            misses.append(f"{name}: missing evidence that every replay ran under required isolation.")
+        if not row['checks']:
+            misses.append(f"{name}: no check results.")
+        elif observers is not None:
+            target = next((c for c in row['checks'] if c['route'] == 'walk' and
+                           c['spec'] == 'player-stays-above-ground'), {})
+            seen = (target.get('observed') or {}).get('after') or {}
+            actual = (seen.get('engine'), seen.get('visual'))
+            if actual != observers:
+                misses.append(f"{name}: walk/player-stays-above-ground After expected engine {observers[0]}, "
+                              f"vision {observers[1]}. Observed engine {actual[0] or 'missing'}, vision {actual[1] or 'missing'}.")
+    return misses
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', type=Path, help='existing clean clone at the registered upstream commit')
@@ -134,7 +162,7 @@ def main():
     args.out.mkdir(parents=True, exist_ok=False)
     with tempfile.TemporaryDirectory(prefix='expectrail-repair-pair-') as tmp:
         root = Path(tmp)
-        before, wrong, restored = (root / name for name in ('before', 'mask-2', 'restored'))
+        before, wrong, hidden, restored = (root / name for name in ('before', 'mask-2', 'hidden-sprite', 'restored'))
         app_kinematic.prepare(source / project['path'], restored)
         calibration = anchored.check_calibration(record.read_json(restored / 'vision/calibration.json'))
         calibration = {key: calibration[key] for key in ('enabled', 'frames', 'rates')}
@@ -143,13 +171,16 @@ def main():
         apply_patch(before, changes / 'broken.patch')
         shutil.copytree(before, wrong)
         apply_patch(wrong, Path(__file__).resolve().parent / 'repair-pair' / 'wrong-mask-repair.patch')
-        folders = (before, wrong, restored)
+        shutil.copytree(restored, hidden)
+        apply_patch(hidden, changes / 'invisible.patch')
+        candidates = (wrong, hidden, restored)
+        folders = (before, *candidates)
         original = {f.name: tree.digest(f) for f in folders}
-        if len(set(original.values())) != 3:
-            raise ValueError('The three prepared project trees must be distinct.')
+        if len(set(original.values())) != len(folders):
+            raise ValueError('Each prepared project tree must be distinct.')
         local_app = app.App(JobStore(root / 'jobs'), runner.spawn)
         try:
-            rows = {f.name: compare(local_app, before, f, args.out) for f in (wrong, restored)}
+            rows = {f.name: compare(local_app, before, f, args.out) for f in candidates}
         finally:
             local_app.close()
         if original != {f.name: tree.digest(f) for f in folders}:
@@ -158,8 +189,10 @@ def main():
               'recordedCalibration': calibration, 'candidates': rows}
     (args.out / 'repair-pair.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
     print_summary(rows, calibration)
-    return 0 if all(row['phase'] == 'completed' and row['checks'] and
-                    row['isolation']['replays'] > 0 for row in rows.values()) else 3
+    misses = unmet_controls(rows)
+    for message in misses:
+        print(f'- Unmet rehearsal control: {message}')
+    return 3 if misses else 0
 
 
 if __name__ == '__main__':

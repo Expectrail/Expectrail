@@ -5,7 +5,7 @@
 # code is not ours, so this job holds no secret, has a read-only token, and requires the replay
 # sandbox for every replay. The registry declares the outcome and diagnostics expected for each
 # case. A draft-only case can expect a preflight refusal with the stated diagnostic. The trial
-# reports whether the evidence matches those expectations. The repair pair reports its own results.
+# reports whether the evidence matches those expectations. The repair comparisons report their own results.
 name: Outside projects trial
 
 on:
@@ -54,7 +54,7 @@ jobs:
       - name: Verify each outside project, every replay in the sandbox
         id: projects
         run: python -m tools.outside_trial --fetch --execution-class isolated --out runs/outside
-      - name: Compare both proposed kinematic-character repairs through the local app backend
+      - name: Compare three proposed kinematic-character repairs through the local app backend
         if: ${{ !cancelled() && (steps.projects.outcome == 'success' || steps.projects.outcome == 'failure') }}
         shell: bash
         run: |
