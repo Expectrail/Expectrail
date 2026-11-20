@@ -1,6 +1,5 @@
 """The local project picker uses the app's normal HTTP boundary."""
 from pathlib import Path
-import shutil
 import subprocess
 import unittest
 from unittest import mock
@@ -81,7 +80,6 @@ class ProjectPickerTest(unittest.TestCase):
         result = self.http('POST', endpoint, {'after': str(after)})[1]
         self.assertIsNone(result['beforeSuggestion'])
 
-    @unittest.skipUnless(shutil.which('git'), 'Git is required for local project history')
     def test_worktree_and_previous_commit_use_the_same_project_subfolder(self):
         repo = self.root / 'source'
         after = configured_project(repo / 'game')

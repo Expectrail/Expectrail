@@ -14,7 +14,7 @@ path injection, a sibling symlink, a false Git checkout pointer, recent projects
 messages and starting a job with a copy of the previous commit. The Git test uses a real
 temporary repository and a linked worktree.
 
-On Linux, a desktop dialog driven under Xvfb returned the selected folder with a space in its name.
+In a manual Linux smoke check under Xvfb, the desktop dialog returned the selected folder with a space in its name.
 Cancel returned no folder.
 
 Full discovery (`python3 -m unittest discover -s tests -t .`) ran 5,762 tests in 1,539 seconds and passed with 56 skipped. The export scan reported zero errors and zero warnings.
