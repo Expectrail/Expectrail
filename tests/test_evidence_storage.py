@@ -324,6 +324,26 @@ class RepositoryEvidenceTest(unittest.TestCase):
         result = storage.budget(storage.ROOT, base)
         self.assertEqual(result["errors"], [], json.dumps(result, indent=2))
 
+    def test_written_rule_states_which_runs_do_not_enforce_the_limit(self):
+        """#684: the doc names the exempt events and the exact line `budget` prints there."""
+        doc = (storage.ROOT / "docs" / "evidence-storage.md").read_text()
+        with tempfile.TemporaryDirectory() as temp:
+            event = Path(temp) / "event.json"
+            event.write_text("{}")
+            out = io.StringIO()
+            with mock.patch.dict(os.environ, {"GITHUB_EVENT_PATH": str(event),
+                                              "GITHUB_EVENT_NAME": storage.NO_BASE_EVENTS[0]}), \
+                    contextlib.redirect_stdout(out):
+                self.assertEqual(storage.main(["budget"]), 0)
+        printed = out.getvalue().strip()
+        self.assertTrue(printed.startswith("Evidence limit not applicable"), printed)
+        self.assertIn(printed, " ".join(doc.split()))
+        for name in storage.NO_BASE_EVENTS:
+            self.assertIn(f"`{name}`", doc)
+        for name in ("pull_request", "push"):
+            self.assertIn(f"`{name}`", doc)
+        self.assertNotIn("It refuses an unavailable or ambiguous base instead of skipping.", doc)
+
     def test_committed_evidence_indexes_and_doc_links_match_manifests(self):
         for path in sorted((storage.ROOT / "docs").rglob(storage.MANIFEST)):
             with self.subTest(manifest=str(path.relative_to(storage.ROOT))):

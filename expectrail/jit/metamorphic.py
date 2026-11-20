@@ -18,8 +18,13 @@ until either twin touches something the mirror did not also move. What cannot be
 tell" (``NoMirror``), never guessed: a probe with no paired action (the mirror would change nothing),
 a pointer input, or an action whose name says left or right but which is not in a pair.
 
-Advisory: nothing here changes what the generator offers, what may count, or what may clear a change.
-The generator does not offer these yet (slice 2); ``tools/metamorphic_public.py`` measures them.
+The generator offers them when asked (``run.generate(..., metamorphic=True)``, ``jit run --metamorphic``;
+slice 2): ``offer`` picks at most ``PAIR_LIMIT`` pairs, and each check is judged by the same rule as a
+proposed check, the do-nothing control included. Its rows are the record's ``metamorphic``, never in
+``proposed``, ``validity``, ``catches``, ``counts``, the gate summary or the counting audit.
+``tools/metamorphic_public.py`` measures every pair on the public bench.
+
+Advisory: nothing here changes what may count or what may clear a change.
 """
 from __future__ import annotations
 
@@ -27,6 +32,7 @@ import copy
 import re
 
 TRANSFORM = "mirror_x"
+PAIR_LIMIT = 4  # pairs one run offers: 16 checks, at most 8 routes more to replay on each build
 DEFAULT_PAIRS = (("move_left", "move_right"),)
 CLAIM = "metamorphic.mirror-x"
 TOLERANCE = {"player_dx_px": 2.0, "max_rise_px": 2.0, "airborne_ticks": 2, "air_jumps": 0}
@@ -126,3 +132,36 @@ def derive(probe: dict, actions, pairs=DEFAULT_PAIRS) -> dict:
                 "source": "metamorphic"}
                for signal in MIRROR_SIGNALS]
     return {"probe": probe["id"], "mirror": twin, "entries": entries, "reason": None}
+
+
+def offer(probes: list[dict], actions, first=(), limit: int = PAIR_LIMIT, pairs=DEFAULT_PAIRS) -> tuple[list[dict], list[dict]]:
+    """(derivations, skipped) for one generator run: at most ``limit`` pairs, each a ``derive`` result.
+
+    Only probes with a ``program`` the generator made are mirrored (a replayed report or a model's probe is
+    not). The ids in ``first`` (the probes the proposed checks use) come first, then library order. A probe
+    whose pair is the same two programs as one already offered (``hold-left`` is ``hold-right`` mirrored) is
+    skipped, as is one with no mirror; ``skipped`` says why for each."""
+    import hashlib
+    import json
+
+    def key(program):
+        return hashlib.sha256(json.dumps(program, sort_keys=True).encode()).hexdigest()
+
+    by_id = {p["id"]: p for p in probes if isinstance(p.get("program"), dict)}
+    order = [i for i in dict.fromkeys(first) if i in by_id] + [p["id"] for p in probes if p["id"] in by_id]
+    out, skipped, seen = [], [], set()
+    for pid in dict.fromkeys(order):
+        d = derive(by_id[pid], actions, pairs)
+        if d["mirror"] is None:
+            skipped.append({"probe": pid, "reason": d["reason"]})
+            continue
+        twin = frozenset((key(by_id[pid]["program"]), key(d["mirror"]["program"])))
+        if twin in seen:
+            skipped.append({"probe": pid, "reason": "the same two programs as a pair already offered"})
+            continue
+        if len(out) >= limit:
+            skipped.append({"probe": pid, "reason": f"over the limit of {limit} pairs"})
+            continue
+        seen.add(twin)
+        out.append(d)
+    return out, skipped
