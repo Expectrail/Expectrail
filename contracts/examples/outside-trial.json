@@ -3,8 +3,8 @@
   "projects": [
     {
       "name": "example",
-      "verdict": "needs-review",
-      "expect": "needs-review",
+      "verdict": null,
+      "expect": "unapproved-drafts",
       "expectedEngine": {
         "paddle": "fail"
       },
@@ -35,17 +35,16 @@
         "pointer left click at viewport [180, 290]: left down tick 13; left up tick 14."
       ],
       "expectationErrors": [],
-      "checks": {
-        "checks": 0,
-        "passed": 0
-      },
-      "reasons": [
-        "unapproved drafts; vision did not run"
-      ],
+      "checks": null,
+      "reasons": [],
       "commit": "1111111111111111111111111111111111111111",
       "licence": "MIT",
-      "exit": 2,
-      "seconds": 1.0
+      "exit": 5,
+      "seconds": 1.0,
+      "setupRefusal": "unapproved-drafts",
+      "verifyJobs": 0,
+      "decision": null,
+      "output": "expectrail: Nothing here can be verified yet. 1 check named in \"approvedContracts\" is a draft nobody has approved. A person approves a check before it judges."
     }
   ]
 }

@@ -85,6 +85,61 @@ class ConfiguredAppTest(unittest.TestCase):
         saved=self.store.request(job['id']);self.assertEqual(len(request.read_checks(saved).specs),1)
         self.assertIn('config differs',' '.join(result['reasons']))
 
+    def test_unready_before_explains_missing_policy_without_starting_a_job(self):
+        body = self.pair()
+        before = Path(body['before'])
+        config = before / 'expectrail.project.json'
+        ready = json.loads(config.read_text())
+        shutil.copyfile(ROOT / 'tests/projects/crate-run/specs/crate-stays-above-floor.json',
+                        before / 'checks/draft.json')
+        for fields, expected in [
+            ({'routes': []}, 'no usable route'),
+            ({'approvedContracts': []}, 'no approved check'),
+            ({'approvedContracts': ['checks/draft.json']}, 'is a draft nobody has approved'),
+        ]:
+            with self.subTest(fields=fields):
+                config.write_text(json.dumps(ready | fields))
+                digests = [request.tree_digest(Path(body[side])) for side in ('before', 'after')]
+                code, inspection, _ = self.http('POST', '/api/inspect', body | {'folder': body['before']})
+                self.assertEqual(code, 200, inspection)
+                self.assertIn(expected, ' '.join(inspection['readinessSteps']))
+                with mock.patch.object(self.server.app, 'start', return_value=None) as worker:
+                    code, error, _ = self.http('POST', '/api/jobs', body)
+                self.assertEqual(code, 400)
+                self.assertIs(error['jobStarted'], False)
+                self.assertIn('Before', error['detail'])
+                self.assertIn(expected, error['detail'])
+                worker.assert_not_called()
+                self.assertEqual(self.server.app.history()['jobs'], [])
+                self.assertEqual([request.tree_digest(Path(body[side])) for side in ('before', 'after')], digests)
+
+    def test_submission_uses_the_policy_that_was_actually_copied_from_before(self):
+        body = self.pair()
+        before = Path(body['before'])
+        config = before / 'expectrail.project.json'
+        original = config.read_bytes()
+        copy_tree = project_job.tree.copy
+
+        def copy_during_edit(source, destination, **options):
+            if source != before:
+                return copy_tree(source, destination, **options)
+            config.write_text(json.dumps(json.loads(original) | {'approvedContracts': []}))
+            try:
+                return copy_tree(source, destination, **options)
+            finally:
+                config.write_bytes(original)
+
+        self.assertEqual(project_job.unready(before), [])
+        with mock.patch.object(project_job.tree, 'copy', side_effect=copy_during_edit), \
+                mock.patch.object(self.server.app, 'start', return_value=None) as worker:
+            code, error, _ = self.http('POST', '/api/jobs', body)
+        self.assertEqual(code, 400)
+        self.assertIs(error['jobStarted'], False)
+        self.assertIn('no approved check', error['detail'])
+        worker.assert_not_called()
+        self.assertEqual(self.server.app.history()['jobs'], [])
+        self.assertEqual(list(self.store.root.glob('project-*')), [])
+
     def test_check_folders_previews_current_and_saved_setups_without_starting_a_job(self):
         from expectrail import onboarding
 

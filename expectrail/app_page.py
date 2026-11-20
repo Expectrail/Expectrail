@@ -89,6 +89,7 @@ async function api(path, body) {
   if(!response.ok) {
     const error=new Error(data.detail || 'The request could not be carried out.');
     error.setupPreview=data.setupPreview;
+    error.jobStarted=data.jobStarted;
     throw error;
   }
   return data;
@@ -100,7 +101,7 @@ function problem(error, submissionAttempted=false) {
   if(job) {
     el('progress').textContent='Current run status is unavailable.';
     el('next-step').textContent='Use Retry status to reconnect, or Cancel to stop the job.';
-  } else if(submissionAttempted) {
+  } else if(submissionAttempted && error.jobStarted!==false) {
     el('progress').textContent='Could not confirm whether verification started.';
     el('next-step').textContent='Check Past runs for this comparison, then check the folders before trying again.';
   } else {
@@ -297,6 +298,10 @@ el('verify').onclick=async()=>{
     }
     if(body.projectConfig){
       const inspection=await api('/api/inspect',{...body,side:'before',folder:body.before});
+      if(inspection.readinessSteps?.length){
+        rendererAcknowledged=null;el('rendering').textContent='';
+        throw new Error('Before is not ready for verification. '+inspection.readinessSteps.join(' '));
+      }
       el('rendering').textContent=rendering(inspection);
       const signature=JSON.stringify([body,inspection.rendering]);
       if(inspection.rendering?.warning && rendererAcknowledged!==signature){

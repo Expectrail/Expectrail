@@ -224,8 +224,10 @@ is needs-review with a `PROVIDER_FAILED` diagnostic naming the missing setting. 
 are therefore: as pinned, needs-review; broken, reject; harmless, needs-review. The engine's own pass
 on the clean and harmless runs is unchanged from run 43484520696 above.
 
-It is a trial, not a gate. A needs-review or a reject is a finding to read; the job fails only when
-a project cannot be fetched as pinned or the command ends with no verdict.
+The trial compares each observed outcome with its declared expectation. A configured project
+with only unapproved draft checks can expect a setup refusal before a job starts. This case must
+still produce the specified independent draft engine findings. A missing verdict on any other
+project, a different refusal, a missing draft finding or a mismatch fails the trial.
 
 ```sh
 python -m tools.outside_trial --fetch --execution-class isolated --out runs/outside
@@ -540,3 +542,17 @@ bounds window at frame 20. No approval or vision was added. The existing
 `Outside projects trial` / `outside-trial` PR job is the required CI proof and has
 **not run on this change yet**. Its declared expected results now fail the trial
 if they differ or an engine diagnostic is missing.
+
+
+## Breakout setup refusal (2026-11-20)
+
+The configured CLI now stops before creating a verification job when the chosen checks are
+all drafts. On the pinned, harmless and broken Breakout copies, the hosted CLI exited 5 and
+produced no verdict. In separate isolated engine runs the paddle and ball drafts both passed
+on pinned and harmless. On broken, the paddle bounds first failed at frame 20 and the ball
+draft returned needs-review because its checkpoint was never reached. The trial failed because
+its registry still expected three needs-review verdicts. [Hosted trial and draft findings](https://github.com/Expectrail/Expectrail/actions/runs/44723616398/job/136245376778)
+
+The registry now expects the specific setup refusal and zero verification jobs for each of these
+three cases. The public report records the CLI output beside the draft results. A gate verdict
+on Breakout still requires an approved check.
