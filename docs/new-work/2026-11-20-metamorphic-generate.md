@@ -21,7 +21,7 @@
 - Real engine, Godot 4.7.2, no model (`docs/measurements/675-metamorphic-generate.md`): on `slow-left` with
   the candidate withheld, 4 of 16 offered checks are valid; they catch the comment-only candidate 4 of 4 and
   pass the revert 4 of 4. 94 replays per run, $0.17 assumed.
-- Full suite: see the pull request.
+- Full suite on main d6bd48f merged with this change, engine present: 5,787 tests, OK, 44 skipped.
 
 ## Not done
 - `jit.yml` does not pass `--metamorphic`; no live run was made.
