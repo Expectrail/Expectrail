@@ -27,7 +27,10 @@ capture or pull request", never left in progress. If the trusted job's start ste
 creating the checks, its finish step concludes them (clearance failed, evidence neutral: "The
 trusted job stopped before it judged this capture"); if posting the comment fails, the checks are
 concluded before the error is reported. If the finish step never runs (the runner is lost, say),
-clearance stays in progress, which never counts as cleared.
+clearance stays in progress, which never counts as cleared. Re-running the verify workflow gives the
+head a new clearance, and that run's trusted job concludes the open checks of every earlier capture
+of the same head (clearance failed, evidence neutral, "Superseded capture or pull request"). An
+earlier capture could never clear anyway: only the latest capture of a head is judged.
 
 Install a dedicated GitHub App on this repository with Checks read/write. In the protected
 `main-only` environment, set the variable `EXPECTRAIL_CHECKS_APP_ID` and secret
