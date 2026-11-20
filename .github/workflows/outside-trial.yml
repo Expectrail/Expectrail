@@ -53,6 +53,8 @@ jobs:
           fi
       - name: Verify each outside project, every replay in the sandbox
         run: python -m tools.outside_trial --fetch --execution-class isolated --out runs/outside
+      - name: Compare both proposed kinematic-character repairs through the local app backend
+        run: python -m tests.outside.repair_pair --out runs/outside/repair-pair >> "$GITHUB_STEP_SUMMARY"
       - name: What happened, in the summary
         if: always()
         run: |
@@ -69,6 +71,8 @@ jobs:
           path: |
             runs/outside/outside-trial.json
             runs/outside/outside-trial.md
+            runs/outside/repair-pair/repair-pair.json
+            runs/outside/repair-pair/*-evidence.html
             runs/outside/jobs/**/status.json
             runs/outside/jobs/**/findings.json
           retention-days: 30
