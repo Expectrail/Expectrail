@@ -50,3 +50,4 @@ _bmad/render/
 !/tools/macos_suite_summary.py
 !/tools/spend_cap_audit.py
 !/tools/spend_cap_gaps.json
+!/tools/do_nothing_public.py

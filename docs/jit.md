@@ -29,12 +29,14 @@ bug report + candidate patch
    ├─► measure: every probe's signals on the clean game and the bug build expectrail/jit/measure.py
    ├─► intent: Muse Spark proposes up to 8 checks and 4 probes            expectrail/jit/intent.py
    ├─► near misses: wrong versions of the same change                      expectrail/jit/dodgy.py
+   ├─► do-nothing controls: the clean game, the check's actor doing nothing  expectrail/jit/do_nothing.py
    │
    ▼
 headless, trace-only replays (no frames, so no SAM image)                  expectrail/jit/run.py
    │
    ▼
-valid: passes 3 of 3 on the clean game, and fails 3 of 3 on a near miss    expectrail/jit/assess.py
+valid: passes 3 of 3 on the clean game, does not pass 3 of 3 with its actor doing nothing,
+       and fails 3 of 3 on a near miss                                      expectrail/jit/assess.py
    │
    ├─► any check rejected? one revision: the model is told why, from the clean game and the bug build
    │   only, replaces those checks, and the whole set is replayed again (same budget)
@@ -53,7 +55,7 @@ jit-run/v1 record, report, and an advisory block in the gate comment and the rev
 | Intent | [`intent.py`](../expectrail/jit/intent.py) | One Muse Spark call. The report and the patch go in as string values of a JSON object, under a system prompt that calls them untrusted. The answer is parsed by discovery's planner parser, so only probes that compile and contracts that validate in the closed trace language survive. Every check gets origin `AUTO_DIFF`, authority `model_prior` and an id starting `jit-`. No model-written code runs. |
 | Measure | [`measure.py`](../expectrail/jit/measure.py), [`probes.py`](../expectrail/jit/probes.py) | Before the model call, each probe is replayed once on the clean game and once on the bug build (the base patches), never on the candidate, and every signal's value goes into the prompt as a number, next to a one-line meaning of each signal. The model picks a probe and signal where the two builds differ and puts a threshold between them. Its own job, with no secret; the propose job re-checks the numbers' shape (known probes, known signals, plain numbers, the same base patches) and goes ahead without them, saying why, if they do not fit. The probes are discovery's library plus the jump taps once more after walking left, the one place on the level with nothing overhead. |
 | Near misses | [`dodgy.py`](../expectrail/jit/dodgy.py) | The base build (the game the report describes); the mutation bench's operators on the lines the candidate added, with the steps the bench registered (read, never written); three code operators of our own for lines those do not reach (a boolean flipped, a condition negated, a statement replaced by `pass`); and, when the candidate changes more than one place, each place undone on its own. At most 8 besides the base, chosen by a seed taken from the candidate's bytes. |
-| Job | [`run.py`](../expectrail/jit/run.py) | Replays the reference first and drops a check at its first non-pass; replays each near miss once and confirms a kill to 3 of 3; replays the candidate 3 times for valid checks only. Budget checked before the model call and before each replay. |
+| Job | [`run.py`](../expectrail/jit/run.py) | Replays the reference first and drops a check at its first non-pass; replays the do-nothing control for each class the remaining checks are about and drops a check that passes it 3 of 3; replays each near miss once and confirms a kill to 3 of 3; replays the candidate 3 times for valid checks only. Budget checked before the model call and before each replay. |
 | Assessor | [`assess.py`](../expectrail/jit/assess.py) | Pure functions of the interpreter's five outcomes per run. Nothing a model said reaches it. |
 | Record | [`contracts/jit-run.v1.schema.json`](../contracts/jit-run.v1.schema.json) | One per change: digests of the inputs, model and prompt; settings; the diff map; every proposed check and probe; every near miss; each check's reference runs, kills, candidate runs and outcome; the catches with their label; spend with the prices used. `advisory` is always true and there is no decision field. |
 | Revision | [`intent.py`](../expectrail/jit/intent.py) `revise_to_file` | When the first replay rejects any check, one more model call. Each rejected check goes back with one of two reasons: it did not pass on the clean game (with the interpreter's outcome names), or it did not fail on the bug build. Never the candidate's outcomes or the near misses built from the candidate, which would let it fit checks to the change under test. At most one replacement per rejected check; kept checks stay as they were. The first round's record is read as untrusted data (schema-valid, this patch, plain numbers), and the second record carries the first round's replays and both calls' tokens, so the $2 cap covers the whole change. No budget left, no rejected check, or an unusable answer: the first round stands. |
@@ -67,7 +69,8 @@ jit-run/v1 record, report, and an advisory block in the gate comment and the rev
 - **Valid.** Passed on the clean game on every one of 3 runs (no failure, no gap, no error, actually
   exercised), and failed on every one of 3 runs of at least one near miss. A check that fails on
   nothing near the candidate tells us nothing about it, so a check that "always passes" is dropped
-  here, whoever proposed it.
+  here, whoever proposed it. It must also not pass all 3 runs of the do-nothing control, the clean game
+  with the actor it is about doing nothing (#675, below): such a check states no obligation.
 - **Catch.** A valid check that fails on all 3 runs of the candidate. Mixed results are `flaky`, never
   a catch.
 - **Strong.** The catch also fails on all 3 runs of the base build, or its claim is one a person
@@ -1123,6 +1126,34 @@ Add `--harmless-work NEW_DIRECTORY` to the public counting audit to replay the c
 On the frozen public bench, **135 of 137 checks passed on the harmless edit, 0 falsely rejected it, 2 were indeterminate and 0 were unrun**. All 216 headless replays completed across 36 exact routes on the clean and comment-only copies. The two indeterminate enemy-facing checks had zero triggers and zero evaluations on both arms. All 36 route traces were byte-identical across the edit. This measures a source-only comment on this game, without a visual observer.
 
 The [measurement and reproduction commands](measurements/675-harmless-control.md) identify every frozen check and the original public artifacts for custom routes. Use `--harmless-defect ID` to restrict engine work to selected defects while keeping every check in the report. These advisory results have no effect on counting, strong catches or gate decisions (#600).
+
+### Do-nothing control for each generated check (#675)
+
+A check that still passes when the actor it is about does nothing states no obligation: a frozen paddle
+passes "the paddle stays inside the play area". [`do_nothing.py`](../expectrail/jit/do_nothing.py) makes
+one control per class from the check's own subject, not by hand per game: the check's `scope.class`, the
+profile's selector for it, the one scene whose root node has that name, and that scene's script. A class a
+script makes at run time (the bullet) is **never made**: each function that instantiates its scene returns
+at once (`shoot` returns `false`). Any other class (the player, the enemy) is **frozen**: its script's
+per-tick and input callbacks return at once. Where a step finds nothing, or more than one, the class has
+no control and the record says why; nothing is guessed.
+
+`run.generate` replays the clean game with the control (`patches=[control]`) for every check that passed
+the reference, 3 times, stopping once the runs can no longer all agree. A check that passes all 3 is
+dropped before the near misses (`assess.validity`, reason "passed the do-nothing control"), and a revision
+is told so (`passed-with-the-actor-doing-nothing`). `fails`, `indeterminate` (not exercised, mixed) and
+`not-run` are recorded only. The record carries each check's `doNothing` row and a top-level `doNothing`
+list with each control's patch digest. A run on the real harness makes the controls from `game`; a run
+with an injected runner (a test double, a recorded replay such as `ingest.py`) gets none and every row
+says "no do-nothing control was given to this run". The six counting rules are unchanged.
+
+[Measured on the public bench's recorded checks](measurements/675-do-nothing-control.md) (Godot 4.7.2,
+132 headless replays, no model): of the 135 checks recorded as passing the clean reference, **60 pass the
+control, 40 fail it, 24 are indeterminate and 11 were not run** (model-proposed probes whose routes are not
+committed). Of the 91 kept by the old rule, **45 pass it**, and five public defects (`air-jump`,
+`enemy-fast-left`, `enemy-ledge`, `slides-after-stop`, `slow-left`) would keep none of their recorded
+catches. The counting audit stays 0 of 137: the control can only remove checks. The reference runs are the
+recorded ones; a fresh `repro` run under the new rule has not been made.
 
 ### The six rules on pixel checks (#286)
 

@@ -128,11 +128,19 @@ def render(doc: dict) -> str:
             lines.append(f"| `{k['specId']}` | {k['strength']} | {k['statement']} | {', '.join(k['candidate'])} | "
                          f"{', '.join(k['base']) if k['base'] is not None else 'not run'} | {len(k['killed'])} |")
         lines.append("")
+    if doc.get("doNothing"):
+        lines.append("Do-nothing controls (#675): " + "; ".join(
+            f"{c['class']}: {c['mode']} ({', '.join(c['files'])})" if c["patchSha256"]
+            else f"{c['class']}: none ({(c['reason'] or '').replace('|', '/')})" for c in doc["doNothing"]))
+        lines.append("")
     if doc["validity"]:
-        lines += ["| Check | Valid | Reference | Outcome | Why not valid |", "| --- | --- | --- | --- | --- |"]
+        lines += ["| Check | Valid | Reference | Do-nothing control | Outcome | Why not valid |",
+                  "| --- | --- | --- | --- | --- | --- |"]
         for v in doc["validity"]:
+            dn = v.get("doNothing")
+            dn_text = (f"{dn['outcome']}" + (f" ({', '.join(dn['runs'])})" if dn["runs"] else "")) if dn else "not recorded"
             lines.append(f"| `{v['specId']}` | {'yes' if v['valid'] else 'no'} | {', '.join(v['reference']) or 'not run'} | "
-                         f"{v['outcome']} | {'; '.join(v['reasons'])} |")
+                         f"{dn_text} | {v['outcome']} | {'; '.join(v['reasons'])} |")
         lines.append("")
     return "\n".join(lines)
 

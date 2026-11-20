@@ -7,7 +7,8 @@ report, plus separately authenticated provenance. Model verdicts never count.
 - **Valid**: the check passed on every run of the clean reference (``REPS`` of ``REPS``: no failure,
   no gap, no error, and actually exercised), and it killed at least one near-miss variant, meaning it
   failed on every run of that variant. A check that never fails on anything near the candidate tells
-  us nothing about the candidate.
+  us nothing about the candidate. It must also not pass every run of the do-nothing control, where the
+  actor it is about does nothing (expectrail/jit/do_nothing.py, #675): such a check states no obligation.
 - **Catch**: a valid check that failed on every run of the candidate. Mixed results are ``flaky``,
   never a catch.
 - **Strong** catch: the check also fails on every run of the base build (the build the bug report
@@ -35,14 +36,34 @@ def combine(results: list[str]) -> str:
     return "not_exercised"
 
 
-def validity(reference: list[str], variants: dict[str, list[str]], reps: int = REPS) -> dict:
-    """{valid, killed, reasons} for one check."""
+DO_NOTHING_PASSED = "passed the do-nothing control: the actor it is about did nothing and it still passed"
+
+
+def do_nothing(runs: list[str], reps: int = REPS) -> str:
+    """The do-nothing control's outcome for one check (#675): ``passes`` (every run passed: the check
+    states no obligation), ``fails`` (every run failed), ``not-run`` (no runs) or ``indeterminate``
+    (anything else: a gap, a run not exercised, mixed results). Only ``passes`` drops a check."""
+    if not runs:
+        return "not-run"
+    if all_of(runs, "pass", reps):
+        return "passes"
+    if all_of(runs, "fail", reps):
+        return "fails"
+    return "indeterminate"
+
+
+def validity(reference: list[str], variants: dict[str, list[str]], reps: int = REPS,
+             do_nothing_runs: list[str] | None = None) -> dict:
+    """{valid, killed, reasons} for one check. ``do_nothing_runs`` are its runs on the do-nothing control
+    (expectrail/jit/do_nothing.py): a check that passes every one of them is not valid."""
     reasons = []
     bad = sorted({r for r in reference if r != "pass"})
     if bad:
         reasons.append("did not pass on the reference: " + ", ".join(bad))
     elif len(reference) < reps:
         reasons.append(f"ran {len(reference)} of {reps} times on the reference")
+    if do_nothing(do_nothing_runs or [], reps) == "passes":
+        reasons.append(DO_NOTHING_PASSED)
     killed = sorted(v for v, runs in variants.items() if all_of(runs, "fail", reps))
     if not reasons and not killed:
         reasons.append("killed no near-miss variant")
