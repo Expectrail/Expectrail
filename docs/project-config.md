@@ -197,7 +197,13 @@ The CLI and app share `expectrail.project_job`: they snapshot the games, select 
 base config, copy those policy bytes without editing them, and submit a normal verification
 request. The changed config cannot replace the base's policy. Removing a selected check or
 route from the changed copy is still a policy change. Draft configs retain the gate's
-needs-review rule. Empty routes or checks never become an accept. This configured path currently
+needs-review rule. Empty routes or checks never become an accept. The CLI refuses, before any
+replay, a base config that names no usable route or no approved check (only drafts, or none): it
+exits 5, starts no job and says which field to fill, so a new project never waits minutes for "no
+checks ran" ([tests](../tests/test_project_unready.py)). With `--with-heldout` it goes on, since
+held-out checks can judge. `python -m tools.setup_rehearsal --project crate-run --out DIR` walks a
+copy of a project from no config, through `init` and the person's step, to a verdict
+([tests](../tests/test_setup_rehearsal.py)). This configured path currently
 supports Godot; the older explicit `--head`, `--game`, `--routes`, `--specs` path is unchanged.
 [App/CLI and draft-refusal tests](../tests/test_app_projects.py).
 
