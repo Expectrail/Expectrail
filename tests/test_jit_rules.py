@@ -672,3 +672,28 @@ class CountingRules271(unittest.TestCase):
             cert=self.sign(cert,self.key)
             got=counting.make(self.doc,self.report,cert,trust=asked)
             self.assertFalse(any(row['counting'] for row in got['assessment']['rows']),change)
+
+
+class TempFolderHygieneTest(unittest.TestCase):
+    """A suite run leaves no jit-test- folder behind (the disk filled with 12,890 of them)."""
+
+    def test_a_dropped_case_removes_its_folder(self):
+        import gc
+
+        from tests.jit_fixtures import Case
+
+        case = Case()
+        folder = case.dir
+        self.assertTrue(folder.is_dir())
+        case.patch("v1")
+        del case
+        gc.collect()
+        self.assertFalse(folder.exists(), "the Case's folder outlived the Case")
+
+    def test_the_fixture_registers_its_own_cleanup(self):
+        from tests.jit_fixtures import Case
+
+        case = Case()
+        self.addCleanup(shutil.rmtree, case.dir, True)
+        self.assertTrue(callable(getattr(case, "_cleanup", None)),
+                        "Case must register a finalizer, or a suite run leaks one folder per test")
