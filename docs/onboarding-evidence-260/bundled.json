@@ -1,6 +1,5 @@
 {
   "format": "expectrail.setup-report/v1",
-  "mode": "calibrate",
   "source": {
     "gameTreeSha256": "6a273587d64e10a74c0160256cfdc4964f16ed3e93fe7ab178e1bedc5071b280",
     "configSha256": "650ea4aaec0412e008a44bcd8c5ab5dc9cc9c5a6a2e76dbbe1586c0ae85c78f5",
@@ -34,7 +33,6 @@
       "engineVersion": "4.7.2.stable.official.ed1daf0bf"
     }
   ],
-  "inspection": null,
   "calibration": {
     "rows": 120,
     "playerVisible": 120,

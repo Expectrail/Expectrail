@@ -1,0 +1,89 @@
+{
+  "format": "expectrail.route/v0",
+  "name": "pointer-menu-paddle",
+  "description": "Click the start button at viewport (80,30), then move the pointer left and right. Coordinates belong to the 320x180 example fixture; replace them with the game controls measured by the engine.",
+  "ticks": 18,
+  "seed": 1,
+  "events": [
+    {
+      "tick": 2,
+      "pointer": {
+        "position": [
+          80,
+          30
+        ]
+      }
+    },
+    {
+      "tick": 3,
+      "pointer": {
+        "position": [
+          80,
+          30
+        ],
+        "button": "left",
+        "pressed": true
+      }
+    },
+    {
+      "tick": 4,
+      "pointer": {
+        "position": [
+          80,
+          30
+        ],
+        "button": "left",
+        "pressed": false
+      }
+    },
+    {
+      "tick": 6,
+      "pointer": {
+        "position": [
+          40,
+          120
+        ]
+      }
+    },
+    {
+      "tick": 10,
+      "pointer": {
+        "position": [
+          260,
+          120
+        ]
+      }
+    },
+    {
+      "tick": 12,
+      "pointer": {
+        "position": [
+          200,
+          120
+        ],
+        "button": "right",
+        "pressed": true
+      }
+    },
+    {
+      "tick": 13,
+      "pointer": {
+        "position": [
+          180,
+          120
+        ]
+      }
+    },
+    {
+      "tick": 14,
+      "pointer": {
+        "position": [
+          180,
+          120
+        ],
+        "button": "right",
+        "pressed": false
+      }
+    }
+  ]
+}

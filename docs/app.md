@@ -20,8 +20,14 @@ The app serves its own page without downloading scripts, styles or fonts.
 3. Select **Check folders**. The page lists usable route names, approved check IDs and draft
    warnings. The setup doctor probes the installed engine and display with an empty project;
    it runs neither your selected game nor a model. Missing engine, display or drawing support
-   now shows its reason and fix for live vision as well as recorded vision. Invalid or absent
-   configs name what to fix.
+   now shows its reason and fix for live vision as well as recorded vision. When a config is missing, the app reads the saved Godot scenes
+   and shows the starting scene, possible player nodes, images and any binding that still
+   needs a choice. Check folders shows a separate result for Before and After. An existing
+   pending draft is checked against the project and its saved route before preview. For a
+   menu game, the preview reads the saved inputs without starting the game. If the draft
+   selects a player, the preview names it and shows its image candidates. Replay the route
+   to see whether those inputs reach gameplay.
+   Previewing leaves both folders untouched. Verification still requires a configuration.
    **Older projects without a config** retains the explicit path inputs for existing checkouts.
 4. Select **Verify**. The app and `expectrail verify --project AFTER --base BEFORE` prepare
    the same kind of request and use the same worker. The job snapshots both games and the

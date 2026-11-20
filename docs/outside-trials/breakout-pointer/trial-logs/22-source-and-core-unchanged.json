@@ -1,0 +1,19 @@
+{
+  "step": 22,
+  "label": "source-and-core-unchanged",
+  "startedUtc": "2026-11-16T06:56:08.500231+00:00",
+  "command": [
+    "python3",
+    "/workspace/work/handover-259-menu-routes/freeze-check.py"
+  ],
+  "cwd": "/workspace/work/pointer-routes",
+  "seconds": 0.1648267160053365,
+  "exitCode": 0,
+  "status": "finished",
+  "log": "trial-logs/22-source-and-core-unchanged.log",
+  "environment": {
+    "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+    "TMPDIR": null,
+    "EXPECTRAIL_TOOLS": null
+  }
+}

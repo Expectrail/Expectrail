@@ -459,6 +459,45 @@ _ID_TOKEN_WORD = re.compile(r"""(?:^|[\s"',{\[?])id-token(?=$|[\s"':])""", re.M)
 _WRITE_WORD = re.compile(r"""(?:^|[\s"',{\[:])(?:write|write-all|read-all)(?=$|[\s"',}\]#])""", re.M)
 # An alias, where YAML allows a value to start: "permissions: *p", "- *step", "<<: *defaults", "[*a, *b]".
 _ALIAS = re.compile(r"""(?:^|[\s,\[{:])\*[^\s,\[\]{}]+""")
+# Where a quoted scalar may open: the line's start, after a space, or after , [ { : (#610).
+_QUOTE_OPENS_AFTER = " \t,[{:"
+
+
+def _unquoted(line: str) -> str:
+    """The line with every quoted scalar that closes on it blanked to one space (#610).
+
+    YAML reads ``'17 9 * * *'`` as text, so a star or an ampersand inside it is not an alias or an
+    anchor. Single quotes end at a ``'`` not doubled (``''`` is a quote); double quotes end at a ``"``
+    not escaped by a backslash. A quote that opens inside a plain scalar (``it's``) is a letter and
+    opens nothing. A quoted scalar that does not close on its line (it may go on over the next
+    lines) is left as it is from its opening quote, so the counts stay as strict there as before.
+    """
+    out, i, n = [], 0, len(line)
+    while i < n:
+        ch = line[i]
+        if ch in "'\"" and (i == 0 or line[i - 1] in _QUOTE_OPENS_AFTER):
+            j = i + 1
+            while j < n:
+                if ch == "'" and line[j] == "'":
+                    if j + 1 < n and line[j + 1] == "'":
+                        j += 2
+                        continue
+                    break
+                if ch == '"' and line[j] == "\\":
+                    j += 2
+                    continue
+                if ch == '"' and line[j] == '"':
+                    break
+                j += 1
+            if j >= n:  # not closed on this line: fail closed, keep the rest as it is
+                out.append(line[i:])
+                return "".join(out)
+            out.append(" ")
+            i = j + 1
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
 
 
 def unread_jobs(text: str | None) -> list[str]:
@@ -517,7 +556,7 @@ def aliases(text: str | None) -> int:
         if header:
             block = len(header.group("lead"))
             continue
-        count += len(_ALIAS.findall(line))
+        count += len(_ALIAS.findall(_unquoted(line)))
     return count
 
 
@@ -616,8 +655,9 @@ def unread_added(old: str | None, new: str | None) -> dict[str, int]:
         if header:
             block = len(header.group("lead"))
         if n in added:
-            found["alias"] += len(_ALIAS.findall(line))
-            found["anchor"] += len(_ANCHOR.findall(line))
+            bare = _unquoted(line)
+            found["alias"] += len(_ALIAS.findall(bare))
+            found["anchor"] += len(_ANCHOR.findall(bare))
     return found
 
 

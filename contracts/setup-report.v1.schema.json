@@ -3,22 +3,14 @@
   "additionalProperties": false,
   "required": [
     "format",
-    "mode",
     "source",
     "runs",
-    "inspection",
     "calibration",
     "stability"
   ],
   "properties": {
     "format": {
       "const": "expectrail.setup-report/v1"
-    },
-    "mode": {
-      "enum": [
-        "inspect",
-        "calibrate"
-      ]
     },
     "source": {
       "type": "object",
@@ -116,84 +108,6 @@
       },
       "minItems": 1,
       "maxItems": 3
-    },
-    "inspection": {
-      "anyOf": [
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "tick",
-            "objects"
-          ],
-          "properties": {
-            "tick": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "objects": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "role",
-                  "nodePath",
-                  "screenBox",
-                  "worldBox",
-                  "visible",
-                  "onScreen",
-                  "boundsSource"
-                ],
-                "properties": {
-                  "role": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 500
-                  },
-                  "nodePath": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 500
-                  },
-                  "screenBox": {
-                    "type": "array",
-                    "items": {
-                      "type": "number"
-                    },
-                    "minItems": 4,
-                    "maxItems": 4
-                  },
-                  "worldBox": {
-                    "type": "array",
-                    "items": {
-                      "type": "number"
-                    },
-                    "minItems": 4,
-                    "maxItems": 4
-                  },
-                  "visible": {
-                    "type": "boolean"
-                  },
-                  "onScreen": {
-                    "type": "boolean"
-                  },
-                  "boundsSource": {
-                    "enum": [
-                      "drawing",
-                      "collision"
-                    ]
-                  }
-                }
-              },
-              "maxItems": 1024
-            }
-          }
-        },
-        {
-          "type": "null"
-        }
-      ]
     },
     "calibration": {
       "anyOf": [

@@ -45,7 +45,7 @@ class Base(unittest.TestCase):
 
     def gate(self, head: Path, base: Path | None = None, name: str = "out", **kw) -> dict:
         with contextlib.redirect_stdout(io.StringIO()):
-            return gv.run_gate(repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
+            return gv.run_gate(rule=kw.pop("rule", "engine-only"), repo=head, game="game/platformer", routes=["routes/*.json"], specs="specs",
                                out=self.tmp / name, work=self.tmp / f"{name}-work", base=base,
                                pr={"number": 7, "headSha": "1" * 40, "baseSha": "2" * 40 if base else None},
                                replay=FakeReplay(), **kw)
@@ -253,7 +253,7 @@ class GateViewerTest(Base):
 
         with mock.patch.object(viewer, "write_gate", side_effect=RuntimeError("boom")):
             with contextlib.redirect_stdout(io.StringIO()) as log:
-                doc = gv.run_gate(repo=make_repo(self.tmp / "h", bug=True), game="game/platformer",
+                doc = gv.run_gate(rule="engine-only", repo=make_repo(self.tmp / "h", bug=True), game="game/platformer",
                                   routes=["routes/*.json"], specs="specs", out=self.tmp / "o",
                                   work=self.tmp / "w", replay=FakeReplay())
         self.assertEqual(doc["decision"], "reject")

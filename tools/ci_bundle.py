@@ -197,7 +197,10 @@ def judge(policy, base, pr, intent, archive, out, observer, *, head_checkout):
         return verify.run_gate(repo=head, base=base, game=policy.game, routes=policy.routes, specs=policy.specs,
                                checks=checks, work=root / "work", out=out, replay=Attempts(trees, arms),
                                rule=record.BOTH, visual=observer, pr=pr, expectrail_commit=pr["baseSha"],
-                               require_sandbox=True, intent=intent, changed_checks=manifest["changed"])
+                               require_sandbox=True, intent=intent, changed_checks=manifest["changed"],
+                               # `head` is a name for the saved replays, not a folder: the head's project
+                               # config is compared from the real head checkout, whose tree was matched above.
+                               head_config_game=Path(head_checkout).resolve() / policy.game)
 
 
 if __name__ == "__main__":

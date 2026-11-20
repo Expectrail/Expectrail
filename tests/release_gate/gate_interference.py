@@ -55,11 +55,23 @@ class ImportCacheTest(GateCase):
                               cwd=REPO, capture_output=True, text=True, timeout=600,
                               env={**os.environ, "EXPECTRAIL_GODOT_CACHE": str(cls.warm)})
         assert done.returncode == 0 and (cls.warm / ".godot" / "imported").is_dir(), done.stdout + done.stderr
+        # The control needs a game whose replay draws from the cache as it finds it. A game with a
+        # project config is imported again on every replay (harness.run: `config is not None`), so a
+        # poisoned cache is not drawn from as it stands. The bundled game has carried a config since
+        # #259, so the control uses a copy without it, and a cache warmed from that copy.
+        cls.plain = cls.root / "plain"
+        shutil.copytree(cls.clean, cls.plain)
+        (cls.plain / GAME / "expectrail.project.json").unlink()
+        cls.warm_plain = cls.root / "warm-cache-plain"
+        done = subprocess.run([sys.executable, "-m", "harness.run", "--warm-cache", "--game", str(cls.plain / GAME)],
+                              cwd=REPO, capture_output=True, text=True, timeout=600,
+                              env={**os.environ, "EXPECTRAIL_GODOT_CACHE": str(cls.warm_plain)})
+        assert done.returncode == 0 and (cls.warm_plain / ".godot" / "imported").is_dir(), done.stdout + done.stderr
 
-    def own_cache(self, name: str) -> tuple[Path, dict]:
+    def own_cache(self, name: str, warm: Path | None = None) -> tuple[Path, dict]:
         """A copy of the warmed cache, key file and all, and the environment that points a run at it."""
         target = self.tmp / name
-        shutil.copytree(self.warm, target)
+        shutil.copytree(warm or self.warm, target)
         return target / ".godot", {"EXPECTRAIL_GODOT_CACHE": str(target)}
 
     def carrying_poison(self, name: str, source: Path) -> Path:
@@ -71,9 +83,9 @@ class ImportCacheTest(GateCase):
         return head
 
     def test_control_the_same_poison_in_the_verifiers_own_cache_changes_what_is_drawn(self):
-        cache, env = self.own_cache("poisoned-own")
+        cache, env = self.own_cache("poisoned-own", self.warm_plain)
         poison(cache)
-        code, status, err = self.verify(self.clean, env=env)
+        code, status, err = self.verify(self.plain, env=env)
         self.assertNotCleared(code, status, err)
         self.assertEqual((code, status["decision"]), (2, "needs-review"), err)
         # Why: the engine's record passes, and the frames are not the ones recorded, because the

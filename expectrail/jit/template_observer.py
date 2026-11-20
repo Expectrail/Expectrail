@@ -31,7 +31,7 @@ that probe are dropped with the reason, never passed.
 - ``unavailable`` or ``out-of-frame``: no readable frame, no engine box, no camera, or the box is not
   wholly on screen: not asked (a gap, so a check over that frame is ``needs-review``).
 
-**Objects the game has many of** (``objects``: the enemy; pixel.py ``named``). When the bank
+**Objects the game has many of** (``objects``: the enemy and the bullet; pixel.py ``named``). When the bank
 holds a role's templates and its calibration on the validation replay is ``met``
 (``calibration.objects``, agents/template_foreground.py ``calibrate_routes``), the observer is pointed at
 every one of them the engine logged on screen, each at its own logged box (agents/template_observations.py
@@ -43,9 +43,15 @@ calibration is not ``met``, is refused, so its checks are not run, never passed.
 
 **What it cannot tell** is declared in pixel.py ``OBSERVERS["visual-sensor"]`` and refused when a check is
 proposed: the ground and a label's text (the sensor discards colour semantics and reads no text,
-docs/template-sensor.md), the coin (the engine logs no box for it), the bullet (its bank holds no
-template of it: on the bundled game its clean crops are too small and flat), and ``reaches`` (it looks for one
-object near the place the engine puts it).
+docs/template-sensor.md), the coin (the engine logs no box for it), and ``reaches`` (it looks for one object
+near the place the engine puts it).
+
+**The bullet** is witnessed by its rings, not its templates (agents/template_radial.py; ``RADIAL_OBJECTS``
+below): it turns as it flies, so no template matched it pixel for pixel. When the bank holds its witness
+(``radialWitnesses.bullet``) and that witness's validation is ``met``, each bullet on screen is looked for along
+the path the engine logged for it in the frame (two ticks back to the frame's tick, all through the frame's
+camera: the game interpolates bodies, so it is drawn behind its logged box), with the same row shape as the
+enemy's. A bullet in the last part of its life, which the game fades out, is a gap.
 
 **Which way the enemy faces** (``faces-motion``). The bank keeps every template mirrored as well, so an enemy
 drawn facing backwards is still ``matched`` and ``visible`` cannot see ``enemy-walks-backwards``. When the
@@ -116,11 +122,12 @@ class TemplateSensorObserver:
         # The named roles this bank can be pointed at, and why each other one cannot.
         self.named, self.refused = (), {}
         foreground = self.bank["config"]["algorithm"] != sensor.ALGORITHM
+        self.witnesses = self.bank.get("radialWitnesses") or {}
         for role in pixel.OBSERVERS[NAME]["boxes"]:
             if not foreground:
                 # Only an approved-art bank's reader checks a named object's calibration record.
                 self.refused[role] = "its bank is not an approved-art foreground bank"
-            elif role not in roles:
+            elif role not in roles and role not in self.witnesses:
                 self.refused[role] = "its bank holds no template of it"
             elif (calibrated.get(role) or {}).get("status") != "met":
                 self.refused[role] = "its bank's calibration of it on the validation replay is not met"
@@ -214,6 +221,8 @@ class TemplateSensorObserver:
 
     def _look_named(self, sensor, role: str, trace: dict, planned: list[int], on_disk: dict) -> list[dict]:
         """One row a planned frame about every ``role`` object the engine logged: see the module docstring."""
+        if role in self.witnesses:
+            return self._look_radial(sensor, role, trace, planned, on_disk)
         foreground = self.bank["config"]["algorithm"] != sensor.ALGORITHM
         matcher = sensor.matchers_for(self.bank, [role])[role]
         headings = moves = None
@@ -263,6 +272,64 @@ class TemplateSensorObserver:
                 if moves is not None:
                     entry.update(self._facing(role, headings, image, box, (moves.get(n) or {}).get(ident), row["status"]))
                 boxes.append(entry)
+            rows.append({"frame": n, "asked": True, "boxes": boxes, "outside": outside})
+        return rows
+
+    def _look_radial(self, sensor, role: str, trace: dict, planned: list[int], on_disk: dict) -> list[dict]:
+        """``_look_named`` for a role witnessed by its rings (agents/template_radial.py): each logged object is
+        looked for along the path the engine logged for it in the frame, not at one box. The rows have the same
+        shape; ``promptBox`` is its box on the frame's tick."""
+        import numpy as np
+
+        from agents import template_radial as radial
+
+        witness = self.witnesses[role]
+        try:
+            where = radial.paths(trace, [n for n in planned if n in on_disk], role, self.fps, witness["pathTicks"])
+            # Every other object the engine logged in each frame (the player and the other roles): one within the
+            # witness's clearance of a path means that box is not judged (agents/template_radial.py ``crowded``).
+            others = radial._others(trace, [n for n in planned if n in on_disk], self.fps, role)
+        except sensor.SensorError as exc:
+            raise pixel.PixelError(f"the engine's boxes of {role} cannot be read: {exc}") from exc
+        rows = []
+        for n in planned:
+            if n not in on_disk:
+                rows.append({"frame": n, "asked": False, "note": "the replay did not capture this frame"})
+                continue
+            logged = where.get(n)
+            if logged is None:
+                rows.append({"frame": n, "asked": False,
+                             "note": f"the engine's record gives no boxes of {role} for this frame"})
+                continue
+            if logged and others[n] is None:
+                rows.append({"frame": n, "asked": False,
+                             "note": f"the engine's record cannot say what else is beside each {role} in this frame"})
+                continue
+            try:
+                image = sensor._image(on_disk[n], mode="RGB")
+            except (OSError, ValueError) as exc:
+                rows.append({"frame": n, "asked": False, "note": f"frame unavailable ({type(exc).__name__})"})
+                continue
+            shown, outside = [], 0
+            for ident, before, now, age in logged:
+                if now[2] <= 0 or now[3] <= 0 or now[0] >= image.width or now[1] >= image.height:
+                    outside += 1
+                else:
+                    shown.append((ident, before, now, age))
+            if len(shown) > pixel.MAX_BOXES:
+                rows.append({"frame": n, "asked": False, "outside": outside,
+                             "note": f"{len(shown)} on screen, more than the {pixel.MAX_BOXES} asked about"})
+                continue
+            rgb = np.asarray(image)
+            boxes = []
+            for ident, before, now, age in shown:
+                try:
+                    row = radial.look(witness, rgb, before, now, age,
+                                      others=radial._neighbours(logged, ident, others[n]))
+                except (sensor.SensorError, ValueError, KeyError, TypeError) as exc:
+                    raise pixel.PixelError(f"the radial witness could not look at {role} {ident} in frame {n}: "
+                                           f"{' '.join(str(exc).split())[:160]}") from exc
+                boxes.append({"id": ident, **_box_row(row)})
             rows.append({"frame": n, "asked": True, "boxes": boxes, "outside": outside})
         return rows
 
@@ -342,9 +409,22 @@ def _row(n: int, row: dict) -> dict:
 # (docs/template-sensor.md). The same recipe as that measurement, so its clean false-alarm figures describe
 # this bank's algorithm and settings; they are not a measurement of this bank on the bench's probes.
 BANK_ART = {ROLE: "player/robot.webp", "enemy": "enemy/enemy.webp"}
-# The named roles calibrated beside the player, each from the boxes the engine logs for it. Not the bullet:
-# on the bundled game its clean crops (16 x 16) gave no template with enough opaque detail.
+# The named roles calibrated beside the player by their templates, each from the boxes the engine logs for it.
 BANK_OBJECTS = ("enemy",)
+# The named roles witnessed by their rings instead (agents/template_radial.py): the bullet, which turns as it
+# flies, is drawn under an additive glow and fades out, so its templates never matched it pixel for pixel.
+# - "art": its approved art, which locates it on trusted clean frames only.
+# - "side": the sprite as drawn, in frame pixels: its 16 x 16 art at the capture's 2x (the window is 1600 x 960
+#   for an 800 x 480 viewport), the same size as its logged collision box (a circle of radius 8).
+# - "fadesAfterTicks": its Timer (the default 1 s, 120 ticks at the game's 120 a second) calls destroy, which
+#   fades the sprite out over 0.3 s (game/platformer/player/bullet.tscn); from then on a box is a gap.
+# - "clearPx": how far another bullet's box must stay from the area searched along a bullet's path for the bullet to
+#   be judged; any other logged box (the player, an enemy) must not touch that area at all. 0: measured on the
+#   calibration replays on November 19, a clean bullet whose searched area touched no other logged box had rings
+#   within 2.5 of a profile (the limit is 12) at every gap, down to 0 to 3 pixels; one overlapping another bullet
+#   reached 14.3. Its Glow (additive, alpha 0.25) reaches about 27 frame pixels beyond its box, but is too faint
+#   there to move the rings (docs/new-work/2026-11-19-sensor-bullet.md).
+RADIAL_OBJECTS = {"bullet": {"art": "player/bullet.webp", "side": 32, "fadesAfterTicks": 120, "clearPx": 0}}
 BANK_CATALOGUE = Path(__file__).resolve().parents[2] / "contracts" / "examples" / "template-foreground-catalogue.json"
 CLEAN_GAME = Path(__file__).resolve().parents[2] / "game" / "platformer"
 
@@ -382,7 +462,7 @@ def calibrate_bank(out, work, *, game=None, godot=None, run_replay=None) -> dict
     try:
         bank = foreground.calibrate_routes(replays[:-1], replays[-1], clean_game=game, clean_tree=clean_tree,
                                            art=dict(BANK_ART), catalogue=BANK_CATALOGUE, objects=BANK_OBJECTS)
-        bank = sensor.load_bank(bank)
+        bank = sensor.load_bank(add_radial(bank, replays[:-1], replays[-1], game=game, clean_tree=clean_tree))
     except (sensor.SensorError, OSError, ValueError, KeyError) as exc:
         raise ValueError(f"calibration failed: {' '.join(str(exc).split())[:200]}") from exc
     if ROLE not in {t["object"] for t in bank["templates"]}:
@@ -396,3 +476,38 @@ def calibrate_bank(out, work, *, game=None, godot=None, run_replay=None) -> dict
             "templates": len(bank["templates"]), "cleanTree": clean_tree,
             "objects": {role: {"templates": named[role]["templates"], "status": named[role]["status"]} for role in named},
             "routes": [r.name for r in replays[:-1]], "validation": replays[-1].name}
+
+
+def add_radial(bank: dict, clean_runs, validation_run, *, game, clean_tree, objects=None) -> dict:
+    """``bank`` with a radial witness for each role in ``objects`` (default RADIAL_OBJECTS), calibrated from the
+    same clean replays and validated on the same separate clean replay (agents/template_radial.py ``calibrate``).
+    The art is read from the pinned clean game only (template_foreground.py ``art_sources`` checks the tree)."""
+    import numpy as np
+
+    from agents import template_foreground as foreground
+    from agents import template_observations as sensor
+    from agents import template_radial as radial
+
+    Image, _, _ = sensor.imaging()
+    out = dict(bank)
+    out["calibration"] = dict(bank["calibration"])
+    out["calibration"]["objects"] = dict(bank["calibration"].get("objects") or {})
+    witnesses = dict(bank.get("radialWitnesses") or {})
+    for role, recipe in (RADIAL_OBJECTS if objects is None else objects).items():
+        source = foreground.art_sources(game, {role: recipe["art"]}, clean_tree)[0]
+        with Image.open(Path(game) / recipe["art"]) as image:
+            rgba = np.asarray(image.convert("RGBA"))
+        witness, counts = radial.calibrate(clean_runs, validation_run, role=role, art_rgba=rgba,
+                                           art={"path": source["path"], "sha256": source["sha256"]},
+                                           side=recipe["side"], fades=recipe["fadesAfterTicks"],
+                                           clear=recipe["clearPx"], clean_tree=clean_tree)
+        if not witness["profiles"]:
+            # No clean frame located the sprite: there is nothing to witness it with. The role is left out, so
+            # the observer refuses it ("its bank holds no template of it").
+            continue
+        witnesses[role] = witness
+        out["calibration"]["objects"][role] = counts
+    if witnesses:
+        out["radialWitnesses"] = witnesses
+    return out
+

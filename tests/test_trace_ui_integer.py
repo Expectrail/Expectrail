@@ -54,7 +54,7 @@ class UiIntegerTest(unittest.TestCase):
     def test_only_evidence_offers_expose_the_new_signal(self):
         for setting in offer.ALL:
             meanings = offer.meanings(setting)
-            self.assertEqual('ui_integer_at_end' in meanings, setting in (offer.EVIDENCE, offer.PIXEL))
+            self.assertEqual('ui_integer_at_end' in meanings, setting in (offer.EVIDENCE, offer.MENU, offer.PIXEL))
             self.assertEqual(intent._offered(setting), meanings)
 
     def test_unknown_trace_is_not_reconstructed_from_a_counter_value(self):

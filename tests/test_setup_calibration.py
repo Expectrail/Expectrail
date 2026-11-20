@@ -35,12 +35,12 @@ def measurements():
 
 
 def report():
-    return {'format': 'expectrail.setup-report/v1', 'mode': 'calibrate',
+    return {'format': 'expectrail.setup-report/v1',
             'source': {'gameTreeSha256': 'a'*64, 'configSha256': 'b'*64, 'routeSha256': 'c'*64,
                        'routeTicks': 4, 'physicsTicksPerSecond': 120, 'captureFps': 60,
                        'viewport': [360, 240], 'entryScene': 'res://main.tscn', 'bindingRoles': ['player']},
             'runs': [{'replaySha256': 'd'*64, 'traceSha256': 'e'*64, 'engineVersion': '4.7.2.stable'} for _ in range(3)],
-            'inspection': None, 'calibration': uo.calibrate({}, measured=measurements()),
+            'calibration': uo.calibrate({}, measured=measurements()),
             'stability': {'identical': True, 'changedTicks': [], 'changedHeaders': []}}
 
 
@@ -101,12 +101,12 @@ class ReportReaderTest(unittest.TestCase):
             self.assertEqual(onboarding.read_setup_report(path), doc)
 
     def test_refuses_laundered_statistics_missing_frames_and_false_stability(self):
-        for name in ('median', 'frame', 'mode', 'hash', 'stability', 'rate', 'nan'):
+        for name in ('median', 'frame', 'runs', 'hash', 'stability', 'rate', 'nan'):
             with self.subTest(name=name):
                 doc = report()
                 if name == 'median': doc['calibration']['playerWidth']['median'] = 100
                 if name == 'frame': doc['calibration']['frameMeasurements'].pop()
-                if name == 'mode': doc['mode'] = 'inspect'
+                if name == 'runs': doc['runs'].pop()
                 if name == 'hash': doc['runs'][1]['traceSha256'] = 'f'*64
                 if name == 'stability': doc['stability']['changedTicks'] = [1]
                 if name == 'rate': doc['source']['captureFps'] = 59
@@ -121,7 +121,7 @@ class ReportReaderTest(unittest.TestCase):
 
     def test_duplicate_keys_refused(self):
         with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp)/'report.json'; path.write_text('{"mode":"inspect","mode":"calibrate"}')
+            path = Path(tmp)/'report.json'; path.write_text('{"format":"a","format":"b"}')
             with self.assertRaises(ValueError): onboarding.read_setup_report(path)
 
 
@@ -155,7 +155,7 @@ class SetupErrorsTest(unittest.TestCase):
 
     def test_evidence_never_overwrites_or_changes_project(self):
         for out in (self.game, self.game/'new', Path(self.tmp.name)):
-            code, text = command('inspect', self.game, '--at-tick', 0, '--out', out)
+            code, text = command('calibrate', self.game, '--route', 'walk.json', '--out', out)
             self.assertEqual(code, 5, text)
             self.assertIn('new --out folder outside the project', text)
         self.assertFalse((self.game/'new').exists())
@@ -164,6 +164,13 @@ class SetupErrorsTest(unittest.TestCase):
         code, text = command('inspect', self.game, '--at-tick', -1)
         self.assertEqual(code, 5, text)
         self.assertIn('--at-tick', text)
+
+    def test_a_route_longer_than_the_setup_bound_names_it(self):
+        route = self.game/'long.json'
+        route.write_text(json.dumps({'format': 'expectrail.route/v0', 'name': 'long', 'seed': 1,
+                                     'ticks': 7201, 'events': []}))
+        code, text = command('calibrate', self.game, '--route', 'long.json')
+        self.assertEqual(code, 5, text)
         self.assertIn('7200', text)
 
     def test_nondivisor_physics_rate_proposes_a_valid_capture_rate(self):
@@ -215,15 +222,8 @@ class EngineSetupTest(unittest.TestCase):
         from tests.tool_requirements import godot_binary
         cls.engine = godot_binary()
 
-    def test_runtime_inspection_uses_bound_avatar_not_lookalike(self):
-        doc = onboarding.runtime_setup(GAME, mode='inspect', at_tick=1, godot=self.engine)
-        onboarding.check_setup_report(doc)
-        self.assertEqual(doc['source']['viewport'], [360, 240])
-        self.assertEqual([o['nodePath'] for o in doc['inspection']['objects']], ['Actors/Avatar'])
-        self.assertEqual(doc['inspection']['objects'][0]['screenBox'], [168.0, 108.0, 192.0, 132.0])
-
     def test_three_clean_runs_have_expected_dimensions_and_are_identical(self):
-        doc = onboarding.runtime_setup(GAME, mode='calibrate', route_path='walk.json', godot=self.engine)
+        doc = onboarding.runtime_setup(GAME, route_path='walk.json', godot=self.engine)
         onboarding.check_setup_report(doc)
         self.assertTrue(doc['stability']['identical'])
         c = doc['calibration']

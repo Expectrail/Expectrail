@@ -136,12 +136,13 @@ OBSERVERS = {
         # moved it and whose facing validation is met (agents/template_foreground.py ``_validate_facing``). A run
         # whose bank does not back it says nothing about facing, and the check is a gap (``named_observations``).
         "facing": ("enemy",),
-        # The "engine-boxes" roles it can be pointed at when its bank holds that role's templates and their
-        # calibration is met (template_observer.py; a bank without them refuses the role, so its checks are
-        # not run). The enemy only: calibrated on the bundled game, the bullet's clean crops gave no template
-        # with enough opaque detail (docs/new-work/2026-11-16-sensor-enemy.md). Every template is kept mirrored
-        # too, so ``visible`` matches an enemy drawn facing either way; ``faces-motion`` is what tells the two apart.
-        "boxes": ("enemy",),
+        # The "engine-boxes" roles it can be pointed at when its bank witnesses that role and the witness's
+        # calibration is met (template_observer.py; a bank without one refuses the role, so its checks are
+        # not run). The enemy by its templates, every one kept mirrored too, so ``visible`` matches an enemy
+        # drawn facing either way (``faces-motion`` tells the two apart). The bullet by its rings
+        # (agents/template_radial.py): it turns as it flies, so no template matched it pixel for pixel; the ring
+        # means of a round sprite do not change when it turns (docs/new-work/2026-11-19-sensor-bullet.md).
+        "boxes": ("enemy", "bullet"),
         "cannot": ("ground", "text"),
         "why": {
             "ground": "the template sensor matches sprites against clean templates; it does not segment the ground",
@@ -859,14 +860,18 @@ def observe(observer, run_dir, route: dict, objects=(), player: bool = True,
 
 
 def record_row(check: dict, status: str, reason: str | None, reserved_usd: float = 0.0, setting: dict | None = None,
-               clean=(), bug=(), candidate=(), outcome: str = "not-evaluated") -> dict:
-    """One row of the run record's ``pixelChecks`` (contracts/jit-run.v1.schema.json)."""
+               clean=(), bug=(), candidate=(), outcome: str = "not-evaluated", frames=None) -> dict:
+    """One row of the run record's ``pixelChecks`` (contracts/jit-run.v1.schema.json). ``frames``: the frames
+    the observer was to be asked about inside this check's window (``frames_to_ask`` over the probe's plan),
+    written as ``framesPlanned`` when the probe's frames were planned, so a later replay of the check (the
+    correct-fix pressure, expectrail/jit/pressure.py) can be held to the same plan."""
     if status not in RESULT_ROWS or outcome not in OUTCOMES:
         raise PixelError(f"not a pixel row: {status}/{outcome}")
+    planned = {} if frames is None else {"framesPlanned": [int(n) for n in frames]}
     return {"check": check, "status": status, "reason": None if reason is None else " ".join(str(reason).split())[:300],
             "reservedUsd": round(float(reserved_usd), 4), "setting": setting,
             "clean": [r["result"] for r in clean], "bug": [r["result"] for r in bug],
-            "candidate": [r["result"] for r in candidate], "outcome": outcome}
+            "candidate": [r["result"] for r in candidate], "outcome": outcome, **planned}
 
 
 def kept_rows(doc: dict) -> list[dict]:

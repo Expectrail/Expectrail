@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://player.gd" id="player"]
+[node name="Game" type="Node2D"]
+[node name="Player" type="CharacterBody2D" parent="."]
+position = Vector2(160, 150)
+script = ExtResource("player")
+[node name="Menu" type="CanvasLayer" parent="."]
+[node name="Start" type="Button" parent="Menu"]
+offset_left = 40.0
+offset_top = 10.0
+offset_right = 120.0
+offset_bottom = 50.0
+text = "Start"
+[connection signal="pressed" from="Menu/Start" to="Player" method="start_play"]

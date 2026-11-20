@@ -26,7 +26,7 @@ def check(doc, jobs_root: Path, *, sample: bool) -> None:
             assert any(setting in d['detail'] and d['fix'].startswith('set ' + setting) for d in diagnostics), diagnostics
         findings = record.read_record(jobs.paths(status['id']).output / 'findings.json')
         assert findings['decision'] == status['decision']
-        assert findings['observers'] == status['observers'] == {'rule': 'both', 'visual': None}
+        assert findings['observers'] == status['observers'] == {'rule': 'both', 'engine': {'name': 'expectrail.engine-record', 'version': '0.1.0'}, 'visual': None}
         checks = findings['checks']
         assert checks and all(c['observed']['after']['engine'] in ('pass', 'fail') for c in checks), checks
         assert all(c['observed']['after']['visual'] == 'not-asked' for c in checks), checks

@@ -2,8 +2,10 @@
 
 ## What changed
 
-Added runtime `inspect --at-tick` and `calibrate` to the existing setup command
-path, reusing configured role observations and Unity's calibration statistics.
+Added `calibrate` to the existing setup command path, reusing configured role
+observations and Unity's calibration statistics. `inspect --at-tick` was delivered
+by #604 on main (`expectrail.inspection`) and keeps that one implementation; this
+pull request claims `calibrate` and the setup errors.
 Added the setup-report schema, real example, writer and strict semantic reader in
 one patch. Missing measurements are explicit, three whole traces are compared,
 local engines are never downloaded, and output stays outside the source project.
@@ -57,3 +59,37 @@ verification and hand-check runs used the named public smoke/walk routes.
 `setup.py` (one calibration helper in the existing module whitelist),
 `tests/test_setup_calibration.py`, this entry, `docs/onboarding-calibration.md`,
 and the four recorded reports under `docs/onboarding-evidence-260/`.
+
+
+## Follow-up on the merge guard's third review (November 20)
+
+Both points of the guard's review of `8e39793` are fixed, with main merged in.
+
+1. **`inspect --at-tick` no longer refuses ticks that work on main.** The `0 <= N <= 7200`
+   bound before `expectrail.inspection.document` is gone. That path bounds a tick by its
+   route's own length, as it does on main. The 7200 bound stays where it belongs, on
+   `calibrate`'s route length, and a test names it.
+2. **`inspect --at-tick` has one implementation.** `mode` is gone from `runtime_setup`, from
+   `contracts/setup-report.v1.schema.json` and from `check_setup_report`; the CLI no longer
+   routes `inspect --at-tick --out/--godot` into `runtime_setup`; and `--json`, `--godot`,
+   `--out` and the required `--route` now belong to `calibrate` alone. The committed example
+   and both evidence reports lost their `mode` and `inspection` fields.
+
+Test changes, each with its reason:
+- The `mode` probe in `test_refuses_laundered_statistics_...` now probes a rule that still
+  exists (two runs where three are required), rather than a field that is gone.
+- The duplicate-key test uses `format` instead of `mode`.
+- `test_evidence_never_overwrites_or_changes_project` calls `calibrate --out`, which is where
+  `--out` lives now.
+- `test_invalid_tick_has_named_fix` no longer asserts `7200` for `inspect`; a new test asserts
+  it for a `calibrate` route longer than the bound.
+- `test_runtime_inspection_uses_bound_avatar_not_lookalike` is removed: it covered the removed
+  second implementation, and main's `tests/test_inspect_at_tick.py` covers `inspect --at-tick`
+  including the bound object's node, box and visibility, on the stand-in and the real engine.
+
+Merging main also dropped this branch's hardcoded `V1_FORMATS` block: main derives that registry
+from `contracts/*.v1.schema.json` at import (#637), so the new schema is registered without it.
+
+Run here: the full suite in 3 parts, and the export scan. Godot and Bubblewrap are not available
+in this container, so the engine-backed setup measurements were not re-run; the hosted jobs are
+the check of those.

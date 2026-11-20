@@ -1,0 +1,32 @@
+{
+  "format": "expectrail.project/v1",
+  "adapter": "godot",
+  "draft": true,
+  "entryScene": "res://game.tscn",
+  "viewport": [
+    360,
+    640
+  ],
+  "physicsTicksPerSecond": 60,
+  "captureFps": 60,
+  "bindings": {
+    "player": {
+      "node": "Paddle",
+      "texture": "res://break assets/paddle/sp_paddle_long_strip2.png"
+    },
+    "ball": {
+      "node": "Ball",
+      "texture": "res://break assets/Misc/sp_ball.png"
+    }
+  },
+  "inputActions": [
+    "pause"
+  ],
+  "routes": [
+    "routes/pointer-auto.json"
+  ],
+  "approvedContracts": [
+    "checks/breakout-paddle-bounds.json",
+    "checks/breakout-ball-starts.json"
+  ]
+}

@@ -180,6 +180,12 @@ def describe(route: dict, rate: int, trace: dict) -> list[str]:
     lines = [f"Route: {route['ticks']} physics ticks ({route['ticks'] / rate:g} seconds at {rate} ticks/second), seed 1."]
     held, durations = {}, {}
     for event in route["events"]:
+        if "pointer" in event:
+            point = event["pointer"]
+            button = (f"{point['button']} {'down' if point['pressed'] else 'up'}"
+                      if "button" in point else "move")
+            lines.append(f"  pointer {button} at viewport {point['position']}, tick {event['tick']}.")
+            continue
         if event["pressed"]:
             held[event["action"]] = event["tick"]
         else:
@@ -188,8 +194,9 @@ def describe(route: dict, rate: int, trace: dict) -> list[str]:
         lines.append(f"  {action}: {len(stretches)} press(es), {stretches[0]} ticks "
                      f"({stretches[0] / rate:g} seconds) each.")
     pause = max(1, round(rate / 4))
-    lines.append(f"Pauses: {pause} ticks ({pause / rate:g} seconds) before and between actions; "
-                 f"{2 * pause} ticks after the last release.")
+    if not any("pointer" in e for e in route["events"]):
+        lines.append(f"Pauses: {pause} ticks ({pause / rate:g} seconds) before and between actions; "
+                     f"{2 * pause} ticks after the last release.")
     positions = [row["player"] for row in trace["rows"] if "player" in row]
     moved = bool(positions) and any(p != positions[0] for p in positions[1:])
     if not route["events"]:
@@ -241,8 +248,9 @@ def auto_route(project: Path, out: Path, *, replay=None) -> int:
         raise RouteError(f"output already exists: {out}; choose a new path (nothing was overwritten)")
     project = project.resolve()
     actions, rate, fallback = input_map(project)
-    route = make_route(actions, rate)
-    if fallback:
+    from expectrail.input_discovery import project_plan
+    route = project_plan(project, actions, rate, fallback)
+    if fallback and not any("pointer" in e for e in route["events"]):
         print("No custom input actions: using built-in ui_left, ui_right, ui_up, ui_down and ui_accept.")
     if replay is None:
         from harness.run import run
@@ -274,6 +282,11 @@ def auto_route(project: Path, out: Path, *, replay=None) -> int:
         print("Three complete traces are identical (headless replays; rendered images were not compared).")
         for line in describe(route, rate, traces[0]):
             print(line)
+        if any("pointer" in e for e in route["events"]):
+            positions = [row["player"] for row in traces[0]["rows"] if "player" in row]
+            if not positions or not any(p != positions[0] for p in positions[1:]):
+                print("Pointer/menu route did not demonstrate player movement. No route was written; check the start control and player binding.")
+                return 2
         out.parent.mkdir(parents=True, exist_ok=True)
         # Publish complete bytes without clobbering a route created during the replays.
         # A hard link within this directory is atomic and fails if the destination exists.

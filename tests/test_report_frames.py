@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from agents.loop import one_run
@@ -13,6 +14,18 @@ from tests.test_agents import AFTER_FRAME, BEFORE_FRAME, _request, _signing_key
 
 FIX = REPO / "agents" / "fixtures" / "fix-collision-mask.patch"
 OBS_FIXED = REPO / "agents" / "fixtures" / "obs-fixed.json"
+
+
+
+# Historical trace fixtures: explicitly select the diagnostic benchmark control.
+def setUpModule():
+    global _trace_control
+    _trace_control = mock.patch.dict("os.environ", {"EXPECTRAIL_OBS_PROVIDER": "trace"})
+    _trace_control.start()
+
+
+def tearDownModule():
+    _trace_control.stop()
 
 
 class IllustrativeFramesTest(unittest.TestCase):

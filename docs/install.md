@@ -4,6 +4,41 @@ Expectrail is a Python package with one command, `expectrail`. This page says ho
 what the package holds, and what is not built yet. It is not on PyPI: publishing needs an account
 and a token, which only a person sets up (#249).
 
+## Install and open the local app
+
+Download `expectrail-0.1.0-py3-none-any.whl` to **Downloads**. Ask your
+maintainer for the wheel with the Expectrail launcher. On a prepared Linux or
+macOS computer, open **Terminal**, paste this single line, and press Enter:
+
+```sh
+python3 -m venv "$HOME/.local/share/expectrail/app-env" && "$HOME/.local/share/expectrail/app-env/bin/python" -m pip install --no-deps --force-reinstall "$HOME/Downloads/expectrail-0.1.0-py3-none-any.whl" && "$HOME/.local/share/expectrail/app-env/bin/expectrail" app --install-launcher && "$HOME/.local/share/expectrail/app-env/bin/expectrail" app --open-browser
+```
+
+The first launch keeps Terminal open while you work. In the browser, enter the
+**Before** and **After** folder paths, click **Check folders**, then **Verify**.
+Use **Require the replay sandbox** to stop verification if isolation is
+unavailable. The result shows how the replays ran.
+
+On later visits:
+
+- **Linux:** Open **Expectrail** from the applications menu. To open the launcher
+  from your file manager, go to `~/.local/share/applications` (or the
+  `applications` folder in your configured XDG data directory) and double-click
+  `expectrail.desktop`. Some desktops ask you to trust the local launcher first.
+  This opens the browser without a Terminal window. Closing the browser leaves
+  the local server running until you log out.
+- **macOS:** In Finder, open **Applications** in your home folder and
+  double-click **Expectrail.command**. macOS opens a Terminal window for the
+  app and then opens the browser. You can leave Terminal alone while you work.
+  Closing that window stops the local app.
+
+Python 3.12 or later with `venv`, a default browser, and the system Godot replay
+tools must be ready first. Initial install or update uses Terminal on both
+systems. Your maintainer may also need Terminal for system tools, preparing
+project checks and routes, and configuring live vision. macOS lacks Bubblewrap,
+so requiring the replay sandbox there stops the job. The macOS launcher file
+was checked with a POSIX shell on Linux. Finder and macOS replays were not run.
+
 ## From a checkout
 
 ```bash
@@ -101,7 +136,11 @@ The wheel holds what a verification runs, and nothing that could not work from a
 
 One top-level name is installed: `expectrail`. The wheel builder qualifies harness and agent
 imports under `expectrail._bundle` and removes the old installed-copy path bootstrap from its
-staged code. It does not modify repository implementations. Importing the installed copy changes
+staged code. That covers import statements and a module name given as a literal string to
+`importlib.import_module`, `__import__`, `importlib.util.find_spec` or `runpy.run_module`; a
+relative name is left as it is. The build stops instead of guessing when such a call's module name
+is not a literal, or when another string is exactly a harness or agents module name (as in
+`-m agents.loop`). `tests/test_package.py` checks that no packaged module keeps one. It does not modify repository implementations. Importing the installed copy changes
 neither `sys.path` nor another package’s top-level `harness` or `agents`. `expectrail.resources.ROOT` is the one name for "where Expectrail's own
 files are" in a clone and in an installed copy.
 

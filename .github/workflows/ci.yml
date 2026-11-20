@@ -160,6 +160,12 @@ jobs:
         env:
           EXPECTRAIL_ENGINE_TESTS: required
         run: python -m unittest tests.test_auto_route_engine -v
+      # `init --runtime` and `inspect --runtime` start the game headless and list what it builds in
+      # code (#260): crate-run's floor made by main.gd, the bundled game's player image and classes.
+      - name: The runtime scan lists what a game builds in code
+        env:
+          EXPECTRAIL_ENGINE_TESTS: required
+        run: python -m unittest tests.test_runtime_scan -v
       - name: A candidate's game code cannot read the verifier's environment
         env:
           EXPECTRAIL_CANARY: canary-${{ github.run_id }}
@@ -385,8 +391,10 @@ jobs:
                          json.loads((root / name / "trace.json").read_text()), level)))["result"]
                      for name in ("clean", "sinking_v1", "sinking_v2")}
           print(results)
-          # sinking v2 moves only the drawing, so the position log cannot see it; the SAM hybrid does.
-          assert results == {"clean": "pass", "sinking_v1": "fail", "sinking_v2": "pass"}, results
+          # sinking v2 moves only the drawing. Since the bundled game's config binds the player's texture
+          # (game/platformer/expectrail.project.json, #259), the trace carries the drawn box, so the engine
+          # record catches it too; without a bound texture only the visual observer would.
+          assert results == {"clean": "pass", "sinking_v1": "fail", "sinking_v2": "fail"}, results
           PY
       - name: Keep the summary
         if: always()
@@ -442,6 +450,9 @@ jobs:
           retention-days: 30
 
   agents-gate1:
+    env:
+      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace  
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -588,6 +599,9 @@ jobs:
   # set (it used to, on same-repository branches: OBAAF-GHA-001). The verifier uses the labeled
   # interim fixture, as it always has on forks; agents-harness-private checks the private routes.
   agents-harness-verify:
+    env:
+      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -722,6 +736,8 @@ jobs:
     timeout-minutes: 30
     env:
       HELDOUT_TOKEN_SET: ${{ secrets.HELDOUT_TOKEN != '' }}
+            # Engine-only diagnostic for the private routes. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace
     steps:
       - name: Skip without the held-out token (forks)
         if: env.HELDOUT_TOKEN_SET != 'true'
@@ -785,6 +801,9 @@ jobs:
         run: python -m agents.export_scan bench docs README.md apps --private heldout-set
 
   agents-daily-offline:
+    env:
+      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || github.event_name == 'push' }}
@@ -812,6 +831,9 @@ jobs:
   # Shows bug reports becoming unapproved draft specs, check-weakening requests refused, and the
   # morning report's "Feedback in" / "Refused or blocked" sections. No Meta spend.
   feedback-offline:
+    env:
+      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -1013,6 +1035,9 @@ jobs:
 
   # Gate 2 bench compare: Expectrail arm + Muse screenshot judge (fixture log offline).
   agents-bench-compare:
+    env:
+      # Engine-only diagnostic for the legacy repair loop. Product clearance requires vision.
+      EXPECTRAIL_OBS_PROVIDER: trace
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

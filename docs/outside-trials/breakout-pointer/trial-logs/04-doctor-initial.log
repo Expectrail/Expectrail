@@ -1,0 +1,111 @@
+{
+  "format": "expectrail.doctor/v1",
+  "expectrail": "0.1.0",
+  "ok": false,
+  "checks": [
+    {
+      "id": "python",
+      "what": "Python 3.12 or later",
+      "status": "ok",
+      "required": true,
+      "found": "Python 3.12.14",
+      "fix": null
+    },
+    {
+      "id": "godot",
+      "what": "Godot 4.7.2-stable",
+      "status": "ok",
+      "required": true,
+      "found": "Godot 4.7.2.stable.official.ed1daf0bf at /workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+      "fix": null
+    },
+    {
+      "id": "display",
+      "what": "a virtual display (xvfb-run)",
+      "status": "ok",
+      "required": true,
+      "found": "xvfb-run at /workspace/work/dodge-tools/display/usr/bin/xvfb-run",
+      "fix": null
+    },
+    {
+      "id": "opengl",
+      "what": "OpenGL the engine can draw with (Mesa's software renderer)",
+      "status": "ok",
+      "required": true,
+      "found": "the engine drew a frame with Mesa - llvmpipe (LLVM 19.1.7, 256 bits)",
+      "fix": null
+    },
+    {
+      "id": "disk",
+      "what": "1024 MB free for the engine and a run's frames",
+      "status": "missing",
+      "required": true,
+      "found": "73 MB free in the engine's folder (/workspace/work/pointer-routes/tools); 73 MB free in the temporary folder (/tmp)",
+      "fix": "free at least 1024 MB in each folder named above, or name other folders with EXPECTRAIL_TOOLS and TMPDIR"
+    },
+    {
+      "id": "sandbox",
+      "what": "the replay sandbox (bubblewrap)",
+      "status": "missing",
+      "required": false,
+      "found": "bubblewrap could not start a sandbox: bwrap: setting up uid map: Read-only file system",
+      "fix": "sudo apt-get install bubblewrap (Linux; the kernel must allow unprivileged user namespaces). Without it replays run outside the sandbox, and the isolated class and `require-sandbox` refuse to run"
+    },
+    {
+      "id": "patch",
+      "what": "`patch` (`expectrail sample` and seeded bugs put a patch on a copy of the game)",
+      "status": "ok",
+      "required": true,
+      "found": "patch at /usr/bin/patch",
+      "fix": null
+    },
+    {
+      "id": "curl",
+      "what": "`curl` (to fetch the engine; it is already here)",
+      "status": "ok",
+      "required": false,
+      "found": "curl at /usr/bin/curl",
+      "fix": null
+    },
+    {
+      "id": "unzip",
+      "what": "`unzip` (to fetch the engine; it is already here)",
+      "status": "ok",
+      "required": false,
+      "found": "unzip at /usr/bin/unzip",
+      "fix": null
+    },
+    {
+      "id": "vision-key",
+      "what": "a key for a visual observer (MODEL_API_KEY)",
+      "status": "missing",
+      "required": true,
+      "found": "MODEL_API_KEY is missing. No vision request is sent. Engine checks still run: a failure rejects; otherwise the result is needs-review.",
+      "fix": "set MODEL_API_KEY in the verifier's environment to its vision model key; never put it in a file"
+    },
+    {
+      "id": "vision-cap",
+      "what": "a vision spend cap (EXPECTRAIL_SAM_USD_CAP)",
+      "status": "missing",
+      "required": true,
+      "found": "EXPECTRAIL_SAM_USD_CAP is missing or invalid. No vision request is sent. Engine checks still run: a failure rejects; otherwise the result is needs-review.",
+      "fix": "set EXPECTRAIL_SAM_USD_CAP to the most this run may spend in US dollars (a finite amount, 0 or more)"
+    },
+    {
+      "id": "chromium",
+      "what": "Playwright Chromium (web replays)",
+      "status": "missing",
+      "required": false,
+      "found": "Playwright Chromium is not installed",
+      "fix": "install requirements-web.txt, then run `python3 -m playwright install chromium`; on Linux also install the browser system dependencies"
+    },
+    {
+      "id": "recorded-renderer",
+      "what": "the project's recorded vision and this renderer",
+      "status": "missing",
+      "required": true,
+      "found": "This machine: name: godot; version: 4.7.2.stable.official.ed1daf0bf; renderer: opengl3; device: Mesa - llvmpipe (LLVM 19.1.7, 256 bits). The configured recording could not be read safely.",
+      "fix": "Check the project config and use a valid vision recording in a regular file inside the project."
+    }
+  ]
+}

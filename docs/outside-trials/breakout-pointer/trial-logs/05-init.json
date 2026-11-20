@@ -1,0 +1,22 @@
+{
+  "step": 5,
+  "label": "init",
+  "startedUtc": "2026-11-16T06:44:29.024121+00:00",
+  "command": [
+    "python3",
+    "-m",
+    "expectrail.cli",
+    "init",
+    "/workspace/work/breakout-pointer-source"
+  ],
+  "cwd": "/workspace/work/pointer-routes",
+  "seconds": 7.959901579000871,
+  "exitCode": 0,
+  "status": "finished",
+  "log": "trial-logs/05-init.log",
+  "environment": {
+    "EXPECTRAIL_GODOT": "/workspace/work/dodge-tools/godot/Godot_v4.7.2-stable_linux.x86_64",
+    "TMPDIR": "/dev/shm/expectrail-menu-trial-init/tmp",
+    "EXPECTRAIL_TOOLS": "/dev/shm/expectrail-menu-trial-init/tools"
+  }
+}
