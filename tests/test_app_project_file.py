@@ -56,7 +56,7 @@ class ProjectFileTest(unittest.TestCase):
 
         def review():
             info = self.post('inspect', fields, 400)['setupPreview']['saveReview']
-            self.assertEqual(info['folder'], str(game))
+            self.assertEqual(info['folder'], str(game.resolve()))
             return fields | {'review': info['id']}
 
         stale = review()

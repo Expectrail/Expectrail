@@ -34,6 +34,8 @@ folder paths.
   to the real worker by descriptor. It reached the same preflight needs-review as
   folder input. [Independent run](https://github.com/Expectrail/Expectrail/issues/704#issuecomment-7043120162)
 
+The first hosted suite used a symlinked temporary directory. Its reviewed-save test expected the temporary alias, while the server reported the resolved folder. A local run with a symlinked `TMPDIR` reproduced the mismatch. The local full suite with Chromium exposed the same mismatch in the folder-based save confirmation. Both tests now require the exact resolved destination. [Failing hosted test](https://github.com/Expectrail/Expectrail/actions/runs/44763172267/job/136380751947)
+
 ## Not done
 
 Full suite, paid models and a first-time human trial were not run by the builder.
@@ -44,4 +46,5 @@ Full suite, paid models and a first-time human trial were not run by the builder
 - `expectrail/app_page.py`
 - `docs/app.md`
 - `tests/test_app_project_file.py`
+- `tests/test_app_save_setup.py`
 - `docs/new-work/2026-11-20-open-project-file.md`
