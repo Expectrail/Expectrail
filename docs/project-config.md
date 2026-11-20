@@ -127,6 +127,16 @@ own `.tres`, an atlas that is not an image file, a missing region, a region outs
 missing file is left unresolved, with what to supply. The review file keeps `selectedPlayer`, and the
 review page reads the scene again for that node.
 
+When no sprite at all is saved under the one player (Crate Run's crate is a filled `Polygon2D`),
+inspect lists the project's image files as `projectImages` (at most 12; `moreProjectImages` counts
+the rest; hidden folders, folders with `.gdignore` and links are skipped; the project icon comes
+last and is named as the icon). The review page offers each one as a choice, labelled "Not drawn
+under `Player`: an image in the project", and choosing one downloads the whole config the same way
+as any other image choice. Init never binds one of these images, and the review file does not list
+them: the page reads the project again. A sprite whose image cannot be read (an external
+`SpriteFrames`, say) is not "no sprite", so it gets no such list
+([tests](../tests/test_onboard_project_images.py)).
+
 Review whether the route starts the game, moves the intended player and exercises
 the behaviour you care about. The route command can test repeatability with three
 replays. A person still chooses and approves the checks. Init measures no gameplay.

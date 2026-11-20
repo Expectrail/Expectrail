@@ -186,6 +186,29 @@ def render(root, source=None):
             link = download(root, choice, f"Use {uri.removeprefix('res://')} and save")
             parts.append("<article>" + preview(root, uri) + drawn(doc, uri) + link + "</article>")
         parts.append("</div>")
+    elif pending and len(doc["playerCandidates"]) == 1 and info.get("projectImages"):
+        # #688: no sprite draws the player (a polygon, say). Offer the project's image files, each
+        # labelled as one the player is not drawn with; the person chooses, init never does.
+        player = doc["playerCandidates"][0]
+        who = f"<code>{escape(player)}</code>"
+        parts.append(f"<p>The saved scenes draw {who} with no image file; it may be drawn as a shape, such as "
+                     "a polygon. A binding still needs a representative image. These are the image files in the "
+                     "project. Choose the one that looks most like the player in play. Each link downloads the "
+                     'whole config with that image selected.</p><div class="grid">')
+        icon = info.get("projectIcon")
+        for uri in info["projectImages"]:
+            choice = deepcopy(config)
+            choice["bindings"]["player"]["texture"] = uri
+            note = f"<p>Not drawn under {who}: an image in the project.</p>"
+            if uri == icon:
+                note += "<p>This is the project's icon.</p>"
+            link = download(root, choice, f"Use {uri.removeprefix('res://')} and save")
+            parts.append("<article>" + preview(root, uri) + note + link + "</article>")
+        parts.append("</div>")
+        more = info.get("moreProjectImages", 0)
+        if more:
+            parts.append(f"<p>{more} more image file{'s are' if more != 1 else ' is'} in the project. To use one, "
+                         "save a choice above and change <code>bindings.player.texture</code> to its res:// path.</p>")
     elif pending:
         parts.append("<p>No complete choice is available. Identify the player and its image in the game, "
                      "then prepare a complete draft before saving.</p>")

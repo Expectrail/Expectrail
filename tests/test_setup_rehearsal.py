@@ -52,6 +52,45 @@ class OfflineTest(unittest.TestCase):
                 sr._crate_bug(Path(tmp))
 
 
+class ReviewPageChoiceTest(unittest.TestCase):
+    """The person's image comes from the review page's own download link (#688), not a scripted edit."""
+
+    def test_crate_run_choice_is_the_page_download_labelled_as_not_drawn_under_the_player(self):
+        import json
+        import shutil
+        from tests.test_init_inspect import command
+        with tempfile.TemporaryDirectory() as tmp:
+            game = Path(tmp) / "game"
+            shutil.copytree(sr.PROJECTS["crate-run"]["source"], game)
+            (game / sr.CONFIG).unlink()
+            self.assertEqual(command("init", game)[0], 0)
+            page = Path(tmp) / "review.html"
+            self.assertEqual(command("onboard", "--project", game, "--out", page)[0], 0)
+            config, card = sr.page_choice(page, "res://crate.svg")
+            draft = json.loads((game / sr.PENDING).read_text())["config"]
+        self.assertEqual(config["bindings"]["player"], {"node": "Player", "texture": "res://crate.svg"})
+        self.assertEqual({k: v for k, v in config.items() if k != "bindings"},
+                         {k: v for k, v in draft.items() if k != "bindings"})
+        self.assertIn("Not drawn under Player", card)
+
+    def test_a_page_that_does_not_offer_the_image_once_stops_the_rehearsal(self):
+        import base64
+        import json
+        link = lambda texture: ('<article><p>x</p><a download="expectrail.project.json" href="data:application/json;base64,'
+                                + base64.b64encode(json.dumps({"bindings": {"player": {"node": "P", "texture": texture}}})
+                                                   .encode()).decode() + '">Use</a></article>')
+        with tempfile.TemporaryDirectory() as tmp:
+            page = Path(tmp) / "review.html"
+            for body in ("", link("res://a.png"), link("res://crate.svg") * 2):
+                page.write_text("<main>" + body + "</main>", encoding="utf-8")
+                with self.assertRaises(sr.RehearsalError):
+                    sr.page_choice(page, "res://crate.svg")
+            page.write_text('<article><a download="expectrail.project.json" href="https://example.invalid/x">Use</a>'
+                            "</article>", encoding="utf-8")
+            with self.assertRaises(sr.RehearsalError):
+                sr.page_choice(page, "res://crate.svg")
+
+
 class RealGodotTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -67,7 +106,11 @@ class RealGodotTest(unittest.TestCase):
             result = sr.rehearse("crate-run", Path(tmp))
         self.assertTrue(result["ok"], sr.markdown(result))
         self.assertEqual(result["initWrote"], sr.PENDING)   # the crate is a polygon: a person chooses its image
-        self.assertEqual([s.get("exit") for s in result["steps"]], [0, 0, 5, None, 2, 1])
+        # init, its refusal, the review page (#688), the person's step, needs-review, reject.
+        self.assertEqual([s.get("exit") for s in result["steps"]], [0, 0, 5, 0, None, 2, 1])
+        person = result["steps"][4]["did"][0]
+        self.assertIn("on the review page", person)
+        self.assertIn("Not drawn under Player", person)
 
 
 if __name__ == "__main__":
