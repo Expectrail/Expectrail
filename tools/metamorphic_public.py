@@ -96,9 +96,10 @@ def _saved(out: Path, route_file: Path, patches: list) -> dict | None:
 
 
 def replay_all(work: Path, game: Path, routes: dict, plan: list[dict], runner=None, workers: int = 2,
-               resume: bool = False) -> dict:
+               resume: bool = False, sandbox: str | None = None) -> dict:
     """{(build, probe): [episode, ...] or None}: None when a run failed or the runs' traces differed. With
-    ``resume``, a replay already saved in the work folder for the same route and build is read, not run."""
+    ``resume``, a replay already saved in the work folder for the same route and build is read, not run.
+    ``sandbox`` goes to the harness as is (``require`` for a game the team did not write)."""
     from expectrail.trace.normalize import from_run_dir
     from harness.run import run
 
@@ -121,7 +122,7 @@ def replay_all(work: Path, game: Path, routes: dict, plan: list[dict], runner=No
                     if out.exists():
                         shutil.rmtree(out)
                     rec = run(route_files[pid], out, game=game, patches=b["patches"], capture_frames=False,
-                              ui_integers=False)
+                              ui_integers=False, **({"sandbox": sandbox} if sandbox else {}))
                 traces.append(hashlib.sha256((out / "trace.json").read_bytes()).hexdigest())
                 eps.append(from_run_dir(out, routes[pid], episode_id=f"{b['id']}-{pid}-{rep}"))
                 engine = (rec.get("engine") or {}).get("version")

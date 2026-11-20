@@ -53,3 +53,5 @@ _bmad/render/
 !/tools/spend_cap_gaps.json
 !/tools/do_nothing_public.py
 !/tools/jit_rehearsal_check.py
+!/tools/metamorphic_public.py
+!/tools/metamorphic_outside.py
