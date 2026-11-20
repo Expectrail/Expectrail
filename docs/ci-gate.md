@@ -31,12 +31,15 @@ clearance stays in progress, which never counts as cleared. Re-running the verif
 head a new clearance, and that run's trusted job concludes the open checks of every earlier capture
 of the same head (clearance failed, evidence neutral, "Superseded capture or pull request"). An
 earlier capture could never clear anyway: only the latest capture of a head is judged. The same
-job also concludes this App's open checks on the pull request's earlier commits (its newest 20),
-which a lost runner left in progress after the head moved on. A commit that is the head of any open
-pull request, such as a stacked branch's, is never touched, and if the open pull requests cannot be
-read in full nothing is swept and the job warns. A head that was force-pushed away is no longer
-among the pull request's commits and is not reached; its clearance stays in progress, which never
-counts as cleared.
+job also concludes this App's open checks on the pull request's earlier heads (the newest 20),
+which a lost runner left in progress after the head moved on. The earlier heads are the head commits
+of the verify workflow's earlier `pull_request` runs from the same head repository and branch, which
+include a head that was force-pushed away, and then the pull request's own commits. If those runs
+cannot be read, only the pull request's commits are swept and the job warns. A commit that is the
+head of any open pull request, such as a stacked branch's, is never touched, and if the open pull
+requests cannot be read in full nothing is swept and the job warns. A head older than the verify
+workflow's newest 100 runs on the branch is not reached; its clearance stays in progress, which
+never counts as cleared.
 
 Install a dedicated GitHub App on this repository with Checks read/write. In the protected
 `main-only` environment, set the variable `EXPECTRAIL_CHECKS_APP_ID` and secret

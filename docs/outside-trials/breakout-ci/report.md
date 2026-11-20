@@ -2,6 +2,8 @@
 
 The registered game is [mike0697/Breakout](https://github.com/mike0697/Breakout/tree/0ac7aed444ea593a023d9b666c211d7ab8acd51e), MIT, pinned to `0ac7aed444ea593a023d9b666c211d7ab8acd51e`. The source is fetched, not vendored. This keeps the choice and route from the [same-pin retrial](../breakout-pointer/report.md).
 
+The original run below used the whole viewport for the paddle draft. The current draft checks the paddle’s vertical rail. [Revised bounds and public controls](public-control-feasibility.md)
+
 ## What ran locally
 
 The actual trial runner fetched a new checkout at the pin, laid out the config/routes/draft checks, applied and reverse-checked the harmless/broken patches, and ran:
