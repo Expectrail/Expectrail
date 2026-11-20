@@ -50,6 +50,16 @@
     168.0,
     616.0
   ],
+  "paddleColliderOffset": [
+    0.0,
+    -0.5
+  ],
+  "paddleRail": [
+    0,
+    606.0,
+    360.0,
+    625.0
+  ],
   "movementCheckpoints": [
     {
       "type": "position-at-tick",
