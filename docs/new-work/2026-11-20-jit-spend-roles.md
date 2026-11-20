@@ -32,7 +32,7 @@ commands.
 ## What was run
 - `python3 -m unittest tests.test_jit_spend_roles`: 8 tests, OK.
 - Two mutations of `expectrail/jit/cli.py`, made and then reverted:
-  - a SAM try added to `propose`: 6 failures (every offer, and the observer test);
+  - a SAM try added to `propose`: 7 failures (all five offers, and both pixel observers);
   - a spec send added to `pixel-ask`: 1 failure.
 - `python3 -m tools.spend_cap_audit --check`: exit 0.
 - Full suite on main 0a96973 plus this change, without the engine: 5,480 tests, OK, 73 skipped. A first run
