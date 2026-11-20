@@ -255,3 +255,26 @@ def counting(run, report, *, trusted=False):
         row['counting'] = bool(counting_row(row))
         rows.append(row)
     return rows
+
+
+def harmless_outcome(clean, changed):
+    """A false rejection must first pass on clean, then fail on the benign edit."""
+    if not clean and not changed:
+        return 'not-run'
+    if clean == ['pass'] * REPS:
+        if changed == ['pass'] * REPS:
+            return 'pass'
+        if changed == ['fail'] * REPS:
+            return 'false-rejection'
+    return 'indeterminate'
+
+def harmless_repetition(spec, verdicts):
+    """Every probe required by this check needs a complete, exercised verdict."""
+    req = spec['evidenceRequirement']
+    if not verdicts or not all(
+        v['result'] in ('pass', 'fail') and v['coverageComplete'] and v['applicable'] == 'yes'
+        and v['triggeredCount'] >= req['minimumTriggers']
+        and v['evaluatedCount'] >= req['minimumEvaluations'] for v in verdicts
+    ):
+        return 'insufficient_observation'
+    return combine([v['result'] for v in verdicts])
