@@ -1,13 +1,16 @@
 """The viewer compares recorded measurements and still has readable evidence without scripts."""
 import base64
+import copy
 import hashlib
 from html.parser import HTMLParser
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 from expectrail import viewer
-from tests.test_viewer import embedded
+from tests.test_ci_gate import make_repo
+from tests.test_viewer import Base, embedded
 
 SAMPLES = Path(__file__).resolve().parents[1] / "docs/viewer-samples"
 
@@ -113,3 +116,81 @@ class MeasurementTest(unittest.TestCase):
                 self.assertFalse(content.images)
                 self.assertIn("No before frame 0", " ".join(content.text))
                 self.assertIn("No after frame 0", " ".join(content.text))
+
+
+class RepairedFrameTest(Base):
+    def test_gate_keeps_exact_first_difference_on_a_repair_in_both_viewers(self):
+        record = self.gate(make_repo(self.tmp / "fixed"), make_repo(self.tmp / "faulty", bug=True))
+        self.assertEqual(record["findings"], [])
+        folder = self.tmp / "out/viewer"
+        for name in ("index.html", viewer.EXPORT_NAME):
+            payload = embedded((folder / name).read_text())
+            self.assertTrue(payload["views"])
+            for view in payload["views"]:
+                self.assertEqual(view["comparison"], "REPAIRED")
+                self.assertIsNone(view["findingId"])
+                self.assertIsNone(view["firstFrame"])
+                first, _ = viewer._first_difference(view)
+                self.assertIsNotNone(first)
+                for side, arm in (("before", "base"), ("after", "head")):
+                    frames = view["frames"][side]
+                    self.assertEqual([frame["frame"] for frame in frames], [first])
+                    capture = self.tmp / "out-work" / arm / view["route"] / "frames" / f"f{first:08d}.png"
+                    self.assertEqual(frames[0]["sha256"], hashlib.sha256(capture.read_bytes()).hexdigest())
+                    if name == viewer.EXPORT_NAME:
+                        data = base64.b64decode(frames[0]["path"].split(",", 1)[1], validate=True)
+                    else:
+                        data = (folder / frames[0]["path"]).read_bytes()
+                    self.assertEqual(data, capture.read_bytes())
+            self.assertNotIn(str(self.tmp), str(payload["views"]))
+
+    def test_missing_unreadable_or_linked_capture_never_substitutes_a_neighbor(self):
+        captures = self.tmp / "frames"
+        captures.mkdir()
+        valid = b"\x89PNG\r\n\x1a\n" + b"adjacent"
+        (captures / "f00000019.png").write_bytes(valid)
+        (captures / "f00000021.png").write_bytes(valid)
+        target = self.tmp / "viewer"
+        frame = captures / "f00000020.png"
+        def kept(folder=captures):
+            return viewer._repair_frame(folder, 20, target, "after-repair-0")
+        self.assertEqual(kept(), [])
+        frame.symlink_to(captures / "f00000021.png")
+        self.assertEqual(kept(), [])
+        frame.unlink()
+        frame.write_bytes(b"invalid")
+        self.assertEqual(kept(), [])
+        frame.write_bytes(valid)
+        link = self.tmp / "linked"
+        link.symlink_to(captures, target_is_directory=True)
+        self.assertEqual(kept(link), [])
+        with mock.patch.object(viewer, "MAX_EXPORT_FRAME_BYTES", 1):
+            self.assertEqual(kept(), [])
+        self.assertFalse(target.exists())
+
+    def test_existing_finding_keeps_its_share_of_both_frame_limits(self):
+        self.gate(make_repo(self.tmp / "h", bug=True), make_repo(self.tmp / "b"))
+        folder = self.tmp / "out/viewer"
+        payload = embedded((folder / "index.html").read_text())
+        finding = payload["views"][0]
+        repaired = dict(copy.deepcopy(finding), comparison="REPAIRED", findingId=None, firstFrame=None)
+        payload["views"] = [repaired, finding]
+        first = finding["frames"]["after"][0]
+        with mock.patch.object(viewer, "MAX_EXPORT_FRAME_BYTES", (folder / first["path"]).stat().st_size):
+            exported = embedded(viewer.export(folder, payload).read_text())["views"]
+            self.assertEqual(exported[0]["frames"], {"after": [], "before": []})
+            self.assertEqual(exported[1]["frames"]["after"][0]["sha256"], first["sha256"])
+
+        record = payload["record"]
+        check = record["checks"][0]
+        record["findings"] = [f for f in record["findings"] if f["id"] == check["findingId"]]
+        record["checks"] = [dict(check, comparison="REPAIRED", findingId=None), check]
+        timelines = {(check["spec"], check["route"]): {
+            side: {"series": finding["series"][side], "_frames_dir": self.tmp / "out-work" / arm / check["route"] / "frames"}
+            for side, arm in (("before", "base"), ("after", "head"))}}
+        frames = {check["findingId"]: {side: (tl["_frames_dir"], finding["firstFrame"])
+                                        for side, tl in timelines[check["spec"], check["route"]].items()}}
+        with mock.patch.object(viewer, "MAX_FRAMED_FINDINGS", 1):
+            rows = viewer.build_views(record, frames, timelines, self.tmp / "limited")
+        self.assertEqual(rows[0]["frames"], {"after": [], "before": []})
+        self.assertTrue(rows[1]["frames"]["before"])

@@ -19,6 +19,15 @@ presses, faster taps, the mirrored direction). It takes its bound from the game'
 on the twin probe, so it needs no number
 from a person or a healthy reference build. ``signal_compare`` compares two signals in one observed
 window, for example a reported UI counter against the collected coins. Undefined readings cannot pass.
+
+``metamorphic`` (#675, piece 3) states a relation that holds on any game whose rules do not depend on
+the direction: the twin probe is the left probe with each left/right action swapped (``mirror_x``),
+and the player's sideways travel negates while its height, airborne time and air jumps stay equal.
+A level is not symmetric, so the relation is judged only over the **clear window**: from the first
+mirrored input to the tick before either twin touches something the trace shows is not mirrored with
+it (``_mirror_contact``). The trace records no level geometry, so a contact is read from motion the
+inputs and gravity do not explain. An episode with too short a clear window is not exercised; it is
+never a pass.
 """
 from __future__ import annotations
 
@@ -29,7 +38,7 @@ from expectrail.contracts import digest_v1, validate_v1
 from expectrail.coverage import evidence_result
 from expectrail.trace import signals
 
-EVALUATOR = {"name": "expectrail.trace.evaluator", "version": "1.1.0"}
+EVALUATOR = {"name": "expectrail.trace.evaluator", "version": "1.2.0"}
 RESULTS = ("pass", "fail", "not_exercised", "insufficient_observation", "execution_error")
 
 
@@ -418,6 +427,170 @@ def _signal_compare(e: _Eval, ep: dict, op: dict) -> None:
                f"{op['leftSignal']} ({left}) within {op['toleranceAbs']}")
 
 
+# --- metamorphic: mirror the inputs ---------------------------------------------------------------
+
+# Fixed here, never in a spec, so a proposer cannot widen them. Measured on the bundled game (Godot
+# 4.7.2, docs/measurements/675-metamorphic-mirror.md): gravity changes the fall by 0.146 px a tick, a
+# walk speeds up and slows down by 0.125 px a tick, a wall stops it within one tick (by 0.85 px a tick
+# at the slowest wall stop measured), and standing still moves the player by under 0.1 px. Sideways
+# speed is explained only by a change of a paired (left/right) action: a jump press does not change
+# it on the bundled game, so a wall met just after a jump press is still seen.
+MIRROR = {
+    "enemyClearPx": 48.0,       # an enemy this close may touch the player in one twin and not the other
+    "horizontalJoltPx": 0.5,    # a change of sideways speed in one tick that no left/right input explains
+    "verticalJoltPx": 0.5,      # a departure from gravity in one airborne tick that no input explains
+    "groundDriftPx": 0.3,       # vertical motion in one tick while standing: moving or sloped ground
+    "landingPx": 2.0,           # landing this far from the height it left: different ground
+    "inputGraceTicks": 2,       # a change within this many ticks of an input change is the input's doing
+    "minMotionPx": 8.0,         # sideways travel in the clear window, in either twin, before it says anything
+}
+MIRROR_SIGNALS = {"player_dx_px": "negate", "max_rise_px": "equal", "airborne_ticks": "equal", "air_jumps": "equal"}
+
+
+def _mirrored_inputs(left: dict, right: dict, pairs: list[list[str]]) -> str | None:
+    """None when ``right``'s inputs are ``left``'s with each paired action swapped; otherwise why not."""
+    swap = {}
+    for a, b in pairs:
+        swap[a], swap[b] = b, a
+    key = lambda i: (i["tick"], swap.get(i.get("action"), i.get("action")), i.get("pressed"), str(i.get("pointer")))  # noqa: E731
+    if any("pointer" in i for i in left["inputs"] + right["inputs"]):
+        return "a pointer input has no mirror the trace can check"
+    want = sorted(key(i) for i in left["inputs"])
+    have = sorted((i["tick"], i.get("action"), i.get("pressed"), str(i.get("pointer"))) for i in right["inputs"])
+    if want != have:
+        return "the twin's inputs are not the left probe's inputs mirrored"
+    if not any(i.get("action") in swap for i in left["inputs"]):
+        return "neither probe uses a paired action, so the mirror changes nothing"
+    return None
+
+
+def _mirror_contact(ep: dict, start: int, paired: set) -> tuple[int | None, str]:
+    """The first tick at or after ``start`` where the player touches something, read from its motion."""
+    m = MIRROR
+    pts = {s["tick"]: s for s in signals.player_samples(ep)}
+    changes = sorted({i["tick"] for i in ep["inputs"]})
+    sideways = sorted({i["tick"] for i in ep["inputs"] if i.get("action") in paired})
+    near = lambda t, ticks: any(t - m["inputGraceTicks"] <= c <= t for c in ticks)  # noqa: E731
+    explained = lambda t: near(t, changes)  # noqa: E731
+    airborne = []
+    for t in sorted(pts):
+        if all(u in pts and pts[u]["onFloor"] is False for u in (t, t - 1, t - 2)) and not explained(t):
+            y0, y1, y2 = (pts[u]["player"][1] for u in (t - 2, t - 1, t))
+            airborne.append((y2 - y1) - (y1 - y0))
+    gravity = sorted(airborne)[len(airborne) // 2] if airborne else None
+    anchor = None
+    for t in sorted(pts):
+        s = pts[t]
+        if s["onFloor"] and pts.get(t - 1, {}).get("onFloor") is not False:
+            anchor = s["player"][1]
+        if t < start:
+            continue
+        x, y = s["player"]
+        for eid, ex, ey in s.get("enemies") or []:
+            if math.hypot(ex - x, ey - y) < m["enemyClearPx"]:
+                return t, f"enemy {eid} is within {m['enemyClearPx']:.0f} px of the player"
+        a, b = pts.get(t - 1), pts.get(t - 2)
+        if a is None:
+            continue
+        on, was = s["onFloor"], a["onFloor"]
+        if on is None or was is None:
+            return t, "the floor state is not recorded"
+        dy = y - a["player"][1]
+        if on and was and abs(dy) > m["groundDriftPx"]:
+            return t, "the ground under the player moved or sloped"
+        if on and not was and anchor is not None and abs(y - anchor) > m["landingPx"]:
+            return t, f"the player landed {anchor - y:+.0f} px from the height it left"
+        if not on and was and not explained(t):
+            return t, "the player left the ground with no input (a ledge or a push)"
+        if b is None:
+            continue
+        ddx = (x - a["player"][0]) - (a["player"][0] - b["player"][0])
+        if abs(ddx) > m["horizontalJoltPx"] and not near(t, sideways):
+            return t, "the player's sideways speed changed with no change of input (a wall or another body)"
+        if gravity is not None and not on and not was and b["onFloor"] is False and not explained(t):
+            ddy = dy - (a["player"][1] - b["player"][1])
+            if abs(ddy - gravity) > m["verticalJoltPx"]:
+                return t, "the player's fall departed from gravity with no input (a ceiling or a spring)"
+    return None, ""
+
+
+def _clear(ep: dict, first: int, last: int) -> dict:
+    """The episode cut to the clear window: what happened before the first mirrored input is the same on
+    both twins, so a signal read there (the player settling on the floor) is no evidence either way."""
+    inside = lambda t: first <= t <= last  # noqa: E731
+    return {**ep, "samples": [s for s in ep["samples"] if inside(s["tick"])],
+            "events": [v for v in ep["events"] if inside(v["tick"])],
+            "inputs": [i for i in ep["inputs"] if inside(i["tick"])],
+            "completeness": {**ep["completeness"], "firstTick": max(first, ep["completeness"]["firstTick"]),
+                             "lastTick": min(last, ep["completeness"]["lastTick"])}}
+
+
+def _metamorphic(e: _Eval, left: dict, right: dict, op: dict) -> None:
+    signal, relation = op["signal"], op["relation"]
+    if MIRROR_SIGNALS.get(signal) != relation:
+        raise ValueError(f"{signal} does not {relation} under {op['transform']}")
+    why = _mirrored_inputs(left, right, op["pairs"])
+    if why is not None:
+        e.applicable = "unknown"
+        e.diagnostics.append(f"cannot tell: {why}")
+        return
+    for ep in (left, right):
+        if not (ep["capabilities"]["player"] and ep["capabilities"]["onFloor"]):
+            e.applicable = "unknown"
+            e.diagnostics.append(f"cannot tell: {ep['id']} has no player position or floor state, so no contact "
+                                 "can be seen")
+            return
+    paired = {a for pair in op["pairs"] for a in pair}
+    ls, lc = _window(e.spec, left)
+    rs, rc = _window(e.spec, right)
+    e.complete = lc and rc
+    if not ls or not rs:
+        return
+    lo, hi = max(ls[0]["tick"], rs[0]["tick"]), min(ls[-1]["tick"], rs[-1]["tick"])
+    start = min((i["tick"] for i in left["inputs"] if i.get("action") in paired and lo <= i["tick"] <= hi), default=None)
+    e.metrics.update(left=None, right=None, toleranceAbs=op["toleranceAbs"], clearFromTick=start, clearToTick=None)
+    if start is None:
+        e.diagnostics.append("no mirrored input inside the window")
+        return
+    contacts = [(t, side, why) for side, ep in (("left", left), ("right", right))
+                for t, why in [_mirror_contact(ep, start, paired)] if t is not None]
+    end = hi
+    if contacts:
+        t, side, why = min(contacts)
+        end = min(hi, t - 1)
+        e.diagnostics.append(f"clear window ends at tick {end}: on the {side} probe at tick {t}, {why}")
+    e.metrics["clearToTick"] = end
+    if end <= start:
+        e.diagnostics.append("not exercised: the clear window holds no tick after the first mirrored input")
+        return
+    lw, rw = _clear(left, start, end), _clear(right, start, end)
+    for ep in (lw, rw):
+        if any(not (g[1] < start or g[0] > end) for g in ep["completeness"]["gaps"]):
+            e.complete = False
+    xs = [{s["tick"]: s["player"][0] for s in signals.player_samples(ep)} for ep in (lw, rw)]
+    moved = max((max(x.values()) - min(x.values()) for x in xs if x), default=0.0)
+    fn = signals.SIGNALS[signal]
+    lv, rv = fn(lw), fn(rw)
+    e.metrics.update(left=lv, right=rv, movedPx=round(moved, 2))
+    if lv is None or rv is None:
+        e.applicable = "unknown"
+        e.diagnostics.append(f"{signal} is undefined on {'the left' if lv is None else 'the right'} probe")
+        return
+    if moved < MIRROR["minMotionPx"]:
+        e.diagnostics.append(f"not exercised: the player moved {moved:.1f} px sideways in the clear window "
+                             f"(needs {MIRROR['minMotionPx']:.0f})")
+        return
+    if relation == "equal" and not lv and not rv:
+        e.diagnostics.append(f"not exercised: {signal} is 0 on both probes in the clear window")
+        return
+    e.triggered = e.evaluated = 1
+    ok = abs(rv + lv) <= op["toleranceAbs"] if relation == "negate" else abs(rv - lv) <= op["toleranceAbs"]
+    if not ok:
+        e.counterexample = True
+        e.note(right, start, end, f"{signal} is {rv} on {right['id']} and {lv} on {left['id']} from tick {start} "
+               f"to {end}; mirrored, it should {relation} within {op['toleranceAbs']}")
+
+
 OPERATORS = {
     "signal_compare": _signal_compare,
     "min_event_interval": _min_event_interval,
@@ -435,7 +608,8 @@ def evaluate(spec: dict, episode: dict, twin: dict | None = None) -> dict:
     """One spec on one episode, or a relation on (episode, twin): the left probe and the right one."""
     validate_v1(spec, "trace-spec")
     op = spec["operation"]
-    episodes = [episode] if op["type"] != "relation" else [episode, twin]
+    paired = op["type"] in ("relation", "metamorphic")
+    episodes = [episode] if not paired else [episode, twin]
     e = _Eval(spec, [ep for ep in episodes if ep is not None])
     try:
         for ep in e.episodes:
@@ -450,11 +624,11 @@ def evaluate(spec: dict, episode: dict, twin: dict | None = None) -> dict:
                 e.complete = False
                 e.diagnostics.append(f"needs-review: {problem}")
                 return e.verdict("insufficient_observation")
-        if op["type"] == "relation":
+        if paired:
             if twin is None:
-                e.diagnostics.append("a relation needs two episodes")
+                e.diagnostics.append(f"a {op['type']} needs two episodes")
                 return e.verdict("execution_error")
-            _relation(e, episode, twin, op)
+            (_relation if op["type"] == "relation" else _metamorphic)(e, episode, twin, op)
         else:
             if e.spec["scope"]["class"] == "player" and not episode["capabilities"]["player"]:
                 e.applicable = "unknown"

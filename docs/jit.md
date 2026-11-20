@@ -1168,6 +1168,26 @@ asserts that, and that the control dropped that check on the real engine. The re
 and the control; it does not cover "a strong catch is produced" until a rehearsal whose checks survive the
 control is added.
 
+### Metamorphic checks: mirror the inputs (#675, piece 3)
+
+A metamorphic check states its own obligation: a relation between two runs of the same game that holds
+on any game whose rules do not depend on the direction, so no person writes the answer per game.
+[`metamorphic.py`](../expectrail/jit/metamorphic.py) takes any probe that uses a left/right action and
+makes its twin with each pair swapped, and one check per signal: the player's sideways travel negates;
+its highest rise, airborne time and air jumps stay equal. The trace-spec operation is `metamorphic`
+([discovery.md](discovery.md#metamorphic-mirror-the-inputs-675) has the clear window: only the stretch
+before either twin touches something the mirror did not also move is judged). What cannot be mirrored
+(a probe with no paired action, an unpaired action named for a side) is "cannot tell".
+
+On the bundled game, offline (Godot 4.7.2, no model; [measurement](measurements/675-metamorphic-mirror.md)):
+14 probe pairs, 56 checks; **28 pass the clean game 3 of 3, none passes the do-nothing control** (all
+are not exercised on a frozen player), and on the public defects **14 catch `slow-left` and none fails
+on any of the other 23** (one run each). Reach is narrow, as expected: mirroring the player's inputs only
+reaches a defect that depends on the direction the player is sent.
+
+Advisory: the generator does not offer these checks yet (next slice), and nothing here changes what may
+count or clear a change.
+
 ### The six rules on pixel checks (#286)
 
 Pixel checks are in a record's `pixelChecks`, which `counting` never read, so a screen-only check was

@@ -230,6 +230,57 @@ class TimelineTest(unittest.TestCase):
                 with self.assertRaises(contracts.ContractError):
                     contracts.validate(seen, "observations")
 
+    def test_negative_visual_evidence_matches_the_full_schema_reader(self):
+        from jsonschema import Draft202012Validator
+        from expectrail.gate import record
+
+        def example(name):
+            path = ROOT / f"contracts/examples/observations-{name}.json"
+            return json.loads(path.read_text())["frames"][0]["notDrawn"]["player"]
+
+        schema = timeline._schema()
+        full = Draft202012Validator(schema)
+        size = example("missing-player")
+        place = example("clipped-player")
+        empty = dict(size, reason="no-match", answer=None, observedSize=None)
+        cases = [(size, True), (place, True), (empty, True),
+                 (dict(empty, scale=[0, 1]), False), (dict(size, observedSize=[1, 0]), False),
+                 (dict(size, expectedSize=[-1, 1]), False), (dict(empty, answer=size["answer"]), False),
+                 (dict(empty, observedSize=[1, 2]), False), (dict(size, answer=None), False),
+                 (dict(size, answer={"box": [1], "score": .8}), False),
+                 ({k: v for k, v in place.items() if k != "expectedVisibleBox"}, False)]
+        for negative, valid in cases:
+            with self.subTest(negative=negative):
+                seen = copy.deepcopy(self.seen)
+                seen["frames"][0].update(objects={"player": []}, notDrawn={"player": negative})
+                self.assertEqual(full.is_valid(seen), valid)
+                self.assertEqual(not record.errors(seen, schema), valid)
+
+    def test_gate_judges_v1_negative_answers_with_the_trusted_timeline(self):
+        from expectrail import anchored
+        from tests.test_anchored_observer import Blind
+
+        calibration = json.loads((ROOT / "contracts/examples/vision-calibration.v1.json").read_text())
+        observer = anchored.AnchoredObserver(Blind(self.run), anchored.check_calibration(calibration))
+        result = verify.judge_run(SPEC, self.run, rule="both", visual=observer, ticks=12)
+        self.assertEqual(result["observed"]["engine"], "pass")
+        self.assertEqual(result["observed"]["visual"], "fail")
+        self.assertEqual((result["result"], result["frame"]), ("fail", 0))
+
+        seen = result["visualObservations"]
+        self.assertEqual(seen["format"], timeline.OBSERVATIONS)
+        negative = seen["frames"][0]["notDrawn"]["player"]
+        self.assertEqual(negative["reason"], "no-match")
+        negative["answer"] = {"box": [1, 2, 3, 4], "score": .9}
+        self.assertEqual(self.judge(seen)["result"], "needs-review")
+
+    def test_schema_references_must_name_an_existing_local_schema(self):
+        from expectrail.gate import record
+        for ref in ("https://invalid.example/schema", "#/missing", "#/properties/item", "#/type"):
+            rule = {"type": "object", "properties": {"item": {"$ref": ref}}}
+            with self.subTest(ref=ref), self.assertRaises(record.SchemaError):
+                record.errors({"item": 1}, rule)
+
     def test_observation_order_is_not_silently_sorted(self):
         seen = copy.deepcopy(self.seen); seen["frames"].reverse()
         self.assertEqual(self.judge(seen)["result"], "needs-review")
