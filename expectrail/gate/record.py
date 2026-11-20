@@ -569,7 +569,8 @@ ANNOTATIONS = frozenset({"$schema", "$id", "title", "description", "$comment", "
 IMPLEMENTED = frozenset({
     "type", "enum", "const", "required", "properties", "additionalProperties", "items", "minItems",
     "maxItems", "minLength", "maxLength", "pattern", "minimum", "maximum", "minProperties",
-    "maxProperties", "propertyNames", "oneOf", "anyOf",
+    "maxProperties", "propertyNames", "oneOf", "anyOf", "allOf", "if", "then", "else",
+    "exclusiveMinimum", "$ref",
 })
 
 
@@ -687,11 +688,38 @@ def _equal(a, b) -> bool:
 
 def errors(value, rule: dict, where: str = "") -> list[str]:
     """Every way ``value`` breaks ``rule``, as 'path: problem' strings (empty when it conforms)."""
+    return _errors(value, rule, where, rule, ())
+
+
+def _local_schema(root: dict, ref: str) -> dict:
+    """Resolve the local object-key pointers used by the shipped schemas."""
+    if not isinstance(ref, str) or not ref.startswith("#/") or "%" in ref:
+        raise SchemaError(f"unsupported schema reference {ref!r}")
+    target = root
+    for key in ref[2:].split("/"):
+        if re.search(r"~(?![01])", key):
+            raise SchemaError(f"invalid schema pointer {ref!r}")
+        key = key.replace("~1", "/").replace("~0", "~")
+        if not isinstance(target, dict) or key not in target:
+            raise SchemaError(f"unresolved schema reference {ref!r}")
+        target = target[key]
+    if not isinstance(target, dict):
+        raise SchemaError(f"reference does not name a schema object: {ref!r}")
+    return target
+
+
+def _errors(value, rule: dict, where: str, root: dict, refs: tuple) -> list[str]:
     unknown = set(rule) - IMPLEMENTED - ANNOTATIONS
     if unknown:
         raise SchemaError(f"unsupported schema keyword(s) {sorted(unknown)} at {where or '(root)'}")
     here = where or "(root)"
     out: list[str] = []
+    if "$ref" in rule:
+        ref = rule["$ref"]
+        target = _local_schema(root, ref)
+        if ref in refs:
+            raise SchemaError(f"recursive schema reference {ref!r}")
+        out.extend(_errors(value, target, where, root, (*refs, ref)))
     if "type" in rule:
         names = rule["type"] if isinstance(rule["type"], list) else [rule["type"]]
         if not any(_is_type(value, n) for n in names):
@@ -710,6 +738,8 @@ def errors(value, rule: dict, where: str = "") -> list[str]:
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         if "minimum" in rule and value < rule["minimum"]:
             out.append(f"{here}: below {rule['minimum']}")
+        if "exclusiveMinimum" in rule and value <= rule["exclusiveMinimum"]:
+            out.append(f"{here}: must be greater than {rule['exclusiveMinimum']}")
         if "maximum" in rule and value > rule["maximum"]:
             out.append(f"{here}: above {rule['maximum']}")
     if isinstance(value, list):
@@ -719,7 +749,7 @@ def errors(value, rule: dict, where: str = "") -> list[str]:
             out.append(f"{here}: more than {rule['maxItems']} items")
         if "items" in rule:
             for n, item in enumerate(value):
-                out.extend(errors(item, rule["items"], f"{where}/{n}"))
+                out.extend(_errors(item, rule["items"], f"{where}/{n}", root, refs))
     if isinstance(value, dict):
         if "minProperties" in rule and len(value) < rule["minProperties"]:
             out.append(f"{here}: fewer than {rule['minProperties']} properties")
@@ -731,19 +761,25 @@ def errors(value, rule: dict, where: str = "") -> list[str]:
         props = rule.get("properties", {})
         extra = rule.get("additionalProperties", True)
         for key, item in value.items():
-            if "propertyNames" in rule and errors(key, rule["propertyNames"], f"{where}/(name)"):
+            if "propertyNames" in rule and _errors(key, rule["propertyNames"], f"{where}/(name)", root, refs):
                 out.append(f"{here}: a property name does not match its pattern")
             if key in props:
-                out.extend(errors(item, props[key], f"{where}/{key}"))
+                out.extend(_errors(item, props[key], f"{where}/{key}", root, refs))
             elif extra is False:
                 out.append(f"{here}: a property is not allowed here")
             elif isinstance(extra, dict):
-                out.extend(errors(item, extra, f"{where}/(additional)"))
+                out.extend(_errors(item, extra, f"{where}/(additional)", root, refs))
+    for option in rule.get("allOf", []):
+        out.extend(_errors(value, option, where, root, refs))
+    if "if" in rule:
+        branch = "else" if _errors(value, rule["if"], where, root, refs) else "then"
+        if branch in rule:
+            out.extend(_errors(value, rule[branch], where, root, refs))
     if "oneOf" in rule:
-        matched = sum(1 for option in rule["oneOf"] if not errors(value, option, where))
+        matched = sum(1 for option in rule["oneOf"] if not _errors(value, option, where, root, refs))
         if matched != 1:
             out.append(f"{here}: matches {matched} of the oneOf options, not exactly one")
-    if "anyOf" in rule and not any(not errors(value, option, where) for option in rule["anyOf"]):
+    if "anyOf" in rule and not any(not _errors(value, option, where, root, refs) for option in rule["anyOf"]):
         out.append(f"{here}: matches none of the anyOf options")
     return out
 
