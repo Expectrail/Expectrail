@@ -513,10 +513,11 @@ class App:
     def create(self, body):
         after = None
         if configured(body):
-            after = project_folder(body, 'after')
+            after = project_folder(body, 'after').resolve()
             # A second tab may replace the temporary Before copy while a job is being prepared.
             with self.previous_lock:
-                doc = project_job.prepare(self.store, after, project_folder(body, 'before'),
+                before = project_folder(body, 'before').resolve()
+                doc = project_job.prepare(self.store, after, before,
                                           execution_class=execution_class(body), require_ready=True)
         else:
             doc = build(body)
@@ -539,6 +540,11 @@ class App:
             try:
                 proc = None
                 if created:
+                    if after is not None:
+                        try:
+                            self.record_folders(job_id, before, after)
+                        except OSError:
+                            pass  # The snapshots can still run and identify the recorded checkouts.
                     if settings:
                         proc = auto_fix.launch(self.store, job_id, None)
                     else:
@@ -551,10 +557,42 @@ class App:
             self.waiters.append(waiter)
         if after is not None:
             try:
-                self.remember_project(after.resolve())
+                self.remember_project(after)
             except OSError:
                 pass  # A recent-path write cannot change the result of a started job.
         return self.status(job_id)
+
+    def record_folders(self, job_id, before, after):
+        # Local display data, outside the worker request and all evidence exports.
+        # A reader sees either both selections or the recorded checkout fallback.
+        with tempfile.NamedTemporaryFile(mode='w', dir=self.store.root, delete=False) as stream:
+            temporary = Path(stream.name)
+            try:
+                json.dump({'before': str(before), 'after': str(after)}, stream)
+                stream.close()
+                temporary.replace(self.store.root / f'app-folders-{job_id}.json')
+            finally:
+                temporary.unlink(missing_ok=True)
+
+    def result_folders(self, job_id, request):
+        before = (request['base'] or {}).get('checkout')
+        after = request['head']['checkout']
+        head = Path(after)
+        pair = head.parent
+        if not (request['project']['game'] == 'project' and head.name == 'head'
+                and pair.parent == self.store.root and pair.name.startswith('project-')
+                and (before is None or Path(before) == pair / 'base')):
+            return before, after
+        try:
+            # status() has already validated the job ID. Never open a path from the sidecar.
+            fields = rec.strict_loads(commits.regular(self.store.root / f'app-folders-{job_id}.json', LIMIT))
+            if isinstance(fields, dict) and set(fields) == {'before', 'after'} and all(
+                    isinstance(v, str) and '\0' not in v and Path(v).is_absolute() for v in fields.values()):
+                return fields['before'], fields['after']
+        except (OSError, ValueError, RecursionError):
+            pass
+        return tuple(f'Recorded checkout: {path} (original selection unavailable)' if path else None
+                     for path in (before, after))
 
     def status(self, job_id, *, past=False):
         if not past:
@@ -570,6 +608,7 @@ class App:
             except (OSError, UnknownJob):
                 pass
         request = self.store.request(job_id)
+        before, after = self.result_folders(job_id, request)
         repair = doc.get('repair') or {}
         summary = OUTCOMES[state]
         if state == 'reject':
@@ -581,7 +620,7 @@ class App:
             'state': state, 'screen': screen, 'summary': summary, 'sessionOwned': job_id in self.owned, 'report': report,
             'repairRunning': repair.get('state') == 'running',
             'repairUrl': f'/repairs/{job_id}/repair-run.json' if 'record' in repair and job_id in self.owned else None,
-            'before': (request['base'] or {}).get('checkout'), 'after': request['head']['checkout'],
+            'before': before, 'after': after,
             'judgedBy': judged_by(doc, findings),
             'isolation': rec.isolation_words(findings.get('isolation')) if findings is not None else None,
             'viewer': f'/viewers/{job_id}/index.html' if job_id in self.owned and phase in FINAL else None}
