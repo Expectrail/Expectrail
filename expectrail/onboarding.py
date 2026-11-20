@@ -263,7 +263,7 @@ def inspect(root, player=None):
     else:
         named = [p for p in bodies if nodes[p]["name"].casefold() == "player"]
         players = named or bodies
-    textures, problems, suggestions = set(), [], []
+    textures, problems, suggestions, sprites = set(), [], [], 0
     if len(players) == 1:
         player = players[0]
         for path, node in nodes.items():
@@ -275,6 +275,7 @@ def inspect(root, player=None):
                 owner = owner.rpartition("/")[0]
             if owner != player:
                 continue
+            sprites += 1
             prop = "sprite_frames" if node["type"] == "AnimatedSprite2D" else "texture"
             reason = node["reason"]
             for image in node["images"]:
@@ -310,6 +311,18 @@ def inspect(root, player=None):
         problems.append("Supply the player node path and its res:// image in bindings.player; "
                         "the starting scene has no unique player. Or choose one with --player NODE.")
 
+    # No sprite draws the player in the saved scenes (a Polygon2D crate, say): list the project's image
+    # files so a person can choose one. They are never bound here, and never called the player's (#688).
+    extra = {}
+    if len(players) == 1 and not sprites:
+        icon = settings.get("application/config/icon")
+        extra["projectImages"], more = project_images(root, icon)
+        if more:
+            extra["moreProjectImages"] = more
+        icon = project_icon(icon)
+        if icon in extra["projectImages"]:
+            extra["projectIcon"] = icon
+
     def paths(kind):
         return [p or "." for p, n in nodes.items() if n.get("type") == kind]
     from expectrail.input_discovery import hints
@@ -320,7 +333,45 @@ def inspect(root, player=None):
             "actions": actions, "builtInActions": fallback, "physicsTicksPerSecond": rate,
             "viewport": declared_settings(root)[0],
             **({"imageSuggestions": suggestions} if len(players) == 1 else {}),
-            **({"selectedPlayer": players[0] or "."} if asked is not None else {})}
+            **({"selectedPlayer": players[0] or "."} if asked is not None else {}), **extra}
+
+
+def project_icon(value):
+    """The res:// path of project.godot's ``config/icon`` value as written (a quoted string), or None."""
+    try:
+        icon = json.loads(value) if value else None
+    except ValueError:
+        return None
+    return icon if isinstance(icon, str) else None
+
+
+IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".svg", ".bmp", ".tga")
+PROJECT_IMAGE_LIMIT = 12
+
+
+def project_images(root, icon=None, limit=PROJECT_IMAGE_LIMIT):
+    """The project's image files as res:// paths, at most ``limit``, and how many more there are.
+
+    Top-level files come first, then deeper ones, each level in path order; the project icon (its
+    ``application/config/icon`` setting, as written in project.godot) comes last. Hidden folders
+    (``.godot``), folders Godot ignores (``.gdignore``), links and files outside the project are
+    skipped. Nothing is read beyond the names."""
+    root = Path(root).resolve()
+    icon = project_icon(icon)
+    found = []
+    for directory, dirs, names in os.walk(root):
+        here = Path(directory)
+        dirs[:] = sorted(d for d in dirs if not d.startswith(".") and not (here / d).is_symlink()
+                         and not (here / d / ".gdignore").exists())
+        for name in names:
+            path = here / name
+            if (name.startswith(".") or path.suffix.lower() not in IMAGE_SUFFIXES or path.is_symlink()
+                    or not path.is_file() or not path.resolve().is_relative_to(root)):
+                continue
+            uri = "res://" + path.relative_to(root).as_posix()
+            found.append((uri == icon, uri.count("/"), uri))
+    found.sort()
+    return [uri for _, _, uri in found[:limit]], max(0, len(found) - limit)
 
 
 def describe(report):
@@ -336,6 +387,10 @@ def describe(report):
         size = size_text(s["imageSize"]) if s["imageSize"] else "size not read"
         drawn = f", regions {region_text(s['regions'])}" if s["regions"] else ", drawn whole"
         print(f"  {s['image']} ({size}){drawn}, from {s['sprite']}.{s['property']}")
+    if "projectImages" in report:
+        more = report.get("moreProjectImages", 0)
+        print("Images in the project, not drawn under the player: " + (", ".join(report["projectImages"]) or "none found")
+              + (f" (and {more} more)" if more else ""))
     for problem in report["unresolvedBindings"]:
         print(problem)
     print("Input actions" + (" (built-in fallback)" if report["builtInActions"] else "") + ":", listed("actions"))
@@ -721,6 +776,10 @@ def main(command, argv):
                 if "unresolvedBindings" in docs:
                     for problem in docs["unresolvedBindings"]:
                         print(problem)
+                    if info.get("projectImages"):
+                        count = len(info["projectImages"])
+                        print(f"The review page offers {count} image file{'s' if count != 1 else ''} in the project "
+                              "to choose from. The player is not drawn with any of them in the saved scenes.")
                     print("Complete the config object in the review draft, then save that object alone "
                           "as expectrail.project.json. Existing active bindings were preserved.")
                 print(f"Review these bindings offline with expectrail onboard --project GAME --source {filename} "
