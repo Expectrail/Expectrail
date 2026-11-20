@@ -355,11 +355,13 @@ jobs:
       # The same verify command on two Godot projects (#251): the bundled game, and a second project
       # given by path that shares no file with it (tests/projects/crate-run). Real replays, no model
       # key. Without the switch these four tests are skipped, as in the `test` job, which has no Godot.
+      # The setup rehearsal (#260) takes Crate Run from no config, through init and the person's step,
+      # to a needs-review of the unchanged game and a reject of its seeded bug.
       - name: One verify command, two Godot projects (the bundled game and a second one by path), each replay sandboxed
         env:
           EXPECTRAIL_ENGINE_TESTS: required
           EXPECTRAIL_SANDBOX: require
-        run: python -m unittest tests.test_second_project -v
+        run: python -m unittest tests.test_second_project tests.test_setup_rehearsal -v
       - name: The ground line is logged, and the position log sees a robot resting too low
         run: |
           python -m pip install -r requirements-dev.txt
