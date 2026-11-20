@@ -1347,10 +1347,30 @@ def _explanation_section(said: dict, findings: list[dict]) -> str:
     return "".join(parts) + "</ol></section>"
 
 
+def render_published(record: dict, decision: str) -> str:
+    """Render findings already verified against a published receipt by the caller.
+
+    Show the authenticated decision verbatim. This view needs no workspace
+    or artifact HTML. It includes the bound findings, without frames.
+    """
+    states = {'accept': 'accept', 'reject': 'behaviour-failure', 'needs-review': 'needs-review'}
+    if decision not in states or record.get('decision') != decision:
+        raise ValueError('Published decisions disagree')
+    return render(_scrub({
+        'state': states[decision], 'decision': decision, 'record': record,
+        'reasons': record['reasons'], 'job': None, 'views': [], 'reproduce': None,
+        'published': True,
+    }))
+
+
 def render(payload: dict) -> str:
     state = payload["state"]
     title, tone, means = STATES[state]
     record, job = payload["record"], payload["job"]
+    published = payload.get("published", False)
+    if published:
+        title = payload["decision"]
+        means = "This is the decision recorded by the project's CI."
     parts = [
         "<!DOCTYPE html>", '<html lang="en"><head><meta charset="utf-8">',
         f'<meta http-equiv="Content-Security-Policy" content="{CSP}">',
@@ -1364,7 +1384,9 @@ def render(payload: dict) -> str:
     if payload.get("repair"):
         parts.append(_repair_section(payload["repair"], payload["decision"] or "No verdict"))
     exported = payload.get("export")
-    if exported is None:
+    if published:
+        parts.append('<p class="muted">This view includes the published findings. Frames are unavailable here.</p>')
+    elif exported is None:
         parts.append(f'<p class="muted"><a href="{EXPORT_NAME}" download>Download this evidence as one file</a> '
                      "(frames included; it opens offline).</p>")
     else:
@@ -1417,7 +1439,7 @@ def render(payload: dict) -> str:
         parts.append(f"<p>{words}</p><pre>{html.escape(redact(payload['reproduce'], limit=None), quote=True)}</pre>")
     else:
         parts.append("<p>No reproduction command: this folder was written without the job's request.</p>")
-    if record is not None:
+    if record is not None and not published:
         views = payload.get("views") or []
         comparisons = [_first_difference(v) for v in views]
         starts = [tick for tick, _ in comparisons]
@@ -1449,8 +1471,9 @@ def render(payload: dict) -> str:
     parts.append("<p class=\"muted\">The decision on this page is the verifier's. The timeline is measured from the "
                  "same observations the evaluator judged and is shown only when it agrees with the evaluator; it "
                  "decides nothing. Held-out routes appear as counts only.</p>")
-    parts.append(f'<script type="application/json" id="evidence">{_json_for_script({k: v for k, v in payload.items() if k != "repair"})}</script>')
-    parts.append(f"<script>{SCRIPT}</script>")
+    if not published:
+        parts.append(f'<script type="application/json" id="evidence">{_json_for_script({k: v for k, v in payload.items() if k != "repair"})}</script>')
+        parts.append(f"<script>{SCRIPT}</script>")
     parts.append("</main></body></html>\n")
     return "\n".join(parts)
 
