@@ -68,7 +68,7 @@
         "tests/outside/breakout-pointer/checks/breakout-paddle-bounds.json",
         "tests/outside/breakout-pointer/checks/breakout-ball-starts.json"
       ],
-      "expect": "needs-review",
+      "expect": "unapproved-drafts",
       "engineExpect": {
         "breakout-paddle-bounds": "pass",
         "breakout-ball-starts": "pass"
@@ -77,7 +77,7 @@
         {
           "name": "harmless",
           "patch": "tests/outside/breakout/changes/harmless.patch",
-          "expect": "needs-review",
+          "expect": "unapproved-drafts",
           "engineExpect": {
             "breakout-paddle-bounds": "pass",
             "breakout-ball-starts": "pass"
@@ -87,7 +87,7 @@
         {
           "name": "broken",
           "patch": "tests/outside/breakout/changes/broken.patch",
-          "expect": "needs-review",
+          "expect": "unapproved-drafts",
           "engineExpect": {
             "breakout-paddle-bounds": "fail",
             "breakout-ball-starts": "needs-review"

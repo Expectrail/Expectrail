@@ -15,8 +15,9 @@ is the head, and `expectrail verify --base` judges the change, as it would judge
 row says the expected verdict beside the one given; a declared mismatch fails the trial.
 
 Needs-review and reject are valid results. Declared expectations are regression checks. The trial fails
-when a project cannot be fetched at its commit, or when the command ends with a code that is no
-verdict (3 failed, 4 cancelled, 5 could not be carried out, 6 not finished). What it writes
+when a project cannot be fetched at its commit, or when a verification produces no verdict. A
+draft-only trial may instead require a specific setup refusal before any job starts, together with
+its separate draft diagnostics. Other failures still fail the trial. What it writes
 (`outside-trial.json`, `outside-trial.md`) is the record docs/outside-projects.md quotes.
 
 The projects' code is not ours: it is only ever started by the harness, and CI runs this with the
@@ -40,6 +41,7 @@ LIST = REPO / "tests" / "outside" / "projects.json"
 SPEC = REPO / "agents" / "specs" / "player-stays-above-ground.json"
 FORMAT = "expectrail.outside-projects/v0"
 VERDICTS = {0: "accept", 1: "reject", 2: "needs-review"}
+DRAFT_REFUSAL = "unapproved-drafts"
 _NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
 _COMMIT = re.compile(r"^[0-9a-f]{40}$")
 _PATH = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_./-]{0,200}$")
@@ -82,15 +84,18 @@ def load_list(path: Path = LIST) -> list[dict]:
                 raise TrialError('config must name our file under tests/outside/')
             contained(REPO, p['config'])
         drafts = draft_specs(p)
+        expectations = [p] + p.get('changes', [])
+        if not drafts and any(item.get('expect') == DRAFT_REFUSAL for item in expectations):
+            raise TrialError('an unapproved-drafts expectation requires configured draftSpecs')
         if drafts:
             if 'config' not in p or 'spec' in p:
                 raise TrialError('draftSpecs requires a config and cannot also select an approved spec')
             ids = {strict_json(path)['id'] for path in drafts}
             if len(ids) != len(drafts):
                 raise TrialError('draft ids must be distinct')
-            for expected in [p] + p.get('changes', []):
+            for expected in expectations:
                 if set(expected.get('engineExpect', {})) != ids or 'expect' not in expected:
-                    raise TrialError('every draft copy needs a verdict and an engine expectation for every draft')
+                    raise TrialError('every draft copy needs a verification outcome and an engine expectation for every draft')
         elif 'engineExpect' in p or any('engineExpect' in c for c in p.get('changes', [])):
             raise TrialError('engineExpect requires draftSpecs')
         changes = p.get("changes", [])
@@ -103,7 +108,7 @@ def load_list(path: Path = LIST) -> list[dict]:
             if not _NAME.match(c["name"]) or c["name"] in names:
                 raise TrialError(f"{p['name']}: change name {c['name']!r} is not a plain name used once")
             names.add(c["name"])
-            if c["expect"] not in VERDICTS.values():
+            if c["expect"] != DRAFT_REFUSAL and c["expect"] not in VERDICTS.values():
                 raise TrialError(f"{p['name']}/{c['name']}: expect must be one of {', '.join(VERDICTS.values())}")
             folder = f"tests/outside/{p['name']}/changes/"
             if (not _PATH.match(c["patch"]) or ".." in c["patch"].split("/") or not c["patch"].startswith(folder)
@@ -169,10 +174,36 @@ def draft_specs(project: dict) -> list[Path]:
     return paths
 
 
+def reports_draft_refusal(root: Path, stderr: str, count: int) -> bool:
+    # Preflight failures are on stderr even with --json. Check the trusted selection
+    # independently of that text, then match the CLI's full explanation for this Before.
+    from expectrail import project_job
+    try:
+        info = project_job.inspect(root)
+        if not info['routes'] or info['checks'] or info['drafts'] != count or info['problems']:
+            return False
+        steps = project_job.unready(root)
+    except (ValueError, OSError):
+        return False
+    return bool(steps) and stderr.strip() == 'expectrail: Nothing here can be verified yet. ' + ' '.join(steps)
+
+
+def observed_outcome(row: dict) -> str | None:
+    if (row.get('setupRefusal') == DRAFT_REFUSAL and row.get('exit') == 5
+            and row.get('verifyJobs') == 0 and row.get('expectedEngine')
+            and row.get('verdict') is None and 'decision' in row and row['decision'] is None
+            and row.get('checks') is None):
+        return DRAFT_REFUSAL
+    return row.get('verdict')
+
+
 def expectation_errors(row: dict) -> list[str]:
     errors = []
-    if row.get('expect') and row.get('verdict') != row['expect']:
-        errors.append(f"expected {row['expect']}, got {row.get('verdict') or 'no verdict'}")
+    outcome = observed_outcome(row)
+    if row.get('expect') and outcome != row['expect']:
+        errors.append(f"expected {row['expect']}, got {outcome or 'no verdict'}")
+    elif not row.get('verdict') and row.get('expect') != DRAFT_REFUSAL:
+        errors.append('verification produced no verdict')
     if row.get('expect') and 'decision' in row and row['decision'] != row.get('verdict'):
         errors.append('CLI exit verdict and saved decision disagree or the decision is missing')
     if row.get('draftDiagnosticError'):
@@ -374,6 +405,12 @@ def verify(project: dict, checkout: Path, out: Path, command: list[str], timeout
     expected = project if change is None else change
     if project.get('draftSpecs'):
         row['expectedEngine'] = expected['engineExpect']
+        # JobStore creates jobs/<id> before writing status. Count even a partial job, and
+        # fail closed if a reused output directory contains evidence from an earlier run.
+        job_entries = jobs / 'jobs'
+        row['verifyJobs'] = sum(1 for _ in job_entries.iterdir()) if job_entries.exists() else 0
+        if code == 5 and not stdout.strip() and reports_draft_refusal((base or checkout) / 'project', stderr, len(project['draftSpecs'])):
+            row['setupRefusal'] = DRAFT_REFUSAL
         try:
             row['draftFindings'], row['routeSummaries'] = draft_diagnostics(
                 project, checkout, jobs / 'draft-diagnostics', timeout, execution_class)
@@ -450,8 +487,10 @@ def markdown(rows: list[dict]) -> str:
     for r in rows:
         checks = "none" if not r["checks"] else f"{r['checks'].get('passed')} of {r['checks'].get('checks')} pass"
         reasons = "; ".join((r["reasons"] or r.get("diagnostics") or [r.get("output", "")]) + r.get("failures", [])) or "none"
+        if 'verifyJobs' in r:
+            reasons += f" ({r['verifyJobs']} verification jobs)"
         change = "none (the project as pinned)" if not r.get("change") else f"{r['change']}: {r['what']}"
-        expected = "-" if not r.get("expect") else (r["expect"] + (" (as expected)" if r["verdict"] == r["expect"] else " (DIFFERS)"))
+        expected = "-" if not r.get("expect") else (r["expect"] + (" (as expected)" if observed_outcome(r) == r["expect"] else " (DIFFERS)"))
         lines.append(f"| {r['name']} (`{r['commit'][:7]}`, {r['licence']}) | {change.replace('|', '/')} | {r['exit']} | "
                      f"{r['verdict'] or 'no verdict'} | {expected} | {r['seconds']} | {checks} | {reasons.replace('|', '/')} |")
     for r in rows:
@@ -521,7 +560,7 @@ def main(argv: list[str] | None = None) -> int:
     table = markdown(rows)
     (args.out / "outside-trial.md").write_text(table, encoding="utf-8")
     print(table)
-    return 0 if all(r["verdict"] and not expectation_errors(r) for r in rows) else 3
+    return 0 if all(not expectation_errors(r) for r in rows) else 3
 
 
 if __name__ == "__main__":

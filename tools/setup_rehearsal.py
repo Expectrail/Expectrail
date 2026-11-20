@@ -9,12 +9,15 @@ On a disposable copy of the project, with its config removed, it runs the instal
 2. ``init``: a draft config (or, when init cannot choose the player's image, a review draft) and a
    first route are written;
 3. ``verify --project`` on what init wrote: it cannot judge yet, and says what to change (exit 5);
-4. the person's step, which this rehearsal takes on the copy and says so: the player's image where
-   init could not choose one, ``draft`` removed, and an existing approved check named in
-   ``approvedContracts``, copied unchanged with its approval. Nothing is approved here;
-5. ``verify --project`` with the game unchanged: the engine's check passes; with no vision settings
+4. where init could not choose the player's image, ``onboard`` writes the review page, and the
+   rehearsal takes the config from the page's own download link for the image a person would choose
+   (#688: the page offers the project's images, labelled as not drawn under the player);
+5. the person's step, which this rehearsal takes on the copy and says so: the image chosen on the
+   page, ``draft`` removed, and an existing approved check named in ``approvedContracts``, copied
+   unchanged with its approval. Nothing is approved here;
+6. ``verify --project`` with the game unchanged: the engine's check passes; with no vision settings
    that is needs-review, never accept (exit 2);
-6. ``verify --project`` with a seeded bug that makes the player fall through the floor: reject (exit 1).
+7. ``verify --project`` with a seeded bug that makes the player fall through the floor: reject (exit 1).
 
 Each step is recorded with its command, exit code, seconds and the lines a developer reads. The
 rehearsal fails when a step ends differently from what is written above. No model is called: the
@@ -23,6 +26,7 @@ vision settings are removed from the environment of every command it runs. Stand
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -30,6 +34,7 @@ import shutil
 import subprocess
 import sys
 import time
+from html.parser import HTMLParser
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -100,6 +105,46 @@ def _said(text: str, keep: int = 12) -> list[str]:
     return [line for line in lines if "file://" not in line][:keep]
 
 
+class _Choices(HTMLParser):
+    """The configs behind the review page's download links, each with the text of its card."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.cards: list[dict] = []
+        self._card = None
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == "article":
+            self._card = {"text": "", "config": None}
+        if tag == "a" and attrs.get("download") == CONFIG and self._card is not None:
+            prefix, _, data = (attrs.get("href") or "").partition(",")
+            if prefix != "data:application/json;base64":
+                raise RehearsalError("a download link on the review page is not an inline config")
+            self._card["config"] = json.loads(base64.b64decode(data, validate=True))
+
+    def handle_endtag(self, tag):
+        if tag == "article" and self._card is not None:
+            if self._card["config"] is not None:
+                self.cards.append(self._card)
+            self._card = None
+
+    def handle_data(self, data):
+        if self._card is not None:
+            self._card["text"] += " " + data
+
+
+def page_choice(page: Path, image: str) -> tuple[dict, str]:
+    """The config the review page downloads for ``image``, and the words on its card."""
+    parser = _Choices()
+    parser.feed(page.read_text(encoding="utf-8"))
+    cards = [c for c in parser.cards if c["config"].get("bindings", {}).get("player", {}).get("texture") == image]
+    if len(cards) != 1:
+        offered = [c["config"].get("bindings", {}).get("player", {}).get("texture") for c in parser.cards]
+        raise RehearsalError(f"the review page offers {image} {len(cards)} times; it offers {offered}")
+    return cards[0]["config"], " ".join(cards[0]["text"].split())
+
+
 def rehearse(name: str, out: Path, *, timeout: int = 1800) -> dict:
     project = PROJECTS[name]
     work = out / name
@@ -148,8 +193,16 @@ def rehearse(name: str, out: Path, *, timeout: int = 1800) -> dict:
     if "texture" not in config.get("bindings", {}).get("player", {}):
         if project["image"] is None:
             raise RehearsalError("init chose no player image and this project names none to choose")
-        config["bindings"]["player"]["texture"] = project["image"]
-        person.append(f"chose {project['image']} as the player's image")
+        page = work / "review.html"
+        row, _ = step("review page", ["onboard", "--project", str(game), "--source", wrote, "--out", str(page)], 0,
+                      check=lambda _t: None if page.is_file() else "the review page was not written")
+        if row["ok"]:
+            row["said"] = ["wrote the offline review page review.html"]
+        config, card = page_choice(page, project["image"])
+        if "not drawn under" not in card.casefold():
+            raise RehearsalError(f"the review page's choice of {project['image']} is not labelled as not drawn "
+                                 f"under the player: {card!r}")
+        person.append(f"chose {project['image']} on the review page ({card})")
     config.pop("draft", None)
     person.append('removed "draft" after reading the bindings')
     (game / "checks").mkdir(exist_ok=True)
