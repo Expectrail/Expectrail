@@ -1,0 +1,52 @@
+--- /dev/null
++++ b/Assets/ExpectrailSandboxProbe.cs
+@@ -0,0 +1,49 @@
++// Public, synthetic #253 test probe. No real secret is ever read or printed.
++using System;
++using System.IO;
++using System.Net.Sockets;
++using UnityEngine;
++
++public static class ExpectrailSandboxProbe
++{
++    [Serializable] private sealed class Config
++    {
++        public string mode, outside, spec, verifier;
++        public int port, secretPid;
++    }
++    private static bool Try(Action action)
++    {
++        try { action(); return true; } catch (Exception) { return false; }
++    }
++    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
++    private static void Probe()
++    {
++        var file = Path.Combine(Path.GetDirectoryName(Application.dataPath), "probe.json");
++        if (!File.Exists(file)) return;
++        var c = JsonUtility.FromJson<Config>(File.ReadAllText(file));
++        bool success = false;
++        if (c.mode == "socket") success = Try(() => {
++            using (var client = new TcpClient()) {
++                var task = client.ConnectAsync("127.0.0.1", c.port);
++                if (!task.Wait(1000) || !client.Connected) throw new IOException();
++            }
++        });
++        if (c.mode == "write") success = Try(() => File.WriteAllText(c.outside, "probe"));
++        if (c.mode == "policy") success = Try(() => {
++            using (var a = File.OpenRead(c.spec)) { a.ReadByte(); }
++            using (var b = File.OpenRead(c.verifier)) { b.ReadByte(); }
++        });
++        if (c.mode == "secret") success = Try(() => {
++            var bytes = File.ReadAllBytes("/proc/" + c.secretPid + "/environ");
++            if (!System.Text.Encoding.UTF8.GetString(bytes).Contains("EXPECTRAIL_SANDBOX_TEST_ONLY=fixture-value"))
++                throw new IOException();
++        });
++        if (c.mode == "inputs") success = Try(() => {
++            using (var a = File.Open(file, FileMode.Append, FileAccess.Write)) { }
++        });
++        Debug.Log("EXPECTRAIL_UNITY_PROBE " + (success ? "true" : "false"));
++        // The canary requires its attempted capability. A denied attempt stops
++        // this player; the ordinary runner must refuse it, not publish a replay.
++        if (!success) Application.Quit(73);
++    }
++}

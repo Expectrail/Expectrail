@@ -1,0 +1,100 @@
+# PROPOSAL ONLY. Sean must review/install this as a new workflow himself.
+# It uses an already licensed, dedicated Unity runner; it never activates Unity.
+# Build is trusted main code, NOT contained. No candidate/fork code runs there.
+name: Unity replay sandbox close-out
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Build two public main-only players on the already licensed runner
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: expectrail-unity-sandbox-closeout
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.repository == 'Expectrail/Expectrail' && github.ref == 'refs/heads/main' && inputs.confirm
+    runs-on: [self-hosted, linux, x64, expectrail-unity]
+    environment: unity
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Build the public clean and probe players with the already activated Editor
+        env:
+          UNITY_EDITOR: ${{ vars.EXPECTRAIL_UNITY_EDITOR }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from harness.unity import run
+          editor=Path(os.environ['UNITY_EDITOR'])
+          if not editor.is_absolute() or not editor.is_file():
+              raise SystemExit('Sean must provision the dedicated licensed Editor first')
+          run.build(Path('runs/unity-clean'),editor)
+          run.build(Path('runs/unity-probe'),editor,[Path('tests/fixtures/unity-sandbox-probe.patch')])
+          PY
+          tar -cf unity-players.tar -C runs unity-clean/build.json unity-clean/player unity-probe/build.json unity-probe/player
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: unity-sandbox-players
+          path: unity-players.tar
+          if-no-files-found: error
+          retention-days: 7
+  replay:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+      - name: Install replay tools; no licence or provider key in this job
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap xvfb xauth libgl1-mesa-dri libglx-mesa0 libgtk-3-0t64 libasound2t64 libnss3 libxcursor1 libxrandr2 libxinerama1 libxi6 libpulse0 patch
+          python3 -m pip install -r requirements-dev.txt
+          for setting in kernel.apparmor_restrict_unprivileged_userns=0 kernel.unprivileged_userns_clone=1; do
+            name=${setting%=*}
+            if [[ -e /proc/sys/${name//./\/} ]]; then sudo sysctl -w "$setting"; fi
+          done
+      - uses: actions/download-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: unity-sandbox-players
+      - name: Unpack only data from this main-only build
+        run: |
+          python3 - <<'PY'
+          import tarfile
+          with tarfile.open('unity-players.tar') as archive:
+              archive.extractall('runs',filter='data')
+          PY
+          chmod +x runs/unity-clean/player/game.x86_64 runs/unity-probe/player/game.x86_64
+      - name: Six native-player cases, required; never pass by skipping
+        env:
+          EXPECTRAIL_UNITY_SANDBOX_TESTS: required
+          EXPECTRAIL_UNITY_CLEAN_PLAYER: ${{ github.workspace }}/runs/unity-clean
+          EXPECTRAIL_UNITY_PROBE_PLAYER: ${{ github.workspace }}/runs/unity-probe
+          EXPECTRAIL_UNITY_SANDBOX_EVIDENCE: ${{ github.workspace }}/runs/unity-sandbox-evidence
+        run: |
+          set -o pipefail
+          python3 -m unittest tests.unity_sandbox_cases.NativeUnityBoundaryTest -v 2>&1 | tee native-sandbox.log
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: unity-sandbox-closeout
+          path: |
+            native-sandbox.log
+            runs/unity-sandbox-evidence/
+          if-no-files-found: warn
+          retention-days: 7
