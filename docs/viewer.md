@@ -95,8 +95,9 @@ It is shown only when `python3 -m expectrail.explanation check FINDINGS FILE` pa
   because a list of words to refuse can never be finished;
 - a point can say "fails" or "regression" only if every cited id failed after the change. It can say
   "passes" or "fixed" only if every cited id passed. The point must state at least one matching
-  after verdict. A
-  decision word ("accepted", "rejected") must be the decision. Negations and words of certainty
+  after verdict. “Accepted” requires an accepted run and a pass on every cited check.
+  “Rejected” requires a rejected run and a failure on every cited check. A route or spec whose
+  name is a verdict word can still be identified by its full `check:<spec>@<route>` ID. Negations and words of certainty
   ("not", "no longer", "proves", "all", "always") are never allowed;
 - "same" or "unchanged" needs every cited verdict to be equal before and after the change, and
   "difference" or "changed" needs one that differs. Words that limit or widen what the evidence
