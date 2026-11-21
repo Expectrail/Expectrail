@@ -376,9 +376,29 @@ either outcome. That variation is not known, because each setting has been dispa
 - **Valid catches:** the score produces them. Under today's generator, a check the record keeps has
   already survived the control (`assess.validity`). The score's `reproducing` checks per defect, and its
   reproduced count, are exactly the valid catches (`python3 -m expectrail.repro score`).
-- **Survival and the form histogram over a live run's records:** not built. `control-form` reads the
-  baseline only, through separately replayed rows, and a live record carries its own do-nothing rows
-  (`validity[].doNothing`). A reader of those rows is to be built on #285 before the run is published.
+- **Survival and the form histogram over a live run's records:** built, not yet run on a live record.
+  `control-form` reads the baseline only, through separately replayed rows; a live record carries its
+  own do-nothing rows (`validity[].doNothing`), and `expectrail/repro/control_survival.py` reads those,
+  for one run or several side by side:
+
+  ```sh
+  python3 -m expectrail.repro control-survival \
+    --run runs/menu/repro-score/repro-score.json runs/menu/repro \
+    --run runs/control/repro-score/repro-score.json runs/control/repro --out survival.md
+  ```
+
+  It gives survival twice. *As stated* is the definition above: of the checks proposed, the share whose
+  row is not `passes`. That share also counts checks the control never ran for (those that failed the
+  clean game, or had no validity row), so a prompt that made checks fail the clean game would raise it.
+  *Of those judged* is the share not `passes` among the checks the control ran for (`passes`, `fails`,
+  `indeterminate`). Both are reported; the second is the one read for the first outcome above. The
+  valid catches are the score's, and the reader refuses a record in which a reproducing check passed the
+  control. It fails closed on a record that disagrees with itself (an outcome its own runs do not give,
+  a check kept valid after passing the control, a control run for a check that failed the clean game,
+  some records with rows and some without). On the baseline recording it reports 137 proposed checks,
+  all `absent` (made before the control), so survival there is "cannot tell"; its form histogram is
+  the `control-form` one (60 `holds-when-equal`, 19 `holds-when-still`, 32 `fails-when-equal`,
+  11 `needs-activity`, 15 `other`) and its valid catches are the score's 91 checks and 17 of 24 defects.
 
 All five dispatches together select $240 of assessed budgets, plus overhead; do them only when
 Sean is ready to spend. A current combined evidence run cannot retroactively measure the earlier
