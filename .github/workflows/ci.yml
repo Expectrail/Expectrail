@@ -909,7 +909,10 @@ jobs:
       - name: Install a virtual display and software OpenGL
         uses: ./.github/actions/apt-install
         with:
-          packages: xvfb libgl1-mesa-dri libglx-mesa0 patch bubblewrap
+          packages: >-
+            xvfb xauth libgl1-mesa-dri libglx-mesa0 patch bubblewrap python3-tk
+            xdg-utils desktop-file-utils libfontconfig1 libxcursor1 libxinerama1
+            libxrandr2 libxi6 libxrender1 libxext6 libx11-6 curl unzip ca-certificates
       - name: Download Godot 4.7.2 and check its SHA-512
         uses: ./.github/actions/get-godot
       - name: Allow unprivileged user namespaces for bubblewrap
@@ -927,6 +930,14 @@ jobs:
           python -m pip install -r requirements-build.txt -r requirements-dev.txt
           python -m unittest tests.test_package -v
           python -m pip wheel . --no-deps --no-build-isolation -w dist
+      - name: Install the Ubuntu desktop package and open its project page
+        run: |
+          python tools/build_deb.py --output-dir dist dist/expectrail-*.whl
+          sudo dpkg --install dist/expectrail_*_amd64.deb
+          desktop-file-validate /usr/share/applications/expectrail.desktop
+          cd "$RUNNER_TEMP"
+          /usr/bin/expectrail --version | grep -F 'installed package'
+          /usr/bin/python3 -I "$GITHUB_WORKSPACE/tests/check_installed_desktop.py"
       - name: Install it with pip into a clean venv
         run: |
           python -m venv "$RUNNER_TEMP/venv"
