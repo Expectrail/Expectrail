@@ -23,8 +23,16 @@ from hub.web import SECURITY_HEADERS, STATUS, Request, Response, first_values, m
 
 from urllib.parse import parse_qs
 
-ASSETS = Path(__file__).resolve().parents[1] / 'docs' / 'assets'
-STATIC = {'/assets/expectrail.css': 'expectrail.css', '/assets/hub.css': 'hub.css'}
+PACKAGE = Path(__file__).resolve().parent
+ASSETS = PACKAGE.parent / 'docs' / 'assets'
+CSS = 'text/css; charset=utf-8'
+STATIC = {
+    '/assets/expectrail.css': (ASSETS / 'expectrail.css', CSS),
+    '/assets/hub.css': (ASSETS / 'hub.css', CSS),
+    '/assets/hub-fonts.css': (PACKAGE / 'fonts.css', CSS),
+    '/assets/fonts/texgyreadventor-regular.woff': (ASSETS / 'fonts/texgyreadventor-regular.woff', 'font/woff'),
+    '/assets/fonts/texgyreadventor-bold.woff': (ASSETS / 'fonts/texgyreadventor-bold.woff', 'font/woff'),
+}
 MAX_BODY = 1024 * 1024 + 1
 
 
@@ -85,11 +93,12 @@ def dispatch(state, environ):
     method = environ.get('REQUEST_METHOD', 'GET').upper()
     path = environ.get('PATH_INFO', '/') or '/'
     if method == 'GET' and path in STATIC:
+        asset, content_type = STATIC[path]
         try:
-            data = (ASSETS / STATIC[path]).read_bytes()
+            data = asset.read_bytes()
         except OSError:
             return Response(404, b'not found', [], 'text/plain; charset=utf-8')
-        return Response(200, data, [], 'text/css; charset=utf-8')
+        return Response(200, data, [], content_type)
     body = read_body(environ)
     if body is None:
         return Response(413, b'request too large', [], 'text/plain; charset=utf-8')
