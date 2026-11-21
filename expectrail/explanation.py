@@ -176,14 +176,14 @@ def _point(point: dict, known: dict[str, dict], decision: str) -> list[str]:
                                 f"{actual or 'not run'}")
     stated_after = [sides["after"] for cid, sides in point["says"].items()
                     if cid in point["cites"] and "after" in sides]
-    numbers, words_ok, names = set(), set(NEUTRAL), set()
+    numbers, words_ok = set(), set(NEUTRAL)
     for cid in point["cites"]:
         numbers |= _numbers(known[cid]["text"])
         words_ok |= known[cid]["words"]
-        names |= known[cid]["names"]
+        words_ok |= known[cid]["names"]
     words, unknown_words = set(), []
     for t in TOKEN.findall(text.lower()):
-        if t in names and t not in FAIL_WORDS and t not in PASS_WORDS:
+        if t in point["cites"]:  # A complete evidence ID unambiguously identifies its source.
             continue
         if t[0].isdigit() and NUMBER.fullmatch(t):
             if _number(t) not in numbers:
@@ -223,6 +223,10 @@ def _point(point: dict, known: dict[str, dict], decision: str) -> list[str]:
     decision_words = set().union(*DECISION_WORDS.values()) & words
     if decision_words - DECISION_WORDS.get(decision, frozenset()):
         problems.append(f"it says {', '.join(sorted(decision_words))}, but the decision is {decision}")
+    elif decision_words:
+        required = "pass" if decision == "accept" else "fail"
+        if cited_after != {required}:
+            problems.append(f"a point saying {decision} requires every cited id to have an after verdict of {required}")
     named = (NUMBER_WORDS | NEGATIONS | CERTAINTY | SCOPE | SAME_WORDS | DIFFERENT_WORDS | FAIL_WORDS
              | PASS_WORDS | decision_words)
     unknown_words = sorted(w for w in words - words_ok - named if not w.endswith("n't"))
@@ -265,6 +269,7 @@ def prompt(record: dict) -> str:
         "withholds the point. Write numbers as digits, and "
         "only numbers that appear in the cited evidence. Do not negate anything.",
         "",
+        "Use the full evidence ID to name a route or check whose name also makes a claim, such as accepted.",
         "Evidence:",
     ]
     for cid, e in evidence(record).items():
