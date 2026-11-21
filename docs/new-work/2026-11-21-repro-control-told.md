@@ -27,6 +27,12 @@ through `offer.ALL`. There is a new example, `contracts/examples/jit-run-control
 `run.generate`. `docs/repro-audit.md` lists the dispatch Sean would run, and `docs/jit.md` describes the
 setting.
 
+After Sean's review, `docs/repro-audit.md` states before the run what it will be read on. That is
+survival under the control, valid catches and the form histogram, against the menu setting, with the two
+outcomes written in advance. It also says that a reader of survival and the histogram over live records is
+not built yet. `docs/jit.md` says the operation lists describe the evaluator and are not a menu of approved
+forms.
+
 ## What was run
 
 - `python3 -m unittest tests.test_jit_offer_control` passes: 16 tests, written first and seen failing.

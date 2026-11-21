@@ -326,7 +326,11 @@ adds `intent.CONTROL_TEXT` to the system prompt and `intent.REVISE_CONTROL_TEXT`
 the control is, which forms a still actor cannot fail or cannot pass, and what the reason means. The text
 is tested against the evaluator's comparators and `expectrail/repro/control_form.py`, so it cannot drift
 from them unnoticed. What decides a check does not change. Every other setting's prompts are unchanged
-byte for byte (the menu setting's digests are pinned in `tests/test_jit_offer_control.py`). Not yet run live.
+byte for byte (the menu setting's digests are pinned in `tests/test_jit_offer_control.py`).
+The operation lists in `CONTROL_TEXT` describe what the evaluator does with a still actor. They are not
+a menu of approved forms: a check of a form that survives the control is not better for that, and it is
+kept only if it also fails on the bug build. Not yet run live. What the live run will be read on, and the
+two outcomes stated before it, are in `docs/repro-audit.md` under the control run.
 
 **What the proposer is shown on a menu probe** (November 18, 2026, issue #285). The harness records the
 counter only when asked, and until this change the measure step and the evidence asked on no replay: on
