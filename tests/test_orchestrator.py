@@ -1293,7 +1293,10 @@ class LostWorkerTest(Case):
                                   what="the lease running out")
                 self.assertEqual((status["phase"], [d["code"] for d in status["diagnostics"]]), ("failed", ["WORKER_LOST"]))
                 wait_for(lambda: gone(child), what="the worker's child stopping")
-                self.assertIn("stopped 1 process(es) it had started", status["reasons"])
+                reason = "stopped 1 process(es) it had started"
+                if not st.process_handles():
+                    reason += "; by process number: this system has no process handles"
+                self.assertIn(reason, status["reasons"])
                 self.assertEqual(st.processes_of(job), [])
                 self.assertEqual(self.store.status(job), status)   # and asking again changes nothing
 
