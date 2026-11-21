@@ -713,6 +713,66 @@ whose verdict has to be beyond question. The run's shared answers come from that
 job, are written to the cache before Muse Code starts, and are SAM's answers for the clean game's
 frames; `sam_cache: off` turns sharing off for a run.
 
+## What text reaches a model (#745)
+
+Expectrail reads material it did not write: games, their files, specs drafted from bug reports. Its
+verdict must not move because of text in that material. **The invariant: no text from a game's
+files reaches a model that has a say in a verdict, and the one piece of spec text that does is a
+short noun phrase given to a model that returns boxes, never one that follows instructions alone.**
+Read this before you change an observer, add a vision backend, or pass a spec field to a model.
+`tests/test_untrusted_text.py` fails if any part below stops being true.
+
+1. **The anchored paths ask by place.** `expectrail/gate/anchor.py`, `expectrail/anchored.py` and
+   `expectrail/jit/sam_observer.py` ask only `segment_at` and `segment_in`. Their wire text is built
+   by `point_prompt()` and `box_prompt()` in `agents/sam_observations.py` from whole pixel numbers:
+   `<0f>1<|point;x=..;y=..;w=..;h=..|>`. A string in place of a coordinate is refused before
+   anything is sent. Nothing from a spec, its `instruction` or its `prompt`, can be in that text.
+2. **The text path sends one spec field, the object's noun.** `FramesObserver` (the visibility
+   checks, and the Run it samples, whose recordings answer "blue robot" 90 to 120 times each) sends a
+   spec object's `prompt` as the one text of a one-message request, built by `request_body()`. This
+   is a correction to the trace on #745, which said the default verdict path sends no spec text: it
+   sends this field. Nothing else from the spec is sent, the `instruction` least of all. Specs judge
+   a verdict only once a person has approved them, and checks come from the base commit, never from
+   the change being judged.
+3. **No instruction-following model decides alone.** Every backend in
+   `agents.sam_observations.BACKENDS` is one of these, and a new one fails the test until it is
+   classified here:
+
+   | Backend | What it may do in a verdict |
+   | --- | --- |
+   | `sam` | A segmenter: returns masks and boxes, and cannot be talked to |
+   | `local-http` | An open-vocabulary detector: returns boxes |
+   | `glimmer`, `byo-vlm` | A vision-language model: refused for a verdict (`default_client(verdict=True)`) |
+   | `both` | SAM's boxes, kept only where Glimmer also sees the object: Glimmer can only remove |
+   | `glimmer-engine`, `byo-vlm-engine` | Each box counts only where it agrees with the engine's position |
+
+   Under `both` and the engine-checked backends, the noun phrase is part of an instruction to a
+   vision-language model (`user_prompt()` in `agents/glimmer_client.py`). That model still cannot
+   add a pass: it can remove what SAM found, or be outvoted by the engine.
+4. **The verdict modules import no text model.** `expectrail/gate/`, `observers.py`, `anchored.py`,
+   `recorded.py`, `evaluator.py` and `jit/sam_observer.py` import none of `expectrail.providers`,
+   `spec_writer`, `triage`, `feedback`, `outside_judge`, `byo_fixer`, `spark_open`, `muse_judge`,
+   `byo_vision` or `glimmer_client`. A vision model enters a verdict only through `default_client()`,
+   which holds rule 3.
+5. **Calibration's names from a game are words or nothing.** `name_proposals()` in
+   `agents/calibration_observers.py` proposes the literal `player`, texture file stems and the
+   binding's node or group name, after splitting camel case and the separators `_` and `-`. A name
+   that is not then lowercase ASCII words one space apart, at most 64 characters, is left out whole
+   (a newline in a file name, punctuation, a non-ASCII letter). Before #745 such a name went through
+   with its newline. Today these names are asked of a recording only (`RecordedSam`), so a name not
+   in the recording gets no answer; the rule holds if a live calibrator is added.
+
+**Where text models do read untrusted text, by design.** The fixer reads the bug report: it is the
+thing being judged. `spec_writer`, `feedback` and `triage` turn a person's sentence, a playtester's
+words or failure evidence into drafts and reports; a draft has no approval until a person adds one.
+`outside_judge` is a benchmark. None of them is imported by a verdict module (rule 4).
+
+**Not done, on purpose.** No sanitiser, blocklist or escaping layer. The invariant is that the text
+never becomes an instruction to a model that decides, not that it has been scrubbed; a scrubber
+would suggest the path is safe to widen. Pixels are the other way in: the candidate draws the frames,
+and text drawn into the game is why a vision-language model never decides alone (rule 3). That risk
+is in [verification-risks.md](verification-risks.md#10-capture-is-inside-the-games-trust-boundary).
+
 ## When SAM fails
 
 Any failure makes the check needs-review, never a pass and never a crash. That covers a failed,

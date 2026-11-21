@@ -224,6 +224,11 @@ calibrated physical-capture lane.
 [Sandbox](replay-sandbox.md) · [Capture grade](capabilities.md#godot-harness) ·
 [CI grade](capabilities.md#ci-head-clearance) · [Receipts](capabilities.md#verifier-receipts)
 
+**Text from the judged material.** The same boundary holds for text. No text from a game's files
+reaches a model that has a say in a verdict; the one spec field sent, an approved object's noun
+phrase, goes to a segmenter, and a vision-language model never decides alone. A test fails if
+that changes. [What text reaches a model](sam.md#what-text-reaches-a-model-745)
+
 **Closure evidence (Q1, Q4–Q6).** Compare candidate-written frames and traces with an independently
 owned capture of behavior. Bind that capture to a named build and policy in a deployed signed judge
 and verify it offline. A physical lane needs authorized access, tagged timing and color controls,
